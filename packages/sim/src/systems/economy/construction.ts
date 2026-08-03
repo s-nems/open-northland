@@ -36,12 +36,12 @@ import { destroyStumpsInReserved } from './stumps.js';
  * ({@link UnderConstruction.labor}, advanced a swing at a time by the `construct` atomic) and delivered
  * material ({@link deliveredConstructionFraction} - Σ delivered / Σ needed). So a site only rises as fast as
  * both a builder hammers and material lands: deliver 3 of 10 units → build caps at 30% until more arrives;
- * hammer nothing → build stays at the grey foundation however much material sits on it. Its `Health` ramps to
- * `built · max` (floored at 1 so a foundation is never a 0-HP corpse the CleanupSystem would reap). The site
- * finishes the tick its builder work is complete (`labor >= ONE`, or a free empty-cost type) and every
- * material is present: the cost is consumed (spent into the structure - goods conserved), `built` flips to
- * ONE, the marker is removed, `Health` fills to max, and `buildingFinished` fires. Surplus material beyond
- * the cost stays in the hold.
+ * hammer nothing → build stays at the grey foundation however much material sits on it. Its `Health` gains
+ * what each rise adds to the pool ({@link rampHealth}), so a fresh foundation stands at 1 hitpoint and falls
+ * to a single blow while a besieged site keeps its damage. The site finishes the tick its builder work is
+ * complete (`labor >= ONE`, or a free empty-cost type) and every material is present: the cost is consumed
+ * (spent into the structure - goods conserved), `built` flips to ONE, the marker is removed, `Health` fills
+ * to max, and `buildingFinished` fires. Surplus material beyond the cost stays in the hold.
  *
  * An **upgrade site** ({@link Upgrading} beside the marker - opened by the `upgradeBuilding` command, never
  * spontaneously) runs the same rise, with three differences: its bill is the target tier's own
@@ -64,13 +64,20 @@ import { destroyStumpsInReserved } from './stumps.js';
  * (several hammer strikes per unit) and the consume-when-complete behavior are our design (the engine's
  * build/upgrade loop has no oracle). A directly-placed higher tier paying its whole cumulative chain bill is
  * our design invariant (the original only ever upgrades into higher tiers, so direct tier-N placement is an
- * OpenNorthland capability priced to the tier-1-then-upgrade total - see `constructionBillOf`).
+ * OpenNorthland capability priced to the tier-1-then-upgrade total - see `constructionBillOf`). No
+ * construction-HP rule is readable (`atomicanimations.ini`'s build atomic carries no CHANGE_HITPOINTS
+ * event), so the built-proportional ceiling, its gain accounting, and the full pool a finish opens with are
+ * approximations around one observed fact: a fresh foundation falls to a single blow.
  * Determinism: buildings are visited in the Building store's insertion order, every decision reads content +
  * the site's own components, and every stockpile write goes through the canonical Map.
  */
 export const constructionSystem: System = (world, ctx) => {
   for (const e of world.query(Building, Stockpile)) {
     if (!world.has(e, UnderConstruction)) continue; // built (or inert unmigrated fixture) - nothing to raise
+    // A site a besieger drained to 0 earlier this tick is rubble awaiting the cleanupSystem: neither the
+    // ramp nor a finish may raise it, or the build would keep resurrecting it swing after swing.
+    const health = world.tryGet(e, Health);
+    if (health !== undefined && health.hitpoints <= 0) continue;
     const building = world.get(e, Building);
     // A type absent from content has an empty bill and a zero labor total, which would read as
     // "complete" and finish the site for free - a malformed-content site stays inert instead.
@@ -108,8 +115,9 @@ function advanceSite(
   // Still rising: built is the lower of builder work and delivered material (the two gates). An upgrade
   // site keeps its standing Health while the new tier rises over it (see the system doc).
   const delivered = deliveredConstructionFraction(world, ctx, e);
+  const before = building.built;
   building.built = labor < delivered ? labor : delivered;
-  if (!world.has(e, Upgrading)) setHealth(world, e, building.built);
+  if (!world.has(e, Upgrading)) rampHealth(world, e, before, building.built);
 }
 
 /**
@@ -150,7 +158,7 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
   }
   building.built = ONE; // built - production / housing now count it
   world.remove(e, UnderConstruction); // a finished building is a plain Building again
-  setHealth(world, e, ONE); // full life (an upgrade fills the new tier's larger pool)
+  fillHealth(world, e); // full life (an upgrade fills the new tier's larger pool)
   // A settler that strayed onto the plot during the build (a stale route, a spawn) must not be
   // left standing inside the finished walls - nor a pile set down there mid-build, nor one an
   // upgraded tier's larger footprint newly encloses. Bushes and stumps get the placement treatment
@@ -185,19 +193,27 @@ export function forceFinishConstruction(world: World, ctx: SystemContext, site: 
   finishSite(world, ctx, site, world.get(site, Building));
 }
 
-/**
- * Ramp a construction site's {@link Health} pool to `builtFraction` of its max. Floored at 1 hitpoint so
- * a foundation (`built = 0`) is never a 0-HP entity the CleanupSystem would reap and announce as a death
- * - combat targeting of buildings (and their safe teardown) is a later slice, so a building only ever
- * rises through this ramp today. A no-op for a type with no hitpoints pool (no `Health` component).
- * Deterministic integer arithmetic: `built · max / ONE` truncated (built is a 0..ONE Fixed, max a plain
- * integer), never an accumulated float.
- */
-function setHealth(world: World, e: Entity, builtFraction: Fixed): void {
+/** Ramp a site's {@link Health} for a rise from `before` to `after` of its build: the pool gains what the
+ *  {@link poolCeiling} gained, clamped to that ceiling - so a build that shrank (material lifted back out of
+ *  the hold) never leaves the pool above it. A no-op for a type with no hitpoints pool. */
+function rampHealth(world: World, e: Entity, before: Fixed, after: Fixed): void {
   const health = world.tryGet(e, Health);
   if (health === undefined) return;
-  health.hitpoints =
-    builtFraction >= ONE ? health.max : Math.max(1, Math.trunc((builtFraction * health.max) / ONE));
+  const ceiling = poolCeiling(after, health.max);
+  const gained = Math.max(0, ceiling - poolCeiling(before, health.max));
+  health.hitpoints = Math.min(ceiling, health.hitpoints + gained);
+}
+
+/** The hitpoints an undamaged site at `builtFraction` of its build stands at, floored at 1 so a foundation
+ *  (`built = 0`) is never a 0-HP entity the CleanupSystem reaps on the tick it is placed. Exact integer
+ *  arithmetic: `built · max / ONE` truncated (built is a 0..ONE Fixed, max a plain integer). */
+function poolCeiling(builtFraction: Fixed, max: number): number {
+  return builtFraction >= ONE ? max : Math.max(1, Math.trunc((builtFraction * max) / ONE));
+}
+
+function fillHealth(world: World, e: Entity): void {
+  const health = world.tryGet(e, Health);
+  if (health !== undefined) health.hitpoints = health.max;
 }
 
 /** Remove the `cost` materials from a building's stockpile (spent into the structure / upgrade). The

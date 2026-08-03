@@ -85,6 +85,35 @@ describe('constructionSystem', () => {
     expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP);
   });
 
+  it('keeps a besieged site damaged: the ramp adds the build gain, it never refills the pool', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 }); // fully stocked - only labor gates the rise
+    sim.world.add(e, Health, { hitpoints: 1, max: HOUSE_MAX_HP });
+    const ctx = ctxOf(sim);
+    sim.world.get(e, UnderConstruction).labor = fx.div(ONE, fx.fromInt(2)); // hammered halfway
+    constructionSystem(sim.world, ctx);
+    expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP / 2);
+
+    sim.world.get(e, Health).hitpoints -= 30; // a besieger's blow lands: 20 of the standing 50 left
+    sim.world.get(e, UnderConstruction).labor = fx.div(fx.fromInt(3), fx.fromInt(4)); // hammered on to 75%
+    constructionSystem(sim.world, ctx);
+
+    // The pool gains the 25 hitpoints the rise from 50% to 75% added and keeps the 30 the blow took -
+    // resetting it to the ramp would heal a construction site every tick a builder hammers it.
+    expect(sim.world.get(e, Health).hitpoints).toBe(45);
+  });
+
+  it('never revives a site battered to 0 HP - the ramp leaves it dead for the cleanup pass', () => {
+    const sim = new Simulation({ seed: 1, content: constructionContent() });
+    const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 });
+    sim.world.add(e, Health, { hitpoints: 0, max: HOUSE_MAX_HP }); // felled by a swing earlier this tick
+    fullyHammer(sim, e); // and complete: neither the ramp nor the finish may raise it
+    constructionSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(e, Health).hitpoints).toBe(0);
+    expect(sim.world.has(e, UnderConstruction)).toBe(true); // not finished out from under the cleanup pass
+  });
+
   it('clamps each swing at the delivered fraction, so built never jumps at a delivery', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE, { [STONE]: 1 }); // 1 of 3 units on hand

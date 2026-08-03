@@ -234,7 +234,7 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     if (model.kind !== 'building') throw new Error('expected a building panel');
-    // The sim never ramps an upgrading building's pool (`construction.ts` skips setHealth for
+    // The sim never ramps an upgrading building's pool (`construction.ts` skips the ramp for
     // `Upgrading`): the old tier stands at full health while `built` restarts from 0. Both readouts are
     // real and different - the panel must not render one of them twice.
     expect(model.builtPct).toBe(0);

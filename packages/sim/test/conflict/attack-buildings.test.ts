@@ -13,6 +13,8 @@ import {
   Position,
   Settler,
   Stance,
+  Stockpile,
+  UnderConstruction,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
@@ -21,6 +23,7 @@ import {
   nodeOfPosition,
   ONE,
   positionOfNode,
+  type SimEvent,
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
@@ -47,6 +50,8 @@ const P2 = 2; // the defending player (owns the buildings)
 const GRASS = 0;
 const WATER = 1; // the barrier the islet fixture needs - an unwalkable landscape, so a separate walk component
 
+const STONE = 1; // the HOME's build material - a bill keeps a placed site a site instead of finishing free
+
 const HEADQUARTERS = 1;
 const TOWER = 2;
 const HOME = 3;
@@ -64,7 +69,10 @@ function siegeContent(opts: { meleeRange?: { min: number; max: number } } = {}):
   const melee = opts.meleeRange ?? { min: 1, max: 2 };
   return parseContentSet({
     manifest: TEST_MANIFEST,
-    goods: [{ typeId: 0, id: 'none' }],
+    goods: [
+      { typeId: 0, id: 'none' },
+      { typeId: STONE, id: 'stone' },
+    ],
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: SOLDIER, id: 'soldier_unarmed' },
@@ -73,7 +81,13 @@ function siegeContent(opts: { meleeRange?: { min: number; max: number } } = {}):
     buildings: [
       { typeId: HEADQUARTERS, id: 'headquarters', kind: 'storage', hitpoints: 1000 },
       { typeId: TOWER, id: 'watchtower', kind: 'tower', hitpoints: 1000 },
-      { typeId: HOME, id: 'home', kind: 'home', hitpoints: 1000 },
+      {
+        typeId: HOME,
+        id: 'home',
+        kind: 'home',
+        hitpoints: 1000,
+        construction: [{ goodType: STONE, amount: 2 }],
+      },
       {
         typeId: FORT,
         id: 'fort',
@@ -190,6 +204,21 @@ function buildingAt(
   return e;
 }
 
+/** The hitpoints a fresh site stands at, in the type's own full pool - what `placeBuilding` stamps. */
+const FOUNDATION_HP = 1;
+
+/** An enemy construction site at visual cell (x,y): a foundation with nothing hammered or delivered, at
+ *  1 hitpoint of the type's pool. Its own {@link Stockpile} is the (empty) build hold the
+ *  ConstructionSystem reads, so the build ramp actually visits it. */
+function siteAt(sim: Simulation, x: number, y: number, buildingType: number, owner: number): Entity {
+  const e = buildingAt(sim, x, y, buildingType, owner);
+  sim.world.get(e, Health).hitpoints = FOUNDATION_HP;
+  sim.world.get(e, Building).built = fx.fromInt(0);
+  sim.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
+  sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
+  return e;
+}
+
 describe('warriors attack enemy buildings', () => {
   it('razes an adjacent enemy building with no enemy unit present (the dormancy gate wakes)', () => {
     const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(6, 1) });
@@ -209,6 +238,37 @@ describe('warriors attack enemy buildings', () => {
     expect(sim.world.isAlive(home)).toBe(false); // battered down to 0 HP and reaped
     expect(razed).toContain(home); // announced as a razed BUILDING…
     expect(died).not.toContain(home); // …never as a fallen settler
+  });
+
+  it('razes a fresh enemy construction site - a 1-HP foundation falls to a single blow', () => {
+    const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(6, 1) });
+    warriorAt(sim, 0, 0, P1);
+    const site = siteAt(sim, 1, 0, HOME, P2);
+
+    let razed: Extract<SimEvent, { kind: 'buildingDestroyed' }> | undefined;
+    for (let i = 0; i < 40 && sim.world.isAlive(site); i++) {
+      sim.step();
+      for (const ev of sim.events.current()) {
+        if (ev.kind === 'buildingDestroyed' && ev.entity === site) razed = ev;
+      }
+    }
+
+    // The build ramp runs later in the same tick than the swing that landed, so it must add what the build
+    // gained and never re-set the pool - a ramp that owns the pool outright outlives any warband.
+    expect(sim.world.isAlive(site)).toBe(false);
+    expect(razed?.built).toBe(0); // razed at built 0 - the cue render collapses as scaffolding
+  });
+
+  it('razes a fresh site by arrow too - a shot and a swing reach the same rubble', () => {
+    // The two damage sources land on opposite sides of the build ramp in the tick (atomic → construction →
+    // projectile), so a foundation's fate must not depend on which of them struck it.
+    const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(12, 1) });
+    warriorAt(sim, 0, 0, P1, ARCHER);
+    const site = siteAt(sim, 6, 0, HOME, P2); // beyond melee, within bow reach
+
+    for (let i = 0; i < 120 && sim.world.isAlive(site); i++) sim.step();
+
+    expect(sim.world.isAlive(site)).toBe(false);
   });
 
   it('drains a building on the weapon vs-building (HOUSE) column, not the vs-unarmored one', () => {
