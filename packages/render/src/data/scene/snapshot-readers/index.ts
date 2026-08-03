@@ -9,7 +9,7 @@
  *  - {@link import('./unit-readers.js')} - the per-settler reads (state, carry, atomic, job, owner);
  *  - {@link import('./static-readers.js')} - the building / resource / stump / bush reads + assignStaticFields;
  *  - {@link import('./stockpile-readers.js')} - the ground-pile good + fill read;
- *  - {@link import('./projectile-readers.js')} - the in-flight shot's target + origin.
+ *  - {@link import('./projectile-readers.js')} - the in-flight shot's target, origin and cover.
  *
  * Shared contract: every reader is a pure, total function of a snapshot entity's `components` record - a
  * missing or malformed component reads as its "absent" value (`null`/`undefined`), never a throw. Nothing
@@ -20,6 +20,7 @@ export { readPosition } from '../../snapshot/index.js';
 export { classify } from './classify.js';
 export { facingTowardTile, readFacing } from './facing.js';
 export {
+  readProjectileCover,
   readProjectileMissAim,
   readProjectileOrigin,
   readProjectileTarget,

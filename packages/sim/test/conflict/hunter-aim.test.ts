@@ -99,6 +99,7 @@ describe('hunter aim - the missed arrow', () => {
       speed: 8,
       originX: positionOfNode(10, 10).x,
       originY: positionOfNode(10, 10).y,
+      cover: null, // loosed in the open, not from a garrison
       missAim: { x: aim.x, y: aim.y }, // frozen at "release": exactly where the deer stands
       launchTick: sim.tick + 1, // loosed on the tick the next step runs, which is its rest at the bow
     });

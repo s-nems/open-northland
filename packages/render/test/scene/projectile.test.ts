@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PROJECTILE_ARC_PEAK_FRACTION, PROJECTILE_ARC_PEAK_MAX_PX } from '../../src/data/scene/index.js';
+import {
+  COVER_LAUNCH_HEIGHT_PX,
+  PROJECTILE_ARC_PEAK_FRACTION,
+  PROJECTILE_ARC_PEAK_MAX_PX,
+} from '../../src/data/scene/index.js';
 import { buildScene, ONE, tileToScreen } from '../../src/index.js';
 import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
@@ -74,6 +78,53 @@ describe('buildScene - projectile arc & aim', () => {
     const chord = tileToScreen(12, 1).x - tileToScreen(0, 1).x;
     expect(chord * PROJECTILE_ARC_PEAK_FRACTION).toBeGreaterThan(PROJECTILE_ARC_PEAK_MAX_PX); // the cap really binds
     expect(scene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(PROJECTILE_ARC_PEAK_MAX_PX);
+  });
+
+  /** The same payload, loosed from the gallery of building `cover` instead of open ground. */
+  function coveredProjectileFrom(
+    target: number,
+    ox: number,
+    oy: number,
+    cover: number,
+  ): Record<string, unknown> {
+    const payload = projectileFrom(target, ox, oy);
+    return { Projectile: { ...(payload.Projectile as Record<string, unknown>), cover } };
+  }
+
+  it('drops a garrison shot down the gallery height: full at the bow, nearly spent near the mark', () => {
+    // Origin (0,1) → target (2,1), the same 2-cell chord as the lob above. A shot still AT the tower
+    // (p = 0) hangs at the gallery's full height - where the ground lob would read 0 - and one at (1.8, 1)
+    // (p = 0.9) has fallen to h·(1−p²) of it, still above the dirt the lob would already be back on.
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const bowScene = buildScene(
+      snapshotOf([entity(1, 0, 1, coveredProjectileFrom(2, 0, 1, 9)), target]),
+      FLAT_3x2,
+    );
+    expect(bowScene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(COVER_LAUNCH_HEIGHT_PX);
+
+    const nearScene = buildScene(
+      snapshotOf([entity(1, 1.8, 1, coveredProjectileFrom(2, 0, 1, 9)), target]),
+      FLAT_3x2,
+    );
+    const spent = COVER_LAUNCH_HEIGHT_PX * (1 - 0.9 ** 2);
+    expect(nearScene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(spent);
+  });
+
+  it('never tilts a garrison shot nose-UP: it leaves the gallery level and only steepens downward', () => {
+    const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
+    const near = buildScene(
+      snapshotOf([entity(1, 0.5, 1, coveredProjectileFrom(2, 0, 1, 9)), target]),
+      FLAT_3x2,
+    );
+    const far = buildScene(
+      snapshotOf([entity(1, 1.5, 1, coveredProjectileFrom(2, 0, 1, 9)), target]),
+      FLAT_3x2,
+    );
+    // Eastbound, so screen-down is a positive rotation: nose already dipping, and dipping harder later.
+    const nearRotation = near.find((d) => d.kind === 'projectile')?.rotation ?? 0;
+    const farRotation = far.find((d) => d.kind === 'projectile')?.rotation ?? 0;
+    expect(nearRotation).toBeGreaterThan(0);
+    expect(farRotation).toBeGreaterThan(nearRotation);
   });
 
   it('tilts a descending projectile nose-DOWN along the arc tangent past mid-flight', () => {

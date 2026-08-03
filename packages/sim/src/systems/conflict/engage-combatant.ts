@@ -20,7 +20,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { drawsHouseBow, isManningShelter } from '../defence/index.js';
+import { drawsHouseBow, mannedShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
 import { withFightDamageBonus } from '../progression/index.js';
 import {
@@ -92,7 +92,7 @@ export function engageCombatant(
     ordered,
     mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
     post: manning ? posted : null,
-    manningShelter: isManningShelter(world, e),
+    shelter: mannedShelter(world, e),
   };
 
   // The two PASSIVE stances are overridden by the post, not applied under it: a manned tower IS the order
@@ -133,7 +133,10 @@ export function engageCombatant(
 
   if (huntSearchRests(world, ctx, e, attacker, stance)) return;
 
-  const here = entityNode(world, terrain, e);
+  // A garrison acquires and measures reach from the TOWER, not from the door node it happens to stand on
+  // inside - the same point its arrow leaves from (`launchProjectile`), so the band it shoots into is the
+  // band it swings in.
+  const here = entityNode(world, terrain, stance.shelter ?? e);
   const spec = engageSpec(world, ctx, terrain, index, e, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
   if (found === null) {
@@ -178,7 +181,7 @@ function wieldedWeaponTypeId(
   stance: CombatantStance,
   attacker: SettlerIdentity,
 ): number | undefined {
-  if (!stance.manningShelter) return world.tryGet(e, Weapon)?.weaponTypeId;
+  if (stance.shelter === null) return world.tryGet(e, Weapon)?.weaponTypeId;
   return drawsHouseBow(world, e) ? houseBow(ctx.content, attacker.tribe)?.typeId : undefined;
 }
 
@@ -232,7 +235,7 @@ function resolveFleeState(
 ): boolean {
   // A settler manning a shelter never flees: it is already behind the walls, and running would take it
   // straight back out into the open (the shelter drive would then walk it in again).
-  if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered || stance.manningShelter) {
+  if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered || stance.shelter !== null) {
     if (world.has(e, Fleeing)) {
       world.remove(e, Fleeing);
       clearNavState(world, e); // drop the run route with the marker
@@ -366,6 +369,6 @@ function swingAt(
  *  advances, and so does a hostile wild animal (the wolf's ambush lunge, the provoked bear's charge -
  *  {@link resolveTarget} only admits a victim inside its aggro radius). */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
-  if (stance.post !== null || stance.manningShelter) return true;
+  if (stance.post !== null || stance.shelter !== null) return true;
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);
 }

@@ -4,7 +4,7 @@ import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
 import { spriteDepth } from './depth.js';
 import type { MutableDrawItem, MutableSpriteDrawItem } from './draw-item.js';
-import { projectileArc } from './projectile-arc.js';
+import { COVER_LAUNCH_HEIGHT_PX, projectileArc } from './projectile-arc.js';
 import { SIGNPOST_BOARD_FRAMES, signpostBoardsOf } from './signpost-boards.js';
 import {
   assignStaticFields,
@@ -21,6 +21,7 @@ import {
   readJobType,
   readOwnerPlayer,
   readProducing,
+  readProjectileCover,
   readProjectileMissAim,
   readProjectileOrigin,
   readProjectileTarget,
@@ -199,6 +200,7 @@ export function assignProjectileArc(
     screen,
     tileToScreen(to.x / ONE, to.y / ONE),
     origin === null ? null : tileToScreen(origin.x / ONE, origin.y / ONE),
+    readProjectileCover(components) === null ? 0 : COVER_LAUNCH_HEIGHT_PX,
   );
   item.rotation = arc.rotation;
   return arc.lift;

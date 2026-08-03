@@ -28,6 +28,15 @@ export function readProjectileOrigin(components: Readonly<Record<string, unknown
 }
 
 /**
+ * The building a garrison shot was loosed from (the sim `Projectile.cover`), or `null` for a shot from
+ * open ground - the scene reads only which of the two arc shapes to draw
+ * ({@link import('../projectile-arc.js').COVER_LAUNCH_HEIGHT_PX}).
+ */
+export function readProjectileCover(components: Readonly<Record<string, unknown>>): number | null {
+  return readNumFieldOrNull(components, 'Projectile', 'cover');
+}
+
+/**
  * A MISSED shot's frozen aim point (the sim `Projectile.missAim`, fixed-point), or `null` for a true
  * homing shot. When set it replaces the live target position as the chord's end - aiming the drawn
  * arrow at the (fleeing) target would bend its nose and stall its lob off the real flight.
