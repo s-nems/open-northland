@@ -29,7 +29,8 @@ const HUNTER_CELLS = [
   { x: 8, y: 8 },
   { x: 8, y: 6 },
 ];
-/** Both herds well inside the hunter's auto-planted flag ground (`HUNTER_WORK_FLAG_RADIUS`). */
+/** Both herds sit in the auto-planted ground, which at `HUNTER_WORK_FLAG_RADIUS` covers this whole map:
+ *  what the scene proves is the tiering, not the ground bound (that one is pinned in sim unit tests). */
 const HARE_HERD_CELL = { x: 12, y: 8 };
 const SHEEP_HERD_CELL = { x: 8, y: 12 };
 

@@ -100,7 +100,7 @@ export function engageCombatant(
   if (huntSearchRests(world, ctx, e, attacker, stance)) return;
 
   const here = entityNode(world, terrain, e);
-  const spec = engageSpec(world, ctx, terrain, e, stance, attacker, weapon);
+  const spec = engageSpec(world, ctx, terrain, index, e, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
   if (found === null) {
     // A hunting hunter's empty search rests the acquisition (HuntRest). Not under a DEFEND post: there

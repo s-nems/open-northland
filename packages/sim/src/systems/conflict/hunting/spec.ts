@@ -1,13 +1,13 @@
 import { HuntFocus, Settler } from '../../../components/index.js';
 import { ownerOf, ownersCompatible } from '../../../components/ownership.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isLastResortPrey } from '../../readviews/index.js';
-import { entityNode, manhattan } from '../../spatial/nodes.js';
+import { entityNode, manhattan, type NodeBuckets } from '../../spatial/nodes.js';
 import type { EngageSpec } from '../engagement.js';
 import { isHuntTarget } from '../targeting.js';
-import { HUNT_CHASE_SLACK_NODES, huntingGround } from './ground.js';
+import { HUNT_CHASE_SLACK_NODES, HUNT_LAST_RESORT_SCAN_FACTOR, huntingGround } from './ground.js';
 import { huntingGroundHoldsCarcass } from './kill-claim.js';
 
 // The hunter's PREY-ACQUISITION policy - what an owned IGNORE hunter engages under. Split out of
@@ -27,10 +27,14 @@ export const HUNT_SEARCH_REST_TICKS = 10;
  * target - the harvest drive carries the kill home first - and the carry leg after the last pickup is
  * shielded a rung above (`carriesKillHome`). Accepts only huntable prey inside the hunting ground
  * ({@link huntingGround}), the ground anchor leashing the chase; never `hold` - an idle hunter belongs
- * to its flag-gatherer drive. Last-resort livestock (huntPrey `lastResort`; user rule) is deprioritized
- * (`lowPriority`: normal game always wins), and prey a fellow hunter has committed to is no candidate
- * at all ({@link preyHeldByOthers}). A hunter with neither flag nor workplace (an unposted fixture)
- * hunts by plain sight, unanchored.
+ * to its flag-gatherer drive. Prey a fellow hunter has committed to is no candidate at all
+ * ({@link preyHeldByOthers}). A hunter with neither flag nor workplace (an unposted fixture) hunts by
+ * plain sight, unanchored.
+ *
+ * Last-resort livestock (huntPrey `lastResort`; user rule) is fenced off twice: `lowPriority` keeps
+ * normal game in the ground ahead of it, and {@link lastResortGate} refuses it outright while real game
+ * stands in the wider probe, so a dry ground idles the hunter at its flag instead of turning it on the
+ * settlement's herd. Only acquisition is gated - an animal already drawn on is still run down.
  *
  * It also owns the ONE-PREY-AT-A-TIME rule (user rule): the spec's `lock` holds the animal the hunter
  * drew on until it drops, out to the CHASE LEASH rather than the tighter acquisition radius - prey bolts
@@ -41,6 +45,7 @@ export function hunterEngageSpec(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  index: NodeBuckets,
   e: Entity,
   jobType: number | null,
   seesTarget: (t: Entity) => boolean,
@@ -58,11 +63,10 @@ export function hunterEngageSpec(
   // An animal across a static terrain seam (an island, the far bank) is not this hunter's game: taking
   // it would hold the unit in a chase re-issuing a route that can never resolve. The same rule the
   // carcass gate applies to a stranded kill.
-  const acceptPrey = (t: Entity): boolean =>
+  const reachablePrey = (t: Entity): boolean =>
     isHuntTarget(world, ctx, t, jobType) &&
-    terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent &&
-    !heldByColleague(t) &&
-    seesTarget(t);
+    terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent;
+  const acceptPrey = (t: Entity): boolean => reachablePrey(t) && !heldByColleague(t) && seesTarget(t);
   const lastResortLivestock = (t: Entity): boolean => {
     const s = world.tryGet(t, Settler);
     return s !== undefined && isLastResortPrey(ctx.content, s.tribe);
@@ -74,8 +78,9 @@ export function hunterEngageSpec(
     // Unanchored (an unposted fixture): plain sight bounds the acquisition, so it bounds the hold too.
     const inSight = (t: Entity): boolean =>
       manhattan(terrain, hereNode, entityNode(world, terrain, t)) <= sight;
+    const lastResortOk = lastResortGate(terrain, index, hereNode, sight, reachablePrey, lastResortLivestock);
     return {
-      accept: acceptPrey,
+      accept: (t) => acceptPrey(t) && lastResortOk(t),
       minDist,
       searchRadius: sight,
       player: null,
@@ -90,7 +95,18 @@ export function hunterEngageSpec(
     (carcassWork ??= huntingGroundHoldsCarcass(world, ctx, terrain, e, jobType, ground));
   const within = (t: Entity, reach: number): boolean =>
     manhattan(terrain, ground.anchorCell, entityNode(world, terrain, t)) <= reach;
-  const accept = (t: Entity): boolean => acceptPrey(t) && within(t, ground.radius) && !groundHasCarcassWork();
+  const lastResortOk = lastResortGate(
+    terrain,
+    index,
+    ground.anchorCell,
+    ground.radius,
+    reachablePrey,
+    lastResortLivestock,
+  );
+  // The last-resort gate stays LAST: it is the only clause that can walk rings, so out-of-ground and
+  // carcass-blocked livestock must reject before it, not through it.
+  const accept = (t: Entity): boolean =>
+    acceptPrey(t) && within(t, ground.radius) && !groundHasCarcassWork() && lastResortOk(t);
   const leash = ground.radius + HUNT_CHASE_SLACK_NODES;
   const held = (t: Entity): boolean => acceptPrey(t) && within(t, leash) && !groundHasCarcassWork();
   return {
@@ -105,6 +121,37 @@ export function hunterEngageSpec(
     lock: { target: livePrey(world, e, held) },
     defend: { anchorCell: ground.anchorCell, leash, hold: false },
   };
+}
+
+/**
+ * Admits any candidate but a `lastResort` head, and admits one of those only once no normal game stands
+ * within {@link HUNT_LAST_RESORT_SCAN_FACTOR} x `radius` of `at` - a ring walk answered at most once per
+ * engage, because it costs a multiple of the acquisition band.
+ *
+ * "Game around" is deliberately wider than what this hunter may take: a colleague's committed animal
+ * counts (subtracting {@link HuntFocus} would make the answer depend on how many colleagues had already
+ * engaged this tick, since {@link holdPrey} writes after the search), and so does game under fog - the
+ * one unfogged read in the hunting policy, because whether a settlement may eat its own stock must not
+ * turn on the session's fog mode.
+ */
+function lastResortGate(
+  terrain: TerrainGraph,
+  index: NodeBuckets,
+  at: NodeId,
+  radius: number,
+  reachablePrey: (t: Entity) => boolean,
+  lastResort: (t: Entity) => boolean,
+): (t: Entity) => boolean {
+  let gameless: boolean | null = null;
+  const huntedOut = (): boolean => {
+    if (gameless === null) {
+      const { x, y } = terrain.coordsOf(at);
+      const scan = radius * HUNT_LAST_RESORT_SCAN_FACTOR;
+      gameless = index.nearest(x, y, 0, scan, (t) => !lastResort(t) && reachablePrey(t)) === null;
+    }
+    return gameless;
+  };
+  return (t) => !lastResort(t) || huntedOut();
 }
 
 /** Commit `target` as this hunter's prey for the ticks to come - the write half of the `lock` the spec

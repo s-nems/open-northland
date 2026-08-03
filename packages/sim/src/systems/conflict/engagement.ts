@@ -65,8 +65,9 @@ export interface CombatantStance {
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
  *  - **IGNORE hunter** → the hunting policy ({@link hunterEngageSpec}, ./hunting/):
  *    huntable prey only, bounded to the work-flag / workplace ground with the flag as chase anchor,
- *    normal game before last-resort livestock, livestock gated on the ground holding no carcass work,
- *    and the one animal it has drawn on kept as a `lock` until the kill.
+ *    normal game before last-resort livestock and livestock refused outright while any stands in the
+ *    wider probe, no new target while the ground holds carcass work, and the one animal it has drawn
+ *    on kept as a `lock` until the kill.
  *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within its
  *    {@link SIGHT_RADIUS_NODES} (it advances), a hostile wild animal within {@link ANIMAL_AGGRO_RADIUS_NODES}
  *    (the ambush lunge), an unowned civ only within weapon reach (swing-in-place).
@@ -76,6 +77,7 @@ export function engageSpec(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  index: NodeBuckets,
   e: Entity,
   stance: CombatantStance,
   attacker: SettlerIdentity,
@@ -124,7 +126,7 @@ export function engageSpec(
   ) {
     // The hunting policy (where a hunter hunts, the prey tiers, the livestock gate) lives in
     // ./hunting/; this dispatch only routes the stance to it.
-    return hunterEngageSpec(world, ctx, terrain, e, attacker.jobType, seesTarget, minDist, sight);
+    return hunterEngageSpec(world, ctx, terrain, index, e, attacker.jobType, seesTarget, minDist, sight);
   }
 
   // An unowned HOSTILE ANIMAL (the only unowned animal that reaches here - a passive one disengaged at
@@ -163,7 +165,9 @@ export interface EngageSpec {
    *  admits only civilization settlers). */
   readonly animalSeeker?: boolean;
   /** The deprioritized tier among accepted targets - searched only when the primary tier finds nothing
-   *  in sight: plain buildings for a soldier's stances, last-resort livestock for the hunter. */
+   *  in sight: plain buildings for a soldier's stances, last-resort livestock for the hunter. It splits
+   *  RAW ring-search candidates: {@link resolveTarget} tests it before {@link EngageSpec.accept}, so it
+   *  must stay total and pure over any indexed entity - a friendly unit, an own building, a carcass. */
   readonly lowPriority: (t: Entity) => boolean;
   /** Target commitment: non-null for a stance that HOLDS one target across ticks instead of re-acquiring
    *  the nearest candidate (the hunter's prey lock; the soldier stances re-acquire). `target` is the live
@@ -232,7 +236,7 @@ export function resolveTarget(
     // The TIER rule still outranks it, so a hold on the deprioritized tier yields to any primary-tier
     // target in sight (normal game beats a held sheep).
     const preempt = spec.lowPriority(locked)
-      ? index.nearest(x, y, spec.minDist, spec.searchRadius, (t) => spec.accept(t) && !spec.lowPriority(t))
+      ? index.nearest(x, y, spec.minDist, spec.searchRadius, (t) => !spec.lowPriority(t) && spec.accept(t))
       : null;
     if (preempt !== null) return { target: preempt.entity, dist: preempt.distance };
     return focusedOn(world, ctx, terrain, here, locked, bodyNodes);
@@ -243,13 +247,14 @@ export function resolveTarget(
   // The animal seeker's twin (see {@link HostilePresence}): no civ in the band proves both empty.
   if (spec.animalSeeker === true && !presence.civsWithin(x, y, spec.searchRadius)) return null;
   // Tier 1: everything the stance admits that is NOT deprioritized (units + HQ + towers for a soldier,
-  // normal game for a hunter). A nearer tier-2 target never preempts a tier-1 target in sight.
+  // normal game for a hunter). A nearer tier-2 target never preempts a tier-1 target in sight. The tier
+  // test runs first in both passes, so the costlier `accept` never sees a candidate of the other tier.
   const primary = index.nearest(
     x,
     y,
     spec.minDist,
     spec.searchRadius,
-    (t) => spec.accept(t) && !spec.lowPriority(t),
+    (t) => !spec.lowPriority(t) && spec.accept(t),
   );
   if (primary !== null) return { target: primary.entity, dist: primary.distance };
   // Tier 2 (fallback): the deprioritized targets, only when no tier-1 target was in sight.
@@ -258,7 +263,7 @@ export function resolveTarget(
     y,
     spec.minDist,
     spec.searchRadius,
-    (t) => spec.accept(t) && spec.lowPriority(t),
+    (t) => spec.lowPriority(t) && spec.accept(t),
   );
   return fallback === null ? null : { target: fallback.entity, dist: fallback.distance };
 }

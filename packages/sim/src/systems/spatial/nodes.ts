@@ -169,6 +169,8 @@ export class NodeBuckets {
    * itself at distance 0). The metric is integer half-cell-node Manhattan - the exact metric
    * {@link manhattan} measures and the one an entity's bucket key (`nodeOfPosition`) is derived from.
    * `accept` is the caller's pure per-candidate relation, evaluated at most once per candidate in the band.
+   * It may re-enter this method (the hunter's last-resort probe does): all ring state is call-local, so a
+   * nested search cannot disturb the outer one - do not hoist `best`/`visit` onto the instance.
    */
   nearest(
     fromX: number,
