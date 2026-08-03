@@ -7,17 +7,15 @@ import { bootsSpeedBonus, wearWornBoots } from '../equipment/index.js';
 import { legHeading, stepTowardPoint, turnOntoNextLeg } from './stepping.js';
 
 /**
- * How many ticks a full walking gait spends crossing one E/W cell (one 68 px column). User-observed
- * calibration: a route taking 21 s in the original took 14 s here, so its duration is scaled by 1.5 from 12
- * to 18 ticks per cell (the renderer stretches the authored 12-frame walk cycle over the same distance, so
- * the feet don't skate).
+ * How many ticks a full walking gait spends crossing one E/W cell (one 68 px column). Observation: a route
+ * taking 21 s in the original took 14 s at 12 ticks per cell, so the duration is scaled by 1.5 to 18. The
+ * renderer stretches the authored 12-frame walk cycle over the same distance, so the feet do not skate.
  */
 export const WALK_TICKS_PER_CELL = 18;
 
 /**
  * How far an entity following a {@link PathFollow} advances per tick at full walking gait, in world-metric
- * units (`nav/world-metric.ts`: one unit = one full 68 px cell width) - the cruise pace the inertia ramp
- * accelerates toward ({@link ACCEL_TICKS}).
+ * units where one unit is a full 68 px cell width.
  *
  * source-basis (approximated): no readable human `movespeed` exists (`animaltypes.ini` and the
  * `logicwalkspeed` animation field are animal-only), so the magnitude hangs on the walk-cycle anchor above.
@@ -29,23 +27,22 @@ export const WALK_TICKS_PER_CELL = 18;
 export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL));
 
 /*
- * Movement inertia - the three feel-tuning constants below shape it. A named approximation: the original
- * engine moves a unit at a constant ticks-per-step pace, with no observed acceleration and no acceleration
- * parameter in readable data; OpenNorthland adds a light ease-in/out for feel. The gait lives in sim state
+ * Movement inertia, a named approximation: the original moves a unit at a constant ticks-per-step pace, with
+ * no observed acceleration and no acceleration parameter in readable data. The gait lives in sim state
  * ({@link PathFollow}.`speed`), so it stays deterministic and replay-exact.
  */
 
 /**
  * Ticks from rest to full gait (0.25 s at 12 Hz): the ramp accelerates by `divCeil(gait / ACCEL_TICKS)` per
- * tick (ceil keeps the step ≥ 1 ulp for any gait and makes the ramp exactly this many ticks). Also the
- * recovery rate after a corner sheds speed.
+ * tick, where ceil keeps the step at 1 ulp or more for any gait and makes the ramp exactly this many ticks.
+ * Also the recovery rate after a corner sheds speed.
  */
 export const ACCEL_TICKS = 3;
 
 /**
  * The final-approach brake horizon: on a path's last leg the target speed is capped at
- * `remaining / BRAKE_HORIZON_TICKS`, an exponential ease-out (the remaining distance roughly halves per tick)
- * that begins about a sixth of a cell out at the default gait (feel-tuned alongside {@link ACCEL_TICKS}).
+ * `remaining / BRAKE_HORIZON_TICKS`, an exponential ease-out that begins about a sixth of a cell out at the
+ * default gait.
  */
 const BRAKE_HORIZON_TICKS = 2;
 
@@ -56,29 +53,18 @@ const BRAKE_HORIZON_TICKS = 2;
 export const ARRIVAL_SPEED_DIV = 2;
 
 /**
- * MovementSystem - advances entity positions one tick, in two modes with this precedence:
- *  1. {@link PathFollow}: ramp the follower's gait `speed` toward its cruise pace ({@link MoveSpeed}'s
- *     `perTick` if it carries one, else the universal {@link MOVE_SPEED_PER_TICK}; worn boots raise it by
- *     the content-rated bonus and wear one step per waypoint reached - `systems/equipment/`) -
- *     accelerating from rest by {@link ACCEL_TICKS}, braking over the last leg's final approach
- *     ({@link BRAKE_HORIZON_TICKS}/{@link ARRIVAL_SPEED_DIV}) - then step straight toward the current
- *     waypoint (a cell centre, or the seam point a vertical leg crosses the intermediate row at -
- *     `routing.ts`) by that speed, the step length measured in the staggered lattice's world metric so every
- *     heading covers the same on-screen distance per tick ({@link stepTowardPoint}). No run gait is modeled
- *     (our design: no human run speed is readable and the animal `runspeed` is deliberately unconsumed), so
- *     a fleeing unit walks at its one pace. On reaching the waypoint, advance `index` and project the
- *     momentum onto the next leg's heading ({@link turnOntoNextLeg}: straight through costs nothing, a
- *     corner sheds speed); at the last one the path is complete and {@link PathFollow} is removed (the
- *     planner sees an entity with no path as idle/arrived). A path-following entity ignores any Velocity.
- *  2. {@link Velocity} (no PathFollow): constant-velocity integration.
+ * Advances entity positions one tick. A {@link PathFollow} takes precedence over any {@link Velocity}: the
+ * follower ramps its gait, steps toward the current waypoint, and drops the component at the last one, which
+ * the planner reads as arrived. Everything else integrates its velocity.
  *
- * An E/W leg's step is bit-exact `speed`; every other heading paces by the world metric. The straight-line
- * step uses isqrt homing, so there are no floats and no overshoot.
+ * An E/W leg's step is bit-exact `speed`; every other heading paces by the staggered lattice's world metric,
+ * so every heading covers the same on-screen distance per tick. The straight-line step uses isqrt homing, so
+ * there are no floats and no overshoot. Approximation: no run gait is modeled, since no human run speed is
+ * readable and the animal `runspeed` is deliberately unconsumed, so a fleeing unit walks at its one pace.
  */
 export const movementSystem: System = (world, ctx) => {
-  // Entities the path pass moved this tick. A path can complete (PathFollow removed) within the pass, so
-  // pass 2 can't re-derive membership by checking has(PathFollow). Used only as a skip filter - never
-  // iterated for a decision - so it stays determinism-safe.
+  // Entities the path pass moved this tick: a path can complete within the pass, so the velocity pass
+  // cannot re-derive membership from has(PathFollow). Read only as a skip filter, never iterated.
   const pathHandled = new Set<Entity>();
 
   for (const e of world.query(Position, PathFollow)) {
@@ -86,27 +72,23 @@ export const movementSystem: System = (world, ctx) => {
     const pf = world.get(e, PathFollow);
     const target = pf.waypoints[pf.index];
     if (target === undefined) {
-      // Empty/exhausted path - nothing to follow; drop it so the entity reads as arrived.
+      // Empty or exhausted path: drop it so the entity reads as arrived.
       world.remove(e, PathFollow);
       continue;
     }
 
-    // The entity's own MoveSpeed when it carries one (a data-paced animal), else the universal settler
-    // default. Degenerate-pace guard: `ONE/movespeed` truncation can mint a perTick of 0 ulps, which makes
-    // no progress ever - the walker stalls and the path never completes (the planner reads it as busy
-    // forever). Flooring at one ULP keeps an absurdly slow data-pinned pace slow but terminating.
+    // Degenerate-pace guard: `ONE/movespeed` truncation can mint a perTick of 0 ulps, which never makes
+    // progress, so the walker stalls and the path never completes. One ULP keeps such a pace terminating.
     const rawGait = world.has(e, MoveSpeed) ? world.get(e, MoveSpeed).perTick : MOVE_SPEED_PER_TICK;
     const floored = rawGait > ULP ? rawGait : ULP;
     // Worn boots raise the cruise gait by their content-rated fraction (the manual: "A Viking wearing
-    // shoes can walk much faster"; the magnitude is our balance). The > ZERO guard keeps every bootless
-    // walker's arithmetic byte-identical; the brake floor and arrival snap below scale with the gait, so
-    // a faster pace still terminates.
+    // shoes can walk much faster"; the magnitude is an approximation). The > ZERO guard keeps every
+    // bootless walker's arithmetic byte-identical.
     const bootBonus = bootsSpeedBonus(world, ctx, e);
     const gait = bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored;
     const p = world.get(e, Position);
 
-    // The tick's target speed: the cruise gait, capped on the last leg's final approach - the cap shrinks
-    // with the remaining distance (~⅔ decay per tick), floored so the arrival snap always closes.
+    // The tick's target speed: the cruise gait, capped on the last leg so the approach eases out.
     let targetSpeed = gait;
     if (pf.index + 1 >= pf.waypoints.length) {
       const remaining = worldDistance(p.x, p.y, target.x, target.y);
@@ -116,19 +98,17 @@ export const movementSystem: System = (world, ctx) => {
       targetSpeed = eased < gait ? eased : gait;
     }
 
-    // Ramp the gait: accelerate toward the target by gait/ACCEL_TICKS per tick; when above the target (the
-    // shrinking brake cap) clamp down at once - the ease-out's smoothness comes from the target curve
-    // itself, and the clamp also absorbs the ulp of inflation a truncated corner projection can carry.
+    // Accelerating is gradual, decelerating immediate: the ease-out's smoothness comes from the target
+    // curve itself, and the clamp absorbs the ulp a truncated corner projection can add.
     if (pf.speed < targetSpeed) {
-      // Ceil: the step stays ≥ 1 ulp for any gait and a from-rest ramp is exactly ACCEL_TICKS long.
       const accelerated = fx.add(pf.speed, fx.divCeil(gait, fx.fromInt(ACCEL_TICKS)));
       pf.speed = accelerated < targetSpeed ? accelerated : targetSpeed;
     } else {
       pf.speed = targetSpeed;
     }
 
-    // A fresh/rerouted path has no established heading yet (the (0,0) sentinel): record this leg's
-    // before the first step, so the first real corner can project momentum across it.
+    // A fresh or rerouted path carries the (0, 0) heading sentinel: record this leg's before the first
+    // step, so the first corner can project momentum across it.
     if (pf.hx === ZERO && pf.hy === ZERO) {
       const h = legHeading(p, target);
       if (h !== null) {
@@ -138,11 +118,10 @@ export const movementSystem: System = (world, ctx) => {
     }
 
     if (stepTowardPoint(p, target, pf.speed)) {
-      // Arrived at this waypoint; advance to the next (turning momentum onto it), or finish. Either
-      // way the arrival wears the walker's boots one step (an empty-path drop above is not a walk).
+      // Reaching a waypoint wears the walker's boots one step; the empty-path drop above is not a walk.
       wearWornBoots(world, ctx, e);
       if (pf.index + 1 >= pf.waypoints.length) {
-        world.remove(e, PathFollow); // path complete
+        world.remove(e, PathFollow);
       } else {
         pf.index += 1;
         turnOntoNextLeg(pf, p);
@@ -150,9 +129,8 @@ export const movementSystem: System = (world, ctx) => {
     }
   }
 
-  // Free constant-velocity movers. Checking the recorded set (not has(PathFollow)) means an entity whose
-  // path just completed isn't also velocity-integrated in the same tick - the "path overrides Velocity"
-  // contract holds on the arrival tick too.
+  // Reading the recorded set rather than has(PathFollow) keeps an entity whose path just completed from
+  // also being velocity-integrated on its arrival tick.
   for (const e of world.query(Position, Velocity)) {
     if (pathHandled.has(e)) continue;
     const p = world.get(e, Position);

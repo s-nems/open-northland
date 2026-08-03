@@ -33,38 +33,21 @@ import { deStackIdle } from './spacing.js';
 import { holdsPostThroughNeed, planTowerPost } from './tower-post.js';
 import { planTraining } from './training.js';
 
-// The drive ladder: pick the next atomic for one idle settler, in this fixed priority order (each
-// drive returns `true` when it takes the settler for the tick):
-//
-//   the alarm (run for cover) → needs (eat > sleep > pray) → the ownership gate → the barracks drill →
-//   the equip errand → the tower watch → the DEFEND hold → the company (chat-seek) rung → the housewife
-//   hoard → deliver a carried load → bound-farmer field loop → bound-producer / workshop-supplier loop →
-//   build → gather (chop/collect) → porter ferrying → store-carrier haul → idle de-stack → idle chat.
-//
-// The order is part of the design (and of the goldens): the alarm outranks everything (bells ringing
-// beat hunger), needs sit above the ownership gate so a starving combatant still feeds (a soft
-// override), and the economy rungs go most-specific-first so a gatherer works its own trade before
-// ferrying others' goods. The atomic id and its duration come
-// from content, not code (the drives resolve them through the tribe's `setatomic` binding - see
-// ../atomics/start.ts); "utility" is minimal (nearest reachable target by Manhattan distance). Targets are
-// scanned in canonical (ascending entity-id) order with a deterministic distance+cell tie-break, so
-// the choice never depends on store insertion history.
+// The drive ladder: pick the next atomic for one idle settler. Each drive returns `true` when it takes
+// the settler for the tick, and the rung order is a behavior contract the state goldens cover. Atomic
+// ids and durations come from the tribe's `setatomic` bindings, never from code.
 
 type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
 /**
- * Plan a growing settler. A baby/child is a non-working life stage: it never runs economy/combat
- * work - it grows up (GrowthSystem) and potters around its home ({@link planChildWander}). A CHILD
- * runs the needs ladder first - the original binds child_female/child_male eat (10) and sleep (8)
- * animations (`setatomic 3/4` → `..._child_*_eat_slot_food`/`..._sleep`), so a hungry child seeks
- * food like an adult instead of growing up starved. A BABY is cared for and doesn't self-feed (the
- * original binds it no eat animation), so only the stroll runs.
+ * Plan a growing settler: it never runs economy or combat work. A child runs the needs ladder first,
+ * since the data binds child eat and sleep clips (`setatomic 3/4` on `..._child_*_eat_slot_food` and
+ * `..._sleep`); a baby has no eat clip bound, so only the stroll runs for it.
  */
 export function planChild(pass: PlannerPass, e: Entity, settler: SettlerState): void {
   const { world, ctx, terrain } = pass;
-  // A child runs for cover with everyone else (./shelter.ts); it just never draws a bow in there
-  // (`defence/manning.ts`). Both rungs need the same position/limit reading, and neither runs on the
-  // quiet tick, so it is resolved once behind their shared gate rather than for every strolling child.
+  // A child runs for cover like anyone else but never mans the walls (`defence/manning.ts`). The
+  // shelter and needs rungs share this position and limit read, so it stays behind their gate.
   const needy = isChild(settler.jobType) && anyNeedPressing(settler);
   if (pass.shelters.size > 0 || needy) {
     const p = world.get(e, Position);
@@ -80,23 +63,17 @@ export function planChild(pass: PlannerPass, e: Entity, settler: SettlerState): 
   planChildWander(world, ctx, terrain, e, pass.spacing);
 }
 
-/**
- * Plan one idle adult. The person-level rungs run first (needs, the ownership gate, company, the
- * housewife hoard); an adult none of them takes falls to the trade ladder ({@link planEconomy}).
- * `jobType` is the caller's non-null narrowing of `settler.jobType`.
- */
+/** Plan one idle adult. `jobType` is the caller's non-null narrowing of `settler.jobType`. */
 export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, jobType: number): void {
   const { world, ctx, terrain } = pass;
   const p = world.get(e, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
   const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
   const load = world.tryGet(e, Carrying);
-  // The settler's signpost confinement (or null when unlimited) - computed once, shared by the needs
-  // drives here and the economy PlannerContext below.
+  // The settler's signpost confinement, or null when unlimited.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
 
-  // THE ALARM: a defence-mode building calls its player's civilians in, over every other drive - the
-  // bells outrank hunger, the ownership gate, and a live equip errand alike (./shelter.ts).
+  // The alarm outranks every other drive: hunger, the ownership gate, and a live equip errand alike.
   if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
 
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {

@@ -42,9 +42,8 @@ export type DeliveryVerdict = Entity | 'no-sink' | null;
 
 /**
  * One rung of the delivery ladder. A `bound` rule routes to a target the settler is already tied to and
- * never receives the {@link DeliverySearchArea}: a settler always knows the way home, so its own workshop,
- * flag, storage or crew site is reachable by definition. A `searched` rule scans for a sink and must
- * therefore respect the confinement.
+ * never receives the {@link DeliverySearchArea}: home is reachable by definition. A `searched` rule scans
+ * for a sink and must therefore respect the confinement.
  */
 export type DeliveryRule =
   | { readonly kind: 'bound'; readonly resolve: (plan: PlannerContext, goodType: number) => DeliveryVerdict }
@@ -64,8 +63,8 @@ export const DELIVERY_RULES: readonly DeliveryRule[] = [
   { kind: 'searched', resolve: toNearestCapableStore },
 ];
 
-/** Where a searched rule may look: the settler's signpost confinement plus its failed-goal veto, keyed
- *  both by cell and (for sites, which are walked at a perimeter stand) by the stand a delivery would take. */
+/** Where a searched rule may look: the settler's signpost confinement plus its failed-goal veto, vetoed by
+ *  cell and, for a site walked at a perimeter stand, by that stand. */
 export interface DeliverySearchArea {
   readonly gate: SpatialGate | undefined;
   readonly avoid: ((cell: NodeId) => boolean) | undefined;
@@ -90,9 +89,8 @@ function toConsumingWorkplace(plan: PlannerContext, goodType: number): DeliveryV
   if (workplace === null) return null;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe?.inputs.some((i) => i.goodType === goodType) !== true) return null;
-  // An input must land AS ITSELF. A workshop that would shelve it converted ({@link bankedSlot} - a dish
-  // consumed raw but stocked only as its edible) feeds its own recipe nothing, so the load falls through
-  // to a real sink instead of banking into a slot the cycle cannot draw from.
+  // An input must land as itself: a workshop that would shelve it converted ({@link bankedSlot}) feeds its
+  // own recipe nothing, so the load falls through to a real sink.
   if (bankedSlot(world, ctx, workplace, goodType).goodType !== goodType) return null;
   return hasRoom(world, ctx, workplace, goodType) ? workplace : null;
 }
@@ -107,12 +105,12 @@ function toOwnDeliveryFlag(plan: PlannerContext): DeliveryVerdict {
 }
 
 /**
- * A farm's CARRIER clears the farm's own crop to storage, every producer of the good excluded so the load
+ * A farm's carrier clears the farm's own crop to storage, every producer of the good excluded so the load
  * reaches a warehouse and never another farm. Owns the outcome: with no storage in reach the crop stays put,
  * because falling through to {@link toBoundStorage} would bank it straight back into the farm it just left.
  *
  * Keyed on the good's `farming` block rather than on recipe absence: the asset pipeline synthesizes a recipe
- * for every producing building, so a recipe test would silently turn this rung off under extracted content.
+ * for every producing building, so a recipe test would turn this rung off under extracted content.
  */
 function toStorageOffFarm(plan: PlannerContext, goodType: number, area: DeliverySearchArea): DeliveryVerdict {
   const { world, ctx, here, jobType, tribe, owner, targets } = plan;
@@ -143,10 +141,9 @@ function toBoundStorage(plan: PlannerContext, goodType: number): DeliveryVerdict
   return isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType) ? home : null;
 }
 
-/** The settler's OWN site: a builder's crew pin ({@link SiteAssignment}), or the unfinished workplace a
- *  worker is posted to (a carrier hauling its own building's bill - `planSiteStaff`). Bound, so it stays
- *  unconfined: the player's pin may point beyond the signpost area and the fetch runs regardless - a confined
- *  delivery would disagree with that fetch and shuttle the material back to its source forever. */
+/** The settler's own site: a builder's crew pin ({@link SiteAssignment}), or the unfinished workplace a
+ *  worker is posted to. Bound, so it stays unconfined: the player's pin may point beyond the signpost area
+ *  and a confined delivery would shuttle the material back to its source forever. */
 function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict {
   const { world, ctx, entity, tribe, owner, inbound } = plan;
   const crew = world.tryGet(entity, SiteAssignment)?.site ?? boundWorkplace(plan);
@@ -176,13 +173,11 @@ function toNeedingConstructionSite(
 }
 
 /**
- * A carrier posted at an input-less UTILITY (the well, the hive) feeds that utility's output to a nearby
- * BUILT recipe consumer - the bakery's water, the brewery's honey - before central storage, banking only the
- * surplus later (user rule 2026-07-19). A site still under construction is skipped: it needs delivered build
- * material, not a recipe input.
+ * A carrier posted at an input-less utility (the well, the hive) feeds that utility's output to a nearby
+ * built recipe consumer before central storage, banking only the surplus later (authored). A site still
+ * under construction is skipped: it needs delivered build material, not a recipe input.
  */
-// Needs no twin of {@link toConsumingWorkplace}'s "land as itself" guard: this rung fires only for a
-// settler bound to an input-less utility, so `carriedGoodForm` already converted any dish it carries.
+// No land-as-itself guard needed: `carriedGoodForm` already converted any dish this carrier holds.
 function toNearbyRecipeConsumer(
   plan: PlannerContext,
   goodType: number,
@@ -231,9 +226,8 @@ function boundWorkplace(plan: PlannerContext): Entity | undefined {
   return plan.world.tryGet(plan.entity, JobAssignment)?.workplace;
 }
 
-/** Whether construction site `e` (of this settler's side) still has room for `goodType` in its bill. Counts
- *  both what the site holds and what other settlers' live supply errands already have inbound, so a unit
- *  already on someone's back stops attracting a duplicate fetch. */
+/** Whether construction site `e` still has room for `goodType` in its bill. Counts what the site holds plus
+ *  other settlers' live supply errands, so a unit already on someone's back attracts no duplicate fetch. */
 function constructionSiteNeeds(
   world: World,
   ctx: SystemContext,

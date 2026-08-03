@@ -5,45 +5,33 @@ import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
 import type { SystemContext } from '../systems/context.js';
 
-// Pure, terminal read views for the HUD: derived projections of world state or `content` that no sim
-// system reads. Nothing here may feed a decision, so `systems/` must not import this module; that is why
-// it sits in the façade folder and not under `systems/`.
+// Read views for the HUD: projections of world state or `content` that no sim system may read. Nothing
+// here may feed a decision, so `systems/` must not import this module.
 //
-// The world-state views below return `Map`s whose *values* are order-independent tallies (addition commutes,
-// so store-traversal order can't change a total) but whose *iteration* order is insertion order; a consumer
-// needing a stable display order sorts the keys itself.
+// The Maps returned below hold order-independent tallies but iterate in insertion order; a consumer needing
+// a stable display order sorts the keys itself.
 
 /**
- * The **housing capacity** a `tribe` currently has: the sum of the `homeSize` of its placed, fully **built**
- * `home` buildings - the extracted `logichousetype` `logichomesize` param (the population a residence
- * shelters: home level 00 → 1, ... level 04 → 5). The ceiling half of the HUD's population/housing readout;
- * births themselves are gated per home by its family slots (`familiesOf`), not by this sum.
+ * The housing capacity a `tribe` currently has: the summed `homeSize` of its placed, built `home` buildings
+ * (the extracted `logichousetype` `logichomesize` param, home level 00 = 1 up to level 04 = 5). A home still
+ * under construction shelters no one yet, and a `home` type with no `homeSize` contributes nothing.
  *
- * Only a **built** residence counts (`built >= ONE`) - a home still under construction shelters no one yet.
- * A `home`-kind building type with no `homeSize` (none in the real data, but the schema defaults it to 0)
- * contributes nothing, as does a building whose type is absent from content.
- *
- * source-basis: the per-home capacity is the extracted `homeSize` param - faithful by construction; what the
- * capacity *gates* (births) is a later mechanic.
+ * This is the ceiling half of the HUD readout only; births are gated per home by its family slots.
  */
 export function housingCapacity(world: World, ctx: SystemContext, tribe: number): number {
   let capacity = 0;
   for (const e of world.query(Building)) {
     const b = world.get(e, Building);
-    if (b.tribe !== tribe || b.built < ONE) continue; // wrong tribe, or not yet built - shelters no one
+    if (b.tribe !== tribe || b.built < ONE) continue;
     const type = contentIndex(ctx.content).buildings.get(b.buildingType);
-    if (type === undefined || type.kind !== 'home') continue; // not a residence
+    if (type === undefined || type.kind !== 'home') continue;
     capacity += type.homeSize;
   }
   return capacity;
 }
 
-/**
- * The current **population** of a `tribe`: the number of its living {@link Settler}s - the count half of the
- * HUD readout {@link housingCapacity} is the ceiling for. Counts every settler regardless of job (idle
- * settlers are still mouths to house); {@link tribePopulationByJob} is the same population broken out by
- * trade.
- */
+/** The number of a `tribe`'s living {@link Settler}s, regardless of job - idle settlers are still mouths to
+ *  house. The count half of the readout {@link housingCapacity} is the ceiling for. */
 export function tribePopulation(world: World, tribe: number): number {
   let count = 0;
   for (const e of world.query(Settler)) {
@@ -53,15 +41,12 @@ export function tribePopulation(world: World, tribe: number): number {
 }
 
 /**
- * The per-job-type head-count of a `tribe`'s settlers, keyed by each living {@link Settler}'s current
- * `jobType`, so a consumer can show "3 farmers, 2 carpenters, 5 babies, 4 idle". An idle, job-seeking adult
- * (`jobType === null`) is counted under {@link IDLE_JOB} so it is visible without colliding with any real job
- * id; every other key is a real `JobType.typeId`.
+ * The per-job-type head-count of a `tribe`'s settlers. An idle, job-seeking adult (`jobType === null`) is
+ * counted under {@link IDLE_JOB}; every other key is a real `JobType.typeId`.
  *
- * The age-classes-vs-trades split the HUD wants is a property of the keys, not of this view: keys 1–4 are
- * the non-working baby/child stages (`isNonWorkingAge` in `systems/lifecycle/ageclass.ts`), key 5 (`woman`)
- * and up are adult roles. A panel partitions the map by classifying each key, exactly as the source models
- * life-stage as a `jobType`; this view stays a single "settlers by job" tally that any grouping can read.
+ * The age-class-vs-trade split is a property of the keys, not of this view: keys 1-4 are the non-working
+ * baby and child stages, key 5 (`woman`) and up are adult roles, exactly as the source models life stage as
+ * a `jobType`. A panel classifies the keys itself.
  */
 export function tribePopulationByJob(world: World, tribe: number): Map<number, number> {
   const counts = new Map<number, number>();
@@ -75,22 +60,18 @@ export function tribePopulationByJob(world: World, tribe: number): Map<number, n
 }
 
 /**
- * The {@link tribePopulationByJob} map key for an idle, job-seeking adult (`Settler.jobType === null`). It is
- * `-1`, outside the valid `JobType.typeId` space (real ids are positive - the first record, `baby_female`, is
- * id 1), so it can never collide with a real job's count. A negative sentinel rather than `0`, because `0` is
- * a legitimate `JobType` id (`none`).
+ * The {@link tribePopulationByJob} key for an idle, job-seeking adult (`Settler.jobType === null`). Outside
+ * the valid `JobType.typeId` space, whose first record `baby_female` is id 1; negative rather than `0`,
+ * since `0` is the legitimate `none` job id.
  */
 export const IDLE_JOB = -1;
 
 /**
- * The total stock of each good a `tribe` holds across all its stores. A "store" here is any {@link Building}
- * (which carries the owning `tribe`) bearing a {@link Stockpile}; every placed building gets one (seeded from
- * its type's `stock` slots), so this spans warehouses, workplaces, and residences alike - the whole
- * settlement's larder.
+ * The total stock of each good a `tribe` holds across every {@link Building} bearing a {@link Stockpile}, so
+ * warehouses, workplaces and residences alike.
  *
- * Built by walking each store's canonical {@link stockpileEntries} (ascending goodType) and summing per good.
- * A good with no stock anywhere is absent from the map; a zero entry a store happens to carry is kept (it is
- * real capacity holding nothing), so callers wanting only non-empty goods filter on the value.
+ * A good stocked nowhere is absent from the map, but a zero entry a store carries is kept, since that is
+ * real capacity holding nothing; a caller wanting only non-empty goods filters on the value.
  */
 export function tribeStocks(world: World, tribe: number): Map<number, number> {
   const totals = new Map<number, number>();
@@ -103,49 +84,35 @@ export function tribeStocks(world: World, tribe: number): Map<number, number> {
   return totals;
 }
 
-/**
- * A single node of the {@link goodsGraph} - one good's place in the recipe-DAG: its node layer (raw vs
- * produced, from the good's classification flags), the inputs one production cycle consumes to make it
- * (`GoodType.productionInputs`), and which building types make it (joined from each building type's
- * `produces`/`recipe.outputs`).
- */
+/** One good's place in the recipe DAG. */
 interface GoodsGraphNode {
   /**
-   * The good's tier in the graph: `'raw'` = harvested from the map (`classification.producedOnMap`, e.g.
-   * wood/stone/wheat - no recipe), `'produced'` = made in a workplace (`classification.producedInHouse`,
-   * e.g. plank/flour/bread). `'unclassified'` covers a good the source marks as neither (the `none`/sentinel
-   * good, or a good whose flags default off) - it is still a node so an edge can point at it. A good flagged
-   * both (none are in the real data) is reported as `'produced'`, since it has a recipe.
+   * `'raw'` is harvested from the map (`classification.producedOnMap`), `'produced'` is made in a workplace
+   * (`classification.producedInHouse`). `'unclassified'` is a good the source marks as neither, still a node
+   * so an edge can point at it; a good flagged both reads as `'produced'`, since it has a recipe.
    */
   layer: 'raw' | 'produced' | 'unclassified';
   /** Whether this good can be consumed as a recipe input somewhere (`classification.inputGood`). */
   inputGood: boolean;
-  /** The goods (+ per-cycle amounts) one cycle consumes to make this good - empty for a raw good. */
+  /** The goods and per-cycle amounts one cycle consumes to make this good; empty for a raw good. */
   inputs: readonly ProductionInput[];
-  /**
-   * The building type ids that produce this good, ascending - the output side of the join. A good with no
-   * producer (a raw good, or one nothing makes) has an empty list. Type ids, not entities: this is a static
-   * read over `content`, independent of what is placed in any world.
-   */
+  /** The building type ids that produce this good, ascending. Type ids, not entities: a static read over
+   *  `content`, independent of what is placed in any world. */
   producedBy: readonly number[];
 }
 
 /**
- * The goods graph as a derived read view over `content` - the recipe-DAG the pipeline already extracted as IR
- * (`GoodType.productionInputs` for the input edges, `GoodType.classification` for the node layers), joined
- * with the output side: which building types make each good (`BuildingType.produces`, falling back to a
- * `recipe`'s `outputs` when `produces` is empty). One {@link GoodsGraphNode} per good, so a panel can draw
- * "wood (raw) → sawmill → plank (produced) → …" without re-walking content.
+ * The recipe DAG the pipeline extracted as IR (`GoodType.productionInputs` for the input edges,
+ * `GoodType.classification` for the node layers), joined with the output side: which building types make
+ * each good.
  *
- * Keyed by `GoodType.typeId`, one entry per good in `content.goods`. The `producedBy` list is sorted ascending
- * so the view is stable regardless of building declaration order; the input edges keep their
- * `productionInputs` (source) order. Every good gets a node even if nothing produces or consumes it, so an
- * edge always has both endpoints present.
+ * Every good in `content.goods` gets a node even if nothing produces or consumes it, so an edge always has
+ * both endpoints present. `producedBy` is sorted ascending so the view is stable regardless of building
+ * declaration order; the input edges keep their source order.
  */
 export function goodsGraph(content: ContentSet): Map<number, GoodsGraphNode> {
-  // Output side: for each good, the building type ids that make it. Prefer `produces` (the
-  // output-good list the original house table names directly); fall back to a recipe's `outputs`
-  // for a building that carries a materialized recipe but no `produces` (e.g. a test fixture).
+  // Prefer `produces`, the output-good list the original house table names directly; a building carrying a
+  // materialized recipe but no `produces` falls back to the recipe's `outputs`.
   const producers = new Map<number, number[]>();
   for (const building of content.buildings) {
     const outputs =

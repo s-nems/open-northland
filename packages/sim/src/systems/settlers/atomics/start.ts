@@ -18,102 +18,75 @@ import { clearNavState } from '../../spatial/nodes.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 
-// The planner's action vocabulary: the atomic ids the drives issue, the shared "start an atomic" entry point,
-// and the walk-or-act step every target-bound drive ends in. Each id below is only a content cross-reference /
-// animation join key (pinned to the original's `setatomic` bindings - see each source basis); the typed
-// {@link AtomicEffect} carries the behavior the AtomicSystem applies.
+// An atomic id is only a content cross-reference and animation join key, pinned to the original's
+// `setatomic` bindings; the typed {@link AtomicEffect} carries the behavior the AtomicSystem applies.
 
 /**
- * The atomic id a settler runs to eat - id 10 is the eat slot across every tribe's
- * `setatomic <job> 10 "..._eat_slot_food"` bindings (see source basis). The `eat` effect consumes one unit of
- * food and takes a meal off the hunger bar.
+ * The eat slot across every tribe's `setatomic <job> 10 "..._eat_slot_food"` bindings.
  */
 export const EAT_ATOMIC_ID = 10;
 
 /**
- * The duration (ticks) of one eat or forage atomic: the settler's own eat-animation length, straight from
- * content (`viking_civilist_eat_slot_food` = 50 ticks ≈ 4 s). Shared by every eat site (a store meal, a
- * carried-load bite, a wild-bush forage) so they all take the same visible beat.
- *
- * The clip is already a whole meal, not a single bite: the original's `[gfxanimatomic]` action-10 frame
- * list raises the food (frames 0→7), chews on 8/9 for the middle, and lowers it (7→0), so nothing needs
- * repeating on top of it. Resolved through {@link needAtomicDuration}, since most working trades bind no
- * eat clip of their own and would otherwise fall to the 4-tick unresolved stub.
+ * Duration in ticks of one eat or forage atomic, taken from the settler's own eat clip
+ * (`viking_civilist_eat_slot_food` = 50 ticks). The `[gfxanimatomic]` action-10 frame list raises, chews
+ * and lowers, so the clip is a whole meal and nothing repeats on top of it. Most working trades bind no
+ * eat clip, hence {@link needAtomicDuration} rather than a direct lookup.
  */
 export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): number {
   return needAtomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
 }
 
 /**
- * The atomic id a settler runs to sleep - id 8 is the sleep slot across every tribe's
- * `setatomic <job> 8 "..._sleep"` bindings. Those cover the age classes and the civilist/soldier only
- * (jobs 1–6 and 31); a working trade resolves its clip through {@link needAtomicDuration}. The `sleep`
- * effect takes a sleep off the fatigue bar.
+ * The sleep slot across every tribe's `setatomic <job> 8 "..._sleep"` bindings, which cover the age
+ * classes and the civilist/soldier only (jobs 1-6 and 31); a working trade falls back through
+ * {@link needAtomicDuration}.
  */
 export const SLEEP_ATOMIC_ID = 8;
 
 /**
- * The atomic id a settler runs to pray - the original's `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY = 12`, bound
- * `setatomic 6 12 "..._pray"` for the civilist job across tribes (see source basis). The `pray` effect zeroes
- * piety.
+ * The original's `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY = 12`, bound `setatomic 6 12 "..._pray"` for the
+ * civilist job across tribes.
  */
 export const PRAY_ATOMIC_ID = 12;
 
 /**
- * The atomic id a settler runs to drill at a barracks - the original's atomic action EXERCISE, bound
- * `setatomic 6 89 "..._exercise"` for the civilist across tribes. The `exercise` effect banks the clip's
- * TRAINING experience. Everyone drills on this clip, resolved through {@link needAtomicDuration}'s civilist
- * fallback; the soldier's own `..._train` (atomic 90) is a later slice.
+ * The original's EXERCISE action, bound `setatomic 6 89 "..._exercise"` for the civilist across tribes.
+ * Every trade drills on this clip through {@link needAtomicDuration}'s civilist fallback.
  */
 export const EXERCISE_ATOMIC_ID = 89;
 
-/** The atomic id for a carrier picking goods up out of a store - the original's generic pickup=22 (like
- *  {@link PILEUP_ATOMIC_ID} the readable data binds no per-good pickup). */
+/** The original's generic pickup=22; like {@link PILEUP_ATOMIC_ID} the readable data binds no per-good
+ *  pickup. */
 export const PICKUP_ATOMIC_ID = 22;
 
-/**
- * The atomic id a builder runs to raise a house - id 39 is the build-house slot bound for the builder job
- * across every tribe (source basis `DataCnmd/tribetypes12/tribetypes.ini`, and the builder's `allowatomic 39`
- * in `jobtypes.ini`; the viking binding's animation runs 15 ticks). The `construct` effect advances the site's
- * builder-work `labor`. */
+/** The build-house slot bound for the builder job across every tribe (source basis
+ *  `DataCnmd/tribetypes12/tribetypes.ini` and the builder's `allowatomic 39` in `jobtypes.ini`). */
 export const BUILD_HOUSE_ATOMIC_ID = 39;
 
-/** Whether `jobType` is a builder trade: it is one iff content lets it run the build-house atomic - the
- *  data-driven "who constructs" test, so no caller keys construction off a hardcoded jobType id. */
+/** Whether `jobType` is a builder trade, tested through content so no caller keys construction off a
+ *  hardcoded jobType id. */
 export function jobCanBuild(content: ContentSet, jobType: number): boolean {
   return contentIndex(content).atomicsByJob.get(jobType)?.has(BUILD_HOUSE_ATOMIC_ID) === true;
 }
 
-/** The atomic id for depositing a carried load into a store. The readable data binds no per-good "pileup"
- *  atomic (harvest/produce are good-keyed; pickup=22/pileup are generic), so a constant keeps the planner
- *  data-driven where it matters (the harvest atomic is read from content) without inventing a per-good deposit
- *  binding the data lacks. */
+/** Depositing a carried load into a store. The readable data binds no per-good pileup atomic: harvest and
+ *  produce are good-keyed, pickup=22 and pileup are generic. */
 export const PILEUP_ATOMIC_ID = 23;
 
-/**
- * The atomic id a settler runs to set a carried load down before an interrupt takes over (a profession
- * change, or fleeing an enemy). The readable data binds no dedicated putdown clip (source basis: no `drop`
- * atomic in `atomicanimations`/`setatomic`), so the drop reuses the pickup gesture's animation - the same
- * bend-to-the-ground motion in reverse - as a named approximation; the typed `drop` effect
- * ({@link import('../../../core/atomic-effect.js').AtomicEffect}) sets the whole load on the ground on
- * completion, so the behavior is the effect, not the shared id. */
+/** Setting a carried load down. Approximation: the readable data binds no putdown clip (no `drop` atomic
+ *  in `atomicanimations` or `setatomic`), so the drop reuses the pickup gesture. */
 export const DROP_ATOMIC_ID = PICKUP_ATOMIC_ID;
 
 /**
- * Start a settler setting its carried load down (the {@link DROP_ATOMIC_ID} atomic, `drop` effect): it stops
- * where it is, plays the drop animation, then {@link import('./effects/goods/index.js').dropCarriedLoad} sets
- * the whole load on the ground on completion. Clearing the nav state ({@link clearNavState}) is what makes the
- * drop a standstill: a settler interrupted mid-walk (a porter re-ordered elsewhere, or scared into fleeing)
- * halts and sets the load down before moving, instead of dropping on the move. A busy settler is left alone -
- * the AI/combat gates already skip a unit with a {@link CurrentAtomic}, so the interrupting action
- * (re-employment, the parked walk, flee) only proceeds once the load is down. No-op on a settler already acting
- * (its atomic must not be clobbered) or one carrying nothing.
+ * Start a settler setting its carried load down. Clearing the nav state is what makes the drop a
+ * standstill: a settler interrupted mid-walk halts and sets the load down instead of dropping on the move.
+ * No-op on a settler already acting, whose atomic must not be clobbered, or one carrying nothing.
  */
 export function startDrop(world: World, ctx: SystemContext, settler: Entity): void {
-  if (world.has(settler, CurrentAtomic)) return; // already acting - don't clobber the running atomic
+  if (world.has(settler, CurrentAtomic)) return;
   const s = world.tryGet(settler, Settler);
-  if (s === undefined || !world.has(settler, Carrying)) return; // nothing to set down
-  clearNavState(world, settler); // stand still to drop - halt any walk in progress
+  if (s === undefined || !world.has(settler, Carrying)) return;
+  clearNavState(world, settler);
   world.add(settler, CurrentAtomic, {
     atomicId: DROP_ATOMIC_ID,
     elapsed: 0,
@@ -126,10 +99,9 @@ export function startDrop(world: World, ctx: SystemContext, settler: Entity): vo
 }
 
 /**
- * Start a {@link CurrentAtomic} on a settler: the executor (AtomicSystem) will advance it and apply
- * `effect` on completion. `duration` is the animation length in ticks (clamped to ≥1 by the
- * executor); `target` is the action's object (the resource/store), recorded for render/inspection -
- * null for a self-directed action (taking a worn good off).
+ * Start a {@link CurrentAtomic} on a settler. `duration` is the animation length in ticks, clamped to at
+ * least 1 by the executor; `target` is the action's object, recorded for render and inspection, and null
+ * for a self-directed action.
  */
 export function startAtomic(
   world: World,
@@ -151,8 +123,7 @@ export function startAtomic(
 }
 
 /**
- * The step every target-bound drive ends in: standing on the target's interaction `cell`, run `start` (issue
- * the atomic); otherwise walk there (a {@link MoveGoal} the navigation planner turns into a route).
+ * Run `start` when already standing on the target's interaction `cell`, otherwise walk there.
  */
 export function atOrWalk(world: World, e: Entity, here: NodeId, cell: NodeId, start: () => void): void {
   if (cell === here) start();
@@ -160,10 +131,8 @@ export function atOrWalk(world: World, e: Entity, here: NodeId, cell: NodeId, st
 }
 
 /**
- * Issue the generic `pickup` atomic on `e` against the store/pile `from`: lift `amount` units of
- * `goodType` (the AtomicSystem's `pickup` caps the move at what the source actually holds). The
- * shared tail of every haul drive - trunk collection, porter ferrying, producer output/input runs
- * and the carrier fallback all lift goods the identical way.
+ * Issue the generic `pickup` atomic against the store or pile `from`. The `pickup` effect caps the move
+ * at what the source actually holds, so `amount` is a request, not a guarantee.
  */
 export function startPickup(
   world: World,
@@ -185,21 +154,16 @@ export function startPickup(
 }
 
 /**
- * Issue the `draw` atomic on `e` against a shared utility (a well, a hive): the worker acts at the utility's
- * operate node for `ticks` - the utility recipe's own work time to extract one unit, not an animation length
- * - then {@link import('./effects/goods/index.js').drawUtilityGood} sets one unit of `goodType` on its back.
- * The gesture is the generic goods-handling animation ({@link PICKUP_ATOMIC_ID}, the same reuse
- * {@link DROP_ATOMIC_ID} makes): the drawer's trade is not the utility's and there is no decoded crank
- * animation, so a neutral bend-to-draw reads for any worker at either utility (named approximation).
+ * Issue the `draw` atomic against a shared utility such as a well or a hive. `ticks` is the utility
+ * recipe's work time to extract one unit, not an animation length. Approximation: no crank animation is
+ * decoded, so the gesture reuses the generic goods-handling clip.
  */
 export function startDraw(world: World, e: Entity, goodType: number, utility: Entity, ticks: number): void {
   startAtomic(world, e, PICKUP_ATOMIC_ID, { kind: 'draw', goodType, utility }, ticks, utility);
 }
 
 /**
- * Walk to a store/pile's interaction cell and lift ONE unit of `goodType` from it - the shared tail of
- * every haul rung (trunk collection, porter ferrying, the carrier fallback). The batch is the global
- * {@link CARRY_CAPACITY} (a settler carries a single good unit; hauling more takes more trips).
+ * Walk to a store or pile's interaction cell and lift one {@link CARRY_CAPACITY} batch of `goodType`.
  */
 export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number): void {
   const { world, ctx, terrain, entity: e, here } = plan;

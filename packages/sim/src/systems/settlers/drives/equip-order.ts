@@ -29,7 +29,7 @@ interface EquipErrand {
   readonly terrain: TerrainGraph;
   readonly entity: Entity;
   readonly settler: SettlerIdentity;
-  /** The live order component - {@link endErrand} advances its `stage` through this reference. */
+  /** The live order component: writing `stage` through it advances the stored order. */
   readonly order: EquipOrderState;
   readonly here: NodeId;
   readonly gate: NavigationLimit | undefined;
@@ -41,11 +41,9 @@ interface EquipErrand {
 
 const EXCLUDE_PRODUCERS = false;
 
-/** The confinement an ARMING errand shops under: the settlement network at the recruit's feet, the same
- *  question `settlers/planner/recruit-arming.ts` picked his store with. It has to gate the walk and not
- *  just the dispatch, since {@link planFetch} re-picks the store every tick - a soldier is exempt from
- *  confinement so he can campaign, and would else re-target across the map the moment his store ran dry
- *  (user rule). Every other errand keeps its settler's own limit, which is what dispatched it. */
+/** A recruit's arming errand shops inside the settlement network at his feet: a soldier carries no
+ *  confinement of his own, and the store is re-picked every tick, so without this he would re-target
+ *  across the map the moment his store ran dry. Every other errand keeps its settler's own limit. */
 function errandGate(
   world: World,
   terrain: TerrainGraph,
@@ -59,12 +57,9 @@ function errandGate(
 }
 
 /**
- * The planner's EQUIP-ERRAND rung: drive a settler's live {@link EquipOrder} one step forward.
- *
- * The fetch/deposit gestures reuse the generic goods-handling animation ({@link PICKUP_ATOMIC_ID} /
- * {@link PILEUP_ATOMIC_ID}) - no decoded equip clip exists (named approximation, like the drop). No
- * source-side reservation: two settlers sent for the last unit race it, the loser re-searches and walks
- * home empty-handed (the whiffing `equip` effect keeps goods conserved).
+ * Drive a settler's live equip order one stage forward. Approximation: the fetch and deposit gestures
+ * reuse the generic goods-handling animations, as no decoded equip clip exists. Nothing reserves the
+ * source unit, so two settlers sent for the last one race it and the loser walks home empty-handed.
  */
 export function planEquipOrder(
   world: World,
@@ -102,9 +97,9 @@ export function planEquipOrder(
 }
 
 /**
- * The `acquire` stage of a take-off order: run the `unequip` atomic AT the store the unit will land in,
- * so the item stays visibly worn for the walk (user rule 2026-07-23). Only a part-used unit (destroyed)
- * or one no store can take (ground-dropped by the stow leg) comes off in place.
+ * The `acquire` stage of a take-off order. Authored: the item stays visibly worn for the walk, so the
+ * `unequip` atomic runs at the store the unit will land in. Only a part-used unit, or one no store can
+ * take, comes off in place.
  */
 function planTakeOff(errand: EquipErrand): boolean {
   const { world, ctx, entity, order } = errand;
@@ -125,21 +120,18 @@ function planTakeOff(errand: EquipErrand): boolean {
 }
 
 /**
- * The `acquire` stage of a wear order: free the hands, then walk to the nearest reachable store or pile
- * holding `goodType` and run the `equip` atomic there. Nothing to fetch anywhere reachable ends the
- * errand, faithful to "no source, no order".
+ * The `acquire` stage of a wear order: fetch `goodType` from the nearest reachable store or pile.
+ * Nothing reachable to fetch ends the errand rather than parking the settler.
  */
 function planFetch(errand: EquipErrand, goodType: number): boolean {
   const { world, ctx, terrain, entity, settler, order, here, owner, gate, avoid, targets } = errand;
   const worn = world.tryGet(entity, Equipment);
   const held = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
-  // A part-used unit is still replaced - "boots at 20%, fetch me a new pair" is the swap the menu
-  // offers, and the worn pair goes the way of any swapped-out part-used item.
+  // A part-used unit is still replaced: refetching a worn pair is the swap the menu offers.
   if (held !== null && held.goodType === goodType && !isUsed(held)) return endErrand(errand);
   if (world.has(entity, Carrying)) {
-    // The assistant's hand-out is dropped rather than held across a delivery of unbounded length: a
-    // held `acquire` order pins one cap slot and one reserved unit of its player's hand-out, and a
-    // later stride beat re-dispatches the settler. A player order instead sets the load down here.
+    // A held assistant order would pin a cap slot and a reserved unit across a delivery of unbounded
+    // length, so it is dropped and re-dispatched on a later stride beat. A player order waits instead.
     if (order.issuer === 'assistant') {
       world.remove(entity, EquipOrder);
       return false;
@@ -173,11 +165,8 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
   return true;
 }
 
-/**
- * The `stow` stage: the carried good goes into the nearest store that can take it; when none can, it is
- * set down where the settler stands (user-specified fallback). A partial deposit leaves the stage in
- * place, so the errand re-plans until the hands are free.
- */
+/** The `stow` stage: a partial deposit leaves the stage in place, so the errand re-plans until the
+ *  hands are free. */
 function planStow(errand: EquipErrand): boolean {
   const { world, ctx, entity, settler } = errand;
   const load = world.tryGet(entity, Carrying);
@@ -200,13 +189,12 @@ function planStow(errand: EquipErrand): boolean {
   return true;
 }
 
-/** The `return` stage: walk back to the issue node; arriving (or the way back proving unreachable) ends
- *  the errand and returns false so the economy re-tasks the settler this very tick. */
+/** The `return` stage: walk back to the issue node. Arriving, or finding it unreachable, ends the errand
+ *  and returns false so the economy re-tasks the settler the same tick. */
 function planReturn(errand: EquipErrand): boolean {
   const { world, ctx, terrain, entity, order, here, avoid, targets } = errand;
-  // An assistant weapon errand whose weapon just landed (the equip effect advances it here) chains its
-  // armor want from the store it stands at instead of walking home in between - one outing dresses the
-  // recruit (user rule 2026-08-01). The armor's own return falls through.
+  // An assistant weapon errand chains its armor want from the store it stands at rather than walking
+  // home in between, so one outing dresses the recruit. The armor's own return falls through.
   if (order.issuer === 'assistant' && order.group === 'weapon') {
     const chained = chainRecruitArmor(world, ctx, terrain, targets, entity, here, avoid);
     if (chained !== null) {
@@ -229,7 +217,7 @@ function endErrand(errand: EquipErrand): boolean {
   return planReturn(errand);
 }
 
-/** The nearest same-side store that can take `goodType`, or null when no reachable one can. */
+/** The nearest same-side store that can take `goodType`. */
 function stowSink(errand: EquipErrand, goodType: number): Entity | null {
   const { world, ctx, here, owner, gate, avoid, targets } = errand;
   return nearestStoreFor(

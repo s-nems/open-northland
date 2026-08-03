@@ -6,19 +6,15 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { EAT_ATOMIC_ID, eatDuration, startAtomic } from '../atomics/start.js';
 
-// The auto-drink half of the needs drives: a pressing settler carrying a matching draught (mead, a
-// potion) drinks it IN PLACE instead of walking to food or a bed (manual: a settler "will
-// automatically take it when his stomach starts to rumble"). The healing draught is deliberately NOT
-// here - it is the death-save (see tryDeathSaveDraught).
+// A pressing settler carrying a matching draught drinks it where it stands instead of walking to food
+// or a bed (manual: he "will automatically take it when his stomach starts to rumble"). The healing
+// draught belongs to the death-save, not to this drive.
 
-/** The two bar needs a drive-drunk draught can answer (health is the death-save's). */
 export type DraughtNeed = 'hunger' | 'fatigue';
 
 /**
- * The misc slot to drink for `need`, or null when none matches. Two passes over the misc row, both
- * ascending index (deterministic - no distances, no rng): first the lowest slot whose restores cover
- * ONLY this need (the dedicated potion), then the lowest covering it at all - so plain hunger burns
- * the food potion before the dual-purpose mead sitting beside it. Empty and spent slots are skipped.
+ * The misc slot to drink for `need`: the lowest-index item restoring only this need, else the lowest
+ * restoring it at all, so plain hunger burns a food potion before the dual-purpose mead beside it.
  */
 export function draughtSlotFor(
   world: World,
@@ -43,8 +39,8 @@ export function draughtSlotFor(
   return broad;
 }
 
-/** Start the in-place drink: the eat gesture (no decoded drink clip exists - named approximation)
- *  over the shared eat duration, completing into the `drink` effect on the chosen slot. */
+/** Approximation: the eat gesture and its duration stand in for the drink, as no decoded drink clip
+ *  exists. */
 export function startDrink(
   world: World,
   ctx: SystemContext,

@@ -14,10 +14,9 @@ import { provokeAnger } from './reactions.js';
 import { collectStagger, type PendingStagger } from './stagger.js';
 
 /**
- * Resolve an `attack` swing at its ATTACK-event frame (the mid-animation hit). A ranged swing launches a
- * projectile ({@link launchProjectile}) that resolves on contact; a melee swing emits the swing SFX, whiffs
- * if the target stepped beyond `effect.maxRange` since the swing started, else lands the blow through
- * {@link resolveCombatHit} (the shared damage model and four follow-ups).
+ * Resolve an `attack` swing at its ATTACK-event frame, the mid-animation hit. A ranged swing launches a
+ * projectile that resolves on contact; a melee swing whiffs if the target stepped beyond `effect.maxRange`
+ * since the swing started, else lands the blow.
  */
 export function resolveAttackHit(
   world: World,
@@ -26,25 +25,17 @@ export function resolveAttackHit(
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
   pendingStaggers: PendingStagger[],
 ): void {
-  // A ranged swing launches a projectile at this frame instead of landing the blow in place - the arrow/rock
-  // flies (`projectileSystem`) and deals the same damage on contact. Whether it will MISS is decided here,
-  // at release ({@link hunterShotMisses} - the ranged twin of the melee whiff below): a missed arrow still
-  // flies, aimed at where the target stood, and lands in the dirt. A melee swing resolves the hit here.
+  // A miss is decided at release, not on contact: the arrow still flies, aimed where the target stood.
   if (effect.projectile !== undefined) {
     launchProjectile(world, ctx, attacker, effect, hunterShotMisses(world, ctx, attacker));
     return;
   }
-  // A melee swing swooshes at this strike frame - the audible twin of a bow's release. Fired before the reach
-  // check so every swing is heard, hit or whiff; the connecting `combatHit` below adds the impact clang +
-  // blood only on a real connect. Silent if the attacker lost its Position mid-swing.
+  // The swoosh fires before the reach check so every swing is heard, hit or whiff.
   const swingFrom = world.tryGet(attacker, Position);
   if (swingFrom !== undefined) {
     ctx.events.emit({ kind: 'combatSwing', attacker, at: eventAt(swingFrom.x, swingFrom.y) });
   }
-  // A long melee swing the target backed out of whiffs: if the target has stepped beyond the weapon's reach
-  // since the swing started, the blow lands nothing. Measured with the same node-manhattan metric the
-  // CombatSystem started the swing within, so a target that stayed put (or closed in) never spuriously whiffs.
-  // Skipped without a node graph or a `maxRange` - then the blow always lands on a live target.
+  // Without a node graph or a `maxRange` the blow always lands on a live target.
   if (
     ctx.terrain !== undefined &&
     effect.maxRange !== undefined &&
@@ -60,15 +51,14 @@ export function resolveAttackHit(
     effect.damage,
     effect.weaponMainType,
     pendingStaggers,
-    'melee', // a melee blow - announce the connect (`combatHit`) for the blood/impact cue
+    'melee',
   );
 }
 
 /**
- * Whether a melee swing's target has stepped beyond the weapon's reach since the swing started - the whiff
- * test. Compares the current attacker→target node distance (the same `manhattan` metric the CombatSystem's
- * engage check uses) against the effect's carried `maxRange`. A target with no live `Position` (vanished
- * mid-swing) counts as out of reach. Requires `ctx.terrain` and `effect.maxRange` (the caller gates both).
+ * Whether a melee swing's target has stepped beyond the weapon's reach since the swing started. Uses the
+ * same `manhattan` node metric the CombatSystem's engage check uses, so a target that stayed put never
+ * spuriously whiffs. A target with no live `Position` counts as out of reach.
  */
 function meleeTargetOutOfReach(
   world: World,
@@ -78,12 +68,11 @@ function meleeTargetOutOfReach(
 ): boolean {
   const terrain = ctx.terrain;
   if (terrain === undefined || effect.maxRange === undefined) return false; // caller-gated; keep types honest
-  // Either combatant lacking a live Position → the swing lands nothing (out of reach). Guarding the attacker
-  // too avoids `entityNode`'s `world.get` throwing on an attacker that lost its Position mid-swing.
-  if (world.tryGet(attacker, Position) === undefined) return true; // attacker gone - nothing to strike from
-  if (world.tryGet(effect.target, Position) === undefined) return true; // target gone - nothing to strike
-  // Measure to the target's combat node - the nearest wall cell for a building - so the whiff band matches
-  // the reach the swing engaged within (a wall between attacker and anchor never reads as in-reach).
+  // Guarding the attacker too keeps `entityNode`'s `world.get` from throwing on one that lost its Position.
+  if (world.tryGet(attacker, Position) === undefined) return true;
+  if (world.tryGet(effect.target, Position) === undefined) return true;
+  // Measuring to the target's combat node, the nearest wall cell for a building, matches the whiff band to
+  // the reach the swing engaged within.
   const attackerNode = entityNode(world, terrain, attacker);
   const dist = manhattan(
     terrain,
@@ -94,20 +83,10 @@ function meleeTargetOutOfReach(
 }
 
 /**
- * Land one combat blow - the shared hit resolution both a melee swing (at its ATTACK frame) and a ranged
- * projectile (on contact) run, so the two can't drift. Drains `damage` hitpoints from `target`'s
- * {@link Health}, clamped at 0 (a hit never heals - armor can fully absorb a blow but the pool never goes
- * negative). `damage` is the pre-resolved column value the planner looked up
- * (`weapon.damagevalue[targetMaterial]`), so this needs no content/weapon lookup. A `target` with no `Health`
- * is a no-op (already destroyed, or a non-combatant); never throw. Reaching 0 hitpoints is "dead"; the
- * `cleanupSystem` reaps the corpse at the end of the tick.
- *
- * The four follow-ups a landed blow drives (all keyed on `attacker`, which a projectile's `tryGet` tolerates
- * as gone - a dead archer's arrow still lands): **provoke** an otherwise-passive `getAngry` animal
- * ({@link provokeAnger}); **fight XP** ({@link grantFightExperience}) on a damaging blow, into the weapon's
- * fight bucket (`weaponMainType`); **carcass** ({@link spawnCarcasses}) on a hunter's lethal strike on
- * huntable prey; **stagger** ({@link collectStagger}) when the target survives (collected for the deferred
- * `applyPendingStaggers` the caller runs after its loop). A felled target isn't staggered (it's being reaped).
+ * Land one combat blow, shared by a melee swing at its ATTACK frame and a ranged projectile on contact so
+ * the two cannot drift. `damage` is the pre-resolved `weapon.damagevalue[targetMaterial]` column value, so
+ * no content lookup happens here. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end
+ * of the tick. A dead attacker is tolerated, since a dead archer's arrow still lands.
  */
 export function resolveCombatHit(
   world: World,
@@ -120,11 +99,9 @@ export function resolveCombatHit(
   source: 'melee' | 'projectile',
 ): void {
   const health = world.tryGet(target, Health);
-  if (health === undefined) return; // target gone / non-combatant - the blow struck nothing (a miss)
-  // A melee blow that connected: announce it at the victim so render bleeds it and audio plays the
-  // weapon-impact SFX. Ranged hits don't emit this - the `projectileSystem` announces its own `projectileHit`,
-  // so a shot never double-fires. A swing at air returned above, so `combatHit` fires only on a real connect;
-  // a fully-mitigated (0-damage) connect still cues (the blade touched, so it clangs + marks).
+  if (health === undefined) return; // gone or a non-combatant: the blow struck nothing
+  // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`. A connect
+  // fully absorbed by armor still cues, since the blade touched.
   if (source === 'melee') {
     const at = world.tryGet(target, Position);
     if (at !== undefined) {
@@ -138,25 +115,21 @@ export function resolveCombatHit(
       });
     }
   }
-  // A hit that connected and did harm - the condition the fight-XP + stagger follow-ups need. Computed before
-  // the drain so an overkill still counts as a damaging blow.
+  // Computed before the drain so an overkill still counts as a damaging blow.
   const dealtDamage = damage > 0;
-  const dealt = Math.max(0, damage); // guards against a malformed (negative) hit *healing* the target
-  // Captured before the drain: the carcass spawns only on the alive→dead TRANSITION, so a second blow
-  // landing this tick on an already-felled target (two hunters' hit frames on one prey) never mints a
-  // second carcass - goods stay conserved.
+  const dealt = Math.max(0, damage); // a malformed negative hit must not heal the target
+  // The carcass spawns only on the alive-to-dead transition, so a second blow landing this tick on an
+  // already-felled target never mints a second carcass.
   const wasAlive = health.hitpoints > 0;
-  // A KILLING blow (hitpoints > 0: a target already at 0, e.g. a debug kill awaiting cleanup, is not
-  // revived) may be answered by the healing draught's death-save, which resets the pool itself; the
-  // blow still counted (XP, anger).
+  // The death-save resets the pool itself, but the blow still counted for XP and anger. A target already
+  // at 0 is never revived.
   const saved = wasAlive && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
-  // The outer max floors the pool itself (a hit never drives it below 0).
   if (!saved) health.hitpoints = Math.max(0, health.hitpoints - dealt);
   provokeAnger(world, ctx, target);
-  if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType); // train the weapon class
+  if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);
   if (health.hitpoints <= 0) {
-    if (wasAlive) spawnCarcasses(world, ctx, attacker, target); // a hunter's kill leaves its carcass
+    if (wasAlive) spawnCarcasses(world, ctx, attacker, target);
   } else {
-    collectStagger(world, ctx, target, pendingStaggers); // a survivor may flinch (applied after the loop)
+    collectStagger(world, ctx, target, pendingStaggers); // applied after the caller's loop
   }
 }

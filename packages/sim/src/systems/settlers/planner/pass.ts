@@ -14,22 +14,21 @@ import { collectTargets, hasHaulableOutput, type TargetCandidates } from '../tar
 import { PlannerSpacing } from './spacing.js';
 
 /**
- * The state one atomic-planner pass shares across every settler it plans this tick: the world/tick
- * inputs, the canonical target snapshot and lazy per-tick indexes (each built at most once, so a
- * drive's scan is O(candidates) instead of a per-settler world re-scan), and the claim state the
- * pass's picks accumulate into. What each member reserves or indexes is documented on its type.
+ * The state one atomic-planner pass shares across every settler it plans this tick: the world and tick
+ * inputs, the canonical target snapshot with its per-tick indexes, and the claim state the pass's picks
+ * accumulate into. Each index is built at most once per tick.
  */
 export interface PlannerPass {
   readonly world: World;
   readonly ctx: SystemContext;
   readonly terrain: TerrainGraph;
-  /** Every positioned settler in canonical (ascending entity-id) order - the assistant dispatch and
-   *  the ladder sweep share one sort, and both must visit in id order because the per-tick claim
-   *  maps and the fetch reservations hand out targets first-come-first-served. */
+  /** Every positioned settler in ascending entity-id order, shared by the assistant dispatch and the
+   *  ladder sweep: the per-tick claim maps hand out targets first come, first served, so visit order
+   *  decides who gets what. */
   readonly settlers: readonly Entity[];
   readonly targets: TargetCandidates;
-  /** Whether any workplace holds a haulable output: the tick-level dormancy gate for the
-   *  store-carrier fallback scan (see {@link hasHaulableOutput}). */
+  /** Whether any workplace holds a haulable output: the tick-level dormancy gate for the store-carrier
+   *  fallback scan. */
   readonly anyHaulable: boolean;
   readonly externalFood: ExternalFoodIndex;
   readonly spacing: PlannerSpacing;
@@ -39,8 +38,8 @@ export interface PlannerPass {
   readonly harvestClaims: HarvestClaims;
   readonly gossipCandidates: GossipCandidates;
   readonly siteLeads: SiteLeads;
-  /** The buildings on alarm and the room each has left - empty on any map with no defence mode up, which
-   *  is what makes the shelter rung free when nothing is happening (see {@link collectShelters}). */
+  /** The buildings on alarm and the room each has left, empty on a map with no defence mode up, which
+   *  is what makes the shelter rung free when nothing is happening. */
   readonly shelters: ShelterSites;
 }
 

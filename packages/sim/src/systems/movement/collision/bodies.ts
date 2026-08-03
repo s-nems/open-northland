@@ -6,46 +6,27 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 
 /**
- * Unit body collision - a named deviation from the original, where walkers are observed passing through
- * each other. Added
- * deliberately for RTS depth, on the user's design decision: a standing line of fighters must physically hold
- * a chokepoint, a charge must fan out around its target instead of stacking a tile, and the economy must keep
- * the original's frictionless flow. The model is the modern-RTS split: collision is local resolution only -
- * pathfinding never waits on a moving body - with standing units alone entering the walk overlay.
- *
- * This module is the who/where read-model shared by the three consumers (the SeparationSystem's physical
- * resolve, the routing layer's walk overlay, the CombatSystem's melee-slot filter). Two tiers:
- *  - Soft movers ({@link hasSoftCollision} - any owned settler walking a {@link PathFollow}, civilians
- *    included) nudge each other apart while walking, everywhere. The nudge is capped below the arrival brake
- *    floor (see separation.ts), so it can delay an arrival but never prevent one - walkers just stop drawing
- *    as one merged sprite. They never block routing and never resolve against posts.
- *  - Firm movers ({@link hasBodyCollision} - owned fighters walking) additionally resolve hard against posts
- *    and carry the obstruction grind window (the re-route/give-up machinery).
- *  - Posts (a firm collider standing still) are immovable, and {@link unitWalkBlocks} stamps their nodes into
- *    the walk-block overlay so fresh routes go around a standing line instead of grinding on it.
- *  - Ghosts - everyone else. Civilians keep the original's pass-through against every standing body, so
- *    economy flows that legally converge on one node can never jam; unowned entities keep every fixture and
- *    golden byte-identical. A firm mover inside its own player's calm zone ({@link calmZonesByPlayer}) drops
- *    to the soft tier - fighters queueing at their own stores/houses never wedge on each other in a dense town.
+ * Unit body collision, an authored deviation: the original is observed letting walkers pass through each
+ * other. This module is the who/where read model behind the vocabulary the rest of the folder uses. Soft
+ * movers (any owned walking settler) nudge each other apart, capped below the arrival brake floor in
+ * separation.ts so a nudge can delay an arrival but never prevent one. Firm movers (owned fighters)
+ * additionally resolve against posts, a firm collider standing still, whose nodes enter the walk overlay.
+ * Everyone else is a ghost that passes through, which keeps converging economy flows unjammable and every
+ * unowned fixture byte-identical.
  */
 
 /**
- * The Manhattan node radius of a player's calm zone around each of its buildings - the user's "collision off
- * near the settlement" rule, scoped to the firm tier: inside its own player's zone a firm mover skips the hard
- * post resolve and the obstruction grind, and a post is not stamped into that player's own walk overlay, so a
- * player's town traffic keeps the original's frictionless flow; enemies get no exemption from someone else's
- * town. The soft mover-vs-mover nudge stays on in town - it cannot jam anything (capped below the arrival
- * brake floor) and is what keeps a busy street reading as individuals. Sized to cover a building's footprint
- * plus its door approaches (~4 columns). A feel-tuning constant with no original counterpart.
+ * The Manhattan node radius of a player's calm zone around each of its buildings. Inside its own player's
+ * zone a firm mover drops to the soft tier and its posts stay out of that player's walk overlay, so town
+ * traffic keeps flowing; enemies get no exemption from someone else's town. Approximation: sized to cover a
+ * building footprint plus its door approaches, with no original counterpart.
  */
 const CALM_ZONE_RADIUS_NODES = 8;
 
 /**
- * Whether `e` takes part in firm body collision: an owned fighter (see the module header - civilians and
- * unowned entities keep the original's pass-through against standing bodies). Shared with the routing layer,
- * which applies the standing-body walk overlay only to a requester that itself firmly collides: a ghost walks
- * straight through bodies, so detouring it (or re-aiming its goal off an occupied node - an economy walk's
- * target must stay exact for the node-coincidence checks) would be wrong both ways.
+ * Whether `e` is a firm collider: an owned fighter. Routing applies the standing-body walk overlay only to a
+ * requester that firmly collides, since a ghost walks straight through bodies and an economy walk's target
+ * must stay exactly on its goal node for the node-coincidence checks.
  */
 export function hasBodyCollision(world: World, content: ContentSet, e: Entity): boolean {
   if (!world.has(e, Owner)) return false;
@@ -54,17 +35,15 @@ export function hasBodyCollision(world: World, content: ContentSet, e: Entity): 
 }
 
 /**
- * Whether `e` takes part in soft mover-vs-mover separation: any owned settler (fighters and civilians alike -
- * the "walking units never merge" tier of the module header). The Owner gate keeps unowned fixtures and
- * goldens byte-identical, like {@link hasBodyCollision} and the idle-spacing drive.
+ * Whether `e` takes part in soft mover-vs-mover separation: any owned settler, fighter or civilian. The Owner
+ * gate keeps unowned fixtures and goldens byte-identical.
  */
 export function hasSoftCollision(world: World, e: Entity): boolean {
   return world.has(e, Owner) && world.has(e, Settler);
 }
 
-/** Whether `e` is standing for collision purposes: not walking a path and not waiting on a live route (a
- *  pending request means it is about to move - treating it as a body would stamp a node it is leaving). A
- *  failed request is standing: nothing will move it until its goal's owner reacts. */
+/** Whether `e` is standing for collision purposes: not walking and not waiting on a live route, since a
+ *  pending request means it is about to leave the node. A failed request counts as standing. */
 export function isStanding(world: World, e: Entity): boolean {
   if (world.has(e, PathFollow)) return false;
   const req = world.tryGet(e, PathRequest);
@@ -72,25 +51,20 @@ export function isStanding(world: World, e: Entity): boolean {
 }
 
 /**
- * Per-world memo of {@link calmZonesByPlayer}, keyed on the `Building` and `Owner` membership
- * generations plus terrain identity. Positions are immutable once placed and ownership never mutates in
- * place (every change is an add/remove the generation sees), so the key covers every input - as a
- * conservative superset: `Owner` also rides every settler, so the version bumps on settler spawn/death
- * churn too, not only on building placement/demolition. Rebuild-on-bump, so it cannot drift by a missed
- * patch; the residual risk is the KEY missing an input, which is what the registered `verifyCaches`
- * verifier trips on.
+ * Per-world memo of {@link calmZonesByPlayer}, keyed on the `Building` and `Owner` membership generations
+ * plus terrain identity. Positions are immutable once placed and ownership only changes by add/remove, so
+ * the key covers every input, conservatively: `Owner` rides settlers too, so settler churn also bumps it.
  */
 const zonesMemo = new WeakMap<
   World,
   { version: string; terrain: TerrainGraph; zones: Map<number, Set<NodeId>> }
 >();
 
-/** The generation key {@link zonesMemo} guards on - every input that can change a zone bumps it. */
 function zonesVersion(world: World): string {
   return `${world.componentGeneration(Building)}.${world.componentGeneration(Owner)}`;
 }
 
-/** One full derivation - the memo rebuild and the verifier's reference run through this single path. */
+/** The single derivation path shared by the memo rebuild and its verifier. */
 function deriveCalmZones(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
   const zones = new Map<number, Set<NodeId>>();
   for (const b of world.query(Building, Position)) {
@@ -126,8 +100,7 @@ function sameZones(
   return true;
 }
 
-/** The {@link zonesMemo} coherence verifier: while the key claims freshness, a re-derive must agree -
- *  the tripwire for a zone input {@link zonesVersion} fails to see (`verifyCaches`). */
+/** The `verifyCaches` tripwire for a zone input {@link zonesVersion} fails to see. */
 function verifyZonesMemo(world: World, terrain: TerrainGraph): string[] {
   const hit = zonesMemo.get(world);
   if (hit === undefined || hit.terrain !== terrain) return [];
@@ -139,10 +112,8 @@ function verifyZonesMemo(world: World, terrain: TerrainGraph): string[] {
 }
 
 /**
- * Every player's calm-zone node set: a Manhattan diamond of {@link CALM_ZONE_RADIUS_NODES} around
- * each of its buildings' anchor nodes. Derived on building/ownership change (memoized - see
- * {@link zonesMemo}), membership-only (set unions - iteration order can't change any answer), never
- * hashed.
+ * Every player's calm-zone node set: a Manhattan diamond of {@link CALM_ZONE_RADIUS_NODES} around each of
+ * its buildings' anchor nodes. Membership-only, so iteration order cannot change an answer, and never hashed.
  */
 export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<number, Set<NodeId>> {
   const version = zonesVersion(world);
@@ -155,21 +126,17 @@ export function calmZonesByPlayer(world: World, terrain: TerrainGraph): Map<numb
 }
 
 /**
- * The nodes standing colliders (posts) block for routing, split by who is asking:
- *  - `field` - posts outside their own player's calm zone: blocked for every collider requester (a wall in
- *    the field detours friend and foe alike);
- *  - `townByPlayer` - player → nodes of that player's posts inside its own calm zone: blocked only for other
- *    players' requesters. The owner's own traffic routes straight through its town (its movers there are
- *    ghosts anyway), while an enemy is steered around the garrison instead of grinding on it.
- * Derived per routing tick, membership-only, never hashed.
+ * The nodes standing colliders block for routing, split by who is asking: `field` posts, outside their
+ * owner's calm zone, block every collider requester, while `townByPlayer` posts block only other players'
+ * requesters, so a player routes through its own garrison and an enemy is steered around it. Membership-only
+ * and never hashed.
  */
 export interface UnitWalkBlocks {
   readonly field: ReadonlySet<NodeId>;
   readonly townByPlayer: ReadonlyMap<number, ReadonlySet<NodeId>>;
 }
 
-/** Visit every standing collider (post) with its clamped node and owning player - the one scan both
- *  walk-overlay stampers and the combat slot filter derive their standing-body sets from. */
+/** Visit every post with its in-bounds node and owning player. */
 function eachStandingFighter(
   world: World,
   content: ContentSet,
@@ -187,9 +154,8 @@ function eachStandingFighter(
 }
 
 /**
- * The nodes standing colliders occupy, regardless of calm zones - the CombatSystem's melee-slot filter (an
- * approach cell someone already stands on is a taken slot even inside a town garrison). Derived per tick,
- * membership-only, never hashed.
+ * The nodes standing colliders occupy regardless of calm zones: an approach cell someone already stands on
+ * is a taken melee slot even inside a town garrison.
  */
 export function standingFighterNodes(
   world: World,

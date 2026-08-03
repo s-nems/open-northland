@@ -1,26 +1,9 @@
-// Pure **read views** over `content`: content-derived RULE TABLES (weapon classes, animal behaviour,
-// ship/job/layer classification, animation records) that systems DO consult for game decisions. That is
-// fine (content is immutable input, so reading it can't feed state back), but they are projections, not
-// mechanics: each is a pure function of content, memoizable and testable in isolation, adding no behavior
-// of its own (nothing produced/consumed/moved; "source-basis n/a").
+// Pure read views over `content`: the content-derived rule tables systems consult for game decisions.
+// Content is immutable input, so reading it cannot feed state back; each view is a pure, memoizable
+// projection that adds no mechanic of its own.
 //
-// Split by concern into sibling modules:
-//  - ./equip-pick.ts: the one member that is not a content table. It reads world + terrain and is the
-//                    façade's pick-menu seam (`Simulation.equipPickList`), consulted by no system.
-//  - ./buildings.ts - the data-defined temple (pray-need satisfier) and barracks (drill house)
-//                    classifications.
-//  - ./food.ts     - the data-defined edible-good (eat-slot) classification and the dish→edible
-//                    conversion a good undergoes when it leaves the kitchen that made it.
-//  - ./combat.ts   - the static weapon-vs-armor damage lookup table.
-//  - ./defence.ts  - the defence-mode tables: garrison capacity, the house bow, who runs for cover.
-//  - ./classes/    - the data-defined weapon/armor class taxonomy (predicates + accessors + groupings).
-//  - ./tribes/     - the data-defined civ-vs-animal split + `animaltypes.ini` behaviour + `mayAttack`.
-//  - ./vehicles.ts - the data-defined ship/boat classification (the Sea/Northland slice's seed).
-//  - ./jobs.ts     - the data-defined sea-job (`fisher_sea`/`trader_sea`) classification.
-//  - ./stances.ts  - the military-mode ids + the job→default-stance table.
-//  - ./landscape.ts - the data-defined placement-layer (`allowedon{land,water,everything}`) classification.
-//  - ./animations.ts - the atomic-animation name/duration resolvers + event accessors.
-// This barrel re-exports all of them so the `systems/` barrel (and tests) keep a single import site.
+// `./equip-pick.ts` is the one member that is not a content table: it reads world and terrain, and serves
+// the façade's pick menu rather than any system.
 
 export {
   ATOMIC_EVENT_CHANNEL,
