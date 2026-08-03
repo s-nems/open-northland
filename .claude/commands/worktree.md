@@ -63,8 +63,8 @@ boundaries must still expose its responsibilities and control flow. Require the 
 `regressed`; a refactor with fragmented scope or either `regressed` verdict must be fixed before
 handoff.
 
-For visual or audio work, prepare the exact scene, URL, screenshot, or listening path for the user.
-Do not self-approve pixels or sound.
+For visual or audio work, name the exact scene, map, and thing to look at or listen for. Do not
+self-approve pixels or sound.
 
 ## 5. Close the tracker and commit
 
@@ -81,12 +81,36 @@ Re-read the full diff and confirm that source comments do not repeat its commit 
 `git diff --check`, and commit with the repository's Conventional Commit style. The completing commit
 must include the final tracker state.
 
-## 6. Handoff
+## 6. Serve the branch for verification
+
+Player-visible work is handed off with a running app, not with a request that the user start one.
+Purely internal work (perf, docs, sim-internal refactor) says so in one line instead.
+
+`content/` is gitignored, so link it first: `ln -s "$primary_root/content" "$worktree/content"`.
+A branch that writes content takes `cp -Rc` instead - the pipeline refuses to write through a link.
+
+`:5173` is the primary checkout's. Take a free port from `5174-5199` (`scripts/dev-ports.sh`) and
+start Vite from inside the worktree; a workspace-level `npm run dev` has resolved to the primary
+checkout's `packages/app` before:
+
+```bash
+cd "$worktree/packages/app" && ./node_modules/.bin/vite --port "$PORT" --strictPort
+```
+
+Before sending the URL, prove the listener's cwd is this worktree (`lsof -nP -iTCP:$PORT
+-sTCP:LISTEN`) and that `/maps-index` answers 200 - a 404 there means the content link is missing.
+Report the port and pid with the link.
+
+## 7. Handoff
 
 Report the branch, commit(s), changed behavior, checks, scope, structure and comment verdicts, review
-result, and exact human verification. Then stop and wait. Do not merge on implied approval.
+result, and exact human verification including the live URL. Then stop and wait. Do not merge on
+implied approval.
 
-## 7. Refresh and merge after approval
+## 8. Refresh and merge after approval
+
+Check `git log --oneline main..<branch>` first: empty means another session already rebased and
+landed this work, so verify the behavior survived and go straight to cleanup.
 
 Fetch current `main` and rebase the task branch onto it. Resolve conflicts inside the worktree. If the
 effective diff changed, rerun relevant checks and review the changed parts before merging.
@@ -97,12 +121,23 @@ Fast-forward `main` only:
 - primary checkout on another branch: update `main` without changing that checkout;
 - dirty primary checkout on `main`: stop and ask the user to clear or preserve it.
 
-Never stash, reset, or overwrite primary changes.
+Never reset or overwrite primary changes, and never `git stash` anywhere in this repo - the stash
+stack is shared by every worktree, so a concurrent session pops your entry.
 
-## 8. Clean up
+## 9. Verify merged main
 
-Stop processes started by the workflow. Confirm the branch is an ancestor of `main`, remove the
-worktree, then delete the merged branch. Report the merged commits and cleanup result.
+A branch green in isolation still breaks `main`: a type another worktree landed, a doc link to a
+ticket this branch deleted, formatting left by conflict resolution. In the primary checkout, run the
+`ci.yml` gates on merged `main` - `npm run check:assets`, `npm run check:docs`, `npm run check`,
+`npm run build`, `npm test` - then fix on `main` and commit, or revert the merge. Local runs cover
+one OS and CI runs three, so flag golden-hash work as unproven.
+
+## 10. Clean up
+
+Kill the verification server by its recorded pid and confirm the port is free, so it returns to the
+pool instead of serving a deleted checkout. Stop other processes started by the workflow. Confirm the
+branch is an ancestor of `main`, remove the worktree, then delete the merged branch. Report the merged
+commits and cleanup result.
 
 If the user abandons the task, confirm before removing the worktree and force-deleting an unmerged
 branch.
