@@ -79,7 +79,8 @@ export interface CombatantStance {
  *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
  *  - **IGNORE hunter** → the hunting-ground policy ({@link hunterEngageSpec}, ./hunting-ground.ts):
  *    huntable prey only, bounded to the work-flag / workplace ground with the flag as chase anchor,
- *    normal game before last-resort livestock, livestock gated on the ground holding no carcass work.
+ *    normal game before last-resort livestock, livestock gated on the ground holding no carcass work,
+ *    and the one animal it has drawn on kept as a `lock` until the kill.
  *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within its
  *    {@link SIGHT_RADIUS_NODES} (it advances), a hostile wild animal within {@link ANIMAL_AGGRO_RADIUS_NODES}
  *    (the ambush lunge), an unowned civ only within weapon reach (swing-in-place).
@@ -124,6 +125,7 @@ export function engageSpec(
       searchRadius: DEFEND_RADIUS_NODES + DEFEND_LEASH_NODES,
       player,
       lowPriority: lowPriorityBuildings,
+      lock: null,
       defend: { anchorCell: anchor, leash: DEFEND_LEASH_NODES, hold: true },
     };
   }
@@ -154,6 +156,7 @@ export function engageSpec(
     player,
     animalSeeker,
     lowPriority: lowPriorityBuildings,
+    lock: null,
     defend: null,
   };
 }
@@ -176,6 +179,10 @@ export interface EngageSpec {
   /** The deprioritized tier among accepted targets - searched only when the primary tier finds nothing
    *  in sight: plain buildings for a soldier's stances, last-resort livestock for the hunter. */
   readonly lowPriority: (t: Entity) => boolean;
+  /** Target commitment: non-null for a stance that HOLDS one target across ticks instead of re-acquiring
+   *  the nearest candidate (the hunter's prey lock; the soldier stances re-acquire). `target` is the live
+   *  hold, null when nothing is committed yet - {@link holdPrey} commits whatever this tick resolves. */
+  readonly lock: { readonly target: Entity | null } | null;
   /** Anchor leash: the chase never walks past `leash` of `anchorCell` (a DEFEND post, a hunter's
    *  ground); null when the chase is unbounded. `hold` - with no target in sight, walk back to the
    *  anchor and hold it (the DEFEND post duty); false hands the unit back to the economy instead (a
@@ -196,6 +203,7 @@ function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
  *  - under an explicit {@link AttackOrder} → that focused `target`, chased regardless of sight, as long as
  *    it is a live, hostile target; a target that has died / become invalid drops the order and falls
  *    through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
+ *  - under a live `spec.lock` (the hunter's committed prey) → that target, likewise ahead of any search;
  *  - otherwise → the nearest target the ring search finds within `[spec.minDist, spec.searchRadius]` that
  *    the stance's `spec.accept` filter admits, in TWO priority tiers split by `spec.lowPriority`: the
  *    deprioritized tier is searched only when the first pass finds nothing in sight. For the soldier
@@ -226,14 +234,23 @@ export function resolveTarget(
     // ordered onto one building must not re-translate its footprint N times), the same node the chase
     // walks to.
     if (isValidTarget(world, ctx, self, attacker, focus)) {
-      return {
-        target: focus,
-        dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, focus, bodyNodes)),
-      };
+      return focusedOn(world, ctx, terrain, here, focus, bodyNodes);
     }
     world.remove(self, AttackOrder); // target gone / no longer hostile - abandon the order, auto-engage
   }
   const { x, y } = terrain.coordsOf(here);
+  const locked = spec.lock?.target ?? null;
+  if (locked !== null) {
+    // A commitment (re-validated by its spec builder) resolves ahead of the ring search, and ignores
+    // `minDist`: prey that closes inside the weapon's dead zone is backed off by the chase, not dropped.
+    // The TIER rule still outranks it, so a hold on the deprioritized tier yields to any primary-tier
+    // target in sight (normal game beats a held sheep).
+    const preempt = spec.lowPriority(locked)
+      ? index.nearest(x, y, spec.minDist, spec.searchRadius, (t) => spec.accept(t) && !spec.lowPriority(t))
+      : null;
+    if (preempt !== null) return { target: preempt.entity, dist: preempt.distance };
+    return focusedOn(world, ctx, terrain, here, locked, bodyNodes);
+  }
   // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant/building can be
   // in the search band, both ring searches would return null - skip them (the standing-army flat cost).
   if (spec.player !== null && !presence.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
@@ -258,4 +275,20 @@ export function resolveTarget(
     (t) => spec.accept(t) && spec.lowPriority(t),
   );
   return fallback === null ? null : { target: fallback.entity, dist: fallback.distance };
+}
+
+/** A focused target (an {@link AttackOrder}, a held prey lock) and its REAL distance from `here`, uncapped
+ *  by the ring search's band - a building measured at the wall the chase closes on. */
+function focusedOn(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: NodeId,
+  target: Entity,
+  bodyNodes: BuildingBodyNodeCache | undefined,
+): { target: Entity; dist: number } {
+  return {
+    target,
+    dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, target, bodyNodes)),
+  };
 }

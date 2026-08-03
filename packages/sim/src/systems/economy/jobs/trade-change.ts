@@ -9,6 +9,7 @@ import {
   EquipOrder,
   Fleeing,
   GatherSelection,
+  HuntFocus,
   HuntRest,
   Owner,
   Position,
@@ -55,6 +56,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   world.remove(e, AttackOrder);
   world.remove(e, Fleeing);
   world.remove(e, HuntRest); // an ex-hunter's acquisition breather has nothing left to throttle
+  world.remove(e, HuntFocus); // and the animal it had committed to is no longer its work
   // Owned-only, like the spawn stamp: an unowned settler keeps its content-relation combat behavior and
   // carries no Stance at all (the component's contract), so a neutral settler must not gain one here.
   if (world.has(e, Owner)) stampDefaultStance(world, ctx.content, e, jobType);

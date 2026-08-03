@@ -1,5 +1,6 @@
 import {
   HUNTER_WORK_FLAG_RADIUS,
+  HuntFocus,
   JobAssignment,
   Position,
   Resource,
@@ -56,6 +57,11 @@ export const HUNT_SEARCH_REST_TICKS = 10;
  * to its flag-gatherer drive. Last-resort livestock (huntPrey `lastResort`; user rule) is deprioritized
  * (`lowPriority`: normal game always wins). A hunter with neither flag nor workplace (an unposted
  * fixture) hunts by plain sight, unanchored.
+ *
+ * It also owns the ONE-PREY-AT-A-TIME rule (user rule): the spec's `lock` holds the animal the hunter
+ * drew on until it drops, out to the CHASE LEASH rather than the tighter acquisition radius - prey bolts
+ * on the first arrow, so expiring at the acquisition line would restore the very swap the lock prevents.
+ * Building the spec MUTATES: a lock this tick's rules no longer admit is reaped as it is read.
  */
 export function hunterEngageSpec(
   world: World,
@@ -67,7 +73,15 @@ export function hunterEngageSpec(
   minDist: number,
   sight: number,
 ): EngageSpec {
-  const acceptPrey = (t: Entity): boolean => isHuntTarget(world, ctx, t, jobType) && seesTarget(t);
+  const hereNode = entityNode(world, terrain, e);
+  const hunterComponent = terrain.componentOf(hereNode);
+  // An animal across a static terrain seam (an island, the far bank) is not this hunter's game: taking
+  // it would hold the unit in a chase re-issuing a route that can never resolve. The same rule the
+  // carcass gate below applies to a stranded kill.
+  const acceptPrey = (t: Entity): boolean =>
+    isHuntTarget(world, ctx, t, jobType) &&
+    terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent &&
+    seesTarget(t);
   const lastResortLivestock = (t: Entity): boolean => {
     const s = world.tryGet(t, Settler);
     return s !== undefined && isLastResortPrey(ctx.content, s.tribe);
@@ -76,34 +90,65 @@ export function hunterEngageSpec(
   // filter admits the passive wildlife the presence grid discounts (see HostilePresence).
   const ground = huntingGround(world, terrain, e);
   if (ground === null) {
+    // Unanchored (an unposted fixture): plain sight bounds the acquisition, so it bounds the hold too.
+    const inSight = (t: Entity): boolean =>
+      manhattan(terrain, hereNode, entityNode(world, terrain, t)) <= sight;
     return {
       accept: acceptPrey,
       minDist,
       searchRadius: sight,
       player: null,
       lowPriority: lastResortLivestock,
+      lock: { target: livePrey(world, e, (t) => acceptPrey(t) && inSight(t)) },
       defend: null,
     };
   }
-  // Lazily memoized per engage: probed once, when the first in-ground candidate is reached.
+  // Lazily memoized per engage: probed at most once, on the first candidate (or held target) to reach it.
   let carcassWork: boolean | null = null;
   const groundHasCarcassWork = (): boolean =>
     (carcassWork ??= huntingGroundHoldsCarcass(world, ctx, terrain, e, jobType, ground));
-  const accept = (t: Entity): boolean =>
-    acceptPrey(t) &&
-    manhattan(terrain, ground.anchorCell, entityNode(world, terrain, t)) <= ground.radius &&
-    !groundHasCarcassWork();
+  const within = (t: Entity, reach: number): boolean =>
+    manhattan(terrain, ground.anchorCell, entityNode(world, terrain, t)) <= reach;
+  const accept = (t: Entity): boolean => acceptPrey(t) && within(t, ground.radius) && !groundHasCarcassWork();
+  const leash = ground.radius + HUNT_CHASE_SLACK_NODES;
+  const held = (t: Entity): boolean => acceptPrey(t) && within(t, leash) && !groundHasCarcassWork();
   return {
     accept,
     minDist,
     // From wherever the hunter stands, `dist(here, anchor) + radius` provably covers every in-ground
     // candidate (triangle inequality) - and collapses to ~radius when it stands on its ground, where
     // the naive `radius + leash` band would ring-walk 4x the nodes every awake tick.
-    searchRadius: manhattan(terrain, entityNode(world, terrain, e), ground.anchorCell) + ground.radius,
+    searchRadius: manhattan(terrain, hereNode, ground.anchorCell) + ground.radius,
     player: null,
     lowPriority: lastResortLivestock,
-    defend: { anchorCell: ground.anchorCell, leash: ground.radius + HUNT_CHASE_SLACK_NODES, hold: false },
+    lock: { target: livePrey(world, e, held) },
+    defend: { anchorCell: ground.anchorCell, leash, hold: false },
   };
+}
+
+/** Commit `target` as this hunter's prey for the ticks to come - the write half of the `lock` the spec
+ *  reads back. A stance that re-acquires freely instead SHEDS a hold left from an earlier one (a hunter
+ *  switched to DEFEND fights under general hostility; its half-finished hunt is over) - only the hunting
+ *  branch can reap it, so nothing else would. A hold already on `target` is left untouched, keeping a
+ *  long chase off the store's change generations. */
+export function holdPrey(world: World, e: Entity, spec: EngageSpec, target: Entity): void {
+  if (spec.lock === null) {
+    world.remove(e, HuntFocus);
+    return;
+  }
+  if (world.tryGet(e, HuntFocus)?.target !== target) world.add(e, HuntFocus, { target });
+}
+
+/** The prey this hunter is still committed to - its {@link HuntFocus} target while `holds` admits it,
+ *  else null with the lapsed lock reaped here, so a hunter whose animal died, was banked, or outran the
+ *  leash acquires freely again. `holds` runs only when a lock exists, keeping the carcass probe it
+ *  closes over off the empty-handed path. */
+function livePrey(world: World, e: Entity, holds: (t: Entity) => boolean): Entity | null {
+  const focus = world.tryGet(e, HuntFocus);
+  if (focus === undefined) return null;
+  if (holds(focus.target)) return focus.target;
+  world.remove(e, HuntFocus);
+  return null;
 }
 
 /**

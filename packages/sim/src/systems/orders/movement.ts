@@ -8,6 +8,7 @@ import {
   EquipOrder,
   ErectSignpostOrder,
   Fleeing,
+  HuntFocus,
   MoveGoal,
   Owner,
   PathRequest,
@@ -139,6 +140,7 @@ function startPlayerWalk(
   // from scratch on the next combat pass).
   world.remove(e, Engagement);
   world.remove(e, AttackOrder);
+  world.remove(e, HuntFocus); // and a hunter's committed prey - the walk is where the player wants it
   world.remove(e, Fleeing); // a move order supersedes the flee drive too
   world.remove(e, ErectSignpostOrder); // a fresh move order supersedes a pending erect intent
   // A fresh move order also cancels an in-flight equip errand - the player's one way to call it off

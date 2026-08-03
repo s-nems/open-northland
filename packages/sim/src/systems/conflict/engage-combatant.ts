@@ -6,6 +6,7 @@ import {
   Engagement,
   Fleeing,
   Health,
+  HuntFocus,
   HuntRest,
   Owner,
   PlayerOrder,
@@ -28,7 +29,7 @@ import { clearNavState, entityNode, isTravelling, type NodeBuckets } from '../sp
 import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
-import { HUNT_SEARCH_REST_TICKS } from './hunting-ground.js';
+import { HUNT_SEARCH_REST_TICKS, holdPrey } from './hunting-ground.js';
 import type { MeleeSlots } from './melee-slots.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, buildingBodyNodes, combatTargetNode } from './target-node.js';
@@ -112,6 +113,7 @@ export function engageCombatant(
   }
 
   const { target, dist } = found;
+  holdPrey(world, e, spec, target);
   if (inReachAndStanding(dist, weapon, travelling)) {
     swingAt(world, ctx, e, attacker, owned, target, weapon);
     return;
@@ -190,6 +192,7 @@ function resolveFleeState(
   // marker would outlive the flee - `fleeDrive` drops `Fleeing` but not `Engagement` - benching the unit
   // (plannerSystem skips it) and keeping combat awake forever.
   world.remove(e, Engagement);
+  world.remove(e, HuntFocus); // and with it the prey hold, which only the hunting branch can reap
   fleeDrive(world, ctx, terrain, index, presence, e, attacker);
   return true;
 }
