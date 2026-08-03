@@ -112,7 +112,10 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
   panel.className = 'main-menu__settings-panel';
   const tabButtons = new Map<SettingsTab, HTMLButtonElement>();
   const paintTabs = (): void => {
-    for (const [id, button] of tabButtons) button.classList.toggle('is-active', id === memory.tab);
+    for (const [id, button] of tabButtons) {
+      button.classList.toggle('is-active', id === memory.tab);
+      button.setAttribute('aria-pressed', String(id === memory.tab));
+    }
   };
   for (const tab of SETTINGS_TABS) {
     const button = document.createElement('button');

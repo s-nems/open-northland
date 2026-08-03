@@ -3,7 +3,7 @@ import { DEFAULT_LOCALE, type Locale, localeParam, setActiveLocale } from '../..
 import { floatParam } from '../../view/params.js';
 
 /**
- * The menu's persistent settings (design frame 3c): stored in localStorage, projected onto the
+ * The menu's persistent settings: stored in localStorage, projected onto the
  * carried URL params (`lang` / `uiscale` / `sound`) so `targetSearch` hands them to a launched game.
  * The pure parse/clamp half is unit-tested; the storage and URL halves are browser-only.
  */

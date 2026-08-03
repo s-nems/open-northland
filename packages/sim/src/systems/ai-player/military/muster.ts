@@ -34,9 +34,7 @@ export const WAVE_MELEE_CORE = 1;
 const LONGEST_REACH_NODES = 29;
 
 /** How far short of the objective a wave forms up before it charges (user rule): far enough to put the
- *  whole hold ring, not just its centre, PAST that reach (`dist <= maxRange` is in reach). No building
- *  shoots yet (docs/tickets/features/tower-defence-mode.md), so today it only keeps the muster out of
- *  the town. */
+ *  whole hold ring, not just its centre, PAST that reach (`dist <= maxRange` is in reach). */
 export const STAGING_STANDOFF_NODES = LONGEST_REACH_NODES + RALLY_HOLD_RADIUS_NODES + 1;
 
 /** The melee floor to hold `army` to - {@link WAVE_MELEE_CORE}, waived when the whole army fights at

@@ -95,5 +95,5 @@
     400 calc(var(--u) * 21) / 1.6 "Alegreya Sans",
     system-ui,
     sans-serif;
-  color: rgba(180, 205, 200, 0.45);
+  color: rgba(180, 205, 200, 0.6);
 }

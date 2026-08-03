@@ -4,12 +4,18 @@ import { DEFAULT_FOG_MODE, LOBBY_FOG_MODES } from './lobby/model.js';
 /**
  * Build a launch URL's search: the chosen entry's params layered over the menu's carried settings
  * (`lang`, `uiscale`, ...). Maps default to classic sticky fog when the player picked no mode;
- * scenes keep their own authored fog (a static showcase must stay fully visible, not hide behind
- * reveal fog), still overridable through an explicit `?fog=` choice for either entry kind.
+ * scenes keep their own authored fog and progression (a static showcase must stay fully visible,
+ * not hide behind reveal fog carried over from an earlier game), so those two never carry into a
+ * scene - only the entry's own explicit values reach it (a hand-typed `?scene=…&fog=` bypasses the
+ * menu and still wins).
  */
 export function targetSearch(entry: string, current = new URLSearchParams(window.location.search)): string {
   const target = carriedParams(current);
   const entryParams = new URLSearchParams(entry.startsWith('?') ? entry.slice(1) : entry);
+  if (entryParams.has('scene')) {
+    target.delete('fog');
+    target.delete('progression');
+  }
   for (const [key, value] of entryParams) target.set(key, value);
   const selectedFog = target.get('fog');
   if (entryParams.has('map') && !LOBBY_FOG_MODES.some((mode) => mode === selectedFog))

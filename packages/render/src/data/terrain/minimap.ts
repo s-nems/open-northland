@@ -5,7 +5,7 @@ import type { SceneGround } from '../scene/terrain-scene.js';
  * The pure minimap raster: cell grid → RGBA picture, plus the ground-lane → cell-colour join it
  * samples. Shared by the in-game minimap, the menu's client-side map preview, and the asset
  * pipeline's synthesized map thumbnails, so all three rasterise a map identically.
- * NAMED APPROXIMATION: a cell is coloured with the mean texel of its two triangles' pattern rects —
+ * NAMED APPROXIMATION: a cell is coloured with the mean texel of its two triangles' pattern rects -
  * transition overlays, elevation shading and the `embr` brightness lane are ignored.
  */
 
@@ -31,7 +31,7 @@ export function terrainWorldBounds(mapW: number, mapH: number): WorldBounds {
   };
 }
 
-/** The cell grid the raster samples — the `SceneTerrain` sub-shape it actually reads. */
+/** The cell grid the raster samples - the `SceneTerrain` sub-shape it actually reads. */
 export interface TerrainCells {
   readonly width: number;
   readonly height: number;
@@ -40,8 +40,8 @@ export interface TerrainCells {
 
 /** The menu map-preview raster cap (px). One owner for the client's fallback raster and the
  *  pipeline's synthesized thumbnails, so both come out identical in scale. */
-export const MAP_PREVIEW_MAX_WIDTH = 720;
-export const MAP_PREVIEW_MAX_HEIGHT = 420;
+const MAP_PREVIEW_MAX_WIDTH = 720;
+const MAP_PREVIEW_MAX_HEIGHT = 420;
 
 /** Fit a `mapW × mapH` cell grid's world bounds into the preview cap, aspect preserved (min 1 px). */
 export function mapPreviewSize(
@@ -57,11 +57,11 @@ export function mapPreviewSize(
 }
 
 /**
- * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px) — built once
+ * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px) - built once
  * per map (terrain is static). Each pixel samples the cell diamond containing its world point:
  * candidate centres on the two nearest rows (odd rows staggered half a cell right, matching
  * `tileToScreen`), picked by the diamond metric `|dx|/TILE_HALF_W + |dy|/TILE_HALF_H`
- * (≤ 1 ⇔ inside the diamond — the diamonds tile the plane, so the minimum is the containing cell).
+ * (≤ 1 ⇔ inside the diamond - the diamonds tile the plane, so the minimum is the containing cell).
  * `colourOfCell` maps the winning cell (row-major index + its typeId) to `0xRRGGBB`.
  */
 export function rasterizeTerrain(
@@ -81,7 +81,7 @@ export function rasterizeTerrain(
       let bestCol = 0;
       let bestRow = 0;
       let bestDist = Number.POSITIVE_INFINITY;
-      // The two candidate rows, unrolled (no per-pixel array) — this loop runs once per raster px.
+      // The two candidate rows, unrolled (no per-pixel array) - this loop runs once per raster px.
       for (let candidate = 0; candidate < 2; candidate++) {
         const clampedRow = Math.min(terrain.height - 1, Math.max(0, rowLo + candidate));
         const stagger = clampedRow % 2 === 0 ? 0 : 1; // odd rows sit half a cell right (tileToScreen)
@@ -107,7 +107,7 @@ export function rasterizeTerrain(
   return out;
 }
 
-/** Sentinel above any `0xRRGGBB` marking "no lane colour — fall back to the typeId palette". */
+/** Sentinel above any `0xRRGGBB` marking "no lane colour - fall back to the typeId palette". */
 export const MINIMAP_CELL_UNRESOLVED = 0x1000000;
 
 /**

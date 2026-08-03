@@ -78,7 +78,7 @@ export function patternSrcRect(coordsA: readonly number[], coordsB: readonly num
 }
 
 /** Texture page key from a `data/.../text_NNN.pcx` path: the basename without its extension
- *  (`text_NNN`) — the stem both the served `/textures/<key>.png` route and the pipeline's emitted
+ *  (`text_NNN`) - the stem both the served `/textures/<key>.png` route and the pipeline's emitted
  *  page file carry. */
 export function texturePageKey(texture: string): string {
   const base = texture.split('/').pop() ?? texture;

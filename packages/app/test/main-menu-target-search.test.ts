@@ -9,8 +9,18 @@ describe('targetSearch', () => {
       'lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&nosuchparam=1',
     );
 
-    expect(targetSearch('?scene=sandbox', current)).toBe(
-      '?lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&sound=off&debug=geometry&scene=sandbox',
+    expect(targetSearch('?map=blekiny_nurt', current)).toBe(
+      '?lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&sound=off&debug=geometry&map=blekiny_nurt',
+    );
+  });
+
+  it('never carries a stale fog or progression choice into a scene', () => {
+    // A quit-to-menu carries the last game's fog/progression; a scene's authored fixture owns both.
+    const current = new URLSearchParams('lang=pol&fog=reveal&progression=off&uiscale=1.75');
+    expect(targetSearch('?scene=goods-catalog', current)).toBe('?lang=pol&uiscale=1.75&scene=goods-catalog');
+    // An explicit fog in the entry itself still wins (hand-typed URLs bypass the menu).
+    expect(targetSearch('?scene=goods-catalog&fog=off', current)).toBe(
+      '?lang=pol&uiscale=1.75&scene=goods-catalog&fog=off',
     );
   });
 

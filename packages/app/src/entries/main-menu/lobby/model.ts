@@ -10,21 +10,20 @@ import {
 } from './roster-state.js';
 
 /**
- * Pure state for the lobby screen (design frame 4b) over the shared roster state: the slot rows
+ * Pure state for the lobby screen over the shared roster state: the slot rows
  * the list renders and the start-URL entry. DOM lives in `index.ts`.
  */
 
 /** The engine's fog modes ({@link FogModeName} owns the vocabulary), in the segment's display
  *  order (labels in `mainMenu.lobby.fogModes`). */
 export const LOBBY_FOG_MODES: readonly FogModeName[] = ['off', 'reveal', 'recon'];
-export type LobbyFogMode = FogModeName;
 
 /** Sticky-fog is the classic default a `?map=` launch without an explicit pick also falls back to
  *  (`targetSearch` reuses it). */
-export const DEFAULT_FOG_MODE: LobbyFogMode = 'reveal';
+export const DEFAULT_FOG_MODE: FogModeName = 'reveal';
 
 export interface LobbyOptions {
-  fog: LobbyFogMode;
+  fog: FogModeName;
   professionProgression: boolean;
 }
 
@@ -39,7 +38,7 @@ export function initialLobbyOptions(params: URLSearchParams): LobbyOptions {
 }
 
 /**
- * The design pre-seats the person (frame 4b shows them in slot 1), so a fresh lobby claims the
+ * The design pre-seats the person, so a fresh lobby claims the
  * first claimable listed slot; sitting elsewhere stays one click. All-AI maps stay seatless.
  */
 export function initialLobbyState(players: readonly MapPlayerSlot[]): RosterState {
@@ -75,7 +74,7 @@ export function lobbySlotRows(
 
 /**
  * The `?map=` entry the Start button navigates to: the map id, the roster choices
- * ({@link rosterStartParams}) and the explicit game options — explicit so they override any
+ * ({@link rosterStartParams}) and the explicit game options - explicit so they override any
  * stale carried `fog`/`progression` the menu URL still holds.
  */
 export function lobbyStartEntry(
