@@ -4,12 +4,12 @@ import { JOB_ARCHER, JOB_ARCHER_LONG, JOB_SOLDIER_SWORD } from '../catalog/jobs.
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_WATCHTOWER,
-  GOOD_FOOD_SIMPLE,
   placeBuiltSandboxBuilding,
   spawnSandboxSettler,
   spawnSettlerDirect,
   WEAPON_SWORD,
 } from '../game/sandbox/index.js';
+import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
@@ -47,6 +47,8 @@ const ENEMY_HITPOINTS = 200_000;
 
 /** The tower's larder - enough meals that neither archer ever has to come down for one. */
 const TOWER_RATIONS = 25;
+/** The eat-slot good every tower larder slots (`goodtypes.ini` 16 `food_simple`). */
+const FOOD_GOOD = 'food_simple';
 
 /** The window after the assault has closed and started on the wall, but before it can raze a 60k-HP tower
  *  out from under the garrison (measured: the pair takes it down around tick 500). */
@@ -55,8 +57,9 @@ const RUN_TICKS = 380;
 function build(sim: Simulation): void {
   const tower = placeBuiltSandboxBuilding(sim, BUILDING_WATCHTOWER, TOWER.x, TOWER.y);
   // Fill the larder the tower type already declares (`logicstock 16 25`), so a fed garrison holds its
-  // wall instead of climbing down to find one.
-  sim.world.get(tower, components.Stockpile).amounts.set(GOOD_FOOD_SIMPLE, TOWER_RATIONS);
+  // wall instead of climbing down to find one. By slug: the sandbox catalog carries the food goods at
+  // +100, so naming an id would stock a shelf real content's tower does not have.
+  sim.world.get(tower, components.Stockpile).amounts.set(goodBySlug(sim, FOOD_GOOD), TOWER_RATIONS);
   // A settler of a bow class resolves that bow by (tribe, job), so the trade alone arms him.
   const shortBow = spawnSettlerDirect(sim, JOB_ARCHER, SHORT_BOW_START.x, SHORT_BOW_START.y);
   const longBow = spawnSettlerDirect(sim, JOB_ARCHER_LONG, LONG_BOW_START.x, LONG_BOW_START.y);
