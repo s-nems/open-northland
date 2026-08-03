@@ -279,9 +279,9 @@ function pickReachableArmor(
 /** The unarmored damage column (`damagevalue 0`) - the strength axis the weapon preference sorts on. */
 const BARE_TARGET = 0;
 
-/** The recruit's store-search inputs, resolved once per dispatch attempt. The limit is the signpost
- *  network at his feet rather than his own confinement, and the equip drive re-applies the same rule to
- *  every step of the walk (`settlers/drives/equip-order.ts` states why). */
+/** The recruit's store-search inputs, resolved once per dispatch attempt. `limit` is the settlement
+ *  network at his feet, not his own confinement - `settlers/drives/equip-order.ts` owns that rule and
+ *  re-applies it to every step of the walk. */
 interface FetchRoute {
   readonly here: NodeId;
   readonly limit: NavigationLimit | null;

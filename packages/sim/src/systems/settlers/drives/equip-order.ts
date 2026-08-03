@@ -1,4 +1,5 @@
 import {
+  AssistantRecruit,
   Carrying,
   Equipment,
   EquipOrder,
@@ -40,20 +41,19 @@ interface EquipErrand {
 
 const EXCLUDE_PRODUCERS = false;
 
-/** The confinement an errand SHOPS under, which is not always its settler's own. A player order keeps his
- *  limit; an ASSISTANT errand keeps the settlement's, because the jobs exempt from confinement so they can
- *  range would otherwise re-target across the map the moment their store runs dry - a soldier campaigns
- *  anywhere, but he shops where he stands (user rule). It gates the WALK, not just the dispatch:
- *  {@link planFetch} re-picks the store every tick. */
+/** The confinement an ARMING errand shops under: the settlement network at the recruit's feet, the same
+ *  question `settlers/planner/recruit-arming.ts` picked his store with. It has to gate the walk and not
+ *  just the dispatch, since {@link planFetch} re-picks the store every tick - a soldier is exempt from
+ *  confinement so he can campaign, and would else re-target across the map the moment his store ran dry
+ *  (user rule). Every other errand keeps its settler's own limit, which is what dispatched it. */
 function errandGate(
   world: World,
   terrain: TerrainGraph,
   e: Entity,
-  issuer: EquipOrderState['issuer'],
   here: NodeId,
   limit: NavigationLimit | null,
 ): NavigationLimit | undefined {
-  const owner = issuer === 'assistant' ? ownerOf(world, e) : undefined;
+  const owner = world.has(e, AssistantRecruit) ? ownerOf(world, e) : undefined;
   if (owner === undefined) return limit ?? undefined;
   return networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here)) ?? undefined;
 }
@@ -86,7 +86,7 @@ export function planEquipOrder(
     settler,
     order,
     here,
-    gate: errandGate(world, terrain, e, order.issuer, here, limit),
+    gate: errandGate(world, terrain, e, here, limit),
     avoid: unreachableGoalVeto(world, ctx, e),
     owner: ownerOf(world, e),
     targets,
