@@ -52,8 +52,10 @@ render. The menu rotates through settlement stills captured from decoded maps (`
 menu-backdrops` into the gitignored `content/backdrops/` - the stills contain original art and
 never enter the repository), starting at a random one and crossfading with a slow push-in; the
 grade layers above are unchanged. The ambient-scene boot lives on as the `?backdrop` capture
-entry. Without the stills the static brand art stands, and under prefers-reduced-motion the first
-still simply holds, with no rotation or push-in.
+entry. Without the stills the static brand art stands. Under prefers-reduced-motion the rotation keeps
+its slow crossfade (a fade is the reduced-motion substitute for movement) and only the push-in
+stops; the earlier freeze-everything reading hid the backdrop change entirely on systems with
+Reduce Motion enabled.
 
 Fonts are the one asset gap. The design calls for Cinzel (display) and Alegreya Sans (UI); the repo
 currently bundles only Tinos under `packages/app/public/fonts/`. Both are OFL, so an implementation

@@ -68,9 +68,9 @@ async function boot(host: HTMLElement): Promise<boolean> {
   }
   if (position === order.length) return false;
 
-  // One still total, or a reduced-motion request: hold the frame, exactly like the frozen scene.
+  // One still total: hold the frame. Reduced motion does NOT stop the rotation - menu.css keeps
+  // the crossfade (a fade is the reduced-motion substitute for movement) and drops the push-in.
   if (files.length < 2) return true;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return true;
 
   const advance = async (): Promise<void> => {
     position += 1;
