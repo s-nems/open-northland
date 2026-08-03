@@ -2,46 +2,35 @@ import { type CellTerrainMap, components, type Simulation } from '@open-northlan
 import { TERRAIN_OPEN } from './terrain.js';
 
 /**
- * The committed catalog of viking buildings, mapping a human name to the key the engine shares:
- * `Building.buildingType` (the `typeId`, the original's `[GfxHouse]` `LogicType`). That typeId is what a
- * `placeBuilding` command stamps on the sim entity and what the renderer keys its per-type bob lookup on
- * (`content/building-gfx.ts` `buildingBobRefsByType`).
+ * The committed catalog of viking buildings, keyed by `Building.buildingType`, the original's
+ * `[GfxHouse]` `LogicType`: the id a `placeBuilding` command stamps and the renderer's bob-lookup key.
  *
- * The `typeId`/`id`/`kind` are transcribed verbatim from `ir.json`'s `buildings` (the pipeline output);
- * `label` is our own hand-authored English naming for semantic lookup. Level suffixes are 1-based for the
- * player ("Warehouse (level 1..3)") even though the underlying ids stay 0-indexed (`stock_00`..`stock_02`).
- * `test/viking-buildings.test.ts` pins every row back to `ir.json` (id + kind match, and the typeId has a
- * bound bob) whenever `content/` is present.
+ * `typeId`, `id` and `kind` are transcribed verbatim from `ir.json`'s `buildings`; `label` is
+ * hand-authored English. Level suffixes are 1-based for the player even though the ids stay 0-indexed.
  *
- * Scope: the 41 real viking buildings (`typeId` 1..41), every one of which has a decoded bob. `work_murek`
- * (typeId 55) is intentionally omitted - the mod binds no viking bob for it (its wall graphic is bound to
- * typeId 22 `work_pottery_02` instead), so it would draw the fallback house, not its own structure.
- * Vehicles (42..46) and Wonders (47..54) are out of scope (not "buildings").
+ * Scope is the 41 real viking buildings (`typeId` 1..41), every one with a decoded bob. `work_murek`
+ * (typeId 55) is omitted because the mod binds no viking bob for it, so it would draw the fallback house.
+ * Vehicles (42..46) and wonders (47..54) are not buildings.
  */
 
-/** The viking `LogicTribeType` (the `[GfxHouse]` `LogicTribeType 1`) - the tribe every building here belongs to. */
+/** The viking `[GfxHouse]` `LogicTribeType`, the tribe every building here belongs to. */
 export const VIKING = 1;
-/** The all-walkable, buildable grass landscape typeId used by scene terrain - the open nav-terrain
- *  class ({@link TERRAIN_OPEN}), so a scene's grass resolves against the sim's `landscape` table. */
+/** The walkable, buildable grass typeId scene terrain uses, so scene grass resolves against the sim's
+ *  `landscape` table. */
 export const GRASS = TERRAIN_OPEN;
 const { Building } = components;
 
-/** One viking building type: the shared `typeId` key + its stable id, English label, and coarse class. */
 export interface VikingBuilding {
-  /** The `[GfxHouse]` `LogicType` - `Building.buildingType` in the sim, the bob-binding key in the renderer. */
+  /** The `[GfxHouse]` `LogicType`: `Building.buildingType` in the sim, the bob-binding key in render. */
   readonly typeId: number;
   /** Stable machine id, verbatim from `ir.json` (e.g. `"stock_02"`). */
   readonly id: string;
-  /** Human English label for semantic lookup (e.g. `"Warehouse (level 2)"`) - our hand-authored naming. */
   readonly label: string;
   /** Coarse class from `ir.json`: `home` | `storage` | `workplace` | `tower` | `training`. */
   readonly kind: string;
 }
 
-/**
- * Every viking building, in `typeId` order. The raw typeIds live here (their definition) and nowhere else
- * - code elsewhere refers to a building by id/label through the lookups below, never by a bare number.
- */
+/** Every viking building in `typeId` order; this is where the raw typeIds are defined. */
 export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 1, id: 'headquarters', label: 'Headquarters', kind: 'storage' },
   { typeId: 2, id: 'home_level_00', label: 'Home (level 1)', kind: 'home' },
@@ -64,10 +53,8 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 19, id: 'work_sewery_01', label: 'Tailor / clothier (level 2)', kind: 'workplace' },
   { typeId: 20, id: 'work_pottery_00', label: 'Pottery (level 1)', kind: 'workplace' },
   { typeId: 21, id: 'work_pottery_01', label: 'Pottery (level 2)', kind: 'workplace' },
-  // typeId 22 is a defence wall, not a pottery: the id `work_pottery_02` is a pipeline naming artifact
-  // (the type sits in the slot after the two potteries), but its kind is `tower` and the mod binds the
-  // wall bob ("Mur h", mur.bmd) to it - matching the original's eng string 22 "Defence wall". The label
-  // names the real function.
+  // typeId 22 is a defence wall, not a pottery: `work_pottery_02` is a pipeline naming artifact, while
+  // the mod binds the wall bob (`mur.bmd`) to it, matching the original's eng string 22 "Defence wall".
   { typeId: 22, id: 'work_pottery_02', label: 'Defence wall', kind: 'tower' },
   { typeId: 23, id: 'work_joinery_00', label: 'Joinery (level 1)', kind: 'workplace' },
   { typeId: 24, id: 'work_joinery_01', label: 'Joinery (level 2)', kind: 'workplace' },
@@ -93,36 +80,33 @@ export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
 const BY_TYPE_ID: ReadonlyMap<number, VikingBuilding> = new Map(VIKING_BUILDINGS.map((b) => [b.typeId, b]));
 const BY_ID: ReadonlyMap<string, VikingBuilding> = new Map(VIKING_BUILDINGS.map((b) => [b.id, b]));
 
-/** The building with this `typeId`, or `undefined`. */
 export function vikingBuildingByTypeId(typeId: number): VikingBuilding | undefined {
   return BY_TYPE_ID.get(typeId);
 }
 
-/** The building with this exact `id` (e.g. `"stock_02"`), or `undefined`. */
 export function vikingBuildingById(id: string): VikingBuilding | undefined {
   return BY_ID.get(id);
 }
 
-/** Every building whose `id` or `label` contains `query` (case-insensitive) - the fuzzy "what is X?" lookup. */
+/** Every building whose `id` or `label` contains `query`, case-insensitively. */
 export function findVikingBuildings(query: string): VikingBuilding[] {
   const q = query.toLowerCase();
   return VIKING_BUILDINGS.filter((b) => b.id.toLowerCase().includes(q) || b.label.toLowerCase().includes(q));
 }
 
-/** Resolve a building reference (its `typeId` or exact `id`) to its catalog row, or throw on an unknown ref. */
+/** Resolve a `typeId` or exact `id` to its catalog row, throwing on an unknown reference. */
 export function resolveVikingBuilding(ref: number | string): VikingBuilding {
   const found = typeof ref === 'number' ? vikingBuildingByTypeId(ref) : vikingBuildingById(ref);
   if (found === undefined) throw new Error(`unknown viking building: ${JSON.stringify(ref)}`);
   return found;
 }
 
-/** An all-grass cell grid of the given size (every cell walkable, buildable {@link GRASS}) - the
- *  scene-authoring shape; the sim seam upsamples it to half-cells. */
+/** An all-grass cell grid in the scene-authoring shape; the sim seam upsamples it to half-cells. */
 export function grassTerrain(width: number, height: number): CellTerrainMap {
   return { width, height, typeIds: new Array(width * height).fill(GRASS) };
 }
 
-/** The distinct building typeIds currently placed in the world - the check helper scenes assert on. */
+/** The distinct building typeIds currently placed in the world. */
 export function placedBuildingTypes(sim: Simulation): Set<number> {
   const types = new Set<number>();
   for (const e of sim.world.query(Building)) types.add(sim.world.get(e, Building).buildingType);

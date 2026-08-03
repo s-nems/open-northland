@@ -5,16 +5,14 @@ import type { PanelView } from './selection-view.js';
 import { detailsStockTabLabels, visibleStockRows } from './stock-tabs.js';
 
 // Pure probes for the details panel: map a canvas point in the current PanelView to the action target
-// under it or the tooltip text that names it, and resolve what a craft-choice click does to the product
-// selection. No Pixi or DOM, so this seam is tested headlessly (see details-panel-hit-test.test.ts);
-// `pointer-intent.ts` composes the probes into the click and hover decisions panel.ts acts on.
+// under it or the tooltip text that names it. No Pixi or DOM.
 
 /** The buttons the current view exposes to pointer routing, in hit-test order. */
 const panelButtons = (view: PanelView): readonly ButtonHit[] => {
   switch (view.kind) {
     case 'building':
-      // The defence toggle is not in the general section's button column - it lives inside the defence
-      // window - so it carries its own layout slot and joins the routing list here.
+      // The defence toggle lives inside the defence window, not the general button column, so it
+      // carries its own layout slot and joins the routing list here.
       return view.layout.defenceToggle === null
         ? view.layout.buttons
         : [...view.layout.buttons, view.layout.defenceToggle];
@@ -50,12 +48,10 @@ export const hitCraftChoice = (view: PanelView, x: number, y: number): number | 
 };
 
 /**
- * The next selection after a craft-choice click, given the worker's `products` (all its craftable
- * goods) and current `selected` set. A plain click REPLACES the selection with just the clicked product
- * (the RTS radio-button default); a Ctrl/Cmd click TOGGLES it in the multi-set (user decision
- * 2026-07-16). The toggle normalizes both edges: all products selected reads as the `[]` all-mode (so
- * the sim drops the component), and toggling the LAST product off falls back to all-mode too (a worker
- * can't craft nothing).
+ * The next selection after a craft-choice click, given the worker's craftable `products` and its current
+ * `selected` set. A plain click replaces the selection with the clicked product; a Ctrl/Cmd click toggles
+ * it in the multi-set. Both toggle edges normalize to the `[]` all-mode, so the sim drops the component:
+ * every product selected, and the last product toggled off.
  */
 export const nextCraftGoods = (
   products: readonly number[],
@@ -84,8 +80,7 @@ export const hitPortrait = (view: PanelView, x: number, y: number): number | nul
 };
 
 /** The good name under a canvas point in the stock grid, or null. Probes the same slot rects the rows
- *  draw into ({@link stockSlotRects}), then maps the slot index through the same visible-row split the
- *  draw applies, so a hovered slot names exactly the drawn good. */
+ *  draw into and applies the same visible-row split, so a hovered slot names exactly the drawn good. */
 const hitStockGood = (
   view: PanelView,
   x: number,
@@ -106,7 +101,7 @@ const hitStockGood = (
 };
 
 /** The hovered Ogólne stat bar's value ("300/1000" health, "75%" need), or null. Probes the whole
- *  label+gauge row (layout.bars, same order as model.bars) - more forgiving than the gauge alone. */
+ *  label+gauge row, which is more forgiving than the gauge alone. */
 const hitBarValue = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
   const i = view.layout.bars.findIndex((r) => contains(r, x, y));
@@ -122,8 +117,8 @@ const buildingHealthValue = (view: PanelView, x: number, y: number): string | nu
   return `${health.label}: ${health.hover}`;
 };
 
-/** The Praca control buttons' tooltips (assign-workplace / assign-home / remove-from-home) - the round
- *  glyph buttons carry no drawn label, so the tooltip is what names them. */
+/** The Praca control buttons' tooltips; the round glyph buttons carry no drawn label, so the tooltip is
+ *  what names them. */
 const assignButtonHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
   const { assignButton, homeButton, unassignButton } = view.layout;
@@ -133,8 +128,7 @@ const assignButtonHint = (view: PanelView, x: number, y: number): string | null 
   return null;
 };
 
-/** The alarm toggle's tooltip - it carries no drawn label either, and it names what the CLICK does, so
- *  the wording flips with the building's current mode. */
+/** The alarm toggle's tooltip names what the click will do, so the wording flips with the current mode. */
 const defenceToggleHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'building') return null;
   const toggle = view.layout.defenceToggle;
@@ -142,9 +136,8 @@ const defenceToggleHint = (view: PanelView, x: number, y: number): string | null
   return view.model.defenseEnabled ? messages().hud.lowerAlarmHint : messages().hud.raiseAlarmHint;
 };
 
-/** The hovered choice round button's good name ("Wszystko" for gather-all), or null - the icon buttons
- *  carry no drawn label. A craft button also spells out the click semantics (plain = pick one, Ctrl/Cmd
- *  = toggle), the only affordance for the modifier. Gather and craft blocks never coexist. */
+/** The hovered choice button's good name ("Wszystko" for gather-all), or null; the icon buttons carry no
+ *  drawn label. A craft button also spells out the click semantics, the only affordance for the modifier. */
 const gatherChoiceHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
   const gather = view.layout.gatherChoiceHits.find((hit) => contains(hit.rect, x, y))?.label;
@@ -153,9 +146,8 @@ const gatherChoiceHint = (view: PanelView, x: number, y: number): string | null 
   return craft !== undefined ? `${craft}\n${messages().hud.craftToggleHint}` : null;
 };
 
-/** The worn good under a hovered equipment socket ("Miód (50%)" - the percent is what's LEFT), or
- *  null - an iconless potion/amulet draws the generic pile, so the socket tooltip is what identifies
- *  the item. Empty sockets name nothing. */
+/** The worn good under a hovered equipment socket ("Miód (50%)"), whose percent is the condition left;
+ *  an iconless good draws the generic pile, so this tooltip is what identifies it. */
 const equipSocketHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
   for (let i = 0; i < view.layout.equipRows.length; i++) {
@@ -179,9 +171,8 @@ const holdsUsedItem = (view: PanelView, ref: EquipSlotRef): boolean => {
   return slot?.conditionPct != null && slot.conditionPct < FULL_CONDITION_PCT;
 };
 
-/** The equip action buttons' tooltips - the glyph faces carry no label; a swap/take-off button names
- *  the worn good on its second line and warns when the order would discard a part-used item (the sim's
- *  no-regeneration rule destroys it silently, so the warning is the player's only notice). */
+/** The equip action buttons' tooltips; the glyph faces carry no label. A swap or take-off button warns
+ *  when the order would discard a part-used item, which the sim destroys silently. */
 const equipActionHint = (view: PanelView, x: number, y: number): string | null => {
   const hit = hitEquipAction(view, x, y);
   if (hit === undefined) return null;
@@ -195,7 +186,7 @@ const equipActionHint = (view: PanelView, x: number, y: number): string | null =
 };
 
 /** The Upgrade button's cost card ("Upgrade requires:" then one "- Drewno ×5" line per required good),
- *  or null. Only building layouts carry the button, and only an upgradable building has a cost. */
+ *  or null when the building has no upgrade cost. */
 const upgradeButtonHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'building') return null;
   const hit = view.layout.buttons.find((b) => contains(b.rect, x, y));
@@ -214,9 +205,8 @@ const productionRowHint = (view: PanelView, x: number, y: number): string | null
 };
 
 /**
- * The value/name tooltip text for a canvas point inside a non-empty panel, or null when nothing there
- * carries one. The probes are layout-kind-exclusive, so at most one hits; the order is the resolution
- * precedence (a stock row's good name wins over its tab, a settler's live bar value over its buttons).
+ * The tooltip text for a canvas point inside a non-empty panel, or null. The probes are
+ * layout-kind-exclusive, so at most one hits; their order is the resolution precedence.
  */
 export const tooltipTextAt = (
   view: PanelView,

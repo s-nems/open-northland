@@ -1,8 +1,6 @@
 /**
- * The real animal tribe ids (`tribes.typeId` = `animaltypes.ini` tribetype, decoded IR) for every
- * species the app names in code - the single owner of these numbers, shared by the hunting balance
- * (`catalog/hunting.ts`) and the sandbox wildlife catalog (`game/sandbox/content/catalog/animals.ts`)
- * so the two can never drift onto different ids for one species.
+ * The real animal tribe ids (`tribes.typeId`, the decoded `animaltypes.ini` tribetype) for every species
+ * the app names in code, so no two readers can drift onto different ids for one species.
  */
 export const ANIMAL_TRIBE_BEARS = 8;
 export const ANIMAL_TRIBE_BOARS = 9;

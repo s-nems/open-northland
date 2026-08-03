@@ -1,49 +1,41 @@
 import type { MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
 
 /**
- * Pure roster state behind the lobby screen: seats,
- * colours and vacant modes over the slots `/maps-index` serves. No DOM - everything here is
- * headlessly unit-tested.
+ * Pure roster state behind the lobby screen: seats, colours and vacant modes over the slots
+ * `/maps-index` serves. No DOM, so it is unit-tested headlessly.
  */
 
-/** One map player slot as `/maps-index` serves it (the script sidecar's roster + lobby table). */
+/** One map player slot as `/maps-index` serves it. */
 export type MapPlayerSlot = MapsIndexPlayerSlot;
 
 /** What a free claimable seat does once the game starts: nothing, or the strategic AI plays it. */
 export type VacantMode = 'idle' | 'ai';
 
-/** The read-only observer pseudo-seat: watch and inspect the match without controlling a slot or
- *  issuing any command (`?player=observer`). */
+/** `?player=observer`: watch and inspect the match without controlling a slot or issuing a command. */
 export const OBSERVER_SEAT = 'observer';
 
-/** The overseer (god-mode) pseudo-seat: watch every seat and command all of them (`?player=overseer`)
- *  - the same whole-map view as the observer, but with live control, kept as a sandbox/debug session. */
+/** `?player=overseer`: the observer's whole-map view, but commanding every seat. */
 export const OVERSEER_SEAT = 'overseer';
 
-/** A claimed session: a roster slot id, or one of the spectator pseudo-seats
- *  ({@link OBSERVER_SEAT} read-only, {@link OVERSEER_SEAT} god-mode). */
 export type SeatChoice = number | typeof OBSERVER_SEAT | typeof OVERSEER_SEAT;
 
-/** A slot's authored vacant default: an `ai` slot auto-plays (when the lobby allows AI at all),
- *  a `human` one idles. */
+/** An `ai` slot auto-plays when the lobby allows AI at all; a `human` one idles. */
 export function authoredVacantMode(slot: MapPlayerSlot): VacantMode {
   return slot.type === 'ai' && slot.aiAllowed ? 'ai' : 'idle';
 }
 
-/** Whether the roster offers any seat a person could take - when it does not (an all-AI mod map),
- *  the menu must not gate Start on a seat that cannot exist. */
+/** False for an all-AI roster, where the menu must not gate Start on a seat that cannot exist. */
 export function hasClaimableSeat(players: readonly MapPlayerSlot[]): boolean {
   return players.some((p) => p.claimable && !p.hidden);
 }
 
 /** The person's choices over one map's roster. */
 export interface RosterState {
-  /** The claimed seat (a slot id or the observer pseudo-seat), or null while none is taken
-   *  (Start stays gated). */
+  /** Null while no seat is taken, which keeps Start gated. */
   readonly seat: SeatChoice | null;
-  /** Current colour per slot id (initialised from the map's authored colours). */
+  /** Current colour per slot id, initialised from the map's authored colours. */
   readonly colors: ReadonlyMap<number, number>;
-  /** Per-slot vacant mode, initialised from the authored type ({@link authoredVacantMode}). */
+  /** Per-slot vacant mode, initialised from the authored type. */
   readonly vacantModes: ReadonlyMap<number, VacantMode>;
 }
 
@@ -60,24 +52,21 @@ export function claimSeat(state: RosterState, slot: SeatChoice): RosterState {
   return { ...state, seat: slot };
 }
 
-/** Flips one unclaimed claimable slot between Idle and AI. */
 export function toggleVacantMode(state: RosterState, slot: number): RosterState {
   const vacantModes = new Map(state.vacantModes);
   vacantModes.set(slot, vacantModes.get(slot) === 'ai' ? 'idle' : 'ai');
   return { ...state, vacantModes };
 }
 
-/** Whether any slot other than `slot` currently wears `colorId`. Real maps author duplicate
- *  colours freely (tutorial rosters are all-blue), so "worn" is always relative to the asker. */
+/** Real maps author duplicate colours freely, so "worn" is always relative to the asking slot. */
 export function wornByAnother(state: RosterState, slot: number, colorId: number): boolean {
   for (const [other, c] of state.colors) if (other !== slot && c === colorId) return true;
   return false;
 }
 
 /**
- * Recolours one slot. The person's picks are unique: a colour another slot wears is rejected
- * (null); re-picking the slot's own colour is a no-op accepted for idempotent UI (authored
- * duplicates stay as the map shipped them - they just can't be newly created).
+ * A colour another slot already wears is rejected with `null`; re-picking the slot's own colour is
+ * accepted, so authored duplicates survive but new ones cannot be created.
  */
 export function setSlotColor(state: RosterState, slot: number, colorId: number): RosterState | null {
   if (state.colors.get(slot) !== colorId && wornByAnother(state, slot, colorId)) return null;
@@ -86,10 +75,7 @@ export function setSlotColor(state: RosterState, slot: number, colorId: number):
   return { ...state, colors };
 }
 
-/**
- * The vacant seats the strategic AI will play: claimable, AI-eligible, listed slots the person left
- * free whose effective mode (the toggle's, else the authored default) is `ai`.
- */
+/** A slot's effective mode is the toggle's when set, else the authored default. */
 export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): number[] {
   return players
     .filter(
@@ -104,12 +90,9 @@ export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): 
 }
 
 /**
- * The start-URL params encoding the person's roster choices: `player=<seat>` (a slot id, or
- * `observer`/`overseer` for a spectator session),
- * `colors=<slot>:<colorId>,…` (only slots recoloured away from the map's authored colour) and
- * `ai=<slot>,…` - the full {@link aiSeats} list (not just deviations: the `?map=` entry consumes it
- * directly via `aiSeatsParam`, with no roster knowledge of its own). Empty until a seat is
- * claimed - the menu gates Start on it.
+ * The start-URL params for the roster choices. `colors=<slot>:<colorId>,…` carries only slots
+ * recoloured away from the authored colour, while `ai=<slot>,…` carries the full seat list, because
+ * the `?map=` entry consumes it with no roster knowledge of its own. Empty until a seat is claimed.
  */
 export function rosterStartParams(
   state: RosterState,

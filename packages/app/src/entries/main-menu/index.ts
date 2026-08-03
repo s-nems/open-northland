@@ -13,8 +13,7 @@ import { adoptStoredSettings, initialSettingsMemory } from './settings-state.js'
 
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
-/** The background-stack grade layers above the scene, bottom to top; the scene layer itself is
- *  built separately as the backdrop host. */
+/** Grade layers above the scene, bottom to top; the scene layer itself is built as the backdrop host. */
 const OVERLAY_LAYERS = ['tint', 'shade', 'aurora-green', 'aurora-blue'] as const;
 
 function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLButtonElement {
@@ -35,8 +34,7 @@ function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLB
     button.append(badge);
   } else if (item.kind === 'exit') {
     button.classList.add('is-exit');
-    // The design quits without confirmation. In the desktop shell this closes the window;
-    // in a plain browser tab close() is a no-op and the button simply does nothing.
+    // Quits without confirmation. In a plain browser tab `close()` is a no-op.
     button.addEventListener('click', () => window.close());
   } else {
     button.addEventListener('click', () => open(item.id));
@@ -86,14 +84,13 @@ function placeholderScreen(screen: SubScreen, open: (screen: MenuScreen) => void
 }
 
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
-  // Before anything reads the locale or the URL: stored settings fill the absent carried params,
-  // explicit ones win (settings-state.ts).
+  // Runs before anything reads the locale or the URL.
   adoptStoredSettings(params);
   const root = document.createElement('main');
   root.className = 'main-menu';
   root.style.setProperty('--menu-scene-art', `url("${BRAND_BACKDROP}")`);
-  // The scene layer hosts the static art and, over it, the rotating captured stills (transparent
-  // until the first one loads). The menu draws no GL, so the shared canvas stays hidden.
+  // The scene layer hosts the static art and the rotating stills above it. The menu draws no GL, so
+  // the shared canvas stays hidden.
   const sceneLayer = document.createElement('div');
   sceneLayer.className = 'main-menu__scene';
   canvas.hidden = true;
@@ -110,8 +107,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   void startBackdropRotation(sceneLayer);
 
   let screen: MenuScreen = 'main';
-  // Screen state that outlives the screens themselves: the map-select filter/query/selection, the
-  // map the lobby negotiates, and each map's roster choices (a round trip keeps the seats).
+  // Screen state that outlives the screens themselves, so a round trip keeps the filter and seats.
   const mapSelectMemory = initialMapSelectMemory();
   const settingsMemory = initialSettingsMemory();
   const rosters = new Map<string, RosterState>();
@@ -135,17 +131,16 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     content.classList.remove('is-entering');
     void content.offsetWidth; // reflow so the crossfade animation restarts
     content.classList.add('is-entering');
-    // replaceChildren drops focus to <body>; hand it to the back link so Esc/Enter keep working
-    // without tabbing from the document top. The main screen stays unfocused until an arrow key.
+    // `replaceChildren` drops focus to <body>; the back link takes it so Esc and Enter keep working.
+    // The main screen stays unfocused until an arrow key.
     if (next !== 'main') content.querySelector<HTMLButtonElement>('.main-menu__back')?.focus();
   };
   show('main');
 
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
-      // Esc inside a non-empty text field is the field's own clear (native for type=search);
-      // only an empty field lets it bubble up into back-navigation. Other input kinds (a range
-      // slider always reports a value) never swallow it.
+      // Esc inside a non-empty text field is the field's own clear; only an empty field lets it
+      // bubble up into back-navigation.
       const field = event.target;
       if (
         field instanceof HTMLInputElement &&

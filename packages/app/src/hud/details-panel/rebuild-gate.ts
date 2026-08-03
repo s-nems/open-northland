@@ -1,11 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { UnitPanelModel } from './model/index.js';
 
-/**
- * Minimum wall-clock gap between value-driven rebuilds. Live values (production %, need bars, status
- * countdowns) change nearly every sim tick; rebuilding the retained tree 20×/s is pure churn, and 4 Hz
- * is indistinguishable on a ~100-px bar. Selection changes rebuild immediately.
- */
+/** Minimum wall-clock gap in ms between value-driven rebuilds; selection changes rebuild immediately. */
 const VALUE_REBUILD_MIN_MS = 250;
 
 export interface PanelRebuild {
@@ -15,15 +11,14 @@ export interface PanelRebuild {
 }
 
 export interface PanelRebuildGate {
-  /** The rebuild this snapshot calls for, or null to keep the current bake. `force` (the selection
-   *  changed under the gate) re-derives the model and always rebuilds structurally. */
+  /** The rebuild this snapshot calls for, or null to keep the current bake; `force` re-derives the model
+   *  and always rebuilds structurally. */
   decide(
     snapshot: WorldSnapshot,
     screen: { readonly width: number; readonly height: number },
     force: boolean,
   ): PanelRebuild | null;
-  /** Report a rebuild the gate did not decide (a hover or stock-tab press re-bakes the current model):
-   *  the throttle limits rebuilds, so those restart its window too. */
+  /** Report a rebuild the gate did not decide, which restarts the throttle window. */
   rebuilt(): void;
 }
 
@@ -47,14 +42,11 @@ const structureKeyOf = (model: UnitPanelModel): string => {
   }
 };
 
-/**
- * When the details panel re-derives its model and re-bakes its texture. `decide` runs every RAF frame
- * (~3 per 20 Hz sim tick) while the O(entities) model build and the bake must not.
- */
+/** Gates the panel's model re-derive and re-bake: `decide` runs every frame while the O(entities) model
+ *  build and the bake must not. */
 export function createPanelRebuildGate(deps: PanelRebuildGateDeps): PanelRebuildGate {
-  /** Keyed on snapshot IDENTITY, not `snapshot.tick`: the sim memoizes `snapshot()` on tick + world
-   *  mutation version, so a same-tick mutation hands out a new object under an unchanged tick, and while
-   *  paused the tick never advances to heal a stale model. */
+  /** Keyed on snapshot identity, not `snapshot.tick`: a same-tick world mutation hands out a new snapshot
+   *  object under an unchanged tick, and a paused tick never advances to heal a stale model. */
   let derived: { snapshot: WorldSnapshot; model: UnitPanelModel; json: string } | null = null;
   let lastModelKey = '';
   let lastStructureKey = '';

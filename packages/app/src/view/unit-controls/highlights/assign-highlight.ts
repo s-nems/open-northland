@@ -14,17 +14,10 @@ import {
 } from '../../../game/snapshot.js';
 
 /**
- * The "przydziel miejsce pracy" (assign a workplace) highlight - the pure snapshot projection behind the
- * button + the green/red building tint. Unlike the right-click (which best-fits a trade), this button
- * places the settler's CURRENT profession: it greens exactly the buildings that offer that trade with a
- * free slot and binds the settler to it, never re-trading them. A miller greens only mills; a coin-maker
- * only mints; a gatherer only the warehouses / workshops that carry a gatherer slot.
- *
- * A building offers the current trade when one of its worker slots is the same trade canonically
- * ({@link canonicalJobType} - a settler's picker id 14 and a building's rebased slot id 1014 are both
- * coin-maker) and that slot still has room (`held < count` at this building). The sim still enforces its
- * own XP gate on the `assignWorker` command; here green = "an own building, finished or still going up,
- * with my trade's free slot" - the candidacy + capacity half the player reads at a glance.
+ * The pure snapshot projection behind the assign-a-workplace button and its green or red building tint.
+ * The button places the settler's current profession and never re-trades them, so a building greens when
+ * one worker slot matches that trade canonically and still has room. The sim keeps enforcing its own XP
+ * gate on the `assignWorker` command.
  */
 
 /** The slice of a building type this projection needs: its worker slots. */
@@ -50,13 +43,10 @@ function buildStaffing(snapshot: WorldSnapshot): Staffing {
 }
 
 /**
- * The candidacy gate - the worker slots of a building this settler could be assigned to at all, or null
- * when it is not a candidate: another owner's / tribe's building, or a building that employs nobody (a
- * home). A building still under construction IS a candidate: its slots take staff from the moment the
- * foundation is placed, and an upgrade offers the tier it currently is. The single home of "which
- * buildings the assign gesture considers", shared by the highlight (a non-candidate is skipped, not
- * tinted red) and the click resolver (a non-candidate cancels) so the green wash and the bind can never
- * disagree about candidacy.
+ * The worker slots of a building this settler could be assigned to at all, or null when it is not a
+ * candidate: another owner's or tribe's building, or one that employs nobody. A building under
+ * construction is a candidate, since its slots take staff from the moment the foundation is placed. The
+ * one candidacy rule the highlight and the click resolver share.
  */
 function candidateSlots(
   building: SnapshotEntity,
@@ -72,10 +62,9 @@ function candidateSlots(
 }
 
 /**
- * The building's slot job that IS the settler's current trade with a free seat, or null - the exact job
- * the button would bind. Matches by canonical trade ({@link canonicalJobType}) so a picker-assigned trade
- * (raw id) lines up with the building's rebased slot id, and checks live capacity at this building. This
- * is the whole "assign my current profession here" rule: no fallback to another trade.
+ * The building's slot job matching the settler's current trade with a free seat, or null. Matched by
+ * canonical trade, so a picker-assigned raw id lines up with the building's rebased slot id. There is no
+ * fallback to another trade.
  */
 export function currentTradeSlotAt(
   currentJob: number | undefined,
@@ -92,10 +81,8 @@ export function currentTradeSlotAt(
 }
 
 /**
- * The assignment-highlight verdicts for a selected settler over every own building: green when the
- * building offers the settler's current trade with a free slot, red otherwise. Buildings of another
- * owner/tribe are skipped (never candidates). Pure over the snapshot + the building-type table, so it is
- * unit-testable and never touches sim state.
+ * The highlight verdicts for a selected settler over every own building: green when the building offers
+ * the settler's current trade with a free slot, red otherwise. Non-candidates are skipped, not tinted.
  */
 export function computeAssignHighlight(
   snapshot: WorldSnapshot,
@@ -117,10 +104,8 @@ export function computeAssignHighlight(
 }
 
 /**
- * The job the button would bind the settler to at ONE building - its current trade's free slot, or null
- * when the building doesn't offer that trade (a red building). The click-resolution twin of
- * {@link computeAssignHighlight}: a green building returns its matching slot job, a red one returns null
- * (the click cancels).
+ * The job the button would bind the settler to at one building, or null when that building does not
+ * offer the trade. The click-resolution twin of the highlight, so a red building cancels the click.
  */
 export function assignableJobForBuilding(
   snapshot: WorldSnapshot,

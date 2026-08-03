@@ -12,13 +12,10 @@ import {
 } from './settler-equipment.js';
 import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } from './shared.js';
 
-/** The settler selection model - the `layoutSettler` input narrowed off the panel model union. */
 type SettlerModel = Extract<UnitPanelModel, { kind: 'settler' }>;
 
-/**
- * The settler panel's portrait box (Ogólne, left) - a square, smaller than the building's 183 px preview
- * so the name + stat bars sit beside it in the right column (measured against the original's human window).
- */
+/** The settler portrait box, a square smaller than the building's 183 px preview so the name and stat
+ *  bars fit beside it (measured against the original's human window). */
 const SETTLER_PREVIEW = 96;
 /** The profession (name) line at the top of the Ogólne right column. */
 const SETTLER_NAME_H = 15;
@@ -28,12 +25,11 @@ const SETTLER_META_H = 14;
 const BAR_ROW_H = 13;
 /** Text rows the fixed Praca body reserves. */
 const WORK_ROWS = 2;
-/** Diameter of the small round "przydziel miejsce pracy" button - left-aligned under the gather row, with
- *  its description to its right. */
+/** Diameter of the small round "przydziel miejsce pracy" button. */
 const ASSIGN_ICON = 20;
 /** Gap between the Praca text rows and the assign row when there are no gather buttons above it. */
 const ASSIGN_BUTTON_GAP = 3;
-/** Diameter of a round gather-choice button (a good's icon in a wooden well); small, left-aligned. */
+/** Diameter of a round gather-choice button (a good's icon in a wooden well). */
 const GATHER_ICON = 20;
 /** Gap between adjacent round gather buttons (both axes). */
 const GATHER_ICON_GAP = 4;
@@ -51,8 +47,8 @@ export interface GatherChoiceHit {
   readonly rect: Rect;
 }
 
-/** A craft operator's product toggle - the multi-select twin of {@link GatherChoiceHit} (same round
- *  button grid; a settler shows one block or the other, never both). */
+/** A craft operator's product toggle: the multi-select twin of {@link GatherChoiceHit}, sharing the same
+ *  round-button grid, and a settler shows one block or the other, never both. */
 export interface CraftChoiceHit {
   readonly goodType: number;
   readonly label: string;
@@ -61,11 +57,7 @@ export interface CraftChoiceHit {
   readonly rect: Rect;
 }
 
-/**
- * The settler view: the original's stacked human-window sections - Ogólne (portrait + name + meta + stat
- * bars), Praca (workplace + product), Doświadczenie (highest specialization), Ekwipunek (labeled slot
- * rows) - laid out like the building's section stack.
- */
+/** The original's stacked human-window sections: Ogólne, Praca, Doświadczenie and Ekwipunek. */
 export interface SettlerLayout {
   readonly kind: 'settler';
   readonly panel: Rect;
@@ -80,30 +72,26 @@ export interface SettlerLayout {
   readonly work: SectionRect;
   /** The Praca body's two text rows (workplace, product). */
   readonly workRows: readonly Rect[];
-  /** The "przydziel miejsce pracy" hit target - the round button disc only (its `enabled` tracks
-   *  `canAssignWorkplace`), so hover/click/tooltip stay on the control, not the label. Equals {@link assignIcon}. */
+  /** Equals {@link assignIcon}: only the round disc is clickable, so pointing at the label does nothing. */
   readonly assignButton: ButtonHit;
-  /** The small round assign button, left-aligned under the gather row (the drawn control). */
   readonly assignIcon: Rect;
-  /** The assign row's description column, right of the round button ("Przydziel miejsce pracy"). */
+  /** The assign row's description column, right of the round button. */
   readonly assignLabel: Rect;
-  /** The "przypisz dom" hit target under the assign row - same shape as {@link assignButton}. */
+  /** Equals {@link homeIcon}. */
   readonly homeButton: ButtonHit;
-  /** The small round assign-home button (the drawn control). Equals {@link homeButton}'s rect. */
   readonly homeIcon: Rect;
-  /** The assign-home row's description column ("Przypisz dom"). */
+  /** The assign-home row's description column. */
   readonly homeLabel: Rect;
-  /** The "usuń z domu" hit target under the assign-home row - same shape as {@link homeButton}. */
+  /** Equals {@link unassignIcon}. */
   readonly unassignButton: ButtonHit;
-  /** The small round remove-from-home button (the drawn control). Equals {@link unassignButton}'s rect. */
   readonly unassignIcon: Rect;
-  /** The remove-from-home row's description column ("Usuń z domu"). */
+  /** The remove-from-home row's description column. */
   readonly unassignLabel: Rect;
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
-  /** The craft product toggles (exclusive with {@link gatherChoiceHits} - same grid slot). */
+  /** The craft product toggles, exclusive with {@link gatherChoiceHits}: they share one grid slot. */
   readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
-  /** The Doświadczenie body's text rows - one per `model.experience` entry (empty when untrained). */
+  /** One row per `model.experience` entry; empty when untrained. */
   readonly expRows: readonly Rect[];
   readonly equipment: SectionRect;
   /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
@@ -120,8 +108,8 @@ export function layoutSettler(
   const w = Math.round(PANEL_W * s);
   const gap = Math.round(SECTION_GAP * s);
 
-  // Stacked sections, bottom-anchored like the building panel. Each body reserves a fixed height (the
-  // original's human window doesn't fit-to-content); the equipment body scales with its row count.
+  // Stacked sections, bottom-anchored like the building panel. Each body reserves a fixed height, since
+  // the original's human window does not fit to content; the equipment body scales with its row count.
   const pad = Math.round(WIN_PAD * s);
   const rowH = Math.round(ROW_H * s);
   const barRowH = Math.round(BAR_ROW_H * s);
@@ -133,25 +121,21 @@ export function layoutSettler(
   const gatherIconGap = Math.round(GATHER_ICON_GAP * s);
   const gatherRowGap = Math.round(GATHER_ROW_GAP * s);
   const gatherAssignSep = Math.round(GATHER_ASSIGN_SEP * s);
-  // Round gather buttons wrap left-to-right across the section body; the body width is padding-inset from
-  // the panel width the same for every section, so probe it here (before the section rects exist) to size
-  // the block's height.
+  // Every section's body is inset from the panel width the same way, so probe it before the section
+  // rects exist to size the wrapped round-button block.
   const bodyW = sectionAt(0, 0, w, 0, s).body.w;
   const gatherPerRow = Math.max(1, Math.floor((bodyW + gatherIconGap) / (gatherIcon + gatherIconGap)));
-  // Gather and craft choices never coexist (a flag gatherer vs a workplace-bound crafter), so the one
-  // non-empty list sizes the shared round-button block.
+  // Gather and craft choices never coexist, so the one non-empty list sizes the shared button block.
   const choiceCount = model.work.gatherChoices.length + model.work.craftChoices.length;
   const gatherRows = choiceCount > 0 ? Math.ceil(choiceCount / gatherPerRow) : 0;
   const hasGather = gatherRows > 0;
   const gatherBlockH = hasGather ? gatherRows * gatherIcon + (gatherRows - 1) * gatherIconGap : 0;
   const gatherTopGap = hasGather ? gatherRowGap : 0;
-  // Larger separation before the assign row when gather buttons sit above it; the small default otherwise.
   const preAssignGap = hasGather ? gatherAssignSep : assignRowGap;
   // Three stacked control rows close the Praca body: assign-workplace, assign-home, remove-from-home.
   const workBodyH =
     WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 3 * assignIconSize + 2 * assignRowGap;
-  // The Doświadczenie body scales with the settler's trained specializations plus the dimmed
-  // upcoming-unlock rows under them (empty when untrained and nothing is in reach).
+  // The Doświadczenie body holds the trained specializations plus the dimmed upcoming-unlock rows.
   const expRowCount = model.experience.length + model.upcomingUnlocks.length;
   const expBodyH = expRowCount * rowH;
   const { slotsPerLine } = equipSlotMetrics(bodyW, s);
@@ -170,7 +154,6 @@ export function layoutSettler(
     return sec;
   };
 
-  // Ogólne: the portrait box (left) + the name / meta / stat-bar column (right).
   const general = next(generalBodyH);
   const preview: Rect = {
     x: general.body.x,
@@ -197,8 +180,7 @@ export function layoutSettler(
     w: work.body.w,
     h: rowH,
   }));
-  // Round choice buttons hugging the left edge, wrapping across the body width (gather or craft -
-  // the same grid, whichever list the model filled).
+  // Gather and craft choices share this grid, whichever list the model filled.
   const gatherTop = work.body.y + WORK_ROWS * rowH + gatherTopGap;
   const choiceRect = (i: number): Rect => ({
     x: work.body.x + (i % gatherPerRow) * (gatherIcon + gatherIconGap),
@@ -216,9 +198,6 @@ export function layoutSettler(
     selected: model.work.selectedCraftGoods.includes(choice.goodType),
     rect: choiceRect(i),
   }));
-  // The assign row: the small round button on the left (aligned under the gather buttons), its description
-  // to the right. Only the round button is the hit target - hover/click/tooltip stay on the control, so
-  // pointing at the label text doesn't light the button.
   const assignTop = (hasGather ? gatherTop + gatherBlockH : work.body.y + WORK_ROWS * rowH) + preAssignGap;
   const assignIcon: Rect = {
     x: work.body.x,
@@ -237,12 +216,10 @@ export function layoutSettler(
     enabled: model.canAssignWorkplace,
     rect: assignIcon,
   };
-  // The assign-home row, directly below - the residential twin (same geometry, one row down).
   const homeTop = assignTop + assignIconSize + assignRowGap;
   const homeIcon: Rect = { x: work.body.x, y: homeTop, w: assignIconSize, h: assignIconSize };
   const homeLabel: Rect = { x: assignLabel.x, y: homeTop, w: assignLabel.w, h: assignIconSize };
   const homeButton: ButtonHit = { action: 'assign-home', enabled: model.canAssignHome, rect: homeIcon };
-  // The remove-from-home row below it - the inverse control, one more row down.
   const unassignTop = homeTop + assignIconSize + assignRowGap;
   const unassignIcon: Rect = { x: work.body.x, y: unassignTop, w: assignIconSize, h: assignIconSize };
   const unassignLabel: Rect = { x: assignLabel.x, y: unassignTop, w: assignLabel.w, h: assignIconSize };
@@ -260,8 +237,6 @@ export function layoutSettler(
     h: rowH,
   }));
 
-  // Ekwipunek: one labeled row per equipment slot group - a label column, then the slot cells with
-  // their action buttons (the cell anatomy and wrap rule live in ./settler-equipment.ts).
   const equipment = next(equipBodyH);
   const { rects: equipRows, hits: equipActionHits } = layoutEquipRows(model.equipmentRows, equipment.body, s);
 

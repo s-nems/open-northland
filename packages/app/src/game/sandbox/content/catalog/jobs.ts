@@ -40,25 +40,21 @@ export interface SandboxJob {
   readonly allowedAtomics?: number[];
 }
 
-/** The hunter's grant pair (jobtypes.ini 15 `allowatomic 33/81`); the building hunter slot shares it
- *  by identity (rebase-exempt, see `rebaseSlotJob`). */
+/** Extracted `jobtypes.ini` 15 `allowatomic 33/81`; the rebase-exempt hunter slot shares it by identity. */
 const HUNTER_JOB_ATOMICS = [HARVEST_CADAVER_ATOMIC, ATTACK_ATOMIC];
 
-/** Build every functional, picker and worker-slot job the sandbox content references. */
 export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, SandboxJob> {
   const jobs = new Map<number, SandboxJob>();
   for (const job of [
     { typeId: JOB_IDLE, id: 'idle', name: professionLabel('idle') },
-    // The life-stage classes + the two generic adults (`jobtypes.ini` 1..6): the family mechanics'
-    // vocabulary - sex is stamped from these slugs at spawn and a girl matures into `woman`.
+    // Sex is stamped from these slugs at spawn, and a girl matures into `woman`.
     { typeId: JOB_BABY_FEMALE, id: 'baby_female' },
     { typeId: JOB_BABY_MALE, id: 'baby_male' },
     { typeId: JOB_CHILD_FEMALE, id: 'child_female' },
     { typeId: JOB_CHILD_MALE, id: 'child_male' },
     { typeId: JOB_WOMAN, id: 'woman' },
     { typeId: JOB_CIVILIST, id: 'civilist' },
-    // One collector trade allowed on every gathered good's harvest atomic (the original's single
-    // collector fells, mines, and picks) - see {@link GATHERERS}.
+    // One trade on every harvest atomic, because the original's single collector fells, mines and picks.
     {
       typeId: JOB_COLLECTOR,
       id: 'collector',
@@ -66,16 +62,13 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       allowedAtomics: GATHERERS.map((gatherer) => gatherer.atomic),
     },
     { typeId: JOB_CARRIER, id: 'carrier', name: professionLabel('carrier') },
-    // The scout's one allowed atomic is the signpost-erecting build-guide swing (jobtypes.ini 27
-    // `allowatomic 43`) - the placeSignpost flow's animation gate.
+    // Extracted `jobtypes.ini` 27 `allowatomic 43`, the signpost-erecting swing.
     {
       typeId: JOB_SCOUT,
       id: 'scout',
       name: professionLabel('scout'),
       allowedAtomics: [BUILD_GUIDE_ATOMIC],
     },
-    // The hunter's real grant pair (jobtypes.ini 15): the attack swing that fells game and the
-    // carcass-harvest pluck that works what the kill leaves.
     {
       typeId: JOB_HUNTER,
       id: 'hunter',
@@ -108,11 +101,9 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
       jobs.set(profession.jobType, { typeId: profession.jobType, id: profession.key });
     }
   }
-  // The collector's harvest atomics - every gathered good's harvest atomic (fell/mine/pick). Shared by
-  // the gatherer worker-slot trades below so a settler hand-assigned to a building's collector/fisher
-  // slot can actually harvest and bank into the building (the building is its flag). The hunter slot
-  // needs nothing here - it is rebase-exempt, so the picker trade above IS the slot job; reusing the
-  // collector's set for the fisher stays a named approximation (the sandbox has no fish resources).
+  // Shared with the gatherer worker-slot trades below, so a settler assigned to a collector or fisher
+  // slot can harvest and bank into its building. Reusing this set for the fisher is a named
+  // approximation: the sandbox has no fish resources.
   const gathererAtomics = GATHERERS.map((gatherer) => gatherer.atomic);
   for (const slots of Object.values(BUILDING_WORKER_SLOTS)) {
     for (const worker of slots) {
@@ -123,8 +114,8 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
           id: `worker_${jobType}`,
           name: workerSlotName(worker.jobType),
         };
-        // A gatherer slot (original collector 8 / fisher 22) is a real harvest trade: it gathers a
-        // raw good on the map and delivers into its building, so it needs the harvest atomics.
+        // A gatherer slot is a real harvest trade: it works a raw good on the map and delivers into its
+        // building, so it needs the harvest atomics.
         if (EXTRACTED_GATHERER_TRADES.has(worker.jobType)) {
           jobs.set(jobType, { ...job, allowedAtomics: gathererAtomics });
         } else jobs.set(jobType, job);

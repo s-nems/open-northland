@@ -16,14 +16,12 @@ import type { UnlockProgressRowModel } from './settler-unlocks.js';
 import type { SettlerWorkModel } from './settler-work.js';
 
 /**
- * The settler's personal-state half of the details-panel model: the Ogólne satisfaction bars, the
- * Doświadczenie datum, the Ekwipunek rows, and the live status caption - all with no Pixi/DOM in sight
- * (the Praca work menus live in `settler-work.ts`). The orchestrator in `index.ts` assembles a
- * {@link SettlerPanelModel} from these.
+ * The settler's personal-state half of the details-panel model: satisfaction bars, experience rows,
+ * equipment rows and the live status caption.
  *
- * Label language note: the sim has no matching original string for its own states (stance names, status
- * lines, need names), so those carry pinned Polish fallbacks here; everything the original does provide
- * (section titles, button labels) is looked up from the decoded string tables at render time.
+ * The original has no string for the sim's own states (stance names, status lines, need names), so those
+ * carry pinned Polish labels here; everything it does provide is looked up from the decoded string
+ * tables at render time.
  */
 
 /** The four military stances (`MILITARY_MODE`), with Polish labels for the live "Postawa" line. */
@@ -39,55 +37,45 @@ export function stanceLabel(mode: number | undefined): string {
 export interface SettlerPanelModel {
   readonly kind: 'settler';
   readonly entityId: number;
-  /** The character's personal name - faction- and sex-appropriate, stable per entity. Drawn as the
-   *  section headline in place of the generic "Ogólne" title. See {@link characterName}. */
+  /** The character's personal name, drawn as the section headline in place of the "Ogólne" title. */
   readonly name: string;
   /** The character's profession (its job label) - the name line under the headline. */
   readonly profession: string;
-  /** Whether the "przydziel miejsce pracy" button is active - true for a settler with a real trade (an
-   *  idle/jobless settler has no trade to place, so the button is greyed until a profession is chosen). */
+  /** False for an idle or jobless settler, which has no trade to place. */
   readonly canAssignWorkplace: boolean;
-  /** Whether the "przypisz dom" button is active - any adult settler may be housed (the sim's
-   *  `assignHouse` gates the rest); greyed for a growing child, whose family is housed via its parents. */
+  /** Any adult may be housed; false for a growing child, whose family is housed through its parents. */
   readonly canAssignHome: boolean;
-  /** Whether the "usuń z domu" button is active - an adult who currently has a home (a `Residence`), so
-   *  its family can move out and free the slot; greyed otherwise (homeless, or a child moved by parents).
-   *  The sim's `unassignHouse` gates the rest. */
+  /** True for an adult that currently has a `Residence` to move its family out of. */
   readonly canUnassignHome: boolean;
   /** Owner/tribe meta line under the name, with the military stance appended for a soldier. */
   readonly meta: string;
-  /** A short live-state caption drawn in the portrait box - an honest stand-in for the original's
-   *  animated "what it's doing" preview (the live settler bob render is a deferred follow-up). */
+  /** A short live-state caption drawn in the portrait box, standing in for the original's animated
+   *  "what it's doing" preview. */
   readonly statusCaption: string;
   /** The Ogólne stat bars: Zdrowie (only for a unit with Health) then Głód/Sen/Towarzystwo/Religia,
-   *  all as satisfaction levels - see {@link satisfactionBars}. */
+   *  all as satisfaction levels. */
   readonly bars: readonly PanelBar[];
   readonly work: SettlerWorkModel;
-  /** The Doświadczenie section: every specialization the settler has trained, most-trained first.
-   *  Empty when it has none. See {@link experienceRows}. */
+  /** Every specialization the settler has trained, most-trained first; empty when it has none. */
   readonly experience: readonly ExperienceRowModel[];
-  /** Progress toward the professions this settler's current work unlocks next - drawn dimmed under
-   *  the trained rows; empty while progression is off. See {@link unlockProgressRows}. */
+  /** Progress toward the professions this settler's current work unlocks next, drawn dimmed under the
+   *  trained rows; empty while progression is off. */
   readonly upcomingUnlocks: readonly UnlockProgressRowModel[];
-  /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. See {@link equipmentRows}. */
+  /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. */
   readonly equipmentRows: readonly EquipRow[];
 }
 
-/** A need bar's model: its satisfaction level as the gauge percent, the same percent as the hover value. */
 function needBar(label: string, deficit: number | undefined): PanelBar {
   const level = 100 - pct(deficit);
   return { label, pct: level, hover: `${level}%` };
 }
 
 /**
- * The Ogólne stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier); the original's
- * window shows the satisfaction level (full = content), so each need bar is `100 − need`. Health leads
- * ({@link healthBar}, only for a unit carrying a pool). A cared-for BABY (an `Age` carrier in a baby
- * stage) hides the four need bars - its needs never accumulate (the NeedsSystem skips it whole), so
- * only Health shows (combat can still hurt it). The labels are pinned, deliberately diverging from
- * the decoded `humanwindow` 11–15 strings (Zdrowie/Energia/Wytrzymałość/Motywacja Społeczna/Religia):
- * each bar is named after the need it actually shows - Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment
- * - because the original's stat names don't map 1:1 to the sim's four needs and read poorly (user rule).
+ * The Ogólne stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier) while the
+ * original's window shows the satisfaction level, so each need bar is `100 - need`. A cared-for baby
+ * hides the four need bars because its needs never accumulate. The labels deliberately diverge from the
+ * decoded `humanwindow` 11-15 strings: each bar is named after the need it shows (Głód←hunger,
+ * Sen←fatigue, Towarzystwo←enjoyment), which the original's stat names do not map onto 1:1.
  */
 export function satisfactionBars(ent: SnapshotEntity): PanelBar[] {
   const hud = messages().hud;
@@ -104,9 +92,8 @@ export function satisfactionBars(ent: SnapshotEntity): PanelBar[] {
   return bars;
 }
 
-/** One Doświadczenie row: a specialization's label, its completed-work repeats (the player-facing
- *  experience number - "Drewno 5" means five units gathered), and its bonus percent - `null` for a
- *  specialization whose experience buys nothing (the carrier; design rule, user-specified). */
+/** One Doświadczenie row: a specialization's label, its completed-work repeats ("Drewno 5" means five
+ *  units gathered), and its bonus percent, null when that experience buys no bonus. */
 export interface ExperienceRowModel {
   readonly label: string;
   readonly repeats: number;
@@ -123,10 +110,8 @@ const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud'
   [systems.FIGHT_EXPERIENCE_TYPE.CATAPULT, 'catapult'],
 ]);
 
-/** A specialization row's label: a good-specific track by its hand-translated `hud.trackLabels` entry
- *  (keyed by the track's content id slug) falling back to "job - good"; a general track by its owning
- *  job ("Piekarz"); a track-less fight bucket by its weapon class ("Walka - Łuk"); the scout bucket by
- *  the scout job name. Shared with the unlock forecast (`settler-unlocks.ts`). */
+/** A specialization row's label; a good-specific track uses its `hud.trackLabels` entry, keyed by the
+ *  track's content id slug, and falls back to "job - good". */
 export function experienceLabel(
   ctx: UnitPanelModelContext,
   spec: number,
@@ -146,11 +131,9 @@ export function experienceLabel(
 }
 
 /**
- * A specialization row's shown percent - always the REAL effect of that experience, never a raw curve
- * read: a fight bucket shows its damage scale (`systems.fightDamageBonus`, deeper mastery + 50% cap);
- * the scout bucket shows its vision gain (`scoutVisionBonusNodes` over the scout's base radius); a
- * carrier track shows none (its XP is display-only, mirroring the sim's carrier exclusions); every
- * other work track shows the shared curve, which IS its output/speed effect.
+ * A specialization row's percent is the actual effect of that experience, never a raw curve read: a
+ * fight bucket shows its damage scale, the scout bucket its vision gain over the scout's base radius,
+ * a carrier track none, and every other work track the shared output/speed curve.
  */
 function experienceBonusPct(
   ctx: UnitPanelModelContext,
@@ -165,18 +148,15 @@ function experienceBonusPct(
   if (spec === systems.SCOUT_EXPERIENCE_TYPE) {
     return Math.round((systems.scoutVisionBonusNodes(points) / systems.SCOUT_VISION_NODES) * 100);
   }
-  // A carrier's track has no percentage bonus to show.
   if (track !== undefined && isCarrierJob(ctx, track.jobType)) return null;
   return Math.round(fx.toFloat(systems.experienceBonus(repeats)) * 100);
 }
 
 /**
- * The Doświadczenie rows: every specialization on the settler's `Settler.experience` map
- * (`humanjobexperiencetypes` id → raw points, serialized as a sorted `[id, points]` array), most-trained
- * first. Raw points are shown as completed-work REPEATS (`systems.experienceRepeats` divides the track's
- * accrual rate back out) so the number matches the user's mental model - "Zbieracz Drewna 5" = five wood
- * gathered; a track-less bucket (fight, scout) shows raw points. Labels via {@link experienceLabel},
- * percents via {@link experienceBonusPct}.
+ * The Doświadczenie rows, most-trained first, off the settler's `Settler.experience` map
+ * (`humanjobexperiencetypes` id → raw points). Raw points are shown as completed-work repeats, dividing
+ * the track's accrual rate back out, so "Zbieracz Drewna 5" means five wood gathered; a track-less
+ * bucket (fight, scout) shows raw points.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const rows: (ExperienceRowModel & { spec: number })[] = [];
@@ -203,13 +183,12 @@ export function settlerStatus(snapshot: WorldSnapshot, components: Comp): string
   if ('PlayerOrder' in components) return statuses.ordered;
   if ('CurrentAtomic' in components) return statuses.working;
   if ('PathFollow' in components || 'MoveGoal' in components) return statuses.walking;
-  // A settler posted to a building still going up stands at the site by design until it opens. Without
-  // its own caption that deliberate wait reads as the idle of a settler with no post at all.
+  // A settler posted to a site still going up waits there by design; without its own caption that
+  // deliberate wait reads as plain idleness.
   if (awaitsItsWorkplace(snapshot, components)) return statuses.awaitingWorkplace;
   return statuses.idle;
 }
 
-/** Whether this settler is posted to a workplace that is still a construction site. */
 function awaitsItsWorkplace(snapshot: WorldSnapshot, components: Comp): boolean {
   const assignment = components.JobAssignment as { workplace?: unknown } | undefined;
   const workplaceId = num(assignment?.workplace);

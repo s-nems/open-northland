@@ -1,39 +1,29 @@
 import type { Camera } from '@open-northland/render';
 
-/**
- * The pure pan/zoom reducers and their bounds - the interactive camera's *math*, unit-tested headless
- * (`test/camera.test.ts`). Each takes a {@link Camera} and returns a new one; no DOM, no Pixi. The DOM
- * controller (`controller.ts`) drives these from real mouse/wheel/key events.
- */
+/** The pure pan and zoom reducers and their bounds; each takes a {@link Camera} and returns a new one. */
 
 /**
- * Zoom bounds the scroll-wheel clamps to, so the world can't shrink to nothing or balloon unusably. The
- * lower bound is deliberate: an RTS renders only what's on screen, so the min zoom bounds the visible tile
- * + bob count (and thus frame cost), not a whole-map fit - a mid-size decoded map must not fit on
- * screen whole. The `0.35` bound follows hands-on feedback and the measured zoomed-out allocation
- * cost; it still frames a battle or settlement cluster. Lower it only with a zoom-out LOD.
+ * Zoom bounds the scroll wheel clamps to. The lower bound caps the visible tile and bob count, and so
+ * the frame cost, rather than fitting a whole map on screen: a mid-size decoded map must not fit whole.
+ * Lower it only together with a zoom-out LOD.
  */
 export const MIN_ZOOM = 0.35;
 export const MAX_ZOOM = 8;
-/** CSS px from a canvas edge within which the pointer edge-scrolls (the RTS screen-edge pan). */
+/** CSS px from a canvas edge within which the pointer edge-scrolls. */
 export const EDGE_SCROLL_MARGIN = 24;
 
-/** The interactive camera's speed knobs, read each frame by the controller. Eye-tuned defaults in
- *  {@link DEFAULT_CAMERA_TUNING}. */
+/** The interactive camera's speed knobs, read each frame by the controller. */
 export interface CameraTuning {
   /** Screen px/s the camera pans while an arrow key is held. */
   readonly arrowPanSpeed: number;
   /** Edge-scroll speed (screen px/s) at the deepest point of the margin; ramps linearly from 0. */
   readonly edgeScrollSpeed: number;
-  /** Wheel-zoom glide speed in log-zoom units per second - LINEAR: the scale travels toward its
-   *  target at this constant perceptual rate (each ×e of zoom takes `1/rate` seconds), so a long
-   *  glide never lurches fast then crawls the tail like an exponential ease. */
+  /** Wheel-zoom glide speed in log-zoom units per second, so each factor of e takes `1/rate` seconds
+   *  and a long glide never lurches then crawls like an exponential ease. */
   readonly zoomGlideRate: number;
 }
 
-/** The default camera speeds ({@link CameraTuning}). The zoom rate is tuned so one wheel notch
- *  (×1.1 ≈ 0.095 log units) lands in ~2 frames - responsive, the glide only smooths the step - while
- *  a stacked burst still travels the full MIN..MAX range in under a second. */
+/** Approximation: eye-tuned speeds. The zoom rate lands one wheel notch in roughly two frames. */
 export const DEFAULT_CAMERA_TUNING: CameraTuning = {
   arrowPanSpeed: 900,
   edgeScrollSpeed: 1500,
@@ -41,10 +31,9 @@ export const DEFAULT_CAMERA_TUNING: CameraTuning = {
 };
 
 /**
- * The edge-scroll pan velocity (screen px/s, camera-scroll convention: pointer at the LEFT edge reveals
- * the world leftward → positive `vx`, like a held ArrowLeft) for a pointer at canvas CSS position
- * `(x, y)` in a `width × height` canvas. Ramps linearly from 0 at the margin's inner boundary to
- * `speed` ({@link CameraTuning.edgeScrollSpeed}) at the edge; `(0, 0)` anywhere deeper inside. Pure.
+ * The edge-scroll pan velocity in screen px/s for a pointer at canvas CSS position `(x, y)`. Ramps
+ * linearly from 0 at the margin's inner boundary to `speed` at the edge, and is zero deeper inside.
+ * Scroll convention: a pointer at the left edge reveals the world leftward, giving a positive `vx`.
  */
 export function edgePanVelocity(
   x: number,
@@ -62,11 +51,9 @@ export function edgePanVelocity(
 }
 
 /**
- * One LINEAR step of the wheel-zoom glide: move the camera's scale toward `target` at a constant
- * `ratePerS` in log-zoom space ({@link CameraTuning.zoomGlideRate} - perceptually uniform: ×2 takes
- * the same time zooming from 1→2 as from 4→8), anchored at the cursor like {@link zoomCameraAt},
- * landing exactly on the target when within one step of it. Returns the camera untouched when
- * already there. Pure.
+ * One step of the wheel-zoom glide: move the scale toward `target` at a constant `ratePerS` in log-zoom
+ * space, so doubling takes the same time from 1 to 2 as from 4 to 8. Anchored at the cursor, and lands
+ * exactly on the target once within one step of it.
  */
 export function stepZoomToward(
   cam: Camera,
@@ -84,17 +71,15 @@ export function stepZoomToward(
   return zoomCameraAt(cam, next / scale, cursorX, cursorY);
 }
 
-/** Pan the camera by a screen-pixel delta (mouse drag / arrow step). Pure; preserves `scale`. */
+/** Pan the camera by a screen-pixel delta, preserving `scale`. */
 export function panCamera(cam: Camera, dx: number, dy: number): Camera {
   return { ...cam, offsetX: cam.offsetX + dx, offsetY: cam.offsetY + dy };
 }
 
 /**
- * Zoom by `factor`, keeping the world point currently under `(cursorX, cursorY)` pinned to that screen
- * point (so the view magnifies toward the cursor, not the layer origin). `screen = world*scale + offset`,
- * so the world under the cursor is `(cursor − offset)/scale`; after rescaling we re-solve the offset that
- * keeps that world point under the cursor. The new scale is clamped to [{@link MIN_ZOOM},{@link MAX_ZOOM}];
- * if the clamp leaves the scale unchanged the camera is returned untouched. Pure.
+ * Zoom by `factor`, keeping the world point under `(cursorX, cursorY)` pinned to that screen point. With
+ * `screen = world*scale + offset` the world under the cursor is `(cursor - offset)/scale`, and the offset
+ * is re-solved after rescaling. The new scale is clamped to `[MIN_ZOOM, MAX_ZOOM]`.
  */
 export function zoomCameraAt(cam: Camera, factor: number, cursorX: number, cursorY: number): Camera {
   const scale = cam.scale ?? 1;

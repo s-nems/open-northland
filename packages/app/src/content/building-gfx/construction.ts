@@ -9,24 +9,18 @@ import {
 } from './families.js';
 
 /**
- * Reduce the decoded `constructionLayers` IR (the `extractConstructionLayers` leg) to the render's
- * per-type construction-stage binding for one tribe - the staged-graphics twin of
- * {@link import('./families.js').buildingBobRefsByType}, sharing its family rules: a row's
- * `(bmd, palette)` must be the {@link defaultFamily} (a bare-id stage on the default building layer) or a
- * loaded named family (a layer-qualified stage); a row in an unloaded family is dropped (its frame-id space
- * differs - never borrow), and a typeId whose stages end up all dropped is omitted entirely (it keeps its
- * normal body draw rather than showing a partial stack). This pass consumes the from-scratch rows
+ * Reduce the decoded `constructionLayers` IR to the render's per-type construction-stage binding for one
+ * tribe, under {@link import('./families.js').buildingBobRefsByType}'s family rules: a row in an unloaded
+ * family is dropped (its frame-id space differs, so never borrow), and a typeId whose stages all drop is
+ * omitted entirely so it keeps its normal body draw. This pass consumes the from-scratch rows
  * (`upgrade === false`); {@link upgradeRefsByType} is the `upgrade === true` twin.
  *
  * A typeId's stages must all come from one source record at one size level - several records can carry the
- * same typeId (the HQ's `"viking headquarters"` vs its `"viking headquarters house"` variant; the pottery
- * maps one typeId at two sizeIdx; the two wall orientations share typeId 22), and merging their per-record
- * `stackIdx` streams would interleave two different stage stacks. So the reduction first restricts to the
- * preferred palette (when present), then picks one `(editName, level)` group: the {@link CANONICAL_EDIT_NAME}
- * match when it names this typeId (the same disambiguation the body binding applies), else the lowest
- * `level` (the base build stage - the extractors' lowest-sizeIdx convention), ties to the lexicographically
- * smallest `editName` (deterministic, order-independent). The chosen group's stages keep their source
- * stacking order (`stackIdx`). Pure.
+ * same typeId, and merging their per-record `stackIdx` streams would interleave two different stage
+ * stacks. So the reduction first restricts to the preferred palette, then picks one `(editName, level)`
+ * group: the {@link CANONICAL_EDIT_NAME} match when it names this typeId, else the lowest `level` (the
+ * base build stage), ties to the lexicographically smallest `editName`. The chosen group's stages keep
+ * their source stacking order (`stackIdx`). Pure.
  */
 export function constructionRefsByType(
   rows: readonly ConstructionLayerRow[],
@@ -38,10 +32,9 @@ export function constructionRefsByType(
 }
 
 /**
- * The upgrade-pass twin of {@link constructionRefsByType}: reduces the `upgrade === true` rows - each
- * keyed by the tier being upgraded, its bob the NEXT tier's finished body - to the render's
- * `upgradeByType` binding, under exactly the same family/one-source-record rules. An UPGRADING
- * building draws its old finished body with these layers revealing over it.
+ * The upgrade-pass twin of {@link constructionRefsByType}: the `upgrade === true` rows - each keyed by the
+ * tier being upgraded, its bob the next tier's finished body - under the same family and one-source-record
+ * rules. An upgrading building draws its old finished body with these layers revealing over it.
  */
 export function upgradeRefsByType(
   rows: readonly ConstructionLayerRow[],
@@ -64,7 +57,6 @@ function stageRefsByType(
   const out: Record<number, ConstructionLayerRef[]> = {};
   for (const [typeId, list] of byType) {
     const pool = preferredPalettePool(list, defaultFamily.paletteName);
-    // one record-level group per type (see the JSDoc): group by (editName, level), pick canonically.
     const groups = new Map<string, ConstructionLayerRow[]>();
     for (const r of pool) {
       const key = `${r.editName ?? ''}|${r.level}`;

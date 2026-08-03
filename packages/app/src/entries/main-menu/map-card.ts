@@ -4,12 +4,11 @@ import { generatedMapPreview } from './map-preview.js';
 import { type MapSelectItem, pluralForm } from './map-select-model.js';
 
 /**
- * The map details card both map select and the lobby show on their right column: preview section
- * on top, then name, meta, roster seat chips and description. The owning screen may append its own
- * controls into `actions` (map select its primary button); an empty row collapses via CSS.
+ * The map details card shown by both map select and the lobby. The owning screen appends its own
+ * controls into `actions`; an empty row collapses through CSS.
  */
 export interface MapDetailsCard {
-  /** The card element (`.main-menu__map-card`); starts hidden until {@link MapDetailsCard.show}. */
+  /** Starts hidden until `show`. */
   readonly root: HTMLElement;
   /** The bottom actions row the owning screen fills. */
   readonly actions: HTMLElement;
@@ -89,8 +88,7 @@ export function createMapDetailsCard(): MapDetailsCard {
       });
     };
     if (item.minimap) {
-      // The decoded minimap PNG when the pipeline emitted one; a broken file falls back to the
-      // client-side rasterized preview (the `error` handler below).
+      // A broken decoded PNG falls back to the client-side rasterized preview.
       previewImg.src = `/maps/${encodeURIComponent(item.id)}.png`;
       previewImg.hidden = false;
     } else {

@@ -54,8 +54,7 @@ import {
   WOMAN_TALK_PULSE_FRAMES,
 } from '../../work-animations.js';
 
-/** One talk/listen clip record: `length` ticks, restoring the company bar in channel-3 pulses of
- *  `value` at `frames` (the extracted event rows, transcribed). */
+/** A clip restoring the company bar in channel-3 pulses of `value` at the extracted event `frames`. */
 function chatClip(
   name: string,
   length: number,
@@ -66,13 +65,12 @@ function chatClip(
     id: name,
     name,
     length,
-    // `interruptable 1` in the source rows - a chat clip may be cut short by a higher drive.
+    // `interruptable 1` in the source rows.
     interruptible: true,
     events: frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value })),
   };
 }
 
-/** Build the animation-duration/event catalog consumed by atomic bindings. */
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
     ...GATHERERS.map((gatherer) => ({
@@ -82,18 +80,16 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     })),
     { id: STORE_PICKUP_ANIMATION, name: STORE_PICKUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
     { id: STORE_PILEUP_ANIMATION, name: STORE_PILEUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
-    // The wedding kiss + the couple's make-love clocks - EXTRACTED lengths from the mod's
-    // `atomicanimations12/atomicanimations.ini` (kiss/kissed 50; woman make_love 50, civilist 200 -
-    // the hearts phase runs the longer clock).
+    // Extracted lengths from the mod's `atomicanimations12/atomicanimations.ini`. The hearts phase runs
+    // the longer civilist clock.
     { id: 'viking_woman_kiss', name: 'viking_woman_kiss', length: 50 },
     { id: 'viking_woman_kissed', name: 'viking_woman_kissed', length: 50 },
     { id: 'viking_civilist_kiss', name: 'viking_civilist_kiss', length: 50 },
     { id: 'viking_civilist_kissed', name: 'viking_civilist_kissed', length: 50 },
     { id: 'viking_woman_make_love', name: 'viking_woman_make_love', length: 50 },
     { id: 'viking_civilist_make_love', name: 'viking_civilist_make_love', length: 200 },
-    // The gossip talk/listen clips - EXTRACTED lengths + channel-3 pulse rows (see work-animations.ts):
-    // the civilist pair restores +800 per pulse both talking and listening; the woman restores +800
-    // talking but only +100 listening (she recovers on her talking turn - the pair alternates roles).
+    // Extracted lengths and channel-3 pulse rows. The woman restores little while listening because she
+    // recovers on her talking turn, the pair alternating roles.
     chatClip(CIVILIST_TALK_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
     chatClip(CIVILIST_LISTEN_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
     chatClip(WOMAN_TALK_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
@@ -128,7 +124,6 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       length: SHORT_BOW_DRAW_LENGTH,
       events: [{ at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
     },
-    // The hunter's two trade clips, timed verbatim off the extraction (`catalog/hunting.ts`).
     {
       id: 'viking_hunter_attack',
       name: 'viking_hunter_attack',
@@ -150,20 +145,17 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       id: BUILD_HOUSE_ANIMATION,
       name: BUILD_HOUSE_ANIMATION,
       length: BUILD_HOUSE_SWING_LENGTH,
-      // The hammer knock sounds MID-swing at the authored PLAY_SOUND_FX frame (`event 4 34 1`), so audio
-      // drives the per-swing hammer off the sim's `atomicSound` cue there instead of at swing completion.
+      // The hammer knock sounds mid-swing at the authored `event 4 34 1` frame, not at completion.
       events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 1 }],
     },
     {
-      // The scout's signpost swing - the same authored hammer beat as the builder's (the transcribed
-      // `viking_scout_build_guide` shares the sound-FX frame; `event 4 34 2` - the wood-sign knock).
+      // The extracted `viking_scout_build_guide` shares the builder's sound-FX frame at `event 4 34 2`.
       id: BUILD_GUIDE_ANIMATION,
       name: BUILD_GUIDE_ANIMATION,
       length: BUILD_GUIDE_SWING_LENGTH,
       events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 2 }],
     },
     {
-      // The barracks drill repetition (see work-animations.ts).
       id: CIVILIST_EXERCISE_ANIMATION,
       name: CIVILIST_EXERCISE_ANIMATION,
       length: CIVILIST_EXERCISE_LENGTH,

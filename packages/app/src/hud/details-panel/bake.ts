@@ -18,9 +18,8 @@ export interface PanelDrawGeometry {
   readonly texH: number;
 }
 
-/** Derived from the on-screen hit geometry rather than laid out a second time at `ss`: two independent
- *  roundings at different scales drift ~1 px and accumulate down the button column, so what is drawn
- *  would stop matching what is hit-tested. */
+/** Derived from the on-screen hit geometry, never laid out a second time at `ss`: two independent
+ *  roundings drift ~1 px down the button column, so drawn and hit-tested geometry would diverge. */
 export function panelDrawGeometry(panel: Rect, scale: number, ss: number): PanelDrawGeometry {
   const k = ss / scale;
   return {
@@ -42,7 +41,7 @@ export interface PanelBakeOptions {
   readonly ss: number;
 }
 
-/** Fresh draw-order layers over the off-screen root: fills, graphics, frames, glyphs. */
+/** Draw order over the off-screen root: fills, graphics, frames, glyphs. */
 function makeLayers(into: Container): PanelLayers {
   const g = new Graphics();
   const back = new Container();
@@ -75,7 +74,7 @@ export function bakePanel(opts: PanelBakeOptions): SupersampledTexture {
       drawSignpost(chrome, mapLayout(view.layout, toDraw), ui, hover.action);
       break;
     default: {
-      const unreachable: never = view; // exhaustive: a new drawable view kind fails to compile here
+      const unreachable: never = view;
       throw new Error(`unhandled panel view: ${JSON.stringify(unreachable)}`);
     }
   }

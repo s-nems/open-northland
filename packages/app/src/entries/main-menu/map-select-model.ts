@@ -24,7 +24,6 @@ export const MAP_FILTER_TABS: readonly MapFilterTab[] = [
   { kind: 'filter', filter: 'scenes' },
 ];
 
-/** One listed roster slot as the details card shows it: authored tribe + team colour. */
 export interface MapSeat {
   readonly tribeId: number;
   readonly colorId: number;
@@ -47,8 +46,7 @@ export interface MapSelectItem {
   readonly minimap: boolean;
 }
 
-/** A `/maps-index` entry as a list row. Category comes from the script sidecar's `[multiplayer]`
- *  table (the original's own multiplayer capability marker); everything else is story. */
+/** Category comes from the script sidecar's `[multiplayer]` table; everything else is story. */
 export function mapItem(entry: MapsIndexEntry): MapSelectItem {
   const listed = entry.players?.filter((slot) => !slot.hidden) ?? [];
   return {
@@ -64,7 +62,6 @@ export function mapItem(entry: MapsIndexEntry): MapSelectItem {
   };
 }
 
-/** A registered test scene as a list row. */
 export function sceneItem(id: string, title: string, summary: string): MapSelectItem {
   return {
     kind: 'scene',
@@ -79,10 +76,7 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
   };
 }
 
-/**
- * The map-select UI state that survives leaving the screen (a lobby round trip re-enters with the
- * same filter, query and selection). Owned by the menu shell, mutated by the screen.
- */
+/** Survives leaving the screen, so a lobby round trip re-enters with the same filter and selection. */
 export interface MapSelectMemory {
   filter: MapFilter;
   query: string;
@@ -94,9 +88,8 @@ export function initialMapSelectMemory(): MapSelectMemory {
 }
 
 /**
- * The rows the list shows for a filter + search query. `all` lists every decoded map; test scenes
- * appear only under their own filter. Search matches the display title or the id stem, case-folded
- * locale-independently (host locale must not change what an id query matches).
+ * `all` lists every decoded map; test scenes appear only under their own filter. Search matches the
+ * title or the id stem, case-folded locale-independently so the host locale cannot change the match.
  */
 export function filterItems(
   items: readonly MapSelectItem[],

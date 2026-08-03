@@ -33,30 +33,18 @@ import {
   WEAPON_SWORD,
 } from './ids/index.js';
 
-/**
- * The sandbox combat content - the weapon swing timings, damages, and the {@link sandboxWeapons} table
- * the global {@link import('./content/index.js').sandboxContent} set assembles from. Swing lengths + hit frames
- * are transcribed from the extracted viking `atomicanimations.ini` records; the bare-target damages from the
- * readable `weapons.ini` `damagevalue 0` (same source basis), so sandbox combat resolves on the real scale -
- * a headless scene fights like the browser on real content, no separate sandbox-scale tuning.
- */
-
-/** Munition type 1 = arrow - what the bows fire. */
 const ARROW_MUNITION = 1;
-/** The `logicdefines.inc` `WEAPON_MAIN_TYPE_*` classes the viking rows carry (unarmed 1 / spear 2 /
- *  sword 3 / bow 6) - the join the assistant's arming intents and the fight-XP buckets both key on. */
+/** The `logicdefines.inc` `WEAPON_MAIN_TYPE_*` classes the viking rows carry. */
 const UNARMED_MAIN_TYPE = 1;
 const SPEAR_MAIN_TYPE = 2;
 const SWORD_MAIN_TYPE = 3;
 const RANGED_MAIN_TYPE = 6;
 /** The real short/long-bow projectile speed. */
 const BOW_SPEED = 8;
-/** ATTACK event type (25): the frame a melee blow lands / a bow draw looses its arrow. */
+/** The `atomicanimations.ini` event code marking the frame a blow lands or an arrow looses. */
 export const ATTACK_EVENT_TYPE = 25;
-// Each swing's length + hit/release frame is its `viking_soldier_attack_*` record's length + `event
-// <frame> 25`. The sim swing duration must equal the decoded gfx frame-list length (`[gfxanimatomic]`
-// per-direction counts: sword 12, spear 27, broadsword 29, bows 12/28) or the drawn swing truncates
-// mid-animation.
+// Extracted from each `viking_soldier_attack_*` record's length and `event <frame> 25`. A swing
+// duration must equal the decoded gfx frame-list length or the drawn swing truncates mid-animation.
 export const FIST_SWING_LENGTH = 12; // viking_soldier_attack_unarmed
 export const FIST_HIT_FRAME = 6;
 export const SWORD_SWING_LENGTH = 12; // viking_soldier_attack_sword_short
@@ -69,42 +57,29 @@ export const SHORT_BOW_DRAW_LENGTH = 12; // viking_soldier_attack_bow_short
 export const SHORT_BOW_RELEASE_FRAME = 10;
 export const LONG_BOW_DRAW_LENGTH = 28; // viking_soldier_attack_bow_long
 export const LONG_BOW_RELEASE_FRAME = 22;
-// Bare-target damage (`weapons.ini` `damagevalue 0`) per weapon, transcribed from the readable source like
-// the swing timings above, so sandbox combat runs on the real scale (a ~5000-HP fighter takes several
-// swings - see the battle scene).
+// Bare-target damage per weapon, extracted from `weapons.ini` `damagevalue 0`, so sandbox combat
+// resolves on the same scale as real content.
 const FIST_DAMAGE = 400; // fist
 const SWORD_DAMAGE = 1600; // short_sword
 const SPEAR_DAMAGE = 3800; // iron_spear
 const BROADSWORD_DAMAGE = 3800; // long_sword
 const BOW_DAMAGE = 500; // short_bow
 const LONG_BOW_DAMAGE = 700; // long_bow
-// The house bow's band and speed (`weapons.ini` type 20), transcribed like the timings above; its damage
-// is the design override the real-content merge also applies (`catalog/defence.ts` HOUSE_BOW_DAMAGE - a
-// civilian must shoot weaker than a soldier, which the source row does not hold against armour), so the
-// wall bow runs at one balance on either content base. Its reach outranges every hand bow: a wall shot,
-// not a field shot. `minimumrange 0` is clamped to the sim's floor of 1 (`withReach`), which is why the
-// pinned value is 1 rather than the source's 0.
+// The house bow's band and speed, extracted from `weapons.ini` type 20. Its damage is instead the
+// design override the real-content merge also applies, so the wall bow runs at one balance on either
+// content base. The source's `minimumrange 0` is clamped to the sim's floor of 1 (`withReach`).
 const HOUSE_BOW_MIN_RANGE = 1;
 const HOUSE_BOW_MAX_RANGE = 29;
 const HOUSE_BOW_SPEED = 7;
-// The animal natural weapons, transcribed from the mod `weapons.ini` (`bearfist` / `wolvefist`,
-// `damagevalue 0`), both weapon type 1 - the pair key is `(tribeType, typeId)`, so the shared typeId
-// never collides across tribes. The source rows carry `jobtype 49` (one bearfist twin 34) and
-// `goodtype 0`; the sandbox jobs table does not model the animal pseudo-jobs and the jobless-animal
-// binding reads the tribe's first weapon row regardless, so the rows ship job-less, and the good ref
-// is dropped (transcribing `goodtype 0` would wrongly count good 0 among the military goods). The
-// source `maintype 1` is dropped too: a weapon class only feeds fight XP, which wildlife never
-// accrues (`grantFightExperience`'s animal gate), so the column is dead weight on an animal row.
+// Extracted from the mod `weapons.ini` `bearfist`/`wolvefist` rows. Both share weapon type 1 because
+// the lookup key is `(tribeType, typeId)`. The source `goodtype 0` is dropped on purpose: carrying it
+// would count good 0 among the military goods.
 const ANIMAL_FIST_TYPE = 1;
 const BEAR_FIST_DAMAGE = 800;
 const WOLF_FIST_DAMAGE = 350;
 
-// vs-BUILDING damage - the weapon's HOUSE column (`weapons.ini` `damagevalue 7`,
-// {@link import('@open-northland/sim').ARMOR_MATERIAL} `HOUSE`), what a warrior does to a structure.
-// A NAMED SANDBOX APPROXIMATION (the real per-material columns live in the extracted IR, which the browser
-// loads): melee weapons chop a wall near their flesh rate, arrows barely scratch masonry. Sized so a
-// warband razes a home / watchtower / HQ (30k / 60k / 100k HP - `construction.ts`) in a watchable siege,
-// not instantly and not forever.
+// The weapon's HOUSE column (`weapons.ini` `damagevalue 7`). A named sandbox approximation, not
+// extracted: sized so a warband razes a home, watchtower or HQ in a watchable siege.
 const FIST_VS_BUILDING = 120;
 const SWORD_VS_BUILDING = 1000;
 const SPEAR_VS_BUILDING = 1400;
@@ -112,10 +87,8 @@ const BROADSWORD_VS_BUILDING = 2000;
 const SHORT_BOW_VS_BUILDING = 140;
 const LONG_BOW_VS_BUILDING = 200;
 
-// Per-armor-material columns (`damagevalue <material> <value>`, materials 1..4 = wool/leather/chain/
-// plate), transcribed from the same readable viking weapons.ini rows as the bare damages above, so a
-// worn armor selects its real column here too (the building column stays our siege balance). The
-// iron spear vs long sword chain/plate flip is the source's own data, not a typo.
+// Extracted per-material columns (`damagevalue <material> <value>`, materials 1..4 are wool, leather,
+// chain, plate). The iron spear vs long sword chain/plate flip is the source's own data, not a typo.
 const FIST_VS_MATERIALS = { '1': 80, '2': 300, '3': 40, '4': 40 };
 const SPEAR_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 950, '4': 2090 };
 const SWORD_VS_MATERIALS = { '1': 800, '2': 1200, '3': 400, '4': 400 };
@@ -123,25 +96,17 @@ const BROADSWORD_VS_MATERIALS = { '1': 1900, '2': 2850, '3': 2090, '4': 950 };
 const SHORT_BOW_VS_MATERIALS = { '1': 128, '2': 400, '3': 100, '4': 100 };
 const LONG_BOW_VS_MATERIALS = { '1': 448, '2': 560, '3': 360, '4': 360 };
 
-/** A good's full equip axis (slot, wear, effect numbers) per typeId, so `sandboxContent()` can merge
- *  it onto the global catalog good of the same typeId (an equippable good is declared once, in
- *  `EXTENDED_GOODS`). */
 export const EQUIP_CLASS_BY_TYPE: ReadonlyMap<number, EquipClass> = new Map(
   EQUIP_GOODS.map(({ typeId, id: _id, ...equip }) => [typeId, equip]),
 );
 
-/** The same axis keyed by good SLUG - the id-space bridge (`shoes` is 130 in the sandbox but 30
- *  in real content) the real-content merge overlays with, until the pipeline extracts an equip axis. */
+/** The same axis keyed by slug, because typeIds differ across id spaces (`shoes` is 130 here, 30 in
+ *  real content). */
 export const EQUIP_CLASS_BY_SLUG: ReadonlyMap<string, EquipClass> = new Map(
   EQUIP_GOODS.map(({ typeId: _typeId, id, ...equip }) => [id, equip]),
 );
 
-/**
- * The sandbox armor table - the four base tiers transcribed verbatim from the readable
- * `armortypes.ini` (name/type/mainType/goodtype/materialType/weight/blockingValue), rebased onto the
- * sandbox armor good ids. Worn armor then presents its real material column against the per-material
- * damages above, and the two-tier `mainType` split feeds the assistant's armor preference.
- */
+/** The four base tiers extracted from `armortypes.ini`, rebased onto the sandbox armor good ids. */
 export function sandboxArmor(): ArmorType[] {
   return [
     {
@@ -183,10 +148,6 @@ export function sandboxArmor(): ArmorType[] {
   ];
 }
 
-/**
- * The sandbox weapon set - each viking soldier job's weapon with its range band and synthetic damage.
- * Bound to `sandboxContent().weapons`; the melee weapons swing at range 1(-2), the bows fire arrows.
- */
 export function sandboxWeapons() {
   return [
     {
@@ -199,9 +160,8 @@ export function sandboxWeapons() {
       maxRange: 1,
       damage: { '0': FIST_DAMAGE, ...FIST_VS_MATERIALS, '7': FIST_VS_BUILDING },
     },
-    // The armed classes carry the real `goodtype` binding, so equipping the good takes the class up
-    // (the sim's good→class join). The sandbox's one spear is the iron tier; the wooden spear good
-    // (`spear_wooden`) binds no sandbox class because job 32 is not in the sandbox job set.
+    // An armed class carries the extracted `goodtype`, so equipping the good takes the class up. The
+    // wooden spear good binds no class here because its job 32 is outside the sandbox job set.
     {
       typeId: WEAPON_SPEAR,
       id: 'viking_spear',
@@ -210,7 +170,7 @@ export function sandboxWeapons() {
       mainType: SPEAR_MAIN_TYPE,
       goodType: GOOD_SPEAR_IRON,
       minRange: 1,
-      maxRange: 2, // a spear pokes one cell further than a sword (the original's long-melee band)
+      maxRange: 2, // the original's long-melee band
       damage: { '0': SPEAR_DAMAGE, ...SPEAR_VS_MATERIALS, '7': SPEAR_VS_BUILDING },
     },
     {
@@ -232,7 +192,7 @@ export function sandboxWeapons() {
       mainType: SWORD_MAIN_TYPE,
       goodType: GOOD_SWORD_LONG,
       minRange: 1,
-      maxRange: 2, // the original's long sword reaches 1–2
+      maxRange: 2, // the original's long-melee band
       damage: { '0': BROADSWORD_DAMAGE, ...BROADSWORD_VS_MATERIALS, '7': BROADSWORD_VS_BUILDING },
     },
     {
@@ -261,9 +221,8 @@ export function sandboxWeapons() {
       maxRange: 23,
       damage: { '0': LONG_BOW_DAMAGE, ...LONG_BOW_VS_MATERIALS, '7': LONG_BOW_VS_BUILDING },
     },
-    // The hunter's bow (job 15) at the design-override balance shared with the real-content merge
-    // (`catalog/hunting.ts` - weaker than the short bow). No `goodType`: the bow is the trade's own
-    // implement, outside the equipment economy, exactly as the extracted row ships.
+    // No `goodType`, as the extracted row ships: the hunter's bow is the trade's own implement,
+    // outside the equipment economy.
     {
       typeId: WEAPON_HUNTER_BOW,
       id: 'hunter_bow',
@@ -276,11 +235,8 @@ export function sandboxWeapons() {
       maxRange: HUNTER_BOW_BALANCE.maxRange,
       damage: { ...HUNTER_BOW_BALANCE.damage },
     },
-    // The house bow a civilian shoots from a defence-mode building, transcribed from the mod row above:
-    // weaker than the soldier's short bow and far longer-ranged, the wall-shooting trade-off the source
-    // already makes. Bound by typeId, not by job -
-    // a sheltering farmer keeps its own trade and takes the wall bow up as a worn weapon - so the row
-    // carries no `jobType`, and no `goodType`: the bow belongs to the building, not the equipment economy.
+    // The bow a civilian shoots from a defence-mode building. It binds by typeId rather than job, so a
+    // sheltering farmer keeps its trade, and carries no `goodType`: the bow belongs to the building.
     {
       typeId: WEAPON_HOUSE_BOW,
       id: 'house_bow',
@@ -292,9 +248,8 @@ export function sandboxWeapons() {
       maxRange: HOUSE_BOW_MAX_RANGE,
       damage: { ...HOUSE_BOW_DAMAGE },
     },
-    // The wildlife tribes' natural weapons (`weapons.ini` `bearfist`/`wolvefist`, bare-target column),
-    // one row per animal tribe so a jobless animal binds its combat identity (the first-weapon-row
-    // read, content-index.ts): without one, an aggressive wolf disengages instead of hunting.
+    // One row per animal tribe, because a jobless animal binds combat through its tribe's first weapon
+    // row. Without one an aggressive wolf disengages instead of hunting.
     {
       typeId: ANIMAL_FIST_TYPE,
       id: 'bearfist',

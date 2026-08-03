@@ -3,23 +3,19 @@ import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The extras ("chest") window model: the assistant/plans tabs, the assistant's counter and grant
- * controls, their layout and hit-test (pure, no Pixi/DOM). The grant switches drive the sim's
- * auto-equip (`setAssistantGrant` through the controller's seam); the counters drive its production
- * queues (`setAssistantCounter` - births and barracks training).
+ * The extras ("chest") window model: the assistant/plans tabs, the counter and grant controls, their
+ * layout and hit-test. Grants drive the sim's auto-equip, counters its birth and training queues.
  *
- * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5` "Otwiera okno
- * dodatków"), and the original window's own labels exist in the decoded `miscwindow` table (500
- * "Okno Dodatków" - the title used here, 501 "Papiery", 502 the block header, 503-509 the grant
- * commands "Zgromadź Buty!" etc. with their descriptions). The tab pair, the row wording, the
- * counter set and the geometry are a project reconstruction (named deviation): labels follow the
- * feature spec, not the decoded table.
+ * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5`), and the original
+ * window's labels exist in the decoded `miscwindow` table (500 the title, 501 "Papiery", 502 the block
+ * header, 503-509 the grant commands). The tab pair, row wording, counter set and geometry are a
+ * project reconstruction (named deviation).
  */
 
 export type ExtrasTab = 'assistant' | 'plans';
 
-/** The assistant's six production counters - two birth queues and four training queues (the plain
- *  soldier plus the three self-arming classes). Row order is this declaration order. */
+/** The assistant's six production counters: two birth queues and four training queues. Row order is
+ *  this declaration order. */
 export type AssistantCounterId =
   | 'extraWomen'
   | 'extraMen'
@@ -42,14 +38,12 @@ export interface AssistantState {
   readonly grants: Readonly<Record<AssistantGrantId, boolean>>;
 }
 
-/** Counter bounds - the sim's own clamp (`setAssistantCounter`), mirrored so the steppers stop
- *  where the command would. */
+/** The sim's own `setAssistantCounter` clamp, mirrored so the steppers stop where the command would. */
 export const COUNTER_MIN = components.ASSISTANT_COUNTER_MIN;
 export const COUNTER_MAX = components.ASSISTANT_COUNTER_MAX;
 
-/** UI counter row → sim counter kind: the three class rows carry the display noun (swordsmen), the
- *  sim the weapon class (sword); the other three share their name. The seam
- *  (`view/assistant-counters.ts`) writes through this same map, so the join has one owner. */
+/** UI counter row → sim counter kind: the three class rows carry the display noun (swordsmen) while
+ *  the sim carries the weapon class (sword); the other three share their name. */
 export const SIM_KIND_BY_COUNTER_ID: Readonly<Record<AssistantCounterId, components.AssistantCounterKind>> = {
   extraWomen: 'extraWomen',
   extraMen: 'extraMen',
@@ -59,18 +53,15 @@ export const SIM_KIND_BY_COUNTER_ID: Readonly<Record<AssistantCounterId, compone
   trainArchers: 'trainBow',
 };
 
-/** The rows carrying an infinity toggle - derived from the sim's own policy
- *  (`INFINITE_COUNTER_KINDS` states why `extraWomen` is excluded), so a policy change there cannot
- *  leave a dead toggle here. */
+/** The rows carrying an infinity toggle, derived from the sim's `INFINITE_COUNTER_KINDS` so a policy
+ *  change there cannot leave a dead toggle here. */
 export const INFINITE_COUNTER_IDS: ReadonlySet<AssistantCounterId> = new Set(
   (Object.keys(SIM_KIND_BY_COUNTER_ID) as AssistantCounterId[]).filter((id) =>
     components.INFINITE_COUNTER_KINDS.has(SIM_KIND_BY_COUNTER_ID[id]),
   ),
 );
 
-/** Counters start at zero; both blocks are only the pre-read placeholder - the window overwrites
- *  them from the sim seams on every open, and the real default-ON grant rule lives in the map
- *  entry's `grantAssistantDefaults` (view/assistant-grants.ts). */
+/** A pre-read placeholder only: the window overwrites both blocks from the sim seams on every open. */
 export function defaultAssistantState(): AssistantState {
   const zero: AssistantCounterFace = { value: 0, infinite: false };
   return {
@@ -86,9 +77,8 @@ export function defaultAssistantState(): AssistantState {
   };
 }
 
-/** `state` with `id` stepped by `delta`, clamped to the counter bounds; stepping an infinite
- *  counter only drops the infinity and surfaces the retained value unchanged - the lemniscate hides
- *  the number, so stepping it blind would land unpredictably. Identical state on a no-op. */
+/** `state` with `id` stepped by `delta`, clamped to the counter bounds. Stepping an infinite counter
+ *  only drops the infinity and surfaces the retained value, since the lemniscate hides the number. */
 export function adjustCounter(state: AssistantState, id: AssistantCounterId, delta: number): AssistantState {
   const current = state.counters[id];
   const next = current.infinite
@@ -112,14 +102,14 @@ export function toggleGrant(state: AssistantState, id: AssistantGrantId): Assist
   return { ...state, grants: { ...state.grants, [id]: !state.grants[id] } };
 }
 
-// --- Layout (design px, scaled by uiscale like the tool panel; building-menu proportions) ----------
+// Layout in design px, scaled by uiscale, at the building menu's proportions.
 
 const MENU_PAD = 6;
-/** The rust title band across the top of the window (matches the build menu's). */
+/** The rust title band across the top of the window. */
 const HEADLINE_H = 18;
 const TAB_W = 80;
 const TAB_H = 18;
-/** A small gap between the tab row and the first card, so the tabs read as a header. */
+/** Gap between the tab row and the first card, so the tabs read as a header. */
 const LIST_GAP = 3;
 /** Each control row sits on its own button-card, so the slot is taller than a plain text line. */
 const ROW_H = 20;
@@ -130,8 +120,7 @@ const BLOCK_GAP = 8;
 const MENU_WIDTH = 260;
 /** The −/+ stepper plates and the recessed value cell between them. */
 const STEPPER = 14;
-/** Sized for the cap's three digits ("100") at the row text size - an overrun would drift toward
- *  the plus plate (`addRunCentred` clamps its centring at the cell's left edge). */
+/** Sized for the cap's three digits ("100") at the row text size; an overrun drifts toward the plus plate. */
 const VALUE_W = 28;
 const CONTROL_GAP = 3;
 /** The Wł./Wył. switch plate. */
@@ -152,7 +141,7 @@ export interface ExtrasCounterRow {
   readonly label: string;
   readonly value: number;
   readonly infinite: boolean;
-  /** The row's card slot (the controller insets it vertically into a plate, like the build menu). */
+  /** The row's card slot. */
   readonly rect: Rect;
   /** The infinity toggle left of the stepper; null on a row without one (`extraWomen`). */
   readonly infinityRect: Rect | null;
@@ -165,7 +154,7 @@ export interface ExtrasGrantRow {
   readonly id: AssistantGrantId;
   readonly label: string;
   readonly on: boolean;
-  /** The row's card slot (see {@link ExtrasCounterRow.rect}). */
+  /** The row's card slot. */
   readonly rect: Rect;
   readonly switchRect: Rect;
 }
@@ -194,7 +183,7 @@ export interface ExtrasMenuLayoutOptions {
   readonly state: AssistantState;
 }
 
-/** The counter rows in display order - also the controller's iteration key set. */
+/** The counter rows in display order. */
 export const COUNTER_IDS: readonly AssistantCounterId[] = [
   'extraWomen',
   'extraMen',
@@ -206,13 +195,11 @@ export const COUNTER_IDS: readonly AssistantCounterId[] = [
 const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 'giveIronTools', 'giveMead'];
 
 /**
- * Resolve the window to screen rects: the rust headline + close X on top, the two tabs under it, then
- * (assistant tab) six counter cards and, after a wood gap, four grant cards - controls right-aligned
- * on a shared column. Purely geometric - text fits each rect at render time.
+ * Resolve the window to screen rects, with every row's controls right-aligned on a shared column. Text
+ * fits each rect at render time.
  */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
-  // Fractional scale, the HUD-wide rule owned by `tabbed-list/model.ts`, so the geometry agrees with the
-  // text runs, which draw at the same fractional uiscale - long grant labels must not overrun the switches.
+  // Kept fractional, like the text runs, so a long grant label cannot overrun its switch.
   const s = Math.max(1, opts.scale);
   const { originX, originY, tab, state } = opts;
   const labels = messages().hud.extras;

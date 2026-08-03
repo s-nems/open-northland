@@ -3,8 +3,7 @@ import type { EquipGroup, EquipRow } from '../model/index.js';
 
 /**
  * The Ekwipunek section's geometry: one labeled row per equipment group, each a label column and a line
- * of slot cells, plus the flat list of per-slot action buttons a click hit-tests against. Split out of
- * `layoutSettler`, which owns the section stack and passes this block the body rect it reserved.
+ * of slot cells, plus the flat list of per-slot action buttons a click hit-tests against.
  */
 
 /** One labeled equipment row (Buty/Narzędzia/…): a label column + a row of slot sockets. */
@@ -16,18 +15,15 @@ const EQUIP_SOCKET_GAP = 4;
 /** The row-label column width before the sockets (fits the widest slot label, "Narzędzia"). */
 export const EQUIP_LABEL_W = 74;
 /** Diameter of a round per-slot action button (equip/swap, and the take-off cross beside it). Sized so
- *  four misc cells (socket + two buttons each) share one line with the label at every menu uiscale
- *  (user request 2026-07-23: the Ekwipunek row on one line). */
+ *  four misc cells share one line with the label at every menu uiscale. */
 const EQUIP_ACTION_BTN = 15;
-/** Gap between a socket and its first action button - clears the icon's 3 px overflow past the ring
- *  (user feedback 2026-07-23: the buttons hug their slot). */
+/** Gap between a socket and its first action button, clearing the icon's 3 px overflow past the ring. */
 const EQUIP_BTN_INSET = 4;
 /** Gap between a slot's equip/swap button and its take-off cross. */
 const EQUIP_ACTION_GAP = 2;
 
-/** One labeled equipment row's geometry: its label column + the slot sockets to its right (possibly
- *  spanning several lines - see {@link equipSlotMetrics}). A wearing slot's condition percent draws as a
- *  thin gauge under its socket (derived from the socket rect) and in the socket tooltip. */
+/** One labeled equipment row's geometry: its label column plus the slot sockets to its right, which may
+ *  span several lines. */
 export interface EquipRowRect {
   readonly label: Rect;
   readonly slots: readonly Rect[];
@@ -43,8 +39,8 @@ export interface EquipSlotRef {
  *  item taken off. */
 export type EquipActionKind = 'equip' | 'swap' | 'unequip';
 
-/** One per-slot equipment action button. Always enabled: an order can target any button shown - what can
- *  actually be worn is the pick menu's decision, and a worn item can always come off. */
+/** One per-slot equipment action button. Always enabled: what can actually be worn is the pick menu's
+ *  decision, and a worn item can always come off. */
 export interface EquipActionHit {
   readonly ref: EquipSlotRef;
   readonly kind: EquipActionKind;
@@ -57,10 +53,10 @@ export interface EquipActionHit {
 export const equipActionKey = (hit: EquipActionHit): string => `${hit.ref.group}:${hit.ref.slot}:${hit.kind}`;
 
 /**
- * The scaled slot-cell metrics: a cell is the socket, then its equip/swap button and take-off cross
- * hugging it. The pitch reserves both buttons for every cell so sockets stay column-aligned; a row whose
- * cells overflow `bodyW` wraps onto further {@link EQUIP_ROW_H} lines. The caller needs `slotsPerLine`
- * before the section rects exist (it sizes the body), so this is separate from {@link layoutEquipRows}.
+ * The scaled slot-cell metrics: a cell is the socket, then its equip/swap button and take-off cross. The
+ * pitch reserves both buttons for every cell so sockets stay column-aligned, and a row whose cells
+ * overflow `bodyW` wraps onto further {@link EQUIP_ROW_H} lines. Separate from {@link layoutEquipRows}
+ * because the caller needs `slotsPerLine` to size the body, before the section rects exist.
  */
 export function equipSlotMetrics(bodyW: number, s: number): { slotsPerLine: number } {
   const socket = Math.round(EQUIP_SOCKET * s);
@@ -85,10 +81,9 @@ export function equipRowLines(rows: readonly EquipRow[], slotsPerLine: number): 
 }
 
 /**
- * Lay the equipment rows into `body` and collect their action buttons. A worn slot offers swap + take-off,
- * an empty one the equip button alone; a row the settler may no longer wear ({@link EquipRow.wearable}
- * false - a fighter's stray tool) offers only the take-off cross, so no button opens a menu the sim would
- * refuse to fill.
+ * Lay the equipment rows into `body` and collect their action buttons. A worn slot offers swap and
+ * take-off, an empty one only equip, and a row the settler may no longer wear offers only take-off, so
+ * no button opens a menu the sim would refuse to fill.
  */
 export function layoutEquipRows(
   rows: readonly EquipRow[],

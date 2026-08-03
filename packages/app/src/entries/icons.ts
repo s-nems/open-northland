@@ -5,19 +5,13 @@ import { formatMessage, messages } from '../i18n/index.js';
 import { el, mountMessage, pageInnerStyle, pageRootStyle } from '../view/overlay.js';
 
 /**
- * The `?icons` icon gallery entry - a browsable board of every decoded bob-atlas frame, so a human can
- * find the exact sprite (and its frame index) to wire into a feature. It is the in-app, always-current
- * successor to the throwaway HTML board: the dev server's `/bobs-index` lists every palette-applied RGBA
- * atlas the pipeline emitted (GUI, goods, and every landscape/house/object set), and this page shows one
- * atlas at a time as a grid of frames cropped straight from its sheet PNG, each labelled by frame index.
- *
- * Pure DOM (no Pixi): the atlases are already palette-baked to `<stem>.png`, so a frame is just a CSS
- * background-crop of that sheet - no runtime recolour needed. Real content required (it browses the
- * gitignored `content/`); a bare checkout degrades to a "run the pipeline" message.
+ * The `?icons` gallery: one decoded bob atlas at a time as a grid of frames labelled by frame index, so
+ * a human can find the exact sprite to wire into a feature. The atlases are already palette-baked to
+ * `<stem>.png`, so a frame is a CSS background-crop of that sheet and needs no Pixi. A bare checkout
+ * degrades to a "run the pipeline" message.
  */
 
-/** Narrow one `/bobs-index` row, mirroring the emit-side shape: a wrong-typed row drops instead of
- *  reaching the gallery as an entry whose fields read `undefined`. */
+/** A wrong-typed row drops instead of reaching the gallery with fields that read `undefined`. */
 function parseBobsEntry(raw: unknown): BobsIndexEntry | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const { stem, base, variant } = raw as Record<string, unknown>;
@@ -41,9 +35,9 @@ interface AtlasJson {
   readonly frames: readonly AtlasFrameJson[];
 }
 
-/** GUI-sheet frames carry human names (`content/gui-atlas-map.ts`); show them so the badge search reads. */
+/** Frames of this sheet carry human names, so the gallery shows them beside the index. */
 const GUI_BASE = 'ls_gui_window';
-/** Cap the frames rendered at once - a character sheet has thousands; a "show all" toggle lifts it. */
+/** Frames rendered at once; a character sheet has thousands. */
 const FRAME_CAP = 800;
 
 const STYLE_ID = 'opennorthland-icon-gallery-style';
@@ -92,7 +86,6 @@ function installStyle(): void {
   document.head.append(s);
 }
 
-/** A short, human group label for a base sprite set - enough to find "GUI" / "Dobra" / "Domy" at a glance. */
 function groupLabel(base: string): string {
   const groups = messages().icons.groups;
   if (base === GUI_BASE) return groups.gui;
@@ -126,7 +119,6 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
       ),
     );
 
-    // Controls: atlas picker (grouped), frame filter, zoom.
     const controls = el('div', '');
     controls.className = 'vig-controls';
     const select = document.createElement('select');
@@ -244,7 +236,6 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
     zoom.addEventListener('input', applyZoom);
     select.addEventListener('change', () => void showAtlas(select.value));
 
-    // Initial selection: `?atlas=<stem>` if valid, else the GUI sheet (the badge/order-icon candidates).
     const wanted = params.get('atlas');
     const initial =
       (wanted !== null && index.some((e) => e.stem === wanted) ? wanted : undefined) ??

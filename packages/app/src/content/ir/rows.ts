@@ -16,9 +16,8 @@ export interface BobSeqRow {
 }
 
 /** One `[gfxanimatomic]` row as it ships in `content/ir.json`'s `gfxAtomics` - an atomic action's
- *  directional body-animation layout: `(tribe, job, action)` → the `bodySeq` bobseq + the per-facing
- *  {@link dirFrames} frame-index lists (the layout a bare bobseq range can't encode). See
- *  {@link import('./joins.js').gfxAtomicFrameLists}. */
+ *  directional body-animation layout: `(tribe, job, action)` → the `bodySeq` bobseq plus the per-facing
+ *  {@link dirFrames} frame-index lists a bare bobseq range cannot encode. */
 export interface GfxAnimAtomicRow {
   readonly tribe: number;
   readonly job: number;
@@ -30,8 +29,7 @@ export interface GfxAnimAtomicRow {
 }
 
 /** One `[gfxwalkatomic]` row as it ships in `content/ir.json`'s `gfxWalkAtomics` - the original's
- *  loaded-gait table: `(tribe, job, goodType)` → the `bodySeq` bobseq a hauler plays carrying that good.
- *  See {@link import('./joins.js').carryWalkSeqs}. */
+ *  loaded-gait table: `(tribe, job, goodType)` → the `bodySeq` bobseq a hauler plays carrying that good. */
 export interface GfxWalkAtomicRow {
   readonly tribe: number;
   readonly job: number;
@@ -111,8 +109,7 @@ export interface LandscapeGfxFramesRow {
 
 /** One `[GfxLandscape]` record as it ships in `content/ir.json`'s `landscapeGfx` - the placed decor/resource
  *  object's atlas binding, keyed to a `[landscapetype]` by {@link logicType} (the gathering-pipeline join)
- *  and to a map placement by `editName` (the map-object join). The one app-side view of this lane - the
- *  gathering bindings read the id/frames half, the map-object loader additionally reads the draw flags. */
+ *  and to a map placement by `editName` (the map-object join). */
 export interface LandscapeGfxRow {
   readonly index: number;
   readonly editName?: string;
@@ -162,12 +159,10 @@ export interface LandscapeTypeRow {
 }
 
 /**
- * The app's view of the served `content/ir.json` - every lane any domain (sprites, terrain, map
- * objects, authored-entity joins, audio) reads, all optional: an `ir.json` generated before a lane
- * existed still loads, and each consumer degrades per-lane. The pipeline writes the file through the
+ * The app's view of the served `content/ir.json`. Every lane is optional: an `ir.json` generated before a
+ * lane existed still loads, and each consumer degrades per-lane. The pipeline writes the file through the
  * `@open-northland/data` zod schema, so casting the fetched JSON to this view at the I/O boundary is the
- * boundary's stance (no re-validation of a multi-MB document per boot); the pattern/sound lanes use
- * the schema types directly, the bob/landscape lanes keep the narrower row views above.
+ * boundary's stance - no re-validation of a multi-MB document per boot.
  */
 export interface ContentIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
@@ -194,10 +189,9 @@ export interface ContentIr {
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) - the walk/build flags the
    *  map-collision join (`content/collision.ts`) classes real ground by. */
   readonly trianglePatternTypes?: readonly TrianglePatternType[];
-  /** Type-table views the authored-entity joins read (`resolveAuthoredPlacements`) + the extracted
-   *  ground `footprint` (collision body / build-exclusion zone / door) the live content attaches so the
-   *  real-content view actually enforces + shows placement collision
-   *  ({@link import('./joins.js').buildingFootprints}). */
+  /** Type-table views the authored-entity joins read, plus the extracted ground `footprint` (collision
+   *  body, build-exclusion zone, door) the live content attaches so the real-content view enforces and
+   *  shows placement collision. */
   readonly buildings?: readonly {
     typeId?: number;
     id?: string;
@@ -207,13 +201,12 @@ export interface ContentIr {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`). */
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
-  /** The `animaltypes.ini` records, read for tribe membership and spawnability: which tribes ARE
-   *  animals (the species-look and authored-placement joins key on `tribeType`), and whether the
-   *  record is a living creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns.
-   *  Behaviour fields stay sim-side. */
+  /** The `animaltypes.ini` records, read for tribe membership and spawnability: which tribes are animals
+   *  (the species-look and authored-placement joins key on `tribeType`), and whether the record is a
+   *  living creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns. Behaviour fields
+   *  stay sim-side. */
   readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
-  /** The `armortypes.ini` records - the worn-good → recolor-tier join (`armorTiersByGood`,
-   *  content/sprite-sheet/human-sheet.ts). */
+  /** The `armortypes.ini` records - the worn-good → recolor-tier join. */
   readonly armor?: readonly { typeId?: number; goodType?: number }[];
   /** The decoded sound bank (`@open-northland/audio` builds its index from it). */
   readonly sounds?: SoundBank;

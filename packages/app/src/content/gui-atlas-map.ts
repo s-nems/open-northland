@@ -1,20 +1,8 @@
-// Auto-drafted then hand-maintained. This file is the checked-in metadata map from GUI-atlas frame
-// index -> semantic meaning for `ls_gui_window.bmd` (the in-game HUD sheet; 193 bobs, firstBobId=0 so a
-// gfx-id in the original engine equals the atlas frame index directly). It exists so app HUD code refers
-// to UI sprites by name, never by a magic frame number.
+// Frame index -> semantic meaning for the HUD sheet `ls_gui_window.bmd` (193 bobs, firstBobId=0, so an
+// original gfx id equals the atlas frame index).
 //
-// Identification basis (per-frame `source`):
-//   'manual'      - a project-maintained mapping of frame, rectangle, and HUD purpose. Recheck it
-//                   against the running original when exact UI behavior matters.
-//   'montage'     - identified by eye from a numbered render of every frame (the labeled-montage technique).
-//                   Once a human confirms the category and the glyph is legible, the frame carries a
-//                   provisional descriptive name (a read of the drawn glyph, refine-able later); a frame
-//                   whose glyph is unread stays `unknown_NNN` with a best-guess `role`/`note`. See
-//                   docs/formats/GRAPHICS.md.
-//   'unknown'     - not yet identified at all.
-//
-// The round wooden radial buttons at frames 96–136 were identified visually. Their `order_*` names
-// remain provisional until each command is confirmed in the running original.
+// Per-frame `source`: 'manual' is a project-maintained frame/rect/purpose mapping; 'montage' is read by
+// eye off a numbered render of every frame (docs/formats/GRAPHICS.md); 'unknown' is unidentified.
 import type { GuiPaletteName } from './gui-gfx.js';
 
 /** Total bob count of `ls_gui_window.bmd` (decoded from the sheet; firstBobId=0 so ids are 0..192). */
@@ -31,35 +19,29 @@ export type GuiFrameRole =
   | 'message_priority' // the message-priority frame + button states
   | 'overview_toggle' // the minimap / world-overview toggle button
   | 'order_icon' // a command/action-order icon (drawn through the 'context' palette)
-  | 'resource_icon' // a good / resource glyph
+  | 'resource_icon'
   | 'bar' // a progress / hit / status bar frame
   | 'note' // a pinned parchment note / scroll
-  | 'scroll_arrow' // a directional / map-scroll arrow
+  | 'scroll_arrow'
   | 'decoration' // a flag, ornament, or other chrome
-  | 'unknown'; // not yet categorized
+  | 'unknown';
 
-/** Where a frame's identification comes from - see the file header. */
 export type GuiFrameSource = 'manual' | 'montage' | 'unknown';
 
-/** One GUI-atlas frame's metadata. `name` is unique across the sheet; unidentified frames are `unknown_NNN`. */
+/** Frame names are unique across the sheet; an unidentified frame is `unknown_NNN` (zero-padded index). */
 export interface GuiFrameMeta {
-  /** Unique semantic name, or `unknown_NNN` (zero-padded index) if not yet identified. */
   readonly name: string;
   readonly role: GuiFrameRole;
-  /** Best-guess GUI palette (a {@link GuiPaletteName}) this frame is coloured through. */
+  /** Best-guess GUI palette this frame is coloured through. */
   readonly palette: GuiPaletteName;
   readonly source: GuiFrameSource;
-  /** Names of alternate-state frames for this element (e.g. the speed button's x2/x3/paused frames). */
+  /** Names of alternate-state frames for this element. */
   readonly states?: readonly string[];
   /** Free-text provenance / glyph description. */
   readonly note?: string;
 }
 
-/**
- * Every frame of the GUI-window sheet, indexed by atlas frame id (array index === frame index === original
- * gfx id). Total over the sheet: exactly {@link GUI_ATLAS_FRAME_COUNT} entries, every one named (or
- * `unknown_NNN`), no duplicate names - enforced by `gui-atlas-map.test.ts`.
- */
+/** Every frame of the GUI-window sheet: array index === frame index === original gfx id. */
 export const GUI_FRAMES = [
   /* 000 0x00 */ {
     name: 'knot_corner_bl',
@@ -1416,15 +1398,9 @@ export const GUI_FRAMES = [
   },
 ] as const satisfies readonly GuiFrameMeta[];
 
-/** Every frame name the sheet carries - derived from {@link GUI_FRAMES}, so a typo'd reference fails to
- *  compile instead of throwing at draw time. */
 export type GuiFrameName = (typeof GUI_FRAMES)[number]['name'];
 
-/**
- * Ergonomic named constants for the code-pinned frames app HUD code references, so it never hardcodes an
- * index (e.g. `GUI_FRAME.tool_button_buildings`). Kept in lock-step with {@link GUI_FRAMES} by the test.
- * Unidentified frames are addressed via {@link guiFrameIndex} once promoted from `unknown_NNN`.
- */
+/** Frame indices for the frames HUD code pins by name, so it never hardcodes an index. */
 export const GUI_FRAME = {
   knot_corner_bl: 0,
   knot_corner_br: 1,
@@ -1466,18 +1442,14 @@ export const GUI_FRAME = {
   stock_tab_0: 170,
 } as const;
 
-/** The stock window's eight-tab strip: `stock_tab_0`..`stock_tab_7` are consecutive frames on the sheet. */
+/** The stock window's tab strip: `stock_tab_0`..`stock_tab_7` are consecutive frames on the sheet. */
 export const STOCK_TAB_COUNT = 8;
 
-/** Reverse lookup name -> frame index, built once from {@link GUI_FRAMES}. */
 const FRAME_INDEX_BY_NAME: ReadonlyMap<string, number> = new Map(
   GUI_FRAMES.map((f, i) => [f.name, i] as const),
 );
 
-/**
- * Frame index for a {@link GuiFrameName}. The name is checked at compile time; the runtime throw is the
- * unreachable backstop for a caller that reached here with an unchecked string.
- */
+/** The name is checked at compile time; the throw is the backstop for an unchecked string. */
 export function guiFrameIndex(name: GuiFrameName): number {
   const i = FRAME_INDEX_BY_NAME.get(name);
   if (i === undefined) throw new Error(`gui-atlas-map: no frame named "${name}"`);

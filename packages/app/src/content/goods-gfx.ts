@@ -8,15 +8,11 @@ import { loadLayer } from './ir/load.js';
 import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
- * Goods-icon content bindings - the loadable seam for the pipeline's `goods` stage. A good's HUD icon is
- * its on-map pile graphic: the engine shares one monochrome sheet (`ls_goods.bmd`) recoloured per good
- * through a `goods_*` palette, so a good maps to (an atlas frame, a palette row), not a unique bitmap. This
- * is the goods twin of {@link import('./gui-art.js')}: the indexed atlas is read through the goods palette
- * LUT by a {@link PalettedSprite}, the same mechanism as the player/GUI colours.
- *
- * The binding (good string id → {frame, palette}) is keyed by the good's string id, which is stable across
- * the sandbox and the extracted IR (they number goods differently), so one manifest serves every scene.
- * A checkout without `content/` yields `null` and consumers draw their text row without an icon.
+ * Goods-icon content bindings for the pipeline's `goods` stage. A good's HUD icon is its on-map pile
+ * graphic: the engine shares one monochrome `ls_goods.bmd` sheet recoloured through a `goods_*` palette,
+ * so a good maps to (atlas frame, palette row), not a unique bitmap. The binding is keyed by the good's
+ * string id, stable across the sandbox and the extracted IR, which number goods differently. A checkout
+ * without `content/` yields `null` and consumers draw their text row without an icon.
  */
 
 /** One good's icon binding as it ships in `content/goods/manifest.json`. */
@@ -37,7 +33,7 @@ export interface GoodsManifest {
   readonly paletteLutStem: string;
   readonly palettes: readonly string[];
   readonly icons: Readonly<Record<string, GoodIcon>>;
-  /** Localized display names (locale → good id → name); consumed via {@link import('./good-names.js')}. */
+  /** Localized display names: locale → good id → name. */
   readonly names: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
@@ -57,9 +53,7 @@ const GOODS_MANIFEST_URL = '/goods/manifest.json';
 
 let goodsManifestOnce: Promise<GoodsManifest | null> | null = null;
 
-/** Fetch + parse `content/goods/manifest.json` once per page - the shared source the goods icon art, the
- *  in-world pile bindings and the localized good names ({@link import('./good-names.js')}) all slice. `null`
- *  when the goods pipeline stage hasn't run. */
+/** Fetch and parse `content/goods/manifest.json` once per page. `null` when the goods stage hasn't run. */
 export function loadGoodsManifest(): Promise<GoodsManifest | null> {
   goodsManifestOnce ??= fetchJsonOrNull<GoodsManifest>(GOODS_MANIFEST_URL);
   return goodsManifestOnce;
@@ -68,9 +62,8 @@ export function loadGoodsManifest(): Promise<GoodsManifest | null> {
 let goodsArtOnce: Promise<GoodsArt | null> | null = null;
 
 /**
- * Load the goods manifest + indexed atlas + palette LUT, or `null` when any half is missing (the goods
- * pipeline stage hasn't run). Memoized per page like {@link import('./gui-art.js').loadGuiArt}: every HUD
- * surface that shows a good icon shares one atlas texture.
+ * The goods manifest, indexed atlas and palette LUT, or `null` when any part is missing. Memoized per
+ * page, so every HUD surface that shows a good icon shares one atlas texture.
  */
 export function loadGoodsArt(): Promise<GoodsArt | null> {
   goodsArtOnce ??= (async () => {
@@ -93,25 +86,21 @@ export function loadGoodsArt(): Promise<GoodsArt | null> {
   return goodsArtOnce;
 }
 
-/** The good string id → icon binding map, as the manifest ships it (no textures - just the frame/palette
- *  data the in-world pile binding needs). */
+/** The good string id → icon binding map, as the manifest ships it (frame and palette data, no textures). */
 export type GoodIconMap = ReadonlyMap<string, GoodIcon>;
 
 /**
- * The neutral generic icon for a good with no `ls_goods` art (the synthetic plank, and the
- * potions/amulets/fruit that share the original's type-1 "no distinct pile") - the state-1 heap bob (0)
- * recoloured through the neutral `goods01` palette. A named approximation shared by the HUD Magazyn icon and
- * the in-world dropped-pile graphic, so an iconless good reads the same "generic sack" in both places rather
- * than showing nothing / the bare placeholder flag. `goods01` is always a valid LUT/atlas row.
+ * The neutral generic icon for a good with no `ls_goods` art: the state-1 heap bob recoloured through the
+ * neutral `goods01` palette, which is always a valid LUT/atlas row. A named approximation shared by the
+ * HUD icon and the in-world dropped pile, so an iconless good reads the same in both places.
  */
 export const GENERIC_GOOD_ICON: GoodIcon = { frame: 0, palette: 'goods01', fillFrames: [0] };
 
 let goodsIconManifestOnce: Promise<GoodIconMap | null> | null = null;
 
 /**
- * Load just the good→icon bindings from `content/goods/manifest.json` - the lightweight twin of
- * {@link loadGoodsArt} (no atlas/LUT textures), for the in-world pile binding that resolves each good's
- * `ls_goods` recoloured atlas by palette name. `null` when the goods pipeline stage hasn't run. Memoized.
+ * Just the good→icon bindings, the lightweight twin of {@link loadGoodsArt} with no atlas or LUT
+ * textures. `null` when the goods stage hasn't run. Memoized.
  */
 export function loadGoodsIconManifest(): Promise<GoodIconMap | null> {
   goodsIconManifestOnce ??= (async () => {
@@ -129,10 +118,9 @@ export interface GoodSprite {
 }
 
 /**
- * Build a {@link PalettedSprite} for one good icon - the good's `ls_goods` frame recoloured through its
- * palette row - or `null` when the frame isn't in the atlas. `colorKey` is `'off'`: the bob mask (atlas
- * alpha) already cuts the transparent background, and the pile art's own dark pixels must be kept (a
- * near-black key would eat them).
+ * Build a {@link PalettedSprite} for one good icon, or `null` when the frame isn't in the atlas.
+ * `colorKey` is `'off'`: the bob mask already cuts the transparent background, and a near-black key would
+ * eat the pile art's own dark pixels.
  */
 export function makeGoodSprite(art: GoodsArt, icon: GoodIcon): GoodSprite | null {
   const frame = art.layer.atlas.frames.get(icon.frame);

@@ -12,22 +12,13 @@ import { loadIr } from './ir/load.js';
 import type { ContentIr } from './ir/rows.js';
 
 /**
- * The real-ground binding: draw the terrain from decoded `text_*.pcx` textures instead of the flat
- * `TILE_COLOURS` tint, served from the gitignored `content/` over the dev/shot vite server (the `/ir.json`
- * + `/textures/` routes - no copyrighted bytes in the repo). Two levels of fidelity:
+ * The real-ground binding: draw terrain from the decoded `text_*.pcx` pages served out of the gitignored
+ * `content/`. Two levels of fidelity: a decoded original map carries the exact `GfxPattern` per cell
+ * triangle and joins it 1:1 by `EditName`, while a synthetic grid falls back to `terrainPatterns`, which
+ * binds each landscape typeId to one representative pattern (a recorded deviation, source basis).
  *
- *  - **1:1 per-triangle** (a decoded original map): the map's `ground` lanes carry the exact `GfxPattern`
- *    per cell triangle (baked into `map.dat`); {@link TerrainTextureSet.groundFor} joins each pattern
- *    `EditName` onto the 927-record `gfxPatterns` IR table, and {@link TerrainTextureSet.transitionFor}
- *    joins the map's `transitions.types` names onto `gfxPatternTransitions` (the composed
- *    `<stem>.masked.png` RGBA overlay pages).
- *  - **approximated per-typeId** (synthetic grids / maps without ground lanes): `terrainPatterns` binds
- *    each landscape typeId to one representative pattern (`buildTerrainPatterns` - a recorded deviation,
- *    source basis).
- *
- * All ground pages load linear-filtered - the original samples its terrain pages bilinearly (docs/SOURCES.md
- * "terrain tessellation"), melting pattern joins and transition masks into smooth seams; the sprite atlases
- * stay `nearest` (pixel art).
+ * All ground pages load linear-filtered because the original samples its terrain pages bilinearly
+ * (docs/SOURCES.md "terrain tessellation"); the sprite atlases stay `nearest`.
  */
 
 type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;
@@ -70,21 +61,17 @@ export function buildTerrainDebugColourIndex(tables: ContentIr): ReadonlyMap<num
 }
 
 /**
- * Real terrain content is absent: no served `ir.json`, or not one referenced ground texture page could
- * be loaded. An environment precondition (the pipeline has not populated `content/`), not a decode bug.
- * The playable entries catch exactly this to halt boot with the run-the-pipeline notice; `?shot&terrain`
- * lets it fail the harness.
+ * Real terrain content is absent: no served `ir.json`, or not one referenced ground texture page could be
+ * loaded. An environment precondition (the pipeline has not populated `content/`), not a decode bug.
  */
 export class MissingTerrainError extends Error {}
 
 /**
- * Load the real {@link TerrainTextureSet}: the approximated per-typeId {@link CellTexture} table
- * (from `terrainPatterns`) plus the 1:1 per-triangle pattern join (from the full `gfxPatterns`
- * table, keyed by `EditName`), then every referenced `text_NNN.png` page as a GPU source. Throws
- * {@link MissingTerrainError} when the environment has no real terrain to serve; pass `ir: null` when
- * the caller already resolved the IR as absent. The shared memoized {@link loadIr} means the (multi-MB)
- * fetch is paid once per page regardless of who reads it first. `loadPage` is injectable so the absence
- * policy is testable without a GPU; the default loads linear-filtered (see the module doc).
+ * Load the real {@link TerrainTextureSet}: the approximated per-typeId {@link CellTexture} table, the 1:1
+ * per-triangle pattern join keyed by `EditName`, then every referenced `text_NNN.png` page as a GPU
+ * source. Throws {@link MissingTerrainError} when the environment has no real terrain to serve; pass
+ * `ir: null` when the caller already resolved the IR as absent. `loadPage` is injectable so the absence
+ * policy is testable without a GPU.
  */
 export async function loadRealTerrain(
   ir?: ContentIr | null,
@@ -104,8 +91,7 @@ export async function loadRealTerrain(
     const pageKey = texturePageKey(row.texture);
     pageKeys.add(pageKey);
     const fallbackColour = debugColours.get(row.typeId);
-    // Spread the optional colour only when present - `exactOptionalPropertyTypes` rejects an explicit
-    // `undefined` on an optional field.
+    // `exactOptionalPropertyTypes` rejects an explicit `undefined`, so spread the colour only if present.
     cellByType.set(row.typeId, {
       pageKey,
       rect: patternSrcRect(row.coordsA, row.coordsB),
@@ -115,9 +101,8 @@ export async function loadRealTerrain(
   // The 1:1 join: every well-formed GfxPattern by its EditName (unique across the real 927 records).
   const patternByName = buildGroundPatternIndex(tables);
   for (const pattern of patternByName.values()) pageKeys.add(pattern.pageKey);
-  // The transition-overlay join: every well-formed `[transition]` record by name. The page is the
-  // pipeline's composed RGBA `<texture stem>.masked.png` (RGB page + alpha mask in one picture) -
-  // the plain `<stem>.png` twin lacks the mask, so it is never referenced here.
+  // A transition draws off the pipeline's composed `<stem>.masked.png` (RGB page and alpha mask in one
+  // picture); the plain `<stem>.png` twin lacks the mask, so it is never referenced here.
   const transitionByName = new Map<string, TransitionPattern>();
   for (const row of tables.gfxPatternTransitions ?? []) {
     if (row.editName === undefined || row.texture === undefined || row.coordsA.length === 0) continue;
@@ -125,9 +110,7 @@ export async function loadRealTerrain(
     pageKeys.add(pageKey);
     transitionByName.set(row.editName, { pageKey, coordsA: row.coordsA, coordsB: row.coordsB });
   }
-  // Load the distinct pages any table references (~56 + ~19 overlays on the real data) in parallel.
-  // A page that fails to load is skipped (warn once): the renderer falls back per triangle / skips
-  // that overlay.
+  // A page that fails to load is skipped: the renderer falls back per triangle, or skips that overlay.
   const pages = new Map<string, LoadedSource>();
   await Promise.all(
     [...pageKeys].map(async (key) => {
@@ -138,9 +121,8 @@ export async function loadRealTerrain(
       }
     }),
   );
-  // Zero loaded pages is not a degradation but the missing-content state (an ir.json with no terrain
-  // lanes, or a content/ without served textures): a set that flat-tints every triangle must not pass
-  // as real terrain.
+  // Zero loaded pages is the missing-content state, not a degradation: a set that flat-tints every
+  // triangle must not pass as real terrain.
   if (pages.size === 0) {
     throw new MissingTerrainError(
       'terrain: content/ has no loadable ground texture pages. Run `npm run pipeline` against an owned game copy to populate content/.',

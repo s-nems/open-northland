@@ -19,14 +19,11 @@ import {
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
 
 /**
- * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD so a human
- * can watch the mechanic. Normal play loads decoded sprites (hand-authored stand-ins cover a partial
- * `content/`) and requires the decoded terrain: without served content the boot halts on the
- * missing-content notice instead of drawing a flat world. The sim is the exact one the headless
- * acceptance test runs.
+ * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD, over the
+ * exact sim the headless acceptance test runs. Decoded terrain is required: without served content the
+ * boot halts on the missing-content notice instead of drawing a flat world.
  */
 
-/** The boot steps this entry runs, in order - the loading card's step list. */
 export const SCENE_BOOT_PHASES = [
   'graphics',
   'content',
@@ -51,22 +48,17 @@ export async function renderSceneMode(
   }
 
   diag.info('boot', 'game start', { entry: 'scene', sceneId, seed: scene.seed });
-  // Content fetches, atlas builds and terrain meshing run for seconds before the first frame; the card
-  // covers that stretch and comes off once the world is drawn.
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas);
   const terrainGrid = terrainMapToScene(scene.terrain);
   await boot.begin('content');
-  // The shared decoded content: localized good names and the merged real content the browser scene runs
-  // on when it is served (real footprints/recipes), so it collides/doors/places exactly like the live map
-  // view instead of the hand-authored class squares. Without served content the sandbox fallback stands
-  // in only until the terrain step below halts the boot; the headless twin never loads either, so
-  // copyrighted content stays out of tests.
+  // Served real content makes the browser scene collide and place exactly like the live map view. The
+  // headless twin never loads it, so copyrighted content stays out of tests.
   const { goodNames, realContent } = await loadLocalizedRealContent(params);
   const ir = await loadIr();
-  // Real extracted building footprints (like the `?map=` entry); empty on a bare checkout.
+  // Empty on a bare checkout.
   const footprints = buildingFootprints(ir);
   await boot.begin('world');
   const sim = createSceneSim(scene, {
@@ -81,13 +73,12 @@ export async function renderSceneMode(
     sim,
     hashTrace: hashTraceFor(params),
   });
-  // `?fog=` / `?progression=` override the scene's own rules - a named divergence from the headless
-  // twin, like `?speed=`: the human explicitly asked to watch the mechanic under a different rule.
+  // `?fog=` and `?progression=` override the scene's own rules: a named divergence from the headless
+  // twin, requested by the human watching it.
   applySessionRuleOverrides(sim, sessionRuleOverrides(params));
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);
-  // The meshing below is the rest of this step, as in the `?map=` entry.
   await boot.begin('terrain');
   let terrain: TerrainTextureSet;
   try {
@@ -101,12 +92,9 @@ export async function renderSceneMode(
   const renderer = createWorldRenderer(app, params, sheet);
   renderer.setTerrain(terrainGrid, terrain);
 
-  // Interactive camera over the scene: the scene supplies its starting frame, then the human pans and
-  // zooms. Frame on the first tick's snapshot, not the initial one: a scene's settler spawns run as
-  // tick-1 commands (direct-placed resources/flags exist at tick 0), so the tick-0 settler centroid is
-  // empty and `cameraFor` falls back to the tile origin (an off-centre first frame). The extra step is
-  // deterministic: the browser view runs `runTicks + 1` ticks vs the headless twin - harmless, the checks
-  // run headless.
+  // Framed on the first tick's snapshot: a scene's settler spawns run as tick-1 commands, so the tick-0
+  // centroid is empty and `cameraFor` would fall back to the tile origin. The browser view therefore
+  // runs one tick more than the headless twin.
   sim.step();
   const cameraCtl = createCameraController(
     canvas,
@@ -114,9 +102,6 @@ export async function renderSceneMode(
     app.renderer.resolution,
   );
 
-  // The shared in-game runtime (view/runtime/game-view.ts): the standard HUD mounts - tool panel, unit
-  // controls, perf overlay, positional sound - and the one fixed-timestep RAF loop, identical to the
-  // `?map=` entry's.
   await boot.begin('hud');
   await startGameView({
     app,

@@ -45,17 +45,15 @@ import { EAT_ATOMIC, SLEEP_ATOMIC } from '../settler-gfx/sequences.js';
 
 /**
  * The viking `[gfxanimatomic]` `logictribe` - `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. Not the
- * tribetypes `logicType` (also 1 for viking, but 4 there is Saracen), and not a value to guess: the same
- * body bobseq name recurs across the human tribes with different per-direction frame lists, so the attack
- * swings must be drawn from this tribe's records (`gfxAtomicFrameLists`), else a soldier swings a
- * different tribe's motion. See the scoped-id gotcha in the root AGENTS.md.
+ * tribetypes `logicType` (also 1 for viking, but 4 there is Saracen). The same body bobseq name recurs
+ * across the human tribes with different per-direction frame lists, so the attack swings must be drawn
+ * from this tribe's records, else a soldier swings a different tribe's motion.
  */
 const VIKING_ANIM_TRIBE = 1;
 
 /**
- * A body layer with every frame's draw offset dropped by `shift` px (no shift → the layer verbatim) -
- * the committed anchor calibration a {@link import('../settler-gfx/index.js').CharacterSpec.feetShiftY}
- * declares (the baby lib's authored hotspots sit above its sprite, so it drew hovering).
+ * A body layer with every frame's draw offset dropped by `shift` px (no shift → the layer verbatim) - the
+ * anchor calibration a `CharacterSpec.feetShiftY` declares.
  */
 function feetShiftedLayer(layer: SpriteLayer, shift: number | undefined): SpriteLayer {
   if (shift === undefined || shift === 0) return layer;
@@ -65,13 +63,11 @@ function feetShiftedLayer(layer: SpriteLayer, shift: number | undefined): Sprite
 }
 
 /**
- * Load the per-job {@link SettlerCharacterSet}: every {@link import('../settler-gfx/index.js').CHARACTER_SPECS}
- * look whose body atlas and sequences resolve, joined to jobs via
- * {@link import('../settler-gfx/index.js').ADULT_CHARACTER_BY_JOB} / `YOUNG_CHARACTER_BY_JOB`. Bodies are loaded
- * once per roster entry (the six soldier looks share one armoured body atlas); a head that 404s is skipped
- * (the look draws with fewer faces), a body that 404s or an unresolvable binding drops that look (its jobs
- * fall back to the default). Returns `undefined` - no characters, the sheet degrades to the single-body
- * legacy path - when the IR carries no sequences or the civilian look (the required default) can't be built.
+ * Load the per-job {@link SettlerCharacterSet}: every `CHARACTER_SPECS` look whose body atlas and sequences
+ * resolve, joined to jobs by the adult/young tables. Bodies load once per roster entry (the six soldier
+ * looks share one armoured body atlas); a head that 404s is skipped, and a body that 404s or an
+ * unresolvable binding drops that look to the default. Returns `undefined`, degrading the sheet to the
+ * single-body path, when the IR carries no sequences or the civilian look can't be built.
  */
 export async function loadCharacters(
   ir: ContentIr | null,
@@ -98,10 +94,8 @@ export async function loadCharacters(
         });
         layersByRoster.set(rosterId, { body, headsByStem });
       } catch (err) {
-        // An optional look must never kill the boot: a missing body (MissingAtlasError) is the expected
-        // undecoded-content case; any other failure (a corrupt manifest, a truncated PNG) is a real bug
-        // - surface it loudly, but still degrade this look to the default instead of failing the whole
-        // sheet. Strict propagation stays on the base sheet's own loads (loadHumanSpriteSheet).
+        // An optional look must never kill the boot. A missing body is the expected undecoded-content
+        // case; any other failure is a real bug, so warn but still degrade this look to the default.
         if (!(err instanceof MissingAtlasError)) {
           diag.warn(
             'content',
@@ -113,15 +107,11 @@ export async function loadCharacters(
     }),
   );
 
-  // The viking directional attack frame lists (`[gfxanimatomic]` action-81), indexed by swing bobseq
-  // name - the layout each warrior/civilian spec's `attack` seq becomes a FrameListAnim from. Built once
-  // (not per spec); a spec whose seq is absent just has no attack animation.
+  // The viking directional attack frame lists (`[gfxanimatomic]` action-81), indexed by swing bobseq name.
+  // Built once; a spec whose seq is absent just has no attack animation.
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
-  // The per-direction frame lists for every dir-list action - gathering, field work, the builder hammer,
-  // the wedding kiss and the gossip talk/listen `[gfxanimatomic]` records - keyed by atomic id: what each
-  // spec's `dirListAtomics` becomes FrameListAnims from. An action missing here plays its plain `atomics`
-  // strip whole, cycling through the sheet's direction blocks (the "spinning" artifact). Built once; an
-  // IR without a record just leaves that action on its fallback clip.
+  // The per-direction frame lists for every dir-list action, keyed by atomic id. An action missing here
+  // plays its plain `atomics` strip whole, cycling through the sheet's direction blocks.
   const actionFrameLists = new Map(
     [
       HARVEST_ATOMIC,
@@ -143,9 +133,8 @@ export async function loadCharacters(
       SLEEP_ATOMIC,
     ].map((action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const),
   );
-  // One mushroom pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list
-  // back-to-back so the whole pick is a single continuous motion (HARVEST_TICKS sizes the atomic to
-  // cover the repeats + a ready-stance breather - settler-gfx.ts, observed-pace approximation).
+  // One pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list back-to-back so
+  // the whole pick is a single continuous motion (HARVEST_TICKS sizes the atomic to cover the repeats).
   const pluck = actionFrameLists.get(MUSHROOM_HARVEST_ATOMIC);
   if (pluck !== undefined) {
     actionFrameLists.set(
@@ -154,8 +143,7 @@ export async function loadCharacters(
         [...pluck].map(([seq, dirs]) => {
           for (const list of dirs) {
             if (list.length !== MUSHROOM_PLUCK_FRAMES) {
-              // The atomic duration is sized off the pin, not this list - a drifted extraction would
-              // cut the repeated motion short or pad it; surface it instead of silently mistiming.
+              // The atomic duration is sized off the pin, so a drifted list would cut or pad the motion.
               diag.warn(
                 'content',
                 `mushroom pluck list '${seq}' is ${list.length} frames; HARVEST_TICKS is sized for ${MUSHROOM_PLUCK_FRAMES}`,
@@ -188,13 +176,13 @@ export async function loadCharacters(
     const heads = (spec.headBmds ?? roster.headBmds)
       .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))
       .filter((l): l is SpriteLayer => l !== undefined);
-    // Head-borrow: goods whose carry cycle ships empty head bobs resolve the head through the base walk
-    // instead (carryHeadAnims) - else a stone/grain hauler draws headless. All of a body's heads share
-    // one bob layout, so checking the first head atlas stands for the set.
+    // Goods whose carry cycle ships empty head bobs resolve the head through the base walk instead, else a
+    // stone/grain hauler draws headless. All of a body's heads share one bob layout, so checking the first
+    // head atlas stands for the set.
     const byGood = binding.carrying?.byGood;
     const headAtlas = heads[0]?.atlas;
-    // The head-borrow reference is the plain walk (a uniform DirectionalAnim); moving is never the
-    // explicit-frame-list kind (only the attack swing is), so exclude a FrameListAnim to keep the type.
+    // The head-borrow reference is the plain walk; `moving` is never a FrameListAnim (only the attack swing
+    // is), so exclude that kind to keep the type.
     const moving = binding.moving;
     const walk = typeof moving === 'object' && !('frameLists' in moving) ? moving : undefined;
     let headBinding: SettlerStateBinding | undefined;
@@ -225,8 +213,8 @@ export async function loadCharacters(
     if (char !== undefined) youngByJob[Number(job)] = char;
   }
   // The equipped-weapon look table: a warrior draws the body of the weapon in its Equipment.weapon slot.
-  // Joined slug → the running content's good typeId (sandbox 137–142 vs real 37–42), so the key matches
-  // whatever `Equipment.weapon.goodType` the sim actually stamps.
+  // Joined slug → the running content's good typeId, so the key matches whatever
+  // `Equipment.weapon.goodType` the sim actually stamps.
   const byWeaponGood: Record<number, SettlerCharacter> = {};
   for (const good of goods) {
     const specId = WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG[good.id];
@@ -234,11 +222,10 @@ export async function loadCharacters(
     const char = bySpec.get(specId);
     if (char !== undefined) byWeaponGood[good.typeId] = char;
   }
-  // The disarmed look: a weapon-job whose Equipment.weapon slot is empty draws the bare-hands warrior
-  // body instead of its job body's weapon - the inventory axis wins over the job whenever the
-  // component exists (named approximation until the combat wiring lands; a settler with no Equipment
-  // keeps the legacy armed job look). Keyed by the re-armable jobs only (WARRIOR_JOBS), so an axe
-  // soldier - no axe good exists to re-arm with - never loses its drawn axe this way.
+  // The disarmed look: a weapon-job whose Equipment.weapon slot is empty draws the bare-hands warrior body,
+  // so the inventory axis wins over the job wherever the component exists (a settler with no Equipment
+  // keeps its armed job look). Keyed by the re-armable jobs only, so an axe soldier - no axe good exists to
+  // re-arm with - never loses its drawn axe this way.
   const unarmedByJob: Record<number, SettlerCharacter> = {};
   const bareWarrior = bySpec.get(UNARMED_WARRIOR_SPEC);
   if (bareWarrior !== undefined) for (const job of WARRIOR_JOBS) unarmedByJob[job] = bareWarrior;

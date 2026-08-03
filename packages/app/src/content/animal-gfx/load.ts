@@ -12,10 +12,10 @@ import type { ContentIr } from '../ir/rows.js';
 import { animalBinding } from './bindings.js';
 
 /**
- * Load the wildlife species looks: every IR animal-record tribe whose roster recolour atlas and
- * sequences resolve gets a body + binding; the rest stay listed but unbound (the resolution contract
- * lives on {@link SettlerCharacterSet.animals}). `undefined` when the IR carries no animal records
- * at all (a synthetic/sandbox sheet), keeping the sheet's human-only shape.
+ * Load the wildlife species looks: every IR animal-record tribe whose roster recolour atlas and sequences
+ * resolve gets a body + binding, and the rest stay listed but unbound (the resolution contract lives on
+ * {@link SettlerCharacterSet.animals}). `undefined` when the IR carries no animal records at all, keeping
+ * the sheet's human-only shape.
  */
 export async function loadAnimalCharacters(
   ir: ContentIr | null,
@@ -26,9 +26,9 @@ export async function loadAnimalCharacters(
   }
   if (tribes.size === 0) return undefined;
 
-  // One load per distinct recolour (bear01 serves bears AND camels); the shared shadow set decodes
-  // once via loadLayer's memoized body cache. A missing atlas (a partial content/) drops the palette's
-  // tribes to unbound; a real decode failure still propagates.
+  // One load per distinct recolour (bear01 serves bears and camels); the shared shadow set decodes once via
+  // loadLayer's memoized body cache. A missing atlas drops the palette's tribes to unbound; a real decode
+  // failure still propagates.
   const stems = new Map<string, Promise<Awaited<ReturnType<typeof loadLayer>> | undefined>>();
   for (const tribe of tribes) {
     const palette = ANIMAL_PALETTE_BY_TRIBE.get(tribe);

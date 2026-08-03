@@ -24,19 +24,12 @@ import {
 } from './sequences.js';
 
 /**
- * The demo binding into the human atlases - the render twin of the global sandbox content.
- * The settler's walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for
- * `cr_hum_body_00.bmd`), so no frame ids are hard-coded here; an absent manifest falls back to
- * the known-good `FALLBACK_*` ranges. The building's per-type bobs overlay the extracted
- * `houseBobsByType` (the `buildingBobs` join, see {@link import('../building-gfx/index.js').buildingBobRefsByType})
- * onto the transcribed {@link VIKING_HOUSE01_BOBS} per type: real data wins where present, the constant
- * covers any of its five known types the data is missing (so a partial/absent IR degrades gracefully
- * type-by-type instead of dropping a whole family to the generic box). A `houseBobsByType` value may be
- * layer-qualified (a `{ layer, bob }` {@link BuildingBobRef} into a named
- * {@link import('@open-northland/render').SpriteSheet.families} atlas - the HQ's viking4 family); the constant's
- * values are bare ids drawn from the default `building` layer. `building`/`resource` resolve in their own
- * per-kind layers (see {@link import('../sprite-sheet/index.js').loadHumanSpriteSheet}'s `kindLayers`), so their
- * ids index the house/tree bobs, not the body's.
+ * The demo binding into the human atlases - the render twin of the global sandbox content. The settler's
+ * walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for `cr_hum_body_00.bmd`), so
+ * no frame ids are hard-coded here; an absent manifest falls back to the known-good `FALLBACK_*` ranges.
+ * The building's per-type bobs overlay the extracted `houseBobsByType` onto the transcribed
+ * {@link VIKING_HOUSE01_BOBS}, so a partial IR degrades type-by-type. `building` and `resource` resolve in
+ * their own per-kind layers, so their ids index the house/tree bobs rather than the body's.
  */
 export function buildHumanBindings(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -51,9 +44,8 @@ export function buildHumanBindings(
   upgradeByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>,
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
-  // Idle is the wait animation played as one direction (its length isn't a clean ×8, so it isn't a
-  // directional cycle - the original plays it locked to a facing; source basis). The full loop, so a
-  // standing settler breathes - not a frozen frame, and not a truncated facing-sliced 1/8 excerpt.
+  // The wait plays as one direction: its length is not a clean ×8, so the original plays the whole loop
+  // locked to a facing.
   const wait: DirectionalAnim = singleDirAnim(seqByName.get(WAIT_SEQ)) ?? FALLBACK_WAIT;
   const chop = directionalAnimFromSeq(seqByName, CHOP_SEQ, { phaseStart: CHOP_PHASE_START }, FALLBACK_CHOP);
   const walkWood = directionalAnimFromSeq(seqByName, WALK_WOOD_SEQ, {}, FALLBACK_WALK_WOOD);
@@ -64,60 +56,45 @@ export function buildHumanBindings(
     { ...FALLBACK_WALK_WOOD, frames: 1 },
   );
   return {
-    // Chop is bound only to the harvest atomic. There is intentionally no generic `acting` swing: an
-    // unmapped action (a carrier/woodcutter depositing or picking up - atomics 22/23) falls back to a
-    // standing pose, not a borrowed woodcut swing - which would replay the 15-frame axe swing at ~4×
-    // speed on a 4-tick deposit (a fast, truncated chop).
-    //
-    // `carrying` is the loaded-gait override: once the woodcutter picks up its wood it walks the loaded
-    // gait instead of the empty walk, and stands a loaded pose while it deposits. The chop still wins
-    // while harvesting because a settler only carries *after* the harvest.
+    // Chop binds only to the harvest atomic: with no generic `acting` swing, an unmapped action (a deposit
+    // or pickup, atomics 22/23) stands still instead of replaying the 15-frame axe swing at ~4× speed.
     settler: {
       idle: wait,
       moving: walk,
       byAtomic: { [HARVEST_ATOMIC]: chop },
-      // Loaded-idle stays a still standing pose: the data has no loaded wait loop (hands full), and a
-      // carrier only stands loaded for the brief deposit transient, so a hold reads fine here.
+      // The data has no loaded wait loop, so loaded-idle holds a still standing pose.
       carrying: { idle: standWood, moving: walkWood },
     },
     // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join),
-    // data-driven from the extracted `buildingBobs` IR overlaid onto the transcribed VIKING_HOUSE01_BOBS:
-    // real data wins per type, the constant backs its five known types when the IR is partial/absent
-    // ({...undefined} / {...{}} spread to nothing → just the constant). A type in neither falls back to
-    // the representative HOUSE_BOB via BuildingTypeBinding.default.
+    // the extracted `buildingBobs` overlaid onto the transcribed VIKING_HOUSE01_BOBS. A type in neither
+    // falls back to the representative HOUSE_BOB.
     building: {
       byType: { ...VIKING_HOUSE01_BOBS, ...houseBobsByType },
       default: HOUSE_BOB,
-      // Construction-stage layers per type (the `GfxBobConstructionLayer` join) - an under-construction
-      // building draws its progress-gated stage stack instead of the finished body. Absent/empty when
-      // the IR is missing (`{...undefined}` spreads to nothing → no table → body draw at every progress).
+      // Construction-stage layers per type (the `GfxBobConstructionLayer` join) - the progress-gated stage
+      // stack an under-construction building draws instead of the finished body.
       ...(constructionByType !== undefined && Object.keys(constructionByType).length > 0
         ? { constructionByType }
         : {}),
-      // Upgrade-overlay layers per type (the `upgrade === 1` rows - the next tier's body revealing
-      // over the still-standing old one while a building upgrades). Absent/empty spreads to nothing.
+      // Upgrade-overlay layers per type (the `upgrade === 1` rows - the next tier's body revealing over
+      // the still-standing old one).
       ...(upgradeByType !== undefined && Object.keys(upgradeByType).length > 0 ? { upgradeByType } : {}),
-      // Animated state overlays per type (the type-4 `GfxOverlay` join) - the mill's rotor drawn on
-      // top of its bladeless body: still while idle, spinning while the mill produces. Absent/empty
-      // when the IR predates the `buildingOverlays` lane (no overlay - the body draws as before).
+      // Animated state overlays per type (the type-4 `GfxOverlay` join) - the mill's rotor over its
+      // bladeless body, still while idle and spinning while the mill produces.
       ...(overlayByType !== undefined && Object.keys(overlayByType).length > 0 ? { overlayByType } : {}),
     },
-    // Each gathered good draws its own standing node (the `landscapeToHarvest` join, built from the
-    // Step-1 gathering pipeline - a tree for wood, a rock for stone, a mine for iron/gold/clay, a
-    // mushroom), overlaid onto the yew fallback. Absent (a checkout without the join) → the plain
-    // TREE_BOB every resource used to draw. See resource-gfx.ts.
+    // Each gathered good draws its own standing node (the `landscapeToHarvest` join), overlaid onto the
+    // yew fallback.
     resource: resourceBinding ?? TREE_BOB,
-    // Dropped ground piles draw their good's own `ls_goods` heap (growing with the pile's contents) and a
-    // bare/empty pile draws the delivery flag. Omitted (no join) → a stockpile draws the placeholder heap.
+    // Dropped ground piles draw their good's own `ls_goods` heap, growing with the pile's contents; a bare
+    // pile draws the delivery flag.
     ...(stockpileBinding !== undefined ? { stockpile: stockpileBinding } : {}),
-    // A felled tree's stump draws the dead-tree/debris frame (`ls_trees_dead`). Omitted (no join) → the
-    // stump draws the placeholder. See resource-gfx.ts (resolveStumpRef).
+    // A felled tree's stump draws the dead-tree debris frame (`ls_trees_dead`).
     ...(stumpBinding !== undefined ? { stump: stumpBinding } : {}),
-    // A freshly-felled trunk on the ground (a GroundDrop) draws its good's `landscapeToPickup` log -
-    // distinct from the tidy delivered heap. Omitted (no join) → the drop draws the placeholder.
+    // A freshly-felled trunk on the ground draws its good's `landscapeToPickup` log, distinct from the
+    // tidy delivered heap.
     ...(trunkBinding !== undefined ? { trunk: trunkBinding } : {}),
-    // A wild berry bush draws its fruited/bare frame (the `bush with fruits`/`bush naked` records) by
-    // `DrawItem.level` (2 = ripe, 1 = bare). Omitted (no join) → the bush draws the placeholder.
+    // A wild berry bush draws its ripe/flowering/bare frame by `DrawItem.level` (3 = ripe, 1 = bare).
     ...(berryBushBinding !== undefined ? { berrybush: berryBushBinding } : {}),
   };
 }

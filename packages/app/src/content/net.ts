@@ -2,20 +2,15 @@ import { loadAtlasSource, type TextureSource } from '@open-northland/render';
 import { diag } from '../diag/log.js';
 
 /**
- * The two fetch idioms every `content/` loader in this folder shares, kept in one place so the
- * degrade-gracefully policy can't drift per file:
- *
- *  - {@link fetchJsonOrNull} - optional JSON (a manifest, metrics, the IR): absent/unreadable → `null`,
- *    the caller falls back instead of crashing (a checkout without `content/` must still boot).
- *  - {@link loadTextureIfPresent} - optional texture (a palette/colour LUT): absent/unreadable →
- *    `undefined`, likewise. Absent is silent (the pipeline stage simply hasn't run); unreadable warns,
- *    because falling back to preview graphics over a broken artifact must not pass unannounced.
+ * The fetch idioms every `content/` loader in this folder shares, kept in one place so the
+ * degrade-gracefully policy cannot drift per file: optional content that is absent or unreadable resolves
+ * to `null`/`undefined` instead of throwing, since a checkout without `content/` must still boot. Absence
+ * is silent (the pipeline stage has not run); an unreadable artifact warns.
  */
 
 /**
- * Fetch + parse a JSON document, or `null` when it is absent or unreadable. `fetchImpl` defaults to the
- * global `fetch`; it is injectable so a Node/headless caller can drive the same degrade policy over its
- * own transport without a server (the seam `loadTerrainMap` established for testable content loaders).
+ * Fetch and parse a JSON document, or `null` when it is absent or unreadable. `fetchImpl` is injectable
+ * so a headless caller can drive the same degrade policy over its own transport.
  */
 export async function fetchJsonOrNull<T>(url: string, fetchImpl: typeof fetch = fetch): Promise<T | null> {
   try {
@@ -44,9 +39,7 @@ export async function loadTextureIfPresent(url: string): Promise<TextureSource |
 
 /**
  * Fetch a served PNG and read it back CPU-side as pixels via a 2D canvas (browser-only). `null` when the
- * image is absent/unreadable or a 2D context can't be had, so callers degrade. The one home for the
- * fetch → `createImageBitmap` → canvas → `getImageData` readback, shared by the GUI bar-ramp LUT
- * (one row) and the minimap ground-page sampler (full buffer); each caller slices what it needs.
+ * image is absent or unreadable or no 2D context can be had, so callers degrade.
  */
 export async function fetchImageData(url: string): Promise<ImageData | null> {
   try {

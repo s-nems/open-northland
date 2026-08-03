@@ -4,18 +4,15 @@ import { BUTTON_STYLE, el } from '../overlay.js';
 import { ROW_STYLE, setButtonActive } from './chrome.js';
 
 /**
- * A live-rule toggle widget for the admin panel - a DOM row plus a {@link refresh} that re-reads the sim's
- * current rule state. The needs toggle + fog switcher share this shape: they build a control, enqueue a
- * command on click (never touching sim state), and re-sync their highlight from the sanctioned read when the
- * panel opens (the mount value may predate a scene's own boot toggle, and another surface could flip it).
+ * A live-rule toggle for the admin panel: a DOM row that enqueues a command on click, never touching sim
+ * state, plus a refresh that re-syncs its highlight from the sim's own read.
  */
 export interface LiveToggle {
   readonly row: HTMLElement;
-  /** Re-read the live rule and repaint the control (call whenever the admin panel opens). */
+  /** Re-read the live rule and repaint; the mount value may predate a scene's own boot toggle. */
   refresh(): void;
 }
 
-/** The admin fog switcher's mode buttons - every `FOG_MODE` with a human label. */
 const FOG_MODES = [
   { mode: FOG_MODE.OFF, key: 'off' },
   { mode: FOG_MODE.REVEAL, key: 'reveal' },
@@ -23,9 +20,8 @@ const FOG_MODES = [
 ] as const;
 
 /**
- * The global needs toggle ("wyłącz potrzeby" - user decision 2026-07-11): flips the sim's setNeedsEnabled
- * rule so test units don't starve mid-session. Scenes boot with needs off, maps on; the label tracks the
- * value just requested (the command applies next tick, well before another click can land).
+ * The global needs toggle, so test units do not starve mid-session. Scenes boot with needs off and maps
+ * on; the label tracks the requested value, which the command applies next tick.
  */
 export function createNeedsToggle(deps: {
   readonly enqueue: (command: Command) => void;
@@ -56,11 +52,7 @@ export function createNeedsToggle(deps: {
   };
 }
 
-/**
- * The fog-of-war mode switcher (the same live-rule pattern as the needs toggle): one button per
- * `FOG_MODE`, the active one highlighted from the sim's sanctioned read; a click enqueues `setFogMode`
- * and tracks the requested mode (applies next tick, before another click can land).
- */
+/** One button per `FOG_MODE`, the active one highlighted from the sim's own read. */
 export function createFogSwitcher(deps: {
   readonly enqueue: (command: Command) => void;
   readonly fogMode: (() => number) | undefined;

@@ -13,9 +13,8 @@ import { runAuthoredMap, runBareMap, runDemoWorld } from '../../game/world/index
 import { grantAssistantDefaults } from '../../view/assistant-grants.js';
 
 /**
- * The world the `?map=` entry plays on, assembled from decoded map data alone: the collision grid, the
- * builder the decode earns, the session rules the URL flags set, and the map's harvestable nodes. Needs
- * no renderer or canvas, so the headless real-content harness builds the world the browser boots on.
+ * The world the `?map=` entry plays on, assembled from decoded map data alone. It needs no renderer or
+ * canvas, so the headless real-content harness builds the same world the browser boots on.
  */
 
 export type MapWorldKind = 'authored' | 'bare' | 'demo';
@@ -29,21 +28,19 @@ export interface MapWorldOptions extends SessionRuleOverrides {
   readonly ir: ContentIr | null;
   readonly content: WorldContentOptions;
   readonly aiSeats: readonly number[];
-  /** Seats whose chest-window assistant grants start ON. */
+  /** Seats whose chest-window assistant grants start on. */
   readonly assistantSeats: readonly number[];
-  /** Owner of the demo strip's entities - only reached when no map decodes. Omitted leaves them
-   *  neutral, as {@link runDemoWorld} does. */
+  /** Owner of the demo strip's entities, reached only when no map decodes; omitted leaves them neutral. */
   readonly demoOwner?: number;
-  /** Default true, as the entry runs. The headless harness turns them off for scenarios that ignore
-   *  food, so those worlds deliberately differ from the browser's by their bushes. */
+  /** True as the entry runs it. The headless harness turns bushes off for scenarios that ignore food. */
   readonly berryBushes?: boolean;
 }
 
 export interface MapWorld {
   readonly sim: Simulation;
   readonly kind: MapWorldKind;
-  /** Each spawned harvestable's placement ordinal in the map's object list - the join back to the static
-   *  layer's sprite for the same placement. Empty when the map places no objects. */
+  /** Each spawned harvestable's placement ordinal in the map's object list: the join back to the static
+   *  layer's sprite for that placement. */
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
 }
 
@@ -60,7 +57,7 @@ export function buildMapWorld(options: MapWorldOptions): MapWorld {
 }
 
 /** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose
- *  footprints unblock when felled - baked in, a felled tree's cell stayed walled off forever. */
+ *  footprints unblock when felled. */
 function collisionTerrain(map: TerrainMapFile | null, ir: ContentIr | null): TerrainMap | null {
   if (map === null) return null;
   return ir === null ? halfCellMapFromCells(map) : buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));

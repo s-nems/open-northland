@@ -22,19 +22,18 @@ const WHEEL_ROWS = 1;
 const LIST_BOTTOM_MARGIN = 24;
 /** Hard cap on visible rows so the window stays a tidy panel even on a very tall screen (the rest scroll). */
 const MAX_LIST_ROWS = 13;
-/** Floor on visible rows so a short screen still shows a usable list. It outranks {@link listFloor}:
- *  where the overlay leaves room for fewer rows the window stays this tall and keeps overlapping. */
+/** Floor on visible rows so a short screen still shows a usable list. It outranks the list floor: where
+ *  the overlay leaves room for fewer rows the window stays this tall and keeps overlapping. */
 const MIN_LIST_ROWS = 3;
 
 /**
  * What a tabbed-list window lists: its title, the strip button it drops from, its tab grid, and the
- * projection from a tab to the items shown under it. The tab set is fixed per source (only its labels
- * are localized), so the window reads its shape once at construction.
+ * projection from a tab to the items shown under it.
  */
 export interface TabbedListSource<Id, Item extends TabbedListItem> {
   /** The headline text, resolved at rebuild time so a language change is picked up. */
   title(): string;
-  /** The strip button the window anchors to - every pop-up drops from the button that toggles it. */
+  /** The strip button the window drops from. */
   readonly anchor: ToolButtonId;
   tabs(): readonly TabbedListTab<Id>[];
   /** Tabs per grid row. */
@@ -50,7 +49,7 @@ export interface TabbedListWindowDeps<Id, Item extends TabbedListItem> {
   /** The panel's window container the pop-up mounts its own container under. */
   readonly container: Container;
   readonly source: TabbedListSource<Id, Item>;
-  /** A row was clicked (the window closes itself first) - the panel enters the matching held mode. */
+  /** A row was clicked; the window closes itself first. */
   readonly onPick: (item: Item) => void;
 }
 
@@ -67,36 +66,32 @@ export interface TabbedListWindow extends ToolWindow {
 }
 
 /**
- * Build a tabbed-list window controller over the pure {@link layoutTabbedList} geometry. It adds `back`
- * (tiled fills) and `hoverG` (the row wash) inside the shell's container, so the child order stays
- * back < frame < hover < labels. The chrome rebuilds on open, tab change and scroll; hover redraws on
- * its own.
+ * Build a tabbed-list window controller. `back` (tiled fills) and `hoverG` (the row wash) sit inside the
+ * shell's container so the child order stays back < frame < hover < labels.
  */
 export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   deps: TabbedListWindowDeps<Id, Item>,
 ): TabbedListWindow {
   const { ctx, source } = deps;
   const { scale } = ctx;
-  // Right of the strip, dropping from the button that opens it, so the window clears the top-left debug
-  // overlay. Fixed for the controller's life (pinned strip geometry), so computed once.
+  // Right of the strip, dropping from the button that opens it, which clears the top-left debug overlay.
   const origin = {
     x: ctx.layout.width + WIN_PAD * scale,
     y: ctx.layout.buttons.find((b) => b.id === source.anchor)?.placed.y ?? ctx.layout.strip.y,
   };
   const windowRight = origin.x + tabbedListWindowWidth(scale);
 
-  // The tab set is fixed per source (only its labels are localized), so the chrome above the list is a
-  // constant - resolved here, not in the per-frame `listRows`.
+  // The tab set is fixed per source, so the chrome above the list is a constant.
   const chromeH = chromeAboveList(source.tabs().length, source.tabColumns);
 
   let selected: Id = source.initialTab;
   let scrollTop = 0;
   let layout: TabbedListLayout<Id, Item> | null = null;
   let hovered: Item | null = null;
-  // The last canvas cursor point, so a scroll/tab/resize can re-resolve which card the (stationary) cursor
-  // is over - otherwise the highlight would stick to an item that scrolled away from under the pointer.
+  // The last canvas cursor point, so a scroll, tab change or resize can re-resolve which card a
+  // stationary cursor is over instead of leaving the highlight on an item that moved away.
   let lastPointer: { x: number; y: number } | null = null;
-  // The viewport row count the current layout was built for - a resize that changes it triggers a reflow.
+  // The viewport row count the current layout was built for; a resize that changes it triggers a reflow.
   let builtRows = 0;
 
   const shell = createWindowShell(deps.container);
@@ -113,8 +108,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   };
 
   /** The lowest screen y the list should reach: the screen foot, raised to the top of the bottom-corner
-   *  overlay when this window's x-span crosses it (see {@link PanelContext.overlayReserve}). A target,
-   *  not a guarantee - {@link MIN_LIST_ROWS} wins when the floor leaves less room than that. */
+   *  overlay when this window's x-span crosses it. A target, not a guarantee, since `MIN_LIST_ROWS` wins. */
   const listFloor = (): number => {
     const screenH = ctx.screen().height;
     const reserve = ctx.overlayReserve?.() ?? null;
@@ -153,8 +147,6 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
       maxListRows: builtRows,
     });
     scrollTop = layout.scroll.top; // clamp back (a tab change can shrink the range)
-    // Re-resolve which card the (possibly stationary) cursor is now over, so the highlight tracks the
-    // content after a scroll / tab change instead of clinging to an item that moved.
     hovered = lastPointer === null ? null : hoverAt(lastPointer.x, lastPointer.y);
 
     paintWindow(layers, layout, source.title());
@@ -220,9 +212,9 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
           break;
         }
         case 'window':
-          break; // a click on the window body is consumed, nothing to do
+          break; // a click on the window body is consumed
         default: {
-          const unreachable: never = hit; // exhaustive: a new hit kind fails to compile here
+          const unreachable: never = hit;
           return unreachable;
         }
       }
@@ -243,8 +235,6 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     },
     clearHover,
     refresh: (): void => {
-      // The text runs don't move between rebuilds, so the only per-frame work is reflowing the list when
-      // a canvas resize changes how many rows fit.
       if (!shell.isOpen() || layout === null) return;
       if (listRows() !== builtRows) rebuild();
     },

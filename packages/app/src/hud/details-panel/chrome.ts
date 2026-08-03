@@ -12,15 +12,10 @@ import { createGlyphKit, type GlyphKit } from './glyphs.js';
 import { createTextKit, type TextKit } from './text.js';
 
 /**
- * The details panel's original-art drawing kit. A `Chrome` is created per rebuild over the panel's fresh
- * layer containers and draws window fills (the original 300×300 `bg*.pcx` bitmaps, tiled as an
- * OpenNorthland composition choice to avoid squashing the texture), the rope-and-knot window borders,
- * headline strips, buttons, bars, text, glyph faces, and the building preview.
- * Every piece degrades to the flat parchment Graphics look when `content/` is absent (`assets.art ===
- * null`, bitmaps `undefined`). The bitmap `Texture`s come pre-minted from `assets.ts`, so a rebuild mints
- * no bitmap-texture wrappers (they'd leak resize listeners on the shared source); the per-line Pixi `Text`
- * objects are minted per rebuild, but the bake disposes them (and their text textures) with the offscreen
- * root each rebuild (see `bake.ts` / `supersample.ts`).
+ * The details panel's original-art drawing kit, created per rebuild over that rebuild's layer containers.
+ * Every piece degrades to a flat parchment Graphics look when `content/` is absent. Bitmap `Texture`s
+ * arrive pre-minted from `assets.ts`: minting them per rebuild would leak resize listeners on the shared
+ * source.
  */
 
 /** The selected-row underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
@@ -29,13 +24,11 @@ const SELECTED_LIME = 0xd8fb55;
 const INNER_BOX_DARK = 0x1c130b;
 const INNER_BOX_LIGHT = 0x7a6244;
 /** Flat fallback for the section card body without `content/`: the grey-blue the `bg_selected` marble
- *  averages to through the `bg_normal` element palette (decoded #3c4043), so a bare checkout still reads
- *  as the original's cool selected-card body rather than the warm brown of the shared window fill. */
+ *  averages to through the `bg_normal` element palette (decoded #3c4043). */
 const CARD_FILL = 0x3c4043;
 /** Warm wood tint of an occupied equipment slot (eyeballed, not sampled). */
 const SLOT_FILL = 0x4a2b1d;
-/** Round-button wood fills - the same warm-wood/brighter-wood pairing the rectangular button and tab
- *  plates use as their no-bitmap fallback, so the round gather/assign controls read as the same material. */
+/** Round-button wood fills, matching the rectangular button and tab plates' no-bitmap fallback. */
 const ROUND_BUTTON_FILL = 0x4a2b1d;
 const ROUND_BUTTON_ACTIVE_FILL = 0x6b4426;
 
@@ -47,43 +40,36 @@ export interface PanelLayers {
   readonly text: Container;
 }
 
-/** The drawing kit: the {@link TextKit} placement primitives and the {@link GlyphKit} button faces, plus
- *  the panel's original-art pieces. */
 export interface Chrome extends TextKit, GlyphKit {
   /** Tile a `bg*.pcx` bitmap over `r`; false when the bitmap is missing (caller draws a flat fill). */
   tile(texture: Texture | undefined, r: Rect, target?: Container): boolean;
   /** A GUI-sheet sprite centered in `r` at its native size. */
   guiCentered(gfx: number, r: Rect, colorKey?: GuiColorKey, palette?: GuiPaletteName): void;
-  /** A recoloured per-good resource icon (the good's `ls_goods` pile frame), fitted centered into `r`.
-   *  No-op when the good has no bound icon (non-map goods) or the goods art is absent. */
+  /** A recoloured per-good resource icon (the good's `ls_goods` pile frame), fitted centered into `r`;
+   *  a good with no bound icon draws the generic one, and no-op when the goods art is absent. */
   goodIcon(goodId: string, r: Rect): void;
   /** A section window: the tiled grey-blue card fill + the rope-strip border with knot corners. */
   window(r: Rect): void;
   /** An inner content box (the preview): thin dark bevel frame, no rope - the original's inner framing. */
   innerBox(r: Rect): void;
-  /** A round equipment-slot socket (the original's equip wells): a recessed rimmed circle, warm-tinted
-   *  when `filled` (so an occupied slot reads even for a good with no bound icon), dark when empty. */
+  /** A round equipment-slot socket: a recessed rimmed circle, warm-tinted when `filled`, dark when empty. */
   slotSocket(r: Rect, filled: boolean): void;
   /** The rust headline strip with centered light title-size text. */
   headline(r: Rect, title: string): void;
   /** The original's yellow-green strip marking a selected row. */
   selectedUnderline(r: Rect): void;
-  /** A translucent dark overlay over `r` - used to recede an inactive/greyed element (e.g. an unselected tab). */
+  /** A translucent dark overlay over `r`, receding an inactive or greyed element. */
   scrim(r: Rect, alpha: number): void;
   /** A general-section button (tiled button fill, hover/disabled states, centered label). */
   button(hit: { readonly rect: Rect; readonly enabled: boolean }, label: string, hovered: boolean): void;
-  /** A small round wooden button (the gather-choice / assign-workplace controls): a warm-wood disc with a
-   *  raised rim, brightened when `active` (hovered or selected) and darkened when disabled. The caller
-   *  overlays the face (a good icon / the assign glyph) centered in `r`. */
+  /** A small round wooden button, brightened when `active` and darkened when disabled; the caller
+   *  overlays the face centered in `r`. */
   roundButton(r: Rect, enabled: boolean, active: boolean): void;
-  /** A category-tab plate: the tiled wooden button fill + light edge, brighter when `active` and dimmed
-   *  otherwise - the frame a stock-tab's representative good icon is drawn onto (no label). */
+  /** A category-tab plate: the tiled wooden button fill, brighter when `active`; the caller draws the
+   *  tab's representative good icon onto it. */
   tabButton(r: Rect, active: boolean): void;
-  /** A progress/need bar. `'progress'` (the default) is the neutral production look: the original
-   *  `bar_disabled` frame filled with `bar_standart` art. `'gauge'` is a stat gauge: a recessed dark
-   *  track (no grey art remainder) whose fill takes the decoded `bar_hitpoints` ramp's colour at the
-   *  current level (red when empty → green when full), falling back to flat {@link BAR_TONE_FILL}
-   *  bands without `content/`. */
+  /** A progress/need bar. `'progress'` is the neutral production look; `'gauge'` takes its fill colour
+   *  from the decoded `bar_hitpoints` ramp at the current level (red when empty → green when full). */
   bar(r: Rect, pct: number, style?: 'progress' | 'gauge'): void;
   /** A stock amount's recessed numeric field: a subtle dark inset on the wood (not the grey bar frame). */
   stockField(r: Rect): void;
@@ -96,18 +82,15 @@ export function createChrome(
   scale: number,
   layers: PanelLayers,
   /**
-   * The off-screen texture's size, which the `PalettedSprite` meshes project native px into. The kit only
-   * ever draws into one (`bake.ts`), which is why every mesh renders upright (`flipY`): the panel then
-   * bakes without a whole-texture Y-flip its Pixi-native content (Graphics, the preview Sprite) can't share.
+   * The off-screen bake texture's size, which the `PalettedSprite` meshes project native px into. Every
+   * mesh renders upright (`flipY`) so the panel bakes without a whole-texture Y-flip, which its
+   * Pixi-native content (Graphics, the preview Sprite) could not share.
    */
   resolution: { readonly w: number; readonly h: number },
 ): Chrome {
   const { art, bitmaps } = assets;
   const { g } = layers;
 
-  // The self-contained sub-concerns of this kit: vector-text placement over the text layer (`text.ts`),
-  // the rope-and-knot window border over the front sprite layer (`frame-border.ts`), and the flat button
-  // faces over the shared `Graphics` (`glyphs.ts`).
   const { textAt, textCentered, textLeftMiddle, textRight } = createTextKit(
     layers.text,
     assets.uiFont.family,
@@ -146,9 +129,8 @@ export function createChrome(
     made.sprite.flipY = true;
     layers.front.addChild(made.sprite);
     const { w, h } = resolution;
-    // The state-1 pile frames vary in native size (~12–26 px); fit each into the icon box (shrink only,
-    // never upscale past the panel scale) so a big pile doesn't overrun the amount plate - the original's
-    // row icons are compact, each its own natural size.
+    // The state-1 pile frames vary in native size (~12-26 px); shrink each into the icon box, never
+    // upscaling past the panel scale, so a big pile doesn't overrun the amount plate.
     const fit = Math.min(1, r.w / (made.frame.width * scale), r.h / (made.frame.height * scale));
     const drawScale = scale * fit;
     const x = Math.round(r.x + r.w / 2 - (made.frame.offsetX + made.frame.width / 2) * drawScale);
@@ -156,14 +138,11 @@ export function createChrome(
     made.sprite.place(x, y, drawScale, w, h);
   };
 
-  // A good with no `ls_goods` art (potions/amulets/fruit) falls back to the neutral generic icon, so the
-  // Magazyn never shows a blank slot - the same fallback the in-world dropped pile uses (goods-gfx).
+  // A good with no `ls_goods` art falls back to the generic icon, like the in-world dropped pile.
   const goodIcon = (goodId: string, r: Rect): void =>
     placeGoodIcon(assets.goods?.icon(goodId) ?? GENERIC_GOOD_ICON, r);
 
-  // Named to avoid shadowing the global `window` inside this closure. The body tiles the grey-blue
-  // `card` fill (the original's selected-item card), not the warm brown `bg` - that stays the button
-  // plates' disabled fallback; only the headline strips above the cards keep the warm brown.
+  // Named to avoid shadowing the global `window` inside this closure.
   const windowBox = (r: Rect): void => {
     if (!tile(bitmaps.card, r)) {
       g.rect(r.x, r.y, r.w, r.h).fill(CARD_FILL);
@@ -215,14 +194,12 @@ export function createChrome(
     }
     // Dark edging under the strip separates it from the wood body (the original's outlined title bar).
     g.rect(strip.x, strip.y, strip.w, strip.h).stroke({ color: INNER_BOX_DARK, width: inset });
-    // Light (gold-cream) centered title-size text on the rust headline strip - the original's title look.
     // Fit to the strip so a long personalized name (first + patronymic) shrinks rather than overflowing.
     textCentered(title, strip, 'white', 'title', strip.w - 2 * inset);
   };
 
   const selectedUnderline = (r: Rect): void => {
-    // Flat Graphics, not a bitmap: no shipped bitmap/palette pairing reproduces this lime (`bg_selected`,
-    // the card body, only ever expands to grey/grey-blue, and the other fills to browns/creams).
+    // Flat Graphics, not a bitmap: no shipped bitmap/palette pairing reproduces this lime.
     g.rect(r.x, r.y, r.w, r.h).fill(SELECTED_LIME);
   };
 
@@ -244,11 +221,10 @@ export function createChrome(
     // Thin light edging around each button plate (the original's pale button outline, eyeballed).
     g.rect(r.x, r.y, r.w, r.h).stroke({ color: INNER_BOX_LIGHT, width: Math.max(1, scale) });
     if (!hit.enabled) {
-      // Inert-button darkening strength is our own choice - the original has no disabled house buttons.
+      // Approximation: the original has no disabled house buttons to copy the darkening from.
       g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.22 });
     }
-    // Gold-cream title-size label on the dark button tile - the original's button labels use the same
-    // letterspaced caps face as the section titles (1024×768 screenshots); greyed when inert.
+    // Button labels use the same letterspaced caps face as the section titles (1024×768 screenshots).
     textCentered(label, r, hit.enabled ? 'white' : 'dimmed', 'title');
     if (hovered && hit.enabled && !onBitmap) {
       g.rect(r.x, r.y, r.w, r.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
@@ -256,9 +232,7 @@ export function createChrome(
   };
 
   const tabButton = (r: Rect, active: boolean): void => {
-    // The same wooden tile the section buttons use - brighter (hilite) when active - so a tab reads as a
-    // raised button, not a flat grey plate. A thin top-left highlight + bottom-right shadow give it a small
-    // bevel; the active tab also gets the drawer's green underline, so no heavy dark scrim is needed.
+    // The same wooden tile the section buttons use, so a tab reads as a raised button, not a flat plate.
     const fill = active ? bitmaps.buttonHilite : bitmaps.button;
     if (!tile(fill, r)) g.rect(r.x, r.y, r.w, r.h).fill(active ? 0x6b4426 : 0x4a3320);
     const line = Math.max(1, Math.round(scale));
@@ -272,17 +246,11 @@ export function createChrome(
   const bar = (r: Rect, pct: number, style: 'progress' | 'gauge' = 'progress'): void => {
     const clamped = Math.max(0, Math.min(100, pct));
     const line = Math.max(1, Math.round(scale));
-    // Both styles share the recessed-groove draw; only the fill colour differs - the stat gauge sweeps
-    // the decoded level ramp (red→green), the neutral production bar keeps a fixed warm amber.
     const base = style === 'gauge' ? rampColor(assets.barRamp, clamped) : PRODUCTION_BAR_FILL;
     drawGauge(g, r, clamped, line, base, { dark: INNER_BOX_DARK, light: INNER_BOX_LIGHT });
   };
 
-  /**
-   * A stock amount's numeric field: a subtle recessed slot on the wood, drawn as flat Graphics rather than
-   * the grey `bar_disabled` frame (which read as an opaque plate). A dark translucent fill lets the wood
-   * show through, with a thin dark top/left + light bottom/right bevel for the inset look.
-   */
+  /** Flat Graphics rather than the grey `bar_disabled` frame, which reads as an opaque plate. */
   const stockField = (r: Rect): void => {
     const line = Math.max(1, Math.round(scale));
     g.rect(r.x, r.y, r.w, r.h).fill({ color: INNER_BOX_DARK, alpha: 0.42 });

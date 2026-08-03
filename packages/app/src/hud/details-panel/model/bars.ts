@@ -2,30 +2,18 @@ import { ONE } from '@open-northland/sim';
 import { healthOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { messages } from '../../../i18n/index.js';
 
-/**
- * The details panel's bar/percentage primitives - the gauge model + colour banding + the two clamped
- * 0..100 percent helpers + the Zdrowie bar, shared by the settler and building model halves.
- */
-
-/**
- * One stat bar in the Ogólne section: a pinned label + a 0..100 level + the hover value text. The bars
- * show the original's satisfaction (full = content, like the original's coloured bars), not the sim's
- * rising deficit - see {@link import('./settler.js').satisfactionBars}.
- */
+/** One stat bar in the Ogólne section. The level is satisfaction (full = content), not the sim's
+ *  rising deficit. */
 export interface PanelBar {
   readonly label: string;
   readonly pct: number;
-  /** The cursor-tooltip value for the hovered bar row: raw points for health ("300/1000"),
-   *  the satisfaction percent for a need ("75%"). */
+  /** Tooltip value for the hovered row: raw points for health, a percent for a need. */
   readonly hover: string;
 }
 
 /**
- * The Zdrowie bar of anything carrying a `Health` pool: gauge `hitpoints/max`, hover the raw points.
- * Null when the entity has no pool (a building type declaring no hitpoints).
- *
  * Label approximation: the original names a building's equivalent row `housewindow` 20
- * "Zniszczenia"/"Damage" - the complement of a bar that FILLS when healthy.
+ * "Zniszczenia"/"Damage", the complement of a bar that fills when healthy.
  */
 export function healthBar(ent: SnapshotEntity): PanelBar | null {
   const health = healthOf(ent);
@@ -38,24 +26,18 @@ export function healthBar(ent: SnapshotEntity): PanelBar | null {
   };
 }
 
-/** A bar gauge's colour band: full/high draws green, a draining stat turns orange, a nearly-empty one red. */
 export type BarTone = 'ok' | 'warn' | 'critical';
-/** Below this satisfaction/health percent a fallback bar turns orange. The banded colours are only the
- *  no-`content/` fallback - with decoded art the gauge colour comes from the original's continuous
- *  `bar_hitpoints`/`bar_standart` level ramps; these band thresholds are our own choice. */
 const BAR_WARN_BELOW_PCT = 50;
-/** Below this percent a fallback bar turns red. */
 const BAR_CRITICAL_BELOW_PCT = 25;
 
-/** The green/orange/red band a 0..100 bar level falls into - the no-`content/` fallback colouring
- *  (`chrome.ts` `BAR_TONE_FILL`; with content the decoded `GuiBarRamp` colours the gauge instead). */
+/** Banding for the no-`content/` fallback only; the thresholds are an approximation, since with content
+ *  the decoded `GuiBarRamp` colours the gauge instead. */
 export function barTone(pct: number): BarTone {
   if (pct < BAR_CRITICAL_BELOW_PCT) return 'critical';
   if (pct < BAR_WARN_BELOW_PCT) return 'warn';
   return 'ok';
 }
 
-/** Round to an integer percent clamped into the drawable 0..100 bar range. */
 function clampPct(n: number): number {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
@@ -69,9 +51,7 @@ export function pctRatio(elapsed: number | undefined, duration: number | undefin
   return clampPct((elapsed / duration) * 100);
 }
 
-/** Remaining-life percent of a wearing item, FLOORED: any wear at all reads ≤ 99 (rounding would show
- *  a slightly-worn item as 100 - and a part-used item is destroyed on take-off, so the display must
- *  never claim it is fresh). */
+/** Remaining-life percent of a wearing item, floored so that any wear at all reads at most 99. */
 export function remainingPct(used: number | undefined): number {
   return Math.max(0, Math.min(100, Math.floor((1 - (used ?? 0) / ONE) * 100)));
 }

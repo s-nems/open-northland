@@ -2,29 +2,23 @@ import { MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland
 import { diag } from '../diag/index.js';
 
 /**
- * The decoded-map fetch boundary: load a `content/maps/<id>.json` grid over the dev/shot vite
- * middleware. This is app-layer I/O (a browser `fetch`, never allowed in the pure sim); everything
- * downstream (the world builders in `game/world/`, the renderer) consumes the validated result. A
- * checkout without `content/` degrades to the demo world - the maps are gitignored.
+ * The decoded-map fetch boundary: app-layer I/O for a `content/maps/<id>.json` grid, never allowed in the
+ * pure sim. The maps are gitignored, so a checkout without `content/` degrades to the demo world.
  */
 
 /**
- * A map id is a bare filename stem (no slashes/dots), so `?map=oasis_o_plenty` can only ever fetch a
- * single `content/maps/<id>.json` - never a traversal out of the maps dir. Returns null for an id that
- * isn't a safe stem, so the caller falls back to the synthetic strip rather than fetching junk.
+ * A map id must be a bare filename stem, so `?map=` can only ever fetch a single
+ * `content/maps/<id>.json` and never traverse out of the maps dir. Null for anything else.
  */
 function safeMapId(id: string): string | null {
   return /^[a-z0-9_-]+$/i.test(id) ? id : null;
 }
 
 /**
- * Load a decoded map grid (`content/maps/<id>.json`, served at `/maps/<id>.json`) into the structural
- * `TerrainMapFile` the renderer + sim consume: fetch the JSON and hand it to `@open-northland/data`'s
- * `parseTerrainMap`, which zod-validates the shape + the `typeIds.length === width*height` invariant
- * before it ever reaches `terrainMapToScene`/`buildTerrainGraph`. Returns null (and logs) on a bad id,
- * a 404 (no such map / `content/` absent), or a malformed file, so the entry degrades gracefully to
- * the synthetic strip. `fetchImpl` is injectable so the validate-then-project core is unit-testable
- * without a network.
+ * Load a decoded map grid into the structural `TerrainMapFile` the renderer and sim consume, validated by
+ * `parseTerrainMap` before it reaches either. Returns null (and logs) on a bad id, a 404, or a malformed
+ * file, so the entry degrades to the synthetic strip. `fetchImpl` is injectable for testing without a
+ * network.
  */
 export async function loadTerrainMap(
   id: string,
@@ -55,10 +49,9 @@ export async function loadTerrainMap(
 }
 
 /**
- * Load a decoded map's script sidecar (`content/maps/<id>.script.json`, served at
- * `/maps/<id>.script.json`) - the player roster, diplomacy and mission triggers. Returns null
- * without noise on a 404 (a map without playerdata, or `content/` absent - normal absence), and
- * null with a warning on a malformed file, so the entry degrades to the roster-less defaults.
+ * Load a decoded map's script sidecar: the player roster, diplomacy and mission triggers. A 404 is normal
+ * absence and returns null silently; a malformed file returns null with a warning, so the entry degrades
+ * to the roster-less defaults.
  */
 export async function loadMapScript(id: string, fetchImpl: typeof fetch = fetch): Promise<MapScript | null> {
   const safe = safeMapId(id);

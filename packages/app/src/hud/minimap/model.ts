@@ -8,21 +8,17 @@ import { FOG_STATE } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The pure half of the minimap window (no Pixi, no DOM - headlessly unit-tested): the bottom-left
- * layout inside the original braided frame, the world↔minimap linear projection, the dot/fog raster
- * writes and the camera-viewport rectangle. The terrain colour raster itself lives in
- * `@open-northland/render` (shared with the menu preview and the pipeline's thumbnails). "World" here
- * is the renderer's projected px space before the camera transform (`tileToScreen` /
- * `screen = world*scale + offset` - see render's `iso.ts`), so the minimap is a uniform downscale of
- * the on-screen world: clicks, dots and the view rectangle all share one linear mapping.
+ * The pure half of the minimap window: the bottom-left layout inside the braided frame, the
+ * world↔minimap linear projection, the dot/fog raster writes and the camera-viewport rectangle.
+ * "World" here is the renderer's projected px space before the camera transform, so clicks, dots and
+ * the view rectangle all share one uniform downscale of the on-screen world.
  */
 
 /**
- * The original overview-window frame's native geometry (source basis: measured from the decoded
- * `ls_gui_window` bob 55 - the braided frame carries ornament along its top+right only and its hole
- * runs flush to the left/bottom edges, so the original pinned this window to the screen's bottom-left
- * corner exactly where ours sits). `inner` is the near-black map hole the picture draws in - a
- * ~square window, letterboxed when the map's aspect differs.
+ * The original overview-window frame's native geometry, measured from the decoded `ls_gui_window` bob
+ * 55: the braid carries ornament along its top and right only and its hole runs flush to the left and
+ * bottom edges, which is why the window pins to the screen's bottom-left corner. `inner` is the
+ * near-black map hole, letterboxed when the map's aspect differs.
  */
 export const FRAME_NATIVE = {
   w: 149,
@@ -31,10 +27,9 @@ export const FRAME_NATIVE = {
 } as const;
 
 /**
- * Extra drawn px per native frame px at UI scale 1 - the knob that sizes the whole window. At the
- * default 1.4 UI scale the map hole comes out ≈244 px. NAMED DIVERGENCE: the original drew its GUI art
- * 1:1, so this frame renders 1.5× larger relative to the rest of the HUD than the original's
- * proportions - a deliberate readability choice for modern screen sizes (user-approved size).
+ * Extra drawn px per native frame px at UI scale 1, the knob that sizes the whole window. Named
+ * deviation: the original drew its GUI art 1:1, so this frame renders 1.5× larger relative to the rest
+ * of the HUD, a readability choice for modern screen sizes.
  */
 export const MINIMAP_ART_SCALE = 1.5;
 
@@ -53,11 +48,9 @@ export interface MinimapLayout {
 }
 
 /**
- * Lay the framed window out against the live screen: the frame is a fixed size (native × `uiscale`,
- * clamped ≥1, × {@link MINIMAP_ART_SCALE}) pinned flush to the bottom-left corner (the original frame's
- * flush hole edges - see {@link FRAME_NATIVE}); the map is aspect-fitted into the hole with letterbox
- * bars. Only the screen height matters; recomputed per frame (the tool-panel convention - no resize
- * listener).
+ * Lay the framed window out against the live screen: a fixed-size frame pinned flush to the bottom-left
+ * corner, with the map aspect-fitted into the hole between letterbox bars. Only the screen height
+ * matters, and it is recomputed per frame rather than through a resize listener.
  */
 export function minimapLayout(bounds: WorldBounds, screenH: number, uiscale: number): MinimapLayout {
   const artScale = MINIMAP_ART_SCALE * Math.max(1, uiscale);
@@ -135,9 +128,8 @@ export function viewportRectOnMinimap(layout: MinimapLayout, bounds: WorldBounds
 
 /**
  * Stamp one opaque square dot (`2·half` px a side, centred on `cx, cy`) into an RGBA raster, clipped to
- * the buffer edges - the per-tick unit/building dot write. Writing pixels into one retained buffer
- * (re-uploaded in place) replaces a per-tick Graphics rebuild: hundreds of dot rects re-tessellated at
- * 12 Hz were a measured steady allocation churn site, a raster write allocates nothing.
+ * the buffer edges. Writing into one retained buffer replaces a per-tick Graphics rebuild, which
+ * re-tessellates hundreds of dot rects and allocates on every tick.
  */
 export function stampDot(
   rgba: Uint8Array,
@@ -174,9 +166,8 @@ export interface FogCells {
 }
 
 /**
- * Write one fog mask into `rgba` (`cellsWide × cellsHigh`, row-major, 4 bytes/px): only the ALPHA lane,
- * graded by state with the render layer's alphas, so the caller keeps the rgb lanes black (a re-upload
- * in place rewrites nothing else).
+ * Write one fog mask into `rgba` (`cellsWide × cellsHigh`, row-major, 4 bytes/px): only the alpha lane,
+ * graded by state with the render layer's alphas, so the caller keeps the rgb lanes black.
  */
 export function fillFogAlpha(fog: FogCells, rgba: Uint8Array): void {
   for (let r = 0; r < fog.cellsHigh; r++) {

@@ -1,10 +1,7 @@
 /**
- * The animal body-look table: which baked `cr_ani` recolour draws each animal tribe. Transcribed
- * straight from the base `Data/engine2d/inis/animals/jobgraphics.ini` adult records (`logicjob 49`,
- * `gfxpalettebody`), the same file the running game composes animal bodies from, keyed by the
- * `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_ANIMAL_*` = IR `tribes.typeId` / `animals.tribeType`).
- * The committed-catalog twin of `roster.ts` (the human `jobgraphics.ini` transcription); the baby
- * records (`logicjob 48`) are not transcribed, nothing spawns juvenile animals yet.
+ * The animal body-look table: which baked `cr_ani` recolour draws each animal tribe. Transcribed from
+ * the base `Data/engine2d/inis/animals/jobgraphics.ini` adult records (`logicjob 49`, `gfxpalettebody`),
+ * keyed by `logictribe`, which is the IR `tribes.typeId`. The baby records are not transcribed.
  */
 
 /** The one body bob set every transcribed animal plays. Butterflies (tribe 35) alone live on
@@ -22,11 +19,8 @@ export const ANIMAL_SHADOW_STEM = `${ANIMAL_BODY_STEM}_s.shadow`;
 
 /**
  * Adult animal tribe id to its `gfxpalettebody` recolour, lowercased to the served stem casing (the
- * source writes `LION01`, the pipeline serves `lion01`). A tribe absent here has no `jobgraphics`
- * adult record (ibexes 15, dromedaries 22, elephants 23, horses 24, geese 32, swans 33, crabs 37,
- * frogs 38, scorpions 39, snakes 40, dragons 41) or no usable body set (butterflies 35); it stays
- * unbound ({@link import('@open-northland/render').SettlerCharacterSet.animals}). The recolour reuse
- * is the source's own (a boar is the deer recolour, the polar bear the white `chicken01` bear).
+ * source writes `LION01`, the pipeline serves `lion01`). A tribe absent here has no `jobgraphics` adult
+ * record or no usable body set, and stays unbound. The recolour reuse is the source's own.
  */
 export const ANIMAL_PALETTE_BY_TRIBE: ReadonlyMap<number, string> = new Map([
   [8, 'bear01'], // bears

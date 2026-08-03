@@ -4,20 +4,17 @@ import { actorsOf, isSettler, num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type BuildingDef, type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
 
-// The building's per-trade worker-slot rows: one filled/capacity line per declared `workers` slot.
-
-/** One worker slot of a building, as a filled/capacity line - e.g. "Cieśla 1/3", "Tragarz 1/1",
- *  "Zbieracz 0/1". One per declared `workers` slot, so each trade shows its own limit, not one aggregate. */
+/** One declared `workers` slot as a filled/capacity line, so each trade shows its own limit rather than
+ *  one aggregate. */
 export interface WorkerSlotRow {
   readonly jobType: number;
   readonly label: string;
   /** Settlers currently bound to this building for this job. */
   readonly filled: number;
-  /** The slot's `count` - how many of this job the building employs. */
+  /** The slot's declared `count`. */
   readonly capacity: number;
 }
 
-/** How many settlers are currently bound to `buildingId`, per job - the per-slot "filled" count. */
 function boundCountsByJob(snapshot: WorldSnapshot, buildingId: number): Map<number, number> {
   const counts = new Map<number, number>();
   for (const e of actorsOf(snapshot)) {

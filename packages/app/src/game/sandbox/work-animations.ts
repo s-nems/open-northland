@@ -1,37 +1,20 @@
-/**
- * The sandbox's non-combat work atomicanimation timing pins - the builder hammer swing, the farmer's
- * three field swings, and the generic store-exchange pair. Each is the logic-timing join key
- * (`atomicDuration`) the sim reads and the render's body clip plays; lengths are transcribed from the
- * extracted viking `atomicanimations.ini` records (see the per-constant notes). Combat swing timings
- * live beside the weapons in `./combat.ts`; the building store/recipe caps in `./building-set.ts`.
- */
 import { HAMMER_TICKS_PER_FRAME } from '../../content/settler-gfx/index.js';
 
-// The builder's hammer swing length - the transcribed viking `viking_builder_build_house` atomicanimation
-// (`length 15`, content/ir.json: one 13-entry authored swing + a 2-tick ready pad) scaled by the render
-// clip's half cadence (HAMMER_TICKS_PER_FRAME - the 1 frame/tick pace read frantically fast; user-tuned
-// approximation). The whole authored swing plays exactly once per construct atomic, and building slows in
-// step: labor advances per completed swing.
+// The extracted `viking_builder_build_house` `length 15`, scaled by the render clip's half cadence
+// because the authored 1 frame/tick pace reads frantically fast (named approximation). The whole swing
+// plays once per construct atomic, and labor advances per completed swing.
 export const BUILD_HOUSE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
-// The scout's one-shot signpost-erecting swing - the transcribed `viking_scout_build_guide`
-// atomicanimation (`length 15`, DataCnmd atomicanimations.ini), the same authored hammer clip at the
-// same half cadence as the builder's swing.
+// The extracted `viking_scout_build_guide` `length 15`, at the builder swing's cadence.
 export const BUILD_GUIDE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_GUIDE_ANIMATION = 'viking_scout_build_guide';
-// The `atomicanimations.ini` `event <at> <type>` type marking the frame an animation plays its sound FX
-// (`ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`, logicdefines.inc l.754) - the mid-swing cue the sim reads
-// to sound an action on its visual beat rather than at swing completion.
+// `ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX` in `logicdefines.inc`: the frame an animation sounds its
+// FX, which is mid-swing rather than at completion.
 export const PLAY_SOUND_FX_EVENT_TYPE = 34;
-// The frame of the builder's hammer knock - the transcribed `viking_builder_build_house` carries
-// `event 4 34 1` (PLAY_SOUND_FX at authored frame 4), scaled by the render clip's half cadence
-// (HAMMER_TICKS_PER_FRAME) so the sim's `atomicSound` cue lands on the strike the render draws at that
-// frame.
+// The extracted `event 4 34 1` on `viking_builder_build_house`, at the swing's scaled cadence.
 export const BUILD_HOUSE_STRIKE_FRAME = 4 * HAMMER_TICKS_PER_FRAME;
-// The farmer's three field-work swings - lengths transcribed from the extracted viking atomicanimations
-// (`DataCnmd/atomicanimations12/atomicanimations.ini`: harvest_wheat 24, plant 24, cultivate 29). The
-// names are the original's own `setatomic 18 29/34/35` bindings; the render plays the farmer's authored
-// body clips (`human_man_farmer_work_{reap_grain,sow,water}` - see content/settler-gfx/).
+// Extracted from `DataCnmd/atomicanimations12/atomicanimations.ini`; the names are the original's own
+// `setatomic 18 29/34/35` bindings.
 export const FARMER_REAP_ANIMATION = 'viking_farmer_harvest_wheat';
 export const FARMER_REAP_LENGTH = 24;
 export const FARMER_SOW_ANIMATION = 'viking_farmer_plant';

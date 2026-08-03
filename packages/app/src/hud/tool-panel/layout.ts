@@ -1,20 +1,12 @@
 import { contains, type Rect } from '../geometry.js';
 
 /**
- * The left in-game tool panel - geometry, pinned to the original.
+ * The left in-game tool panel's geometry, pinned to the original.
  *
- * Every rect below maps into the original's 640×480–1024×768 design space (provisional until checked
- * against the running original before pixel-fidelity sign-off). The hex→decimal literals live in a named
- * table (the constant *is* the geometry, satisfying the no-magic-numbers rule); the strip anchors top-left
- * and scales by `uiscale` (default 1.4× - see {@link DEFAULT_UI_SCALE}, `?uiscale=` override, clamped ≥1,
- * fractional allowed) so it reads on any canvas size. Rendering that fractional scale of the nearest-sampled
- * indexed art crisply is `strip-texture.ts`'s job (it oversamples into an off-screen texture sized via
- * {@link designBounds}); this scale is the one knob a future in-game UI-size slider would drive.
- *
- * `gfx` is the original engine gfx id, which for `ls_gui_window` equals the atlas frame id (firstBobId=0,
- * see `content/gui-atlas-map.ts`), so the view resolves the sprite with `atlas.frames.get(spec.gfx)`.
- *
- * This module is pure (no Pixi, no DOM) so the hit-test and layout are unit-tested headlessly.
+ * Every rect below maps into the original's 640×480–1024×768 design space, provisional until checked
+ * against the running original. The strip anchors top-left and scales by `uiscale`, clamped ≥1 and
+ * fractional-allowed. `gfx` is the original engine gfx id, which for `ls_gui_window` equals the atlas
+ * frame id (firstBobId=0).
  */
 
 /** The tool buttons, identified by the checked-in atlas-map semantic name (`content/gui-atlas-map.ts`). */
@@ -42,7 +34,6 @@ export interface DesignRect {
 const TOOL_PANEL_STRIP_GFX = 0x33;
 export const TOOL_PANEL_STRIP: DesignRect = { x: 0, y: 10, w: 0x32, h: 0x1b1 };
 
-/** One tool button: its stable id, its design-space rect, its atlas gfx id, and its `main`-table tooltip id. */
 export interface ToolButtonSpec {
   readonly id: ToolButtonId;
   readonly rect: DesignRect;
@@ -53,11 +44,9 @@ export interface ToolButtonSpec {
 }
 
 /**
- * The nine tool buttons plus the speed button, in the engine's creation order (see `Desktop_Open`).
- * Each `CreateToolButton(SRectangle(x,y,w,h), gfxId, stringId, msgId, …)` maps 1:1 to a row here; the msg
- * ids (0xf3c–0xf46) are the click routes and are recorded in the commit, not needed at draw/hit-test time.
- * Ids follow the checked-in atlas-map names. The `options`/`help` names for frames 47–48 remain
- * provisional and are tracked in the source-basis notes.
+ * The nine tool buttons plus the speed button, in the engine's creation order (`Desktop_Open`), one row
+ * per `CreateToolButton(SRectangle(x,y,w,h), gfxId, stringId, msgId, …)` call. The `options` and `help`
+ * names for frames 47–48 remain provisional.
  */
 export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
   { id: 'buildings', rect: { x: 0, y: 0x29, w: 0x28, h: 0x23 }, gfx: 0x2a, tooltipStringId: 2 },
@@ -75,32 +64,27 @@ export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
 /** A rect placed in screen (canvas) pixels after top-left anchoring + uniform scaling. */
 export type PlacedRect = Rect;
 
-/** A button spec resolved to its on-screen rect. */
 export interface PlacedButton extends ToolButtonSpec {
   readonly placed: PlacedRect;
 }
 
-/** The whole panel resolved to screen space for one `uiscale`: the strip, the buttons, and the claim bounds. */
 export interface ToolPanelLayout {
-  /** The scale actually applied (`buildToolPanelLayout` clamps to ≥1; may be fractional). */
+  /** The scale actually applied: clamped ≥1, may be fractional. */
   readonly scale: number;
   readonly stripGfx: number;
   readonly strip: PlacedRect;
   readonly buttons: readonly PlacedButton[];
-  /** Width of the strip in screen px - the amount the rest of the HUD is shifted right to clear the panel. */
+  /** Width of the strip in screen px, which the rest of the HUD is shifted right by. */
   readonly width: number;
   readonly height: number;
-  /** The strip+buttons' bounding box in design space (pre-scale). It sizes the off-screen supersample
-   *  texture the crisp-scaling render pass rasterizes the panel into (see `strip-texture.ts`). */
+  /** The strip and buttons' bounding box in design space; it sizes the off-screen supersample texture. */
   readonly designBounds: DesignRect;
 }
 
 /**
- * The default UI scale. The pinned strip is 433 design px tall (nearly the original's whole 480-line
- * screen); at 1× that already fills roughly half a modern window and 2× overflowed it, so 1.4× is the
- * default - comfortably larger for readability while still fitting a typical window. The fractional scale
- * stays crisp because the strip is supersampled (see the module note). `?uiscale=` overrides it (fractional
- * allowed, e.g. `?uiscale=1.2` or `?uiscale=1`).
+ * The default UI scale. The pinned strip is 433 design px tall, so at 1× it already fills roughly half a
+ * modern window; 1.4× is an approximation chosen for readability at a typical window size. `?uiscale=`
+ * overrides it and fractional values are allowed.
  */
 export const DEFAULT_UI_SCALE = 1.4;
 
@@ -108,7 +92,7 @@ function scaleRect(r: DesignRect, s: number): PlacedRect {
   return { x: r.x * s, y: r.y * s, w: r.w * s, h: r.h * s };
 }
 
-/** The bounding box (design space) of a set of rects - the union that the supersample texture must cover. */
+/** The bounding box of a set of rects, in design space. */
 function unionDesign(rects: readonly DesignRect[]): DesignRect {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
@@ -123,10 +107,7 @@ function unionDesign(rects: readonly DesignRect[]): DesignRect {
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }
 
-/**
- * Resolve the pinned design-space geometry to screen pixels at `uiscale` (clamped to ≥1; may be
- * fractional), anchored top-left. Pure - the view draws from this and the input layer hit-tests it.
- */
+/** Resolve the pinned design-space geometry to screen px at `uiscale`, anchored top-left. */
 export function buildToolPanelLayout(uiscale: number = DEFAULT_UI_SCALE): ToolPanelLayout {
   const scale = Math.max(1, uiscale);
   const strip = scaleRect(TOOL_PANEL_STRIP, scale);
@@ -136,8 +117,7 @@ export function buildToolPanelLayout(uiscale: number = DEFAULT_UI_SCALE): ToolPa
     stripGfx: TOOL_PANEL_STRIP_GFX,
     strip,
     buttons,
-    // The claim region spans from the canvas edge to the strip's right edge (the strip starts at y=10,
-    // so its right edge x = w*scale is the panel width the HUD clears).
+    // The claim region spans from the canvas edge to the strip's right edge.
     width: strip.x + strip.w,
     height: strip.y + strip.h,
     designBounds: unionDesign([TOOL_PANEL_STRIP, ...TOOL_BUTTONS.map((b) => b.rect)]),
@@ -152,10 +132,7 @@ export function hitTestToolPanel(layout: ToolPanelLayout, x: number, y: number):
   return null;
 }
 
-/**
- * Whether a screen point lies over the panel strip at all - the claim predicate the input router asks
- * before world picking, so a click over the HUD never falls through to unit selection/orders.
- */
+/** Whether a screen point lies over the panel strip: the claim predicate asked before world picking. */
 export function pointOverToolPanel(layout: ToolPanelLayout, x: number, y: number): boolean {
   return contains(layout.strip, x, y);
 }

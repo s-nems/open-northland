@@ -3,11 +3,8 @@ import { messages } from '../i18n/index.js';
 import { BRAND_BACKDROP } from './brand-art.js';
 
 /**
- * The boot progress card the two playable entries (`?map=`, `?scene=`) show while they assemble a world,
- * which takes seconds of content fetches, atlas builds and terrain meshing before the first frame. Plain
- * DOM (styled in `boot-progress.css`), so it can draw before Pixi exists and while Pixi is busy.
- *
- * Each entry passes the steps it actually runs, in order; `main.ts` dismisses the card if boot throws.
+ * The boot progress card a playable entry shows while it assembles a world. Plain DOM, so it draws
+ * before Pixi exists and while Pixi is busy. Each entry passes the steps it actually runs, in order.
  */
 
 /** The ordered boot steps a playable entry can report. Each is one label and one step of the bar. */
@@ -33,10 +30,9 @@ export interface BootProgress {
 }
 
 /**
- * The share of an entry's boot that is done when `phase` starts. Steps are weighted equally: their real
- * costs differ a lot (the content parse dwarfs the minimap), but a weighting would be invented numbers,
- * so the honest signal is the step label and the bar is a coarse "how far through the list".
- * A phase outside `phases` reads as 0 rather than throwing - a mislabelled bar must not break boot.
+ * The share of an entry's boot that is done when `phase` starts. Approximation: steps are weighted
+ * equally although their real costs differ, so the bar is a coarse position in the list rather than a
+ * time estimate. A phase outside `phases` reads as 0, since a mislabelled bar must not break boot.
  */
 export function bootFraction(phases: readonly BootPhase[], phase: BootPhase): number {
   const index = phases.indexOf(phase);
@@ -54,13 +50,10 @@ let overlay: HTMLElement | null = null;
 const PAINT_TIMEOUT_MS = 250;
 
 /**
- * Resolve once the browser has painted what was just written. Boot steps run long synchronous stretches
- * (terrain meshing, resource spawning) that block the frame, so without this yield a step's label would
- * only reach the screen after that step had already finished.
- *
- * Boot must never *depend* on this resolving: a hidden tab fires no rAF, and waiting for one there would
- * stall the load until the player came back - so a hidden tab (which has nothing to paint anyway) skips
- * the yield, and a tab hidden mid-yield falls through on the timeout.
+ * Resolve once the browser has painted what was just written, since a boot step's long synchronous
+ * stretch would otherwise put its own label on screen only after finishing. Boot never depends on this
+ * resolving: a hidden tab fires no rAF, so it skips the yield and a mid-yield hide falls through on the
+ * timeout.
  */
 function nextPaint(): Promise<void> {
   if (document.hidden) return Promise.resolve();
@@ -75,7 +68,6 @@ function nextPaint(): Promise<void> {
   });
 }
 
-/** Create an element with a class and optional children - the terse builder this card's small tree needs. */
 function node(className: string, ...children: readonly HTMLElement[]): HTMLDivElement {
   const div = document.createElement('div');
   div.className = className;
@@ -83,15 +75,14 @@ function node(className: string, ...children: readonly HTMLElement[]): HTMLDivEl
   return div;
 }
 
-/** Mount the card for an entry's own ordered step list (the steps it actually runs, in the order it runs them). */
+/** Mount the card for an entry's own ordered step list. */
 export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   dismissBootProgress();
   const bar = node('boot-card__bar');
   const label = node('boot-card__label');
   const root = node('boot-card', node('boot-card__frame', node('boot-card__track', bar)), label);
   root.style.setProperty('--boot-backdrop', `url("${BRAND_BACKDROP}")`);
-  // The card's whole purpose is to say what is happening, which a screen reader must hear too
-  // (`diag/crash.ts` marks its banner the same way).
+  // The card says what is happening, which a screen reader must hear too.
   root.setAttribute('role', 'status');
   label.setAttribute('aria-live', 'polite');
   document.body.append(root);
@@ -100,7 +91,7 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
     async begin(phase: BootPhase): Promise<void> {
       label.textContent = messages().loading[phase];
       bar.style.width = `${bootFraction(phases, phase) * 100}%`;
-      // Rides the existing `boot` channel into the diagnostics bundle, so a slow load is readable there.
+      // Rides the `boot` channel into the diagnostics bundle, so a slow load is readable there.
       diag.info('boot', 'phase', { phase });
       await nextPaint();
     },

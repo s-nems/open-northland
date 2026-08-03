@@ -2,12 +2,9 @@ import { JOB_BABY_FEMALE, JOB_CHILD_FEMALE, JOB_WOMAN } from '../../catalog/jobs
 import { FALLBACK_POOL, NAME_POOLS } from './pools.js';
 
 /**
- * Per-settler personal names, shown in the details panel in place of the generic "Ogólne" section title.
- * A name is a first name plus a patronymic surname - "Bjørn Ulfsson", "Astrid Sveinsdóttir" - over the
- * first-name × father-name cross product.
- *
- * These names are cosmetic and derived, not sim state: a settler's name is a pure function of its tribe,
- * sex and stable entity id, so nothing here touches the deterministic sim or its golden hashes.
+ * Per-settler personal names: a first name plus a patronymic surname, over the first-name by
+ * father-name cross product. Cosmetic and derived, not sim state - a name is a pure function of tribe,
+ * sex and stable entity id, so nothing here touches the sim or its golden hashes.
  */
 
 export type Sex = 'male' | 'female';
@@ -18,7 +15,7 @@ const PATRONYMIC_SUFFIX: Readonly<Record<Sex, string>> = {
   female: 'sdóttir',
 };
 
-/** The golden ratio's conjugate - the multiplier fraction that spreads consecutive ids most evenly. */
+/** The golden ratio's conjugate: the multiplier fraction that spreads consecutive ids most evenly. */
 const GOLDEN_RATIO_CONJUGATE = 0.618033988749895;
 
 function gcd(x: number, y: number): number {
@@ -33,10 +30,9 @@ function gcd(x: number, y: number): number {
 }
 
 /**
- * A multiplier coprime to `m`, near the golden-ratio fraction of `m`. Multiplying an id by it (mod `m`)
- * is a bijection that scatters *consecutive* ids across the whole range - so a batch of settlers spawned
- * with clustered ids gets well-spread names instead of all sharing one (the "everyone Ragnarsson" bug).
- * `m <= 1` (a degenerate/empty pool) has no non-trivial multiplier and would loop forever, so return 1.
+ * A multiplier coprime to `m`, near the golden-ratio fraction of `m`. Multiplying an id by it mod `m` is
+ * a bijection that scatters consecutive ids across the whole range, so a batch of settlers spawned with
+ * clustered ids gets spread names. `m <= 1` has no non-trivial multiplier and would loop forever.
  */
 function coprimeMultiplier(m: number): number {
   if (m <= 1) return 1;
@@ -46,10 +42,8 @@ function coprimeMultiplier(m: number): number {
 }
 
 /**
- * Map a stable id onto a (first, root) cell of the `firstCount × rootCount` name grid. The coprime scatter
- * makes this a bijection, so distinct ids give distinct name pairs up to the full grid before any repeat.
- * A degenerate empty pool (`m === 0`) has no cell to pick, so return the zero cell instead of dividing by
- * zero.
+ * Map a stable id onto a `(first, root)` cell of the `firstCount × rootCount` name grid. The coprime
+ * scatter makes this a bijection, so distinct ids give distinct pairs until the grid is full.
  */
 function nameGridCell(id: number, firstCount: number, rootCount: number): { first: number; root: number } {
   const m = firstCount * rootCount;
@@ -59,11 +53,9 @@ function nameGridCell(id: number, firstCount: number, rootCount: number): { firs
 }
 
 /**
- * The sex of the body a settler draws, mirroring `content/settler-gfx.ts` so a name never contradicts the
- * on-screen character. Young settlers (those carrying an `Age` component) key the age-class jobs: the two
- * female child bodies (baby_female 1, girl 3) are female, the male ones (baby_male 2, boy 4) male. Adults
- * are female only for the woman job (5); every other adult job draws the male body. (The two baby jobs draw
- * one sex-neutral `baby` body, so a baby's sex only shows through its name, not its sprite.)
+ * The sex of the body a settler draws, mirroring `content/settler-gfx.ts` so a name never contradicts
+ * the on-screen character. Only the woman job draws a female adult body; the two baby jobs share one
+ * sex-neutral body, so a baby's sex shows through its name alone.
  */
 export function settlerSex(jobType: number | null | undefined, young: boolean): Sex {
   if (young) return jobType === JOB_BABY_FEMALE || jobType === JOB_CHILD_FEMALE ? 'female' : 'male';
@@ -72,16 +64,10 @@ export function settlerSex(jobType: number | null | undefined, young: boolean): 
 
 /**
  * The personal name shown for a settler: a faction- and sex-appropriate first name plus a surname, both
- * picked from a {@link nameGridCell} permutation of the stable entity id.
- *
- * Family seam - `surnameFromEntityId`: with no sim marriage/lineage system yet, every settler carries their
- * own patronymic (a woman's ends `-sdóttir`, a man's `-sson`). When such a system exists, pass the husband's
- * (for a wife) or father's (for a child) entity id here: the settler then inherits that person's surname
- * verbatim - the male `-sson` patronymic of the same father-name - so a whole household shares one surname.
- *
- * Precondition: `surnameFromEntityId` must be a male entity (a husband/father). The inherited surname equals
- * that owner's own displayed surname only because both resolve on the male grid, which holds for a male
- * owner alone.
+ * picked from a {@link nameGridCell} permutation of the stable entity id. Passing a husband's or
+ * father's id as `surnameFromEntityId` makes the settler inherit that person's surname, so a household
+ * shares one. That id must be male: the inherited surname matches its owner's displayed one only
+ * because both resolve on the male grid.
  */
 export function characterName(
   tribe: number,
@@ -92,15 +78,14 @@ export function characterName(
   female?: boolean,
 ): string {
   const pool = NAME_POOLS[tribe] ?? FALLBACK_POOL;
-  // The sim's persistent `Female` marker wins when the caller has it (a woman re-professioned into a
-  // trade keeps her name); the jobType inference remains the fallback for callers without a snapshot.
+  // The sim's persistent `Female` marker wins when the caller has it, so a woman re-professioned into a
+  // trade keeps her name; the jobType inference is the fallback for callers without a snapshot.
   const sex = female === undefined ? settlerSex(jobType, young) : female ? 'female' : 'male';
   const firstNames = pool[sex];
-  const fatherNames = pool.male; // a surname is a patronymic of a (male) father's given name
+  const fatherNames = pool.male; // a surname is a patronymic of a male father's given name
   const first = firstNames[nameGridCell(entityId, firstNames.length, fatherNames.length).first] as string;
 
-  // The father-name is picked on the male grid so a man and every relative resolving to his id land on the
-  // same root.
+  // The father-name resolves on the male grid, so a man and every relative pointing at him share a root.
   const inherited = surnameFromEntityId !== undefined;
   const surnameOwnerId = surnameFromEntityId ?? entityId;
   const rootGridWidth = inherited ? fatherNames.length : firstNames.length;

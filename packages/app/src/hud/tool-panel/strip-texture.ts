@@ -8,33 +8,25 @@ import { type Application, Container } from 'pixi.js';
 import type { DesignRect } from './layout.js';
 
 /**
- * Crisp fractional scaling for the left tool-panel strip - the layout half of the render-layer supersample
- * ({@link bakeToFlippedSprite}).
+ * Crisp fractional scaling for the left tool-panel strip, the layout half of the render-layer
+ * supersample.
  *
- * The strip + buttons are {@link PalettedSprite} meshes over an indexed atlas (red = palette index), read
- * through the GUI palette LUT and sampled nearest - palette indices can't be linearly filtered (an averaged
- * index decodes to a wrong colour). At a fractional `uiscale` (the 1.4× default) nearest sampling doubles
- * some texel columns and not others ("pixeloza"). The fix: place the meshes at an integer oversample `ss`
- * into a texture, then draw that texture linear-downscaled to the display size - this module owns the layout
- * (design bounds → texel placement, the display anchor); the render helper owns the texture + the WebGL
- * Y-flip.
- *
- * This also makes the strip static: it bakes once, re-baking only when a glyph changes (e.g. the game-speed
- * button - {@link SupersampledStrip.redraw}). The display `Sprite` is a normal scene-graph child, so it
- * batches and follows canvas resizes for free.
+ * The strip and buttons are `PalettedSprite` meshes over an indexed atlas sampled nearest, because
+ * palette indices cannot be linearly filtered: an averaged index decodes to a wrong colour. At a
+ * fractional `uiscale` that nearest sampling doubles some texel columns and not others, so the meshes are
+ * placed at an integer oversample into a texture that is then drawn linear-downscaled to display size.
+ * This module owns the layout; the render helper owns the texture and the WebGL Y-flip.
  */
 
 /**
- * Oversample cap for {@link oversampleFor} (which targets double the `uiscale × renderer.resolution`
- * device px per design px so the linear downscale anti-aliases - the 1.4× default at DPR 2 covers
- * 2.8 → ss 5). The cap bounds the texture memory a pathological `?uiscale=`/DPR combination could
- * request (the strip is 433 design px tall; ss 6 ≈ a 300×2598 texture, ~3 MB RGBA, baked once).
- * Flat panel edges need no quality floor (floor 1).
+ * Oversample cap for `oversampleFor`, which targets double the `uiscale × renderer.resolution` device px
+ * per design px so the linear downscale anti-aliases. The cap bounds the texture memory a pathological
+ * `?uiscale=` and DPR combination could request. Flat panel edges need no quality floor.
  */
 const MAX_SUPERSAMPLE = 6;
 const MIN_SUPERSAMPLE = 1;
 
-/** One panel mesh plus its design-space rect (pre-scale) - the strip background or a tool button. */
+/** One panel mesh plus its design-space rect, pre-scale. */
 export interface StripSpriteSpec {
   readonly spr: PalettedSprite;
   readonly design: DesignRect;
@@ -43,9 +35,9 @@ export interface StripSpriteSpec {
 export type SupersampledStrip = SupersampledTexture;
 
 /**
- * Build the supersampled strip: place `sprites` at an integer oversample into a texture (via
- * {@link bakeToFlippedSprite}) and anchor the returned display sprite at the strip's design origin. `bounds`
- * is the design-space union the meshes occupy (`layout.designBounds`); `scale` is the fractional display scale.
+ * Build the supersampled strip: place `sprites` at an integer oversample into a texture and anchor the
+ * returned display sprite at the strip's design origin. `bounds` is the design-space union the meshes
+ * occupy; `scale` is the fractional display scale.
  */
 export function createSupersampledStrip(opts: {
   readonly app: Application;
@@ -55,16 +47,14 @@ export function createSupersampledStrip(opts: {
 }): SupersampledStrip {
   const { app, bounds, scale, sprites } = opts;
 
-  // Integer oversample so nearest sampling stays exact; sized at double the device px the display
-  // sprite covers so the linear downscale anti-aliases the palette edges (see oversampleFor).
+  // Integer oversample so nearest sampling stays exact, sized at double the device px the display sprite
+  // covers so the linear downscale anti-aliases the palette edges.
   const ss = oversampleFor(scale, app.renderer.resolution, MIN_SUPERSAMPLE, MAX_SUPERSAMPLE);
   const texW = Math.ceil(bounds.w * ss);
   const texH = Math.ceil(bounds.h * ss);
 
-  // Place every mesh in texture texel space: origin = ss × (designPos − boundsOrigin), zoom = ss, resolution
-  // = the texture size (a PalettedSprite maps native px → target px itself via its own uResolution - it does
-  // not ride the scene-graph transform, so it renders into the off-screen target the same way it would the
-  // canvas). The detached container is owned by the returned handle's dispose.
+  // Place every mesh in texture texel space. A PalettedSprite maps native px to target px through its own
+  // uResolution rather than the scene-graph transform, so it renders into an off-screen target unchanged.
   const offscreen = new Container();
   for (const { spr, design } of sprites) {
     spr.place((design.x - bounds.x) * ss, (design.y - bounds.y) * ss, ss, texW, texH);
@@ -72,8 +62,8 @@ export function createSupersampledStrip(opts: {
   }
 
   const baked = bakeToFlippedSprite(app.renderer, offscreen, texW, texH, scale / ss);
-  // Anchor at the strip's design bottom-left (the Y-flip draws the sprite upward) so it lands exactly where
-  // the pinned placed geometry (hit-testing) expects the top-left at `bounds × scale`.
+  // Anchor at the strip's design bottom-left, since the Y-flip draws the sprite upward, so its top-left
+  // lands at `bounds × scale` where the pinned hit-test geometry expects it.
   baked.display.position.set(bounds.x * scale, (bounds.y + bounds.h) * scale);
   return baked;
 }

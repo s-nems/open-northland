@@ -6,9 +6,8 @@ import { professionDefForJob } from '../../../catalog/professions.js';
 import { currentLocale, messages, professionLabel } from '../../../i18n/index.js';
 
 /**
- * The shared context both panel-model halves resolve names through: the content sets the panel was built
- * with, plus the building/good/job def + display-label lookups over them. Keeping these in one place lets
- * a settler's profession label and a building's worker-slot label resolve identically, so they never drift.
+ * The shared context both panel-model halves resolve names through, so a settler's profession label and
+ * a building's worker-slot label always resolve identically.
  */
 
 export type BuildingDef = ContentSet['buildings'][number];
@@ -20,26 +19,24 @@ export type TribeDef = ContentSet['tribes'][number];
 export interface UnitPanelModelContext {
   readonly buildings: readonly BuildingDef[];
   readonly goods: readonly GoodDef[];
-  /** The content jobs - the worker-row labels resolve a bound settler's job name from here (a building's
-   *  worker vs carrier slots), so the panel names them even when they're not in the profession catalog. */
+  /** The content jobs, so the panel can name a bound settler's job even when it is not in the profession
+   *  catalog. */
   readonly jobs: readonly JobDef[];
-  /** The content experience tracks - the Doświadczenie rows resolve a specialization's label (its good
-   *  or owning job) and its per-repeat accrual rate from here. */
+  /** The content experience tracks: a specialization's label and its per-repeat accrual rate. */
   readonly jobExperience: readonly JobExperienceDef[];
-  /** The content tribes - the Doświadczenie section's upcoming-unlock rows read a settler tribe's
-   *  `needforjob` requirement table from here. */
+  /** The content tribes, whose `needforjob` table the upcoming-unlock rows read. */
   readonly tribes: readonly TribeDef[];
-  /** The sim's livestock-workplace classification (`isLivestockWorkplaceType`), so the panel hides the
-   *  slaughter recipe the sim's recipe table drops there. Absent = no filtering (tests, plain views). */
+  /** The sim's livestock-workplace classification, so the panel hides the slaughter recipe the sim's
+   *  recipe table drops there. Absent = no filtering. */
   readonly isLivestockWorkplace?: ((typeId: number) => boolean) | undefined;
-  /** The sim's livestock-good classification (`livestockTribeOfGood`): the internal fed-animal token
-   *  goods, hidden from every player-facing list (stock rows, product rows, craft toggles). */
+  /** The sim's livestock-good classification: the internal fed-animal tokens, hidden from every
+   *  player-facing list. */
   readonly isLivestockGood?: ((goodType: number) => boolean) | undefined;
-  /** The meat byproduct good every completed feed batch lands (`livestockMeatGoodOf`) - the second
-   *  icon of a livestock chain row; null/absent without one in content. */
+  /** The meat byproduct good every completed feed batch lands, the second icon of a livestock chain row;
+   *  null or absent without one in content. */
   readonly livestockMeatGood?: number | null | undefined;
-  /** The sim's dish→edible mapping (`edibleGoodFormOf`): a gatherer's workplace counts as stocking a
-   *  dish when it slots the edible, since the deposit converts. Absent = no conversion (plain views). */
+  /** The sim's dish→edible mapping: a gatherer's workplace counts as stocking a dish when it slots the
+   *  edible, since the deposit converts. Absent = no conversion. */
   readonly edibleGoodForm?: ((goodType: number) => number) | undefined;
 }
 
@@ -48,9 +45,8 @@ export interface Comp {
 }
 
 /**
- * A settler's profession name for the panel - resolved through the shared profession catalog + i18n
- * (`catalog/professions.ts` + `i18n/`), so a settler's label always matches the picker's. Any soldier-band
- * job reads "Żołnierz"; idle/unknown falls back to the localized "Cywil".
+ * A settler's profession name, resolved through the shared profession catalog so it always matches the
+ * picker's label; idle or unknown falls back to the localized "Cywil".
  */
 function jobLabel(jobType: number | undefined): string {
   const def = professionDefForJob(jobType);

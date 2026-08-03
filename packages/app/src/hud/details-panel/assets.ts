@@ -20,21 +20,12 @@ import { loadIr, loadLayer, MissingAtlasError } from '../../content/ir/load.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 
 /**
- * Everything the details panel loads once at mount: the GUI sheet, the vector UI font, the original window
- * bitmap fills, the decoded UI strings, and the per-type building previews. Every piece except the font
- * degrades to `null`/`undefined`/empty when `content/` is absent - the panel then draws its flat Graphics
- * fallback; the bundled font always loads (falling back to a system serif only if its woff2 is blocked).
- *
- * The bitmap fills and previews are stored as ready `Texture`s minted once here: a Pixi `Texture`
- * registers a resize listener on its shared `TextureSource`, so minting one per rebuild (the panel
- * rebuilds on model changes) would leak listener-pinned wrappers unboundedly.
+ * Everything the details panel loads once at mount; every piece except the font degrades to
+ * `null`/`undefined`/empty without `content/`. Textures are minted once here because a `Texture` pins a
+ * resize listener on its shared `TextureSource`, so minting one per rebuild would leak those wrappers.
  */
 
-/**
- * The original window/button fills from `Data/gui/bitmaps/bg*.pcx` (300×300 texture tiles).
- * `bg` (warm brown) tiles the section-button plates' disabled fallback; `card` is `bg_selected` recoloured
- * through `bg_normal` - the original's grey-blue selected-item card body, tiled under each section headline.
- */
+/** The original window/button fills from `Data/gui/bitmaps/bg*.pcx` (300×300 texture tiles). */
 export interface GuiBitmapSet {
   readonly bg: Texture | undefined;
   readonly card: Texture | undefined;
@@ -62,7 +53,7 @@ async function loadGuiBitmaps(): Promise<GuiBitmapSet> {
   };
 }
 
-/** One selected-building preview: its atlas region as a ready texture + the native frame size to fit by. */
+/** One selected-building preview: an atlas region as a ready texture, sized in native frame px. */
 export interface BuildingPreview {
   readonly texture: Texture;
   readonly width: number;
@@ -120,18 +111,16 @@ async function loadBuildingPreviews(): Promise<ReadonlyMap<number, BuildingPrevi
   return previews;
 }
 
-/** The panel's loaded asset bundle (see the module header for the degrade-to-fallback contract). */
 export interface DetailsPanelAssets {
   readonly art: GuiArt | null;
-  /** The per-good resource icons (recolourable `ls_goods` atlas + palette LUT + bindings), or `null`. */
+  /** The per-good resource icons from the recolourable `ls_goods` atlas. */
   readonly goods: GoodsArt | null;
-  /** The bundled vector serif the panel draws all text with (see `content/ui-font.ts`). */
   readonly uiFont: UiFont;
   readonly bitmaps: GuiBitmapSet;
   readonly strings: GuiStrings | null;
   readonly previews: ReadonlyMap<number, BuildingPreview>;
-  /** The decoded level→colour gauge ramp (`bar_hitpoints`), or `undefined` without `content/` - the
-   *  stat bars then fall back to flat banded colours. */
+  /** The decoded level-to-colour gauge ramp (`bar_hitpoints`); without it the stat bars fall back to
+   *  flat banded colours. */
   readonly barRamp: GuiBarRamp | undefined;
 }
 

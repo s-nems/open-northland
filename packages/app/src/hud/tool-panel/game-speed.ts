@@ -1,15 +1,11 @@
 /**
- * The game-speed button state machine - the factor→gfx family pinned to the original's speed button.
+ * The game-speed button state machine, pinned to the original's speed button: the four decoded frames
+ * map factor 0 → gfx 0x36 (paused), 1 → 0x31, 2 → 0x34, 3 → 0x35. Each visible state maps to an app-side
+ * tick multiplier, since the sim tick stays fixed at `TICKS_PER_SECOND`. Exact cycling behavior is
+ * unconfirmed against the running original.
  *
- * The four decoded frames map to factor 0 → gfx 0x36 (paused), 1 → gfx 0x31, 2 → gfx 0x34, and 3 →
- * gfx 0x35. We map each visible state to an app-side tick multiplier; game speed is an app concern and
- * the sim tick stays fixed at `TICKS_PER_SECOND`. Confirm exact cycling behavior in the running original.
- *
- * The control model is ours (source basis; a user-requested deviation): clicking the button cycles only the
- * running speeds (×1 → ×2 → ×3 → ×1, never into pause), while pause is a separate toggle (the `P` key, or a
- * click while paused resumes) that remembers the running speed and restores it on unpause.
- *
- * Pure (no Pixi/DOM): the view reads `gfx`, the loop reads `tickMultiplier`, both unit-tested.
+ * The control model is a named deviation: a click cycles only the running speeds (×1 → ×2 → ×3 → ×1,
+ * never into pause), while pause is a separate toggle that restores the remembered running speed.
  */
 
 /** The four visible speed states the button can show (three running speeds + the paused glyph). */
@@ -47,10 +43,7 @@ export function gameSpeedSpec(state: GameSpeedState): GameSpeedStateSpec {
   return spec;
 }
 
-/**
- * The speed control the button + the `P` key drive: the running speed persists across a pause, so
- * unpausing restores exactly the pace the player left (pause is a toggle, not a cycle stop).
- */
+/** The speed control: the running speed persists across a pause, so unpausing restores the same pace. */
 export interface GameSpeedControl {
   readonly running: RunningGameSpeed;
   readonly paused: boolean;
@@ -63,9 +56,8 @@ export const DEFAULT_GAME_SPEED_CONTROL: GameSpeedControl = { running: 'normal',
 const RUNNING_CYCLE: readonly RunningGameSpeed[] = ['normal', 'fast', 'faster'];
 
 /**
- * One click of the speed button: while running, advance the running cycle (×1 → ×2 → ×3 → ×1); while
- * paused, resume at the remembered running speed (the button shows the pause glyph, so clicking it reads
- * as "un-pause", not "change speed").
+ * One click of the speed button: while running, advance the running cycle; while paused, resume at the
+ * remembered running speed.
  */
 export function cycleGameSpeed(control: GameSpeedControl): GameSpeedControl {
   if (control.paused) return { running: control.running, paused: false };
@@ -81,19 +73,15 @@ export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedContro
 }
 
 /**
- * Why a speed change happened - the loop applies them differently. A `'cycle'` (button click) is an
- * explicit speed pick, so it overwrites the loop's wall-clock multiplier (including a fractional
- * `?speed=` seed - the button can only express the discrete speeds). A `'pause-toggle'` (the `P` key)
- * must only flip the pause flag: writing the multiplier there would silently replace a seeded
- * `?speed=0.5` with ×1 on resume, breaking the "restores exactly the pace" promise above.
+ * Why a speed change happened, since the loop applies them differently. A `'cycle'` is an explicit speed
+ * pick and overwrites the loop's wall-clock multiplier, including a fractional `?speed=` seed. A
+ * `'pause-toggle'` must only flip the pause flag, or a seeded `?speed=0.5` would resume at ×1.
  */
 export type GameSpeedChangeCause = 'cycle' | 'pause-toggle';
 
 /**
  * The cause a speed-button click reports, from the pre-click control: a click while paused is an
- * un-pause ({@link cycleGameSpeed} resumes, it does not advance), so it must carry `'pause-toggle'` -
- * reporting `'cycle'` there would overwrite a fractional `?speed=` seed on resume (see the type above),
- * making the two resume gestures (click vs `P`) behave differently.
+ * un-pause, so it carries `'pause-toggle'` and both resume gestures behave alike.
  */
 export function gameSpeedClickCause(control: GameSpeedControl): GameSpeedChangeCause {
   return control.paused ? 'pause-toggle' : 'cycle';

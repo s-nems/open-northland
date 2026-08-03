@@ -1,23 +1,16 @@
 import type { GoodFarming } from '@open-northland/data';
 
 /**
- * The farm's field-cultivation calibration - the one global source for the wheat sow→water→grow→reap
- * loop's numbers: every scene/content set that farms wheat builds its `farming` block from these
- * constants so the pace can't drift per scene.
+ * The farm's field-cultivation calibration: the one global source for the wheat sow, water, grow and reap
+ * loop, so its pace cannot drift per scene.
  *
- * Source split (see the sim's `GoodFarming` schema): {@link WHEAT_GROWTH_STAGES} comes from readable
- * original data, and the farmer's stroke count lives in the `jobExperience` track (the extracted
- * `baserepeatcounter 2` - the sim's `workRepeatsFor`), seeded for the sandbox in
- * `game/sandbox/content/index.ts`. The rest is calibration observed in the running original; the
- * data carries no growth timing, field radius, or per-field yield.
+ * Source split: {@link WHEAT_GROWTH_STAGES} comes from readable original data and the farmer's stroke
+ * count from the extracted `jobExperience` track. The rest is calibration observed in the running
+ * original, whose data carries no growth timing, field radius, or per-field yield.
  *
- * The TARGET is the original's measured pacing: one farmer banks ~10 grain per 10 minutes, two ~20, three
- * ~30, four ~40, on a plot that stands at ~24 plants for every one of those crews. Two constants aim at it
- * between them - the stroke count sets what a grain costs in farmer labor (hence the ladder),
- * {@link FARM_MAX_FIELDS} sets the plot (hence its independence from the crew). The plot size and the
- * crews of 2-4 land; the FIRST rung does not - a lone farmer measures ~9 (per-farmer 9.0 / 12.5 / 12.3 /
- * 11.5), because it cannot re-water 24 fields inside a stage, so the ladder bends at the bottom instead of
- * running straight.
+ * The observed target is about 10 grain per farmer per 10 minutes, on a plot standing at about 24 plants
+ * whatever the crew size. The stroke count sets what a grain costs in labor and {@link FARM_MAX_FIELDS}
+ * sets the plot, so the ladder bends at the bottom: a lone farmer cannot re-water 24 fields in a stage.
  */
 
 /** Growth stages a sown field passes through before it is ripe (the `landscapetypes.ini` `wheat (growing)`
@@ -37,27 +30,20 @@ export const WHEAT_GROWTH_SPREAD_PERCENT = 40;
 /** Units a ripe field drops as its cut sheaf when reaped. */
 export const WHEAT_YIELD_PER_FIELD = 1;
 
-/** Strokes a farmer plays per field action - `humanjobexperiencetypes.ini` type 46 "farmer wheat"
- *  `baserepeatcounter 2`, transcribed for the sandbox's farmer track (built in
- *  `game/sandbox/content/index.ts` against the sandbox's own job/good ids; real content indexes the
- *  extracted row itself). The strokes-per-action reading's basis lives on the sim's `workRepeatsFor`. */
+/** Strokes a farmer plays per field action, transcribed from `humanjobexperiencetypes.ini` type 46
+ *  "farmer wheat" `baserepeatcounter 2`. */
 export const WHEAT_WORK_REPEATS = 2;
 
 /** How far from the farm's anchor its farmers sow, in half-cell nodes (16 nodes ≈ 8 tiles). */
 export const FARM_FIELD_RADIUS = 16;
 
-/** Fields one farm keeps standing at once, whatever its crew size - measured in the running original,
- *  where a farm's plot held 24–25 growing plants and did not grow when more farmers were assigned. A
- *  plot this size is also what staggers the harvest: one farmer cannot re-water 24 fields inside a
- *  {@link WHEAT_TICKS_PER_STAGE} window, so the fields drift apart in stage instead of ripening as one
- *  batch. */
+/** Fields one farm keeps standing at once, whatever its crew size: observed at 24-25 growing plants,
+ *  which did not grow when more farmers were assigned. A plot this size also staggers the harvest, since
+ *  one farmer cannot re-water it inside a {@link WHEAT_TICKS_PER_STAGE} window. */
 export const FARM_MAX_FIELDS = 24;
 
-/** The clean-room field-farming `farming` block per farmed good, keyed by its stable string id - read by both
- *  the sandbox goods builder (`game/sandbox/content/catalog/goods.ts`) and the real-content overlay
- *  (`content/real-content.ts` `mergeRealContent`), so wheat farms at the same pace on either content base.
- *  Real ir.json extracts wheat's plant/cultivate/harvest atomics and its `producedOnMap` flag, but not this
- *  growth timing, so the overlay pins it here. */
+/** The `farming` block per farmed good, keyed by its stable string id, so wheat farms at the same pace on
+ *  either content base. Real ir.json extracts wheat's atomics but not this growth timing. */
 export const FARMING_BALANCE_BY_ID: Readonly<Record<string, GoodFarming>> = {
   wheat: {
     stages: WHEAT_GROWTH_STAGES,

@@ -50,9 +50,7 @@ import type { SandboxContentExtras } from '../types.js';
 import { SANDBOX_ANIMAL_TRIBES } from './animals.js';
 import { SANDBOX_JOB_ENABLES } from './tech-graph.js';
 
-/** The make-love atomic (`logicdefines.inc` MAKE_LOVE = 78) - the hearts phase's duration key. The
- *  sim transcribes the same id (`systems/family/children/make-love.ts` MAKE_LOVE_ATOMIC_ID); both pin to the
- *  decoded define, so neither can drift alone. */
+/** `logicdefines.inc` MAKE_LOVE. The sim pins the same decoded define, so neither can drift alone. */
 const MAKE_LOVE_ATOMIC = 78;
 
 export interface SandboxTribe {
@@ -65,11 +63,8 @@ export interface SandboxTribe {
 }
 
 /**
- * The base soldier class's two gate rows, transcribed from the extracted viking table: `needforjob 31 5
- * 69` (five repeats of the `soldier general` track) and `trainforjob 31 5 77` (five TRAINING repeats).
- * How the two combine is the sim's `schoolingMet`. The armed classes carry no rows on purpose: the
- * weapon-class flip never consults these gates (the sim's `weapon-class.ts` states the
- * no-schooling-gate rule).
+ * Extracted `needforjob 31 5 69` and `trainforjob 31 5 77` on the base soldier class. The armed classes
+ * carry no rows on purpose: the weapon-class flip never consults these gates.
  */
 const SOLDIER_GATE: readonly JobRequirement[] = [
   {
@@ -88,7 +83,6 @@ const SOLDIER_GATE: readonly JobRequirement[] = [
   },
 ];
 
-/** Build the primary tribe's atomic bindings plus any caller-declared tribes. */
 export function buildSandboxTribes(
   jobTypes: readonly number[],
   extras: SandboxContentExtras,
@@ -104,24 +98,20 @@ export function buildSandboxTribes(
         atomicId: gatherer.atomic,
         animation: gatherer.animation,
       })),
-      // The family pair: kiss/kissed (atomics 20/21) time the wedding, make_love (78) times the
-      // hearts phase - bound for the woman/civilist jobs like the original's `setatomic 5/6` rows.
+      // Bound for the woman and civilist jobs, as the original's `setatomic 5/6` rows do.
       { jobType: JOB_WOMAN, atomicId: KISS_ATOMIC, animation: 'viking_woman_kiss' },
       { jobType: JOB_WOMAN, atomicId: KISSED_ATOMIC, animation: 'viking_woman_kissed' },
       { jobType: JOB_WOMAN, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_woman_make_love' },
       { jobType: JOB_CIVILIST, atomicId: KISS_ATOMIC, animation: 'viking_civilist_kiss' },
       { jobType: JOB_CIVILIST, atomicId: KISSED_ATOMIC, animation: 'viking_civilist_kissed' },
       { jobType: JOB_CIVILIST, atomicId: MAKE_LOVE_ATOMIC, animation: 'viking_civilist_make_love' },
-      // The gossip pair: talk/listen (atomics 14/15) time the chat rounds and carry the channel-3
-      // refill pulses - bound for the woman/civilist jobs like the original's `setatomic 5/6 14/15`
-      // rows; every other trade resolves them through the sim's civilist fallback (the `baseatomics 6`
-      // inheritance, systems/social/gossip/).
+      // Every other trade resolves talk and listen through the sim's civilist fallback, the original's
+      // `baseatomics 6` inheritance.
       { jobType: JOB_WOMAN, atomicId: TALK_ATOMIC, animation: WOMAN_TALK_ANIMATION },
       { jobType: JOB_WOMAN, atomicId: LISTEN_ATOMIC, animation: WOMAN_LISTEN_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: TALK_ATOMIC, animation: CIVILIST_TALK_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: LISTEN_ATOMIC, animation: CIVILIST_LISTEN_ANIMATION },
-      // The barracks drill, bound for the civilist like the original's `setatomic 6 89` row; every other
-      // trade sent to be trained resolves it through the sim's civilist fallback.
+      // The original's `setatomic 6 89` row; any other trade sent to train falls back to the civilist.
       { jobType: JOB_CIVILIST, atomicId: EXERCISE_ATOMIC, animation: CIVILIST_EXERCISE_ANIMATION },
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },
       { jobType: JOB_BUILDER, atomicId: BUILD_HOUSE_ATOMIC, animation: BUILD_HOUSE_ANIMATION },
@@ -134,7 +124,6 @@ export function buildSandboxTribes(
       { jobType: JOB_SOLDIER_BROADSWORD, atomicId: ATTACK_ATOMIC, animation: 'viking_broadsword_attack' },
       { jobType: JOB_ARCHER, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_attack' },
       { jobType: JOB_ARCHER_LONG, atomicId: ATTACK_ATOMIC, animation: 'viking_bow_long_attack' },
-      // The hunter's own clips, timed verbatim off the extraction (`catalog/hunting.ts`).
       { jobType: JOB_HUNTER, atomicId: ATTACK_ATOMIC, animation: 'viking_hunter_attack' },
       {
         jobType: JOB_HUNTER,
@@ -146,20 +135,17 @@ export function buildSandboxTribes(
         { jobType, atomicId: STORE_PILEUP_ATOMIC, animation: STORE_PILEUP_ANIMATION },
       ]),
     ],
-    // The collector gates the economy houses + gathered goods, mirroring the extracted viking `jobEnables`
-    // (see tech-graph.ts): a gated workshop stays locked until the tribe has its gatherer.
     jobEnables: SANDBOX_JOB_ENABLES,
     jobRequirements: SOLDIER_GATE,
   });
-  // The standing wildlife tribes (the sandbox `animaltypes` records' owners). No tech graph and no
-  // hitpoints row: an animal's HP pool comes from its animal record, not the tribe table.
+  // No hitpoints row: an animal's HP pool comes from its animal record, not the tribe table.
   for (const tribe of SANDBOX_ANIMAL_TRIBES) {
     tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id });
   }
   for (const tribe of extras.tribes ?? []) {
     if (!tribes.has(tribe.typeId)) {
-      // Extra tribes (enemy raiders, wildlife) carry no tech graph - an empty edge list gates nothing, so their
-      // buildings stay enabled without needing an enabler settler.
+      // No tech graph: an empty edge list gates nothing, so an extra tribe's buildings stay enabled
+      // without an enabler settler.
       tribes.set(tribe.typeId, { typeId: tribe.typeId, id: tribe.id, hitpoints: HUMAN_HITPOINTS });
     }
   }

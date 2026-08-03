@@ -6,9 +6,8 @@ import { remainingPct } from './bars.js';
 import { type Comp, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 import { HUMANWINDOW } from './humanwindow.js';
 
-/** The equipment slot groups the sim `Equipment` component carries - the row identity and the slot
- *  address an equip/swap/take-off order names (`misc` rows address their slot by index). The content
- *  category itself, so a category added to the data schema surfaces here as a compile error. */
+/** The equipment slot groups the sim `Equipment` component carries. The content category itself, so a
+ *  category added to the data schema surfaces here as a compile error. */
 export type EquipGroup = EquipCategory;
 
 /** One equipment slot's contents. Empty (`occupied` false, `conditionPct` null) for an unworn slot. */
@@ -20,16 +19,14 @@ export interface EquipSlotModel {
   readonly goodId?: string;
   /** The worn good's display name (the action buttons' tooltip line) - undefined when empty. */
   readonly label?: string;
-  /** How much of an occupied wearing item is LEFT, as a percent (a fresh item reads 100 and drains
-   *  with use - the inverse of the sim's rising `degreeOfUse`; user rule 2026-07-23). Null when the
-   *  slot is empty or holds a permanent good (weapon/armour/amulet). */
+  /** How much of an occupied wearing item is left, as a percent: a fresh item reads 100 and drains with
+   *  use, the inverse of the sim's rising `degreeOfUse`. Null for an empty slot or a permanent good. */
   readonly conditionPct: number | null;
 }
 
 /**
- * One labeled equipment row - the original's `Buty`/`Narzędzia`/`Broń`/`Zbroja`/`Ekwipunek` lines, each
- * a `humanwindow` label id (+ pinned fallback) and its slot(s). Single-slot rows (boots/tool/weapon/
- * armour) carry one; the misc `Ekwipunek` row carries {@link components.MISC_EQUIP_SLOTS}.
+ * One labeled equipment row, each a `humanwindow` label id with a pinned fallback and its slots. The
+ * base rows carry one slot; the misc `Ekwipunek` row carries {@link components.MISC_EQUIP_SLOTS}.
  */
 export interface EquipRow {
   readonly titleId: number;
@@ -37,9 +34,8 @@ export interface EquipRow {
   /** Which sim `Equipment` field this row shows - the slot address its action buttons order against. */
   readonly group: EquipGroup;
   readonly slots: readonly EquipSlotModel[];
-  /** Whether this settler may still PUT something in the row (false only for a fighter's stray tool,
-   *  which the sim refuses to re-equip): the layout then offers the take-off cross alone, so no button
-   *  opens a menu that is empty by rule rather than by stock. */
+  /** Whether this settler may still put something in the row; false only for a fighter's stray tool,
+   *  which the sim refuses to re-equip, so the layout then offers the take-off cross alone. */
   readonly wearable: boolean;
 }
 
@@ -55,9 +51,7 @@ interface RawEquipment {
   readonly misc?: unknown;
 }
 
-/** One equipment slot → its panel model. Empty when unworn/unresolved; an occupied wearing good
- *  (potion/shoes/tool) carries its remaining-condition percent, a permanent good (weapon/armour/
- *  amulet, `equip.wears` false) none. */
+/** One equipment slot → its panel model; only a good with `equip.wears` carries a condition percent. */
 function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotModel {
   if (slot == null) return { occupied: false, conditionPct: null };
   const goodType = num(slot.goodType);
@@ -73,17 +67,13 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
 }
 
 /**
- * The settler's equipment as labeled rows: Broń + Zbroja for a fighter, then Buty, Narzędzia for a
- * civilian, and the misc Ekwipunek row (its {@link components.MISC_EQUIP_SLOTS} consumable slots) -
- * combat gear first (user order 2026-07-23). Reads the sim `Equipment` component; a settler without one
- * shows every base slot empty.
+ * The settler's equipment as labeled rows, combat gear first, from the sim `Equipment` component; a
+ * settler without one shows every base slot empty.
  *
- * Which rows a trade offers follows the JOB, so changing profession swaps the arms rows for the tool row
+ * Which rows a trade offers follows the job, so changing profession swaps the arms rows for the tool row
  * and back: Broń/Zbroja are the original's soldier-only equip slots (`tribetypes` `allowequip`), and a
- * fighter keeps no tool (the sim's rule - `shedToolOnEnlist`). Two escapes keep worn gear reachable
- * rather than stranded: a unit the job would not offer still shows its row while it is worn (so it can
- * be taken off), and an armed non-fighter (a hunter/scout carrying a combat `Weapon`) keeps its arms
- * rows.
+ * fighter keeps no tool. Two escapes keep worn gear reachable: a row the job would not offer still shows
+ * while something is worn in it, and an armed non-fighter keeps its arms rows.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
   const slots = messages().hud.equipmentSlots;

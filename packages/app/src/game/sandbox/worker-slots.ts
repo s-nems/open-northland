@@ -23,20 +23,15 @@ import {
 import { type Messages, professionLabel } from '../../i18n/index.js';
 import { rebaseSlotJob } from './ids/index.js';
 
-/**
- * A building's worker slots with their job ids rebased ({@link rebaseSlotJob}), or undefined for a
- * building type that employs nobody (homes).
- */
+/** Undefined for a building type that employs nobody, such as a home. */
 export function workerSlotsFor(typeId: number): readonly { jobType: number; count: number }[] | undefined {
   const slots = BUILDING_WORKER_SLOTS[typeId];
   return slots?.map((w) => ({ jobType: rebaseSlotJob(w.jobType), count: w.count }));
 }
 
 /**
- * Extracted worker-slot trades that map to a picker profession, keyed by their original `jobtypes.ini` id
- * (the pre-rebase id used in {@link BUILDING_WORKER_SLOTS}) → the shared profession `key`. The building
- * panel names each such worker via {@link professionLabel}, so a slot trade and the picker read the same
- * word. Trades with no picker counterpart keep a slot-local name below.
+ * Keyed by the original pre-rebase `jobtypes.ini` id, so a slot trade and the profession picker read the
+ * same word.
  */
 const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
   [JOB_JOINER]: 'joiner',
@@ -57,18 +52,14 @@ const WORKER_SLOT_PROFESSION_KEYS: Readonly<Record<number, keyof Messages['profe
   [JOB_DRUID]: 'druid',
 };
 /**
- * Slot-local Polish names for the worker-slot trades with no picker profession: the generic `collector`
- * (8) the roster instead realizes as the concrete resource gatherers, and the two archer weapon classes
- * (40/41) the one-soldier picker folds into "Żołnierz" but a tower slot still lists by weapon.
+ * Slot-local names for the trades the profession picker does not offer: it realizes the generic
+ * collector as concrete gatherers and folds both archer classes into one soldier entry.
  */
 const WORKER_SLOT_LOCAL_KEYS: Readonly<Record<number, keyof Messages['profession']>> = {
   [JOB_COLLECTOR]: 'collector',
   [JOB_ARCHER]: 'archer_short',
   [JOB_ARCHER_LONG]: 'archer_long',
 };
-/** The display name of an extracted worker-slot job, by its original id: the shared profession label
- *  where the trade has one (so it never drifts from the picker), else its slot-local name. The carrier
- *  (24 → {@link JOB_CARRIER}) is named 'Tragarz' where the job is defined, not here. */
 export function workerSlotName(originalJobType: number): string {
   const key = WORKER_SLOT_PROFESSION_KEYS[originalJobType];
   const localKey = WORKER_SLOT_LOCAL_KEYS[originalJobType];
@@ -76,20 +67,11 @@ export function workerSlotName(originalJobType: number): string {
 }
 
 /**
- * Per-building worker + carrier capacity, by typeId - how many settlers of each job a building employs,
- * so `assignWorker` can staff it and the door-badge shows one marker per worker.
- * Source basis: extracted from `ir.json`'s `workers`, i.e. the `logicworker` keys of each
- * `[logichousetype]` block in `DataCnmd/types/houses.ini`, verbatim - the counts and the worker/carrier
- * split are the original's. The `jobType`s here are the source's own `jobtypes.ini` ids and are rebased
- * clear of the sandbox's own functional job band on the way in ({@link rebaseSlotJob}): the original ids
- * overlap the collector (8) and builder (7), so e.g. original job 8 would otherwise be read as the
- * sandbox's collector. The carrier (jobtype 24, the hauler the badge + assignment UI single out), the
- * hunter (15) and the two tower archers (40/41) are exceptions - kept, not rebased, because the sandbox
- * band defines exactly those trades and the sim classifies them by id slug. Everything else becomes a
- * distinct generic craftsman id (its trade identity is dropped - the deferred global-content id
- * unification); the count and the carrier split - what the player assigns - stay exact. Residences (homes)
- * employ nobody; they carry no row. Kept as sandbox data (not the hand-authored catalog) because the
- * rebase lives in the sandbox job space.
+ * Extracted verbatim from the `logicworker` keys of each `[logichousetype]` block in
+ * `DataCnmd/types/houses.ini`, so the counts and the worker/carrier split are the original's. The
+ * `jobType`s are the source's own `jobtypes.ini` ids and get rebased clear of the sandbox job band,
+ * because the original ids overlap the sandbox collector and builder. The carrier, hunter and the two
+ * tower archers are kept unrebased: the sandbox band defines exactly those trades.
  */
 export const BUILDING_WORKER_SLOTS: Readonly<Record<number, readonly { jobType: number; count: number }[]>> =
   {

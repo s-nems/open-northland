@@ -4,16 +4,14 @@ import type { BobSeqRow, ContentIr, GfxAnimAtomicRow } from '../ir/rows.js';
 import { eightDirAnim, frameListsByFacing } from '../settler-gfx/index.js';
 
 /**
- * The pure animal-look binding: turn one animal tribe's own `[gfxwalkatomic]` / `[gfxanimatomic]`
- * rows (the same IR lanes the human characters read, at the animal jobs) into a
- * {@link SettlerStateBinding} over the shared `cr_ani` body sequences. The atlas loading lives in
- * `load.ts`; this half is headlessly unit-testable.
+ * The pure animal-look binding: one animal tribe's `[gfxwalkatomic]` / `[gfxanimatomic]` rows at the animal
+ * jobs become a {@link SettlerStateBinding} over the shared `cr_ani` body sequences. The atlas loading
+ * lives in `load.ts`.
  */
 
-/** The animal pseudo-jobs (`jobtypes.ini` / `logicdefines.inc`: `baby_animal` 48, `adult_animal`
- *  49). Rows are read at the adult job first, the baby lane as a defensive fallback (no extracted
- *  tribe authors only the baby lane today). The lanes bind the same sequences except the wolf's
- *  action-2 wait (adult `..._wait_clean` vs baby `..._wait_cry`). */
+/** The animal pseudo-jobs (`jobtypes.ini` / `logicdefines.inc`: `baby_animal` 48, `adult_animal` 49). Rows
+ *  are read at the adult job first, the baby lane as a defensive fallback. The lanes bind the same
+ *  sequences except the wolf's action-2 wait (adult `..._wait_clean` vs baby `..._wait_cry`). */
 export const ADULT_ANIMAL_JOB = 49;
 const BABY_ANIMAL_JOB = 48;
 const ANIMAL_JOBS = [ADULT_ANIMAL_JOB, BABY_ANIMAL_JOB] as const;
@@ -40,9 +38,9 @@ function animalGfxAtomicRow(
 }
 
 /**
- * The tribe's walk `[bobseq]` name: the first `[gfxwalkatomic]` unloaded row across the animal jobs
- * whose sequence is a clean ×8 strip. The wolves/lions author a second `..._running` row after the
- * walk; first-wins keeps the walk (no run gait exists, matching the sim's unconsumed `runspeed`).
+ * The tribe's walk `[bobseq]` name: the first `[gfxwalkatomic]` unloaded row across the animal jobs whose
+ * sequence is a clean ×8 strip. The wolves/lions author a second `..._running` row after the walk;
+ * first-wins keeps the walk, matching the sim's unconsumed `runspeed`.
  */
 export function animalWalkSeqName(
   ir: ContentIr | null,
@@ -65,13 +63,12 @@ export function animalWalkSeqName(
  * no idle resolves (a tribe with no usable rows), so the caller leaves the tribe unbound instead of
  * binding a bogus range.
  *
- * The idle is the row's authored frame-list program, looped on the free tick clock: a single-list
- * row (bear, dog, wolf, lion) plays facing-locked, a per-direction row (deer, boar, cattle, ...)
- * per facing. Playing the program - not the raw wait strip - matters: a strip packs several poses
- * back-to-back (the bear's sniff, lie, sit) and the program picks one with its authored holds;
- * the raw strip teleports between poses. Approximations: every animal of a species breathes in
- * lockstep (the free tick clock has no per-entity phase), and the ladder keeps only its first hit,
- * dropping the original's idle variety (the chicken's pick vs look-left vs look-right).
+ * The idle is the row's authored frame-list program, looped on the free tick clock: a single-list row plays
+ * facing-locked, a per-direction row per facing. Playing the program rather than the raw wait strip
+ * matters: a strip packs several poses back-to-back (the bear's sniff, lie, sit) and the program picks one
+ * with its authored holds. Approximations: every animal of a species breathes in lockstep (the free tick
+ * clock has no per-entity phase), and the ladder keeps only its first hit, dropping the original's idle
+ * variety.
  */
 export function animalBinding(
   ir: ContentIr | null,

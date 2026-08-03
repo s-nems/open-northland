@@ -13,15 +13,10 @@ import {
 import type { TextRun } from './text-run.js';
 
 /**
- * A glyph-run drawer for the decoded `.fnt` bitmap fonts - the first runtime consumer of the pipeline's
- * font outputs. A `.fnt` glyph atlas is indexed (like the settler/GUI atlases), so each glyph is drawn by a
- * {@link PalettedSprite} reading the `256 × 4` font colour LUT: same mechanism as player/GUI colours, one
- * row per colour (white/dark/dimmed/red). Layout follows decoded glyph metrics: blit each non-empty
- * glyph at `pen + (offsetX, offsetY)`, advance the pen by the glyph's
- * `advance`, skip empty glyphs (space/undefined). See source basis ".fnt".
- *
- * A run is a retained `Container` of one PalettedSprite per glyph; {@link BitmapTextRun.place} re-anchors it
- * in screen pixels (the panel re-places on resize/scale change - screen-space meshes carry the resolution).
+ * A glyph-run drawer for the decoded `.fnt` bitmap fonts. A `.fnt` glyph atlas is indexed, so each glyph
+ * draws as a `PalettedSprite` reading the `256 × 4` font colour LUT, one row per colour. Layout follows
+ * the decoded glyph metrics: blit each non-empty glyph at the pen, advance by its `advance`, skip empty
+ * glyphs. A run is a retained `Container` of one sprite per glyph, re-anchored in screen px by `place`.
  */
 
 /** A loaded bitmap font: its indexed glyph atlas + metrics + the shared colour LUT. */
@@ -66,14 +61,11 @@ export function loadBitmapFont(key: string = DEFAULT_FONT_KEY): Promise<BitmapFo
 }
 
 /**
- * Unicode codepoint → CP1250 byte, for codepoints above 0xFF. The decoded UI strings are Unicode
- * (the pipeline decodes the original CP1250 bytes), but the `.fnt` glyph table is indexed by the
- * original byte - so `ę`/`ż`/`Ś`... must be mapped back or their glyphs are silently skipped.
- * Codepoints ≤ 0xFF pass through unchanged, which is exact for every character CP1250 shares with
- * Latin-1 (`ó`, umlauts, ß) - a Latin-1 character CP1250 does not carry (e.g. `ñ`) would select a
- * wrong glyph, but the decoded CP1250-origin tables can't contain one. Source basis: the CP1250
- * code page (pinned by `test/bitmap-text.test.ts` against `TextDecoder('windows-1250')`); covers
- * the Polish set plus the CP1250 punctuation the string tables use.
+ * Unicode codepoint → CP1250 byte, for codepoints above 0xFF. The decoded UI strings are Unicode but the
+ * `.fnt` glyph table is indexed by the original byte, so `ę`/`ż`/`Ś` must be mapped back or their glyphs
+ * are silently skipped. Codepoints ≤ 0xFF pass through, which is exact for every character CP1250 shares
+ * with Latin-1; a Latin-1 character CP1250 lacks would select a wrong glyph, but a CP1250-origin table
+ * cannot contain one. Source basis: the CP1250 code page.
  */
 const CP1250_HIGH_CODEPOINTS: ReadonlyMap<number, number> = new Map([
   [0x104, 0xa5], // Ą
@@ -127,8 +119,8 @@ interface RunGlyph {
 }
 
 /**
- * Build a retained run of bitmap glyphs for `text` in the given colour row. Empty glyphs advance the pen but
- * draw nothing (the original's space quirk sidestepped). The run starts unplaced - call {@link TextRun.place}.
+ * Build a retained run of bitmap glyphs for `text` in the given colour row; empty glyphs advance the pen
+ * but draw nothing. The run starts unplaced.
  */
 export function createBitmapTextRun(
   font: BitmapFont,
@@ -172,7 +164,7 @@ export function createBitmapTextRun(
 
 /**
  * The HUD's one text factory: a bitmap-font run when the decoded `.fnt` is present, else a Pixi `Text`
- * at the same {@link TextRun} surface (so callers place/destroy runs identically in both modes).
+ * behind the same `TextRun` surface.
  */
 export function makeTextRun(
   font: BitmapFont | null,

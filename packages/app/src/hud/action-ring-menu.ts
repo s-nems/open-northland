@@ -9,40 +9,30 @@ import {
 } from './action-ring-layout.js';
 
 /**
- * The settler action menu's content - the command buttons and their icon bindings, kept as plain data
- * apart from the geometry engine (`action-ring-layout.ts`) so a warrior/scout variant is a new table, not
- * new code. The command→icon binding here was read off the running original by the user,
- * clockwise from the top-left button (source basis "settler action menu"); the frame names are glyph
- * descriptions from the montage, so a command's icon name needn't match its label. Buttons with a
- * {@link ActionButton} kind of their own are live; the rest are inert placeholders.
+ * The settler action menu's content as plain data. The command-to-icon binding is an observation of the
+ * running original, read clockwise from the top-left button; the frame names are glyph descriptions, so a
+ * command's icon name needn't match its label.
  */
 
-/**
- * The default order-button gfx. The user placed frame 0x6b in the last bottom slot, so it draws here too;
- * exact command-to-frame bindings remain provisional until checked in the running original.
- */
+/** The default order-button gfx: frame 0x6b, observed in the last bottom slot. Command-to-frame
+ *  bindings stay provisional until checked in the running original. */
 const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 
-/**
- * The "change profession" button - the one live default-menu button (opens the profession list window). Its
- * icon is the original's two-screws glyph (frame `order_change_profession`, user-identified off the running game).
- */
+/** Opens the profession list window. Its icon is the original's two-screws glyph (observation). */
 const CHANGE_JOB: ActionButton = {
   kind: 'open-jobs',
   id: 'changeProfession',
   icon: 'order_change_profession',
 };
 
-/** Build an inert default-menu button. Every button below is a module-level singleton: the view's
- *  retained visuals are keyed by button object identity, so a per-call fresh object would never match
- *  its baked icon and the button would silently not draw. */
+/** Build an inert default-menu button. Every button below is a module-level singleton: retained visuals
+ *  are keyed by button object identity, so a fresh per-call object would never match its baked icon. */
 const placeholder = (id: string, icon: ActionIconFrame): ActionButton => ({
   kind: 'placeholder',
   id,
   icon,
 });
 
-// The inert default-menu buttons, one stable instance each (see the identity note on `placeholder`).
 const BUILD = placeholder('build', 'order_construct');
 const ALERT = placeholder('alert', 'order_alert');
 const QUERY = placeholder('query', 'order_query');
@@ -58,16 +48,13 @@ const HOUSE_B = placeholder('house_b', 'order_build');
 const HOUSE_C = placeholder('house_c', 'order_crest');
 const HOUSE_D = placeholder('house_d', 'order_house_enter');
 
-/** The live "Attack Position" button (the original's `misclogic/48` order). */
+/** The original's `misclogic/48` order. */
 const ATTACK: ActionButton = { kind: 'attack-move', id: 'attack', icon: 'order_spearman' };
 
-/** The live "find a partner" button (the sim `marry` order). */
 const MARRY: ActionButton = { kind: 'marry', id: 'marry', icon: 'order_marry' };
 
-/** The live "assign home" button (arms the click-a-house pick mode). */
 const ASSIGN_HOUSE: ActionButton = { kind: 'assign-house', id: 'assign_house', icon: 'order_house' };
 
-/** The live "make a son" / "make a daughter" pair (the sim `makeChild` order). */
 const MAKE_SON: ActionButton = { kind: 'make-child', id: 'make_son', sex: 'male', icon: 'order_male' };
 const MAKE_DAUGHTER: ActionButton = {
   kind: 'make-child',
@@ -77,9 +64,8 @@ const MAKE_DAUGHTER: ActionButton = {
 };
 
 /**
- * The scout's "Erect Signpost" button - the original's scout action ("Erect Signpost" gui string; it
- * replaces the civilian's alert/query pair in the top-right slots). Icon: frame 111 (`order_mine`,
- * the pickaxe glyph) - user-identified against the running original.
+ * The scout's "Erect Signpost" gui string, replacing the civilian's alert/query pair in the top-right
+ * slots. Icon frame 111 (`order_mine`, the pickaxe glyph), observed in the running original.
  */
 const ERECT_SIGNPOST: ActionButton = {
   kind: 'erect-signpost',
@@ -87,13 +73,9 @@ const ERECT_SIGNPOST: ActionButton = {
   icon: 'order_mine',
 };
 
-/**
- * What of the selected settler's state the menu depends on - computed by the view from the snapshot
- * (a single selected settler; a multi-selection shows the static default menu).
- */
+/** The selected settler's state the menu depends on, computed by the view from the snapshot. */
 export interface SettlerMenuState {
-  /** An adult man may change trade - women keep the woman role for life and a child's stage is the
-   *  GrowthSystem's, so both hide the button (the sim guards `setJob` the same way). */
+  /** Only an adult man may change trade; the sim guards `setJob` the same way. */
   readonly canChangeJob: boolean;
   /** An unmarried, not-yet-marrying eligible adult (not a soldier/scout) may seek a partner. */
   readonly canMarry: boolean;
@@ -105,8 +87,8 @@ export interface SettlerMenuState {
   readonly erectSignpost: boolean;
 }
 
-/** The static default state - every family button hidden (multi-selection, no snapshot state); the
- *  change-profession button stays (a mixed selection may still re-trade its men - the sim filters). */
+/** The multi-selection state: every family button hidden, change-profession kept because a mixed
+ *  selection may still re-trade its men and the sim filters. */
 export const DEFAULT_MENU_STATE: SettlerMenuState = {
   canChangeJob: true,
   canMarry: false,
@@ -116,11 +98,8 @@ export const DEFAULT_MENU_STATE: SettlerMenuState = {
 };
 
 /**
- * The default menu of a civilian human for a given settler `state`, arm by arm, in the frame binding the
- * user read off the running game. Per-state buttons appear/vanish: `marry` shows only while the settler
- * may seek a partner (it hides for life once married), `assign_house` for adults, the make-son /
- * make-daughter pair only for a married woman without a growing child, and a scout's top-right
- * alert/query pair gives way to the erect-signpost button. The menu stays plain data.
+ * The default civilian menu for a settler `state`, arm by arm, in the frame binding observed in the
+ * running original.
  */
 export function menuForSettler(state: SettlerMenuState): readonly ActionGroup[] {
   return [
@@ -151,16 +130,14 @@ export function menuForSettler(state: SettlerMenuState): readonly ActionGroup[] 
         BOTTOM_LAST,
       ],
     },
-    // Right column, top→bottom (0x81, 0x60, 0x7f, 0x65) - the four "house assignment" buttons.
+    // Right column, top→bottom (0x81, 0x60, 0x7f, 0x65): the four "house assignment" buttons.
     { group: RIGHT_ARM, buttons: [HOUSE_A, HOUSE_B, HOUSE_C, HOUSE_D] },
   ];
 }
 
 /**
- * The everything-visible civilian face (every dynamic button on) - the LAYOUT superset the geometry
- * tests pin, not what any live selection renders (multi-selection shows
- * `menuForSettler(DEFAULT_MENU_STATE)`, family buttons hidden). {@link ALL_MENU_BUTTONS} extends it
- * with the scout-variant button for the view's icon bake.
+ * Every dynamic button on: the layout superset the geometry tests pin, not what any live selection
+ * renders.
  */
 export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = menuForSettler({
   canChangeJob: true,
@@ -170,8 +147,7 @@ export const HUMAN_DEFAULT_MENU: readonly ActionGroup[] = menuForSettler({
   erectSignpost: false,
 });
 
-/** Every button any menu state can show - the superset the view bakes its retained visuals from
- *  (visuals key by button object identity, so this must enumerate the singletons, not rebuild them). */
+/** Every button any menu state can show; the view bakes its retained visuals from these singletons. */
 export const ALL_MENU_BUTTONS: readonly ActionButton[] = [
   ...HUMAN_DEFAULT_MENU.flatMap((g) => g.buttons),
   ERECT_SIGNPOST,

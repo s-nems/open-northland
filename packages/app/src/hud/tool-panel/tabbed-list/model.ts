@@ -1,16 +1,14 @@
 import { contains, type Rect } from '../../geometry.js';
 
 /**
- * The tabbed-list window model - a titled parchment window with a tab grid over a scrollable,
- * row-quantized list, resolved from a screen origin + scale (pure, no Pixi/DOM). The build menu and the
- * goods drop palette are the same window with a different tab source and row projector, so their
- * metrics, scale handling and hit precedence live here once and cannot drift apart.
+ * The tabbed-list window model: a titled parchment window with a tab grid over a scrollable,
+ * row-quantized list, resolved from a screen origin and scale. The build menu and the goods drop palette
+ * are this window with a different tab source and row projector.
  */
 
-// --- Metrics (design px, scaled by uiscale like the tool panel) ------------------------------------
-// Source basis: APPROXIMATIONS. The original's window metrics are not decoded, so these are the build
-// menu's shipped proportions adopted as the shared set; only the label widths they must clear are
-// measured (see TAB_COLUMN_W). Pending human visual sign-off against the original.
+// Metrics in design px, scaled by uiscale. Approximations: the original's window metrics are not
+// decoded, so these are the build menu's proportions adopted as the shared set, and only the label
+// widths they must clear are measured.
 
 const PAD = 6;
 /** The rust title band across the top of the window. */
@@ -34,21 +32,18 @@ const WIDTH_COLUMNS = 5;
  *  width), so the pop-ups read as one window wherever they open. */
 const WINDOW_W = WIDTH_COLUMNS * TAB_COLUMN_W + 2 * PAD;
 
-/** Design-px chrome above the list for a `tabCount`-tab grid `tabColumns` wide - the controller sizes
- *  the viewport from it, so the two can't disagree about how many rows fit the screen. */
+/** Design-px chrome above the list for a `tabCount`-tab grid `tabColumns` wide. */
 export function chromeAboveList(tabCount: number, tabColumns: number): number {
   return HEADLINE_H + Math.ceil(tabCount / tabColumns) * TAB_H + LIST_GAP;
 }
 
-/** The screen-px width of every tabbed-list window - fixed per scale, so a controller knows its x-span
- *  before it has a layout (the overlay-overlap test runs before the row count is decided). */
+/** The screen-px width of every tabbed-list window, fixed per scale so a controller knows its x-span
+ *  before it has a layout. */
 export function tabbedListWindowWidth(scale: number): number {
   return Math.round(WINDOW_W * Math.max(1, scale));
 }
 
-// --- Model -----------------------------------------------------------------------------------------
-
-/** A listed item, as the window needs it: it must name itself; the caller keys everything else. */
+/** A listed item: the window needs only its label, and the caller keys everything else. */
 export interface TabbedListItem {
   readonly label: string;
 }
@@ -123,10 +118,8 @@ export interface TabbedListLayoutOptions<Id, Item> {
 export function layoutTabbedList<Id, Item>(
   opts: TabbedListLayoutOptions<Id, Item>,
 ): TabbedListLayout<Id, Item> {
-  // Fractional scale, matching every other HUD surface: `buildToolPanelLayout` clamps `?uiscale=` to ≥1
-  // and keeps the fraction (the strip art is supersampled to it), so a window that snapped to an integer
-  // here would draw at a visibly different size beside the strip. An internal-consistency choice, not an
-  // original-behavior finding - the original's own scaling rule is undecoded.
+  // Kept fractional like every other HUD surface: a window that snapped to an integer here would draw
+  // at a visibly different size beside the strip. The original's own scaling rule is undecoded.
   const s = Math.max(1, opts.scale);
   const { originX, originY, selected, items, tabColumns } = opts;
   const px = (v: number): number => Math.round(v * s);
@@ -142,7 +135,6 @@ export function layoutTabbedList<Id, Item>(
   const tabRows = Math.ceil(opts.tabs.length / tabColumns);
   const tabsBlockH = tabRows * tabH;
 
-  // The visible-row count: capped to `maxListRows` (else the whole list), never below one row.
   const visible = opts.maxListRows === undefined ? total : Math.min(Math.max(1, opts.maxListRows), total);
   const maxScroll = Math.max(0, total - visible);
   const top = Math.max(0, Math.min(opts.scrollTop ?? 0, maxScroll));

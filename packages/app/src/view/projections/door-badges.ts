@@ -26,26 +26,16 @@ import {
 import { type DoorFootprint, workerIconNode } from './building-points.js';
 
 /**
- * The door-badge projection turns the read-only snapshot into the per-building sign rows the render
- * {@link DoorBadge} layer draws at each staffed building's sign post. It reads the employment binding
- * the `assignWorker` order writes ({@link JobAssignment}.`workplace`), so a row appears for every worker
- * posted to a building - including one still going up. Pure over the snapshot + the building-type table
- * + a job-role classifier (unit-tested); called once per frame.
- *
- * This projection owns the stack order (bottom-to-top: resident families, worker discs, carrier
- * pennants on top) and each row's click-pick settler id, so drawing and picking share one row list.
- * The stack stands at the building's `GfxFlagPoint` (the original's sign-post pixel offset from the
- * sprite anchor) when the content carries one; a type without it falls back to the derived worker-icon
- * node beside the door ({@link workerIconNode}). See {@link anchorOf} for how both reach the layer.
- *
- * A garrison is the one worker role that draws no row: the whole post flies one flag from its mast
- * ({@link mastOf}), a star per man, so a tower reads as manned without a chain of identical discs.
+ * Turns the snapshot into the per-building sign rows the render layer draws at a staffed building's sign
+ * post, owning both the stack order and each row's click-pick settler id, so drawing and picking share
+ * one list. The stack stands at the building's `GfxFlagPoint` when the content carries one, and
+ * otherwise at the derived worker-icon node beside the door. A garrison draws no row: the whole post
+ * flies one flag from its mast, a star per man.
  */
 
-/** The slice of a building type this projection needs: its door offset (half-cell, from the placed
- *  anchor; absent → the stack anchors beside the building's anchor node), its stable `id` (the
- *  per-building worker-icon override key), the extracted `GfxFlagPoint` when the content has one, and
- *  the authored mast point a garrison flag flies from. */
+/** The slice of a building type this projection needs: the half-cell door offset from the placed anchor,
+ *  the stable `id` used as the worker-icon override key, the extracted `GfxFlagPoint`, and the authored
+ *  mast point a garrison flag flies from. */
 export interface BuildingDoorInfo {
   readonly id?: string | undefined;
   readonly footprint?: DoorFootprint | undefined;
@@ -58,22 +48,20 @@ export function computeDoorBadges(
   buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
   roleOf: (jobType: number) => WorkerRole,
 ): DoorBadge[] {
-  // Pass 1 - collect the settlers bound to each building, split by worker role. Entity order is
-  // ascending id (the snapshot's actor order), so each bucket is deterministic; this is a view read,
-  // not a sim decision.
+  // Buckets follow the snapshot's ascending-id actor order, so each one is deterministic.
   const tally = new Map<
     number,
     { craftsmen: number[]; carriers: number[]; gatherers: number[]; garrison: number }
   >();
-  // Resident families per home - one banner row per family (see familiesByHome).
+  // One banner row per resident family.
   const households = familiesByHome(snapshot);
   const actors = actorsOf(snapshot);
   for (const e of actors) {
     if (!isSettler(e)) continue;
     const workplace = workplaceOf(e);
-    if (workplace === undefined) continue; // an unemployed / unbound settler shows no building badge
+    if (workplace === undefined) continue; // an unbound settler shows no building badge
     const jobType = settlerJobType(e);
-    if (jobType === undefined) continue; // a bound settler with no job (shouldn't happen) - nothing to draw
+    if (jobType === undefined) continue;
     const bucket = tally.get(workplace) ?? { craftsmen: [], carriers: [], gatherers: [], garrison: 0 };
     switch (roleOf(jobType)) {
       case 'carrier':
@@ -82,8 +70,7 @@ export function computeDoorBadges(
       case 'gatherer':
         bucket.gatherers.push(e.id);
         break;
-      // A garrison gets no sign row of its own: the whole post flies one flag, a star per man. So it
-      // counts here rather than landing in a bucket, and its soldiers stay unpickable while inside.
+      // Counted rather than bucketed: the post flies one flag, and its soldiers stay unpickable inside.
       case 'garrison':
         bucket.garrison++;
         break;
@@ -94,17 +81,15 @@ export function computeDoorBadges(
     tally.set(workplace, bucket);
   }
 
-  // Pass 2 - anchor + rows for every building with workers, residents, or hearts.
   const out: DoorBadge[] = [];
   for (const e of actors) {
     if (!isBuilding(e)) continue;
     const counts = tally.get(e.id);
     const families = households.get(e.id);
     const hearts = isMakingLove(e);
-    if (counts === undefined && families === undefined && !hearts) continue; // nothing to draw here
-    // No flag over a foundation: the mast point is the FINISHED tower's, ~239 px up, and the sim refuses
-    // an unbuilt post anyway (`conflict/tower-post.ts`), so an archer already assigned to the site would
-    // otherwise fly a banner over scaffolding for a garrison that cannot exist yet.
+    if (counts === undefined && families === undefined && !hearts) continue;
+    // No flag over a foundation: the mast point is the finished tower's, some 239 px up, and the sim
+    // refuses an unbuilt post anyway.
     const garrison = e.components.UnderConstruction === undefined ? (counts?.garrison ?? 0) : 0;
     const pos = positionOf(e);
     if (pos === undefined) continue;
@@ -112,8 +97,7 @@ export function computeDoorBadges(
     const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
     const player = ownerPlayerOf(e);
 
-    // Bottom-to-top: the home's family banners at the base, then the worker discs
-    // (craftsmen + gatherers), then the carrier pennants always on top.
+    // Bottom to top: family banners, then worker discs, then the carrier pennants.
     const rows: DoorBadgeRow[] = [];
     for (const family of families ?? []) {
       const settler = selectableResident(snapshot, family);

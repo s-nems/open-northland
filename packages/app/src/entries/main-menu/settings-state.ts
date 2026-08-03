@@ -3,9 +3,8 @@ import { DEFAULT_LOCALE, type Locale, localeParam, setActiveLocale } from '../..
 import { floatParam } from '../../view/params.js';
 
 /**
- * The menu's persistent settings: stored in localStorage, projected onto the
- * carried URL params (`lang` / `uiscale` / `sound`) so `targetSearch` hands them to a launched game.
- * The pure parse/clamp half is unit-tested; the storage and URL halves are browser-only.
+ * The menu's persistent settings: stored in localStorage and projected onto the carried URL params
+ * (`lang`, `uiscale`, `sound`), so a launched game receives them.
  */
 
 export type SettingsTab = 'graphics' | 'audio' | 'gameplay' | 'controls';
@@ -52,7 +51,7 @@ export const DEFAULT_SETTINGS: MenuSettings = {
 
 export const UI_SCALE_MIN = 1;
 export const UI_SCALE_MAX = 2;
-/** Slider granularity between {@link UI_SCALE_MIN} and {@link UI_SCALE_MAX} (5% steps). */
+/** Slider granularity, in 5% steps. */
 export const UI_SCALE_STEP = 0.05;
 
 const STORAGE_KEY = 'open-northland.settings';
@@ -82,7 +81,6 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
   };
 }
 
-/** One row of the settings-to-carried-URL-param projection ({@link carriedSettingParams}). */
 export interface CarriedSettingParam {
   readonly key: keyof MenuSettings;
   readonly param: string;
@@ -90,8 +88,7 @@ export interface CarriedSettingParam {
   readonly value: string | null;
 }
 
-/** The single home of the carried-param names, default elision, and value formatting, shared by
- *  the boot bridge ({@link adoptStoredSettings}) and updates ({@link updateSettings}). */
+/** The single home of the carried-param names, default elision, and value formatting. */
 export function carriedSettingParams(settings: MenuSettings): readonly CarriedSettingParam[] {
   return [
     {
@@ -118,16 +115,14 @@ function persistedSettings(): MenuSettings {
   return persisted;
 }
 
-/** The session's effective settings (stored values plus any explicit URL overrides). */
 export function menuSettings(): MenuSettings {
   current ??= persistedSettings();
   return current;
 }
 
 /**
- * Apply and persist a change: merge into the session settings, advance the store by the patch
- * alone (so a shared link's URL overrides never leak into the stored defaults), activate a patched
- * locale, and project the touched carried keys onto the URL.
+ * The store advances by the patch alone, so a shared link's URL overrides never leak into the stored
+ * defaults.
  */
 export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
   const next = { ...menuSettings(), ...patch };
@@ -144,11 +139,9 @@ export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
 }
 
 /**
- * Menu-boot bridge between the store and the URL: carried params absent from the URL adopt the
- * stored non-default values, while explicit ones (a shared `?lang=…` link) win and become the
- * session's effective settings without being persisted. Only the menu runs this; direct
- * `?map=`/`?scene=` entries read the URL alone. Mutates `params` in place so the caller's bag
- * matches the rewritten URL.
+ * Menu-boot bridge between the store and the URL: a carried param absent from the URL adopts the
+ * stored value, while an explicit one wins for the session without being persisted. Only the menu runs
+ * this; direct `?map=` and `?scene=` entries read the URL alone. Mutates `params` in place.
  */
 export function adoptStoredSettings(params: URLSearchParams): void {
   const stored = persistedSettings();

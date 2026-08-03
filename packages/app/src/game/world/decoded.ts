@@ -7,26 +7,19 @@ import { type AuthoredJoinRows, resolveAuthoredPlacements } from './authored-pla
 import { enqueuePlacements, newWorldSim } from './build.js';
 
 /**
- * A sim on a real decoded map with no placed entities - the map viewer's default for an imported map
- * that carries no authored `StaticObjects`. The map's own trees/ore/stone still spawn as harvestable
- * nodes afterwards; this exists purely so a plain imported map does not get the demo cluster dropped
- * onto its first walkable cells.
- *
- * Deterministic: seed-fixed, no RNG, no placements. Uses the same sandbox content + live `footprints`
- * the demo world's map path would, so a later interactive build behaves identically.
+ * A sim on a real decoded map with no placed entities, for an imported map carrying no authored
+ * `StaticObjects`. Its own trees, ore and stone still spawn as harvestable nodes afterwards; this
+ * exists so a plain imported map does not get the demo cluster dropped onto its first walkable cells.
  */
 export function runBareMap(seed: number, map: TerrainMap, options: WorldContentOptions = {}): Simulation {
   return newWorldSim(seed, map, resolveWorldContent(map, options));
 }
 
 /**
- * Build + run the sim for a map that carries authored entity placements (`map.cif` `StaticObjects` →
- * `maps/<id>.json` `entities`): every resolvable `sethouse` becomes a built building and every
- * `sethuman` a settler at its authored cell.
- *
- * The content is the sandbox content plus any extra authored type ids not in the sandbox catalog yet,
- * so authored maps do not shrink the build menu or profession rules. Returns `null` when nothing
- * resolves. Deterministic: placements enqueue in file order, no RNG.
+ * Build and run the sim for a map carrying authored entity placements: every resolvable `sethouse`
+ * becomes a built building and every `sethuman` a settler at its authored cell. The content is the
+ * sandbox content plus any authored type ids missing from it, so an authored map never shrinks the
+ * build menu. Returns `null` when nothing resolves.
  */
 export function runAuthoredMap(
   seed: number,
