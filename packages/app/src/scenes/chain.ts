@@ -70,8 +70,8 @@ const { Crop, Stockpile } = components;
 const ENABLER = { x: 2, y: 2 } as const;
 
 function build(sim: Simulation): void {
-  // The farm/mill/bakery/well are `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so a lone
-  // collector must be present or none of the crews below get employed - the gatherer a real game's HQ seeds.
+  // The farm/mill/bakery/well are `jobEnablesHouse`-gated on a collector (see tech-graph.ts), so the scene
+  // keeps one standing - the gatherer a real game's HQ seeds - even though the gate is currently a no-op.
   spawnSandboxSettler(sim, JOB_COLLECTOR, ENABLER.x, ENABLER.y);
   const farm = placeBuiltSandboxBuilding(sim, BUILDING_FARM, FARM.x, FARM.y);
   const mill = placeBuiltSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y);

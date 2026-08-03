@@ -13,11 +13,11 @@ import { ctxOf } from '../fixtures/context.js';
  * {@link JobAssignment} binding). It applies the same-tribe / same-owner / per-building capacity
  * gates, and enforces the per-settler XP threshold (`needforjob`) - a trade is earned by
  * the settler, so a hand assignment cannot mint an unqualified craftsman; it falls through to the next listed
- * job (the hauler slot). Only the tribe-tech gate (`jobEnablesJob`) is relaxed for the player, so a built
- * workshop is never refused for want of an enabling trade (the "mennica → tragarz" bug). See openings.ts.
+ * job (the hauler slot). The tribe-tech gate (`jobEnablesJob`) is not applied at all, so a workshop is never
+ * refused for want of an enabling trade (the "mennica → tragarz" bug). See openings.ts.
  *
  * The shared fixture's sawmill (type 2) declares one carpenter slot; the HQ (type 1) declares three
- * woodcutter slots - mirrors job-system.test.ts.
+ * woodcutter slots.
  */
 
 const VIKING = 1;

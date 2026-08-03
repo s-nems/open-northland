@@ -1,3 +1,4 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   CARRY_CAPACITY,
   Carrying,
@@ -7,6 +8,7 @@ import {
   type SettlerIdentity,
 } from '../../../components/index.js';
 import type { AtomicEffect } from '../../../core/atomic-effect.js';
+import { contentIndex } from '../../../core/content-index.js';
 import { fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
@@ -14,7 +16,7 @@ import type { SystemContext } from '../../context.js';
 import { atomicDuration, needAtomicDuration } from '../../readviews/animations.js';
 import { clearNavState } from '../../spatial/nodes.js';
 import type { PlannerContext } from '../planner/context.js';
-import { interactionCell, jobAtomics } from '../targets/index.js';
+import { interactionCell } from '../targets/index.js';
 
 // The planner's action vocabulary: the atomic ids the drives issue, the shared "start an atomic" entry point,
 // and the walk-or-act step every target-bound drive ends in. Each id below is only a content cross-reference /
@@ -77,9 +79,10 @@ export const PICKUP_ATOMIC_ID = 22;
 export const BUILD_HOUSE_ATOMIC_ID = 39;
 
 /** Whether `jobType` is a builder trade: it is one iff content lets it run the build-house atomic - the
- *  data-driven "who constructs" test, so no caller keys construction off a hardcoded jobType id. */
-export function jobCanBuild(ctx: SystemContext, jobType: number): boolean {
-  return jobAtomics(ctx, jobType).has(BUILD_HOUSE_ATOMIC_ID);
+ *  data-driven "who constructs" test, so no caller keys construction off a hardcoded jobType id. Keyed by
+ *  content rather than context, so the app's right-click router asks this same question. */
+export function jobCanBuild(content: ContentSet, jobType: number): boolean {
+  return contentIndex(content).atomicsByJob.get(jobType)?.has(BUILD_HOUSE_ATOMIC_ID) === true;
 }
 
 /** The atomic id for depositing a carried load into a store. The readable data binds no per-good "pileup"

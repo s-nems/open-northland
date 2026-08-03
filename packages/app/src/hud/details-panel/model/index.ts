@@ -235,7 +235,7 @@ export function buildUnitPanelModel(
       // family moves out and frees the slot. Homeless settlers and children have nothing to remove.
       canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
-      statusCaption: settlerStatus(comps),
+      statusCaption: settlerStatus(snapshot, comps),
       bars: satisfactionBars(comps),
       work: settlerWork(ctx, snapshot, comps, progressionGated),
       experience: experienceRows(ctx, comps),

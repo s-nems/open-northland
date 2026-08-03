@@ -139,7 +139,7 @@ describe('CommandSystem - buildings and demolition', () => {
     expect(sim.commands.log).toHaveLength(2); // still logged for faithful replay
   });
 
-  it('demolish unbinds the workplace operators: each returns to idle and re-employable', () => {
+  it('demolish unbinds the workplace operators: each keeps its trade and is re-postable', () => {
     const sim = fresh();
     // A sawmill (type 2, one carpenter slot) and its bound carpenter. Employment is directed, so the
     // binding is stamped here rather than grown by the schedule.
@@ -155,7 +155,9 @@ describe('CommandSystem - buildings and demolition', () => {
     sim.step();
     expect(sim.world.isAlive(mill)).toBe(false);
     expect(sim.world.has(worker, JobAssignment)).toBe(false); // binding cleared
-    expect(sim.world.get(worker, Settler).jobType).toBeNull(); // back to idle for re-assignment
+    // The trade survives: nothing re-employs a settler on its own, so dropping it would cost the player
+    // the earned profession as well as the post.
+    expect(sim.world.get(worker, Settler).jobType).toBe(CARPENTER);
   });
 
   // SKIPPED: the building tech-unlock gate is disabled feature-wide - see

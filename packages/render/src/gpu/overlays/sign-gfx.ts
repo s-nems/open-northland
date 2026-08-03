@@ -107,15 +107,12 @@ export function chainedFrame(kind: BuildingSignKind, frame: AtlasFrame): AtlasFr
 const SIGN_HALF_WIDTH = 14;
 
 /**
- * World-px the construction stand is planted LEFT of the shared sign post, so it stands beside the door
- * badges instead of over them. Both markers anchor on the same extracted `GfxFlagPoint`, and a building
- * under construction now carries both at once: its build crew and the staff posted to it draw their badge
- * chain there while the stand marks the site. Two {@link SIGN_HALF_WIDTH}s clears the widest badge frame
- * (the disc), which is what the two would collide over.
+ * World-px the construction stand is planted LEFT of the shared sign post, so it stands beside a site's
+ * door badges instead of over them - both markers anchor on the same extracted `GfxFlagPoint`. Two
+ * {@link SIGN_HALF_WIDTH}s clears the widest badge frame (the disc), which is what they collide over.
  *
- * A named deviation: the original plants its stand ON the flag point, and it has no badge chain to share
- * that point with. The magnitude is derived from the badge art rather than the stand's own, and the
- * direction is a flat left - both are pixel judgements a human signs off, not measurements.
+ * A named deviation: the original plants its stand ON the flag point. Magnitude and flat-left direction are
+ * pixel judgements a human signs off, not measurements.
  */
 export const CONSTRUCTION_SIGN_DX = -2 * SIGN_HALF_WIDTH;
 /** World-px the planted base sign's rock clump extends below the stack anchor. */

@@ -56,7 +56,7 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   world.remove(e, Fleeing);
   world.remove(e, HuntRest); // an ex-hunter's acquisition breather has nothing left to throttle
   // Owned-only, like the spawn stamp: an unowned settler keeps its content-relation combat behavior and
-  // carries no Stance at all (the component's contract), so a neutral auto-hire must not gain one.
+  // carries no Stance at all (the component's contract), so a neutral settler must not gain one here.
   if (world.has(e, Owner)) stampDefaultStance(world, ctx.content, e, jobType);
   // Leaving the fighter trades disarms the settler on both axes, the Equipment display slots and the
   // combat Weapon/Armor, because the render draws the armed look from the equipped weapon good over the

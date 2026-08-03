@@ -3,6 +3,7 @@ import {
   Building,
   Carrying,
   CurrentAtomic,
+  JobAssignment,
   MoveGoal,
   Owner,
   Position,
@@ -331,6 +332,29 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(sim.world.get(builder, SupplyRun)).toMatchObject({ site, goodType: STONE });
     // The near shelf wins: an output is nobody's reserve, so the far warehouse is never walked to.
     expect(firstPickup(sim, builder)).toMatchObject({ goodType: STONE, from: workshop });
+  });
+
+  it('a builder POSTED to a foundation raises that one, not the nearest', () => {
+    // Real content lets the joiner and armorer build, so a right-click posts them into their own future
+    // workshop's slot instead of pinning a crew. The drive must then send them to THAT site: the site's
+    // workers window lists them there, and a stroll to the nearest foundation would make the panel lie.
+    const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(10, 4) });
+    const near = siteAt(sim, HOUSE, 2, 1);
+    const far = siteAt(sim, HOUSE, 8, 1);
+    for (const site of [near, far]) {
+      sim.world.get(site, Stockpile).amounts.set(STONE, 2); // both hammer-ready: distance is the only tiebreak
+      sim.world.get(site, Stockpile).amounts.set(WOOD, 1);
+    }
+    const builder = builderAt(sim, 1, 1);
+    sim.world.add(builder, JobAssignment, { workplace: far }); // the binding an assignWorker order leaves
+
+    sim.step();
+
+    // Crewed for the site it staffs, and unpinned - the posting, not an assignBuilder right-click.
+    expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: far, pinned: false });
+    for (let i = 0; i < 400 && sim.world.has(far, UnderConstruction); i++) sim.step();
+    expect(sim.world.get(far, Building).built).toBe(ONE);
+    expect(sim.world.get(near, UnderConstruction).labor).toBe(0); // never touched
   });
 
   it('assignBuilder pins a builder to the CHOSEN site over a nearer one; a non-builder is a no-op', () => {

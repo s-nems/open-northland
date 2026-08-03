@@ -9,15 +9,16 @@ import type { PlannerSpacing } from '../../planner/spacing.js';
 import { nearestConstructionSite, unreachableSiteStand } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { claimWorkCell } from '../spacing.js';
+import { boundConstructionSite } from './site-staff.js';
 import { fetchNeededMaterial } from './site-supply.js';
 
 /**
  * BUILD - a builder raises a construction site of its tribe, faithful to the original's "settlers search
  * for a foundation, get put on it, and hammer it up carrying material" flow. A non-builder trade
  * ({@link jobCanBuild}) returns false at once and falls through to the gather/porter/carrier rungs.
- * The site is the player-pinned one when an `assignBuilder` right-click bound it
- * (while it still stands), else the nearest; the pick is stamped as a persistent {@link SiteAssignment} (the
- * crew the site's workers window lists). In priority:
+ * The site is the player-pinned one when an `assignBuilder` right-click bound it (while it still stands),
+ * then the foundation this builder is posted to, else the nearest; the pick is stamped as a persistent
+ * {@link SiteAssignment} (the crew the site's workers window lists). In priority:
  *
  *  a. **Hammer** - while the site has material on hand to install (its builder-work `labor` still trails the
  *     delivered-material fraction), walk to the site and run a `construct` swing (each swing installs one
@@ -47,18 +48,21 @@ import { fetchNeededMaterial } from './site-supply.js';
 export function planBuilder(plan: PlannerContext, spacing: PlannerSpacing, leads: SiteLeads): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
-  if (!jobCanBuild(ctx, settler.jobType)) {
+  if (!jobCanBuild(ctx.content, settler.jobType)) {
     world.remove(e, SiteAssignment); // no longer the builder trade - any crew membership is stale
     return false; // not a builder
   }
-  // A player-pinned site (the assignBuilder right-click) wins while it still stands; otherwise the nearest.
-  // Either way the pick is stamped as SiteAssignment - persistent crew membership, so the workers window lists
-  // this builder even while it waits for material or walks a player detour.
+  // A player-pinned site (the assignBuilder right-click) wins while it still stands, then the site this
+  // builder is POSTED to (an assignWorker into a foundation's own trade slot - it raises the workshop it
+  // will then work in), and only otherwise the nearest. Either way the pick is stamped as SiteAssignment -
+  // persistent crew membership, so the workers window lists this builder even while it waits for material
+  // or walks a player detour.
   const assigned = world.tryGet(e, SiteAssignment);
   const pinned =
     assigned?.pinned === true && world.has(assigned.site, UnderConstruction) ? assigned.site : null;
   const site =
     pinned ??
+    boundConstructionSite(plan) ??
     nearestConstructionSite(
       targets.constructionSiteCells,
       world,

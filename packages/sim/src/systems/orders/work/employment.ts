@@ -78,11 +78,10 @@ export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType
 /**
  * Assign one owned settler to work at a specific `building` (the `assignWorker` command - the one way a
  * settler becomes employed): resolve the building's open worker job in the command's
- * `jobPriority` preference order ({@link openWorkerJobFromList} - a same-tribe/same-owner, tech-enabled
- * building with an understaffed slot), re-idle the settler as that job, and bind it to the chosen building
+ * `jobPriority` preference order ({@link openWorkerJobFromList} - a same-tribe/same-owner building with an
+ * understaffed slot), re-idle the settler as that job, and bind it to the chosen building
  * ({@link bindEmployment}). The priority expresses the RTS intent (a tradesman first, a hauler as fallback):
- * a settler that has not earned the trade's `needforjob` repeats falls through to the hauler slot, while the
- * tribe-tech gate is relaxed for the player - see {@link openWorkerJobFromList}.
+ * a settler that has not earned the trade's `needforjob` repeats falls through to the hauler slot.
  *
  * Recoverable bad input (skipped, still logged for faithful replay): a target {@link isTradeAssignable}
  * rejects, a dead/stale/non-building target, or a building that offers this settler no open worker job right
@@ -154,7 +153,7 @@ export function assignBuilder(
   const settler = world.get(e, Settler);
   if (settler.tribe !== world.get(site, Building).tribe) return; // not this tribe's foundation
   if (!sameSide(world, e, site)) return; // another player's foundation - not this side's
-  if (settler.jobType === null || !jobCanBuild(ctx, settler.jobType)) return;
+  if (settler.jobType === null || !jobCanBuild(ctx.content, settler.jobType)) return;
 
   world.add(e, SiteAssignment, { site, pinned: true });
   // Obey now - the planner heads for the pinned site this tick. Still an unconditional cancel (a remaining

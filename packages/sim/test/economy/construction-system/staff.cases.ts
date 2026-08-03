@@ -161,7 +161,7 @@ function boundTo(sim: Simulation, settler: Entity): Entity | undefined {
 /** The terrain node a settler currently stands on. */
 function nodeOf(sim: Simulation, settler: Entity): NodeId | null {
   const terrain = sim.terrain;
-  if (terrain === null || terrain === undefined) return null;
+  if (terrain === undefined) return null;
   const pos = sim.world.get(settler, Position);
   const node = nodeOfPosition(pos.x, pos.y);
   return terrain.nodeAtClamped(node.hx, node.hy);

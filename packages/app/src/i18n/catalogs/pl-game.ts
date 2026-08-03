@@ -90,6 +90,7 @@ export const plGame = {
       standing: 'stoi ({seconds}s)',
       working: 'pracuje',
       walking: 'idzie',
+      awaitingWorkplace: 'czeka na budowę',
       idle: 'bezczynny',
     },
     playerTribe: 'Gracz #{player} · Plemię {tribe}{stance}',

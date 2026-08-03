@@ -7,8 +7,8 @@ import { building, type Ent, resident, settler, snapshotOf } from './support/sna
 
 /**
  * computeDoorBadges - the pure snapshot→door-badge projection the render layer draws. It reads the sim's
- * {@link JobAssignment} binding, so a badge row appears for every worker bound to a building
- * (auto-assigned or player-assigned), split by worker role (craftsman / carrier / gatherer via
+ * {@link JobAssignment} binding, so a badge row appears for every worker posted to a building,
+ * split by worker role (craftsman / carrier / gatherer via
  * `roleOf`). The projection owns the bottom-to-top stack order and each row's click-pick settler id;
  * the stack stands at the type's `GfxFlagPoint` when present, else the worker-icon node beside the door,
  * and reaches the layer as the BUILDING's position plus a screen-px offset either way (the layer keys

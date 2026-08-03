@@ -2,7 +2,6 @@ import { CurrentAtomic, ErectSignpostOrder, PlayerOrder } from '../../../compone
 import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { buildStaffingTally } from '../../economy/jobs/openings.js';
 import { isMarried } from '../../family/eligibility.js';
 import { scoutJobType } from '../../readviews/index.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
@@ -21,6 +20,7 @@ import { trainGarrison } from './garrison.js';
 import { allocateOpeningHunter } from './hunter.js';
 import { builderJobOf, classifyWorkforce, SpareForce } from './pool.js';
 import { reserveBuilders, staffBuildings } from './staffing.js';
+import { buildStaffingTally } from './tally.js';
 
 export { COLLECTOR_TARGET_BY_GOOD_ID, DEFAULT_COLLECTOR_TARGET } from './collectors/index.js';
 export { CRAFT_RESTRICTIONS_BY_BUILDING_ID } from './craft.js';

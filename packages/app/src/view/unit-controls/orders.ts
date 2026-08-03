@@ -1,4 +1,4 @@
-import { type ContentSet, lastByTypeId, resolveJobAtomics } from '@open-northland/data';
+import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { ElevationField } from '@open-northland/render';
 import {
   type Command,
@@ -8,7 +8,11 @@ import {
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { assignmentPriorityFor, trainsRatherThanEmploys } from '../../game/sandbox/index.js';
+import {
+  assignmentPriorityFor,
+  canonicalJobType,
+  trainsRatherThanEmploys,
+} from '../../game/sandbox/index.js';
 import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
@@ -41,12 +45,6 @@ type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['
 /** Route right-click RTS intent into the one-way sim command seam. */
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
   const buildingsByType = lastByTypeId(deps.content.buildings);
-  // Whether a trade may raise a foundation, read the way the sim's own `jobCanBuild` gate reads it: the
-  // job's resolved atomics carry the build-house atomic. Real content gives it to the joiner and armorer as
-  // well as the builder, so an id test would re-trade those two instead of putting them on the site.
-  const buildingTrades = resolveJobAtomics(deps.content.jobs);
-  const canRaiseSites = (jobType: number): boolean =>
-    buildingTrades.get(jobType)?.has(systems.BUILD_HOUSE_ATOMIC_ID) === true;
 
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
     const occupied = new Set<string>();
@@ -99,13 +97,23 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const def = type !== undefined ? buildingsByType.get(type) : undefined;
       const slots = def?.workers;
       const underConstruction = entity?.components.UnderConstruction !== undefined;
+      const employsTrade = (jobType: number | undefined): boolean =>
+        jobType !== undefined &&
+        (slots ?? []).some((slot) => canonicalJobType(slot.jobType) === canonicalJobType(jobType));
       // One ladder for every own building. A foundation leads with its own rung (a trade that can raise it
       // joins the crew - the original's "put a builder on a foundation"), then follows the rules of the
       // building it will become.
       for (const target of commanded) {
         const self = entityById(snapshot, target.ref);
         const currentJob = self !== undefined ? settlerJobType(self) : undefined;
-        if (underConstruction && currentJob !== undefined && canRaiseSites(currentJob)) {
+        // The exception is a site that employs this very trade (real content lets the joiner and armorer
+        // build): posting wins there, because the sim sends a posted builder to raise its OWN site anyway
+        // and it keeps the seat when the workshop stands, where a bare crew pin would leave it unposted.
+        const joinsCrew =
+          currentJob !== undefined &&
+          systems.jobCanBuild(deps.content, currentJob) &&
+          !employsTrade(currentJob);
+        if (underConstruction && joinsCrew) {
           deps.enqueue({ kind: 'assignBuilder', entity: target.ref as Entity, site: building as Entity });
           continue;
         }

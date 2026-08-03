@@ -283,8 +283,10 @@ describe('ConstructionSignLayer', () => {
     expect(layer.container.children).toHaveLength(1);
     const node = layer.container.children[0] as Sprite;
     const p = tileToScreen(4, 2);
-    // The stand steps clear of the post the door badges stack on, so the two markers never overlap.
-    expect(node.position.x).toBe(p.x + 17 + CONSTRUCTION_SIGN_DX);
+    // The stand steps a badge column's width clear of the post those badges stack on (SIGN_HALF_WIDTH 14),
+    // so the two markers never overlap: the authored dx 17, minus 28.
+    expect(CONSTRUCTION_SIGN_DX).toBe(-28);
+    expect(node.position.x).toBe(p.x - 11);
     expect(node.position.y).toBe(p.y + 70);
     layer.draw([]); // site completed
     expect(layer.container.children).toHaveLength(0);
