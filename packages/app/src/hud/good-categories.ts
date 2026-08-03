@@ -1,30 +1,24 @@
 import { messages } from '../i18n/index.js';
 
 /**
- * The good→stock-category grouping and the category names - shared by every HUD window that groups goods
- * into the original's eight tabs (the details panel's Magazyn, the tool panel's goods window).
+ * The good→stock-category grouping and the category names, shared by every HUD window that groups goods
+ * into the original's eight tabs.
  *
- * The mapping is a NAMED APPROXIMATION. The original filters its goods across these eight tabs, but that
- * mapping is not in the extracted data - no 8-way stock-tab category field exists on goods
- * (`goodtypes.ini` and ir.json carry only production flags and armor/weapon sub-types); it is a hardcoded
- * engine/GUI feature. The tab-plate glyphs are also still unread (montage guesses), so which glyph-tab a
- * category maps to is provisional too; both the categories below and their tab order are meant to be
- * corrected once the glyphs are read or a real category source is found. The map is keyed by the good's
- * stable string id, so it serves the sandbox and the real ir.json good sets identically.
+ * The mapping is a named approximation: no 8-way stock-tab category field exists on goods, since
+ * `goodtypes.ini` and ir.json carry only production flags and armor/weapon sub-types. The tab-plate
+ * glyphs are unread, so the tab order is provisional too. The map keys by the good's stable string id, so
+ * it serves the sandbox and the real ir.json good sets identically.
  */
 
 /** The misc/"Inne" tab a good with no explicit category falls into. */
 const DEFAULT_TAB = 7;
 
-/**
- * The eight category tabs' display names (index = tab), shown as a hover tooltip since the glyph plates
- * are unread (see file header). Polish (the default UI language); a future locale pass can localize these.
- */
+/** The eight category tabs' display names (index = tab), shown as a hover tooltip. */
 export function stockTabLabels(): readonly string[] {
   return messages().hud.stockTabs;
 }
 
-/** Good string id → tab index (0–7). Provisional grouping - see the file header. */
+/** Good string id → tab index (0–7). */
 const CATEGORY_BY_GOOD: Readonly<Record<string, number>> = {
   // 0 - Żywność (food)
   food_simple: 0,

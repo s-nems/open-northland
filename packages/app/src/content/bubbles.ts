@@ -1,16 +1,11 @@
 import type { SettlerBubbleGfx, SettlerBubbleKind } from '@open-northland/render';
 import { loadLayer, MissingAtlasError } from './ir/load.js';
 
-/** The served stem of the palette-baked bubble sheet (RGBA preview, not the indexed variant). */
+/** The served stem of the bubble sheet: the RGBA preview, since a bubble is never team-coloured. */
 const BUBBLE_ATLAS_STEM = 'ls_gui_bubbles.gui_bubbles';
 
-/**
- * The `ls_gui_bubbles` frame each bubble kind draws (the bob index the `?icons` gallery labels). Both
- * romance states show the heart thought-bubble (frame 2) - the sheet's love bubble; the two are told
- * apart by context (a lone woman at home vs. a walking pair). The need bubbles are frame 0 (sleep) and
- * frame 4 (hunger). Source basis: the decoded bubble sheet (`ls_gui_bubbles.bmd`); the frame→state map is
- * observed original behavior (no readable ini names the frames), one constant to change per kind.
- */
+/** The `ls_gui_bubbles` bob index each bubble kind draws. Source basis: observation, since no readable
+ *  ini names the frames. */
 const BUBBLE_FRAME_ID: Readonly<Record<SettlerBubbleKind, number>> = {
   child: 2,
   partner: 2,
@@ -18,13 +13,8 @@ const BUBBLE_FRAME_ID: Readonly<Record<SettlerBubbleKind, number>> = {
   hungry: 4,
 };
 
-/**
- * Resolve the decoded settler-bubble art for the render bubble layer: the palette-baked `ls_gui_bubbles`
- * sheet and the frame each {@link SettlerBubbleKind} draws. The RGBA preview stem is loaded, not the
- * recolourable indexed sheet - a settler bubble is never team-coloured, so it draws as a plain sprite.
- * Returns `null` when the atlas is absent (a checkout without `content/`), so the renderer degrades to no
- * bubbles.
- */
+/** Returns `null` when the bubble atlas is absent (a checkout without `content/`), so the renderer draws
+ *  no bubbles. */
 export async function loadSettlerBubbleGfx(): Promise<SettlerBubbleGfx | null> {
   let layer: Awaited<ReturnType<typeof loadLayer>>;
   try {

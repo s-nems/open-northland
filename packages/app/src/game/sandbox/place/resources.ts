@@ -15,29 +15,16 @@ import { gatherMasteryExperience } from './mastery.js';
 
 const { DeliveryFlag, Position, WorkFlag } = components;
 
-/**
- * A gatherer's reasonable work radius around its flag (integer node-distance). Sourced from the sim's
- * {@link components.DEFAULT_WORK_FLAG_RADIUS} so a scene-bound flag and a `setWorkFlag`-placed flag share
- * one value - a named approximation (the original's collector work-area size is not decoded), and since each
- * gatherable good is unique per lane the job-atomic gate keeps a radius overlap from ever crossing trades.
- */
+/** Work radius in node-distance, a named approximation: the original's collector work-area size is
+ *  not decoded. */
 export const GATHERER_WORK_RADIUS = components.DEFAULT_WORK_FLAG_RADIUS;
 
-/**
- * Resolve a gatherer's resource-node {@link ResourceNodeSpec} at a half-cell node (`x`/`y` are node
- * coords, like every sim command) - the one place the app's felling/deposit balance constants become a
- * node's starting yield + harvest lifecycle marker. Shared by the pre-tick-0 direct helper (which
- * converts its scene tile to a node first) and the runtime {@link resourceCommand} (whose caller already
- * holds node coords), so a scene-placed tree and a debug-spawned tree are the same node. A `fell` good is
- * a chop-it-down tree, a `mine` good a finite deposit, a `pick` good a pluck-whole node.
- * Exported for the decoded-map spawner ({@link import('../map-spawn.js')}), which resolves the same node
- * spec for a map's placed objects.
- */
+/** Turns the app's felling and deposit balance into a node spec; `x`/`y` are half-cell node coords. */
 export function resourceSpecFor(g: GathererSpec, x: number, y: number): ResourceNodeSpec {
   switch (g.mode) {
     case 'fell':
-      // Wood is the only felled good; its per-node yield + chops-to-fell are catalog constants (not
-      // carried on the GathererSpec), so the fell branch reads them directly.
+      // Wood is the only felled good, so its yield and chops-to-fell stay catalog constants rather
+      // than GathererSpec fields.
       return {
         good: g.good,
         x,
@@ -65,8 +52,8 @@ export function resourceSpecFor(g: GathererSpec, x: number, y: number): Resource
   }
 }
 
-/** Create a resource node directly (scene setup, pre-tick-0). Throws on a good with no footprint -
- *  a scene setup bug, not recoverable - unlike the runtime command which skips it. */
+/** Direct scene assembly, valid pre-tick-0 only. A missing footprint throws here and is skipped by the
+ *  runtime command. */
 function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: string): void {
   if (systems.createResourceNode(sim.world, sim.content, spec) === null) {
     throw new Error(`${what}: missing resource footprint for good ${spec.good}`);
@@ -74,13 +61,8 @@ function placeResourceDirect(sim: Simulation, spec: ResourceNodeSpec, what: stri
 }
 
 /**
- * Place a gatherer's resource node directly (scene setup, pre-tick-0) - a felled tree, a mined deposit,
- * or a pluck-whole node, chosen from the gatherer's own {@link GathererSpec.mode} by `resourceSpecFor`
- * (so the caller doesn't re-dispatch on the mode). Scenes author in whole tiles (`x`/`y`), so the tile is
- * converted to its anchor node before assembly - the same tile→node seam `spawnSandboxSettler` uses.
- * Throws on a good with no footprint (a scene-setup bug), unlike the runtime {@link resourceCommand}.
- * `unitsScale` multiplies the node's yield (a testing scene sizing a deposit to outlast a long session);
- * the visual shrink ladder scales with it (a deposit's `initial` is its starting `remaining`).
+ * Direct scene assembly, valid pre-tick-0 only. `x`/`y` are whole tiles and become the anchor node.
+ * `unitsScale` multiplies the node's yield, and the visual shrink ladder scales with it.
  */
 export function placeResourceNode(
   sim: Simulation,
@@ -99,18 +81,12 @@ export function placeResourceNode(
   );
 }
 
-/** The `[GfxLandscape]` record index of "bush 01 fruits" (decoded `landscapes.cif`, logicType 11 =
- *  `bush with fruits`) - the default fruited-bush look every berry scene shares. */
+/** The `[GfxLandscape]` record index of "bush 01 fruits" (decoded `landscapes.cif`, logicType 11). */
 export const BUSH_FRUITS_GFX = 806;
 
 /**
- * Place a wild berry bush directly (scene setup, pre-tick-0) and return it - the bush twin of
- * {@link placeResourceNode}. Scenes author in whole tiles (`x`/`y`); the tile is converted to its anchor
- * node before assembly. `gfxIndex` is the render-variant tag (a real `[GfxLandscape]` index, defaulting to
- * {@link BUSH_FRUITS_GFX}, so the browser scene draws real bush art through the
- * {@link buildBerryBushBinding} join); it is inert in the headless test (no render). The bush spawns ripe -
- * a caller wanting a bare/regrowing bush mutates the returned entity's {@link components.BerryBush}
- * directly (still pre-tick-0 authored state).
+ * Direct scene assembly, valid pre-tick-0 only. `x`/`y` are whole tiles and become the anchor node.
+ * `gfxIndex` is a render-variant tag, inert headless. The bush spawns ripe.
  */
 export function placeSandboxBerryBush(
   sim: Simulation,
@@ -123,11 +99,9 @@ export function placeSandboxBerryBush(
 }
 
 /**
- * Build a `placeResource` command for a good at a half-cell node - the runtime spawn path (the
- * admin/debug palette, a future scenario editor): the node is created through the mutation seam on the
- * next tick, so a mid-run placement stays replay-faithful (unlike the direct helper, sound only before
- * tick 0). `x`/`y` are node coords, the space the UI's `clientToTile` already resolves to. Returns null
- * for a good with no gatherer spec (not a spawnable resource).
+ * The runtime spawn path: the node is created through the mutation seam on the next tick, so a mid-run
+ * placement stays replay-faithful. `x`/`y` are half-cell node coords. Null when the good has no
+ * gatherer spec.
  */
 export function resourceCommand(good: number, x: number, y: number): Command | null {
   const g = GATHERERS.find((gg) => gg.good === good);
@@ -135,36 +109,25 @@ export function resourceCommand(good: number, x: number, y: number): Command | n
   return { kind: 'placeResource', ...resourceSpecFor(g, x, y) };
 }
 
-/**
- * Drop a loose good pile on the ground via the `dropGood` command (the runtime mutation seam, so a
- * scene-authored drop and a player-tool drop are the same replay-faithful path). Scenes author in whole
- * tiles; the command speaks half-cell nodes. The pile is the felled-trunk shape (Stockpile + GroundDrop),
- * so with no carriers on the map it simply sits where it lands.
- */
+/** `x`/`y` are whole tiles and become the anchor node the command speaks in. */
 export function dropSandboxGood(sim: Simulation, good: number, x: number, y: number, amount: number): void {
   const node = cellAnchorNode(x, y);
   sim.enqueue({ kind: 'dropGood', good, x: node.hx, y: node.hy, amount });
 }
 
-/** A drop-off flag: a pure {@link DeliveryFlag} marker at the given tile (it stores nothing - the harvest
- *  piles on the ground around it as separate heaps, so moving the flag never moves the goods). Returns the
- *  flag entity so a gatherer can be bound to it ({@link spawnBoundGatherer}). */
+/** A pure marker that stores nothing: the harvest piles around it as separate heaps, so moving the flag
+ *  never moves the goods. */
 export function placeFlag(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, DeliveryFlag, {}); // a designated collection point → render draws its flag above the heaps
+  sim.world.add(e, DeliveryFlag, {});
   return e;
 }
 
 /**
- * Spawn a gatherer bound to its own `flag` directly (scene setup, pre-tick-0) and return it. A bound
- * gatherer must be assembled directly - via {@link systems.createSettler}, the settler twin of the
- * `placeResourceNode` helper - rather than through the `spawnSettler` command, because its {@link WorkFlag}
- * has to reference the flag entity, and a command-spawned settler's id is not known until the command runs.
- * With the binding it harvests only within `radius` of the flag, carries only what it dug, and banks it at
- * the flag. An optional `goodType` pins the gatherer to one resource (the same filter the `setGatherGood`
- * command sets), so neighbouring camps of different goods never poach each other's nodes. Throws on an
- * unknown job (a scene-setup bug, like {@link placeResourceNode}).
+ * Direct scene assembly, valid pre-tick-0 only: `WorkFlag` must reference the flag entity, and a
+ * command-spawned settler has no known id until its command runs. `goodType` pins the gatherer to one
+ * resource so neighbouring camps never poach each other's nodes.
  */
 export function spawnBoundGatherer(
   sim: Simulation,
@@ -182,8 +145,8 @@ export function spawnBoundGatherer(
     y: node.hy,
     tribe: PRIMARY_TRIBE,
     owner: opts.owner ?? HUMAN_PLAYER,
-    // A camp gatherer spawns a veteran (see gatherMasteryExperience) - a fresh collector pinned to
-    // iron/gold would fail real content's `needforgood` gate forever and stand beside its deposit.
+    // A camp gatherer spawns a veteran: a fresh collector pinned to iron or gold would fail real
+    // content's `needforgood` gate forever and stand beside its deposit.
     ...(mastery.length > 0 ? { experience: mastery } : {}),
   });
   if (e === null) throw new Error(`spawnBoundGatherer: unknown job ${jobType}`);

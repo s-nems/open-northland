@@ -28,56 +28,32 @@ import {
 } from './jobs.js';
 
 /**
- * The committed hand-authored profession roster - the complete set of jobs a player can assign a settler to,
- * transcribed from the original `Data/logic/jobtypes.ini` (`[jobtype]` records). This is the source of
- * truth for both the profession picker (what it offers + which job each row assigns) and the settler
- * details-panel label (a settler's profession name), so the two can never drift.
- *
- * Faithfulness to the original's job model:
- *  - **One soldier.** `jobtypes.ini` splits soldiers into an unarmed base (type 31) plus ten weapon
- *    classes (32..41: spear/sword/saber/axe/bow). A settler's soldier class is its weapon, not a separate
- *    profession - so the picker offers a single "Żołnierz" that assigns the unarmed base ({@link JOB_SOLDIER}
- *    = 31); the weapon (a later step) specializes it. Only a soldier ever carries a weapon (weapons resolve
- *    by `(tribe, jobType)`, and no civilian trade has a binding), so a civilian is always unarmed.
- *  - **Life stages, animals, vehicles, and named heroes are not professions** (jobtypes 1..6, 42..55) and
- *    are omitted. Sea variants (`fisher_sea` 23, `trader_sea` 26) are omitted too: they need a harbour/ship
- *    the sandbox lacks, and the jester (28) because the original's profession menu never offers it
- *    (observed original). Collecting is the single `collector` ({@link JOB_COLLECTOR} = 8): the original's one
- *    outdoor gatherer fells wood, mines every deposit, and picks mushrooms, so there is one gatherer row.
- *
- * jobType numbering: every row carries its real `jobtypes.ini` id (collector 8, carrier 24, soldier 31, and
- * the production trades at their own ids). The synthetic per-good gatherer band that used to shadow
- * baker/brewer/fisher/trader (real ids 20..22, 25) is gone, so those trades now sit at their real ids too.
- *
- * The added trades render as the generic civilian body (only jobtypes 5 and 31..41 have their own body in
- * `content/settler-gfx.ts`); in the current sandbox they have no workhouse, so an assigned smith/baker/…
- * stands idle until the economy content lands - exactly as the original gates a trade on its workshop.
+ * The committed profession roster, transcribed from `Data/logic/jobtypes.ini` `[jobtype]` records: what
+ * the picker offers and which job each row assigns. The soldier band (31..41) collapses to one
+ * profession, since a soldier's class is its weapon, and collecting is the single `collector` (8), the
+ * original's one outdoor gatherer. Life stages, animals, vehicles and heroes (1..6, 42..55) are not
+ * professions; the sea variants (23, 26) need a harbour, and the original's menu never offers the jester
+ * (28) (observed).
  */
 
-/** The picker's five ordered groups (the list is sorted by this order, with a header per group). */
+/** The picker's ordered groups. */
 export type ProfessionCategory = keyof Messages['category'];
 
-/** One assignable profession: its i18n key, the job `setJob` assigns, its picker group, and its source. */
 export interface ProfessionDef {
   readonly key: keyof Messages['profession'];
   readonly jobType: number;
   readonly category: ProfessionCategory;
-  /** The `jobtypes.ini` record this row transcribes (the faithfulness anchor). */
+  /** The `jobtypes.ini` record this row transcribes. */
   readonly source: string;
 }
 
-/** True for any job in the `jobtypes.ini` soldier band (31..41) - all collapse to the one soldier label.
- *  The band stays catalog policy rather than following the sim's content-derived role: this helper takes
- *  a bare `jobType`, so it must also label the classes the running content may not declare (the sandbox
- *  set omits 32 and 36..39). */
+/** True for any job in the `jobtypes.ini` soldier band (31..41). The band is catalog policy rather than
+ *  the sim's content-derived role, so it also labels classes the running content may not declare. */
 export function isSoldierJob(jobType: number): boolean {
   return jobType >= SOLDIER_JOB_MIN && jobType <= SOLDIER_JOB_MAX;
 }
 
-/**
- * The complete roster, in picker order (gathering → transport → production → special → military). The
- * order here is the list order; `pickerEntries` inserts a group header wherever the category changes.
- */
+/** The complete roster in picker order; `pickerEntries` inserts a header wherever the category changes. */
 export const PROFESSIONS: readonly ProfessionDef[] = [
   { key: 'collector', jobType: JOB_COLLECTOR, category: 'gathering', source: 'jobtypes.ini 8 "collector"' },
   { key: 'carrier', jobType: JOB_CARRIER, category: 'transport', source: 'jobtypes.ini 24 "carrier"' },
@@ -133,9 +109,7 @@ export const PROFESSIONS: readonly ProfessionDef[] = [
   { key: 'soldier', jobType: JOB_SOLDIER, category: 'military', source: 'jobtypes.ini 31 "soldier_unarmed"' },
 ];
 
-/** The one soldier profession (the picker's single "Żołnierz" row / the whole soldier band's label).
- *  Resolved at module load, so a roster edit that drops the row fails loudly here rather than mislabelling
- *  every soldier at runtime. */
+/** The whole soldier band's label, resolved at module load so a roster edit dropping it fails loudly. */
 const SOLDIER_PROFESSION = professionByKey('soldier');
 
 function professionByKey(key: ProfessionDef['key']): ProfessionDef {
@@ -145,9 +119,8 @@ function professionByKey(key: ProfessionDef['key']): ProfessionDef {
 }
 
 /**
- * The profession a job belongs to - for the details-panel label. Any soldier-band job (31..41) resolves to
- * the one soldier profession; every other job matches by exact `jobType`. `undefined` for jobs off the
- * roster (e.g. idle), which the caller labels itself.
+ * The profession a job belongs to. Any soldier-band job resolves to the one soldier profession;
+ * `undefined` for a job off the roster, which the caller labels itself.
  */
 export function professionDefForJob(jobType: number | undefined): ProfessionDef | undefined {
   if (jobType === undefined) return undefined;
@@ -160,16 +133,10 @@ export type PickerEntry =
   | { readonly kind: 'header'; readonly label: string }
   | { readonly kind: 'profession'; readonly jobType: number; readonly label: string };
 
-/**
- * The localized, grouped picker list: each profession as a `profession` entry, preceded by a `header`
- * entry at every category boundary. Built from {@link PROFESSIONS} so the offered set and its order live
- * in one place; the widget just renders entries top to bottom.
- */
+/** The localized picker list, top to bottom: a `header` entry at every category boundary. */
 export function pickerEntries(locale?: Locale): PickerEntry[] {
-  // The leading "Cywil" row, above the groups: the original's civilist job ({@link JOB_CIVILIST} -
-  // `jobtypes.ini` 6, the trade a grown boy matures into). No workplace employs it, so assigning it
-  // means "this settler does nothing until re-traded". Not a PROFESSIONS row - the details-panel
-  // labels job 6 through the content job's `lifeStage` slug, like the other life stages.
+  // The civilist job (`jobtypes.ini` 6) leads the list but is not a roster row: no workplace employs
+  // it, so assigning it means the settler does nothing until re-traded.
   const entries: PickerEntry[] = [
     { kind: 'profession', jobType: JOB_CIVILIST, label: professionLabel('idle', locale) },
   ];

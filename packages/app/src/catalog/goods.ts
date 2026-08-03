@@ -1,48 +1,28 @@
 /**
- * The committed catalog of the extended goods - every tradeable ware in the original economy beyond the
- * six gathered goods + coin the sandbox already wires end-to-end (wood/stone/mud/iron/gold/mushroom have
- * harvest atomics and a gathering pipeline; those live in `game/sandbox/ids/` + `content/`, since they
- * carry behaviour). This table adds the rest of the `goodtypes.ini` catalog - food, drink, building
- * materials, tools, crafted wares, weapons, armor, potions, amulets, and the animal/vehicle/special tokens
- * - so every good the original defines exists in the one global content set: it has an id, a name, and (for
- * the wares) a warehouse stock slot + its recoloured `ls_goods` HUD icon, drawable in the Magazyn panel.
+ * The committed catalog of the extended goods: every `goodtypes.ini` ware beyond the six gathered goods
+ * and coin the sandbox wires end-to-end in `game/sandbox/ids/`, so the one global content set names
+ * every good the original defines.
  *
- * Source basis: `id` and catalog order are transcribed verbatim from the extracted `content/ir.json` goods
- * (itself decoded from `Data/logic/goodtypes.ini`); `name` is our own hand-authored English naming. The icon
- * for each ware resolves by its string id through `content/goods/manifest.json` (the `ls_goods` frame +
- * palette the pipeline bound), so no typeId needs to match for art to appear.
- *
- * The `typeId` is sandbox-scoped, not the ir.json typeId: it is `EXTENDED_GOOD_TYPE_OFFSET + irTypeId`,
- * offset so the extended block (101+) clears the core economy goods (`GOOD_NONE`..`GOOD_MUSHROOM` in
- * `sandbox/ids/`), which carry their real ir.json ids (≤ mushroom 14). Subtracting the offset recovers the
- * ir typeId. Goods are their own typeId namespace (the `goodType` key in stockpiles/recipes/drops), so this
- * block collides with no building/job/weapon id.
+ * Source basis: `id` and catalog order are transcribed verbatim from the extracted `content/ir.json`
+ * goods; `name` is hand-authored English. Icons resolve by string id through
+ * `content/goods/manifest.json`, so no typeId has to match for art to appear.
  */
 
-/** The offset added to each ir.json good typeId to mint its sandbox-scoped id, clearing the real core ids (≤ 14). */
+/** Added to each ir.json good typeId to mint its sandbox-scoped id, clearing the core ids (≤ 14). */
 export const EXTENDED_GOOD_TYPE_OFFSET = 100;
 
-/** One extended good: the sim `goodType` key + its stable icon-keying id, English name, and storability. */
 export interface CatalogGood {
-  /** Sandbox-scoped `goodType` (= {@link EXTENDED_GOOD_TYPE_OFFSET} + the ir.json typeId). */
+  /** Sandbox-scoped `goodType`: {@link EXTENDED_GOOD_TYPE_OFFSET} plus the ir.json typeId. */
   readonly typeId: number;
-  /** Stable machine id, verbatim from `ir.json` - also the `ls_goods` icon-manifest key. */
+  /** Stable machine id, verbatim from `ir.json`, and the `ls_goods` icon-manifest key. */
   readonly id: string;
-  /** Human English label for the HUD (e.g. `"Leather"`) - our hand-authored naming. */
   readonly name: string;
-  /**
-   * Whether the good is a CARRIED ware at all - false for the animal/vehicle/special tokens (`prey`,
-   * `sheep`, `cattle`, the carts/ships, `catapult`, `chest`, `anything`), which are herded, driven or
-   * sentinel. Which of the carried wares a store actually slots is the sandbox store set's call
-   * (`game/sandbox/building-set.ts`), not this flag's.
-   */
+  /** False for the animal, vehicle and special tokens, which are herded, driven or sentinel rather than
+   *  carried. Which carried wares a store slots is the sandbox store set's call, not this flag's. */
   readonly storable: boolean;
 }
 
-/**
- * The extended goods, in ir.json typeId order. The raw typeIds live here (their definition) and nowhere
- * else - code refers to a good by id through {@link EXTENDED_GOODS} / {@link STORABLE_EXTENDED_GOODS}.
- */
+/** The extended goods in ir.json typeId order; this is where the raw typeIds are defined. */
 export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 101, id: 'water', name: 'Water', storable: true },
   { typeId: 104, id: 'wheat', name: 'Wheat', storable: true },
@@ -54,16 +34,13 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 115, id: 'holy_oil', name: 'Holy Oil', storable: true },
   { typeId: 116, id: 'food_simple', name: 'Simple Food', storable: true },
   { typeId: 117, id: 'food_extra', name: 'Fine Food', storable: true },
-  // fruit (118) dropped from the catalog with fish/sausage: its `goods all` record reuses bread's frames in
-  // the source (no distinct fruit art), so it only ever reads as bread. Still a genuine `goodtypes.ini` good
-  // in the extracted IR - an app-catalog curation, not a data change.
+  // Fruit (118) is curated out of this catalog, not the IR: its `goods all` record reuses bread's frames,
+  // so it can only ever read as bread.
   { typeId: 119, id: 'bread', name: 'Bread', storable: true },
   { typeId: 120, id: 'candy', name: 'Candy', storable: true },
   { typeId: 121, id: 'meat', name: 'Meat', storable: true },
-  // fish (122) + sausage (123) are dropped from the catalog on purpose: they are house-made food goods with
-  // no distinct `ls_goods` art (the original's `landscapes.cif` binds both to gold's bar frames), so they only
-  // ever read as gold bars. `meat` already covers "produced food"; keeping the catalog to goods with a
-  // meaningful, distinguishable icon. They still exist in the extracted IR - this is an app-catalog curation.
+  // Fish (122) and sausage (123) are curated out for the same reason: `landscapes.cif` binds both to
+  // gold's bar frames, so they can only ever read as gold bars, and `meat` already covers produced food.
   { typeId: 124, id: 'brick', name: 'Brick', storable: true },
   { typeId: 125, id: 'tile', name: 'Roof Tile', storable: true },
   { typeId: 126, id: 'pillar', name: 'Pillar', storable: true },
@@ -81,8 +58,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 138, id: 'bow_long', name: 'Long Bow', storable: true },
   { typeId: 139, id: 'spear_wooden', name: 'Wooden Spear', storable: true },
   { typeId: 140, id: 'spear_iron', name: 'Iron Spear', storable: true },
-  // `sword_shord` keeps the ir.json spelling (a typo in the source) so the icon key matches; the name is
-  // corrected to "Short Sword".
+  // `sword_shord` keeps the source's misspelling so the icon key still matches.
   { typeId: 141, id: 'sword_shord', name: 'Short Sword', storable: true },
   { typeId: 142, id: 'sword_long', name: 'Long Sword', storable: true },
   { typeId: 143, id: 'mead', name: 'Mead', storable: true },
@@ -98,8 +74,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 153, id: 'amulet_defense', name: 'Amulet of Defense', storable: true },
   { typeId: 154, id: 'amulet_crithit', name: 'Amulet of the Critical Blow', storable: true },
   { typeId: 155, id: 'amulet_speed', name: 'Amulet of Speed', storable: true },
-  // Animal / vehicle / special tokens - real goodtypes, but herded, driven, or sentinel rather than
-  // warehoused, so they carry no stock slot (and no `ls_goods` icon).
+  // Real goodtypes, but herded, driven or sentinel rather than warehoused, so no stock slot and no icon.
   { typeId: 156, id: 'prey', name: 'Game', storable: false },
   { typeId: 157, id: 'sheep', name: 'Sheep', storable: false },
   { typeId: 158, id: 'cattle', name: 'Cattle', storable: false },
@@ -112,6 +87,5 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 165, id: 'anything', name: 'Anything', storable: false },
 ] as const;
 
-/** The extended wares that are carried goods (the `storable` subset) - what the general-goods store set
- *  is drawn from. */
+/** The carried subset the general-goods store set is drawn from. */
 export const STORABLE_EXTENDED_GOODS: readonly CatalogGood[] = EXTENDED_GOODS.filter((g) => g.storable);

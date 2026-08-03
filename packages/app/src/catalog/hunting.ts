@@ -18,18 +18,15 @@ import {
 import { JOB_HUNTER } from './jobs.js';
 
 /**
- * The hunter's clean-room balance: which animal species are game, what each carcass yields, and the
- * hunter-bow band/damage. AUTHORED (user decisions) - no readable source carries a per-species yield,
- * so the species set and amounts are a named approximation (source basis "Hunter prey and carcass
- * yields"; the {@link HuntPrey} schema doc owns why `catchable` is not the signal). Shared by the
- * real-content merge and the sandbox catalog, keyed by the real animal tribe ids and good id-slugs so
- * one table serves both id spaces.
+ * The hunter's balance: which animal species are game, what each carcass yields, and the hunter bow's
+ * band and damage. No readable source carries a per-species yield, so the species set and amounts are an
+ * approximation (source basis "Hunter prey and carcass yields"). Keyed by real animal tribe ids and good
+ * id-slugs, so the same table serves the real-content merge and the sandbox catalog.
  */
 
 /** The carcass goods a species can yield, by good id-slug (resolved per content set). */
 export type CarcassGoodSlug = 'meat' | 'leather' | 'wool';
 
-/** One species' hunting row: its tribe, whether it is last-resort livestock, and its carcass contents. */
 export interface HuntPreyBalance {
   readonly tribeType: number;
   /** Livestock hunted only when no normal game is in the hunting ground (kept for husbandry). */
@@ -38,12 +35,10 @@ export interface HuntPreyBalance {
 }
 
 /**
- * The prey species and their carcass yields. Predators (wolves, bears, lions), `aggressive` fauna
- * (ibexes, evil hares) and decorative fauna have no row and are never hunted; neither does the
- * chicken, whose extracted `hitpoints_adult 50000` would soak over a hundred hunter arrows - a grind
- * trap, not game. Small game gives meat alone (the sparrow/raven/parrot rows are dormant today -
- * their extracted `hitpoints_adult` is 0, which spawns no creature); the larger ungulates add a hide;
- * the last-resort livestock rows mirror what a farm would get out of them (sheep wool, cattle hides).
+ * The prey species and their carcass yields. Predators, `aggressive` fauna and decorative fauna have no
+ * row and are never hunted, nor does the chicken, whose extracted `hitpoints_adult 50000` would soak
+ * over a hundred arrows. Small game gives meat alone, larger ungulates add a hide, and the last-resort
+ * livestock rows mirror what a farm would get out of them.
  */
 export const HUNT_PREY_BALANCE: readonly HuntPreyBalance[] = [
   { tribeType: ANIMAL_TRIBE_HARES, yields: { meat: 1 } },
@@ -62,8 +57,7 @@ export const HUNT_PREY_BALANCE: readonly HuntPreyBalance[] = [
   { tribeType: ANIMAL_TRIBE_CATTLE, lastResort: true, yields: { meat: 4, leather: 2 } },
 ];
 
-/** The distinct carcass good slugs the balance table names - what a content set must carry (with a
- *  harvest atomic) for its hunters to bank that yield. */
+/** A content set must carry these goods, with a harvest atomic, for its hunters to bank that yield. */
 export const CARCASS_GOOD_SLUGS: readonly CarcassGoodSlug[] = ['meat', 'leather', 'wool'];
 
 /** A content set's id rows a slug/tribe resolves against (sandbox and real ids differ). */
@@ -73,10 +67,9 @@ interface IdRow {
 }
 
 /**
- * Resolve {@link HUNT_PREY_BALANCE} against a content set's own goods and tribes into its `huntPrey`
- * table. Rows for species the set does not carry are dropped (the sandbox ships a handful of animal
- * tribes), as is a yield line whose good the set lacks - and a row left with no resolvable yield is
- * dropped whole, so the emitted table always passes the schema and its cross-reference checks.
+ * Resolve the balance against a content set's own goods and tribes into its `huntPrey` table. Species
+ * and yields the set does not carry are dropped, and a row left with no resolvable yield is dropped
+ * whole, so the emitted table always passes the schema's cross-reference checks.
  */
 export function huntPreyRows(goods: readonly IdRow[], tribes: readonly IdRow[]): HuntPrey[] {
   const goodBySlug = new Map(goods.map((g) => [g.id, g.typeId]));
@@ -97,9 +90,7 @@ export function huntPreyRows(goods: readonly IdRow[], tribes: readonly IdRow[]):
 
 /**
  * The hunter's general experience track, transcribed verbatim from the extracted
- * `humanjobexperiencetypes.ini` type 37 (`hunter general`, job 15) - the sandbox `jobExperience` lane
- * ships it so a sandbox hunter trains exactly like one on real content (a carcass harvest accrues it
- * through the ordinary work-XP seam).
+ * `humanjobexperiencetypes.ini` type 37 (`hunter general`, job 15).
  */
 export const HUNTER_GENERAL_XP_TRACK = {
   typeId: 37,
@@ -111,12 +102,10 @@ export const HUNTER_GENERAL_XP_TRACK = {
 } as const;
 
 /**
- * The hunter bow's band and damage - a DESIGN OVERRIDE of the extracted `weapons.ini` row (typeId 19):
- * the mod data makes the hunter bow strictly stronger than the short bow (damage 700 vs 500 per class,
- * reach 3-17 vs 3-15), but the hunter is a civilian trade, so it must shoot a weaker bow than a
- * soldier's (user decision). Every value sits just under the short bow's. The bow stays outside the
- * equipment economy exactly as extracted - its row carries no `goodType`, so it is never a
- * craftable/equippable good; the trade itself is the weapon binding.
+ * The hunter bow's band and damage: an authored override of the extracted `weapons.ini` row (typeId 19),
+ * whose mod data makes the hunter bow stronger than a soldier's short bow (damage 700 vs 500, reach
+ * 3-17 vs 3-15). A civilian trade must shoot weaker, so every value here sits just under the short bow's.
+ * The row carries no `goodType`, so the bow stays outside the equipment economy as extracted.
  */
 export const HUNTER_BOW_BALANCE: {
   readonly minRange: number;
@@ -129,10 +118,8 @@ export const HUNTER_BOW_BALANCE: {
   damage: { '0': 400, '1': 100, '2': 320, '3': 80, '4': 80, '6': 50, '7': 80 },
 };
 
-// The hunter's clip timings, transcribed verbatim from the extracted `atomicanimations.ini`:
-// `viking_hunter_attack` (the action-81 bow draw) and `viking_hunter_harvest_cadaver` (the action-33
-// pluck) - the sandbox `atomicAnimations` lane ships them so its hunter paces exactly like one on
-// real content.
+// Clip timings transcribed verbatim from the extracted `atomicanimations.ini`, for
+// `viking_hunter_attack` and `viking_hunter_harvest_cadaver`.
 export const HUNTER_BOW_DRAW_LENGTH = 25;
 export const HUNTER_BOW_RELEASE_FRAME = 12; // the ATTACK event (the arrow looses mid-draw)
 export const HUNTER_HARVEST_CADAVER_LENGTH = 35;

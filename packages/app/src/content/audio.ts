@@ -3,17 +3,14 @@ import type { SoundBank } from '@open-northland/data';
 import type { ContentIr } from './ir/rows.js';
 
 /**
- * The audio content boundary: build the {@link SoundDriver} the live loop pumps from the decoded
- * sound bank in the shared IR ({@link import('./ir/load.js').loadIr}). Reads the gitignored `content/`
- * over the dev-server `/sounds` route and **degrades to silence** (returns `null`) when the content
- * is absent or predates the sound bank, so a checkout without `content/` still boots.
+ * The audio content boundary: build the {@link SoundDriver} the live loop pumps from the decoded sound
+ * bank in the shared IR. Degrades to silence when the gitignored `content/` is absent or predates the
+ * sound bank, so a checkout without it still boots.
  */
 
 /**
- * True when the bank actually carries at least one clip (in any category) - the one "is there anything
- * to play / show?" test shared by the live {@link createSoundDriver} and the `?sounds` gallery, so their
- * silent/empty decisions can't drift (add a 4th category and both update together). Narrows `sounds` to a
- * present, non-empty {@link SoundBank}.
+ * True when the bank carries at least one clip in any category. The one "is there anything to play?" test,
+ * so a consumer's silent/empty decision cannot drift from another's.
  */
 export function hasSoundContent(sounds: SoundBank | undefined): sounds is SoundBank {
   return (

@@ -8,15 +8,14 @@ import {
 import { fetchImageData } from './net.js';
 
 /**
- * The minimap's ground-colour binding for a decoded map: one `0xRRGGBB` per cell, averaged from the
- * real terrain texture pages the map's baked `ground` lanes point at. A real map's water/land look
- * lives in those per-triangle `GfxPattern` picks, not its landscape typeIds (~97% of a real map shares
- * one typeId), so the typeId palette can never depict it - this join can.
+ * The minimap's ground-colour binding for a decoded map: one `0xRRGGBB` per cell, averaged from the real
+ * terrain texture pages the map's baked `ground` lanes point at. A real map's water and land look lives
+ * in those per-triangle `GfxPattern` picks, not its landscape typeIds (~97% of a real map shares one), so
+ * the typeId palette cannot depict it.
  *
- * Source basis: the original's in-game minimap is dynamically generated. The shipped per-map
- * `minimap.pcx` is a map-selection card, sometimes a painted scene, so it cannot serve in-game.
- * The pure join halves (and their named approximation) live in `@open-northland/render`, shared
- * with the pipeline's synthesized thumbnails; this module owns only the browser fetch.
+ * Source basis: the original's in-game minimap is dynamically generated, and the shipped per-map
+ * `minimap.pcx` is a map-selection card, sometimes a painted scene, so it cannot serve in-game. This
+ * module owns only the browser fetch; the pure join halves live in `@open-northland/render`.
  */
 
 /** Fetch a served ground page PNG and read its pixels back (browser-only - canvas 2D readback).
@@ -29,10 +28,9 @@ async function fetchPagePixels(
 }
 
 /**
- * Build the per-cell minimap colours for a decoded map, or null when the map carries no ground lanes
- * or texture set (synthetic scenes or a bare checkout) - the minimap then falls
- * back to its typeId raster. One fetch per referenced page (browser-cached - the renderer already
- * loaded the same PNGs), one mean per distinct pattern, one pass over the cells.
+ * Build the per-cell minimap colours for a decoded map, or null when the map carries no ground lanes or
+ * texture set, in which case the minimap falls back to its typeId raster. One fetch per referenced page,
+ * one mean per distinct pattern, one pass over the cells.
  */
 export async function loadMinimapCellColours(
   terrain: SceneTerrain,

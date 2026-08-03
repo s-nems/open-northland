@@ -18,32 +18,17 @@ import { enemyBuildings } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * The siege scene - a viking warband razes an enemy base. It signs off the "warriors attack enemy
- * buildings" slice: a soldier/archer with the ATTACK stance auto-acquires an enemy STRUCTURE (not just an
- * enemy unit), advances on the nearest wall face (so the attackers spread around the footprint rather than
- * queueing at one door), and drains its Health on the weapon's vs-building column until it is razed. It also
- * signs off the auto-focus priority - the warband smashes the HEADQUARTERS and defensive
- * TOWERS (on par with the enemy defenders) before it ever turns on the plain HOMES, which it razes only
- * once no high-value structure or defender remains (the user rule).
+ * The siege scene: a viking warband razes an enemy base. It signs off that a warrior in the attack
+ * stance auto-acquires an enemy structure, advances on the nearest wall face, and drains its health on
+ * the weapon's vs-building column, and that auto-focus takes the headquarters, the towers and the
+ * defenders before the plain homes. A foundation stands at one hitpoint, so the first blow flattens the
+ * unfinished third tower.
  *
- * A construction site is a building like any other here: the red base's third watchtower is still a
- * foundation, and a foundation stands at one hitpoint, so the first blow that lands flattens it. It
- * collapses as scaffolding, the `built = 0` destroy cue, rather than as a house.
+ * It is also the life-heart scene: a human judges that a heart floats over exactly the hurt bodies and
+ * that each wears its own faction's colour. The headless twin checks only the settled end state.
  *
- * Layout: a blue warband on the left (sword/broadsword/spear ranks + archers) facing a compact red base -
- * an HQ flanked by two watchtowers, a third one still a foundation in the warband's path, plain homes
- * tucked around them, and a thin picket of defenders. Every building sits inside the warband's sight, so
- * the tier order (units + HQ + towers first, homes last) is what decides the sequence, not distance.
- *
- * It is also the life-heart scene. The browser plays from tick 0, so both sides take hits: a human judges
- * that a heart floats over exactly the hurt bodies, that each wears its own faction's colour (an enemy's
- * lost life must be readable, and told apart from ours at a glance), and that selecting a warrior gives it
- * one whatever its life. The headless twin below checks only the settled end state, after the defenders
- * are down.
- *
- * Named divergence (like every scene): the headless twin runs the hand-authored sandbox footprints +
- * vs-building damage approximation (`game/sandbox/combat.ts`); the browser feeds the real extracted
- * footprints. Both keep the placements legal and the mechanic identical.
+ * Named divergence: the headless twin runs the hand-authored sandbox footprints and the vs-building
+ * damage approximation; the browser feeds the real extracted footprints.
  */
 
 const MAP_W = 30;
@@ -59,15 +44,13 @@ const BLUE_RANKS: readonly { job: number; weapon: number; x: number }[] = [
 const RANK_Y_FIRST = 8;
 const RANK_Y_LAST = 15;
 
-/** The red base - an HQ + three towers (the high-value tier, one of them still a foundation), four plain
- *  homes (the fallback tier), all in the warband's sight so priority, not distance, orders the siege. */
+/** The red base sits entirely inside the warband's sight, so priority, not distance, orders the siege. */
 const ENEMY_HQ: readonly [string, number, number] = ['headquarters', 15, 11];
 const ENEMY_TOWERS: readonly (readonly [string, number, number])[] = [
   ['tower_00', 13, 8],
   ['tower_00', 13, 14],
 ];
-/** The third watchtower, still a foundation, standing in the warband's path - a tower ranks high-value
- *  however far it has risen, so the advance turns on it early rather than at the end. */
+/** Still a foundation, in the warband's path: a tower ranks high-value however far it has risen. */
 const ENEMY_TOWER_SITE: readonly [string, number, number] = ['tower_00', 10, 7];
 const ENEMY_HOMES: readonly (readonly [string, number, number])[] = [
   ['home_level_00', 19, 8],
@@ -75,7 +58,7 @@ const ENEMY_HOMES: readonly (readonly [string, number, number])[] = [
   ['home_level_00', 22, 10],
   ['home_level_00', 22, 12],
 ];
-/** A thin picket of enemy defenders (killed first - units share the high-priority tier with HQ/towers). */
+/** Units share the high-priority tier with the HQ and towers, so this picket falls first. */
 const ENEMY_DEFENDERS: readonly [number, number, number][] = [
   [JOB_SOLDIER_SWORD, 10, 10],
   [JOB_SOLDIER_SWORD, 10, 12],
@@ -101,15 +84,13 @@ function build(sim: Simulation): void {
   }
 }
 
-/** Whether a live enemy building is one of the high-value structures (HQ or a defensive tower) - the
- *  same id/kind keys the sim's siege-priority policy (`readviews/buildings.ts` buildingCombatClass)
- *  reads, so this acceptance check moves with the rule instead of silently testing a stale copy. */
+/** Keyed on the same id and kind as the sim's siege-priority policy, so the check moves with the rule. */
 function isHighValue(sim: Simulation, e: Entity): boolean {
   const def = sim.content.buildings.find((b) => b.typeId === sim.world.get(e, Building).buildingType);
   return def?.id === systems.HEADQUARTERS_BUILDING_ID || def?.kind === BUILDING_KIND.tower;
 }
 
-/** Mean remaining HP fraction (0..1) over `buildings`; 1 when the set is empty (nothing damaged). */
+/** Mean remaining HP fraction over `buildings`; 1 when the set is empty. */
 function meanHpFraction(sim: Simulation, buildings: readonly Entity[]): number {
   if (buildings.length === 0) return 1;
   let sum = 0;
@@ -120,24 +101,21 @@ function meanHpFraction(sim: Simulation, buildings: readonly Entity[]): number {
   return sum / buildings.length;
 }
 
-/** Whether every enemy defender (unit) has fallen - units share the high-priority tier with HQ/towers. */
 function enemyDefendersDead(sim: Simulation): boolean {
   for (const e of sim.world.query(components.Settler, components.Owner, components.Health)) {
     if (
       sim.world.get(e, components.Owner).player === ENEMY_PLAYER &&
       sim.world.get(e, components.Health).hitpoints > 0
     ) {
-      return false; // a defender still stands
+      return false;
     }
   }
   return true;
 }
 
-// runTicks lands in the window (deterministic from the seed) after the warband has razed the HQ + both
-// towers and cut down the defenders, but BEFORE it turns on the plain homes - so the end state itself shows
-// the auto-focus priority: high-value structures gone, homes still whole. (The browser view keeps running,
-// so a human watches the homes fall next; the sim unit test covers that razing directly.)
-// The first such window is ticks 664..917 (measured); sit mid-span, since combat pacing moves its edges.
+// `runTicks` must land after the high-value tier is razed but before the warband turns on the plain
+// homes, so the end state itself shows the auto-focus priority. The first such window is ticks 664..917
+// (measured); this sits mid-span, since combat pacing moves its edges.
 export const siegeScene: SceneDefinition = {
   id: 'siege',
   seed: 11,
@@ -147,13 +125,10 @@ export const siegeScene: SceneDefinition = {
   initialZoom: 0.8,
   checks: [
     {
-      // The core mechanic - warriors destroy STRUCTURES (here even the 100k-HP HQ), not only units. The
-      // third tower counts too, foundation and all: a site is razed like anything else the base put up.
       label: 'the enemy HQ, both watchtowers and the tower foundation are razed',
       predicate: (sim) => enemyBuildings(sim).filter((e) => isHighValue(sim, e)).length === 0,
     },
     {
-      // Auto-focus priority: the high-value tier fell first while the plain homes stand near-untouched.
       label: 'the plain homes are spared while HQ / towers fall first',
       predicate: (sim) => {
         const homes = enemyBuildings(sim).filter((e) => !isHighValue(sim, e));
@@ -165,7 +140,6 @@ export const siegeScene: SceneDefinition = {
       predicate: enemyDefendersDead,
     },
     {
-      // The wounded tell: the warriors the picket hurt wear a heart, the rest of the warband stays bare.
       label: 'exactly the wounded warriors wear a life heart',
       predicate: (sim) => {
         const wounded = new Set<number>();
@@ -175,8 +149,8 @@ export const siegeScene: SceneDefinition = {
           if (h.hitpoints / h.max <= WOUNDED_LIFE_FRACTION) wounded.add(e);
           else unhurt++;
         }
-        // No animal on this field and no warrior steps into a building, so every heart the projection
-        // returns is a warrior's, and none of the wounded is hidden from it.
+        // No animal on this field and no warrior enters a building, so every heart the projection
+        // returns belongs to a warrior.
         const hearts = computeLifeHearts(sim.snapshot(), { isLivestockTribe: () => false });
         return (
           wounded.size > 0 &&

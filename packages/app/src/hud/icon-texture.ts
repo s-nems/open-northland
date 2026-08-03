@@ -7,25 +7,18 @@ import {
 import { type Application, Container, type Sprite } from 'pixi.js';
 
 /**
- * Crisp fractional scaling for a single round HUD icon (the settler action-ring order buttons), over the
- * render-layer supersample ({@link bakeToFlippedSprite}).
+ * Crisp fractional scaling for a single round HUD icon, over the render-layer supersample.
  *
- * The order buttons are {@link PalettedSprite} meshes over an indexed atlas, drawn with the `'round'` colour
- * key (hard-clipped to the inscribed disc in the shader). At a fractional UI scale nearest sampling
- * stair-steps the disc rim and the hard clip aliases the circle. Fix it by supersampling: bake the icon at
- * an integer oversample into a texture (nearest is exact at an integer zoom), then draw it linear-downscaled
- * so the downscale anti-aliases the disc edge. This module owns the layout (oversample choice, centering);
- * the render helper owns the texture + the WebGL Y-flip.
- *
- * Unlike the static strip, the ring is dynamic: the icon art is baked once here, and the caller repositions
- * the returned display sprite on the settlers' centroid every frame.
+ * The order buttons are `PalettedSprite` meshes drawn with the `'round'` colour key, hard-clipped to the
+ * inscribed disc in the shader. At a fractional UI scale nearest sampling stair-steps the rim and the hard
+ * clip aliases the circle, so the icon is baked at an integer oversample and drawn linear-downscaled. This
+ * module owns the layout; the render helper owns the texture and the WebGL Y-flip.
  */
 
-/** Oversample cap - the small disc icons are already crisp by here; the cap bounds texture memory. */
+/** Oversample cap; the small disc icons are already crisp by here, and the cap bounds texture memory. */
 const MAX_SUPERSAMPLE = 6;
-/** Oversample floor - a smooth downscaled circle wants a bit more headroom than the strip's flat edges.
- *  At small effective scales this floor deliberately exits oversampleFor's (1, 2] downscale window (e.g.
- *  uiscale 1 at DPR 1 → ratio ~2.9): the slight linear-tap undersample is accepted for the rim smoothing. */
+/** Oversample floor for the disc rim. It deliberately exits `oversampleFor`'s (1, 2] downscale window at
+ *  small effective scales, accepting a slight linear-tap undersample for the smoother rim. */
 const MIN_SUPERSAMPLE = 3;
 
 export interface BakedIcon {
@@ -38,9 +31,9 @@ export interface BakedIcon {
 }
 
 /**
- * Bake one round order-icon into a supersampled texture and return a linear-downscaled display sprite. The
- * sprite's Y is flipped by {@link bakeToFlippedSprite} (a WebGL render-texture is bottom-up), so
- * {@link placeBakedIcon} anchors it at the box bottom.
+ * Bake one round order-icon into a supersampled texture and return a linear-downscaled display sprite.
+ * Its Y is flipped, because a WebGL render-texture is bottom-up, so `placeBakedIcon` anchors it at the
+ * box bottom.
  */
 export function bakeRoundIcon(opts: {
   readonly app: Application;
@@ -50,15 +43,14 @@ export function bakeRoundIcon(opts: {
 }): BakedIcon {
   const { app, sprite, frame, scale } = opts;
 
-  // Integer oversample so nearest sampling stays exact; sized at double the device px the icon covers
-  // so the downscale anti-aliases (see oversampleFor), floored so the disc rim always has headroom.
+  // Integer oversample so nearest sampling stays exact, sized at double the device px the icon covers so
+  // the downscale anti-aliases, and floored so the disc rim always has headroom.
   const ss = oversampleFor(scale, app.renderer.resolution, MIN_SUPERSAMPLE, MAX_SUPERSAMPLE);
   const texW = Math.ceil(frame.width * ss);
   const texH = Math.ceil(frame.height * ss);
 
-  // Place the mesh so the frame's content box fills the texture: origin cancels the frame's draw offset,
-  // zoom = ss, resolution = the texture size (a PalettedSprite maps native px → target px itself via its own
-  // uScreen - it doesn't ride the scene-graph transform). The detached container is owned by dispose.
+  // Place the mesh so the frame's content box fills the texture, cancelling the frame's draw offset. A
+  // PalettedSprite maps native px to target px through its own uScreen, not the scene-graph transform.
   sprite.place(-frame.offsetX * ss, -frame.offsetY * ss, ss, texW, texH);
   const offscreen = new Container();
   offscreen.addChild(sprite);
@@ -79,8 +71,7 @@ export function bakedIconOrigin(
   height: number,
 ): { readonly x: number; readonly y: number } {
   return {
-    // Centre horizontally; the Y-flip draws the sprite upward from its origin, so anchor at the box bottom
-    // (centre + height/2) - a sign error here silently renders every icon vertically off-centre.
+    // The Y-flip draws the sprite upward from its origin, so the vertical anchor is the box bottom.
     x: Math.round(rect.x + rect.w / 2 - width / 2),
     y: Math.round(rect.y + rect.h / 2 + height / 2),
   };

@@ -14,81 +14,61 @@ import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
 
 /**
- * The in-game left tool panel is part of the standard game HUD, not a per-scene feature - so both the map
- * viewer (`entries/map.ts`) and every acceptance scene (`entries/scene.ts`) mount it through this one
- * helper. It wraps {@link mountToolPanel} with the wiring both entries share: the
- * client-point → tile mapping (camera + client→screen scale, null off the map so a stray click never
- * clamp-places). The entry supplies only what differs - the app, canvas, the live camera/sim/enqueue
- * closures, its content's buildings, and how a speed change lands on its loop control.
+ * Wraps the tool panel with the wiring the map viewer and the acceptance scenes share, chiefly the
+ * client-point to tile mapping that returns null off the map so a stray click never clamp-places.
  */
 
 export interface GameToolPanelDeps {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** UI scale (the entry parses `?uiscale=` once and shares it with the unit controls). May be fractional. */
+  /** Shared with the unit controls; may be fractional. */
   readonly uiscale: number;
-  /** The live camera (read each click to map a screen point to a world tile). */
   readonly camera: () => Camera;
-  /** Submit a command into the current sim (a closure, so it follows a scene restart). */
+  /** A closure, so it follows a scene restart. */
   readonly enqueue: (command: Command) => void;
-  /** The current sim's placement rule for a type at a tile (a closure over `Simulation.placementProbe`,
-   *  so it follows a scene restart) - gates the placement click. */
+  /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
-  /** The map bounds - a placement click outside them is rejected (no clamp-to-border). */
+  /** A placement click outside these bounds is rejected, never clamped to the border. */
   readonly mapSize: { readonly width: number; readonly height: number };
-  /** The map's terrain-height field, so a placement click on a lifted hill resolves to the tile drawn
-   *  there (elevation-aware inverse). Optional: absent / flat → the plain unlifted inverse. */
+  /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */
   readonly elevation?: ElevationField;
-  /** The buildings the menu lists (typeId + label + kind). */
   readonly buildings: readonly MenuBuildingEntry[];
-  /** The goods the drop palette lists (goodType + id + label) - the whole content catalog. */
   readonly goods: readonly MenuGoodEntry[];
   /** The tribe whose stats the statistics window shows. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
   readonly owner: number;
-  /** The chest window's grant-switch seam for the session seat (view/assistant-grants.ts builds it). */
   readonly grants: ExtrasGrantsSeam;
-  /** The chest window's counter seam for the session seat (view/assistant-counters.ts builds it). */
   readonly counters: ExtrasCountersSeam;
   /** UI string language (`pol`/`eng`); defaults to Polish. */
   readonly lang?: string;
-  /** Apply a game-speed change to the entry's loop control (drive the fixed-timestep multiplier / pause). */
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
-  /** A higher HUD overlay's claim (the minimap window) - the panel yields left clicks it covers, so hit
-   *  priority follows draw order (see {@link ToolPanelOptions.deferToOverlay}). */
+  /** A higher overlay's claim: the panel yields left clicks it covers, so hit priority follows draw order. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
   /** That overlay's screen-px box, which the panel's pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
-  /** Open the in-game system menu - the `options` button's action, wired by the game view. */
   readonly onSystemMenu?: () => void;
 }
 
 export interface GameToolPanelHandle {
   readonly controller: ToolPanelController;
-  /** True when a client point is over the HUD (strip / open window / active placement) - the input router
-   *  asks this before world picking so a HUD click never falls through to unit selection/orders. */
+  /** True over the strip, an open window, or active placement; asked before any world picking. */
   claimPointer(clientX: number, clientY: number): boolean;
-  /** True when a client point is over an open pop-up window (menu / stats) - wired into the camera so
-   *  scrolling that window's list never also zooms the world behind it. */
+  /** True over an open pop-up window, so scrolling its list never also zooms the world behind it. */
   claimsWheel(clientX: number, clientY: number): boolean;
-  /** The panel's client-point → map-tile mapping (camera + backing scale + elevation), shared with the
-   *  frame loop's build-mode hover so the cursor ghost and the placement click resolve identically. */
+  /** Shared with the frame loop's build hover, so the ghost and the placement click resolve identically. */
   clientToTile(clientX: number, clientY: number): { col: number; row: number } | null;
 }
 
-/** The mutable loop control the shared game-view runtime drives (pause flag + tick-rate multiplier). */
 export interface LoopSpeedControl {
   paused: boolean;
   speed: number;
 }
 
 /**
- * Apply the panel's game-speed spec to an entry's loop control (pause + tick multiplier). Shared so `map`
- * and `scene` wire the panel's `onSpeed` identically. A `'cycle'` (button click) is an explicit speed
- * pick: it sets the multiplier and un-pauses. A `'pause-toggle'` (the `P` key) only flips the pause flag -
- * it must never write the multiplier, or resuming would replace a fractional `?speed=` seed with the
- * button's discrete ×1/×2/×3 (see {@link GameSpeedChangeCause}).
+ * Apply the panel's game-speed spec to an entry's loop control. A `'cycle'` sets the multiplier and
+ * un-pauses; a `'pause-toggle'` flips only the pause flag, since writing the multiplier would replace a
+ * fractional `?speed=` seed with the button's discrete steps.
  */
 export function applyGameSpeed(
   control: LoopSpeedControl,
@@ -100,9 +80,8 @@ export function applyGameSpeed(
 }
 
 /**
- * The buildings the menu lists: a content set's own building types, labelled via the viking catalog and
- * localized to `lang` (defaults to the UI default). The English catalog label is the fallback when a
- * language has no authored name (see `catalog/building-i18n.ts`).
+ * The content set's building types, labelled through the viking catalog and localized to `lang`. The
+ * English catalog label is the fallback when a language has no authored name.
  */
 export function menuEntriesFromContent(
   content: { buildings: readonly { typeId: number; id: string; kind: string }[] },
@@ -119,8 +98,7 @@ export function menuEntriesFromContent(
   });
 }
 
-/** The goods the drop palette lists: a content set's own goods (its English `name`, else the id), minus the
- *  `none` sentinel (not a droppable ware). Ordered by the content's own good order. */
+/** The content set's goods in its own order, minus the `none` sentinel, which is not a droppable ware. */
 export function menuGoodsFromContent(content: {
   goods: readonly { typeId: number; id: string; name?: string | undefined }[];
 }): MenuGoodEntry[] {
@@ -129,7 +107,6 @@ export function menuGoodsFromContent(content: {
     .map((g) => ({ goodType: g.typeId, id: g.id, label: g.name ?? g.id }));
 }
 
-/** Mount the game tool panel for one entry, returning its controller + the client→tile map + claim. */
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
   const { uiscale } = deps;
 
@@ -137,7 +114,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     const c = clientToScreen(deps.canvas, deps.app.renderer.resolution, clientX, clientY);
     const w = screenToWorld(deps.camera(), c.x, c.y);
     const t = worldToTile(w.x, w.y, deps.elevation);
-    // worldToTile yields half-cell nodes - bound against the node grid.
+    // `worldToTile` yields half-cell nodes, so the bound is the node grid, not the cell grid.
     const bounds = nodeBounds(deps.mapSize);
     if (t.col < 0 || t.col >= bounds.width || t.row < 0 || t.row >= bounds.height) return null;
     return { col: t.col, row: t.row };

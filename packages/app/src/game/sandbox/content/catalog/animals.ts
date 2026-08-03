@@ -1,11 +1,6 @@
 /**
- * The sandbox wildlife catalog: `animaltypes.ini` records transcribed verbatim (values from the
- * decoded IR, `Data/logic/animaltypes.ini`) on their REAL tribe ids, so a scene's spawns hit the same
- * species rows the real-content browser run resolves art and behaviour by. Deliberate picks: a
- * provokable solitary heavyweight (bear), a passive leader-following herd (stag), an aggressive pack
- * with a data-pinned walking pace (wolf), the hunter scenes' small game (hare, `catalog/hunting.ts`),
- * and the two `catchable` livestock species a scout can claim (cattle, sheep - their tribe slugs are
- * the join key to the fed-animal goods `cattle`/`sheep`).
+ * `Data/logic/animaltypes.ini` records extracted verbatim onto their real tribe ids, so a scene's
+ * spawns hit the same species rows a real-content run resolves art and behaviour by.
  */
 
 import {
@@ -17,8 +12,7 @@ import {
   ANIMAL_TRIBE_WOLVES,
 } from '../../../../catalog/animal-tribes.js';
 
-// Re-exported for the sandbox consumers (scenes, the natural-weapon rows) that address the wildlife
-// through this catalog; the ids' single owner is `catalog/animal-tribes.ts`.
+// Re-exported for convenience; the ids' single owner is `catalog/animal-tribes.ts`.
 export {
   ANIMAL_TRIBE_BEARS,
   ANIMAL_TRIBE_CATTLE,
@@ -28,8 +22,8 @@ export {
   ANIMAL_TRIBE_WOLVES,
 };
 
-/** The wildlife tribe rows (id slugs = the IR `tribes` slugs). No `jobEnables`: an empty tech graph
- *  is what makes a tribe an animal tribe (`isAnimalTribe`). */
+/** The id slugs are the IR `tribes` slugs. No `jobEnables`, because an empty tech graph is what makes a
+ *  tribe an animal tribe. */
 export const SANDBOX_ANIMAL_TRIBES: readonly { typeId: number; id: string }[] = [
   { typeId: ANIMAL_TRIBE_BEARS, id: 'bears' },
   { typeId: ANIMAL_TRIBE_CATTLE, id: 'cattle' },
@@ -39,7 +33,7 @@ export const SANDBOX_ANIMAL_TRIBES: readonly { typeId: number; id: string }[] = 
   { typeId: ANIMAL_TRIBE_WOLVES, id: 'wolves' },
 ];
 
-/** One transcribed `[animaltype]` record (the schema input shape; defaults cover omitted fields). */
+/** The schema input shape for one `[animaltype]` record; schema defaults cover the omitted fields. */
 export interface SandboxAnimal {
   readonly id: string;
   readonly tribeType: number;
@@ -60,7 +54,6 @@ export interface SandboxAnimal {
   readonly warrantable?: boolean;
 }
 
-/** The transcribed `[animaltype]` records (schema defaults cover the omitted false/0 fields). */
 export function buildSandboxAnimals(): readonly SandboxAnimal[] {
   return [
     {

@@ -1,10 +1,7 @@
 /**
- * The frame-timing fold behind both the on-canvas readout and the machine-readable perf handle. Pure
- * and DOM-free so it unit-tests: the overlay it used to live inside can only be checked by eye.
- *
- * The distribution is the part that earns its keep. An average alone cannot tell "this scene is
- * uniformly slow" (p50 close to p99) from "this machine is loaded or GC is spiking" (p50 fine, p99 far
- * above it), and reading the second as the first is how a measurement session goes wrong.
+ * The frame-timing fold behind the on-canvas readout and the machine-readable perf handle. Pure and
+ * DOM-free so it unit-tests. It reports a distribution as well as averages because an average cannot
+ * separate a uniformly slow scene (p50 near p99) from a loaded machine spiking on GC (p50 fine).
  */
 import { TICKS_PER_SECOND } from '@open-northland/sim';
 
@@ -14,9 +11,9 @@ export interface FrameSample {
   readonly tick: number;
   /** Sim steps the fixed-timestep loop advanced this frame (0 when paused; >1 when catching up). */
   readonly steps: number;
-  /** The fixed timestep's MONOTONIC session total, not a per-frame delta. */
+  /** The fixed timestep's monotonic session total, not a per-frame delta. */
   readonly droppedTicks: number;
-  /** The multiplier ASKED for. What the loop delivered is `recent.deliveredSpeed`. */
+  /** The multiplier asked for; `recent.deliveredSpeed` is what the loop delivered. */
   readonly speed: number;
   readonly paused: boolean;
   readonly entities: number;
@@ -26,11 +23,10 @@ export interface FrameSample {
   readonly cpuMs: number;
   readonly simMs: number;
   readonly snapMs: number;
-  /** Render build + submit and the rest of the frame's app work. The three sum to {@link cpuMs}. */
+  /** Render build and submit plus the rest of the frame's app work; `simMs + snapMs + drawMs = cpuMs`. */
   readonly drawMs: number;
 }
 
-/** Smoothed milliseconds, which is what a readout can be looked at steadily. */
 export interface FrameEma {
   readonly frameMs: number;
   readonly cpuMs: number;
@@ -40,22 +36,18 @@ export interface FrameEma {
 }
 
 /**
- * The rolling window a live readout should quote. Everything here is measured over the last
- * {@link RECENT_WINDOW_FRAMES} frames rather than smoothed per frame, because `steps` is an integer:
- * at 60 fps and x1 the loop runs one tick every fifth frame, so a per-frame ratio only ever reads 0 or
- * 5 and no amount of smoothing settles it on the 1 the loop is actually delivering.
+ * Measured over a rolling window rather than smoothed per frame: `steps` is an integer, so at 60 fps
+ * and x1 a per-frame ratio only ever reads 0 or 5, never the 1 the loop is delivering.
  */
 export interface FrameRecent {
-  /** Worst frame in the window, which an average hides. */
   readonly worstMs: number;
-  /** Ticks the loop discarded in the window. */
+  /** Ticks discarded in the window, not the session total. */
   readonly droppedTicks: number;
   /** Delivered tick-rate multiplier over the window: 1 means 12 ticks/s actually ran. */
   readonly deliveredSpeed: number;
   /**
-   * The loop discarded work in this window AND in the one before it, so it is losing ground rather
-   * than recovering from one hitch. Loading a map costs a few ticks on every session; reporting that
-   * as a shortfall would tell every player their machine cannot keep up, seconds after it already has.
+   * Two consecutive windows dropped work, so the loop is losing ground rather than recovering from one
+   * hitch such as a map load.
    */
   readonly sustainedShortfall: boolean;
 }
@@ -68,7 +60,7 @@ export interface FrameDistribution {
 }
 
 export interface FrameStatsReport {
-  /** The newest frame, unsmoothed. Null before the first record. */
+  /** The newest frame, unsmoothed. */
   readonly last: FrameSample | null;
   readonly ema: FrameEma;
   readonly recent: FrameRecent;
@@ -76,32 +68,27 @@ export interface FrameStatsReport {
     readonly frames: number;
     readonly ms: number;
     readonly steps: number;
-    /** Ticks dropped since the window opened, derived from the monotonic session total. */
+    /** Ticks dropped since the window opened. */
     readonly droppedTicks: number;
-    /** Average delivered multiplier over the window: the honest answer to "what speed am I getting". */
     readonly deliveredSpeed: number;
     readonly frameMs: FrameDistribution;
   };
 }
 
-/** Weight of the newest frame in the moving averages (smaller = smoother, slower to react). */
+/** Weight of the newest frame in the moving averages. */
 const SMOOTHING = 0.1;
-/** How long the rolling window holds before starting over, so a spike or a stall leaves the readout
- *  again once it stops happening. Wall time, not a frame count: a frame budget would make the window
- *  eight seconds long on the struggling machine that most needs a quick answer, and under one on a
- *  144 Hz display that needs none. */
+/** Window length in wall time, not frames: a frame count would stretch the window on exactly the slow
+ *  machine that needs a quick answer. */
 const RECENT_WINDOW_MS = 1000;
 
 /**
- * A frame this long was not a rendered frame: a blocking map load, or a tab the browser stopped
- * painting. The loop rightly discards the wall-clock it missed, but that is not the sim failing to keep
- * up. Approximation with room to spare: the worst genuinely slow frame observed on the heaviest map at
- * x10 was about 80 ms.
+ * Above this a frame was a blocking load or an unpainted tab rather than a slow frame. Approximation
+ * with room to spare: the worst genuinely slow frame observed was about 80 ms.
  */
 const STALL_FRAME_MS = 500;
 
-/** Log-spaced frame-time buckets: 1 ms to roughly 7 s at 1.15x growth. Fixed size, so a session of any
- *  length costs the same 64 numbers. Quantiles are bucket upper edges - read them as +/- 15%. */
+/** Log-spaced frame-time buckets: 1 ms to roughly 7 s at 1.15x growth, fixed size for any session
+ *  length. Quantiles are bucket upper edges, so read them as +/- 15%. */
 const BUCKET_COUNT = 64;
 const BUCKET_BASE_MS = 1;
 const BUCKET_GROWTH = 1.15;
@@ -161,8 +148,8 @@ export class FrameStats {
     this.avgDrawMs = ema(this.avgDrawMs, sample.drawMs);
     this.windowSteps += sample.steps;
     this.recordRecent(sample);
-    // Last: a rolling window opening on this frame must start from the PREVIOUS total, or this frame's
-    // drops fall between the two windows and the readout blinks clean while the loop is still dropping.
+    // Assigned last: a window opening on this frame must start from the previous total, or this
+    // frame's drops fall between the two windows.
     this.droppedTotal = sample.droppedTicks;
   }
 
@@ -176,7 +163,7 @@ export class FrameStats {
       this.recentDroppedAtStart = this.droppedTotal;
     }
     this.recentWallMs += sample.elapsedMs;
-    // Still the worst frame, which is a raw fact about frame time and reported as one.
+    // A stall still counts here: worst frame time is a raw fact.
     this.recentWorstMs = Math.max(this.recentWorstMs, sample.elapsedMs);
     if (sample.elapsedMs >= STALL_FRAME_MS) {
       // This frame's own total, not the previous one: everything discarded up to here is excluded.
@@ -190,8 +177,8 @@ export class FrameStats {
     }
   }
 
-  /** Open a fresh measurement window. The EMAs keep their values: they describe "recently", not the
-   *  window, and resetting them would blank the readout for a second every time an agent measures. */
+  /** Opens a fresh measurement window. The EMAs keep their values: they describe "recently", not the
+   *  window. */
   reset(): void {
     this.frames = 0;
     this.windowMs = 0;

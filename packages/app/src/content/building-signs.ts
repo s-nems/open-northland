@@ -10,19 +10,15 @@ import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { type GatheringNodeRef, nodeRefFrom } from './resource-gfx/refs.js';
 
 /**
- * The building-sign art join: resolve the original's player-coloured `ls_temp` sign records - the
- * worker disc (`sign 01`, crossed hammer+axe), the carrier pennant (`sign 05`), the three residence
- * banners (`residence sign 01/02/03`: the rings banner = a childless couple, the plain banner = a
- * single, the wreath banner = a couple with a child) and the construction stand (`construction sign`)
- * - plus the garrison flag's star ladder ({@link GARRISON_RECORDS}) into the per-player
- * {@link BuildingSignGfx} the render badge + construction-sign layers draw.
- * Source basis: the record names are the ones `the original` references and `landscapes.cif` binds per
- * player (`playerNN ...`); the banner→family-state mapping and the carrier→pennant (`sign 05`)
- * assignment are the project owner's recalled original behavior, pending an in-game recheck (signs
- * 01-04 all bind the same disc bob, so the disc for workers is the only readable choice).
- * Named approximations: each residence banner authors an 8-frame
- * wave loop and is drawn as a still (first frame), and the records' `ls_temp_s` shadow twin is not
- * loaded - markers draw shadow-less.
+ * The building-sign art join: resolve the original's player-coloured `ls_temp` sign records and the
+ * garrison flag's star ladder into the per-player {@link BuildingSignGfx} the render badge and
+ * construction-sign layers draw.
+ *
+ * Source basis: the record names are the ones `the original` references and `landscapes.cif` binds per player
+ * (`playerNN ...`); the banner→family-state and carrier→pennant assignments are observed original
+ * behavior pending an in-game recheck (signs 01-04 all bind the same disc bob, so the disc for workers is
+ * the only readable choice). Named approximations: each residence banner authors an 8-frame wave loop and
+ * is drawn as a still, and the records' `ls_temp_s` shadow twin is not loaded.
  */
 
 /** The `[GfxLandscape]` record name suffix each sign kind resolves (prefixed `playerNN `). */
@@ -35,8 +31,7 @@ const KIND_RECORD: Readonly<Record<BuildingSignKind, string>> = {
   construction: 'construction sign',
 };
 
-/** The garrison-flag records in star order - `soldier 01` flies one star, `soldier 05` five. Each
- *  authors one wave loop. */
+/** The garrison-flag records in star order: `soldier 01` flies one star, `soldier 05` five. */
 const GARRISON_RECORDS: readonly string[] = [
   'soldier 01',
   'soldier 02',
@@ -48,8 +43,8 @@ const GARRISON_RECORDS: readonly string[] = [
 /** Player slots the original ships recoloured sign records for (`player01`...`player10`). */
 const SIGN_PLAYER_COUNT = 10;
 
-/** One player slot's resolved sign refs: the served `ls_temp.human_playerNN` stem + a bob per kind,
- *  plus the garrison flag's per-star wave loops when that slot's `soldier` records resolved. */
+/** One player slot's resolved sign refs: the served `ls_temp.human_playerNN` stem, a bob per kind, and
+ *  the garrison flag's per-star wave loops when that slot's `soldier` records resolved. */
 export interface BuildingSignPlayerRef {
   readonly stem: string;
   readonly bobByKind: Readonly<Record<BuildingSignKind, number>>;
@@ -57,9 +52,8 @@ export interface BuildingSignPlayerRef {
 }
 
 /**
- * Resolve each player slot's sign records from the IR (pure, unit-tested). A slot resolves only when
- * every kind's record is present with a frame and all name one served atlas stem; anything else leaves
- * the slot `undefined`.
+ * Resolve each player slot's sign records from the IR. A slot resolves only when every kind's record is
+ * present with a frame and all name one served atlas stem; anything else leaves the slot `undefined`.
  */
 export function resolveBuildingSignRefs(
   ir: ContentIr | null,
@@ -117,9 +111,8 @@ function resolveSlot(
 }
 
 /** One slot's five garrison-flag wave loops, or `undefined` unless all five resolve off the slot's own
- *  sheet - a partial ladder would fly the wrong star count, so the flag degrades to the placeholder
- *  rather than to a shorter ladder. Unlike the six sign kinds it is optional: a set without it still
- *  draws every door badge. */
+ *  sheet: a partial ladder would fly the wrong star count, so the flag degrades to the placeholder
+ *  instead. It is optional, unlike the six sign kinds. */
 function resolveGarrisonBobs(
   byName: ReadonlyMap<string, LandscapeGfxRow>,
   prefix: string,
@@ -136,8 +129,7 @@ function resolveGarrisonBobs(
   return loops;
 }
 
-/** A looping record's frame list: the highest state's bobs in authored order (the wave cycle). Same
- *  top-state rule `nodeBob` applies, which keeps only that state's first bob. */
+/** A looping record's frame list: the highest state's bobs in authored order (the wave cycle). */
 function waveBobs(record: LandscapeGfxRow): readonly number[] {
   let best: { state: number; bobIds: readonly number[] } | undefined;
   for (const f of record.frames ?? []) {
@@ -147,9 +139,8 @@ function waveBobs(record: LandscapeGfxRow): readonly number[] {
 }
 
 /**
- * Load the per-player sign sheets for the resolved refs ({@link resolveBuildingSignRefs}) - each slot's
- * `ls_temp.human_playerNN` atlas, degraded per slot on a missing atlas (a partial `content/`). Returns
- * `null` when nothing resolves or no atlas loads (a checkout without `content/`).
+ * Load the per-player sign sheets for the resolved refs, degrading per slot on a missing atlas. `null`
+ * when nothing resolves or no atlas loads.
  */
 export async function loadBuildingSignGfx(): Promise<BuildingSignGfx | null> {
   const refs = resolveBuildingSignRefs(await loadIr());

@@ -31,17 +31,12 @@ import {
 } from '../../ids/index.js';
 
 /**
- * The sandbox tribe's `jobEnables` tech graph - what the sim's `buildingEnabled`/`goodEnabled`
- * gate reads. Each edge means a settler of `jobType` being alive in the tribe unlocks `targetId`.
- *
- * Source basis: a faithful subset of the extracted viking `tribetypes.ini jobEnables` (ir.json) - every edge
- * below is a real viking edge, restricted to the collector's economy edges, the husbandry gates, and the two
- * soldier specializations the sandbox models (not the full 265-edge graph). The collector/soldier rows reuse
- * the original typeIds; the husbandry rows resolve against the sandbox's own good ids and rebased slot jobs.
+ * Each edge means a settler of `jobType` alive in the tribe unlocks `targetId`. Source basis: a faithful
+ * subset of the extracted viking `tribetypes.ini jobEnables`, not its full 265-edge graph.
  */
 
-/** The economy houses gated on the collector (real ir.json: job 8 is in each one's enabling set); the HQ
- *  carries no edge, the ungated bootstrap building that seeds the first collector. */
+/** Gated on the collector (`ir.json`: job 8 is in each one's enabling set); the HQ carries no edge, so it
+ *  can bootstrap the first collector. */
 const COLLECTOR_GATED_HOUSES: readonly number[] = [
   BUILDING_HOME_00,
   BUILDING_WAREHOUSE_00,

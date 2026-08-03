@@ -47,7 +47,7 @@ const GLYPH_INSET = 4;
 const VALUE_CELL_FILL = 0x161009;
 /** The decoded `miscwindow` id of the original extras-window title ("Okno Dodatków"). */
 const EXTRAS_TITLE_STRING_ID = 500;
-/** Ctrl/Cmd-click stepper multiplier (feature spec: a held Ctrl steps by ten). */
+/** Ctrl/Cmd-click stepper multiplier. */
 const CTRL_STEP = 10;
 
 const faceDiffers = (a: AssistantCounterFace, b: AssistantCounterFace): boolean =>
@@ -59,26 +59,23 @@ const countersEqual = (
 ): boolean => COUNTER_IDS.every((id) => !faceDiffers(a[id], b[id]));
 
 /**
- * The grant switches' sim seam: the switch faces mirror the sim's per-player grant list, a click
- * writes through it (one `setAssistantGrant` command per mapped good - the mapping is the seam
- * builder's content join, `view/assistant-grants.ts`).
+ * The grant switches' sim seam: the faces mirror the sim's per-player grant list and a click writes one
+ * `setAssistantGrant` command per mapped good.
  */
 export interface ExtrasGrantsSeam {
-  /** The live per-switch state (a switch is ON when every good it flips is granted). */
+  /** The live per-switch state; a switch is ON when every good it flips is granted. */
   read(): Readonly<Record<AssistantGrantId, boolean>>;
-  /** Flip one switch; false when the write was rejected (a read-only session, an unmapped switch) -
-   *  the window must not echo a rejected write, or its face would lie until the next open. */
+  /** Flip one switch; false when the write was rejected, which the window must not echo. */
   set(id: AssistantGrantId, enabled: boolean): boolean;
 }
 
 /**
- * The counters' sim seam (`view/assistant-counters.ts`): the faces mirror the sim's per-player
- * counter block - which DRAINS as the queue produces, so the window re-reads it every frame - and a
- * click writes one absolute `setAssistantCounter` through it.
+ * The counters' sim seam: the faces mirror the sim's per-player counter block, which drains as the queue
+ * produces, so the window re-reads it every frame.
  */
 export interface ExtrasCountersSeam {
   read(): Readonly<Record<AssistantCounterId, AssistantCounterFace>>;
-  /** Set one counter's absolute face; false when rejected (a read-only session) - no echo then. */
+  /** Set one counter's absolute face; false when rejected, and no echo then. */
   set(id: AssistantCounterId, value: number, infinite: boolean): boolean;
 }
 
@@ -97,12 +94,9 @@ export interface ExtrasWindow extends ToolWindow {
 }
 
 /**
- * Build the extras-window controller over the pure {@link layoutExtrasMenu} geometry, on the shared
- * {@link createWindowShell} lifecycle and the build menu's chrome (tiled wood body, rust headline,
- * button-card rows; every bitmap degrades to flat Graphics). Rebuilt on open and on any control click
- * (every click moves a visible value, and the window is a dozen runs). Both control blocks live in
- * the sim: grants read on open, counters re-read every frame (the queues drain as they produce),
- * each written through its seam on click with a local echo while the command applies next tick.
+ * Build the extras-window controller: the whole window is rebuilt on open and on any control click.
+ * Both control blocks live in the sim, with grants read on open and counters re-read every frame, each
+ * written through its seam on click with a local echo while the command applies next tick.
  */
 export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const { ctx } = deps;
@@ -110,8 +104,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const shell = createWindowShell(deps.container);
   const back = new Container();
   shell.container.addChildAt(back, 0); // the tiled bitmap fills, behind the shell's frame Graphics
-  // Right of the strip, dropping from the extras (chest) button - same reasoning as the building
-  // menu's origin: it clears the top-left debug overlay and anchors the window to its button.
+  // Right of the strip, dropping from the extras button, which clears the top-left debug overlay.
   const origin = {
     x: ctx.layout.width + WIN_PAD * scale,
     y: ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y,
@@ -123,10 +116,8 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   /** Screen position per run, same order as `shell.runs` - `place()` replays them. */
   let runsAt: { x: number; y: number }[] = [];
   /** The live counter block as read at the last local write. While the sim still shows exactly this
-   *  block, the write has not applied (a queued command, a paused game) and the click's echo must
-   *  hold - a frame countdown would snap back under pause. Any live change clears it; with several
-   *  writes pending (rapid clicks) the face may briefly show an intermediate value until the last
-   *  one applies - an accepted transient, cheaper than tracking a pending-write count. */
+   *  block the write has not applied, so the click's echo must hold; any live change clears it. With
+   *  several writes pending the face may briefly show an intermediate value, an accepted transient. */
   let echoBase: AssistantState['counters'] | null = null;
 
   const clear = (): void => {
@@ -211,7 +202,6 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       shell.graphics.rect(band.x, band.y, band.w, band.h).fill(HEADLINE_FILL);
     }
     drawCloseX(shell.graphics, layout.closeRect, scale);
-    // Decoded title (`miscwindow` 500 "Okno Dodatków") with the catalog fallback.
     addRunCentred(
       ctx.uiString('miscwindow', EXTRAS_TITLE_STRING_ID, layout.title),
       'white',
@@ -242,7 +232,6 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       }
       drawStepper(c.minusRect, 'minus');
       drawStepper(c.plusRect, 'plus');
-      // The value sits in a recessed cell between the steppers.
       shell.graphics.rect(c.valueRect.x, c.valueRect.y, c.valueRect.w, c.valueRect.h).fill(VALUE_CELL_FILL);
       drawBevel(shell.graphics, c.valueRect, scale, 'pressed');
       if (c.infinite) drawInfinityGlyph(c.valueRect);
@@ -258,7 +247,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
         card.y + (card.h - TEXT_CAP_H * scale) / 2,
         ROW_PX,
       );
-      drawPlate(g.switchRect, g.on); // lit when ON, dull when OFF
+      drawPlate(g.switchRect, g.on);
       if (!g.on && ctx.bitmaps.button !== undefined)
         drawBevel(shell.graphics, g.switchRect, scale, 'pressed');
       addRunCentred(
@@ -277,11 +266,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
 
   const place = (): void => {
     if (menuLayout === null) return;
-    // The sim drains counters as the queues produce; mirror it without waiting for a reopen. A
-    // rebuild only when a face actually changed - the frame's usual cost is the comparison.
+    // The sim drains counters as the queues produce; mirror that without waiting for a reopen, and
+    // rebuild only when a face actually changed.
     const live = deps.counters.read();
     if (echoBase === null || !countersEqual(live, echoBase)) {
-      echoBase = null; // the sim moved: whatever we wrote is applied (or overtaken) - show live
+      echoBase = null; // the sim moved: whatever we wrote is applied or overtaken, so show live
       if (!countersEqual(state.counters, live)) {
         state = { ...state, counters: live };
         rebuild();
@@ -307,7 +296,6 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (shell.isOpen()) close();
       else {
         shell.setOpen(true);
-        // The sim owns both blocks' state.
         state = { counters: deps.counters.read(), grants: deps.grants.read() };
         echoBase = null; // a fresh read has nothing pending to hold
         rebuild();
@@ -328,7 +316,6 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
           rebuild();
           break;
         case 'counter': {
-          // Ctrl (or Cmd) steps by ten - the coarse stepper the spec asks for.
           const next = adjustCounter(state, hit.id, hit.delta * (mods?.bigStep === true ? CTRL_STEP : 1));
           const face = next.counters[hit.id];
           if (next !== state && deps.counters.set(hit.id, face.value, face.infinite)) {
@@ -355,9 +342,9 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
           }
           break;
         case 'window':
-          break; // a click on the window body is consumed, nothing to do
+          break; // a click on the window body is consumed
         default: {
-          const unreachable: never = hit; // exhaustive: a new hit kind fails to compile here
+          const unreachable: never = hit;
           return unreachable;
         }
       }

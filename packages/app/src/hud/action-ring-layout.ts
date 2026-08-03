@@ -2,73 +2,59 @@ import type { GuiFrameName } from '../content/gui-atlas-map.js';
 import { contains, type Rect } from './geometry.js';
 
 /**
- * The settler action menu's geometry - the radial arm footprint the contextual command buttons fan out on
- * around a selected settler, transcribed from the original engine. The menu content (which buttons, which
- * icons) is plain data in `action-ring-menu.ts`.
- *
- * The current layout uses up to five short button groups around a 232 px box centered on the cursor.
- * Its 100 px arm offset, 32 px button step, and 5 px corner nudge are project-maintained approximations
- * that need visual confirmation against the running original.
- * Pure geometry (no Pixi, no DOM), so the layout + hit-test are unit-tested headlessly (the twin of
- * `hud/tool-panel/layout.ts`).
+ * Radial geometry for the settler action menu: up to five short button groups around a 232 px box centred
+ * on the cursor. The 100 px arm offset, 32 px button step, and 5 px corner nudge are approximations
+ * awaiting visual confirmation against the running original.
  */
 
-/** The GUI-atlas frame name a button draws; the view resolves it to an index. Narrowed to the sheet's own
- *  names, so a typo'd icon fails to compile rather than throwing when the ring first draws. */
 export type ActionIconFrame = GuiFrameName;
 
-/** One contextual action a menu button issues - a discriminated union so the view maps it to behaviour. */
+/** One contextual action a menu button issues. */
 export type ActionButton =
   | {
-      /** The "change profession" button - opens the profession list window (a DOM panel). The one live default button. */
       readonly kind: 'open-jobs';
       readonly id: 'changeProfession';
       readonly icon: ActionIconFrame;
     }
   | {
-      /** The scout's "Erect Signpost" button - arms the click-to-place mode (the next world click issues
-       *  `placeSignpost`). Shown only on the scout's menu, in the original's top-right slots. */
+      /** Arms the click-to-place mode; the next world click issues `placeSignpost`. */
       readonly kind: 'erect-signpost';
       readonly id: 'erectSignpost';
       readonly icon: ActionIconFrame;
     }
   | {
-      /** "Attack Position" - arms the attack-move pick mode. */
+      /** Arms the attack-move pick mode. */
       readonly kind: 'attack-move';
       readonly id: 'attack';
       readonly icon: ActionIconFrame;
     }
   | {
-      /** "Find a partner" - issues the sim `marry` order (shown only for an unmarried eligible adult). */
       readonly kind: 'marry';
       readonly id: 'marry';
       readonly icon: ActionIconFrame;
     }
   | {
-      /** "Assign home" - arms the click-a-house pick mode (shown for any adult settler). */
+      /** Arms the click-a-house pick mode. */
       readonly kind: 'assign-house';
       readonly id: 'assign_house';
       readonly icon: ActionIconFrame;
     }
   | {
-      /** "Make a son / daughter" - issues the sim `makeChild` order (shown for a married woman with
-       *  no growing child). Two instances, one per sex. */
       readonly kind: 'make-child';
       readonly id: 'make_son' | 'make_daughter';
       readonly sex: 'male' | 'female';
       readonly icon: ActionIconFrame;
     }
   | {
-      /** A default-menu button whose action is not yet implemented - drawn + tooltipped, but inert on click. */
+      /** A default-menu button that is drawn and tooltipped but inert on click. */
       readonly kind: 'placeholder';
-      /** Stable id (keys the retained visual, and is what a test asserts). */
+      /** Stable id keying the retained visual. */
       readonly id: string;
       readonly icon: ActionIconFrame;
     };
 
-/** One command family placed on a single arm (group-type 0..4) of the menu. */
 export interface ActionGroup {
-  /** The original engine group-type (0..4) - selects the arm the buttons sit on. */
+  /** Original engine group-type (0..4): the arm the buttons sit on. */
   readonly group: number;
   readonly buttons: readonly ActionButton[];
 }
@@ -76,24 +62,19 @@ export interface ActionGroup {
 /** A rect in screen (canvas) pixels. */
 export type PlacedRect = Rect;
 
-/** A button resolved to its on-screen square. */
 export interface PlacedActionButton {
   readonly button: ActionButton;
   readonly rect: PlacedRect;
 }
 
-/** A menu resolved to screen space: every button's square + the overall bounding box. */
 export interface ActionRingLayout {
   readonly buttons: readonly PlacedActionButton[];
-  /**
-   * The axis-aligned bounding box of all buttons (e.g. for placing UI relative to the menu). The input router
-   * hit-tests individual buttons ({@link hitTestActionRing}), not this box, so a click in the gaps between the
-   * arms still reaches the world / the unit underneath.
-   */
+  /** Bounding box of all buttons. Hit-testing uses the individual squares, so a click in the gaps
+   *  between arms still reaches the world underneath. */
   readonly bounds: PlacedRect;
 }
 
-// --- Geometry in project design pixels, before UI scaling -----------------------------------------------
+// Design pixels, before UI scaling.
 
 /** Button square edge (`SRectangle(x-0x10, y-0x10, 0x20, 0x20)`). */
 const ACTION_BUTTON_PX = 0x20;
@@ -107,35 +88,28 @@ const ACTION_INNER_ARM_PX = 0x44;
 const ACTION_EDGE_NUDGE_PX = 5;
 
 /**
- * The action menu draws smaller than the shared HUD uiscale: at the 1.4× default the full-size ring
- * crowded the selected settler, so the whole footprint (buttons + arms + steps) runs at 75% of the HUD
- * scale - a user-requested ~25% shrink, a deliberate deviation from the original's 1:1 size (source
- * basis); the pinned arm proportions are untouched (everything scales by the one factor).
+ * The whole ring footprint runs at 75% of the shared HUD scale so it does not crowd the selected settler:
+ * a deliberate deviation from the original's 1:1 size (approximation).
  */
 export const ACTION_RING_UI_FACTOR = 0.75;
 
 /**
- * The ring's effective scale for the shared `?uiscale=`: clamped ≥1 like every HUD consumer, then shrunk
- * by {@link ACTION_RING_UI_FACTOR}. The one place ring clamping lives - both the icon bake and
- * {@link layoutActionRing} must consume this same value or the drawn icon and its hit-rect drift apart.
+ * The ring's effective scale for `?uiscale=`: clamped >= 1, then shrunk by the ring factor. The icon bake
+ * and the layout must consume this same value or a drawn icon and its hit-rect drift apart.
  */
 export function actionRingScale(uiscale: number): number {
   return Math.max(1, uiscale) * ACTION_RING_UI_FACTOR;
 }
 
-/** Group-type constants (indices into {@link ARMS}) - which arm a command family sits on. Consumed by the
- *  menu data (`action-ring-menu.ts`) and the layout tests. */
+/** Group-type constants: indices into `ARMS`. */
 export const BOTTOM_ARM = 0;
 export const TOP_ARM = 1;
 export const RIGHT_ARM = 2;
 export const LEFT_ARM = 3;
 
 /**
- * Per group-type (0..4): where its arm sits and how its buttons corner-nudge. `base` is the arm's fixed
- * offset from the menu centre (design px); `axis` is the axis the buttons march along; `nudge` is the
- * first/last corner bias. Buttons march in reading order along the axis (left→right / top→bottom) - the
- * original's per-arm order reversal is moot here (its command→slot table is unrecoverable, so we place the
- * best-guess icon into the slot the user read off the original), while the symmetric footprint is kept.
+ * Per group-type (0..4): `base` is the arm's fixed offset from the menu centre in design px, `axis` the
+ * axis its buttons march along in reading order, `nudge` the first/last corner bias.
  */
 interface ArmSpec {
   readonly axis: 'x' | 'y';
@@ -144,35 +118,35 @@ interface ArmSpec {
 }
 
 const ARMS: readonly ArmSpec[] = [
-  // group 0 - bottom row: y = centreY + 100, x centred, corner nudge y −5.
+  // group 0: bottom row.
   { axis: 'x', base: { x: 0, y: ACTION_ARM_PX }, nudge: { x: 0, y: -ACTION_EDGE_NUDGE_PX } },
-  // group 1 - top row: y = centreY − 100, x centred, corner nudge y +5.
+  // group 1: top row.
   { axis: 'x', base: { x: 0, y: -ACTION_ARM_PX }, nudge: { x: 0, y: ACTION_EDGE_NUDGE_PX } },
-  // group 2 - right column: x = centreX + 100, y centred, corner nudge x −5.
+  // group 2: right column.
   { axis: 'y', base: { x: ACTION_ARM_PX, y: 0 }, nudge: { x: -ACTION_EDGE_NUDGE_PX, y: 0 } },
-  // group 3 - left column: x = centreX − 100, y centred, corner nudge x +5.
+  // group 3: left column.
   { axis: 'y', base: { x: -ACTION_ARM_PX, y: 0 }, nudge: { x: ACTION_EDGE_NUDGE_PX, y: 0 } },
-  // group 4 - inner-left column: x = centreX − 0x44, y centred, corner nudge x +5.
+  // group 4: inner-left column.
   { axis: 'y', base: { x: -ACTION_INNER_ARM_PX, y: 0 }, nudge: { x: ACTION_EDGE_NUDGE_PX, y: 0 } },
 ];
 
-/** A button square centred at `(cx, cy)` (screen px), scaled: the placed rect. */
+/** A button square centred at `(cx, cy)` in screen px. */
 function squareAt(button: ActionButton, cx: number, cy: number, s: number): PlacedActionButton {
   const btn = ACTION_BUTTON_PX * s;
   const half = btn / 2;
   return { button, rect: { x: cx - half, y: cy - half, w: btn, h: btn } };
 }
 
-/** Place one group's buttons on its arm in reading order. `s` is the uiscale; `cx,cy` the menu centre (px). */
+/** Place one group's buttons on its arm in reading order; `s` is the ring scale, `cx,cy` the centre in screen px. */
 function placeArm(group: ActionGroup, cx: number, cy: number, s: number): PlacedActionButton[] {
   const arm = ARMS[group.group];
   if (arm === undefined) return [];
   const n = group.buttons.length;
   const step = ACTION_STEP_PX * s;
-  const halfSpan = (step / 2) * (n - 1); // centre N buttons: the first sits halfSpan off centre.
+  const halfSpan = (step / 2) * (n - 1);
   const out: PlacedActionButton[] = [];
   for (let i = 0; i < n; i++) {
-    const along = -halfSpan + step * i; // reading order: i=0 is left-/top-most.
+    const along = -halfSpan + step * i;
     let centreX = cx + arm.base.x * s + (arm.axis === 'x' ? along : 0);
     let centreY = cy + arm.base.y * s + (arm.axis === 'y' ? along : 0);
     if (i === 0 || i === n - 1) {
@@ -221,12 +195,10 @@ function clampOnScreen(placed: PlacedActionButton[], screenW: number, screenH: n
 }
 
 /**
- * Lay the default menu's groups out around a screen-space centre. Each group fills its arm with the
- * original's centring + step footprint (scaled by `scale` - the ring's effective scale, see
- * {@link actionRingScale}; sub-1 values are legal, the shrunk ring at uiscale 1 is 0.75), then the whole
- * menu is nudged to stay inside `[0,screenW]×[0,screenH]` (the original clamps its 232px box with
- * `rect.PlaceInside`; we clamp the actual button bounds, which also covers a long arm overflowing the
- * nominal box). Pure - the view draws from this and the input layer hit-tests it.
+ * Lay the menu's groups out around a screen-space centre, then nudge the whole menu inside
+ * `[0,screenW]x[0,screenH]`. `scale` is the ring's effective scale, where sub-1 values are legal. The
+ * clamp uses the actual button bounds rather than the original's nominal 232 px box, so a long arm
+ * overflowing that box is covered too.
  */
 export function layoutActionRing(
   groups: readonly ActionGroup[],

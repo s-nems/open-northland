@@ -20,11 +20,11 @@ export function syntheticSpriteSheet(): SpriteSheet {
 
 /**
  * Load decoded world sprites for normal map and scene play. A checkout without decoded content falls back
- * to the reproducible hand-authored markers; renderer verification overrides remain confined to `?shot`.
+ * to the reproducible hand-authored markers.
  */
 export async function resolveSpriteSheet(
-  /** The goods of the content set the sim will run (demo/scene) - keys the per-good carry looks; the
-   *  ids are content-relative numbers, so only the entry that builds the sim knows them. */
+  /** The goods of the content set the sim will run - keys the per-good carry looks. The ids are
+   *  content-relative, so only the entry that builds the sim knows them. */
   goods: readonly GoodRef[] = [],
 ): Promise<SpriteSheet> {
   try {

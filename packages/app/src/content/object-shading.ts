@@ -3,20 +3,15 @@ import type { BrightnessField } from '@open-northland/render';
 import type { ContentIr } from './ir/rows.js';
 
 /**
- * The `[landscapetype]` names whose objects the original draws full-bright, exempt from the baked
- * `embr` shading: standing + felled trees. Measured on the bridge-map corpus (source basis
- * "brightness"): tree canopies keep full luminance even anchored on embr=0 border cells (ratio ≈ 1.0
- * across the lane, n=118), while mine decals, stones and grass track the lane (masked opaque-pixel
- * ratio ×0.58 → ×1.58). Only standing trees were measured; `tree falling` is grouped with them by
- * kinship (same art family mid-fall), not by measurement. The true engine rule is unknown, so this
- * name-pinned exemption is the measured boundary and an approximation beyond it.
+ * The `[landscapetype]` names whose objects the original draws full-bright, exempt from the baked `embr`
+ * shading. Measured on the bridge-map corpus (source basis "brightness"): tree canopies keep full
+ * luminance even on embr=0 border cells (ratio ≈ 1.0, n=118), while mine decals, stones and grass track
+ * the lane (×0.58 → ×1.58). Only standing trees were measured, so grouping `tree falling` with them is an
+ * approximation beyond that boundary.
  */
 const UNSHADED_LANDSCAPE_TYPES: ReadonlySet<string> = new Set(['tree', 'tree falling']);
 
-/**
- * The logicType ids whose objects stay full-bright ({@link UNSHADED_LANDSCAPE_TYPES}), resolved from
- * the IR `[landscapetype]` table by name so no numeric id hardcodes.
- */
+/** Resolved from the IR `[landscapetype]` table by name, so no numeric id is hardcoded. */
 export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): ReadonlySet<number> {
   const ids = new Set<number>();
   for (const t of landscape ?? []) {
@@ -29,11 +24,9 @@ export function unshadedLogicTypeIds(landscape: ContentIr['landscape']): Readonl
 
 /**
  * The multiplier one object placed at half-cell node `(hx, hy)` is graded by: the mean of the lane over
- * the ground cells its footprint covers. A footprint-less record (the flat decals) has nothing to
- * average over, so its own cell stands.
- *
- * Approximation: the original folds a single shade argument into a bob's alpha blit, and no readable
- * source says which cell it reads for a bob spanning many.
+ * the ground cells its footprint covers. A footprint-less record has nothing to average over, so its own
+ * cell stands. Approximation: the original folds a single shade argument into a bob's alpha blit, and no
+ * readable source says which cell it reads for a bob spanning many.
  */
 export function footprintBrightness(
   field: BrightnessField,

@@ -1,27 +1,18 @@
 import { VIKING } from '../../catalog/buildings.js';
 
-/**
- * The per-tribe personal-name pools {@link import('./index.js').characterName} draws from. Data only -
- * the grid math that turns an entity id into a name stays in `character-names/index.ts`.
- */
+/** The per-tribe personal-name pools; the grid math that turns an entity id into a name lives next door. */
 
 /** A tribe's given names, split by the sex of the body a settler draws. */
 export interface NamePool {
-  /** Male given names. Also the source of patronymic roots (a father's name is a male given name). */
+  /** Male given names, and the source of patronymic roots. */
   readonly male: readonly string[];
-  /** Female given names. */
   readonly female: readonly string[];
 }
 
 /**
- * Hand-authored Old Norse given names, split by sex to match the drawn body. Drawn from common historical
- * Norse name lists; the original game carries none of these, so this is an independent approximation, not
- * extracted content.
- *
- * With the surname cross product (see {@link import('./index.js').characterName}) these give
- * 101 × 101 = 10 201 distinct male full names and 72 × 101 = 7 272 female ones. The male pool is the
- * larger because male settlers heavily outnumber female ones, so more of them need distinct names; both
- * counts sit far past any real settlement, so a repeat is very rare.
+ * Hand-authored Old Norse given names, split by sex to match the drawn body. The original game carries
+ * none of these, so the list is an independent approximation drawn from historical Norse name lists. The
+ * male pool is larger because male settlers outnumber female ones, so more of them need distinct names.
  */
 const VIKING_NAMES: NamePool = {
   male: [
@@ -203,10 +194,9 @@ const VIKING_NAMES: NamePool = {
   ],
 };
 
-/** Name pools by tribe. Add a faction here to give its settlers faction-appropriate names. */
 export const NAME_POOLS: Readonly<Record<number, NamePool>> = {
   [VIKING]: VIKING_NAMES,
 };
 
-/** The pool used for a tribe that has no pool of its own yet - the only content tribe today is viking. */
+/** The pool for a tribe that has none of its own. */
 export const FALLBACK_POOL = VIKING_NAMES;

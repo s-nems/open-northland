@@ -4,9 +4,8 @@ import { diag } from '../../diag/index.js';
 import type { BobSeqRow, ContentIr, GfxAnimAtomicRow, LandscapeGfxRow } from './rows.js';
 
 /** The served `/bobs/` atlas stem (`<bmd-basename-minus-.bmd>.<palette>`, the pipeline's naming) for a
- *  landscape gfx / building bob record, or `undefined` when it names no body bob or palette (a pure-logic
- *  record with no drawable atlas). The one home for the `.bmd`→stem convention the gathering-ref,
- *  map-object and shadow joins share. */
+ *  landscape gfx / building bob record, or `undefined` when it names no body bob or palette. The one home
+ *  for the `.bmd`→stem convention. */
 export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteName'>): string | undefined {
   const bmd = record.bmd;
   if (bmd === undefined || bmd.trim() === '') return undefined;
@@ -14,16 +13,15 @@ export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteNa
   return `${bmd.slice(bmd.lastIndexOf('/') + 1).replace(/\.bmd$/i, '')}.${record.paletteName}`;
 }
 
-/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`).
- *  A name-pinned selector, not a data flag: no extracted lane distinguishes a bridge (`logicType` is
- *  `void` for most records carrying a walk area, dungeon walls and statues included). `ice bridge`
- *  sits in an ice-wall group and is left out by that same judgement, not by evidence. */
+/** The `[GfxLandscape]` edit group holding the original's bridges (`landscapes.cif` `EditGroups`). A
+ *  name-pinned selector, not a data flag: no extracted lane distinguishes a bridge (`logicType` is `void`
+ *  for most records carrying a walk area). `ice bridge` sits in an ice-wall group and is left out by that
+ *  same judgement, not by evidence. */
 export const BRIDGE_EDIT_GROUP = 'misc_bridges';
 const BRIDGE_GROUP_KEY = BRIDGE_EDIT_GROUP.toLowerCase();
 
 /** Whether a landscape record is one of the original's bridges ({@link BRIDGE_EDIT_GROUP}). Matched
- *  case-insensitively: the lane ships mixed-case group names (`xMissionCD_ice wall`, `stones Water`),
- *  so a mod's `EditGroups` spelling must not decide where a deck depth-sorts. */
+ *  case-insensitively: the lane ships mixed-case group names (`xMissionCD_ice wall`, `stones Water`). */
 function isBridgeRecord(record: { readonly editGroups?: readonly string[] | undefined }): boolean {
   return record.editGroups?.some((g) => g.toLowerCase() === BRIDGE_GROUP_KEY) === true;
 }
@@ -36,13 +34,11 @@ export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>
 
 /**
  * The half-cell row a bridge depth-sorts at relative to its own node (the far, lowest-`dy` row of its
- * deck), `undefined` for every other record. Settlers cross a bridge's span, so sorting at the
- * object's own row buries everyone on the far half of it.
+ * deck), `undefined` for every other record. Settlers cross a bridge's span, so sorting at the object's
+ * own row buries everyone on the far half of it.
  *
- * One sort row for a deck up to 13 half-rows long is an approximation: anything anchored between the
- * far row and the bridge's own row paints over the deck instead of under it. 36 static placements in
- * the owned corpus sit there, bank stones and trees beside an abutment, plus any settler standing on
- * the bank alongside a span.
+ * One sort row for a deck up to 13 half-rows long is an approximation: anything anchored between the far
+ * row and the bridge's own row paints over the deck instead of under it.
  */
 export function deckFarRow(
   record: Pick<LandscapeGfxRow, 'walkBlockAreas' | 'editGroups'>,
@@ -61,11 +57,9 @@ export function servedShadowStem(shadowBmd: string | undefined): string | undefi
 
 /**
  * The extracted building ground footprints from the served IR, by typeId - the collision/build-exclusion
- * data live content attaches so the real-content view (`?map=`) enforces and shows placement collision
- * (scenes and bare checkouts stay footprint-less, keeping free placement). Empty when the IR is absent or
- * carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS} applied here - the
- * one seam extracted footprints pass through - so the sim's walk-to-door target and the `?debug=geometry`
- * overlay read the same corrected door.
+ * data live content attaches so the real-content view enforces and shows placement collision. Empty when
+ * the IR is absent or carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS}
+ * applied here, the one seam extracted footprints pass through.
  */
 export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
   const out = new Map<number, BuildingFootprint>();
@@ -74,8 +68,8 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
     const shift = b.id !== undefined ? DOOR_SHIFTS.get(b.id) : undefined;
     const door = b.footprint.door;
     if (shift !== undefined && door === undefined) {
-      // A committed correction with nothing to correct - a re-extraction dropped the door. Warn so the
-      // review-signed shift isn't silently lost (the type still gets its verbatim footprint).
+      // A committed shift with no extracted door to correct - warn instead of silently dropping it (the
+      // type still gets its verbatim footprint).
       diag.warn('content', `buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
     }
     out.set(
@@ -97,13 +91,12 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
 }
 
 /**
- * The `[gfxanimatomic]` per-direction frame lists for one `(tribe, action)`, indexed by body bobseq name
- * - the directional action layout a bare bobseq range can't encode ({@link GfxAnimAtomicRow.dirFrames}).
- * First record wins per seq (a job/action may list several variant seqs - the unarmed soldier's four
- * punches; the caller names the one it wants). Filtering by `tribe` matters: the same body bobseq name
- * recurs across the human tribes with different frame lists (each tribe's own swing layout), so passing
- * the wrong tribe yields a plausible-but-wrong animation. `tribe` is the `[gfxanimatomic]` `logictribe`
- * (= the `logicdefines.inc` `TRIBE_TYPE_*`; viking 1).
+ * The `[gfxanimatomic]` per-direction frame lists ({@link GfxAnimAtomicRow.dirFrames}) for one
+ * `(tribe, action)`, indexed by body bobseq name. First record wins per seq (a job/action may list several
+ * variant seqs; the caller names the one it wants). Filtering by `tribe` matters: the same body bobseq
+ * name recurs across the human tribes with different frame lists, so the wrong tribe yields a
+ * plausible-but-wrong animation. `tribe` is the `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_*`;
+ * viking 1).
  */
 export function gfxAtomicFrameLists(
   ir: ContentIr | null,
@@ -122,17 +115,13 @@ export function gfxAtomicFrameLists(
 const UNLOADED_GOOD_TYPE = 0;
 
 /**
- * The `[gfxwalkatomic]` loaded-gait table for one `(tribe, job)`, as **good id-slug → body bobseq name**
- * - the original's own answer to "which cycle does a settler play hauling this good" (honey →
- * `human_man_generic_walk_potion`). Keyed by slug, not the source's `logicgoodtype`, because the running
- * content set's `typeId`s are content-relative (the sandbox's honey is not the decoded IR's honey) while
- * slugs are stable; {@link import('../settler-gfx/index.js').carryAnimsByGood} does the slug → running
- * `typeId` half.
+ * The `[gfxwalkatomic]` loaded-gait table for one `(tribe, job)`, as good id-slug → body bobseq name (honey
+ * → `human_man_generic_walk_potion`). Keyed by slug, not the source's `logicgoodtype`, because the running
+ * content set's `typeId`s are content-relative while slugs are stable.
  *
- * The unloaded walk (`logicgoodtype 0`) is dropped - that is the job's plain gait, not a carry look. A
- * good with no record for this job is absent from the map, which is itself the source's answer: that job
- * shows no load for it (a soldier binds its empty walk for every good, and a woman only hauls the nine
- * goods her body authors).
+ * The unloaded walk (`logicgoodtype 0`) is dropped - that is the job's plain gait, not a carry look. A good
+ * with no record for this job is absent from the map, which is itself the source's answer: that job shows
+ * no load for it.
  */
 export function carryWalkSeqs(ir: ContentIr | null, tribe: number, job: number): Map<string, string> {
   const slugByType = new Map((ir?.goods ?? []).map((g) => [g.typeId, g.id]));

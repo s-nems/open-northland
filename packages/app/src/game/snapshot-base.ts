@@ -1,11 +1,8 @@
 import type { Fixed, WorldSnapshot } from '@open-northland/sim';
 
 /**
- * Typed read helpers over the frozen {@link WorldSnapshot} - the shared owner/position/kind reads the
- * controls and panels all need, so they stop re-inventing the same `as {...}` casts per file (display
- * panels still cast their own presentation-only fields, e.g. the details panel's needs/carry/stance).
- * These read the snapshot (the allowed one-way flow), never live component stores; every read is
- * defensive (`undefined` on a missing component/field) because a snapshot entity carries only the
+ * Typed read helpers over the frozen {@link WorldSnapshot}, never over live component stores. Every read
+ * returns `undefined` for a missing component or field, because a snapshot entity carries only the
  * components it has.
  */
 
@@ -23,10 +20,8 @@ export function ownerPlayerOf(e: SnapshotEntity): number | undefined {
   return num(owner?.player);
 }
 
-/** The entity's fixed-point `Position`, or undefined. The snapshot serializes the sim's branded
- *  `Fixed` values as plain numbers; this reader is the one place the brand is restored (by the
- *  sim's own invariant a snapshot Position is fixed-point), so consumers can feed grid seams like
- *  `nodeOfPosition` without minting the brand themselves. */
+/** The entity's fixed-point `Position`, or undefined. The snapshot serializes `Fixed` as plain numbers;
+ *  this reader is the one place the brand is restored, so consumers never mint it themselves. */
 export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefined {
   const pos = e.components.Position as { x?: unknown; y?: unknown } | undefined;
   const x = num(pos?.x);
@@ -43,11 +38,9 @@ export function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } 
 }
 
 /**
- * Whether the experience tech tree gates this settler's trades and wares - the app mirror of the sim's
- * `experienceGatesApply`: the `ProgressionRules` toggle, except that an AI-owned settler is never gated
- * (the toggle is a human-player setting). The two world-wide facts behind it are resolved once per
- * snapshot ({@link progressionGateFacts}), so a per-settler loop (the picker over a marquee selection)
- * costs one entity scan, not one per settler.
+ * Whether the experience tech tree gates this settler's trades and wares: the app mirror of the sim's
+ * `experienceGatesApply`. The `ProgressionRules` toggle is a human-player setting, so an AI-owned
+ * settler is never gated.
  */
 export function progressionGatesSettler(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const { progressionEnabled, aiSeats } = progressionGateFacts(snapshot);
@@ -56,8 +49,7 @@ export function progressionGatesSettler(snapshot: WorldSnapshot, e: SnapshotEnti
   return owner === undefined || !aiSeats.has(owner);
 }
 
-/** {@link progressionGateFacts} keyed by snapshot: a snapshot is a frozen per-frame value, so an entry
- *  lives exactly as long as the frame it describes. */
+/** Keyed by snapshot: a snapshot is a frozen per-frame value, so an entry lives exactly one frame. */
 const GATE_FACTS = new WeakMap<WorldSnapshot, ProgressionGateFacts>();
 
 interface ProgressionGateFacts {
@@ -67,7 +59,7 @@ interface ProgressionGateFacts {
   readonly aiSeats: ReadonlySet<number>;
 }
 
-/** The world-wide half of {@link progressionGatesSettler}, in one pass over the snapshot. */
+/** The world-wide half of the gate check, resolved in one pass over the snapshot. */
 function progressionGateFacts(snapshot: WorldSnapshot): ProgressionGateFacts {
   const cached = GATE_FACTS.get(snapshot);
   if (cached !== undefined) return cached;
@@ -88,9 +80,8 @@ function progressionGateFacts(snapshot: WorldSnapshot): ProgressionGateFacts {
   return facts;
 }
 
-/** A settler's `Settler.experience` map as the snapshot serializes it (sorted `[spec, points]` pairs)
- *  parsed into a Map - shared by the panel's experience rows, its unlock forecast, and the profession
- *  picker's qualification filter. Empty for a non-settler or a malformed field. */
+/** A settler's `Settler.experience`, which the snapshot serializes as sorted `[spec, points]` pairs.
+ *  Empty for a non-settler or a malformed field. */
 export function settlerExperienceOf(components: Readonly<Record<string, unknown>>): Map<number, number> {
   const points = new Map<number, number>();
   const exp = (components.Settler as { experience?: unknown } | undefined)?.experience;
@@ -104,7 +95,6 @@ export function settlerExperienceOf(components: Readonly<Record<string, unknown>
   return points;
 }
 
-/** True when the entity is a settler / a building (carries the marker component). */
 export function isSettler(e: SnapshotEntity): boolean {
   return e.components.Settler !== undefined;
 }
@@ -115,14 +105,12 @@ export function isSignpost(e: SnapshotEntity): boolean {
   return e.components.Signpost !== undefined;
 }
 
-/** {@link actorsOf} keyed by snapshot, like {@link GATE_FACTS}. */
 const ACTORS = new WeakMap<WorldSnapshot, readonly SnapshotEntity[]>();
 
 /**
- * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`. Derived
- * once per snapshot so the app's per-tick view projections share one walk of a decoded map's scenery
- * instead of one each. Iterate it; it is not a snapshot's own entity lane, so never hand it to
- * `entityById`, whose binary search would miss everything this filtered out.
+ * Every settler and building of a snapshot, as an ascending-id subsequence of its `entities`. Iterate
+ * it; it is not a snapshot's own entity lane, so never hand it to `entityById`, whose binary search
+ * would miss everything this filtered out.
  */
 export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
   const cached = ACTORS.get(snapshot);
@@ -144,15 +132,14 @@ export function buildingTribeOf(e: SnapshotEntity): number | undefined {
   return num(b?.tribe);
 }
 
-/** The building's construction progress (`Building.built`, fixed-point - `ONE` is finished), or
- *  undefined if it isn't a building / carries none. */
+/** The building's construction progress (`Building.built`, fixed-point where `ONE` is finished). */
 export function builtFractionOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { built?: unknown } | undefined;
   return num(b?.built);
 }
 
-/** The settler's current trade (`Settler.jobType`), or undefined for a jobless/idle settler (jobType
- *  `null`) or a non-settler. Drives the right-click "keep the current trade" assignment preference. */
+/** The settler's current trade (`Settler.jobType`), or undefined for a jobless settler (jobType
+ *  `null`) or a non-settler. */
 export function settlerJobType(e: SnapshotEntity): number | undefined {
   const s = e.components.Settler as { jobType?: unknown } | undefined;
   return num(s?.jobType);
@@ -176,8 +163,7 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
   return num(settler?.tribe);
 }
 
-/** The settler's hunger/fatigue deficits (fixed-point 0..ONE, higher = worse), or undefined for a
- *  non-settler - the need-bubble projection's read. The brand restore mirrors {@link positionOf}. */
+/** The settler's hunger/fatigue deficits, fixed-point 0..ONE where higher is worse. */
 export function settlerNeedsOf(e: SnapshotEntity): { hunger: Fixed; fatigue: Fixed } | undefined {
   const settler = e.components.Settler as { hunger?: unknown; fatigue?: unknown } | undefined;
   const hunger = num(settler?.hunger);
@@ -188,11 +174,9 @@ export function settlerNeedsOf(e: SnapshotEntity): { hunger: Fixed; fatigue: Fix
 }
 
 /**
- * Map each gatherer's drop-off flag entity → its owning gatherer, for the human `player` only
- * (`'any'` - the observer session - keeps every player's gatherers) - the inverse of the
- * gatherer→flag {@link workFlagOf} edge (a flag stores no back-reference, so resolving
- * "which gatherer owns this flag" needs this scan). Lets a click on a flag resolve to the gatherer to
- * select. A gatherer binds to exactly one flag, so the map is 1:1.
+ * Map each gatherer's drop-off flag entity to its owning gatherer, restricted to one player or `'any'`.
+ * A flag stores no back-reference, so this scan is the only way to invert the edge; a gatherer binds to
+ * exactly one flag, so the map is 1:1.
  */
 export function gathererByFlag(snapshot: WorldSnapshot, player: number | 'any'): Map<number, number> {
   const out = new Map<number, number>();
@@ -211,10 +195,9 @@ export function shelterOf(e: SnapshotEntity): number | undefined {
   return num(claim?.shelter);
 }
 
-/** How many settlers have claimed `building` as their shelter - the fill the defence and garrison windows
- *  both show. Counts claimants, en route or already inside, which is what the sim's own capacity ledger
- *  counts (`sim`'s `Sheltering`), so the panel can never advertise room a runner already holds; and only
- *  settlers, so the count and the sprites the garrison field draws cannot disagree. */
+/** How many settlers have claimed `building` as their shelter. Counts claimants whether en route or
+ *  already inside, matching the sim's own capacity ledger, so the HUD cannot advertise room a runner
+ *  already holds. */
 export function shelterClaimCount(snapshot: WorldSnapshot, building: number): number {
   let count = 0;
   for (const e of actorsOf(snapshot)) {

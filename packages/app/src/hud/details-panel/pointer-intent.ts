@@ -10,11 +10,8 @@ import {
 import { type ButtonAction, type EquipSlotRef, equipActionKey } from './layout/index.js';
 import type { PanelView } from './selection-view.js';
 
-// What a canvas point means to the details panel: the order the probes in `hit-test.ts` are consulted
-// and the intent each hit carries.
-
-/** One resolved left-click intent. `stockTab` is panel-local (it re-bakes) and `centerOnEntity` moves the
- *  view; the rest are player orders. */
+/** One resolved left-click intent: `stockTab` re-bakes the panel and `centerOnEntity` moves the view,
+ *  the rest are player orders. */
 export type PanelClick =
   | { readonly kind: 'setGatherGood'; readonly entityId: number; readonly goodType: number | null }
   | { readonly kind: 'centerOnEntity'; readonly entityId: number }
@@ -66,7 +63,6 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
       if (action === 'upgrade') return { kind: 'upgrade', entityId };
       if (action === 'cancelUpgrade') return { kind: 'cancelUpgrade', entityId };
       if (action === 'center') return { kind: 'centerOnEntity', entityId };
-      // The alarm toggle flips whichever way the building currently stands.
       if (action === 'toggle-defence') {
         return { kind: 'setDefenceMode', entityId, enabled: !view.model.defenseEnabled };
       }
@@ -86,10 +82,7 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
   }
 };
 
-/**
- * What a left-click at a canvas point inside the panel does, or null when it lands on inert chrome or a
- * disabled button. `toggleModifier` is passed on to {@link nextCraftGoods}.
- */
+/** What a left-click inside the panel does, or null when it lands on inert chrome or a disabled button. */
 export const panelClickAt = (
   view: PanelView,
   x: number,

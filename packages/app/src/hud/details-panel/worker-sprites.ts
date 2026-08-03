@@ -20,23 +20,14 @@ import type { Rect } from '../geometry.js';
 import { fieldWorkers, groupedWorkers } from './worker-selection.js';
 
 /**
- * The animated worker sprites drawn in the details panel's "Pracownicy" field - the settlers the selected
- * building holds ({@link fieldWorkers}: its workers, or the garrison sheltering in it), drawn as on the
- * map (their real body/head, team colour and current-action animation) but with no terrain behind them,
- * so the player sees who is in there.
- *
- * It is a live overlay, not part of the baked panel texture: the panel re-bakes at most 4 Hz (its values
- * barely change), but an animation must advance every frame - so the worker sprites are drawn straight to
- * the stage, one z above the baked panel, and re-resolved each tick. It reuses the world renderer's own
- * frame machinery ({@link buildSpriteScene} → {@link resolveLayers}) and draws each layer with a
- * {@link PalettedSprite} (the same team-coloured indexed-atlas mesh the map uses), self-placed by feet
- * anchor + scale - no camera. Without a loaded {@link SpriteSheet} (a bare checkout) it simply draws
- * nothing, so the panel still works.
+ * The animated worker sprites drawn in the details panel's "Pracownicy" field: the settlers the selected
+ * building holds, drawn as on the map but with no terrain behind them. A live overlay one z above the
+ * baked panel rather than part of the bake, because an animation must advance every frame. Without a
+ * loaded {@link SpriteSheet} it draws nothing and the panel still works.
  */
 
-/** A worker who has stepped inside the building stands frozen on this fixed animation tick - a still
- *  standing pose in the panel (not the breathing wait loop), while active workers animate on the sim
- *  tick. 0 holds the idle sequence's first (neutral standing) frame. */
+/** A worker who has stepped inside the building stands frozen on this animation tick; 0 holds the idle
+ *  sequence's first (neutral standing) frame. */
 const INDOOR_POSE_TICK = 0;
 /** Inset from the field edges (screen px), the fraction of the field height a character fills, and one
  *  worker's cell width as a fraction of the field height (they pack left-to-right by this width). */
@@ -55,22 +46,21 @@ interface WorkerHit {
 
 export class WorkerSpriteOverlay {
   private readonly container: PixiContainer = new Container();
-  /** One display object per (panel slot, layerIndex) - reused across frames AND across whichever worker
-   *  occupies the slot, hidden when unused. Keyed by slot, not by entity, so a session spent clicking
-   *  through buildings cannot grow this map past the field's slot count × the deepest layer stack. */
+  /** One display object per (panel slot, layerIndex), keyed by slot rather than by entity so the pool
+   *  cannot grow past the field's slot count × the deepest layer stack. */
   private readonly sprites = new Map<string, PalettedSprite | Sprite>();
   /** Cached plain textures (the no-LUT fallback) keyed by atlas frame identity, so the fallback path
    *  doesn't mint a Texture every frame. */
   private readonly plainTextures = new Map<object, Texture>();
   private readonly drawn = new Set<string>();
-  /** This frame's clickable worker boxes, rebuilt each update - the seam {@link hitTest} reads. */
+  /** This frame's clickable worker boxes, rebuilt each update. */
   private hits: WorkerHit[] = [];
 
   constructor(
     private readonly app: Application,
     private readonly sheet: SpriteSheet | undefined,
     zIndex: number,
-    /** Owner slot → team-colour slot (a map roster's colour choices), matching the map's own sprites. */
+    /** Owner slot → team-colour slot, matching the map's own sprites. */
     private readonly playerColourOf?: (player: number) => number,
   ) {
     this.container.zIndex = zIndex;
@@ -79,13 +69,11 @@ export class WorkerSpriteOverlay {
   }
 
   /**
-   * Redraw the workers of `buildingId` into `field` (screen px). A null building / field, or no sprite
-   * sheet, clears the overlay. Called from the panel's `tick`, which skips it while its inputs hold - the
-   * animation clock is `snapshot.tick`, so it advances once per sim tick.
-   * `opts.siteCrew` selects the live build crew instead of the bound workers; `opts.groups` (a home's
-   * residents, one id list per family) overrides the bound-worker scan - the field then draws each family
-   * as a close cluster with a breather gap before the next. An EMPTY grouping is not an override: a home
-   * still going up houses nobody yet, and blanking its field would hide the crew raising it.
+   * Redraw the workers of `buildingId` into `field` (screen px); a null building or field, or no sprite
+   * sheet, clears the overlay. The animation clock is `snapshot.tick`. `opts.siteCrew` selects the live
+   * build crew instead of the bound workers, and `opts.groups` (one id list per family) replaces the
+   * bound-worker scan. An empty grouping is not an override: a home still going up houses nobody yet,
+   * and blanking its field would hide the crew raising it.
    */
   update(
     snapshot: WorldSnapshot,
@@ -109,14 +97,12 @@ export class WorkerSpriteOverlay {
       this.container.visible = false;
       return;
     }
-    // Per-slot extra left gap (in slot widths): a family-grouped field inserts a breather where a new
-    // group starts; the flat worker field has none.
+    // Per-slot extra left gap, in slot widths; only a family-grouped field inserts one.
     const gapBefore = grouped?.gaps;
 
-    // One scene build against the WHOLE snapshot, so each worker resolves against the same reads the map
-    // uses: `onlyRefs` narrows the emit to the field's own settlers without starving the builder's
-    // whole-snapshot pre-scans, which decide indoor state and target-derived facing. `keepIndoorSettlers`
-    // adds the workers the map suppresses (sim `Resting` / mid-store-exchange), each tagged `frozen`.
+    // One scene build against the whole snapshot: `onlyRefs` narrows the emit to the field's own settlers
+    // without starving the builder's whole-snapshot pre-scans, which decide indoor state and
+    // target-derived facing. `keepIndoorSettlers` adds the workers the map suppresses, each tagged `frozen`.
     const scene = buildSpriteScene(snapshot, {
       playerColourOf: this.playerColourOf,
       keepIndoorSettlers: true,
@@ -131,27 +117,21 @@ export class WorkerSpriteOverlay {
       w: Math.max(1, field.w - 2 * FIELD_PAD),
       h: Math.max(1, field.h - 2 * FIELD_PAD),
     };
-    // Pack left-to-right by a fixed cell width (not spread across the whole field), so two workers sit at
-    // the left rather than centred - narrowed only where the row would otherwise run past the field's
-    // right edge, so a crowd overlaps instead of losing its tail. Group gaps are measured in cell widths
-    // ({@link FAMILY_GAP_FRAC}), so they count toward the row's width.
+    // Pack left-to-right by a fixed cell width so two workers sit at the left rather than centred,
+    // narrowing only where the row would otherwise run past the field's right edge.
     const cells = workers.length + (gapBefore?.reduce((a, b) => a + b, 0) ?? 0);
     const slotW = Math.min(inner.h * SLOT_W_FRAC, inner.w / cells);
     const feetY = inner.y + inner.h;
 
-    // Resolve every drawn worker's layers first: the field shares ONE zoom - the tallest body fills
-    // CHAR_FILL of the field height - so a baby beside its parents reads baby-sized instead of each
-    // body being blown up to the same height.
+    // The field shares one zoom, sized so the tallest body fills CHAR_FILL of the field height, so a
+    // baby beside its parents still reads baby-sized.
     const resolved = workers.map((id) => {
       const item = items.get(id);
       if (item === undefined) return null;
-      // A worker inside the building stands frozen; one out working animates on the sim tick.
       const clock = item.frozen === true ? INDOOR_POSE_TICK : snapshot.tick;
-      // Size the worker off its NEUTRAL standing frame (INDOOR_POSE_TICK), not the live animation frame:
-      // each walk-cycle frame is a differently-trimmed pixel rect (arms/legs extended → taller bbox), so
-      // normalising the current frame's height would rescale the whole body every step - the "camera bob"
-      // size pulse. The stance frame is stable, so the drawn size holds constant while the gait's own
-      // per-frame offsets still animate the body within it.
+      // Size the worker off its neutral standing frame, not the live one: each walk-cycle frame is a
+      // differently-trimmed pixel rect, so normalising the current frame's height would rescale the
+      // whole body every step.
       const stanceLayers = resolveLayers(this.sheet, item, INDOOR_POSE_TICK);
       const stanceBody = stanceLayers?.[0];
       if (stanceLayers === null || stanceBody === undefined) return null;
@@ -182,8 +162,6 @@ export class WorkerSpriteOverlay {
     this.container.visible = true;
   }
 
-  /** The entity whose sprite covers screen point (x, y), or null - so a click in the field selects that
-   *  worker (the panel routes it, deselecting the building), exactly like clicking the settler on the map. */
   hitTest(x: number, y: number): number | null {
     for (const h of this.hits) {
       if (x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h) return h.id;
@@ -224,7 +202,7 @@ export class WorkerSpriteOverlay {
       spr.player = playerRow;
       spr.visible = true;
     } else {
-      // No LUT (baked-palette sheet): a plain feet-anchored sprite, positioned bottom-centre at the anchor.
+      // No LUT (baked-palette sheet): a plain feet-anchored sprite.
       let spr = this.sprites.get(key);
       if (spr instanceof PalettedSprite || spr === undefined) {
         spr?.destroy();
@@ -246,7 +224,6 @@ export class WorkerSpriteOverlay {
     this.drawn.add(key);
   }
 
-  /** A cached plain sub-texture for one atlas frame (the no-LUT fallback path only). */
   private plainTexture(source: ResolvedLayer['source'], frame: ResolvedLayer['frame']): Texture {
     const cached = this.plainTextures.get(frame);
     if (cached !== undefined) return cached;
@@ -255,7 +232,7 @@ export class WorkerSpriteOverlay {
     return tex;
   }
 
-  /** Hide every pooled sprite not drawn this frame (fewer workers than a previous frame, or cleared). */
+  /** Hide every pooled sprite not drawn this frame. */
   private hideRest(): void {
     for (const [key, spr] of this.sprites) if (!this.drawn.has(key)) spr.visible = false;
   }

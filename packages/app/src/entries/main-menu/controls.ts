@@ -1,20 +1,19 @@
-/** Shared DOM controls of the sub-screens; their CSS lives in menu.css "Controls shared by the
- *  sub-screens". Screens with one-off control needs (the map-select filter tabs) stay bespoke. */
+/** Shared DOM controls of the sub-screens; their CSS lives in menu.css. */
 
 export interface SegChoice<T extends string> {
   readonly id: T;
   readonly label: string;
-  /** Optional hover tooltip (e.g. the lobby's fog-mode details). */
+  /** Optional hover tooltip. */
   readonly title?: string;
 }
 
 export interface SegHandle<T extends string> {
   readonly root: HTMLDivElement;
-  /** Repaint which choice reads as active (a pick or an external state change). */
+  /** Repaint which choice reads as active. */
   setActive(id: T): void;
 }
 
-/** A joined segmented control. `onPick` owns the reaction; call `setActive` to reflect it. */
+/** `onPick` owns the reaction; call `setActive` to reflect it. */
 export function segControl<T extends string>(
   choices: readonly SegChoice<T>[],
   active: T,
@@ -43,7 +42,7 @@ export function segControl<T extends string>(
   return { root, setActive };
 }
 
-/** The 66x34 design pill switch. `titleFor` keeps the hover tooltip in step with the state. */
+/** `titleFor` keeps the hover tooltip in step with the state. */
 export function togglePill(
   on: boolean,
   onToggle: (on: boolean) => void,

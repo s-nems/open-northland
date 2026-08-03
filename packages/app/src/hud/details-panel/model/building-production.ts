@@ -13,46 +13,37 @@ import {
 
 // The building's Produkcja model: a workshop's per-product recipe rows, or a farm's live field state.
 
-/** One product row of a workshop's Produkcja section - its icon/name on the left, the bar's live
- *  progress, and the hover tooltip naming the recipe's inputs. */
+/** One product row of a workshop's Produkcja section. */
 export interface ProductionRow {
   readonly goodType: number;
-  /** The product's string id - the row's icon key (like {@link StockRow.goodId}). */
+  /** The product's string id - the row's icon key. */
   readonly goodId?: string;
   /** Further icon keys drawn beside {@link goodId} - a livestock chain row shows every ware the
    *  species' visit yields (meat + wool, meat + leather). */
   readonly extraGoodIds?: readonly string[];
   readonly label: string;
-  /**
-   * The row's bar: the FRONT-RUNNER batch of this product - the highest progress among the in-flight
-   * `Production.cycles` crafting it (a finished batch deposits and leaves the list, so the bar hands
-   * over to the next-furthest batch). 0 when none runs.
-   */
+  /** The highest progress among the in-flight `Production.cycles` crafting this product; 0 when none
+   *  runs, since a finished batch deposits and leaves the list. */
   readonly pct: number;
-  /** The hover tooltip's ingredient list - one "- Żelazo ×2" line per recipe input (newline-joined; the
-   *  panel prefixes the product name line), or the no-materials label for an input-less craft; empty
-   *  when the inputs are unknown (no recipe). */
+  /** The hover tooltip's ingredient lines, one "- Żelazo ×2" per recipe input, or the no-materials
+   *  label for an input-less craft; empty when the inputs are unknown. */
   readonly inputs: string;
 }
 
 /**
- * The Produkcja section's content, one of two shapes:
- *  - `recipe` - a workshop's per-product rows (one bar per producible good - a smithy 2 lists all
- *    five wares; see {@link ProductionRow});
- *  - `fields` - a farm's live field state (the produced good's icon + the sown/growing/ripe counters),
- *    for a workplace producing a field-farmed good (`farming` on the good, no recipe): there is no
- *    recipe to show, the "production" is the fields its farmers work around the building.
+ * The Produkcja section's content: `recipe` for a workshop's per-product rows, `fields` for a workplace
+ * producing a field-farmed good (`farming` on the good, no recipe), whose production is the fields its
+ * farmers work around the building rather than a recipe.
  */
 export type ProductionModel =
   | {
       readonly kind: 'recipe';
-      /** One row per producible good (recipe order) - the single source both the layout's height math
-       *  and the section's row loop consume, so they can never drift apart. Never empty. */
+      /** One row per producible good, in recipe order; never empty. */
       readonly rows: readonly ProductionRow[];
     }
   | {
       readonly kind: 'fields';
-      /** The farmed good's string id - the icon key (like {@link StockRow.goodId}). */
+      /** The farmed good's string id - the icon key. */
       readonly goodId?: string;
       /** The farmed good's display name. */
       readonly label: string;
@@ -69,13 +60,11 @@ interface FieldCounts {
   readonly ripe: number;
 }
 
-/** {@link fieldCountsByFarm} keyed by snapshot, like the `snapshot-base.ts` memos: the panel re-derives
- *  its model every tick a farm stays selected, and `Crop` is outside `actorsOf`, so without this the
- *  full-entity crops walk would repeat per derive. */
+/** Keyed by snapshot like the `snapshot-base.ts` memos: the panel re-derives its model every tick a farm
+ *  stays selected, and `Crop` is outside `actorsOf`, so the full-entity walk would otherwise repeat. */
 const FIELD_COUNTS = new WeakMap<WorldSnapshot, ReadonlyMap<number, FieldCounts>>();
 
-/** Every farm's field tally in one entity pass: each `Crop` grouped by its `farm`, split into still
- *  growing vs ripe (`stage >= stages`). */
+/** Every farm's field tally in one entity pass, split into still growing vs ripe (`stage >= stages`). */
 function fieldCountsByFarm(snapshot: WorldSnapshot): ReadonlyMap<number, FieldCounts> {
   const cached = FIELD_COUNTS.get(snapshot);
   if (cached !== undefined) return cached;
@@ -105,10 +94,9 @@ export function productionModel(
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
 ): ProductionModel | null {
-  // A farm produces a field-farmed good - checked before the recipes, mirroring the sim: farmWorkGood ignores
-  // recipe presence and planner/system.ts ranks the farmer rung above the producer rung precisely because
-  // real extracted content synthesizes abstract recipes from `logicproduction` for every producer. Wherever
-  // the sim farms, the panel must show live field state, never a dead recipe bar.
+  // A field-farmed good is checked before the recipes, mirroring the sim's own rung order: extracted
+  // content synthesizes an abstract recipe for every producer, so wherever the sim farms, the panel must
+  // show live field state rather than a dead recipe bar.
   const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
     const { growing, ripe } = fieldCountsByFarm(snapshot).get(ent.id) ?? { growing: 0, ripe: 0 };
@@ -146,7 +134,7 @@ export function productionModel(
 }
 
 /** The front-runner batch per product: the highest progress among the in-flight `Production.cycles`
- *  crafting that good (a completed batch deposits and leaves the list, so the bar hands over). */
+ *  crafting that good. */
 function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
   const production = ent.components.Production as { cycles?: unknown } | undefined;
   const bestPct = new Map<number, number>();
@@ -161,11 +149,10 @@ function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
 }
 
 /**
- * A livestock workplace's Produkcja: ONE row per species chain instead of one per good - the internal
- * fed-animal token never shows. The row is named after the species (its token good's label, "Owca"),
- * its icons are every ware the visit yields (meat byproduct + the converter's product), its bar is the
- * chain's front-runner across both stages, and its hover lists the feed recipe's goods plus the live
- * animal itself. Empty (fall through to the per-good rows) at any other workplace.
+ * A livestock workplace's Produkcja: one row per species chain rather than per good, so the internal
+ * fed-animal token gets no row of its own. The row is named after the species, its icons are every ware
+ * the visit yields, and its bar is the chain's front-runner across both stages. Empty at any other
+ * workplace, which falls through to the per-good rows.
  */
 function livestockChainRows(
   ctx: UnitPanelModelContext,
@@ -198,8 +185,7 @@ function livestockChainRows(
   return rows;
 }
 
-/** A recipe's inputs as the tooltip's ingredient lines - one "- Żelazo ×2" per line - or the
- *  no-materials label for an input-less craft (the well). */
+/** A recipe's inputs as the tooltip's ingredient lines, or the no-materials label for an input-less craft. */
 function recipeInputsLabel(
   ctx: UnitPanelModelContext,
   inputs: readonly { goodType: number; amount: number }[],

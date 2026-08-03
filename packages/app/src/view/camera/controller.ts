@@ -11,11 +11,8 @@ import {
 import { clientToScreen, screenScale } from './screen-scale.js';
 
 /**
- * The interactive camera's DOM controller - app-layer I/O (DOM + floats, fine here, never in `sim`) that
- * wraps the pure {@link panCamera}/{@link zoomCameraAt} reducers around live input so a human can pan
- * (middle-mouse drag / arrow keys / RTS screen-edge scroll) and zoom (scroll wheel, eased toward its
- * target). Installed by the two playable entries over `frame.ts`'s starting frame; the deterministic
- * `?shot` entry never installs it, so the reproducible PNG is unaffected.
+ * App-layer DOM controller wrapping the pure pan and zoom reducers around live input. The deterministic
+ * `?shot` entry never installs it, so a reproducible PNG is unaffected.
  */
 
 /** Per-wheel-notch zoom factor (one notch in multiplies, one out divides). */
@@ -25,38 +22,26 @@ const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 /** Max wall-clock ms one held-key pan step integrates - a backgrounded tab resumes smoothly, not with a lurch. */
 const MAX_PAN_STEP_MS = 100;
 
-/** An installed interactive camera: read the current transform, advance held-key pan, tear down. */
 export interface CameraController {
-  /** The current {@link Camera} to hand the renderer's `update`. */
   camera(): Camera;
-  /** Apply held-arrow-key panning for a wall-clock delta in ms - call once per frame. */
+  /** Apply held-arrow-key panning for a wall-clock delta in ms; call once per frame. */
   update(dtMs: number): void;
-  /**
-   * Replace the current frame outright (the minimap's click-to-jump). The next `camera()` read returns
-   * `next` verbatim; an in-flight middle-drag simply continues panning from the new frame.
-   */
+  /** Replace the frame outright; an in-flight middle-drag keeps panning from the new frame. */
   jumpTo(next: Camera): void;
   /**
-   * Install a predicate that claims a client point for the HUD; while it returns true for the cursor, the
-   * wheel does not zoom (an open window scrolls instead). Pass `null` to clear. The game view wires the
-   * tool panel's `claimsWheel` here (an open pop-up window only - not the broad `claimsPointer`, which also
-   * covers the strip and active placement, where the wheel should still zoom) so scrolling a pop-up list
-   * never also zooms the world behind it.
+   * Claim a client point for the HUD so the wheel does not zoom there; `null` clears. Wired to open
+   * pop-up windows only, since the wheel should still zoom over the strip and during placement.
    */
   setPointerGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
   /**
-   * Install a predicate that claims a client point for the HUD against EDGE SCROLLING. The game view
-   * wires the open pop-up windows + the minimap here - surfaces whose hover must not also pan the
-   * camera. The tool-panel STRIP deliberately does NOT claim: it hugs the left screen edge, and the
-   * RTS edge-pan must keep working when the cursor rests on it. Pass `null` to clear.
+   * Claim a client point for the HUD against edge scrolling; `null` clears. The tool-panel strip
+   * deliberately does not claim: it hugs the left screen edge, where edge-pan must keep working.
    */
   setEdgeGuard(guard: ((clientX: number, clientY: number) => boolean) | null): void;
-  /** Remove every installed DOM listener. */
   dispose(): void;
 }
 
-/** `resolution` is the owning renderer's device-px-per-screen-px (`app.renderer.resolution`) - needed to
- *  map mouse deltas into screen px on the HiDPI window canvas (see {@link screenScale}). */
+/** `resolution` is the owning renderer's device px per screen px, needed to map mouse deltas on a HiDPI canvas. */
 export function createCameraController(
   canvas: HTMLCanvasElement,
   initial: Camera,
@@ -68,17 +53,15 @@ export function createCameraController(
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
-  // While this claims the cursor (an open HUD window), the wheel scrolls that window, not the camera.
   let pointerGuard: ((clientX: number, clientY: number) => boolean) | null = null;
-  // While this claims the cursor (any HUD surface), the screen edge under it does not pan.
   let edgeGuard: ((clientX: number, clientY: number) => boolean) | null = null;
-  // The wheel zoom's glide state: the clamped scale the camera eases toward, anchored at the last
-  // wheel cursor (screen px) so a rapid notch burst magnifies about one point, smoothly.
+  // The clamped scale the wheel glide eases toward, anchored at the last wheel cursor in screen px, so
+  // a burst of notches magnifies smoothly about one point.
   let targetScale = initial.scale ?? 1;
   let zoomAnchorX = 0;
   let zoomAnchorY = 0;
-  // The edge-scroll probe: the last `mousemove` sample that landed ON the canvas (client px), null while
-  // the cursor is elsewhere, the window is unfocused, or nothing has moved yet (a parked cursor waits).
+  // The edge-scroll probe: the last `mousemove` sample that landed on the canvas, in client px. Null
+  // while the cursor is elsewhere or nothing has moved yet, so a parked cursor waits.
   let pointerSample: { readonly x: number; readonly y: number } | null = null;
 
   const onMouseDown = (e: MouseEvent): void => {
@@ -89,9 +72,8 @@ export function createCameraController(
     e.preventDefault(); // suppress the middle-click autoscroll widget
   };
   const onMouseMove = (e: MouseEvent): void => {
-    // Every move re-arms the probe, because `mouseenter` fires only on a boundary crossing: a refocus
-    // with the cursor already resting over the canvas gets none. Hit target rather than canvas rect, so a
-    // DOM element stacked over the canvas (an open picker window's full-screen backdrop) disarms it.
+    // Every move re-arms the probe, because `mouseenter` fires only on a boundary crossing and a refocus
+    // over the canvas gets none. Tested by hit target, so a DOM element stacked over the canvas disarms it.
     pointerSample = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
     if (!dragging) return;
     const { sx, sy } = screenScale(canvas, resolution);
@@ -107,13 +89,11 @@ export function createCameraController(
     pointerSample = null;
   };
   const onWheel = (e: WheelEvent): void => {
-    // Over an open HUD window the wheel belongs to that window's list, not the camera - leave the event
-    // for the panel's own handler (which scrolls + preventDefaults) and don't zoom the world behind it.
+    // The event is left for the claiming panel's own handler, which scrolls its list and preventDefaults.
     if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
     const { x, y } = clientToScreen(canvas, resolution, e.clientX, e.clientY);
-    // Retarget the glide instead of zooming outright: update() eases the scale toward the (clamped)
-    // target about this anchor, so stacked notches read as one smooth magnification.
+    // Retarget the glide rather than zoom outright, so stacked notches read as one magnification.
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
     targetScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetScale * factor));
     zoomAnchorX = x;
@@ -127,8 +107,8 @@ export function createCameraController(
   const onKeyUp = (e: KeyboardEvent): void => {
     held.delete(e.key);
   };
-  // Losing focus mid-gesture (alt-tab, devtools) drops the keyup/mouseup, which would otherwise leave a
-  // key stuck in `held` (the camera pans forever) or `dragging` stuck true. Reset on blur.
+  // Losing focus mid-gesture drops the keyup or mouseup, which would leave a key stuck in `held` or
+  // `dragging` stuck true.
   const onBlur = (): void => {
     held.clear();
     dragging = false;
@@ -148,11 +128,8 @@ export function createCameraController(
     camera: () => cam,
     jumpTo: (next) => {
       cam = next;
-      // The jump replaces the frame outright, so the wheel glide retargets to the new scale (a minimap
-      // jump must not carry the old glide into the new view).
+      // Retargeted, so a jump never carries the old glide into the new view.
       targetScale = next.scale ?? 1;
-      // A drag in flight keeps panning from the new frame: its deltas apply per-move (lastX/lastY track
-      // the cursor, not the camera), so no drag state needs resetting here.
     },
     setPointerGuard: (guard) => {
       pointerGuard = guard;
@@ -161,29 +138,22 @@ export function createCameraController(
       edgeGuard = guard;
     },
     update: (dtMs) => {
-      // Clamp the delta so a held key doesn't lurch the camera after the tab was backgrounded (RAF
-      // pauses, then resumes with one huge elapsed) - the pan stays smooth, never a jump.
       const dt = Math.min(dtMs, MAX_PAN_STEP_MS);
-      // Wheel zoom glide: ease the scale toward the last wheel target about its cursor anchor.
       if (targetScale !== (cam.scale ?? 1)) {
         cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt, tuning.zoomGlideRate);
       }
-      // Pan velocity (screen px/s), applied DIRECTLY - no ramp-up/glide-out easing: an RTS pan must
-      // start and stop with the input (hands-on feedback; the spatial edge-margin ramp in
-      // `edgePanVelocity` still grades the speed by pointer depth). Camera-scroll convention
-      // throughout: an input reveals the world in its direction (look right → the world slides
-      // left → offset shrinks).
+      // Pan velocity in screen px/s, applied directly with no ramp-up or glide-out, so the pan starts
+      // and stops with the input. Scroll convention: an input reveals the world in its direction, so
+      // looking right slides the world left and shrinks the offset.
       let desiredX = 0;
       let desiredY = 0;
       if (held.has('ArrowLeft')) desiredX += tuning.arrowPanSpeed;
       if (held.has('ArrowRight')) desiredX -= tuning.arrowPanSpeed;
       if (held.has('ArrowUp')) desiredY += tuning.arrowPanSpeed;
       if (held.has('ArrowDown')) desiredY -= tuning.arrowPanSpeed;
-      // Edge scroll: a pointer sample resting in the margin band pans, but not while mid-drag (the drag
-      // owns the motion), the window is unfocused (RAF still runs when visible), or a HUD surface claims
-      // the point (an open window / the minimap must not also pan). A LEFT-drag marquee is not suppressed
-      // - dragging a selection box into the margin pans under the screen-anchored box (a named
-      // tradeoff: RTS players use exactly that to select past the screen edge).
+      // Edge scroll is suppressed mid middle-drag, while the window is unfocused, and wherever a HUD
+      // surface claims the point. A left-drag marquee is deliberately not suppressed, so dragging a
+      // selection box into the margin pans under it.
       if (
         pointerSample &&
         !dragging &&
@@ -198,7 +168,7 @@ export function createCameraController(
           rect.height,
           tuning.edgeScrollSpeed,
         );
-        desiredX += edge.vx * sx; // CSS px/s → screen px/s, same scroll convention as the arrows
+        desiredX += edge.vx * sx; // CSS px/s to screen px/s
         desiredY += edge.vy * sy;
       }
       if (desiredX !== 0 || desiredY !== 0) {

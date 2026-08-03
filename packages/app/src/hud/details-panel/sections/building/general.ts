@@ -39,7 +39,6 @@ export function drawGeneralSection(
   chrome.window(layout.general.frame);
   chrome.headline(layout.general.title, ui('housewindow', HOUSEWINDOW.general, messages().hud.general));
 
-  // Preview: a thin-bevel inner box with the building's real world bob fitted inside.
   chrome.innerBox(layout.preview);
   const previewInset = Math.round(PREVIEW_INSET * s);
   const previewArt: Rect = {
@@ -48,23 +47,20 @@ export function drawGeneralSection(
     w: layout.preview.w - previewInset * 2,
     h: layout.preview.h - previewInset * 2,
   };
-  // A construction site skips the finished-building bob: the live portrait inset covers this box while
-  // the site is on screen, and the moments it can't draw (site culled) must show the neutral plate, not
-  // a misleading complete house.
+  // A construction site skips the finished-building bob: whenever the live portrait inset cannot draw,
+  // the box must show the neutral plate rather than a misleading complete house.
   if (model.construction !== null || !chrome.buildingPreview(model.typeId, previewArt)) {
     chrome.guiCentered(GUI_FRAME.house_plate, layout.preview, 'magenta', 'bg_normal');
     chrome.guiCentered(GUI_FRAME.tool_button_buildings, layout.preview, 'full');
   }
 
   chrome.textCentered(model.title, layout.name, 'white');
-  // Bare gauge, no label column: it spans the whole column and its exact hitpoints live in the cursor
-  // tooltip, which is the only thing that names it (user rule).
+  // Bare gauge, no label column: the cursor tooltip is the only thing that names it.
   if (model.health !== null) chrome.bar(layout.health, model.health.pct, 'gauge');
 
   for (const hit of layout.buttons) {
-    // Every building button has a BUTTON_STRING entry; the `?? help` guard only satisfies the Partial type
-    // (the settler-only 'assign-workplace' action never reaches a building layout). A new building action
-    // added without a BUTTON_STRING row would fall back to the help label - add its row when introducing one.
+    // The `?? help` guard only satisfies the Partial type; a building action without a BUTTON_STRING row
+    // would silently draw the help label.
     chrome.button(
       hit,
       ui('housewindow', BUTTON_STRING[hit.action] ?? HOUSEWINDOW.help, buttonFallback(hit.action)),

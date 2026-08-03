@@ -10,8 +10,7 @@ import {
   settlerTribeOf,
 } from './snapshot-base.js';
 
-// Snapshot reads for the marriage / residence / child-order feature: the settler action ring, the
-// assign-home pick, and the door/family badges.
+// Snapshot reads for the marriage, residence and child-order feature.
 
 /** True when the settler is female (carries the sim's `Female` marker). */
 export function isFemale(e: SnapshotEntity): boolean {
@@ -38,10 +37,9 @@ export function isMarrying(e: SnapshotEntity): boolean {
 }
 
 /**
- * Whether the settler is bound by a live marriage - the snapshot mirror of the sim's widowing rule
- * (`mayMarry`): bound while the spouse lives, and a widowed parent stays bound until the couple's
- * child grows up; a dead-spouse marriage with no growing child is dissolved (the component lingers
- * until the next wedding overwrites it - a destroyed spouse is simply absent from the snapshot).
+ * The snapshot mirror of the sim's widowing rule: bound while the spouse lives, and a widowed parent
+ * stays bound until the couple's child grows up. The component lingers after that, until the next
+ * wedding overwrites it.
  */
 export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const marriage = marriageOf(e);
@@ -52,13 +50,10 @@ export function isBoundByMarriage(snapshot: WorldSnapshot, e: SnapshotEntity): b
 }
 
 /**
- * Whether any eligible marriage partner for `seeker` exists - the snapshot mirror of the sim's
- * `mayMarry` + `findPartnerFor` filters (same tribe, opposite sex, unmarried adult, not mid-wedding,
- * not away on a mission, positioned), used to drop the ring's marry button instead of offering a
- * silent dead click. The sim command re-validates; a stale frame just mislabels the button. KNOWN
- * GAP: the sim's signpost-confinement filter is not mirrored (the network isn't in the snapshot), so
- * under `setSignpostNavigation` an out-of-area-only match still offers the button and the click
- * cancels.
+ * Whether any eligible marriage partner for `seeker` exists: the snapshot mirror of the sim's
+ * `mayMarry` and `findPartnerFor` filters, so the UI can drop a dead marry button. The sim command
+ * re-validates. The signpost-confinement filter is not mirrored, because the network is not in the
+ * snapshot, so under `setSignpostNavigation` an out-of-area-only match still offers the button.
  */
 export function hasEligiblePartner(
   content: ContentSet,
@@ -77,13 +72,11 @@ export function hasEligiblePartner(
   return found;
 }
 
-/** Keyed by snapshot, then by seeker id, so the ring's per-frame button derivation costs one pass per
- *  tick. `seeker` must be an entity OF `snapshot`: its id keys the memo while the object carries the
- *  filters. `content` stays outside the key because a session holds one {@link ContentSet}. */
+/** Keyed by snapshot, then by seeker id. `seeker` must be an entity of `snapshot`, whose id keys the
+ *  memo; `content` stays outside the key because a session holds one {@link ContentSet}. */
 const ELIGIBLE_PARTNER = new WeakMap<WorldSnapshot, Map<number, boolean>>();
 
-/** The pass behind {@link hasEligiblePartner}. `isBoundByMarriage` runs last: it is the only clause that
- *  searches the snapshot (two binary lookups), so the marker and tribe reads sieve the candidates first. */
+/** `isBoundByMarriage` runs last because it is the only clause that searches the snapshot. */
 function scanForPartner(content: ContentSet, snapshot: WorldSnapshot, seeker: SnapshotEntity): boolean {
   const tribe = settlerTribeOf(seeker);
   const seekerFemale = isFemale(seeker);
@@ -119,10 +112,9 @@ export function isMakingLove(e: SnapshotEntity): boolean {
 }
 
 /**
- * Whose given name this settler's displayed surname derives from: a married woman takes her husband's
- * (the family shares one surname), a growing child its father's (resolved through either parent's
- * `Marriage.child` back-edge), everyone else their own (undefined). Ids are stable, so a dead father
- * still anchors the family name.
+ * Whose given name this settler's displayed surname derives from: a married woman takes her husband's,
+ * a growing child its father's, everyone else their own. Ids are stable, so a dead father still anchors
+ * the family name.
  */
 export function surnameSourceOf(snapshot: WorldSnapshot, e: SnapshotEntity): number | undefined {
   const marriage = marriageOf(e);
@@ -136,7 +128,7 @@ export function surnameSourceOf(snapshot: WorldSnapshot, e: SnapshotEntity): num
   return undefined;
 }
 
-/** One family living in a home - the snapshot mirror of the sim's `familiesOf` grouping unit. */
+/** One family living in a home, mirroring the sim's `familiesOf` grouping unit. */
 export interface HomeFamily {
   /** Member entity ids: adults first (couple in ascending id order), then the growing child. */
   readonly members: readonly number[];
@@ -145,10 +137,9 @@ export interface HomeFamily {
 }
 
 /**
- * Group every home's residents into families - the snapshot mirror of the sim's `familiesOf` (an adult +
- * its cohabiting spouse + the couple's growing child; an orphaned minor is its own household). `homeSize`
- * caps FAMILIES, so the door badges, the assign-home highlight, and the home panel all consume this one
- * grouping. One entity pass; family order follows the lowest member id.
+ * Group every home's residents into families, mirroring the sim's `familiesOf`: an adult, its
+ * cohabiting spouse and the couple's growing child, with an orphaned minor its own household. `homeSize`
+ * caps families rather than settlers. Family order follows the lowest member id.
  */
 export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[]> {
   interface Group {
@@ -156,7 +147,6 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
     adults: number;
     minors: number;
   }
-  // Pass 1 - collect residents with their homes (the snapshot's entity order is ascending id).
   const residents: { e: SnapshotEntity; home: number }[] = [];
   const residentHomes = new Map<number, number>();
   for (const e of actorsOf(snapshot)) {
@@ -165,7 +155,7 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
     residents.push({ e, home });
     residentHomes.set(e.id, home);
   }
-  // Pass 2 - adults group with their cohabiting spouse; each couple's growing child is noted by id.
+  // An adult groups with its cohabiting spouse only, so a spouse living elsewhere heads its own family.
   const groupsByHome = new Map<number, Map<number, Group>>();
   const groupByChild = new Map<number, Group>();
   const minors: { e: SnapshotEntity; home: number }[] = [];
@@ -194,7 +184,6 @@ export function familiesByHome(snapshot: WorldSnapshot): Map<number, HomeFamily[
     if (child !== null && child !== undefined && residentHomes.get(child) === home)
       groupByChild.set(child, group);
   }
-  // Pass 3 - minors join their parents' group; an orphan holds its own family slot.
   for (const { e, home } of minors) {
     let group = groupByChild.get(e.id);
     if (group === undefined) {

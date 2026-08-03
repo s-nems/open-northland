@@ -18,9 +18,8 @@ export const FOG_MODE_BY_NAME: Readonly<Record<FogModeName, number>> = {
 };
 
 /**
- * The `?fog=` URL flag: the requested `FOG_MODE` id, or null when absent/unrecognized (the caller
- * then keeps its default - a scene's own `fog` field, or no fog). An explicit `?fog=off` does return
- * `FOG_MODE.OFF`, so the flag can also disable a scene's default fog.
+ * The `?fog=` URL flag: the requested `FOG_MODE` id, or null when absent or unrecognized, which leaves
+ * the caller's default. An explicit `?fog=off` returns `FOG_MODE.OFF`, disabling a scene's own fog.
  */
 export function fogModeParam(params: URLSearchParams): number | null {
   const name = params.get('fog');

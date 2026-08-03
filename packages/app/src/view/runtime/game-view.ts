@@ -46,97 +46,56 @@ import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
 import { createViewReadModels } from './read-models.js';
 
-/**
- * The shared in-game runtime both playable entries (`?map=` and `?scene=`) run on top of: the standard
- * HUD mounts (left tool panel, RTS unit controls, perf overlay, positional sound) and the one
- * fixed-timestep RAF loop. The entries only assemble their world (terrain, sim, renderer, starting
- * camera) and hand it here - so the loop, the input wiring and the flag semantics (`?speed`, `?sound`,
- * `?uiscale`) cannot drift between the map view and the acceptance scenes.
- */
+/** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
 export interface GameViewDeps {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly params: URLSearchParams;
-  /** The retained world renderer, terrain already set. */
+  /** World renderer with its terrain already set. */
   readonly renderer: WorldRenderer;
-  /** The loaded sprite sheet (the renderer's own), forwarded to the details panel's animated workers
-   *  field. Optional: a bare checkout has none and the field stays empty. */
+  /** Absent in a checkout without decoded content, which leaves the animated worker field empty. */
   readonly sheet?: SpriteSheet;
-  /** The live sim this view steps and draws. */
   readonly sim: Simulation;
-  /** The interactive camera (the entry picks the starting frame). */
   readonly cameraCtl: CameraController;
-  /** The terrain grid the sound driver's ambient beds sample (and the minimap rasterizes). */
   readonly terrainGrid: SceneTerrain;
-  /** typeId → minimap ground colour (the real terrain set's per-type debug colours). The world
-   *  entries always supply it (real terrain is required to boot); the minimap keeps its own
-   *  flat-tint default. */
+  /** typeId to minimap ground colour; without it the minimap keeps its flat-tint default. */
   readonly terrainColour?: (typeId: number) => number | undefined;
-  /** Per-cell minimap ground colours from a decoded map's baked ground lanes
-   *  (`content/minimap-ground.ts`) - preferred over the typeId palette, which can't depict them. */
+  /** Per-cell minimap ground colours from a decoded map's baked ground lanes, preferred over the typeId palette. */
   readonly minimapCellColours?: Uint32Array;
-  /** Map bounds in cells for placement/order clicks (a click outside is rejected, never clamped);
-   *  grid-logic consumers derive the 2× node bounds from it. */
+  /** Map bounds in cells; half-cell consumers derive the 2x node bounds from it. */
   readonly mapSize: { readonly width: number; readonly height: number };
-  /** The map's terrain-height field so clicks on lifted hills resolve to the tile drawn there. */
+  /** Terrain-height field, so clicks on lifted hills resolve to the tile drawn there. */
   readonly elevation?: ElevationField;
-  /** The player the person controls - the map roster seat picked in the menu (`?player=N`).
-   *  Default {@link HUMAN_PLAYER}: scenes and roster-less maps play slot 0, as before. Drives the
-   *  fog perspective, unit selection/orders, placement ownership and the HUD's economy view. */
+  /** The controlled seat (`?player=N`): fog perspective, selection and orders, placement ownership, HUD economy. */
   readonly localPlayer?: number;
-  /** The spectator session (`?player=observer` or `overseer`): no fog view, and every player's units,
-   *  buildings, flags and signposts are pickable as if owned - a spectator inspecting a running match
-   *  (e.g. the strategic AI). {@link localPlayer} keeps driving placement ownership and the HUD economy
-   *  view. */
+  /** Spectator session: no fog view, and every player's entities are pickable as if owned. */
   readonly observer?: boolean;
-  /** The read-only spectator (`?player=observer`): the interactive HUD's command seam is a no-op, so
-   *  selecting an AI's settler can inspect but never re-task it. False for a normal seat and for the
-   *  `overseer` god-mode, which both issue commands live. */
+  /** Read-only spectator: the interactive HUD's command seam is a no-op, so a selection can inspect but never re-task. */
   readonly readOnly?: boolean;
-  /** Owner slot → team-colour slot (the map roster's colour choices) for player-coloured HUD bits
-   *  (minimap dots, the details panel's worker sprites). The renderer's own sprites take the same
-   *  mapping via {@link WorldRendererOptions.playerColourOf} at construction. Default identity. */
+  /** Owner slot to team-colour slot for player-coloured HUD bits. Default identity. */
   readonly playerColourOf?: (player: number) => number;
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
-  /**
-   * Per-frame hook fed every sim event the frame's step(s) produced, invoked before the renderer draws
-   * - the `?map=` entry's static→dynamic resource handover reacts to `resourceFelled`/`resourceMined`/
-   * `resourceDepleted` here, so the static sprite is gone the same frame the pool starts drawing the
-   * node. Called only on frames that stepped (no events otherwise).
-   */
+  /** Sim events from the frame's step(s), delivered before the renderer draws. Skipped on frames that did not step. */
   readonly onEvents?: (events: readonly SimEvent[]) => void;
 }
 
-/**
- * A running game session - the owner of this view and its RAF loop above the per-entry mounts.
- * {@link destroy} is the shared teardown seam for quit-to-menu and in-page session replacement.
- */
 export interface GameSession {
-  /** Stop the frame loop and remove overlays owned by this session. Idempotent. Full-page navigation
-   *  unloads the remaining DOM, Pixi, and listener state; in-page replacement must tear those down. */
+  /** Stop the frame loop and remove this session's overlays. Idempotent; leaves DOM, Pixi and listener teardown to the caller. */
   destroy(): void;
 }
 
 /** px gap between the tool-panel strip's right edge and the debug overlay's left edge. */
 const PERF_STRIP_GAP = 8;
 
-/**
- * Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop. Resolves
- * with the {@link GameSession} once the loop is running (the RAF chain keeps itself alive from there).
- */
+/** Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
-  // The controlled player - every "our units / our fog / our economy" read below goes through it.
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
 
-  // Every consumer of the sim's per-system seam (`?debug=perf` marks, `?debug=trace` recording,
-  // `?debug=profile` running totals) fanned out from the one instrument slot. Installed before the HUD
-  // mounts so the system menu sees an active recording.
+  // Installed before the HUD mounts so the system menu sees an active recording.
   const profile = installSessionInstruments(sim, params);
 
-  // `destroy` halts the loop and drops this session's overlays so a later game cannot run a second
-  // loop over the same stage. `quitToMenu` then lets full-page navigation unload the rest.
   let loop: RafLoop | null = null;
   let destroyed = false;
   const systemMenu = createSystemMenu({ onQuit: () => quitToMenu() });
@@ -145,8 +104,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     destroyed = true;
     loop?.stop();
     systemMenu.dispose();
-    // Drop the debug seam with the session: leaving it set pins this sim, renderer and stats for the
-    // lifetime of the document, and a probe would read a world that is no longer running.
+    // Leaving the debug seam set would pin this sim, renderer and stats for the document's lifetime.
     delete window.__opennorthland;
   };
   const quitToMenu = (): void => {
@@ -154,59 +112,35 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     window.location.search = menuSearch();
   };
 
-  // `?uiscale=` - parsed once, shared by the tool panel and the action ring. Fractional allowed (the
-  // default is 1.4×); the consumers clamp it to ≥1.
+  // Fractional values are allowed; the consumers clamp to >= 1.
   const uiscale = floatParam(params, 'uiscale', DEFAULT_UI_SCALE);
 
-  // `?lang=` - the UI-string + building-name language (defaults to Polish). Shared by the building menu's
-  // localized names and the tool panel's decoded UI strings so the two can't drift.
   const lang = currentLocale();
-  // Playback control. `?speed=` seeds the initial wall-clock multiplier (default ×1; e.g. `&speed=0.5`
-  // for a calm, sub-1× pace the panel's discrete speed button can't reach). The tool panel's game-speed
-  // button then drives it live (×1 → ×2 → ×3 → ×1; `P` toggles pause) without clobbering this seed at mount.
+  // `?speed=` seeds the wall-clock multiplier; the tool panel's speed button then drives it live.
   const control = { paused: false, speed: floatParam(params, 'speed', 1) };
-  // Built here rather than inside the loop so its dropped-tick tally spans the whole session: that
-  // counter is the only record that a requested speed was not delivered.
+  // Owned here rather than by the loop, so the dropped-tick tally spans the whole session.
   const timestep = new FixedTimestep();
-  // The frame fold: the readout formats it, the debug handle reports it.
   const frameStats = new FrameStats();
 
-  // Original decoded sounds, played positionally: action SFX + terrain ambient (viewport-culled,
-  // attenuated, panned) + non-spatial life-event jingles + settler voice chatter - a pure consumer of
-  // the same snapshot + events render reads. The start-audible/gesture-resume policy lives in
-  // game-presentation.ts. A checkout without `content/` (no sound bank) degrades to silence.
+  // A checkout without a decoded sound bank degrades to silence.
   const { sound: soundDriver, hasSignArt } = await mountGamePresentation(params, renderer);
 
-  // On-canvas debug readout (top-left, just clear of the tool-panel strip): tick / speed / steps /
-  // entity counts + the FPS and the sim/snap/draw CPU split, so a human can judge whether the view holds
-  // a frame rate, whether culling is biting, and whether a slow frame is the sim or the draw. Real-GPU
-  // only: headless Chromium is software-GL. The left inset is the strip's right edge + a small gap; the
-  // build menu drops below it (from the buildings button), so the two never overlap.
+  // The left inset clears the tool-panel strip, so the readout and the build menu never overlap.
   const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
 
-  // The frame's fog gate for the human player: the long-lived consumers here (unit picking, the pile
-  // tooltip, the placement gate, voice chatter) close over its stable predicates, refreshed via
-  // `fogGates.setFrame` each frame (see projections/fog-gates.ts).
+  // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
   const fogGates = createFogGates();
 
-  // The live placement rules the tool panel's click gate and the frame loop's cursor ghosts share.
   const { canPlaceAt, canPlaceSignpostAt } = createPlacementGates(sim, fogGates, localPlayer);
 
-  // The minimap handle, assigned right after the tool panel mounts (the panel must mount first - stage
-  // order is draw order, and the minimap window draws over the strip's lower buttons on a short
-  // screen). The panel's overlay seams below read it lazily: both only run once the frame loop does.
+  // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
+  // draws over the strip's lower buttons on a short screen.
   let minimap: MinimapHandle | undefined;
 
-  // The one command seam the interactive HUD (tool panel + unit controls) issues through. A read-only
-  // spectator session drops every command here, so it can select and inspect any seat's entities but
-  // never re-task, demolish, or place anything; a normal seat and the overseer god-mode issue live.
-  // Sim-init commands (setPlayerAi, fog) bypass this by enqueuing on the sim directly at map start.
+  // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
   const issueCommand =
     deps.readOnly === true ? (_command: Command) => {} : (command: Command) => sim.enqueue(command);
 
-  // The original left tool panel - the standard game HUD. Its game-speed button drives `control`, the
-  // building menu enqueues `placeBuilding` on a map click, and it claims its own clicks so the HUD
-  // never falls through to world picking.
   const toolPanel = await mountGameToolPanel({
     app,
     canvas,
@@ -229,21 +163,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     onSystemMenu: () => systemMenu.toggle(),
   });
 
-  // The canvas-bound client→screen conversion injected into the minimap and world pickers (`hud/` never
-  // imports `view/` - passed as options per the hud contract).
+  // Injected rather than imported: `hud/` never imports `view/`.
   const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
     clientToScreenPx(canvas, app.renderer.resolution, clientX, clientY);
-  // Bring a world-px spot to the middle of the view at the current zoom.
   const jumpToWorld = (wx: number, wy: number): void => {
     const zoom = cameraCtl.camera().scale ?? 1;
     cameraCtl.jumpTo(cameraCenteredOnWorld(wx, wy, zoom, app.screen.width, app.screen.height));
   };
-  // The bottom-left minimap in the original braided overview frame: whole-map ground + player-coloured
-  // unit dots + the camera's view rectangle; a left-click (or drag) in the map hole re-centres the
-  // camera on the pointed world spot at the current zoom. Mounted after the tool panel (draws over its
-  // strip on a short screen - and the panel's overlay-defer above yields those covered clicks) and
-  // before the unit controls (its claim joins their pointer chain: a minimap click must never select
-  // units or issue world orders).
+  // Mounted after the tool panel (draw order) and before the unit controls, so that a minimap click
+  // never falls through to unit selection or a world order.
   minimap = await mountMinimap({
     app,
     canvas,
@@ -257,29 +185,22 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     toScreenPx: clientToScreen,
   });
 
-  // The open pop-up windows (build menu / goods / stats) and the minimap claim the cursor against BOTH
-  // camera gestures: the wheel belongs to the window's list (not a zoom behind it) and the screen edge
-  // under them must not pan. The tool-panel STRIP deliberately does not claim - it hugs the left screen
-  // edge, and the RTS edge-pan (and wheel zoom) keep working over it.
+  // Open windows and the minimap claim against both camera gestures. The tool-panel strip deliberately
+  // does not, so edge-pan and wheel zoom keep working over it.
   const mountedMinimap = minimap;
   const hudClaims = (clientX: number, clientY: number): boolean =>
     toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY);
   cameraCtl.setPointerGuard(hudClaims);
   cameraCtl.setEdgeGuard(hudClaims);
 
-  // The cursor position for the build-mode ghost (client coords; null when the pointer left the
-  // canvas). Tracked persistently - the ghost must follow the mouse between clicks, and reading it in
-  // the frame loop keeps all per-frame work in the one RAF (no per-mousemove sim probing).
+  // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
+  // the sim on every mousemove.
   const pointerAt = trackCanvasPointer(canvas);
 
-  // Door-badge click picking reads the fog-filtered badge projection built further down (it needs the
-  // fog gates + building index): late-bound like the minimap handle, and resolved long before any
-  // click. Stays unbound without the decoded sign art - the pick geometry is the sign chain's.
+  // Late-bound: the badge projection below needs the fog gates and the building index. Stays unbound
+  // without the decoded sign art, whose chain owns the pick geometry.
   let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
 
-  // RTS unit control: left-click / drag-box to select the human's units, right-click to send them,
-  // Space for the action menu. Reads the camera + snapshot through closures, issues commands into the
-  // sim. Harmless on scenes with no owned units (nothing is pickable).
   const controls = await createUnitControls({
     app,
     canvas,
@@ -300,13 +221,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     drawnItems: () => renderer.drawnItems(),
     doorBadges: () => pickableDoorBadges?.() ?? [],
     equipPickList: (entity, group) => sim.equipPickList(entity as Entity, group),
-    boundsOf: (ref) => renderer.entityBounds(ref), // exact sprite-box picking against the real sprite
-    pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy), // buildings: solid pixels only
+    boundsOf: (ref) => renderer.entityBounds(ref),
+    pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
     claimPointer: (x: number, y: number) =>
       toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
-    // The Magazyn stock-row name tooltip. Its own instance (not the ground one below): the two hover
-    // surfaces are mutually exclusive by cursor, and a shared element would fight - the frame loop hides the
-    // ground tooltip whenever the pointer is over the HUD, which is exactly when this one must stay shown.
+    // A separate instance from the ground tooltip below, which the frame loop hides whenever the
+    // pointer is over the HUD - exactly when this one must stay shown.
     tooltip: createTooltip(),
   });
 
@@ -330,8 +250,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   });
   if (hasSignArt) pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
 
-  // The developer overlays: the `?debug=geometry` diagram (ticked by the frame loop) + the admin spawn
-  // palette. Mounted after the unit controls - an admin spawn click defers to their composed HUD claim.
+  // Mounted after the unit controls, so an admin spawn click defers to their composed HUD claim.
   const geometryDebug = mountDebugOverlays({
     app,
     canvas,
@@ -347,10 +266,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     goodLabel,
   });
 
-  // Name-on-hover: a cursor tooltip naming the loose good pile (with its count) under the pointer. A
-  // screen-bounded, snapshot-memoized subsystem in its own module; it owns its own tooltip element
-  // (distinct from the details panel's Magazyn stock-row tooltip above) and yields the pointer to build
-  // placement and the HUD.
+  // Owns its own tooltip element, distinct from the details panel's stock-row tooltip above.
   const pileTooltip = createGroundPileTooltip({
     renderer,
     camera: () => cameraCtl.camera(),
@@ -375,9 +291,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     profile,
   });
 
-  // Hand the assembled world + HUD subsystems to the steady-state RAF loop (frame-loop.ts). The
-  // mount above owns construction; the loop owns the pinned per-frame order. The returned stop handle is
-  // the session's - quit halts the loop before navigating away.
+  // This mount owns construction; the loop owns the pinned per-frame order.
   loop = startFrameLoop({
     deps,
     control,

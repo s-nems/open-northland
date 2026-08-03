@@ -2,12 +2,9 @@ import { type Container, type Graphics, type Texture, TilingSprite } from 'pixi.
 import type { Rect } from './geometry.js';
 
 /**
- * The shared chrome of the HUD's pop-up windows (building menu, statistics, placement banner) plus the
- * hover highlight theme - one home so the look can't drift per window. Two tiers over the same geometry:
- * {@link tileBitmap} lays the decoded `bg*.pcx` wood/rust/button fills (the in-game look), and the `draw*`
- * Graphics helpers (gilt frame, bevels, tab plates, scrollbar) both frame those tiles and stand in as the
- * flat fallback when `content/` is absent. The details panel (`details-panel/chrome.ts`) draws
- * higher-fidelity rope borders over the same fills.
+ * The shared chrome of the HUD's pop-up windows plus the hover highlight theme. Two tiers over the same
+ * geometry: `tileBitmap` lays the decoded `bg*.pcx` wood/rust/button fills, and the `draw*` Graphics
+ * helpers both frame those tiles and stand in as the flat fallback when `content/` is absent.
  */
 
 /** Design-space window metrics (scaled by uiscale, like the strip): padding, title row, text line. */
@@ -18,8 +15,7 @@ export const WIN_LINE_H = 12;
 /** Parchment window fill/border. */
 const WINDOW_FILL = 0x241d12;
 export const WINDOW_BORDER = 0x6b5836;
-/** Warmer wood fill used when the decoded `bg` bitmap is absent - closer to the in-game window than the
- *  near-black {@link WINDOW_FILL}, so the flat-Graphics fallback still reads as wood. */
+/** Warmer wood fill used when the decoded `bg` bitmap is absent, so the flat fallback still reads as wood. */
 export const WOOD_FILL = 0x3a2c1a;
 /** The gold window frame (a bright bead between two dark lines) echoing the original's gilt border. */
 const FRAME_GOLD = 0xb79860;
@@ -48,17 +44,15 @@ export const HOVER_ALPHA = 0.16;
 const bevelLine = (scale: number): number => Math.max(1, Math.round(scale));
 
 /**
- * Draw a two-tone bevel inside `r`: light edges top+left, dark edges bottom+right for a raised look,
- * swapped for a pressed (inset) look. Shared by the panel frame, tab buttons and the scrollbar thumb/track.
+ * Draw a two-tone bevel inside `r`: light edges top and left, dark edges bottom and right for a raised
+ * look, swapped for a pressed one.
  */
 export function drawBevel(g: Graphics, r: Rect, scale: number, style: 'raised' | 'pressed'): void {
   const w = bevelLine(scale);
   const light = style === 'raised' ? BEVEL_LIGHT : BEVEL_DARK;
   const dark = style === 'raised' ? BEVEL_DARK : BEVEL_LIGHT;
-  // Top + left (the "light" pair for a raised control).
   g.rect(r.x, r.y, r.w, w).fill(light);
   g.rect(r.x, r.y, w, r.h).fill(light);
-  // Bottom + right (the "dark" pair).
   g.rect(r.x, r.y + r.h - w, r.w, w).fill(dark);
   g.rect(r.x + r.w - w, r.y, w, r.h).fill(dark);
 }
@@ -106,10 +100,7 @@ export function drawPlateOutline(g: Graphics, r: Rect, scale: number): void {
   g.rect(r.x, r.y, r.w, r.h).stroke({ color: FRAME_GOLD, width: bevelLine(scale), alignment: 0 });
 }
 
-/**
- * Draw a category-tab button (the flat fallback when the decoded button bitmap is absent): a pressed (lit,
- * inset) face for the selected tab, a raised (dull) face for the rest.
- */
+/** Draw a category-tab button: the flat fallback when the decoded button bitmap is absent. */
 export function drawTabButton(g: Graphics, r: Rect, scale: number, selected: boolean): void {
   g.rect(r.x, r.y, r.w, r.h).fill(selected ? TAB_SELECTED_FILL : TAB_FILL);
   drawBevel(g, r, scale, selected ? 'pressed' : 'raised');

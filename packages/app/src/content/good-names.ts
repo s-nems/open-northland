@@ -2,14 +2,10 @@ import { type Locale, type Messages, messages } from '../i18n/index.js';
 import { loadGoodsManifest } from './goods-gfx.js';
 
 /**
- * Localized good display names - the loadable seam for the pipeline's per-locale good-name tables
- * (`content/goods/manifest.json` `names`: locale → good string id → name, extracted from the game's own
- * `text/<lang>/strings/gameobjects/goods.{ini,cif}`, following the app-wide `?lang=` value). Authored names
- * keep the UI complete in a bare checkout; extracted content overrides them when the local pipeline output
- * is available.
- *
- * Keyed by good string id (not typeId), stable across the sandbox and the extracted IR - the same key the
- * icon manifest uses - so one lookup serves every scene and both good-id namespaces.
+ * Localized good display names from the pipeline's per-locale tables (`content/goods/manifest.json`
+ * `names`), extracted from the game's own `text/<lang>/strings/gameobjects/goods.{ini,cif}` and selected
+ * by the app-wide `?lang=` value. Authored names keep the UI complete in a bare checkout; extracted
+ * content overrides them. Keyed by good string id, stable across the sandbox and the extracted IR.
  */
 
 /** The locales the pipeline emits (see `GOOD_NAME_LOCALES` in the goods stage). Preference order for fallback. */
@@ -25,9 +21,9 @@ export function goodLocaleParam(params: URLSearchParams): GoodLocale {
 }
 
 /**
- * Names for goods that exist only in the sandbox (no game `[goodtype]`, so no string-table entry): the demo
- * `plank` the demo world's joinery produces. Kept here (not in the pipeline manifest) because they have no faithful
- * source - a NAMED APPROXIMATION so the synthetic good reads in-language too. `plank` = sawn `wood`.
+ * The authored good names for a locale. They also cover the goods that exist only in the sandbox (no game
+ * `[goodtype]`, so no string-table entry, e.g. `plank`), which have no faithful source: those are a named
+ * approximation so a synthetic good still reads in-language.
  */
 function localeMessages(locale: GoodLocale): Messages['goods'] {
   const appLocale: Locale = locale === 'pl' ? 'pol' : 'eng';
@@ -41,10 +37,9 @@ async function loadNameTables(): Promise<Readonly<Record<string, Readonly<Record
 }
 
 /**
- * Build the `good STRING id → display name` map for a locale (pure), applying the fallback chain
- * `<locale> extracted → authored → pl extracted → en extracted` per id, so a good missing from the
- * chosen language still shows a name rather than its raw id. Authored names also cover a bare checkout.
- * Split from the fetch so the fallback rule is unit-tested without the network.
+ * Build the good string id → display name map for a locale, applying the fallback chain
+ * `<locale> extracted → authored → pl extracted → en extracted` per id, so a good missing from the chosen
+ * language still shows a name rather than its raw id.
  */
 export function resolveGoodNameMap(
   tables: Readonly<Record<string, Readonly<Record<string, string>>>>,

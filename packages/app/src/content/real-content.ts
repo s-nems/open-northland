@@ -19,27 +19,18 @@ import { EQUIP_CLASS_BY_SLUG } from '../game/sandbox/combat.js';
 import { loadIrRaw } from './ir/load.js';
 import { fetchJsonOrNull } from './net.js';
 
-/** The one in-flight/settled parse of the served IR into a `ContentSet` - memoized like {@link loadRealContent}. */
 let contentSetPromise: Promise<ContentSet | null> | null = null;
 
 /**
- * Fetch + validate the served `content/ir.json` into the sim's `ContentSet` - the real-content
- * counterpart to {@link import('./ir/load.js').loadIr}, which returns the graphics/atlas view instead. The
- * pure sim never does I/O, so the validated set is minted here at the app boundary
- * (`packages/app/AGENTS.md`); wiring it into the sim is a later ticket.
- *
- * Returns `null` when `content/` is absent, so a bare checkout still boots; a present-but-malformed IR
- * throws via `parseContentSet` so a genuine schema or cross-reference break surfaces loudly instead of
- * degrading to silence. `fetchImpl` defaults to the global `fetch`; the default path reads the shared
- * {@link loadIrRaw} document (so the multi-MB IR is fetched and JSON-parsed once per page, not once per
- * view) and memoizes its own `ContentSet` parse, while an injected transport fetches and runs uncached so
- * callers stay independent.
+ * Fetch and validate the served `content/ir.json` into the sim's `ContentSet` at the app boundary.
+ * Returns `null` when `content/` is absent so a bare checkout still boots; a present-but-malformed IR
+ * throws via `parseContentSet`. The default transport shares one memoized parse of the {@link loadIrRaw}
+ * document per page, while an injected `fetchImpl` fetches and parses uncached.
  */
 export function loadRealContent(fetchImpl: typeof fetch = fetch): Promise<ContentSet | null> {
   if (fetchImpl !== fetch) return fetchContentSet(fetchImpl);
   contentSetPromise ??= parseSharedIr().then((set) => {
-    // Memoize only success: a transient boot-time fetch failure must not pin the loader to null for
-    // the page's lifetime - the next consumer retries (mirrors loadIr).
+    // Memoize success only: a transient boot-time fetch failure must not pin the loader to null.
     if (set === null) contentSetPromise = null;
     return set;
   });
@@ -58,73 +49,57 @@ async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | nu
 
 /** The real content with its clean-room balance completed, plus the gaps the overlay cannot fill. */
 export interface RealContentMerge {
-  /** The real content readied for the sim: localized good names, the clean-room felling/mining balance
-   *  pinned into its zeroed gathering blocks, the clean-room field-farming block added to farmed goods,
-   *  the clean-room settler HP set on the playable tribes, the authored defence-mode garrison sizes on
-   *  the buildings that take one, and the sim's nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) added
-   *  to `landscape`. */
   readonly content: ContentSet;
-  /** Gathered goods (they carry a `gathering` block) with no clean-room balance - they stay uncalibrated
-   *  (leather/honey/meat are animal/production goods the sandbox never map-gathers). */
+  /** Gathered goods with no clean-room balance: they stay uncalibrated. */
   readonly unbalancedGoods: readonly string[];
-  /** Field-farmed goods (they carry the three field atomics) with no clean-room `farming` block yet - the
-   *  pipeline correctly gives them no recipe (grown, not made), so until a block lands they neither
-   *  field-farm nor produce. Wheat is calibrated; herb/mushroom are the known gap (see the tracker). */
+  /** Field-farmed goods with no clean-room `farming` block: until one lands they neither field-farm nor
+   *  produce (the pipeline correctly gives a grown good no recipe). */
   readonly unfarmedFieldGoods: readonly string[];
-  /** Real buildings absent from the clean-room catalog (`VIKING_BUILDINGS`) - the wonders/vehicles/special
-   *  the sandbox never modelled. They keep their extracted footprint/stock/recipe but no clean-room tuning. */
+  /** Real buildings absent from `VIKING_BUILDINGS`: they keep their extracted footprint/stock/recipe but
+   *  no clean-room tuning. */
   readonly uncatalogedBuildings: readonly string[];
 }
 
-/** Localize a good's display name from the app-wide `?lang=` map, keyed by its string id - the real IR
- *  ships raw ids where the sandbox carried English `name`s. A good the map lacks keeps its own name. */
+/** Localize a good's display name by its string id; a good the map lacks keeps its own name. */
 function withLocalizedName(good: GoodType, goodNames?: ReadonlyMap<string, string>): GoodType {
   const name = goodNames?.get(good.id);
   return name !== undefined ? { ...good, name } : good;
 }
 
-/** Overlay the clean-room field-farming block (growth timing, field radius/count) the pipeline cannot
- *  extract - no readable growth constants - keyed by good id from the shared {@link FARMING_BALANCE_BY_ID}
- *  the sandbox also reads, so wheat farms at one pace on either content base. The pipeline extracts the
- *  field atomics + `producedOnMap` flag and (correctly) gives the farm no recipe; this block is the last
- *  piece the sim's field loop needs. A good absent from the table is returned unchanged. */
+/** Overlay the clean-room field-farming block (growth timing, field radius/count): the source carries no
+ *  readable growth constants, so the pipeline cannot extract one. A good absent from
+ *  {@link FARMING_BALANCE_BY_ID} is returned unchanged. */
 function withFarmingBalance(good: GoodType): GoodType {
   const farming = FARMING_BALANCE_BY_ID[good.id];
   return farming !== undefined ? { ...good, farming } : good;
 }
 
-/** Overlay the clean-room equip classification (slot category + wear axis) the pipeline does not yet
- *  extract (see `docs/tickets/pipeline/equipment-consumables-extraction.md`), keyed by good id from the
- *  same source-pinned table the sandbox catalog merges by typeId (`EQUIP_GOODS` - `allowequip` membership
- *  + the manual's Equipment section), so the equip window's pick menus and orders work on either content
- *  base. A good already shipping an `equip` block keeps it - extracted data wins over the overlay. */
+/** Overlay the clean-room equip classification (slot category + wear axis) the pipeline does not extract,
+ *  from the source-pinned table (`allowequip` membership plus the manual's Equipment section). A good
+ *  already shipping an `equip` block keeps it: extracted data wins over the overlay. */
 function withEquipClass(good: GoodType): GoodType {
   if (good.equip !== undefined) return good;
   const equip = EQUIP_CLASS_BY_SLUG.get(good.id);
   return equip !== undefined ? { ...good, equip } : good;
 }
 
-/** Give WOOL the carcass-harvest atomic a hunted sheep's carcass is worked with. In the source, wool is
- *  purely a husbandry product (no harvest atomic, no gathering pipeline) - the hunter yielding wool off
- *  a last-resort sheep kill is our own design (`catalog/hunting.ts`), so the atomic is a named
- *  approximation mirroring leather/meat's extracted `atomicForHarvesting 33`. */
+/** Give WOOL the carcass-harvest atomic. In the source wool is purely a husbandry product (no harvest
+ *  atomic, no gathering pipeline), so the hunter's wool-off-a-sheep-kill yield and this atomic are a
+ *  named approximation mirroring leather/meat's extracted `atomicForHarvesting 33`. */
 function withWoolCarcassHarvest(good: GoodType): GoodType {
   if (good.id !== 'wool' || good.atomics.harvest !== undefined) return good;
   return { ...good, atomics: { ...good.atomics, harvest: HARVEST_CADAVER_ATOMIC } };
 }
 
-/** Overlay the authored defence-mode garrison size ({@link shelterCapacityById}). It doubles as the
- *  eligibility set until the source's own `logicCanEnableDefenceMode` is extracted
- *  (`docs/tickets/features/defence-mode-eligibility-from-source.md`). A type with none keeps its 0. */
+/** Overlay the authored defence-mode garrison size, which doubles as the eligibility set until the
+ *  source's own `logicCanEnableDefenceMode` is extracted. A type with none keeps its 0. */
 function withShelterCapacity(building: BuildingType): BuildingType {
   const shelterCapacity = shelterCapacityById(building.id);
   return shelterCapacity === 0 ? building : { ...building, shelterCapacity };
 }
 
-/** Rein the two CIVILIAN bows in under the soldier's short bow - a design override of the extracted rows,
- *  which make both stronger in at least one column ({@link HUNTER_BOW_BALANCE}, {@link HOUSE_BOW_DAMAGE}).
- *  The hunter bow's band is overridden too; the wall bow keeps its extracted reach. Every other weapon
- *  passes through untouched. */
+/** Rein the two civilian bows in under the soldier's short bow: a design override of the extracted rows,
+ *  which make both stronger in at least one column. The wall bow keeps its extracted reach. */
 function withCivilianBowBalance(weapon: WeaponType): WeaponType {
   if (weapon.id === 'house_bow') return { ...weapon, damage: { ...HOUSE_BOW_DAMAGE } };
   if (weapon.id !== 'hunter_bow') return weapon;
@@ -136,11 +111,9 @@ function withCivilianBowBalance(weapon: WeaponType): WeaponType {
   };
 }
 
-/** Overlay the clean-room felling/mining balance (chops-to-fell / yield / deposit size+levels) into the
- *  pipeline's zeroed gathering block, keyed by good id from the shared {@link GATHERING_BALANCE_BY_ID}
- *  (the mod data carries no chop count - `catalog/felling.ts`), preserving everything else real ships
- *  (harvest/pickup/store atomics, `bioLandscape`). A good with no gathering block, or none in the table,
- *  is returned unchanged. */
+/** Overlay the clean-room felling/mining balance (chops-to-fell, yield, deposit size and levels) into the
+ *  pipeline's zeroed gathering block: the mod data carries no chop count. Everything else the real row
+ *  ships is preserved. */
 function withGatheringBalance(good: GoodType): GoodType {
   if (good.gathering === undefined) return good;
   const balance = GATHERING_BALANCE_BY_ID[good.id];
@@ -158,24 +131,13 @@ function withGatheringBalance(good: GoodType): GoodType {
 }
 
 /**
- * Ready the real content for the sim by completing the clean-room balance the pipeline cannot extract,
- * then surface what it still cannot fill. Each good passes through four named overlays, all keyed by the
- * good's string id: {@link withLocalizedName}, {@link withFarmingBalance} (the field-cultivation timing),
- * {@link withGatheringBalance} (the felling/mining tuning), and {@link withEquipClass} (the equip
- * slot/wear axis). The overlay tables are the same ones the sandbox reads, so a mechanic runs at one
- * pace on either content base.
- *
- * Today's felling still runs through the sandbox `GATHERERS` placement path (`game/sandbox/place/`,
- * re-keyed to real ids) reading the same balance table, proven by `test/map-gatherer-cycle.test.ts`;
- * completing the ContentSet keeps it self-consistent and ready for a content-driven resource-spawn system.
- * Gathered goods with no clean-room balance, field goods with no clean-room `farming` block, and buildings
- * beyond the clean-room catalog are reported - not silently dropped - so the caller can log the gap.
+ * Ready the real content for the sim: apply the clean-room overlays the pipeline cannot extract, keyed by
+ * good id off the same tables the sandbox reads, then report the gaps they cannot fill rather than
+ * dropping them silently.
  *
  * It also injects the sim's semantic nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) into `landscape`:
- * real content's detailed types (1..87) don't carry the collision classes a resolved grid
- * (`content/collision.ts`) or a scene grid navigates on, and those class ids sit in a reserved band that
- * never aliases the detailed types, so `buildTerrainGraph` on real content resolves both. Idempotent - a
- * class row already present is not duplicated.
+ * real content's detailed types (1..87) carry no collision classes, and the class ids sit in a reserved
+ * band that never aliases them. Idempotent, so a class row already present is not duplicated.
  */
 export function mergeRealContent(
   real: ContentSet,
@@ -186,12 +148,9 @@ export function mergeRealContent(
       withEquipClass(withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames)))),
     ),
   );
-  // A gathered good (carries a `gathering` block) still lacking clean-room balance stays uncalibrated.
   const unbalancedGoods = goods
     .filter((g) => g.gathering !== undefined && GATHERING_BALANCE_BY_ID[g.id] === undefined)
     .map((g) => g.id);
-  // A field-farmed good (three field atomics) the farming overlay does not yet cover - the pipeline gives
-  // it no recipe, so without a `farming` block it neither field-farms nor produces (herb/mushroom today).
   const unfarmedFieldGoods = goods
     .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
     .map((g) => g.id);
@@ -201,18 +160,15 @@ export function mergeRealContent(
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
   const navRows = NAV_LANDSCAPE_TYPES.filter((t) => !landscapeIds.has(t.typeId));
   const landscape = [...real.landscape, ...navRows];
-  // Overlay the clean-room settler HP onto each playable tribe that ships without one (the real IR carries
-  // no human hitpoints - unreadable, source basis "Combat hit resolution"), the same value the sandbox
-  // tribes use, so an adult settler has one HP on either content base (`settlerHitpoints` reads it).
-  // Scoped to the player civs (a `jobEnables` tech-graph): an animal/monster tribe is no settler's tribe, so
-  // it stays at its own (0) HP rather than carrying a stray human pool it never uses.
+  // The real IR carries no human hitpoints (unreadable, source basis "Combat hit resolution"), so a
+  // playable tribe takes the clean-room value. Scoped by `jobEnables`: an animal/monster tribe is no
+  // settler's tribe and keeps its own 0.
   const tribes = real.tribes.map((t) =>
     t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
   );
-  // The civilian-bow overlays, and the hunter's authored prey/yield table (`catalog/hunting.ts`)
-  // resolved against this set's goods+tribes. Wool's pipeline row is leather's whole
-  // row re-keyed: the cadaver stage (landscape 79 / gfx 847), its footprint, AND the store-pile stage,
-  // so a wool heap draws the hide pile's decal (the same named approximation as the harvest atomic).
+  // Wool's pipeline row is leather's whole row re-keyed: the cadaver stage (landscape 79 / gfx 847), its
+  // footprint, and the store-pile stage, so a wool heap draws the hide pile's decal. The same named
+  // approximation as the harvest atomic.
   const weapons = real.weapons.map(withCivilianBowBalance);
   const woolType = goods.find((g) => g.id === 'wool')?.typeId;
   const leatherRow = real.gatheringPipeline.find((p) => p.goodId === 'leather');
@@ -224,8 +180,7 @@ export function mergeRealContent(
     ? [...real.gatheringPipeline, { ...leatherRow, goodType: woolType, goodId: 'wool' }]
     : real.gatheringPipeline;
   const huntPrey = huntPreyRows(goods, tribes);
-  // Re-validate the transformed set so a bad overlay or injected row fails here at the app boundary,
-  // not deep in the sim.
+  // Re-validate so a bad overlay or injected row fails at the app boundary, not deep in the sim.
   return {
     content: parseContentSet({
       ...real,
@@ -244,11 +199,8 @@ export function mergeRealContent(
 }
 
 /**
- * Load the served real content and ready it for the sim in one call: fetch + validate via
- * {@link loadRealContent}, then {@link mergeRealContent} (gathering balance + nav-terrain classes +
- * localized `goodNames`). Returns `null` on a bare checkout (no `content/ir.json`) so the interactive
- * entries fall back to the clean-room sandbox content. The pure sim never does I/O - this is the app
- * boundary that mints the sim-ready set (`packages/app/AGENTS.md`).
+ * Load the served real content and ready it for the sim in one call. Returns `null` on a bare checkout
+ * (no `content/ir.json`), so the interactive entries fall back to the clean-room sandbox content.
  */
 export async function loadRuntimeRealContent(
   goodNames?: ReadonlyMap<string, string>,
@@ -258,11 +210,7 @@ export async function loadRuntimeRealContent(
   return real === null ? null : mergeRealContent(real, goodNames);
 }
 
-/**
- * Log the gaps {@link mergeRealContent} surfaced - gathered goods with no clean-room balance, field goods
- * with no clean-room `farming` block, and buildings beyond the clean-room catalog - as one log line,
- * so a browser run shows what the overlay could not fill. No-op when there is nothing to report.
- */
+/** Log the gaps {@link mergeRealContent} surfaced as one line. No-op when there is nothing to report. */
 export function logRealContentGaps(merge: RealContentMerge): void {
   const { unbalancedGoods, unfarmedFieldGoods, uncatalogedBuildings } = merge;
   if (unbalancedGoods.length === 0 && unfarmedFieldGoods.length === 0 && uncatalogedBuildings.length === 0)

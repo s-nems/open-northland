@@ -1,12 +1,5 @@
-/**
- * The one iterator over a decoded map's `objects.placements` lane - a flat run of `[hx, hy, typeIndex]`
- * triples (the original's `emla` half-cell placements; layout owned by `@open-northland/data`'s terrain
- * schema). It owns the triple stride and the bounds/undefined handling so the object, collision and
- * resource joins read placements one way instead of each re-deriving `i += 3` / `i / 3`.
- */
-
-/** A placements lane is a flat run of `[hx, hy, typeIndex]` triples (source basis: `@open-northland/data`
- *  terrain `objects.placements`, validated to a multiple of this stride). */
+/** A placements lane is a flat run of `[hx, hy, typeIndex]` half-cell triples (the original's `emla`
+ *  lane; `@open-northland/data` validates its length to a multiple of this stride). */
 const PLACEMENT_STRIDE = 3;
 
 /**

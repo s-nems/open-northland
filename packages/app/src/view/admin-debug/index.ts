@@ -37,83 +37,54 @@ import {
 } from './spawn-catalog.js';
 
 /**
- * The admin / debug spawn palette - a hideable panel (a top toggle button) that lets a human drop
- * test entities by clicking the map (any soldier class with its weapon, any civilian, any resource node
- * or good, each owned by a chosen player) and run entity-action tools on what's already there (kill a
- * unit, drive its needs to full/empty, fill a warehouse, finish a construction site). It exists so combat,
- * ownership, economy and lifecycle can be exercised on a live map without hand-authoring a scene.
- *
- * Everything goes through the one sim command seam (`spawnSettler` / `placeResource` / the `debug*`
- * commands), so a debug poke is as replay-faithful as any player order - the panel never touches
- * `sim.world` directly (app one-way flow, packages/app/AGENTS.md). It is a pure app-layer DOM overlay,
- * mounted once and never torn down; its two `window` capture listeners persist for the page's life, which
- * is safe because `startGameView` runs exactly once per page load (a scene switch is a full reload).
- *
- * Layout: the panel is a right-docked rail (never the screen centre - it must not hide the map it
- * acts on), a fixed-height flex column - a static header carrying the spawn "stamp" settings (owner / HP /
- * armor / needs), a scrolling body of collapsible palette sections (only the section in use need be open),
- * and a pinned status footer that always shows what the next click will do (see {@link import('./chrome.js')}).
- *
- * Interaction: click a palette / action button to arm it (the cursor becomes a crosshair). A spawn arm
- * places at each clicked tile; an action arm applies to the entity clicked (a unit or a building, per the
- * action). Arming is sticky so a battle line - or a sweep of kills - is done with repeated clicks. Switch
- * the player swatch between spawn clicks to seed both sides. Right-click or Esc disarms. The armed press is
- * consumed (a window-capture listener before the RTS controls), so arming never also selects/orders units.
+ * The admin and debug spawn palette: arm a tool, then click the map to drop a test entity or run an
+ * entity action on what is already there. Every poke goes through the sim command seam, so it stays as
+ * replay-faithful as a player order. Mounted once and never torn down, which holds because
+ * `startGameView` runs exactly once per page load.
  */
 
 export interface AdminDebugDeps {
   readonly canvas: HTMLCanvasElement;
-  /** Submit a command into the sim (the one-way seam). */
   readonly enqueue: (command: Command) => void;
-  /** Map a client point to a map tile (null off the map) - shared with the tool panel's placement. */
+  /** Map a client point to a map tile, null off the map. */
   readonly clientToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
-  /** Pick the top entity of `kind` under a client point (null off any) - the target for an entity-action
-   *  tool (kill / needs / fill / finish). Any owner (so an enemy is killable), unlike the RTS selection.
-   *  Absent → the action tools are inert (no entity to act on). */
+  /** Pick the top entity of `kind` under a client point, any owner unlike the RTS selection. Absent
+   *  leaves the action tools inert. */
   readonly pickEntity?: (clientX: number, clientY: number, kind: DebugTargetKind) => number | null;
-  /** True when a client point is over the HUD (the tool-panel strip / an open window) - a spawn click
-   *  there is the HUD's, not a map spawn. */
+  /** True when a client point is over the HUD, where a click is the HUD's rather than a map spawn. */
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
-  /** The localized display name for a good typeId (from the shared sim content), or `undefined` to keep the
-   *  catalog's built-in label. Localizes the goods/resource palette from the one name source the HUD uses. */
+  /** Localized display name for a good typeId, or `undefined` to keep the catalog's built-in label. */
   readonly goodLabel?: (typeId: number) => string | undefined;
-  /** Every good the running content defines (`sim.content.goods` → its typeId + string id), each droppable
-   *  as a loose ground pile. Driven from the live content so the palette always matches whatever the view
-   *  runs (sandbox or the real extracted goods) and every entry clears the sim's `dropGood` content guard. */
+  /** Every good the running content defines, each droppable as a loose pile. Live-sourced, so no entry
+   *  can trip the sim's `dropGood` content guard. */
   readonly goods: readonly GoodEntry[];
-  /** The wildlife palette entries (`runtime/debug-mounts.ts` owns the live-content sourcing), each
-   *  spawnable as its data-pinned herd. Empty/absent hides the wildlife section. */
+  /** Wildlife entries, each spawnable as its data-pinned herd. Empty or absent hides the section. */
   readonly animals?: readonly AnimalEntry[];
-  /** The sim's live needs-rule state - drawn on the "Potrzeby" toggle button so it reflects the entry's
-   *  default (scenes boot needs OFF, maps ON). The toggle itself goes through `enqueue` like any command. */
+  /** The sim's live needs-rule state, drawn on the toggle button: scenes boot needs off, maps on. */
   readonly needsEnabled?: () => boolean;
-  /** The sim's live fog-of-war mode (`FOG_MODE.*`) - highlights the active mode button; switching goes
-   *  through `enqueue` (`setFogMode`) like any command. Absent hides the fog section. */
+  /** The sim's live fog-of-war mode (`FOG_MODE.*`). Absent hides the fog section. */
   readonly fogMode?: () => number;
   readonly geometryEnabled: () => boolean;
   readonly setGeometryEnabled: (enabled: boolean) => void;
 }
 
-/** The default hitpoint pool shown in the HP field - the clean-room settler HP the content's tribes carry
- *  ({@link HUMAN_HITPOINTS}), so the palette's number matches what an untouched spawn gets from its tribe. */
+/** Matches the settler HP the content's tribes carry, so the field shows what an untouched spawn gets. */
 const DEFAULT_HITPOINTS = HUMAN_HITPOINTS;
 
-/** Mount the admin/debug spawn palette (toggle button + hidden panel). Mount-and-forget. */
+/** Mount the admin/debug spawn palette. Mount-and-forget. */
 export function mountAdminDebug(deps: AdminDebugDeps): void {
   const { canvas } = deps;
   const msgs = messages();
   const copy = msgs.admin;
   const labels = createAdminLabels(msgs, deps.goodLabel, deps.goods);
-  // The goods table in the weapon-lookup seam shape, mapped once (GoodEntry names the typeId `good`).
+  // The goods table in the weapon-lookup seam shape (`GoodEntry` names the typeId `good`).
   const spawnGoods = deps.goods.map((g) => ({ typeId: g.good, id: g.id }));
 
-  // ---- spawn state ---------------------------------------------------------
   let armed: Armed | null = null;
-  let player = HUMAN_PLAYER; // the human/blue player by default
+  let player = HUMAN_PLAYER;
   let hitpoints = DEFAULT_HITPOINTS;
   let armorClass = 0; // 0 = unarmored
 
-  // Buttons that reflect the armed choice + the player swatches, re-styled whenever state changes.
   const armedButtons: { readonly button: HTMLButtonElement; readonly armed: Armed }[] = [];
   const swatchButtons: { readonly button: HTMLButtonElement; readonly player: number }[] = [];
   const status = el('div', FOOTER_STYLE);
@@ -131,9 +102,6 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     refresh();
   };
 
-  // The live-rule toggle widgets - the global needs toggle + the fog-of-war mode switcher. Each builds a
-  // DOM row, enqueues its command on click, and re-reads the live rule when the panel opens (see
-  // live-toggles.ts). They have no coupling to the arming state, so they live apart from it.
   const needs = createNeedsToggle({ enqueue: deps.enqueue, needsEnabled: deps.needsEnabled });
   const fog = createFogSwitcher({ enqueue: deps.enqueue, fogMode: deps.fogMode });
   const geometry = createGeometryToggle({
@@ -141,7 +109,6 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     setEnabled: deps.setGeometryEnabled,
   });
 
-  // ---- DOM: right-docked flex column (header · scrolling body · status footer) ----
   const panel = el('div', ADMIN_PANEL_STYLE);
   panel.style.display = 'none';
 
@@ -150,20 +117,18 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   toggle.addEventListener('click', () => {
     open = !open;
     panel.style.display = open ? 'flex' : 'none';
-    if (!open) setArmed(null); // hiding the panel disarms (a stray crosshair click is confusing)
+    if (!open) setArmed(null); // hiding the panel disarms, so no stray crosshair click survives it
     if (open) {
-      needs.refresh(); // re-read the live rules - the boot value may predate a scene's toggle
+      needs.refresh(); // the boot value may predate a scene's own toggle
       fog.refresh();
       geometry.refresh();
     }
   });
 
-  // --- static header: title + spawn "stamp" settings (owner / HP / armor / needs) ---
   const header = el('div', HEADER_STYLE);
   header.append(el('div', 'font-weight:700;font-size:13px;margin-bottom:2px', copy.title));
   header.append(el('div', 'opacity:0.7;font-size:11px;margin-bottom:8px', copy.intro));
 
-  // Player swatches.
   header.append(el('div', SECTION_TITLE_STYLE, copy.playerOwner));
   const swatchRow = el('div', ROW_STYLE);
   for (const s of PLAYER_SWATCHES) {
@@ -181,7 +146,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   }
   header.append(swatchRow);
 
-  // HP + armor (applied to every spawned unit; a resource ignores them).
+  // Applied to every spawned unit; a resource ignores them.
   const statsRow = el('div', 'display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap');
   statsRow.append(
     numberField('HP', DEFAULT_HITPOINTS, (v) => {
@@ -207,11 +172,9 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   header.append(el('div', SECTION_TITLE_STYLE, copy.geometry));
   header.append(geometry.row);
 
-  // --- scrolling body: collapsible palette + action sections ---
   const body = el('div', BODY_STYLE);
 
-  /** Append one collapsible palette section: a titled row of arm/disarm buttons, with an optional name
-   *  filter above the row (the ~70-entry goods wall). */
+  /** Append one collapsible section of arm/disarm buttons, with an optional name filter above the row. */
   const addPaletteSection = (
     title: string,
     entries: readonly { readonly label: string; readonly armed: Armed }[],
@@ -225,7 +188,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     body.append(section.wrap);
   };
 
-  // Wojownicy open by default - the first thing a "spawn a fight" session reaches for.
+  // Open by default: the first section a spawn-a-fight session reaches for.
   addPaletteSection(
     copy.warriors,
     WARRIOR_PRESETS.map((preset) => ({ label: labels.unit(preset), armed: { kind: 'unit', preset } })),
@@ -236,8 +199,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     CIVILIAN_PRESETS.map((preset) => ({ label: labels.unit(preset), armed: { kind: 'unit', preset } })),
     false,
   );
-  // Zwierzęta - every living species the running content records; one click drops its data-pinned herd
-  // (unowned, so the player/HP/armor knobs don't apply). The filter narrows a real map's ~30 species.
+  // A herd is unowned, so the player, HP and armor knobs do not apply to it.
   const animals = deps.animals ?? [];
   if (animals.length > 0) {
     addPaletteSection(
@@ -252,16 +214,14 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     RESOURCE_ENTRIES.map((r) => ({ label: labels.good(r), armed: { kind: 'resource', good: r.good } })),
     false,
   );
-  // Towary - every good the running content defines, dropped as a loose ground pile (`dropGood`); the name
-  // filter narrows the ~70-entry wall. Sourced from the live content so the palette can't offer a good the
-  // sim would refuse to drop (the mismatch when a sandbox-scoped list met real content).
+  // Live-sourced, so the palette can never offer a good the sim would refuse to drop.
   addPaletteSection(
     copy.goods,
     deps.goods.map((g) => ({ label: labels.good(g), armed: { kind: 'good', good: g.good } })),
     false,
     copy.filterGoods,
   );
-  // Akcje debug - click-a-target tools (kill / needs / fill / finish); inert without an entity picker.
+  // Click-a-target tools, inert without an entity picker.
   addPaletteSection(
     copy.actions,
     DEBUG_ACTIONS.map((action) => ({ label: labels.action(action), armed: { kind: 'action', action } })),
@@ -272,7 +232,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
   document.body.append(toggle, panel);
   refresh();
 
-  /** Build one arm/disarm button per entry (registering each for the armed-highlight refresh). */
+  /** Build one arm/disarm button per entry, registered for the armed-highlight refresh. */
   function armEntries(
     entries: readonly { readonly label: string; readonly armed: Armed }[],
   ): readonly LabelledButton[] {
@@ -284,8 +244,6 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     });
   }
 
-  // ---- apply on map click --------------------------------------------------
-  /** A spawn arm places at a tile; the loose-good/resource/unit variants each map to their command. */
   const spawnAtTile = (col: number, row: number): void => {
     if (armed === null || armed.kind === 'action') return;
     if (armed.kind === 'animal') {
@@ -306,30 +264,27 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     );
   };
 
-  /** An action arm applies to the entity under the cursor (a no-op click if none is there / no picker). */
+  /** Applies to the entity under the cursor; a no-op click when none is there or no picker was handed in. */
   const applyActionAt = (clientX: number, clientY: number, action: DebugAction): void => {
-    // A snapshot pick returns the raw entity id; it is the branded `Entity` (picking is number-typed
-    // end-to-end), reconstituted at this one app→sim seam before the command carries it.
+    // Picking is number-typed end to end, so the `Entity` brand is reconstituted at this app-to-sim seam.
     const ref = deps.pickEntity?.(clientX, clientY, action.targetKind) ?? null;
     if (ref !== null) deps.enqueue(action.command(ref as Entity));
   };
 
-  // A window-capture mousedown runs before the canvas's RTS-control listeners (capture phase precedes
-  // the target phase), so when armed it can consume the press and act instead of selecting. When not
-  // armed it returns without consuming, leaving the normal controls untouched.
+  // Capture on `window` runs before the canvas's RTS-control listeners, so an armed press can consume
+  // the click and act instead of selecting.
   const onPointerDown = (e: MouseEvent): void => {
     if (armed === null) return;
     if (e.button === 2) {
-      setArmed(null); // right-click cancels arming …
+      setArmed(null);
       e.preventDefault();
-      e.stopPropagation(); // … and does not fall through to a move/attack order
+      e.stopPropagation(); // do not also fall through to a move or attack order
       return;
     }
     if (e.button !== 0) return; // middle button stays the camera pan
     if (e.target !== canvas) return; // a click on the panel itself, not the map
-    if (deps.claimPointer(e.clientX, e.clientY)) return; // over the HUD - let the HUD have it
-    // From here the armed left-press is ours: consume it so it never falls through to selection, even
-    // when it hits nothing (no spawn/target there, but no stray "click empty ground = clear selection").
+    if (deps.claimPointer(e.clientX, e.clientY)) return;
+    // Consume the armed left-press even when it hits nothing, so it never clears the unit selection.
     if (armed.kind === 'action') {
       applyActionAt(e.clientX, e.clientY, armed.action);
     } else {

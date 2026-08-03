@@ -2,8 +2,7 @@ import type { Simulation } from '@open-northland/sim';
 import { fogModeParam } from './fog.js';
 import { progressionOverride } from './progression.js';
 
-/** The world rules a URL flag reshapes: `?fog=off|reveal|recon` and `?progression=on|off`. Null keeps
- *  whatever the world set for itself. */
+/** The world rules a URL flag reshapes; null keeps whatever the world set for itself. */
 export interface SessionRuleOverrides {
   readonly fog: number | null;
   readonly progression: boolean | null;
@@ -14,9 +13,9 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRuleOverri
 }
 
 /**
- * Apply the overrides to a freshly built sim: enqueued after the world's own rules (FIFO - the later
- * write wins), so a flag overrides a scene's mode in either direction. An absent flag enqueues nothing,
- * so an untouched URL keeps the command stream - and any golden derived from it - byte-identical.
+ * Apply the overrides to a freshly built sim. The queue is FIFO and these land after the world's own
+ * rules, so a flag wins in either direction; an absent flag enqueues nothing, keeping the command
+ * stream byte-identical.
  */
 export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRuleOverrides): void {
   if (overrides.fog !== null) sim.enqueue({ kind: 'setFogMode', mode: overrides.fog });

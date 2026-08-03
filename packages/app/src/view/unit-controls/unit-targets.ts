@@ -11,10 +11,9 @@ export interface UnitTargetsDeps {
   readonly snapshot: () => WorldSnapshot;
   /** The human player whose units are selectable/orderable. */
   readonly humanPlayer: number;
-  /** The observer session: every owner counts as "ours", so any player's entities are pickable
-   *  (and none reads as an enemy - a spectator has no side to attack for). */
+  /** Observer session: every owner counts as ours, so nothing reads as an enemy. */
   readonly observer: boolean;
-  /** The frame the player is clicking on - see {@link import('./types.js').UnitControlsOptions.drawnItems}. */
+  /** The frame the player is clicking on. */
   readonly drawnItems: () => readonly DrawItem[];
   /** The renderer's exact per-entity sprite bounds (world px), or undefined for the kind box. */
   readonly boundsOf: ((ref: number) => EntityBounds | undefined) | undefined;
@@ -37,26 +36,20 @@ export interface UnitTargets {
   /** The human's standing signposts - direct-click targets only (a marquee never grabs a post). */
   signposts(): Pickable[];
   /**
-   * The owned settlers among `refs`, in draw order - the set an order is issued to. Unlike the hit-test
-   * sets it is bound to the selection, not the screen: a selection survives the camera panning away from
-   * it, and it reaches a settler standing inside a building, which the frame does not draw.
+   * The owned settlers among `refs`, in draw order. Bound to the selection rather than the screen, so it
+   * survives the camera panning away and reaches a settler standing inside a building.
    */
   ownedSettlersIn(refs: ReadonlySet<number>): FormationUnit[];
 }
 
-/**
- * The pickable target-set builders for the unit controls - each turns the frame the player is looking at
- * into the {@link Pickable}s a click hit-tests against. Pure with respect to controller state (they read
- * only the snapshot + the injected render frame data), so they live apart from the selection/order logic.
- */
+/** Turns the frame the player is looking at into the {@link Pickable}s a click hit-tests against. */
 export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
-  // The id→owner map plus the livestock id set, memoized by snapshot identity: one gesture runs several
-  // builders (a click-release chains owned → flags → signposts) and `sim.snapshot()` is itself memoized
-  // per tick, so the O(entities) pass runs once per tick rather than once per builder.
+  // Memoized by snapshot identity, so this O(entities) pass runs once per tick rather than once per
+  // builder: a single click-release chains owned, flags and signposts.
   const ownersOf = memoBySnapshot((snap: WorldSnapshot) => {
     const ownerOf = new Map<number, number>();
-    // Livestock (any catchable-species animal): claimed stock belongs to the player but is property,
-    // not a unit - the herd drives itself, so it is neither pickable nor orderable.
+    // Claimed livestock is the player's property rather than a unit: the herd drives itself, so it is
+    // neither pickable nor orderable.
     const livestock = new Set<number>();
     for (const e of snap.entities) {
       const player = ownerPlayerOf(e);
@@ -74,8 +67,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
   const unitKindOf = (item: DrawItem): UnitTargetKind | null =>
     item.kind === 'settler' || item.kind === 'building' ? item.kind : null;
 
-  /** A drawn settler/building as a hit target. A building refines to solid pixels (its sprite box
-   *  overhangs the footprint); a settler keeps the deliberately generous box. */
+  /** A building refines to solid pixels, since its sprite box overhangs the footprint. */
   const hitTarget = (item: DrawItem, kind: UnitTargetKind): Pickable => {
     const pixelHitOf = deps.pixelHitOf;
     return {
@@ -112,8 +104,8 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         // A unit OR a building is an attack target - a warrior can raze an enemy structure.
         const itemKind = unitKindOf(it);
         if (itemKind === null) continue;
-        // The ghost guard is what keeps the attack set fog-gated: an explored structure the fog has
-        // since swallowed still draws, as a memory you cannot order a swing at.
+        // The ghost guard fog-gates the attack set: a remembered structure still draws, but no swing
+        // can be ordered at it.
         if (!isHitTarget(it)) continue;
         const owner = ownerOf.get(it.ref);
         if (owner === undefined || pickableOwner(owner)) continue; // neutral or "ours" - not an enemy
@@ -156,12 +148,12 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         if (e.components.Livestock !== undefined) continue; // see the livestock note on the memo
         const pos = positionOf(e);
         if (pos === undefined) continue;
-        // Feet anchor only, projected straight from the position: no elevation lift and no cull, because
-        // this set pairs units to formation slots against each other rather than against the screen.
+        // No elevation lift and no cull: this set pairs units to formation slots against each other
+        // rather than against the screen.
         out.push({ ref: e.id, ...tileToScreen(pos.x / ONE, pos.y / ONE) });
       }
-      // Front-to-back then by id, the drawn scene's own order - assignFormation's pairing breaks
-      // equal-cost ties by input index, so the slot a unit lands in must not depend on entity order.
+      // Front-to-back then by id, the drawn scene's own order: the formation pairing breaks equal-cost
+      // ties by input index, so a unit's slot must not depend on entity order.
       out.sort((a, b) => a.y - b.y || a.x - b.x || a.ref - b.ref);
       return out;
     },

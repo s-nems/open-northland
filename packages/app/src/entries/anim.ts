@@ -34,22 +34,9 @@ import {
 import { mountGalleryOverlay } from './anim-overlay.js';
 
 /**
- * The `?anim` entry - the character animation gallery, the animation twin of the sandbox/catalog
- * catalog. It plays the extracted `[bobseq]` of a viking body straight from the atlas so a human can
- * validate that each animation decodes, cycles, and (for the locomotion clips) reads correctly in all 8
- * directions. A pure viewer: no sim, DOM + wall-clock are fine here (`app` boundary). This file holds the
- * atlas loading + Pixi loop; the browser-free cell/URL builders live in `anim-cells.ts` and the DOM panel
- * in `anim-overlay.ts`.
- *
- * Two axes over the full viking roster ({@link VIKING_CHARACTERS}):
- *  - `?char=<id>` picks the character - civilian / warrior (its own broadsword / sword / bow / spear /
- *    bare-handed combat set) / woman / child / baby. Changing it reloads that body + head atlases.
- *  - `?view=anim|heads` picks the layout - `anim` (default) plays every sequence of the body with its
- *    default head; `heads` plays the plain walk once per head look, the montage of all faces/hats.
- *
- * Also: `?dir=full|0..7` (the global facing every clip plays; live, no reload), `?cols=N`, `?filter=<substr>`
- * (narrows sequences by name / looks by head), `?zoom`, `?speed`. Real decoded graphics are required - a
- * checkout without `content/` shows a "run the pipeline" message instead of crashing.
+ * The `?anim` entry: the character animation gallery, where a human validates that each extracted
+ * `[bobseq]` decodes, cycles, and reads correctly in all 8 directions. A pure viewer with no sim.
+ * Real decoded graphics are required; a checkout without `content/` shows a "run the pipeline" message.
  */
 
 const DEFAULT_COLUMNS = 8;
@@ -60,8 +47,6 @@ export async function renderAnimationGallery(
   canvas: HTMLCanvasElement,
   params: URLSearchParams,
 ): Promise<void> {
-  // No `?char=` → the default landing: the whole roster on one screen, every look walking, nothing to
-  // click. A `?char=` drills into that one body - its full animation set (`?view=anim`) or its heads montage.
   if (params.get('char') === null) {
     await renderRosterMontage(canvas, params);
   } else {
@@ -70,10 +55,8 @@ export async function renderAnimationGallery(
 }
 
 /**
- * The full-roster montage - the "pełny set wikingów" on one image: one animated cell per viking look (every
- * roster body × each of its heads), all playing the plain walk. Each body is loaded in turn; a body absent
- * from a partial `content/` is skipped (not fatal) so the rest still show. Degrades to a message only when
- * nothing loads.
+ * One animated cell per viking look, all playing the plain walk. A body absent from a partial
+ * `content/` is skipped so the rest still show; only an empty load degrades to a message.
  */
 async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const copy = messages().animation;
@@ -87,7 +70,7 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
       loadedAny = true;
       loaded.push({ char, body, heads, rows: await loadBodyClips(char.imagelib) });
     } catch (err) {
-      if (err instanceof MissingAtlasError) continue; // a body missing from a partial content/ - skip it
+      if (err instanceof MissingAtlasError) continue;
       throw err;
     }
   }
@@ -106,18 +89,14 @@ async function renderRosterMontage(canvas: HTMLCanvasElement, params: URLSearchP
   await startGallery(canvas, params, cells, { char: null, view: 'anim' });
 }
 
-/**
- * One character's gallery drill-down: its full animation set (`?view=anim`) or its heads/looks montage
- * (`?view=heads`) - reached by clicking a character in the roster panel.
- */
 async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const char = findCharacter(params.get('char'));
   const character = characterLabel(char);
   const copy = messages().animation;
   const view = parseView(params.get('view'));
   const color = parseColor(params.get('color'), PLAYER_COLOR_COUNT);
-  // Paletted mode = the colours montage, or an explicit `?color=` on the anim/heads views. It loads the
-  // indexed atlases + the player-colour LUT so the character is recoloured per player at draw time.
+  // Paletted mode loads the indexed atlases and the player-colour LUT, so the character is recoloured
+  // per player at draw time.
   const paletted = view === 'colors' || color !== null;
   const { bodyStem, headStems } = characterStems(
     char,
@@ -167,14 +146,12 @@ async function renderCharacterGallery(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  // The LUT row count for the shader comes from the texture's own height, not a constant, so the fragment's
-  // row lookup can't desync from the actual PNG if the two ever diverge (parseColor still bounds `?color=` by
-  // PLAYER_COLOR_COUNT, a UI range).
+  // The LUT row count comes from the texture's own height, not a constant, so the shader's row lookup
+  // cannot desync from the PNG.
   const palette = lut !== undefined ? { source: lut, colours: lut.pixelHeight } : undefined;
   await startGallery(canvas, params, cells, { char, view }, palette);
 }
 
-/** Create the Pixi app + retained gallery, frame it with an initial camera, mount the panel, and run the loop. */
 async function startGallery(
   canvas: HTMLCanvasElement,
   params: URLSearchParams,
@@ -193,8 +170,6 @@ async function startGallery(
     ...(palette !== undefined ? { palette } : {}),
   });
 
-  // Initial camera: fit the grid width into the canvas (capped at 1×), top-left at a margin; the human
-  // pans (middle-mouse / arrows) and zooms (wheel) from there. `?zoom=` overrides the fit.
   const content = gallery.contentSize();
   const fitZoom = Math.max(MIN_ZOOM, Math.min(1, (app.screen.width - 2 * GRID_MARGIN) / content.width));
   const zoom = floatParam(params, 'zoom', fitZoom);
@@ -204,8 +179,8 @@ async function startGallery(
     app.renderer.resolution,
   );
 
-  // The overlay's direction buttons drive `gallery.setDirection` (live); the character / view buttons
-  // navigate (they reload different atlases), so the panel isn't touched in the loop below.
+  // The direction buttons drive `setDirection` live; the character and view buttons navigate, so the
+  // panel is never touched in the loop below.
   mountGalleryOverlay(params, { ...overlay, cellCount: cells.length, direction }, (d) =>
     gallery.setDirection(d),
   );

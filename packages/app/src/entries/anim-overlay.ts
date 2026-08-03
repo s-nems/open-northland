@@ -5,17 +5,14 @@ import { BUTTON_STYLE, el, navButton, PANEL_STYLE } from '../view/overlay.js';
 import type { GalleryView } from './anim-cells.js';
 
 /**
- * The `?anim` gallery's control panel - the character / view / direction selectors + the validation
- * summary a human reads while judging the animations. Plain DOM (app-layer), split out of `anim.ts`
- * so the entry keeps the atlas loading + Pixi loop and this keeps the chrome. The character/view buttons
- * navigate (they reload different atlases); only the direction selector is live (drives
- * {@link import('@open-northland/render').AnimationGallery.setDirection} through `onDirection`).
+ * The `?anim` gallery's control panel. The character and view buttons navigate, because they reload
+ * different atlases; only the direction selector is live.
  */
 
 /**
- * The eight facing options + "full", in a human-friendly compass order (not raw block index order). The
- * `dir` is the `CR_Hum_Body` block index the gallery indexes (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S,
- * 7 N` - source basis "Settler facing"); the label is the screen facing that block draws.
+ * Listed in compass order, not block-index order. `dir` is the `CR_Hum_Body` block index
+ * (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`, source basis "Settler facing"); the label is the
+ * screen facing that block draws.
  */
 const DIRECTION_OPTIONS: readonly { readonly label: string; readonly dir: GalleryDirection }[] = [
   { label: '', dir: 'full' },
@@ -29,13 +26,11 @@ const DIRECTION_OPTIONS: readonly { readonly label: string; readonly dir: Galler
   { label: 'NW', dir: 2 },
 ];
 
-/** Human label for a `GalleryDirection` (the readout line). */
 function directionLabel(dir: GalleryDirection): string {
   if (dir === 'full') return messages().animation.fullDirection;
   return DIRECTION_OPTIONS.find((o) => o.dir === dir)?.label ?? String(dir);
 }
 
-/** The URL for the same gallery with some params overridden (character / view navigation). */
 function galleryUrl(base: URLSearchParams, changes: Readonly<Record<string, string>>): string {
   const next = new URLSearchParams(base);
   next.set('anim', ''); // keep the `?anim` entry itself
@@ -43,7 +38,6 @@ function galleryUrl(base: URLSearchParams, changes: Readonly<Record<string, stri
   return `?${next.toString()}`;
 }
 
-/** The URL of the no-param roster montage - drop the character/view drill-down keys ("Wszystkie"). */
 function rosterUrl(base: URLSearchParams): string {
   const next = new URLSearchParams(base);
   next.set('anim', '');
@@ -52,7 +46,6 @@ function rosterUrl(base: URLSearchParams): string {
   return `?${next.toString()}`;
 }
 
-/** Mount the gallery's control panel: title, character, view, direction selectors, and a short summary. */
 export function mountGalleryOverlay(
   params: URLSearchParams,
   state: {
@@ -68,8 +61,6 @@ export function mountGalleryOverlay(
   const copy = messages().animation;
   panel.append(el('div', 'font-weight:700;font-size:14px;margin-bottom:2px', copy.title));
 
-  // Character selector - navigates (each character is a different body/head atlas set). "Wszystkie" is the
-  // no-param roster montage (the default); a character drills into its own animations.
   panel.append(el('div', 'font-weight:700;margin:6px 0 4px', copy.character));
   const charRow = el('div', 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px');
   charRow.append(navButton(copy.allCharacters, char === null, rosterUrl(params)));
@@ -84,8 +75,7 @@ export function mountGalleryOverlay(
   }
   panel.append(charRow);
 
-  // View selector - a drilled-in character: its animation set, its heads montage (only when it has 2+ looks),
-  // and its player-colour montage (the walk once per team colour). The roster is the all-looks view.
+  // The heads montage appears only for a character with more than one look.
   if (char !== null) {
     panel.append(el('div', 'font-weight:700;margin:2px 0 4px', copy.view));
     const viewRow = el('div', 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px');
@@ -116,7 +106,6 @@ export function mountGalleryOverlay(
   const summary = `${cellCount} · ${summaryCopy}`;
   panel.append(el('div', 'opacity:0.85;margin-bottom:8px', summary));
 
-  // Direction selector - live (no reload); applies to every cell.
   panel.append(el('div', 'font-weight:700;margin-bottom:4px', copy.direction));
   const dirRow = el('div', 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px');
   const buttons = new Map<GalleryDirection, HTMLButtonElement>();

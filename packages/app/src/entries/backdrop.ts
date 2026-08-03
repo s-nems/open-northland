@@ -16,21 +16,14 @@ import { floatParam, intParam } from '../view/params.js';
 import { createWorldRenderer, loadLocalizedRealContent } from '../view/runtime/world-bootstrap.js';
 
 /**
- * `?backdrop=<mapId>` - the menu-backdrop capture entry (docs/DEVELOPMENT.md "Screenshots"): boot a
- * decoded map as the calm ambient settlement (authored placements, needs off, no HUD, no RAF loop),
- * draw ONE frame, then raise the same ready flag the `?shot` harness waits on. `npm run
- * menu-backdrops` drives this entry to produce the stills the menu rotates through; the framing
- * knobs exist so a capture can be tuned per map.
+ * `?backdrop=<mapId>` captures a menu backdrop: boot a decoded map as a calm ambient settlement with no
+ * HUD and no RAF loop, draw one frame, then raise the ready flag the `?shot` harness waits on.
  *
- *  - `?zoom=N`     framing zoom (default reads as a scene, not a map overview);
- *  - `?ticks=N`    total sim ticks (the first applies the authored placements; default 1);
- *  - `?focus=x,y`  centre tile override when the start-village focus is not the map's best view.
- *
- * Dev-only: a missing map or `content/` throws (the crash banner names the cause) instead of
- * degrading - a capture harness must never silently screenshot a blank canvas.
+ * Dev-only: a missing map or `content/` throws instead of degrading, because a capture harness must
+ * never silently screenshot a blank canvas.
  */
 
-/** Framing zoom shared with the old menu scene: close enough to read as a settlement. */
+/** Close enough to read as a settlement rather than a map overview. */
 const BACKDROP_ZOOM = 1.25;
 /** Ambient seed; captures never replay, so any fixed seed serves. */
 const BACKDROP_SEED = 7;
@@ -67,8 +60,8 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
     }
   }
 
-  // The ambient settlement the menu scene used to run live: the map's authored cast idling on the
-  // real collision grid - no AI seats, no fog, harvestables stay in the static collision grid.
+  // The map's authored cast idling on the real collision grid: no AI seats, no fog, and harvestables
+  // left in the static collision grid.
   const simMap = buildCollisionTerrain(loaded, ir);
   const contentOptions = {
     footprints: buildingFootprints(ir),
@@ -80,9 +73,8 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
     (loaded.entities !== undefined
       ? runAuthoredMap(BACKDROP_SEED, 1, simMap, loaded.entities, ir, contentOptions)
       : null) ?? runBareMap(BACKDROP_SEED, simMap, contentOptions);
-  // A pre-roll first turns needs off, like scene worlds: a foodless ambient world would
-  // otherwise starve its cast while the extra ticks run. The default single tick was already
-  // consumed by the authored placements, so it needs no command.
+  // A pre-roll turns needs off, like scene worlds: a foodless ambient world would otherwise starve its
+  // cast while the extra ticks run.
   const ticks = intParam(params, 'ticks', 1);
   if (ticks > 1) {
     sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });

@@ -3,9 +3,9 @@ import type { ContentIr, LandscapeGfxRow } from '../ir/rows.js';
 import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../map-resources.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 
-/** A resolved berry-bush draw: the fruited-record index (the {@link import('@open-northland/sim').BerryBush.gfxIndex}
- *  → {@link import('@open-northland/render').DrawItem.gfxIndex} join key) and its three render states - `ripe`
- *  (holds fruit), `flowering` (blooming, the regrow midpoint) and `bare` (foraged), each a served atlas stem + bob. */
+/** A resolved berry-bush draw: the fruited-record index (the `gfxIndex` join key) and its three render
+ *  states - `ripe` (holds fruit), `flowering` (the regrow midpoint) and `bare` (foraged), each a served
+ *  atlas stem + bob. */
 export interface BerryBushRef {
   readonly gfxIndex: number;
   readonly ripe: GatheringNodeRef;
@@ -15,11 +15,9 @@ export interface BerryBushRef {
 
 /**
  * Resolve every forageable berry bush's three-stage draw from the IR landscape gfx: each fruited-bush record
- * (`logicType === bush with fruits`) paired with its species twins - the "… flower" record (`bush flowering`)
- * and the "… empty" record (`bush naked`), matched by editName ("bush 01 fruits" → "bush 01 flower" / "bush 01
- * empty"). A twin with no decoded record reuses a fallback frame (flowering → ripe, bare → flowering) so a
- * bush with a missing stage still draws. Keyed by the fruited record index. Pure; degrades to empty on an
- * older ir.json.
+ * (`logicType === bush with fruits`) paired with its species twins, the "… flower" (`bush flowering`) and
+ * "… empty" (`bush naked`) records, matched by editName ("bush 01 fruits" → "bush 01 flower" / "bush 01
+ * empty"). A twin with no decoded record reuses a fallback frame. Keyed by the fruited record index. Pure.
  */
 export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   const records = ir?.landscapeGfx ?? [];
@@ -34,8 +32,7 @@ export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
     if (rec.logicType !== BUSH_WITH_FRUITS_LOGIC_TYPE || rec.editName === undefined) continue;
     const ripe = nodeRefFrom(rec);
     if (ripe === undefined) continue;
-    // Stage twins fall back down the cycle when a record is absent (flowering → ripe, bare → its flowering),
-    // so a species missing a decoded stage still draws something plausible instead of the placeholder.
+    // Stage twins fall back down the cycle when a record is absent (flowering → ripe, bare → flowering).
     const flowering = twin(rec.editName, 'flower') ?? ripe;
     const bare = twin(rec.editName, 'empty') ?? flowering;
     out.push({ gfxIndex: rec.index, ripe, flowering, bare });
@@ -43,8 +40,8 @@ export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   return out;
 }
 
-/** Atlas stems a set of {@link BerryBushRef}s draw from (both ripe + bare states) - folded into the loaded
- *  gathering families so the live pool can draw a bush in either state after its static→live handover. */
+/** Atlas stems a set of {@link BerryBushRef}s draw from, folded into the loaded gathering families so the
+ *  live pool can draw a bush in any state. */
 export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> {
   const out = new Set<string>();
   for (const r of refs) {
@@ -57,12 +54,10 @@ export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> 
 
 /**
  * Reduce resolved berry-bush refs to a {@link ResourceTypeBinding}: each bush keyed under its fruited
- * `gfxIndex` with a three-frame level list - level 1 (bare) → empty frame, level 2 (flowering) → flower
- * frame, level 3 (ripe) → fruited frame (the empty→full order {@link import('./bindings.js').buildResourceBinding}
- * uses, so `DrawItem.level` picks straight). A flowering/bare frame whose atlas family didn't load reuses
- * the next-higher loaded frame (flowering → ripe, bare → flowering); a bush whose ripe family didn't load
- * is dropped to the placeholder. `default` is the first bush's ripe frame - what a bush with no matching
- * `gfxIndex` draws. Undefined when nothing loaded. Pure + unit-tested.
+ * `gfxIndex` with a three-frame level list, bare → flowering → ripe (the empty→full order `DrawItem.level`
+ * indexes straight). A flowering/bare frame whose atlas family didn't load reuses the next-higher loaded
+ * frame; a bush whose ripe family didn't load is dropped to the placeholder. `default` is the first bush's
+ * ripe frame, what a bush with no matching `gfxIndex` draws. `undefined` when nothing loaded. Pure.
  */
 export function buildBerryBushBinding(
   refs: readonly BerryBushRef[],

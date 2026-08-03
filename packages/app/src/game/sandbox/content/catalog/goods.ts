@@ -29,7 +29,6 @@ import {
 } from '../../ids/index.js';
 import type { SandboxContentExtras } from '../types.js';
 
-/** Build the sandbox's core goods plus the full committed catalog. */
 export function buildSandboxGoods(extras: SandboxContentExtras): readonly object[] {
   const localName = (id: string): { name?: string } => {
     const name = extras.goodNames?.get(id);
@@ -90,9 +89,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
     },
     ...EXTENDED_GOODS.map((good) => {
       const equip = EQUIP_CLASS_BY_TYPE.get(good.typeId);
-      // The carcass goods a hunter's kill leaves as harvestable nodes (`catalog/hunting.ts`) carry the
-      // real carcass-harvest atomic, mirroring the extracted leather/meat rows (wool's is the same
-      // named approximation as the real-content overlay).
+      // The extracted leather/meat rows carry this harvest atomic; wool's is a named approximation.
       const carcassGood = (CARCASS_GOOD_SLUGS as readonly string[]).includes(good.id);
       return {
         typeId: good.typeId,
