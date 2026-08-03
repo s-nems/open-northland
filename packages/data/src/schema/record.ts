@@ -12,17 +12,13 @@ export type Provenance = z.infer<typeof Provenance>;
 export const TypeId = z.number().int().nonnegative();
 
 /**
- * The atomic-action vocabulary, named by a readable master enum (`logicdefines.inc`
- * `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_*`, 0..92) that ships no matching record table - so an atomic id
- * resolves against nothing extracted. Same numeric domain as {@link TypeId}, kept a separate primitive
- * because it is not a foreign key. See docs/ECS.md "Settler AI".
+ * The atomic-action vocabulary, named by the `logicdefines.inc` `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_*`
+ * enum (0..92), which ships no matching record table, so an atomic id is not a foreign key.
  */
 export const AtomicId = z.number().int().nonnegative();
 
 /**
- * A coarse class id - a small enumerated category (weapon class, armour material tier, damage
- * class) that shares {@link TypeId}'s numeric domain but is not a cross-reference into any type
- * table. Named distinctly so a reader (and a would-be cross-ref check) does not mistake it for a
- * resolvable foreign key: e.g. a weapon's `munitionType 2` is "catapult ammo", not good id 2.
+ * A coarse category (weapon class, armour material tier, damage class) sharing {@link TypeId}'s
+ * numeric domain but resolving into no type table: `munitionType 2` is "catapult ammo", not good 2.
  */
 export const ClassId = z.number().int().nonnegative();

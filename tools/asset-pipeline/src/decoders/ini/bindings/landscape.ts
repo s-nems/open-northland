@@ -1,23 +1,16 @@
 /**
- * Landscape-object graphics bindings - the `[GfxLandscape]` `.bmd`→palette pairings for the map's
- * pre-placed decor (trees, bushes, signs, wonders), the static-object analog of the job bindings.
+ * `[GfxLandscape]` `.bmd`→palette bindings for the map's pre-placed decor (trees, bushes, signs,
+ * wonders).
  */
 
 import { getStr, type RuleSection } from '../grammar.js';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js';
 
 /**
- * Extracts the `[GfxLandscape]` records from `.../landscapes/landscapes.cif` - the landscape-object
- * binding for the map's pre-placed decor (trees, bushes, signs, wonders, …). Each record pairs a body +
- * shadow bob set (`GfxBobLibs`) with a palette `editname` (`GfxPalette`) - the `(bmd, palette)` pairing
- * `convertBmdTree` consumes, read via the shared {@link readBmdPaletteBindings} - plus its `EditName`
- * (a species handle, "yew 01" vs "fir 01": the only IR differentiator when records share one recoloured
- * bob). Ships `.cif`-only, decoded via `decodeCifStringArray` → `cifLinesToSections`. The editor
- * serializes these with CamelCase keys (`GfxBobLibs`/`GfxPalette`/`EditName`) and header, so the lookups
- * match that casing; there are no `logictribe`/`logicjob` keys, so `tribeId`/`jobId` stay undefined.
- *
- * A record without a body bob or palette is skipped. Repeated `(bmd, palette)` pairs (the ~99 tree
- * species share a dozen palettes) are not deduped here; deduping is the caller's concern.
+ * Extracts the `[GfxLandscape]` records from `.../landscapes/landscapes.cif`, which ships `.cif`-only
+ * and is decoded through `decodeCifStringArray` → `cifLinesToSections`. The editor serializes these with
+ * CamelCase keys (`GfxBobLibs`/`GfxPalette`/`EditName`), so the lookups match that casing. Repeated
+ * `(bmd, palette)` pairs are not deduped here; deduping is the caller's concern.
  */
 export function extractLandscapeGraphics(sections: readonly RuleSection[]): NamedBmdPaletteBinding[] {
   const bindings: NamedBmdPaletteBinding[] = [];

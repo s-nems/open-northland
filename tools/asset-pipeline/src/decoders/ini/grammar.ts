@@ -1,22 +1,15 @@
 /**
- * Shared .ini/.cif grammar: byte decode, tokenizer, section parsers, generic property accessors, and asset-path normalizers. The domain-free kernel every extractor builds on.
+ * Shared `.ini`/`.cif` grammar and generic property accessors.
  */
 import { type CifLine, decodeCifStringArray } from '../cif.js';
 
 /**
- * Decodes raw `.ini` bytes to text as CP1250 (Windows-1250, Central-European), not UTF-8.
- * The Cultures rule files were authored on Windows-1250 codepages, so display strings carry Polish
- * glyphs (`ą ć ę ł ń ó ś ź ż` and capitals) in the 0x80..0xFF range; reading them as UTF-8 mangles
- * those bytes. Structural keywords (`[section]`, keys, the `<CULTURES_CIF_BEGIN>` header) are ASCII
- * and survive any of these single-byte encodings unchanged - only the human-facing names differ.
- *
- * This is the byte->text seam for the readable `.ini` skin; the `.cif` skin's seam lives in
- * `cif.ts` (decoded as latin1 to preserve every source byte). Re-decoding a `.cif`
- * display string as CP1250 is the IR-layer concern cif.ts's note defers - out of scope here.
+ * Decodes `.ini` bytes as CP1250 (Windows-1250), the codepage the rule files were authored in:
+ * display names carry Polish glyphs in the 0x80..0xFF range, while structural keywords
+ * (`[section]`, keys, the `<CULTURES_CIF_BEGIN>` header) are ASCII.
  */
 export function decodeIni(bytes: Uint8Array): string {
-  // `fatal:false` (the default) maps the few unassigned CP1250 byte values to U+FFFD rather than
-  // throwing - a malformed glyph in one name must not abort an offline batch over many files.
+  // Non-fatal decode: an unassigned CP1250 byte becomes U+FFFD rather than aborting an offline batch.
   return new TextDecoder('windows-1250').decode(bytes);
 }
 
@@ -39,9 +32,8 @@ export interface SourceRef {
 }
 
 /**
- * Splits one line into tokens: a quoted run (`"a b"`) is a single token (quotes stripped);
- * otherwise tokens are whitespace-separated. Signed numbers (`-1`, `+1`) survive as raw strings -
- * extractors coerce. The first token of a property line is its key; the rest are values.
+ * Splits one line into tokens: a quoted run (`"a b"`) is one token with the quotes stripped, otherwise
+ * tokens are whitespace-separated. Signed numbers (`-1`, `+1`) stay raw strings for extractors to coerce.
  */
 function tokenize(line: string): string[] {
   const out: string[] = [];
@@ -52,8 +44,8 @@ function tokenize(line: string): string[] {
 }
 
 /**
- * Cuts a trailing `// ...` comment (the marker the `.ini` files actually use, e.g. on `transition`
- * lines in `landscapetypes.ini`). Quote-aware so a `//` inside a quoted value is preserved.
+ * Cuts a trailing `// ...` comment, the marker the `.ini` files use (e.g. on `landscapetypes.ini`
+ * `transition` lines). Quote-aware, so a `//` inside a quoted value survives.
  */
 function stripInlineComment(line: string): string {
   let inQuotes = false;
@@ -90,20 +82,14 @@ export function parseIniSections(text: string): RuleSection[] {
   return sections;
 }
 
-/**
- * Readable `.ini` bytes straight to sections: {@link decodeIni} (CP1250) then
- * {@link parseIniSections}. The one composition every `.ini` reader uses, so the byte→text seam
- * and the grammar cannot be paired differently per call site.
- */
+/** Readable `.ini` bytes straight to sections: the CP1250 decode paired with the section grammar. */
 export function iniBytesToSections(bytes: Uint8Array): RuleSection[] {
   return parseIniSections(decodeIni(bytes));
 }
 
 /**
- * Adapts decoded `.cif` lines (from {@link CifLine}) into the same {@link RuleSection} model: a
- * level-1 (or level-0) line opens a new section named by its first token; deeper lines are its
- * properties. This is what lets type tables with no readable `.ini` twin (`housetypes`,
- * `weapontypes`, ...) feed the same extractors.
+ * Adapts decoded `.cif` lines into the same {@link RuleSection} model, so type tables with no readable
+ * `.ini` twin (`housetypes`, `weapontypes`) feed the same extractors.
  */
 export function cifLinesToSections(lines: readonly CifLine[]): RuleSection[] {
   const sections: { name: string; props: RuleProp[] }[] = [];
@@ -111,10 +97,8 @@ export function cifLinesToSections(lines: readonly CifLine[]): RuleSection[] {
   for (const { level, text } of lines) {
     const tokens = tokenize(text);
     if (tokens.length === 0) continue;
-    // Verified type tables (`housetypes`, ...) nest exactly: level 1 = section header,
-    // level 2 = property. Only level 1 opens a section; level 0 (unprefixed) and any deeper
-    // level fold into the current section's properties rather than spawning a bogus section -
-    // tighten this once a real deeper-nested `.cif` fixture forces a richer tree.
+    // The observed type tables nest exactly two levels (1 = section header, 2 = property), so level 0
+    // and any deeper level fold into the current section's properties instead of opening a section.
     if (level === 1) {
       current = { name: tokens[0] as string, props: [] };
       sections.push(current);
@@ -126,10 +110,7 @@ export function cifLinesToSections(lines: readonly CifLine[]): RuleSection[] {
   return sections;
 }
 
-/**
- * Encrypted `.cif` bytes straight to sections: {@link decodeCifStringArray} (latin1 lines) then
- * {@link cifLinesToSections}. The `.cif` twin of {@link iniBytesToSections}.
- */
+/** Encrypted `.cif` bytes straight to sections: the latin1 line decode paired with the section adapter. */
 export function cifBytesToSections(bytes: Uint8Array): RuleSection[] {
   return cifLinesToSections(decodeCifStringArray(bytes).lines);
 }
@@ -158,9 +139,9 @@ export function getIntList(sec: RuleSection, key: string): number[] {
 }
 
 /**
- * All values of the first matching property parsed as base-10 ints (NaN entries dropped), in file
- * order. For a single multi-value line like `productionInputGoods 1 1 14 14` (vs {@link getIntList},
- * which reads `values[0]` of each repeated single-value line).
+ * All values of the first matching property as base-10 ints (NaN entries dropped), for a single
+ * multi-value line like `productionInputGoods 1 1 14 14`, unlike {@link getIntList} which reads
+ * `values[0]` of each repeated single-value line.
  */
 export function getIntValues(sec: RuleSection, key: string): number[] {
   const out: number[] = [];
@@ -172,10 +153,9 @@ export function getIntValues(sec: RuleSection, key: string): number[] {
 }
 
 /**
- * All values of the first matching property parsed as ints, returned only if there are exactly
- * `length` of them (else `undefined`) - for fixed-arity tuples like a 6-int UV set (`GfxCoordsA`) or a
- * 3-int `debugcolor`. A wrong-arity line yields `undefined` rather than a partial tuple, so a degenerate
- * record degrades gracefully instead of producing a malformed shape.
+ * All values of the first matching property as ints, only when there are exactly `length` of them, for
+ * fixed-arity tuples like a 6-int `GfxCoordsA` UV set or a 3-int `debugcolor`. A wrong-arity line
+ * yields `undefined` rather than a partial tuple.
  */
 export function getIntTuple(sec: RuleSection, key: string, length: number): number[] | undefined {
   const vals = getIntValues(sec, key);
@@ -183,11 +163,9 @@ export function getIntTuple(sec: RuleSection, key: string, length: number): numb
 }
 
 /**
- * Every property with this key as a row of base-10 ints, keeping only rows whose length satisfies
- * `arity` and that contain no NaN - for repeated multi-int lines of a fixed or bounded shape
- * (`GfxCoordsA` 6-int UV rows, `LogicWalkBlockArea` 4-int cells, `GfxFrames` ≥2-int state+bobs,
- * `transition` any-length tuples). File order is preserved; a wrong-arity or malformed row is dropped
- * rather than partially read.
+ * Every property with this key as a row of base-10 ints, keeping only rows that satisfy `arity` and
+ * contain no NaN, for repeated multi-int lines like `GfxCoordsA` 6-int UV rows, `LogicWalkBlockArea`
+ * 4-int cells or `GfxFrames` state+bobs. File order is preserved; a malformed row is dropped whole.
  */
 export function getIntRows(sec: RuleSection, key: string, arity: (length: number) => boolean): number[][] {
   return findProps(sec, key)
@@ -218,9 +196,8 @@ export function slug(name: string): string {
 }
 
 /**
- * Reads the required numeric `type` id, throwing if absent - malformed source data, surfaced to the
- * human running the offline pipeline rather than silently dropped (matches cif.ts's throw-on-corrupt
- * stance and the project's "throw for bugs" rule).
+ * Reads the required numeric `type` id, throwing so malformed source data surfaces to the human
+ * running the offline pipeline instead of being silently dropped.
  */
 export function requireTypeId(sec: RuleSection, block: string, src: SourceRef): number {
   const typeId = getInt(sec, 'type');
@@ -231,9 +208,8 @@ export function requireTypeId(sec: RuleSection, block: string, src: SourceRef): 
 }
 
 /**
- * Builds a record's `source` provenance - the {@link SourceRef} plus the `[block]` it was read from,
- * defaulting the layer to `base`. Every typed extractor stamps this onto each IR record for auditability
- * (the one shared spelling, so the `?? 'base'` default can't drift between them).
+ * Builds a record's `source` provenance: the {@link SourceRef} plus the `[block]` it was read from,
+ * with the layer defaulting to `base`.
  */
 export function makeSource(
   src: SourceRef,
@@ -243,9 +219,9 @@ export function makeSource(
 }
 
 /**
- * Tally an id multiset - a flat list where a repeated id encodes its quantity (a recipe's
- * `productionInputGoods`, a build cost's `LogicConstructionGoods`: `… 1 1 14 …` = 2× good 1 + 1× good 14)
- * - into `{ goodType, amount }` pairs, preserving first-seen order for a deterministic IR.
+ * Tallies an id multiset, a flat list where a repeated id encodes its quantity (`productionInputGoods`,
+ * `LogicConstructionGoods`: `1 1 14` = 2x good 1 + 1x good 14), into `{ goodType, amount }` pairs in
+ * first-seen order.
  */
 export function tallyIds(ids: readonly number[]): { goodType: number; amount: number }[] {
   const counts = new Map<number, number>();
@@ -259,29 +235,25 @@ export function normalizeAssetPath(path: string): string {
 }
 
 /**
- * Normalizes an optional asset path: an absent or blank slot (a bob-set line's missing shadow
- * `GfxBobLibs "<body>.bmd"`, an omitted body `.bmd`) must stay `undefined` rather than normalize to
- * an empty key. Every `(body, shadow, palette)` binding reader shares this guard.
+ * Normalizes an optional asset path: an absent or blank slot (a `GfxBobLibs` line's missing shadow or
+ * body `.bmd`) stays `undefined` rather than normalizing to an empty key.
  */
 export function normalizeOptionalPath(path: string | undefined): string | undefined {
   return path !== undefined && path.trim() !== '' ? normalizeAssetPath(path) : undefined;
 }
 
 /**
- * Normalizes a palette `editname` to its case-insensitive join key (lower-case). The two pairing legs
- * disagree on case in the real data - `palettes.ini` declares `Lion01`/`Chicken01`, `jobgraphics.ini`
- * references `LION01`/`chicken01` - and the original engine matches them case-insensitively, so both
- * {@link extractPaletteIndex} and {@link extractGraphicsBindings} key on the lower-cased name.
+ * Lower-cases a palette `editname` to its join key: the two pairing legs disagree on case in the real
+ * data (`palettes.ini` declares `Lion01`, `jobgraphics.ini` references `LION01`) and the original
+ * engine matches them case-insensitively.
  */
 export function normalizePaletteName(name: string): string {
   return name.toLowerCase();
 }
 
 /**
- * First value of the first matching property as a lower-cased palette `editname`, or `undefined` if
- * absent/blank - {@link getStr} plus the {@link normalizePaletteName} join-key normalization. The palette
- * analog of {@link normalizeOptionalPath}, shared by the graphics-binding readers and the landscape/gfx
- * type extractors that reference a recolour palette by name.
+ * First value of the first matching property as a lower-cased palette `editname`, or `undefined` when
+ * absent or blank.
  */
 export function getPaletteName(sec: RuleSection, key: string): string | undefined {
   const name = getStr(sec, key);

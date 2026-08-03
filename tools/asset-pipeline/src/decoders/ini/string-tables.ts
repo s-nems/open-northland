@@ -1,18 +1,16 @@
 /**
- * String-table decoders: numbered display strings from `.ini` sections and the encrypted `.cif` string blob (latin1 → CP1250).
+ * String-table decoders: numbered display strings from `.ini` sections and the encrypted `.cif` blob.
  */
 import { cifBytesToSections, decodeIni, type RuleSection } from './grammar.js';
 
 /**
- * Walks a decoded string table - a `[control]` section with `stringidmultiplier <N>`, then a `[text]`
- * section of `stringn <id> "<text>"` (sets the running id explicitly) and bare `string "<text>"`
- * (auto-increments it) - into `{ <stringId>: <text> }`. The grammar is shared by the `ingamegui*` UI
- * tables (verified against the shipped `backup (errors)/*.ini`) and each map folder's
- * `text/<lang>/strings.ini`/`.cif` (same `stringn` lines, usually without a `[control]` section).
- * The multiplier (1 in every shipped table) scales the id, matching the engine's per-table id
- * namespacing. Values are returned as they appear in `sections` - the byte→text codepage is the
- * caller's seam ({@link decodeIni} already yields CP1250 for readable `.ini`; `.cif` text is decoded
- * latin1 to preserve its source bytes and needs {@link latin1ToCp1250} for display).
+ * Walks a decoded string table into `{ <stringId>: <text> }`: the `[control]` section's
+ * `stringidmultiplier <N>` scales every id (the engine's per-table id namespacing), then in the
+ * `[text]` section `stringn <id> "<text>"` sets the running id explicitly and a bare `string "<text>"`
+ * takes and advances it. Shared by the `ingamegui*` UI tables and each map folder's
+ * `text/<lang>/strings.ini`/`.cif`, which usually has no `[control]` section. The codepage is the
+ * caller's seam: {@link decodeIni} already yields CP1250 for a readable `.ini`, while `.cif` text stays
+ * latin1 until {@link latin1ToCp1250}.
  */
 export function extractStringTable(sections: readonly RuleSection[]): Record<number, string> {
   const control = sections.find((s) => s.name === 'control');
@@ -28,14 +26,13 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
     if (prop.key === 'stringn') {
       id = Number.parseInt(prop.values[0] ?? '', 10);
       display = prop.values[1];
-      if (!Number.isNaN(id)) next = id + 1; // only advance the running id on a valid explicit id, so one
-      // malformed `stringn` drops only its own line, not every following bare `string` (per-item resilience)
+      if (!Number.isNaN(id)) next = id + 1; // a malformed `stringn` then drops only its own line
     } else if (prop.key === 'string') {
       id = next;
       display = prop.values[0];
       next += 1;
     } else {
-      continue; // not a string entry
+      continue;
     }
     if (Number.isNaN(id) || display === undefined) continue;
     byId[id * multiplier] = display;
@@ -44,16 +41,13 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
 }
 
 /**
- * Reads only the explicit `stringn <id> "<text>"` lines of a `[text]` string table into `{ <id>: <text> }`,
- * ignoring the bare `string` (auto-incrementing) lines. Unlike {@link extractStringTable} it applies no
+ * Reads only the explicit `stringn <id> "<text>"` lines of a `[text]` table, with no
  * `stringidmultiplier` and no running id, so an entry's id is exactly its `stringn` number.
  *
- * This is the reader for the localized good-name tables (`text/<lang>/strings/gameobjects/goods.{ini,cif}`):
- * there each `stringn <goodType> "<singular>"` is the display name and the following bare `string` is the
- * plural. That table declares `stringidmultiplier 2` AND leaves gaps in the `stringn` sequence (mead's
- * `stringn 43` sits amid the 24..42 block), so {@link extractStringTable}'s running-id + multiplier scaling
- * lands a neighbour's plural on mead's slot and drops it - this singular-only read keys straight off the
- * good `type` and can't collide. Codepage is the caller's seam (same as {@link extractStringTable}).
+ * The localized good-name tables (`text/<lang>/strings/gameobjects/goods.{ini,cif}`) need this: each
+ * `stringn <goodType> "<singular>"` is the display name and the following bare `string` is its plural,
+ * but the table declares `stringidmultiplier 2` and leaves gaps in the `stringn` sequence, so
+ * {@link extractStringTable}'s scaled running id lands a neighbour's plural on another good's slot.
  */
 export function extractStringnById(sections: readonly RuleSection[]): Record<number, string> {
   const text = sections.find((s) => s.name === 'text');
@@ -74,12 +68,9 @@ export function latin1ToCp1250(latin1: string): string {
 }
 
 /**
- * Decodes one encrypted `.cif` string table (a `CStringArray` of `[control]`/`[text]` lines) straight
- * to display text: {@link cifBytesToSections} → {@link extractStringTable},
- * with every value re-decoded through {@link latin1ToCp1250}. The `.cif` seam preserves bytes as latin1,
- * so a caller composing the steps by hand can silently ship mojibake by forgetting the re-decode - this
- * helper keeps the codepage invariant in one place for both `.cif` string-table consumers (the
- * `ingamegui*` UI tables and the map folders' `strings.cif`).
+ * Decodes one encrypted `.cif` string table (a `CStringArray` of `[control]`/`[text]` lines) straight to
+ * display text, re-decoding every value through {@link latin1ToCp1250} because the `.cif` seam preserves
+ * source bytes as latin1.
  */
 export function decodeCifStringTable(bytes: Uint8Array): Record<number, string> {
   const raw = extractStringTable(cifBytesToSections(bytes));

@@ -1,6 +1,6 @@
 /**
- * Human/creature job graphics bindings - the `.bmd`→palette pairings for animated actors, in both the
- * flat `[jobgraphics]` schema and the richer indexed `[jobbasegraphics]`/`[jobchangegraphics]` one.
+ * Human/creature job graphics bindings in both the flat `[jobgraphics]` schema and the indexed
+ * `[jobbasegraphics]`/`[jobchangegraphics]` one.
  */
 
 import {
@@ -16,11 +16,8 @@ import { type BmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js
 
 /**
  * Extracts the readable `[jobgraphics]` records (`.../animals/jobgraphics.ini`, the one binding file
- * shipped as plain `.ini`) into `.bmd`→palette bindings via the shared {@link readBmdPaletteBindings}:
- * `gfxbobmanagerbody "<body>.bmd" ["<shadow>.bmd"]` + `gfxpalettebody "<editname>"`, the `editname`
- * resolving to a `.pcx` trailer palette ({@link import('./palette.js').extractPaletteIndex}). A record
- * missing its body bob or palette is skipped. The richer indexed `[jobbasegraphics]` variant is a
- * separate extractor ({@link extractJobBaseGraphics}).
+ * shipped as plain `.ini`): `gfxbobmanagerbody "<body>.bmd" ["<shadow>.bmd"]` plus
+ * `gfxpalettebody "<editname>"`.
  */
 export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPaletteBinding[] {
   return sections.flatMap((sec) =>
@@ -28,48 +25,41 @@ export function extractGraphicsBindings(sections: readonly RuleSection[]): BmdPa
   );
 }
 
-/** One indexed bob-manager slot: a slot index + its body `.bmd` and (for body bobs) an optional shadow `.bmd`. */
 export interface IndexedBobManager {
-  /** The leading int slot index (`gfxbobmanagerbody 0 ...`, `gfxbobmanagerhead 3 ...`) - head bobs come in numbered variant slots (0..3). */
+  /** The leading int slot index (`gfxbobmanagerbody 0 ...`); head bobs come in numbered variant slots. */
   readonly index: number;
   /** The bob set, as a normalized `data/.../foo.bmd` relative path (forward slashes, lower-case). */
   readonly bmd: string;
-  /** The matching shadow bob set (body bobs only), same normalization, or `undefined` when absent (head bobs never carry one). */
+  /** The matching shadow bob set, same normalization; head bobs never carry one. */
   readonly shadowBmd: string | undefined;
 }
 
 /**
- * One human's full graphics binding from a mod `[jobbasegraphics]` record - the richer variant of
- * {@link BmdPaletteBinding}. Unlike the flat `[jobgraphics]` schema (one body
- * `.bmd` + one palette), a human draws as a body bob plus zero-or-more numbered head bobs, each
- * a `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line whose leading int index shifts the `.bmd`
- * path off `values[0]` (so it cannot reuse {@link extractGraphicsBindings}). Palettes split three ways:
- * `gfxpalettebasebody`/`gfxpalettebasehead` colour the two bob sets, and `gfxpaletterandom` is the
- * per-settler random tint range. Each palette name lower-cases ({@link normalizePaletteName}) to join
- * case-insensitively onto the palette alias `name`.
+ * One human's full graphics binding from a `[jobbasegraphics]` record: a body bob plus zero-or-more
+ * numbered head bobs, each a `gfxbobmanagerbody/head <index> "<bmd>" ["<shadow>"]` line whose leading
+ * int shifts the `.bmd` path off `values[0]`. Palettes split three ways: `gfxpalettebasebody` and
+ * `gfxpalettebasehead` colour the two bob sets, `gfxpaletterandom` is the per-settler random tint range.
  */
 export interface JobBaseGraphicsBinding {
-  /** The `logictribe` id the record applies to, when present (a cross-reference, not required). */
+  /** The record's `logictribe` id, when it carries the key. */
   readonly tribeId: number | undefined;
-  /** The `logicjob` id the record applies to, when present (a cross-reference, not required). */
+  /** The record's `logicjob` id, when it carries the key. */
   readonly jobId: number | undefined;
-  /** The body bob slots (`gfxbobmanagerbody`), in file order - at least one (a record with none is skipped). */
+  /** The `gfxbobmanagerbody` slots in file order; a record with none is skipped. */
   readonly body: readonly IndexedBobManager[];
-  /** The head bob slots (`gfxbobmanagerhead`), in file order - may be empty (some creatures are body-only). */
+  /** The `gfxbobmanagerhead` slots in file order; empty for the body-only creatures. */
   readonly head: readonly IndexedBobManager[];
-  /** The body palette `editname`, lower-cased, or `undefined` when the record omits `gfxpalettebasebody`. */
+  /** The `gfxpalettebasebody` `editname`, lower-cased. */
   readonly bodyPalette: string | undefined;
-  /** The head palette `editname`, lower-cased, or `undefined` when the record omits `gfxpalettebasehead`. */
+  /** The `gfxpalettebasehead` `editname`, lower-cased. */
   readonly headPalette: string | undefined;
-  /** The random-tint palette `editname`, lower-cased, or `undefined` when the record omits `gfxpaletterandom`. */
+  /** The `gfxpaletterandom` `editname`, lower-cased. */
   readonly randomPalette: string | undefined;
 }
 
 /**
- * Parses an indexed bob-manager line (`gfxbobmanagerbody 0 "<bmd>" ["<shadow>"]`) into an
- * {@link IndexedBobManager}, or `undefined` if it has no `.bmd` path. The leading token is the slot
- * index; the second is the body `.bmd`; the optional third (body lines only) is the shadow `.bmd`.
- * A non-numeric/absent index falls back to 0 so a slightly malformed slot still binds its `.bmd`.
+ * Parses an indexed bob-manager line, `gfxbobmanagerbody 0 "<bmd>" ["<shadow>"]`. A non-numeric or
+ * absent index falls back to 0 so a slightly malformed slot still binds its `.bmd`.
  */
 function parseIndexedBobManager(prop: RuleProp): IndexedBobManager | undefined {
   const index = Number.parseInt(prop.values[0] ?? '', 10);
@@ -84,10 +74,9 @@ function parseIndexedBobManager(prop: RuleProp): IndexedBobManager | undefined {
 }
 
 /**
- * Reduces every section named `sectionName` to a {@link JobBaseGraphicsBinding} - the shared reducer
- * both public extractors delegate to, since `[jobbasegraphics]` and `[jobchangegraphics]` differ only in
- * section name and intent, not grammar. A record with no usable body bob is skipped; head bobs and all
- * palettes are optional and omitted when absent.
+ * Reduces every section named `sectionName` to a {@link JobBaseGraphicsBinding}: `[jobbasegraphics]` and
+ * `[jobchangegraphics]` differ only in section name and intent, not grammar. A record with no usable
+ * body bob is skipped.
  */
 function extractIndexedGraphics(
   sections: readonly RuleSection[],
@@ -121,21 +110,16 @@ function extractIndexedGraphics(
 }
 
 /**
- * Extracts the `[jobbasegraphics]` records (the base appearance layer) from the mod's richer human
- * skin (`DataCnmd/types/humanstype/jobgraphics.ini`) or the base game's `humans/jobgraphics.cif` - the
- * second binding skin alongside the flat {@link extractGraphicsBindings} `[jobgraphics]` one. See
- * {@link extractIndexedGraphics} for the shared grammar; {@link extractJobChangeGraphics} is its
- * equipment-skin sibling.
+ * Extracts the `[jobbasegraphics]` base-appearance records from the mod's
+ * `DataCnmd/types/humanstype/jobgraphics.ini` or the base game's `humans/jobgraphics.cif`.
  */
 export function extractJobBaseGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
   return extractIndexedGraphics(sections, 'jobbasegraphics');
 }
 
 /**
- * Extracts the `[jobchangegraphics]` records - the equipment/job-skin sibling of
- * {@link extractJobBaseGraphics}'s base-appearance layer, shipping in the same files. A record reskins a
- * human for a specific `(logictribe, logicjob)` (e.g. a job's head/equipment bob set over the shared
- * body), same grammar and {@link JobBaseGraphicsBinding} shape as the base leg.
+ * Extracts the `[jobchangegraphics]` records from the same files: the equipment/job skin that reskins a
+ * human for a specific `(logictribe, logicjob)` over the base appearance.
  */
 export function extractJobChangeGraphics(sections: readonly RuleSection[]): JobBaseGraphicsBinding[] {
   return extractIndexedGraphics(sections, 'jobchangegraphics');

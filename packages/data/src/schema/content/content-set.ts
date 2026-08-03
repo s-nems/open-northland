@@ -22,8 +22,8 @@ import { GatheringPipeline, TerrainPattern } from '../landscape/resolved.js';
 import { GfxPattern, GfxPatternTransition, TrianglePatternType } from '../landscape/terrain.js';
 import { MapInfo } from '../maps/info.js';
 
-/** Current IR schema version, and the only stamp {@link IrManifest} accepts: content from another
- *  build is rejected at the loader boundary rather than parsed field-by-field. Bump on a breaking shape change. */
+/** Current IR schema version and the only stamp {@link IrManifest} accepts; bump on a breaking
+ *  shape change. */
 export const IR_VERSION = 2 as const;
 
 /** Top-level manifest written to content/ir.json. */
@@ -50,39 +50,38 @@ export const ContentSet = z.strictObject({
   weapons: z.array(WeaponType).default([]),
   armor: z.array(ArmorType).default([]),
   animals: z.array(AnimalType).default([]),
-  /** Authored hunter prey/yield table ({@link HuntPrey}) - joined onto `animals` by `tribeType`. */
+  /** Authored prey/yield table, joined onto `animals` by `tribeType`. */
   huntPrey: z.array(HuntPrey).default([]),
   vehicles: z.array(VehicleType).default([]),
   landscape: z.array(LandscapeType).default([]),
   landscapeGfx: z.array(LandscapeGfx).default([]),
-  /** Resolved per-good gathering pipelines (good→landscape→gfx join), one per map-gathered good. */
+  /** The resolved good→landscape→gfx join, one record per map-gathered good. */
   gatheringPipeline: z.array(GatheringPipeline).default([]),
   gfxPatterns: z.array(GfxPattern).default([]),
-  /** The `[transition]` overlay table (`transitions.cif`) a decoded map's `transitions.types`
-   *  names join onto - the texture + six UV pairs per record (render-binding data). */
+  /** The `[transition]` overlay table (`transitions.cif`) a decoded map's `transitions.types` names
+   *  join onto: the texture and six UV pairs per record. */
   gfxPatternTransitions: z.array(GfxPatternTransition).default([]),
   terrainPatterns: z.array(TerrainPattern).default([]),
-  /** The per-logicType ground classes (`trianglepatterntypes.cif`) a {@link GfxPattern.logicType}
-   *  references - the walk/build/water flags the map-collision join classes real ground by. */
+  /** The per-logicType ground classes (`trianglepatterntypes.cif`): the walk/build/water flags the
+   *  map-collision join classes real ground by. */
   trianglePatternTypes: z.array(TrianglePatternType).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
-  /** `[gfxanimatomic]` atomic-action → directional body-animation bindings (render-binding data). */
+  /** `[gfxanimatomic]` atomic-action → directional body-animation bindings. */
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
-  /** `[gfxwalkatomic]` good → loaded-gait bindings - the original's own carry-look table. */
+  /** `[gfxwalkatomic]` good → loaded-gait bindings. */
   gfxWalkAtomics: z.array(GfxWalkAtomic).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
-  /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays (the mill rotor - render-binding data). */
+  /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays, such as the mill rotor. */
   buildingOverlays: z.array(BuildingOverlay).default([]),
-  /** `[GfxHouse]` `GfxFlagPoint` sign-post anchors - where a building's sign chain plants (render-binding data). */
+  /** `[GfxHouse]` `GfxFlagPoint` anchors: where a building's sign chain plants. */
   buildingFlagPoints: z.array(BuildingFlagPoint).default([]),
-  /** `[GfxHouse]` `gfxsoldierflagpoint` anchors - where a manned post flies its garrison flag. Same row
-   *  shape as {@link buildingFlagPoints}, a different marker on a different part of the building. */
+  /** `[GfxHouse]` `gfxsoldierflagpoint` anchors: where a manned post flies its garrison flag. */
   buildingSoldierFlagPoints: z.array(BuildingFlagPoint).default([]),
   tribes: z.array(TribeType).default([]),
   atomicAnimations: z.array(AtomicAnimation).default([]),
   maps: z.array(MapInfo).default([]),
-  /** Decoded `soundfx.cif` sound bank (render-binding data; the pure sim ignores it). */
+  /** Decoded `soundfx.cif` sound bank; the pure sim ignores it. */
   sounds: SoundBank.default({ staticGroups: [], ambient: [], jingles: [] }),
 });
 export type ContentSet = z.infer<typeof ContentSet>;

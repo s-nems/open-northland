@@ -1,17 +1,15 @@
 /**
- * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`MissionData` sections → a
- * validated {@link MapScript}. Shared by both source skins - the plaintext `player.inc`/`mission.inc` pair
- * (macro tokens like `#PLAYER_TYPE_HUMAN`) and the packed `map.cif` (the same lines with the macros
- * already resolved to numbers) - so the token→code resolution accepts both forms.
+ * Map scripting reducer: `playerdata`/`playermisc`/`multiplayer`/`MissionData` sections into a validated
+ * {@link MapScript}. Token resolution accepts both source skins: the plaintext `player.inc`/`mission.inc`
+ * macros (`#PLAYER_TYPE_HUMAN`) and the packed `map.cif` carrying those macros already resolved to numbers.
  */
 import { MAP_PLAYER_COLOR_COUNT, MapScript, type MapScriptLine } from '@open-northland/data';
 import { makeSource, type RuleProp, type RuleSection, type SourceRef } from './grammar.js';
 
 /**
- * The `#define` tables the plaintext macros resolve through, from the owned copy's
- * `Data/GameSourceIncludes/logicdefines.inc` (packed `map.cif`s store these numbers directly).
- * Keys are upper-cased; the corpus spells macros in mixed case (`#PLAYER_TYPE_human`,
- * `#TRIBE_TYPE_HUMAN_viking`), so lookups are case-insensitive.
+ * The `#define` codes the plaintext macros resolve through, from the owned copy's
+ * `Data/GameSourceIncludes/logicdefines.inc`. Keys are upper-cased because the corpus spells macros in
+ * mixed case (`#PLAYER_TYPE_human`, `#TRIBE_TYPE_HUMAN_viking`).
  */
 const MACRO_CODES: Readonly<Record<string, number>> = {
   PLAYER_TYPE_NONE: 0,
@@ -71,9 +69,9 @@ function asLine(p: RuleProp): MapScriptLine {
   return { key: p.key, values: [...p.values] };
 }
 
-/** `player <slot> <type> <tribe> <colorId>` → a roster row, or undefined when malformed. The range
- *  checks mirror the {@link MapScript} schema so an out-of-range row degrades to `misc` per-row
- *  instead of failing the whole map's sidecar at the final parse. */
+/** `player <slot> <type> <tribe> <colorId>` to a roster row, or undefined when malformed. The range
+ *  checks mirror the {@link MapScript} schema so an out-of-range row degrades to `misc` instead of
+ *  failing the whole map's sidecar at the final parse. */
 function playerRow(p: RuleProp): MapScript['players'][number] | undefined {
   const [slotRaw, typeRaw, tribeRaw, colorRaw] = p.values;
   const player = int(slotRaw);
@@ -86,7 +84,7 @@ function playerRow(p: RuleProp): MapScript['players'][number] | undefined {
   return { player, type: type === PLAYER_TYPE_HUMAN ? 'human' : 'ai', tribeId, colorId };
 }
 
-/** `diplomacy <from> <to> <state>` → a matrix row, or undefined when malformed. */
+/** `diplomacy <from> <to> <state>` to a matrix row, or undefined when malformed. */
 function diplomacyRow(p: RuleProp): MapScript['diplomacy'][number] | undefined {
   const [fromRaw, toRaw, stateRaw] = p.values;
   const from = int(fromRaw);
@@ -99,12 +97,10 @@ function diplomacyRow(p: RuleProp): MapScript['diplomacy'][number] | undefined {
 }
 
 /**
- * One `[multiplayer]` section folded into the accumulator (kept mutable so a map splitting the
- * section across inc files still merges into one table). `playeroption <slot> <type…>` rows keep
- * their first occurrence per slot; `playerhideinmenu` collects slot ids; `playerfixcolors <0|1>`
- * locks the authored colours. Anything else stays lossless in `other` - including the corpus's two
- * hand-wrapped `playeroption` continuation lines (a bare `#PLAYER_TYPE_NONE` on its own line),
- * which the original's keyed line parser would not attach either.
+ * Folds one `[multiplayer]` section into the accumulator, which stays mutable so a map splitting the
+ * section across inc files still merges into one table. Unrecognized lines stay lossless in `other`,
+ * including the corpus's hand-wrapped `playeroption` continuation lines (a bare `#PLAYER_TYPE_NONE` on
+ * its own line), which the original's keyed line parser would not attach either.
  */
 function multiplayerSection(sec: RuleSection, out: NonNullable<MapScript['multiplayer']>): void {
   for (const p of sec.props) {
@@ -135,7 +131,7 @@ function multiplayerSection(sec: RuleSection, out: NonNullable<MapScript['multip
   }
 }
 
-/** One repeated `MissionData` section → a trigger: typed header scalars, lossless goal/result lines. */
+/** One repeated `MissionData` section as a trigger: typed header scalars, lossless goal/result lines. */
 function mission(sec: RuleSection): MapScript['missions'][number] {
   const out: MapScript['missions'][number] = { goals: [], results: [], other: [] };
   for (const p of sec.props) {
@@ -173,16 +169,12 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
 }
 
 /**
- * Reduces a map's decoded sections into its validated {@link MapScript}: the `playerdata` roster +
- * diplomacy (typed; a malformed row falls into `misc` rather than aborting the map), every
- * `playermisc` line and unrecognized `playerdata` line kept lossless in `misc`, the `[multiplayer]`
- * lobby table when present, and one
- * {@link MapMission} per repeated `MissionData` section in authored order. Section names match
- * case-insensitively (the packed skin spells `MissionData`, the corpus also carries `[AIData]`
- * vs `[aidata]`). A duplicate `player` slot keeps its first row (matching the first-prop-wins
- * grammar helpers). Returns undefined when no section yields anything - the caller then emits no
- * script sidecar. `aidata` (the AI task/condition program) is out of scope here - a separate
- * vocabulary consumed by no system yet.
+ * Reduces a map's decoded sections into its validated {@link MapScript}, keeping every `playermisc`
+ * line and unrecognized `playerdata` line lossless in `misc` and one mission per repeated `MissionData`
+ * section in authored order. Section names match case-insensitively (the corpus carries both `[AIData]`
+ * and `[aidata]`), and a duplicate `player` slot keeps its first row. Returns undefined when no section
+ * yields anything, and the caller then emits no script sidecar. `aidata`, the AI task and condition
+ * program, is out of scope here.
  */
 export function extractMapScript(sections: readonly RuleSection[], src: SourceRef): MapScript | undefined {
   const players: NonNullable<MapScript['players']> = [];
@@ -229,8 +221,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     multiplayer,
     misc,
     missions,
-    // Provenance names the section the payload actually came from (a missions-only script is not
-    // a `playerdata` decode).
+    // Provenance names the section the payload actually came from, not a fixed `playerdata`.
     source: makeSource(
       src,
       players.length + diplomacy.length + misc.length > 0
