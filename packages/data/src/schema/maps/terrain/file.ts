@@ -5,19 +5,10 @@ import { TRANSITION_NONE, TRANSITION_PAIRS } from './encoding.js';
 import { CellLane, TerrainGround, TerrainObjects, TerrainTransitions } from './layers.js';
 
 /**
- * A decoded terrain grid file (`content/maps/<id>.json`) - the per-map nav-graph input the pipeline
- * emits from `map.dat` (the `lmlt` half-cell landscape-object lane reduced to one typeId per cell;
- * raw values are the 1-based IR {@link LandscapeType} typeIds, with raw 0 = "no object" mapped to
- * `void`). This is the on-disk twin of the sim's `TerrainMap`, which the sim defines structurally
- * without zod, so this schema is the validating loader boundary before a file reaches the pure sim.
- * The `typeIds.length === width * height` invariant is enforced here so a truncated/oversized grid
- * fails at load, not as an out-of-bounds read inside `buildTerrainGraph`.
- *
- * The optional {@link ground} / {@link objects} layers carry the map's 1:1 visual data (per-triangle
- * ground patterns; placed landscape objects) - render-only consumers; the sim reads only the grid.
- * The optional {@link elevation} (`lmhe` terrain height) and {@link brightness} (`embr` baked
- * shading) lanes are per-cell render inputs: the projection lift and the ground's per-fragment
- * shading respectively.
+ * A decoded terrain grid file (`content/maps/<id>.json`), the validating loader boundary in front of
+ * the sim's structurally typed `TerrainMap`. `typeIds` is the `map.dat` `lmlt` half-cell lane reduced
+ * to one 1-based IR landscape typeId per cell, with raw 0 (no object) mapped to `void`. The optional
+ * terrain lanes are render-only; the sim reads only the grid.
  */
 const TerrainMapFields = z.strictObject({
   /** Map width in cells. */
@@ -33,30 +24,22 @@ const TerrainMapFields = z.strictObject({
   /** The placed landscape objects (`emla` + `eald`), when the map carries them. */
   objects: TerrainObjects.optional(),
   /**
-   * Per-cell terrain height (`lmhe` lane), row-major, one value per cell (length = width*height) -
-   * not the `2W × 2H` half-cell resolution the {@link objects} lane uses. Raw byte values, 0..250
-   * (a hard observed ceiling across the real maps).
-   * Present when the map ships the lane (older/foreign saves omit it). Consumed by the render's
-   * elevation lift (`TILE_HALF_H/32`, 1.1875 native px/unit at the current projection;
-   * see `packages/render/src/data/elevation.ts`).
+   * Per-cell terrain height (`lmhe` lane), row-major, one value per cell - not the `2W x 2H`
+   * half-cell resolution the objects lane uses. Raw byte values 0..250, a hard observed ceiling
+   * across the owned maps. Present when the map ships the lane.
    */
   elevation: CellLane.optional(),
   /**
-   * Per-cell baked brightness (`embr` lane), row-major, one value per cell (length = width*height),
-   * raw byte values 0..255 with 127 = neutral. The engine's baked shading plane: slope light/shadow
-   * plus the fade-to-black map border (the outermost 2–3 rows/columns hold 0). Present when the map
-   * ships the lane. Consumed by the ground's per-fragment shading (luminance × brightness/127,
-   * the response curve calibrated against the reference corpus -
-   * `packages/render/src/data/brightness.ts`).
+   * Per-cell baked brightness (`embr` lane), row-major, one value per cell. Raw byte values 0..255
+   * with 127 = neutral: the engine's baked shading plane, slope light/shadow plus the fade-to-black
+   * map border (the outermost 2-3 rows/columns hold 0). Present when the map ships the lane.
    */
   brightness: CellLane.optional(),
   /**
    * Per-cell `lmms` band (the lane collapsed to each cell's centre node), row-major, one value per
-   * cell. Observed byte values are 0..7 on the owned corpus, but the band SEMANTICS are unconfirmed:
-   * it is NOT a water mask (waterless maps carry the same 1..7 bands over meadow, and band 7 sits
-   * mostly under land patterns on river maps - probed 2026-07-16), so the render keys water off
-   * ground-pattern names instead (`packages/render/src/data/water.ts`). Retained as raw probe data;
-   * no runtime system consumes it.
+   * cell. Observed byte values are 0..7 on the owned corpus; the band semantics are unconfirmed and
+   * it is not a water mask (observation: waterless maps carry the same 1..7 bands over meadow, and
+   * band 7 sits mostly under land patterns on river maps). Raw probe data with no runtime consumer.
    */
   shore: CellLane.optional(),
   /** The authored entity placements (`map.cif` `StaticObjects`), when the map carries them. */
@@ -66,20 +49,18 @@ type TerrainMapValue = z.infer<typeof TerrainMapFields>;
 
 /** A placements lane is a flat run of `[hx, hy, typeIndex]` triples. */
 const PLACEMENT_STRIDE = 3;
-/** Half-cell lattice factor: the objects lane is at `2W × 2H` half-cell resolution (the sim's grid). */
+/** Half-cell lattice factor: the objects lane is at `2W x 2H` half-cell resolution. */
 const HALF_CELLS_PER_CELL = 2;
 
 const cellCount = (m: TerrainMapValue): number => m.width * m.height;
 
-/** All placement `(hx, hy)` half-cell coords and `typeIndex` values are in range. */
 function placementsInRange(objects: NonNullable<TerrainMapValue['objects']>, m: TerrainMapValue): boolean {
   const p = objects.placements;
   for (let i = 0; i + (PLACEMENT_STRIDE - 1) < p.length; i += PLACEMENT_STRIDE) {
     const hx = p[i];
     const hy = p[i + 1];
     const typeIndex = p[i + 2];
-    // The loop bound guarantees all three are present; the guard only discharges the checked-index
-    // `| undefined` so a future stride/bound edit fails to typecheck rather than reading past the run.
+    // The loop bound guarantees all three; the guard only discharges the checked-index `| undefined`.
     if (hx === undefined || hy === undefined || typeIndex === undefined) continue;
     if (hx >= m.width * HALF_CELLS_PER_CELL || hy >= m.height * HALF_CELLS_PER_CELL) return false;
     if (typeIndex >= objects.types.length) return false;
@@ -87,7 +68,6 @@ function placementsInRange(objects: NonNullable<TerrainMapValue['objects']>, m: 
   return true;
 }
 
-/** One cross-lane rule: an `ok` predicate plus the message and path pushed when it fails. */
 interface TerrainMapInvariant {
   readonly ok: (m: TerrainMapValue) => boolean;
   readonly message: (m: TerrainMapValue) => string;
@@ -106,10 +86,7 @@ function cellLaneLength(field: 'elevation' | 'brightness' | 'shore'): TerrainMap
   };
 }
 
-/**
- * The cross-lane invariants a valid decoded map must hold, in the order their issues are pushed. Kept
- * as a named table (not inline `.check` closures) so each rule reads independently.
- */
+/** The cross-lane invariants a valid decoded map must hold, in the order their issues are pushed. */
 const INVARIANTS: readonly TerrainMapInvariant[] = [
   {
     ok: (m) => m.typeIds.length === cellCount(m),

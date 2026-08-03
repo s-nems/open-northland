@@ -2,24 +2,20 @@ import { z } from 'zod';
 import { Provenance } from '../record.js';
 
 /**
- * A map's decoded scripting payload - the `playerdata`/`playermisc`/`MissionData` sections of its
- * `map.cif` `CStringArray` (or the plaintext `player.inc`/`mission.inc` twins the unpacked mod maps
- * ship). The player roster and diplomacy matrix are fully typed; the mission triggers keep their
- * goal/result opcodes lossless (opcode + raw args) so consumers can interpret the vocabulary
- * incrementally. Numeric codes follow the original's `Data/GameSourceIncludes/logicdefines.inc`
- * `#define` tables - the file the plaintext `#PLAYER_TYPE_*`/`#TRIBE_TYPE_*`/`#PLAYER_COLOR_ID_*`
- * macros resolve through (packed `map.cif`s store the resolved numbers).
+ * A map's decoded scripting payload: the `playerdata`/`playermisc`/`MissionData` sections of its
+ * `map.cif` `CStringArray`, or the plaintext `player.inc`/`mission.inc` twins the unpacked mod maps
+ * ship. Numeric codes follow the original's `Data/GameSourceIncludes/logicdefines.inc` `#define`
+ * tables, which the plaintext `#PLAYER_TYPE_*`/`#TRIBE_TYPE_*`/`#PLAYER_COLOR_ID_*` macros resolve
+ * through; packed `map.cif`s store the resolved numbers.
  */
 
 /** How many player-colour ids the original defines (`PLAYER_COLOR_ID_MAXIMUM`): ids are `0..9`. */
 export const MAP_PLAYER_COLOR_COUNT = 10;
 
 /**
- * One `player <slot> <type> <tribe> <colorId>` roster row. `type` decides menu eligibility: a
- * `human` slot is one a person may take (`PLAYER_TYPE_HUMAN 1`); an `ai` slot is script-driven
- * (`PLAYER_TYPE_AI 2`). `tribeId` is the `TRIBE_TYPE_HUMAN_*` code (1 viking … 7 egypt) and
- * `colorId` the `PLAYER_COLOR_ID_*` code (0 blue … 9 black) - both resolve against the same tables
- * the LUT/tribe content uses.
+ * One `player <slot> <type> <tribe> <colorId>` roster row. `type` is `PLAYER_TYPE_HUMAN 1` (a seat a
+ * person may take) or `PLAYER_TYPE_AI 2` (script-driven); `tribeId` is the `TRIBE_TYPE_HUMAN_*` code
+ * (1 viking … 7 egypt) and `colorId` the `PLAYER_COLOR_ID_*` code (0 blue … 9 black).
  */
 export const MapPlayerSlot = z.strictObject({
   /** 0-based player slot id - the same key `StaticObjects` placements and diplomacy rows use. */
@@ -54,10 +50,9 @@ export const MapScriptLine = z.strictObject({
 export type MapScriptLine = z.infer<typeof MapScriptLine>;
 
 /**
- * One `[multiplayer]` `playeroption <slot> <type…>` row - which player types the multiplayer lobby
- * offers for the slot (`PLAYER_TYPE_*`: human seatable, ai, none = closed). This is the original's
- * seat-eligibility table: a slot authored `ai` in `playerdata` is still human-seatable when its
- * options include `human` (e.g. the packed multiplayer specials).
+ * One `[multiplayer]` `playeroption <slot> <type…>` row: which `PLAYER_TYPE_*` values the lobby
+ * offers for the slot (`none` = closed). This is the seat-eligibility table, so a slot authored `ai`
+ * in `playerdata` is still human-seatable when its options include `human`.
  */
 export const MapMultiplayerSlot = z.strictObject({
   player: z.number().int().nonnegative(),
@@ -76,12 +71,11 @@ export const MapMultiplayer = z.strictObject({
 export type MapMultiplayer = z.infer<typeof MapMultiplayer>;
 
 /**
- * One `MissionData` trigger (maps repeat the section, one per trigger). The scalar header keys are
- * typed; each `goal`/`result` keeps its quoted opcode + raw args verbatim (28 observed result arg
- * shapes - interpretation is a consumer concern). Lines outside that grammar land in `other`.
+ * One `MissionData` trigger; maps repeat the section, one per trigger. Each `goal`/`result` keeps its
+ * quoted opcode and raw args verbatim, and lines outside that grammar land in `other`.
  */
 export const MapMission = z.strictObject({
-  /** The author's `debuginfo` label - the trigger's working name, useful for cross-referencing. */
+  /** The author's `debuginfo` label, the trigger's working name. */
   debugName: z.string().optional(),
   /** `description <stringId>` - the goal text shown to the player (`-1` = none). */
   descriptionStringId: z.number().int().optional(),
@@ -95,12 +89,12 @@ export const MapMission = z.strictObject({
 });
 export type MapMission = z.infer<typeof MapMission>;
 
-/** The whole decoded script: roster + diplomacy typed, `playermisc`/unknown `playerdata` lines kept
- *  lossless in `misc`, and the mission triggers in authored order. */
+/** The whole decoded script: `misc` keeps `playermisc` and unrecognised `playerdata` lines lossless,
+ *  and `missions` stays in authored order. */
 export const MapScript = z.strictObject({
   players: z.array(MapPlayerSlot).default([]),
   diplomacy: z.array(MapDiplomacy).default([]),
-  /** The `[multiplayer]` lobby table, when the map ships one (the multiplayer-capable minority). */
+  /** The `[multiplayer]` lobby table, when the map ships one. */
   multiplayer: MapMultiplayer.optional(),
   misc: z.array(MapScriptLine).default([]),
   missions: z.array(MapMission).default([]),
