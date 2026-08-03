@@ -18,8 +18,8 @@ export interface Raider {
 }
 
 /** How far past its watch band ({@link threatWatchNodes}) a raider must draw off before the seat stands
- *  down again (user rule). Without the margin a fighter pacing the rim would flick the whole town's
- *  economy in and out of cover every decision. */
+ *  down. Without the margin a fighter pacing the rim would flick the town's economy in and out of cover
+ *  every decision. */
 export const THREAT_STAND_DOWN_MARGIN_NODES = 6;
 
 /** The house bow's extracted `maximumrange` (`weapons.ini` type 20), for content that declares no wall bow
@@ -34,16 +34,14 @@ export function threatWatchNodes(ctx: SystemContext, tribe: number): number {
 }
 
 /**
- * Every enemy fighter loose on the map, canonical ascending id. Fighting trades only: a colonist walking
- * past a tower is not a raid (user rule). A claimed herd is no threat either, and a wild animal never
- * enters - it carries no {@link Owner}.
+ * Every enemy fighter loose on the map, canonical ascending id. Fighting trades only, so a colonist walking
+ * past a tower is not a raid; a claimed herd is no threat either, and a wild animal carries no {@link Owner}.
  *
- * A man holding his own tower is not loose and is dropped: `conflict/targeting.ts` refuses him as a target,
- * so a garrison parked within reach of this seat's edge would otherwise hold its whole town in cover
- * forever and send bands after somebody they cannot strike.
+ * A man holding his own tower is dropped because `conflict/targeting.ts` refuses him as a target: a
+ * garrison parked within reach of this seat's edge would otherwise hold the town in cover forever.
  *
- * Deliberately not fog-gated, like the campaign's own target scan: the strategic seat reads world state,
- * and an alarm behind the fog would only ring once the town had been walked into.
+ * Not fog-gated, like the campaign's own target scan: an alarm behind the fog would ring only once the
+ * town had been walked into.
  */
 export function seatRaiders(
   world: World,

@@ -3,41 +3,30 @@ import type { Command } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { MILITARY_MODE, type MilitaryMode } from '../../readviews/index.js';
-import { anotherSystemOwns } from '../../settlers/planner/replan.js';
+import { MILITARY_MODE } from '../../readviews/index.js';
 import { entityNode, manhattan } from '../../spatial/nodes.js';
 import type { WeaponMix } from './census.js';
-import { onAnErrand } from './errand.js';
+import { spokenFor } from './errand.js';
 
 // Where the army gathers and when it leaves. Every constant here is a named approximation: the original
 // exposes one `HAI_DisableMilitary` toggle and no readable army plan, so the sizes and radii are genre
 // convention.
 
-/** How close to a gathering point (Manhattan half-cell nodes) counts as formed up; an idle fighter
+/** How close to the barracks door (Manhattan half-cell nodes) counts as formed up; an idle fighter
  *  outside this ring is called in. */
 export const RALLY_HOLD_RADIUS_NODES = 6;
 
-/** The smallest group the seat will send (user rule: a wave is a band of men, never one). */
+/** The smallest group the seat will send: a wave is a band of men, never one. */
 export const WAVE_MIN_SOLDIERS = 5;
 
-/** The group that marches on any draw - the top of the wave band (user rule: somewhere between
- *  {@link WAVE_MIN_SOLDIERS} and this many). `P(march) = (strength + 1) / band` per decision, where
- *  `strength` is the group's size over the minimum, so both the size and the moment of a wave vary per
- *  game while a full band always leaves. */
+/** The group that marches on any draw - the top of the band a wave grows to. `P(march) = (strength + 1) /
+ *  band` per decision, where `strength` is the group's size over {@link WAVE_MIN_SOLDIERS}, so the size and
+ *  the moment of a wave both vary per game while a full band always leaves. */
 export const WAVE_FULL_SOLDIERS = 50;
 
 /** A wave never marches as a pure shooting line: at least this many of it fight in reach, so the archers
  *  have somebody standing in front of them. */
-export const WAVE_MELEE_CORE = 1;
-
-/** The longest `maximumrange` any base weapon row carries (`house bow`; the catapult's 24 and the long
- *  bow's 23 come next). Half-cell nodes, the metric the reach checks already use. */
-const LONGEST_REACH_NODES = 29;
-
-/** How far short of the objective a wave forms up before it charges (user rule): far enough to put the
- *  whole hold ring, not just its centre, PAST that reach (`dist <= maxRange` is in reach) - a manned tower
- *  and an alarmed shelter both shoot back, so a muster inside it would be shot at while it waited. */
-export const STAGING_STANDOFF_NODES = LONGEST_REACH_NODES + RALLY_HOLD_RADIUS_NODES + 1;
+const WAVE_MELEE_CORE = 1;
 
 /** The melee floor to hold `army` to - {@link WAVE_MELEE_CORE}, waived when the whole army fights at
  *  range, since holding out for a front rank the seat cannot raise would bench it for good. */
@@ -45,70 +34,50 @@ export function meleeCoreFor(army: WeaponMix): number {
   return army.melee > 0 ? WAVE_MELEE_CORE : 0;
 }
 
-/** An army sorted around one charge point. */
+/** The seat's free fighters, split by what this decision can do with them. A man who cannot walk to the
+ *  objective at all falls in with {@link Muster.homing}, where the recall tests reachability again. */
 export interface Muster {
-  /** Standing on the point. */
+  /** Standing at the rally: the body the launch is rolled over, and the body that leaves on a win. */
   readonly formed: readonly Entity[];
-  /** Closer to the point than to home, so committed forward - never recalled by a lost roll, which is
-   *  what keeps an arrival just outside the hold ring from being walked home and straight out again. */
-  readonly closing: readonly Entity[];
-  /** Still behind, waiting on the departure roll. */
-  readonly waiting: readonly Entity[];
+  /** Nearer the objective than home already, so calling them in would walk them back over the distance
+   *  they just covered. In practice the survivors of a wave whose target fell. */
+  readonly forward: readonly Entity[];
+  /** Everyone else: called in, and rolled over with the wave after this one. */
+  readonly homing: readonly Entity[];
 }
 
 export function musterAround(
   world: World,
   terrain: TerrainGraph,
   units: readonly Entity[],
-  charge: NodeId,
   home: NodeId,
+  objective: NodeId,
 ): Muster {
   const formed: Entity[] = [];
-  const closing: Entity[] = [];
-  const waiting: Entity[] = [];
+  const forward: Entity[] = [];
+  const homing: Entity[] = [];
+  const reachable = terrain.componentOf(objective);
   for (const e of units) {
     const at = entityNode(world, terrain, e);
-    const toCharge = manhattan(terrain, at, charge);
-    if (toCharge <= RALLY_HOLD_RADIUS_NODES) formed.push(e);
-    else if (toCharge < manhattan(terrain, at, home)) closing.push(e);
-    else waiting.push(e);
+    const toHome = manhattan(terrain, at, home);
+    if (terrain.componentOf(at) !== reachable) homing.push(e);
+    else if (toHome <= RALLY_HOLD_RADIUS_NODES) formed.push(e);
+    else if (manhattan(terrain, at, objective) < toHome) forward.push(e);
+    else homing.push(e);
   }
-  return { formed, closing, waiting };
+  return { formed, forward, homing };
 }
 
-/** Whether the gathered `mix` marches this decision - a strong enough, mixed enough group that wins its
- *  roll. */
+/** Whether `mix` is a body the seat would send at all: big enough to be a wave and mixed enough to have a
+ *  front rank. */
+export function waveWorthy(mix: WeaponMix, meleeCore: number): boolean {
+  return mix.total >= WAVE_MIN_SOLDIERS && mix.melee >= meleeCore;
+}
+
+/** Whether the gathered `mix` marches THIS decision: a band that also wins its roll. */
 export function waveReady(ctx: SystemContext, mix: WeaponMix, meleeCore: number): boolean {
-  if (mix.melee < meleeCore) return false;
-  const strength = mix.total - WAVE_MIN_SOLDIERS;
-  return strength >= 0 && ctx.rng.int(WAVE_FULL_SOLDIERS - WAVE_MIN_SOLDIERS + 1) <= strength;
-}
-
-/**
- * Where a wave forms up before it charges `objective`: the point {@link STAGING_STANDOFF_NODES} back along
- * the straight line to `home`, on ground connected to it. Null when the objective stands closer to the
- * barracks than the standoff - the fight is at the door, and there is nothing left to stage behind.
- */
-export function stagingNode(terrain: TerrainGraph, home: NodeId, objective: NodeId): NodeId | null {
-  const span = manhattan(terrain, home, objective);
-  if (span <= STAGING_STANDOFF_NODES) return null;
-  const component = terrain.componentOf(home);
-  const ox = terrain.xOf(objective);
-  const oy = terrain.yOf(objective);
-  const dx = terrain.xOf(home) - ox;
-  const dy = terrain.yOf(home) - oy;
-  // Keep stepping back toward home while the line lands on water or another island (label -1 / another
-  // component): a standoff nobody can walk to would bench the wave.
-  // Bounded probe rather than one proportional to the map: past it the wave forms up at the barracks.
-  const stop = Math.min(span, 2 * STAGING_STANDOFF_NODES);
-  for (let back = STAGING_STANDOFF_NODES; back < stop; back++) {
-    const node = terrain.nodeAtClamped(
-      ox + Math.trunc((dx * back) / span),
-      oy + Math.trunc((dy * back) / span),
-    );
-    if (terrain.componentOf(node) === component) return node;
-  }
-  return null;
+  if (!waveWorthy(mix, meleeCore)) return false;
+  return ctx.rng.int(WAVE_FULL_SOLDIERS - WAVE_MIN_SOLDIERS + 1) <= mix.total - WAVE_MIN_SOLDIERS;
 }
 
 /** March `units` on `target`: the ATTACK stance (so they engage what they meet on the road and keep
@@ -125,49 +94,42 @@ export function marchOrders(world: World, units: readonly Entity[], target: Enti
 }
 
 /**
- * Gather `units` at `rally`, each on his own spot ({@link holdSpot}), in the stance they wait in.
+ * Gather `units` at the seat's own door, each on his own spot ({@link holdSpot}), on the fighter default
+ * ATTACK. This door is the army's only waiting place: a band that formed up short of the objective instead
+ * waited inside its fire.
  *
- * `hold` is what keeps a band a band: an idle ATTACK fighter auto-acquires anything hostile in sight
- * (`conflict/engagement.ts`), so a group waiting in the enemy's town would each walk off at a different
- * house, and an engaged man leaves the census - the muster could never fill. At home the army waits on
- * ATTACK instead, so it meets whatever comes to the door.
- *
- * Skipped for a fighter another drive owns, one mid-errand, and one on ground the point cannot be walked
- * to: `moveUnit` would cancel the errand, and an unreachable point would be re-ordered every decision.
+ * The walk is an attack-move because a plain move order benches the engage rung for its whole length
+ * (`conflict/engage-combatant.ts`, `suppressedByMoveOrder`), leaving every man called in across contested
+ * ground a free target. Skipped for a man already spoken for, and for ground the door cannot be walked to,
+ * which would be re-ordered every decision.
  */
 export function gatherAt(
   world: World,
   terrain: TerrainGraph,
   units: readonly Entity[],
-  rally: NodeId,
-  hold: MilitaryMode,
+  home: NodeId,
 ): Command[] {
   const commands: Command[] = [];
-  const reachable = terrain.componentOf(rally);
+  const reachable = terrain.componentOf(home);
   for (const e of units) {
     if (terrain.componentOf(entityNode(world, terrain, e)) !== reachable) continue;
-    const restance: Command[] = waitsIn(world, terrain, e, rally, hold)
-      ? []
-      : [{ kind: 'setStance', entity: e, mode: hold }];
-    if (formedUpAt(world, terrain, e, rally)) {
-      commands.push(...restance); // in place: the anchor the stance captures IS the rally
+    const restance: Command[] =
+      world.tryGet(e, Stance)?.mode === MILITARY_MODE.ATTACK
+        ? []
+        : [{ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK }];
+    if (formedUpAt(world, terrain, e, home)) {
+      commands.push(...restance);
       continue;
     }
-    // A man this drive will not move keeps the stance he has. Flipping it alone would anchor a DEFEND
-    // post wherever the road happened to leave him, and drop a walker to ATTACK mid-march - where he
-    // auto-acquires, engages, and leaves the census for good.
-    if (anotherSystemOwns(world, e) || onAnErrand(world, e)) continue;
-    // Stance BEFORE the walk: `moveUnit` re-anchors a DEFEND unit onto its goal (`orders/movement.ts`),
-    // which is how each man ends up holding his own spot. Commands apply in the order enqueued.
-    const { x, y } = terrain.coordsOf(holdSpot(terrain, rally, e, reachable));
-    commands.push(...restance, { kind: 'moveUnit', entity: e, x, y });
+    if (spokenFor(world, e)) continue;
+    const { x, y } = terrain.coordsOf(holdSpot(terrain, home, e, reachable));
+    commands.push(...restance, { kind: 'attackMoveUnit', entity: e, x, y });
   }
   return commands;
 }
 
-/** The man's OWN standing place in the hold ring, keyed off his entity id so it never moves under him.
- *  A DEFEND unit walks back onto its anchor when nothing is in radius (`conflict/chase.ts`) and the idle
- *  spacing rung sits below the stance, so one shared goal would pile the whole wave on a single node. */
+/** The man's OWN standing place in the hold ring, keyed off his entity id so it never moves under him:
+ *  one shared goal would walk the whole wave onto a single node. */
 function holdSpot(terrain: TerrainGraph, rally: NodeId, e: Entity, reachable: number): NodeId {
   const spot = HOLD_SPOTS[e % HOLD_SPOTS.length];
   if (spot === undefined) return rally;
@@ -189,16 +151,6 @@ const HOLD_SPOTS: readonly { dx: number; dy: number }[] = (() => {
   }
   return spots;
 })();
-
-/** Whether `e` already waits the way {@link gatherAt} wants: the right mode, and - once he stands on the
- *  rally - a DEFEND anchor on it rather than the one he set out from. */
-function waitsIn(world: World, terrain: TerrainGraph, e: Entity, rally: NodeId, hold: MilitaryMode): boolean {
-  const stance = world.tryGet(e, Stance);
-  if (stance?.mode !== hold) return false;
-  if (hold !== MILITARY_MODE.DEFEND || !formedUpAt(world, terrain, e, rally)) return true;
-  const anchor = stance.anchorCell;
-  return anchor !== null && manhattan(terrain, anchor, rally) <= RALLY_HOLD_RADIUS_NODES;
-}
 
 function formedUpAt(world: World, terrain: TerrainGraph, e: Entity, rally: NodeId): boolean {
   return manhattan(terrain, entityNode(world, terrain, e), rally) <= RALLY_HOLD_RADIUS_NODES;

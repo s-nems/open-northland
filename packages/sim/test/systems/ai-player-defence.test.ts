@@ -295,7 +295,7 @@ describe('ai defence - the tower garrison', () => {
     expect(garrison).toHaveLength(TOWER_GARRISON_ARCHERS);
     const army = takeCensus(sim.world, ctxOf(sim), SEAT);
     expect(army.ready).toHaveLength(band.length - TOWER_GARRISON_ARCHERS);
-    expect(army.ready.length + army.committed).toBeLessThan(WAVE_MIN_SOLDIERS);
+    expect(army.ready.length).toBeLessThan(WAVE_MIN_SOLDIERS);
   });
 });
 
@@ -354,8 +354,11 @@ describe('ai defence - the sortie', () => {
     const hq = place(sim, HQ_TYPE, SEAT_HQ);
     place(sim, HQ_TYPE, FOE_HQ, FOE);
     spawn(sim, 4, { x: BARRACKS.x, y: BARRACKS.y + 6 }, SPEARMAN);
-    standOff(sim, hq, watchOf(sim) + 1, SPEARMAN);
+    const raider = standOff(sim, hq, watchOf(sim) + 1, SPEARMAN);
 
-    expect(attackMoves(run(sim))).toEqual([]);
+    // The band is gathered for the campaign instead - the muster walks men in under an attack-move too,
+    // so what tells a sortie apart is where it sends them.
+    const at = terrainOf(sim).coordsOf(entityNode(sim.world, terrainOf(sim), raider));
+    expect(attackMoves(run(sim)).filter((m) => m.x === at.x && m.y === at.y)).toEqual([]);
   });
 });
