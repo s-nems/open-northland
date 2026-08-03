@@ -9,12 +9,10 @@ import { discoverInstalledMod, findModRootUnder } from './mod-install/index.js';
 import type { DataRoot } from './paths.js';
 
 /**
- * What the shell knows about its own data root. Resolved from disk on every call rather than cached:
- * the wizard installs a mod and regenerates content while the process lives, so a cached answer
- * would go stale mid-session.
+ * The shell's view of its data root, read from disk on every call rather than cached: the wizard
+ * installs a mod and regenerates content while the process lives, so a cache would go stale.
  */
 
-/** The data root's writable locations, resolved once at startup (see `paths.ts`). */
 export interface ShellPaths {
   readonly dataRoot: DataRoot;
   readonly contentDir: string;
@@ -24,13 +22,10 @@ export interface ShellPaths {
 
 export interface ShellState {
   /**
-   * A usable mod root outside the game folder: the config's hand-picked folder (re-validated - the
-   * user may have deleted it, in which case the stale entry is dropped from the config) first, then
-   * a mod downloaded into the data root's `mods/`. Also the root the conversion uses - derived here,
-   * never taken from the renderer, so no renderer string ever reaches the filesystem.
+   * The mod root the conversion uses, derived here and never taken from the renderer so no renderer
+   * string reaches the filesystem.
    */
   availableModRoot(): Promise<string | undefined>;
-  /** Compare the data root's conversion stamp to this shell's pipeline; see `content-state.ts`. */
   contentStatus(): Promise<ContentStatus>;
   desktopState(): Promise<DesktopState>;
 }

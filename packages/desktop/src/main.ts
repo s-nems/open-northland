@@ -10,15 +10,8 @@ import { handleAppProtocol, registerAppScheme } from './protocol.js';
 import { createShellState, type ShellPaths } from './shell-state.js';
 import { buildAppMenu, createWindow } from './window.js';
 
-/**
- * The desktop shell's main process: resolve the data root, serve the game over `app://`, and run
- * the first-run installer (pick the owned game folder → convert it with the asset pipeline into the
- * data root → boot the game). The web app itself is byte-identical to the browser build.
- */
-
-// dist/ layout (scripts/bundle.mjs): main.cjs + preload.cjs + pipeline-child.cjs beside each other,
-// the setup page under dist/renderer/. The built web app sits in resources/app when packaged, at
-// packages/app/dist in a dev checkout (two dirs up from dist/).
+// scripts/bundle.mjs emits main.cjs, preload.cjs, and pipeline-child.cjs side by side into dist/,
+// with the setup page under dist/renderer/.
 const here = __dirname;
 const packageRoot = resolve(here, '..');
 const repoRoot = resolve(packageRoot, '../..');
@@ -52,8 +45,7 @@ if (app.requestSingleInstanceLock()) {
     mainWindow.focus();
   });
 
-  // The remembered choice wins; a first run follows the OS locale. Set before any window or menu so
-  // both the setup page and the native menu open already localized.
+  // Set before any window or menu so both the setup page and the native menu open localized.
   setActiveLocale(readConfig(paths.configFile).locale ?? resolveLocale(app.getLocale()));
 
   void app.whenReady().then(async () => {
@@ -66,7 +58,7 @@ if (app.requestSingleInstanceLock()) {
   app.quit();
 }
 
-// Quits on macOS too, deliberately: a single-window game shell has nothing to reopen from the Dock.
+// Quits on macOS too: a single-window game shell has nothing to reopen from the Dock.
 app.on('window-all-closed', () => {
   void pipeline.stop().then(() => app.quit());
 });

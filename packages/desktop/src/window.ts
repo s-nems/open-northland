@@ -4,13 +4,6 @@ import { type Locale, messages } from './i18n/index.js';
 import { gameUrlForLocale, SETUP_URL } from './protocol.js';
 import { isAppUrl, isInGameSession } from './protocol-routing.js';
 
-/**
- * The shell's single window and its native menu. The menu owns the shell-level actions (reinstall
- * content, open the data folder) that the web app must not know about, keeping `packages/app`
- * byte-identical to the browser build.
- */
-
-/** Open the window on the game when the content is ready, on the setup page otherwise. */
 export function createWindow(initial: ContentStatus, preloadScript: string, locale: Locale): BrowserWindow {
   const win = new BrowserWindow({
     width: 1440,
@@ -24,7 +17,6 @@ export function createWindow(initial: ContentStatus, preloadScript: string, loca
       nodeIntegration: false,
     },
   });
-  // The window renders only the shell's own app:// pages - no popups, no navigation elsewhere.
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, target) => {
     if (!isAppUrl(target)) event.preventDefault();
@@ -33,7 +25,6 @@ export function createWindow(initial: ContentStatus, preloadScript: string, loca
   return win;
 }
 
-/** Swap to the setup page; a live session needs a confirmation first. */
 async function openSetupPage(win: BrowserWindow): Promise<void> {
   if (isInGameSession(win.webContents.getURL())) {
     const dialogs = messages().dialogs;
@@ -51,13 +42,12 @@ async function openSetupPage(win: BrowserWindow): Promise<void> {
 }
 
 /**
- * Builds the shell's native menu. Never auto-hidden on Windows/Linux: this bar is the only home of
- * the reinstall-content and open-data-folder actions, and one hidden behind Alt is undiscoverable.
+ * Never auto-hidden on Windows/Linux: this bar is the only home of the reinstall-content and
+ * open-data-folder actions, and one hidden behind Alt is undiscoverable.
  */
 export function buildAppMenu(win: BrowserWindow, dataRootPath: string): void {
   const menu = messages().menu;
   const gameSubmenu: Electron.MenuItemConstructorOptions[] = [
-    // The setup page reads the current content status and offers Regenerate / Play accordingly.
     { label: menu.reinstall, click: () => void openSetupPage(win) },
     { label: menu.openDataFolder, click: () => void shell.openPath(dataRootPath) },
     { type: 'separator' },

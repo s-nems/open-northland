@@ -4,15 +4,12 @@ import { createEventThrottle } from './event-throttle.js';
 import type { PipelineEvent } from './ipc.js';
 
 /**
- * The pipeline runner forked as an Electron `utilityProcess` - the conversion is CPU-bound JS
- * (image decoding, zlib), so it must not share the main process event loop. argv: `<gameDir> <outDir>
- * [modRoot]` (empty third arg = auto-detect the mod inside the game folder). Progress goes to the
- * parent as {@link PipelineEvent}s; the pipeline's own console logs ride the piped stdio and are
- * forwarded by the host as `log` events.
+ * The pipeline runner forked as an Electron `utilityProcess`: the conversion is CPU-bound JS (image
+ * decoding, zlib), so it must not share the main process event loop. argv is
+ * `<gameDir> <outDir> [modRoot]`, an empty `modRoot` auto-detecting the mod inside the game folder.
  */
 
-/** The slice of Electron's `utilityProcess` parent port the child uses (typed locally so the child
- * stays a plain Node program - it must not import the `electron` module). */
+/** Typed locally so the child stays a plain Node program that never imports `electron`. */
 interface ParentPort {
   postMessage(message: unknown): void;
 }
@@ -44,9 +41,8 @@ const progress: PipelineProgress = {
   },
 };
 
-// No process.exit() after posting: postMessage is asynchronous and exiting on the same tick can
-// drop the terminal event (a finished conversion would then surface as a failure). The process
-// ends by draining naturally; the host kills it if it ever lingers.
+// No process.exit() after posting: postMessage is asynchronous, so exiting on the same tick can
+// drop the terminal event. The process ends by draining naturally.
 runPipeline({ game: gameDir, out: outDir, modRoot: modRoot === '' ? undefined : modRoot }, progress)
   .then(() => {
     post({ kind: 'done' });

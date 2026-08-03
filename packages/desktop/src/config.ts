@@ -2,16 +2,15 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { isLocale, type Locale } from './i18n/index.js';
 
-/** The shell's remembered state: the last game folder converted, and a hand-picked mod root. */
 export interface DesktopConfig {
   readonly gamePath?: string;
-  /** A mod root the user pointed the wizard at (outside the game folder and the data root's mods/). */
+  /** A hand-picked mod root, outside both the game folder and the data root's `mods/`. */
   readonly modPath?: string;
-  /** The installer language the user last chose; absent falls back to the detected OS locale. */
+  /** The last language chosen; absent falls back to the OS locale. */
   readonly locale?: Locale;
 }
 
-/** Read the config; absent or malformed degrades to `{}` (first run, or a hand-edited file). */
+/** An absent or malformed file degrades to `{}`. */
 export function readConfig(file: string): DesktopConfig {
   try {
     const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
@@ -32,7 +31,6 @@ export function writeConfig(file: string, config: DesktopConfig): void {
   writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`);
 }
 
-/** Persist `patch` into the config, preserving every other remembered field. */
 export function patchConfig(file: string, patch: Partial<DesktopConfig>): void {
   writeConfig(file, { ...readConfig(file), ...patch });
 }
