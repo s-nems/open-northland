@@ -1,8 +1,7 @@
 import { deflateRawSync } from 'node:zlib';
 
-/** One synthesized archive member; `deflate` picks method 8 over stored. `localExtra` lands only in
- * the local header (real archives' local extra fields differ from the central ones - the reader
- * must take the data offset from the local header, not the central record). */
+/** One synthesized archive member; `deflate` picks method 8 over stored, and `localExtra` lands in
+ * the local header only. */
 export interface FixtureEntry {
   readonly name: string;
   readonly data: Uint8Array;

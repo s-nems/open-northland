@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ModEvent } from '../../src/ipc.js';
 import { isFinalModEvent } from '../../src/mod-install/events.js';
 
-/** Which installer events bypass the progress throttle (`src/mod-install/events.ts`). */
+/** Which installer events bypass the progress throttle. */
 describe('isFinalModEvent', () => {
   it('never throttles a warning away', () => {
     expect(isFinalModEvent({ kind: 'mod-warning', message: 'skipped unsafe zip member' })).toBe(true);

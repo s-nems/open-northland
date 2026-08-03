@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { isAppUrl, isInGameSession, routePathOf } from '../src/protocol-routing.js';
 
 /**
- * The host-folding rule (`src/protocol-routing.ts`): Pixi workers mis-join root-relative asset URLs on a
- * custom scheme, so `/bobs/x.png` arrives as `app://bobs/x.png` with the route segment in the URL
- * host. Both spellings must map to the same content-route path; a regression here silently drops
- * every worker-fetched atlas in the packaged shell.
+ * Pixi workers mis-join root-relative asset URLs on a custom scheme, so `/bobs/x.png` arrives as
+ * `app://bobs/x.png` with the route segment in the URL host.
  */
 describe('routePathOf', () => {
   it('passes game-host pathnames through untouched', () => {
@@ -27,7 +25,6 @@ describe('routePathOf', () => {
   });
 });
 
-/** The origin test behind the IPC sender guard and the window's navigation guard. */
 describe('isAppUrl', () => {
   it('accepts the shell pages it serves', () => {
     expect(isAppUrl('app://setup/setup.html')).toBe(true);
@@ -50,7 +47,6 @@ describe('isAppUrl', () => {
   });
 });
 
-/** The test behind the leave-game confirmation (`src/window.ts`). */
 describe('isInGameSession', () => {
   it('sees a session in the world-selecting entries', () => {
     expect(isInGameSession('app://game/index.html?lang=pol&map=campaign01')).toBe(true);

@@ -3,10 +3,9 @@ import { IPC_CHANNELS, SEND_ONLY_CHANNELS } from '../src/ipc.js';
 import { type IpcDeps, wireIpc } from '../src/ipc-handlers.js';
 
 /**
- * The shell's IPC surface is reachable by anything the renderer loads, so every invoke channel must
- * refuse a sender outside the shell's own `app://` pages, and refusing must mean the handler body
- * never ran. These tests drive `wireIpc` against a fake `ipcMain`, so a channel added without the
- * guard fails here rather than in a packaged build.
+ * Every invoke channel must refuse a sender outside the shell's own `app://` pages. The channels
+ * come from `IPC_CHANNELS`, so one added without the guard fails here rather than in a packaged
+ * build.
  */
 
 const { registered } = vi.hoisted(() => ({
@@ -88,8 +87,8 @@ describe('wireIpc sender guard', () => {
   });
 
   it("delivers the first invoke argument as the handler's first parameter", async () => {
-    // The guard consumes the event, so a cleared call must see its argument in position 0; an event
-    // left in front would fail the string check instead of probing the path.
+    // The guard consumes the event; one left in front would fail the string check instead of
+    // reaching the path probe.
     const probed = registered.get(IPC_CHANNELS.probeGamePath)?.(APP_FRAME, '/no/such/game/folder');
     await expect(probed).resolves.toMatchObject({ path: '/no/such/game/folder' });
   });

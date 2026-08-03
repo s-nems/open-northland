@@ -1,12 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEventThrottle } from '../src/event-throttle.js';
 
-/**
- * The shared progress throttle (`src/event-throttle.ts`) that both the pipeline child's item events
- * and the main process's mod events ride. Invariants: at most one ordinary event per 100 ms
- * interval, a `final` event always passes (so a bar never stalls short of its true end), and
- * `reset()` re-opens the gate for a new stage.
- */
+/** The throttle interval is 100 ms, the boundary every timer advance below is placed against. */
 describe('createEventThrottle', () => {
   beforeEach(() => {
     vi.useFakeTimers();
