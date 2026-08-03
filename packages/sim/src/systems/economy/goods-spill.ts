@@ -14,10 +14,9 @@ import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { isUsed, spillOverRings } from '../settlers/atomics/effects/goods/index.js';
 
-// What a destroy leaves behind, in two steps around it: read what the entity holds while it still
-// stands, then heap it on the ground where it stood. Both producers (a razed store's stock, a fallen
-// character's gear) feed the one scatter. A building's order is forced - the heaps land on its own
-// cells, which stay walk-blocked until it is gone.
+// What a destroy leaves behind, in two steps around it: read what the entity holds while it still stands,
+// then heap it on the ground where it stood. The order is forced for a building, since the heaps land on
+// its own cells, which stay walk-blocked until it is gone.
 
 /** The contents a destroy spills, and the tile it spills onto. */
 export interface SpilledStock {
@@ -38,14 +37,13 @@ function spillOf(
 }
 
 /**
- * Everything inside `store` that should end up on the ground when it is destroyed: its {@link Stockpile},
- * plus an upgrading building's stashed pre-upgrade inventory ({@link Upgrading} holds the real inventory
- * aside while the live stockpile serves as the build hold, so a store razed mid-upgrade would otherwise
- * drop only half of what it held). Null when it stood nowhere or held nothing. Call it before the destroy.
+ * Everything inside `store` that should end up on the ground when it is destroyed: its {@link Stockpile}
+ * plus an upgrading building's stashed pre-upgrade inventory, since {@link Upgrading} holds the real
+ * inventory aside while the live stockpile serves as the build hold. Call it before the destroy.
  */
 export function spilledStockOf(world: World, store: Entity): SpilledStock | null {
   const pos = world.tryGet(store, Position);
-  if (pos === undefined) return null; // a position-less fixture store: no tile to heap onto
+  if (pos === undefined) return null;
   const held = new Map<number, number>();
   const add = (goodType: number, amount: number): void => {
     if (amount > 0) held.set(goodType, (held.get(goodType) ?? 0) + amount);
@@ -58,9 +56,8 @@ export function spilledStockOf(world: World, store: Entity): SpilledStock | null
 }
 
 /**
- * The gear a fallen character leaves beside its bones: one unit per equipment slot holding an unused
- * good. A part-used unit drops nothing - the take-off rule ({@link isUsed}). Null when it wore nothing
- * droppable or stood nowhere. Call it before the destroy.
+ * The gear a fallen character leaves beside its bones: one unit per equipment slot holding an unused good,
+ * since a part-used unit drops nothing. Call it before the destroy.
  *
  * Approximation: `misc.ini` `[tribelandscapeLinkData]` leaves a human death only the `skeleton` decal
  * and keeps the goods-bearing cadaver for the animal tribes. A carried load is not part of the rule.
@@ -79,14 +76,12 @@ export function droppedEquipmentOf(world: World, character: Entity): SpilledStoc
 }
 
 /**
- * Heap a spill on the ground where it fell - each good scattered outward from its tile
- * ({@link spillOverRings}) in canonical ascending-goodType order, so a full warehouse comes down as a
- * broad field of heaps its porters then haul back in. Call it after the destroy. A no-op without a map.
+ * Heap a spill on the ground where it fell, each good scattered outward from its tile in canonical
+ * ascending-goodType order. Call it after the destroy.
  *
- * Only tiles a fetcher could actually work are used: nothing standing (walls, trees, deposits) and the
- * spill tile's own walk component, so no heap is stranded under a wall or across a river. Whatever finds
- * no tile inside {@link spillOverRings}'s radius is lost - a sealed-in ruin on a tiny island can swallow
- * the tail of a very large store, the one place this rule does not conserve goods.
+ * Only tiles a fetcher could actually work are used: nothing standing, and the spill tile's own walk
+ * component, so no heap is stranded under a wall or across a river. Whatever finds no tile inside
+ * {@link spillOverRings}'s radius is lost, the one place this rule does not conserve goods.
  */
 export function scatterSpilledStock(world: World, ctx: SystemContext, spill: SpilledStock | null): void {
   const terrain = ctx.terrain;

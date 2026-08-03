@@ -11,33 +11,27 @@ import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../sha
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 import { buildingSpotAccept } from './placement.js';
 
-// TOWER COVERAGE - the `towerCoverage` entry's shared reading and spot search. The AI keeps every
-// owned building inside some tower's (or its own base's) assumed defence circle; the circle is a
-// planning heuristic only - what a tower actually does under an alarm is `systems/defence/`.
+// The coverage circle is a planning heuristic only; what a tower does under an alarm is
+// `systems/defence/`.
 
-/** The planning radius of a tower's and the base's assumed defence circle, in world-metric nodes. Under
- *  the house bow's own reach (0–29, `readviews/defence.ts`): towers ringed at full bow range stood too
- *  far out to read as part of the settlement, so the planning circle is tightened (user decision
- *  2026-07-26). */
+/** Planning radius of a tower's or the base's assumed defence circle, in world-metric nodes.
+ *  Deliberately under the house bow's own 0-29 reach (`readviews/defence.ts`): observation - towers
+ *  ringed at full bow range stand too far out to read as part of the settlement. */
 export const TOWER_DEFENCE_RADIUS_NODES = 22;
 
-/** The content ids that count as covering towers - an id allowlist, deliberately NOT
- *  `kind === 'tower'`: `work_pottery_02` shares the kind but is the defence wall. */
+/** Covering towers are an id allowlist, not `kind === 'tower'`: `work_pottery_02` shares the kind but
+ *  is the defence wall. */
 export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
 
-/** How far past the covering target the spot search's seed is pushed away from the settlement
- *  centroid - enough to bias the pick outward, short enough that the tower lands just beyond the
- *  last building rather than out in the field (named approximation, user decision 2026-07-26). */
+/** How far past the covering target the search seed is pushed out from the settlement centroid, in
+ *  nodes. Approximation: far enough to bias the pick outward, short enough to land just beyond the
+ *  last building. */
 const TOWER_OUTSKIRTS_PUSH_NODES = 6;
 
 /**
  * The first owned building (canonical ascending id) outside every coverage circle, or null when the
- * settlement stands covered. Centres are the seat's own base ({@link seatBaseOf} - so a warehouse
- * that replaced a razed headquarters keeps the circle its predecessor held, instead of re-arming the
- * entry over the whole settlement) plus the {@link TOWER_CONTENT_IDS} buildings in ANY construction
- * state - coverage arrives with the site, and the one-site gate already serializes tower
- * construction. The one shared reading of the `towerCoverage` entry: `entryStatus` and the executor
- * both call it, so status and action can never disagree.
+ * settlement stands covered. Circle centres are the seat's base plus its towers in any construction
+ * state, so coverage arrives with the site rather than with the finished tower.
  */
 export function firstUncoveredBuilding(
   world: World,
@@ -66,13 +60,10 @@ export function firstUncoveredBuilding(
 }
 
 /**
- * The spot the next tower builds on: the legal anchor closest to the uncovered target's outskirts
- * seed (the target anchor pushed {@link TOWER_OUTSKIRTS_PUSH_NODES} away from the settlement
- * centroid) that actually covers the target ({@link TOWER_DEFENCE_RADIUS_NODES}, world metric) and
- * stays inside the Manhattan near-anchor disc - the accept combines both metrics, like the signpost
- * lattice documents its Manhattan over-bound. Ring budget is the shared `placementSpot` bound: the
- * world metric is anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice
- * the radius in rows from the target and the circle needs the full fan. Null stalls the entry.
+ * The spot the next tower builds on, or null to stall the entry. The accept combines two metrics:
+ * world-metric coverage of the target and the Manhattan anchor disc. It needs the full ring budget
+ * because the world metric is anisotropic (34 px E/W against 19 px N/S), so a covering node can sit
+ * almost twice the coverage radius in rows from the target.
  */
 export function towerPlacementSpot(
   world: World,

@@ -7,16 +7,12 @@ import { HEADQUARTERS_BUILDING_ID, isBarracks } from '../readviews/index.js';
 import { anchorCentroid, anchorNodeOf, ownedBuildings } from './shared.js';
 
 /**
- * The building the seat's economy anchors and gates on: its built headquarters, else the built
- * STORAGE building most central to its settlement - the fallback it regains an economy through after
- * losing the headquarters ({@link import('./build-order/entries.js').BASE_REPLACEMENT_ENTRY}). Null
- * leaves every strategic module idle for the seat (user rule: no base → the AI stays off); the army
- * is the one exception, gating on its barracks instead, so a seat that loses its base keeps fighting.
- *
- * The fallback ranks by distance rather than id because a seat's storage is not all in one place: 24
- * of the 35 authored seats in the map corpus that open with both a headquarters and a warehouse put
- * that warehouse past the whole 48-node build disc (median 69 nodes, max 265). Anchoring on a remote
- * outpost would move the placement disc, the signpost lattice and every search origin out to it.
+ * The building the seat's economy anchors and gates on: its built headquarters, else the built storage
+ * building most central to its settlement, the fallback it regains an economy through after losing the
+ * headquarters. Null leaves every strategic module idle for the seat (authored); the army is the one
+ * exception, gating on its barracks instead. The fallback ranks by distance rather than id because
+ * authored seats commonly put a warehouse well outside the build disc, and anchoring on a remote outpost
+ * would move the placement disc, the signpost lattice and every search origin out to it.
  */
 export function seatBaseOf(world: World, ctx: SystemContext, player: number): Entity | null {
   const buildings = contentIndex(ctx.content).buildings;
@@ -36,8 +32,7 @@ export function seatBaseOf(world: World, ctx: SystemContext, player: number): En
 /**
  * The army's anchor, the way {@link seatBaseOf} is the economy's: the seat's lowest-id standing barracks,
  * or null when it has none. Lowest id rather than nearest, so the rung that sizes the garrison and the
- * module that musters it always mean the same house - one drill floor, one rally point. Scanned for the
- * minimum rather than over a sorted list: a canonical winner costs no sort.
+ * module that musters it always mean the same house.
  */
 export function seatBarracksOf(world: World, ctx: SystemContext, player: number): Entity | null {
   let best: Entity | null = null;

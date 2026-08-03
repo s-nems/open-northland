@@ -10,15 +10,10 @@ import { entityNode } from '../spatial/nodes.js';
 type NearQuery = (world: World, hx: number, hy: number, reach: number) => Entity[];
 
 /**
- * The walkable landscape-decor entities standing inside `building`'s reserved build-exclusion zone - the
- * shared candidate resolution behind the placement razing passes (berry bushes, felled-tree stumps). Each
- * caller then applies its own removal policy: a bush announces itself first (its `?map=` static quad must be
- * dropped), a stump just destroys.
- *
- * Golden-rule-6 bounded: reads only the decor within the zone's Chebyshev reach via `near` (the kind's region
- * index) and keeps those whose node lies in the zone, never every one on the map. The returned list is a
- * snapshot, so a caller may `world.destroy` each entry without disturbing the scan. Empty for a mapless sim, a
- * non-building / position-less target, or a fully off-grid zone.
+ * The walkable landscape-decor entities standing inside `building`'s reserved build-exclusion zone, the
+ * shared candidate resolution behind the placement razing passes. Each caller adds its own removal policy.
+ * Bounded by the zone: reads only the decor within its Chebyshev reach, never every one on the map. The
+ * returned list is a snapshot, so a caller may `world.destroy` each entry without disturbing the scan.
  */
 export function decorInReservedZone(
   world: World,

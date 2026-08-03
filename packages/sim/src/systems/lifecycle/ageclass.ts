@@ -1,27 +1,9 @@
 /**
- * Human age classes - a settler's life stage is encoded as its `jobType`, not a separate field. In *Cultures*
- * the first five `jobtypes` records are not working trades but age/sex classes a settler passes through
- * before it can take an adult job:
- *
- *   1 `baby_female`  2 `baby_male`  3 `child_female`  4 `child_male`  5 `woman`  6 `civilist` … (adult trades)
- *
- * pinned to `Data/GameSourceIncludes/logicdefines.inc` (`JOB_TYPE_HUMAN_BABY_FEMALE = 1` …
- * `JOB_TYPE_HUMAN_WOMAN = 5`, `JOB_TYPE_HUMAN_CIVILIST = 6`) and the matching `Data/logic/jobtypes.ini`
- * records. Those ids are already in the extracted `JobType` IR; this module is the sim-side recognition that
- * ids 1–4 are the non-working life stages, so a birth (`spawn/newborn.ts`) creates a baby rather
- * than an instantly-employable adult.
- *
- * The AI planner keeps an {@link Age}-bearing settler out of all economy/combat work; a BABY also skips the
- * needs-drives (the original's "a baby is cared for, it doesn't self-feed"), while a CHILD runs the needs
- * ladder (the original binds child eat/sleep animations - see `settlers/drives/ladder.ts`). The planner
- * keys on the `Age` component rather than {@link isNonWorkingAge} to dodge a jobType-id collision: a
- * synthetic fixture's adult job id can equal a real age-class id, but only a born-young settler
- * carries `Age`. `isNonWorkingAge` stays the structural id→stage predicate.
- *
- * source-basis: the age-class ids are pinned to `logicdefines.inc` + `jobtypes.ini` (no interpretation);
- * the growth cadence - both stage boundaries and the total - is observed on the running original
- * ({@link TICKS_PER_AGE_YEAR}). A settler grows up keeping the sex it was born with (the `makeChild`
- * order picks it; baby_female → child_female → woman; baby_male → child_male → civilist).
+ * A settler's life stage is encoded as its `jobType`, not a separate field: the first five `jobtypes`
+ * records are age/sex classes, pinned to `Data/GameSourceIncludes/logicdefines.inc`
+ * (`JOB_TYPE_HUMAN_BABY_FEMALE = 1` .. `JOB_TYPE_HUMAN_WOMAN = 5`, `JOB_TYPE_HUMAN_CIVILIST = 6`) and the
+ * matching `Data/logic/jobtypes.ini` records. A settler keeps the sex it was born with across every
+ * promotion.
  */
 
 import { Age, Health, Residence, Settler, setSettlerJob } from '../../components/index.js';
@@ -32,70 +14,57 @@ import { releaseWidowedParentsOf } from '../family/widowhood.js';
 // The module, not the readviews barrel: the barrel imports CIVILIST_JOB back from here.
 import { settlerHitpoints } from '../readviews/tribes/civilizations.js';
 
-/** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`) - the data cross-reference into the
- * `JobType` IR, not control-flow opcodes. */
+/** The human age-class job ids (`logicdefines.inc` `JOB_TYPE_HUMAN_*`). */
 export const BABY_FEMALE = 1;
 export const BABY_MALE = 2;
 export const CHILD_FEMALE = 3;
 export const CHILD_MALE = 4;
 
-/** The adult female role (`JOB_TYPE_HUMAN_WOMAN = 5`) - a girl matures into it. It is an adult job,
- * not a non-working age class: the original employs women (domestic/`make_love`), and the marriage/child
- * mechanics pair a woman with a working man. */
+/** The adult female role (`JOB_TYPE_HUMAN_WOMAN = 5`) a girl matures into: an adult job the original
+ * employs (domestic/`make_love`), not a non-working age class. */
 export const WOMAN_JOB = 5;
 
-/** The generic adult man (`JOB_TYPE_HUMAN_CIVILIST = 6`) - a boy matures into it (user decision
- * 2026-07-16: a grown boy is a civilian the player re-trades, not an auto-employed jobless idler). */
+/** The generic adult man (`JOB_TYPE_HUMAN_CIVILIST = 6`) a boy matures into. Authored: a grown boy is a
+ * civilian the player re-trades, not an auto-employed jobless idler. */
 export const CIVILIST_JOB = 6;
 
-/** Whether a `jobType` is a baby (the youngest, pre-child stage) - ids 1–2. */
 export function isBaby(jobType: number | null): boolean {
   return jobType === BABY_FEMALE || jobType === BABY_MALE;
 }
 
-/** Whether a `jobType` is a child (between baby and adult) - ids 3–4. */
 export function isChild(jobType: number | null): boolean {
   return jobType === CHILD_FEMALE || jobType === CHILD_MALE;
 }
 
 /**
- * Whether a `jobType` is a non-working age class - a baby or child (ids 1–4), not yet eligible for an adult
- * trade nor countable as a worker. (`woman`, id 5, is an adult role the original does employ -
- * domestic/`make_love` - so it is deliberately not a non-working stage.) `null` (a trade-less adult) is not
- * an age class - only a born stage is.
+ * Whether a `jobType` is one of the stages with no adult trade. `woman` (id 5) is an adult role the
+ * original does employ, so it is not one; `null` is a trade-less adult, not a born stage.
  */
 export function isNonWorkingAge(jobType: number | null): boolean {
   return isBaby(jobType) || isChild(jobType);
 }
 
 /**
- * The growth cadence, observed on the running original: a settler born at age 0 turns from a baby into a
- * child at 4 years and is an adult at 12, with those 12 years running in 4 minutes of ×1 play. No readable
- * rule file carries any of it - there is no growth key in `jobtypes.ini`/`tribetypes.ini`/`houses.ini`.
- *
- * The years and the wall-clock are what was measured; the tick counts below additionally rest on the
- * approximated `TICKS_PER_SECOND` (see `core/loop.ts`).
+ * Growth cadence, observed on the running original: a baby becomes a child at 4 years and an adult at 12,
+ * with those 12 years running in 4 minutes of 1x play. No readable rule file carries any of it, and the
+ * tick counts below additionally rest on the approximated `TICKS_PER_SECOND`.
  */
 const CHILD_AGE_YEARS = 4;
 const ADULT_AGE_YEARS = 12;
 const CHILDHOOD_SECONDS_AT_1X = 4 * 60;
 
-/** Sim ticks per year of a settler's age - 240, one year every 20 s at ×1. The sim has no calendar
- * otherwise; this is its one tick↔year fact. */
+/** Sim ticks per year of a settler's age: 240, one year every 20 s at 1x. The sim has no other calendar. */
 export const TICKS_PER_AGE_YEAR = (CHILDHOOD_SECONDS_AT_1X * TICKS_PER_SECOND) / ADULT_AGE_YEARS;
 
-/** The `Age.ticks` at which a baby becomes a child (4 years, 960 ticks) - an age on the `Age.ticks` axis,
- * not a stage duration: the baby stage runs 960 ticks, the child stage the remaining 1920. */
+/** The `Age.ticks` at which a baby becomes a child - an age on the `Age.ticks` axis, not a stage length. */
 export const CHILD_AGE_TICKS = CHILD_AGE_YEARS * TICKS_PER_AGE_YEAR;
 
-/** The `Age.ticks` at which a child becomes an adult and stops carrying an {@link Age} (12 years, 2880). */
+/** The `Age.ticks` at which a child becomes an adult and stops carrying an {@link Age}. */
 export const ADULT_AGE_TICKS = ADULT_AGE_YEARS * TICKS_PER_AGE_YEAR;
 
 /**
- * The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult
- * slug (no `Age` stamped). Matched by job `id` slug, not numeric id, for the same fixture-collision
- * reason as `isFemaleJobId`. A child starts at {@link CHILD_AGE_TICKS} - the start of its stage - so the
- * GrowthSystem neither demotes it back to a baby nor shortens its remaining childhood.
+ * The `Age.ticks` a settler spawned directly into an age-class job starts with, or null for an adult slug.
+ * Matched by job `id` slug because a synthetic fixture's adult job id can collide with an age-class id.
  */
 export function spawnAgeTicks(jobId: string | undefined): number | null {
   switch (jobId) {
@@ -110,23 +79,14 @@ export function spawnAgeTicks(jobId: string | undefined): number | null {
   }
 }
 
-/** Whether an age-class id is a male stage - the bit preserved across the growth transition (a `baby_male`
- * grows into a `child_male`, never a `child_female`). */
 function isMaleStage(jobType: number | null): boolean {
   return jobType === BABY_MALE || jobType === CHILD_MALE;
 }
 
 /**
- * GrowthSystem - age each {@link Age}-bearing settler one tick and promote it through the non-working life
- * stages: baby → child at {@link CHILD_AGE_TICKS}, child → adult-eligible at {@link ADULT_AGE_TICKS}, where it
- * also grows into its tribe's adult health pool ({@link applyAdultHitpoints}).
- *
- * Only a settler born young carries an {@link Age} (the FamilySystem's `birth` adds it at `ticks: 0`), so this is
- * a no-op for every settler spawned already-adult. On reaching adulthood (`jobType` cleared to `null`) the
- * `Age` component is removed - a grown settler is just an adult waiting for the player to give it work.
- *
- * Removing `Age` on graduation is collect-then-mutate-safe: `query(Age, Settler)` yields entity ids, and the
- * removal happens after the loop, never mid-iterating a structure the query is walking.
+ * Age each {@link Age}-bearing settler one tick and promote it through the non-working life stages. Only a
+ * settler born young carries an `Age`, and reaching adulthood removes it, so this is a no-op for every
+ * settler spawned already-adult. Graduates are collected first, so no component is removed mid-query.
  */
 export const growthSystem: System = (world, ctx) => {
   const graduated: Entity[] = [];
@@ -135,10 +95,8 @@ export const growthSystem: System = (world, ctx) => {
     const settler = world.get(e, Settler);
     age.ticks += 1;
     if (age.ticks >= ADULT_AGE_TICKS) {
-      // Grown to an adult - a boy becomes a civilian ({@link CIVILIST_JOB}), a girl the adult woman
-      // role ({@link WOMAN_JOB}); neither is auto-employed, the player assigns work.
       setSettlerJob(world, e, isMaleStage(settler.jobType) ? CIVILIST_JOB : WOMAN_JOB);
-      graduated.push(e); // its Age is now meaningless
+      graduated.push(e);
       continue;
     }
     const target = ageClassAt(age.ticks, isMaleStage(settler.jobType));
@@ -146,10 +104,8 @@ export const growthSystem: System = (world, ctx) => {
   }
   for (const e of graduated) {
     world.remove(e, Age);
-    // A grown child moves out: it stops counting in its parents' family slot (a homeSize-3 home would
-    // otherwise silently fill with grown-up "families") and picks its own home when the player assigns
-    // one (user decision 2026-07-16). Growing up also ends a widowed parent's raising carve-out, so
-    // the widowing rule re-evaluates the parents (the Age removal above is what expires it).
+    // Authored: a grown child moves out, so it stops filling a slot in its parents' family and picks its
+    // own home when the player assigns one. Its Age removal also expires a widowed parent's carve-out.
     world.remove(e, Residence);
     releaseWidowedParentsOf(world, e);
     applyAdultHitpoints(world, ctx, e);
@@ -157,22 +113,16 @@ export const growthSystem: System = (world, ctx) => {
 };
 
 /**
- * Swap a grown settler's childhood {@link Health} pool for its tribe's adult one ({@link settlerHitpoints}),
- * landing it on the pool every spawned adult of that tribe carries. The wound rides along as a fraction of
- * the new pool (floored at 1 HP - growing up neither heals a starving child nor kills it). A tribe declaring
- * no pool leaves the settler alone: its adults spawn on the same childhood default.
- *
- * Design rule (approximation): the original's growth-time health handling is not established. The
- * proportional carry is the choice that keeps the panel's health bar and the life heart - both fractions -
- * from jumping on the birthday.
+ * Swap a grown settler's childhood {@link Health} pool for its tribe's adult one, carrying the wound across
+ * as a fraction of the new pool (floored at 1 HP); a tribe declaring no pool leaves the settler alone.
+ * Approximation: the original's growth-time health handling is not established.
  */
 function applyAdultHitpoints(world: World, ctx: ContentContext, e: Entity): void {
   const pool = settlerHitpoints(ctx.content, world.get(e, Settler).tribe);
   const health = world.tryGet(e, Health);
   if (pool <= 0 || health === undefined || health.max === pool) return;
-  // Combat and needs run before growth, so a settler killed this tick is awaiting CleanupSystem's reap
-  // (`hitpoints > 0` like the starvation twin) - a birthday must not revive it. `max > 0` keeps the
-  // fraction below over a real division.
+  // A settler killed earlier this tick awaits CleanupSystem's reap; a birthday must not revive it, and
+  // `max > 0` keeps the fraction below a real division.
   if (health.hitpoints <= 0 || health.max <= 0) return;
   const scaled = Math.max(1, Math.trunc((health.hitpoints * pool) / health.max));
   world.write(e, Health, (h) => {
@@ -182,10 +132,8 @@ function applyAdultHitpoints(world: World, ctx: ContentContext, e: Entity): void
 }
 
 /**
- * The age-class `jobType` a settler that has lived `ticks` (still short of adulthood) should currently be,
- * for the given sex: a baby for the first {@link CHILD_AGE_TICKS}, a child thereafter. A pure function of the
- * count + sex (not of how many times it ran), so re-evaluating it every tick is idempotent within a stage
- * and the promotion never double-fires.
+ * The age-class `jobType` a settler that has lived `ticks`, still short of adulthood, should currently
+ * hold for the given sex.
  */
 function ageClassAt(ticks: number, male: boolean): number {
   if (ticks < CHILD_AGE_TICKS) return male ? BABY_MALE : BABY_FEMALE;

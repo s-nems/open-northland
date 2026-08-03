@@ -10,23 +10,18 @@ import { entityNode, manhattan } from '../../spatial/nodes.js';
 import { anyResourceNear } from '../../spatial/resources.js';
 import { HUNT_CARCASS_SLACK_NODES, huntingGround } from './ground.js';
 
-// Which BODIES are a hunter's work: the kill claim that keeps two hunters off one carcass, and the
-// one-kill gate's probe that stops a hunter hunting while its own kill lies unbanked. Read by the
-// acquisition spec (./spec.ts) and by the economy's gatherer drive.
+// Which bodies are a hunter's work: the kill claim that keeps two hunters off one carcass, and the
+// one-kill gate's probe that stops a hunter hunting while its own kill lies unbanked.
 
 /**
- * Whether `carcass` is a body a fellow hunter of the same player still owns - the ONE HUNTER PER KILL
- * rule (user rule 2026-08-03): a kill is its killer's work, so a colleague neither walks over to pluck
- * it nor lets it block its own hunting through the one-kill gate.
+ * Whether `carcass` is a body a fellow hunter of the same player still owns - the one-hunter-per-kill rule
+ * (authored): a kill is its killer's work, so a colleague neither walks over to pluck it nor lets it block
+ * its own hunting through the one-kill gate.
  *
- * The claim LAPSES the moment its killer stops being someone who will come back for the body: it died,
- * left the trade, was taken off hunting duty (only the IGNORE stance runs the hunt-and-fetch cycle - a
- * hunter posted to DEFEND stands its anchor and never reaches the economy drives), its ground stopped
- * covering the spot, or its own routes just failed there. Without that, one command or one bad route
- * would strand a body nobody may take, and nothing rots a carcass. A rival player's kill is no claim at
- * all: contested game stays contested, and a rival could otherwise reserve every body in the player's
- * own ground. An UNOWNED killer (fixtures only) is compatible with every player by `sameSide`, so its
- * kill binds all of them. A node with no killer mark (map-seeded, fixture-placed) is nobody's claim.
+ * The claim lapses the moment its killer stops being someone who will come back for the body, else one
+ * command or one bad route would strand a body nobody may take and nothing rots a carcass. A rival
+ * player's kill is no claim at all: contested game stays contested. An unowned killer (fixtures only) is
+ * compatible with every player by `sameSide`, so its kill binds all of them.
  */
 export function claimedByAnotherHunter(
   world: World,
@@ -49,14 +44,12 @@ export function claimedByAnotherHunter(
 }
 
 /**
- * Whether the hunter's ground still holds a carcass node its trade can harvest - the one-kill gate's
- * probe: standing work means no new target. An existence-only box query over the resource region index
- * ({@link anyResourceNear}, reach = the ground's radius plus the kill slack, a Manhattan superset),
- * each hit checked for units left, the job's atomic grant, and the exact in-reach distance. It must not
- * out-claim the harvest drive: a carcass the hunter provably cannot bank - a colleague's claimed kill,
- * one across a static terrain component seam, or one on a cell its routes just failed on
- * ({@link unreachableGoals}) - counts as no work, else a body it may never pluck would stall its
- * hunting for good. Cost is unmeasured (docs/tickets/sim/hunter-scan-costs-bench.md).
+ * Whether the hunter's ground still holds a carcass node its trade can harvest - the one-kill gate's probe:
+ * standing work means no new target. The box query is a Manhattan superset, so each hit is re-checked at its
+ * exact distance. It must not out-claim the harvest drive: a carcass the hunter provably cannot bank - a
+ * colleague's claimed kill, one across a static terrain component seam, or one on a cell its routes just
+ * failed on - counts as no work, else a body it may never pluck would stall its hunting for good. Cost is
+ * unmeasured.
  */
 export function huntingGroundHoldsCarcass(
   world: World,

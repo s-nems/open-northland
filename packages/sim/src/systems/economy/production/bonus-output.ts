@@ -15,13 +15,11 @@ import { livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
 
 /**
- * The bonus-output half of a completed batch: each done cycle credits its operator's experience bonus
- * ({@link operatorProductionBonus}) PLUS its worn tool's credit ({@link toolProductionBonus} - a SUM,
- * never a product) times its recipe outputs into the workplace's {@link ProductionBonus} remainders,
- * cycle to operator pairing index-for-index (the XP grant's slice), then whole remainder units flush
- * into the stockpile. A crafting operator's tool also wears one step per completed cycle, whether or
- * not it rates a credit. Farms never reach here (the field loop runs no recipe cycles), so tools
- * leave them alone by construction. The flush runs on every completion regardless of the crediting
+ * The bonus-output half of a completed batch: each done cycle credits its operator's experience bonus plus
+ * its worn tool's credit - a sum, never a product - times its recipe outputs into the workplace's
+ * {@link ProductionBonus} remainders, pairing cycles to operators index for index, then whole remainder
+ * units flush into the stockpile. A crafting operator's tool also wears one step per completed cycle,
+ * whether or not it rates a credit. The flush runs on every completion regardless of the crediting
  * operator's bonus, so a unit banked earlier is never stranded behind a fresh worker.
  */
 export function accrueBonusOutput(
@@ -36,8 +34,8 @@ export function accrueBonusOutput(
     done.forEach((cycle, i) => {
       const op = operators.operators[i];
       if (op === undefined) return;
-      // Credit BEFORE wearing: the cycle that breaks the tool is still a cycle the tool worked, so a
-      // tool rated `uses: N` credits N cycles, not N - 1 (wear clears the slot at ONE).
+      // Credit before wearing: the cycle that breaks the tool is still a cycle the tool worked, so a tool
+      // rated `uses: N` credits N cycles, not N - 1.
       const bonus = fx.add(operatorProductionBonus(world, ctx, op), toolProductionBonus(world, ctx, op));
       if (isCraftingOperator(world, ctx, op)) wearWornTool(world, ctx, op);
       if (bonus <= ZERO) return;
@@ -62,10 +60,9 @@ function creditBonus(world: World, building: Entity, goodType: number, extra: Fi
 }
 
 /**
- * Flush a workplace's banked whole bonus units after stock LEFT it - a withdrawal frees the space a
- * capacity-blocked unit was waiting for, and the completion-path flush may never come again (inputs
- * starved, operator reassigned), so the withdrawal seam must release it too. Cheap no-op for the
- * common building holding no {@link ProductionBonus}.
+ * Flush a workplace's banked whole bonus units after stock left it: a withdrawal frees the space a
+ * capacity-blocked unit was waiting for, and the completion-path flush may never come again, so the
+ * withdrawal seam must release it too.
  */
 export function flushBankedBonus(world: World, ctx: SystemContext, building: Entity): void {
   if (!world.has(building, ProductionBonus)) return;
@@ -73,11 +70,9 @@ export function flushBankedBonus(world: World, ctx: SystemContext, building: Ent
 }
 
 /**
- * Move each whole remainder unit into real stock (emitting `goodProduced` like a deposited batch),
- * honoring the room the in-flight same-product batches have RESERVED - their own deposits are
- * unconditional (`depositCycleOutput`: "room reserved at start"), so a bonus unit must never consume a
- * reserved slot. A blocked unit holds until space frees (the next completion here, or a withdrawal via
- * {@link flushBankedBonus}); the component is dropped once every remainder is zero.
+ * Move each whole remainder unit into real stock, emitting `goodProduced` like a deposited batch. The room
+ * in-flight same-product batches reserved is left alone, since their own deposits are unconditional, so a
+ * blocked bonus unit holds until space frees.
  */
 function flushWholeUnits(
   world: World,

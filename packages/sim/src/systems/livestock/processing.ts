@@ -24,23 +24,18 @@ import {
 } from './processing/roster.js';
 import { summonToWorkplaces } from './processing/summon.js';
 
-// The processing side of husbandry, staged as a VISIT the player can watch: the workplace SUMMONS one
-// penned animal per species (it walks to the door and waits there), the feed batch begins only once it
-// has ARRIVED (the animal steps in with the starting operator - until then the feed recipe is not
-// startable, so an idle breeder waits outside too), and the completing batch lets it out with part of
-// its life paid. Consumed by the ProductionSystem's cycle gate/start/deposit
-// (economy/production/cycles.ts). Source basis: the recipes and the animal-as-good model are the
-// extracted content; the visit staging is a named approximation, as is each constant it needs - no
-// readable constant exists for any of them.
+// The processing side of husbandry, staged as a visit the player can watch: the workplace summons one
+// penned animal per species, the feed batch begins only once it has arrived and steps in with the
+// starting operator, and the completing batch lets it out with part of its life paid. Source basis: the
+// recipes and the animal-as-good model are extracted content; the visit staging and every constant it
+// needs are named approximations.
 
 export { LIVESTOCK_MIN_LIFE_DIVISOR, LIVESTOCK_PROCESS_DRAIN_HP } from './processing/life-cost.js';
 export { heldSeatCount, LIVESTOCK_PROCESS_RANGE_NODES } from './processing/summon.js';
 
 /**
- * How many batches of `recipe` could begin right now - `Infinity` for a non-feed recipe (no animal
- * requirement), else the count of summoned animals arrived at the door. The livestock leg of
- * `startableCycleCount`'s gate: a feed batch never starts against an animal still walking, so the
- * enter-together read holds.
+ * How many batches of `recipe` could begin right now: `Infinity` for a non-feed recipe, else the count of
+ * summoned animals arrived at the door, so a feed batch never starts against an animal still walking.
  */
 export function feedAnimalsAvailable(
   world: World,
@@ -54,11 +49,8 @@ export function feedAnimalsAvailable(
 }
 
 /**
- * Step the starting feed batch's animal inside, or report that none has arrived. A non-feed recipe
- * admits nothing (true). A feed recipe steps its canonical arrived visitor in through the indoors
- * seam - it enters together with the operator whose seat opened on the same arrival - and the batch's
- * completion releases it ({@link releaseLivestockVisit}). False when no visitor stands at the door -
- * the caller must not begin the batch.
+ * Step the starting feed batch's animal inside, or report false when no visitor stands at the door and
+ * the caller must not begin the batch. A non-feed recipe admits nothing and reports true.
  */
 export function admitLivestockForCycle(
   world: World,
@@ -70,18 +62,17 @@ export function admitLivestockForCycle(
   if (tribe === null) return true;
   const pick = canonicalArrivedVisitor(world, ctx, building, tribe);
   if (pick === null) return false;
-  // Full nav clear, not just the goal: an animal can count as arrived while its final path leg is
-  // still live (entityNode rounds to the door node), and an admitted body must hold no walk.
+  // Full nav clear, not just the goal: an animal counts as arrived while its final path leg is still
+  // live, and an admitted body must hold no walk.
   clearNavState(world, pick);
   stepIn(world, pick, building);
   return true;
 }
 
 /**
- * Let the completed feed batch's visitor out: its canonical admitted animal steps out, pays the visit's
- * {@link visitLifeCost}, and walks straight back to its grazing spot rather than standing in the doorway
- * until the next herding sweep. A batch whose visitor vanished mid-cycle (died inside) releases nobody
- * and charges nothing - an accepted free batch on a rare edge.
+ * Let the completed feed batch's visitor out: it pays the visit's {@link visitLifeCost} and walks back to
+ * its grazing spot rather than standing in the doorway. A visitor that died inside releases nobody and
+ * charges nothing.
  */
 export function releaseLivestockVisit(world: World, building: Entity, tribe: number): void {
   const visitor = canonicalAdmittedVisitor(world, building, tribe);
@@ -98,12 +89,9 @@ export function releaseLivestockVisit(world: World, building: Entity, tribe: num
 }
 
 /**
- * LivestockVisitSystem - the summon-and-escort half of the visit: books animals onto workplaces
- * ({@link summonToWorkplaces} - the one-visitor-per-species rule lives there), then escorts every
- * booked animal still outside (re-aimed at the door - self-healing against a refused route) or drops
- * it where it stands when its workplace is gone. Runs after regen, so a topped-up animal qualifies
- * the same tick, and before production, which admits arrived visitors into starting batches. Scale:
- * one pass over buildings with a cheap type check, plus the booked-visitor store.
+ * The summon-and-escort half of the visit: book animals onto workplaces, then re-aim every booked animal
+ * still outside at the door, or drop it where it stands when its workplace is gone. Runs after regen, so
+ * a topped-up animal qualifies the same tick, and before production, which admits arrived visitors.
  */
 export const livestockVisitSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;

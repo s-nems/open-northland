@@ -1,4 +1,4 @@
-/** HP one processing visit drains - a quarter of the sheep/cow 1000-HP pool, so an animal sustains two
+/** HP one processing visit drains: a quarter of the sheep/cow 1000-HP pool, so an animal sustains two
  *  visits before the life floor makes it graze and regenerate. Named approximation. */
 export const LIVESTOCK_PROCESS_DRAIN_HP = 250;
 
@@ -6,9 +6,8 @@ export const LIVESTOCK_PROCESS_DRAIN_HP = 250;
  *  non-lethal. Observed original behaviour; the exact floor is approximated. */
 export const LIVESTOCK_MIN_LIFE_DIVISOR = 2;
 
-/** A visit's life cost, read at the two moments it matters. The summon refuses an animal that cannot
- *  pay in full; the release charges what the floor still allows, which is less whenever the animal's HP
- *  moved in between (regen, or a fight). */
+/** A visit's life cost, read at the two moments it matters: the summon refuses an animal that cannot pay
+ *  in full, and the release charges what the floor still allows once its HP has moved in between. */
 type Life = Readonly<{ hitpoints: number; max: number }>;
 
 function lifeFloor(max: number): number {

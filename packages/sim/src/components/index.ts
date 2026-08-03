@@ -1,10 +1,7 @@
 /**
- * Components are plain data only. Positions/velocities are fixed-point (see core/fixed.ts) - never floats.
- *
- * Barrel: the definitions are grouped by domain into sibling modules (movement / settler / combat / economy);
- * this re-exports them all, so `@open-northland/sim` and every intra-package importer keep a single
- * `components/index.js` surface. Splitting is hash-neutral - component registration order is driven by the
- * runtime first-`add()` sequence (see ecs/world.ts), not module-load order.
+ * Components are plain data only. Positions and velocities are fixed-point (see core/fixed.ts), never
+ * floats. Component registration order follows the runtime first-`add()` sequence, not module-load order,
+ * so regrouping these modules is hash-neutral.
  */
 
 export * from './ai-player.js';

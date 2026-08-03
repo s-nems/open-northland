@@ -24,9 +24,8 @@ import {
   type WantedGood,
 } from './wanted-goods.js';
 
-/** The three commands posting `spare` as a flag gatherer of `w` at `spot`, recorded into the
- *  decision's `holders` list and `taken` nodes so later phases count the hire and keep off its spot
- *  before its commands apply. */
+/** Post `spare` as a flag gatherer of `w` at `spot`, recorded into the decision's `holders` list and
+ *  `taken` nodes so later phases count the hire and keep off its spot before its commands apply. */
 function postCollector(
   spare: Entity,
   w: WantedGood,
@@ -51,9 +50,9 @@ interface VeteranSteal {
 }
 
 /**
- * The veteran to move onto `w`'s empty post when no spare qualifies, or null. Were ungated goods to
- * steal from each other, a dry pool would have two of them trading the same man every decision, each
- * swap dropping his load and cancelling the dig. The good he leaves is rehired on a later decision.
+ * The veteran to move onto `w`'s empty post when no spare qualifies, or null. Only a gated good may
+ * steal, and only from an ungated one: otherwise a dry pool would have two goods trading the same man
+ * every decision, each swap dropping his load and cancelling the dig.
  */
 function stealVeteranFor(
   world: World,
@@ -82,9 +81,9 @@ function stealVeteranFor(
 }
 
 /**
- * First posts: keep at least one flag-bound gatherer per wanted good, each flag standing 2–3 tiles
- * from a live resource, over the upkeep of every current holder ({@link upkeepHolders}). No-op on a
- * mapless sim - no cells to place flags over. Source basis: user rules 2026-07-17 / -18 / -25.
+ * First posts: keep at least one flag-bound gatherer per wanted good, each flag standing 2-3 tiles from
+ * a live resource (authored), over the upkeep of every current holder ({@link upkeepHolders}). No-op on
+ * a mapless sim, which has no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
@@ -124,10 +123,10 @@ export function allocateCollectors(
 }
 
 /**
- * Best-effort top-ups to each good's target - the ladder runs them after minimum staffing and the
- * builder reserve (user plan 2026-07-25: minimums everywhere beat second workers anywhere). Only
- * goods that already hold their first post (phase 1's concern) are topped up, and only from the
- * spare pool: moving a man off another good's post would leave that one short instead.
+ * Best-effort top-ups to each good's target, run after minimum staffing and the builder reserve because
+ * minimums everywhere beat second workers anywhere (authored). Only goods that already hold their first
+ * post are topped up, and only from the spare pool: moving a man off another good's post would leave
+ * that one short instead.
  */
 export function topUpCollectors(
   world: World,
@@ -157,11 +156,10 @@ export function topUpCollectors(
 }
 
 /**
- * Generic gatherers: up to {@link GENERIC_COLLECTOR_TARGET} collect-anything posts - a flag with NO good
- * filter (`setGatherGood null`), so the holder picks up whatever its trade may harvest inside the
- * circle (XP gates permitting). Hired at the lowest priority beside the collected-goods resource
- * nearest the base; retired to builder when nothing its trade harvests remains in the circle. No
- * relocation cadence - a generic flag either lives or retires (user plan 2026-07-25).
+ * Generic gatherers: up to {@link GENERIC_COLLECTOR_TARGET} collect-anything posts, a flag with no good
+ * filter, so the holder picks up whatever its trade may harvest inside the circle. Hired at the lowest
+ * priority beside the collected-good resource nearest the base, retired to builder when nothing its
+ * trade harvests remains in the circle, and never relocated (authored).
  */
 export function allocateGenericCollectors(
   world: World,

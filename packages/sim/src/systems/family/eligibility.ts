@@ -9,53 +9,41 @@ import type { NavigationLimit } from '../signposts/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 import { isMinor } from './households.js';
 
-// Who may marry, and how a partner is picked - the pure predicates behind the `marry` command and the
-// FamilySystem's activity gates.
-
 /**
- * The job `id` slugs that carry the female sex in the source data (`jobtypes.ini` - the sex-tagged
- * age classes and the adult woman role). Matched by slug, not numeric id: a synthetic fixture may
- * reuse a low numeric id for an adult trade (the goldens' woodcutter is jobType 1), and a slug can't
- * collide that way.
+ * The job `id` slugs that carry the female sex in `jobtypes.ini`. Matched by slug, not numeric id: a
+ * synthetic fixture may reuse a low numeric id for an adult trade, and a slug cannot collide that way.
  */
 const FEMALE_JOB_IDS: ReadonlySet<string> = new Set(['baby_female', 'child_female', 'woman']);
 
-/** Whether a job slug marks its holder female at spawn (see {@link FEMALE_JOB_IDS}). */
 export function isFemaleJobId(id: string | undefined): boolean {
   return id !== undefined && FEMALE_JOB_IDS.has(id);
 }
 
 /**
- * Whether a settler of `jobType` is away on a mission - a fighter (soldier/hero) or the scout. Such a
- * settler neither marries nor comes home to its family (the wife does not wait for it); reverting to any
- * civilian trade restores family life. Source basis: user-specified design over the content-derived job
- * roles ({@link isFighterJob}/{@link isScoutJob}).
+ * Whether a settler of `jobType` is away on a mission, a fighter or the scout: it neither marries nor
+ * comes home to its family, and reverting to a civilian trade restores family life. Authored, over the
+ * content-derived job roles.
  */
 export function isOnMission(content: ContentSet, jobType: number | null): boolean {
   return isFighterJob(content, jobType) || isScoutJob(content, jobType);
 }
 
-/** Whether `e` is a grown settler: not carrying an {@link Age} (born-young marker) and not in a
- *  non-working age-class job. Children neither marry nor live independently. */
+/** Whether `e` is a grown settler: no {@link Age}, the born-young marker, and no age-class job. */
 export function isAdultSettler(world: World, e: Entity): boolean {
   if (world.has(e, Age)) return false;
   const settler = world.tryGet(e, Settler);
   return settler !== undefined && !isNonWorkingAge(settler.jobType);
 }
 
-/** Whether `e` currently counts as married: a {@link Marriage} to a living spouse, or a widowed
- *  parent still raising the couple's minor child. The widowing rule (`family/widowhood.ts`) removes
- *  the dead-spouse Marriage once that child grows up or dies, so the raising carve-out is the one
- *  stale-marriage state left to reject. */
+/** Whether `e` currently counts as married: a {@link Marriage} to a living spouse, or a widowed parent
+ *  still raising the couple's minor child. */
 export function isMarried(world: World, e: Entity): boolean {
   const marriage = world.tryGet(e, Marriage);
   return marriage !== undefined && (world.isAlive(marriage.spouse) || raisingChild(world, marriage));
 }
 
-/** Whether `e` may enter a marriage right now: a living adult settler, unmarried
- *  ({@link isMarried}), not mid-wedding, not committed to a barracks drill (the trade is still
- *  civilian mid-walk, but the drill's end would strand the spouse), and not away on a mission
- *  ({@link isOnMission}). */
+/** Whether `e` may enter a marriage right now. A pending barracks drill disqualifies: the trade is still
+ *  civilian mid-walk, but the drill's end would strand the spouse. */
 export function mayMarry(world: World, content: ContentSet, e: Entity): boolean {
   if (!world.isAlive(e) || !isAdultSettler(world, e)) return false;
   if (world.has(e, Wedding) || world.has(e, TrainingOrder)) return false;
@@ -63,18 +51,14 @@ export function mayMarry(world: World, content: ContentSet, e: Entity): boolean 
   return !isOnMission(content, world.get(e, Settler).jobType);
 }
 
-/** Whether the marriage still has a growing child to raise (alive and still a minor). */
 export function raisingChild(world: World, marriage: { child: Entity | null }): boolean {
   return marriage.child !== null && world.isAlive(marriage.child) && isMinor(world, marriage.child);
 }
 
 /**
- * The nearest eligible partner for `seeker`, or null when none exists (the marry order then auto-cancels).
- * Eligible: {@link mayMarry}, the seeker's tribe, the opposite sex, positioned - and, under signpost
- * navigation (`limit` non-null with a `terrain`), standing inside the seeker's allowed area (local circle
- * + reachable guidepost network), so a wedding never chases a match the seeker may not walk to. Nearest
- * by half-cell Manhattan distance from the seeker with the ascending-entity-id tie-break - a canonical
- * pick over the ascending-id candidate scan, so the winner never depends on store insertion order.
+ * The nearest eligible partner for `seeker`, or null when none exists. Nearest by half-cell Manhattan
+ * distance with an ascending-entity-id tie-break, so the winner never depends on store insertion order;
+ * under signpost navigation a partner outside the seeker's allowed area is not eligible.
  */
 export function findPartnerFor(
   world: World,
@@ -92,7 +76,7 @@ export function findPartnerFor(
   for (const e of canonicalById(world.query(Settler, Position))) {
     if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe) continue;
-    if (world.has(e, Female) === seekerFemale) continue; // same sex - a couple is a woman and a man
+    if (world.has(e, Female) === seekerFemale) continue;
     const p = world.get(e, Position);
     const node = nodeOfPosition(p.x, p.y);
     if (
@@ -100,7 +84,7 @@ export function findPartnerFor(
       terrain !== undefined &&
       !limit.allowsNode(terrain.nodeAtClamped(node.hx, node.hy))
     ) {
-      continue; // beyond the seeker's signpost area - out of reach for the wedding walk
+      continue;
     }
     const dist = Math.abs(node.hx - from.hx) + Math.abs(node.hy - from.hy);
     if (best === null || dist < best.dist) best = { entity: e, dist };

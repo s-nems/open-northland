@@ -10,15 +10,11 @@ import { jobAtomics } from '../../settlers/targets/index.js';
 import { ownedSettlers } from '../shared.js';
 import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors/index.js';
 
-/** The seat's adult men sorted into the workforce this decision allocates: the recognized
- *  collectors (by good type), generic collectors, and scouts kept in place, and everyone else in the
- *  spare `pool`. */
 export interface Workforce {
-  /** The builder pool the phases draw from, in classification (deterministic) order. */
+  /** The spare men the phases draw from, in deterministic classification order. */
   readonly pool: Entity[];
-  /** Recognized flag gatherers per good, in classification order, capped at the good's target -
-   *  extras fall to the pool (self-healing). The phases push their own hires in, so within-decision
-   *  counts stay honest before the commands apply. */
+  /** Flag gatherers per good, capped at the good's target; extras fall to `pool`. The phases push
+   *  their own hires in, so within-decision counts stay honest before the commands apply. */
   readonly collectorsByGood: Map<number, Entity[]>;
   /** Collect-anything gatherers (a live flag with no good filter), capped at
    *  {@link GENERIC_COLLECTOR_TARGET}. */
@@ -37,8 +33,8 @@ export function builderJobOf(ctx: SystemContext): number | null {
 }
 
 /** Whether the settler is labour the allocator may move: an adult man of a real tribe, neither a
- *  fighter nor committed to a drill. Captured livestock (an animal tribe, trade-less, owner-stamped)
- *  would otherwise land in the pool and inflate every count downstream - posts, drafts, weddings. */
+ *  fighter nor committed to a drill. Captured livestock is an owner-stamped, trade-less settler of an
+ *  animal tribe that would otherwise land in the pool and inflate every count downstream. */
 export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): boolean {
   if (world.has(e, Female) || !isAdultSettler(world, e)) return false;
   const settler = world.get(e, Settler);
@@ -48,10 +44,8 @@ export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): b
 }
 
 /**
- * Classify the seat's adult men: employed workers keep their post, the collectors of each wanted
- * good - up to its target - the generic collectors, and the scouts are recognized in place, and
- * everyone else (civilians, stray trades, surplus collectors) lands in the spare pool - the builder
- * pool of the plan. Soldiers stay soldiers: the allocator governs civilians only.
+ * Classify the seat's adult men: employed workers, the collectors of each wanted good up to its target,
+ * the generic collectors and the scouts are recognized in place; everyone else lands in the spare pool.
  */
 export function classifyWorkforce(
   world: World,
@@ -100,10 +94,9 @@ export function classifyWorkforce(
 }
 
 /**
- * The spare builder pool this decision draws from, tracking which men are already claimed so two phases
- * never post the same settler. {@link take} hands out the first unclaimed member (in classification
- * order, so the pick is deterministic) that clears an optional filter; {@link remaining} lists the men
- * still unclaimed after the phases run.
+ * The spare pool one decision draws from, tracking which men are already claimed so two phases never
+ * post the same settler. A pick is the first unclaimed member in classification order, so it is
+ * deterministic.
  */
 export class SpareForce {
   private readonly used = new Set<Entity>();

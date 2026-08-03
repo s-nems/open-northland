@@ -24,55 +24,42 @@ import { playerSeesEntity } from '../vision/index.js';
 import type { HostilePresence } from './presence.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
-// The FLEE drive - the civilian raid reaction (the FLEE stance's active behaviour): path away from the nearest
-// threat (at the unit's normal pace - no run gait exists), wind a cool-down down once clear, and yield to a
-// collapsing need.
+// The FLEE drive - the civilian raid reaction: path away from the nearest threat at the unit's normal pace
+// (no run gait exists), wind a cool-down down once clear, and yield to a collapsing need.
 
 /**
- * FLEE stance - how many ticks a fleeing unit must go with no threat in sight before it stops running and
- * returns to the economy (the cool-down). Prevents a unit twitching in and out of flee as a threat flickers at
- * the sight edge. Approximated (source basis "Combat flee").
+ * FLEE stance - how many ticks a fleeing unit must go with no threat in sight before it returns to the
+ * economy, so it does not twitch in and out of flee as a threat flickers at the sight edge. Approximated
+ * (source basis "Combat flee").
  */
 const FLEE_COOLDOWN_TICKS = 40;
 
 /**
- * FLEE stance - how many half-cell nodes a fleeing unit runs away from the nearest threat each time it re-aims:
- * the flee destination is the walkable node this far off in the best away-direction. Approximated - no readable
- * flee-distance (source basis "Combat flee"); doubled with the half-cell migration (same on-screen distance as
- * the old 6-cell value).
+ * FLEE stance - how many half-cell nodes a fleeing unit runs away from the nearest threat each time it
+ * re-aims. Approximated - no readable flee distance (source basis "Combat flee").
  */
 const FLEE_STEP_NODES = 12;
 
 /**
- * FLEE stance - how many ticks a fleeing unit holds its current route before re-aiming away from the (moving)
- * threat. The flee twin of {@link REPATH_CADENCE}: a per-tick re-path of every fleer would be the RTS-scale
- * regression the budget rule forbids; between re-aims the unit walks its last route. Our design (source basis
- * "Combat flee").
+ * FLEE stance - how many ticks a fleeing unit holds its current route before re-aiming away from the moving
+ * threat. A per-tick re-path of every fleer would breach the scale budget; between re-aims the unit walks
+ * its last route. Approximation (source basis "Combat flee").
  */
 const FLEE_REPATH_CADENCE = 6;
 
 /**
- * The need level (fixed-point, in [0, ONE]) at or above which a collapsing hunger/fatigue overrides the FLEE
- * drive - a settler this close to starving stops to eat/sleep even in danger (the PlannerSystem's need drive
- * then owns it), while every lesser need yields to the flee. Set well above the ¾ eat/sleep thresholds.
- * Approximated (source basis "Combat flee"): the original's flee-vs-need arbitration is unreadable.
+ * The need level (fixed-point, in [0, ONE]) at or above which a collapsing hunger or fatigue overrides the
+ * FLEE drive, while every lesser need yields to it. Set well above the ¾ eat/sleep thresholds. Approximated
+ * (source basis "Combat flee"): the original's flee-vs-need arbitration is unreadable.
  */
 const NEED_COLLAPSE_THRESHOLD: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20)); // 0.95·ONE
 
 /**
- * The FLEE drive - run a unit away from the nearest threat (the civilian raid reaction). Reuses the combat
- * ring-search index (no new scan, the RTS-scale budget): the nearest hostile within {@link SIGHT_RADIUS_NODES} is the
- * threat. Then, in order:
- *  - **no threat in sight** → wind the cool-down down: start it on the first clear tick, and after
- *    {@link FLEE_COOLDOWN_TICKS} clear with none, shed {@link Fleeing} + the flee route so the economy re-tasks
- *    the unit; while cooling down it holds its last route. A unit that was never fleeing does nothing.
- *  - **a collapsing need** ({@link needCollapsing}) → a near-death hunger/fatigue overrides the flee: on
- *    the transition out of fleeing (Fleeing still set) shed the marker + flee route so the PlannerSystem's
- *    eat/sleep drive owns the unit; once yielded, leave that need-walk untouched.
- *  - **flee** → stamp/refresh {@link Fleeing} (calmUntil null = in danger), and - throttled to
- *    {@link FLEE_REPATH_CADENCE}, or immediately on a failed route - re-aim to a walkable cell
- *    {@link FLEE_STEP_NODES} away in the best direction away from the threat ({@link fleeDestination}). The
- *    unit walks at its normal pace - escape comes from steering away, not speed.
+ * The FLEE drive - run a unit away from the nearest threat. It reuses the combat ring-search index rather
+ * than opening a scan of its own: the nearest hostile within {@link SIGHT_RADIUS_NODES} is the threat. A
+ * collapsing need outranks the flee, and a clear sight line winds the cool-down down; otherwise the unit
+ * re-aims away on the {@link FLEE_REPATH_CADENCE} throttle at its normal pace, since escape comes from
+ * steering away rather than speed.
  */
 export function fleeDrive(
   world: World,
@@ -83,10 +70,8 @@ export function fleeDrive(
   e: Entity,
   attacker: SettlerIdentity,
 ): void {
-  // A collapsing need overrides the flee whether or not a threat is in sight, and is checked first so it wins
-  // over both the threat and the cool-down. Yield only on the transition (Fleeing still set): shed the marker
-  // + flee route so the PlannerSystem re-tasks the unit; once yielded (no marker) leave the need-walk alone
-  // so we don't cancel the eat/sleep goal the AI sets each tick.
+  // Checked first so it wins over both the threat and the cool-down. Yield only on the transition out of
+  // fleeing; once yielded, leave the need-walk alone so the eat/sleep goal the AI sets each tick survives.
   if (needCollapsing(world, e)) {
     if (world.has(e, Fleeing)) {
       world.remove(e, Fleeing);
@@ -97,19 +82,15 @@ export function fleeDrive(
 
   const here = entityNode(world, terrain, e);
   const { x, y } = terrain.coordsOf(here);
-  // Fog gate: a fleer reacts only to threats its player currently sees (the combat auto-acquire's twin). Any of
-  // the player's eyes counts: a watchtower spotting the raider warns the civilian even when the civilian's own
-  // short sight doesn't reach it.
+  // Fog gate: a fleer reacts only to threats its player currently sees. Any of the player's eyes counts, so
+  // a watchtower spotting the raider warns a civilian whose own sight does not reach it.
   const viewer = world.tryGet(e, Owner);
   const accept = (t: Entity): boolean =>
     isValidTarget(world, ctx, e, attacker, t) &&
     (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
-  // Near bound 0 (not the weapon-reach floor of 1): fear has no dead zone - a fleeing unit reacts to a
-  // hostile on its very tile too (entities share tiles freely), not just one a step away. The coarse
-  // presence early-out (perf-only, conservative - see HostilePresence) spares every calm civilian on a
-  // peaceful two-player map its per-tick full-sight ring scan; only owned units carry the FLEE stance.
-  // A FLEE-stance hunter is exempt from the early-out - the engageSpec hunter rule's twin (see
-  // {@link HostilePresence}).
+  // Near bound 0, not the weapon-reach floor of 1: fear has no dead zone, so a fleeing unit reacts to a
+  // hostile on its very tile too. The coarse presence early-out (perf-only) spares every calm civilian its
+  // per-tick full-sight ring scan; a FLEE-stance hunter is exempt from it, like every hunter spec.
   const threat =
     viewer !== undefined &&
     !isHunterJob(ctx.content, attacker.jobType) &&
@@ -128,13 +109,9 @@ export function fleeDrive(
     return;
   }
 
-  // Hands full with a threat actually in sight: the settler drops its load before it runs - it can't flee
-  // carrying a haul (the drop-on-interrupt rule). Start the drop atomic and stand this tick; the combat gate
-  // (engageCombatant skips a unit with a CurrentAtomic) holds it here until the load is on the ground, then
-  // the next tick it flees empty-handed. Strictly AFTER the threat scan: fleeDrive runs every tick for every
-  // FLEE-stance unit whenever combat is awake at all (any two-player map), so an unconditional drop here
-  // stripped every carrying civilian each tick - the pickup→drop livelock that froze builders/porters/
-  // gatherers on multi-player maps.
+  // A settler cannot flee carrying a haul, so it drops its load and stands this tick, then runs empty-handed
+  // the next. Strictly after the threat scan: an unconditional drop here strips every carrying civilian each
+  // tick, a pickup-drop livelock that freezes builders, porters and gatherers on multi-player maps.
   if (world.has(e, Carrying)) {
     startDrop(world, ctx, e);
     return;
@@ -152,18 +129,16 @@ export function fleeDrive(
   if (dest === here) {
     clearNavState(world, e); // boxed in (no walkable away-cell) - stand and hope
   } else {
-    // Keep the live route - dropping it resets the gait every re-aim, and a lurching fleer falls behind even an
-    // equal-pace pursuer (the pace is constant by design).
+    // Keep the live route: dropping it resets the gait every re-aim, and a lurching fleer falls behind even
+    // an equal-pace pursuer.
     redirectRoute(world, e, dest);
   }
   f.repathAt = ctx.tick + FLEE_REPATH_CADENCE;
 }
 
-/** The cell a fleeing unit should run to: the walkable cell {@link FLEE_STEP_NODES} away (of the eight compass
- *  directions) that is farthest from the threat, tie-broken by min cell id. It must strictly increase the
- *  distance from the threat over staying put, so a boxed-in unit (no away-cell walkable / in-bounds) returns
- *  its own cell (`here`) and stays rather than running toward the threat. Deterministic (fixed direction order
- *  + min-id tie-break), no RNG. */
+/** The cell a fleeing unit should run to: the walkable cell {@link FLEE_STEP_NODES} away, of the eight
+ *  compass directions, that is farthest from the threat, tie-broken by min cell id. A candidate must
+ *  strictly beat staying put, so a boxed-in unit returns `here` rather than running toward the threat. */
 export function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell: NodeId): NodeId {
   const h = terrain.coordsOf(here);
   const t = terrain.coordsOf(threatCell);
@@ -184,8 +159,8 @@ export function fleeDestination(terrain: TerrainGraph, here: NodeId, threatCell:
   return best;
 }
 
-/** Whether a settler's hunger or fatigue has reached the {@link NEED_COLLAPSE_THRESHOLD} - a near-death
- *  need that overrides the FLEE drive (the settler stops to eat/sleep even in danger). */
+/** Whether a settler's hunger or fatigue has reached the {@link NEED_COLLAPSE_THRESHOLD}, at which it stops
+ *  to eat or sleep even in danger. */
 function needCollapsing(world: World, e: Entity): boolean {
   const s = world.get(e, Settler);
   return s.hunger >= NEED_COLLAPSE_THRESHOLD || s.fatigue >= NEED_COLLAPSE_THRESHOLD;

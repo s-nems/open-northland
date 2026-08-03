@@ -13,9 +13,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, isHuntablePrey, isHunterJob } from '../readviews/index.js';
 
-/** The live enemy-attackable buildings this tick - a built or half-built structure carrying a Health pool
- *  still above 0. They join the combat TARGET index (a warrior may strike them) but never the seeker loop:
- *  a building never fights back. Query order - the caller folds the list into its canonical merged sort. */
+/** The live enemy-attackable buildings this tick. They join the combat target index but never the seeker
+ *  loop, since a building never fights back. Query order - the caller folds the list into its canonical
+ *  merged sort. */
 export function attackableBuildings(world: World): Entity[] {
   const out: Entity[] = [];
   for (const e of world.query(Building, Health, Position)) {
@@ -25,9 +25,9 @@ export function attackableBuildings(world: World): Entity[] {
 }
 
 /**
- * The dormancy gate: whether any combat work is possible this tick - a cheap single pass over the combatants.
- * Conservative - it may pass on a tick where the two hostile sides are out of range (combat then simply finds
- * no target), but it never skips a tick where a fight or a cleanup is due.
+ * The dormancy gate: whether any combat work is possible this tick, in one cheap pass over the combatants.
+ * Conservative - it may pass on a tick where the two hostile sides are out of range, but it never skips a
+ * tick where a fight or a cleanup is due.
  */
 export function combatPossible(world: World, ctx: SystemContext, combatants: Iterable<Entity>): boolean {
   const owners = new Set<number>();
@@ -37,8 +37,8 @@ export function combatPossible(world: World, ctx: SystemContext, combatants: Ite
   let hasHunter = false;
   let hasPrey = false;
   for (const e of combatants) {
-    // Lingering combat state must be resolved (disengage / reap / clear the order / wind a flee cool-down
-    // down) even with no live enemy left, so its presence alone keeps the system awake this tick.
+    // Lingering combat state must be resolved even with no live enemy left, so its presence alone keeps the
+    // system awake this tick.
     if (world.has(e, Engagement) || world.has(e, AttackOrder) || world.has(e, Anger) || world.has(e, Fleeing))
       return true;
     const s = world.get(e, Settler);

@@ -6,20 +6,17 @@ import { type BuildingCombatClass, buildingCombatClass } from '../../readviews/i
 import { interactionCell } from '../../settlers/targets/index.js';
 import { canonicalById, entityNode, manhattan } from '../../spatial/nodes.js';
 
-/** The objective tiers, best first: the enemy's seat, then the towers shooting back, then the rest of
- *  its buildings, then its people. The building order is the CombatSystem's own siege priority
+/** The objective tiers, best first. The building order is the CombatSystem's own siege priority
  *  ({@link buildingCombatClass}), so a wave marches on what a warrior in the field would pick. */
 const SIEGE_TIERS: readonly BuildingCombatClass[] = ['hq', 'tower', 'other'];
 
 /**
- * What the seat's army marches on: the nearest enemy headquarters to its muster point, with the lower
- * {@link SIEGE_TIERS} behind it so a wave never stalls for want of an HQ. Distance is Manhattan over
- * half-cell nodes from `rally` to the candidate's approach node ({@link objectiveNode}).
- *
- * A candidate must be another player's (`mayTarget`'s owner axis), stand on ground connected to the
- * rally, and hold a live `Health` pool - content that pins no `hitpoints` gives its buildings none, and
- * an `attackUnit` order aimed there is dropped, leaving the wave benched. A construction site holds one
- * from its first hitpoint, so it is a candidate like any other building.
+ * What the seat's army marches on: the nearest enemy headquarters to its muster point (authored), with
+ * the lower {@link SIEGE_TIERS} behind it so a wave never stalls for want of an HQ. Distance is Manhattan
+ * over half-cell nodes from `rally` to the candidate's approach node. A candidate must belong to another
+ * player, stand on ground connected to the rally, and hold a live `Health` pool, because an `attackUnit`
+ * order aimed at a hitpoint-less building is dropped and leaves the wave benched. A construction site
+ * holds a pool from its first hitpoint, so it is a candidate like any other building.
  */
 export function campaignTarget(
   world: World,
@@ -31,8 +28,8 @@ export function campaignTarget(
   const home = terrain.componentOf(rally);
   if (home < 0) return null; // an unwalkable rally connects to nothing - every label would mismatch
 
-  // Sort the enemy's buildings by tier first: the door and distance work below is then paid only for the
-  // best tier that has a reachable member, not for every building on the map.
+  // Bucket the enemy's standing buildings by tier first: the door and distance work below is then paid
+  // only for the best tier that has a reachable member, not for every building on the map.
   const byTier = new Map<BuildingCombatClass, Entity[]>();
   for (const e of canonicalById(world.query(Building, Owner))) {
     if (!isEnemy(world, e, player)) continue;
@@ -90,7 +87,7 @@ function nearestReachable(
   return best;
 }
 
-/** Whether `e` belongs to another player and can be struck at all (see {@link campaignTarget}). */
+/** Whether `e` belongs to another player and can be struck at all. */
 function isEnemy(world: World, e: Entity, player: number): boolean {
   if (ownerOf(world, e) === player) return false;
   if (!world.has(e, Position)) return false;

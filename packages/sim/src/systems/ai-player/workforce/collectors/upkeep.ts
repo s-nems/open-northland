@@ -13,9 +13,8 @@ import {
 } from '../flag-spots.js';
 import type { WantedGood } from './wanted-goods.js';
 
-/** Every how many of a seat's decisions the collector flags are re-aimed at the nearest live
- *  resource - the infrequent "nudge the flags after the patch drifted" upkeep (user rule
- *  2026-07-18). 30 decisions ≈ 60 s at the base clock. */
+/** Every how many of a seat's decisions the collector flags are re-aimed at the nearest live resource
+ *  (authored). 30 decisions is about 60 s at the base clock. */
 export const FLAG_RELOCATE_EVERY_DECISIONS = 30;
 
 export function flagRelocateDue(ctx: SystemContext): boolean {
@@ -24,10 +23,10 @@ export function flagRelocateDue(ctx: SystemContext): boolean {
 
 /**
  * The upkeep over one good's current holders: a flag whose patch ran dry is re-planted beside the
- * nearest live resource, one whose patch is alive but has receded past the band is nudged after it
- * when `relocateDue`, and a holder whose good has left the map entirely rejoins the builder pool.
- * Every re-plant claims its node like a fresh post: two holders of the same good resolve the same
- * nearest resource, so without that they would be sent to one tile.
+ * nearest live resource, one whose patch has receded past the band is nudged after it when
+ * `relocateDue`, and a holder whose good has left the map rejoins the builder pool. Every re-plant
+ * claims its node, since two holders of the same good resolve the same nearest resource and would
+ * otherwise be sent to one tile.
  */
 export function upkeepHolders(
   world: World,

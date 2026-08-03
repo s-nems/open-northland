@@ -19,30 +19,12 @@ import { goodEnabled, recipeOutputsEnabled } from '../../progression/index.js';
 import { livestockMeatGoodOf, livestockTribeOfGood } from '../../readviews/index.js';
 import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
-// The production CYCLE model: the start gate (may another batch of this product begin?), the batch's birth,
-// and its output deposit at completion. The ProductionSystem loop (../production.ts) drives these; the
-// per-operator product choice that picks WHICH recipe to start is ./rotation.ts.
-
 /**
- * How many more cycles of `recipe`'s product the workplace could start right now, beyond the
- * same-product batches already in flight. A cycle is startable while every output good is
- * tech-unlocked for its tribe (the `jobEnablesGood` gate - mirrors the `placeBuilding` house gate; any
- * locked output means zero), the stockpile covers every input in full once per batch, and every output
- * has free room up to its per-good stock capacity after the in-flight same-product batches deposit
- * theirs (each running cycle reserved its room at start). The output-room check is the capacity
- * enforcement - a cycle that couldn't deposit is never started, so the stockpile never overflows. The
- * in-flight reservation counts cycles by their product key (`cycle.goodType`), so parallel batches of
- * OTHER products never eat this product's room (and an authored multi-output recipe reserves only
- * under its product key - a named simplification; pipeline recipes are single-output).
- *
- * Exported so the AI planner can size the workplace's work seats ({@link workSeatCount}) with the exact
- * gate the ProductionSystem applies. Does not check `built >= ONE` or worker-presence (the caller
- * handles those). An input-less, output-less recipe reads as unbounded (`Infinity`).
- *
- * A FEED recipe (its product is a livestock good) is additionally capped by its summoned animals
- * ARRIVED at the door ({@link feedAnimalsAvailable}) - checked after the cheap stock gates. Until one
- * arrives the recipe is not startable, so the work seat stays closed and the operator waits outside
- * with the animal-to-be.
+ * How many more cycles of `recipe`'s product the workplace could start right now, beyond the same-product
+ * batches already in flight. Reserving output room at start is the capacity enforcement: a cycle that
+ * could not deposit is never started, so the stockpile never overflows. In-flight batches are counted by
+ * product key, so an authored multi-output recipe reserves only under its product - a simplification;
+ * pipeline recipes are single-output. Does not check `built >= ONE` or worker presence.
  */
 export function startableCycleCount(
   world: World,
@@ -71,10 +53,8 @@ function inputStockForCycles(world: World, building: Entity, recipe: Recipe): nu
 }
 
 /**
- * How many more cycles of `recipe`'s product the workplace has SHELF ROOM for - the output-capacity half
- * of {@link startableCycleCount}, read without the input-stock and tech gates. Zero means the workshop is
- * blocked on its own full output rather than starved of inputs, which is what lets the planner send the
- * craftsman out with one unit instead of on another input trip ({@link outputSlotsFull}).
+ * How many more cycles of `recipe`'s product the workplace has shelf room for - the output-capacity half
+ * of {@link startableCycleCount}, read without the input-stock and tech gates.
  */
 export function outputRoomForCycles(
   world: World,
@@ -93,27 +73,21 @@ export function outputRoomForCycles(
   for (const output of recipe.outputs) {
     const have = stock.get(output.goodType) ?? 0;
     const capacity = stockCapacity(world, ctx, building, output.goodType);
-    // Room for each further batch AND every same-product batch already grinding (each deposits `amount`).
+    // Every same-product batch already grinding still owes a deposit of `amount`.
     room = Math.min(room, Math.floor((capacity - have) / output.amount) - inFlight);
   }
   return Math.max(0, room);
 }
 
 /**
- * The stocked output good whose FULL SHELF is what stopped this workplace, or null when something else
- * (or nothing) stopped it. A recipe is shelf-blocked when it is tech-unlocked and its inputs are on hand,
- * yet {@link outputRoomForCycles} leaves no room for the batch - the one state that no amount of fetching
- * can clear, because only a unit physically leaving frees the slot. A workplace that can still start ANY
- * cycle is not blocked at all, which is what keeps a multi-product workshop honest: a bakery whose bread
- * slot is full but which could still be making candy carries on making candy.
- *
- * Naming the good (rather than answering yes/no) matters for exactly that workshop: the unblocking trip
- * has to carry the good whose slot is full, not whichever product happens to be stocked first. Recipe
- * iteration follows the type's fixed content order ({@link recipesByProductOf}), so the pick is canonical.
+ * The stocked output good whose full shelf stopped this workplace, or null when it can still start any
+ * cycle. A shelf block is the one stall no fetching can clear, because only a unit physically leaving
+ * frees the slot, and the good is named so the unblocking haul carries the right one. Recipe iteration
+ * follows the type's fixed content order, so the pick is canonical.
  */
 export function shelfBlockedOutput(world: World, ctx: SystemContext, building: Entity): number | null {
   const b = world.tryGet(building, Building);
-  if (b === undefined || b.built < ONE) return null; // a construction site was never going to start a cycle
+  if (b === undefined || b.built < ONE) return null;
   const recipes = recipesByProductOf(world, ctx, building);
   if (recipes === undefined) return null;
   const stock = world.get(building, Stockpile).amounts;
@@ -121,7 +95,7 @@ export function shelfBlockedOutput(world: World, ctx: SystemContext, building: E
   for (const recipe of recipes.values()) {
     if (!recipeOutputsEnabled(world, ctx, b.tribe, recipe)) continue; // locked: shipping a unit would not help
     if (inputStockForCycles(world, building, recipe) < 1) continue; // starved: the fetch rung owns this one
-    if (outputRoomForCycles(world, ctx, building, recipe) > 0) return null; // still startable - not blocked
+    if (outputRoomForCycles(world, ctx, building, recipe) > 0) return null;
     blocked ??= stockedOutput(stock, recipe);
   }
   return blocked;
@@ -135,10 +109,7 @@ function stockedOutput(stock: ReadonlyMap<number, number>, recipe: Recipe): numb
   return null;
 }
 
-/**
- * Whether a workplace may begin another cycle of `recipe`'s product now - the start gate the
- * ProductionSystem applies (see {@link startableCycleCount} for the checks; this is its `> 0` view).
- */
+/** Whether a workplace may begin another cycle of `recipe`'s product now. */
 export function canStartCycle(world: World, ctx: SystemContext, building: Entity, recipe: Recipe): boolean {
   return startableCycleCount(world, ctx, building, recipe) > 0;
 }
@@ -156,13 +127,9 @@ export function anyCycleStartable(
   return false;
 }
 
-/** Consume `recipe`'s inputs (reserving them) and append the new batch - the caller has verified
- *  {@link canStartCycle}. A feed recipe first admits its arrived animal ({@link admitLivestockForCycle}:
- *  it steps inside with the operator and pays its life cost when the batch completes); the admission
- *  failing (no arrived animal - unreachable after a same-pass `canStartCycle`, kept as a guard)
- *  starts nothing and consumes nothing. `duration` is clamped to the `>= 1` the
- *  {@link ProductionCycle} documents, so the completion compare can read it plainly (validated
- *  content is already `ticks >= 1`). */
+/** Consume `recipe`'s inputs and append the new batch; the caller has verified {@link canStartCycle}. A
+ *  feed recipe first admits its arrived animal, and a failed admission starts and consumes nothing.
+ *  `duration` is clamped to the `>= 1` {@link ProductionCycle} requires. */
 export function beginCycle(
   world: World,
   ctx: SystemContext,
@@ -179,11 +146,9 @@ export function beginCycle(
 }
 
 /**
- * Start the first feed cycle whose summoned animal has ARRIVED at the door, or report none. Consulted
- * BEFORE the per-operator rotation ({@link startCycleFor}): an animal standing at the door is a
- * physical queue, and the seat its summon reserved must take it now rather than wander off onto a
- * rotation pick and leave it parked there for a whole batch. Content order, so the pick is canonical;
- * the rotation cursor is untouched (a feed stage is workplace-internal, never a player-facing choice).
+ * Start the first feed cycle whose summoned animal has arrived at the door. Consulted before the
+ * per-operator rotation, so the seat that summoned an animal takes it now instead of leaving it parked
+ * for a whole batch. Content order, so the pick is canonical; the rotation cursor is untouched.
  */
 export function startArrivedFeedCycle(
   world: World,
@@ -200,8 +165,8 @@ export function startArrivedFeedCycle(
   return false;
 }
 
-/** Start one cycle of the first startable product in content order - the unstaffed-by-design path
- *  (no operator, so no per-worker rotation to consult). */
+/** Start one cycle of the first startable product in content order - the unstaffed-by-design path, with
+ *  no operator whose rotation could be consulted. */
 export function startFirstStartable(
   world: World,
   ctx: SystemContext,
@@ -216,12 +181,10 @@ export function startFirstStartable(
 }
 
 /**
- * Deposit a completed cycle's product into the workplace's stockpile and emit a `goodProduced` event
- * per output (render/audio cue). The outputs are the cycle's own recipe's (looked up by its product
- * key; a recipe removed by a content rebase mid-cycle degrades to one unit of the product). The room
- * was reserved by {@link canStartCycle} at cycle start (no input consumption or competing producer can
- * have removed capacity since - production is the only writer of a workplace's own outputs), so the
- * outputs always fit; the per-good capacity is not re-checked here.
+ * Deposit a completed cycle's product into the workplace's stockpile and emit `goodProduced` per output.
+ * Capacity is not re-checked: the room was reserved at cycle start and production is the only writer of a
+ * workplace's own outputs. A recipe removed by a content rebase mid-cycle degrades to one unit of the
+ * product.
  */
 export function depositCycleOutput(
   world: World,
@@ -242,10 +205,9 @@ export function depositCycleOutput(
       amount: output.amount,
     });
   }
-  // A completed FEED cycle lets its visiting animal out (paying the life cost) and also lands one
-  // meat - the no-slaughter design's food output (the rule's one home: the slaughter-recipe drop in
-  // core/content-index/production.ts). Meat is tech-gated like a regular output; best-effort on room,
-  // since the shelf slot was never reserved - a full meat shelf forfeits the unit (named approximation).
+  // A completed feed cycle lets its visiting animal out and also lands one meat, the no-slaughter
+  // design's food output. Best effort on room: the shelf slot was never reserved, so a full meat shelf
+  // forfeits the unit (approximation).
   const fedTribe = livestockTribeOfGood(ctx.content, cycle.goodType);
   if (fedTribe !== null) {
     releaseLivestockVisit(world, building, fedTribe);

@@ -17,20 +17,17 @@ export {
 } from './signpost-coverage.js';
 
 /**
- * The GuideBuild module: the seat's one scout, and the only issuer of its orders, so its two duties
- * can never order the same man in one decision. Signposts outrank the round-up (user rule): a lattice
- * target is static, while an animal that wanders off is picked up again next decision.
+ * The GuideBuild module: the seat's one scout and the only issuer of its orders, so its two duties can
+ * never order the same man in one decision. Signposts outrank the round-up (authored): a lattice target
+ * is static, while an animal that wanders off is picked up again next decision.
  */
 function runScout(world: World, ctx: SystemContext, player: number): readonly Command[] {
   const scout = ownedSettlers(world, player).find((e) =>
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
   );
   if (scout === undefined) return [];
-  // Busy, leave it be. CurrentAtomic has to be part of this test: both orders route through
-  // `moveUnit`, which cancels whatever action is running, and both order markers are shed the moment a
-  // need drive starts an atomic (orders/movement.ts `playerOrderSystem`, orders/signposts.ts
-  // `signpostOrderSystem`), so an eating scout would otherwise look order-free and be re-ordered every
-  // decision beat.
+  // CurrentAtomic has to be part of the busy test: both order markers are shed the moment a need drive
+  // starts an atomic, so an eating scout would otherwise look order-free and be re-ordered every beat.
   if (world.has(scout, CurrentAtomic)) return [];
   if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) return []; // busy
   const post = nextSignpostTarget(world, ctx, player);

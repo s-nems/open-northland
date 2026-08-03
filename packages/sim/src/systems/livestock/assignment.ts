@@ -18,13 +18,12 @@ import { interactionNodeId } from '../footprint/interaction.js';
 import { isLivestockWorkplaceType, stayPointRangeOf } from '../readviews/index.js';
 import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
 
-/** Re-anchoring cadence (ticks). A slow sweep, not an event chain: claims, new farms, and demolitions
- *  all converge within a period. Approximated (the original's herding cadence is not readable). */
+/** Re-anchoring cadence (ticks): a slow sweep, so claims, new farms, and demolitions converge within a
+ *  period. Approximated; the original's herding cadence is not readable. */
 export const LIVESTOCK_ASSIGN_PERIOD_TICKS = 25;
 
-/** Node offsets ringing an anchor door - each herd member takes its own grazing spot BESIDE the
- *  workplace instead of the doorway itself (user feedback: the herd stacked in the entrance and made
- *  it unclickable). Mixed radii 3-6 read as loose grazing, not a formation. */
+/** Node offsets ringing an anchor door - each herd member grazes beside the workplace rather than in the
+ *  doorway, which must stay clear and clickable. Mixed radii 3-6 read as loose grazing, not a formation. */
 const GRAZE_OFFSETS: readonly (readonly [number, number])[] = [
   [3, 1],
   [-3, -1],
@@ -44,37 +43,30 @@ const GRAZE_OFFSETS: readonly (readonly [number, number])[] = [
   [0, -6],
 ];
 
-/** Upper bound (node Manhattan) on how far a grazing spot sits from its door - the widest
- *  {@link GRAZE_OFFSETS} entry; scene checks and tests assert against it. */
+/** Upper bound (node Manhattan) on how far a grazing spot sits from its door: the widest
+ *  {@link GRAZE_OFFSETS} entry. */
 export const LIVESTOCK_GRAZE_RANGE_NODES = 7;
 
-/** How far (node Manhattan) a claimed animal may drift from its grazing spot before it is walked
- *  home - overrides the species' own wild-territory radius (a cow's 20 nodes reads as straying, not
- *  grazing, next to a farm; user feedback: the herd wandered too far). */
+/** How far (node Manhattan) a claimed animal may drift from its grazing spot before it is walked home.
+ *  Overrides the species' wider wild-territory radius, which reads as straying next to a farm. */
 export const LIVESTOCK_GRAZE_LEASH_NODES = 3;
 
-/** A claimed animal's effective leash: its species territory capped at the grazing leash - the ONE
- *  rule the march-home sweep and the grazing drive (`animalWanderSystem`) must agree on, or an animal
- *  grazing at the wider bound would be marched back every period. */
+/** A claimed animal's effective leash: its species territory capped at the grazing leash. The march-home
+ *  sweep and the grazing drive must agree on it, or an animal would be marched back every period. */
 export function grazeLeashOf(content: SystemContext['content'], tribe: number): number {
   return Math.min(stayPointRangeOf(content, tribe), LIVESTOCK_GRAZE_LEASH_NODES);
 }
 
 /**
- * LivestockAssignmentSystem - claimed animals herd themselves home. Each period, every player's owned
- * {@link Livestock} creatures re-anchor their {@link StayPoint} leash onto grazing spots ringing the
- * player's built livestock workplaces - split round-robin across the farm doors in canonical id order
- * (so a two-farm player's stock spreads evenly), each member on its own {@link GRAZE_OFFSETS} spot -
- * or ringing the seat's base door while no farm stands. An idle animal beyond the grazing leash
- * ({@link LIVESTOCK_GRAZE_LEASH_NODES}) walks straight home (a {@link MoveGoal} on the anchor - the
- * original's claimed stock marches to the HQ/farm rather than drifting); inside the leash the grazing
- * drive (`animalWanderSystem`) takes over. No farm and no base leaves the current territory untouched.
- * Species are not matched to farms (the extracted animal farm feeds both; even split is a named
- * approximation).
+ * Claimed animals herd themselves home: each period every player's owned {@link Livestock} creatures
+ * re-anchor their {@link StayPoint} onto grazing spots ringing the player's built livestock workplaces,
+ * split round-robin across the farm doors in canonical id order, or ringing the seat's base door while no
+ * farm stands. An idle animal beyond {@link LIVESTOCK_GRAZE_LEASH_NODES} walks straight back to its
+ * anchor; inside the leash the grazing drive takes over.
  *
- * Source basis: observed original behaviour - claimed animals walk to the HQ area, then distribute
- * around breeding farms. Determinism: canonical member and farm order; per-player groups are disjoint,
- * so player iteration order cannot change the result. No-ops in a mapless sim.
+ * Source basis: observed original behaviour, claimed animals walk to the HQ area and then distribute
+ * around breeding farms. Species are not matched to farms (named approximation). Determinism: canonical
+ * member and farm order, with disjoint per-player groups. No-ops in a mapless sim.
  */
 export const livestockAssignmentSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return;
@@ -94,8 +86,6 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     herd.forEach((e, i) => {
       const door = anchors[i % anchors.length];
       if (door === undefined) return; // unreachable: i % length indexes a non-empty array
-      // Each member grazes on its own ring spot beside the door, never IN the doorway - the door
-      // node stays clear for the summoned visitor and the operators.
       const cell = grazeAnchor(terrain, door, Math.floor(i / anchors.length));
       const stay = world.tryGet(e, StayPoint);
       if (stay === undefined) world.add(e, StayPoint, { cell });
@@ -104,9 +94,7 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
           s.cell = cell;
         });
       }
-      // March home: an idle animal beyond the grazing leash heads straight for the anchor
-      // (re-issued each period until it arrives - self-healing against a refused route). The
-      // herding-system guards: never yank a running atomic or fight an in-flight walk.
+      // Re-issued each period until it arrives, and never on top of a running atomic or in-flight walk.
       if (world.has(e, CurrentAtomic) || isTravelling(world, e)) return;
       const range = grazeLeashOf(ctx.content, world.get(e, Settler).tribe);
       if (manhattan(terrain, entityNode(world, terrain, e), cell) <= range) return;
@@ -115,9 +103,8 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
   }
 };
 
-/** The `k`-th grazing spot around `door`: the first walkable same-component ring offset starting at
- *  `k` (wrapping - a herd deeper than the ring reuses spots), falling back to the door itself when
- *  nothing beside it is standable (an island doorway). */
+/** The `k`-th grazing spot around `door`: the first walkable same-component ring offset from `k`,
+ *  wrapping, and falling back to the door itself when nothing beside it is standable. */
 function grazeAnchor(terrain: TerrainGraph, door: NodeId, k: number): NodeId {
   const at = terrain.coordsOf(door);
   for (let i = 0; i < GRAZE_OFFSETS.length; i++) {
