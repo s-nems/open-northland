@@ -1,5 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
+import { workerRoleOf } from '../../../game/sandbox/index.js';
 import { actorsOf, isSettler, num } from '../../../game/snapshot.js';
+import { messages } from '../../../i18n/index.js';
 import { type BuildingDef, type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
 
 // The building's per-trade worker-slot rows: one filled/capacity line per declared `workers` slot.
@@ -46,4 +48,24 @@ export function workerSlotsFor(
     filled: counts.get(slot.jobType) ?? 0,
     capacity: slot.count,
   }));
+}
+
+/**
+ * The defence window's status line: a garrison count for a building that has posts manned, else the
+ * defence-MODE state (still the pinned approximation - no such component exists yet). The two are separate
+ * mechanics in the original: a tower's archers shoot whether or not the alarm is up.
+ */
+export function defenseLine(
+  _ctx: UnitPanelModelContext,
+  snapshot: WorldSnapshot,
+  def: BuildingDef | undefined,
+  buildingId: number,
+): string {
+  const counts = boundCountsByJob(snapshot, buildingId);
+  let manned = 0;
+  for (const slot of def?.workers ?? []) {
+    if (workerRoleOf(slot.jobType) === 'garrison') manned += counts.get(slot.jobType) ?? 0;
+  }
+  const m = messages().hud;
+  return manned > 0 ? `${m.defenseGarrison} ${manned}` : m.defenseStopped;
 }

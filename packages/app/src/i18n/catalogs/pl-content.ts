@@ -244,5 +244,10 @@ export const plContent = {
       summary:
         'Parada mieczników: po kolumnie na każdy stan zbroi (bez, wełniana, skórzana, kolczuga, płytowa) i po wierszu na kolor gracza, wszyscy w postawie ignorowania, więc wrogie frakcje nie walczą. Do oceny przebarwień zbroi na tle kolorów drużyn.',
     },
+    'tower-garrison': {
+      title: 'Załoga wieży',
+      summary:
+        'Dwaj łucznicy - z krótkim i długim łukiem - obsadzają wieżę strażniczą, znikają w środku i strzelają z niej na zasięg swojego łuku powiększony o premię wieży. Wrogi oddział dostaje strzałami już w marszu, a gdy dojdzie pod mur, może tłuc tylko w wieżę: do załogi nie sięgnie.',
+    },
   },
 } as const;

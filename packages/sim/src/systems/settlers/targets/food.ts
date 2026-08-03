@@ -85,7 +85,8 @@ function edibleFoodGoodFor(
 }
 
 /**
- * A store's candidate food good: its lowest-goodType stocked edible, or null when it holds none.
+ * A store's candidate food good: its lowest-goodType stocked edible, or null when it holds none (or has
+ * no {@link Stockpile} at all - a caller outside the store index may ask about any entity).
  * Canonical (ascending goodType via {@link stockpileEntries}) so the choice never depends on Map
  * insertion history; side-effect-free, so the ring may re-evaluate it on the fallback scan.
  *
@@ -94,8 +95,10 @@ function edibleFoodGoodFor(
  * conversion (`carriedGoodForm` owns the rule). The returned type is the RAW one, which is what
  * {@link consumeFood} takes off the shelf.
  */
-function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
-  for (const [goodType, amount] of stockpileEntries(world.get(entity, Stockpile))) {
+export function storedFoodGood(world: World, ctx: SystemContext, entity: Entity): number | null {
+  const stock = world.tryGet(entity, Stockpile);
+  if (stock === undefined) return null; // no shelf at all - the caller need not pre-check
+  for (const [goodType, amount] of stockpileEntries(stock)) {
     if (amount <= 0) continue;
     if (!isFood(ctx, exportedGoodForm(ctx, goodType))) continue;
     return goodType; // this store's lowest-id food good is its candidate

@@ -17,6 +17,7 @@ import { livestockScene } from './livestock.js';
 import { sandboxScene } from './sandbox/index.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
+import { towerGarrisonScene } from './tower-garrison.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
 import { warehouseScene } from './warehouse.js';
@@ -53,6 +54,7 @@ export const SCENES: readonly SceneDefinition[] = [
   equipmentEffectsScene,
   barracksScene,
   armorScene,
+  towerGarrisonScene,
 ];
 
 /** Look up a scene by its `?scene=<id>` value, or `undefined` if no scene has that id. */

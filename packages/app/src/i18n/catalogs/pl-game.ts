@@ -59,6 +59,7 @@ export const plGame = {
     unequipSlotHint: 'Rozkaż osadnikowi zdjąć ten przedmiot.',
     usedItemDiscardHint: 'Używany przedmiot przepada, nie wraca do magazynu.',
     equipPickEmpty: 'Brak dostępnych przedmiotów w pobliżu.',
+    defenseGarrison: 'Załoga',
     defenseStopped: 'Obrona zatrzymana',
     upgrade: 'Rozbuduj',
     upgradeCostHint: 'Rozbudowa wymaga:',

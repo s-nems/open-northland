@@ -29,15 +29,16 @@ import { planFarmer } from './farming/index.js';
 import { anyNeedPressing, planNeeds } from './needs.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { deStackIdle } from './spacing.js';
+import { holdsPostThroughNeed, planTowerPost } from './tower-post.js';
 import { planTraining } from './training.js';
 
 // The drive ladder: pick the next atomic for one idle settler, in this fixed priority order (each
 // drive returns `true` when it takes the settler for the tick):
 //
-//   needs (eat > sleep > pray) → the ownership gate → the barracks drill → the company (chat-seek)
-//   rung → the housewife hoard → deliver a carried load → bound-farmer field loop → bound-producer /
-//   workshop-supplier loop → build → gather (chop/collect) → porter ferrying → store-carrier haul →
-//   idle de-stack → idle chat.
+//   needs (eat > sleep > pray) → the ownership gate → the barracks drill → the equip errand → the
+//   tower watch → the DEFEND hold → the company (chat-seek) rung → the housewife hoard → deliver a
+//   carried load → bound-farmer field loop → bound-producer / workshop-supplier loop → build → gather
+//   (chop/collect) → porter ferrying → store-carrier haul → idle de-stack → idle chat.
 //
 // The order is part of the design (and of the goldens): needs sit above the ownership gate so a
 // starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
@@ -89,8 +90,9 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
 
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in
-    // (../indoors.ts), except the bed the sleep rung just put it in.
-    if (!isSleepingAtHome(world, e)) stepOut(world, e);
+    // (../indoors.ts) - unless it is the bed the sleep rung just put it in, or a garrison that served
+    // its need on the spot and is still holding the tower.
+    if (!isSleepingAtHome(world, e) && !holdsPostThroughNeed(world, e)) stepOut(world, e);
     return;
   }
 
@@ -108,6 +110,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   // its unchanged anchor afterwards (the combat walk-back pass defers to the errand, see
   // returnToAnchor). See ./equip-order.ts.
   if (planEquipOrder(world, ctx, terrain, e, settler, here, limit, pass.targets)) return;
+  // TOWER WATCH: a fighter posted to a tower climbs it and holds it. Above the DEFEND hold below because
+  // it is the more specific standing order - a posted archer whose stance is also DEFEND must still walk
+  // to his tower rather than freeze on the spot. See ./tower-post.ts.
+  if (planTowerPost(world, ctx, terrain, e, jobType, here)) return;
   // DEFEND hold: a guard keeps its post against the company and economy rungs (the CombatSystem walks
   // it back when displaced); owned-only, so unowned/golden fixtures are untouched. Below the equip
   // errand on purpose: the one player order a guard still runs without dropping its stance.

@@ -243,5 +243,10 @@ export const enContent = {
       summary:
         'A parade grid of sword soldiers: one column per armor state (bare, wool, leather, chain, plate) and one row per player colour, every unit standing down so rival owners never fight. For judging the per-armor recolours across team colours.',
     },
+    'tower-garrison': {
+      title: 'Tower garrison',
+      summary:
+        'Two archers - one short bow, one long - man a watchtower, vanish inside it, and shoot from up there at their own bow plus the tower bonus. The enemy party takes arrows on the march, and once it reaches the wall it can only batter the tower: the men inside are out of reach.',
+    },
   },
 } as const;

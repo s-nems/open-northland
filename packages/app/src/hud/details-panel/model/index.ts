@@ -20,6 +20,7 @@ import { healthBar, pct } from './bars.js';
 import {
   type BuildingPanelModel,
   constructionModel,
+  defenseLine,
   productionModel,
   stockRows,
   upgradeCostRows,
@@ -167,9 +168,11 @@ export function buildUnitPanelModel(
             }
           : null,
       showDefense: catalog?.id === HEADQUARTERS_ID || category === 'tower',
-      // Pinned approximation until a defence-mode component exists; the original state/toggle strings
-      // live at `housewindow` 140–143 ("Rozpocznij/Zatrzymaj Tryb Obrony", "Obrona rozpoczęta/zakończona.").
-      defenseLabel: messages().hud.defenseStopped,
+      // A manned tower reports its garrison; anything else reports the defence MODE, which is still the
+      // pinned approximation (no component exists yet - the original's state/toggle strings live at
+      // `housewindow` 140–143, "Rozpocznij/Zatrzymaj Tryb Obrony"). Without this a tower whose archers are
+      // visibly shooting would read "Obrona zatrzymana".
+      defenseLabel: defenseLine(ctx, snapshot, def, entityId),
       production: productionModel(ctx, snapshot, def, ent),
       construction: constructionModel(ctx, def, ent),
       // A running upgrade site offers Cancel instead of Upgrade.

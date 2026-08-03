@@ -1,4 +1,4 @@
-import { Resting } from '../../components/index.js';
+import { Garrison, Position, Resting } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import { atOrWalk } from './atomics/start.js';
@@ -7,10 +7,11 @@ import { atOrWalk } from './atomics/start.js';
  * Walk `e` to `door`, then step it inside `building` on arrival and run `then`: the tail of every errand
  * that ends indoors. The marker means "inside, and the render must not draw it", so it holds only while
  * something keeps the settler in - the planner sheds it on every re-plan (`planner/replan.ts`) unless the
- * FamilySystem owns the settler (`FamilyDuty`) or a feed batch owns the visiting animal
- * (`LivestockVisit` - `livestock/processing.ts` releases it), and a firing needs drive sheds it
- * (`drives/ladder.ts`) unless the settler just got into its own bed. An errand outlasts both by running
- * an atomic (a re-plan skips a busy settler) and steps back out when it ends; {@link isInside} is the read.
+ * FamilySystem owns the settler (`FamilyDuty`), a feed batch owns the visiting animal
+ * (`LivestockVisit` - `livestock/processing.ts` releases it), or the settler is manning a post
+ * ({@link takePost}), and a firing needs drive sheds it (`drives/ladder.ts`) unless the settler just bedded
+ * down indoors. An errand outlasts both by running an atomic (a re-plan skips a busy settler) and steps
+ * back out when it ends; {@link isInside} is the read.
  */
 export function enterBuilding(
   world: World,
@@ -35,5 +36,38 @@ export function isInside(world: World, e: Entity, building: Entity): boolean {
 }
 
 export function stepOut(world: World, e: Entity): void {
+  standDownFromPost(world, e);
   world.remove(e, Resting);
+}
+
+/**
+ * Take the post inside `building`: stand on its own tile and remember the doorstep to come back to. The
+ * caller has already stepped the settler in; this is the extra move a GARRISON makes, so its shot leaves
+ * the tower instead of its doorstep (see {@link Garrison}).
+ */
+export function takePost(world: World, e: Entity, building: Entity): void {
+  const at = world.tryGet(building, Position);
+  const from = world.tryGet(e, Position);
+  if (at === undefined || from === undefined) return;
+  world.add(e, Garrison, { post: building, returnTo: { x: from.x, y: from.y } });
+  from.x = at.x;
+  from.y = at.y;
+}
+
+/**
+ * Leaving the building ends any garrison duty. The doorstep is restored only while the settler is still
+ * standing where {@link takePost} put it: another drive (a player walk, an equip errand, a flee) can march
+ * a garrison off its tower without passing through here, and putting THAT settler back on a doorstep it
+ * has already left would teleport it across the map. No-op for anyone holding no post.
+ */
+function standDownFromPost(world: World, e: Entity): void {
+  const held = world.tryGet(e, Garrison);
+  if (held === undefined) return;
+  const pos = world.tryGet(e, Position);
+  const at = world.tryGet(held.post, Position);
+  if (pos !== undefined && at !== undefined && pos.x === at.x && pos.y === at.y) {
+    pos.x = held.returnTo.x;
+    pos.y = held.returnTo.y;
+  }
+  world.remove(e, Garrison);
 }

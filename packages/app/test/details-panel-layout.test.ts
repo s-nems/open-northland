@@ -29,6 +29,7 @@ import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 /** The watchtower (`tower_00`, catalog typeId 40) - a store-less building (declares no stock slots). */
 const BUILDING_TOWER = 40;
+const BUILDING_BARRACKS = 39;
 
 /** The settings menu's `?uiscale` steps as numbers - a newly offered scale joins the coverage. */
 const MENU_UISCALE_VALUES = MENU_UISCALES.map(Number);
@@ -264,11 +265,18 @@ describe('details panel layout', () => {
     expect(home.stockCompact).toBe(true);
     expect(home.stockTabHits).toHaveLength(0);
 
-    // A watchtower stores nothing → no Magazyn window at all, and the panel is SHORTER than the farm's.
+    // A watchtower keeps the garrison's larder (food + mead, `logicstock 16 25` / `43 25`) → a compact
+    // tab-less store like the home's.
     const tower = buildingLayoutOf(buildingModel(BUILDING_TOWER));
-    expect(tower.stock).toBeNull();
+    expect(tower.stock).not.toBeNull();
+    expect(tower.stockCompact).toBe(true);
     expect(tower.stockTabHits).toHaveLength(0);
-    expect(tower.panel.h).toBeLessThan(farm.panel.h);
+
+    // The barracks stores nothing → no Magazyn window at all, and the panel is SHORTER than the farm's.
+    const barracks = buildingLayoutOf(buildingModel(BUILDING_BARRACKS));
+    expect(barracks.stock).toBeNull();
+    expect(barracks.stockTabHits).toHaveLength(0);
+    expect(barracks.panel.h).toBeLessThan(farm.panel.h);
     expect(farm.panel.h).toBeLessThan(hq.panel.h);
   });
 

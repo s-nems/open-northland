@@ -34,6 +34,7 @@ import type { MeleeSlots } from './melee-slots.js';
 import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
+import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
 /** What a combatant fights with: the {@link attackerWeapon} resolution, weapon plus clamped reach band. */
@@ -58,6 +59,19 @@ export function engageCombatant(
   bodyNodes: BuildingBodyNodeCache,
   e: Entity,
 ): void {
+  const attacker = world.get(e, Settler);
+  // The tower post this settler is assigned to (null for everyone else), and whether it is standing on it.
+  const posted = attacker.jobType === null ? null : towerPostFor(world, ctx, e, attacker.jobType);
+  const manning = posted !== null && standsAtPost(world, e) === posted;
+  // Posted but not up there yet - on the road to its post, or walking back from a meal. It does not stop
+  // to auto-engage on the way: a swing benches the planner for its whole length AND leaves an Engagement
+  // that the ladder's ownership gate reads, so an archer that opens fire at the foot of its own tower never
+  // climbs it. Ahead of the busy gate on purpose - a swing already in flight has to release its Engagement
+  // here, or the planner never gets the settler back. An explicit attack order overrides.
+  if (posted !== null && !manning && !world.has(e, AttackOrder)) {
+    disengage(world, e);
+    return;
+  }
   if (busyOrFelled(world, e)) return;
   // An attack-move march is the one player walk that does NOT bench combat: the unit fights its way there.
   // While its aggression rests (`blockedUntil` - the last chase could not route) it walks as a plain move.
@@ -65,19 +79,23 @@ export function engageCombatant(
   const marching = march !== undefined && ctx.tick >= march.blockedUntil;
   if (suppressedByMoveOrder(world, e, marching)) return;
 
-  const attacker = world.get(e, Settler);
   const owned = world.has(e, Owner);
   const ordered = liveAttackOrder(world, ctx, e, attacker);
   const stance: CombatantStance = {
     owned,
     ordered,
     mode: owned ? actingMode(world, ctx, e, attacker.jobType, marching) : null,
+    post: manning ? posted : null,
   };
 
-  if (resolveFleeState(world, ctx, terrain, index, presence, e, attacker, stance)) return;
-  if (ignoresCombat(ctx, stance, attacker)) {
-    disengage(world, e);
-    return;
+  // The two PASSIVE stances are overridden by the post, not applied under it: a manned tower IS the order
+  // to hold and shoot, so a garrison neither stands down (IGNORE) nor abandons the wall (FLEE).
+  if (!manning) {
+    if (resolveFleeState(world, ctx, terrain, index, presence, e, attacker, stance)) return;
+    if (ignoresCombat(ctx, stance, attacker)) {
+      disengage(world, e);
+      return;
+    }
   }
   if (carriesKillHome(world, ctx, e, attacker, stance)) {
     disengage(world, e);
@@ -91,11 +109,15 @@ export function engageCombatant(
     return;
   }
 
-  const weapon = attackerWeapon(ctx, attacker.tribe, attacker.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
-  if (weapon === null) {
+  const held = attackerWeapon(ctx, attacker.tribe, attacker.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
+  if (held === null) {
     disengage(world, e);
     return;
   }
+  // Manning a tower extends the bow's reach and drops its near dead zone (./tower-post.ts). The boosted band
+  // is what the search, the reach test and the swing all read, so a garrison cannot acquire past what it
+  // can actually hit.
+  const weapon = stance.post === null ? held : garrisonReach(held);
 
   if (huntSearchRests(world, ctx, e, attacker, stance)) return;
 
@@ -293,10 +315,12 @@ function swingAt(
   startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
 }
 
-/** An unowned scenario CIV keeps the swing-in-place read and never advances on a target out of reach: its
- *  search radius was capped at `maxRange`, so this is unreachable - kept explicit rather than assumed away.
- *  An owned combatant advances, and so does a hostile wild animal (the wolf's ambush lunge, the provoked
- *  bear's charge - {@link resolveTarget} only admits a victim inside its aggro radius). */
+/** Who never walks toward a target out of reach: a GARRISON (a wall may not be abandoned to chase) and an
+ *  unowned scenario CIV. Both search bands are capped at `maxRange`, so neither case can actually reach
+ *  here - kept explicit rather than assumed away. An owned combatant advances, and so does a hostile wild
+ *  animal (the wolf's ambush lunge, the provoked bear's charge - {@link resolveTarget} only admits a victim
+ *  inside its aggro radius). */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
+  if (stance.post !== null) return true;
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);
 }
