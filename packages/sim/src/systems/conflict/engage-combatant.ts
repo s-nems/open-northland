@@ -44,7 +44,7 @@ import { hostileAnimalNow, isValidTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
-/** What a combatant fights with: the {@link attackerWeapon} resolution, weapon plus clamped reach band. */
+/** The {@link attackerWeapon} resolution: the weapon plus its clamped reach band. */
 type ArmedWith = NonNullable<ReturnType<typeof attackerWeapon>>;
 
 /** What a swing reads off its attacker: the content-lookup identity plus the fight-experience buckets. */
@@ -52,9 +52,8 @@ type Attacker = SettlerIdentity & { readonly experience: ReadonlyMap<number, num
 
 /**
  * Resolve and act on one combatant's engagement this tick: swing, chase, hold a post, flee, or hand back to
- * the economy. The gates below run as a ladder and their order is behavior: each rung shields every rung
- * under it from a case it must not see (a travelling passive animal returns above the Anger reap, not
- * through it).
+ * the economy. The gates below run as a ladder and their order is behavior - each rung shields every rung
+ * under it from a case it must not see.
  */
 export function engageCombatant(
   world: World,
@@ -68,20 +67,18 @@ export function engageCombatant(
   e: Entity,
 ): void {
   const attacker = world.get(e, Settler);
-  // The tower post this settler is assigned to (null for everyone else), and whether it is standing on it.
   const posted = attacker.jobType === null ? null : towerPostFor(world, ctx, e, attacker.jobType);
   const manning = posted !== null && standsAtPost(world, e) === posted;
-  // Posted but not up there yet - on the road to its post, or walking back from a meal. It does not stop
-  // to auto-engage on the way: a swing benches the planner for its whole length AND leaves an Engagement
-  // that the ladder's ownership gate reads, so an archer that opens fire at the foot of its own tower never
-  // climbs it. Ahead of the busy gate on purpose - a swing already in flight has to release its Engagement
-  // here, or the planner never gets the settler back. An explicit attack order overrides.
+  // Posted but not up there yet: it does not stop to auto-engage on the way, because a swing benches the
+  // planner for its whole length and leaves an Engagement, so an archer that opens fire at the foot of its
+  // own tower never climbs it. Ahead of the busy gate on purpose - a swing already in flight has to release
+  // its Engagement here, or the planner never gets the settler back.
   if (posted !== null && !manning && !world.has(e, AttackOrder)) {
     disengage(world, e);
     return;
   }
   if (busyOrFelled(world, e)) return;
-  // An attack-move march is the one player walk that does NOT bench combat: the unit fights its way there.
+  // An attack-move march is the one player walk that does not bench combat: the unit fights its way there.
   // While its aggression rests (`blockedUntil` - the last chase could not route) it walks as a plain move.
   const march = world.tryGet(e, PlayerOrder)?.attackMove;
   const marching = march !== undefined && ctx.tick >= march.blockedUntil;
@@ -100,8 +97,8 @@ export function engageCombatant(
     shelter: manned === null ? null : { building: manned, seat: seats.get(e) ?? 0 },
   };
 
-  // The two PASSIVE stances are overridden by the post, not applied under it: a manned tower IS the order
-  // to hold and shoot, so a garrison neither stands down (IGNORE) nor abandons the wall (FLEE).
+  // The two passive stances are overridden by the post, not applied under it: a manned tower is itself the
+  // order to hold and shoot, so a garrison neither stands down nor abandons the wall.
   if (!manning) {
     if (resolveFleeState(world, ctx, terrain, index, presence, e, attacker, stance)) return;
     if (ignoresCombat(ctx, stance, attacker)) {
@@ -131,22 +128,20 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
-  // Manning a tower extends the bow's reach and drops its near dead zone (./tower-post.ts). The boosted band
-  // is what the search, the reach test and the swing all read, so a garrison cannot acquire past what it
-  // can actually hit.
+  // The boosted band is what the search, the reach test and the swing all read, so a garrison cannot
+  // acquire past what it can actually hit.
   const weapon = stance.post === null ? held : garrisonReach(held);
 
   if (huntSearchRests(world, ctx, e, attacker, stance)) return;
 
-  // A garrison acquires and measures reach from the TOWER, not from the door node it happens to stand on
-  // inside - the same point its arrow leaves from (`launchProjectile`), so the band it shoots into is the
-  // band it swings in.
+  // A garrison acquires and measures reach from the tower, not from the door node it stands on inside, so
+  // the band it shoots into is the band its arrow leaves from.
   const here = entityNode(world, terrain, stance.shelter?.building ?? e);
   const spec = engageSpec(world, ctx, terrain, index, e, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
   if (found === null) {
-    // A hunting hunter's empty search rests the acquisition (HuntRest). Not under a DEFEND post: there
-    // the band is small and a rest would also skip the walk-back retry below for its duration.
+    // Not under a DEFEND post: there the band is small, and a rest would also skip the walk-back retry
+    // below for its duration.
     if (isHunterJob(ctx.content, attacker.jobType) && spec.defend?.hold !== true && !world.has(e, HuntRest)) {
       world.add(e, HuntRest, { until: ctx.tick + HUNT_SEARCH_REST_TICKS });
     }
@@ -164,9 +159,8 @@ export function engageCombatant(
     disengage(world, e);
     return;
   }
-  // Advance on the combat node the reach check measured - its own node for a unit, its nearest wall cell for
-  // a building - so the chase walks toward where the swing lands. A building's full wall list rides along so
-  // a chaser whose nearest face is manned encircles to another.
+  // Advance on the combat node the reach check measured, so the chase walks toward where the swing lands. A
+  // building's full wall list rides along so a chaser whose nearest face is manned encircles to another.
   const chaseTarget: ChaseTarget = {
     entity: target,
     node: combatTargetNode(world, ctx, terrain, here, target, bodyNodes),
@@ -175,10 +169,9 @@ export function engageCombatant(
   chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
 }
 
-/** The weapon typeId this combatant fights with, overriding its `(tribe, job)` class binding: the house
- *  bow while it mans a shelter (a farmer takes the wall bow, not its own nothing - but a child hides
- *  without one, {@link drawsHouseBow}), else the {@link Weapon} it carries. `undefined` falls back to the
- *  class binding, which leaves an unarmed civilian unarmed. */
+/** The weapon typeId this combatant fights with, overriding its `(tribe, job)` class binding: the house bow
+ *  while it mans a shelter, else the {@link Weapon} it carries. `undefined` falls back to the class binding,
+ *  which leaves an unarmed civilian unarmed. */
 function wieldedWeaponTypeId(
   world: World,
   ctx: SystemContext,
@@ -195,17 +188,16 @@ function busyOrFelled(world: World, e: Entity): boolean {
   return world.has(e, CurrentAtomic) || world.get(e, Health).hitpoints <= 0;
 }
 
-/** A live player move order (a {@link PlayerOrder} that is not an {@link AttackOrder}) suppresses ALL
- *  auto-behavior en route - engage and flee alike, the reposition is authoritative. It dies on arrival, so
- *  the unit's own stance takes over at the spot. An attack-move `marching` order is the exception: the whole
- *  point of that walk is to keep fighting along it. */
+/** A live player move order suppresses all auto-behavior en route, engage and flee alike; it dies on
+ *  arrival, so the unit's own stance takes over at the spot. An attack-move `marching` order is the
+ *  exception: the whole point of that walk is to keep fighting along it. */
 function suppressedByMoveOrder(world: World, e: Entity, marching: boolean): boolean {
   return !marching && world.has(e, PlayerOrder) && !world.has(e, AttackOrder);
 }
 
-/** The mode an OWNED combatant acts under: its own {@link Stance} ({@link stanceMode}) - or ATTACK for the
- *  duration of an attack-move march, whatever its stance says. That override IS attack-move: a DEFEND guard
- *  leaves its anchor, a scout stops ignoring, a civilian stops fleeing, all until the march ends. */
+/** The mode an owned combatant acts under: its own {@link Stance}, or ATTACK for the duration of an
+ *  attack-move march. That override is what attack-move means - a DEFEND guard leaves its anchor and a
+ *  civilian stops fleeing until the march ends. */
 function actingMode(
   world: World,
   ctx: SystemContext,
@@ -216,9 +208,9 @@ function actingMode(
   return marching ? MILITARY_MODE.ATTACK : stanceMode(world, ctx.content, e, jobType);
 }
 
-/** Whether an explicit {@link AttackOrder} is in flight, dropping one that has outlived its target (dead, or
- *  no longer a valid hostile) first: left standing, its stale general-hostility spec would fall through the
- *  stance dispatch below as a one-tick ATTACK-style re-acquire regardless of the unit's actual stance. */
+/** Whether an explicit {@link AttackOrder} is in flight, dropping one that has outlived its target first:
+ *  left standing, its stale general-hostility spec would fall through the stance dispatch as a one-tick
+ *  ATTACK-style re-acquire regardless of the unit's actual stance. */
 function liveAttackOrder(world: World, ctx: SystemContext, e: Entity, attacker: SettlerIdentity): boolean {
   if (!world.has(e, AttackOrder)) return false;
   if (isValidTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) return true;
@@ -238,9 +230,9 @@ function resolveFleeState(
   attacker: SettlerIdentity,
   stance: CombatantStance,
 ): boolean {
-  // A settler that has claimed a shelter never flees: the run for cover IS its flight. Inside, running
-  // would take it straight back out into the open; still crossing the ground, it would abandon the walk it
-  // holds a seat for and the building would report itself full while standing empty.
+  // A settler that has claimed a shelter never flees: the run for cover is its flight. Running would take
+  // it back into the open, or abandon the walk it holds a seat for, leaving the building reporting itself
+  // full while standing empty.
   if (stance.mode !== MILITARY_MODE.FLEE || stance.ordered || world.has(e, Sheltering)) {
     if (world.has(e, Fleeing)) {
       world.remove(e, Fleeing);
@@ -248,28 +240,26 @@ function resolveFleeState(
     }
     return false;
   }
-  // A fleeing unit is not attack-engaged: shed any Engagement left from a prior ATTACK/DEFEND chase. A stale
-  // marker would outlive the flee - `fleeDrive` drops `Fleeing` but not `Engagement` - benching the unit
-  // (plannerSystem skips it) and keeping combat awake forever.
+  // A fleeing unit is not attack-engaged. A stale marker would outlive the flee, benching the unit and
+  // keeping combat awake forever.
   world.remove(e, Engagement);
   world.remove(e, HuntFocus); // and with it the prey hold, which only the hunting branch can reap
   fleeDrive(world, ctx, terrain, index, presence, e, attacker);
   return true;
 }
 
-/** The passive stance (IGNORE, and the unset NONE {@link stanceMode} normalizes to it) never auto-engages.
- *  A hunter is exempt: its huntable-prey predation is an economic drive independent of the military mode,
- *  so it falls through to the engage path under a predation-only filter ({@link engageSpec}). */
+/** The passive stance never auto-engages. A hunter is exempt: its huntable-prey predation is an economic
+ *  drive independent of the military mode, so it falls through to the engage path under a predation-only
+ *  filter. */
 function ignoresCombat(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   return (
     stance.mode === MILITARY_MODE.IGNORE && !stance.ordered && !isHunterJob(ctx.content, attacker.jobType)
   );
 }
 
-/** The carry leg of the one-kill cycle (`hunterEngageSpec` owns the rule): a loaded hunter banks its
- *  kill before any new acquisition. Without this, the tick after the LAST pickup (carcass node gone,
- *  delivery not yet planned) reads as an idle hunter and combat steals it mid-cycle. Hunter-scoped and
- *  stance-wide; only an explicit player attack order pierces it, like every rung here. */
+/** The carry leg of the one-kill cycle: a loaded hunter banks its kill before any new acquisition. Without
+ *  this, the tick after the last pickup - carcass node gone, delivery not yet planned - reads as an idle
+ *  hunter and combat steals it mid-cycle. */
 function carriesKillHome(
   world: World,
   ctx: SystemContext,
@@ -280,10 +270,9 @@ function carriesKillHome(
   return !stance.ordered && isHunterJob(ctx.content, attacker.jobType) && world.has(e, Carrying);
 }
 
-/** Whether a resting hunter ({@link HuntRest} - the empty-search breather) skips this tick's acquisition.
- *  Reaps a lapsed rest as it reads it. Never rests an ordered focus or a live chase: the order rung
- *  bypasses the ring search anyway, and an Engagement must keep re-resolving every tick so the chaser
- *  swings the instant it is in reach. */
+/** Whether a resting hunter skips this tick's acquisition, reaping a lapsed {@link HuntRest} as it reads it.
+ *  Never rests an ordered focus or a live chase: an Engagement must keep re-resolving every tick so the
+ *  chaser swings the instant it is in reach. */
 function huntSearchRests(
   world: World,
   ctx: SystemContext,
@@ -300,16 +289,15 @@ function huntSearchRests(
   return false;
 }
 
-/** A travelling unit that is neither engaged nor commanded walks under another drive (an economy walk, or a
- *  DEFEND unit heading back to its anchor) - don't yank it into combat. An engaged or commanded one (an
- *  {@link AttackOrder} focus, an attack-move march) IS re-evaluated, so a chaser stops and swings the instant
- *  it is in reach and a marching unit acquires without first standing still. */
+/** A travelling unit that is neither engaged nor commanded walks under another drive and must not be yanked
+ *  into combat. An engaged or commanded one is re-evaluated, so a chaser swings the instant it is in reach
+ *  and a marching unit acquires without first standing still. */
 function walksUnderAnotherDrive(world: World, e: Entity, travelling: boolean, commanded: boolean): boolean {
   return travelling && !world.has(e, Engagement) && !commanded;
 }
 
-/** An unowned animal that is neither aggressive nor still provoked runs no attack drive (an owned unit is
- *  always an aggressor). Reaps a lapsed {@link Anger} timer as it reads it ({@link hostileAnimalNow}). */
+/** An unowned animal that is neither aggressive nor still provoked runs no attack drive. Reaps a lapsed
+ *  {@link Anger} timer as it reads it. */
 function standsDownAsPassiveAnimal(
   world: World,
   ctx: SystemContext,
@@ -321,19 +309,16 @@ function standsDownAsPassiveAnimal(
   return !hostileAnimalNow(world, ctx, e, attacker.tribe);
 }
 
-/** Inside the weapon's reach band AND standing still. The standstill gate: node positions truncate to the
- *  lattice (`nodeOfPosition`), so a walker can read as in-band mid-stride (up to half an edge short of a
- *  centre) and swinging there would freeze it off any node centre, reading as a glide. Gated, the walker
- *  finishes its braked last leg onto the slot's centre first. */
+/** Inside the weapon's reach band and standing still. Node positions truncate to the lattice, so a walker
+ *  can read as in-band mid-stride and swinging there would freeze it off any node centre, reading as a
+ *  glide; gated, it finishes its braked last leg onto the slot's centre first. */
 function inReachAndStanding(dist: number, weapon: ArmedWith, moving: boolean): boolean {
   return dist >= weapon.minRange && dist <= weapon.maxRange && !moving;
 }
 
-/** Whether `e` is route-free ({@link isStanding}) and standing on the exact centre of the goal it still
- *  carries - the remnant between a walk ending and next tick's navigation planner retiring the goal, which is
- *  not motion. The centre test is the planner's own (`planner/navigation.ts`), so this means precisely "that
- *  goal is retired next tick"; the truncated node alone would also admit a walker parked up to half a node
- *  off centre, and swinging there is the glide {@link inReachAndStanding} exists to prevent. */
+/** Whether `e` is route-free and standing on the exact centre of the goal it still carries - the remnant
+ *  between a walk ending and next tick's planner retiring the goal, which is not motion. The centre test is
+ *  the planner's own; the truncated node alone would also admit a walker parked half a node off centre. */
 function arrivedAtGoal(world: World, e: Entity, terrain: TerrainGraph): boolean {
   const goal = world.tryGet(e, MoveGoal)?.cell;
   if (goal === undefined || !isStanding(world, e)) return false;
@@ -353,10 +338,9 @@ function swingAt(
   weapon: ArmedWith,
 ): void {
   clearNavState(world, e); // stale-goal hygiene: the unit already stands on its slot's centre
-  // The in-band Engagement refresh (economy-skip + chase throttle) is owned-only: it matters in the idle
-  // tick between swings (mid-swing, `CurrentAtomic` already gates the unit off the economy), where it keeps
-  // an owned unit engaged instead of re-tasked. An advancing animal picks its Engagement up from chase();
-  // stamping a swinging unowned civ would only perturb its hash.
+  // The in-band Engagement refresh is owned-only: it matters in the idle tick between swings, where it
+  // keeps an owned unit engaged instead of re-tasked. Stamping a swinging unowned civ would only perturb
+  // its hash.
   if (owned) world.add(e, Engagement, { repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick });
   // Fight experience with this weapon class raises the swing's damage (up to +50% at combat mastery).
   const damage = withFightDamageBonus(
@@ -367,13 +351,10 @@ function swingAt(
   startAttack(world, ctx, attacker, e, target, damage, weapon.weapon);
 }
 
-/** Who never walks toward a target out of reach: anyone shooting from inside a building - a GARRISON on its
- *  tower, a civilian sheltering under an alarm (a wall may not be abandoned to chase) - and an unowned
- *  scenario CIV. For the men indoors this is where the player's attack order onto something past their reach
- *  dies: {@link resolveTarget} hands a focus back at its REAL distance, uncapped by the search band, so the
- *  order arrives here and {@link disengage} lets it go instead of marching the man out. An owned combatant
- *  advances, and so does a hostile wild animal (the wolf's ambush lunge, the provoked bear's charge -
- *  {@link resolveTarget} only admits a victim inside its aggro radius). */
+/** Who never walks toward a target out of reach: anyone shooting from inside a building, and an unowned
+ *  scenario civ. For the men indoors this is where a player's attack order onto something past their reach
+ *  dies - {@link resolveTarget} hands the focus back at its real distance, so {@link disengage} lets it go
+ *  instead of marching the man out. An owned combatant advances, and so does a hostile wild animal. */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   if (stance.post !== null || stance.shelter !== null) return true;
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);

@@ -17,13 +17,9 @@ import type { AiPlayerModule } from './index.js';
 import { assistantCounterCommand, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
 
 /**
- * The HomeExpansion module - population planning (user plan, 2026-07-17): every adult woman marries
- * as soon as a partner exists (grown girls included - the census is recomputed each decision), a
- * married woman's family moves into the first home with a free family slot, and the births run
- * through the settlement assistant (user rule 2026-08-02): the module keeps `extraWomen` at the
- * female deficit against the total family slots and `extraMen` infinite, so the dispatcher
- * (`systems/assistant/`) breeds daughters up to the housing stock and sons continuously past it -
- * women in Cultures are made to the number of house places.
+ * The HomeExpansion module (authored): every adult woman marries as soon as a partner exists, a married
+ * woman's family moves into the first home with a free family slot, and births run through the
+ * settlement assistant - daughters up to the housing stock, sons continuously past it.
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly Command[] {
@@ -32,8 +28,8 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   const settlers = ownedSettlers(world, player);
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));
 
-  // 1. Weddings: one marry order per single woman, capped by the single-men count so the command
-  // log doesn't fill with orders that would only auto-cancel.
+  // One marry order per single woman, capped by the single-men count so the command log does not fill
+  // with orders that would only auto-cancel.
   const singleWomen = women.filter((e) => mayMarry(world, ctx.content, e));
   const singleMen = settlers.filter(
     (e) => !world.has(e, Female) && isAdultSettler(world, e) && mayMarry(world, ctx.content, e),
@@ -43,9 +39,8 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     if (woman !== undefined) commands.push({ kind: 'marry', entity: woman });
   }
 
-  // 2. Housing: a married, unhoused woman's family takes the first free family slot (homes and
-  // slots in canonical order; slots claimed this decision are tracked so two families never target
-  // the same one).
+  // A married, unhoused woman's family takes the first free family slot, in canonical order; slots
+  // claimed this decision are tracked so two families never target the same one.
   const index = contentIndex(ctx.content);
   const homes: Array<{ entity: Entity; free: number }> = [];
   let familySlotsTotal = 0;
@@ -65,15 +60,12 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     commands.push({ kind: 'assignHouse', entity: woman, house: home.entity });
   }
 
-  // 3. Children: the seat breeds through the assistant - `extraWomen` is held at the female deficit
-  // against the family slots (in the dispatcher daughters outrank sons, the plan's exact priority)
-  // and `extraMen` stands infinite (sons continuously once the women are made to the housing
-  // stock). Both are absolute re-sets, issued only when the wanted state differs.
+  // Both breeding counters are absolute re-sets, issued only when the wanted state differs.
   let femaleStock = 0;
   for (const e of settlers) {
     if (world.has(e, Female)) femaleStock++; // women, girls, and baby girls alike
-    // A pending non-assistant daughter order still becomes a female; assistant-booked orders are
-    // accounted inside the counter itself (its value counts everything not yet born).
+    // A pending non-assistant daughter order still becomes a female; an assistant-booked order is
+    // already accounted inside the counter itself.
     if (world.tryGet(e, ChildOrder)?.child === 'female' && !world.has(e, AssistantChildOrder)) femaleStock++;
   }
   const daughters = assistantCounterCommand(
@@ -89,8 +81,8 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   return commands;
 }
 
-/** Married to a living spouse - narrower than the family rule's {@link isMarried}, which also counts
- *  a widow raising a minor: a widow IS orderable into a new family plan. */
+/** Married to a living spouse - narrower than the family rule's `isMarried`, which also counts a widow
+ *  raising a minor, because a widow is orderable into a new family plan. */
 function hasLivingSpouse(world: World, e: Entity): boolean {
   const marriage = world.tryGet(e, Marriage);
   return marriage !== undefined && world.isAlive(marriage.spouse);

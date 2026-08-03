@@ -14,21 +14,19 @@ export interface WeaponBand {
 }
 
 /**
- * One combat tick's melee-slot bookkeeping: which contact cells are spoken for, and the derived views
- * that answer it. Chasers are served in the canonical combatant order, so the deal is deterministic;
- * every view is per-tick derived state, never hashed. The three world scans are run on first ask, so a
- * tick with no chaser runs none of them.
+ * One combat tick's melee-slot bookkeeping: which contact cells are spoken for, and the derived views that
+ * answer it. Chasers are served in the canonical combatant order, so the deal is deterministic; every view
+ * is per-tick derived state, never hashed, and the world scans run on first ask.
  */
 export class MeleeSlots {
   private standing?: ReadonlySet<NodeId>;
-  /** Goals en-route chasers already own: a slot dealt in an EARLIER tick stays taken while its owner is
+  /** Goals en-route chasers already own: a slot dealt in an earlier tick stays taken while its owner is
    *  still walking to it, else two chasers dealt across ticks converge on one cell and stack. */
   private enRoute?: ReadonlySet<NodeId>;
   private readonly claimed = new Set<NodeId>();
   private blocked?: BlockOverlay;
-  /** Encircle candidates per building×weapon band: a building never moves within a tick, so the band scan
-   *  runs once and every chaser - including a full-perimeter holder re-asking each cadence - only filters
-   *  taken slots over it. */
+  /** Encircle candidates per building and weapon band: a building never moves within a tick, so the band
+   *  scan runs once and every chaser only filters taken slots over it. */
   private readonly bands = new Map<string, readonly NodeId[]>();
 
   constructor(
@@ -62,9 +60,9 @@ export class MeleeSlots {
   }
 
   /**
-   * The open in-band contact cells around a building: every cell (deduped union of the band boxes around
-   * each wall cell) that is {@link isOpen} and whose distance to the body's NEAREST wall is in the weapon
-   * band - the same nearest-wall rule the reach check uses, so a body cell (reach 0) is never dealt.
+   * The open in-band contact cells around a building: every {@link isOpen} cell whose distance to the body's
+   * nearest wall is in the weapon band - the same nearest-wall rule the reach check uses, so a body cell
+   * (reach 0) is never dealt.
    */
   encircleCandidates(target: Entity, body: readonly NodeId[] | null, weapon: WeaponBand): readonly NodeId[] {
     const key = `${target}:${weapon.minRange}:${weapon.maxRange}`;
@@ -101,10 +99,8 @@ export class MeleeSlots {
   }
 }
 
-/** The chase destinations en-route chasers already own - every {@link Engagement}-carrying unit's live
- *  {@link MoveGoal} cell. Membership-only (never iterated for a decision), rebuilt lazily per combat tick
- *  like the standing-body set; conservatively stale within the tick (a goal redirected later this
- *  tick stays marked), which only delays a slot's reuse by one tick. */
+/** The chase destinations en-route chasers already own. Membership-only, so query order carries no
+ *  decision; conservatively stale within the tick, which only delays a slot's reuse by one tick. */
 function enRouteChaseGoals(world: World): ReadonlySet<NodeId> {
   const out = new Set<NodeId>();
   for (const e of world.query(Engagement, MoveGoal)) out.add(world.get(e, MoveGoal).cell);
@@ -112,7 +108,7 @@ function enRouteChaseGoals(world: World): ReadonlySet<NodeId> {
 }
 
 /** Manhattan distance from `cell` to the nearest cell of `body` - how the combat reach to a building is
- *  measured (the same nearest-wall rule as {@link import('./target-node.js').combatTargetNode}). */
+ *  measured. */
 function distanceToBody(terrain: TerrainGraph, cell: NodeId, body: readonly NodeId[]): number {
   let min = Number.POSITIVE_INFINITY;
   for (const wall of body) min = Math.min(min, manhattan(terrain, cell, wall));

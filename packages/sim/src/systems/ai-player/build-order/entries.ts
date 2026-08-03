@@ -1,15 +1,5 @@
-/**
- * The build-order vocabulary - the data the HouseBuild executor walks (genre convention: an
- * authored opening list executes before any demand logic; Widelands "basic economy" / KaM classic
- * AI / AoE2 opening books). Entries are a discriminated union: place a building, upgrade owned
- * buildings toward a tier, or wait for a flag collector the workforce module hires.
- */
-
-/** Where a placement should gravitate, on top of the always-on near-base rule: toward the seat's
- *  first building of a stable content id, toward the nearest live resource of a good, toward
- *  the map's centre (the barracks rule - face the contested middle, not the town's back), or
- *  toward the settlement's outskirts (past a frontier building - the warehouse rule, user plan
- *  2026-07-25; `placement.ts` owns which frontier). */
+/** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
+ *  each kind to a node. */
 export type PlacementAffinity =
   | { readonly kind: 'building'; readonly id: string }
   | { readonly kind: 'resource'; readonly good: string }
@@ -17,14 +7,9 @@ export type PlacementAffinity =
   | { readonly kind: 'outskirts' };
 
 export type BuildOrderEntry =
-  /** Place `count` buildings of the stable content id. Owned buildings at the placed tier OR any
-   *  tier above it on the `upgradeTarget` chain count (a `home`-kind id counts every home tier) -
-   *  an upgraded building must not trigger a replacement. `near` pulls the spot toward its
-   *  anchors; `ground: 'plantable'` restricts the footprint to sowable ground (a hard rule - no
-   *  legal spot stalls the list, user decision 2026-07-18); `apart` keeps the spot clear of the
-   *  seat's other buildings of the same KIND, so goods-collection points spread over the settlement
-   *  instead of clustering (the warehouse rule, user decision 2026-07-26 - a preference, not a hard
-   *  rule: with no spaced spot the entry still builds). */
+  /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
+   *  `ground: 'plantable'` hard-restricts the footprint to sowable ground, and `apart` prefers
+   *  (never requires) a spot clear of the seat's other buildings of the same kind. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -33,33 +18,23 @@ export type BuildOrderEntry =
       readonly ground?: 'plantable';
       readonly apart?: boolean;
     }
-  /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at (or above) the
-   *  target tier named by the stable content id. */
+  /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
+   *  named tier. */
   | { readonly kind: 'upgrade'; readonly building: string; readonly count: number }
-  /** Wait for one flag-bound gatherer of the good (hired by the workforce module once the list
-   *  reaches this entry - see `collectorGoodsWanted`). A good with no live resource is skipped. */
+  /** Wait for one flag-bound gatherer of the good; the workforce module owns the hire. A good with
+   *  no live resource is skipped. */
   | { readonly kind: 'collector'; readonly good: string }
-  /** Keep every owned building inside some tower's (or the HQ's) assumed defence circle, placing
-   *  towers of the stable content id on the settlement's outskirts as it grows - a PERPETUAL entry:
-   *  it re-arms whenever a later building lands uncovered, so the tower count is dynamic (user plan
-   *  2026-07-25; see `tower-coverage.ts`). A target with no legal covering spot stalls the list
-   *  (the documented executor contract - expansion's concern, never a skip). */
+  /** Keep every owned building inside some tower's or the base's defence circle. Unlike the counted
+   *  entries it re-arms whenever a later building lands uncovered, so the tower count is dynamic. */
   | { readonly kind: 'towerCoverage'; readonly building: string };
 
 /**
- * The authored opening list, ordered so each entry's materials already exist when it is reached: one
- * unbuildable bill stalls every entry behind it, because the executor issues nothing while a site is
- * open. A placement charges the merged bill of its whole tier chain, so the armory cannot precede the
- * level-2 pottery and mason that make its tile and ornament.
- *
- * Level-2 workshops are placed directly, with no level-0 intermediate: the extracted `jobEnablesHouse`
- * rows enable the `_01` tiers as separately placeable house types, each charging its own
- * non-cumulative bill, and `home_level_04` the same way (its own bill is two ornaments, so the fourth
- * home onward is placed at the top tier rather than grown).
- *
- * Weapon shops belong to the opening rather than the tail: the garrison rung publishes only the
- * classes it can arm right now (`workforce/garrison.ts`), so a deferred shop leaves the seat drilling
- * one class until it stands.
+ * Authored: the opening list is a plan, not extracted data. It is ordered so each entry's materials
+ * already exist when it is reached, because a placement charges the merged bill of its whole tier chain
+ * and one unbuildable bill stalls every entry behind it. Its `_01` workshop and `home_level_04` entries
+ * build straight to that tier because the extracted `jobEnablesHouse` rows enable each tier as a
+ * separately placeable house type charging its own non-cumulative bill. Weapon shops sit in the opening
+ * rather than the tail, since the garrison rung publishes only the classes it can arm right now.
  */
 export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable' },
@@ -130,22 +105,18 @@ export const DEFAULT_BUILD_ORDER: readonly BuildOrderEntry[] = [
   { kind: 'place', building: 'work_bakery_01', count: 4, near: [{ kind: 'building', id: 'work_mill_00' }] },
 ];
 
-/** What a seat with no base puts up (user rule): the headquarters declares an explicitly EMPTY
- *  construction bill, which would raise for free, so a level-1 warehouse takes the goods hub over
- *  instead - same kind, same worker slots down to the opening hunt's seat. It is a permanent
- *  downgrade: 45 units per good against the headquarters' 150, and no entry upgrades the stock chain.
- *  Only `building` and the placement modifiers are read; `count` is structural. */
+/** What a seat with no base puts up: the headquarters declares an empty construction bill and would
+ *  raise for free, so a warehouse takes the goods hub over instead. Only `building` and the placement
+ *  modifiers are read; `count` is structural. */
 export const BASE_REPLACEMENT_ENTRY: Extract<BuildOrderEntry, { kind: 'place' }> = {
   kind: 'place',
   building: 'stock_00',
   count: 1,
 };
 
-/** Concurrent construction sites per seat - upgrades included (user rule, 2026-07-18: exactly one
- *  site at a time). */
+/** Concurrent construction sites per seat, upgrade sites included. */
 export const MAX_ACTIVE_CONSTRUCTION_SITES = 1;
 
-/** How far from the seat's base a placement may land, in half-cell Manhattan nodes - the bounded
- *  neighbourhood every affinity pull stays inside. Beyond it the executor stalls (expansion's
- *  concern). */
+/** How far from the seat's base a placement may land, in half-cell Manhattan nodes; every affinity
+ *  pull stays inside this disc. */
 export const BUILD_SEARCH_MAX_RADIUS_NODES = 48;

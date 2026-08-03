@@ -13,21 +13,15 @@ import type { ExternalFoodIndex } from './food-search.js';
 import { builtHomeType, storedFoodUnits } from './households.js';
 
 /**
- * The housewife's hoarding drive - a woman with a home keeps hauling loose/store food into the home
- * larder until its food stock is full (`houses.ini` `logicstock` capacities), independent of any
- * standing child order (user-directed design 2026-07-16: women stock the pantry continuously, not only
- * to conceive). Runs from the AI planner as a woman's work rung - women take no trade, so this is what
- * an idle woman does; the needs drives and the family fences (wedding, child order) still outrank it.
+ * The housewife's hoarding drive - a woman with a home hauls loose and stored food into the home larder
+ * until its food stock is full (`houses.ini` `logicstock` capacities), independent of any standing child
+ * order. Authored: women stock the pantry continuously, not only to conceive.
  */
 
 /**
- * Maybe task the idle adult woman `e` with one hoarding step: deliver a held food unit home, or fetch
- * the nearest external unit (the planner tick's shared {@link ExternalFoodIndex} - never another
- * family's larder). Returns true when it took the settler for this tick. A homeless woman, an unbuilt
- * home, a full larder, or a world with no reachable food outside homes leaves her to the planner's
- * remaining rungs. `limit` is her signpost confinement (null = unlimited): a home outside her allowed
- * area suspends the drive entirely, and a source outside it is invisible - the housewife searches only
- * her local circle plus the guidepost network, like every other economy search.
+ * Maybe task the idle adult woman `e` with one hoarding step, returning true when it took her for this
+ * tick. `limit` is her signpost confinement (null when unlimited): a home outside her allowed area
+ * suspends the drive entirely, and a source outside it is invisible.
  */
 export function planWomanHoard(
   world: World,
@@ -63,7 +57,7 @@ export function planWomanHoard(
     return true;
   }
   const source = externalFood.nearest(hereNode, ownerOf(world, e), limit, unreachableGoalVeto(world, ctx, e));
-  if (source === null) return false; // nothing to hoard - fall through to idling
+  if (source === null) return false; // nothing to hoard, so fall through to idling
   fetchFrom(world, ctx, terrain, e, settler, source, hereNode);
   return true;
 }

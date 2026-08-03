@@ -10,14 +10,13 @@ export const Building = defineComponent<{
 }>('Building');
 
 /**
- * A goods store attached to a building: goodType -> amount, with per-good capacity from the
- * building type. DETERMINISM: never iterate this Map directly for game decisions - use
- * stockpileEntries() which returns ascending-goodType order. Raw Map iteration is insertion-order
- * (history-dependent) and is a determinism footgun (see AGENTS.md anti-patterns).
+ * A goods store attached to a building: goodType -> amount, with per-good capacity from the building type.
+ * Never iterate this Map for a game decision - raw Map iteration is insertion-order and so
+ * history-dependent; use {@link stockpileEntries}.
  */
 export const Stockpile = defineComponent<{ amounts: Map<number, number> }>('Stockpile');
 
-/** Canonical (ascending goodType) view of a stockpile. Always use this for game logic. */
+/** Canonical ascending-goodType view of a stockpile - the only order a game decision may read. */
 export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[number, number]> {
   return [...s.amounts.entries()].sort((a, b) => a[0] - b[0]);
 }
@@ -26,9 +25,8 @@ export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[nu
  *  and upgrade costs all share. */
 export type GoodsLine = { readonly goodType: number; readonly amount: number };
 
-/** Whether `amounts` holds every line of `cost` in full. Reads the plain Map (a missing good counts as
- *  0); accepts an absent stockpile (`undefined`) as holding nothing. The presence gate the production
- *  and construction systems check before consuming a cost. */
+/** Whether `amounts` holds every line of `cost` in full: a missing good counts as 0, and an absent
+ *  stockpile holds nothing. The gate to check before consuming a cost. */
 export function holdsAll(amounts: Map<number, number> | undefined, cost: readonly GoodsLine[]): boolean {
   for (const line of cost) {
     if ((amounts?.get(line.goodType) ?? 0) < line.amount) return false;
@@ -37,18 +35,16 @@ export function holdsAll(amounts: Map<number, number> | undefined, cost: readonl
 }
 
 /**
- * Write one good's amount into `store`'s live stockpile. Every in-place system write to an
- * already-added {@link Stockpile} goes through here - a bare `amounts.set` reaches no change channel
- * (only creation-time writes before `world.add` may stay raw; the add itself logs those).
+ * Write one good's amount into `store`'s live stockpile. Every in-place write to an already-added
+ * {@link Stockpile} goes through here - a bare `amounts.set` reaches no change channel. Only
+ * creation-time writes before `world.add` may stay raw, since the add itself logs those.
  */
 export function setStockAmount(world: World, store: Entity, goodType: number, amount: number): void {
   world.write(store, Stockpile, (s) => s.amounts.set(goodType, amount));
 }
 
-/** Subtract every line of `cost` from `store`'s stockpile IN PLACE. The caller must have verified
- *  {@link holdsAll} first, so no count goes negative; a good that hits zero is left as a 0 entry - the
- *  canonical Map tolerates it, and the stockpile is never iterated for a decision, so a stale 0 is
- *  harmless. */
+/** Subtract every line of `cost` from `store`'s stockpile in place. The caller must have verified
+ *  {@link holdsAll} first, so no count goes negative; a good that hits zero is left as a 0 entry. */
 export function consumeGoods(world: World, store: Entity, cost: readonly GoodsLine[]): void {
   const amounts = world.get(store, Stockpile).amounts;
   for (const line of cost) {
@@ -57,55 +53,35 @@ export function consumeGoods(world: World, store: Entity, cost: readonly GoodsLi
 }
 
 /**
- * Marks a {@link Building} that is a **construction site** - a placed foundation a builder still has to
- * raise, faithful to the original's "place the grey outline, then settlers build it up" flow (you don't
- * drop a finished house; you drop its footprint, which already collides, and builders carry material +
- * hammer it up). It rides ON TOP of the plain `Building + Stockpile` shape (the site's stockpile is the
- * delivered-material hold), and it is the **separate optional component** the codebase uses for opt-in
- * behaviour ({@link Vehicle}, `Health`, {@link import('./settler.js').JobAssignment}): a building placed
- * already-built (the golden / vertical-slice path) never carries it, so its hash is untouched and the
- * ConstructionSystem's build branch stays inert on those.
+ * Marks a {@link Building} that is a construction site - a placed foundation that already collides while
+ * builders carry material and hammer it up. It rides on top of the plain `Building + Stockpile` shape,
+ * whose stockpile is the delivered-material hold, and is removed the instant construction finishes, so a
+ * finished building is a plain `Building` again.
  *
- * `labor` is the builder-WORK progress, 0..ONE - the fraction of hammering done, advanced by the
- * `construct` atomic (a swing is one hammer STRIKE: `+ONE/(totalUnits·strikesPerUnit)`, a small step, so a
- * site rises over many strikes whose count scales with its size - see `advanceConstructionLabor`). It is
- * DISTINCT from delivered material: the visible `Building.built` the render/HP read is
- * `min(labor, deliveredFraction)` - the two independent gates the ConstructionSystem ANDs, so a site
- * only rises as fast as BOTH the builder hammers AND material arrives (deliver 3 of 10 units → build
- * caps at 30% until more lands; hammer 0 swings → build stays at the grey foundation however much
- * material sits on it). The component is REMOVED the instant construction finishes (`built = ONE`), so a
- * finished building is a plain `Building` again - exactly the {@link import('./settler.js').Age} grow-up
- * pattern. Determinism: a single fixed-point counter, advanced by a fixed per-swing quantum in the
- * AtomicSystem's deterministic order.
+ * `labor` is builder-work progress in 0..ONE, distinct from delivered material: the visible
+ * `Building.built` is `min(labor, deliveredFraction)`, so a site rises only as fast as both the hammering
+ * and the arriving material allow.
  *
- * source-basis: the site-then-build flow and the material cost (`construction`, extracted
- * `LogicConstructionGoods`) are faithful; the builder-driven *pace* (several strikes per unit) is our named
- * approximation - the original has no sim oracle for construction speed (see AGENTS.md).
+ * Source basis: the site-then-build flow and the material cost (`construction`, extracted
+ * `LogicConstructionGoods`) are faithful; the builder-driven pace is a named approximation, since the
+ * original offers no oracle for construction speed.
  */
 export const UnderConstruction = defineComponent<{ labor: Fixed }>('UnderConstruction');
 
 /**
- * Marks a {@link Building} that is being **upgraded** into its type's `upgradeTarget` level. Rides
- * BESIDE {@link UnderConstruction} (the upgrade command re-opens the building as a construction site:
- * `built` drops to 0, suspending production/housing, and builders + carriers serve it through the same
- * site machinery), and its presence switches the site's bill to the target tier's own `construction` -
- * the level DIFFERENCE, not the cumulative from-scratch bill (`constructionBillOf`).
+ * Marks a {@link Building} being upgraded into its type's `upgradeTarget` level. It rides beside
+ * {@link UnderConstruction} - the upgrade re-opens the building as a construction site, dropping `built`
+ * to 0 - and its presence switches the site's bill to the target tier's own `construction`, the level
+ * difference rather than the cumulative from-scratch bill.
  *
- * `savedStock` is the building's pre-upgrade inventory, stashed so the emptied {@link Stockpile} can
- * serve as the site's fresh construction hold (the original gives an upgrading building a separate
- * build store) and merged back into the stockpile when the upgrade completes. Bill goods the building
- * already held are NOT stashed: they seed the hold (counting toward the upgrade, so a settlement whose
- * only matching goods sit inside the upgrading building cannot stall), and `seeded` records those
- * amounts so a cancel returns them to the inventory instead of losing them with the hold. Workers'
- * {@link import('../settler.js').JobAssignment}s and residents' {@link import('../family.js').Residence}s
- * are deliberately NOT cleared - occupants walk out for the build and return to the finished tier.
+ * `savedStock` is the pre-upgrade inventory, stashed so the emptied {@link Stockpile} can serve as the
+ * site's build hold and merged back when the upgrade completes. Bill goods the building already held
+ * instead seed the hold, and `seeded` records those amounts so a cancel returns them to the inventory.
+ * Workers' job assignments and residents' homes are deliberately not cleared.
  *
- * source-basis: the become-a-site-again flow, the separate build store, the difference-only cost, and
- * kept occupants are observed original behavior; the builder-driven pace is the same named
- * approximation as from-scratch construction. Own goods counting toward the upgrade is a named
- * approximation (the original's handling of pre-owned bill goods is unobserved; freezing them can
- * deadlock the economy). Determinism: the stash is written/merged only in the
- * CommandSystem/ConstructionSystem and hashes like any component Map (canonical sorted entries).
+ * Source basis: the become-a-site-again flow, the separate build store, the difference-only cost, and kept
+ * occupants are observed. Approximations: the builder-driven pace, and own goods counting toward the
+ * upgrade, since freezing them can deadlock the economy.
  */
 export const Upgrading = defineComponent<{
   savedStock: Map<number, number>;
@@ -113,18 +89,10 @@ export const Upgrading = defineComponent<{
 }>('Upgrading');
 
 /**
- * A **placed vehicle hull** - the "boats as mobile stores" entity the historical plan phase-4 Sea/Northland
- * item names: a ship put on the map as a movable stockpile rather than a static building. `vehicleType`
- * cross-references the `VehicleType.typeId` (its `stockSlots` hold capacity, `cargoGoods`
- * load-filter, `passengerSlots`), and `tribe` is its owner - the same `(type, tribe)` shape a
- * {@link Building} carries, so a hull hashes and is queried exactly like a building. A hull is the
- * boat analogue of `Building`: it owns a {@link Stockpile} (the mobile store) the same way a
- * headquarters does, but it can later move and ferry passengers (embark/disembark atomics - a deferred
- * slice). Only an **unlocked** ship type is ever stamped (the CommandSystem `placeBoat` handler gates
- * on `tribeShipsUnlocked`), so a `Vehicle` always references a ship the owning tribe may field.
- *
- * Determinism: plain integer `vehicleType`/`tribe` (no fixed-point - they are cross-reference ids, not
- * positions), so it hashes like every other component. The golden/vertical-slice carries no hull, so
- * adding this component leaves the golden hash untouched (the separate-component pattern).
+ * A placed vehicle hull - a ship put on the map as a movable stockpile rather than a static building. It
+ * owns a {@link Stockpile} the way a headquarters does. `vehicleType` cross-references `VehicleType.typeId`
+ * (its `stockSlots` hold capacity, `cargoGoods` load-filter, `passengerSlots`) and `tribe` is its owner, the
+ * same `(type, tribe)` shape a {@link Building} carries, so a hull hashes and is queried exactly like one.
+ * Only an unlocked ship type is ever stamped, so a `Vehicle` always references a ship its tribe may field.
  */
 export const Vehicle = defineComponent<{ vehicleType: number; tribe: number }>('Vehicle');

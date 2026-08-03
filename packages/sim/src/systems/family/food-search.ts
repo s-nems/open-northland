@@ -17,27 +17,20 @@ import { interactionCell } from '../settlers/targets/index.js';
 import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 /**
- * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to
- * before falling back to the linear scan. A pure performance knob (the fallback reproduces the exact
- * linear winner), mirroring the interaction-cell index's bound - not a decoded distance (named
- * approximation).
+ * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to before
+ * falling back to the linear scan. A performance knob, not a decoded distance: the fallback reproduces the
+ * exact linear winner.
  */
 const RING_MAX_RADIUS = 48;
 
 /**
  * A per-tick index over the stockpiles a family may draw food from: any store or ground pile holding a
- * unit that reaches her back as an edible ({@link lowestStockedFood}) EXCEPT a home (a larder feeds
- * only its own residents). Both family food-seekers - the
- * child-order haul stage and the housewife hoard rung - run per woman per tick, so the whole-world
- * `Stockpile+Position` scan lives HERE, once per tick, and each seeker pays a bounded ring search
- * (`NodeBuckets.nearest`); a world with no external food at all answers every seeker in O(1).
+ * unit that reaches her back as an edible, except a home, whose larder feeds only its own residents. The
+ * whole-world `Stockpile+Position` scan happens once per tick here, and each seeker pays a bounded ring
+ * search over it.
  *
- * The winner is byte-identical to the linear scan this replaces: distance is half-cell Manhattan from
- * the store's own position node, tie-broken by ascending entity id - exactly `NodeBuckets.nearest`'s
- * documented order - and the out-of-ring fallback reruns the original loop over the (pre-filtered)
- * candidates. Candidacy is snapshotted lazily on first query; that is exact within a pass, because
- * stock only mutates on atomic COMPLETION (a later system phase), never while a planner/family pass
- * issues actions.
+ * Candidacy is snapshotted lazily on first query, which is exact within a pass because stock mutates only
+ * on atomic completion, never while a planner or family pass issues actions.
  */
 export class ExternalFoodIndex {
   private candidates: readonly Entity[] | undefined;
@@ -50,17 +43,10 @@ export class ExternalFoodIndex {
   ) {}
 
   /**
-   * The nearest external food source to `from`, or null when none exists anywhere. `gate` is the
-   * seeker's signpost confinement ({@link SpatialGate}, null when unlimited): a source whose own node
-   * lies outside the allowed area is invisible to her - the family searches obey the same "local
-   * circle plus the reachable guidepost network" rule every economy search does. `avoid` is her
-   * failed-goal veto ({@link unreachableGoalVeto}), probed at the source's interaction cell - the node
-   * `fetchFrom` actually walks - so a re-plan reaches the second source instead of the doomed one.
-   *
-   * `owner` is the seeker's player: she hauls food only out of her own side's stores, never an enemy
-   * larder ({@link ownersCompatible}) - the same-side rule the store scans apply, on this family fetch
-   * path too. The shared candidate list is owner-blind (built once for every family); the per-seeker
-   * `accept` is where her side is checked.
+   * The nearest external food source to `from`, or null when none exists anywhere. `gate` is the seeker's
+   * signpost confinement (null when unlimited), `avoid` her failed-goal veto, probed at the source's
+   * interaction cell, the node `fetchFrom` walks to. `owner` is her player: she hauls only out of her own
+   * side's stores. The shared candidate list is owner-blind, so her side is checked per seeker.
    */
   nearest(
     from: { hx: number; hy: number },
@@ -83,13 +69,11 @@ export class ExternalFoodIndex {
     const store = hit?.entity ?? this.linearNearest(from, accept);
     if (store === null) return null;
     const goodType = lowestStockedFood(this.world, this.ctx, store);
-    // Unreachable while the candidacy invariant above holds (stock mutates only on atomic completion);
-    // a null here would mean a mid-pass mutation drained the winner - fail the query, don't guess.
+    // A null here would mean a mid-pass mutation drained the winner: fail the query rather than guess.
     return goodType === null ? null : { store, goodType };
   }
 
-  /** Whether the seeker's `avoid` veto retires this source's interaction cell (its own stand exempt).
-   *  With no terrain there is no walk (fetchFrom lifts in place), so nothing is ever retired. */
+  /** Whether the seeker's `avoid` veto retires this source's interaction cell, her own stand exempt. */
   private standRetired(
     e: Entity,
     from: { hx: number; hy: number },
@@ -116,8 +100,8 @@ export class ExternalFoodIndex {
     return contentIndex(this.ctx.content).buildings.get(building.buildingType)?.kind === 'home';
   }
 
-  /** The exact pre-index linear pick - strictly-nearer over the ascending-id candidates - covering
-   *  sources beyond {@link RING_MAX_RADIUS} (anything within it would have won the ring). */
+  /** The strictly-nearer pick over the ascending-id candidates, covering sources beyond
+   *  {@link RING_MAX_RADIUS}. */
   private linearNearest(from: { hx: number; hy: number }, accept: (e: Entity) => boolean): Entity | null {
     let best: { store: Entity; dist: number } | null = null;
     for (const e of this.candidates ?? []) {
@@ -132,11 +116,9 @@ export class ExternalFoodIndex {
 }
 
 /**
- * The lowest stocked good (canonical order) a family may take away from `store` as food, or null when
- * it holds none. The test is on the good's edible form ({@link exportedGoodForm}): a stocked dish
- * counts wherever it sits, because the family's lift turns it into the edible (`carriedGoodForm` owns
- * the rule). The returned type is the RAW one to lift; the pickup effect performs the same conversion
- * the search assumed.
+ * The lowest stocked good (canonical order) a family may take away from `store` as food, or null when it
+ * holds none. Tested on the good's edible form, since the family's lift performs that conversion; the
+ * returned type is the raw one to lift.
  */
 function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
   for (const [goodType, amount] of stockpileEntries(world.get(store, Stockpile))) {

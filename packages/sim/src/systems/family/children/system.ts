@@ -19,10 +19,8 @@ import { type ChildOrderPass, driveOrder } from './order.js';
 
 /**
  * The child-making half of the FamilySystem: drive every married woman's standing {@link ChildOrder} one
- * tick through its stages (`./order.ts`), then strip whatever this tick's orders did not re-claim.
- *
- * Source basis: the food threshold, the ordered sex, and the one-child limit are user-specified design
- * (the original gates conception engine-internally; homes are its only food-stocking residences).
+ * tick through its stages, then strip whatever this tick's orders did not re-claim. Authored: the food
+ * threshold, the ordered sex, and the one-child limit; the original gates conception engine-internally.
  */
 export function driveChildOrders(world: World, ctx: SystemContext, terrain: TerrainGraph | undefined): void {
   cancelAbandonedSessions(world);
@@ -33,9 +31,8 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
     externalFood: new ExternalFoodIndex(world, ctx, terrain),
   };
   for (const e of canonicalById(world.query(ChildOrder, Settler, Position))) {
-    // A mother running for cover keeps her standing order but not her errand: the order resumes when
-    // the alarm drops, and until then nothing walks her out of the shelter (its duty hold is dropped
-    // with every other unclaimed one below).
+    // A sheltering mother keeps her standing order but not her errand; nothing walks her out of cover
+    // until the alarm drops.
     if (world.has(e, Sheltering)) continue;
     driveOrder(world, ctx, terrain, e, pass);
   }
@@ -48,10 +45,9 @@ export function driveChildOrders(world: World, ctx: SystemContext, terrain: Terr
 }
 
 /**
- * Cancel every {@link MakingLove} session whose owning couple no longer carries it out: the wife died,
- * dropped her order, moved home, or either parent stepped (or was pulled) outside. Central, and ahead of
- * any order, so an abandoned session can never linger and block the home for its other resident couples;
- * the food it consumed stays spent.
+ * Cancel every {@link MakingLove} session its couple no longer carries out. Central and ahead of any
+ * order, so an abandoned session cannot linger and block the home for its other resident couples; the
+ * food it consumed stays spent.
  */
 function cancelAbandonedSessions(world: World): void {
   for (const home of canonicalById(world.query(MakingLove))) {

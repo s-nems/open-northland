@@ -1,9 +1,8 @@
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
- * The assistant's six production counters - the two `extra*` kinds queue births, the four `train*`
- * kinds barracks drills. Dispatch order and priorities live with the dispatcher
- * (`systems/assistant/`); arming with `systems/settlers/planner/recruit-arming.ts`.
+ * The assistant's production counters: the `extra*` kinds queue births, the `train*` kinds barracks drills.
+ * Dispatch order and priorities live with the dispatcher in `systems/assistant/`.
  */
 export const ASSISTANT_COUNTER_KINDS = [
   'extraWomen',
@@ -25,13 +24,13 @@ export const INFINITE_COUNTER_KINDS: ReadonlySet<AssistantCounterKind> = new Set
   'trainBow',
 ]);
 
-/** Counter bounds shared with the chest window's steppers. The cap is feature-spec balance. */
+/** Counter bounds shared with the chest window's steppers. The cap is authored balance. */
 export const ASSISTANT_COUNTER_MIN = 0;
 export const ASSISTANT_COUNTER_MAX = 100;
 
 /**
- * One counter's state: how many units remain to produce, and whether the queue never drains
- * (`infinite` - the value is retained so switching infinity off restores it).
+ * One counter's state: how many units remain to produce, and whether the queue never drains. The value is
+ * retained while `infinite`, so switching infinity off restores it.
  */
 export interface AssistantCounterState {
   value: number;
@@ -41,13 +40,10 @@ export interface AssistantCounterState {
 export type AssistantCounterValues = Record<AssistantCounterKind, AssistantCounterState>;
 
 /**
- * The per-player assistant grant list - the wearable good types the settlement assistant (the chest
- * window's "give everyone ..." switches) may hand out to settlers with a free slot. At most one
- * carrier entity exists per player (the rules-singleton convention; the `setAssistantGrant` handler
- * in `systems/orders/assistant.ts` owns the carrier lifecycle), so the state hashes and replays
- * like any component, and a command stream that never grants anything leaves every existing golden
- * hash untouched. Which goods a switch maps to is the app's content decision - the sim only reads
- * the good's `equip` class.
+ * The per-player assistant grant list - the wearable good types the settlement assistant may hand out to
+ * settlers with a free slot. At most one carrier entity exists per player, whose lifecycle
+ * `systems/orders/assistant.ts` owns, so the state hashes and replays like any component. Which goods a
+ * switch maps to is the app's content decision; the sim reads only the good's `equip` class.
  */
 export const AssistantGrants = defineComponent<{
   /** The player slot the grants belong to (`[0, MAX_PLAYERS)`). */
@@ -56,8 +52,8 @@ export const AssistantGrants = defineComponent<{
   goods: readonly number[];
 }>('AssistantGrants');
 
-/** The {@link AssistantGrants} carrier for `player`, or null when nothing is granted. Canonical:
- *  the lowest-id carrier wins should more than one ever exist (the rules-singleton convention). */
+/** The {@link AssistantGrants} carrier for `player`, or null when nothing is granted. The lowest-id
+ *  carrier wins should more than one ever exist. */
 export function assistantGrantsEntity(world: World, player: number): Entity | null {
   let best: Entity | null = null;
   for (const e of world.query(AssistantGrants)) {
@@ -76,11 +72,9 @@ export function assistantGrantedGoods(world: World, player: number): readonly nu
 }
 
 /**
- * The per-player assistant counter block ({@link AssistantCounterValues}) - the sibling carrier of
- * {@link AssistantGrants} with the same rules-singleton lifecycle: at most one per player, created on
- * the first non-default write, destroyed when every counter returns to zero-and-finite
- * (`systems/orders/assistant.ts` owns the lifecycle), so a world that never touches the counters keeps
- * every existing golden hash.
+ * The per-player assistant counter block - the sibling carrier of {@link AssistantGrants} with the same
+ * lifecycle: at most one per player, created on the first non-default write and destroyed when every
+ * counter returns to zero-and-finite.
  */
 export const AssistantCounters = defineComponent<{
   /** The player slot the counters belong to (`[0, MAX_PLAYERS)`). */
@@ -108,8 +102,8 @@ export function assistantCountersAtDefault(counters: AssistantCounterValues): bo
   });
 }
 
-/** The {@link AssistantCounters} carrier for `player`, or null when every counter is default.
- *  Canonical: the lowest-id carrier wins should more than one ever exist. */
+/** The {@link AssistantCounters} carrier for `player`, or null when every counter is default. The
+ *  lowest-id carrier wins should more than one ever exist. */
 export function assistantCountersEntity(world: World, player: number): Entity | null {
   let best: Entity | null = null;
   for (const e of world.query(AssistantCounters)) {
@@ -120,9 +114,8 @@ export function assistantCountersEntity(world: World, player: number): Entity | 
 }
 
 /**
- * Pay one produced unit off `player`'s `kind` counter - called at the moment the queued product
- * exists (a birth, an enlistment, a landed weapon). An infinite counter never drains; a counter
- * already at zero (the player reset it while orders were in flight) stays there.
+ * Pay one produced unit off `player`'s `kind` counter, at the moment the queued product exists. An
+ * infinite counter never drains, and a counter already at zero stays there.
  */
 export function consumeAssistantCounter(
   world: World,
@@ -140,16 +133,13 @@ export function consumeAssistantCounter(
 }
 
 /**
- * The assistant's standing booking beside a woman's `ChildOrder` - marks the order as
- * counter-funded, so the birth pays the right counter and player/AI `makeChild` orders never do.
- * Removed at the birth, by a superseding player `makeChild`, or by the assistant's stale sweep when
- * the underlying order is gone.
+ * The assistant's standing booking beside a woman's `ChildOrder`, marking the order as counter-funded so
+ * the birth pays the right counter and player or AI `makeChild` orders never do. Removed at the birth, by
+ * a superseding player `makeChild`, or by the assistant's stale sweep.
  */
 export const AssistantChildOrder = defineComponent<{ sex: 'female' | 'male' }>('AssistantChildOrder');
 
-/** The training-counter kinds a recruit booking can carry (the dispatcher's queue set - deriving the
- *  type from this list keeps a new intent and its dispatch coverage one edit); the three class kinds
- *  also arm. */
+/** The training-counter kinds a recruit booking can carry; the three class kinds also arm the recruit. */
 export const ASSISTANT_RECRUIT_INTENTS = [
   'trainSoldiers',
   'trainSword',
@@ -159,10 +149,9 @@ export const ASSISTANT_RECRUIT_INTENTS = [
 export type AssistantRecruitIntent = (typeof ASSISTANT_RECRUIT_INTENTS)[number];
 
 /**
- * The assistant's training booking on a dispatched recruit: which `train*` counter funds it, and
- * whether its weapon has landed (`armed` - set with the class transform, when the counter is paid;
- * the armor errand may still follow). `trainSoldiers` recruits are done (and unmarked) at
- * enlistment; class recruits keep the mark until armed and armored (or armor proves unavailable).
+ * The assistant's training booking on a dispatched recruit: which `train*` counter funds it, and whether
+ * its weapon has landed. A `trainSoldiers` recruit is unmarked at enlistment; a class recruit keeps the
+ * mark until armed and armored, or until armor proves unavailable.
  */
 export const AssistantRecruit = defineComponent<{
   intent: AssistantRecruitIntent;

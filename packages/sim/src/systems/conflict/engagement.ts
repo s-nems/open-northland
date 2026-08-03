@@ -17,84 +17,48 @@ import type { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
-// Re-exported so the combat modules keep one import site for the stance ladder; the read itself is a
-// plain view over Stance + the job default (readviews/stances.ts).
+// Re-exported so the combat modules keep one import site for the stance ladder.
 export { stanceMode };
 
-// Target acquisition: which enemy an owned combatant may auto-engage this tick, resolved from its
-// military stance, and the near/far reach band + DEFEND anchor leash the chase respects. Internal to
-// conflict/; {@link combatSystem} composes this with ./chase.ts (the walk-into-melee half).
-
 /**
- * DEFEND stance - how far (Manhattan half-cell nodes) from its anchor a defender auto-acquires an enemy: it
- * engages only threats inside this radius of the node the DEFEND stance was set on, ignoring anything beyond.
- * Approximated - the original's exact defend radius is unreadable (source basis "Combat stances"); doubled with
- * the half-cell migration (same on-screen radius as the old 4-cell value).
+ * DEFEND stance - how far (Manhattan half-cell nodes) from its anchor a defender auto-acquires an enemy.
+ * Approximated (source basis "Combat stances").
  */
 export const DEFEND_RADIUS_NODES = 8;
 
 /**
- * DEFEND stance - the leash: the farthest (Manhattan nodes) from its anchor a defender will step to strike an
- * in-radius enemy. Kept a little above {@link DEFEND_RADIUS_NODES} so a melee defender can walk up to a threat
- * at the radius edge, but never chases far - a target reachable only by breaking the leash is left alone and the
- * defender returns to its anchor. Approximated (source basis).
+ * DEFEND stance - the farthest (Manhattan nodes) from its anchor a defender steps to strike an in-radius
+ * enemy; a target reachable only past it is left alone. Approximated (source basis "Combat stances").
  */
 export const DEFEND_LEASH_NODES = 12;
 
 /**
- * How many of the nearest enemies a GARRISON fans its fire across. Every settler manning one building
- * stands on the same node, so without this each would resolve the same single nearest man and a full tower
- * would empty itself into one raider while the rest of the warband walked up untouched.
- *
- * APPROXIMATED (user decision): no readable record carries a fire-distribution rule. Kept small on purpose
- * - a tower still concentrates, just on a handful of the closest attackers rather than on one.
+ * How many of the nearest enemies a GARRISON fans its fire across: every settler manning one building stands
+ * on the same node, so without this a full tower would empty itself into one raider. Approximation - no
+ * readable record carries a fire-distribution rule.
  */
 export const GARRISON_SPREAD_TARGETS = 4;
 
-/**
- * What a combatant acts under this tick - derived together in one place ({@link engageCombatant}) and passed
- * whole to {@link engageSpec} and {@link chase}, so the three values that only ever travel together cannot be
- * transposed at a call site.
- */
 export interface CombatantStance {
-  /** Whether the unit has an {@link Owner} - an owned unit advances on a spotted enemy; an unowned one
-   *  has no fog and carries no {@link Stance} (a hostile animal still ambushes within its aggro radius;
-   *  an unowned civ swings in place). */
+  /** Whether the unit has an {@link Owner}; an unowned combatant has no fog and carries no {@link Stance}. */
   readonly owned: boolean;
   /** Whether an explicit {@link AttackOrder} is in flight - it overrides `mode`'s auto-behavior. */
   readonly ordered: boolean;
-  /** The {@link MILITARY_MODE} the unit acts under ({@link stanceMode}), or null for an unowned combatant. */
+  /** The {@link MILITARY_MODE} the unit acts under, or null for an unowned combatant. */
   readonly mode: MilitaryMode | null;
-  /** The tower the unit is manning ({@link import('./tower-post.js').towerPostFor}), or null. A garrison
-   *  shoots from cover and never leaves, so the post overrides whatever `mode` would otherwise do. */
+  /** The tower the unit is manning, or null. A garrison shoots from cover and never leaves, so the post
+   *  overrides whatever `mode` would otherwise do. */
   readonly post: Entity | null;
-  /** The defence-mode building a CIVILIAN mans instead ({@link
-   *  import('../defence/index.js').mannedShelter}) and its `seat` in that garrison ({@link
-   *  import('../defence/index.js').garrisonSeats}), else null. It shoots the house bow from cover within
-   *  the weapon's own band - measured from the BUILDING, which is also where the arrow leaves from - and
-   *  neither flees nor steps out to chase, whatever its stance says. */
+  /** The defence-mode building a CIVILIAN mans instead and its `seat` in that garrison, else null. It
+   *  shoots the house bow from cover, measured from the building, and neither flees nor steps out to
+   *  chase, whatever its stance says. */
   readonly shelter: { readonly building: Entity; readonly seat: number } | null;
 }
 
 /**
- * How a combatant acquires a target this tick, resolved from its stance - the ring-search `accept` filter, the
- * near/far reach band (`minDist`/`searchRadius`), and the anchor leash the chase respects (a DEFEND
- * post, a hunter's ground).
- *  - **GARRISON** (manning a tower, whatever the stance) → general hostility inside the tower-boosted reach,
- *    and no advance at all.
- *  - **manning a shelter** (a civilian under an alarm) → the same, within the house bow's own reach: it
- *    shoots from inside and never steps out, whatever its stance or a live attack order would say.
- *  - **DEFEND** (auto, not ordered) → accept only hostile targets within {@link DEFEND_RADIUS_NODES} of the
- *    anchor, spot within `radius + leash`, and carry the anchor+leash so {@link chase} never pursues past it.
- *  - **IGNORE hunter** → the hunting policy ({@link hunterEngageSpec}, ./hunting/):
- *    huntable prey only, bounded to the work-flag / workplace ground with the flag as chase anchor,
- *    normal game before last-resort livestock and livestock refused outright while any stands in the
- *    wider probe, no new target while the ground holds carcass work, and the one animal it has drawn
- *    on kept as a `lock` until the kill.
- *  - **ATTACK / ordered / unowned** → general hostility ({@link isValidTarget}); an owned unit spots within its
- *    {@link SIGHT_RADIUS_NODES} (it advances), a hostile wild animal within {@link ANIMAL_AGGRO_RADIUS_NODES}
- *    (the ambush lunge), an unowned civ only within weapon reach (swing-in-place).
- * The `minDist` is the weapon's near reach (a ranged weapon's dead zone) in every case.
+ * How a combatant acquires a target this tick, resolved from its stance: the ring-search `accept` filter, the
+ * near/far reach band (`minDist`/`searchRadius`), and the anchor leash the chase respects (a DEFEND post, a
+ * hunter's ground).
  */
 export function engageSpec(
   world: World,
@@ -107,38 +71,31 @@ export function engageSpec(
   weapon: { minRange: number; maxRange: number },
 ): EngageSpec {
   const { owned, ordered } = stance;
-  // Fog gate (full sim enforcement, user decision): an owned unit auto-acquires only targets its player
-  // currently sees - an enemy in the fog is invisible to the drive. Composed into every auto-acquire accept
-  // below; the explicit-AttackOrder path (resolveTarget's direct isValidTarget) stays ungated - an ordered
-  // chase follows its target into fog, and the UI can only order onto a drawn (visible) unit anyway. Unowned
-  // combatants (wildlife) have no fog.
+  // Fog gate: an owned unit auto-acquires only targets its player currently sees. The explicit-AttackOrder
+  // path stays ungated - an ordered chase follows its target into fog. Unowned combatants have no fog.
   const viewer = owned ? world.tryGet(e, Owner) : undefined;
   const seesTarget = (t: Entity): boolean =>
     viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);
   const generalAccept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && seesTarget(t);
-  // The default deprioritized tier: plain buildings fall behind units and high-value structures. The
-  // hunter overrides it with the last-resort-livestock tier below.
+  // The default deprioritized tier: plain buildings fall behind units and high-value structures.
   const lowPriorityBuildings = (t: Entity): boolean => isLowPriorityBuildingTarget(world, ctx, t);
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
-  // A hunter is NEVER presence-gated, in any stance: its prey filter admits the passive wildlife the
-  // grid discounts (see {@link HostilePresence}). Hunters are a handful per map - the scan is cheap.
+  // A hunter is never presence-gated, in any stance: its prey filter admits the passive wildlife the
+  // presence grid discounts.
   const player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer?.player ?? null);
 
-  // A GARRISON outranks every stance: it shoots whatever hostile comes inside the tower's reach and never
-  // steps out after one, so its search band IS that reach (`weapon` already carries the tower bonus - see
-  // ./tower-post.ts) rather than the advance sight radius. A sheltering civilian reads the same way, on
-  // the house bow's own band: capped at reach because it never advances, and anchor-less because a DEFEND
-  // post's walk-back would march it out of the building it is holding.
+  // A garrison outranks every stance: its search band is the tower-boosted reach (`weapon` already carries
+  // the bonus), never the advance sight radius. A sheltering civilian reads the same way, anchor-less
+  // because a DEFEND post's walk-back would march it out of the building it is holding.
   if (stance.post !== null || stance.shelter !== null) {
     return {
       accept: generalAccept,
       minDist,
       searchRadius: weapon.maxRange,
       player,
-      // Only the sheltering crowd fans its fire: a seat number exists for the claimants, and a tower's
-      // POSTED archers still stack on the nearest man (`docs/tickets/sim/garrison-post-fire-spread.md`).
+      // Only the sheltering crowd fans its fire; a tower's posted archers still stack on the nearest man.
       ...(stance.shelter === null ? {} : { spread: stance.shelter.seat }),
       lowPriority: lowPriorityBuildings,
       lock: null,
@@ -167,14 +124,11 @@ export function engageSpec(
     stance.mode === MILITARY_MODE.IGNORE &&
     isHunterJob(ctx.content, attacker.jobType)
   ) {
-    // The hunting policy (where a hunter hunts, the prey tiers, the livestock gate) lives in
-    // ./hunting/; this dispatch only routes the stance to it.
     return hunterEngageSpec(world, ctx, terrain, index, e, attacker.jobType, seesTarget, minDist, sight);
   }
 
-  // An unowned HOSTILE ANIMAL (the only unowned animal that reaches here - a passive one disengaged at
-  // the attacker-eligibility gate) advances like a soldier, within its shorter ambush radius. Any other
-  // unowned combatant (a scenario civ) keeps the swing-in-place read: search capped at weapon reach.
+  // An unowned hostile animal advances like a soldier within its shorter ambush radius; any other unowned
+  // combatant (a scenario civ) swings in place, its search capped at weapon reach.
   const animalSeeker = !owned && isAnimalTribe(ctx.content, attacker.tribe);
   return {
     accept: generalAccept,
@@ -192,7 +146,6 @@ export function engageSpec(
   };
 }
 
-/** How a combatant acquires + reaches a target this tick, derived from its stance ({@link engageSpec}). */
 export interface EngageSpec {
   /** The ring-search per-candidate hostility/predation filter. */
   readonly accept: (t: Entity) => boolean;
@@ -200,55 +153,39 @@ export interface EngageSpec {
   readonly minDist: number;
   /** Far reach - how far the unit spots a target to swing at / advance on. */
   readonly searchRadius: number;
-  /** The seeker's player for the {@link HostilePresence} early-out; null when the seeker must never
-   *  skip the search - an unowned one (its valid targets can share its "unowned" presence class) or
-   *  a hunter in any stance (its owner-blind prey filter admits discounted passive wildlife). */
+  /** The seeker's player for the {@link HostilePresence} early-out; null when the seeker must never skip
+   *  the search - an unowned one, or a hunter in any stance. */
   readonly player: number | null;
-  /** A hostile wild animal seeking - gates on {@link HostilePresence.civsWithin} instead (its accept
-   *  admits only civilization settlers). */
+  /** A hostile wild animal seeking - gates on {@link HostilePresence.civsWithin} instead. */
   readonly animalSeeker?: boolean;
   /** This seeker's seat in the firing line it shares a node with - its offset into the nearest
-   *  {@link GARRISON_SPREAD_TARGETS} rather than always the nearest. Absent ⇒ take the nearest. */
+   *  {@link GARRISON_SPREAD_TARGETS}. Absent means take the nearest. */
   readonly spread?: number;
-  /** The deprioritized tier among accepted targets - searched only when the primary tier finds nothing
-   *  in sight: plain buildings for a soldier's stances, last-resort livestock for the hunter. It splits
-   *  RAW ring-search candidates: {@link resolveTarget} tests it before {@link EngageSpec.accept}, so it
-   *  must stay total and pure over any indexed entity - a friendly unit, an own building, a carcass. */
+  /** The deprioritized tier among accepted targets, searched only when the primary tier finds nothing in
+   *  sight. It splits RAW ring-search candidates ahead of {@link EngageSpec.accept}, so it must stay total
+   *  and pure over any indexed entity - a friendly unit, an own building, a carcass. */
   readonly lowPriority: (t: Entity) => boolean;
-  /** Target commitment: non-null for a stance that HOLDS one target across ticks instead of re-acquiring
-   *  the nearest candidate (the hunter's prey lock; the soldier stances re-acquire). `target` is the live
-   *  hold, null when nothing is committed yet - {@link holdPrey} commits whatever this tick resolves. */
+  /** Target commitment: non-null for a stance that holds one target across ticks instead of re-acquiring
+   *  the nearest candidate. `target` is the live hold, null when nothing is committed yet. */
   readonly lock: { readonly target: Entity | null } | null;
-  /** Anchor leash: the chase never walks past `leash` of `anchorCell` (a DEFEND post, a hunter's
-   *  ground); null when the chase is unbounded. `hold` - with no target in sight, walk back to the
-   *  anchor and hold it (the DEFEND post duty); false hands the unit back to the economy instead (a
-   *  hunter's between-hunts time belongs to its carcass-harvest drive, not to standing a post). */
+  /** Anchor leash: the chase never walks past `leash` of `anchorCell`; null when the chase is unbounded.
+   *  `hold` walks the unit back to the anchor with no target in sight, false hands it back to the economy. */
   readonly defend: { readonly anchorCell: NodeId; readonly leash: number; readonly hold: boolean } | null;
 }
 
-/** The DEFEND anchor cell - the {@link Stance}'s captured `anchorCell` (the tile the stance was set on),
- *  falling back to the unit's own cell if it somehow carries none (a DEFEND stamped before it had a tile). */
+/** The DEFEND anchor cell - the {@link Stance}'s captured `anchorCell`, falling back to the unit's own
+ *  cell when it carries none. */
 function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const anchor = world.tryGet(e, Stance)?.anchorCell;
   return anchor ?? entityNode(world, terrain, e);
 }
 
 /**
- * The enemy this combatant fights this tick (with its Manhattan distance from `here`, so the caller
- * needn't recompute it), or null:
- *  - under an explicit {@link AttackOrder} → that focused `target`, chased regardless of sight, as long as
- *    it is a live, hostile target; a target that has died / become invalid drops the order and falls
- *    through to auto-engagement (so the unit re-acquires a nearby enemy rather than going idle);
- *  - under a live `spec.lock` (the hunter's committed prey) → that target, likewise ahead of any search;
- *  - otherwise → the nearest target the ring search finds within `[spec.minDist, spec.searchRadius]` that
- *    the stance's `spec.accept` filter admits, in TWO priority tiers split by `spec.lowPriority`: the
- *    deprioritized tier is searched only when the first pass finds nothing in sight. For the soldier
- *    stances that tier is the plain `'other'` building (the autofocus priority: HQ / towers / enemy
- *    units on par, other buildings only when none of those remain - user rule); for the hunter it is
- *    last-resort livestock (normal game always wins - user rule). General hostility for ATTACK/unowned
- *    and anchor-bounded DEFEND both admit an enemy building (a DEFEND guard autonomously batters a
- *    structure inside its radius - deliberate: a defensive post contests enemy construction on its
- *    ground); only an IGNORE hunter's prey filter never admits one - see {@link engageSpec}.
+ * The enemy this combatant fights this tick with its Manhattan distance from `here`, or null. An
+ * {@link AttackOrder} focus and a live `spec.lock` resolve ahead of the ring search - a focus that died
+ * drops the order and falls through to auto-engagement. Otherwise the nearest target `spec.accept` admits
+ * within `[spec.minDist, spec.searchRadius]`, with the `spec.lowPriority` tier searched only when the
+ * primary tier finds nothing in sight.
  */
 export function resolveTarget(
   world: World,
@@ -264,11 +201,8 @@ export function resolveTarget(
 ): { target: Entity; dist: number } | null {
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
-    // An ordered target is chased regardless of sight, so measure its real distance (the ring search's
-    // `searchRadius` cap does not apply); the swing/chase decision is on this distance. A building is
-    // measured at its nearest wall cell (combatTargetNode, through the tick's wall memo - N warriors
-    // ordered onto one building must not re-translate its footprint N times), the same node the chase
-    // walks to.
+    // An ordered target is chased regardless of sight, so measure its real distance, uncapped by the ring
+    // search's band. A building is measured at its nearest wall cell, the same node the chase walks to.
     if (isValidTarget(world, ctx, self, attacker, focus)) {
       return focusedOn(world, ctx, terrain, here, focus, bodyNodes);
     }
@@ -277,32 +211,28 @@ export function resolveTarget(
   const { x, y } = terrain.coordsOf(here);
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
-    // A commitment (re-validated by its spec builder) resolves ahead of the ring search, and ignores
-    // `minDist`: prey that closes inside the weapon's dead zone is backed off by the chase, not dropped.
-    // The TIER rule still outranks it, so a hold on the deprioritized tier yields to any primary-tier
-    // target in sight (normal game beats a held sheep).
+    // A commitment ignores `minDist`: prey that closes inside the weapon's dead zone is backed off by the
+    // chase, not dropped. The tier rule still outranks it, so a hold on the deprioritized tier yields to
+    // any primary-tier target in sight.
     const preempt = spec.lowPriority(locked)
       ? index.nearest(x, y, spec.minDist, spec.searchRadius, (t) => !spec.lowPriority(t) && spec.accept(t))
       : null;
     if (preempt !== null) return { target: preempt.entity, dist: preempt.distance };
     return focusedOn(world, ctx, terrain, here, locked, bodyNodes);
   }
-  // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant/building can be
-  // in the search band, both ring searches would return null - skip them (the standing-army flat cost).
+  // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant or building can
+  // be in the search band, both ring searches would return null.
   if (spec.player !== null && !presence.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
-  // The animal seeker's twin (see {@link HostilePresence}): no civ in the band proves both empty.
+  // The animal seeker's twin: no civ in the band proves both empty.
   if (spec.animalSeeker === true && !presence.civsWithin(x, y, spec.searchRadius)) return null;
-  // Tier 1: everything the stance admits that is NOT deprioritized (units + HQ + towers for a soldier,
-  // normal game for a hunter). A nearer tier-2 target never preempts a tier-1 target in sight.
+  // A nearer tier-2 target never preempts a tier-1 target in sight.
   const primary = pickInBand(index, spec, x, y, (t) => !spec.lowPriority(t));
   if (primary !== null) return primary;
-  // Tier 2 (fallback): the deprioritized targets, only when no tier-1 target was in sight.
   return pickInBand(index, spec, x, y, (t) => spec.lowPriority(t));
 }
 
 /** One priority tier's pick from the search band: the nearest target the stance admits, or the seat's own
- *  share of the nearest {@link GARRISON_SPREAD_TARGETS} for a seeker carrying a `spread`. The tier test runs
- *  ahead of the costlier `accept`, so `accept` never sees a candidate of the other tier. */
+ *  share of the nearest {@link GARRISON_SPREAD_TARGETS} for a seeker carrying a `spread`. */
 function pickInBand(
   index: NodeBuckets,
   spec: EngageSpec,
@@ -321,8 +251,8 @@ function pickInBand(
   return share === undefined ? null : { target: share.entity, dist: share.distance };
 }
 
-/** A focused target (an {@link AttackOrder}, a held prey lock) and its REAL distance from `here`, uncapped
- *  by the ring search's band - a building measured at the wall the chase closes on. */
+/** A focused target and its real distance from `here`, uncapped by the ring search's band - a building
+ *  measured at the wall the chase closes on. */
 function focusedOn(
   world: World,
   ctx: SystemContext,

@@ -2,21 +2,18 @@ import { Settler } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 
 interface AliveTribeJobsCache {
-  /** Settler MEMBERSHIP generation: a birth, a spawn, and a death all move through add/destroy. */
+  /** Settler membership generation: a birth, a spawn, and a death all move through add/destroy. */
   membershipGeneration: number;
-  /** Settler VALUE generation: the trade a settler holds is written in place, invisible to the membership
-   *  generation above, so only a `World.write` to Settler distinguishes a retrained settler from the one
-   *  this table recorded. Any Settler write bumps it, not just
-   *  {@link import('../../components/settler.js').setSettlerJob}, so this table only stays a cache while the
-   *  PER-TICK Settler writers (needs decay, work XP, combat need cost) keep writing raw - routing those
-   *  through the seam would rebuild it every tick. */
+  /** Settler value generation: a trade is written in place, invisible to the membership generation above.
+   *  Any `World.write` to Settler bumps it, so this stays a cache only while the per-tick Settler writers
+   *  (needs decay, work XP, combat need cost) keep writing raw rather than through the seam. */
   valueGeneration: number;
   readonly jobsByTribe: ReadonlyMap<number, ReadonlySet<number>>;
 }
 
 const aliveTribeJobsCache = new WeakMap<World, AliveTribeJobsCache>();
 
-/** One full derivation: the rebuild and the verifier's reference run through this single path. */
+/** The one derivation path, shared by the rebuild and the verifier's reference run. */
 function deriveAliveTribeJobs(world: World): Map<number, Set<number>> {
   const byTribe = new Map<number, Set<number>>();
   for (const e of world.query(Settler)) {
@@ -63,14 +60,12 @@ function verifyAliveTribeJobsCache(world: World): string[] {
 }
 
 /**
- * `tribe → the job types at least one living settler of that tribe currently holds`. The membership set the
- * tech-unlock gate tests against, so a probe costs a set lookup instead of a scan over every Settler (the
- * store is padded with wildlife, which are permanently `jobType: null` and could never match).
+ * The job types at least one living settler of each tribe currently holds - the membership set the
+ * tech-unlock gate tests against, so a probe costs a set lookup instead of a scan over every Settler.
  *
- * DERIVED state, never hashed and never stored on an entity. Keyed on both Settler generations (see
- * {@link AliveTribeJobsCache}), so it answers exactly what a fresh scan would, with no within-tick
- * staleness window. The returned maps and sets are the SHARED cached copies: read only. Determinism: set
- * membership over `world.query`, which is order-independent and picks nothing.
+ * Derived state, never hashed and never stored on an entity. Keyed on both Settler generations, so it
+ * answers exactly what a fresh scan would, with no within-tick staleness window. The returned maps and
+ * sets are the shared cached copies: read only.
  */
 export function aliveTribeJobs(world: World): ReadonlyMap<number, ReadonlySet<number>> {
   const membershipGeneration = world.componentGeneration(Settler);
@@ -85,8 +80,7 @@ export function aliveTribeJobs(world: World): ReadonlyMap<number, ReadonlySet<nu
   }
 
   const jobsByTribe = deriveAliveTribeJobs(world);
-  // Registered on the first build only: the verifier closes over `world` alone, and a rebuild runs on
-  // the trade-change path this table exists to keep cheap.
+  // Registered on the first build only: the verifier closes over `world` alone.
   if (cached === undefined)
     world.registerCacheVerifier('aliveTribeJobs', () => verifyAliveTribeJobsCache(world));
   aliveTribeJobsCache.set(world, { membershipGeneration, valueGeneration, jobsByTribe });

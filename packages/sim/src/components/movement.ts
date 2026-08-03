@@ -9,54 +9,38 @@ export const Position = defineComponent<{ x: Fixed; y: Fixed }>('Position');
 export const Velocity = defineComponent<{ x: Fixed; y: Fixed }>('Velocity');
 
 /**
- * A herd membership: the {@link Entity} that leads the pack this animal belongs to. The `spawnAnimalHerd`
- * command adds it to every member of a herd whose `animaltypes.ini` record sets `searchforleader` - the
- * herd's lowest-id member is the leader (its `leader` points at itself) and each follower points `leader` at
- * it. A solitary animal (`searchforleader` false) carries none.
- *
- * The data the follow-the-leader drive consumes (`herdingSystem`: a strayed follower walks back within
- * `maximumLeaderDistance` of its leader). A separate optional component (the {@link JobAssignment}/{@link Age}
- * pattern): only a herding animal carries one. A leader's self-referential `HerdMember` marks "this is a herd
- * leader" without a second flag, and a follower reads its leader's membership uniformly.
+ * A herd membership: the {@link Entity} leading the pack this animal belongs to. Stamped on every member of
+ * a herd whose `animaltypes.ini` record sets `searchforleader`; the herd's lowest-id member is the leader
+ * and points at itself, so a self-referential `HerdMember` marks a leader without a second flag. A solitary
+ * animal carries none.
  */
 export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
 
 /**
- * An animal's territory anchor: the node the grazing drive (`animalWanderSystem`) leashes its roaming to.
- *
- * A separate optional component (the {@link HerdMember} pattern): only a creature `spawnAnimalHerd`
- * placed on a map carries one, so it doubles as the "this entity is roaming wildlife" marker the drive
- * queries on.
+ * An animal's territory anchor: the node the grazing drive leashes its roaming to. Only a creature
+ * `spawnAnimalHerd` placed on a map carries one, so it doubles as the roaming-wildlife marker.
  */
 export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint');
 
 /**
- * A per-entity locomotion pace override: how far this entity advances toward its current {@link PathFollow}
- * waypoint each tick, in fixed-point tile units. The MovementSystem reads `perTick` for a path-follower that
- * carries one; an entity without it walks at the universal settler pace ({@link MOVE_SPEED_PER_TICK}).
+ * A per-entity locomotion pace: how far this entity advances toward its current {@link PathFollow} waypoint
+ * each tick, in fixed-point tile units. An entity without one walks at the universal settler pace
+ * ({@link MOVE_SPEED_PER_TICK}). `spawnAnimalHerd` stamps it from the `animaltypes.ini` `movespeed` param,
+ * where a creature with `movespeed` N walks `ONE / N` tile/tick, so a larger `movespeed` is a slower step.
  *
- * The `spawnAnimalHerd` mechanic stamps it from the `animaltypes.ini` `movespeed` param: a creature with
- * `movespeed` of `N` walks `ONE / N` tile/tick (a larger `movespeed` is a slower step - see source basis
- * "Animal locomotion pace"). A creature whose record omits `movespeed` carries none (engine default = the
- * universal pace).
- *
- * The entity's one pace - there is deliberately no run/sprint gait (our design); the `animaltypes.ini`
- * `runspeed` param stays extracted but unconsumed. Read by the same drift-free arrival-snap as
- * {@link MOVE_SPEED_PER_TICK}, so it introduces no rounding divergence.
+ * The entity's one pace: there is deliberately no run/sprint gait, and the `animaltypes.ini` `runspeed`
+ * param stays extracted but unconsumed.
  */
 export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed');
 
 /**
- * A path the entity is following: fixed-point waypoints + current index, plus the follower's live gait state
- * - the movement-inertia fields the MovementSystem ramps each tick. Inertia is a named approximation that
- * departs from the original's observed constant pace (see the inertia note in
- * `systems/movement/system.ts`); it exists purely for movement feel.
+ * A path the entity is following: fixed-point waypoints and index, plus the follower's live gait state.
+ * `speed` is the current per-tick world-metric pace - 0 at rest, ramped toward the entity's gait, braked
+ * into the final waypoint. `hx`/`hy` are the current leg's unit world-metric heading, used to project
+ * momentum through corners and across a reroute's splice; (0,0) is the "no established heading" sentinel.
  *
- * `speed` is the current per-tick world-metric pace: 0 at rest, ramped toward the entity's gait
- * ({@link MoveSpeed} / the universal default), braked into the final waypoint. `hx`/`hy` are the current leg's
- * unit world-metric heading, used to project momentum through corners - at waypoint turns and at a reroute's
- * splice (`routing.ts` carries both over, so a redirected walker keeps momentum straight ahead but sheds it
- * through a forced turn); (0,0) is the "no established heading" sentinel. All three are Fixed sim state.
+ * Approximation: the inertia ramp departs from the original's observed constant pace and exists purely for
+ * movement feel.
  */
 export const PathFollow = defineComponent<{
   waypoints: Array<{ x: Fixed; y: Fixed }>;
@@ -67,36 +51,31 @@ export const PathFollow = defineComponent<{
 }>('PathFollow');
 
 /**
- * A navigation goal: the destination cell an entity wants to reach (a raw row-major cell id, like
- * {@link PathRequest}). The intent layer above pathing - the PlannerSystem turns a goal on a path-less,
- * request-less entity into a {@link PathRequest}; PathfindingSystem turns that into a {@link PathFollow};
- * MovementSystem walks it. Removed once the entity arrives, so an entity carrying a `MoveGoal` is still
- * travelling. Kept separate from PathRequest/PathFollow (the transient mechanism) so the planner can re-issue
- * a request if a route is lost without forgetting the destination.
+ * A navigation goal: the destination cell an entity wants to reach (a raw row-major cell id). Kept separate
+ * from the transient {@link PathRequest}/{@link PathFollow} so the planner can re-issue a request without
+ * forgetting the destination, and removed once the entity arrives.
  *
  * One sanctioned outside write: for a collider whose goal node is occupied by a standing unit, routing
- * re-aims `cell` at the nearest free stand-in (the surround rule - see `drainPathRequests`), so a goal's
- * owner must not assume the exact cell it set survives the walk. A non-collider's goal is never re-aimed -
- * the economy's node-coincidence checks rely on it arriving verbatim.
+ * re-aims `cell` at the nearest free stand-in, so a goal's owner must not assume the exact cell it set
+ * survives the walk. A non-collider's goal is never re-aimed - the economy's node-coincidence checks rely
+ * on it arriving verbatim.
  */
 export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal');
 
 /**
- * A pending navigation request: route this entity from cell `start` to cell `goal`. The
- * PathfindingSystem drains these (budgeted per tick), runs A* on `ctx.terrain`, and on success
- * replaces the entity's {@link PathFollow} with the result then removes the request; on failure
- * (no route / unwalkable endpoint / no terrain) it sets `failed` so the planner can react and
- * stops retrying the same dead query every tick. `start`/`goal` are branded row-major node ids
- * (`y*width + x`); the brand is compile-time only, so the component remains plain-number serializable.
+ * A pending navigation request: route this entity from cell `start` to cell `goal`. The PathfindingSystem
+ * drains these under a per-tick budget and either replaces the entity's {@link PathFollow} and removes the
+ * request, or sets `failed` so the planner reacts instead of retrying the same dead query every tick.
+ * `start`/`goal` are branded row-major node ids (`y*width + x`); the brand is compile-time only, so the
+ * component remains plain-number serializable.
  */
 export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>('PathRequest');
 
 /**
- * A stranded walker's retry pacing: its route FAILED ({@link PathRequest} `failed`) and no drive with its
- * own failure protocol owns it, so the AI planner parks the dead nav state until tick `retryAt`, then sheds
- * it and re-plans (the stranded-recovery block in `systems/settlers/planner/replan.ts`). Without it a failed
- * request reads as "travelling" forever and the settler freezes. Cleared with the rest of the nav state
- * (`clearNavState`), so an authoritative cancel - a player order, a job change - restarts the walk at once.
+ * A stranded walker's retry pacing: its route failed and no drive with its own failure protocol owns it, so
+ * the planner parks the dead nav state until tick `retryAt`, then sheds it and re-plans. Without it a
+ * failed request reads as "travelling" forever and the settler freezes. Cleared with the rest of the nav
+ * state, so an authoritative cancel restarts the walk at once.
  */
 export const Stranded = defineComponent<{ retryAt: number }>('Stranded');
 
@@ -107,31 +86,22 @@ export interface UnreachableGoal {
 }
 
 /**
- * The goals this settler's routes recently FAILED to reach - the memo that stops a re-plan from choosing
- * the same unreachable target it just gave up on. {@link Stranded} paces the retry but says nothing about
- * *what* failed, so without this the deterministic nearest-first pick returns the identical doomed cell
- * every retry and the settler idles beside reachable work forever. A bounded FIFO rather than one cell so
- * a settler ringed by several walled-off targets cannot cycle between them; see
- * `systems/settlers/unreachable-goals.ts` for the pacing. Provably sealed goals are the route-region
- * memo's job (`systems/footprint/route-regions.ts`); this memo covers what that one cannot prove.
- * Optional, so a settler whose routes all succeed never carries it.
+ * The goals this settler's routes recently failed to reach - the memo that stops a re-plan from choosing
+ * the same unreachable target it just gave up on, which the deterministic nearest-first pick would
+ * otherwise return every retry. A bounded FIFO rather than one cell, so a settler ringed by several
+ * walled-off targets cannot cycle between them; `systems/settlers/unreachable-goals.ts` owns the pacing.
+ * Provably sealed goals are the route-region memo's job; this covers what that one cannot prove.
  */
 export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableGoal[] }>('UnreachableGoals');
 
 /**
- * A walker's grind-window state among unit bodies - the SeparationSystem stamps it on a path-follower with
- * colliders in its immediate (3×3 bucket) neighbourhood and judges blockage by progress, not push direction.
- * `x`/`y` anchor the current grind window - the walker's position when it began - and `ticks` counts the
- * window's length: any tick whose total movement since the anchor reaches a per-tick progress floor restarts
- * the window (real progress - a slide around a lone post, a shove through a brush-past), while a window that
- * reaches the re-route threshold with the walker still essentially where it started drops just its path (the
- * planner re-plans around the blockers - the flanking behaviour), and `reroutes` tallies how many times this
- * walk has done that. A walk that re-routes `OBSTRUCTED_MAX_REROUTES` times without arriving stands down
- * entirely (`clearNavState`) - the terminal backstop for a fully contested destination. Whoever owns the goal
- * (the combat chase, a player order, an AI drive) re-decides from where the unit stopped.
- *
- * A separate optional component (the {@link MoveSpeed}/{@link HerdMember} pattern): only a blocked collider
- * carries one, so sims without unit collision (every unowned fixture, the goldens) never hash it.
+ * A walker's grind-window state among unit bodies, stamped by the SeparationSystem on a path-follower with
+ * colliders in its immediate neighbourhood: blockage is judged by progress, not push direction. `x`/`y`
+ * anchor the window at the walker's position when it began and `ticks` counts its length. Movement past a
+ * progress floor restarts the window; a window reaching the re-route threshold drops just the path, so the
+ * planner flanks the blockers, and `reroutes` tallies that. A walk that re-routes
+ * `OBSTRUCTED_MAX_REROUTES` times without arriving stands down entirely, leaving whoever owns the goal to
+ * re-decide from where the unit stopped.
  */
 export const Obstructed = defineComponent<{ ticks: number; reroutes: number; x: Fixed; y: Fixed }>(
   'Obstructed',

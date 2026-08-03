@@ -1,12 +1,11 @@
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
- * The strategic AI player's module ids - one per concern the AI runs for a seat. The list mirrors the
- * original's per-module HAI map-data toggles (`Game.exe` strings: `HAI_DisableCollectResources`,
- * `HAI_DisableGuideBuild`, `HAI_DisableHomeExpansion`, `HAI_DisableHouseBuild`,
- * `HAI_DisableHouseUpgrade`, `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map
- * onto it one-to-one; the behavior INSIDE each module is a named genre-convention approximation
- * (no byte-level evidence of the original's internals exists).
+ * The strategic AI player's module ids, one per concern the AI runs for a seat. The list mirrors the
+ * original's per-module HAI map-data toggles (`Game.exe` strings `HAI_DisableCollectResources`,
+ * `HAI_DisableGuideBuild`, `HAI_DisableHomeExpansion`, `HAI_DisableHouseBuild`, `HAI_DisableHouseUpgrade`,
+ * `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map onto it one-to-one. The behavior
+ * inside each module is a named genre-convention approximation.
  */
 export const AI_MODULE_IDS = [
   'collectResources',
@@ -32,12 +31,10 @@ export function aiModuleEnables(overrides?: Partial<AiModuleEnables>): AiModuleE
 }
 
 /**
- * The per-seat strategic-AI marker - "this player is AI-driven", the sim-side flag the `setPlayerAi`
- * command sets (original: `PLAYER_TYPE_AI`, `Data/GameSourceIncludes/logicdefines.inc:358`). At most
- * one carrier entity exists per player (the command handler updates in place); a player with no
- * carrier is not AI-driven, so a command stream that never flags a seat leaves every existing golden
- * hash untouched. Part of hashed, replayed state like any component - the AiPlayerSystem's decisions
- * depend on it.
+ * The per-seat strategic-AI marker, set by the `setPlayerAi` command (original: `PLAYER_TYPE_AI`,
+ * `Data/GameSourceIncludes/logicdefines.inc:358`). At most one carrier entity exists per player, and a
+ * player with no carrier is not AI-driven. Hashed and replayed like any component, since the
+ * AiPlayerSystem's decisions depend on it.
  */
 export const AiPlayer = defineComponent<{
   /** The player slot this brain drives (`[0, MAX_PLAYERS)`). */
@@ -45,8 +42,8 @@ export const AiPlayer = defineComponent<{
   modules: AiModuleEnables;
 }>('AiPlayer');
 
-/** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. Canonical:
- *  the lowest-id carrier wins should more than one ever exist (the rules-singleton convention). */
+/** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. The lowest-id
+ *  carrier wins should more than one ever exist. */
 export function aiPlayerEntity(world: World, player: number): Entity | null {
   let best: Entity | null = null;
   for (const e of world.query(AiPlayer)) {
@@ -61,8 +58,7 @@ export function isAiPlayer(world: World, player: number): boolean {
   return aiPlayerEntity(world, player) !== null;
 }
 
-/** Whether `player`'s seat runs `module` - for a decision taken INSIDE another module's run. A non-AI
- *  seat runs none. */
+/** Whether `player`'s seat runs `module`. A non-AI seat runs none. */
 export function aiModuleRuns(world: World, player: number, module: AiModuleId): boolean {
   const carrier = aiPlayerEntity(world, player);
   return carrier !== null && world.get(carrier, AiPlayer).modules[module];

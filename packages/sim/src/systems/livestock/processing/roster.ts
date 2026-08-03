@@ -4,8 +4,8 @@ import type { SystemContext } from '../../context.js';
 import { interactionNodeId } from '../../footprint/interaction.js';
 import { entityNode } from '../../spatial/nodes.js';
 
-// A workplace's booked visitors, read at the stage the caller cares about. One booking rule backs every
-// answer: `LivestockVisit.at` names the workplace, `Resting` says the animal is already inside.
+// A workplace's booked visitors: `LivestockVisit.at` names the workplace, and `Resting` says the animal
+// is already inside.
 
 function* visitorsOf(world: World, building: Entity): IterableIterator<Entity> {
   for (const e of world.query(LivestockVisit, Settler)) {
@@ -36,12 +36,9 @@ export function unadmittedVisitorCount(world: World, building: Entity): number {
 }
 
 /**
- * The workplace's summoned visitors of `tribe` standing ON the door - the animals a feed batch may
- * begin against. In a mapless sim every waiting visitor counts as arrived.
- *
- * A scattered animal ({@link Frightened}) is never one of them, even standing on the door: it is
- * running from a scare, and admitting it would carry the fright inside, where the scatter drive would
- * walk the body back out of the building. The same reading paces the seat holdback (./summon.ts).
+ * The workplace's summoned visitors of `tribe` standing on the door - the animals a feed batch may begin
+ * against; in a mapless sim every waiting visitor counts as arrived. A {@link Frightened} animal never
+ * counts: admitting it would carry the fright inside, where the scatter drive walks the body back out.
  */
 function* arrivedVisitorsOf(
   world: World,

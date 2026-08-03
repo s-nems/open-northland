@@ -13,17 +13,16 @@ import { atomicAnimationName, atomicDurationForName } from '../../readviews/anim
 import { stepOut } from '../../settlers/indoors.js';
 import { spawnNewborn } from '../../spawn/index.js';
 
-/** The make-love atomic id (`logicdefines.inc` `MAKE_LOVE = 78`), used only to resolve the hearts phase's
- *  duration from the tribe's bound animation. The sandbox catalog transcribes the same id
- *  (`app/game/sandbox/content/catalog/tribes.ts`); both pin to the decoded define. */
+/** The make-love atomic id (`logicdefines.inc` `MAKE_LOVE = 78`), used to resolve the hearts phase's
+ *  duration from the tribe's bound animation. */
 const MAKE_LOVE_ATOMIC_ID = 78;
 
 /** Hearts-phase length (ticks) when no make_love animation resolves from content: the viking
  *  `viking_civilist_make_love` `length 200` (`atomicanimations.ini`), pinned as the fallback. */
 const MAKE_LOVE_DURATION_FALLBACK = 200;
 
-/** How long the couple makes love: the longer of the tribe's two bound make_love clips (the man's runs
- *  200 ticks, the woman's 50), or the pinned fallback when neither resolves. */
+/** How long the couple makes love: the longer of the tribe's two bound make_love clips, or the pinned
+ *  fallback when neither resolves. */
 export function makeLoveDuration(ctx: SystemContext, tribe: number): number {
   const durations = [WOMAN_JOB, CIVILIST_JOB]
     .map((jobType) => atomicAnimationName(ctx.content, { tribe, jobType }, MAKE_LOVE_ATOMIC_ID))
@@ -32,10 +31,9 @@ export function makeLoveDuration(ctx: SystemContext, tribe: number): number {
   return durations.length > 0 ? Math.max(...durations) : MAKE_LOVE_DURATION_FALLBACK;
 }
 
-/** The birth: the newborn joins the family, linked to both parents; the family steps back outside and the
- *  order is done. Emits `settlerBorn` (the original's birth jingle, `DM_MUSIC_TYPE_JINGLE_BIRTH`). Named
- *  approximation: the give_birth atomic (`logicdefines.inc` 80) is never played, the family simply steps
- *  out with the newborn, because no birth animation is bound in the sandbox catalog. */
+/** The birth: the newborn joins the family, linked to both parents, and the family steps back outside.
+ *  Emits `settlerBorn` (the original's `DM_MUSIC_TYPE_JINGLE_BIRTH` moment). Named approximation: the
+ *  give_birth atomic (`logicdefines.inc` 80) is never played, because no birth animation is bound. */
 export function birth(
   world: World,
   ctx: SystemContext,

@@ -23,14 +23,9 @@ export {
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
 /**
- * The HouseBuild module - the executor over the authored {@link BuildOrderEntry} list. It walks the
- * entries in order, keeps at most {@link MAX_ACTIVE_CONSTRUCTION_SITES} sites open (upgrade sites
- * included), places on the affinity-aware near-base spot, upgrades toward the named tiers, and waits
- * at a `collector` entry for the workforce module's hire. A destroyed building re-enters its
- * entry's count, so the list self-repairs - and because the walk stops at the FIRST unmet entry, a
- * razed building is re-placed before any entry the seat has not reached yet. An unmet entry with no
- * legal action stalls (is retried next decision), never skipped. Builders are not pinned to sites -
- * the organic builder drive already picks the nearest site and fetches materials.
+ * Acts on the first unmet entry, so a razed building is re-placed before any entry the seat has not
+ * reached yet. An unmet entry with no legal action stalls and is retried next decision rather than
+ * skipped. Builders are never pinned to a site; the builder drive picks its own.
  */
 export function buildOrderModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
   return {
@@ -46,7 +41,7 @@ function runBuildOrder(
   order: readonly BuildOrderEntry[],
 ): readonly Command[] {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return []; // a mapless sim has no ground to place on
+  if (terrain === undefined) return [];
   const owned = ownedBuildings(world, player);
   let sites = 0;
   for (const e of owned) {
@@ -68,7 +63,6 @@ function runBuildOrder(
       case 'place': {
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
-        // One placement per decision: the affinity-aware spot, or a stall when none is legal.
         const spot = placementSpot(world, ctx, terrain, owned, anchor, type, entry);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
@@ -76,26 +70,24 @@ function runBuildOrder(
         const target = buildingTypeByContentId(ctx.content, entry.building);
         if (target === undefined) return []; // unreachable after 'skip', kept for the type system
         const candidate = upgradeCandidate(world, index, owned, target);
-        if (candidate === null) return []; // nothing upgradable yet - stall until one stands
+        if (candidate === null) return [];
         return [{ kind: 'upgradeBuilding', building: candidate }];
       }
       case 'collector':
-        return []; // the workforce module hires it (collectorGoodsWanted) - wait here
+        return []; // the workforce module hires it
       case 'towerCoverage': {
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         const target = firstUncoveredBuilding(world, ctx, player, owned);
         if (target === null) return []; // status said unmet - defensive
         const spot = towerPlacementSpot(world, ctx, terrain, owned, anchor, type, target);
-        // No legal covering node stalls the entry, the same contract as 'place'.
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
     }
   }
-  return []; // the list is satisfied - the module goes quiet
+  return [];
 }
 
-/** The seat's construction site of `type` at `spot`. */
 function siteCommand(
   type: BuildingType,
   spot: HalfCellNode,
@@ -113,10 +105,8 @@ function siteCommand(
   };
 }
 
-/** The recovery rung, ahead of every ENTRY but behind an already-open site (the one-site gate runs
- *  first): a seat that holds buildings but no base puts up
- *  {@link BASE_REPLACEMENT_ENTRY} at the centroid of what stands. `owned[0]` carries the tribe -
- *  nothing transfers a building between seats, so a seat's buildings share one. */
+/** A seat that holds buildings but no base rebuilds one at the centroid of what stands. `owned[0]`
+ *  carries the tribe: nothing transfers a building between seats, so a seat's buildings share one. */
 function replaceMissingBase(
   world: World,
   ctx: SystemContext,
@@ -130,6 +120,6 @@ function replaceMissingBase(
   const type = buildingTypeByContentId(ctx.content, BASE_REPLACEMENT_ENTRY.building);
   if (type === undefined) return []; // content without the warehouse expresses no replacement
   const spot = placementSpot(world, ctx, terrain, owned, centre, type, BASE_REPLACEMENT_ENTRY);
-  if (spot === null) return []; // no legal spot - stall, the same contract as a 'place' entry
+  if (spot === null) return [];
   return [siteCommand(type, spot, world.get(tribeSource, Building).tribe, player)];
 }

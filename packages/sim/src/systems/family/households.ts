@@ -16,10 +16,8 @@ import type { SystemContext } from '../context.js';
 import { isFood } from '../readviews/index.js';
 import { canonicalById } from '../spatial/nodes.js';
 
-// The household read model: who lives where, what a home stocks, and what of it is spoken for.
-
-/** The `home`-kind {@link BuildingType} of a BUILT house entity, or undefined when the entity is not a
- *  completed residence (dead, not a building, still under construction, or not a home). */
+/** The `home`-kind {@link BuildingType} of a completed house entity, or undefined when the entity is dead,
+ *  not a building, still under construction, or not a home. */
 export function builtHomeType(world: World, ctx: SystemContext, house: Entity): BuildingType | undefined {
   if (!world.isAlive(house)) return undefined;
   const b = world.tryGet(house, Building);
@@ -28,7 +26,7 @@ export function builtHomeType(world: World, ctx: SystemContext, house: Entity): 
   return type?.kind === 'home' ? type : undefined;
 }
 
-/** The settlers living in `house` (their {@link Residence} points at it), ascending entity id. */
+/** The settlers living in `house`, ascending entity id. */
 function residentsOf(world: World, house: Entity): Entity[] {
   const out: Entity[] = [];
   for (const e of canonicalById(world.query(Residence))) {
@@ -39,8 +37,7 @@ function residentsOf(world: World, house: Entity): Entity[] {
 
 /**
  * A settler's household - itself, its living spouse, and their still-growing child - the unit the
- * `assignHouse` command moves as one. The child counts while it is alive and still carries an `Age`
- * (a grown child has left the family; ids are never recycled, so the stale probe is safe).
+ * `assignHouse` command moves as one. A grown child has left the family.
  */
 export function familyOf(world: World, e: Entity): Entity[] {
   const family = [e];
@@ -53,18 +50,16 @@ export function familyOf(world: World, e: Entity): Entity[] {
   return family;
 }
 
-/** Whether the couple's child still counts against the one-child limit: still growing up (only a
- *  born-young settler carries an {@link Age}; adulthood removes it). */
+/** Whether `child` is still growing up; only a born-young settler carries an {@link Age}. */
 export function isMinor(world: World, child: Entity): boolean {
   return world.has(child, Age);
 }
 
 /**
  * The distinct families living in `house`, each as its member list. A family is an adult, its living
- * cohabiting spouse, and the couple's still-growing child; a resident minor whose parents are gone
- * forms its own one-member household. `homeSize` (`houses.ini` `logichomesize` 1..5) caps FAMILIES,
- * not heads (user-specified design, 2026-07-16) - this grouping is that capacity's unit. Deterministic:
- * built over the ascending-id resident scan, so group order follows the lowest member id.
+ * cohabiting spouse, and the couple's still-growing child; a resident minor whose parents are gone forms
+ * its own one-member household. Authored: `homeSize` (`houses.ini` `logichomesize` 1..5) caps families,
+ * not heads, and this grouping is that capacity's unit. Group order follows the lowest member id.
  */
 export function familiesOf(world: World, house: Entity): Entity[][] {
   const residents = residentsOf(world, house);
@@ -93,7 +88,7 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
     const head = headByChild.get(minor);
     const parents = head !== undefined ? groups.get(head) : undefined;
     if (parents !== undefined) parents.push(minor);
-    else groups.set(minor, [minor]); // an orphan holds its own slot
+    else groups.set(minor, [minor]);
   }
   return [...groups.values()];
 }
@@ -109,7 +104,7 @@ export function storedFoodUnits(world: World, ctx: SystemContext, house: Entity)
   return total;
 }
 
-/** The food units of `house`'s stock held back for child-making - 0 when nothing is reserved. */
+/** The food units of `house`'s stock held back for child-making. */
 export function reservedFoodUnits(world: World, house: Entity): number {
   return world.tryGet(house, FoodReserve)?.amount ?? 0;
 }
@@ -126,8 +121,8 @@ export function setFoodReserve(world: World, house: Entity, amount: number): voi
 }
 
 /**
- * Consume `units` edible units from `house`'s stockpile, lowest goodType first (canonical). The caller
- * must have checked {@link storedFoodUnits}` >= units`; a shortfall consumes what is there.
+ * Consume `units` edible units from `house`'s stockpile, lowest goodType first; a shortfall consumes what
+ * is there.
  */
 export function consumeFoodUnits(world: World, ctx: SystemContext, house: Entity, units: number): void {
   const stock = world.tryGet(house, Stockpile);

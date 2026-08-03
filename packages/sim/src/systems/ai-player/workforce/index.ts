@@ -37,15 +37,10 @@ export { builderJobOf } from './pool.js';
 export { BUILDER_CAP, STAFFING_BY_BUILDING_ID } from './staffing.js';
 
 /**
- * The CollectResources module - the seat's one workforce allocator (user plan). Every adult
- * non-fighter man is classified against the live world, and the wanted roles are drawn out of the
- * spare pool in the priority order the returned array spells out: the essentials first, then the
- * tiers the surplus pays for - collector top-ups and the surplus staffing tier rank behind every
- * target post, extra collectors and the farm's extra hands being of little use early - and the
- * garrison sizing last of all (it counts the leftovers into the assistant's training counters
- * instead of claiming a man). No second module ever races this one for a person. A transient conflict
- * with the live world self-heals on the next decision because every target is recomputed from
- * state, never remembered.
+ * The CollectResources module - the seat's one workforce allocator: no other module ever claims a
+ * settler. The returned array's order is the allocation priority, essentials first and garrison sizing
+ * last, and every target is recomputed from live state, so a transient conflict self-heals on the next
+ * decision.
  */
 function runWorkforce(
   world: World,
@@ -78,12 +73,10 @@ function runWorkforce(
 }
 
 /**
- * What a BASELESS seat runs instead of the ladder: the builder reserve, then minimum staffing. The
- * ladder's order is deliberately INVERTED here - a based seat fills its minimums before reserving
- * builders, but with no hub the site is existential and a post is not, and this allocator is the only
- * thing that turns a man into a builder, so covering a vacancy first could leave a one-man seat with
- * nobody to raise the very site that gives it a base back. Minimums still follow, so a raid that
- * takes the hub and the baker together does not freeze the bakery for the whole rebuild.
+ * What a baseless seat runs instead of the ladder: the builder reserve, then minimum staffing. The
+ * based ladder's order is inverted here because this allocator is the only thing that turns a man into
+ * a builder, so covering a vacancy first could leave a one-man seat with nobody to raise the site that
+ * gives it a base back.
  */
 function rebuildCrew(
   world: World,
@@ -100,15 +93,10 @@ function rebuildCrew(
 }
 
 /**
- * Every man a baseless seat may put on that site, spare first. Beyond the pool it takes the two
- * classes the based branch would have recycled - a scout has no duty left (both its probes gate on
- * the base) and a generic gatherer is not worth protecting here - and finally men standing at a post,
- * whose binding `setJob` drops. Without those two groups a seat whose few survivors were all
- * classified or employed mints no builder at all and never regains a base.
- *
- * The seat pays for this: converting a gatherer drops its flag (`syncWorkFlagToJob`), so a rebuild
- * that outlives the goods its razed base spilled can idle its own crew for want of materials. A man
- * mid-action is left alone, the scout retire rule.
+ * Every man a baseless seat may put on that site, spare first: beyond the pool it takes scouts, generic
+ * gatherers, and men standing at a post, whose job binding and work flag `setJob` drops. Without those
+ * groups a seat whose few survivors were all classified or employed mints no builder and never regains
+ * a base.
  */
 function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[] {
   const { pool, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, []);
@@ -118,16 +106,11 @@ function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[
   return [...pool, ...scouts, ...genericCollectors, ...posted];
 }
 
-/** The scout hire and retire: the scout exists exactly while either of its duties has work, a missing
- *  signpost or a catchable animal in range (`scout/index.ts`), and an idle scout turns back into a
- *  builder. Only an UNMARRIED man is hired (user rule: a scout is away on a mission and its wife
- *  would wait forever); a married scout already working is retired only through the normal idle path,
- *  never mid-post. A scout mid-action is left alone: `setJob` cancels the running atomic, so retiring
- *  one mid-meal would throw the meal away.
- *
- *  The hire is deliberately blind to the seat's `guideBuild` toggle, which gates only the module that
- *  ORDERS him: this allocator is the one module allowed to claim a settler, so a seat that disables
- *  GuideBuild keeps paying one man for duties nobody issues. */
+/** The scout hire and retire: one scout exists while either duty has work (`scout/index.ts`), an idle
+ *  one turns back into a builder, and one mid-action is left alone because `setJob` cancels the running
+ *  atomic. Only an unmarried man is hired (authored: a scout is away on a mission and his wife would
+ *  wait forever). The hire ignores the seat's `guideBuild` toggle, which gates only the module that
+ *  orders him, so a seat with GuideBuild off still pays for a scout. */
 function allocateScout(
   world: World,
   ctx: SystemContext,
@@ -138,10 +121,8 @@ function allocateScout(
 ): Command[] {
   const commands: Command[] = [];
   const scoutJob = scoutJobType(ctx.content);
-  // The trade to keep one settler in, or null when the content declares no scout or neither duty has
-  // work. The round-up probes first even though it ranks second: measured on a settled map, a
-  // satisfied lattice costs ~970 us to answer null (it has to scan every ring to say so) against
-  // ~200 us for the herd scan, so the cheap probe short-circuits the expensive one here.
+  // The round-up probes first even though it ranks second: a satisfied lattice has to scan every ring
+  // to answer null, so the cheaper herd scan short-circuits it.
   const hasScoutWork =
     nextLivestockCatch(world, ctx, player) !== null || nextSignpostTarget(world, ctx, player) !== null;
   const keepScoutAs = scoutJob !== null && hasScoutWork ? scoutJob : null;
@@ -158,8 +139,6 @@ function allocateScout(
   return commands;
 }
 
-/** A module allocating against `order`'s collector gating - parameterized like `buildOrderModule`,
- *  so tests drive it with fixture orders. */
 export function workforceModule(order: readonly BuildOrderEntry[]): AiPlayerModule {
   return {
     id: 'collectResources',

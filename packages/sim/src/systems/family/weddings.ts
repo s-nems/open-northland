@@ -16,11 +16,9 @@ import { atomicDuration } from '../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rendezvous.js';
 
 /**
- * The wedding half of the FamilySystem: drive each {@link Wedding} pair - the seeker walks to its
- * standing partner, both kiss (the paired atomics below), and on the kiss's completion both become
- * spouses ({@link Marriage}) for life; a `settlersMarried` event announces it (the original's marriage
- * jingle moment, `DM_MUSIC_TYPE_JINGLE_MARRIAGE`). A wedding whose partner died or whose walk failed is
- * cancelled on both sides.
+ * The wedding half of the FamilySystem: each {@link Wedding} pair walks together, kisses, and becomes
+ * spouses for life, announced with `settlersMarried` (the original's `DM_MUSIC_TYPE_JINGLE_MARRIAGE`
+ * moment). A wedding whose partner died or whose walk failed is cancelled on both sides.
  */
 
 /** The paired kiss atomic ids - `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
@@ -28,20 +26,17 @@ import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rend
 export const KISS_ATOMIC_ID = 20;
 export const KISSED_ATOMIC_ID = 21;
 
-/** Stamp a {@link Wedding} on both halves of a freshly-matched pair (the `marry` command's accept path). */
+/** Stamp a {@link Wedding} on both halves of a freshly-matched pair. */
 export function startWedding(world: World, seeker: Entity, partner: Entity): void {
   world.add(seeker, Wedding, { partner, kissing: false });
   world.add(partner, Wedding, { partner: seeker, kissing: false });
 }
 
 /**
- * Move a freshly-wed pair into one home. A married couple is a single household - one `homeSize`
- * family slot (the `familiesOf` grouping unit) - so when just one spouse was housed the other joins
- * that home free of charge, and two separately-housed singles consolidate into `a`'s home (the pair's
- * lower id, canonical), freeing the other slot; neither can overflow a home the housed partner already
- * occupied. Without this a settler married AFTER being assigned a house stays a one-person household -
- * the door dot reads single and `makeChild` never finds the couple `together` (observed original
- * behavior: a married couple cohabits).
+ * Move a freshly-wed pair into one home: a married couple is a single household, one `homeSize` family
+ * slot, so two separately-housed singles consolidate into the pair's lower id's home. Without it a
+ * settler married after being assigned a house stays a one-person household and `makeChild` never finds
+ * the couple together (observed original behaviour: a married couple cohabits).
  */
 function coHouseNewlyweds(world: World, a: Entity, b: Entity): void {
   const homeA = world.tryGet(a, Residence)?.home;
@@ -64,7 +59,7 @@ export function driveWeddings(world: World, ctx: SystemContext, terrain: Terrain
   driveMirroredPairs(
     world,
     Wedding,
-    (e, partner) => e < partner, // the pair is driven once, from its lower id (canonical)
+    (e, partner) => e < partner,
     (e) => cancelWedding(world, e),
     (a, b) => drivePair(world, ctx, terrain, a, b),
   );
@@ -77,8 +72,8 @@ function drivePair(
   a: Entity,
   b: Entity,
 ): void {
-  // The alarm calls the ceremony off: a partner claimed by a shelter must not be walked back out to a
-  // wedding spot, and the ceremony is a one-shot pairing, not a standing order to resume later.
+  // A partner claimed by a shelter must not be walked back out to a wedding spot, and the ceremony is a
+  // one-shot pairing, not a standing order to resume later.
   if (world.has(a, Sheltering) || world.has(b, Sheltering)) {
     cancelWedding(world, a);
     return;
@@ -88,8 +83,7 @@ function drivePair(
   const busyA = world.has(a, CurrentAtomic);
   const busyB = world.has(b, CurrentAtomic);
   if (wa.kissing) {
-    // The kiss atomics run to completion (the planner leaves a Wedding settler alone); when both are
-    // done the pair is married.
+    // The planner leaves a Wedding settler alone, so the kiss atomics run to completion.
     if (busyA || busyB) return;
     world.remove(a, Wedding);
     world.remove(b, Wedding);
@@ -100,7 +94,7 @@ function drivePair(
     ctx.events.emit({ kind: 'settlersMarried', a, b, at: eventAt(p.x, p.y) });
     return;
   }
-  if (busyA || busyB) return; // let a running action (a meal, a swing in flight) finish first
+  if (busyA || busyB) return; // let a running action finish first
   const pa = world.tryGet(a, Position);
   const pb = world.tryGet(b, Position);
   if (pa === undefined || pb === undefined) {
@@ -110,8 +104,7 @@ function drivePair(
   const na = nodeOfPosition(pa.x, pa.y);
   const nb = nodeOfPosition(pb.x, pb.y);
   if (nodesAdjacent(na, nb)) {
-    // Both play the paired kiss on one clock, the longer of the two bound clips (an unbound job falls back
-    // to the short default; the woman's binding carries the real 50-tick length).
+    // Both play the paired kiss on one clock: the longer of the two bound clips.
     const duration = Math.max(
       atomicDuration(ctx.content, world.get(a, Settler), KISS_ATOMIC_ID),
       atomicDuration(ctx.content, world.get(b, Settler), KISSED_ATOMIC_ID),
@@ -121,7 +114,6 @@ function drivePair(
     wb.kissing = true;
     return;
   }
-  // Apart: the lower id (`a`) always walks and the higher stands and waits, regardless of who issued
-  // `marry` (a canonical, symmetric convention).
+  // Apart: the lower id walks and the higher waits, whoever issued `marry` (canonical).
   approachPartner(world, terrain, a, b, nb, () => cancelWedding(world, a));
 }

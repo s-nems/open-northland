@@ -6,9 +6,8 @@ import { atomicDuration } from '../readviews/animations.js';
 import { atOrWalk, PILEUP_ATOMIC_ID, startAtomic, startPickup } from '../settlers/atomics/start.js';
 import { interactionCell } from '../settlers/targets/index.js';
 
-// The two food-haul steps a woman's drives are built from - carry a held unit into her home larder, or
-// walk to a store and lift one. Shared by the child order's larder stage (./children/order.ts) and the
-// standing hoarding drive (./hoard.ts); neither owns them. Mapless fixtures act in place (no cells to walk).
+// The two food-haul steps shared by the child order's larder stage and the standing hoarding drive.
+// Mapless fixtures act in place, having no cells to walk.
 
 /** Carry the held food unit home and pile it into the larder. */
 export function deliverHome(

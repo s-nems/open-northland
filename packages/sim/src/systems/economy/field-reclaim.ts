@@ -11,45 +11,39 @@ import {
   unstampResourceFootprint,
 } from '../footprint/index.js';
 
-// FieldReclaimSystem - destroy a field no farmer can ever reach again, the way the placement pass
-// destroys the ones directly under walls, so its `maxFields` slot returns to the plot. The cases the
-// under-wall rule cannot see: a field sealed inside a pocket of buildings (walls are a DYNAMIC overlay
-// and never split a static terrain component, so the planner's component check passes and its route
-// fails forever), a plot split from its farm by impassable terrain, and ground grown over its work
-// cells. A liveness rule of this engine, not decoded original behavior - the span, cadence and probe
-// bound are our recovery pacing.
+// Destroy a field no farmer can ever reach again so its `maxFields` slot returns to the plot. These are
+// the cases the under-wall pass cannot see: a field sealed inside a pocket of buildings (walls are a
+// dynamic overlay and never split a static terrain component, so the planner's component check passes
+// while its route fails forever), a plot split from its farm by impassable terrain, and ground grown over
+// its work cells. A liveness rule of this engine, not decoded original behavior: the span, cadence and
+// probe bound are authored recovery pacing.
 
 /** How often one field is re-examined. Sweeps are staggered by entity id so the per-tick cost is
  *  `crops / period` route probes, never a same-tick spike across a whole plot. */
 export const STRANDED_FIELD_CHECK_PERIOD_TICKS = 5 * TICKS_PER_SECOND;
 
 /**
- * How long a field must stay cut off before it is destroyed. Comfortably above the planner's
- * failed-goal memo (`UNREACHABLE_GOAL_MEMO_TICKS`, 30 s) and long enough for the ordinary transients
- * to clear - a construction site cancelled, a blocking resource gathered away - while a walled-in
- * plot still recovers its slot within a game minute.
+ * How long a field must stay cut off before it is destroyed. Comfortably above the planner's failed-goal
+ * memo (`UNREACHABLE_GOAL_MEMO_TICKS`, 30 s) and long enough for ordinary transients to clear, while a
+ * walled-in plot still recovers its slot within a game minute.
  */
 export const STRANDED_FIELD_RECLAIM_TICKS = 60 * TICKS_PER_SECOND;
 
 /**
- * Flood cap of one route probe, in visited nodes. Far above a healthy field's stance→door flood (a
- * field stands within its farm's ring - a few hundred nodes) and any wall-ringed pocket, far under a
- * map region. A sealed region bigger than this reads as `giveup`, which KEEPS the field: the cap can
- * defer reclaiming a monstrous pocket (the pre-fix behavior), never destroy a workable field, and it
- * bounds the sweep's worst tick - the unbounded pathfinder would flood a whole map half to refute a
- * wall that partitions it.
+ * Flood cap of one route probe, in visited nodes. Far above a healthy field's stance-to-door flood and any
+ * wall-ringed pocket, far under a map region. A sealed region bigger than this reads as `giveup`, which
+ * keeps the field: the cap can defer reclaiming a monstrous pocket but never destroys a workable field,
+ * and it bounds the sweep's worst tick against a flood across half a map.
  */
 export const STRANDED_FIELD_PROBE_MAX_VISITED = 2048;
 
 type ProbeResult = 'reached' | 'exhausted' | 'giveup';
 
 /**
- * Bounded breadth-first reachability over walkable, unblocked ground: can `to` be walked to from
- * `from`? Floods from the FIELD side, so a sealed pocket exhausts at pocket size - the cheap side -
- * while the open side stops the moment the door turns up. Edges are symmetric within the walkable set
- * (destination walkability + the shared diagonal flank pair - see the component flood), so
- * `exhausted` is an exact "no route". A `to` under an overlay block is never entered and reads
- * `exhausted`: a farm whose door is sealed cannot be worked, so its fields are fairly stranded.
+ * Bounded breadth-first reachability over walkable, unblocked ground. Callers flood from the field side,
+ * so a sealed pocket exhausts at pocket size while the open side stops the moment the door turns up. Edges
+ * are symmetric within the walkable set, so `exhausted` is an exact "no route". A `to` under an overlay
+ * block is never entered and reads `exhausted`: a farm whose door is sealed cannot be worked.
  */
 function probeRoute(
   terrain: TerrainGraph,
@@ -104,7 +98,7 @@ function fieldWorkable(
  */
 export const fieldReclaimSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless fixture - nothing can wall a field in
+  if (terrain === undefined) return;
   let overlay: BlockOverlay | undefined;
   const doomed: Entity[] = [];
   for (const e of world.query(Crop)) {
@@ -126,7 +120,7 @@ export const fieldReclaimSystem: System = (world, ctx) => {
   }
   // Destroys deferred out of the query walk; list order is the store's deterministic insertion order.
   for (const e of doomed) {
-    unstampResourceFootprint(world, e); // through the incremental cache, like the under-wall pass
+    unstampResourceFootprint(world, e);
     world.destroy(e);
   }
 };

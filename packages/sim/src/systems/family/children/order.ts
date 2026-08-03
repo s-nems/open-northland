@@ -35,12 +35,12 @@ import { builtHomeType, consumeFoodUnits, isMinor, setFoodReserve, storedFoodUni
 import { birth, makeLoveDuration } from './make-love.js';
 
 /**
- * The state one child-order pass shares across its orders. Both sets are claims RE-MADE every tick:
- * whatever a tick does not re-claim, the pass strips at its end (`./system.ts`).
+ * The state one child-order pass shares across its orders. Both sets are claims re-made every tick:
+ * whatever a tick does not re-claim, the pass strips at its end.
  */
 export type ChildOrderPass = {
-  /** Settlers this tick is driving. They carry {@link FamilyDuty}, which fences them off the AI planner's
-   *  economy drives (needs still fire). */
+  /** Settlers this tick is driving; their {@link FamilyDuty} fences them off the planner's economy
+   *  drives, while needs still fire. */
   readonly dutyClaimed: Set<Entity>;
   /** Homes whose {@link FoodReserve} this tick re-claimed, holding the child fund back from eaters. */
   readonly reservesReclaimed: Set<Entity>;
@@ -49,7 +49,7 @@ export type ChildOrderPass = {
 };
 
 /** Drive one standing {@link ChildOrder} a tick through its stages: stock the larder, wait inside, hearts,
- *  birth. Each stage returns, so at most one runs per tick. */
+ *  birth. At most one stage runs per tick. */
 export function driveOrder(
   world: World,
   ctx: SystemContext,
@@ -64,8 +64,7 @@ export function driveOrder(
     return;
   }
   const husband = marriage.spouse;
-  // One child at a time: while the previous child grows up no new order stands. The `makeChild` command
-  // guards this, and a child born by THIS order removes it at birth, so reaching here is a stale re-issue.
+  // One child at a time: the `makeChild` command guards it, so reaching here is a stale re-issue.
   if (marriage.child !== null && world.isAlive(marriage.child) && isMinor(world, marriage.child)) {
     dropOrder(world, woman);
     return;
@@ -75,8 +74,7 @@ export function driveOrder(
   const homeType = home !== undefined ? builtHomeType(world, ctx, home) : undefined;
   const together = home !== undefined && world.tryGet(husband, Residence)?.home === home;
   const husbandAway = isOnMission(ctx.content, world.get(husband, Settler).jobType);
-  // No capacity gate: `homeSize` caps FAMILIES (see familiesOf) and the newborn joins its parents'
-  // existing household, so a couple with a home always has room for its child.
+  // No capacity gate: `homeSize` caps families, and the newborn joins its parents' existing household.
   const active = home !== undefined && homeType !== undefined && together && !husbandAway;
   if (!active) {
     if (home !== undefined) standDown(world, woman, husband, home);
@@ -108,11 +106,10 @@ export function driveOrder(
   if (!ensureInside(world, ctx, terrain, woman, home)) return;
   claimDuty(world, husband, pass);
   if (!ensureInside(world, ctx, terrain, husband, home)) return;
-  // Both inside, but another couple's session holds the home: wait in for our turn (the fund stays
-  // reserved, so nobody eats it while we queue).
+  // Another couple's session holds the home: wait for our turn with the fund still reserved.
   if (love !== undefined) return;
-  // Both inside and the home is free: the fund is spent and the hearts phase begins. The reserve is
-  // recomputed over what remains, so another resident couple's fund-in-progress stays protected.
+  // The fund is spent and the hearts phase begins; the reserve is recomputed over what remains, so
+  // another resident couple's fund in progress stays protected.
   consumeFoodUnits(world, ctx, home, CHILD_FOOD_UNITS);
   setFoodReserve(world, home, Math.min(CHILD_FOOD_UNITS, storedFoodUnits(world, ctx, home)));
   world.add(home, MakingLove, {
@@ -128,8 +125,8 @@ function dropOrder(world: World, woman: Entity): void {
   stepOut(world, woman);
 }
 
-/** A precondition failed: the order persists but nobody is driven. Only the couple's OWN session is touched;
- *  another resident couple's session, and the home's centrally re-derived reserve, are left alone. */
+/** A precondition failed: the order persists but nobody is driven. Only the couple's own session is
+ *  touched, never another resident couple's or the home's centrally re-derived reserve. */
 function standDown(world: World, woman: Entity, husband: Entity, home: Entity): void {
   if (isInside(world, woman, home)) stepOut(world, woman);
   if (isInside(world, husband, home)) stepOut(world, husband);
@@ -146,7 +143,7 @@ function haulFood(
   pass: ChildOrderPass,
 ): void {
   claimDuty(world, woman, pass);
-  if (isInside(world, woman, home)) stepOut(world, woman); // shouldn't happen (the reserve holds the fund)
+  if (isInside(world, woman, home)) stepOut(world, woman);
   if (!isDrivable(world, woman)) return;
   const load = world.tryGet(woman, Carrying);
   const womanView = world.get(woman, Settler);
@@ -160,8 +157,7 @@ function haulFood(
     deliverHome(world, ctx, terrain, woman, womanView, home, hereNode);
     return;
   }
-  // Signpost confinement: she only sees sources inside her local circle + reachable guidepost network
-  // (null when navigation is off/unlimited, the pre-signpost behaviour, byte-identical).
+  // Null when navigation is unlimited; otherwise she sees only sources inside her allowed area.
   const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, woman) : null;
   const source = pass.externalFood.nearest(
     hereNode,
@@ -169,7 +165,7 @@ function haulFood(
     limit,
     unreachableGoalVeto(world, ctx, woman),
   );
-  if (source === null) return; // no reachable food outside homes: she waits (the order stands)
+  if (source === null) return; // no reachable food outside homes, so she waits and the order stands
   fetchFrom(world, ctx, terrain, woman, womanView, source, hereNode);
 }
 
@@ -179,8 +175,8 @@ function claimDuty(world: World, e: Entity, pass: ChildOrderPass): void {
   pass.dutyClaimed.add(e);
 }
 
-/** Whether the pass may issue actions on `e` right now: the planner's own idle test plus the marks of the
- *  drives that outrank family duty (a player order in flight, combat, a wedding). */
+/** Whether the pass may issue actions on `e` right now: the planner's idle test, plus the marks of the
+ *  drives that outrank family duty. */
 function isDrivable(world: World, e: Entity): boolean {
   return (
     !world.has(e, CurrentAtomic) &&
@@ -193,12 +189,9 @@ function isDrivable(world: World, e: Entity): boolean {
 }
 
 /**
- * Bring `e` to rest inside `home`, or let a pressing need take it first: true only once it is inside with
- * no need pulling it away (ready to make love). A hungry/tired/devout spouse feeds, sleeps, or prays first,
- * because the needs drive runs after this system and outranks the {@link FamilyDuty} fence: re-driving `e`
- * home each tick would fight that walk and it would never reach food, and its own reserved child fund is
- * inedible to it, so it would starve mid-loop. `e` stays claimed; the needs drive steps it back out, and
- * this walk resumes once the need clears.
+ * Bring `e` to rest inside `home`, true only once it is inside with no need pulling it away. A pressing
+ * need goes first: the needs drive runs after this system and outranks the {@link FamilyDuty} fence, and
+ * the couple's own reserved child fund is inedible to them, so a re-driven spouse would starve mid-loop.
  */
 function ensureInside(
   world: World,
@@ -222,8 +215,7 @@ function enterHome(
   home: Entity,
 ): void {
   if (!isDrivable(world, e)) return;
-  // A husband claimed straight out of a workshop/farm rest still carries that marker: shed it so the walk
-  // home is visible; the arrival re-stamps it at the home.
+  // Shed a workplace rest marker so the walk home is visible; the arrival re-stamps it at the home.
   stepOut(world, e);
   if (terrain === undefined) {
     stepIn(world, e, home);

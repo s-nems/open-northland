@@ -11,14 +11,13 @@ import { decorInReservedZone } from './reserved-decor.js';
 // source basis (the original's `landscapetypes.ini` bush cycle).
 
 /**
- * Ticks a bare {@link BerryBush} takes to regrow its fruit - the delay between a bush being foraged and becoming
- * ripe (forageable) again. At {@link TICKS_PER_SECOND} = 12 this is 100 s of game time.
+ * Ticks a bare {@link BerryBush} takes to regrow its fruit. At {@link TICKS_PER_SECOND} = 12 this is 100 s
+ * of game time.
  *
- * Named approximation: the original regrows a bush over the `landscapetypes.ini` growth trigger (`transition 7
- * …`, `bush naked → flowering → with fruits`) whose real period is not decoded, so this whole-cycle duration
- * stands in for the two-step flowering cycle. Tunable balance, not a source-pinned value - long enough that a
- * bush is a limited wild resource, short enough that a foraged patch recovers within a settler's hunger cadence
- * (~150 s to the eat threshold).
+ * Approximation: the original regrows a bush over the `landscapetypes.ini` growth trigger (`transition 7 …`,
+ * `bush naked -> flowering -> with fruits`) whose real period is not decoded, so this whole-cycle duration
+ * stands in for the two-step flowering cycle. Balance value: long enough that a bush is a limited wild
+ * resource, short enough that a foraged patch recovers within a settler's hunger cadence.
  */
 export const BERRY_REGROW_TICKS = 1200;
 
@@ -30,37 +29,28 @@ export const BERRY_REGROW_TICKS = 1200;
 export const BERRY_STAGE_TICKS = BERRY_REGROW_TICKS / 2;
 
 /**
- * The largest Manhattan node-distance a hungry settler will look for a ripe {@link BerryBush} to forage (the
- * wild-food fallback's search radius). Deliberately large - ~64 half-cell nodes ≈ 32 tiles - so a settler with
- * no nearby larder still reaches a berry patch, but bounded so a lone bush across the map doesn't drag a
- * starving settler on a suicidal march.
+ * The largest Manhattan node-distance a hungry settler will look for a ripe {@link BerryBush} to forage:
+ * 64 half-cell nodes, about 32 tiles, so a settler with no nearby larder still reaches a berry patch but a
+ * lone bush across the map cannot drag a starving one on a suicidal march.
  *
- * Named approximation: the original's actual food-search extent is not decoded - this flat radius caps only
- * the wild-bush fallback (store food rides the eat drive's primary path). With signpost navigation on, the
- * settler's `NavigationLimit` additionally gates both paths to its allowed area. Larger than
- * {@link DEFAULT_WORK_FLAG_RADIUS} (24) because foraging ranges wider than a bound gatherer's yard.
+ * Approximation: the original's food-search extent is not decoded. This flat radius caps only the wild-bush
+ * fallback, and with signpost navigation on the settler's `NavigationLimit` gates both paths further.
  */
 export const BERRY_FORAGE_RADIUS = 64;
 
-/**
- * The resolved shape of a berry bush to place: its half-cell node (like every sim command/spawn) and an
- * optional render-variant `gfxIndex` (the decoded map's fruited-bush `[GfxLandscape]` index). Consumed by
- * {@link createBerryBush}.
- */
+/** The resolved shape of a berry bush to place: its half-cell node and an optional render variant. */
 export interface BerryBushSpec {
-  /** The bush's half-cell lattice coords (like {@link ResourceNodeSpec} - a `positionOfNode` → Position). */
+  /** Half-cell lattice coords, converted to a Position by `positionOfNode`. */
   readonly x: number;
   readonly y: number;
-  /** Opaque render-variant tag (the fruited-bush landscapeGfx index); omitted for a scene/synthetic spawn. */
+  /** Opaque render-variant tag (the fruited-bush landscapeGfx index); omitted for a synthetic spawn. */
   readonly gfxIndex?: number;
 }
 
 /**
- * Assemble a wild berry bush from a {@link BerryBushSpec}: a {@link Position} + a ripe {@link BerryBush}
- * (bushes spawn holding fruit). The bush twin of {@link createResourceNode} - the map-spawn and scene-setup
- * helpers build directly here as pre-tick-0 authored state, so a map bush and a scene bush are the same entity.
- * Unlike a Resource node a bush carries no footprint (bushes are walkable in the original -
- * `landscapetypes.ini` `allowedonland 1`, no block areas), so a settler stands on the tile to forage it.
+ * Assemble a wild berry bush, ripe: bushes spawn holding fruit. Unlike a Resource node a bush carries no
+ * footprint - bushes are walkable in the original (`landscapetypes.ini` `allowedonland 1`, no block areas) -
+ * so a settler stands on the tile to forage it.
  */
 export function createBerryBush(world: World, spec: BerryBushSpec): Entity {
   const e = world.create();
@@ -74,46 +64,40 @@ export function createBerryBush(world: World, spec: BerryBushSpec): Entity {
 }
 
 /**
- * BerryGrowthSystem - advance regrowing {@link BerryBush}es one stage at a time. Each tick, a bush past its
- * `nextStageAtTick` steps `bare → flowering` (rescheduling one more {@link BERRY_STAGE_TICKS} out) or
- * `flowering → ripe` (clearing the schedule). The timing is the exact integer compare `tick >= nextStageAtTick`
- * (like {@link CurrentAtomic}'s `elapsed >= duration`), not an accumulated fixed-point step; the next stage is
- * anchored on the scheduled tick (`+= BERRY_STAGE_TICKS`), not the current one, so a bloom always lands at the
- * forage-anchored midpoint. Because the schedule is an absolute tick, a regrowing bush's component does not
- * churn every tick: it changes only at its stage transitions (foraged, bloomed, ripened), so the snapshot
- * scenery cache re-clones a bush only at those moments. A ripe bush is skipped.
+ * Advance regrowing {@link BerryBush}es one stage at a time. Timing is the exact integer compare
+ * `tick >= nextStageAtTick` rather than an accumulated fixed-point step, and the next stage is anchored on
+ * the scheduled tick rather than the current one, so a bloom always lands at the forage-anchored midpoint.
+ * An absolute schedule also means a regrowing bush's component changes only at its transitions, so the
+ * snapshot scenery cache re-clones a bush only then.
  */
 export const berryGrowthSystem: System = (world, ctx) => {
   for (const e of world.query(BerryBush)) {
     const bush = world.get(e, BerryBush);
-    if (bush.stage === 'ripe') continue; // already fruited - nothing to regrow
-    if (ctx.tick < bush.nextStageAtTick) continue; // still growing toward the next stage
+    if (bush.stage === 'ripe') continue;
+    if (ctx.tick < bush.nextStageAtTick) continue;
     world.write(e, BerryBush, (b) => {
       if (b.stage === 'bare') {
         b.stage = 'flowering';
         b.nextStageAtTick += BERRY_STAGE_TICKS; // one more step to fruit, anchored on schedule
       } else {
         b.stage = 'ripe';
-        b.nextStageAtTick = 0; // freeze the schedule (display-stable; unused while ripe)
+        b.nextStageAtTick = 0; // unused while ripe
       }
     });
   }
 };
 
 /**
- * Clear every wild {@link BerryBush} standing inside `building`'s reserved build-exclusion zone - called at
- * placement so a new building razes the bushes it lands on (source basis: observed original behavior - a
- * placed building clears the landscape decoration in its reserved footprint; the reserved zone stands in for
- * the exact clear radius, the same `LogicBuildBlockArea` extent the placement gate keeps clear of other
- * construction). Bushes are walkable and are not a placement obstacle, so unlike a resource node one can sit
- * under a building; without this it would be drawn straight through the walls. Candidate resolution is the
- * zone-bounded {@link decorInReservedZone}; this pass adds the bush's own removal policy.
+ * Clear every wild {@link BerryBush} standing inside `building`'s reserved build-exclusion zone. Observed:
+ * a placed building clears the landscape decoration in its reserved footprint; the reserved zone stands in
+ * for the exact clear radius, the same `LogicBuildBlockArea` extent the placement gate keeps clear. Bushes
+ * are walkable and no placement obstacle, so without this one would be drawn straight through the walls.
  */
 export function destroyBerryBushesInReserved(world: World, ctx: SystemContext, building: Entity): void {
   for (const e of decorInReservedZone(world, ctx, building, bushesNearNode)) {
-    // Announce the razing before the destroy (read the position first - it is gone afterwards) so render can
-    // drop the bush's retained static-decor quad; a virgin map bush is drawn by the static layer, not the
-    // pool, so its destruction leaves no snapshot entity for the pool cull to reap ({@link SimEvent} berryBushRazed).
+    // Announce the razing before the destroy, reading the position while it still exists, so render can drop
+    // the bush's retained static-decor quad: a map bush is drawn by the static layer, not the pool, so its
+    // destruction leaves no snapshot entity for the pool cull to reap.
     const bp = world.tryGet(e, Position);
     if (bp !== undefined) ctx.events.emit({ kind: 'berryBushRazed', bush: e, at: eventAt(bp.x, bp.y) });
     world.destroy(e);

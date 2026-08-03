@@ -6,15 +6,13 @@ import { jobCanHarvestGood } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '../../build-order/index.js';
 
-/** The goods the gatherers collect from game start, by stable content id (user plan: clay, stone,
- *  wood). An id absent from the content set - or with no standing resource left on the map - is
- *  skipped. The build order adds its `collector` entries' goods (e.g. iron) once reached. */
+/** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
+ *  the content set is skipped; the build order adds its `collector` entries' goods once reached. */
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
-/** How many flag gatherers the plan keeps per good, by stable content id; anything unlisted stays at
- *  {@link DEFAULT_COLLECTOR_TARGET}. Iron runs three because the plan ends on two smithies and an
- *  iron-tool joinery. Approximation. The first post is phase-1 work (`allocateCollectors`); the rest
- *  are best-effort top-ups (`topUpCollectors`). */
+/** How many flag gatherers the plan keeps per good, by stable content id; an unlisted good keeps
+ *  {@link DEFAULT_COLLECTOR_TARGET}. Approximation: iron runs three because the plan ends on two
+ *  smithies and an iron-tool joinery. The first post is guaranteed, the rest best-effort. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,
@@ -23,7 +21,7 @@ export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
 export const DEFAULT_COLLECTOR_TARGET = 1;
 
 /** How many collect-anything gatherers (a flag with no good filter) the seat keeps, at the lowest
- *  hiring priority (user plan 2026-07-25). */
+ *  hiring priority (authored). */
 export const GENERIC_COLLECTOR_TARGET = 2;
 
 /** A wanted collector good with its resolved gatherer trade, harvest atomic, and staffing target. */
@@ -34,7 +32,6 @@ export interface WantedGood {
   readonly target: number;
 }
 
-/** The good definition with the given stable content id, or undefined. */
 export function goodByContentId(content: ContentSet, id: string) {
   return content.goods.find((g) => g.id === id);
 }
@@ -51,8 +48,8 @@ function harvestJobFor(ctx: SystemContext, harvestAtomic: number): number | null
 }
 
 /** The generalist gatherer trade: the harvest job that can flag-harvest the most goods, ties to the
- *  lowest typeId - a strict `(count desc, id asc)` order, so the winner never depends on set
- *  iteration order. Null when the content has no harvest trade. */
+ *  lowest typeId, so the winner never depends on set iteration order. Null when the content has no
+ *  harvest trade. */
 export function genericCollectorJob(ctx: SystemContext): number | null {
   const index = contentIndex(ctx.content);
   let best: number | null = null;
@@ -71,9 +68,7 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 }
 
 /** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
- *  plan order, each with its gatherer trade and target resolved (`statuses` is the decision's
- *  {@link EntryStatus} snapshot). A good missing from the content set or with no harvest trade is
- *  skipped. */
+ *  plan order. A good missing from the content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
   ctx: SystemContext,
   order: readonly BuildOrderEntry[],
@@ -96,9 +91,9 @@ export function wantedCollectorGoods(
   return wanted;
 }
 
-/** Whether this settler's accrued XP clears the good's `needforgood` thresholds - the same gate the
- *  harvest pick applies (`nearestHarvestableFor`), so the allocator never posts a collector its own
- *  target scan would refuse (iron/gold demand clay/stone-track XP in the base data). */
+/** Whether this settler's accrued XP clears the good's `needforgood` thresholds - the same gate
+ *  `nearestHarvestableFor` applies, so the allocator never posts a collector its own target scan would
+ *  refuse. */
 export function meetsNeed(world: World, ctx: SystemContext, e: Entity, goodType: number): boolean {
   return settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'good', goodType);
 }

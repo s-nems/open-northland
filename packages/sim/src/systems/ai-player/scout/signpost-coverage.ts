@@ -8,15 +8,15 @@ import { seatBaseOf } from '../base.js';
 import { anchorNodeOf, firstRingNode, ownedBuildings } from '../shared.js';
 
 /**
- * The signpost lattice the scout tiles the settlement with (user plan): one post beside the
- * seat's base, six around it at near-minimal spacing, and outer lattice spots only once owned
- * buildings stand near them, so the covered field grows with the settlement.
+ * The signpost lattice the scout tiles the settlement with (authored): one post beside the seat's base,
+ * six around it at near-minimal spacing, and outer lattice spots only once owned buildings stand near
+ * them, so the covered field grows with the settlement.
  */
 
-/** Distance between neighbouring lattice targets, in nodes on the world metric - "almost as close as
- *  posts may stand" (user rule): above the 18-node placement block (SIGNPOST_SPACING_RADIUS_NODES) and
- *  below the 24-node nav range (SIGNPOST_NAV_RADIUS_NODES), so neighbouring posts clear each other's
- *  spacing yet always chain into one network. */
+/** Distance between neighbouring lattice targets, in nodes on the world metric: above the 18-node
+ *  placement block (SIGNPOST_SPACING_RADIUS_NODES) and below the 24-node nav range
+ *  (SIGNPOST_NAV_RADIUS_NODES), so neighbouring posts clear each other's spacing yet always chain into
+ *  one network. */
 export const SIGNPOST_LATTICE_SPACING_NODES = 22;
 
 /** How far a post may stand from its lattice target and still satisfy it - also the legal-spot search
@@ -37,13 +37,13 @@ export function signpostLatticeOffset(q: number, r: number): { dx: number; dy: n
   return { dx: LATTICE_Q_DX * q + LATTICE_R_DX * r, dy: LATTICE_R_DY * r };
 }
 
-/** The innermost hex ring - the centre post plus this ring are always wanted (the user's "one beside
- *  the base, then six around it"); outer rings need a building nearby. */
+/** The innermost hex ring: the centre post and this ring are always wanted, outer rings need a building
+ *  nearby. */
 const BASE_RING = 1;
 
-/** The centre post aims one cell WEST of the base's door rather than at its anchor, which sits inside
- *  the blocked body and lets the legal-spot search settle on the doorway itself. One cell is two
- *  nodes on the half-cell lattice (`nav/halfcell.ts`). */
+/** The centre post aims one cell west of the base's door rather than at its anchor, which sits inside
+ *  the blocked body and lets the legal-spot search settle on the doorway itself. One cell is two nodes
+ *  on the half-cell lattice. */
 const CENTRE_DOOR_CLEARANCE_NODES = 2;
 
 /** Every ring-k target is at least k·19 world units from the centre (the mid-edge minimum
@@ -93,10 +93,10 @@ function latticeRingBound(anchor: HalfCellNode, buildings: readonly HalfCellNode
 }
 
 /**
- * The next erectable lattice target for the seat: the first spot (rings inside-out, walk order) that
- * is wanted (ring ≤ {@link BASE_RING}, or an owned building within one lattice spacing), has no own
- * post within the tolerance, AND a legal node to erect on. Null when the wanted lattice stands
- * complete or every remaining target is unbuildable (off-map, water, blocked).
+ * The next erectable lattice target for the seat: the first spot, rings inside-out, that is wanted (ring
+ * within {@link BASE_RING}, or an owned building within one lattice spacing), has no own post within
+ * the tolerance, and offers a legal node to erect on. Null when the wanted lattice stands complete or
+ * every remaining target is unbuildable.
  */
 export function nextSignpostTarget(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
   const terrain = ctx.terrain;
@@ -114,10 +114,10 @@ export function nextSignpostTarget(world: World, ctx: SystemContext, player: num
     if (node !== null) buildings.push(node);
   }
   let probe: ReturnType<typeof signpostProbe> | null = null;
-  // The sealed-pocket veto (routeRegions): without it a provably sealed spot wins the search and the
-  // module re-aims at it every decision. Judged from the base's door; the scout's own cell is unknowable
-  // in a per-seat pick (named approximation). A pocketed reference would invert the veto (every open
-  // spot reads unroutable), so the pick fails open to the unvetoed search instead.
+  // The sealed-pocket veto: without it a provably sealed spot wins the search and the module re-aims at
+  // it every decision. Judged from the base's door because the scout's own cell is unknowable in a
+  // per-seat pick (approximation); a pocketed reference would invert the veto, so the pick then fails
+  // open to the unvetoed search.
   let veto: ReturnType<typeof routeRegions> | null = null;
   const refNode =
     door !== null ? terrain.nodeAtClamped(door.x, door.y) : terrain.nodeAtClamped(anchor.hx, anchor.hy);

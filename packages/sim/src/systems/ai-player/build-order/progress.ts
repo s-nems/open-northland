@@ -18,16 +18,12 @@ import {
 import type { BuildOrderEntry } from './entries.js';
 import { firstUncoveredBuilding } from './tower-coverage.js';
 
-// ENTRY PROGRESS - the one shared reading of "is this build-order entry done", used by the
-// executor (what to do next) and the workforce allocator (which collector goods the list has
-// reached). Both read the same world state within a decision, so they can never disagree.
-
-/** `skip`: not expressible in this content set / nothing to collect - treated as done for
- *  sequencing. `satisfied`: the world meets the entry. `unmet`: the entry wants action. */
+/** `skip` (not expressible in this content set, or nothing left to collect) counts as done for
+ *  sequencing. */
 export type EntryStatus = 'skip' | 'satisfied' | 'unmet';
 
-/** Whether `from` reaches `target` by walking `upgradeTarget` links upward (strictly below it). The
- *  visited guard bounds a malformed cyclic chain. */
+/** Whether `from` sits strictly below `target` on the `upgradeTarget` chain. The visited guard bounds
+ *  a malformed cyclic chain. */
 function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingType): boolean {
   const visited = new Set<number>();
   let step: BuildingType | undefined = from;
@@ -39,8 +35,7 @@ function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingT
   return false;
 }
 
-/** The seat's build-order progress on one entry (see {@link EntryStatus}). `owned` is the seat's
- *  {@link ownedBuildings} list, passed in so one decision computes it once. */
+/** `owned` is the seat's {@link ownedBuildings} list, passed in so one decision computes it once. */
 export function entryStatus(
   world: World,
   ctx: SystemContext,
@@ -53,8 +48,8 @@ export function entryStatus(
     case 'place': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      // The placed tier or anything above it on its chain counts - an upgraded workshop must not
-      // trigger a duplicate placement (a home entry counts every home tier, upgraded or not).
+      // The placed tier or anything above it on its chain counts, so an upgraded workshop never
+      // triggers a duplicate placement; a home entry counts every home tier.
       const counted = tiersAtOrAbove(index, type);
       let have = 0;
       for (const e of owned) {
@@ -81,8 +76,7 @@ export function entryStatus(
       for (const e of ownedSettlers(world, player)) {
         if (liveWorkFlag(world, e)?.goodType === good.typeId) return 'satisfied';
       }
-      // Nothing left to collect anywhere - treat as done so the list never stalls on a dry map.
-      // The seat's base seeds the expanding-box existence probe (collector goods gather around it).
+      // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
       const base = seatBaseOf(world, ctx, player);
       const near = base === null ? null : anchorNodeOf(world, base);
       return anyLiveResource(world, good.typeId, near) ? 'unmet' : 'skip';
@@ -96,10 +90,8 @@ export function entryStatus(
 }
 
 /**
- * Every entry's {@link EntryStatus} in list order, over one `ownedBuildings` computation - the
- * decision-wide snapshot the workforce module derives its collector gating from.
- * Statuses are recomputed each decision, so they can REGRESS (a razed home; a fringe building
- * re-arming `towerCoverage`) - consumers must tolerate a temporary drop.
+ * Every entry's status in list order. Statuses are recomputed each decision and can regress (a razed
+ * home, a fringe building re-arming `towerCoverage`), so consumers must tolerate a temporary drop.
  */
 export function entryStatuses(
   world: World,
@@ -111,9 +103,9 @@ export function entryStatuses(
   return order.map((entry) => entryStatus(world, ctx, player, owned, entry));
 }
 
-/** The lowest-id owned BUILT building the seat can upgrade toward `target` (its type strictly below
- *  the target on the chain; a site - including an in-flight upgrade - has `built < ONE` and is
- *  skipped), or null. `owned` is canonical ascending, so first hit wins deterministically. */
+/** The lowest-id built building the seat can upgrade toward `target`; a site, including an in-flight
+ *  upgrade, has `built < ONE` and is skipped. `owned` is canonical ascending, so the first hit is
+ *  deterministic. */
 export function upgradeCandidate(
   world: World,
   index: ContentIndex,
@@ -130,13 +122,9 @@ export function upgradeCandidate(
 }
 
 /**
- * The collector goods the build order has reached, in list order - the workforce allocator hires a
- * flag gatherer for each (on top of its base goods). An entry is reached while every entry before it
- * is satisfied (or skipped), and a reached-but-unmet collector blocks the entries after it - the
- * plan's sequencing. Reached state is re-derived each decision (`statuses` is the matching
- * {@link entryStatuses} snapshot), not persisted: if an earlier entry regresses (a razed home), a
- * later collector drops out of the wanted set and its holder returns to the pool until the plan
- * re-reaches the entry - self-healing, at the cost of a mid-career re-hire.
+ * The collector goods the list has reached, in order: an entry is reached while every entry before it
+ * is satisfied or skipped. Reached state is re-derived each decision, so a regressing earlier entry
+ * drops a later collector and returns its holder to the pool until the list re-reaches the entry.
  */
 export function collectorGoodsWanted(
   order: readonly BuildOrderEntry[],

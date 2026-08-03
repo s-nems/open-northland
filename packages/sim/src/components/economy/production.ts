@@ -1,7 +1,7 @@
 import type { Fixed } from '../../core/fixed.js';
 import { defineComponent } from '../../ecs/world.js';
 
-/** One in-flight production BATCH - see {@link Production}. */
+/** One in-flight production batch of a {@link Production} workplace. */
 export interface ProductionCycle {
   /** Whole ticks elapsed in this cycle; completion is the exact `elapsed >= duration`. */
   elapsed: number;
@@ -13,19 +13,14 @@ export interface ProductionCycle {
 }
 
 /**
- * The in-progress production cycles on a workplace (a {@link Building} whose building type carries
- * `recipes`) - a LIST, one independent batch per operator working the craft, so two millers grind two
- * flours in parallel (each cycle consumed its own recipe's inputs at start and deposits its own
- * output at completion; observed original behaviour - a multi-worker workshop out-produces a
- * single-worker one). Each tick the ProductionSystem advances as many cycles as there are operators
- * ON STATION (FIFO - the oldest batch first), so a departed worker's batch simply waits; new cycles
- * start while there are more present operators than running cycles and some product's inputs/room
- * allow. Which product a new cycle crafts is the starting operator's choice ({@link CraftSelection}).
- * The component exists only while at least one cycle runs - its absence means the workplace is idle.
+ * The in-progress production cycles on a workplace - one independent batch per operator working the craft,
+ * so two millers grind two flours in parallel (observation: a multi-worker workshop out-produces a
+ * single-worker one). Each tick the ProductionSystem advances as many cycles as there are operators on
+ * station, oldest first, so a departed worker's batch simply waits. The component exists only while at
+ * least one cycle runs.
  *
- * Timing is the exact integer compare `elapsed >= duration` (like {@link CurrentAtomic}) - never an
- * accumulated fixed-point step, which would truncate and hang. `duration`/`goodType` mirror the
- * recipe at start (snapshotted so a content edit mid-cycle can't change an in-flight cycle).
+ * Timing is the exact integer compare `elapsed >= duration`, never an accumulated fixed-point step, which
+ * would truncate and hang.
  */
 export const Production = defineComponent<{
   /** The independent in-flight batches, oldest first (advanced FIFO; completed ones are removed). */
@@ -33,15 +28,11 @@ export const Production = defineComponent<{
 }>('Production');
 
 /**
- * A craft worker's product order - which of its workplace's products it crafts, set by the
- * `setCraftGoods` command (the crafting twin of the gatherer's `WorkFlag.goodType` filter; the 1:1
- * alternation over a multi-pick is a design decision, user-specified 2026-07-16 - the original's
- * per-worker product scheduling is not decoded). `goods`
- * empty means "every product the workplace offers" (the default; the component may simply be absent).
- * With several products in rotation the worker alternates: each started cycle takes the product at
- * `cursor` (skipping ones whose inputs/room don't allow a start) and advances past it - one short
- * sword, one plate armor, one short sword… `cursor` indexes the effective rotation list (the selected
- * goods, or all workplace products when `goods` is empty), and is reset by a new selection.
+ * A craft worker's product order - which of its workplace's products it crafts, set by the `setCraftGoods`
+ * command. An empty `goods` means every product the workplace offers, and the component may simply be
+ * absent. With several products selected each started cycle takes the one at `cursor`, skipping any whose
+ * inputs or room don't allow a start, and advances past it. Authored: the 1:1 alternation over a multi-pick
+ * is a design choice, since the original's per-worker product scheduling is not decoded.
  */
 export const CraftSelection = defineComponent<{
   /** Selected product goodTypes, ascending (deduped); empty = all the workplace's products. */
@@ -51,12 +42,11 @@ export const CraftSelection = defineComponent<{
 }>('CraftSelection');
 
 /**
- * A workplace's fractional experience-bonus output - the decimal part of "an experienced baker bakes
- * 1.5 bread per cycle". Each completed batch adds its operator's bonus fraction here per output good;
- * whole units move into the {@link Stockpile} the moment a fraction crosses 1.0 (capacity permitting),
- * so only whole units are ever visible to withdrawal - a 0.9 remainder cannot leave the building
- * (design rule, user-specified). Values are `Fixed` in [0, capacity-blocked overflow); the component
- * exists only while some remainder is non-zero.
+ * A workplace's fractional experience-bonus output - the decimal part of "an experienced baker bakes 1.5
+ * bread per cycle". Each completed batch adds its operator's bonus fraction here per output good, and a
+ * whole unit moves into the {@link Stockpile} the moment a fraction crosses ONE, so only whole units are
+ * ever visible to withdrawal (authored: a 0.9 remainder cannot leave the building). The component exists
+ * only while some remainder is non-zero.
  */
 export const ProductionBonus = defineComponent<{
   /** goodType → the accumulated fractional bonus output (`Fixed`), pending its next whole unit. */

@@ -5,9 +5,8 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /**
- * The `(tribe, job)` pair that keys a settler's content lookups - its weapon and armor class, its
- * allowed atomics, its animation set. A structural subset of {@link Settler}, so a `world.get(e, Settler)`
- * value assigns straight to it.
+ * The `(tribe, job)` pair that keys a settler's content lookups. A structural subset of {@link Settler},
+ * so a `Settler` value assigns straight to it.
  */
 export interface SettlerIdentity {
   readonly tribe: number;
@@ -15,36 +14,25 @@ export interface SettlerIdentity {
 }
 
 /**
- * A settler: an autonomous individual. Settlers don't "do jobs" as monolithic logic - they execute atomic
- * actions ({@link CurrentAtomic}) chosen by a planner; `jobType` constrains which atomics are allowed
- * (`jobtypes.allowatomic`), and `experience` keyed by specialization gates progression.
+ * An autonomous individual. `jobType` constrains which atomics it may run (`jobtypes.allowatomic`), and
+ * `experience` keyed by specialization gates progression.
  */
 export const Settler = defineComponent<{
-  /** `readonly`: never written after the settler is added, and a derived table keys on it (see
-   *  {@link setSettlerJob}). */
   readonly tribe: number;
-  /** `readonly` so every change goes through {@link setSettlerJob}. */
+  /** Written only through {@link setSettlerJob}. */
   readonly jobType: number | null;
-  /** 0..ONE hunger; rises over time, NeedsSystem drives eating. */
+  /** 0..ONE; rises over time. */
   hunger: Fixed;
-  /**
-   * 0..ONE fatigue; rises over time like {@link hunger}. Satisfied by the `sleep` atomic (id 8, bound for
-   * every job/tribe in `tribetypes` `setatomic <job> 8 "..._sleep"`), which the sleep drive runs on open
-   * ground away from the buildings.
-   */
+  /** 0..ONE; rises over time, cleared by the `sleep` atomic (id 8, `tribetypes` `setatomic <job> 8`). */
   fatigue: Fixed;
   /**
-   * 0..ONE piety - a target-bound need, satisfied by walking to a site rather than in place. Unlike
-   * {@link hunger} it does not rise over time: only forging a weapon or armor good raises it, and the
-   * `pray` atomic (id 12, `setatomic 6 12 "..._pray"`) at a temple clears it.
+   * 0..ONE; does not rise with time - only forging a weapon or armor good raises it, and the `pray` atomic
+   * (id 12, `setatomic 6 12`) at a temple clears it.
    */
   piety: Fixed;
   /**
-   * 0..ONE enjoyment - the social/company need. Rises over time like {@link hunger}. The original restores
-   * channel 3 (leisure/social) through the talk/monologuize/listen atomics 14/13/15 plus `enjoy` (17) and
-   * `make_love` (78) - there is no building satisfier. The gossip drive (`systems/social/gossip/`) is the
-   * satisfying half: settlers pair up and the talk/listen animation pulses refill this bar.
-   * (Channels: 1 = rest, 2 = hunger, 3 = leisure/social.)
+   * 0..ONE; rises over time and is restored only by the talk/monologuize/listen atomics (14/13/15), never
+   * by a building (the original's channel 3, leisure/social).
    */
   enjoyment: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */
@@ -55,9 +43,8 @@ export const Settler = defineComponent<{
 type SettlerTradeWrite = { jobType: number | null };
 
 /**
- * Put a settler in a trade (`null` = idle). The one write path for `Settler.jobType`: the in-place write
- * is invisible to the membership generation, so it bumps the value generation that
- * {@link import('../systems/progression/alive-jobs.js').aliveTribeJobs} is keyed on.
+ * The one write path for `Settler.jobType` (`null` = idle): the in-place write is invisible to the
+ * membership generation, so it bumps the value generation the alive-jobs table is keyed on.
  */
 export function setSettlerJob(world: World, entity: Entity, jobType: number | null): void {
   world.write(entity, Settler, (s) => {
@@ -66,20 +53,13 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
 }
 
 /**
- * The atomic micro-action a settler is currently executing (the unit of behavior in Cultures, e.g.
- * pickup=22, harvest=24, eat=10, attack=81). The planner (PlannerSystem) sets this; the AtomicSystem
- * advances `progress` from 0 to ONE over `duration` ticks, and on completion applies the typed
- * {@link AtomicEffect}, emits an `atomicCompleted` event, and removes the component - the planner sees an
- * entity with no CurrentAtomic as ready for its next atomic.
- *
- * `atomicId` keeps the numeric content cross-reference (the join key onto a tribe's `setatomic` animation);
- * `effect` is the typed action the executor applies. `duration` is the animation length in ticks
- * (`AtomicAnimation.length`, supplied by the planner) - at least 1, so a zero-length animation still
- * completes in exactly one tick. `targetEntity`/`targetTile` are the action's object. Timing runs off the
- * integer `elapsed`, never an accumulated fixed-point step: `ONE / duration` truncates, so a summed fraction
- * would never reach ONE and the atomic would hang.
+ * The atomic micro-action a settler is currently executing. The planner sets it; the AtomicSystem applies
+ * the {@link AtomicEffect} on completion and removes the component, so an entity carrying none is ready
+ * for its next atomic. Timing runs off the integer `elapsed`, never an accumulated fixed-point step:
+ * `ONE / duration` truncates, so a summed fraction would never reach ONE and the atomic would hang.
  */
 export const CurrentAtomic = defineComponent<{
+  /** Join key onto a tribe's `setatomic` animation. */
   atomicId: number;
   /** Whole ticks executed so far; completion is the exact `elapsed >= duration`. */
   elapsed: number;
@@ -89,82 +69,57 @@ export const CurrentAtomic = defineComponent<{
   effect: AtomicEffect;
   targetEntity: number | null;
   targetTile: { x: number; y: number } | null;
-  /**
-   * Present (true) only while the atomic runs its inter-swing rest tail: the harvest effect has applied and
-   * its completion event fired, and the executor extended `duration` so the gatherer stands its breather in
-   * the swing's ready pose (the effect stays the harvest so the tail chains straight into the next swing).
-   * The tail completes silently - no `atomicCompleted` re-emit.
-   */
+  /** Present only while the atomic runs its inter-swing rest tail: the harvest effect has already applied,
+   *  and the tail completes without re-emitting `atomicCompleted`. */
   restTail?: boolean;
-  /** Swings landed since the last breather in a multi-swing harvest burst (the rest cadence is counted
-   *  per WORKER, not off the node's counters - an expert's swing advances those by more than one).
-   *  Absent outside a burst. */
+  /** Swings landed since the last breather, counted per worker rather than off the node's counters (an
+   *  expert's swing advances those by more than one). Absent outside a harvest burst. */
   swingsSinceRest?: number;
-  /** The fractional work credit an experienced gatherer's swings bank across a multi-swing harvest job
-   *  (see swingWorkUnits) - in [0, ONE); absent while whole (every novice swing). */
+  /** Fractional work credit banked across a multi-swing harvest, in [0, ONE); absent while whole. */
   workCredit?: Fixed;
 }>('CurrentAtomic');
 
-/** A settler carrying goods (carriers physically haul; goods never teleport to a global bank). */
+/** Goods a settler is physically hauling; goods never teleport to a global bank. */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
-/** The most units a settler picks up in one lift - one, globally: a person carries a single good unit at a
- *  time (observed original behavior; no on-foot batch exists anywhere in the game). Hauling more takes more
- *  trips; a cart/vehicle slice would model the vehicle's own hold, never a bigger personal carry. */
+/** The most units a settler picks up in one lift. Observation: a person carries a single good unit at a
+ *  time, so hauling more takes more trips. */
 export const CARRY_CAPACITY = 1;
 
 /**
- * A builder's construction-site crew membership: the site this settler is raising. Stamped by the builder
- * drive whenever it engages a site (hammer / fetch / wait), so membership survives waiting for material, a
- * player detour, or a meal. `pinned` marks a player-made assignment (the `assignBuilder` right-click,
- * faithful to the original's "put a builder on a foundation"): a pinned site wins over the nearest-site pick
- * while it still stands. Cleared when the settler stops being a builder, no site remains, or the pinned site
- * finishes.
+ * A builder's construction-site crew membership, re-stamped whenever the builder drive engages the site, so
+ * it survives waiting for material, a player detour, or a meal. `pinned` marks a player-made assignment
+ * (the `assignBuilder` order), which wins over the nearest-site pick while that site still stands.
  */
 export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>('SiteAssignment');
 
 /**
- * A settler's live construction-supply errand: it is fetching (or hauling) `amount` of `goodType` toward
- * `site`. Stamped when the builder drive commits a fetch or the delivery drive routes a load to a site,
- * cleared at the top of the settler's own next planning (the rungs re-stamp it while the errand lasts), so it
- * persists through the walk/pickup/haul and dies with the errand. Later-planned settlers subtract these from
- * a site's outstanding need ({@link import('../systems/stores/supply-tally.js').InboundSupplyTally}), so two
- * builders don't race to fetch the same last unit and a crew spreads over different materials.
+ * A settler's live construction-supply errand. Cleared at the top of its own next planning pass and
+ * re-stamped while the errand lasts. Later-planned settlers subtract these from a site's outstanding need,
+ * so two builders don't race for the same last unit and a crew spreads over different materials.
  */
 export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
 
 /**
- * A worker→workplace binding: the specific {@link Building} a settler is employed at - the walk-to-workplace
- * drive heads for this building and the staffs-here pin latches the settler only on it, so two same-type
- * workplaces staff independently. The `assignWorker` order stamps it, naming a concrete understaffed
- * building rather than just a job type; nothing else employs a settler. Optional, so an unemployed - or
- * merely unposted - settler simply has none.
+ * The specific {@link Building} a settler is employed at, so two same-type workplaces staff independently.
+ * Only the `assignWorker` order stamps it; nothing else employs a settler.
  */
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 
 /**
- * A settler's age in whole ticks while it is still a non-working life stage. Only a settler born young (the
- * FamilySystem's birth) carries one: the GrowthSystem increments it each tick and promotes the age-class
- * `jobType` (baby → child → adult-eligible) at each stage boundary, then removes the component once the
- * settler reaches adult-eligibility (`jobType` cleared to `null`). So an adult never carries an `Age`, and
- * every settler from `spawnSettler` (born adult) has none.
+ * A settler's age in whole ticks while it is still a non-working life stage. Only a settler born young
+ * carries one; the GrowthSystem promotes the age-class `jobType` at each stage boundary and removes the
+ * component at adult-eligibility, so an adult never carries an `Age`.
  */
 export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
- * A player move order in flight on a settler, stamped by {@link
- * import('../systems/orders/index.js').moveUnit}. While present the PlannerSystem's ECONOMY branch and the
- * combat auto-drives leave the unit alone (the reposition is authoritative), but its NEEDS drives still fire.
- * The {@link import('../systems/orders/index.js').playerOrderSystem} removes it the tick the unit arrives (or
- * the route fails / a need takes over) - there is no post-arrival hold; DEFEND's stance anchor is the "hold
- * position" tool.
+ * A player move order in flight on a settler. While present the planner's economy branch and the combat
+ * auto-drives leave the unit alone, but its needs drives still fire; `playerOrderSystem` removes it on
+ * arrival, on route failure, or when a need takes over.
  *
- * `pendingGoal` holds a move order issued to a settler that was still carrying a load: it can't walk with its
- * hands full, so `moveUnit` starts the drop atomic and parks the destination node here, and the
- * {@link import('../systems/orders/index.js').playerOrderSystem} launches the walk (sets the {@link MoveGoal})
- * the tick the drop finishes, then clears the field. Absent on a move order issued to an empty-handed settler.
- *
- * `attackMove` marks the aggressive flavour ({@link AttackMoveMarch}) - the walk that fights its way there.
+ * `pendingGoal` parks the destination while a settler that was carrying a load runs its drop atomic.
+ * `attackMove` marks the aggressive flavour ({@link AttackMoveMarch}).
  */
 export const PlayerOrder = defineComponent<{
   pendingGoal?: NodeId;
@@ -173,19 +128,13 @@ export const PlayerOrder = defineComponent<{
 
 /**
  * The march an attack-move order walks out - the original's "Attack Position" (`misclogic/48`). Unlike a
- * plain move order it does NOT suppress the combat auto-drives: the unit acts under `MILITARY_MODE.ATTACK`
- * for the walk whatever its own stance says, so it engages what it meets and resumes the march once that
- * fight ends. Approximated - the original's en-route behaviour is unobserved, so fighting along the way is
- * the RTS reading of the order; the mode override applies to any ordered settler, where the original's own
- * vocabulary scopes the modes to soldiers (`misclogic/38-40`), so an A-clicked civilian fights too.
+ * plain move order it does not suppress the combat auto-drives: the unit walks under `MILITARY_MODE.ATTACK`
+ * whatever its own stance says. Approximation: the original's en-route behaviour is unobserved, and its
+ * vocabulary scopes the modes to soldiers (`misclogic/38-40`), so here an ordered civilian fights too.
  *
- * `goal` is the destination node the order was issued for, kept here because a fight overwrites the
- * {@link MoveGoal} with chase destinations. `resume` records that a fight took the unit off its march, so
- * {@link import('../systems/orders/index.js').playerOrderSystem} re-issues the goal exactly once when the
- * unit next falls idle - a re-aimed goal (routing's occupied-node stand-in) makes "am I standing on `goal`?"
- * an unusable arrival test. `blockedUntil` rests the aggression through that tick after a chase that could
- * not route: the march then walks as a plain move order, so an enemy visible across a river cannot hold the
- * unit in a per-tick failing search forever.
+ * `goal` outlives a fight overwriting the {@link MoveGoal} with chase destinations; `resume` re-issues it
+ * exactly once when the unit next falls idle, since a re-aimed goal makes an arrival test unusable;
+ * `blockedUntil` rests the aggression through a tick whose chase could not route.
  */
 export interface AttackMoveMarch {
   readonly goal: NodeId;
@@ -200,12 +149,8 @@ export type DeferrableOrderCommand = Extract<
 >;
 
 /**
- * A gameplay order parked behind a non-interruptible atomic (a harvest swing, a half-eaten meal - see
- * `isInterruptibleAtomic` for the flag and its default): the handler stores the whole command here instead
- * of cancelling the action, and the {@link import('../systems/orders/index.js').deferredOrderSystem}
- * re-dispatches it once the atomic completes. One slot per settler, latest-order-wins: a newer order of any
- * kind replaces (or, when it executes immediately, clears) the parked one - a named approximation; the
- * original's queueing depth under back-to-back orders is unobserved. Hashed state like any component, so
- * replays carry parked orders.
+ * A gameplay order parked behind a non-interruptible atomic instead of cancelling it; `deferredOrderSystem`
+ * re-dispatches it once the atomic completes. One slot per settler, latest-order-wins - an approximation,
+ * since the original's queueing depth under back-to-back orders is unobserved.
  */
 export const DeferredOrder = defineComponent<{ command: DeferrableOrderCommand }>('DeferredOrder');

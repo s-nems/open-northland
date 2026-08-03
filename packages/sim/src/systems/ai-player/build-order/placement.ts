@@ -20,20 +20,12 @@ import {
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 
-// PLACEMENT SPOT SEARCH - where a build-order `place` entry lands: always inside the near-anchor
-// Manhattan disc, ring-searched outward from the entry's affinity centre (the plan's "mason toward
-// the stone, chains cluster" rules) instead of the anchor itself, with the farm's plantable-ground
-// rule as an extra accept filter. No affinity and no ground rule reproduces the original
-// closest-to-anchor pick exactly (the anchor is the seat's base).
-
-/** How far past the frontier building an `outskirts` anchor is pushed away from the settlement
- *  centroid - roughly a footprint plus clearance beyond the built edge (named approximation, user
- *  plan 2026-07-25). */
+/** How far past the frontier building an `outskirts` anchor is pushed out from the settlement
+ *  centroid, in nodes. Approximation: a footprint plus clearance beyond the built edge. */
 const OUTSKIRTS_PUSH_NODES = 8;
 
-/** One affinity anchor resolved to a node: the seat's first (lowest-id) owned building of the id,
- *  the live resource of the good nearest the anchor, the map's centre node, or the settlement's
- *  outskirts past a frontier building. Unresolvable anchors are dropped. */
+/** One affinity resolved to a node, or null when it cannot be. A `building` affinity takes the seat's
+ *  lowest-id owned match, so the pick is deterministic. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
@@ -67,23 +59,15 @@ function affinityNode(
   }
 }
 
-/** Lattice Manhattan node distance - NOT the anisotropic world metric {@link KIND_SPACING_NODES}'s
- *  veto measures in. */
+/** Lattice Manhattan distance, not the anisotropic world metric the spacing veto measures in. */
 function nodeDistance(a: HalfCellNode, b: HalfCellNode): number {
   return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
 }
 
 /**
- * The `outskirts` anchor: a frontier building pushed {@link OUTSKIRTS_PUSH_NODES} further out from the
- * settlement centroid. `clearance` (distance to the nearest same-kind anchor) outranks `reach`
- * (distance from the centroid), so warehouse #2 anchors past the settlement's least-served side rather
- * than past the same corner as the base and warehouse #1 (user rule 2026-07-27); with no anchors the
- * score collapses to the plain farthest-from-centroid frontier. Strict `>` over the canonical list
- * keeps the lowest id on ties, and `searchCentre` clamps the result back into the near-anchor disc.
- *
- * Clearance dominating means the elected anchor need not be the settlement's outermost building, so
- * the minimum separation is upheld by the {@link KIND_SPACING_NODES} veto, not by this ranking. The
- * base is itself a same-kind anchor, which is what keeps a centroid-adjacent candidate scoring low.
+ * The `outskirts` anchor: the frontier building ranked first by clearance from the same-kind anchors
+ * and only then by reach from the centroid, so a second warehouse anchors past the settlement's
+ * least-served side. Strict `>` over the canonical list keeps the lowest id on ties.
  */
 function outskirtsNode(
   world: World,
@@ -100,7 +84,7 @@ function outskirtsNode(
   let bestClearance = -1;
   let bestReach = -1;
   for (const e of owned) {
-    if (ownChain.has(world.get(e, Building).buildingType)) continue; // never anchor on its own kind
+    if (ownChain.has(world.get(e, Building).buildingType)) continue; // never anchor on its own chain
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
     let clearance = Number.POSITIVE_INFINITY;
@@ -116,9 +100,8 @@ function outskirtsNode(
   return frontier === null ? null : outwardNode(centroid, frontier, OUTSKIRTS_PUSH_NODES);
 }
 
-/** The centre the ring search grows from: the integer-mean of the entry's resolved affinity nodes,
- *  pulled back along the straight line to the anchor when it falls outside its disc (so the
- *  search still starts inside the legal band and stays bounded). No resolved affinity → the anchor. */
+/** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
+ *  clamped back into the anchor disc, or the anchor itself when nothing resolves. */
 function searchCentre(
   world: World,
   ctx: SystemContext,
@@ -147,18 +130,16 @@ function searchCentre(
   const dist = Math.abs(dx) + Math.abs(dy);
   if (dist <= BUILD_SEARCH_MAX_RADIUS_NODES) return centre;
   // Integer projection toward the anchor; trunc keeps |dx'|+|dy'| ≤ the radius. Plain `/` on integer
-  // operands is IEEE-exact-rounded, hence byte-identical across engines (no transcendental math).
+  // operands is exactly rounded, so the result is byte-identical across engines.
   return {
     hx: anchor.hx + Math.trunc((dx * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
     hy: anchor.hy + Math.trunc((dy * BUILD_SEARCH_MAX_RADIUS_NODES) / dist),
   };
 }
 
-/** The plantable-ground accept filter for a `ground: 'plantable'` entry: every reserved footprint
- *  cell (the anchor node itself for footprint-less synthetic content) must be sowable ground.
- *  Named approximation: "the farm stands on grass" is encoded as its reserved zone on `plantable`
- *  terrain (the original's `biocanplanton` class) - the surrounding field ring is not pre-checked;
- *  sowing already skips barren nodes (`settlers/drives/farming/targets.ts`). */
+/** Every reserved footprint cell must be sowable ground. Approximation: "the farm stands on grass" is
+ *  encoded as the reserved zone on `plantable` terrain (the original's `biocanplanton` class); the
+ *  surrounding field ring is not pre-checked, since sowing already skips barren nodes. */
 function groundAccepted(
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -179,10 +160,9 @@ function groundAccepted(
 }
 
 /**
- * The building-agnostic legality core every spot search shares: in-bounds buildable ground, off
- * every existing building's anchor (explicit, so a footprint-less synthetic type never stacks), and
- * accepted by the placement probe. One occupied-set scan per call - build it once per search, not
- * per candidate.
+ * Shared legality test for a spot search: in-bounds buildable ground, off every existing building's
+ * anchor (explicit, so a footprint-less synthetic type never stacks), and accepted by the placement
+ * probe. It scans the occupied set once per call, so build the closure per search, not per candidate.
  */
 export function buildingSpotAccept(
   world: World,
@@ -203,14 +183,12 @@ export function buildingSpotAccept(
   };
 }
 
-/** How far an `apart` placement keeps from the seat's other buildings of the same kind, in
- *  world-metric nodes - far enough that two warehouses serve different corners of a settlement
- *  bounded by the {@link BUILD_SEARCH_MAX_RADIUS_NODES} disc (named approximation, user decision
- *  2026-07-26). */
+/** How far an `apart` placement keeps from the seat's other same-kind buildings, in world-metric
+ *  nodes. Approximation: far enough that two warehouses serve different corners of the search disc. */
 const KIND_SPACING_NODES = 20;
 
-/** The anchors an `apart` entry keeps its distance from: the seat's buildings of the same KIND as the
- *  placed type (a warehouse spreads away from the base and from every other warehouse). */
+/** The anchors an `apart` entry keeps away from: same-kind buildings, not same-id, so a warehouse
+ *  also spreads away from the base. */
 function kindSpacingAnchors(
   world: World,
   ctx: SystemContext,
@@ -228,15 +206,9 @@ function kindSpacingAnchors(
 }
 
 /**
- * The spot a `place` entry builds on: the legal anchor closest to the entry's {@link searchCentre},
- * restricted to the near-anchor disc, on buildable (and, when required, plantable) ground, off every
- * existing building's anchor, and accepted by the shared placement probe. Ring order is canonical,
- * so the winner is deterministic; the search is bounded by twice the anchor radius (a centre inside the
- * disc reaches every disc node within that), never the whole map. Null stalls the entry.
- *
- * An `apart` entry's same-kind anchors do double duty: they steer the `outskirts` affinity to the
- * settlement's least-served side, and they veto spots within {@link KIND_SPACING_NODES} of one. The
- * veto runs as a first pass only - a second pass without it keeps the preference from ever stalling.
+ * The legal node closest to {@link searchCentre} and inside the anchor disc, or null to stall the
+ * entry. The ring budget is twice the anchor radius because a centre inside the disc reaches every
+ * disc node within that. The `apart` veto runs as a first pass only, so the preference never stalls.
  */
 export function placementSpot(
   world: World,
@@ -252,8 +224,8 @@ export function placementSpot(
   const centre = searchCentre(world, ctx, terrain, owned, anchor, type, sameKindAnchors, entry);
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>
     firstRingNode(centre.hx, centre.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
-      // The pure-arithmetic anchor-disc test first: an affinity-pulled centre puts up to half of every ring
-      // outside the disc, and a permanently stalled entry re-walks the whole fan every decision.
+      // Cheapest test first: an affinity-pulled centre puts up to half of every ring outside the
+      // disc, and a stalled entry re-walks the whole fan every decision.
       if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
       if (veto.some((a) => withinNodeRadius(a.hx, a.hy, x, y, KIND_SPACING_NODES))) return false;
       if (!terrain.inBounds(x, y)) return false; // groundAccepted resolves nodes - bounds come first

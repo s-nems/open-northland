@@ -8,9 +8,8 @@ import type { IndexNodeVisitor } from '../spatial/nodes.js';
  */
 const PRESENCE_CELL_NODES = 32;
 
-/** Combatant counts on one coarse cell: everyone, the owned share per player, and the wildlife shares
- *  (see {@link HostilePresence}'s constructor `wildClassOf`). An unowned scenario civ counts only in
- *  `total`, so it always reads as "other" AND as a civilization. */
+/** Combatant counts on one coarse cell: everyone, the owned share per player, and the wildlife shares. An
+ *  unowned scenario civ counts only in `total`, so it always reads as "other" and as a civilization. */
 interface PresenceCell {
   total: number;
   passive: number;
@@ -19,28 +18,21 @@ interface PresenceCell {
 }
 
 /**
- * A per-tick coarse count grid over the combatants - the CombatSystem's idle early-out (golden
- * rule 6): an owned seeker asks "could any combatant I don't own be within my search radius?" in
- * O(coarse cells) before paying the full ring search. Perf-only and conservative - the query
- * over-approximates (Chebyshev box ⊇ Manhattan diamond, coarse-cell granularity, and "not mine
- * minus passive wildlife" ⊇ every gated accept filter, because those all route hostility through
- * the owner-first `mayTarget` relation, whose neutral axis admits an unowned animal only when
- * hostile-now or as hunter prey), so a `false` proves the ring search would find nothing and
- * skipping it cannot change a winner. Seekers whose filter breaks that superset are ungated via a
- * null `EngageSpec.player` (or the flee drive's own hunter exemption): unowned ones (valid targets
- * can share the "unowned" class) and hunters (owner-blind prey filter admits passive huntable
- * animals). The passive share may only shrink within the tick (Anger is stamped by the earlier
- * atomic damage pass and only reaped here), so the build-time count stays conservative. Filled each
- * combat tick from the same walk as the ring-search index; derived state, never hashed.
+ * A per-tick coarse count grid over the combatants - the CombatSystem's idle early-out: an owned seeker asks
+ * "could any combatant I don't own be within my search radius?" in O(coarse cells) before paying the full
+ * ring search. Perf-only and conservative: the query over-approximates (Chebyshev box ⊇ Manhattan diamond,
+ * coarse-cell granularity, and "not mine minus passive wildlife" ⊇ every gated accept filter), so a `false`
+ * proves the ring search would find nothing and skipping it cannot change a winner. Seekers whose filter
+ * breaks that superset are ungated via a null `EngageSpec.player`. The passive share may only shrink within
+ * the tick, so the build-time count stays conservative. Derived state, never hashed.
  */
 export class HostilePresence {
   /** Coarse column → row → counts; nested numeric maps keep negative/off-map nodes collision-free. */
   private readonly byCx = new Map<number, Map<number, PresenceCell>>();
   private readonly world: World;
   /**
-   * Count `e` into node (x,y)'s coarse cell: the tally sink, public so the ring-search index's own build walk
-   * can feed it (`NodeBuckets`'s `alsoVisit`). Owner and wildlife class are read per visit, so the one
-   * reused visitor keeps no per-entity state.
+   * Count `e` into node (x,y)'s coarse cell - public so the ring-search index's own build walk can feed it.
+   * Owner and wildlife class are read per visit, so the one reused visitor keeps no per-entity state.
    */
   readonly addNode: IndexNodeVisitor = (e, x, y) => {
     const cell = this.cellAt(Math.floor(x / PRESENCE_CELL_NODES), Math.floor(y / PRESENCE_CELL_NODES));
@@ -56,10 +48,9 @@ export class HostilePresence {
 
   constructor(
     world: World,
-    /** Classifies an unowned animal combatant: `'passive'` (non-hostile-now - discounted from
-     *  `othersWithin`, so a map of grazing herds cannot defeat every gated seeker's early-out) or
-     *  `'hostile'` (aggressive/angry - additionally discounted from `civsWithin`, so a wolf pack
-     *  cannot defeat its own members' early-out); `null` for everything else. */
+    /** Classifies an unowned animal combatant: `'passive'` is discounted from `othersWithin`, so a map of
+     *  grazing herds cannot defeat every gated seeker's early-out, and `'hostile'` is additionally
+     *  discounted from `civsWithin`, so a wolf pack cannot defeat its own members'. */
     wildClassOf?: (e: Entity) => 'passive' | 'hostile' | null,
   ) {
     this.world = world;
@@ -67,9 +58,8 @@ export class HostilePresence {
   }
 
   /**
-   * Whether any combatant not owned by `player` (another player's unit, or any unowned one) might
-   * lie within Manhattan `radius` of node (hx, hy) - checked over the coarse cells intersecting the
-   * covering Chebyshev box. `false` is a proof of absence; `true` only means "run the real search".
+   * Whether any combatant not owned by `player` might lie within Manhattan `radius` of node (hx, hy).
+   * `false` is a proof of absence; `true` only means "run the real search".
    */
   othersWithin(player: number, hx: number, hy: number, radius: number): boolean {
     const cx0 = Math.floor((hx - radius) / PRESENCE_CELL_NODES);
@@ -88,10 +78,9 @@ export class HostilePresence {
   }
 
   /**
-   * Whether any CIVILIZATION combatant (owned or unowned - everything that is not classified wildlife)
-   * might lie within Manhattan `radius` of node (hx, hy) - the hostile-animal seeker's early-out twin of
-   * {@link othersWithin} (a wild animal's only valid targets are civilization settlers). Same
-   * conservative Chebyshev-box over-approximation; `false` proves the ring search would find nothing.
+   * Whether any civilization combatant - everything not classified wildlife - might lie within Manhattan
+   * `radius` of node (hx, hy). The hostile-animal seeker's early-out twin of {@link othersWithin}, since a
+   * wild animal's only valid targets are civilization settlers.
    */
   civsWithin(hx: number, hy: number, radius: number): boolean {
     const cx0 = Math.floor((hx - radius) / PRESENCE_CELL_NODES);

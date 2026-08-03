@@ -21,11 +21,10 @@ import { seatBarracksOf } from '../base.js';
 import { assistantCounterCommand, ownedSettlers } from '../shared.js';
 import type { SpareForce } from './pool.js';
 
-/** The army's weapon mix: equal shares over the three armed classes, but only over those a store can
- *  arm this decision, so the fielded mix tracks stock. Publication order breaks a draft that does not
- *  divide - the leftover men fight in reach. Authored balance, and blind to the tower posts, which
- *  take bow classes only (`military/defence/posts.ts`) and take them for good: a seat holding towers
- *  fields fewer archers than the share implies. */
+/** The army's weapon mix (authored): equal shares over the three armed classes, but only over those a
+ *  store can arm this decision, so the fielded mix tracks stock. Publication order breaks an
+ *  indivisible draft, leaving the odd men in reach. Blind to the tower posts, which take bow classes
+ *  for good, so a seat holding towers fields fewer archers than the share implies. */
 const GARRISON_WEAPON_INTENTS = [
   'trainSword',
   'trainSpear',
@@ -37,22 +36,12 @@ const GARRISON_WEAPON_INTENTS = [
 const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ...GARRISON_WEAPON_INTENTS];
 
 /**
- * The garrison sizing: the seat trains through the settlement assistant (user rule) - this rung keeps
- * the training counters at the number of men the settlement can spare, and the dispatcher
- * (`systems/assistant/`) drafts, walks and drills them; the arming pass
- * (`settlers/planner/recruit-arming.ts`) then dresses each class recruit. The more free civilians,
- * the larger the standing order; the AI hand-picks no recruit. A disabled `military` toggle publishes
- * zero, so the assistant stops with the module; only losing the base freezes the standing counters (the
- * whole workforce ladder stops deciding upstream).
- *
- * The army has no size cap (user rule: as many soldiers as the settlement can raise). Its real bound is
- * the breeding engine that grows the next recruits: a fighter neither marries nor fathers children, and
- * the conversion is one-way, so the allowance counts only UNMARRIED spare men, capped by the bachelor
- * surplus beyond the seat's waiting brides ({@link bachelorSurplus}). The dispatcher drafts unmarried men
- * first, so a want sized to the free bachelors never reaches a husband.
- *
- * Runs last in the workforce ladder, so the allowance sees only the draft-shaped men left unclaimed by
- * every post, reserve and flag. Outflow pacing is the assistant's trickle brake.
+ * The garrison sizing: this rung only holds the assistant's training counters at the number of men the
+ * settlement can spare, and the dispatcher (`systems/assistant/`) drafts, walks and drills them. The
+ * army has no size cap (authored), so its real bound is breeding: a fighter neither marries nor fathers
+ * children and the conversion is one-way, so the allowance counts only unmarried spare men beyond the
+ * seat's waiting brides ({@link bachelorSurplus}). Runs last in the workforce ladder, so it sees only
+ * the men left unclaimed by every post, reserve and flag.
  */
 export function trainGarrison(
   world: World,
@@ -68,16 +57,10 @@ export function trainGarrison(
 }
 
 /**
- * The wanted value per counter: each keeps its own unpaid bookings ({@link bookedByIntent}) plus an
- * even share of the men the seat may still draft, so the headroom the dispatcher sees
- * (`counter - bookings`, `systems/assistant/`) sums to exactly that number.
- *
- * Shares go only to the classes the seat can arm right now ({@link armableIntents}), the earlier
- * classes taking the remainder. A seat that can arm none of them shares out onto `trainSoldiers`
- * instead: a recruit who fights with his fists is the last resort, never the plan.
- *
- * Empty (every counter withdrawn to zero) when the seat may not or cannot raise an army at all: the
- * `military` toggle is off, the content names no soldier class, or it owns no barracks to drill in.
+ * The wanted value per counter: its own unpaid bookings ({@link bookedByIntent}) plus an even share of
+ * the men the seat may still draft, so the headroom the dispatcher sees (`counter - bookings`) sums to
+ * exactly that number. Shares go only to the classes the seat can arm right now, the earlier classes
+ * taking the remainder; a seat that can arm none of them falls back to `trainSoldiers`.
  */
 function standingOrder(
   world: World,
@@ -107,10 +90,9 @@ function standingOrder(
 }
 
 /**
- * The counters this decision's allowance is split over: the armed classes the seat can arm a recruit for,
- * else `trainSoldiers`. Judged for `next`'s tribe - one of the men it may draft - because the arming pass
- * shops against the RECRUIT's weapon rows, not the barracks'; and from the barracks door, where he stands
- * when that pass first looks at him.
+ * The counters this decision's allowance is split over: the armed classes the seat can arm a recruit
+ * for, else `trainSoldiers`. Judged for `next`'s tribe and from the barracks door, because the arming
+ * pass shops against the recruit's weapon rows from where he stands when it first looks at him.
  */
 function draftingClasses(
   world: World,
@@ -139,11 +121,9 @@ function draftableSpare(world: World, force: SpareForce): Entity[] {
   });
 }
 
-/** The seat's marriageable men beyond its marriageable women, the men the family plan will never
- *  need as husbands. {@link mayMarry} decides both sides (it already rejects a recruit committed to
- *  a drill) but judges a settler alone, so the count must come from {@link ownedSettlers}: claimed
- *  livestock is an owned `Settler` with no `Female` and reads as a marriageable bachelor, and each
- *  head would license one more draft out of the men the brides are waiting for. */
+/** The seat's marriageable men beyond its marriageable women, the men the family plan will never need
+ *  as husbands. Counted over {@link ownedSettlers} because claimed livestock is an owned `Settler` with
+ *  no `Female` that {@link mayMarry} alone reads as a bachelor, licensing one more draft each. */
 function bachelorSurplus(world: World, ctx: SystemContext, player: number): number {
   let surplus = 0;
   for (const e of ownedSettlers(world, player)) {
@@ -154,10 +134,8 @@ function bachelorSurplus(world: World, ctx: SystemContext, player: number): numb
 }
 
 /** The seat's in-flight bookings per counter, still unpaid (`armed` marks the payment for a class
- *  recruit; a plain drill pays at enlistment and drops the mark there). A booking whose drill was
- *  abandoned - no order left and no soldier trade taken, so the assistant sweep will drop it - is
- *  excluded: its man is back in the spare pool, and counting both sides would publish one recruit
- *  past the bachelor cap. Kinds this rung does not publish belong to the hand that set them. */
+ *  recruit). A booking whose drill was abandoned is excluded: its man is back in the spare pool, and
+ *  counting both sides would publish one recruit past the bachelor cap. */
 function bookedByIntent(
   world: World,
   ctx: SystemContext,
