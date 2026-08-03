@@ -26,8 +26,9 @@ export function shelterCapacityById(id: string): number {
 }
 
 /**
- * The house bow's damage - a DESIGN OVERRIDE of the extracted `weapons.ini` row (typeId 20), the same
- * call {@link import('./hunting.js').HUNTER_BOW_BALANCE} makes for the hunter: a civilian shooting from a
+ * The house bow's damage - a DESIGN OVERRIDE of the extracted `weapons.ini` row (typeId 20, bound to the
+ * `civilist` job, so it IS the original's defence-mode weapon), the same call
+ * {@link import('./hunting.js').HUNTER_BOW_BALANCE} makes for the hunter: a civilian shooting from a
  * window must do less than a trained soldier with a short bow (user decision), and the mod data does not
  * hold that - against wool/chain/plate the extracted wall bow beats the short bow (240/150/150 against
  * 128/100/100).

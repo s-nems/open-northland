@@ -1,6 +1,7 @@
 import { Anger, Building, Health, Owner, Position, Settler } from '../../components/index.js';
 import type { Entity } from '../../ecs/world.js';
 import type { System } from '../context.js';
+import { garrisonSeats } from '../defence/index.js';
 import { isAggressiveAnimal, isAnimalTribe } from '../readviews/index.js';
 import { canonicalById, entityNode, NodeBuckets } from '../spatial/nodes.js';
 import { attackableBuildings, combatPossible } from './dormancy.js';
@@ -89,7 +90,8 @@ export const combatSystem: System = (world, ctx) => {
   const index = new NodeBuckets(world, targets, undefined, nodesOf, presence.addNode);
 
   const slots = new MeleeSlots(world, ctx, terrain);
+  const seats = garrisonSeats(world);
   for (const e of combatants) {
-    engageCombatant(world, ctx, terrain, index, presence, slots, bodyNodes, e);
+    engageCombatant(world, ctx, terrain, index, presence, slots, bodyNodes, seats, e);
   }
 };

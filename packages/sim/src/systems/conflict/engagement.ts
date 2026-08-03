@@ -42,6 +42,16 @@ export const DEFEND_RADIUS_NODES = 8;
 export const DEFEND_LEASH_NODES = 12;
 
 /**
+ * How many of the nearest enemies a GARRISON fans its fire across. Every settler manning one building
+ * stands on the same node, so without this each would resolve the same single nearest man and a full tower
+ * would empty itself into one raider while the rest of the warband walked up untouched.
+ *
+ * APPROXIMATED (user decision): no readable record carries a fire-distribution rule. Kept small on purpose
+ * - a tower still concentrates, just on a handful of the closest attackers rather than on one.
+ */
+export const GARRISON_SPREAD_TARGETS = 4;
+
+/**
  * What a combatant acts under this tick - derived together in one place ({@link engageCombatant}) and passed
  * whole to {@link engageSpec} and {@link chase}, so the three values that only ever travel together cannot be
  * transposed at a call site.
@@ -59,10 +69,11 @@ export interface CombatantStance {
    *  shoots from cover and never leaves, so the post overrides whatever `mode` would otherwise do. */
   readonly post: Entity | null;
   /** The defence-mode building a CIVILIAN mans instead ({@link
-   *  import('../defence/index.js').mannedShelter}), else null. It shoots the house bow from cover within
+   *  import('../defence/index.js').mannedShelter}) and its `seat` in that garrison ({@link
+   *  import('../defence/index.js').garrisonSeats}), else null. It shoots the house bow from cover within
    *  the weapon's own band - measured from the BUILDING, which is also where the arrow leaves from - and
    *  neither flees nor steps out to chase, whatever its stance says. */
-  readonly shelter: Entity | null;
+  readonly shelter: { readonly building: Entity; readonly seat: number } | null;
 }
 
 /**
@@ -126,6 +137,9 @@ export function engageSpec(
       minDist,
       searchRadius: weapon.maxRange,
       player,
+      // Only the sheltering crowd fans its fire: a seat number exists for the claimants, and a tower's
+      // POSTED archers still stack on the nearest man (`docs/tickets/sim/garrison-post-fire-spread.md`).
+      ...(stance.shelter === null ? {} : { spread: stance.shelter.seat }),
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: null,
@@ -193,6 +207,9 @@ export interface EngageSpec {
   /** A hostile wild animal seeking - gates on {@link HostilePresence.civsWithin} instead (its accept
    *  admits only civilization settlers). */
   readonly animalSeeker?: boolean;
+  /** This seeker's seat in the firing line it shares a node with - its offset into the nearest
+   *  {@link GARRISON_SPREAD_TARGETS} rather than always the nearest. Absent ⇒ take the nearest. */
+  readonly spread?: number;
   /** The deprioritized tier among accepted targets - searched only when the primary tier finds nothing
    *  in sight: plain buildings for a soldier's stances, last-resort livestock for the hunter. It splits
    *  RAW ring-search candidates: {@link resolveTarget} tests it before {@link EngageSpec.accept}, so it
@@ -276,25 +293,32 @@ export function resolveTarget(
   // The animal seeker's twin (see {@link HostilePresence}): no civ in the band proves both empty.
   if (spec.animalSeeker === true && !presence.civsWithin(x, y, spec.searchRadius)) return null;
   // Tier 1: everything the stance admits that is NOT deprioritized (units + HQ + towers for a soldier,
-  // normal game for a hunter). A nearer tier-2 target never preempts a tier-1 target in sight. The tier
-  // test runs first in both passes, so the costlier `accept` never sees a candidate of the other tier.
-  const primary = index.nearest(
-    x,
-    y,
-    spec.minDist,
-    spec.searchRadius,
-    (t) => !spec.lowPriority(t) && spec.accept(t),
-  );
-  if (primary !== null) return { target: primary.entity, dist: primary.distance };
+  // normal game for a hunter). A nearer tier-2 target never preempts a tier-1 target in sight.
+  const primary = pickInBand(index, spec, x, y, (t) => !spec.lowPriority(t));
+  if (primary !== null) return primary;
   // Tier 2 (fallback): the deprioritized targets, only when no tier-1 target was in sight.
-  const fallback = index.nearest(
-    x,
-    y,
-    spec.minDist,
-    spec.searchRadius,
-    (t) => spec.lowPriority(t) && spec.accept(t),
-  );
-  return fallback === null ? null : { target: fallback.entity, dist: fallback.distance };
+  return pickInBand(index, spec, x, y, (t) => spec.lowPriority(t));
+}
+
+/** One priority tier's pick from the search band: the nearest target the stance admits, or the seat's own
+ *  share of the nearest {@link GARRISON_SPREAD_TARGETS} for a seeker carrying a `spread`. The tier test runs
+ *  ahead of the costlier `accept`, so `accept` never sees a candidate of the other tier. */
+function pickInBand(
+  index: NodeBuckets,
+  spec: EngageSpec,
+  x: number,
+  y: number,
+  tier: (t: Entity) => boolean,
+): { target: Entity; dist: number } | null {
+  const accept = (t: Entity): boolean => tier(t) && spec.accept(t);
+  if (spec.spread === undefined) {
+    const found = index.nearest(x, y, spec.minDist, spec.searchRadius, accept);
+    return found === null ? null : { target: found.entity, dist: found.distance };
+  }
+  const band = index.nearestFew(x, y, spec.minDist, spec.searchRadius, accept, GARRISON_SPREAD_TARGETS);
+  if (band.length === 0) return null;
+  const share = band[spec.spread % band.length];
+  return share === undefined ? null : { target: share.entity, dist: share.distance };
 }
 
 /** A focused target (an {@link AttackOrder}, a held prey lock) and its REAL distance from `here`, uncapped

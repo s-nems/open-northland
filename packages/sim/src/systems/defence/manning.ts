@@ -1,6 +1,7 @@
 import { Age, Sheltering } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { isInside } from '../settlers/indoors.js';
+import { canonicalById } from '../spatial/nodes.js';
 
 /**
  * The shelter `e` is MANNING - the defence-mode building it claimed AND has reached, rather than one it is
@@ -16,6 +17,21 @@ export function mannedShelter(world: World, e: Entity): Entity | null {
 
 export function isManningShelter(world: World, e: Entity): boolean {
   return mannedShelter(world, e) !== null;
+}
+
+/** Every claimant's SEAT - its place `0..n-1` in the garrison of the building it claimed, numbered in
+ *  canonical (ascending-id) order so the same settler holds the same seat on every machine. Built once per
+ *  combat tick rather than derived per shooter, which would cost a pass over the claims each time. */
+export function garrisonSeats(world: World): ReadonlyMap<Entity, number> {
+  const seats = new Map<Entity, number>();
+  const taken = new Map<Entity, number>();
+  for (const e of canonicalById(world.query(Sheltering))) {
+    const shelter = world.get(e, Sheltering).shelter;
+    const seat = taken.get(shelter) ?? 0;
+    taken.set(shelter, seat + 1);
+    seats.set(e, seat);
+  }
+  return seats;
 }
 
 /**

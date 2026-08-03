@@ -180,10 +180,11 @@ export function pushSignpostItems(
 /**
  * Point a projectile draw item along its flight and lob it (the ballistic-arc trig lives in
  * {@link projectileArc}), returning the ballistic height to fold into the draw-lift channel (never the
- * depth key, so the lob can't reshuffle occlusion mid-flight). A MISSED shot's chord ends at its frozen
- * aim point ({@link readProjectileMissAim}) rather than the live target - tracking the runner would
- * bend the nose and stall the lob. A true shot whose target vanished this frame keeps `rotation` unset
- * and flies flat (lift 0) for the one tick the sim takes to expire it.
+ * depth key, so the lob can't reshuffle occlusion mid-flight). A shot with a frozen aim (missed, or
+ * stranded when its mark fell) ends its chord there ({@link readProjectileMissAim}) rather than at the
+ * live target - tracking the runner would bend the nose and stall the lob. A shot with neither a live
+ * target nor an aim keeps `rotation` unset and flies flat (lift 0) for the one tick the sim takes to
+ * clear it.
  */
 export function assignProjectileArc(
   item: MutableDrawItem,
