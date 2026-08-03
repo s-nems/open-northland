@@ -1,6 +1,6 @@
 import { lastByTypeId } from '@open-northland/data';
 import { type Simulation, systems } from '@open-northland/sim';
-import { flagPointByType } from '../../content/building-gfx/index.js';
+import { flagPointByType, soldierFlagPointByType } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
@@ -23,20 +23,29 @@ export interface ViewReadModelDeps {
   readonly selection?: HeartSelection | undefined;
 }
 
-/** What both readers of the index need: the geometry overlay's slice plus the sign chain's anchor.
+/** What both readers of the index need: the geometry overlay's slice plus the sign chain's anchors.
  *  Neither consumer's own type covers the other, so the index publishes their union. */
-export interface ViewBuildingInfo extends GeometryBuildingInfo, Pick<BuildingDoorInfo, 'flagPoint'> {}
+export interface ViewBuildingInfo
+  extends GeometryBuildingInfo,
+    Pick<BuildingDoorInfo, 'flagPoint' | 'mastPoint'> {}
 
-/** One shared index for the door badges and the geometry overlay, each type carrying its extracted
- *  sign-post anchor when the content has one. */
+/** One shared index for the door badges and the geometry overlay, each type carrying the extracted
+ *  anchors the content has for it: the sign post its chain plants on, and the mast a garrison flies its
+ *  flag from. */
 export function buildingIndex(
   buildings: Simulation['content']['buildings'],
   flagPoints: ReadonlyMap<number, { readonly x: number; readonly y: number }>,
+  mastPoints: ReadonlyMap<number, { readonly x: number; readonly y: number }> = new Map(),
 ): ReadonlyMap<number, ViewBuildingInfo> {
   return new Map(
     [...lastByTypeId(buildings)].map(([typeId, b]) => [
       typeId,
-      { id: b.id, footprint: b.footprint, flagPoint: flagPoints.get(typeId) },
+      {
+        id: b.id,
+        footprint: b.footprint,
+        flagPoint: flagPoints.get(typeId),
+        mastPoint: mastPoints.get(typeId),
+      },
     ]),
   );
 }
@@ -55,7 +64,8 @@ export interface ViewReadModels extends ReturnType<typeof createSnapshotProjecti
 export async function createViewReadModels(deps: ViewReadModelDeps): Promise<ViewReadModels> {
   const { sim, mapSize, localPlayer, fogGates } = deps;
   const goodLabelByType = new Map(sim.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
-  const buildingDoors = buildingIndex(sim.content.buildings, flagPointByType(await loadIr()));
+  const ir = await loadIr();
+  const buildingDoors = buildingIndex(sim.content.buildings, flagPointByType(ir), soldierFlagPointByType(ir));
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     buildingDoors,

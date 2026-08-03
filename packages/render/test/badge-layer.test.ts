@@ -4,6 +4,7 @@ import { SIGN_DEPTH_EPS, screenDepth } from '../src/data/scene/index.js';
 import type { AtlasFrame } from '../src/data/sprites/index.js';
 import { BadgeLayer, type DoorBadge, type DoorBadgeRow } from '../src/gpu/overlays/badge-layer.js';
 import { type ConstructionSign, ConstructionSignLayer } from '../src/gpu/overlays/construction-sign-layer.js';
+import { GARRISON_TICKS_PER_FRAME, garrisonFlagLoop } from '../src/gpu/overlays/garrison-flag.js';
 import { type BuildingSignSheet, CONSTRUCTION_SIGN_DX, signRowAt } from '../src/gpu/overlays/sign-gfx.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
@@ -44,7 +45,7 @@ function layerIn(colourOf?: (player: number) => number): { layer: BadgeLayer; ro
 /** A fake decoded sign sheet: one atlas page, distinct frame objects per kind (the texture cache keys
  *  by frame object, so kinds must not share). Frame geometry mirrors the real `ls_temp` bobs
  *  (h 33, offsetY -26), so the chain-crop cuts land inside it. */
-function sheet(): BuildingSignSheet {
+function sheet(garrison?: readonly (readonly AtlasFrame[])[]): BuildingSignSheet {
   const frame = (x: number): AtlasFrame => ({ x, y: 0, width: 25, height: 33, offsetX: -13, offsetY: -26 });
   return {
     source: new TextureSource({ width: 512, height: 64 }),
@@ -56,7 +57,52 @@ function sheet(): BuildingSignSheet {
       family: frame(104),
       construction: frame(130),
     },
+    ...(garrison !== undefined ? { garrison } : {}),
   };
+}
+
+/** The flag's star ladder as the app resolves it: five wave loops, `WAVE` frames each, every frame a
+ *  distinct object with a distinct width so a test can name the frame drawn. Geometry mirrors the real
+ *  `soldier` bobs (46x43 at offset -4,-38). */
+const WAVE = 8;
+function garrisonSheet(): { sheet: BuildingSignSheet; frames: readonly (readonly AtlasFrame[])[] } {
+  const frames = Array.from({ length: 5 }, (_, star) =>
+    Array.from(
+      { length: WAVE },
+      (_unused, i): AtlasFrame => ({
+        x: i * 48,
+        y: 200 + star * 44,
+        width: 46 + i,
+        height: 43,
+        offsetX: -4,
+        offsetY: -38,
+      }),
+    ),
+  );
+  return { sheet: sheet(frames), frames };
+}
+
+/** The mast the fixture towers fly from - the committed viking small-tower offset. */
+const MAST = { dx: -4, dy: -228 };
+
+/** A badge whose building flies a flag from {@link MAST}. */
+const manned = (id: number, tileX: number, tileY: number, stars: number): DoorBadge => ({
+  ...badge(id, tileX, tileY, []),
+  garrison: { stars, ...MAST },
+});
+
+/** A building's flag among its marks: the mark standing at the mast rather than the post. Picked by
+ *  position, not child order, so the test does not pin which mark the layer attaches first. */
+function flagOf(root: Container, tileX: number, tileY: number): Container | undefined {
+  const mast = tileToScreen(tileX, tileY).y + MAST.dy;
+  return root.children.find((c) => c.position.y === mast) as Container | undefined;
+}
+
+/** The atlas frame the flag draws right now. */
+function flownFrame(root: Container, tileX: number, tileY: number): Sprite['texture']['frame'] {
+  const sprite = flagOf(root, tileX, tileY)?.children[0] as Sprite | undefined;
+  if (sprite === undefined) throw new Error('no flag flying at the mast');
+  return sprite.texture.frame;
 }
 
 describe('BadgeLayer (placeholder squares)', () => {
@@ -255,6 +301,113 @@ describe('BadgeLayer (decoded sign art)', () => {
     layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), player: 1 }]); // owner 1 → colour slot 2
     const stack = root.children[0] as Container;
     expect((stack.children[0] as Sprite).texture.source).toBe(p2.source);
+  });
+});
+
+describe('BadgeLayer (garrison flag)', () => {
+  it('flies the flag at the mast, beside the chain, on the same building depth key', () => {
+    const { layer, root } = layerIn();
+    const { sheet: s } = garrisonSheet();
+    layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
+    // A manned tower that also employs a hauler: one pennant row at the post, one flag on the roof.
+    layer.draw([{ ...manned(1, 3, 5, 2), rows: workers(0, 1), dx: -6, dy: 29 }]);
+
+    expect(root.children).toHaveLength(2);
+    const anchor = tileToScreen(3, 5);
+    const chain = root.children.find((c) => c.position.y === anchor.y + 29);
+    const flag = flagOf(root, 3, 5);
+    expect(chain).toBeDefined();
+    expect(flag?.position.x).toBe(anchor.x + MAST.dx); // the mast, not the post the chain stands on
+    expect(flag?.zIndex).toBe(screenDepth(anchor.x, anchor.y, 'building') + SIGN_DEPTH_EPS);
+    expect(flag?.zIndex).toBe(chain?.zIndex);
+  });
+
+  it('draws the star record its post earned, and keeps flying the top one past it', () => {
+    const { layer, root } = layerIn();
+    const { sheet: s, frames } = garrisonSheet();
+    layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
+    const flownAt = (stars: number): number => {
+      layer.draw([manned(1, 3, 5, stars)]);
+      return flownFrame(root, 3, 5).y;
+    };
+    expect(flownAt(1)).toBe(frames[0]?.[0]?.y);
+    expect(flownAt(3)).toBe(frames[2]?.[0]?.y);
+    expect(flownAt(5)).toBe(frames[4]?.[0]?.y);
+    // The big tower employs eight bows; the art stops at five, and a fuller post keeps that record.
+    expect(flownAt(8)).toBe(frames[4]?.[0]?.y);
+  });
+
+  it('waves on the render clock, and rebuilds only when the star count changes', () => {
+    const { layer, root } = layerIn();
+    const { sheet: s, frames } = garrisonSheet();
+    layer.setGfx({ byPlayer: [s], textures: new TextureCache() });
+    const drawnAt = (clock: number, stars = 2): number => {
+      layer.draw([manned(1, 3, 5, stars)], undefined, undefined, clock);
+      return flownFrame(root, 3, 5).width;
+    };
+    const loop = frames[1] ?? [];
+    const step = GARRISON_TICKS_PER_FRAME;
+    expect(drawnAt(0)).toBe(loop[0]?.width);
+    expect(drawnAt(step - 1)).toBe(loop[0]?.width); // held for the whole cadence
+    expect(drawnAt(step)).toBe(loop[1]?.width);
+    expect(drawnAt(step * WAVE)).toBe(loop[0]?.width); // wrapped back round the loop
+
+    // A man arriving swaps the record; a sixth one onto a five-star post is not a visual change at all.
+    const two = flagOf(root, 3, 5);
+    expect(drawnAt(0, 3)).toBe((frames[2] ?? [])[0]?.width);
+    expect(flagOf(root, 3, 5)).not.toBe(two); // rebuilt for the new star count
+    expect(drawnAt(0, 5)).toBe((frames[4] ?? [])[0]?.width);
+    const five = flagOf(root, 3, 5);
+    drawnAt(0, 6);
+    expect(flagOf(root, 3, 5)).toBe(five); // …but the capped count keeps the same node
+  });
+
+  it('draws a placeholder mast without decoded art, and retires the flag with its building', () => {
+    const { layer, root } = layerIn();
+    layer.draw([manned(1, 3, 5, 2)]);
+    // No sheet: the flag still marks the post (the chain node is the empty row list beside it).
+    expect(root.children).toHaveLength(2);
+    expect(flagOf(root, 3, 5)?.getLocalBounds().height).toBeGreaterThan(0); // a drawn mast, not nothing
+
+    layer.draw([]); // the post falls / is abandoned
+    expect(root.children).toHaveLength(0);
+  });
+
+  it('retires the flag with the chain when the art basis is swapped out', () => {
+    const { layer, root } = layerIn();
+    layer.setGfx({ byPlayer: [garrisonSheet().sheet], textures: new TextureCache() });
+    layer.draw([manned(1, 3, 5, 2)]);
+    expect(root.children).toHaveLength(2);
+    // Every mark is built against one art basis, so swapping it must take the flag too - a flag left
+    // behind here would fly forever, drawn from an atlas nothing points at any more.
+    layer.setGfx(undefined);
+    expect(root.children).toHaveLength(0);
+  });
+
+  it('detaches the flag with its chain when the building scrolls off-screen', () => {
+    const { layer, root } = layerIn();
+    layer.setGfx({ byPlayer: [garrisonSheet().sheet], textures: new TextureCache() });
+    const onScreen = tileToScreen(3, 5);
+    const vp = { minX: onScreen.x - 50, minY: onScreen.y - 50, maxX: onScreen.x + 50, maxY: onScreen.y + 50 };
+    layer.draw([manned(1, 3, 5, 2)], undefined, vp);
+    expect(root.children).toHaveLength(2);
+
+    layer.draw([manned(1, 900, 900, 2)], undefined, vp); // scrolled out
+    expect(root.children).toHaveLength(0); // both marks leave the sorted layer, neither is destroyed
+    layer.draw([manned(1, 3, 5, 2)], undefined, vp);
+    expect(root.children).toHaveLength(2);
+  });
+});
+
+describe('garrisonFlagLoop', () => {
+  it('caps at the five records the art authors, and flies nothing without a post or art', () => {
+    const { sheet: s, frames } = garrisonSheet();
+    expect(garrisonFlagLoop(s, 1)).toEqual(frames[0]);
+    expect(garrisonFlagLoop(s, 5)).toEqual(frames[4]);
+    expect(garrisonFlagLoop(s, 9)).toEqual(frames[4]); // the ceiling is the art's, wherever asked from
+    expect(garrisonFlagLoop(s, 0)).toBeUndefined();
+    expect(garrisonFlagLoop(sheet(), 2)).toBeUndefined(); // a slot whose `soldier` records never resolved
+    expect(garrisonFlagLoop(undefined, 2)).toBeUndefined();
   });
 });
 

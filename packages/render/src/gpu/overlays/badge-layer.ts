@@ -1,24 +1,20 @@
-import { Container, Graphics, Sprite } from 'pixi.js';
+import type { Container } from 'pixi.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
 import { SIGN_DEPTH_EPS, screenDepth } from '../../data/scene/index.js';
 import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
-import type { TextureCache } from '../texture-cache.js';
+import { makeSignStack, makeSquareStack, STACK_BASE_DROP } from './badge-stack.js';
+import { GARRISON_STAR_MAX, makeGarrisonFlag } from './garrison-flag.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 import {
   type BuildingSignSheet,
-  chainedFrame,
-  type DoorBadgeRole,
-  type HouseholdKind,
+  type DoorBadgeRow,
   IDENTITY_COLOUR,
-  SIGN_HEIGHT,
-  SIGN_STEP,
   type SignGfx,
   sheetFor,
-  signKindOf,
 } from './sign-gfx.js';
 
 // Re-exported so app-side DoorBadge producers keep importing them from the badge layer they feed.
-export type { DoorBadgeRole, HouseholdKind } from './sign-gfx.js';
+export type { DoorBadgeRole, DoorBadgeRow, HouseholdKind } from './sign-gfx.js';
 
 /**
  * The door-badge layer - a stacked marker at each staffed building's sign post showing who works there
@@ -41,16 +37,10 @@ export type { DoorBadgeRole, HouseholdKind } from './sign-gfx.js';
  * a stack whose building left the badge list is destroyed.
  *
  * The badge art is the original's player-coloured `ls_temp` signs (see `sign-gfx.ts` for the shared
- * contract, chain layout, and fallback rules); without decoded art the layer draws the placeholder
- * coloured squares/dots instead.
+ * contract, chain layout, and fallback rules, and `badge-stack.ts` for the drawn chain); without
+ * decoded art the layer draws the placeholder coloured squares/dots instead. A manned post additionally
+ * flies its garrison flag (`garrison-flag.ts`) as a second mark at its own mast anchor.
  */
-
-/** One drawn sign row of a badge: its role (which sign it draws) and, when the marker stands for one
- *  settler, that settler's entity id - the click-pick target the app resolves. */
-export interface DoorBadgeRow {
-  readonly role: DoorBadgeRole;
-  readonly settler?: number;
-}
 
 /** One building's badge data: its stack anchor (snapshot `Position` fixed-point units + an optional
  *  screen-px offset) and the bottom-to-top sign rows bound to it. */
@@ -72,40 +62,29 @@ export interface DoorBadge {
   readonly rows: readonly DoorBadgeRow[];
   /** True while the resident couple makes love here - draws the hearts over the house. */
   readonly hearts?: boolean;
+  /** The garrison this building's roof flies a flag for. Its soldiers are deliberately absent from
+   *  {@link rows}: the flag stands for the whole post, one star per man (the art caps the count), at
+   *  its own screen-px offset from the projected anchor (the mast point, +y down). */
+  readonly garrison?: {
+    readonly stars: number;
+    readonly dx: number;
+    readonly dy: number;
+  };
 }
-
-/** Placeholder square edge + vertical gap between stacked badges (world px). */
-const SIZE = 9;
-const GAP = 3;
-/** px the placeholder stack's base sits below its anchor node, so the squares stack up the wall from
- *  ground level. */
-const STACK_BASE_DROP = 6;
-/** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
-const ROLE_COLOR: Readonly<Record<'craftsman' | 'carrier' | 'gatherer', number>> = {
-  craftsman: 0x5ab6ff, // blue - a workshop tradesman
-  carrier: 0xffbb33, // amber - a hauler (tragarz)
-  gatherer: 0x7ed957, // green - a raw-good gatherer
-};
-const BORDER_COLOR = 0x1a1206;
-/** Placeholder household dot colours - one per family shape ({@link HouseholdKind}). */
-const HOUSEHOLD_COLOR: Readonly<Record<HouseholdKind, number>> = {
-  single: 0xd9d9d9, // grey - one settler lives here
-  couple: 0xff7a9c, // pink - a married couple
-  family: 0xffd24d, // gold - a couple raising a child
-};
-/** Hearts (make-love) drawing: colour, per-heart radius and the column they float in above the stack. */
-const HEART_COLOR = 0xff4d78;
-const HEART_RADIUS = 3.5;
-const HEART_GAP = 12;
-const HEART_LIFT = 26; // px above the stack's top - "hearts over the house"
-const HEART_DRIFT = 4; // px of horizontal drift per heart, so the column reads as rising, not stacked
-const HEART_COUNT = 3;
 
 interface BadgeStack {
   readonly node: Container;
+  /** The garrison flag, flown from the building's mast. A sibling of the chain in the sprite layer, not
+   *  its child: the two marks stand at different anchors but pool, cull and sort as one building. */
+  readonly flag?: Container | undefined;
+  /** The flag's per-frame wave step, when it flies one and draws real art. */
+  readonly advanceFlag?: ((clock: number) => void) | undefined;
   /** The drawn rows joined into a change-detection key ('' = none). */
   readonly rows: string;
   readonly hearts: boolean;
+  /** Stars flown this build (0 = no garrison) - part of the key, so a man arriving at or leaving the
+   *  post swaps the flag. */
+  readonly stars: number;
   /** The player recolour the stack was built with (0 when drawing the player-agnostic placeholder
    *  squares, so an owner change never rebuilds a visually identical square stack). The art basis
    *  itself is not part of the key - it changes only through {@link BadgeLayer.setGfx}, which clears
@@ -146,7 +125,7 @@ export class BadgeLayer {
    *  rebuilds against the new art basis. */
   setGfx(gfx: SignGfx | undefined): void {
     this.gfx = gfx;
-    for (const s of this.stacks.values()) s.node.destroy({ children: true });
+    for (const s of this.stacks.values()) destroyStack(s);
     this.stacks.clear();
   }
 
@@ -156,12 +135,13 @@ export class BadgeLayer {
    * stacks for buildings no longer in the list. An empty list retires every stack. A `viewport` bounds
    * the per-frame work to the screen: a staffed building outside the framed box keeps its pooled stack
    * (it scrolls back) but is detached and neither repositioned nor rebuilt, so cost tracks the screen,
-   * not the map's building count.
+   * not the map's building count. `clock` is the render clock the garrison flags wave on - only the
+   * on-screen ones are stepped, for the same reason.
    */
-  draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport): void {
+  draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport, clock = 0): void {
     this.drawn.clear();
     for (const badge of badges) {
-      if (badge.rows.length === 0 && badge.hearts !== true) continue;
+      if (badge.rows.length === 0 && badge.hearts !== true && badge.garrison === undefined) continue;
       const tileX = badge.x / ONE;
       const tileY = badge.y / ONE;
       const p = tileToScreen(tileX, tileY);
@@ -173,6 +153,7 @@ export class BadgeLayer {
       if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
         retainOffscreen(stack?.node, badge.id, this.drawn);
         stack?.node.removeFromParent();
+        stack?.flag?.removeFromParent();
         continue;
       }
       const lift = terrainLiftAt(elevation, tileX, tileY);
@@ -181,24 +162,18 @@ export class BadgeLayer {
       const sheet = this.gfx === undefined ? undefined : sheetFor(this.gfx, colour);
       const player = sheet === undefined ? 0 : colour;
       const rows = rowsKey(badge);
+      // Capped here, so the key is what the flag LOOKS like: the sixth man onto a post does not rebuild
+      // a stack that would draw the same five stars.
+      const stars = Math.min(badge.garrison?.stars ?? 0, GARRISON_STAR_MAX);
       if (
         stack === undefined ||
         stack.rows !== rows ||
         stack.hearts !== (badge.hearts === true) ||
+        stack.stars !== stars ||
         stack.player !== player
       ) {
-        stack?.node.destroy({ children: true });
-        const node =
-          this.gfx !== undefined && sheet !== undefined
-            ? makeSignStack(badge, this.gfx.textures, sheet)
-            : makeSquareStack(badge);
-        stack = {
-          node,
-          rows,
-          hearts: badge.hearts === true,
-          player,
-          baseDrop: sheet !== undefined ? 0 : STACK_BASE_DROP,
-        };
+        destroyStack(stack);
+        stack = this.build(badge, sheet, rows, player, stars);
         this.stacks.set(badge.id, stack);
       }
       stack.node.visible = true;
@@ -206,83 +181,54 @@ export class BadgeLayer {
       stack.node.position.set(p.x + (badge.dx ?? 0), p.y + (badge.dy ?? 0) - lift + stack.baseDrop);
       // `p` is the PRE-lift projection the line above then lifts - the same key the pool builds a
       // building from, so the chain sorts with its house on a hill too.
-      stack.node.zIndex = screenDepth(p.x, p.y, 'building') + SIGN_DEPTH_EPS;
+      const depth = screenDepth(p.x, p.y, 'building') + SIGN_DEPTH_EPS;
+      stack.node.zIndex = depth;
+      if (stack.flag !== undefined && badge.garrison !== undefined) {
+        stack.flag.visible = true;
+        if (stack.flag.parent === null) this.spriteLayer.addChild(stack.flag);
+        stack.flag.position.set(p.x + badge.garrison.dx, p.y + badge.garrison.dy - lift);
+        // Its building's key, like the chain. A type with no authored mast plants both marks on the
+        // same anchor; the flag is added second, and the depth sort is stable, so it stays on top.
+        stack.flag.zIndex = depth;
+        stack.advanceFlag?.(clock);
+      }
       this.drawn.add(badge.id);
     }
     // Retire stacks not drawn this frame (building demolished, unstaffed, or left the snapshot).
-    retireUndrawn(this.stacks, this.drawn, (stack) => stack.node.destroy({ children: true }));
+    retireUndrawn(this.stacks, this.drawn, destroyStack);
+  }
+
+  /** One building's marks: the sign chain, and the garrison flag when the post is manned. */
+  private build(
+    badge: DoorBadge,
+    sheet: BuildingSignSheet | undefined,
+    rows: string,
+    player: number,
+    stars: number,
+  ): BadgeStack {
+    const gfx = this.gfx;
+    const hearts = badge.hearts === true;
+    const node =
+      gfx !== undefined && sheet !== undefined
+        ? makeSignStack(badge.rows, hearts, gfx.textures, sheet)
+        : makeSquareStack(badge.rows, hearts);
+    const baseDrop = sheet === undefined ? STACK_BASE_DROP : 0;
+    const base = { node, rows, hearts, stars, player, baseDrop };
+    // Keyed on `stars`, not on the field's presence: the rebuild condition compares star counts, so a
+    // flag that existed under a count the next frame also computes would otherwise never be retired.
+    if (badge.garrison === undefined || stars < 1) return base;
+    const flag = makeGarrisonFlag(stars, gfx?.textures, sheet);
+    return { ...base, flag: flag.node, advanceFlag: flag.advance };
   }
 
   destroy(): void {
-    for (const stack of this.stacks.values()) stack.node.destroy({ children: true });
+    for (const stack of this.stacks.values()) destroyStack(stack);
     this.stacks.clear();
   }
 }
 
-/** A door badge stack drawn from the decoded sign art: one player-coloured sign sprite per row,
- *  chained upward from the anchor ({@link SIGN_STEP}) - rows above the base draw their base-cropped
- *  variant ({@link chainedFrame}) so no rock clump lands on the emblem below - with the make-love
- *  hearts floating above. */
-function makeSignStack(badge: DoorBadge, textures: TextureCache, sheet: BuildingSignSheet): Container {
-  const c = new Container();
-  let rows = 0;
-  for (const row of badge.rows) {
-    const kind = signKindOf(row.role);
-    const base = sheet.frameByKind[kind];
-    const frame = rows === 0 ? base : chainedFrame(kind, base);
-    const s = new Sprite(textures.get(sheet.source, frame));
-    s.position.set(frame.offsetX, -(rows * SIGN_STEP) + frame.offsetY);
-    c.addChild(s);
-    rows++;
-  }
-  if (badge.hearts === true) {
-    const top = -((rows - 1) * SIGN_STEP) - SIGN_HEIGHT - HEART_LIFT;
-    for (let i = 0; i < HEART_COUNT; i++) {
-      c.addChild(makeHeart((i - 1) * HEART_DRIFT, top - i * HEART_GAP));
-    }
-  }
-  return c;
-}
-
-/** The placeholder stack (no decoded art): the same bottom-to-top rows as the sign chain, drawn as a
- *  coloured square per worker ({@link ROLE_COLOR}) and a round dot per resident family (round, so they
- *  read apart from the squares), growing up from the anchor, with the make-love hearts in a short
- *  column above it all. */
-function makeSquareStack(badge: DoorBadge): Container {
-  const c = new Container();
-  let rows = 0;
-  for (const row of badge.rows) {
-    const g = new Graphics();
-    if (row.role === 'single' || row.role === 'couple' || row.role === 'family') {
-      const yCentre = -(rows + 1) * (SIZE + GAP) + SIZE / 2;
-      g.circle(SIZE / 2, yCentre, SIZE / 2)
-        .fill({ color: HOUSEHOLD_COLOR[row.role] })
-        .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
-    } else {
-      const yTop = -(rows + 1) * (SIZE + GAP);
-      g.rect(0, yTop, SIZE, SIZE)
-        .fill({ color: ROLE_COLOR[row.role] })
-        .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
-    }
-    c.addChild(g);
-    rows++;
-  }
-  if (badge.hearts === true) {
-    const top = -(rows * (SIZE + GAP)) - HEART_LIFT;
-    for (let i = 0; i < HEART_COUNT; i++) {
-      c.addChild(makeHeart(SIZE / 2 + (i - 1) * HEART_DRIFT, top - i * HEART_GAP));
-    }
-  }
-  return c;
-}
-
-/** One small heart at (`x`, `y`): two lobes + a point, in {@link HEART_COLOR}. */
-function makeHeart(x: number, y: number): Graphics {
-  const g = new Graphics();
-  const r = HEART_RADIUS;
-  g.circle(x - r * 0.6, y - r * 0.4, r * 0.7)
-    .circle(x + r * 0.6, y - r * 0.4, r * 0.7)
-    .poly([x - r * 1.25, y - r * 0.1, x + r * 1.25, y - r * 0.1, x, y + r * 1.4])
-    .fill({ color: HEART_COLOR });
-  return g;
+/** Retire both of a building's marks - the chain and, when it flies one, the flag. */
+function destroyStack(stack: BadgeStack | undefined): void {
+  stack?.node.destroy({ children: true });
+  stack?.flag?.destroy({ children: true });
 }

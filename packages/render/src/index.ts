@@ -90,6 +90,7 @@ export {
   type HouseholdKind,
   type HudFrame,
   type HudStyle,
+  hitsGarrisonFlag,
   type LifeHeart,
   type PlacementGhost,
   type PlacementOverlayCell,

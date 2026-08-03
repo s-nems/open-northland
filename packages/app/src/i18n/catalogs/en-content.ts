@@ -246,7 +246,7 @@ export const enContent = {
     'tower-garrison': {
       title: 'Tower garrison',
       summary:
-        'Two archers - one short bow, one long - man a watchtower, vanish inside it, and shoot from up there at their own bow plus the tower bonus. The enemy party takes arrows on the march, and once it reaches the wall it can only batter the tower: the men inside are out of reach.',
+        'Six archers - three short bows, three long - fill a watchtower, vanish inside it, and shoot from up there at their own bow plus the tower bonus. Instead of a sign per man the roof flies the garrison flag, five stars for the six of them. The enemy party takes arrows on the march, and once it reaches the wall it can only batter the tower: the men inside are out of reach.',
     },
   },
 } as const;

@@ -75,8 +75,8 @@ export class WorldMarks {
    *  layer, not a slot of its own, so fighters still occlude around the falling body. */
   private readonly collapses: CollapseLayer;
   private readonly damageSmoke = new DamageSmokeLayer();
-  /** The staffed-building sign chains. Like the collapses these live inside the depth-sorted sprite
-   *  layer, so a settler walking in front of a chain occludes it. */
+  /** The staffed-building sign chains and the garrison flags. Like the collapses these live inside the
+   *  depth-sorted sprite layer, so a settler walking in front of a chain occludes it. */
   private readonly badges: BadgeLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
@@ -143,7 +143,7 @@ export class WorldMarks {
     this.effects.draw(elevation, viewport, renderTime);
     this.collapses.draw(elevation, viewport, renderTime);
     this.damageSmoke.draw(frame.damaged, drawn, renderTime);
-    this.badges.draw(frame.doorBadges, elevation, viewport);
+    this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);
     this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation }, viewport);

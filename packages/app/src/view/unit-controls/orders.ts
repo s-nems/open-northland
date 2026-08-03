@@ -33,7 +33,9 @@ export interface UnitOrderDeps {
 }
 
 export interface UnitOrderController {
-  issueRightClick(event: MouseEvent): void;
+  /** `onBuilding` names a building the caller resolved from a marker rather than from the world pixel
+   *  under the cursor (a garrison flag, which hangs far above the tower it stands for). */
+  issueRightClick(event: MouseEvent, onBuilding?: number | null): void;
   issueSetWorkFlag(event: MouseEvent): void;
   /** Send the selection to the clicked spot fighting everything on the way (the armed attack-move click). */
   issueAttackMove(event: MouseEvent): void;
@@ -72,7 +74,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     }
   };
 
-  const issueRightClick = (event: MouseEvent): void => {
+  const issueRightClick = (event: MouseEvent, onBuilding?: number | null): void => {
     const world = deps.toWorld(event.clientX, event.clientY);
     const own = pickTopAt(deps.targets.owned('settler'), world.x, world.y);
     if (own !== null) {
@@ -89,7 +91,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
       return;
     }
-    const building = pickTopAt(deps.targets.owned('building'), world.x, world.y);
+    const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
     if (building !== null) {
       const snapshot = deps.snapshot();
       const entity = entityById(snapshot, building);

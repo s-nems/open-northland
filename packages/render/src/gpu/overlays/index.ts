@@ -36,6 +36,7 @@ export { type ConstructionSign, ConstructionSignLayer } from './construction-sig
 export { DamageSmokeLayer } from './damage-smoke-layer.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer } from './fog-layer.js';
+export { hitsGarrisonFlag } from './garrison-flag.js';
 export { type GeometryDebugCell, type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';
 export { type LifeHeart, LifeHeartLayer } from './heart-layer.js';
 export { DEFAULT_HUD_STYLE, type HudFrame, HudLayer, type HudStyle } from './hud-layer.js';

@@ -247,7 +247,7 @@ export const plContent = {
     'tower-garrison': {
       title: 'Załoga wieży',
       summary:
-        'Dwaj łucznicy - z krótkim i długim łukiem - obsadzają wieżę strażniczą, znikają w środku i strzelają z niej na zasięg swojego łuku powiększony o premię wieży. Wrogi oddział dostaje strzałami już w marszu, a gdy dojdzie pod mur, może tłuc tylko w wieżę: do załogi nie sięgnie.',
+        'Sześciu łuczników - trzy krótkie łuki i trzy długie - obsadza wieżę strażniczą, znika w środku i strzela z niej na zasięg swojego łuku powiększony o premię wieży. Zamiast znacznika przy każdym z nich na dachu powiewa flaga załogi: pięć gwiazdek na sześciu ludzi. Wrogi oddział dostaje strzałami już w marszu, a gdy dojdzie pod mur, może tłuc tylko w wieżę: do załogi nie sięgnie.',
     },
   },
 } as const;

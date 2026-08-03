@@ -27,10 +27,17 @@ function pxStep(pos: { x: number; y: number }, node: { hx: number; hy: number })
 const CARRIER = 26; // a carrier job id
 const CRAFTSMAN = 1008; // a rebased craftsman job id
 const GATHERER = 20; // a gatherer job id (the sandbox gatherer band)
+const ARCHER = 40; // a bow soldier - the garrison band
 
-/** The test's role classifier - the same three-way split the sandbox `workerRoleOf` makes. */
-const roleOf = (jobType: number): 'gatherer' | 'carrier' | 'craftsman' =>
-  jobType === CARRIER ? 'carrier' : jobType === GATHERER ? 'gatherer' : 'craftsman';
+/** The test's role classifier - the same four-way split the sandbox `workerRoleOf` makes. */
+const roleOf = (jobType: number): 'gatherer' | 'carrier' | 'craftsman' | 'garrison' =>
+  jobType === CARRIER
+    ? 'carrier'
+    : jobType === GATHERER
+      ? 'gatherer'
+      : jobType === ARCHER
+        ? 'garrison'
+        : 'craftsman';
 
 describe('computeDoorBadges', () => {
   it('emits one row per bound worker - discs first, carrier pennants on top - with settler ids', () => {
@@ -178,6 +185,46 @@ describe('computeDoorBadges', () => {
       { role: 'couple', settler: 3 }, // the wife (adult female), not the lower-id husband
       { role: 'single', settler: 9 },
     ]);
+  });
+
+  it('flies one flag for the whole garrison at the mast, and leaves its hauler a row', () => {
+    const MAST = { x: -6, y: -239 }; // the viking tower's extracted `gfxsoldierflagpoint`
+    const types = new Map<number, BuildingDoorInfo>([
+      [7, { id: 'tower_00', flagPoint: { x: -6, y: 29 }, mastPoint: MAST }],
+    ]);
+    const snap = snapshotOf([
+      building(1, 7, 4, 4),
+      settler(2, ARCHER, 1),
+      settler(3, ARCHER, 1),
+      settler(4, CARRIER, 1),
+    ]);
+
+    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    // No worker disc per archer: two men, one flag with two stars, flown from the roof rather than the
+    // sign post the hauler's pennant still stands on.
+    expect(badge?.rows).toEqual([{ role: 'carrier', settler: 4 }]);
+    expect(badge?.garrison).toEqual({ stars: 2, dx: MAST.x, dy: MAST.y });
+    expect(badge?.dx).toBe(-6);
+    expect(badge?.dy).toBe(29);
+  });
+
+  it('reports every man on the post, over the five the art draws', () => {
+    const types = new Map<number, BuildingDoorInfo>([[7, { id: 'tower_01', mastPoint: { x: -6, y: -255 } }]]);
+    const garrison = Array.from({ length: 8 }, (_, i) => settler(i + 2, ARCHER, 1));
+    const snap = snapshotOf([building(1, 7, 4, 4), ...garrison]);
+
+    // The big tower employs eight bows. Capping is the flag art's job (five stars is its ceiling); the
+    // projection reports the post as it stands, so the layer never has to guess what it was told.
+    expect(computeDoorBadges(snap, types, roleOf)[0]?.garrison?.stars).toBe(8);
+  });
+
+  it('flies the flag from the sign post when nobody authored the building a mast', () => {
+    const types = new Map<number, BuildingDoorInfo>([[7, { flagPoint: { x: -6, y: 29 } }]]);
+    const snap = snapshotOf([building(1, 7, 4, 4), settler(2, ARCHER, 1)]);
+
+    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    expect(badge?.rows).toEqual([]); // still no row - the flag is the garrison's whole marker
+    expect(badge?.garrison).toEqual({ stars: 1, dx: -6, dy: 29 });
   });
 
   it("carries the building's owner slot so the layer picks that player's sign recolour", () => {

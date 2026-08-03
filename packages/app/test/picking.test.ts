@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 import {
   clampTile,
   pickDoorBadgeRow,
+  pickGarrisonFlag,
   pickInRect,
   pickTopAt,
   screenToWorld,
@@ -283,5 +284,46 @@ describe('pickDoorBadgeRow', () => {
     expect(rearPost).toBeGreaterThan(frontPost); // the buried chain IS the lower-planted one
     const p = tileToScreen(3, 5);
     expect(pickDoorBadgeRow([rear, front], p.x, frontPost - 5)).toBe(8); // the front house still wins
+  });
+});
+
+describe('pickGarrisonFlag', () => {
+  /** The viking small tower's extracted mast, where the scene actually flies one. */
+  const MAST = { dx: -6, dy: -239 };
+  const manned = (id: number, tileX: number, tileY: number, stars = 3): DoorBadge => ({
+    id,
+    x: tileX * ONE,
+    y: tileY * ONE,
+    rows: [],
+    garrison: { stars, ...MAST },
+  });
+
+  it('picks the BUILDING under the banner - the whole post, never one of its men', () => {
+    const p = tileToScreen(3, 5);
+    const badges = [manned(1, 3, 5)];
+    const mast = { x: p.x + MAST.dx, y: p.y + MAST.dy };
+    expect(pickGarrisonFlag(badges, mast.x + 20, mast.y - 20)).toBe(1); // mid-cloth, where the stars are
+    expect(pickGarrisonFlag(badges, mast.x, mast.y)).toBe(1); // the mast foot
+    // A click through the banner used to land on empty ground 230 px above the tower's own box, which
+    // clears the selection on the left button and walks the garrison past its tower on the right.
+    expect(pickGarrisonFlag(badges, mast.x + 60, mast.y - 20)).toBeNull(); // past the cloth
+    expect(pickGarrisonFlag(badges, mast.x + 20, mast.y - 60)).toBeNull(); // above the mast head
+    expect(pickGarrisonFlag(badges, p.x, p.y)).toBeNull(); // the building's own box, not the flag's
+  });
+
+  it('ignores an unmanned building and rides the terrain lift like the layer does', () => {
+    const W = 4;
+    const H = 8;
+    const elev = new Array<number>(W * H).fill(0);
+    elev[6 * W + 1] = 160;
+    const field = makeElevationField(elev, W, H);
+    const p = tileToScreen(1, 6);
+    const badges = [manned(1, 1, 6)];
+    const lifted = p.y + MAST.dy - field.liftAt(1, 6);
+    expect(pickGarrisonFlag(badges, p.x + MAST.dx + 20, lifted - 20, field)).toBe(1);
+    expect(pickGarrisonFlag(badges, p.x + MAST.dx + 20, p.y + MAST.dy - 20, field)).toBeNull();
+
+    const unmanned: DoorBadge = { id: 2, x: ONE, y: 6 * ONE, rows: [{ role: 'carrier', settler: 9 }] };
+    expect(pickGarrisonFlag([unmanned], p.x + MAST.dx + 20, lifted - 20, field)).toBeNull();
   });
 });
