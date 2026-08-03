@@ -13,15 +13,17 @@ import {
   type TabbedListItem,
   type TabbedListLayout,
   type TabbedListTab,
+  tabbedListWindowWidth,
 } from './model.js';
 
 /** How many rows one mouse-wheel event scrolls the list. */
 const WHEEL_ROWS = 1;
-/** Bottom margin (design px) the list keeps clear of the screen foot. */
+/** Bottom margin (design px) the list keeps clear of whatever bounds it below. */
 const LIST_BOTTOM_MARGIN = 24;
 /** Hard cap on visible rows so the window stays a tidy panel even on a very tall screen (the rest scroll). */
 const MAX_LIST_ROWS = 13;
-/** Floor on visible rows so a short screen still shows a usable list. */
+/** Floor on visible rows so a short screen still shows a usable list. It outranks {@link listFloor}:
+ *  where the overlay leaves room for fewer rows the window stays this tall and keeps overlapping. */
 const MIN_LIST_ROWS = 3;
 
 /**
@@ -81,6 +83,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     x: ctx.layout.width + WIN_PAD * scale,
     y: ctx.layout.buttons.find((b) => b.id === source.anchor)?.placed.y ?? ctx.layout.strip.y,
   };
+  const windowRight = origin.x + tabbedListWindowWidth(scale);
 
   // The tab set is fixed per source (only its labels are localized), so the chrome above the list is a
   // constant - resolved here, not in the per-frame `listRows`.
@@ -109,9 +112,19 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     runs: shell.runs,
   };
 
-  /** The viewport height in rows, from the live screen height (bounded to a tidy compact panel). */
+  /** The lowest screen y the list should reach: the screen foot, raised to the top of the bottom-corner
+   *  overlay when this window's x-span crosses it (see {@link PanelContext.overlayReserve}). A target,
+   *  not a guarantee - {@link MIN_LIST_ROWS} wins when the floor leaves less room than that. */
+  const listFloor = (): number => {
+    const screenH = ctx.screen().height;
+    const reserve = ctx.overlayReserve?.() ?? null;
+    if (reserve === null || origin.x >= reserve.x + reserve.w || windowRight <= reserve.x) return screenH;
+    return Math.min(screenH, reserve.y);
+  };
+
+  /** The viewport height in rows, from the live floor (bounded to a tidy compact panel). */
   const listRows = (): number => {
-    const avail = ctx.screen().height - origin.y - (chromeH + LIST_BOTTOM_MARGIN) * scale;
+    const avail = listFloor() - origin.y - (chromeH + LIST_BOTTOM_MARGIN) * scale;
     return Math.max(MIN_LIST_ROWS, Math.min(MAX_LIST_ROWS, Math.floor(avail / (ROW_H * scale))));
   };
 

@@ -196,7 +196,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
 
   // The minimap handle, assigned right after the tool panel mounts (the panel must mount first - stage
   // order is draw order, and the minimap window draws over the strip's lower buttons on a short
-  // screen). The panel's overlay-defer reads it lazily: clicks only happen long after both mounts.
+  // screen). The panel's overlay seams below read it lazily: both only run once the frame loop does.
   let minimap: MinimapHandle | undefined;
 
   // The one command seam the interactive HUD (tool panel + unit controls) issues through. A read-only
@@ -227,6 +227,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     owner: localPlayer,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
+    overlayReserve: () => minimap?.panelRect() ?? null,
     onSystemMenu: () => systemMenu.toggle(),
   });
 

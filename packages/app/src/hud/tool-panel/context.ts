@@ -1,6 +1,7 @@
 import type { Texture } from 'pixi.js';
 import type { FontColorName } from '../../content/font-gfx.js';
 import type { UiString } from '../../content/gui-gfx.js';
+import type { Rect } from '../geometry.js';
 import type { TextRun } from '../text-run.js';
 import type { ToolPanelLayout } from './layout.js';
 
@@ -32,4 +33,8 @@ export interface PanelContext {
   readonly uiString: UiString;
   /** The live renderer size (tracks window resizes) - read at each placement, never cached. */
   readonly screen: () => { readonly width: number; readonly height: number };
+  /** The screen-px box of the bottom-corner overlay drawn over this panel (the minimap window), read
+   *  live. A pop-up list that spans it shortens toward clearing it: the panel defers presses under the
+   *  overlay to it, so a covered row would be dead, not merely hidden. Absent → nothing is reserved. */
+  readonly overlayReserve?: () => Rect | null;
 }

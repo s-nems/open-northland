@@ -2,6 +2,7 @@ import { type Camera, cameraViewport, flatTileColour, type SceneTerrain } from '
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { cellColourResolver } from '../../content/minimap-ground.js';
+import type { Rect } from '../geometry.js';
 import { forEachMinimapDot, type MinimapDotSink } from './dots.js';
 import { createFogMaskLayer } from './fog-mask.js';
 import { loadMinimapFrame } from './frame.js';
@@ -76,6 +77,10 @@ export interface MinimapOptions {
 export interface MinimapHandle {
   /** True when the client point is over the framed window - for the HUD pointer-claim chain. */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** The framed window's screen-px box - the corner the tool panel's pop-up lists must stay clear of
+   *  (it draws over them and takes their presses), or null while the window is not shown. Resolved
+   *  against the live screen: the panel refreshes earlier in the frame than {@link MinimapHandle.update}. */
+  panelRect(): Rect | null;
   /** Per-frame refresh: re-place from the live screen size, redraw the view rect + (per tick) dots +
    *  (per fog generation) the fog mask. `fog` is the viewer's fog view, or null when fog is off. */
   update(snapshot: WorldSnapshot, fog?: FogView | null): void;
@@ -238,6 +243,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const p = opts.toScreenPx(clientX, clientY);
       return pointOverMinimap(layout, p.x, p.y);
     },
+    panelRect: () =>
+      container.visible ? minimapLayout(bounds, app.screen.height, opts.uiscale).panel : null,
     update: (snapshot, fog = null) => {
       const h = app.screen.height;
       layout = minimapLayout(bounds, h, opts.uiscale);
