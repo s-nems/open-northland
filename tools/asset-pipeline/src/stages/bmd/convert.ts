@@ -10,7 +10,7 @@ import { paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
-import { writeAtlasBeside } from '../content-tree.js';
+import { assertDistinctBobBasenames, writeSourceBobAtlas } from '../content-tree.js';
 import type { SourceAssetIndex } from '../source-files.js';
 import { bindingKey, type GraphicsBindingSet } from './bindings.js';
 
@@ -54,7 +54,7 @@ function paletteSlug(name: string): string {
 
 /**
  * Converts the body `.bmd` of every readable `[jobgraphics]` binding into a packed atlas PNG + a
- * manifest JSON, written as siblings of the `.bmd` under `outDir`. This wires the `.bmd`→palette
+ * manifest JSON at its served flat stem ({@link writeSourceBobAtlas}). This wires the `.bmd`→palette
  * pairing graph end-to-end: {@link extractGraphicsBindings} names each `.bmd`'s palette `editname`,
  * {@link extractPaletteIndex} resolves that name to a palette `.pcx`, and the `.pcx` trailer palette
  * colours the bob frames via {@link bmdToAtlas}. {@link indexSourceAssets} resolves both references to
@@ -66,8 +66,10 @@ function paletteSlug(name: string): string {
  *
  * Per-binding boundary failures are warned-and-skipped, never fatal - an unresolvable palette name, a
  * `.pcx`/`.bmd` missing from every layer, a palette-less `.pcx`, or a malformed `.bmd` only drops that one
- * atlas, matching the other tree-walk stages. Each binding emits `<bmd>.<palette>.png` (the atlas sheet)
- * and `<bmd>.<palette>.atlas.json` (the per-bob frame manifest), keyed by the palette `editname`: many
+ * atlas, matching the other tree-walk stages. A basename collision is the one fatal case
+ * ({@link assertDistinctBobBasenames}); it has no per-binding answer. Each binding emits
+ * `<bmd-basename>.<palette>.png` (the atlas sheet) and its `.atlas.json` (the per-bob frame
+ * manifest), keyed by the palette `editname`: many
  * bindings share one body `.bmd` recoloured per creature (the animals are a single geometry, the humans
  * one body re-tinted per tribe/job), so naming on the `.bmd` alone would collapse them onto one file
  * (last-palette-wins). The palette name is the only per-creature differentiator, so it goes in the
@@ -87,6 +89,7 @@ export async function convertBmdTree(
   onItem?: StageItemReporter,
 ): Promise<BmdConversion[]> {
   const { bindings, palettes, buildTimeBmds } = graphics;
+  assertDistinctBobBasenames(bindings.map((b) => b.bmd).filter((ref) => tree.has(ref)));
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
   const seen = new Set<string>();
@@ -121,13 +124,13 @@ export async function convertBmdTree(
       continue;
     }
     if (!/\.bmd$/i.test(bmdSource.rel)) {
-      // A `.bmd`-less name would make the output paths collide with an extracted source - skip rather
-      // than clobber those bytes. The extractor only emits `gfxbobmanagerbody` `.bmd` paths, so this is
-      // a defensive guard, not an expected case.
+      // The served stem is the basename minus `.bmd`, so a `.bmd`-less name would carry its own
+      // extension into the atlas name. The extractor only emits `gfxbobmanagerbody` `.bmd` paths, so
+      // this is a defensive guard, not an expected case.
       console.warn(`[pipeline] skipped ${binding.bmd}: source has no .bmd extension`);
       continue;
     }
-    const { png, manifest } = await writeAtlasBeside(
+    const { png, manifest } = await writeSourceBobAtlas(
       outDir,
       bmdSource.rel,
       paletteSlug(binding.paletteName),
@@ -145,8 +148,8 @@ const SHADOW_ATLAS_SUFFIX = 'shadow';
 /**
  * Converts the shadow `.bmd` of every binding that names one (`GfxBobLibs`/`shadowlib` second value)
  * into a packed shadow atlas ({@link packShadowBobAtlas} - black-at-`SHADOW_ALPHA` silhouettes,
- * the shadow blit pre-baked) written beside the shadow `.bmd` as
- * `<shadow-stem>.shadow.{png,atlas.json}`. A shadow bob set parallels its body's bob ids (observed:
+ * the shadow blit pre-baked) written at its served flat stem as
+ * `<shadow-basename>.shadow.{png,atlas.json}`. A shadow bob set parallels its body's bob ids (observed:
  * `ls_trees_s.bmd` mirrors `ls_trees.bmd`'s 493 slots; the house `_s.bmd`s hold a ground silhouette at
  * each finished `GfxBobId`), so a consumer looks a caster's shadow up by the body's own bob id. One
  * atlas per shadow `.bmd` - recolours share it (a shadow has no palette). Boundary failures
@@ -157,6 +160,8 @@ export async function convertShadowBmdTree(
   outDir: string,
   tree: SourceAssetIndex,
 ): Promise<string[]> {
+  const convertible = (ref: string | undefined): ref is string => ref !== undefined && tree.has(ref);
+  assertDistinctBobBasenames(graphics.bindings.map((b) => b.shadowBmd).filter(convertible));
   const seen = new Set<string>();
   const done: string[] = [];
   for (const binding of graphics.bindings) {
@@ -174,7 +179,7 @@ export async function convertShadowBmdTree(
     }
     try {
       const atlas = packShadowBobAtlas(decodeBmd(await readFile(source.path)));
-      const { png } = await writeAtlasBeside(outDir, source.rel, SHADOW_ATLAS_SUFFIX, atlas);
+      const { png } = await writeSourceBobAtlas(outDir, source.rel, SHADOW_ATLAS_SUFFIX, atlas);
       done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped shadow ${shadowBmd}: ${errorMessage(err)}`);

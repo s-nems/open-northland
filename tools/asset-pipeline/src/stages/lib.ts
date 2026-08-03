@@ -4,7 +4,7 @@ import { decodeLib, type LibFile } from '../decoders/lib.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
 import { collectSourceFiles, type SourceRoots } from '../roots.js';
-import { DATA_DIR } from './content-tree.js';
+import { DATA_DIR, servedRelPath } from './content-tree.js';
 
 /**
  * Maps a `.lib` member name (a backslash path like `data\engine2d\bin\bobs\ls_bridge.bmd`) to a
@@ -14,9 +14,10 @@ import { DATA_DIR } from './content-tree.js';
  * root) is rejected - defence against a malformed/hostile archive even though the real `data0001.lib`
  * has no such entries. An empty or all-separator name yields `undefined` (nothing to write).
  *
- * The leading segment folds to {@link DATA_DIR}: the real archive stores members lowercase under
- * `data\` (all 2691 in the owned copy), the content routes serve the exact-case `Data/` tree, and on
- * a case-sensitive filesystem the verbatim spelling would split extraction and routes into two trees.
+ * The leading segment folds to {@link DATA_DIR} and a member landing in a served subtree takes that
+ * route's spelling ({@link servedRelPath}): the real archive stores members lowercase under `data\`
+ * (all 2691 in the owned copy), the content routes serve the exact-case `Data/` tree, and on a
+ * case-sensitive filesystem the verbatim spelling would split extraction and routes into two trees.
  */
 export function libMemberRelPath(name: string): string | undefined {
   const native = name.replace(/\\/g, sep);
@@ -25,7 +26,7 @@ export function libMemberRelPath(name: string): string | undefined {
   if (isAbsolute(norm) || norm === '..' || norm.startsWith(`..${sep}`)) return undefined;
   const [head, ...rest] = norm.split(sep);
   if (head === undefined || head.toLowerCase() !== DATA_DIR.toLowerCase()) return norm;
-  return join(DATA_DIR, ...rest);
+  return servedRelPath(join(DATA_DIR, ...rest));
 }
 
 /** One extracted archive member: the source `.lib` and the member, both relative for a stable report. */

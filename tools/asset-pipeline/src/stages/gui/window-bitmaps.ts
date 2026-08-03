@@ -4,6 +4,7 @@ import { decodePcx, expandToRgba } from '../../decoders/pcx.js';
 import { encodePng } from '../../decoders/png.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
+import { GUI_BITMAPS_DIR } from '../content-tree.js';
 import { readSourceFile } from '../source-files.js';
 
 /**
@@ -79,7 +80,6 @@ export async function convertWindowBitmaps(
   outDir: string,
   paletteByName: ReadonlyMap<string, Uint8Array>,
 ): Promise<number> {
-  const bitmapsDir = join('Data', 'gui', 'bitmaps');
   let done = 0;
   for (const { bitmap, palette, softenShadows } of WINDOW_BITMAP_RECOLORS) {
     let paletteBytes = paletteByName.get(palette);
@@ -89,10 +89,10 @@ export async function convertWindowBitmaps(
     }
     if (softenShadows === true) paletteBytes = liftPaletteShadows(paletteBytes);
     try {
-      const image = decodePcx(await readSourceFile(roots, join(bitmapsDir, `${bitmap}.pcx`)));
+      const image = decodePcx(await readSourceFile(roots, join(GUI_BITMAPS_DIR, `${bitmap}.pcx`)));
       const png = encodePng(expandToRgba({ ...image, palette: paletteBytes }));
-      await mkdir(join(outDir, bitmapsDir), { recursive: true });
-      await writeFile(join(outDir, bitmapsDir, `${bitmap}.${palette}.png`), png);
+      await mkdir(join(outDir, GUI_BITMAPS_DIR), { recursive: true });
+      await writeFile(join(outDir, GUI_BITMAPS_DIR, `${bitmap}.${palette}.png`), png);
       done++;
     } catch (err) {
       console.warn(`[pipeline] gui: skipped ${bitmap}.${palette}: ${errorMessage(err)}`);

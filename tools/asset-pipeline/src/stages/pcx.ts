@@ -5,7 +5,7 @@ import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
 import { collectSourceFiles, type SourceRoots } from '../roots.js';
-import { TEXTURES_DIR } from './content-tree.js';
+import { servedRelPath, TEXTURES_DIR } from './content-tree.js';
 import { readSourceFile } from './source-files.js';
 
 /** A transition overlay's two source pictures: the RGB texture + its separate alpha-mask `.pcx`. */
@@ -83,7 +83,8 @@ export async function composeMaskedTransitionPages(
 
 /**
  * Converts every `.pcx` under the source `roots` (layer-ordered union - one `.png` per relative path,
- * decoded from the layer that wins it) to a `.png` under `outDir`, mirroring the relative path.
+ * decoded from the layer that wins it) to a `.png` under `outDir`, at the source's relative path
+ * canonicalized for the served subtrees ({@link servedRelPath}).
  * Returns the conversions performed (input/output relative paths). A
  * picture that fails to read or decode is logged and skipped - a batch pipeline must not abort on one
  * malformed/palette-less image. An output-write failure (and a missing/unreadable game root)
@@ -97,7 +98,7 @@ export async function convertPcxTree(
 ): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
   for (const { rel: input, path } of await collectSourceFiles(roots, (rel) => rel.endsWith('.pcx'))) {
-    const output = input.replace(/\.pcx$/i, '.png');
+    const output = servedRelPath(input.replace(/\.pcx$/i, '.png'));
     const outPath = join(outDir, output);
     let png: Uint8Array;
     try {

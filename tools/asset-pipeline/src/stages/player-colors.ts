@@ -22,7 +22,7 @@ import { composePlayerPalette, PLAYER_COLORS, synthesizePlayerSource } from '../
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
 import type { SourceRoots } from '../roots.js';
-import { BOBS_DIR, writeAtlasBeside } from './content-tree.js';
+import { BOBS_DIR, writeSourceBobAtlas } from './content-tree.js';
 import { readSourceFile, type SourceAssetIndex } from './source-files.js';
 
 /**
@@ -190,14 +190,14 @@ export async function convertGuidepostPlayerAtlases(outDir: string, tree: Source
     // The `player_NN` suffix is a string contract with the app loader (`guidepostPlayerAtlas`,
     // packages/app/src/content/sprite-sheet/human-sheet.ts) - a drift falls back silently to bridge01.
     const suffix = `player_${String(color.id).padStart(2, '0')}`;
-    await writeAtlasBeside(outDir, source.rel, suffix, packBobAtlas(bmd, palette));
+    await writeSourceBobAtlas(outDir, source.rel, suffix, packBobAtlas(bmd, palette));
     emitted++;
   }
   return emitted;
 }
 
 /**
- * Emit an indexed atlas (`<bmd>.indexed.png` + `<bmd>.indexed.atlas.json`) for every human character `.bmd`
+ * Emit an indexed atlas (`<bmd-basename>.indexed.{png,atlas.json}`) for every human character `.bmd`
  * referenced by `bindings` (deduped - many bindings share one body). The `.bmd`s are read from the layer
  * that wins each reference, resolved case-insensitively via {@link SourceAssetIndex}. A missing/malformed
  * `.bmd` is warned-and-skipped. Returns the emitted PNG paths (relative to `<out>`).
@@ -220,7 +220,7 @@ export async function convertIndexedCharacterAtlases(
     }
     try {
       const atlas = packIndexedBobAtlas(decodeBmd(await readFile(source.path)));
-      const { png } = await writeAtlasBeside(outDir, source.rel, 'indexed', atlas);
+      const { png } = await writeSourceBobAtlas(outDir, source.rel, 'indexed', atlas);
       done.push(png);
     } catch (err) {
       console.warn(`[pipeline] skipped indexed ${bmdRef}: ${errorMessage(err)}`);

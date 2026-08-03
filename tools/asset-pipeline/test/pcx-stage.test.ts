@@ -62,6 +62,19 @@ describe('convertPcxTree', () => {
     expect(Array.from(decoded.rgba)).toEqual(Array.from(expandToRgba(decodePcx(bytes)).rgba));
   });
 
+  it('writes a served subtree at the route spelling, whatever the source layer spelled', async () => {
+    // A loose tree may spell the textures root any way a case-insensitive host accepted; the page
+    // is served at `/textures/<pageKey>.png` and the loaders read a 404 as absent content.
+    const { bytes } = samplePcx();
+    await mkdir(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures'), { recursive: true });
+    await writeFile(join(game, 'DATA', 'Engine2D', 'Bin', 'Textures', 'Text_000.pcx'), bytes);
+
+    const done = await convertPcxTree({ game, mod: undefined }, out);
+
+    expect(done.map((c) => c.output)).toEqual([join(TEXTURES_DIR, 'text_000.png')]);
+    await expect(readFile(join(out, TEXTURES_DIR, 'text_000.png'))).resolves.toBeInstanceOf(Buffer);
+  });
+
   it('converts in place when a source layer is the out tree (the archive layer)', async () => {
     // The pipeline's archive layer resolves inside <out>, so an embedded .pcx (extracted from a .lib)
     // gains its .png sibling in the same tree it was read from. Source==target must write alongside,

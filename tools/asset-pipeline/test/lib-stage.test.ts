@@ -13,6 +13,10 @@ describe('libMemberRelPath', () => {
     expect(libMemberRelPath('DATA\\gui\\cursor.pcx')).toBe(join('Data', 'gui', 'cursor.pcx'));
     expect(libMemberRelPath('other\\file.bin')).toBe(join('other', 'file.bin'));
     expect(libMemberRelPath('logo.pcx')).toBe('logo.pcx');
+    // A member landing in a served subtree takes that route's spelling, not the archive's.
+    expect(libMemberRelPath('Data\\Engine2D\\Bin\\Sounds\\GUI\\Click.wav')).toBe(
+      join('Data', 'engine2d', 'bin', 'sounds', 'gui', 'click.wav'),
+    );
   });
 
   it('rejects names that would escape the extraction root', () => {
