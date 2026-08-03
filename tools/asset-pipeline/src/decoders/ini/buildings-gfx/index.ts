@@ -14,5 +14,6 @@ export {
   extractBuildingFlagPoints,
   extractBuildingGraphics,
   extractBuildingOverlays,
+  extractBuildingSoldierFlagPoints,
   extractConstructionLayers,
 } from './visuals.js';

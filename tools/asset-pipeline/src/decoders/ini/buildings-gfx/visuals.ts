@@ -156,11 +156,35 @@ export function extractBuildingFlagPoints(
   sections: readonly RuleSection[],
   src: SourceRef,
 ): BuildingFlagPoint[] {
+  return extractHousePoints(sections, src, 'GfxFlagPoint');
+}
+
+/**
+ * Extracts the `[GfxHouse]` garrison-flag anchors (`gfxsoldierflagpoint <sizeIdx> <x> <y>`) - where a
+ * manned tower flies its soldier flag, as opposed to the ground-level sign post `GfxFlagPoint` marks.
+ * Same grammar, same `(sizeIdx → typeId)` join, same last-wins policy. The key is spelled all-lowercase
+ * in both the base `houses.cif` and the mod's `houses.ini`, unlike its CamelCase siblings; `.ini` keys
+ * are case-sensitive here, so it is matched as authored. Only the tower records carry one (viking both
+ * levels, frank both), which is the source's own statement of which buildings hold a garrison.
+ */
+export function extractBuildingSoldierFlagPoints(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+): BuildingFlagPoint[] {
+  return extractHousePoints(sections, src, 'gfxsoldierflagpoint');
+}
+
+/** The shared `<level> <x> <y>` anchor read behind both point keys. */
+function extractHousePoints(
+  sections: readonly RuleSection[],
+  src: SourceRef,
+  key: string,
+): BuildingFlagPoint[] {
   const points: BuildingFlagPoint[] = [];
   forEachGfxHouseRecord(sections, (rec, record) => {
     const { tribeId, editName, typeByLevel } = record;
     const byLevel = new Map<number, { x: number; y: number }>();
-    for (const p of findProps(rec, 'GfxFlagPoint')) {
+    for (const p of findProps(rec, key)) {
       const [level, x, y] = p.values.map((v) => Number.parseInt(v, 10));
       if (level === undefined || x === undefined || y === undefined) continue;
       if ([level, x, y].some((n) => Number.isNaN(n))) continue;

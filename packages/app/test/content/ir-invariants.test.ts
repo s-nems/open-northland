@@ -1,7 +1,11 @@
 import { hasFieldFarmAtomics } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { NAV_LANDSCAPE_TYPES } from '../../src/catalog/terrain.js';
-import { flagPointByType, VIKING_TRIBE } from '../../src/content/building-gfx/index.js';
+import {
+  flagPointByType,
+  soldierFlagPointByType,
+  VIKING_TRIBE,
+} from '../../src/content/building-gfx/index.js';
 import { resolveBuildingSignRefs } from '../../src/content/building-signs.js';
 import { BRIDGE_EDIT_GROUP } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
@@ -256,5 +260,16 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     // Not every record carries the key (the source misses a handful), but a near-empty join means the
     // lane or the tribe filter broke.
     expect(anchored.length).toBeGreaterThan(vikingBobTypes.size / 2);
+  });
+
+  it('resolves the viking garrison mast, and only for the towers that declare one', () => {
+    // `gfxsoldierflagpoint` is the source's own answer to where a manned post flies its flag; without
+    // the lane the projection falls back to the sign post and the flag lands on the tower's doorstep.
+    const masts = soldierFlagPointByType(rawIrUnderTest() as ContentIr);
+    expect(masts.get(BUILDING_WATCHTOWER)).toEqual({ x: -6, y: -239 }); // high above the anchor
+    // The key is the tower's alone - the frank tower shares the typeIds with a different height, so a
+    // broken tribe filter shows up as a wrong value, and a broken lane as an empty map.
+    expect(masts.size).toBeGreaterThan(0);
+    expect(masts.size).toBeLessThan(flagPointByType(rawIrUnderTest() as ContentIr).size);
   });
 });

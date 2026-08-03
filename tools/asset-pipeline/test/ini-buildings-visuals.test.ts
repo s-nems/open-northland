@@ -4,6 +4,7 @@ import {
   extractBuildingFlagPoints,
   extractBuildingGraphics,
   extractBuildingOverlays,
+  extractBuildingSoldierFlagPoints,
   extractConstructionLayers,
   parseIniSections,
 } from '../src/decoders/ini.js';
@@ -112,6 +113,8 @@ GfxBobId 1 20
 GfxFlagPoint 0 -6 29
 GfxFlagPoint 1 -4 38
 GfxFlagPoint 2 9 9
+gfxsoldierflagpoint 0 -6 -239
+gfxsoldierflagpoint 1 -6 -255
 EditName "Egypt Tower"
 LogicTribeType 5
 LogicType 0 40
@@ -143,6 +146,26 @@ describe('extractBuildingFlagPoints', () => {
 
   it('returns an empty array for sources with no [GfxHouse] records', () => {
     expect(extractBuildingFlagPoints(parseIniSections(HOUSES_INI), src)).toEqual([]);
+  });
+});
+
+describe('extractBuildingSoldierFlagPoints', () => {
+  const src = { file: 'budynki12/houses/houses.ini', block: 'GfxHouse', layer: 'mod' as const };
+
+  it("reads the garrison mast off its own key - the tower's, not its sign post's", () => {
+    const points = extractBuildingSoldierFlagPoints(parseIniSections(GFXHOUSE_FLAGPOINTS_INI), src);
+    // The source spells this key all-lowercase while its siblings are CamelCase; the real viking-tower
+    // values are these, high above the anchor, where `GfxFlagPoint` is 29/38 px BELOW it.
+    expect(points).toEqual([
+      { tribeId: 1, typeId: 40, level: 0, x: -6, y: -239, editName: 'viking tower', source: src },
+      { tribeId: 1, typeId: 41, level: 1, x: -6, y: -255, editName: 'viking tower', source: src },
+    ]);
+  });
+
+  it('leaves a record that declares no mast out - only a garrison building has one', () => {
+    const points = extractBuildingSoldierFlagPoints(parseIniSections(GFXHOUSE_FLAGPOINTS_INI), src);
+    expect(points.some((p) => p.editName === 'Egypt Tower')).toBe(false);
+    expect(extractBuildingSoldierFlagPoints(parseIniSections(HOUSES_INI), src)).toEqual([]);
   });
 });
 
