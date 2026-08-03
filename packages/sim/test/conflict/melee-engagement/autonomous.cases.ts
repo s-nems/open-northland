@@ -153,22 +153,25 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
   });
 
   it('asks for no route at all toward the far bank', () => {
-    // Counted probe: navigationPlanner turns a chase goal into exactly one PathRequest, so a request
-    // standing after the planner pass is a route this fighter asked for. It should ask for none: the
-    // contact cell is in another static component, which is decided from the graph, not by searching.
+    // Counted probe: navigationPlanner turns a goal into exactly one PathRequest, so a request standing
+    // after the planner pass is a route this fighter asked for. It should ask for none across the water:
+    // the contact cell is in another static component, which is decided from the graph, not by searching.
     const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
     const a = fighterAt(sim, 2, 2, VIKING, WOODCUTTER, { owner: P0 });
     fighterAt(sim, 9, 2, VIKING, WOODCUTTER, { owner: P1 });
-    let requests = 0;
+    const bank = sim.terrain?.componentOf(sim.terrain.nodeAt(2 * 2, 2 * 2));
+    let farBankRequests = 0;
     sim.setInstrument((name, run) => {
       run();
-      if (name === 'planner' && sim.world.has(a, PathRequest)) requests++;
+      const goal = name === 'planner' ? sim.world.tryGet(a, PathRequest)?.goal : undefined;
+      if (goal !== undefined && sim.terrain?.componentOf(goal) !== bank) farBankRequests++;
     });
 
     for (let i = 0; i < 200; i++) sim.step();
 
-    expect(requests).toBe(0);
-    expect(sim.world.has(a, Engagement)).toBe(false); // and it never stood engaged, so the planner has it
+    expect(farBankRequests).toBe(0);
+    // Nor does the marker ever survive a tick boundary, which is the state the planner and the snapshot read.
+    expect(sim.world.has(a, Engagement)).toBe(false);
   });
 
   it('still shoots across the water it cannot walk across', () => {
