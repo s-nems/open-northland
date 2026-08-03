@@ -6,21 +6,18 @@ import { buildMapsIndexEntries } from './maps-index.js';
 import { resolveFileUnderRoot } from './under-root.js';
 
 /**
- * The single table of app-facing `content/` routes, shared by every host that serves the pipeline's
- * output (the Vite dev middleware in `packages/app/vite.config.ts` and the desktop shell's `app://`
- * handler). Hosts pass the raw URL pathname - percent-decoding happens here - and get `undefined`
- * for anything unmatched, absent, or malformed, so a data dir without `content/` degrades to the
- * host's own 404 rather than crashing.
+ * The one table of app-facing `content/` routes, shared by every host that serves the pipeline's
+ * output. Hosts pass the raw URL pathname; percent-decoding happens here.
  */
 
-/** A static file hit: stream `path` with `contentType`. */
+/** A file that already exists under the route's root. */
 export interface ContentFileHit {
   readonly kind: 'file';
   readonly path: string;
   readonly contentType: string;
 }
 
-/** A computed JSON hit (the `/maps-index` + `/bobs-index` payloads); `body()` builds it per request. */
+/** A payload built per request by scanning a subtree of `content/`. */
 export interface ContentJsonHit {
   readonly kind: 'json';
   readonly body: () => unknown;
@@ -39,25 +36,22 @@ const CONTENT_TYPES = {
 
 type ServedExtension = keyof typeof CONTENT_TYPES;
 
-// The subtrees a file route and a computed index route both address, named so each pair can
-// never drift onto different directories.
+// Shared by a file route and its index route, so the pair cannot drift onto different directories.
 const MAPS_ROOT = 'maps';
 const BOBS_ROOT = 'Data/engine2d/bin/bobs';
 const BACKDROPS_ROOT = 'backdrops';
 
-/** The one whole-file top-level route: the generated IR document. */
+/** The one file served straight off the content root. */
 const IR_PATHNAME = '/ir.json';
 
-/** One URL prefix → subtree-of-`content/` file route with its extension allowlist. */
 interface FileRoute {
   readonly prefix: string;
-  /** The route's root, relative to the content dir (native joins happen at resolve time). */
+  /** Relative to the content dir. */
   readonly root: string;
   readonly extensions: readonly ServedExtension[];
 }
 
-// Routes mirror the pipeline's output layout. `/bobs` allows `.atlas.json` (not bare `.json`) so
-// only atlas manifests are reachable there.
+// `/bobs` allows `.atlas.json` but not bare `.json`, so only atlas manifests are reachable there.
 const FILE_ROUTES: readonly FileRoute[] = [
   { prefix: '/maps/', root: MAPS_ROOT, extensions: ['.json', '.png'] },
   { prefix: '/bobs/', root: BOBS_ROOT, extensions: ['.png', '.atlas.json'] },
@@ -83,7 +77,7 @@ const INDEX_ROUTES: readonly IndexRoute[] = [
   { pathname: '/backdrops-index', root: BACKDROPS_ROOT, build: buildBackdropsIndexEntries },
 ];
 
-/** Longest matching served extension of `file`, or `undefined` when none is allowed on the route. */
+/** The longest allowed extension matching `file`, so `.atlas.json` wins over `.json`. */
 function servedExtension(file: string, allowed: readonly ServedExtension[]): ServedExtension | undefined {
   let best: ServedExtension | undefined;
   for (const ext of allowed) {
@@ -98,10 +92,7 @@ type RouteMatch =
   | { readonly kind: 'index'; readonly route: IndexRoute }
   | { readonly kind: 'file'; readonly route: FileRoute; readonly relative: string };
 
-/**
- * The single table walk behind both exports, so "this pathname is ours" and "this pathname resolves"
- * can never answer from different route sets.
- */
+/** The one table walk behind both exports, so claiming and resolving cannot use different routes. */
 function matchRoute(rawPathname: string): RouteMatch | undefined {
   let pathname: string;
   try {
@@ -119,9 +110,8 @@ function matchRoute(rawPathname: string): RouteMatch | undefined {
 
 /**
  * Whether a pathname belongs to the content namespace, even when nothing resolves there. A host with
- * its own catch-all page route (Vite's SPA fallback) must answer a real 404 for an in-namespace miss:
- * falling through would serve `index.html` as HTTP 200 `text/html`, and every content loader's
- * absence check (`!res.ok`) would mis-read the missing file as bytes.
+ * a catch-all page route must answer a real 404 for an in-namespace miss; falling through to
+ * `index.html` as HTTP 200 would make a loader's `!res.ok` check read the missing file as bytes.
  */
 export function isContentRoute(rawPathname: string): boolean {
   return matchRoute(rawPathname) !== undefined;
