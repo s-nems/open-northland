@@ -4,7 +4,7 @@ export { grassMap };
 
 import { Health, Owner, Position, Settler, Stance } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, type Simulation } from '../../../src/index.js';
+import { fx, halfCellMapFromCells, type Simulation, type TerrainMap } from '../../../src/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 
 export const WOOD = 1;
@@ -13,10 +13,24 @@ export const VIKING = 1;
 export const FRANK = 2;
 export const BEAR = 10;
 export const WOODCUTTER = 1;
+/** The fixture's bow-armed job (`test_spear`, minRange 3, maxRange 17) - the ranged reach these cases need. */
+export const HUNTER = 15;
 export const P0 = 0;
 export const P1 = 1;
 
+const GRASS = 0;
+const WATER = 1; // landscape type 1 in the fixture content - unwalkable
+
 export { ctxOf } from '../../fixtures/context.js';
+
+/** A grass map split by a full-height water column at cell x = `wall` - two banks, no crossing. */
+export function splitMap(width: number, height: number, wall: number): TerrainMap {
+  const typeIds: number[] = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) typeIds.push(x === wall ? WATER : GRASS);
+  }
+  return halfCellMapFromCells({ width, height, typeIds });
+}
 
 /** A combatant; an owner also receives the ATTACK stance these direct fixtures need. */
 export function fighterAt(

@@ -11,7 +11,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { nearestCell } from '../footprint/geometry.js';
 import { clearNavState, closer, isTravelling, manhattan, redirectRoute } from '../spatial/nodes.js';
-import type { CombatantStance } from './engagement.js';
+import type { CombatantStance, EngageSpec } from './engagement.js';
 import type { MeleeSlots, WeaponBand } from './melee-slots.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser a
@@ -27,6 +27,10 @@ export interface ChaseTarget {
   readonly node: NodeId;
   readonly body: readonly NodeId[] | null;
 }
+
+/** The anchor a chase is bound to (a DEFEND post, a hunter's ground), or null when it is unbounded -
+ *  {@link EngageSpec.defend}, passed through unchanged. */
+type DefendPost = EngageSpec['defend'];
 
 /**
  * How many ticks a chaser follows its current path toward an enemy before re-issuing a fresh one - the chase
@@ -44,11 +48,20 @@ export const REPATH_CADENCE = 8;
  *  behaviour of the DEFEND mode. The Engagement ALWAYS drops here (the planner's Engagement gate would
  *  otherwise bench the guard for good), but the walk home defers to a live equip errand - clearing the
  *  nav state mid-fetch would tug the guard off it; the errand's end re-holds the unchanged anchor. */
-export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeId): void {
+function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell: NodeId): void {
   world.remove(e, Engagement);
   if (world.has(e, EquipOrder)) return;
   clearNavState(world, e);
   if (here !== anchorCell) world.add(e, MoveGoal, { cell: anchorCell });
+}
+
+/** Hand a combatant that will not advance this tick back to its idle duty: a post-holder (DEFEND, `hold`)
+ *  walks back to its anchor, everyone else disengages. A hunter's leash carries `hold: false` for exactly
+ *  this reason - its between-hunts time belongs to the flag-gatherer drive, and a combat walk-back would
+ *  fight that drive for the unit. */
+export function breakOff(world: World, e: Entity, here: NodeId, defend: DefendPost): void {
+  if (defend?.hold === true) returnToAnchor(world, e, here, defend.anchorCell);
+  else disengage(world, e);
 }
 
 /**
@@ -57,11 +70,12 @@ export function returnToAnchor(world: World, e: Entity, here: NodeId, anchorCell
  * an {@link approachCell} (a cell in the weapon's reach band of `target.node`, closest to the unit - so a
  * melee unit stops adjacent rather than walking onto the enemy) at most every {@link REPATH_CADENCE} ticks.
  * Between repaths it follows its live route; the swing check (distance-based) catches it the instant it steps
- * into reach. A dead route (an unreachable target) is dropped so it re-issues; an ordered unit whose route
- * can't resolve gives the order up (the "becomes unreachable" end of an attack order). `target` carries the
- * caller's pre-resolved combat node (so the chase closes on the same cell the reach check measured) and a
- * building target's full wall list, which lets a chaser whose nearest face is fully manned encircle to a free
- * slot on another face ({@link MeleeSlots.encircleCandidates}) instead of holding behind the first rank.
+ * into reach. A contact cell the terrain walls off is never walked toward at all; a dead route (a target the
+ * crowd sealed off) is dropped so it re-issues, and an ordered unit whose route can't resolve gives the order
+ * up (the "becomes unreachable" end of an attack order). `target` carries the caller's pre-resolved combat
+ * node (so the chase closes on the same cell the reach check measured) and a building target's full wall
+ * list, which lets a chaser whose nearest face is fully manned encircle to a free slot on another face
+ * ({@link MeleeSlots.encircleCandidates}) instead of holding behind the first rank.
  */
 export function chase(
   world: World,
@@ -73,19 +87,19 @@ export function chase(
   target: ChaseTarget,
   weapon: WeaponBand,
   stance: CombatantStance,
-  defend: { anchorCell: NodeId; leash: number; hold: boolean } | null,
+  defend: DefendPost,
 ): void {
   const engagement = world.add(e, Engagement, {
     repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick, // repath now on first engagement
   });
 
+  const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
   // A failed chase route (unreachable target): drop the dead nav state so we re-issue below. For an explicit
   // attack order an unreachable target ends the order. An attack-move march instead rests its aggression and
   // walks on: without the rest, an enemy visible across a river holds the marcher in a failing search every
   // tick and the order can never complete.
   if (world.tryGet(e, PathRequest)?.failed) {
     clearNavState(world, e);
-    const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
     if (stance.ordered || marching) {
       world.remove(e, AttackOrder);
       world.remove(e, Engagement);
@@ -124,13 +138,20 @@ export function chase(
     engagement.repathAt = ctx.tick + REPATH_CADENCE;
     return;
   }
+  // A contact cell in another static walk component (the far bank of a river) can never be routed to - the
+  // labels `findPath` refutes such a goal with, read here so the unit hands back instead of standing engaged
+  // on an enemy it will never touch. Only the WALK is refused: an enemy in reach was swung at before the
+  // chase ran, so archers still shoot across water. A commanded chase keeps its own release above; `-1`
+  // (unwalkable - a node a walker truncated onto mid-stride) proves nothing either way.
+  const bank = terrain.componentOf(here);
+  if (!stance.ordered && !marching && bank >= 0 && terrain.componentOf(dest) !== bank) {
+    breakOff(world, e, here, defend);
+    return;
+  }
   // Anchor leash: never step past `leash` tiles from the anchor to reach an enemy - a target hittable only by
-  // breaking the leash is left alone. A post-holder (DEFEND, `hold`) walks back to its post; a hunter
-  // disengages instead - its between-hunts time belongs to the flag-gatherer drive, and a combat
-  // walk-back would fight that drive for the unit (see the engageSpec hunter branch).
+  // breaking the leash is left alone.
   if (defend !== null && manhattan(terrain, defend.anchorCell, dest) > defend.leash) {
-    if (defend.hold) returnToAnchor(world, e, here, defend.anchorCell);
-    else disengage(world, e);
+    breakOff(world, e, here, defend);
     return;
   }
   if (dest === here && !travelling) {
