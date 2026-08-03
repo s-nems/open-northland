@@ -8,10 +8,9 @@ import type { RuleProp, RuleSection } from './grammar.js';
 const SOUNDS_ROOT = 'data/engine2d/bin/sounds/';
 
 /**
- * Normalizes a `SFX` wav path (`Data\Engine2D\Bin\Sounds\Gui\Click_Confirm.wav`) to the key the audio
- * layer fetches - forward-slashed, lower-cased, and made relative to {@link SOUNDS_ROOT} so it
- * joins straight onto the served `/sounds/<file>` route (`gui/click_confirm.wav`). A path that does
- * not sit under the sounds root is kept as-is (lower-cased) rather than dropped.
+ * Normalizes an `SFX` wav path (`Data\Engine2D\Bin\Sounds\Gui\Click_Confirm.wav`) to the key the audio
+ * layer fetches on the served `/sounds/<file>` route: forward-slashed, lower-cased, relative to
+ * {@link SOUNDS_ROOT}. A path outside that root is kept as-is rather than dropped.
  */
 function normalizeSoundPath(path: string): string {
   const p = path.replace(/\\/g, '/').toLowerCase();
@@ -20,10 +19,9 @@ function normalizeSoundPath(path: string): string {
 }
 
 /**
- * `soundfx.cif` disagrees with itself on key/section case (`SFX`/`sfx`, `Name`/`name`,
- * `PatternGroup`/`patternGroup`, `SoundFXAmbient`/`SoundFxAmbient`), and the original engine reads it
- * case-insensitively - so the sound extractor matches on lower-cased keys throughout, unlike the
- * CamelCase-stable graphics tables above.
+ * `soundfx.cif` disagrees with itself on key and section case (`SFX`/`sfx`, `Name`/`name`,
+ * `PatternGroup`/`patternGroup`, `SoundFXAmbient`/`SoundFxAmbient`) and the original engine reads it
+ * case-insensitively, so every sound lookup matches on lower-cased keys.
  */
 function soundProps(sec: RuleSection, key: string): RuleProp[] {
   const k = key.toLowerCase();
@@ -43,7 +41,7 @@ function soundInt(sec: RuleSection, key: string): number | undefined {
   return Number.isNaN(n) ? undefined : n;
 }
 
-/** Every `SFX "<path>" <n…>` line of a group → `{ file, params }`, in file order (empty paths dropped). */
+/** Every `SFX "<path>" <n...>` line of a group as `{ file, params }`, in file order, empty paths dropped. */
 function soundSfx(sec: RuleSection): { file: string; params: number[] }[] {
   return soundProps(sec, 'SFX')
     .map((p) => {
@@ -67,11 +65,8 @@ function soundGroupNames(sec: RuleSection, key: string): string[] {
 /**
  * Extracts the decoded `soundfx.cif` sections into the {@link SoundBank} IR: `SoundFXStatic` groups
  * (named wav bags, some bound to a `LogicSoundType` engine trigger), `SoundFXAmbient` terrain beds
- * (keyed on `PatternGroup`/`LandscapeGroup`), and `SoundFXJingle` life-event stingers (`MusicType`).
- * Sections it does not recognise contribute nothing. This is render-binding data the pure sim ignores;
- * the browser audio layer joins it onto sim events + on-screen terrain. Case-insensitive throughout
- * (see {@link soundProps}). Sound wav paths are made relative to the served sounds root
- * ({@link normalizeSoundPath}).
+ * keyed on `PatternGroup`/`LandscapeGroup`, and `SoundFXJingle` life-event stingers keyed on
+ * `MusicType`. Unrecognised sections contribute nothing.
  */
 export function extractSounds(sections: readonly RuleSection[]): SoundBank {
   const staticGroups: SoundStaticGroup[] = [];

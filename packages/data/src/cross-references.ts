@@ -1,10 +1,7 @@
 import { firstByTypeId } from './lookup.js';
 import { type ContentSet, LOGIC_TYPE_NONE } from './schema/index.js';
 
-/**
- * Ensure every numeric type id referenced by buildings/recipes resolves to a defined type.
- * Catches dangling references at load time rather than as a runtime crash mid-game.
- */
+/** Reject a set whose numeric references dangle, at load rather than as a crash mid-game. */
 export function validateCrossReferences(set: ContentSet): void {
   const ids = buildIdSets(set);
   const errors = CHECKS.flatMap((check) => check(set, ids));
@@ -16,10 +13,7 @@ export function validateCrossReferences(set: ContentSet): void {
 
 type CrossReferenceCheck = (set: ContentSet, ids: IdSets) => readonly string[];
 
-/**
- * Every check, in the order their errors are reported. `test/cross-references.test.ts` asserts one
- * combined report against this order, so keep it stable.
- */
+/** Every check, in the order their errors are reported; the combined report's order is asserted. */
 const CHECKS: readonly CrossReferenceCheck[] = [
   checkGoodProduction,
   checkBuildings,
@@ -61,7 +55,6 @@ function buildIdSets(set: ContentSet): IdSets {
   };
 }
 
-// A good's production inputs (`productionInputGoods`) name other goods consumed to make it.
 function checkGoodProduction(set: ContentSet, { goodIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const g of set.goods) {
@@ -103,16 +96,13 @@ function checkBuildings(set: ContentSet, { goodIds, jobIds }: IdSets): string[] 
 function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const t of set.tribes) {
-    // Each tribe's `setatomic` binding names the job it applies to; that job must exist. (Atomic ids
-    // themselves have no master table to resolve against - see AtomicId - so only jobType is checked.)
+    // Atomic ids resolve against no extracted table (see `AtomicId`), so only the binding's job is checked.
     for (const b of t.atomicBindings) {
       if (!jobIds.has(b.jobType))
         errors.push(`tribe "${t.id}" binds atomic ${b.atomicId} to unknown jobType ${b.jobType}`);
     }
-    // Each `jobEnables*` tech-graph edge: the enabling `jobType` must resolve, and so must its
-    // `targetId` within the kind's table - a good, a building (`house`), a job, or a vehicle. The
-    // `vehicle` kind keys into the `vehicletypes` `logicvehicletype` namespace (distinct from
-    // buildings), resolved against `VehicleType.typeId`.
+    // A `jobEnables` edge resolves its `targetId` in the table its kind names; the `vehicle` kind keys
+    // into the `vehicletypes` `logicvehicletype` namespace, distinct from buildings.
     for (const e of t.jobEnables) {
       if (!jobIds.has(e.jobType))
         errors.push(`tribe "${t.id}" jobEnables-edge has unknown jobType ${e.jobType}`);
@@ -125,10 +115,8 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
       if (e.kind === 'vehicle' && !vehicleIds.has(e.targetId))
         errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown vehicleType ${e.targetId}`);
     }
-    // Each `{need,train}for{job,good}` requirement: its `targetId` resolves within the `target`
-    // table (a job or a good). The `experienceTypes` are not checked: they span an id space wider
-    // than the extracted `humanjobexperiencetypes` table (observed need-ids 72/73/75 and the
-    // synthetic "school" markers 57/77 for `train`), so resolving them would false-positive.
+    // A requirement's `experienceTypes` stay unchecked: their ids span a wider space than the extracted
+    // `humanjobexperiencetypes` table (observed 72/73/75, plus the synthetic school markers 57/77).
     for (const r of t.jobRequirements) {
       if (r.target === 'job' && !jobIds.has(r.targetId))
         errors.push(`tribe "${t.id}" ${r.requirement}forjob requires unknown jobType ${r.targetId}`);
@@ -141,16 +129,14 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
 
 function checkWeaponsAndArmor(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
   const errors: string[] = [];
-  // A weapon's wielding job, when set, must resolve too. Its `goodType` (the good that is the weapon)
-  // likewise resolves into the good table - the extractor already drops the `goodtype 0`
-  // natural-weapon sentinel to undefined.
+  // The extractor drops the `goodtype 0` natural-weapon sentinel to undefined, so an absent goodType
+  // is not a dangling reference.
   for (const w of set.weapons) {
     if (w.jobType !== undefined && !jobIds.has(w.jobType))
       errors.push(`weapon "${w.id}" references unknown jobType ${w.jobType}`);
     if (w.goodType !== undefined && !goodIds.has(w.goodType))
       errors.push(`weapon "${w.id}" references unknown goodType ${w.goodType}`);
   }
-  // An armor's `goodType` (the good that is the armor), when set, must resolve into the good table.
   for (const a of set.armor) {
     if (a.goodType !== undefined && !goodIds.has(a.goodType))
       errors.push(`armor "${a.id}" references unknown goodType ${a.goodType}`);
@@ -158,9 +144,7 @@ function checkWeaponsAndArmor(set: ContentSet, { goodIds, jobIds }: IdSets): str
   return errors;
 }
 
-// An animal record keys on `tribeType` (not `type`) - its identity is its owning tribe - so that id
-// must resolve into the tribe table (the same dangling-reference class). The extractor already drops
-// records with no `tribetype` at all, so every animal here carries one to check.
+// An animal record keys on `tribeType`, not `type`: its identity is its owning tribe.
 function checkAnimals(set: ContentSet, { tribeIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const a of set.animals) {
@@ -170,10 +154,8 @@ function checkAnimals(set: ContentSet, { tribeIds }: IdSets): string[] {
   return errors;
 }
 
-// A hunt-prey row keys on the prey's tribe (like an animal record) and its yields name the goods a
-// carcass holds - both must resolve, and every yield good must carry the SAME harvest atomic: the
-// carcass is ONE node re-armed good-to-good in place, and the sim's resource dormancy index captures
-// a node's atomic once at spawn, so a mid-body atomic change would hide the carcass from its hunter.
+// Every yield good must share one harvest atomic: a carcass is one node re-armed good-to-good in
+// place, and the sim's resource dormancy index captures a node's atomic once at spawn.
 function checkHuntPrey(set: ContentSet, { tribeIds }: IdSets): string[] {
   const errors: string[] = [];
   const goods = new Map(set.goods.map((g) => [g.typeId, g]));
@@ -194,9 +176,6 @@ function checkHuntPrey(set: ContentSet, { tribeIds }: IdSets): string[] {
   return errors;
 }
 
-// A landscape object's `LogicType`, when set, must resolve into the landscape type table - the
-// placed object counts as that type on the map's logic lanes (every real record carries 1..87;
-// LOGIC_TYPE_NONE is the schema's "pure decor" default for a record that omits the key).
 function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const g of set.landscapeGfx) {
@@ -208,13 +187,9 @@ function checkLandscapeGfx(set: ContentSet, { landscapeIds }: IdSets): string[] 
   return errors;
 }
 
-/** The three ordered stages of a good's gathering chain: the keys both gathering checks walk. */
+/** The ordered stages of a good's gathering chain. */
 const GATHERING_STAGES = ['harvest', 'pickup', 'store'] as const;
 
-// A good's landscape references - its `landscapetype` on-the-ground lane and the three
-// gathering-stage ids - must resolve into the landscape type table (the same dangling-reference
-// class as landscapeGfx). Every real good carries a defined `landscapetype`; only the ~11
-// map-gathered goods carry a `gathering` chain.
 function checkGoodLandscape(set: ContentSet, { landscapeIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const g of set.goods) {
@@ -231,8 +206,6 @@ function checkGoodLandscape(set: ContentSet, { landscapeIds }: IdSets): string[]
   return errors;
 }
 
-// Each resolved gathering-pipeline record: its good resolves, every stage's landscape id resolves,
-// and every gfx index names a real landscapeGfx record (checked against {@link IdSets.landscapeGfxIndices}).
 function checkGatheringPipeline(
   set: ContentSet,
   { goodIds, landscapeIds, landscapeGfxIndices }: IdSets,
@@ -259,8 +232,7 @@ function checkGatheringPipeline(
   return errors;
 }
 
-// A terrainPatterns row's representative pick must exist in the full pattern table when that
-// table is carried.
+// An empty pattern table means the set does not carry it, not that every representative pick dangles.
 function checkTerrainPatterns(set: ContentSet, { patternIds }: IdSets): string[] {
   if (set.gfxPatterns.length === 0) return [];
   const errors: string[] = [];
@@ -271,9 +243,8 @@ function checkTerrainPatterns(set: ContentSet, { patternIds }: IdSets): string[]
   return errors;
 }
 
-// A job's `baseJob` (`jobtypes` `baseatomics`) is the parent it inherits atomics from, so it must name
-// a job in this table and the chain must terminate: `resolveJobAtomics` tolerates both faults by
-// inheriting nothing, leaving the job quietly short of atomics.
+// `resolveJobAtomics` tolerates a dangling or cyclic `baseJob` by inheriting nothing, which would
+// leave a job quietly short of atomics, so both faults are caught here instead.
 function checkJobs(set: ContentSet, { jobIds }: IdSets): string[] {
   const errors: string[] = [];
   const firstRows = firstByTypeId(set.jobs);
@@ -295,7 +266,6 @@ function checkJobs(set: ContentSet, { jobIds }: IdSets): string[] {
   return errors;
 }
 
-// Each experience track names its owning job (always) and, when good-specific, the good it trains on.
 function checkJobExperience(set: ContentSet, { goodIds, jobIds }: IdSets): string[] {
   const errors: string[] = [];
   for (const x of set.jobExperience) {

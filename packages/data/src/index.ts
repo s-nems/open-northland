@@ -6,10 +6,7 @@ export * from './schema/index.js';
 import { validateCrossReferences } from './cross-references.js';
 import { ContentSet, TerrainMapFile } from './schema/index.js';
 
-/**
- * Parse + validate a content set (typically the contents of content/ assembled into one object).
- * Throws a zod error with a readable path if anything is malformed.
- */
+/** Parse and validate one assembled content set; throws a zod error with a readable path. */
 export function parseContentSet(raw: unknown): ContentSet {
   const set = ContentSet.parse(raw);
   validateCrossReferences(set);
@@ -17,11 +14,9 @@ export function parseContentSet(raw: unknown): ContentSet {
 }
 
 /**
- * Parse + validate one decoded terrain grid file (`content/maps/<id>.json`) into the structural
- * `TerrainMap` the sim consumes. This is the loader boundary: the build tool / app reads the JSON
- * (I/O - not allowed in the pure sim) and validates the shape + the `typeIds.length === width*height`
- * invariant here, so a malformed file fails loudly at load rather than as an out-of-bounds read in
- * `buildTerrainGraph`. Throws a zod error with a readable path on a malformed file.
+ * Parse and validate one decoded terrain grid file (`content/maps/<id>.json`). The loader boundary:
+ * the `typeIds.length === width * height` invariant is checked here, outside the pure sim, so a
+ * malformed file fails at load rather than as an out-of-bounds read in `buildTerrainGraph`.
  */
 export function parseTerrainMap(raw: unknown): TerrainMapFile {
   return TerrainMapFile.parse(raw);

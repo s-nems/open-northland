@@ -1,6 +1,3 @@
-/**
- * Building logic types.
- */
 import { BUILDING_KIND, type BuildingKind, BuildingType } from '@open-northland/data';
 import {
   findProps,
@@ -13,12 +10,7 @@ import {
   slug,
 } from '../grammar.js';
 
-/**
- * `logicmaintype` → {@link BuildingKind}, read off the readable `houses.ini` records themselves:
- * storage is the headquarters + stock houses, home the residences carrying a `logichomesize`,
- * workplace the producers carrying a `logicproduction`, training the barracks/school, tower the
- * defences, vehicle the buildable carts/ships carrying a `logicvehicletype`, and wonder.
- */
+/** The source names no kind: these `logicmaintype` ids are observed from the `houses.ini` records. */
 const HOUSE_KIND_BY_MAIN_TYPE: Readonly<Record<number, BuildingKind>> = {
   1: BUILDING_KIND.storage,
   2: BUILDING_KIND.home,
@@ -29,29 +21,14 @@ const HOUSE_KIND_BY_MAIN_TYPE: Readonly<Record<number, BuildingKind>> = {
   7: BUILDING_KIND.wonder,
 };
 
-/** Unknown `logicmaintype` ids fall back to a stable `maintype_<n>` so a new value never crashes a batch. */
 function houseKind(mainType: number | undefined): BuildingType['kind'] {
   if (mainType === undefined) return 'maintype_unknown';
   return HOUSE_KIND_BY_MAIN_TYPE[mainType] ?? `maintype_${mainType}`;
 }
 
 /**
- * Extracts `[logichousetype]` sections (the mod's readable `DataCnmd/types/houses.ini`, preferred over
- * the base game's encrypted `housetypes.cif` per AGENTS.md golden rule #4) into validated
- * {@link BuildingType} IR. Unlike the other type tables a house record keys its id on `logictype` (not
- * `type`) and its name on `debugname`. Captured per record:
- *   - `logicworker <jobType> <count>`  -> {@link WorkerSlot}[] (the worker the building employs;
- *     `jobType` is cross-checked against the job table by `validateCrossReferences`).
- *   - `logicstock <goodType> <capacity> <initial>` -> {@link StockSlot}[] (per-good storage slots;
- *     `goodType` cross-checked against the good table).
- *   - `logicproduction <goodType>` -> `produces` (output good ids only - the input side is the
- *     output-side join {@link fillBuildingRecipes} does after this, see {@link BuildingType.produces}).
- *   - `logichomesize` -> `homeSize` (population-capacity tier, on `home` buildings).
- * `kind` is mapped from `logicmaintype` ({@link houseKind}). Throws on a section missing the required
- * numeric `logictype` (matches {@link extractGoods}'s throw-on-malformed stance). The combat/graphics
- * extras (`debugcolor`, `logicCanEnableDefenceMode`, `logicSchoolSize`, `logicvehicletype`, the
- * `logicbuildon*`/`logicignore*` placement flags) are intentionally skipped - they belong with the
- * later construction/combat/placement systems, not this type-table slice.
+ * A house record keys its id on `logictype`, not the `type` every other table uses, and its name on
+ * `debugname`.
  */
 export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {
   const buildings: BuildingType[] = [];

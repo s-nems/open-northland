@@ -1,7 +1,6 @@
 /**
- * Palette aliases - the first leg of the `.bmd`→palette graph: a graphics record names a bob set's
- * palette by `editname`, and `palettes.ini` resolves that name to the `.pcx` whose trailer holds the
- * actual 256 colours.
+ * Palette aliases: a graphics record names a bob set's palette by `editname`, and `palettes.ini`
+ * resolves that name to the `.pcx` whose trailer holds the actual 256 colours.
  */
 
 import {
@@ -13,34 +12,23 @@ import {
   type RuleSection,
 } from '../grammar.js';
 
-/**
- * One resolved palette alias: a name a graphics record references (via `gfxpalettebody "<name>"`)
- * mapped to the `.pcx` whose trailer palette holds the actual 256 colours. The path is normalized to
- * a forward-slash, lower-cased, relative path so a lookup is host-OS- and case-independent (archive
- * names use Windows backslashes and mixed case, e.g. `data\Engine2D\Bin\palettes\landscapes\tree01.pcx`).
- */
+/** One resolved palette alias: a name a graphics record references (via `gfxpalettebody "<name>"`)
+ *  mapped to the `.pcx` whose trailer palette holds the actual 256 colours. */
 export interface PaletteAlias {
-  /**
-   * The `editname` a graphics record references, lower-cased ({@link normalizePaletteName}): the
-   * original engine looks `editname`s up case-insensitively, and the real data mixes case across the
-   * two legs (e.g. `palettes.ini` declares `Lion01`/`Chicken01` while `jobgraphics.ini` references
-   * `LION01`/`chicken01`). Lower-casing the join key on both sides makes the pairing resolve. One
-   * record may expose several aliases for one file.
-   */
+  /** The `editname` a graphics record references, lower-cased: the real data mixes case across the two
+   *  legs (`palettes.ini` declares `Lion01`, `jobgraphics.ini` references `LION01`), so both sides
+   *  lower-case the join key. */
   readonly name: string;
-  /** The palette source `.pcx`, as a normalized `data/.../foo.pcx` relative path (forward slashes, lower-case). */
+  /** The palette source `.pcx`, normalized to a lower-case forward-slash relative path (archive names
+   *  use Windows backslashes and mixed case). */
   readonly gfxFile: string;
 }
 
 /**
- * Extracts the `palettes.ini` `[GfxPalette256]` records into name→`.pcx` aliases - the first leg of the
- * `.bmd`→palette graph (see the file header). Each record carries one `gfxfile` but the grammar allows
- * several `editname` aliases; every alias is emitted pointing at the shared file, so a consumer builds
- * one flat `name → .pcx` map (143 records in the real file; the 108 `[GfxPalette16]` sub-palettes built
- * via `gfxcolorrange` with no `.pcx` are skipped by the section-name guard). A record missing its
- * `gfxfile` or `editname` is skipped. Paths are normalized ({@link normalizeAssetPath}) for
- * host-OS/case-independent lookup. The other leg (which `.bmd` uses which `editname`) lives mostly in
- * graphics `.cif` records and is wired in a later step.
+ * Extracts the `palettes.ini` `[GfxPalette256]` records into name→`.pcx` aliases. A record carries one
+ * `gfxfile` but the grammar allows several `editname` aliases, and every alias is emitted pointing at
+ * the shared file. The `[GfxPalette16]` sub-palettes carry no `.pcx` and are excluded by the
+ * section-name guard.
  */
 export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAlias[] {
   const aliases: PaletteAlias[] = [];
@@ -59,11 +47,8 @@ export function extractPaletteIndex(sections: readonly RuleSection[]): PaletteAl
 }
 
 /**
- * Collapses {@link extractPaletteIndex} output into a `name → .pcx` lookup, first alias wins on a
- * duplicate name (the real `palettes.ini` has none, but the rule keeps it deterministic). The one
- * shared reading of the alias graph the bmd + goods stages both resolve palettes through - they then
- * read the `.pcx` from different roots (the unpacked out-tree vs the game dir), so only this map
- * construction is common.
+ * Collapses {@link extractPaletteIndex} output into a `name → .pcx` lookup. First alias wins on a
+ * duplicate name, which the real `palettes.ini` has none of, but the rule keeps it deterministic.
  */
 export function paletteAliasMap(aliases: readonly PaletteAlias[]): Map<string, string> {
   const byName = new Map<string, string>();
@@ -73,19 +58,18 @@ export function paletteAliasMap(aliases: readonly PaletteAlias[]): Map<string, s
   return byName;
 }
 
-/** One `[GfxPalette16]` sub-palette: a named 16-colour ramp cut out of a `[GfxPalette256]` source:
- *  `gfxcolorrange "<source editname>" <range>` names the source palette and the 16-index range (the
- *  index convention lives on `armor-palette.ts` `cutRamp`). Names normalized like {@link PaletteAlias}. */
+/** One `[GfxPalette16]` sub-palette, a named 16-colour ramp cut out of a `[GfxPalette256]` source:
+ *  `gfxcolorrange "<source editname>" <range>` names the source palette and the 16-index range
+ *  (`armor-palette.ts` `cutRamp` owns the index convention). */
 export interface RampAlias {
   readonly name: string;
-  /** The `[GfxPalette256]` editname the ramp is cut from (resolve via {@link paletteAliasMap}). */
+  /** The `[GfxPalette256]` editname the ramp is cut from. */
   readonly source: string;
   readonly range: number;
 }
 
-/** Extracts the `palettes.ini` `[GfxPalette16]` records built via `gfxcolorrange` into named-ramp
- *  aliases (108 in the real file), the ramps a `[RandomPalette]` recipe patches onto a body palette.
- *  A record missing its `editname`, source name, or range is skipped. First wins on a duplicate name. */
+/** Extracts the `palettes.ini` `[GfxPalette16]` records built via `gfxcolorrange`, the ramps a
+ *  `[RandomPalette]` recipe patches onto a body palette. First wins on a duplicate name. */
 export function rampAliasMap(sections: readonly RuleSection[]): Map<string, RampAlias> {
   const byName = new Map<string, RampAlias>();
   for (const sec of sections) {

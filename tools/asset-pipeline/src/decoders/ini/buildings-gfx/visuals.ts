@@ -1,8 +1,6 @@
 /**
- * `[GfxHouse]` visual bindings: construction-stage layers, animated state overlays, the building
- * `(bmd, palette)` graphics binding, and the building-type → house-bob join. All walk the multi-house
- * record split; all but the graphics binding (which reuses the bindings kernel) share the body+palette
- * preamble ({@link readGfxHouseGraphicsRecord}).
+ * `[GfxHouse]` visual bindings from the mod's readable `DataCnmd/budynki12/houses/houses.ini`, the
+ * graphics twin of the logic house table. A malformed record or line is skipped, never thrown.
  */
 import {
   BuildingBob,
@@ -22,13 +20,8 @@ import {
 import { forEachGfxHouseRecord, splitGfxHouseRecords } from './shared.js';
 
 /**
- * Extracts the `[GfxHouse]` construction-stage layers (`GfxBobConstructionLayer <sizeIdx>
- * <upgrade> <bobId> <shadowBobId|-1> <fromPct> <toPct>`) - which atlas bobs an under-construction
- * building draws at a given build progress ({@link BuildingConstructionLayer} documents the range/
- * stacking semantics). The `(sizeIdx → typeId)` join, the `(bmd, palette)` atlas keying, and the
- * per-palette row fan-out all mirror {@link extractBuildingBobs} (the finished-body binding these
- * layers extend); `stackIdx` preserves the record's file order per `(typeId, palette)` - the draw
- * stacking order. A malformed line (non-numeric fields) is skipped, never thrown.
+ * Extracts the construction-stage layers, `GfxBobConstructionLayer <sizeIdx> <upgrade> <bobId>
+ * <shadowBobId|-1> <fromPct> <toPct>`, one row per palette skin.
  */
 export function extractConstructionLayers(
   sections: readonly RuleSection[],
@@ -37,8 +30,7 @@ export function extractConstructionLayers(
   const layers: BuildingConstructionLayer[] = [];
   forEachGfxHouseRecord(sections, (rec, record) => {
     const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
-    // File order per level - the stacking order at draw time (the finished body is listed so the
-    // active-layer stack keeps it on top at high progress).
+    // Source file order per level, which is the draw stacking order.
     const stackByLevel = new Map<number, number>();
     for (const p of findProps(rec, 'GfxBobConstructionLayer')) {
       const [level, upgrade, bobId, shadowBobId, fromPct, toPct] = p.values.map((v) =>
@@ -83,20 +75,14 @@ export function extractConstructionLayers(
   return layers;
 }
 
-/** The `GfxOverlay` type discriminator (2nd int) of the two-state animated overlays we decode - the
- *  mill rotor. The type-`3` rows have a different, not-yet-decoded field shape (6 fields, no frame
- *  list - static decal offsets) and are skipped rather than guessed. */
+/** The `GfxOverlay` type discriminator (2nd int) of the two-state animated overlays. */
 const ANIMATED_OVERLAY_TYPE = 4;
 /** Leading ints of a type-4 `GfxOverlay` line before its frame list: `<sizeIdx> <type> <state> <x> <y> <step>`. */
 const OVERLAY_HEADER_FIELDS = 6;
 
 /**
- * Extracts the `[GfxHouse]` animated state overlays (`GfxOverlay <sizeIdx> 4 <state> <x> <y>
- * <step> <bobId…>`) - the extra sprite a building draws on top of its finished body, per state
- * ({@link BuildingOverlay} documents the field pinning and the one known user, the mill rotor). The
- * `(sizeIdx → typeId)` join, the `(bmd, palette)` atlas keying and the per-palette row fan-out all
- * mirror {@link extractConstructionLayers}. Only `ANIMATED_OVERLAY_TYPE` (4) rows are consumed; a
- * malformed or frame-less line is skipped, never thrown.
+ * Extracts the animated state overlays, `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step> <bobId…>`, one
+ * row per palette skin. Only `ANIMATED_OVERLAY_TYPE` rows are consumed.
  */
 export function extractBuildingOverlays(sections: readonly RuleSection[], src: SourceRef): BuildingOverlay[] {
   const overlays: BuildingOverlay[] = [];
@@ -144,13 +130,9 @@ export function extractBuildingOverlays(sections: readonly RuleSection[], src: S
 }
 
 /**
- * Extracts the `[GfxHouse]` sign-post anchors (`GfxFlagPoint <sizeIdx> <x> <y>`, screen pixels from
- * the building bob's draw anchor, +y down) - where the original plants a building's occupancy/
- * construction sign chain ({@link BuildingFlagPoint}). The `(sizeIdx → typeId)` join mirrors
- * {@link extractBuildingBobs}; no palette fan-out (a pixel offset, not an atlas binding). Several
- * source records repeat a level line, two of them with differing values (frank home lvl 0, saracen
- * bakery lvl 1); the engine's resolution order is unobserved, so last-wins (the file's final word) is
- * the chosen deterministic policy - a named approximation. A malformed line is skipped, never thrown.
+ * Extracts the sign-post anchors, `GfxFlagPoint <sizeIdx> <x> <y>`. A few records repeat a level line
+ * with differing values; the engine's resolution order is unobserved, so last-wins is a deterministic
+ * approximation.
  */
 export function extractBuildingFlagPoints(
   sections: readonly RuleSection[],
@@ -160,12 +142,9 @@ export function extractBuildingFlagPoints(
 }
 
 /**
- * Extracts the `[GfxHouse]` garrison-flag anchors (`gfxsoldierflagpoint <sizeIdx> <x> <y>`) - where a
- * manned tower flies its soldier flag, as opposed to the ground-level sign post `GfxFlagPoint` marks.
- * Same grammar, same `(sizeIdx → typeId)` join, same last-wins policy. The key is spelled all-lowercase
- * in both the base `houses.cif` and the mod's `houses.ini`, unlike its CamelCase siblings; `.ini` keys
- * are case-sensitive here, so it is matched as authored. Only the tower records carry one (viking both
- * levels, frank both), which is the source's own statement of which buildings hold a garrison.
+ * Extracts the garrison-flag anchors, `gfxsoldierflagpoint <sizeIdx> <x> <y>`. The key is spelled
+ * all-lowercase in both the base `houses.cif` and the mod's `houses.ini`, unlike its CamelCase siblings,
+ * and `.ini` keys are case-sensitive, so it is matched as authored.
  */
 export function extractBuildingSoldierFlagPoints(
   sections: readonly RuleSection[],
@@ -210,28 +189,10 @@ function extractHousePoints(
 }
 
 /**
- * Extracts the `[GfxHouse]` records from the mod's readable `DataCnmd/budynki12/houses/houses.ini` (the
- * graphics twin of the logic `houses.ini`; golden rule #4) - the building graphics binding: every
- * settlement house (homes, wells, stocks/warehouses, workshops, walls, …) bound to its bob set + palette,
- * the `[GfxHouse]` analog of {@link import('../bindings/index.js').extractLandscapeGraphics}'s
- * `[GfxLandscape]` static decor. It shares the same {@link readBmdPaletteBindings} kernel + the
- * {@link NamedBmdPaletteBinding} shape, adding the record's `EditName` (a building handle, `"viking stock"`
- * vs `"viking home"`). The leg that makes the `ls_houses_*.bmd` sets
- * (viking/frank/egypt/saracen/byzantine/beduine) become atlases - without it a house `.bmd` is unpacked but
- * never coloured, so a building drew a placeholder box.
- *
- * Unlike a landscape record (one `GfxPalette`), a house record commonly carries several palette values on
- * one `GfxPalette` line - `GfxPalette "house01" "house02"` recolours the same `ls_houses_viking` body into
- * the home (`house01`) and the stock/warehouse (`house02`) skins - so this passes `multiPalette` to fan
- * each value into its own `(bmd, palette)` binding; the caller dedups identical pairs (the ~25 viking-home
- * records repeat one bob+palette pair).
- *
- * The keys are CamelCase like `[GfxLandscape]` (`GfxBobLibs`/`GfxPalette`/`EditName`). A record without a
- * body bob or without any palette is skipped, never thrown - this indexes hundreds of records and one
- * malformed entry must not abort the offline batch. `tribeId`/`jobId` are left undefined (no `logictribe`/
- * `logicjob` keys on a `[GfxHouse]` record): an atlas keys on `(bmd, palette)` only, so the per-tribe
- * `LogicTribeType` cross-ref does not affect the emitted bytes (the render-side per-building-type bob
- * selection is a later, separate leg).
+ * Extracts the building `(bmd, palette)` bindings from the CamelCase `GfxBobLibs`/`GfxPalette`/`EditName`
+ * keys. Unlike a landscape record, a house record commonly carries several palette values on one
+ * `GfxPalette` line (`GfxPalette "house01" "house02"` recolours one body into the home and the
+ * stock/warehouse skins), so each value fans into its own binding; the caller dedups identical pairs.
  */
 export function extractBuildingGraphics(sections: readonly RuleSection[]): NamedBmdPaletteBinding[] {
   const bindings: NamedBmdPaletteBinding[] = [];
@@ -248,46 +209,19 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Named
 }
 
 /**
- * Extracts the `[GfxHouse]` building-type → house-bob join from the mod's readable
- * `DataCnmd/budynki12/houses/houses.ini` - the data-pinned twin of the renderer's hand-transcribed
- * per-type table (`real-sprites.ts` `VIKING_HOUSE01_BOBS`). {@link extractBuildingGraphics} reads the
- * same records but keeps only `(bmd, palette)` to emit each recolour atlas; this leg keeps the
- * `(typeId → bobId)` mapping those atlases are indexed by, so the render can draw each building its own
- * house bob from data instead of a transcribed constant (AGENTS.md "content is data, not code").
+ * Extracts the building-type → house-bob join: `LogicType <level> <typeId>` paired with `GfxBobId
+ * <level> <bobId>` by their leading level index, one row per palette skin. A level with a `LogicType`
+ * but no matching `GfxBobId` is omitted.
  *
- * Each house record (recovered by {@link splitGfxHouseRecords} - a `[GfxHouse]` bracket can hold many)
- * pairs two per-level tables by their leading level index - the `sizeIdx` pairing
- * {@link extractConstructionLayers} uses:
- *   - `LogicType <level> <typeId>` - the building `typeId` at that growth level (a home spans levels
- *     0..4 → five distinct typeIds), and
- *   - `GfxBobId <level> <bobId>` - the atlas bob id for that level.
- * For each level present in both tables we emit one {@link BuildingBob} per palette skin
- * (`GfxPalette "house01" "house02"` → two rows, the same bob in each recolour). The body `.bmd` is
- * `GfxBobLibs[0]`; `LogicTribeType` keys the row (the same logic `typeId` recurs per civilization).
- *
- * The join is multi-valued on `(tribeId, typeId, paletteName)`: a logic `typeId` legitimately maps to
- * several bobs - across build levels (a multi-stage wonder, a home's tiers) and across graphics variants
- * sharing one typeId (wall orientations "Mur h"/"Mur V", the HQ vs its "headquarters house", "semiramis"
- * vs "semiramis front"). So this is the faithful `(tribeId, typeId, level, bmd, paletteName) → bobId`
- * table, not a unique per-type lookup - a consumer disambiguates by `level` (build progress) and/or
- * `editName` (the variant). Only byte-identical rows are de-duplicated (a record the mod literally
- * duplicated, e.g. "frank ship small") - distinct levels/variants are all kept.
- *
- * A record missing a body `.bmd`, any palette, or a `LogicTribeType` is skipped (so one malformed
- * entry never aborts the offline batch over hundreds of records); a level with a `LogicType` but no
- * matching `GfxBobId` (a free/placeholder stage) is omitted. The `BuildingBob.parse` schema validates
- * the ids (`nonnegative`) - the real file carries no negative id, so this does not throw in practice.
- * Returns an empty array for sources with no `[GfxHouse]` records (the logic-only tables).
+ * The join is multi-valued on `(tribeId, typeId, paletteName)`: one logic `typeId` maps to several bobs
+ * across build levels and across graphics variants sharing that typeId, so a consumer disambiguates by
+ * `level` or `editName`. Only byte-identical rows are dropped.
  */
 export function extractBuildingBobs(sections: readonly RuleSection[], src: SourceRef): BuildingBob[] {
   const bobs: BuildingBob[] = [];
-  // Drop only byte-identical rows (a literally-duplicated source record); genuine level/variant rows
-  // (differing level, bobId, or editName) are all kept - the join is multi-valued by design.
   const seen = new Set<string>();
   forEachGfxHouseRecord(sections, (rec, record) => {
     const { tribeId, normalizedBmd, normalizedShadowBmd, palettes, editName, typeByLevel } = record;
-    // Pair the two per-level tables by their leading level index. A typeId may recur at several
-    // levels; each level keeps its own bob.
     const bobByLevel = new Map<number, number>();
     for (const p of findProps(rec, 'GfxBobId')) {
       const level = Number.parseInt(p.values[0] ?? '', 10);

@@ -1,8 +1,6 @@
 /**
- * Graphics-bindings kernel: the `.bmd`→palette pairing shared by every graphics-binding schema
- * (`[jobgraphics]`, `[GfxLandscape]`, `[GfxHouse]`), which differ only in section name, key spelling, and
- * single-vs-multi palette. {@link readBmdPaletteBindings} reads one record's binding(s); the per-schema
- * extractors wrap it (the landscape/building legs add the record's `EditName`).
+ * The `.bmd`→palette pairing shared by every graphics-binding schema (`[jobgraphics]`, `[GfxLandscape]`,
+ * `[GfxHouse]`), which differ only in section name, key spelling, and single-vs-multi palette.
  */
 
 import {
@@ -16,50 +14,38 @@ import {
 } from '../grammar.js';
 
 /**
- * One bob set's palette pairing: a `.bmd` body (and its optional shadow `.bmd`) bound to the palette
- * `editname` its graphics record names - the second leg of the `.bmd`→palette graph. The first leg
- * ({@link import('./palette.js').extractPaletteIndex}) resolves `paletteName` to a `.pcx` trailer palette;
- * together they answer "which 256 colours colour this `.bmd`". The `.bmd` paths are normalized
- * (forward-slash, lower-case) so a lookup against the unpacked `--out` tree is host-OS/case-independent,
- * matching {@link import('./palette.js').PaletteAlias.gfxFile}.
+ * One bob set's palette pairing: a `.bmd` body (and its optional shadow) bound to the palette `editname`
+ * its graphics record names. Paths are normalized to lower-case forward slashes so a lookup against the
+ * unpacked `--out` tree is host-OS- and case-independent.
  */
 export interface BmdPaletteBinding {
   /** The body bob set, as a normalized `data/.../foo.bmd` relative path (forward slashes, lower-case). */
   readonly bmd: string;
   /** The matching shadow bob set, same normalization, or `undefined` when the record has no shadow `.bmd`. */
   readonly shadowBmd: string | undefined;
-  /**
-   * The palette `editname` the record references, lower-cased ({@link normalizePaletteName}) so it
-   * joins case-insensitively onto the palette alias `name` (the two legs disagree on case in the real
-   * data).
-   */
+  /** The palette `editname` the record references, lower-cased so it joins case-insensitively onto the
+   *  palette alias `name` (the two legs disagree on case in the real data). */
   readonly paletteName: string;
-  /** The `logictribe` id the record applies to, when present (a cross-reference, not required). */
+  /** The record's `logictribe` id, when the section's schema carries the key. */
   readonly tribeId: number | undefined;
-  /** The `logicjob` id the record applies to, when present (a cross-reference, not required). */
+  /** The record's `logicjob` id, when the section's schema carries the key. */
   readonly jobId: number | undefined;
 }
 
-/**
- * A {@link BmdPaletteBinding} plus the record's `EditName` - the shape the `[GfxLandscape]` (map decor)
- * and `[GfxHouse]` (building) bindings share. The name is a species/building handle ("yew 01" vs "fir
- * 01", "viking stock" vs "viking home"): the only IR-layer differentiator when many records share one
- * body bob recoloured per palette.
- */
+/** A {@link BmdPaletteBinding} plus the record's `EditName`, the shape the `[GfxLandscape]` and
+ *  `[GfxHouse]` bindings share. */
 export interface NamedBmdPaletteBinding extends BmdPaletteBinding {
-  /** The record's `EditName` (e.g. `"yew 01"` / `"viking stock"`), or undefined when the record omits it. */
+  /** The record's `EditName`, a species or building handle (`"yew 01"`, `"viking stock"`): the only
+   *  IR-layer differentiator when many records share one body bob recoloured per palette. */
   readonly editName: string | undefined;
 }
 
 /**
  * Reads one graphics record's `.bmd`→palette binding(s): the body `.bmd` (+ optional shadow) from
- * `bobKey`, and the palette editname(s) from `paletteKey`. With `multiPalette` it fans one binding per
- * palette value on the line (a `[GfxHouse]` body carries several skins on one `GfxPalette`); otherwise the
- * first value only. Paths normalize (forward-slash, lower-case); the palette name lower-cases to join
- * case-insensitively onto the alias `name`. A record with no body `.bmd` or no palette yields no
- * bindings (never throws). Cross-refs read from the lowercase `logictribe`/`logicjob` keys the job
- * schema uses; the CamelCase `[GfxLandscape]`/`[GfxHouse]` sections have no such keys, so both come back
- * undefined there.
+ * `bobKey`, the palette editname(s) from `paletteKey`. `multiPalette` fans one binding per palette value
+ * on the line (a `[GfxHouse]` body carries several skins on one `GfxPalette`); otherwise only the first
+ * value is read. Cross-refs come from the lowercase `logictribe`/`logicjob` keys the job schema uses,
+ * which the CamelCase `[GfxLandscape]`/`[GfxHouse]` sections do not carry.
  */
 export function readBmdPaletteBindings(
   sec: RuleSection,

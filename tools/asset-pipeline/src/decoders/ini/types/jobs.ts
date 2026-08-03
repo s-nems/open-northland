@@ -1,6 +1,3 @@
-/**
- * Jobs, human job-experience types, and the tribe tech-graph (job-enable and job-requirement decomposition).
- */
 import {
   HumanJobExperienceType,
   type JobEnables,
@@ -23,14 +20,6 @@ import {
   slug,
 } from '../grammar.js';
 
-/**
- * Extracts `[jobtype]` sections into validated {@link JobType} IR, capturing the atomic vocabulary a
- * job may perform: `allowatomic` (granted) and `forbidatomic` (hard-denied), repeated single-value
- * lines kept in file order, plus `baseatomics` - a single parent-job `type` the job inherits its
- * atomics from, despite the plural key name. Every value in `Data/logic/jobtypes.ini` is a `[jobtype]`
- * `type`, and every id `soldier_unarmed` forbids is one its base `civilist` grants - a denial list that
- * would be inert if the field were the job's own atomics.
- */
 export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
   const jobs: JobType[] = [];
   for (const sec of sections) {
@@ -52,17 +41,7 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
   return jobs;
 }
 
-/**
- * Extracts `[humanjobexperiencetype]` sections (`Data/logic/humanjobexperiencetypes.ini`) into
- * validated {@link HumanJobExperienceType} IR - the per-specialization experience tracks the
- * ProgressionSystem accrues XP into. A track names its owning `job` (always) and, when good-specific,
- * the `good` it trains on; `experiencefactor` scales accrual and `baserepeatcounter` (on a few records)
- * is the original's repeat-count tuning. The numeric semantics are captured raw - interpreting the XP
- * curve is the ProgressionSystem's concern, not this extraction slice. The `job`/`good` ids are
- * cross-checked against the job/good tables by `validateCrossReferences`. Throws on a record missing
- * the required numeric `type` id (matches {@link extractGoods}'s throw-on-malformed stance). The base
- * `.ini` is the source - there is no mod twin and no readable-vs-encrypted choice to make here.
- */
+/** A track always names its owning `job`, so a record without one throws. */
 export function extractJobExperience(
   sections: readonly RuleSection[],
   src: SourceRef,
@@ -92,7 +71,6 @@ export function extractJobExperience(
   return tracks;
 }
 
-/** The four `jobEnables<Kind>` source keys → the unified {@link JobEnables} `kind` discriminator. */
 const JOB_ENABLES_KIND: Readonly<Record<string, JobEnablesKind>> = {
   jobEnablesGood: 'good',
   jobEnablesHouse: 'house',
@@ -100,14 +78,7 @@ const JOB_ENABLES_KIND: Readonly<Record<string, JobEnablesKind>> = {
   jobEnablesVehicle: 'vehicle',
 };
 
-/**
- * Collects one `[tribetype]` section's `jobEnables<Kind> <jobType> <targetId>` lines into unified
- * {@link JobEnables} tech-graph edges in exact source order. The real data interleaves the four
- * kinds within a job's block (e.g. job 8's goods, then its jobs, then its houses), so a single
- * file-order pass - recognizing any of the four keys - keeps that order verbatim rather than
- * regrouping by kind. A line missing either int is skipped, matching the `setatomic` malformed-line
- * stance. (A non-`jobEnables*` prop yields no key match and is ignored.)
- */
+/** The four kinds interleave within a job's block, so one file-order pass keeps the source order. */
 function extractJobEnables(sec: RuleSection): JobEnables[] {
   const edges: JobEnables[] = [];
   for (const p of sec.props) {
@@ -121,7 +92,6 @@ function extractJobEnables(sec: RuleSection): JobEnables[] {
   return edges;
 }
 
-/** The four `{need,train}for{job,good}` source keys → their (requirement, target) decomposition. */
 const JOB_REQUIREMENT_KEY: Readonly<
   Record<string, { requirement: JobRequirementKind; target: JobRequirementTarget }>
 > = {
@@ -131,15 +101,7 @@ const JOB_REQUIREMENT_KEY: Readonly<
   trainforgood: { requirement: 'train', target: 'good' },
 };
 
-/**
- * Collects one `[tribetype]` section's `{need,train}for{job,good} <targetId> <amount> <expType>
- * [expType2]` lines into unified {@link JobRequirement} records in exact source order (the data
- * interleaves `need`/`train` blocks, kept verbatim like {@link JobEnables}). The `need`/`train`
- * prefix and `job`/`good` suffix of the key give the two dimensions; the remaining ints are the
- * target id, the amount, and one-or-two experience-type ids. A line missing the target id or the
- * amount is skipped, matching the `setatomic`/`jobEnables` malformed-line stance; a line with no
- * expType still yields a record (`experienceTypes: []`) rather than being dropped.
- */
+/** A line with no experience-type id still yields a record; only a missing target or amount skips it. */
 function extractJobRequirements(sec: RuleSection): JobRequirement[] {
   const reqs: JobRequirement[] = [];
   for (const p of sec.props) {
@@ -158,14 +120,7 @@ function extractJobRequirements(sec: RuleSection): JobRequirement[] {
   return reqs;
 }
 
-/**
- * Extracts `[tribetype]` sections into validated {@link TribeType} IR. The payload is each tribe's
- * `setatomic <jobType> <atomicId> "animation"` bindings - the per-tribe atomic→animation table that
- * carries tribal identity - plus its `jobEnables*` tech-graph edges ({@link extractJobEnables}) and
- * its `{need,train}for*` experience requirements ({@link extractJobRequirements}). The readable mod
- * `tribetypes.ini` covers playable tribes AND animals. Malformed `setatomic` lines (missing the
- * job/atomic ints or the animation token) are skipped.
- */
+/** The readable mod `tribetypes.ini` covers the playable tribes and the animal tribes alike. */
 export function extractTribes(sections: readonly RuleSection[], src: SourceRef): TribeType[] {
   const tribes: TribeType[] = [];
   for (const sec of sections) {
