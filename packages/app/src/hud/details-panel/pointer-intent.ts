@@ -25,6 +25,7 @@ export type PanelClick =
   | { readonly kind: 'upgrade'; readonly entityId: number }
   | { readonly kind: 'cancelUpgrade'; readonly entityId: number }
   | { readonly kind: 'demolish'; readonly entityId: number }
+  | { readonly kind: 'setDefenceMode'; readonly entityId: number; readonly enabled: boolean }
   | { readonly kind: 'demolishSignpost'; readonly entityId: number }
   | { readonly kind: 'assignWorkplace'; readonly entityId: number }
   | { readonly kind: 'assignHome'; readonly entityId: number }
@@ -65,6 +66,10 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
       if (action === 'upgrade') return { kind: 'upgrade', entityId };
       if (action === 'cancelUpgrade') return { kind: 'cancelUpgrade', entityId };
       if (action === 'center') return { kind: 'centerOnEntity', entityId };
+      // The alarm toggle flips whichever way the building currently stands.
+      if (action === 'toggle-defence') {
+        return { kind: 'setDefenceMode', entityId, enabled: !view.model.defenseEnabled };
+      }
       return action === 'demolish' ? { kind: 'demolish', entityId } : null;
     }
     case 'settler': {

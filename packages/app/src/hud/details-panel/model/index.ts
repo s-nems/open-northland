@@ -13,6 +13,7 @@ import {
   ownerPlayerOf,
   progressionGatesSettler,
   residenceHomeOf,
+  shelterClaimCount,
   surnameSourceOf,
 } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -98,9 +99,6 @@ export type UnitPanelModel =
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
-/** The catalog id of the one storage building that also mounts a defence (the HQ's defence section). */
-const HEADQUARTERS_ID = 'headquarters';
-
 export function buildUnitPanelModel(
   snapshot: WorldSnapshot,
   selected: ReadonlySet<number>,
@@ -146,6 +144,11 @@ export function buildUnitPanelModel(
       def?.upgradeTarget !== undefined &&
       ent.components.UnderConstruction === undefined &&
       pct(num(b.built)) >= 100;
+    // The defence window belongs to a type that takes a garrison at all (`shelterCapacity`), which is
+    // also what the sim's `setDefenceMode` gate reads - so the panel can never offer an order the sim
+    // refuses.
+    const shelterCapacity = def?.shelterCapacity ?? 0;
+    const defenseEnabled = ent.components.DefenceMode !== undefined;
     return {
       kind: 'building',
       entityId,
@@ -167,12 +170,20 @@ export function buildUnitPanelModel(
               capacity: def.homeSize,
             }
           : null,
-      showDefense: catalog?.id === HEADQUARTERS_ID || category === 'tower',
-      // A manned tower reports its garrison; anything else reports the defence MODE, which is still the
-      // pinned approximation (no component exists yet - the original's state/toggle strings live at
-      // `housewindow` 140–143, "Rozpocznij/Zatrzymaj Tryb Obrony"). Without this a tower whose archers are
-      // visibly shooting would read "Obrona zatrzymana".
-      defenseLabel: defenseLine(snapshot, def, entityId),
+      // The window belongs to a type the content gives a `shelterCapacity` - the same gate the sim's
+      // `setDefenceMode` reads, so the panel can never offer an order the sim refuses. It is the same set
+      // the posts live on (the headquarters and both towers).
+      showDefense: shelterCapacity > 0,
+      defenseEnabled,
+      // The alarm's own state wins the line; a tower with archers posted but no alarm reports them
+      // instead. Two separate mechanics, as in the original: a tower's archers shoot whether or not the
+      // alarm is up.
+      defenseLabel: defenseLine(
+        snapshot,
+        def,
+        entityId,
+        defenseEnabled ? { sheltered: shelterClaimCount(snapshot, entityId), capacity: shelterCapacity } : null,
+      ),
       production: productionModel(ctx, snapshot, def, ent),
       construction: constructionModel(ctx, def, ent),
       // A running upgrade site offers Cancel instead of Upgrade.

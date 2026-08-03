@@ -18,6 +18,7 @@ const building = (typeId: number, id: string): ContentBuilding => ({
   produces: [],
   recipes: [],
   construction: [],
+  shelterCapacity: 0,
   footprint: FOOTPRINT,
 });
 

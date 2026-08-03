@@ -29,6 +29,11 @@ const HEALTH_BAR_TOP = 22;
  * also holds the health gauge.
  */
 const BUTTONS_TOP = 60;
+/** The defence body's single row - a text line plus the round alarm toggle, so it stands a little taller
+ *  than a plain {@link ROW_H} line to give the button air. */
+const DEFENCE_ROW_H = 20;
+/** The alarm toggle's diameter - the equip-slot action button's size, the round control it copies. */
+const DEFENCE_TOGGLE_BTN = 15;
 /** Need/progress bar height. */
 export const BAR_H = 10;
 /** Inset between the preview box's frame and the building bob drawn inside it. */
@@ -52,6 +57,7 @@ export type ButtonAction =
   | 'center'
   | 'workers'
   | 'help'
+  | 'toggle-defence'
   | 'assign-workplace'
   | 'assign-home'
   | 'unassign-home';
@@ -77,6 +83,9 @@ export interface BuildingLayout {
    *  site (those windows mean nothing before completion). Null once built. */
   readonly construction: SectionRect | null;
   readonly defence: SectionRect | null;
+  /** The round alarm toggle inside the defence body, drawn like an equip-slot action button; null
+   *  whenever there is no defence window. */
+  readonly defenceToggle: ButtonHit | null;
   readonly production: SectionRect | null;
   /** One rect per Produkcja product row (same order as `ProductionModel.rows`) - the hover target the
    *  inputs tooltip probes; empty for a farm's fields view or no production window. */
@@ -156,6 +165,23 @@ function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAc
   ];
 }
 
+/** The alarm toggle, right-aligned and vertically centred in the defence body's row, leaving the rest of
+ *  the line to the status text. Always enabled: raising or lowering the alarm is always a legal order for
+ *  a building that has the window at all. */
+function defenceToggleHit(body: Rect, s: number): ButtonHit {
+  const size = Math.round(DEFENCE_TOGGLE_BTN * s);
+  return {
+    action: 'toggle-defence',
+    enabled: true,
+    rect: {
+      x: body.x + body.w - size,
+      y: body.y + Math.round((body.h - size) / 2),
+      w: size,
+      h: size,
+    },
+  };
+}
+
 export function layoutBuilding(
   model: BuildingModel,
   screen: { readonly width: number; readonly height: number },
@@ -178,7 +204,7 @@ export function layoutBuilding(
     : 0;
   const showDefence = model.showDefense && !underConstruction;
   const showProduction = model.production !== null && !underConstruction;
-  const defenceBodyH = showDefence ? Math.round(ROW_H * s) : 0;
+  const defenceBodyH = showDefence ? Math.round(DEFENCE_ROW_H * s) : 0;
   // A recipe workshop reserves one row per producible good (`ProductionModel.rows` - the model is
   // the single source, the section's row loop draws the same count); a farm's field counters keep
   // the single row.
@@ -239,6 +265,7 @@ export function layoutBuilding(
 
   const construction = underConstruction ? next(constructionBodyH) : null;
   const defence = showDefence ? next(defenceBodyH) : null;
+  const defenceToggle: ButtonHit | null = defence === null ? null : defenceToggleHit(defence.body, s);
   const production = showProduction ? next(productionBodyH) : null;
   const productionRowRects: Rect[] =
     production !== null && model.production?.kind === 'recipe'
@@ -273,6 +300,7 @@ export function layoutBuilding(
     buttons,
     construction,
     defence,
+    defenceToggle,
     production,
     productionRowRects,
     stock,

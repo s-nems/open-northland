@@ -203,3 +203,21 @@ export function gathererByFlag(snapshot: WorldSnapshot, player: number | 'any'):
   }
   return out;
 }
+
+/** The defence-mode building a settler has claimed (its `Sheltering.shelter`), or undefined when it is
+ *  not running for cover. */
+export function shelterOf(e: SnapshotEntity): number | undefined {
+  const claim = e.components.Sheltering as { shelter?: unknown } | undefined;
+  return num(claim?.shelter);
+}
+
+/** How many settlers have claimed `building` as their shelter - the "Schronieni n/30" count the defence
+ *  window shows. Counts claimants, en route or already inside, which is what the sim's own capacity
+ *  ledger counts (`sim`'s `Sheltering`), so the panel can never advertise room a runner already holds. */
+export function shelterClaimCount(snapshot: WorldSnapshot, building: number): number {
+  let count = 0;
+  for (const e of actorsOf(snapshot)) {
+    if (shelterOf(e) === building) count++;
+  }
+  return count;
+}

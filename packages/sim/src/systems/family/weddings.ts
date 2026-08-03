@@ -1,4 +1,12 @@
-import { CurrentAtomic, Marriage, Position, Residence, Settler, Wedding } from '../../components/index.js';
+import {
+  CurrentAtomic,
+  Marriage,
+  Position,
+  Residence,
+  Settler,
+  Sheltering,
+  Wedding,
+} from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../nav/halfcell.js';
@@ -69,6 +77,12 @@ function drivePair(
   a: Entity,
   b: Entity,
 ): void {
+  // The alarm calls the ceremony off: a partner claimed by a shelter must not be walked back out to a
+  // wedding spot, and the ceremony is a one-shot pairing, not a standing order to resume later.
+  if (world.has(a, Sheltering) || world.has(b, Sheltering)) {
+    cancelWedding(world, a);
+    return;
+  }
   const wa = world.get(a, Wedding);
   const wb = world.get(b, Wedding);
   const busyA = world.has(a, CurrentAtomic);

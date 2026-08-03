@@ -2,6 +2,7 @@ import { Position, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { collectShelters, type ShelterSites } from '../../defence/index.js';
 import { ExternalFoodIndex } from '../../family/food-search.js';
 import { GossipCandidates } from '../../social/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
@@ -38,6 +39,9 @@ export interface PlannerPass {
   readonly harvestClaims: HarvestClaims;
   readonly gossipCandidates: GossipCandidates;
   readonly siteLeads: SiteLeads;
+  /** The buildings on alarm and the room each has left - empty on any map with no defence mode up, which
+   *  is what makes the shelter rung free when nothing is happening (see {@link collectShelters}). */
+  readonly shelters: ShelterSites;
 }
 
 /** Snapshot the shared pass state at the top of a planner tick. */
@@ -58,5 +62,6 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
     siteLeads: new SiteLeads(world),
+    shelters: collectShelters(world, ctx),
   };
 }

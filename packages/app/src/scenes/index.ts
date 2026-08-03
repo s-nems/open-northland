@@ -17,6 +17,7 @@ import { livestockScene } from './livestock.js';
 import { sandboxScene } from './sandbox/index.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
+import { towerDefenceScene } from './tower-defence.js';
 import { towerGarrisonScene } from './tower-garrison.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
@@ -36,6 +37,7 @@ export const SCENES: readonly SceneDefinition[] = [
   collisionScene,
   battleScene,
   siegeScene,
+  towerDefenceScene,
   attackMoveScene,
   goodsCatalogScene,
   berriesScene,

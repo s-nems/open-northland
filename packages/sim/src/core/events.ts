@@ -30,6 +30,17 @@ export type SimEvent =
       readonly at: HalfCellNode;
     }
   | { readonly kind: 'buildingFinished'; readonly entity: Entity }
+  | {
+      /**
+       * A player raised the alarm on one of its garrison buildings (`setDefenceMode` switching defence
+       * mode ON) - the cue audio rings the original's civil-defence jingle for. Only the raise is
+       * announced; lowering the alarm is silent. `player` is the building's owner, so the bells ring for
+       * that player alone.
+       */
+      readonly kind: 'defenceAlarmRaised';
+      readonly entity: Entity;
+      readonly player: number;
+    }
   | { readonly kind: 'buildingUpgraded'; readonly entity: Entity; readonly level: number }
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
   | {

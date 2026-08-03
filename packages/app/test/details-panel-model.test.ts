@@ -1,5 +1,6 @@
 import { ONE, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { shelterCapacityById } from '../src/catalog/defence.js';
 import {
   JOB_BABY_MALE,
   JOB_CHILD_MALE,
@@ -15,6 +16,7 @@ import {
   BUILDING_HOME_00,
   BUILDING_JOINERY,
   BUILDING_MILL,
+  BUILDING_WATCHTOWER,
   GOOD_CATTLE,
   GOOD_FLOUR,
   GOOD_GOLD,
@@ -889,5 +891,45 @@ describe('the animal farm panel - fed-animal tokens stay internal', () => {
     const model = buildUnitPanelModel(snapshot, new Set([2]), ctxOf(sim));
     if (model.kind !== 'settler') throw new Error('expected a settler model');
     expect(model.work.craftChoices.map((c) => c.goodType)).toEqual([GOOD_WOOL, GOOD_LEATHER]);
+  });
+
+  it('offers the defence window only to a building type that takes a garrison', () => {
+    const sim = createSceneSim(sandboxScene);
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_WATCHTOWER),
+      buildingEntity(2, BUILDING_JOINERY),
+    ]);
+    const ctx = ctxOf(sim);
+
+    const tower = buildUnitPanelModel(snapshot, new Set([1]), ctx);
+    const workshop = buildUnitPanelModel(snapshot, new Set([2]), ctx);
+
+    if (tower.kind !== 'building' || workshop.kind !== 'building') throw new Error('expected buildings');
+    expect(tower.showDefense).toBe(true);
+    expect(workshop.showDefense).toBe(false);
+  });
+
+  it('reports the raised alarm and how full the garrison is', () => {
+    const sim = createSceneSim(sandboxScene);
+    const capacity = shelterCapacityById('tower_00');
+    const snapshot = snapshotOf([
+      buildingEntity(1, BUILDING_WATCHTOWER, { components: { DefenceMode: {} } }),
+      // One claimant already inside, one still running there: both hold a place, so both count.
+      { id: 2, components: { Settler: { jobType: JOB_COLLECTOR }, Sheltering: { shelter: 1 } } },
+      {
+        id: 3,
+        components: {
+          Settler: { jobType: JOB_COLLECTOR },
+          Sheltering: { shelter: 1 },
+          Resting: { at: 1 },
+        },
+      },
+    ]);
+
+    const model = buildUnitPanelModel(snapshot, new Set([1]), ctxOf(sim));
+
+    if (model.kind !== 'building') throw new Error('expected a building model');
+    expect(model.defenseEnabled).toBe(true);
+    expect(model.defenseLabel).toContain(`2/${capacity}`);
   });
 });

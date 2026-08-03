@@ -3,6 +3,7 @@ import type { System, SystemContext } from './context.js';
 export * from './command/index.js';
 export * from './conflict/combat.js';
 export * from './conflict/projectile.js';
+export * from './defence/index.js';
 export * from './economy/berries.js';
 export * from './economy/construction.js';
 export * from './economy/field-reclaim.js';

@@ -149,6 +149,10 @@ export interface ContentIndex {
   /** The first weapon row of each tribe (source order) - a jobless animal's weapon (its combat identity is
    *  its tribe alone). */
   readonly firstWeaponByTribe: ReadonlyMap<number, WeaponType>;
+  /** Each tribe's `house_bow` row - the wall bow a sheltering civilian shoots, resolved by weapon id
+   *  because the shooter keeps its own trade (`readviews/defence.ts`). Indexed rather than scanned: a
+   *  garrison re-reads it once per member per combat tick. */
+  readonly houseBowByTribe: ReadonlyMap<number, WeaponType>;
   /**
    * Per tribe: the `setatomic` bindings resolved `jobType → atomicId → animation name`, built last-wins over
    * the file-order bindings - the override semantics the linear walk it replaces implemented (a later
@@ -272,5 +276,12 @@ function buildIndex(content: ContentSet): ContentIndex {
       (w) => w.goodType,
     ),
     firstWeaponByTribe: byOptionalKey(content.weapons, (w) => w.tribeType),
+    houseBowByTribe: byOptionalKey(
+      content.weapons.filter((w) => w.id === HOUSE_BOW_WEAPON_ID),
+      (w) => w.tribeType,
+    ),
   };
 }
+
+/** The stable `weapons.ini` id of the wall bow ({@link ContentIndex.houseBowByTribe}). */
+const HOUSE_BOW_WEAPON_ID = 'house_bow';

@@ -1,4 +1,5 @@
 import type { ArmorType, EquipClass } from '@open-northland/data';
+import { HOUSE_BOW_DAMAGE } from '../../catalog/defence.js';
 import { HUNTER_BOW_BALANCE } from '../../catalog/hunting.js';
 import {
   JOB_ARCHER,
@@ -24,6 +25,7 @@ import {
   GOOD_SWORD_SHORT,
   WEAPON_BROADSWORD,
   WEAPON_FISTS,
+  WEAPON_HOUSE_BOW,
   WEAPON_HUNTER_BOW,
   WEAPON_LONG_BOW,
   WEAPON_SHORT_BOW,
@@ -76,6 +78,15 @@ const SPEAR_DAMAGE = 3800; // iron_spear
 const BROADSWORD_DAMAGE = 3800; // long_sword
 const BOW_DAMAGE = 500; // short_bow
 const LONG_BOW_DAMAGE = 700; // long_bow
+// The house bow's band and speed (`weapons.ini` type 20), transcribed like the timings above; its damage
+// is the design override the real-content merge also applies (`catalog/defence.ts` HOUSE_BOW_DAMAGE - a
+// civilian must shoot weaker than a soldier, which the source row does not hold against armour), so the
+// wall bow runs at one balance on either content base. Its reach outranges every hand bow: a wall shot,
+// not a field shot. `minimumrange 0` is clamped to the sim's floor of 1 (`withReach`), which is why the
+// pinned value is 1 rather than the source's 0.
+const HOUSE_BOW_MIN_RANGE = 1;
+const HOUSE_BOW_MAX_RANGE = 29;
+const HOUSE_BOW_SPEED = 7;
 // The animal natural weapons, transcribed from the mod `weapons.ini` (`bearfist` / `wolvefist`,
 // `damagevalue 0`), both weapon type 1 - the pair key is `(tribeType, typeId)`, so the shared typeId
 // never collides across tribes. The source rows carry `jobtype 49` (one bearfist twin 34) and
@@ -264,6 +275,22 @@ export function sandboxWeapons() {
       minRange: HUNTER_BOW_BALANCE.minRange,
       maxRange: HUNTER_BOW_BALANCE.maxRange,
       damage: { ...HUNTER_BOW_BALANCE.damage },
+    },
+    // The house bow a civilian shoots from a defence-mode building, transcribed verbatim from the mod
+    // row (`weapons.ini` type 20, `jobtype 6` = civilist): weaker than the soldier's short bow and far
+    // longer-ranged, the wall-shooting trade-off the source already makes. Bound by typeId, not by job -
+    // a sheltering farmer keeps its own trade and takes the wall bow up as a worn weapon - so the row
+    // carries no `jobType`, and no `goodType`: the bow belongs to the building, not the equipment economy.
+    {
+      typeId: WEAPON_HOUSE_BOW,
+      id: 'house_bow',
+      tribeType: PRIMARY_TRIBE,
+      mainType: RANGED_MAIN_TYPE,
+      munitionType: ARROW_MUNITION,
+      speed: HOUSE_BOW_SPEED,
+      minRange: HOUSE_BOW_MIN_RANGE,
+      maxRange: HOUSE_BOW_MAX_RANGE,
+      damage: { ...HOUSE_BOW_DAMAGE },
     },
     // The wildlife tribes' natural weapons (`weapons.ini` `bearfist`/`wolvefist`, bare-target column),
     // one row per animal tribe so a jobless animal binds its combat identity (the first-weapon-row

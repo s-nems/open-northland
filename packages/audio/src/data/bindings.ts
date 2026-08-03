@@ -13,6 +13,9 @@ export const JINGLE_BIRTH = 23;
 export const JINGLE_DEATH = 25;
 /** `MusicType` of the house-built jingle (`jingles_housebuilt.wav`). */
 export const JINGLE_HOUSE_BUILT = 26;
+/** `MusicType` of the civil-defence jingle (`jingles_civildefense.wav`) - the alarm bells a player rings
+ *  by putting a building into defence mode. */
+export const JINGLE_CIVIL_DEFENSE = 24;
 
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
 /** Construction hammering - placed at a newly-sited building/boat. */
@@ -91,6 +94,8 @@ export function defaultBindings(opts?: {
       buildingFinished: { kind: 'jingle', musicType: JINGLE_HOUSE_BUILT },
       settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH },
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true },
+      // The bells ring for the player who raised the alarm, not for whoever else is on the map.
+      defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
       combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },
       combatHit: { kind: 'spatial', group: GROUP_SWORD_HIT },

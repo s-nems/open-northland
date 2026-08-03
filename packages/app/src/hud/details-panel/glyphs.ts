@@ -30,6 +30,9 @@ export interface GlyphKit {
   /** A plus - an empty equip slot's "put an item on" button face. Always lit: the per-slot order
    *  buttons are never disabled (see `EquipActionHit`). */
   glyphPlus(r: Rect): void;
+  /** A shield - the defence-mode toggle's face. `raised` (the alarm is up) fills it solid; lowered it
+   *  is the same outline unfilled, so on/off reads at a glance without a second button. */
+  glyphShield(r: Rect, raised: boolean): void;
   /** Two opposing horizontal arrows - a worn equip slot's "swap the item" button face. */
   glyphSwap(r: Rect): void;
   /** A diagonal cross - a worn equip slot's "take the item off" button face. */
@@ -80,6 +83,26 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     g.rect(cx - th / 2, cy - arm, th, arm * 2).fill(GLYPH_LIGHT);
   };
 
+  // A heater shield: square shoulders, straight flanks, then the two curves meeting at the point.
+  const glyphShield = (r: Rect, raised: boolean): void => {
+    const pad = r.w * 0.24;
+    const x0 = r.x + pad;
+    const x1 = r.x + r.w - pad;
+    const y0 = r.y + pad;
+    const y1 = r.y + r.h - pad * 0.7;
+    const cx = r.x + r.w / 2;
+    const shoulder = y0 + (y1 - y0) * 0.45;
+    const line = Math.max(1, Math.round(r.w * 0.12));
+    g.moveTo(x0, y0)
+      .lineTo(x1, y0)
+      .lineTo(x1, shoulder)
+      .quadraticCurveTo(x1, y1, cx, y1)
+      .quadraticCurveTo(x0, y1, x0, shoulder)
+      .closePath();
+    if (raised) g.fill(GLYPH_LIGHT);
+    else g.stroke({ color: GLYPH_DIM, width: line });
+  };
+
   const glyphSwap = (r: Rect): void => {
     const x0 = r.x + r.w * 0.22;
     const x1 = r.x + r.w * 0.78;
@@ -117,5 +140,5 @@ export function createGlyphKit({ g, scale, bevelDark }: GlyphDeps): GlyphKit {
     g.moveTo(x1, y0).lineTo(x0, y1).stroke({ color: GLYPH_LIGHT, width: th });
   };
 
-  return { glyphAll, glyphHouse, glyphPlus, glyphSwap, glyphCross };
+  return { glyphAll, glyphHouse, glyphPlus, glyphShield, glyphSwap, glyphCross };
 }

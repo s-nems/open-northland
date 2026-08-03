@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { flatTileColour } from '@open-northland/render';
 import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { shelterCapacityById } from '../src/catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../src/catalog/farming.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
@@ -126,6 +127,34 @@ describe('mergeRealContent', () => {
     });
     expect(goodById(content, 'sword_shord').equip).toEqual({ category: 'weapon', wears: false });
     expect(goodById(content, 'wood').equip).toBeUndefined(); // a non-equippable stays bare
+  });
+
+  it('overlays the authored garrison capacity onto the buildings that take one, and nothing else', () => {
+    const { content } = mergeRealContent(rawRealLike());
+    const capacityOf = (id: string) => content.buildings.find((b) => b.id === id)?.shelterCapacity;
+
+    expect(capacityOf('headquarters')).toBe(shelterCapacityById('headquarters'));
+    expect(capacityOf('tower_00')).toBe(shelterCapacityById('tower_00'));
+    expect(capacityOf('tower_01')).toBe(shelterCapacityById('tower_01'));
+    // A workplace takes no garrison, so it never offers the mode (the panel and the order read this).
+    expect(capacityOf('work_mill_00')).toBe(0);
+  });
+
+  it('reins the civilian bows in under the soldier short bow on EVERY damage column', () => {
+    // The extracted rows do not hold this: the wall bow beats the short bow against wool/chain/plate and
+    // the hunter bow beats it outright, so both are design overrides (`catalog/defence.ts`, `hunting.ts`).
+    const { content } = mergeRealContent(rawRealLike());
+    const bow = (id: string) => content.weapons.find((w) => w.id === id);
+    const short = bow('viking_short_bow') ?? bow('short_bow');
+    if (short === undefined) throw new Error('fixture: no short bow');
+
+    for (const civilian of ['house_bow', 'hunter_bow']) {
+      const row = bow(civilian);
+      if (row === undefined) throw new Error(`fixture: no ${civilian}`);
+      for (const [column, soldierDamage] of Object.entries(short.damage)) {
+        expect(row.damage[column] ?? 0).toBeLessThan(soldierDamage);
+      }
+    }
   });
 
   it('surfaces gathered/field goods it cannot complete, and buildings beyond the clean-room catalog', () => {

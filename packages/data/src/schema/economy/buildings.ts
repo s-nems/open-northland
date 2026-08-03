@@ -111,6 +111,16 @@ export const BuildingType = z.strictObject({
    * table has no record for the type (and on synthetic test content) - see {@link BuildingFootprint}.
    */
   footprint: BuildingFootprint.optional(),
+  /**
+   * How many civilians may shelter inside while the building is in DEFENCE MODE, each shooting the house
+   * bow from cover; `0` (the default) means the type has no defence mode at all.
+   *
+   * The mode is extracted (`houses.ini` `logicCanEnableDefenceMode 1` on the headquarters, barracks and
+   * both watchtowers) but the SIZE of a garrison is not - no readable record carries one - so the number
+   * is authored balance, overlaid onto the extracted table at the app boundary the way the hunter-bow and
+   * field-farming numbers are (`app/src/catalog/defence.ts`).
+   */
+  shelterCapacity: z.number().int().nonnegative().default(0),
   source: Provenance.optional(),
 });
 export type BuildingType = z.infer<typeof BuildingType>;

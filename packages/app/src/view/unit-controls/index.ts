@@ -102,6 +102,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     onUpgrade: (id) => opts.enqueue({ kind: 'upgradeBuilding', building: id as Entity }),
     onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
     onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
+    onSetDefenceMode: (id, enabled) =>
+      opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
     onAssignWorkplace: (id) => pickMode.armWorkplace(id),
     onAssignHome: (id) => pickMode.armHome(id),
     // Remove-from-home needs no target - it acts on the settler's current home, so it enqueues directly

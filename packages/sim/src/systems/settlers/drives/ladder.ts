@@ -27,6 +27,7 @@ import {
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
 import { anyNeedPressing, planNeeds } from './needs.js';
+import { planShelter } from './shelter.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { deStackIdle } from './spacing.js';
 import { holdsPostThroughNeed, planTowerPost } from './tower-post.js';
@@ -35,14 +36,15 @@ import { planTraining } from './training.js';
 // The drive ladder: pick the next atomic for one idle settler, in this fixed priority order (each
 // drive returns `true` when it takes the settler for the tick):
 //
-//   needs (eat > sleep > pray) → the ownership gate → the barracks drill → the equip errand → the
-//   tower watch → the DEFEND hold → the company (chat-seek) rung → the housewife hoard → deliver a
-//   carried load → bound-farmer field loop → bound-producer / workshop-supplier loop → build → gather
-//   (chop/collect) → porter ferrying → store-carrier haul → idle de-stack → idle chat.
+//   the alarm (run for cover) → needs (eat > sleep > pray) → the ownership gate → the barracks drill →
+//   the equip errand → the tower watch → the DEFEND hold → the company (chat-seek) rung → the housewife
+//   hoard → deliver a carried load → bound-farmer field loop → bound-producer / workshop-supplier loop →
+//   build → gather (chop/collect) → porter ferrying → store-carrier haul → idle de-stack → idle chat.
 //
-// The order is part of the design (and of the goldens): needs sit above the ownership gate so a
-// starving combatant still feeds (a soft override), and the economy rungs go most-specific-first so
-// a gatherer works its own trade before ferrying others' goods. The atomic id and its duration come
+// The order is part of the design (and of the goldens): the alarm outranks everything (bells ringing
+// beat hunger), needs sit above the ownership gate so a starving combatant still feeds (a soft
+// override), and the economy rungs go most-specific-first so a gatherer works its own trade before
+// ferrying others' goods. The atomic id and its duration come
 // from content, not code (the drives resolve them through the tribe's `setatomic` binding - see
 // ../atomics/start.ts); "utility" is minimal (nearest reachable target by Manhattan distance). Targets are
 // scanned in canonical (ascending entity-id) order with a deterministic distance+cell tie-break, so
@@ -60,13 +62,18 @@ type SettlerState = NonNullable<(typeof Settler)['__value']>;
  */
 export function planChild(pass: PlannerPass, e: Entity, settler: SettlerState): void {
   const { world, ctx, terrain } = pass;
-  if (isChild(settler.jobType) && anyNeedPressing(settler)) {
+  // A child runs for cover with everyone else (./shelter.ts); it just never draws a bow in there
+  // (`defence/manning.ts`). Both rungs need the same position/limit reading, and neither runs on the
+  // quiet tick, so it is resolved once behind their shared gate rather than for every strolling child.
+  const needy = isChild(settler.jobType) && anyNeedPressing(settler);
+  if (pass.shelters.size > 0 || needy) {
     const p = world.get(e, Position);
     const hereNode = nodeOfPosition(p.x, p.y);
     const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
+    if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
     const load = world.tryGet(e, Carrying);
-    if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
+    if (needy && planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
       return;
     }
   }
@@ -87,6 +94,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
   // The settler's signpost confinement (or null when unlimited) - computed once, shared by the needs
   // drives here and the economy PlannerContext below.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
+
+  // THE ALARM: a defence-mode building calls its player's civilians in, over every other drive - the
+  // bells outrank hunger, the ownership gate, and a live equip errand alike (./shelter.ts).
+  if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
 
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in

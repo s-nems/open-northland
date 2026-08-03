@@ -1,4 +1,5 @@
 import {
+  type BuildingType,
   type ContentSet,
   type GoodType,
   hasFieldFarmAtomics,
@@ -7,6 +8,7 @@ import {
 } from '@open-northland/data';
 import { HARVEST_CADAVER_ATOMIC } from '../catalog/atomics.js';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
+import { HOUSE_BOW_DAMAGE, shelterCapacityById } from '../catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { HUNTER_BOW_BALANCE, huntPreyRows } from '../catalog/hunting.js';
@@ -58,8 +60,9 @@ async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | nu
 export interface RealContentMerge {
   /** The real content readied for the sim: localized good names, the clean-room felling/mining balance
    *  pinned into its zeroed gathering blocks, the clean-room field-farming block added to farmed goods,
-   *  the clean-room settler HP set on the playable tribes, and the sim's nav-terrain classes
-   *  ({@link NAV_LANDSCAPE_TYPES}) added to `landscape`. */
+   *  the clean-room settler HP set on the playable tribes, the authored defence-mode garrison sizes on
+   *  the buildings that take one, and the sim's nav-terrain classes ({@link NAV_LANDSCAPE_TYPES}) added
+   *  to `landscape`. */
   readonly content: ContentSet;
   /** Gathered goods (they carry a `gathering` block) with no clean-room balance - they stay uncalibrated
    *  (leather/honey/meat are animal/production goods the sandbox never map-gathers). */
@@ -110,9 +113,19 @@ function withWoolCarcassHarvest(good: GoodType): GoodType {
   return { ...good, atomics: { ...good.atomics, harvest: HARVEST_CADAVER_ATOMIC } };
 }
 
-/** Rein the hunter bow in under the short bow ({@link HUNTER_BOW_BALANCE} - a design override of the
- *  extracted rows, which make it stronger). Every other weapon passes through untouched. */
-function withHunterBowBalance(weapon: WeaponType): WeaponType {
+/** Overlay the authored defence-mode garrison size ({@link shelterCapacityById}) - the extracted table
+ *  carries the `logicCanEnableDefenceMode` flag but no capacity. A type with no garrison keeps its 0. */
+function withShelterCapacity(building: BuildingType): BuildingType {
+  const shelterCapacity = shelterCapacityById(building.id);
+  return shelterCapacity === 0 ? building : { ...building, shelterCapacity };
+}
+
+/** Rein the two CIVILIAN bows in under the soldier's short bow - a design override of the extracted rows,
+ *  which make both stronger in at least one column ({@link HUNTER_BOW_BALANCE}, {@link HOUSE_BOW_DAMAGE}).
+ *  The hunter bow's band is overridden too; the wall bow keeps its extracted reach. Every other weapon
+ *  passes through untouched. */
+function withCivilianBowBalance(weapon: WeaponType): WeaponType {
+  if (weapon.id === 'house_bow') return { ...weapon, damage: { ...HOUSE_BOW_DAMAGE } };
   if (weapon.id !== 'hunter_bow') return weapon;
   return {
     ...weapon,
@@ -181,6 +194,7 @@ export function mergeRealContent(
   const unfarmedFieldGoods = goods
     .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
     .map((g) => g.id);
+  const buildings = real.buildings.map(withShelterCapacity);
   const cataloged = new Set(VIKING_BUILDINGS.map((b) => b.id));
   const uncatalogedBuildings = real.buildings.filter((b) => !cataloged.has(b.id)).map((b) => b.id);
   const landscapeIds = new Set(real.landscape.map((t) => t.typeId));
@@ -194,11 +208,11 @@ export function mergeRealContent(
   const tribes = real.tribes.map((t) =>
     t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
   );
-  // The hunter overlays (`catalog/hunting.ts`): the bow reined in under the short bow, and the authored
-  // prey/yield table resolved against this set's goods+tribes. Wool's pipeline row is leather's whole
+  // The civilian-bow overlays, and the hunter's authored prey/yield table (`catalog/hunting.ts`)
+  // resolved against this set's goods+tribes. Wool's pipeline row is leather's whole
   // row re-keyed: the cadaver stage (landscape 79 / gfx 847), its footprint, AND the store-pile stage,
   // so a wool heap draws the hide pile's decal (the same named approximation as the harvest atomic).
-  const weapons = real.weapons.map(withHunterBowBalance);
+  const weapons = real.weapons.map(withCivilianBowBalance);
   const woolType = goods.find((g) => g.id === 'wool')?.typeId;
   const leatherRow = real.gatheringPipeline.find((p) => p.goodId === 'leather');
   const needsWoolRow =
@@ -212,7 +226,16 @@ export function mergeRealContent(
   // Re-validate the transformed set so a bad overlay or injected row fails here at the app boundary,
   // not deep in the sim.
   return {
-    content: parseContentSet({ ...real, goods, landscape, tribes, weapons, gatheringPipeline, huntPrey }),
+    content: parseContentSet({
+      ...real,
+      goods,
+      buildings,
+      landscape,
+      tribes,
+      weapons,
+      gatheringPipeline,
+      huntPrey,
+    }),
     unbalancedGoods,
     unfarmedFieldGoods,
     uncatalogedBuildings,

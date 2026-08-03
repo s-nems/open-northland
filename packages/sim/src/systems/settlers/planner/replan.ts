@@ -9,6 +9,7 @@ import {
   LivestockVisit,
   PathRequest,
   PlayerOrder,
+  Sheltering,
   Stranded,
   Wedding,
 } from '../../../components/index.js';
@@ -130,10 +131,17 @@ export function releaseStaleIntent(
     return false;
   }
   releaseFarmTask(world, e, farmClaims);
-  // The FamilyDuty and LivestockVisit holds keep their Resting through a re-plan: the family drive and
-  // the feed batch's release own those exits (the indoors contract, settlers/indoors.ts). A garrison
-  // still on its tower keeps it too - anything else already gave the post up at the top.
-  if (!world.has(e, FamilyDuty) && !world.has(e, LivestockVisit) && !world.has(e, Garrison)) {
+  // The FamilyDuty, LivestockVisit and Sheltering holds keep their Resting through a re-plan: the family
+  // drive, the feed batch's release and the DefenceSystem own those exits (the indoors contract,
+  // settlers/indoors.ts) - shedding a sheltering settler's marker would pop it out of cover and back in
+  // every tick the alarm stands. A garrison still on its tower keeps it too: anything else already gave
+  // the post up at the top.
+  if (
+    !world.has(e, FamilyDuty) &&
+    !world.has(e, LivestockVisit) &&
+    !world.has(e, Garrison) &&
+    !world.has(e, Sheltering)
+  ) {
     stepOut(world, e);
   }
   // Releasing through the tally keeps the inbound count in lockstep with the store.

@@ -48,6 +48,8 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   readonly onCancelUpgrade: (entityId: number) => void;
   /** Tear down the selected signpost - invoked by the signpost panel's one button. */
   readonly onDemolishSignpost: (entityId: number) => void;
+  /** Raise or lower the alarm on the selected garrison building - the Obrona window's shield toggle. */
+  readonly onSetDefenceMode: (entityId: number, enabled: boolean) => void;
   /** Enter "assign a workplace" mode for the selected settler - invoked when the player clicks the Praca
    *  section's assign button. The view then highlights candidate buildings and binds the settler to the one
    *  the next left-click hits. Absent → the button is inert. */
@@ -220,6 +222,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
         break;
       case 'demolish':
         opts.onDemolish(click.entityId);
+        break;
+      case 'setDefenceMode':
+        opts.onSetDefenceMode(click.entityId, click.enabled);
         break;
       case 'demolishSignpost':
         opts.onDemolishSignpost(click.entityId);
