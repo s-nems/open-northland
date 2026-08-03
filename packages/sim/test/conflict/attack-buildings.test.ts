@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
   Building,
+  Engagement,
   Health,
   MoveGoal,
   Owner,
@@ -39,6 +40,9 @@ const SOLDIER = 31;
 const ARCHER = 40;
 const P1 = 1; // the attacking player
 const P2 = 2; // the defending player (owns the buildings)
+
+const GRASS = 0;
+const WATER = 1; // the barrier the islet fixture needs - an unwalkable landscape, so a separate walk component
 
 const HEADQUARTERS = 1;
 const TOWER = 2;
@@ -82,7 +86,10 @@ function siegeContent(opts: { meleeRange?: { min: number; max: number } } = {}):
         },
       },
     ],
-    landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
+    landscape: [
+      { typeId: GRASS, id: 'grass', walkable: true, buildable: true },
+      { typeId: WATER, id: 'water', walkable: false, buildable: false },
+    ],
     weapons: [
       {
         typeId: 7,
@@ -122,7 +129,24 @@ function siegeContent(opts: { meleeRange?: { min: number; max: number } } = {}):
 
 /** An all-grass w×h-cell terrain map, upsampled to the half-cell lattice. */
 function grass(width: number, height: number): TerrainMap {
-  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(0) });
+  return halfCellMapFromCells({ width, height, typeIds: new Array(width * height).fill(GRASS) });
+}
+
+/** A grass bank at cells `x < bankWidth`, open water beyond it, and one grass islet cell: a building on the
+ *  islet has no walkable contact cell anywhere, and none in the besieger's walk component. */
+function bankAndIslet(
+  width: number,
+  height: number,
+  bankWidth: number,
+  islet: { x: number; y: number },
+): TerrainMap {
+  const typeIds: number[] = [];
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      typeIds.push(x < bankWidth || (x === islet.x && y === islet.y) ? GRASS : WATER);
+    }
+  }
+  return halfCellMapFromCells({ width, height, typeIds });
 }
 
 /** An owned warrior at visual cell (x,y): its Owner + ATTACK stance make it an auto-engaging aggressor. */
@@ -364,6 +388,41 @@ describe('warriors attack enemy buildings', () => {
       expect(sim.world.has(s, PathFollow)).toBe(false);
       expect(sim.world.has(s, PathRequest)).toBe(false);
     }
+  });
+
+  it('hands back from a building across water: an empty slot deal is not a manned front', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: siegeContent(),
+      map: bankAndIslet(9, 5, 4, { x: 6, y: 2 }),
+    });
+    const soldier = warriorAt(sim, 1, 2, P1);
+    buildingAt(sim, 6, 2, FORT, P2); // its 2×2 body fills the islet, so no contact cell survives at all
+
+    for (let i = 0; i < 60; i++) sim.step();
+
+    // The encircle deal comes back empty - the same `null` a fully manned front returns. Reading it as a
+    // front would hold the warrior engaged for the rest of the game, because the planner leaves an engaged
+    // settler to combat.
+    expect(sim.world.has(soldier, Engagement)).toBe(false);
+    expect(sim.world.has(soldier, MoveGoal)).toBe(false);
+  });
+
+  it('walks up its own bank to a firing cell rather than giving up on a target across water', () => {
+    // The release refuses only the cells a unit cannot stand on, never the target itself. A bow band reaches
+    // past the water, so contact cells on the archer's OWN bank are in it: it must advance to one and shoot.
+    // Deciding the release from the target's bank instead would send an archer with a live shot home.
+    const sim = new Simulation({
+      seed: 1,
+      content: siegeContent(),
+      map: bankAndIslet(10, 5, 4, { x: 8, y: 2 }),
+    });
+    warriorAt(sim, 0, 2, P1, ARCHER); // 16 nodes out - inside sight, outside the bow's 12-node band
+    const home = buildingAt(sim, 8, 2, HOME, P2);
+
+    for (let i = 0; i < 200 && sim.world.get(home, Health).hitpoints === 1000; i++) sim.step();
+
+    expect(sim.world.get(home, Health).hitpoints).toBeLessThan(1000);
   });
 
   it('deals no slot under a neighbouring body: an ordered siege routes around, never cancels', () => {

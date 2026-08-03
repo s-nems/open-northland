@@ -13,7 +13,7 @@ export const VIKING = 1;
 export const FRANK = 2;
 export const BEAR = 10;
 export const WOODCUTTER = 1;
-/** The fixture's bow-armed job (`test_spear`, minRange 3, maxRange 17) - the ranged reach these cases need. */
+/** The fixture's bow-armed job (`test_spear`) - the ranged reach these cases need. */
 export const HUNTER = 15;
 export const P0 = 0;
 export const P1 = 1;

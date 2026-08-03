@@ -28,8 +28,6 @@ export interface ChaseTarget {
   readonly body: readonly NodeId[] | null;
 }
 
-/** The anchor a chase is bound to (a DEFEND post, a hunter's ground), or null when it is unbounded -
- *  {@link EngageSpec.defend}, passed through unchanged. */
 type DefendPost = EngageSpec['defend'];
 
 /**
@@ -94,13 +92,14 @@ export function chase(
   });
 
   const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
+  const commanded = stance.ordered || marching; // a player-driven chase - it releases here, not on the bank
   // A failed chase route (unreachable target): drop the dead nav state so we re-issue below. For an explicit
   // attack order an unreachable target ends the order. An attack-move march instead rests its aggression and
   // walks on: without the rest, an enemy visible across a river holds the marcher in a failing search every
   // tick and the order can never complete.
   if (world.tryGet(e, PathRequest)?.failed) {
     clearNavState(world, e);
-    if (stance.ordered || marching) {
+    if (commanded) {
       world.remove(e, AttackOrder);
       world.remove(e, Engagement);
       if (marching) {
@@ -116,35 +115,40 @@ export function chase(
   if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route - don't re-path
 
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
+  // Only a cell in the chaser's own static walk component can be walked to - the labels `findPath` refutes a
+  // cross-component goal with, so the far bank is never asked for. Bridges and boats are not yet walkable, so
+  // two banks really are separate (`targets/resources.ts` names the same limitation); a chaser on an
+  // unwalkable node (`-1`, truncated onto it mid-stride) is unlabelled and admits every cell.
+  const bank = terrain.componentOf(here);
+  const onOurBank = (cell: NodeId): boolean => bank < 0 || terrain.componentOf(cell) === bank;
+
   // A building's slots are dealt against its whole wall list ({@link MeleeSlots.encircleCandidates}), so a
   // chaser whose nearest face is fully manned spills around the perimeter to the next open face instead of
   // holding behind the first rank.
-  const dest =
-    target.body !== null && target.body.length > 0
-      ? // The untaken candidate nearest the unit - null when every slot is taken, the full-perimeter hold.
-        nearestCell(
-          terrain,
-          slots.encircleCandidates(target.entity, target.body, weapon),
-          here,
-          (cell) => !slots.isTaken(cell, ownGoal),
-        )
-      : approachCell(terrain, here, target.node, weapon, slots, ownGoal);
+  let dest: NodeId | null;
+  if (target.body !== null && target.body.length > 0) {
+    const faces = slots.encircleCandidates(target.entity, target.body, weapon);
+    // The untaken candidate nearest the unit - null when every slot is taken, the full-perimeter hold. With no
+    // face on our bank there is no front to queue behind: aim at the body, which the release below refuses.
+    dest = nearestCell(terrain, faces, here, (cell) => onOurBank(cell) && !slots.isTaken(cell, ownGoal));
+    if (dest === null && !faces.some(onOurBank)) dest = target.node;
+  } else {
+    dest = approachCell(terrain, here, target.node, weapon, slots, ownGoal, onOurBank);
+  }
   if (dest === null) {
-    // Every walkable cell of the target's reach band is a taken slot (a standing body, or dealt to an earlier
-    // chaser this tick): stand fast as a second rank - a stationary body, not a walker grinding into the first
+    // Every cell of the target's reach band on our own bank is a taken slot (a standing body, or dealt to an
+    // earlier chaser this tick): stand fast as a second rank - a stationary body, not a walker into the first
     // rank's backs - and re-ask at the chase cadence; the slot check admits it the moment a front-liner falls
     // or steps off. With the id-order slot deal above, this turns a converging mass into ranks, not a pile.
     clearNavState(world, e);
     engagement.repathAt = ctx.tick + REPATH_CADENCE;
     return;
   }
-  // A contact cell in another static walk component (the far bank of a river) can never be routed to - the
-  // labels `findPath` refutes such a goal with, read here so the unit hands back instead of standing engaged
-  // on an enemy it will never touch. Only the WALK is refused: an enemy in reach was swung at before the
-  // chase ran, so archers still shoot across water. A commanded chase keeps its own release above; `-1`
-  // (unwalkable - a node a walker truncated onto mid-stride) proves nothing either way.
-  const bank = terrain.componentOf(here);
-  if (!stance.ordered && !marching && bank >= 0 && terrain.componentOf(dest) !== bank) {
+  // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand
+  // on. Hand back rather than stay engaged on an enemy it will never touch - only the WALK is refused, since
+  // the reach check ran before the chase and an archer still shoots across water. Giving up is an
+  // approximation (source basis "Combat chase"); holding benches the unit for good, so it is no alternative.
+  if (!commanded && !onOurBank(dest)) {
     breakOff(world, e, here, defend);
     return;
   }
@@ -172,15 +176,16 @@ export function chase(
 }
 
 /** The cell a chaser should walk to in order to bring `target` into its weapon band: the {@link
- *  MeleeSlots.isOpen open}, untaken cell whose Manhattan distance to the target is in the band and which is
- *  closest to the unit (`from`), canonical (min distance, then min cell id). So a melee unit stops one cell
- *  short of the enemy (hittable) instead of walking onto it (distance 0, below every weapon's near reach -
- *  which would deadlock), and a mass of chasers is dealt distinct contact cells around the target instead of
- *  all converging on one - the melee-slot rule that spreads a large fight along the band. Returns `null` when
- *  the band has open cells but every one is taken (a full front - the chaser should hold as a second rank);
- *  falls back to the target's own cell when no in-band cell is open at all (a boxed-in target; the chase then
- *  closes and the swing/disengage logic re-decides). A bounded scan of the band box - O((2·maxRange+1)²), tiny
- *  for melee - deterministic (fixed order + min-id tie-break). */
+ *  MeleeSlots.isOpen open}, `reachable`, untaken cell whose Manhattan distance to the target is in the band
+ *  and which is closest to the unit (`from`), canonical (min distance, then min cell id). So a melee unit
+ *  stops one cell short of the enemy (hittable) instead of walking onto it (distance 0, below every weapon's
+ *  near reach - which would deadlock), and a mass of chasers is dealt distinct contact cells around the
+ *  target instead of all converging on one - the melee-slot rule that spreads a large fight along the band.
+ *  Returns `null` when the band has reachable open cells but every one is taken (a full front - the chaser
+ *  should hold as a second rank); falls back to the target's own cell when none is open and reachable at all
+ *  (a boxed-in or cross-bank target; the caller then refuses the walk, or the chase closes and the
+ *  swing/disengage logic re-decides). A bounded scan of the band box - O((2·maxRange+1)²), tiny for melee -
+ *  deterministic (fixed order + min-id tie-break). */
 function approachCell(
   terrain: TerrainGraph,
   from: NodeId,
@@ -188,13 +193,14 @@ function approachCell(
   weapon: WeaponBand,
   slots: MeleeSlots,
   ownGoal: NodeId | undefined,
+  reachable: (cell: NodeId) => boolean,
 ): NodeId | null {
   const t = terrain.coordsOf(targetCell);
   const f = terrain.coordsOf(from);
   let best: NodeId | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
   let bestCell = Number.POSITIVE_INFINITY;
-  let anyOpen = false;
+  let anyReachable = false;
   for (let dy = -weapon.maxRange; dy <= weapon.maxRange; dy++) {
     for (let dx = -weapon.maxRange; dx <= weapon.maxRange; dx++) {
       const band = Math.abs(dx) + Math.abs(dy);
@@ -203,8 +209,8 @@ function approachCell(
       const y = t.y + dy;
       if (!terrain.inBounds(x, y)) continue;
       const cell = terrain.nodeAt(x, y);
-      if (!slots.isOpen(cell)) continue;
-      anyOpen = true;
+      if (!slots.isOpen(cell) || !reachable(cell)) continue;
+      anyReachable = true;
       if (slots.isTaken(cell, ownGoal)) continue; // someone already fights (or was dealt) here
       const d = Math.abs(x - f.x) + Math.abs(y - f.y); // distance from the unit to this candidate cell
       if (closer(d, cell, bestDist, bestCell)) {
@@ -215,7 +221,7 @@ function approachCell(
     }
   }
   if (best !== null) return best;
-  return anyOpen ? null : targetCell;
+  return anyReachable ? null : targetCell;
 }
 
 /** Drop the combatant's engagement, returning it to the economy: remove the {@link Engagement} marker and the
