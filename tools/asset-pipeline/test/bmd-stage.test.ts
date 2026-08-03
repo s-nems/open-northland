@@ -9,7 +9,7 @@ import { indexSourceAssets } from '../src/stages/source-files.js';
 import { packLineControl, sampleBmdBytes } from './fixtures/bmd.js';
 import { rampPalette, solidPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
-import { makeTempDir } from './support/game-tree.js';
+import { BOBS_DIR, makeTempDir } from './support/game-tree.js';
 
 describe('bmdToAtlas', () => {
   it('decodes a .bmd, packs an atlas, and yields a PNG-encodable image + manifest', () => {
@@ -112,15 +112,16 @@ describe('convertBmdTree', () => {
     );
 
     expect(done).toHaveLength(1);
-    // The case-insensitive resolution maps the normalized refs onto the real mixed-case on-disk paths,
-    // and the palette editname rides in the filename as the per-creature differentiator.
-    expect(done[0]?.png).toBe(join('Data', 'Bobs', 'Body.bear01.png'));
-    expect(done[0]?.manifest).toBe(join('Data', 'Bobs', 'Body.bear01.atlas.json'));
+    // The atlas is served flat under bobs/ at the source's lower-cased basename, so the mixed-case
+    // `Data/Bobs/Body.bmd` the refs resolved to never reaches the name; the palette editname rides in
+    // it as the per-creature differentiator.
+    expect(done[0]?.png).toBe(join(BOBS_DIR, 'body.bear01.png'));
+    expect(done[0]?.manifest).toBe(join(BOBS_DIR, 'body.bear01.atlas.json'));
     expect(done[0]?.paletteName).toBe('bear01');
     // The emitted PNG decodes (a valid RGBA sheet) and the manifest JSON round-trips its frame table.
-    const decoded = decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body.bear01.png')));
+    const decoded = decodePng(await readFile(join(out, BOBS_DIR, 'body.bear01.png')));
     expect(decoded.width).toBeGreaterThan(0);
-    const manifest = JSON.parse(await readFile(join(out, 'Data', 'Bobs', 'Body.bear01.atlas.json'), 'utf8'));
+    const manifest = JSON.parse(await readFile(join(out, BOBS_DIR, 'body.bear01.atlas.json'), 'utf8'));
     expect(manifest.frames).toHaveLength(1);
     expect(manifest.frames[0].bobId).toBe(10);
     expect(manifest.width).toBe(decoded.width);
@@ -154,8 +155,8 @@ describe('convertBmdTree', () => {
     // Two distinct atlas files from one shared .bmd - the palette name is the differentiator.
     expect(new Set(done.map((c) => c.png)).size).toBe(2);
     expect(done.map((c) => c.png).sort()).toEqual([
-      join('Data', 'Bobs', 'Body.bear01.png'),
-      join('Data', 'Bobs', 'Body.wolf01.png'),
+      join(BOBS_DIR, 'body.bear01.png'),
+      join(BOBS_DIR, 'body.wolf01.png'),
     ]);
     // Each atlas was coloured through its own binding's palette, not one shared pick: same geometry,
     // so any pixel difference is the palette, and the wolf's every colour is its solid-red carrier.
@@ -167,8 +168,8 @@ describe('convertBmdTree', () => {
       const o = (y * img.width + x) * 4;
       return [...img.rgba.subarray(o, o + 4)];
     };
-    const bear = await sheetPixel(join('Data', 'Bobs', 'Body.bear01.png'));
-    const wolf = await sheetPixel(join('Data', 'Bobs', 'Body.wolf01.png'));
+    const bear = await sheetPixel(join(BOBS_DIR, 'body.bear01.png'));
+    const wolf = await sheetPixel(join(BOBS_DIR, 'body.wolf01.png'));
     expect(wolf.slice(0, 3)).toEqual([255, 0, 0]);
     expect(bear).not.toEqual(wolf);
   });
@@ -188,7 +189,54 @@ describe('convertBmdTree', () => {
       await indexSourceAssets({ game: out, mod: undefined }),
     );
 
-    expect(done.map((c) => c.png)).toEqual([join('Data', 'Bobs', 'Body.bear01.png')]);
+    expect(done.map((c) => c.png)).toEqual([join(BOBS_DIR, 'body.bear01.png')]);
+  });
+
+  it('aborts when two convertible .bmd would claim one served atlas name', async () => {
+    await layDownAssets();
+    await mkdir(join(out, 'Data', 'Bobs', 'nowe'), { recursive: true });
+    await writeFile(join(out, 'Data', 'Bobs', 'nowe', 'Body.bmd'), sampleBmdBytes());
+    const { palettes } = sampleBinding();
+    const bindings: BmdPaletteBinding[] = [
+      { bmd: 'data/bobs/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 1, jobId: 2 },
+      { bmd: 'data/bobs/nowe/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 1, jobId: 3 },
+    ];
+
+    await expect(
+      convertBmdTree(
+        { bindings, palettes, buildTimeBmds: new Set() },
+        out,
+        await indexSourceAssets({ game: out, mod: undefined }),
+      ),
+    ).rejects.toThrow(/basename collision.*nowe\/body\.bmd/s);
+  });
+
+  it('does not abort on a same-named .bmd that no layer resolves, or on a shadow of that name', async () => {
+    // Both are false collisions: an unresolvable ref writes nothing (it warns-and-skips below), and a
+    // shadow atlas carries the fixed `shadow` suffix, so it can never meet a body's palette slug.
+    await layDownAssets();
+    const { palettes } = sampleBinding();
+    const bindings: BmdPaletteBinding[] = [
+      {
+        bmd: 'data/bobs/body.bmd',
+        shadowBmd: 'data/bobs/nowe/body.bmd',
+        paletteName: 'bear01',
+        tribeId: 1,
+        jobId: 2,
+      },
+      { bmd: 'data/bobs/gone/body.bmd', shadowBmd: undefined, paletteName: 'bear01', tribeId: 1, jobId: 3 },
+    ];
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const done = await convertBmdTree(
+      { bindings, palettes, buildTimeBmds: new Set() },
+      out,
+      await indexSourceAssets({ game: out, mod: undefined }),
+    );
+
+    expect(done.map((c) => c.png)).toEqual([join(BOBS_DIR, 'body.bear01.png')]);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/bmd data\/bobs\/gone\/body\.bmd not found/));
+    warn.mockRestore();
   });
 
   it('skips a binding whose palette editname is not in the index, with a warning', async () => {
@@ -285,7 +333,7 @@ describe('convertShadowBmdTree', () => {
       await indexSourceAssets({ game: out, mod: undefined }),
     );
 
-  it('writes `<shadow-stem>.shadow.{png,atlas.json}` beside the shadow .bmd - the name the app joins on', async () => {
+  it('writes `<shadow-basename>.shadow.{png,atlas.json}` under bobs/ - the name the app joins on', async () => {
     await mkdir(join(out, 'Data', 'Bobs'), { recursive: true });
     await writeFile(join(out, 'Data', 'Bobs', 'Body_s.bmd'), shadowBmdBytes());
 
@@ -293,12 +341,12 @@ describe('convertShadowBmdTree', () => {
 
     // The literal `.shadow.` filenames are the contract `servedShadowStem` (packages/app) resolves
     // against - a drift here silently degrades to shadow-less rendering.
-    expect(done).toEqual([join('Data', 'Bobs', 'Body_s.shadow.png')]);
-    const decoded = decodePng(await readFile(join(out, 'Data', 'Bobs', 'Body_s.shadow.png')));
+    expect(done).toEqual([join(BOBS_DIR, 'body_s.shadow.png')]);
+    const decoded = decodePng(await readFile(join(out, BOBS_DIR, 'body_s.shadow.png')));
     expect(decoded.width).toBeGreaterThan(0);
-    const manifest = JSON.parse(
-      await readFile(join(out, 'Data', 'Bobs', 'Body_s.shadow.atlas.json'), 'utf8'),
-    ) as { frames: { bobId: number }[] };
+    const manifest = JSON.parse(await readFile(join(out, BOBS_DIR, 'body_s.shadow.atlas.json'), 'utf8')) as {
+      frames: { bobId: number }[];
+    };
     expect(manifest.frames).toHaveLength(1);
     expect(manifest.frames[0]?.bobId).toBe(10);
   });
@@ -309,7 +357,7 @@ describe('convertShadowBmdTree', () => {
 
     const done = await convert([shadowBinding('bear01'), shadowBinding('wolf01')]);
 
-    expect(done).toEqual([join('Data', 'Bobs', 'Body_s.shadow.png')]); // deduped, not clobbered twice
+    expect(done).toEqual([join(BOBS_DIR, 'body_s.shadow.png')]); // deduped, not clobbered twice
   });
 
   it('skips a missing shadow .bmd with a warning; bindings without one are not shadow work at all', async () => {
@@ -395,20 +443,20 @@ describe('convertBmdTree build-time bake', () => {
     );
 
     const alphaOf = async (png: string): Promise<number> => {
-      const img = decodePng(await readFile(join(out, 'Data', 'Bobs', png)));
+      const img = decodePng(await readFile(join(out, BOBS_DIR, png)));
       return img.rgba[(1 * img.width + 1) * 4 + 3] ?? -1; // the 1x1 frame sits at the gutter origin
     };
-    expect(await alphaOf('House.house01.png')).toBe(255); // claimed → opaque colour plane
-    expect(await alphaOf('House.ruins01.png')).toBe(255); // ...for every recolour of that bmd
-    expect(await alphaOf('Fern.house01.png')).toBe(0x40); // unclaimed → per-pixel alpha survives
+    expect(await alphaOf('house.house01.png')).toBe(255); // claimed → opaque colour plane
+    expect(await alphaOf('house.ruins01.png')).toBe(255); // ...for every recolour of that bmd
+    expect(await alphaOf('fern.house01.png')).toBe(0x40); // unclaimed → per-pixel alpha survives
 
     // The claimed bmd's second byte lands in the sibling time sheet + the manifest announces it.
-    const timeSheet = decodePng(await readFile(join(out, 'Data', 'Bobs', 'House.house01.build.png')));
+    const timeSheet = decodePng(await readFile(join(out, BOBS_DIR, 'house.house01.build.png')));
     expect(timeSheet.rgba[(1 * timeSheet.width + 1) * 4] ?? -1).toBe(0x40); // the threshold, in R
-    const manifest = JSON.parse(
-      await readFile(join(out, 'Data', 'Bobs', 'House.house01.atlas.json'), 'utf8'),
-    ) as { build?: boolean };
+    const manifest = JSON.parse(await readFile(join(out, BOBS_DIR, 'house.house01.atlas.json'), 'utf8')) as {
+      build?: boolean;
+    };
     expect(manifest.build).toBe(true);
-    await expect(readFile(join(out, 'Data', 'Bobs', 'Fern.house01.build.png'))).rejects.toThrow();
+    await expect(readFile(join(out, BOBS_DIR, 'fern.house01.build.png'))).rejects.toThrow();
   });
 });

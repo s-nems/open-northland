@@ -156,7 +156,7 @@ describe('loose files over unpacked .lib members', () => {
     );
   });
 
-  it('atlases a loose-only .bmd into the out tree (the mod ships building bobs in no archive)', async () => {
+  it('serves a subdirectory .bmd flat under bobs/ (the mod ships building bobs in no archive)', async () => {
     await write(join(BOBS, 'nowe', 'f_bakery.bmd'), sampleBmdBytes());
     await write(join('Data', 'pal', 'house.pcx'), samplePcx().bytes);
 
@@ -178,9 +178,11 @@ describe('loose files over unpacked .lib members', () => {
       await indexSourceAssets(withArchiveLayer({ game, mod: undefined }, out)),
     );
 
-    expect(done.map((d) => d.png)).toEqual([join(BOBS, 'nowe', 'f_bakery.house.png')]);
-    // The atlas lands under out at the source's relative path, never back into the read-only game tree.
-    await expect(readFile(join(out, BOBS, 'nowe', 'f_bakery.house.png'))).resolves.toBeInstanceOf(Buffer);
+    // The app asks for `/bobs/f_bakery.house.png` - the source's `nowe/` subdirectory must not reach
+    // the served name, or the mod's building bobs 404 and fall back.
+    expect(done.map((d) => d.png)).toEqual([join(BOBS, 'f_bakery.house.png')]);
+    // The atlas lands under out, never back into the read-only game tree.
+    await expect(readFile(join(out, BOBS, 'f_bakery.house.png'))).resolves.toBeInstanceOf(Buffer);
     expect(await readdir(join(game, BOBS, 'nowe'))).toEqual(['f_bakery.bmd']);
   });
 });
