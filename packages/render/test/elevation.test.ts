@@ -3,15 +3,7 @@ import { cellNode, elevationLiftPerUnit } from '../src/data/terrain/index.js';
 import { buildSpriteScene, makeElevationField, TILE_HALF_H, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
-/**
- * Headless tests for the terrain-elevation seam (`data/elevation.ts`) - the one bilinear sampler every
- * projection consumer lifts through. Pixels are still human-gated, but the load-bearing DATA decisions
- * are agent-checkable: the engine's lift-per-unit (elevation/16 half-row-steps - source basis,
- * docs/SOURCES.md "terrain tessellation"), the sampler's bilinear+clamp, the cull pad, and the DEPTH
- * rule (a lifted-up sprite on a nearer row still occludes one behind it - the painter key stays the
- * PRE-LIFT feet row, not the lifted screen y).
- */
-
+/** Elevation lifts by elevation/16 half-row-steps; source basis docs/SOURCES.md "terrain tessellation". */
 const LIFT = elevationLiftPerUnit();
 
 describe('elevationLiftPerUnit - the engine tessellation divisor', () => {
@@ -55,7 +47,6 @@ describe('makeElevationField.liftAt', () => {
     const flat = makeElevationField(undefined, 3, 2);
     expect(flat.maxLift).toBe(0);
     expect(flat.liftAt(1.5, 0.5)).toBe(0);
-    // An empty lane, or a zero-size map, is flat too.
     expect(makeElevationField([], 3, 2).maxLift).toBe(0);
     expect(makeElevationField([5, 5], 0, 0).maxLift).toBe(0);
   });
@@ -92,23 +83,22 @@ describe('makeElevationField.liftAtNode - parity-aware on cell rows', () => {
 });
 
 describe('elevation lift on sprites - draw up, but sort by PRE-LIFT row', () => {
-  // A tall hill on the near cell (col 1, row 8); everything else at sea level. Only that cell is 200, so
-  // its bilinear lift is exactly 200×LIFT.
+  // Only the near cell is raised, so its bilinear lift is exactly 200×LIFT.
   const W = 3;
   const H = 10;
   const elev = new Array<number>(W * H).fill(0);
   elev[8 * W + 1] = 200; // cell (col 1, row 8)
   const field = makeElevationField(elev, W, H);
 
-  const far = entity(1, 1, 2, { Settler: { tribe: 0 } }); // FAR: smaller row
-  const near = entity(2, 1, 8, { Settler: { tribe: 0 } }); // NEAR: larger row, on the hill
+  const far = entity(1, 1, 2, { Settler: { tribe: 0 } }); // smaller row
+  const near = entity(2, 1, 8, { Settler: { tribe: 0 } }); // larger row, on the hill
 
   it('sets the feet lift on the item drawn on the hill, none on flat ground', () => {
     const items = buildSpriteScene(snapshotOf([far, near]), { elevation: field });
     const nearItem = items.find((d) => d.ref === 2);
     const farItem = items.find((d) => d.ref === 1);
     expect(nearItem?.lift).toBeCloseTo(200 * LIFT, 6);
-    expect(farItem?.lift).toBeUndefined(); // sea level → omitted (byte-identical to the flat path)
+    expect(farItem?.lift).toBeUndefined(); // sea level, so the field is omitted
   });
 
   it('draws the lifted-up NEAR sprite ABOVE the far one yet still sorts it in FRONT (depth = pre-lift row)', () => {
@@ -116,14 +106,14 @@ describe('elevation lift on sprites - draw up, but sort by PRE-LIFT row', () => 
     const nearItem = items.find((d) => d.ref === 2);
     const farItem = items.find((d) => d.ref === 1);
     if (nearItem === undefined || farItem === undefined) throw new Error('missing item');
-    // Drawn screen y = anchor y − lift. The near sprite is lifted so high it draws ABOVE the far one.
+    // Drawn screen y = anchor y − lift.
     const nearDrawY = nearItem.y - (nearItem.lift ?? 0);
     const farDrawY = farItem.y - (farItem.lift ?? 0);
     expect(nearDrawY).toBeLessThan(farDrawY);
-    // …but the painter key is the PRE-LIFT feet row, so the nearer sprite still sorts LATER (in front).
+    // The painter key is the pre-lift feet row, so the nearer sprite still sorts in front.
     expect(nearItem.depth).toBeGreaterThan(farItem.depth);
     expect(items.indexOf(nearItem)).toBeGreaterThan(items.indexOf(farItem));
-    // And the anchor y itself is the PRE-LIFT projected feet (the lift lives only in `lift`).
+    // The anchor y is the pre-lift projected feet; the lift lives only in `lift`.
     expect(nearItem.y).toBe(tileToScreen(1, 8).y);
   });
 

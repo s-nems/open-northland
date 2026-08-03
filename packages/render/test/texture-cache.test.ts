@@ -3,13 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { AtlasFrame, BuildTimeSheet } from '../src/data/sprites/index.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 
-/**
- * {@link TextureCache} memoizes one {@link Texture} per atlas frame, and - for the bottom-up construction
- * reveal - per (frame, hiddenTop) crop. These pin the crop rectangle math (bottom rows only, top cropped
- * off) and the caching so the per-frame reveal path allocates nothing in the steady state. Texture/Rectangle
- * creation needs no GL context (the upload is lazy), so this runs headless.
- */
-
 const SOURCE = new TextureSource({ width: 64, height: 64 });
 const FRAME: AtlasFrame = { x: 10, y: 20, width: 30, height: 40, offsetX: 0, offsetY: 0 };
 
@@ -17,7 +10,6 @@ describe('TextureCache.cropped', () => {
   it('keeps only the bottom rows - crops hiddenTop pixels off the TOP of the frame', () => {
     const cache = new TextureCache();
     const tex = cache.cropped(SOURCE, FRAME, 12);
-    // The visible region is the bottom (height − hiddenTop) rows, starting hiddenTop px below the frame top.
     expect(tex.frame.x).toBe(FRAME.x);
     expect(tex.frame.y).toBe(FRAME.y + 12);
     expect(tex.frame.width).toBe(FRAME.width);
@@ -26,7 +18,7 @@ describe('TextureCache.cropped', () => {
 
   it('clamps hiddenTop into the frame and rounds to whole pixels', () => {
     const cache = new TextureCache();
-    // Beyond the frame height → the whole frame is hidden (zero-height bottom slice), never negative.
+    // Beyond the frame height the whole frame is hidden as a zero-height slice, never a negative one.
     const over = cache.cropped(SOURCE, FRAME, FRAME.height + 5);
     expect(over.frame.y).toBe(FRAME.y + FRAME.height);
     expect(over.frame.height).toBe(0);
@@ -47,8 +39,8 @@ describe('TextureCache.croppedBottom', () => {
   it('keeps only the top rows - crops hiddenBottom pixels off the BOTTOM of the frame (the collapse sink)', () => {
     const cache = new TextureCache();
     const tex = cache.croppedBottom(SOURCE, FRAME, 12);
-    // The visible region is the top (height − hiddenBottom) rows, anchored at the frame top; the caller
-    // shifts the sprite down by the same amount so the bottom edge stays pinned at the ground line.
+    // The kept rows are anchored at the frame top, and the caller shifts the sprite down by the same
+    // amount so the bottom edge stays pinned at the ground line.
     expect(tex.frame.x).toBe(FRAME.x);
     expect(tex.frame.y).toBe(FRAME.y);
     expect(tex.frame.width).toBe(FRAME.width);
@@ -59,7 +51,7 @@ describe('TextureCache.croppedBottom', () => {
     const cache = new TextureCache();
     expect(cache.croppedBottom(SOURCE, FRAME, FRAME.height + 5).frame.height).toBe(0);
     expect(cache.croppedBottom(SOURCE, FRAME, 12)).toBe(cache.croppedBottom(SOURCE, FRAME, 12));
-    // The same hidden count from the TOP is a different view - the two crop caches never alias.
+    // The same hidden count from the top is a different view, so the two crop caches never alias.
     expect(cache.croppedBottom(SOURCE, FRAME, 12)).not.toBe(cache.cropped(SOURCE, FRAME, 12));
   });
 
@@ -80,15 +72,15 @@ describe('TextureCache.revealed', () => {
   });
 
   it('returns null when the atlas pixels are not CPU-readable (the caller falls back to the crop)', () => {
-    // A bare TextureSource has no drawable resource - no canvas bake is possible headless.
+    // A bare TextureSource has no drawable resource, so no canvas bake is possible headless.
     expect(new TextureCache().revealed(SOURCE, FRAME, TIMES, 100, 1)).toBeNull();
   });
 });
 
 describe('TextureCache.clear', () => {
   it('destroys the cached textures, not just the map entries', () => {
-    // A Pixi Texture registers a `resize` listener on its source, so the app-owned atlas page keeps
-    // every cached texture alive until `destroy` unregisters it - dropping the Map entry leaks them.
+    // A Pixi Texture registers a `resize` listener on its source, so the app-owned atlas page keeps every
+    // cached texture alive until `destroy` unregisters it; dropping the Map entry alone leaks them.
     const cache = new TextureCache();
     const full = cache.get(SOURCE, FRAME);
     const crop = cache.cropped(SOURCE, FRAME, 12);

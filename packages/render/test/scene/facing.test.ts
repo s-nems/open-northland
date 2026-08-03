@@ -2,17 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { buildScene, ONE } from '../../src/index.js';
 import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
-/**
- * Unit tests for {@link buildScene}'s settler FACING derivation - the direction block a bob draws from.
- * Facing quantizes the PROJECTED (tileToScreen) heading, so it is parity-correct under the staggered
- * raster; a live action target overrides the path heading for the actions that aim.
- */
-
 describe('buildScene - settler facing derivation', () => {
   it('derives a settler facing from its PROJECTED screen heading toward the next waypoint', () => {
-    // Settler at (1,1) - an ODD (half-shifted) row; the waypoint it walks toward sets the screen-space
-    // heading -> direction index. Facing quantizes the PROJECTED (tileToScreen) heading, so it is
-    // parity-correct under the staggered raster - the same grid step reads differently per row parity.
+    // Facing quantizes the projected (tileToScreen) heading, so under the staggered raster the same grid
+    // step reads differently per row parity. Tile (1,1) is an odd, half-shifted row.
     const pf = (wx: number, wy: number): Record<string, unknown> => ({
       Settler: { tribe: 0 },
       PathFollow: { waypoints: [{ x: wx * ONE, y: wy * ONE }], index: 0 },
@@ -31,9 +24,8 @@ describe('buildScene - settler facing derivation', () => {
   });
 
   it('faces N/S on a vertical leg - the seam waypoint projects to a dead-vertical screen heading', () => {
-    // A vertical lattice step is routed as cell centre -> SEAM -> cell centre (routing.ts): from the
-    // odd row 1 the seam below sits at grid (1.5, 2), which projects to the SAME screen x as (1,1) -
-    // heading straight down -> block 6 (S); the seam above at (1.5, 0) heads straight up -> block 7 (N).
+    // A vertical lattice step routes cell centre -> seam -> cell centre, and from odd row 1 the seams at
+    // grid (1.5, 2) and (1.5, 0) project to the same screen x as (1,1).
     const walker = (ref: number, seamY: number): ReturnType<typeof entity> =>
       entity(ref, 1, 1, {
         Settler: { tribe: 0 },
@@ -46,8 +38,8 @@ describe('buildScene - settler facing derivation', () => {
   });
 
   it('faces the same grid step by ROW PARITY: (0,+1) reads SW from an odd row, SE from an even one', () => {
-    // The stagger flips which way a one-row-down step slides: odd row -> half a cell LEFT (SW), even
-    // row -> half a cell RIGHT (SE). The old sign-pair table faced both "S" - a zigzag artifact.
+    // The stagger flips which way a one-row-down step slides: odd row half a cell left, even row half a
+    // cell right. A sign-pair table would face both S and zigzag.
     const walker = (ref: number, x: number, y: number): ReturnType<typeof entity> =>
       entity(ref, x, y, {
         Settler: { tribe: 0 },
@@ -60,7 +52,7 @@ describe('buildScene - settler facing derivation', () => {
   });
 
   it('omits facing when a settler has no heading (no path, or already on the waypoint)', () => {
-    const idle = entity(1, 1, 1, { Settler: { tribe: 0 } }); // no PathFollow
+    const idle = entity(1, 1, 1, { Settler: { tribe: 0 } });
     const arrived = entity(2, 1, 1, {
       Settler: { tribe: 0 },
       PathFollow: { waypoints: [{ x: 1 * ONE, y: 1 * ONE }], index: 0 }, // waypoint == position
@@ -71,8 +63,8 @@ describe('buildScene - settler facing derivation', () => {
   });
 
   it('an attacker (atomic 81) faces its target LIVE tile, overriding any stale path heading', () => {
-    // The attacker at odd row (1,1) swings at entity 2 one column EAST (2,1) → block 4 (E). Its lingering
-    // path points the other way (west, block 1); combat facing must win so it never swings at empty air.
+    // The attacker's lingering path points west, away from the target it swings at, so combat facing has
+    // to win or it swings at empty air.
     const attacker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 81, elapsed: 3, targetEntity: 2, targetTile: null },
@@ -84,8 +76,8 @@ describe('buildScene - settler facing derivation', () => {
   });
 
   it('a harvester (atomic 24) likewise faces the node it works, overriding a stale path heading', () => {
-    // The woodcutter at (1,1) chops the tree one column EAST (2,1) → block 4 (E); its lingering path
-    // points west (block 1). Target facing must win or the axe swings into empty air beside the trunk.
+    // The woodcutter's lingering path points west, away from the tree, so target facing has to win or
+    // the axe swings beside the trunk.
     const chopper = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 24, elapsed: 3, targetEntity: 2, targetTile: null },
@@ -97,8 +89,8 @@ describe('buildScene - settler facing derivation', () => {
   });
 
   it('a builder (atomic 39) faces the construction site from either side', () => {
-    // The builder stands EAST of the site and must face WEST (block 1), even though its stale path still
-    // points east. Action 39 has authored per-direction hammer lists, so the facing selects real frames.
+    // The builder stands east of the site with a stale path still pointing east. Action 39 has authored
+    // per-direction hammer lists, so the facing selects real frames.
     const builder = entity(1, 2, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 39, elapsed: 3, targetEntity: 2, targetTile: null },
@@ -110,10 +102,9 @@ describe('buildScene - settler facing derivation', () => {
   });
 
   it('a chat pair on a vertical half-cell edge talks straight up/down (atomics 14/15 → S/N blocks)', () => {
-    // Talker at tile (1,1) = lattice node (3,2); listener one node straight BELOW at node (3,3), whose
-    // Position is tile (1.25, 1.5) (a half-row node's stagger-removed x - nav/halfcell.ts
-    // positionOfNode). The projected delta is dead vertical, so the pair plays the S and N direction
-    // blocks - the talk/listen sheets carry all 8 authored directions, up/down included.
+    // The talker stands on lattice node (3,2) and the listener one node straight below at (3,3), whose
+    // Position is tile (1.25, 1.5) - a half-row node's stagger-removed x, per `nav/halfcell.ts`. The
+    // projected delta is dead vertical, and the talk/listen sheets author all 8 directions.
     const talker = entity(1, 1, 1, {
       Settler: { tribe: 0 },
       CurrentAtomic: { atomicId: 14, elapsed: 3, targetEntity: 2, targetTile: null },
@@ -124,8 +115,8 @@ describe('buildScene - settler facing derivation', () => {
     });
     const scene = buildScene(snapshotOf([talker, listener]), FLAT_3x2);
     const settlers = scene.filter((d) => d.kind === 'settler');
-    expect(settlers.find((d) => d.ref === 1)?.facing).toBe(6); // S - talks straight down at the listener
-    expect(settlers.find((d) => d.ref === 2)?.facing).toBe(7); // N - listens straight up at the talker
+    expect(settlers.find((d) => d.ref === 1)?.facing).toBe(6); // talks straight down
+    expect(settlers.find((d) => d.ref === 2)?.facing).toBe(7); // listens straight up
   });
 
   it('a NON-target atomic (a deposit) keeps its movement facing - target facing stays scoped', () => {

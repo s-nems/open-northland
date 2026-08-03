@@ -3,9 +3,8 @@ import { signpostBoardsOf } from '../../src/data/scene/signpost-boards.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
- * Pins the board prepass to the half-cell seam: a post on an ODD row anchors at node `2c + 1`, so its
- * link decision must read that staggered node - a bare `c · 2` would place it half a cell west and draw
- * boards the sim's confinement never granted.
+ * A post on an odd row anchors at node `2c + 1`, so the link decision must read that staggered node; a
+ * bare `c · 2` places it half a cell west and draws boards the sim's confinement never granted.
  */
 
 const PLAYER = 1;

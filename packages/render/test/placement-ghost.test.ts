@@ -6,9 +6,8 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../src/index.js';
 
 /**
- * The build cursor ghost mints the held building's own sprite stack through the exact resolver a placed
- * building uses, so it previews what will draw; with no sheet it degrades to a placeholder diamond. The
- * fixture's fake TextureSource is never sampled (headless), so what these pin is the stack construction.
+ * The build cursor ghost mints its stack through the same resolver a placed building uses, so it previews
+ * what will draw. The fixture's fake TextureSource is never sampled.
  */
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 const source = {} as TextureSource;

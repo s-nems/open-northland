@@ -7,15 +7,9 @@ import {
 import { buildScene, ONE, tileToScreen } from '../../src/index.js';
 import { entity, FLAT_3x2, snapshotOf } from '../support/fixtures.js';
 
-/**
- * Unit tests for {@link buildScene}'s ballistic arc + aim: the peak lift at mid-chord, the long-shot
- * cap, the tangent tilt past mid-flight, and the rule that the arc rides the LIFT channel only, never
- * the depth key.
- */
-
 describe('buildScene - projectile arc & aim', () => {
   it('classifies an in-flight Projectile and aims its rotation at the target', () => {
-    // The shot at (1,1) homes on a target one column EAST (2,1): the screen heading is (+x, 0) → 0 rad.
+    // A target one column east makes the screen heading (+x, 0), which is 0 rad.
     const shot = entity(1, 1, 1, {
       Projectile: { target: 2, source: 3, damage: 34, speed: 8, munitionType: 1 },
     });
@@ -23,7 +17,7 @@ describe('buildScene - projectile arc & aim', () => {
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
     const arrow = scene.find((d) => d.kind === 'projectile');
     expect(arrow?.ref).toBe(1);
-    expect(arrow?.rotation).toBeCloseTo(0); // points screen-east, along the flight
+    expect(arrow?.rotation).toBeCloseTo(0);
   });
 
   it('a projectile whose target left the snapshot draws with no rotation (never a throw)', () => {
@@ -34,7 +28,6 @@ describe('buildScene - projectile arc & aim', () => {
     expect(scene.find((d) => d.kind === 'projectile')?.rotation).toBeUndefined();
   });
 
-  /** A Projectile payload homing on `target`, loosed from origin tile (ox, oy). */
   function projectileFrom(target: number, ox: number, oy: number): Record<string, unknown> {
     return {
       Projectile: {
@@ -50,13 +43,12 @@ describe('buildScene - projectile arc & aim', () => {
   }
 
   it('lobs a projectile with a readable origin: peak lift at mid-chord, level tangent, depth untouched', () => {
-    // Origin (0,1) → target (2,1) on one row: chord = 2 cells = 136 px. The shot sits exactly halfway
-    // (1,1) → p = 0.5: lift = the parabola's peak (chord × the peak fraction), tangent slope 0 → the
-    // rotation is the flat straight-line heading (east).
+    // Origin (0,1) to target (2,1) is a 2-cell chord of 136 px, and the shot sits exactly halfway, so
+    // p = 0.5: the lift is the parabola's peak and the tangent slope is 0.
     const shot = entity(1, 1, 1, projectileFrom(2, 0, 1));
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
-    // A flat control shot (no readable origin → no arc) on the SAME cell: the arc must ride the LIFT
-    // channel only, never the depth key, so mid-lob occlusion order can't reshuffle.
+    // A control shot with no readable origin, and so no arc, on the same cell: the arc must ride the
+    // lift channel only, or mid-lob occlusion order reshuffles.
     const flatShot = entity(4, 1, 1, {
       Projectile: { target: 2, source: 3, damage: 34, speed: 8, munitionType: 1 },
     });
@@ -64,14 +56,14 @@ describe('buildScene - projectile arc & aim', () => {
     const arrow = scene.find((d) => d.kind === 'projectile' && d.ref === 1);
     const chord = tileToScreen(2, 1).x - tileToScreen(0, 1).x;
     expect(arrow?.lift).toBeCloseTo(chord * PROJECTILE_ARC_PEAK_FRACTION); // 4·peak·½·½ = peak at mid-flight
-    expect(arrow?.rotation).toBeCloseTo(0); // level at the apex - still the straight heading
+    expect(arrow?.rotation).toBeCloseTo(0); // level at the apex
     const flat = scene.find((d) => d.kind === 'projectile' && d.ref === 4);
-    expect(arrow?.depth).toBe(flat?.depth); // arc never moves the depth key
+    expect(arrow?.depth).toBe(flat?.depth);
   });
 
   it('caps the lob peak on a long chord (a max-range shot must not leave the screen)', () => {
-    // Origin (0,1) → target (12,1): chord = 12 cells = 816 px, whose fractional peak (~98 px) exceeds
-    // the cap - the drawn peak clamps to PROJECTILE_ARC_PEAK_MAX_PX exactly at mid-flight (6,1).
+    // A 12-cell chord of 816 px has a fractional peak of ~98 px, over the cap, and the shot sits at
+    // mid-flight.
     const shot = entity(1, 6, 1, projectileFrom(2, 0, 1));
     const target = entity(2, 12, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);
@@ -80,7 +72,7 @@ describe('buildScene - projectile arc & aim', () => {
     expect(scene.find((d) => d.kind === 'projectile')?.lift).toBeCloseTo(PROJECTILE_ARC_PEAK_MAX_PX);
   });
 
-  /** The same payload, loosed from the gallery of building `cover` instead of open ground. */
+  /** The same payload, loosed from building `cover`'s gallery instead of open ground. */
   function coveredProjectileFrom(
     target: number,
     ox: number,
@@ -92,9 +84,9 @@ describe('buildScene - projectile arc & aim', () => {
   }
 
   it('drops a garrison shot down the gallery height: full at the bow, nearly spent near the mark', () => {
-    // Origin (0,1) → target (2,1), the same 2-cell chord as the lob above. A shot still AT the tower
-    // (p = 0) hangs at the gallery's full height - where the ground lob would read 0 - and one at (1.8, 1)
-    // (p = 0.9) has fallen to h·(1−p²) of it, still above the dirt the lob would already be back on.
+    // Over the same 2-cell chord as the lob above: a shot still at the tower (p = 0) hangs at the
+    // gallery's full height, where the ground lob reads 0, and one at (1.8, 1) (p = 0.9) has fallen to
+    // h·(1−p²) of it.
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const bowScene = buildScene(
       snapshotOf([entity(1, 0, 1, coveredProjectileFrom(2, 0, 1, 9)), target]),
@@ -128,8 +120,8 @@ describe('buildScene - projectile arc & aim', () => {
   });
 
   it('tilts a descending projectile nose-DOWN along the arc tangent past mid-flight', () => {
-    // Same 2-cell chord, shot ¾ of the way (1.5, 1): the parabola is falling, so the drawn heading
-    // tilts screen-down (positive rotation toward an eastbound target) instead of the flat 0.
+    // Three quarters of the way along the chord the parabola is falling, so an eastbound shot's heading
+    // tilts screen-down into a positive rotation instead of the flat 0.
     const shot = entity(1, 1.5, 1, projectileFrom(2, 0, 1));
     const target = entity(2, 2, 1, { Settler: { tribe: 0 } });
     const scene = buildScene(snapshotOf([shot, target]), FLAT_3x2);

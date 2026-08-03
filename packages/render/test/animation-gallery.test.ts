@@ -8,12 +8,7 @@ import {
   headBobId,
 } from '../src/gpu/gallery/index.js';
 
-/**
- * The PURE half of the animation gallery - layout, direction count, frame selection, head remap - the part
- * an agent CAN self-verify. Whether the pixels animate right is the `?anim` browser view a human signs off;
- * this pins the grid placement + the `[bobseq]` math so they can't silently drift. Cell PIXEL sizes are
- * intentionally not asserted (a visual tuning knob).
- */
+/** Cell pixel sizes are deliberately not asserted: they are a visual tuning knob. */
 
 const clip = (over: Partial<GalleryClip> & { start: number; length: number }): GalleryClip => ({
   label: 'x',
@@ -67,7 +62,7 @@ describe('galleryBobId - 8-directional clip', () => {
   it('a numeric facing plays that block, staying inside it for any step', () => {
     for (let d = 0; d < 8; d++) {
       const lo = walk.start + d * 12;
-      expect(galleryBobId(walk, d, 0)).toBe(lo); // first frame of the block at step 0
+      expect(galleryBobId(walk, d, 0)).toBe(lo);
       for (let step = 0; step < 200; step++) {
         const bob = galleryBobId(walk, d, step);
         expect(bob).toBeGreaterThanOrEqual(lo);
@@ -77,19 +72,18 @@ describe('galleryBobId - 8-directional clip', () => {
   });
 
   it('full mode advances directions in COMPASS order, one full sub-cycle each', () => {
-    // Step 0 → compass slot 0 (N = block 7), frame 0.
     expect(galleryBobId(walk, 'full', 0)).toBe(walk.start + nth(COMPASS_TO_BLOCK, 0) * 12);
-    // After a full stride (12 steps) → compass slot 1 (NE = block 3), frame 0.
+    // One full stride of 12 steps advances to the next compass slot.
     expect(galleryBobId(walk, 'full', 12)).toBe(walk.start + nth(COMPASS_TO_BLOCK, 1) * 12);
     // Mid sub-cycle keeps the same block, advancing the frame.
     expect(galleryBobId(walk, 'full', 5)).toBe(walk.start + nth(COMPASS_TO_BLOCK, 0) * 12 + 5);
-    // Wraps after all 8 directions (8×12 = 96 steps) back to slot 0.
+    // 8×12 = 96 steps wraps back to slot 0.
     expect(galleryBobId(walk, 'full', 96)).toBe(galleryBobId(walk, 'full', 0));
   });
 
   it('full mode visits all 8 distinct direction blocks over one cycle', () => {
-    // One sub-cycle per direction (stride 12), so sampling the first frame of each slot must hit every
-    // block exactly once - guards against a bad/duplicate entry in COMPASS_TO_BLOCK.
+    // One sub-cycle per direction, so a duplicate entry in COMPASS_TO_BLOCK would show up as a missing
+    // block here.
     const blocks = new Set<number>();
     for (let slot = 0; slot < 8; slot++)
       blocks.add((galleryBobId(walk, 'full', slot * 12) - walk.start) / 12);
@@ -97,14 +91,14 @@ describe('galleryBobId - 8-directional clip', () => {
   });
 
   it('wraps a negative facing into range', () => {
-    // -1 → block 7 (the last), so it stays a valid frame rather than indexing below `start`.
+    // -1 wraps to block 7 rather than indexing below `start`.
     expect(galleryBobId(walk, -1, 0)).toBe(walk.start + 7 * 12);
   });
 });
 
 describe('galleryBobId - guards', () => {
   it('pins to the clip start when the stride is 0 (dirs > 1 but too short to split)', () => {
-    // A hand-built 8-dir clip shorter than 8 frames → floor(4/8) = 0 stride; must not divide-by-0 / go negative.
+    // An 8-dir clip shorter than 8 frames gives floor(4/8) = 0 stride.
     const bad = clip({ start: 700, length: 4, dirs: 8 });
     for (let step = 0; step < 20; step++) expect(galleryBobId(bad, 3, step)).toBe(700);
   });
@@ -117,7 +111,7 @@ describe('galleryBobId - single-direction clip', () => {
     expect(eat.dirs).toBe(1);
     for (const dir of [0, 3, 7, 'full'] as const) {
       expect(galleryBobId(eat, dir, 0)).toBe(1530);
-      expect(galleryBobId(eat, dir, 20)).toBe(1530 + (20 % 17)); // cycles all 17, facing has no effect
+      expect(galleryBobId(eat, dir, 20)).toBe(1530 + (20 % 17)); // cycles all 17 frames
     }
   });
 });
@@ -129,7 +123,7 @@ describe('headBobId', () => {
   });
 
   it('borrows another sequence head at the SAME offset when headStart is set', () => {
-    // A headless carry variant at start 4100 borrows the walk head base 1988: body frame +37 → head +37.
+    // A headless carry variant at start 4100 borrows the walk head base 1988 at the same offset.
     const carry = clip({ start: 4100, length: 96, headStart: 1988 });
     expect(headBobId(carry, 4100)).toBe(1988); // offset 0
     expect(headBobId(carry, 4137)).toBe(2025); // offset 37 into the walk head

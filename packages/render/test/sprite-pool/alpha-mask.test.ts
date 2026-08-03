@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { buildAlphaMask, maskSolidAt, SOLID_ALPHA_MIN } from '../../src/gpu/sprite-pool/alpha-mask.js';
 
 /**
- * The pure half of pixel-accurate picking: RGBA → 1-bit solid mask and its sampling. The canvas-backed
- * mask builder (`alphaMaskOf`) needs a real 2d context and gracefully returns null without one - the
- * picker then keeps the box hit - so the load-bearing threshold + packing + bounds logic is what tests
- * here.
+ * `alphaMaskOf` needs a real 2d context and returns null without one, leaving the picker on its box hit,
+ * so only the threshold, packing and bounds logic is exercised here.
  */
 
 /** An RGBA buffer of `width×height` with the given per-pixel alphas (row-major). */

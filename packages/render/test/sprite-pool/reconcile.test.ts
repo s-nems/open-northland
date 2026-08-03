@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { reconcileSprites } from '../../src/gpu/sprite-pool/index.js';
 
 /**
- * The pool's one PURE bookkeeping decision, extracted so it is self-verifiable without a GPU.
- * `reconcileSprites` decides which pooled sprites to DESTROY: an entity that has left the snapshot
- * (died) frees its objects, while one merely culled off-screen (still live) is kept for when it
- * scrolls back. Getting this wrong is either a leak (never destroy) or a flicker (destroy the culled).
+ * An entity that has left the snapshot frees its objects, while one merely culled off-screen is kept for
+ * when it scrolls back. Getting this wrong is either a leak or a flicker.
  */
 
 describe('reconcileSprites', () => {

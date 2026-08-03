@@ -4,16 +4,14 @@ import { type LifeHeart, LifeHeartLayer } from '../src/gpu/overlays/heart-layer.
 import { ONE } from '../src/index.js';
 
 /**
- * The heart is a life gauge over one silhouette: the faction-coloured fill is clipped to the bottom
- * `life` fraction of the shape by a rect mask, the drained top showing the darkened shade beneath.
- * Pinned against the full-life mask itself (not the shape's constants) so replacing the placeholder
- * art cannot fail these. Pixi `Container`/`Graphics` build without a GL context, so the mask
- * transform is checkable headless.
+ * The heart is a life gauge: a rect mask clips the faction-coloured fill to the bottom `life` fraction of
+ * the silhouette. Pinned against the full-life mask rather than the shape's constants, so replacing the
+ * placeholder art cannot fail these.
  */
 
 const heart = (life: number, colour = 0xff0000): LifeHeart => ({ id: 1, x: ONE, y: ONE, colour, life });
 
-/** Draw one heart and hand back its node's fill + mask (children: drained, fill, mask, rim). */
+/** A heart node's children are drained, fill, mask, rim, in that order. */
 function drawnHeart(layer: LifeHeartLayer, h: LifeHeart): { fill: Graphics; mask: Graphics } {
   layer.draw({ hearts: [h] });
   const node = layer.container.children[0] as Container;
@@ -58,9 +56,8 @@ describe('LifeHeartLayer - the fill level is the life fraction', () => {
       expect(part.scale.x).toBe(1);
       expect(part.scale.y).toBe(1);
     }
-    // A stroke pads the silhouette's bounds by the same amount on EVERY side; scaling a copy grows it in
-    // proportion to the distance from the scale origin, so the four margins would disagree (the old
-    // scaled-copy rim measured 0 here, since the copy lived on its own node).
+    // A stroke pads the silhouette's bounds equally on every side, while a scaled copy grows in
+    // proportion to the distance from the scale origin, so its four margins would disagree.
     const body = drained.getLocalBounds();
     const border = rim.getLocalBounds();
     const margins = [

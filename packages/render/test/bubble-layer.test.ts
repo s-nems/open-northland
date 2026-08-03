@@ -11,11 +11,9 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 
 /**
- * The bubble hangs off whichever head estimate is available, in a strict order: the pool's drawn sprite
- * box (top edge, horizontally centred), else its drawn feet anchor raised by a body height, else the raw
- * snapshot projection raised the same way plus the terrain lift. Only the last survives a settler the pool
- * did not draw (culled off-screen, or standing inside a house). Pixi `Container`/`Sprite` build without a
- * GL context, so the resulting world-space position is checkable headless.
+ * The bubble hangs off whichever head estimate is available, in order: the pool's drawn sprite box, else
+ * its drawn feet anchor raised by a body height, else the raw snapshot projection raised the same way plus
+ * the terrain lift. Only the last survives a settler the pool did not draw.
  */
 
 const SOURCE = new TextureSource({ width: 64, height: 64 });
@@ -57,8 +55,8 @@ describe('SettlerBubbleLayer head anchoring', () => {
   it('prefers the drawn sprite box: centred horizontally, floating above its top edge', () => {
     const bounds = { minX: 100, minY: 40, maxX: 140, maxY: 100 };
     const tip = tipOf({ bubbles: [bubble(3, 5)], drawn: drawnWith({ boundsOf: () => bounds }) });
-    expect(tip.x).toBe(120); // box centre, NOT the raw projection
-    expect(tip.y).toBe(40 - BUBBLE_GAP); // box top edge
+    expect(tip.x).toBe(120); // the box centre, not the raw projection
+    expect(tip.y).toBe(40 - BUBBLE_GAP); // the box top edge
   });
 
   it('falls back to the drawn feet anchor raised a body height when no box was stamped', () => {
@@ -71,7 +69,6 @@ describe('SettlerBubbleLayer head anchoring', () => {
   });
 
   it('falls back to the raw snapshot projection plus terrain lift for an undrawn settler', () => {
-    // Nothing drawn (culled off-screen / indoors) - the bubble must still appear over the settler's tile.
     const flat = tipOf({ bubbles: [bubble(3, 5)], drawn: drawnWith({}) });
     const p = tileToScreen(3, 5);
     expect(flat.x).toBe(p.x);
@@ -79,7 +76,6 @@ describe('SettlerBubbleLayer head anchoring', () => {
   });
 
   it('rides the same terrain lift the sprite pool applies on sloped ground', () => {
-    // A hill under cell (0,0): the raw-projection fallback must climb it by exactly the field's lift.
     const elevation = makeElevationField([160, 160, 160, 160], 2, 2);
     const tip = tipOf({ bubbles: [bubble(0, 0)], drawn: drawnWith({}), elevation });
     const p = tileToScreen(0, 0);
@@ -121,7 +117,7 @@ describe('SettlerBubbleLayer viewport cull', () => {
   });
 
   it('never touches the pool geometry seams for a culled bubble', () => {
-    // The cull must run BEFORE the head estimate: an off-screen needy settler costs a bounds test only.
+    // The cull runs before the head estimate, so an off-screen needy settler costs one bounds test.
     const layer = new SettlerBubbleLayer();
     layer.setGfx(GFX);
     let lookups = 0;

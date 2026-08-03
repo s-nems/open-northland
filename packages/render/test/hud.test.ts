@@ -4,22 +4,11 @@ import { IDLE_JOB } from '../src/data/hud/model.js';
 import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 
-/**
- * Unit tests for the pure HUD-model layer - the part of the HUD an agent can self-verify (the pixels
- * are deferred to a human). They pin the aggregation a human eyeball would otherwise have to total by
- * hand: population, the per-job head-count breakdown (incl. the idle sentinel), and per-good stock sums.
- *
- * A `WorldSnapshot` is plain data (no class instances; a `Stockpile` Map is already a sorted [k,v]
- * array), so we hand-build one here rather than spinning up a Simulation - this stays a render-package
- * unit, mirroring scene/build-scene.test.ts.
- */
-
-/** A snapshot settler entity: tribe + jobType (null = idle adult). */
+/** A snapshot settler entity; a null `jobType` is an idle adult. */
 function settler(id: number, tribe: number, jobType: number | null): WorldSnapshot['entities'][number] {
   return { id, components: { Settler: { tribe, jobType } } };
 }
 
-/** A snapshot store entity: a Building (tribe) bearing a Stockpile (amounts as the cloned sorted array). */
 function store(
   id: number,
   tribe: number,
@@ -34,8 +23,8 @@ describe('buildHud', () => {
       snapshotOf([
         settler(1, 0, 5),
         settler(2, 0, null),
-        settler(3, 0, 1), // a baby (age-class id)
-        settler(4, 1, 5), // other tribe - excluded
+        settler(3, 0, 1), // a baby, whose job id is an age class
+        settler(4, 1, 5), // other tribe
       ]),
       0,
     );
@@ -45,12 +34,7 @@ describe('buildHud', () => {
 
   it('breaks settlers down by jobType, idle adults under the IDLE_JOB sentinel, ascending', () => {
     const hud = buildHud(
-      snapshotOf([
-        settler(1, 0, 5),
-        settler(2, 0, 5),
-        settler(3, 0, null), // idle adult -> IDLE_JOB
-        settler(4, 0, 1), // baby age class
-      ]),
+      snapshotOf([settler(1, 0, 5), settler(2, 0, 5), settler(3, 0, null), settler(4, 0, 1)]),
       0,
     );
     expect(hud.jobs).toEqual([
@@ -61,7 +45,7 @@ describe('buildHud', () => {
   });
 
   it('keys job 0 (the valid `none` id) on its own bucket, never folded into idle', () => {
-    // The nullish (`??`) fold, not `||`: a jobType of 0 is a real id and must NOT bucket as idle.
+    // The fold must be nullish (`??`), not `||`: a jobType of 0 is a real id.
     const hud = buildHud(snapshotOf([settler(1, 0, 0), settler(2, 0, null)]), 0);
     expect(hud.jobs).toEqual([
       { jobType: IDLE_JOB, count: 1 },
@@ -78,16 +62,16 @@ describe('buildHud', () => {
         ]),
         store(2, 0, [
           [2, 4],
-          [9, 0], // a real-but-empty slot - nets to zero, omitted
+          [9, 0], // a real but empty slot
         ]),
-        store(3, 1, [[2, 99]]), // other tribe - excluded
+        store(3, 1, [[2, 99]]), // other tribe
       ]),
       0,
     );
     expect(hud.stocks).toEqual([
       { goodType: 2, amount: 14 }, // 10 + 4
       { goodType: 5, amount: 3 },
-      // goodType 9 omitted (sums to 0)
+      // goodType 9 sums to 0
     ]);
   });
 
@@ -96,7 +80,7 @@ describe('buildHud', () => {
     const a = buildHud(snap, 0);
     const b = buildHud(snap, 0);
     expect(a.tick).toBe(42);
-    expect(a).toEqual(b); // deterministic: same snapshot -> identical model
+    expect(a).toEqual(b);
   });
 
   it('returns an empty-but-shaped model for a tribe with nothing', () => {
@@ -105,17 +89,10 @@ describe('buildHud', () => {
   });
 });
 
-/**
- * Unit tests for the pure HUD *layout* layer - the bridge from the HUD data ({@link buildHud}) to its
- * pixels, exactly as {@link buildScene}'s positioned draw list is for the world scene. They pin the
- * load-bearing layout a human would otherwise eyeball: which line is emitted, in what order, and at
- * what panel-relative `(x, y)`. The typography (font/colour) is the human-judged half and not tested.
- */
-const HUD_PAD = 8; // mirrors the layout constants in hud.ts (kept local so a drift is caught)
+const HUD_PAD = 8; // mirrors the layout constants in hud.ts, kept local so a drift is caught
 const HUD_LINE_H = 16;
 const HUD_INDENT = 12;
 
-/** A minimal HudModel for layout tests (the data half is covered by the buildHud suite above). */
 function model(over: Partial<HudModel> = {}): HudModel {
   return { tick: 0, tribe: 0, population: 0, jobs: [], stocks: [], ...over };
 }
@@ -156,7 +133,6 @@ describe('layoutHud', () => {
     // The tally rows carry the indent; headings stay at the left margin.
     const tallyRows = layout.rows.filter((r) => r.x === HUD_PAD + HUD_INDENT);
     expect(tallyRows.map((r) => r.text)).toEqual(['idle: 1', 'job 5: 2', 'good 2: 14']);
-    // Every row advances by exactly one line height, top to bottom, no gaps.
     layout.rows.forEach((r, i) => {
       expect(r.y).toBe(HUD_PAD + i * HUD_LINE_H);
     });
@@ -176,15 +152,9 @@ describe('layoutHud', () => {
   });
 });
 
-/**
- * Unit tests for the pure HUD *placement* layer - the last self-verifiable decision before the GPU:
- * where on the canvas each panel row lands (the screen-space analogue of `terrainMapToScene`). The
- * Pixi draw (`renderHud`) is the un-self-verifiable glyph half a human judges and is not tested here.
- */
-const HUD_MARGIN = 8; // mirrors the placement margin in hud.ts (kept local so a drift is caught)
+const HUD_MARGIN = 8; // mirrors the placement margin in hud.ts, kept local so a drift is caught
 
 describe('placeHud', () => {
-  // A small layout with three rows, sized like layoutHud's box (pad + rows·lineH + pad).
   const layout = layoutHud(model({ tick: 1, tribe: 1, population: 2 }), LABELS);
 
   it('top-left: anchors the panel at the margin and offsets every row by the panel origin', () => {
@@ -193,7 +163,6 @@ describe('placeHud', () => {
     expect(placed.panelY).toBe(HUD_MARGIN);
     expect(placed.width).toBe(layout.width);
     expect(placed.height).toBe(layout.height);
-    // Each placed row = panel origin + the layout's panel-relative offset, text carried verbatim.
     expect(placed.rows).toEqual(
       layout.rows.map((r) => ({ x: HUD_MARGIN + r.x, y: HUD_MARGIN + r.y, text: r.text })),
     );
@@ -213,7 +182,6 @@ describe('placeHud', () => {
   });
 
   it('clamps the panel on-screen when the canvas is smaller than the panel (keeps top-left visible)', () => {
-    // Canvas narrower + shorter than the panel: the clamp keeps the origin at 0, not negative.
     const placed = placeHud(layout, 'bottom-right', { width: 10, height: 10 });
     expect(placed.panelX).toBe(0);
     expect(placed.panelY).toBe(0);

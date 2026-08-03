@@ -6,15 +6,9 @@ import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { decorUVs, FRAME_0, FRAME_1, type TallSprite, tallSprites, WIDE } from './support.js';
 
-/**
- * The tall map-object FOG gate ({@link MapObjectLayer.update}'s `fogStateOfCell`): a virgin
- * tree/stone hides in the UNEXPLORED black, draws live on VISIBLE ground, and on EXPLORED ground
- * becomes its own ghost - dimmed to the explored grading AND frozen mid-animation (a ghost is a
- * memory; swaying trees under the fog would read as watched ground). Headless like the removal
- * tests - display objects construct without a GL context.
- */
+/** A ghost is a memory: swaying trees under the fog would read as watched ground. */
 
-/** A two-frame TALL object (an animated tree) anchored at the origin - cell (0, 0). */
+/** A two-frame tall object anchored at the origin, cell (0, 0). */
 function swayingTree(): MapObjectSprite {
   return {
     x: 0,
@@ -27,12 +21,11 @@ function swayingTree(): MapObjectSprite {
   };
 }
 
-/** The one attached tall sprite, or undefined while hidden. */
 function tallSprite(spriteLayer: Container): TallSprite | undefined {
   return tallSprites(spriteLayer)[0];
 }
 
-/** A two-frame animated DECOR object (a wave / swaying bush) anchored at the origin - cell (0, 0). */
+/** A two-frame animated decor object anchored at the origin, cell (0, 0). */
 function wavingBush(): MapObjectSprite {
   return {
     x: 0,
@@ -66,19 +59,19 @@ describe('MapObjectLayer fog gate (tall objects)', () => {
     const layer = new MapObjectLayer(spriteLayer, new TextureCache());
     layer.set([swayingTree()]);
 
-    // Watched: the two-frame sway advances with the tick.
+    // Watched, the two-frame sway advances with the tick.
     layer.update(WIDE, 0, () => FOG_STATE.VISIBLE);
     expect(tallSprite(spriteLayer)?.frameX).toBe(FRAME_0.x);
     layer.update(WIDE, 1, () => FOG_STATE.VISIBLE);
     expect(tallSprite(spriteLayer)?.frameX).toBe(FRAME_1.x);
 
-    // Ghosted: the pose snaps to the frozen clock and STAYS there across animation ticks.
+    // Ghosted, the pose snaps to the frozen clock and stays there across animation ticks.
     layer.update(WIDE, 2, () => FOG_STATE.EXPLORED);
     expect(tallSprite(spriteLayer)?.frameX).toBe(FRAME_0.x);
     layer.update(WIDE, 3, () => FOG_STATE.EXPLORED);
     expect(tallSprite(spriteLayer)?.frameX).toBe(FRAME_0.x);
 
-    // Re-watched: the live clock takes over again (tick 5 → frame 1).
+    // Re-watched, the live clock takes over again.
     layer.update(WIDE, 5, () => FOG_STATE.VISIBLE);
     expect(tallSprite(spriteLayer)?.frameX).toBe(FRAME_1.x);
   });
@@ -87,19 +80,19 @@ describe('MapObjectLayer fog gate (tall objects)', () => {
     const layer = new MapObjectLayer(new Container(), new TextureCache());
     layer.set([wavingBush()]);
 
-    // Watched: the quad's UVs swap frames with the tick.
+    // Watched, the quad's UVs swap frames with the tick.
     layer.update(WIDE, 0, () => FOG_STATE.VISIBLE);
     const frame0UVs = [...decorUVs(layer)];
     layer.update(WIDE, 1, () => FOG_STATE.VISIBLE);
     expect([...decorUVs(layer)]).not.toEqual(frame0UVs);
 
-    // Ghosted (explored-only): frozen at the fixed clock - frame 0 - across animation ticks.
+    // Ghosted, frozen at the fixed clock across animation ticks.
     layer.update(WIDE, 2, () => FOG_STATE.EXPLORED);
     expect([...decorUVs(layer)]).toEqual(frame0UVs);
     layer.update(WIDE, 3, () => FOG_STATE.EXPLORED);
     expect([...decorUVs(layer)]).toEqual(frame0UVs);
 
-    // Re-watched: the sway resumes on the live clock (tick 5 → frame 1).
+    // Re-watched, the sway resumes on the live clock.
     layer.update(WIDE, 5, () => FOG_STATE.VISIBLE);
     expect([...decorUVs(layer)]).not.toEqual(frame0UVs);
   });

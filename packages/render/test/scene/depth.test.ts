@@ -3,12 +3,6 @@ import { depthKey, TILE_HALF_H, TILE_HALF_W } from '../../src/data/projection/in
 import { SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth, spriteDepth } from '../../src/data/scene/depth.js';
 import type { DrawKind } from '../../src/data/scene/index.js';
 
-/**
- * Pins the same-anchor depth invariants ({@link import('../../src/data/scene/depth.js')}): the oracle
- * and the live painter agree on every kind-pair order, and the tall-object shadow epsilon sits strictly
- * between the depth x-tiebreak and one kind-bias step.
- */
-
 const ALL_KINDS = [
   'tile',
   'building',
@@ -29,8 +23,7 @@ void _allKindsListed;
 
 /** A very large map's tile columns; real maps are a few hundred (the oracle ROW_STRIDE bound). */
 const MAX_MAP_TILE_COLS = 1024;
-/** Max feet-anchor screen |x| such a map produces (rightmost stagger-shifted column), the x-tiebreak's
- *  worst case. */
+/** The x-tiebreak's worst case: the feet-anchor |x| of such a map's rightmost stagger-shifted column. */
 const MAX_MAP_SCREEN_X = (2 * MAX_MAP_TILE_COLS + 1) * TILE_HALF_W;
 
 describe('same-anchor depth keys', () => {
@@ -74,9 +67,8 @@ describe('same-anchor depth keys', () => {
   });
 
   it('sizes the sign epsilon to clear a building yet stay under the next kind up', () => {
-    // A door-badge chain keys off its own building: it must clear the house (and the x-tiebreak that
-    // could otherwise tie them) without reaching the kind above 'building', so goods heaps, flags and
-    // settlers on the same anchor all keep painting over it.
+    // A door-badge chain keys off its own building, so it must clear both the house and the x-tiebreak
+    // that could tie them, while staying under 'stockpile' so heaps, flags and settlers paint over it.
     const worstTiebreak = depthKey(MAX_MAP_SCREEN_X, 0) - depthKey(0, 0);
     const oneKindStep = screenDepth(0, 0, 'stockpile') - screenDepth(0, 0, 'building');
     expect(SIGN_DEPTH_EPS).toBeGreaterThan(worstTiebreak);

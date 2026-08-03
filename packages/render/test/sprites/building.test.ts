@@ -12,18 +12,11 @@ import {
 import type { DrawItem, SpriteBindings } from '../../src/index.js';
 import { drawItem } from '../support/fixtures.js';
 
-/**
- * Unit tests for the building frame-selection resolvers - the per-type house bob, layer-qualified
- * (multi-.bmd) bindings, the construction-stage stack, the animated state overlay (the mill rotor),
- * and the finished-sprite set the construction rise excludes.
- */
-
 describe('resolveSpriteBobId - per-type building binding', () => {
-  /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
   function building(typeId?: number): DrawItem {
     return drawItem('building', typeId !== undefined ? { typeId } : {});
   }
-  // home=41, well=131, farm=60 (a subset of VIKING_HOUSE01_BOBS); an unmapped type falls back to 11.
+  // home=41, well=131, farm=60 - a subset of VIKING_HOUSE01_BOBS.
   const bindings: SpriteBindings = {
     settler: 10,
     building: { byType: { 6: 41, 10: 131, 12: 60 }, default: 11 },
@@ -31,9 +24,9 @@ describe('resolveSpriteBobId - per-type building binding', () => {
   };
 
   it('draws each building type its own bob (the LogicType -> GfxBobId join)', () => {
-    expect(resolveSpriteBobId(building(6), bindings)).toBe(41); // viking home
-    expect(resolveSpriteBobId(building(10), bindings)).toBe(131); // viking well
-    expect(resolveSpriteBobId(building(12), bindings)).toBe(60); // viking farm
+    expect(resolveSpriteBobId(building(6), bindings)).toBe(41);
+    expect(resolveSpriteBobId(building(10), bindings)).toBe(131);
+    expect(resolveSpriteBobId(building(12), bindings)).toBe(60);
   });
 
   it('falls back to the default house for an unmapped type id', () => {
@@ -52,11 +45,10 @@ describe('resolveSpriteBobId - per-type building binding', () => {
 });
 
 describe('resolveBuildingDraw - layer-qualified (multi-.bmd) building binding', () => {
-  /** A building draw item, optionally carrying its `buildingType` (the `Building.buildingType` typeId). */
   function building(typeId?: number): DrawItem {
     return drawItem('building', typeId !== undefined ? { typeId } : {});
   }
-  // typeId 10 = a plain bob (default layer); typeId 1 = the viking HQ in its own family (viking4 bob 34).
+  // typeId 1 is the viking HQ, which lives in its own family (viking4 bob 34).
   const binding: BuildingTypeBinding = {
     byType: { 10: 131, 1: { layer: 'viking4', bob: 34 } },
     default: 11,
@@ -96,12 +88,11 @@ describe('resolveBuildingDraw - layer-qualified (multi-.bmd) building binding', 
 });
 
 describe('resolveConstructionDraws - construction-stage stack for an under-construction building', () => {
-  /** A building draw item at a given construction progress percent (omit = finished). */
+  /** Omitting `builtPct` makes a finished building. */
   function site(typeId: number, builtPct?: number): DrawItem {
     return drawItem('building', { typeId, ...(builtPct !== undefined ? { builtPct } : {}) });
   }
-  // The viking-home shape: foundation 0-50, scaffold 10-70, body 20-100 (stacking = list order); the
-  // body stage is layer-qualified to show a family stage resolves like a family body.
+  // The viking-home shape: foundation 0-50, scaffold 10-70, body 20-100, stacked in list order.
   const binding: BuildingTypeBinding = {
     byType: { 2: 1 },
     default: 11,
@@ -125,9 +116,8 @@ describe('resolveConstructionDraws - construction-stage stack for an under-const
   });
 
   it('keeps a scaffold past its own window while a higher-stack layer still reveals over it', () => {
-    // At 99% the two scaffolds (windows end at 50/70) are long past their own toPct, but the body above
-    // them (bob 101, [20,100]) is still revealing, so they stay drawn under it - the roof grows on the
-    // scaffold instead of the scaffold vanishing at 70%.
+    // At 99% both scaffolds are past their own toPct, but the body above them (bob 101, [20,100]) is
+    // still revealing, so the roof grows over the scaffold instead of the scaffold vanishing at 70%.
     expect(resolveConstructionDraws(binding, site(2, 99))).toEqual([
       { bob: 102, fromPct: 0, toPct: 50 },
       { bob: 103, fromPct: 10, toPct: 70 },
@@ -136,9 +126,8 @@ describe('resolveConstructionDraws - construction-stage stack for an under-const
   });
 
   it('retires a top-stack teardown overlay at its own window (nothing above covers it)', () => {
-    // The frank-well shape: a full-window body (bob 1, [0,100]) with a teardown overlay drawn ON TOP
-    // (bob 2, [0,30]). The overlay is the highest stack layer, so nothing will cover it - it must come
-    // down at its own 30% window, not linger to completion.
+    // The frank-well shape: a full-window body (bob 1) under a teardown overlay (bob 2, [0,30]). Nothing
+    // covers the highest stack layer, so it must come down at its own window rather than at completion.
     const well: BuildingTypeBinding = {
       byType: {},
       default: 11,
@@ -157,10 +146,10 @@ describe('resolveConstructionDraws - construction-stage stack for an under-const
   });
 
   it('returns null for a finished building, an unmapped type, and a table-less/plain binding', () => {
-    expect(resolveConstructionDraws(binding, site(2))).toBeNull(); // no builtPct - finished
-    expect(resolveConstructionDraws(binding, site(999, 30))).toBeNull(); // type has no stage table
+    expect(resolveConstructionDraws(binding, site(2))).toBeNull();
+    expect(resolveConstructionDraws(binding, site(999, 30))).toBeNull();
     expect(resolveConstructionDraws({ byType: {}, default: 11 }, site(2, 30))).toBeNull();
-    expect(resolveConstructionDraws(20, site(2, 30))).toBeNull(); // plain-number binding
+    expect(resolveConstructionDraws(20, site(2, 30))).toBeNull();
   });
 
   it('floors an out-of-range progress on the first stage so a site never draws as nothing', () => {
@@ -169,7 +158,6 @@ describe('resolveConstructionDraws - construction-stage stack for an under-const
       default: 11,
       constructionByType: { 2: [{ bob: 102, fromPct: 10, toPct: 50 }] },
     };
-    // Below every range: the earliest stage floors, its own window intact.
     expect(resolveConstructionDraws(gappy, site(2, 0))).toEqual([{ bob: 102, fromPct: 10, toPct: 50 }]);
   });
 });
@@ -191,7 +179,6 @@ describe('buildTimeThreshold - progress → TimeMask threshold within a stage wi
 });
 
 describe('resolveBuildingOverlayDraw - the animated state overlay (the mill rotor)', () => {
-  /** A mill draw item: finished by default; `working` = mid production cycle. */
   function mill(opts: { working?: boolean; builtPct?: number; typeId?: number } = {}): DrawItem {
     return drawItem('building', {
       typeId: opts.typeId ?? 13,
@@ -199,8 +186,7 @@ describe('resolveBuildingOverlayDraw - the animated state overlay (the mill roto
       ...(opts.builtPct !== undefined ? { builtPct: opts.builtPct } : {}),
     });
   }
-  // The viking mill shape: bladeless body 70, still blade 76, a 3-frame spin cycle at 2 ticks/frame,
-  // all in the `miller` family layer.
+  // The viking mill shape: bladeless body 70, still blade 76, a 3-frame spin at 2 ticks per frame.
   const binding: BuildingTypeBinding = {
     byType: { 13: { layer: 'miller', bob: 70 } },
     default: 11,
@@ -239,7 +225,7 @@ describe('resolveBuildingOverlayDraw - the animated state overlay (the mill roto
 
 describe('finishedBuildingBobKeys - the finished-sprite set excluded from the construction rise', () => {
   it('keys every type bob + the default (bare and layer-qualified), so only scaffold stages survive', () => {
-    // Two finished homes (a bare default + a layer-qualified tier) plus construction-only scaffold bobs.
+    // Two finished homes, one bare and one layer-qualified, plus construction-only scaffold bobs.
     const binding: BuildingTypeBinding = {
       byType: { 2: 1, 3: { layer: 'viking4', bob: 11 } },
       default: 99,
@@ -248,14 +234,12 @@ describe('finishedBuildingBobKeys - the finished-sprite set excluded from the co
       },
     };
     const finished = finishedBuildingBobKeys(binding);
-    // Every FINISHED bob is present (the type-2 body, the layer-qualified type-3 body, the default).
     expect(finished.has(bobKey({ bob: 1 }))).toBe(true);
     expect(finished.has(bobKey({ bob: 11, layer: 'viking4' }))).toBe(true);
     expect(finished.has(bobKey({ bob: 99 }))).toBe(true);
-    // The construction-only scaffold bobs are NOT finished sprites - they rise.
     expect(finished.has(bobKey({ bob: 2 }))).toBe(false);
     expect(finished.has(bobKey({ bob: 3 }))).toBe(false);
-    // Filtering the stage stack by this set drops the finished body (bob 1), keeps the scaffold (2, 3).
+    // Filtering the stage stack by this set drops the finished body and keeps the scaffold.
     const midBuild = drawItem('building', { typeId: 2, builtPct: 40 });
     const scaffold = (resolveConstructionDraws(binding, midBuild) ?? []).filter(
       (d) => !finished.has(bobKey(d)),

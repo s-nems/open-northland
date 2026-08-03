@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-// `isVisible` and `aabbIntersects` are off the main barrel (the latter is published to `@open-northland/audio`
-// through the `./data` entry only); the unit test reaches their module directly.
+// `isVisible` and `aabbIntersects` are off the main barrel, so this reaches their module directly.
 import { aabbIntersects, isVisible } from '../src/data/projection/index.js';
 import {
   type Camera,
@@ -10,13 +9,6 @@ import {
   tileToScreen,
   visibleTileRange,
 } from '../src/index.js';
-
-/**
- * Unit tests for the pure viewport-culling math - the "what's on screen" half of scaling to big maps,
- * self-verifiable without a GPU. They pin the two load-bearing properties: `cameraViewport` inverts the
- * camera transform exactly (a world corner maps back to the canvas corner), and `visibleTileRange`
- * bounds the iso diamond correctly and clamps to the grid (so an off-map pan draws nothing out of range).
- */
 
 describe('cameraViewport', () => {
   it('inverts screen = world*scale + offset over the canvas rect', () => {
@@ -85,9 +77,8 @@ describe('aabbIntersects', () => {
 });
 
 describe('visibleTileRange', () => {
-  // The world box is expressed in pitch multiples (cell width = 2·TILE_HALF_W, row step =
-  // TILE_HALF_H), so the covered band is invariant to the calibrated pitch values: a box spanning
-  // ±1 cell width and ±1 row step around the origin.
+  // Expressed in pitch multiples (cell width = 2·TILE_HALF_W, row step = TILE_HALF_H), so the covered
+  // band is invariant to the calibrated pitch values.
   const smallBox = {
     minX: -2 * TILE_HALF_W,
     maxX: 2 * TILE_HALF_W,
@@ -99,7 +90,7 @@ describe('visibleTileRange', () => {
     // Cols: centres at 2c·halfW (even rows) reach ±halfW → cols −2..2 touch the box → clamp to 0..2.
     // Rows: centres at r·halfH reach ±halfH (interlock) → rows −2..2 → clamp to 0..2.
     expect(visibleTileRange(smallBox, 10, 10)).toEqual({ minCol: 0, maxCol: 2, minRow: 0, maxRow: 2 });
-    // The tile the box is centred on projects inside it (sanity on the projection direction).
+    // The tile the box is centred on projects inside it.
     expect(tileToScreen(0, 0)).toEqual({ x: 0, y: 0 });
   });
 
@@ -108,7 +99,6 @@ describe('visibleTileRange', () => {
   });
 
   it('shifts the band as the viewport pans, staying within the grid', () => {
-    // Pan the box deep into the grid - the band must move off the origin and stay clamped.
     const vp = {
       minX: 10 * 2 * TILE_HALF_W,
       maxX: 14 * 2 * TILE_HALF_W,
@@ -123,8 +113,8 @@ describe('visibleTileRange', () => {
   });
 
   it('clamps a fully off-map viewport to the grid edge (nothing out of range)', () => {
-    // y is far below the last row, so the row band clamps to the bottom edge; x spans cols 0..2
-    // (100px ≈ 1.5 cell widths + the diamond/stagger slack), well inside the 10-wide grid.
+    // y is far below the last row, so the row band clamps to the bottom edge, while 100 px of x is about
+    // 1.5 cell widths plus the diamond slack, well inside the 10-wide grid.
     const vp = { minX: 0, maxX: 100, minY: 100000, maxY: 100100 };
     expect(visibleTileRange(vp, 10, 10)).toEqual({ minCol: 0, maxCol: 2, minRow: 9, maxRow: 9 });
   });

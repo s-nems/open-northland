@@ -3,15 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { HudPlacement } from '../src/data/hud/index.js';
 import { DEFAULT_HUD_STYLE, HudLayer, type HudStyle } from '../src/gpu/overlays/hud-layer.js';
 
-/**
- * The retained HudLayer's change-detection state machine is agent-checkable headless (Pixi
- * `Container`/`Graphics`/`Text` construct without a GL context - the same stance as
- * selection-layer.test.ts); only the rasterized glyphs stay human-gated. These pin the pool
- * invariants a later edit would break with a human-visible-only symptom: rows are pooled (hidden,
- * not destroyed), text updates in place, and a row hidden ACROSS a style change restyles on reuse.
- */
-
-/** A placed HUD panel with the given row strings (positions don't matter for these tests). */
+/** A placed HUD panel with the given row strings; the positions do not matter here. */
 function placement(...texts: string[]): HudPlacement {
   return {
     panelX: 8,
@@ -22,7 +14,6 @@ function placement(...texts: string[]): HudPlacement {
   };
 }
 
-/** The layer's pooled Text children, in pool order. */
 function rowTexts(layer: HudLayer): Text[] {
   return layer.container.children.filter((c): c is Text => c instanceof Text);
 }

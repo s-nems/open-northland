@@ -9,12 +9,7 @@ import {
 import { ARROW } from '../../src/gpu/sprite-pool/placeholder.js';
 import type { ResolvedLayer } from '../../src/index.js';
 
-/**
- * The feet-local box arithmetic behind two things a player feels directly: where a layer's texture lands
- * (the bottom-up construction rise) and how big the entity's hit box / selection ring is. Pure numbers over
- * a resolved layer, so the fake TextureSource below is never sampled.
- */
-
+/** Pure feet-local box arithmetic, so this fake source is never sampled. */
 const source = {} as TextureSource;
 
 /** A resolved layer whose 10x10 frame sits at draw offset (−4, −20) - a feet-anchored body. */
@@ -41,8 +36,8 @@ describe('layerDrawBox', () => {
   it('crops a reveal layer from the top and shifts it down so its base stays put', () => {
     const box = createLayerDrawBox();
     layerDrawBox(box, layer({ reveal: 1 }), 0.25, false);
-    // A quarter risen: the top 8 of 10 rows are hidden, and the drawn top moves down by exactly that much,
-    // so the layer's bottom edge (oy + height) does not move as it rises.
+    // A quarter risen hides the top 8 of 10 rows, and the drawn top moves down by exactly that much, so
+    // the layer's bottom edge does not move as it rises.
     expect(box.hiddenTop).toBe(8);
     expect(box.drawnOy).toBe(-12);
     expect(box.oy + box.height).toBe(box.drawnOy + (box.height - box.hiddenTop));
@@ -51,8 +46,8 @@ describe('layerDrawBox', () => {
   it('shifts a scaled reveal layer down by the scaled crop', () => {
     const box = createLayerDrawBox();
     layerDrawBox(box, layer({ reveal: 1, scale: 2 }), 0.25, false);
-    // hiddenTop counts atlas texels while every other field is scaled px, so the shift must be scaled on
-    // the way in - at scale 2 an 8-texel crop moves the drawn top 16 px, not 8.
+    // hiddenTop counts atlas texels while every other field is scaled px, so at scale 2 an 8-texel crop
+    // moves the drawn top 16 px, not 8.
     expect(box.hiddenTop).toBe(8);
     expect(box.drawnOy).toBe(box.oy + 16);
   });
@@ -70,8 +65,8 @@ describe('layerDrawBox', () => {
     const flat = createLayerDrawBox();
     layerDrawBox(risen, layer({ reveal: 1 }), 0.05, false);
     layerDrawBox(flat, layer(), undefined, false);
-    // A barely-started foundation must stay clickable over the finished building's whole box, so oy/width/
-    // height ignore the crop entirely - only drawnOy/hiddenTop move.
+    // A barely-started foundation must stay clickable over the finished building's whole box, so only
+    // drawnOy and hiddenTop follow the crop.
     expect(risen.oy).toBe(flat.oy);
     expect(risen.width).toBe(flat.width);
     expect(risen.height).toBe(flat.height);
@@ -118,14 +113,14 @@ describe('placeholderBounds', () => {
   });
 
   it('floors a narrow marker at the footprint diamond it stands on', () => {
-    // A settler's 14-wide body is narrower than the 9-half-width diamond; the box must still cover the
-    // drawn diamond, or clicks on the marker's tips would miss.
+    // A settler's 14-wide body is narrower than the 9-half-width diamond, and a box that missed the
+    // diamond would drop clicks on the marker's tips.
     expect(placeholderBounds('settler')).toMatchObject({ minX: -9, maxX: 9 });
   });
 
   it('covers the arrow marker’s own extent', () => {
-    // The arrow's length centred on the anchor, not its authored tip/tail: placeholderBounds halves the
-    // body width, so the box follows a retuned shape but would not follow an asymmetric one.
+    // placeholderBounds halves the body width and centres it on the anchor, so the box follows a retuned
+    // arrow but would not follow an asymmetric one.
     const halfLength = (ARROW.head.tipX - ARROW.shaft.tailX) / 2;
     expect(placeholderBounds('projectile')).toMatchObject({ minX: -halfLength, maxX: halfLength });
   });

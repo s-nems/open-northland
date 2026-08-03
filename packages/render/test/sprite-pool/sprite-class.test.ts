@@ -10,11 +10,9 @@ import type { DrawItem, SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
 /**
- * The pool's sprite-class decision, headless half: a settler binds team-coloured PalettedSprite meshes
- * only when BOTH the indexed characters and the player-colour LUT are loaded; with characters but no
- * LUT it must bind plain {@link Sprite}s through its character layers. The mesh half is not pinned here:
- * a PalettedSprite needs a DOM canvas to construct (Pixi probes fragment precision), so it stays covered
- * by the browser scenes.
+ * A settler binds team-coloured PalettedSprite meshes only when both the indexed characters and the
+ * player-colour LUT are loaded. The mesh half stays with the browser scenes: a PalettedSprite needs a DOM
+ * canvas to construct, since Pixi probes fragment precision.
  */
 
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };

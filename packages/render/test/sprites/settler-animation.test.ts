@@ -14,12 +14,6 @@ import type {
 } from '../../src/index.js';
 import { settlerItem } from '../support/fixtures.js';
 
-/**
- * Unit tests for the settler animation PLAYBACK - the per-state frame pick, the directional
- * (start + facing*stride + phase) sequence, and the explicit per-facing FrameListAnim (one-shot by
- * default, looped for an idle wait). All pure "which bob id at this state/facing/clock" decisions.
- */
-
 describe('resolveSpriteFrame - per-state settler binding', () => {
   /** An atlas with a distinct frame per state bob: idle=10, moving=11, acting=12, chop=13. */
   function stateAtlas(): SpriteAtlas {
@@ -35,7 +29,7 @@ describe('resolveSpriteFrame - per-state settler binding', () => {
     idle: 10,
     moving: 11,
     acting: 12,
-    byAtomic: { 24: 13 }, // atomic 24 (chop) overrides the generic acting frame
+    byAtomic: { 24: 13 }, // atomic 24 is the chop
   };
   const bindings = (settlerBinding: SpriteBindings['settler']): SpriteBindings => ({
     settler: settlerBinding,
@@ -53,30 +47,30 @@ describe('resolveSpriteFrame - per-state settler binding', () => {
 
   it('picks the per-atomic override for an acting settler with a bound atomic id', () => {
     const frame = resolveSpriteFrame(settlerItem('acting', { atomicId: 24 }), bindings(FULL), stateAtlas());
-    expect(frame?.x).toBe(48); // bob 13 - the chop override, not the generic acting bob 12
+    expect(frame?.x).toBe(48); // bob 13, not the generic acting bob 12
   });
 
   it('falls back acting->idle and moving->idle when those states are unbound', () => {
-    const sparse: SettlerStateBinding = { idle: 10 }; // no moving/acting/byAtomic
+    const sparse: SettlerStateBinding = { idle: 10 };
     const b = bindings(sparse);
     const atlas = stateAtlas();
-    expect(resolveSpriteFrame(settlerItem('moving'), b, atlas)?.x).toBe(0); // -> idle bob 10
-    expect(resolveSpriteFrame(settlerItem('acting'), b, atlas)?.x).toBe(0); // -> idle bob 10
-    expect(resolveSpriteFrame(settlerItem('acting', { atomicId: 24 }), b, atlas)?.x).toBe(0); // unlisted atomic -> idle
+    expect(resolveSpriteFrame(settlerItem('moving'), b, atlas)?.x).toBe(0); // idle bob 10
+    expect(resolveSpriteFrame(settlerItem('acting'), b, atlas)?.x).toBe(0); // idle bob 10
+    expect(resolveSpriteFrame(settlerItem('acting', { atomicId: 24 }), b, atlas)?.x).toBe(0); // idle bob 10
   });
 
   it('falls back an unlisted atomic to the generic acting frame', () => {
     const frame = resolveSpriteFrame(settlerItem('acting', { atomicId: 99 }), bindings(FULL), stateAtlas());
-    expect(frame?.x).toBe(32); // bob 12 - generic acting, since atomic 99 isn't in byAtomic
+    expect(frame?.x).toBe(32); // bob 12, the generic acting frame
   });
 
   it('treats a stateless settler item as idle (back-compat with the flat scene)', () => {
     const frame = resolveSpriteFrame(settlerItem(), bindings(FULL), stateAtlas());
-    expect(frame?.x).toBe(0); // bob 10 - no state field -> idle
+    expect(frame?.x).toBe(0); // bob 10
   });
 
   it('a plain-number settler binding draws the same frame for every state (back-compat)', () => {
-    const b = bindings(10); // a bare bob id, the old binding shape
+    const b = bindings(10);
     const atlas = stateAtlas();
     expect(resolveSpriteFrame(settlerItem('idle'), b, atlas)?.x).toBe(0);
     expect(resolveSpriteFrame(settlerItem('moving'), b, atlas)?.x).toBe(0);
@@ -88,8 +82,8 @@ describe('resolveSpriteBobId - directional animated binding', () => {
   const WALK: DirectionalAnim = { start: 1988, dirs: 8, stride: 12 };
   const CHOP: DirectionalAnim = { start: 5106, dirs: 8, stride: 15 };
   const STAND: DirectionalAnim = { start: 1988, dirs: 8, stride: 12, frames: 1 };
-  // No generic `acting`: CHOP is bound only to the harvest atomic (24), mirroring the real human
-  // binding - an unmapped action (a deposit) must fall back to the idle pose, not the woodcut swing.
+  // No generic `acting`: CHOP is bound only to the harvest atomic (24), as the real human binding does,
+  // so an unmapped action falls back to the idle pose rather than the woodcut swing.
   const ANIM: SettlerStateBinding = { idle: STAND, moving: WALK, byAtomic: { 24: CHOP } };
   const bindings: SpriteBindings = { settler: ANIM, building: 20, resource: 30 };
 
@@ -104,42 +98,40 @@ describe('resolveSpriteBobId - directional animated binding', () => {
   });
 
   it('acting chop (atomic 24) advances on its elapsed clock at a fixed cadence, ignoring tick', () => {
-    // frame = start + facing*stride + ((elapsed-1) % cycle): driven by the atomic's OWN elapsed-tick
-    // clock (frame 0 on its first tick), NOT the free tick clock - tick=999 must not change it.
+    // frame = start + facing*stride + ((elapsed-1) % cycle), on the atomic's own elapsed-tick clock, so
+    // the tick 999 passed below must not change it.
     const swing = (elapsed: number): number | null =>
       resolveSpriteBobId(settlerItem('acting', { facing: 4, atomicId: 24, elapsed }), bindings, 999);
-    expect(swing(1)).toBe(5106 + 4 * 15 + 0); // first acting tick -> frame 0 (the swing's start)
-    expect(swing(8)).toBe(5106 + 4 * 15 + 7); // seven ticks in -> frame 7, mid-swing
-    expect(swing(15)).toBe(5106 + 4 * 15 + 14); // fifteenth tick -> frame 14, the swing's last frame
+    expect(swing(1)).toBe(5106 + 4 * 15 + 0);
+    expect(swing(8)).toBe(5106 + 4 * 15 + 7);
+    expect(swing(15)).toBe(5106 + 4 * 15 + 14); // the swing's last frame
   });
 
   it('the chop cadence is the SAME regardless of how long the action runs (constant speed)', () => {
-    // The phase is a pure function of elapsed alone - no duration input - so a swing always advances one
-    // frame per tick. (The pre-fix bug stretched the swing across each atomic's duration, so a short
-    // action replayed the whole swing faster; that is structurally impossible now.)
+    // The phase is a pure function of elapsed with no duration input, so a swing advances one frame per
+    // tick whatever the action's length.
     const frameAt = (elapsed: number): number | null =>
       resolveSpriteBobId(settlerItem('acting', { facing: 0, atomicId: 24, elapsed }), bindings, 0);
-    expect(frameAt(1)).toBe(5106 + 0); // frame 0
-    expect(frameAt(2)).toBe(5106 + 1); // +1 tick == +1 frame, always
-    expect(frameAt(16)).toBe(5106 + 0); // elapsed 16 -> (16-1) % 15 == 0: a longer action loops the cycle
+    expect(frameAt(1)).toBe(5106 + 0);
+    expect(frameAt(2)).toBe(5106 + 1);
+    expect(frameAt(16)).toBe(5106 + 0); // (16-1) % 15 == 0: a longer action loops the cycle
   });
 
   it('phaseStart rotates the loop start so a chop plays windup (9..14) then strike (0..8)', () => {
-    // The woodcut loop is 0..8 = strike-down, 9..14 = windup-rise. phaseStart 9 begins on the windup:
-    // frame = (9 + (elapsed-1)) % 15, so elapsed 1 -> 9 (windup start), elapsed 15 -> 8 (impact, the end).
+    // The woodcut loop is 0..8 strike-down, 9..14 windup-rise, so frame = (phaseStart + elapsed-1) % 15.
     const SWING: DirectionalAnim = { start: 5106, dirs: 8, stride: 15, phaseStart: 9 };
     const b: SpriteBindings = { settler: { idle: STAND, byAtomic: { 24: SWING } }, building: 0, resource: 0 };
     const at = (elapsed: number): number | null =>
       resolveSpriteBobId(settlerItem('acting', { facing: 4, atomicId: 24, elapsed }), b, 0);
-    expect(at(1)).toBe(5106 + 4 * 15 + 9); // first tick -> frame 9 (windup begins, axe rising)
-    expect(at(6)).toBe(5106 + 4 * 15 + 14); // -> frame 14 (top of the windup)
-    expect(at(7)).toBe(5106 + 4 * 15 + 0); // wraps -> frame 0 (strike begins, axe coming down)
-    expect(at(15)).toBe(5106 + 4 * 15 + 8); // -> frame 8 (impact, the strike lands - the final frame)
+    expect(at(1)).toBe(5106 + 4 * 15 + 9); // the windup begins
+    expect(at(6)).toBe(5106 + 4 * 15 + 14); // top of the windup
+    expect(at(7)).toBe(5106 + 4 * 15 + 0); // the strike begins
+    expect(at(15)).toBe(5106 + 4 * 15 + 8); // impact, the final frame
   });
 
   it('an acting atomic with no bound animation holds the idle pose (no borrowed swing)', () => {
-    // Atomic 23 (a deposit) isn't in byAtomic and there is no generic `acting`, so it falls back to the
-    // single-pose idle/STAND - never the woodcut swing replayed at the wrong speed.
+    // Atomic 23 is not in byAtomic and there is no generic `acting`, so it falls back to the single-pose
+    // STAND rather than the woodcut swing replayed at the wrong speed.
     expect(
       resolveSpriteBobId(settlerItem('acting', { facing: 2, atomicId: 23, elapsed: 3 }), bindings, 0),
     ).toBe(1988 + 2 * 12);
@@ -167,13 +159,12 @@ describe('resolveSpriteBobId - directional animated binding', () => {
 describe('resolveSpriteBobId - FrameListAnim (explicit per-direction attack layout)', () => {
   const ATTACK = 81;
   const STAND: DirectionalAnim = { start: 100, dirs: 8, stride: 4, frames: 1 };
-  // A swing pool at bob 2000 with DISTINCT per-facing lists (so facing must select the right list), and
-  // an authored hold/repeat in dir 1 (frame 5 held) - the layout a uniform stride can't encode.
+  // Distinct per-facing lists, plus an authored hold in dir 1: the layout a uniform stride cannot encode.
   const SWING: FrameListAnim = {
     start: 2000,
     frameLists: [
       [0, 2, 4, 6], // dir 0
-      [5, 5, 7], // dir 1 - holds frame 5, then a 3-frame list (shorter than dir 0)
+      [5, 5, 7], // dir 1 - holds frame 5, and is shorter than dir 0
     ],
   };
   const ANIM: SettlerStateBinding = { idle: STAND, byAtomic: { [ATTACK]: SWING } };
@@ -184,19 +175,17 @@ describe('resolveSpriteBobId - FrameListAnim (explicit per-direction attack layo
       resolveSpriteBobId(settlerItem('acting', { facing, atomicId: ATTACK, elapsed }), bindings, 999);
     expect(at(0, 1)).toBe(2000 + 0); // dir 0, frame 0 -> local 0
     expect(at(0, 3)).toBe(2000 + 4); // dir 0, frame 2 -> local 4
-    expect(at(1, 1)).toBe(2000 + 5); // dir 1, frame 0 -> local 5 (the held windup)
-    expect(at(1, 2)).toBe(2000 + 5); // dir 1, frame 1 -> local 5 again (the authored hold)
+    expect(at(1, 1)).toBe(2000 + 5); // dir 1, frame 0 -> local 5
+    expect(at(1, 2)).toBe(2000 + 5); // dir 1, frame 1 -> local 5 again, the authored hold
     expect(at(1, 3)).toBe(2000 + 7); // dir 1, frame 2 -> local 7
   });
 
   it('plays ONE-SHOT: past the CHOSEN list end the sprite shows the FIRST entry (the ready stance)', () => {
-    // dir 1 is 3 long: elapsed 4 is one past the end - entry 0 (which a wrap ALSO gives; the cases
-    // below are the ones where the two contracts diverge).
+    // dir 1 is 3 long, so elapsed 4 is one past the end, where a wrap would also give entry 0.
     expect(
       resolveSpriteBobId(settlerItem('acting', { facing: 1, atomicId: ATTACK, elapsed: 4 }), bindings, 0),
     ).toBe(2000 + 5);
-    // dir 0 past its 4-entry end: entry 0 (local 0) - a wrap would give entry 1 (local 2) at elapsed 6
-    // and cycle back through the motion (the reported mid-swing freeze/stutter class of bug).
+    // Past dir 0's 4-entry end a wrap would give entry 1 at elapsed 6 and cycle back through the motion.
     expect(
       resolveSpriteBobId(settlerItem('acting', { facing: 0, atomicId: ATTACK, elapsed: 6 }), bindings, 0),
     ).toBe(2000 + 0);
@@ -231,14 +220,14 @@ describe('resolveSpriteBobId - FrameListAnim (explicit per-direction attack layo
   });
 
   it('loop wraps past the end instead of the one-shot return-to-first (the idle wait cycle)', () => {
-    // A facing-locked 3-entry wait program on the free tick clock. One-shot would freeze on entry 0
-    // from step 3 on; loop keeps cycling - step 4 diverges (entry 1, not 0).
+    // A facing-locked 3-entry wait program on the free tick clock: one-shot would freeze on entry 0 from
+    // step 3 on, so step 4 is where the two contracts diverge.
     const WAIT: FrameListAnim = { start: 4000, frameLists: [[0, 5, 6]], loop: true };
     const b: SpriteBindings = { settler: { idle: WAIT }, building: 0, resource: 0 };
     const at = (tick: number): number | null =>
       resolveSpriteBobId(settlerItem('idle', { facing: 5 }), b, tick);
     expect(at(1)).toBe(4000 + 5); // entry 1 mid-list, same as one-shot
-    expect(at(3)).toBe(4000 + 0); // 3 % 3 == 0 - the cycle restarts
-    expect(at(4)).toBe(4000 + 5); // one-shot would show entry 0 here; the wrap replays the motion
+    expect(at(3)).toBe(4000 + 0); // 3 % 3 == 0, so the cycle restarts
+    expect(at(4)).toBe(4000 + 5); // one-shot would show entry 0 here
   });
 });

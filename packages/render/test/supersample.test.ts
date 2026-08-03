@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { oversampleFor } from '../src/gpu/supersample.js';
 
 /**
- * The oversample SIZING policy for the supersampled HUD bakes (`bakeToFlippedSprite` itself needs a GPU
- * and a human - see the module note). The invariant under test: the bake targets DOUBLE the device
- * coverage so the linear downscale ratio stays in (1, 2] - ratio ≈1 leaves nearest-hard palette edges
- * (the jagged Retina icons this fixed), ratio >2 undersamples the GPU's 2×2 linear tap.
+ * The bake targets double the device coverage so the linear downscale ratio stays in (1, 2]: a ratio near
+ * 1 leaves nearest-hard palette edges, and above 2 undersamples the GPU's 2×2 linear tap.
  */
 describe('oversampleFor - supersample sizing policy', () => {
   it('doubles the device coverage so the downscale anti-aliases (1.4× UI on DPR 2 → ss 5, not 3)', () => {

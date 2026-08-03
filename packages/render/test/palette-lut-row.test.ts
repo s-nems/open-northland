@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type PlayerColourLut, paletteLutRow } from '../src/gpu/sprite-sheet.js';
 
-/**
- * Pins the (armor tier, player) LUT row contract - the render half of the pipeline's row scheme
- * (`row = tier * playerRows + player`), including every fallback that must land on the plain player
- * row: no worn armor, an unmapped good, a legacy 16-row LUT without the armor blocks, and a palette
- * with no armor axis at all.
- */
+/** The pipeline's LUT row scheme is `row = tier * playerRows + player`. */
 
 /** An 80-row LUT with the armor axis: 16 players x 5 tiers, chain armor = good 35 -> tier 3. */
 function armorLut(colours: number): PlayerColourLut {

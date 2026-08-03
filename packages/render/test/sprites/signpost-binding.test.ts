@@ -3,10 +3,7 @@ import { resolveSignpostDraw } from '../../src/data/sprites/layered.js';
 import type { SignpostBinding } from '../../src/data/sprites/layered-bindings.js';
 import { drawItem } from '../support/fixtures.js';
 
-/**
- * Unit tests for the signpost resolver: the post vs the angular board pick, and the per-owner recolour
- * variant (`byPlayer` - each player's baked `ls_guidepost.player_NN` atlas) with its fallbacks.
- */
+/** `byPlayer` holds each player's baked `ls_guidepost.player_NN` atlas. */
 
 const base = (layer: string): SignpostBinding => ({
   post: { layer, bob: 0 },

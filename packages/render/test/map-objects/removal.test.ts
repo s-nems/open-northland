@@ -6,12 +6,9 @@ import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { decorPositions, FRAME_0, FRAME_1, WIDE } from './support.js';
 
 /**
- * The static-layer REMOVAL seam of the `?map=` static→dynamic resource handover
- * ({@link MapObjectLayer.remove}): a first-worked node's built-once static drawing must come OUT and
- * stay out - a TALL object's pooled sprite detaches, a DECOR object's quad zeroes in place, and (the
- * regression a visual check would only catch by luck) an ANIMATED decor quad must not be written back
- * by the play-head rewrite on the next tick. Display objects construct headlessly (the chunk-batcher
- * test relies on the same), so the buffer states are pinnable without a GL context.
+ * A first-worked node's built-once static drawing must come out and stay out: a tall object's pooled
+ * sprite detaches, a decor object's quad zeroes in place, and an animated decor quad must not be written
+ * back by the play-head rewrite on the next tick.
  */
 
 function decorObject(x: number, frames: readonly AtlasFrame[]): MapObjectSprite {
