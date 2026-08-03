@@ -29,6 +29,7 @@ import { ASSISTANT_DECISION_PERIOD_TICKS } from '../../src/systems/assistant/ind
 import { BARRACKS_DRILL_TICKS } from '../../src/systems/settlers/drives/training.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
+import { stampPost } from '../signposts/support.js';
 
 /**
  * The assistant's production counters: the `setAssistantCounter` command and carrier lifecycle, the
@@ -66,6 +67,12 @@ const SWORD_SHORT_WEAPON = 7;
 const SWORD_LONG_WEAPON = 8;
 /** A dispatch beat plus slack - the counter must have acted (or provably not) within one beat. */
 const BEAT_TICKS = ASSISTANT_DECISION_PERIOD_TICKS + 2;
+/** Far beyond a recruit's own local circle (24 nodes = 12 tiles) - only a signpost chain reaches it. */
+const FAR_TILE = 40;
+/** A post radius wide enough that two of them bridge the barracks to {@link FAR_TILE}. */
+const POST_NAV_RADIUS_NODES = 24;
+/** Past the end of that post chain - out of reach even from {@link FAR_TILE}. */
+const BEYOND_TILE = 56;
 
 function trainContent(): ContentSet {
   const base = testContent();
@@ -174,8 +181,8 @@ function trainContent(): ContentSet {
   });
 }
 
-function trainSim(): Simulation {
-  const sim = new Simulation({ seed: 1, content: trainContent(), map: grassMap(16, 6) });
+function trainSim(map = grassMap(16, 6)): Simulation {
+  const sim = new Simulation({ seed: 1, content: trainContent(), map });
   setNeedsEnabled(sim.world, false);
   return sim;
 }
@@ -445,6 +452,35 @@ describe('the training queue', () => {
     runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SOLDIER, 1000, 'demotion');
     expect(sim.world.has(recruit, Weapon)).toBe(false);
     expect(sim.world.tryGet(recruit, Equipment)?.weapon ?? null).toBe(null);
+  });
+
+  it('shops for the weapon inside the signpost network instead of crossing the map', () => {
+    const sim = trainSim(grassMap(64, 6));
+    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    barracksAt(sim, 6, 3);
+    const recruit = settlerAt(sim, CIVILIST, 3, 3);
+    pileAt(sim, FAR_TILE, 3, new Map([[SWORD_LONG_GOOD, 1]]));
+    pileAt(sim, BEYOND_TILE, 3, new Map([[ARMOR_CHAIN_GOOD, 1]]));
+
+    setCounter(sim, 'trainSword', 1);
+    runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SOLDIER, 3000, 'enlistment');
+    run(sim, 4 * BEAT_TICKS);
+    // A soldier roams the whole map to FIGHT, but the sword lying 34 tiles out is not in a settlement
+    // he knows the way around: the booking waits instead of walking him there.
+    expect(sim.world.get(recruit, Settler).jobType).toBe(SOLDIER);
+    expect(sim.world.has(recruit, EquipOrder)).toBe(false);
+    expect(sim.world.has(recruit, AssistantRecruit)).toBe(true);
+
+    // A chain of posts takes the network out to the pile, and the same booking sends him.
+    stampPost(sim, 12, 3, POST_NAV_RADIUS_NODES, PLAYER);
+    stampPost(sim, 32, 3, POST_NAV_RADIUS_NODES, PLAYER);
+    runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SWORDSMAN_LONG, 6000, 'armed');
+
+    // The armor chained from the sword pile obeys the same reach: the only mail on the map lies past
+    // the end of the network, so he is released dressed in nothing but his blade.
+    runUntil(sim, () => !sim.world.has(recruit, AssistantRecruit), 2000, 'booking released');
+    expect(sim.world.tryGet(recruit, Equipment)?.armor ?? null).toBe(null);
   });
 
   it('trains without arming ("naked") on the plain soldier counter even with weapons in store', () => {

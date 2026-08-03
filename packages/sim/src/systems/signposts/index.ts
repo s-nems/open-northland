@@ -1,6 +1,7 @@
 export {
   type NavigationLimit,
   navigationLimitFor,
+  networkLimitAt,
   type SignpostSite,
   signpostNetwork,
 } from './network.js';
