@@ -6,6 +6,7 @@ import { JOB_ARCHER, JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_SPEAR, JOB_SOLDIER_SWOR
 import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
   placeBuiltSandboxBuilding,
+  placeSandboxSite,
   spawnSandboxSettler,
   WEAPON_BROADSWORD,
   WEAPON_SHORT_BOW,
@@ -25,10 +26,14 @@ import type { SceneDefinition } from './types.js';
  * TOWERS (on par with the enemy defenders) before it ever turns on the plain HOMES, which it razes only
  * once no high-value structure or defender remains (the user rule).
  *
+ * A construction site is a building like any other here: the red base's third watchtower is still a
+ * foundation, and a foundation stands at one hitpoint, so the first blow that lands flattens it. It
+ * collapses as scaffolding, the `built = 0` destroy cue, rather than as a house.
+ *
  * Layout: a blue warband on the left (sword/broadsword/spear ranks + archers) facing a compact red base -
- * an HQ flanked by two watchtowers, plain homes tucked around them, and a thin picket of defenders. Every
- * building sits inside the warband's sight, so the tier order (units + HQ + towers first, homes last) is
- * what decides the sequence, not distance.
+ * an HQ flanked by two watchtowers, a third one still a foundation in the warband's path, plain homes
+ * tucked around them, and a thin picket of defenders. Every building sits inside the warband's sight, so
+ * the tier order (units + HQ + towers first, homes last) is what decides the sequence, not distance.
  *
  * It is also the life-heart scene. The browser plays from tick 0, so both sides take hits: a human judges
  * that a heart floats over exactly the hurt bodies, that each wears its own faction's colour (an enemy's
@@ -54,13 +59,16 @@ const BLUE_RANKS: readonly { job: number; weapon: number; x: number }[] = [
 const RANK_Y_FIRST = 8;
 const RANK_Y_LAST = 15;
 
-/** The red base - an HQ + two towers (the high-value tier), four plain homes (the fallback tier), all in
- *  the warband's sight so priority, not distance, orders the siege. */
+/** The red base - an HQ + three towers (the high-value tier, one of them still a foundation), four plain
+ *  homes (the fallback tier), all in the warband's sight so priority, not distance, orders the siege. */
 const ENEMY_HQ: readonly [string, number, number] = ['headquarters', 15, 11];
 const ENEMY_TOWERS: readonly (readonly [string, number, number])[] = [
   ['tower_00', 13, 8],
   ['tower_00', 13, 14],
 ];
+/** The third watchtower, still a foundation, standing in the warband's path - a tower ranks high-value
+ *  however far it has risen, so the advance turns on it early rather than at the end. */
+const ENEMY_TOWER_SITE: readonly [string, number, number] = ['tower_00', 10, 7];
 const ENEMY_HOMES: readonly (readonly [string, number, number])[] = [
   ['home_level_00', 19, 8],
   ['home_level_00', 19, 14],
@@ -84,6 +92,7 @@ function build(sim: Simulation): void {
   }
   placeBuiltSandboxBuilding(sim, ENEMY_HQ[0], ENEMY_HQ[1], ENEMY_HQ[2], ENEMY_PLAYER);
   for (const [ref, x, y] of ENEMY_TOWERS) placeBuiltSandboxBuilding(sim, ref, x, y, ENEMY_PLAYER);
+  placeSandboxSite(sim, ENEMY_TOWER_SITE[0], ENEMY_TOWER_SITE[1], ENEMY_TOWER_SITE[2], ENEMY_PLAYER);
   for (const [ref, x, y] of ENEMY_HOMES) placeBuiltSandboxBuilding(sim, ref, x, y, ENEMY_PLAYER);
   for (const [job, x, y] of ENEMY_DEFENDERS) {
     spawnSandboxSettler(sim, job, x, y, ENEMY_PLAYER, {
@@ -128,18 +137,19 @@ function enemyDefendersDead(sim: Simulation): boolean {
 // towers and cut down the defenders, but BEFORE it turns on the plain homes - so the end state itself shows
 // the auto-focus priority: high-value structures gone, homes still whole. (The browser view keeps running,
 // so a human watches the homes fall next; the sim unit test covers that razing directly.)
-// The first such window is ticks 639..781 (measured); sit mid-span, since combat pacing moves its edges.
+// The first such window is ticks 664..917 (measured); sit mid-span, since combat pacing moves its edges.
 export const siegeScene: SceneDefinition = {
   id: 'siege',
   seed: 11,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 710,
+  runTicks: 790,
   initialZoom: 0.8,
   checks: [
     {
-      // The core mechanic - warriors destroy STRUCTURES (here even the 100k-HP HQ), not only units.
-      label: 'the enemy HQ and both watchtowers are razed',
+      // The core mechanic - warriors destroy STRUCTURES (here even the 100k-HP HQ), not only units. The
+      // third tower counts too, foundation and all: a site is razed like anything else the base put up.
+      label: 'the enemy HQ, both watchtowers and the tower foundation are razed',
       predicate: (sim) => enemyBuildings(sim).filter((e) => isHighValue(sim, e)).length === 0,
     },
     {
