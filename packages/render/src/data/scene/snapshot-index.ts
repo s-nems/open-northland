@@ -9,29 +9,21 @@ import {
 } from './snapshot-readers/index.js';
 
 /**
- * The per-snapshot pre-scans the scene build reads before its per-entity loop: the enterable-store set
- * (which settlers are hidden mid-exchange), the target position index (to face a mid-swing actor / aim a
- * projectile), and the signposts the board prepass pairs up. All are pure functions of the frozen
- * snapshot and come out of ONE walk memoized on its object identity - the scene builds per frame while
- * the snapshot changes per tick, so the walk happens once per tick, not once per frame or once per
- * consumer. Plus the atomic-id contract that decides which actors face their target.
+ * The scene build's per-snapshot pre-scans. All come out of one walk memoized on snapshot identity, so
+ * they run once per tick rather than once per frame or once per consumer.
  */
 
 /**
- * The atomic id of a combat attack swing - the original's `setatomic <job> 81 "..._attack"` (id 81 is
- * the attack slot across every fighting job; the sim's `ATTACK_ATOMIC_ID`, `systems/conflict/weapons.ts`).
- * A settler mid-attack has stopped moving, so it has no walk heading; it faces its target instead (the
- * attacker→target screen step). The same numeric contract as the sim, transcribed here (like
- * {@link TARGET_FACING_ATOMIC_IDS}) rather than imported - render reads the snapshot's plain ids, never sim code.
+ * The atomic id of a combat attack swing - the original's `setatomic <job> 81 "..._attack"`, the attack
+ * slot across every fighting job. The ids below are transcribed rather than imported: render reads the
+ * snapshot's plain ids, never sim code.
  */
 const ATTACK_ATOMIC_ID = 81;
 
-/** The builder hammer action (`setatomic 7 39`), whose extracted `[gfxanimatomic]` row carries eight
- *  directional frame lists. */
+/** The builder hammer action (`setatomic 7 39`). */
 const BUILD_HOUSE_ATOMIC_ID = 39;
 
-/** The per-good harvest atomic ids (`goodtypes.ini` `atomicForHarvesting`), transcribed by hand like
- *  {@link ATTACK_ATOMIC_ID} - the shared numeric contract, named so no bare id carries the meaning. */
+/** The per-good harvest atomic ids (`goodtypes.ini` `atomicForHarvesting`). */
 const HARVEST_ATOMIC_IDS = {
   wood: 24,
   stone: 25,
@@ -42,23 +34,19 @@ const HARVEST_ATOMIC_IDS = {
   mushroom: 32,
 } as const;
 
-/** The wedding kiss pair (`logicdefines.inc` KISS = 20 / KISSED = 21) - each half's atomic targets its
- *  partner, and the pair must face each other for the kiss to read. Transcribed like {@link ATTACK_ATOMIC_ID}. */
+/** The wedding kiss pair (`logicdefines.inc` KISS = 20 / KISSED = 21); each half's atomic targets its
+ *  partner. */
 const KISS_ATOMIC_IDS = [20, 21] as const;
 
-/** The gossip talk/listen pair (`logicdefines.inc` TALK = 14 / LISTEN = 15) - like the kiss, each half's
- *  atomic targets its partner and the pair turns to face each other for the chat to read. */
+/** The gossip talk/listen pair (`logicdefines.inc` TALK = 14 / LISTEN = 15); each half's atomic targets
+ *  its partner. */
 const CHAT_ATOMIC_IDS = [14, 15] as const;
 
 /**
- * Every atomic whose runner faces its target while the swing plays: construction, combat attack, the
- * per-good harvest actions ({@link HARVEST_ATOMIC_IDS}), the wedding kiss pair ({@link KISS_ATOMIC_IDS}),
- * and the gossip talk/listen pair ({@link CHAT_ATOMIC_IDS}).
- * A harvester, like an attacker, has stopped walking (no walk heading), so without a target-derived
- * facing it kept its last walk heading (or the default SE) and swung its axe/pick into empty air beside
- * the node it works - a woodcutter standing east of a tree chopped further east. Facing the node it
- * targets is what the original does (`atomicanimations.ini` even carries `startdirection` pins for a
- * subset); the kissing couple likewise turn toward each other.
+ * Every atomic whose runner faces its target while the swing plays. Such a settler has stopped walking,
+ * so without a target-derived facing it keeps its last walk heading and swings beside the node it works.
+ * Facing the target is what the original does (`atomicanimations.ini` carries `startdirection` pins for
+ * a subset).
  */
 export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   BUILD_HOUSE_ATOMIC_ID,
@@ -76,28 +64,24 @@ interface SceneIndex {
 
 const indexBySnapshot = new WeakMap<WorldSnapshot, SceneIndex>();
 
-/** The shared empty index for a snapshot with no target-facing actor - memoized like a real index so a
- *  quiet scene allocates nothing and every frame reuses this one map. */
+/** Shared empty index, so a snapshot with no target-facing actor allocates nothing. */
 const EMPTY_POS_INDEX: ReadonlyMap<number, { x: number; y: number }> = new Map();
 
 const NO_SIGNPOSTS: readonly EntitySnapshot[] = [];
 
 /**
- * Completed buildings (built, not a construction site) - the "enterable store" set. A settler whose
- * running atomic exchanges goods with one of these (a pileup deposit / a pickup lift) is not drawn:
- * the original's carrier walks into the house and vanishes for the exchange (observed), so hiding it
- * for the atomic's duration reads as entering, instead of a deposit pantomimed at the door. A ground
- * pile / flag / construction site is not enterable - those exchanges keep their animation.
+ * Completed buildings, the stores a settler can walk into. A settler exchanging goods with one is not
+ * drawn: observed original, where the carrier vanishes into the house for the exchange. A ground pile,
+ * flag or construction site is not enterable, so those exchanges keep their animation.
  */
 export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
   return sceneIndexOf(snapshot).enterableStores;
 }
 
 /**
- * Whether the scene hides this settler inside a building: the `Resting` marker in its workplace, or a
- * goods exchange running against an enterable store (see {@link enterableStoresOf}). Shared so an overlay
- * that must not hang over an empty doorway asks the same question the scene answered. The bubble layer is
- * the deliberate exception: it keeps drawing a need over a settler that has stepped inside.
+ * Whether the scene hides this settler inside a building: a `Resting` marker in its workplace, or a
+ * goods exchange against an enterable store. Shared so an overlay that must not hang over an empty
+ * doorway asks the same question the scene answered.
  */
 export function isIndoorSettler(
   snapshot: WorldSnapshot,
@@ -109,20 +93,16 @@ export function isIndoorSettler(
 }
 
 /**
- * The `entity id → live Position` index used to face a mid-swing attacker/harvester at its target and to
- * aim an in-flight projectile - random access by id that `WorldSnapshot` carries no structure for.
- * Holds only the ids actually referenced as a target this tick, so a busy map's index stays a handful of
- * entries instead of every positioned entity - one settlement fighting must not re-index a whole map's
- * forests. A snapshot with no target-facing actor gets the shared empty index. Stores the snapshot's own
- * Position object (readPosition returns it, not a copy); the `/ONE` to tile space is deferred to the rare
- * facing lookups.
+ * The `entity id → live Position` index a mid-swing actor faces by and a projectile aims at. Holds only
+ * the ids referenced as a target this tick, so one settlement fighting does not re-index a whole map's
+ * forests. Values are the snapshot's own Position objects, not copies, still in raw `Fixed` units: the
+ * `/ONE` to tile space is deferred to the rare lookups.
  */
 export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
   return sceneIndexOf(snapshot).targetPositions;
 }
 
-/** The snapshot's signpost entities, in its own ascending id order - the board prepass
- *  ({@link import('./signpost-boards.js')}) decodes and pairs them. */
+/** The snapshot's signpost entities, in its own ascending id order. */
 export function signpostsOf(snapshot: WorldSnapshot): readonly EntitySnapshot[] {
   return sceneIndexOf(snapshot).signposts;
 }
@@ -158,8 +138,8 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
   return index;
 }
 
-/** Resolve the handful of targeted refs by id. `entityById` binary-searches, so this relies on the
- *  snapshot's ascending-id contract: a re-ordered entity list must never reach here. */
+/** `entityById` binary-searches, so this relies on the snapshot's ascending-id contract: a re-ordered
+ *  entity list must never reach here. */
 function positionsOfRefs(
   snapshot: WorldSnapshot,
   refs: ReadonlySet<number>,

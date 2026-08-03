@@ -30,21 +30,6 @@ import {
   readUpgradePct,
 } from './snapshot-readers/index.js';
 
-/**
- * The per-item field tagging {@link import('./sprite-scene.js').collectSpriteScene} dispatches to: the
- * per-kind render-side reads, the projectile ballistic arc, the signpost board emit, and the fog-ghost
- * emit. Split from the scene builder so the main loop reads project → cull → dispatch; each function is
- * a pure "what fields does this kind carry" decision. Fields are assigned (not spread) so an absent
- * fact stays an absent property under exactOptionalPropertyTypes without a throwaway spread object per
- * field.
- */
-
-/**
- * Tag a settler draw item with the render-side reads a per-character binding needs: the running atomic
- * (+ its elapsed clock), the combat-engaged gait flag, the drawn facing (target-facing wins over the
- * walk heading), the hauled good, the job/weapon look, the owner player LUT row, and the born-young age
- * flag.
- */
 export function assignSettlerFields(
   item: MutableDrawItem,
   components: Readonly<Record<string, unknown>>,
@@ -53,16 +38,13 @@ export function assignSettlerFields(
 ): void {
   if (actingAtomic !== null) {
     item.atomicId = actingAtomic;
-    // The action clock rides alongside the atomic - omitted when idle (see DrawItem.elapsed), so a
-    // kept-indoor settler that still holds a stale CurrentAtomic doesn't carry an orphan elapsed.
+    // The clock only rides with the atomic: a stale `CurrentAtomic` must not leave an orphan elapsed.
     const elapsed = readAtomicElapsed(components);
     if (elapsed !== null) item.elapsed = elapsed;
   }
-  // A combat-engaged unit reads the readied `..._agressive` gait (the sim `Engagement` marker).
   if (readEngaged(components)) item.engaged = true;
-  // Facing: a mid-attack/mid-harvest swing has no walking heading, so it faces its target's live tile
-  // (resolved by the caller); otherwise the movement heading. Target facing wins when it resolves, so a
-  // stale path can't leave an attacker or a woodcutter swinging at empty air.
+  // Target facing wins over the walk heading, so a stale path can't leave a mid-swing settler
+  // chopping at empty air.
   const facing = targetFacing ?? readFacing(components);
   if (facing !== undefined) item.facing = facing;
   const carrying = readCarrying(components);
@@ -72,29 +54,19 @@ export function assignSettlerFields(
   }
   const jobType = readJobType(components);
   if (jobType !== undefined) item.jobType = jobType;
-  // The tribe rides on every settler; the animal species table keys its body look by it.
   const tribe = readSettlerTribe(components);
   if (tribe !== undefined) item.tribe = tribe;
-  // The equipped weapon good drives the drawn warrior look (bow slot → bow body) over the jobType;
-  // null (an Equipment with an empty weapon slot) drives the bare-hands warrior body instead.
   const weaponGood = readEquipmentWeaponGood(components);
   if (weaponGood !== undefined) item.weaponGood = weaponGood;
-  // The worn armor good drives the armor recolor (the (tier, player) palette LUT row).
   const armorGood = readEquipmentArmorGood(components);
   if (armorGood !== undefined) item.armorGood = armorGood;
   const player = readOwnerPlayer(components);
   if (player !== undefined) item.player = player;
-  // Only a born-young settler carries `Age` - the component-presence disambiguation of the age-class
-  // jobType ids (1..4) from colliding synthetic adult ids (AGENTS.md [dc3ef54]).
+  // Only a born-young settler carries `Age`, which is what separates the age-class `jobType` ids 1..4
+  // from colliding synthetic adult ids.
   if ('Age' in components) item.young = true;
 }
 
-/**
- * Tag a building draw item: its type id + construction progress (the shared static fields a fog ghost
- * also carries) plus the live-only reads a ghost never shows: the upgrade progress revealing the next
- * tier over the old body, the mid-production switch a type's animated state overlay flips on (the
- * mill's rotor), and a damaged finished building's remaining HP fraction (the damage-smoke drive).
- */
 export function assignBuildingFields(
   item: MutableDrawItem,
   components: Readonly<Record<string, unknown>>,
@@ -107,9 +79,7 @@ export function assignBuildingFields(
   if (hpFrac !== undefined) item.hpFrac = hpFrac;
 }
 
-/** Tag a berry bush: its render-variant `gfxIndex` (the fruited-bush record, i.e. its species) and a
- *  ripe/bare level (2 = fruited, 1 = bare), so its per-variant two-frame binding draws the state the
- *  sim last set (foraged → bare, regrown → ripe). */
+/** A bush's `level` is 2 when fruited and 1 when bare; `gfxIndex` picks its species record. */
 export function assignBerryBushFields(
   item: MutableDrawItem,
   components: Readonly<Record<string, unknown>>,
@@ -120,10 +90,6 @@ export function assignBerryBushFields(
   if (level !== undefined) item.level = level;
 }
 
-/** Tag a ground pile / delivery flag / trunk drop with its held good and fill - the trunk keys its
- *  per-good pickup graphic off `goodType`, the flag/heap its per-fill frame off `goodType`+`fill`. A
- *  designated delivery flag is tagged for the resolver (its paint-above-the-heap bump already rides
- *  the depth key the caller computed). */
 export function assignStockpileFields(
   item: MutableDrawItem,
   components: Readonly<Record<string, unknown>>,
@@ -136,13 +102,10 @@ export function assignStockpileFields(
 }
 
 /**
- * Tag a signpost post with its owner and append one direction-board item per connected in-range
- * neighbour at the same feet anchor (the board frames' offsets carry the post-top pivot), painted the
- * flag half-step above the post. Synthetic negative refs keep the boards pooled/reconciled per
- * (signpost, angle-bucket) without colliding with real entity ids. The post's ribbon and runic
- * lettering are the team colour - the owner picks the baked per-player guidepost atlas; each board
- * reads the same owner, colour-mapped here because boards bypass the caller's shared push site (the
- * post itself is mapped there).
+ * Append one direction-board item per connected in-range neighbour, sharing the post's feet anchor.
+ * Board refs are synthetic negatives, unique per (signpost, angle bucket), so pooled boards never
+ * collide with real entity ids. Boards bypass the caller's shared push site, so their owner colour is
+ * mapped here.
  */
 export function pushSignpostItems(
   items: MutableSpriteDrawItem[],
@@ -178,13 +141,10 @@ export function pushSignpostItems(
 }
 
 /**
- * Point a projectile draw item along its flight and lob it (the ballistic-arc trig lives in
- * {@link projectileArc}), returning the ballistic height to fold into the draw-lift channel (never the
- * depth key, so the lob can't reshuffle occlusion mid-flight). A shot with a frozen aim (missed, or
- * stranded when its mark fell) ends its chord there ({@link readProjectileMissAim}) rather than at the
- * live target - tracking the runner would bend the nose and stall the lob. A shot with neither a live
- * target nor an aim keeps `rotation` unset and flies flat (lift 0) for the one tick the sim takes to
- * clear it.
+ * Point a projectile along its flight and return its ballistic height in screen px. A frozen miss aim
+ * ends the chord where the shot was aimed rather than at the live target: tracking the runner would
+ * bend the nose and stall the lob. With neither a live target nor an aim the shot keeps `rotation`
+ * unset and flies flat.
  */
 export function assignProjectileArc(
   item: MutableDrawItem,
@@ -208,11 +168,9 @@ export function assignProjectileArc(
 }
 
 /**
- * Append the viewer's remembered statics (`data/fog/ghosts.ts`, pre-filtered to explored ground) to the
- * draw list: each projects with the same anchor/lift/depth formula as a live static (so a ghost occludes
- * correctly against live sprites at the fog boundary) but is tagged {@link DrawItem.ghost} for the pool's
- * grey tint. Every ghost ref joins `liveRefs` - a ghost of a dead entity keeps its pooled sprite alive as
- * long as the memory draws; a camera-culled ghost still counts as live but emits no item.
+ * Append the viewer's remembered statics, each projected with the same anchor, lift and depth formula
+ * as a live static so it occludes correctly at the fog boundary. A ghost joins `liveRefs` before the
+ * cull, so a dead entity keeps its pooled sprite for as long as the memory draws.
  */
 export function pushGhostItems(
   items: MutableSpriteDrawItem[],
@@ -226,7 +184,6 @@ export function pushGhostItems(
     const screen = tileToScreen(g.tileX, g.tileY);
     if (viewport !== undefined && !isVisible(viewport, screen.x, screen.y)) continue;
     const lift = terrainLiftAt(elevation, g.tileX, g.tileY);
-    // Statics are always `idle`; the shared StaticDrawFields were frozen at capture.
     const item: MutableSpriteDrawItem = {
       kind: g.kind,
       ref: g.ref,

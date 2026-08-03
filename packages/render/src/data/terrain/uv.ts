@@ -1,11 +1,9 @@
 /**
- * The pattern-page UV fold: a pattern record's pixel coords (or a plain sub-rect) onto a cell's two
- * triangles, plus the source rect a pattern spans. Pure, so the app can bind a ground texture without a
- * Pixi dependency.
- *
- * UV convention (verified across all 927 pattern records + 38 transition records): `coordsA` lists
- * the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB` lists (TL, TR, BR)
- * and maps onto B's [left, E, SE] - both in point order, divided by the page size verbatim.
+ * The pattern-page UV fold: a pattern record's pixel coords, or a plain sub-rect, onto a cell's two
+ * triangles. The convention is verified across all 927 pattern records and 38 transition records:
+ * `coordsA` lists the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB` lists
+ * (TL, TR, BR) and maps onto B's [left, E, SE] - both in point order, divided by the page size
+ * verbatim.
  */
 
 /** A source sub-rectangle in texture pixels - the pattern's tile region within its `text_NNN` page. */
@@ -17,9 +15,8 @@ export interface SrcRect {
 }
 
 /**
- * The render-local ground binding for one landscape typeId: which texture page + sub-rect to sample,
- * plus a flat-tint fallback colour (the logic-type `debugColor`) for when the page can't be loaded.
- * The app derives this from a `TerrainPattern` IR row, so the type is declared structurally here.
+ * The render-local ground binding for one landscape typeId. Declared structurally rather than imported:
+ * the app derives it from a `TerrainPattern` IR row.
  */
 export interface CellTexture {
   /** The texture page key (e.g. `text_003`) - the key into the loaded page sources. */
@@ -31,10 +28,10 @@ export interface CellTexture {
 }
 
 /**
- * One pattern triangle's 3 normalised UVs from its 6-int pixel-coord tuple (`coordsA`/`coordsB`),
- * as a flat `[u0,v0, u1,v1, u2,v2]` buffer in the tuple's point order. The original's coords are
- * inclusive pixel corners (`0..63` for a 64px tile) - the sub-texel difference is immaterial at
- * tile scale, so the division is straight.
+ * One pattern triangle's 3 normalised UVs from its 6-int pixel-coord tuple (`coordsA`/`coordsB`), flat
+ * `[u0,v0, u1,v1, u2,v2]` in the tuple's point order. The original's coords are inclusive pixel corners
+ * (`0..63` for a 64px tile); the sub-texel difference is immaterial at tile scale, so the division is
+ * straight.
  */
 export function triangleUVs(coords: readonly number[], pageW: number, pageH: number): number[] {
   const out: number[] = [];
@@ -47,10 +44,9 @@ export function triangleUVs(coords: readonly number[], pageW: number, pageH: num
 }
 
 /**
- * The per-typeId path's UV fold: a page sub-rect's corners onto one cell triangle, following the
- * pattern-record convention - triangle `a` gets the rect's (TL, BR, BL), `b` its (TL, TR, BR) -
- * as a flat normalised buffer in vertex order. This lets the approximated representative-tile path
- * share the 1:1 path's tessellation, differing only in which sub-rect it samples.
+ * A page sub-rect's corners folded onto one cell triangle by the pattern-record convention (`a` gets
+ * the rect's TL, BR, BL; `b` its TL, TR, BR), so the approximated representative-tile path shares the
+ * 1:1 path's tessellation and differs only in which sub-rect it samples.
  */
 export function rectTriangleUVs(rect: SrcRect, triangle: 'a' | 'b', pageW: number, pageH: number): number[] {
   const x0 = rect.x / pageW;
@@ -62,9 +58,8 @@ export function rectTriangleUVs(rect: SrcRect, triangle: 'a' | 'b', pageW: numbe
 
 /**
  * The source sub-rect (in texture pixels) a `TerrainPattern`'s two UV triangles span: the bounding box
- * of `coordsA ∪ coordsB` (each a `[x0,y0, x1,y1, x2,y2]` triple). For a representative full-tile pattern
- * this is the tile's 64×64 square within its page. Pure, so the app can derive a {@link CellTexture}
- * rect without a Pixi dependency.
+ * of `coordsA ∪ coordsB` (each a `[x0,y0, x1,y1, x2,y2]` triple). For a representative full-tile
+ * pattern this is the tile's 64×64 square within its page.
  */
 export function patternSrcRect(coordsA: readonly number[], coordsB: readonly number[]): SrcRect {
   const xs = [coordsA[0], coordsA[2], coordsA[4], coordsB[0], coordsB[2], coordsB[4]];

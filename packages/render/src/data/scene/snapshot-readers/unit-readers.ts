@@ -1,42 +1,28 @@
 import { readNumField, readNumFieldOrNull } from '../../snapshot/index.js';
 import type { SpriteState } from '../draw-item.js';
 
-/**
- * Per-settler (unit) component reads: coarse state, cargo, the atomic it runs, its job/weapon/owner.
- * Pure, total decoders - a missing or malformed component reads as its absent value.
- */
-
-/**
- * The atomic id a snapshot entity is mid-execution on, or `null` - `CurrentAtomic.atomicId`, the same
- * numeric id the sim stores as the `setatomic` animation join key.
- */
+/** The atomic a settler is mid-execution on (`CurrentAtomic.atomicId`, the `setatomic` animation join
+ *  key), or `null` when it runs none. */
 export function readActingAtomic(components: Readonly<Record<string, unknown>>): number | null {
   return readNumFieldOrNull(components, 'CurrentAtomic', 'atomicId');
 }
 
-/**
- * The whole ticks the settler has executed in its current atomic - the sim's `CurrentAtomic.elapsed`
- * (a plain integer, no fixed-point rescale). The action's animation clock: a directional swing advances
- * at a fixed cadence over these ticks, so its speed never depends on the action's duration. `null` when
- * not mid-atomic.
- */
+/** Whole ticks executed in the current atomic (`CurrentAtomic.elapsed`, a plain integer with no
+ *  fixed-point rescale), or `null` when not mid-atomic. */
 export function readAtomicElapsed(components: Readonly<Record<string, unknown>>): number | null {
   return readNumFieldOrNull(components, 'CurrentAtomic', 'elapsed');
 }
 
 /**
- * The entity a settler's current atomic acts on - `CurrentAtomic.targetEntity` (the enemy it swings at,
- * the resource it harvests). The scene builder looks up the target's live position to face an attacker at
- * it during a stationary swing; the id, not a snapshot of its tile, is the stable handle because targets
- * move. `null` when the settler runs no atomic or its atomic has no entity target.
- * (`CurrentAtomic.targetTile` stays sim-internal and is never populated today, so it is not read.)
+ * The entity a settler's current atomic acts on (`CurrentAtomic.targetEntity`), or `null` when it runs
+ * no atomic or its atomic has no entity target. The id rather than the target's tile, because the
+ * target moves and the scene resolves its live position each frame.
  */
 export function readAtomicTargetEntity(components: Readonly<Record<string, unknown>>): number | null {
   return readNumFieldOrNull(components, 'CurrentAtomic', 'targetEntity');
 }
 
-/** The store a settler's running atomic exchanges goods with - the `pileup` deposit's `store` or the
- *  `pickup` lift's `from` - or `null` for any other/no atomic. See `isIndoorSettler` for what reads it. */
+/** The store a settler's running atomic exchanges goods with, or `null` for any other or no atomic. */
 export function readStoreExchangeRef(components: Readonly<Record<string, unknown>>): number | null {
   const a = components.CurrentAtomic as { effect?: unknown } | undefined;
   const effect = a?.effect as { kind?: unknown; store?: unknown; from?: unknown } | undefined;
@@ -46,28 +32,18 @@ export function readStoreExchangeRef(components: Readonly<Record<string, unknown
   return null;
 }
 
-/**
- * Whether the sim stamped the `Engagement` marker on a settler (it is advancing on or fighting an enemy).
- * A render fact orthogonal to {@link readSpriteState}: a binding reads it to pick the readied
- * `..._agressive` gait ({@link import('../draw-item.js').DrawItem.engaged}). Presence is the whole signal
- * - the marker's `repathAt` field is sim-internal, never read here.
- */
+/** Whether a settler carries the `Engagement` marker (advancing on or fighting an enemy). Presence is
+ *  the whole signal; the marker's `repathAt` field stays sim-internal. */
 export function readEngaged(components: Readonly<Record<string, unknown>>): boolean {
   return 'Engagement' in components;
 }
 
 /**
- * Derive a sprite's coarse {@link SpriteState} from its snapshot components, in priority order:
- * mid-atomic (`CurrentAtomic`) ⇒ `acting`, else in transit (a live path or a pending goal) ⇒ `moving`,
- * else `idle`. Acting wins over moving because a settler that started an atomic has stopped to act even
- * if a stale path lingers.
- *
- * "In transit" is more than a live {@link PathFollow}: a unit re-issuing its route drops the PathFollow
- * for a tick while it still holds a {@link MoveGoal} / a freshly-queued {@link PathRequest} - most
- * visibly a combat chaser, which re-paths toward a moving enemy every few ticks (systems/conflict
- * `REPATH_CADENCE`). Treating that gap as `idle` drops the walk animation to the standing pose for a
- * frame each tile. A failed PathRequest is the opposite case: the goal is unreachable and the unit is
- * genuinely stuck, so it stays `idle` rather than moonwalk in place.
+ * A sprite's coarse state. `acting` wins over `moving`: a settler that began an atomic has stopped to
+ * act even if a stale path lingers. "In transit" is wider than a live `PathFollow` - a unit re-issuing
+ * its route drops that component for a tick while it still holds a `MoveGoal` or a queued
+ * `PathRequest`, and reading the gap as `idle` drops the walk to the standing pose once per tile. A
+ * *failed* `PathRequest` is the opposite case: the goal is unreachable, so the unit stays `idle`.
  */
 export function readSpriteState(components: Readonly<Record<string, unknown>>): SpriteState {
   if (readActingAtomic(components) !== null) return 'acting';
@@ -79,11 +55,8 @@ export function readSpriteState(components: Readonly<Record<string, unknown>>): 
 }
 
 /**
- * What a snapshot settler is hauling - the `Carrying` component's `goodType` (the sim adds the component
- * on harvest, removes it on deposit), or `null` when it carries nothing. Orthogonal to
- * {@link readSpriteState} so a binding can pick the loaded gait (and the per-good look) while the settler
- * still reads as `moving`/`acting`. A present-but-malformed component still reads as carrying (goodType
- * `undefined` → the generic loaded look).
+ * What a settler is hauling (`Carrying.goodType`), or `null` when it carries nothing. A present but
+ * malformed component still reads as carrying, with no `goodType` - the generic loaded look.
  */
 export function readCarrying(components: Readonly<Record<string, unknown>>): { goodType?: number } | null {
   const c = components.Carrying as { goodType?: unknown } | undefined;
@@ -91,28 +64,21 @@ export function readCarrying(components: Readonly<Record<string, unknown>>): { g
   return typeof c.goodType === 'number' ? { goodType: c.goodType } : {};
 }
 
-/**
- * A settler's `Settler.jobType` - the per-character body/head join key
- * ({@link import('../draw-item.js').DrawItem.jobType}) - or `undefined` for a jobless (`null`) settler /
- * malformed component (the binding then falls back to its default look).
- */
+/** A settler's `Settler.jobType`, the per-character body/head join key, or `undefined` for a jobless
+ *  settler. */
 export function readJobType(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Settler', 'jobType');
 }
 
-/**
- * A settler's `Settler.tribe`, the wildlife species join key
- * ({@link import('../draw-item.js').DrawItem.tribe}), or `undefined` for a malformed component.
- */
+/** A settler's `Settler.tribe`, the wildlife species join key. */
 export function readSettlerTribe(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Settler', 'tribe');
 }
 
 /**
- * The `typeId` of the good in a settler's `Equipment.weapon` slot ({@link import('../draw-item.js').DrawItem.weaponGood}),
- * so the drawn warrior weapon follows the equipment slot. Tri-state: `undefined` when the settler has no
- * `Equipment` component at all (the `jobType` look stands), `null` when it has one whose weapon slot is
- * empty/malformed (a warrior job then draws bare-handed), else the worn weapon's good id.
+ * The good in a settler's `Equipment.weapon` slot. Tri-state: `undefined` when it carries no
+ * `Equipment` at all (the `jobType` look stands), `null` when the slot is empty or malformed (a warrior
+ * job then draws bare-handed), else the worn weapon's good id.
  */
 export function readEquipmentWeaponGood(
   components: Readonly<Record<string, unknown>>,
@@ -120,8 +86,7 @@ export function readEquipmentWeaponGood(
   return readEquipSlotGood(components, 'weapon');
 }
 
-/** {@link readEquipmentWeaponGood}'s twin for the `Equipment.armor` slot, the armor-recolor LUT-row
- *  key ({@link import('../draw-item.js').DrawItem.armorGood}), same tri-state. */
+/** {@link readEquipmentWeaponGood}'s twin for the `Equipment.armor` slot, same tri-state. */
 export function readEquipmentArmorGood(
   components: Readonly<Record<string, unknown>>,
 ): number | null | undefined {
@@ -141,11 +106,8 @@ function readEquipSlotGood(
   return typeof goodType === 'number' ? goodType : null;
 }
 
-/**
- * The owning player slot of a settler - the sim `Owner.player`, the render team-colour key
- * ({@link import('../draw-item.js').DrawItem.player}). `undefined` when the settler carries no `Owner`
- * (wildlife / a neutral fixture), which the renderer draws in the base palette.
- */
+/** The owning player slot (`Owner.player`), the team-colour key, or `undefined` for an unowned settler
+ *  (wildlife, a neutral fixture) that draws in the base palette. */
 export function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Owner', 'player');
 }

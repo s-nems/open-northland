@@ -1,9 +1,7 @@
 /**
- * The shared per-cell map-lane sampler core: one bilinear, edge-clamped lookup over a row-major
- * `width×height` grid. The elevation lift (`elevation.ts`) and the baked brightness shading
- * (`brightness.ts`) are thin wrappers over this - they must sample at identical coordinates or a
- * lifted sprite and its shading would disagree. No Pixi, no canvas - plain math, unit-tested
- * headlessly like the rest of `render`'s data layer.
+ * The shared per-cell map-lane sampler core. The elevation lift (`elevation.ts`) and the baked
+ * brightness shading (`brightness.ts`) are thin wrappers over it: they must sample at identical
+ * coordinates, or a lifted sprite and its shading disagree.
  */
 
 import { lerp } from '../math.js';
@@ -12,9 +10,8 @@ import { lerp } from '../math.js';
 type CellSampler = (col: number, row: number) => number;
 
 /**
- * The edge-clamped integer-cell lookup over a row-major lane - the shared nearest-cell core under
- * {@link makeCellSampler}'s bilinear taps and the whole-cell scans in `hillshade.ts`/`water.ts`
- * (out-of-range coordinates repeat the boundary cell, matching the GPU lane texture's clamp).
+ * The edge-clamped integer-cell lookup over a row-major lane: an out-of-range coordinate repeats the
+ * boundary cell, matching the GPU lane texture's clamp.
  */
 export function clampedCellAt(
   values: ArrayLike<number>,
@@ -29,11 +26,9 @@ export function clampedCellAt(
 }
 
 /**
- * Build the bilinear, edge-clamped sampler over a row-major per-cell lane. Fractional inputs (a
- * walking settler, a position between cell centres) interpolate; a sample past an edge repeats
- * the boundary cell (no wrap, no OOB). The sampler closes over the array by reference (never
- * mutated). Callers guarantee a non-empty lane and positive dims (their absent-lane paths return
- * shared flat/neutral fields instead).
+ * Build the bilinear, edge-clamped sampler over a row-major per-cell lane: fractional inputs
+ * interpolate, a sample past an edge repeats the boundary cell (no wrap, no OOB). Closes over the
+ * array by reference, never mutating it. Callers must pass a non-empty lane and positive dimensions.
  */
 export function makeCellSampler(values: readonly number[], width: number, height: number): CellSampler {
   const at = clampedCellAt(values, width, height);

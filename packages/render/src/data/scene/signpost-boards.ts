@@ -4,13 +4,10 @@ import { signpostsOf } from './snapshot-index.js';
 import { readPosition } from './snapshot-readers/index.js';
 
 /**
- * The signpost DIRECTION-BOARD prepass: which angular board frames each signpost shows - one board per
- * connected in-range same-player neighbour, pointing at it (observed original: the boards indicate that
- * - and where - the network continues; several neighbours nail several boards). Connectivity is the
- * sim's own circle-overlap rule (`systems.withinNodeRadius` over nodes taken through the same
- * `nodeOfPosition` seam the sim's network build uses), so the drawn boards can never disagree with it;
- * angles are measured in projected screen space so a board visually points along the on-screen line to
- * its neighbour.
+ * Which angular board frames each signpost shows: one board per connected in-range same-player
+ * neighbour, pointing at it (observed original - the boards indicate that, and where, the network
+ * continues). Angles are measured in projected screen space, so a board points along the on-screen
+ * line to its neighbour.
  */
 
 /** The decoded `ls_guidepost` board frame count: bobs 1..18 sweep a full turn in ~20° steps. */
@@ -18,7 +15,7 @@ export const SIGNPOST_BOARD_FRAMES = 18;
 
 interface Post {
   readonly id: number;
-  /** Tile-space position (floats - render-side only). */
+  /** Tile-space position. */
   readonly x: number;
   readonly y: number;
   /** Half-cell node coords - the sim's connectivity lattice. */
@@ -28,15 +25,11 @@ interface Post {
   readonly navRadius: number;
 }
 
-/** Per-snapshot memo - the signpost entities come from the shared scene walk, but decoding and pairing
- *  them runs only for the snapshots that actually draw a signpost. */
+/** Per-snapshot memo: pairing runs once per snapshot, not once per frame. */
 const boardsBySnapshot = new WeakMap<WorldSnapshot, ReadonlyMap<number, readonly number[]>>();
 const EMPTY_BOARDS: ReadonlyMap<number, readonly number[]> = new Map();
 
-/**
- * Map of signpost entity id → its board frame indices (0-based into
- * {@link import('../sprites/index.js').SignpostBinding.boards}), deduplicated per angle bucket.
- */
+/** Signpost entity id → its 0-based board frame indices, deduplicated per angle bucket. */
 export function signpostBoardsOf(snapshot: WorldSnapshot): ReadonlyMap<number, readonly number[]> {
   const cached = boardsBySnapshot.get(snapshot);
   if (cached !== undefined) return cached;
@@ -53,7 +46,8 @@ export function signpostBoardsOf(snapshot: WorldSnapshot): ReadonlyMap<number, r
       for (let j = i + 1; j < posts.length; j++) {
         const b = posts[j] as Post;
         if (a.player !== b.player) continue;
-        // The sim's exact link test - circles apart means no link, no board.
+        // The sim's own link rule, over nodes taken through its `nodeOfPosition` seam, so the drawn
+        // boards can never disagree with the network.
         if (!systems.withinNodeRadius(a.hx, a.hy, b.hx, b.hy, a.navRadius + b.navRadius)) continue;
         addBoard(byId, a, b);
         addBoard(byId, b, a);
@@ -69,9 +63,8 @@ export function signpostBoardsOf(snapshot: WorldSnapshot): ReadonlyMap<number, r
 function addBoard(byId: Map<number, number[]>, from: Post, to: Post): void {
   const sa = tileToScreen(from.x, from.y);
   const sb = tileToScreen(to.x, to.y);
-  // Clockwise bearing from screen-north (up): bob 1 points away from the camera (north), the series
-  // sweeps clockwise in even steps (decoded frame offsets; the exact frame↔bearing join is a
-  // human-validated approximation).
+  // Clockwise bearing from screen-north: bob 1 points away from the camera and the series sweeps
+  // clockwise in even steps (decoded frame offsets; the frame↔bearing join is an approximation).
   const theta = Math.atan2(sb.x - sa.x, -(sb.y - sa.y));
   const step = (2 * Math.PI) / SIGNPOST_BOARD_FRAMES;
   const bucket =

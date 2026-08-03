@@ -147,10 +147,3 @@ export {
   WorldRenderer,
   type WorldRendererOptions,
 } from './gpu/world-renderer/index.js';
-
-/*
- * The renderer is a pure consumer of sim state (see docs/ARCHITECTURE.md). It reads a snapshot
- * and draws; it never mutates the sim and the sim never imports this package. The live entry is
- * the retained {@link WorldRenderer}: it interpolates between the previous and current tick using
- * the `alpha` from the fixed-timestep driver so motion is smooth regardless of the 12 Hz sim rate.
- */

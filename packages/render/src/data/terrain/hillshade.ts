@@ -4,37 +4,28 @@ import { clampedCellAt } from './cell-field.js';
 import { elevationLiftPerUnit } from './elevation.js';
 
 /**
- * Slope hillshading computed from the map's elevation lane - an OpenNorthland visual enhancement, not
- * an original mechanism (the original's slope light is pre-baked into `embr`; `data/terrain/brightness.ts`).
- * A fixed north-west light (matching the direction the baked shadow art implies) shades each cell by
- * its elevation gradient, and the result composes with the shading lane two ways:
- *
- *  - **no `embr` lane** (synthetic grids, foreign maps): the hillshade IS the lane, so hills stop
- *    rendering flat-lit - a full-strength fallback around the neutral value;
- *  - **`embr` present**: the baked plane already carries the original's slope light, so the hillshade
- *    only *accents* it at {@link HILLSHADE_ENHANCE} strength (a subtle relief boost, not a second
- *    competing light model).
- *
- * Everything here is a named approximation: the light direction, the slope exaggeration and the
- * enhance strength are tuned constants awaiting a human pass, not measured values.
+ * Slope hillshading from the map's elevation lane - an Open Northland enhancement, not an original
+ * mechanism: the original's slope light is pre-baked into `embr` (`brightness.ts`). It stands in as the
+ * whole lane on a map without one, and only accents an `embr` map at {@link HILLSHADE_ENHANCE} so the
+ * bake stays the faithful signal. Light direction, slope exaggeration and enhance strength are all
+ * named approximations - tuned constants awaiting a human pass, not measured values.
  */
 
 /**
- * The fixed light direction (screen space: +x right, +y down, +z out of the ground plane), pointing
- * from the surface toward the light - upper-left, consistent with the baked cast-shadow art. Not
- * normalized here; {@link composeShadingLane} normalizes once.
+ * The fixed light direction in screen space (+x right, +y down, +z out of the ground plane), pointing
+ * from the surface toward the light - upper-left, consistent with the baked cast-shadow art. Stored
+ * unnormalized; the field build normalizes it once.
  */
 const HILLSHADE_LIGHT = { x: -0.6, y: -0.45, z: 0.7 } as const;
 
 /**
- * Multiplier on the geometric slope before shading. The true projected slopes are shallow (a steep
- * 8-unit/cell rise is only ~0.14 px/px), which would shade invisibly; the exaggeration lifts relief
- * into the readable range. Tunable by eye.
+ * Multiplier on the geometric slope before shading: the true projected slopes are shallow (a steep
+ * 8-unit/cell rise is only ~0.14 px/px) and would shade invisibly.
  */
 const SLOPE_EXAGGERATION = 8;
 
 /** How strongly the hillshade accents a map that already carries the baked `embr` plane (0 = off,
- *  1 = full hillshade on top of the bake). Kept low - the bake is the faithful signal. */
+ *  1 = full hillshade on top of the bake). */
 const HILLSHADE_ENHANCE = 0.35;
 
 /** Clamp of the relative hillshade multiplier (flat = 1), keeping extreme synthetic slopes readable. */
@@ -42,11 +33,10 @@ const HILLSHADE_MIN = 0.55;
 const HILLSHADE_MAX = 1.45;
 
 /**
- * Compose the per-cell shading lane the ground (and the anchored sprites) multiply by: the decoded
- * `embr` lane accented by elevation hillshade, or pure hillshade when the map has no `embr`, or the
- * inputs unchanged when there is no elevation to shade from. Returns a row-major u8-range lane
- * (neutral {@link BRIGHTNESS_NEUTRAL}) or `undefined` when there is nothing to shade with at all.
- * Pure - built once per map.
+ * Compose the per-cell shading lane the ground and the anchored sprites multiply by: the decoded
+ * `embr` lane accented by elevation hillshade, pure hillshade when the map has no `embr`, or the inputs
+ * unchanged when there is no elevation to shade from. Row-major and u8-range, neutral at
+ * {@link BRIGHTNESS_NEUTRAL}, or `undefined` when there is nothing to shade with at all.
  */
 export function composeShadingLane(
   brightness: readonly number[] | undefined,
@@ -79,11 +69,9 @@ function clampByte(v: number): number {
 }
 
 /**
- * The relative hillshade multiplier per cell (flat ground = 1, lit slope > 1, shadowed slope < 1),
- * clamped to [{@link HILLSHADE_MIN}, {@link HILLSHADE_MAX}] - or `null` when the lane is entirely
- * flat (no relief to shade). Central-difference gradient in world px (the same lift-per-unit the
- * mesh warps by, over the projected cell spacing), Lambert against {@link HILLSHADE_LIGHT},
- * normalized so flat ground is exactly neutral.
+ * The relative hillshade multiplier per cell (flat ground = 1, lit slope > 1, shadowed slope < 1), or
+ * `null` when the lane is entirely flat. Central-difference gradient in world px, Lambert against
+ * {@link HILLSHADE_LIGHT}, normalized so flat ground is exactly neutral.
  */
 function hillshadeField(
   elevation: readonly number[],

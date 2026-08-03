@@ -1,21 +1,3 @@
-/**
- * The pure snapshot-component readers - every function here turns one plain-cloned snapshot component into
- * the render-side fact a {@link import('../draw-item.js').DrawItem} carries (state, facing, carried good,
- * build progress, …). Split out of `scene.ts` so the *reads* live apart from the *scene assembly*
- * (projection + depth sort) that consumes them, and grouped by concern so each stays changeable on its own:
- *  - {@link import('../../snapshot/index.js')} - position + the numeric-field decode primitives;
- *  - {@link import('./classify.js')} - the marker → {@link import('../draw-item.js').SpriteKind} classification;
- *  - {@link import('./facing.js')} - the projected-heading facing geometry;
- *  - {@link import('./unit-readers.js')} - the per-settler reads (state, carry, atomic, job, owner);
- *  - {@link import('./static-readers.js')} - the building / resource / stump / bush reads + assignStaticFields;
- *  - {@link import('./stockpile-readers.js')} - the ground-pile good + fill read;
- *  - {@link import('./projectile-readers.js')} - the in-flight shot's target, origin and cover.
- *
- * Shared contract: every reader is a pure, total function of a snapshot entity's `components` record - a
- * missing or malformed component reads as its "absent" value (`null`/`undefined`), never a throw. Nothing
- * here re-enters the sim. The barrel keeps `./snapshot-readers/index.js` as the stable import path.
- */
-
 export { readPosition } from '../../snapshot/index.js';
 export { classify } from './classify.js';
 export { facingTowardTile, readFacing } from './facing.js';

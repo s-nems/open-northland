@@ -5,16 +5,8 @@ import type { DrawItem } from './draw-item.js';
 import { collectSpriteScene } from './sprite-scene.js';
 
 /**
- * The terrain half of the pure scene layer: the decoded-map grid shapes ({@link SceneTerrain} + its
- * per-triangle {@link SceneGround} / {@link SceneTransitions} lanes), the decoded-map → {@link SceneTerrain}
- * projection, plus the whole-frame headless oracle {@link buildScene} (terrain tiles + sprites in one
- * depth-sorted list).
- */
-
-/**
  * A decoded map's 1:1 per-triangle ground lanes (the `ground` layer of `content/maps/<id>.json`):
- * pattern `EditName`s + each cell's two triangle picks as indices into them. Render-only data - the
- * renderer joins a name through {@link import('../../gpu/terrain-textures.js').TerrainTextureSet.groundFor}.
+ * pattern `EditName`s plus each cell's two triangle picks as indices into them.
  */
 export interface SceneGround {
   readonly patterns: readonly string[];
@@ -31,8 +23,7 @@ export interface SceneGround {
  * `content/maps/<id>.json`): the map's `eatd` name dictionary verbatim plus the four `emt1..emt4`
  * per-cell u8 lanes - `a1`/`b1` are layer 1 (topmost) for triangles A/B, `a2`/`b2` layer 2. A lane
  * value `v < 255` selects transition `⌊v/6⌋` from {@link types} and pair variant `v % 6`
- * (`../terrain/transitions.js` `transitionRef`); the renderer joins a name through
- * {@link import('../../gpu/terrain-textures.js').TerrainTextureSet.transitionFor}.
+ * (`../terrain/transitions.js` `transitionRef`).
  */
 export interface SceneTransitions {
   readonly types: readonly string[];
@@ -54,38 +45,27 @@ export interface SceneTerrain {
   readonly transitions?: SceneTransitions;
   /**
    * The decoded map's per-cell `lmhe` terrain height (row-major, length `width*height`, 0..~250), when
-   * present. The renderer builds an {@link import('../terrain/index.js').ElevationField} from it to lift the
-   * ground mesh + every projected item; absent → flat (no lift). Render-only data - the sim never reads it.
+   * present. It lifts the ground mesh and every projected item; absent → flat.
    */
   readonly elevation?: readonly number[];
   /**
    * The decoded map's per-cell `embr` baked shading (row-major, length `width*height`, u8 with 127 =
-   * neutral), when present. The ground mesh consumes it per fragment (luminance × value/127 sampled
-   * from an R8 lane texture - slope light/shadow plus the fade-to-black map border); absent →
-   * unshaded. Landscape objects shade separately, through an app-built
-   * {@link import('../terrain/index.js').BrightnessField} (`data/terrain/brightness.ts` owns that rule);
-   * buildings/settlers are unmeasured and unshaded. Render-only data: the sim never reads it.
+   * neutral), when present. The ground mesh consumes it per fragment as luminance × value/127 - slope
+   * light and shadow plus the fade-to-black map border; absent → unshaded.
    */
   readonly brightness?: readonly number[];
 }
 
 /**
- * Terrain tiles sort among themselves back-to-front (ascending row), shifted into a band strictly below
- * every sprite depth (sprite depths are ≥ 0 world rows; tiles negative) - so ground never paints over a
- * sprite even at the largest map.
+ * Terrain tiles sort among themselves back-to-front by ascending row, in a band strictly below every
+ * sprite depth (sprite depths are ≥ 0 world rows), so ground never paints over a sprite.
  */
 const TILE_DEPTH_BASE = -1_000_000;
 
 /**
- * Project a loaded terrain map (the `{ width, height, typeIds }` shape `parseTerrainMap` validates a
- * `content/maps/<id>.json` into - a cell-resolution grid, the sim-side `CellTerrainMap` shape, not
- * the half-cell `TerrainMap` the nav graph consumes) onto the {@link SceneTerrain} the scene layer
- * draws.
- *
- * It only re-views the (read-only) grid as the render shape, asserting nothing the loader already
- * enforced (the data-package zod schema pins `typeIds.length === width*height`). The
- * optional lanes accept an explicit `undefined` (zod's `.optional()` infers `T | undefined`) - the
- * body spreads them conditionally either way.
+ * Re-view a loaded cell-resolution terrain map as the render shape, asserting nothing the loader's
+ * schema already enforced (`typeIds.length === width*height`). The optional lanes accept an explicit
+ * `undefined`, since zod's `.optional()` infers `T | undefined`.
  */
 export function terrainMapToScene(map: {
   readonly width: number;
@@ -108,25 +88,12 @@ export function terrainMapToScene(map: {
 }
 
 /**
- * Build the depth-sorted isometric draw list for a frame.
+ * The headless oracle for the projection and depth ordering the live renderer must match: a pure
+ * function of the snapshot and grid, so the screenshot harness gets a reproducible frame.
  *
- * Ordering:
- *  1. Tiles are emitted in row-major (back-to-front) order and carry a depth below every sprite, so
- *     no sprite is ever hidden by ground drawn after it.
- *  2. Sprites sort by feet anchor = ascending world `(y, x)` (a settler lower/further-right on the
- *     map occludes one behind it). The sort key is the float tile `y` (the feet), with `x` then
- *     entity `id` as deterministic tie-breaks so the order is total and stable.
- *
- * Pure: a function of the snapshot + grid only, so the screenshot harness gets a reproducible frame.
- *
- * The live render path is {@link import('../../gpu/world-renderer/index.js').WorldRenderer}, which projects
- * terrain itself and consumes {@link import('./sprite-scene.js').buildSpriteScene} (sprites only);
- * `buildScene` is the headless oracle for the projection + depth-ordering it must match. Known
- * divergence: the renderer's painter key is the feet-anchor screen y (∝ row under the staggered
+ * Known divergence: the renderer's painter key is the feet-anchor screen y (∝ row under the staggered
  * raster, so static map objects interleave correctly), while this oracle's sprite key is row-major
- * `(tileY, tileX)` - the two orders differ for items more than a row apart on one screen band. The
- * terrain-projection duplication with the GPU terrain layer is deliberate: both share the
- * `terrain/tessellation.ts` helpers, so they can't silently diverge.
+ * `(tileY, tileX)`. The two orders differ for items more than a row apart on one screen band.
  */
 export function buildScene(
   snapshot: WorldSnapshot,
@@ -134,7 +101,7 @@ export function buildScene(
   elevation?: ElevationField,
 ): DrawItem[] {
   const tiles: DrawItem[] = [];
-  // Terrain: one tile per cell, row-major (y outer, x inner) = back-to-front in iso space.
+  // One tile per cell, row-major, which is back-to-front in iso space.
   for (let cell = 0; cell < terrain.typeIds.length; cell++) {
     const typeId = terrain.typeIds[cell];
     if (typeId === undefined) continue; // unreachable (cell < length) - satisfies noUncheckedIndexedAccess
@@ -146,8 +113,8 @@ export function buildScene(
       ref: cell,
       x: screen.x,
       y: screen.y,
-      // Ascending row is back-to-front: under the staggered raster, diamonds interlock only across
-      // rows, and a same-row pair never overlaps.
+      // Under the staggered raster, diamonds interlock only across rows: a same-row pair never
+      // overlaps, so ascending row is back-to-front.
       depth: TILE_DEPTH_BASE + row,
       typeId,
     });

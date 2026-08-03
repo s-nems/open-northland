@@ -1,100 +1,54 @@
 /**
- * The layered-kind binding-table types - which atlas bob (and which named atlas-layer family) a
- * building / resource node / ground pile draws, per type and per good. Content fills these from the
- * extracted IR; the pure {@link import('./layered.js')} resolver consumes them. Settler binding types
- * are the twin file {@link import('./settler-bindings.js')}; the root
- * {@link import('./bindings.js').SpriteBindings} record composes both.
- */
-
-/**
- * A bob reference that names which atlas it draws from - the shape every per-kind binding shares
- * (buildings via the {@link BuildingBobRef} alias, per-good resources, stockpiles). A plain bob id
- * draws from the kind's {@link import('../../gpu/sprite-sheet.js').SpriteSheet.kindLayers} layer; a
- * `{ layer, bob }` draws from a named {@link import('../../gpu/sprite-sheet.js').SpriteSheet.families}
- * atlas (the rock/mine/pile/flag `.bmd`s), each with its own frame-id space.
+ * A plain bob id draws from the kind's default atlas layer; a `{ layer, bob }` draws from that named
+ * family atlas (the rock/mine/pile/flag `.bmd`s), each of which has its own frame-id space.
  */
 export type LayeredBobRef = number | { readonly layer: string; readonly bob: number };
 
 /**
- * A building type's bob reference - a {@link LayeredBobRef} whose default layer is the shared
- * `ls_houses_viking.house01` and whose named families are the multi-`.bmd` case, where a building type
- * lives in its own `.bmd`/palette (e.g. the viking HQ in `ls_houses_viking4.bmd`) and is blitted at that
- * family's own frame-id space and per-family scale.
+ * A building's default layer is the shared `ls_houses_viking.house01`; a named family is a type living
+ * in its own `.bmd`/palette (the viking HQ in `ls_houses_viking4.bmd`), with its own scale.
  */
 export type BuildingBobRef = LayeredBobRef;
 
-/**
- * A resolved building draw ({@link import('./layered.js').resolveBuildingDraw}'s output): which `bob` id,
- * and which named atlas-layer family it draws from - `layer === undefined` means the default building
- * layer, as on every {@link LayeredBobRef}.
- */
 export interface BuildingDraw {
   readonly bob: number;
   readonly layer?: string;
 }
 
-/**
- * A building's per-type bob binding - the original's `[GfxHouse]` `LogicType` → `GfxBobId` join, so
- * each building type draws its own house bob. {@link byType} maps a building's `buildingType`
- * ({@link import('../scene/index.js').DrawItem.typeId}) to its {@link BuildingBobRef}; a type absent
- * from it falls back to {@link default} (the representative house).
- */
+/** The `[GfxHouse]` `LogicType` to `GfxBobId` join, keyed by a building's `buildingType`. */
 export interface BuildingTypeBinding {
-  /** Bob ref per building typeId - the `[GfxHouse]` `LogicType` → `GfxBobId` table (optionally layer-qualified). */
   readonly byType: Readonly<Record<number, BuildingBobRef>>;
-  /** Bob ref for a typeId absent from {@link byType} - the fallback house (optionally layer-qualified). */
+  /** The representative house drawn for a typeId absent from {@link byType}. */
   readonly default: BuildingBobRef;
   /**
-   * Construction-stage layers per building typeId - the `[GfxHouse]` `GfxBobConstructionLayer` table
-   * (from-scratch rows only), each type's layers in the source's stacking (file) order. An
-   * under-construction {@link import('../scene/index.js').DrawItem} (`builtPct` present) draws every
-   * layer whose `[fromPct, toPct]` range contains its progress, stacked in list order
-   * ({@link import('./layered.js').resolveConstructionDraws}). A type absent here (or a table-less
-   * binding) keeps its normal finished-body draw at every progress.
+   * The `[GfxHouse]` `GfxBobConstructionLayer` from-scratch rows, in the source's stacking (file)
+   * order. A type absent here keeps its finished-body draw at every progress.
    */
   readonly constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
   /**
-   * Upgrade-overlay layers per building typeId - the `[GfxHouse]` `GfxBobConstructionLayer`
-   * `upgrade === 1` rows, keyed by the tier BEING UPGRADED (the row's own size level; its bob is the
-   * next tier's finished body). An UPGRADING {@link import('../scene/index.js').DrawItem}
-   * (`upgradePct` present) keeps its finished old-tier body draw and reveals these layers over it
-   * ({@link import('./layered.js').resolveUpgradeDraws}) - the original's building-rises-on-the-old-one
-   * look. A type absent here shows only its old body until the upgrade completes.
+   * The `GfxBobConstructionLayer` `upgrade === 1` rows, keyed by the tier being upgraded while the
+   * row's bob is the next tier's finished body. A type absent here shows only its old body.
    */
   readonly upgradeByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
   /**
-   * Animated state overlays per building typeId - the `[GfxHouse]` type-4 `GfxOverlay` table (the
-   * mill's rotor: the body bob has no blades). A finished building whose type is here draws its
-   * overlay above the body: the {@link BuildingOverlayRef.working} spin cycle while the building runs
-   * a production cycle ({@link import('../scene/index.js').DrawItem.working}), else the still
-   * {@link BuildingOverlayRef.idle} frame. An under-construction building draws no overlay (the
-   * original lists overlays only for the finished body).
+   * The `[GfxHouse]` type-4 `GfxOverlay` table (the mill's rotor: the body bob has no blades). The
+   * original lists overlays only for the finished body, so a building under construction draws none.
    */
   readonly overlayByType?: Readonly<Record<number, BuildingOverlayRef>>;
 }
 
-/**
- * One building type's animated state overlay (the `[GfxHouse]` `GfxOverlay` type-4 join): the extra
- * sprite drawn on top of the finished body, such as the mill's rotor. `idle` is the standing-still
- * frame (source state 0); `working` the spin-cycle frame list (source state 1), looped one frame every
- * {@link ticksPerFrame} sim ticks on the free tick clock while the building is producing. Either state
- * may be absent (that state then draws no overlay). Bobs resolve against `layer` as on every
- * {@link LayeredBobRef}.
- */
+/** An overlay drawn over the finished body, its two states from the `GfxOverlay` type-4 join. */
 export interface BuildingOverlayRef {
   readonly layer?: string;
   /** The still frame drawn while not producing (source state 0). */
   readonly idle?: number;
   /** The spin-cycle frames drawn while producing (source state 1), in source order. */
   readonly working?: readonly number[];
-  /** Sim ticks per spin frame (default 1), like {@link DirectionalAnim.ticksPerFrame}. */
+  /** Sim ticks per spin frame (default 1). */
   readonly ticksPerFrame?: number;
 }
 
-/**
- * One construction-stage layer of a building type: the bob to draw (optionally from a named atlas-layer
- * family, like {@link BuildingBobRef}) while build progress is within `[fromPct, toPct]` (inclusive).
- */
+/** The bob a stage draws while build progress is within `[fromPct, toPct]`, inclusive. */
 export interface ConstructionLayerRef {
   readonly bob: number;
   readonly layer?: string;
@@ -102,67 +56,48 @@ export interface ConstructionLayerRef {
   readonly toPct: number;
 }
 
-/**
- * A resource node's per-good bob binding - the {@link BuildingTypeBinding} twin for harvestable
- * `[GfxLandscape]` objects (a tree for wood, a rock for stone, a mine decal for iron/gold/clay, a
- * mushroom). {@link byGood} maps a node's `Resource.goodType`
- * ({@link import('../scene/index.js').DrawItem.goodType}) to its per-level frames, ordered empty→full
- * (the mine record's fill states, `state 1` first); {@link import('./layered.js').resolveResourceDraw}
- * indexes them by the node's {@link import('../scene/index.js').DrawItem.level}, clamped, so a mined
- * deposit visibly shrinks. A node with no level (a tree/mushroom/full deposit) draws the full (last)
- * frame. A good absent from {@link byGood} falls back to {@link default} (the representative yew tree).
- */
+/** Per-good bob binding for harvestable `[GfxLandscape]` objects: trees, rocks, mine decals, mushrooms. */
 export interface ResourceTypeBinding {
-  /** Per-`goodType` node frames ordered empty→full - the good→`landscapeToHarvest`-record→per-state-bob
-   *  join (each optionally layer-qualified). A non-mined node has a single-frame list (drawn at any level).
-   *  A `null` entry is a data-pinned invisible level, where the source record names a bob its own atlas
-   *  doesn't hold (the original's freshly-sown wheat: state 1 → bob 4000, an out-of-atlas "draw nothing"
-   *  sentinel); that level draws nothing, deliberately not the placeholder (which flags a missing binding). */
+  /** Node frames per `Resource.goodType`, ordered empty to full (the good to `landscapeToHarvest`
+   *  record to per-state-bob join, `state 1` first). A non-mined node has a single-frame list. A `null`
+   *  entry is a data-pinned invisible level, where the source record names a bob its own atlas does not
+   *  hold (freshly-sown wheat: state 1 names bob 4000); that level draws nothing, deliberately not the
+   *  placeholder, which flags a missing binding instead. */
   readonly byGood: Readonly<Record<number, readonly (LayeredBobRef | null)[]>>;
   /**
-   * Per-variant node frames keyed by the node's exact source `[GfxLandscape]` record index
-   * ({@link import('../scene/index.js').DrawItem.gfxIndex}) - one entry per harvest-stage variant
-   * ("yew 01" … "cedar 02", every stone/mine decal), same empty→full frame order as {@link byGood}.
-   * Wins over the per-good entry when the item names a bound variant, so a decoded map's placements
-   * keep their original species variety; a variant absent here (an unloaded family atlas) falls back
-   * per-good, never borrowing a wrong frame.
+   * Node frames keyed by the exact `[GfxLandscape]` record index, one per harvest-stage variant ("yew
+   * 01" to "cedar 02", every stone and mine decal), in the same order as {@link byGood}. Wins over the
+   * per-good entry so a decoded map keeps its species variety; an unbound variant falls back per-good
+   * rather than borrowing a wrong frame.
    */
   readonly byGfxIndex?: Readonly<Record<number, readonly LayeredBobRef[]>>;
-  /** Bob ref for a good absent from {@link byGood} - the fallback node (the representative yew tree). */
+  /** The representative yew drawn for a good absent from {@link byGood}. */
   readonly default: LayeredBobRef;
 }
 
 /**
- * A signpost's draw binding: the standing post plus the direction-board frames in angular order (the
- * decoded `ls_guidepost.bmd`: bob 0 the post, bobs 1..18 the board in ~20° steps around the post-top
- * nail point - each frame's own offsets carry the pivot, so a board draws at the post's feet anchor).
- * {@link import('./layered.js').resolveSignpostDraw} picks the post or the board by
- * {@link import('../scene/index.js').DrawItem.boardIndex}.
+ * The decoded `ls_guidepost.bmd`: bob 0 is the post, bobs 1..18 the board in roughly 20 degree steps
+ * around the post-top nail point. Each frame's own offsets carry the pivot, so a board draws at the
+ * post's feet anchor.
  */
 export interface SignpostBinding {
   readonly post: LayeredBobRef;
   /** Direction-board frames in angular order (index = the scene collector's angle bucket). */
   readonly boards: readonly LayeredBobRef[];
   /**
-   * Per-player recolour variants, indexed by `DrawItem.player` (the owner slot): the same post/board
-   * frames from that player's baked `ls_guidepost.player_NN` atlas - the guidepost is drawn through the
-   * owner's full palette in the original, and its graded edge alpha rules out the characters' indexed
-   * LUT path. A missing slot (or the whole list) falls back to this binding's own frames.
+   * The same frames from that player's baked `ls_guidepost.player_NN` atlas, indexed by owner slot: the
+   * original draws a guidepost through the owner's full palette, and its graded edge alpha rules out
+   * the characters' indexed LUT path. A missing slot falls back to this binding's own frames.
    */
   readonly byPlayer?: readonly (SignpostBinding | undefined)[];
 }
 
-/**
- * A ground pile / delivery flag's binding - the {@link ResourceTypeBinding} twin for a bare
- * `Stockpile+Position`. A held pile draws its good's `[GfxLandscape]` `landscapeToStore` heap
- * (`ls_goods.<good>`) at a per-fill frame, indexed by the pile's
- * {@link import('../scene/index.js').DrawItem.fill} amount (clamped, so the heap visibly grows); an empty
- * pile (a designated collection point) draws the {@link flag} sprite (`ls_temp` player sign).
- */
+/** A ground pile's per-good heap frames plus the flag an empty collection point draws. */
 export interface StockpileBinding {
-  /** Per-`goodType` ground-pile heap frames, ordered fewest→most units (the `landscapeToStore` join). */
+  /** Heap frames per `goodType` from `ls_goods.<good>`, ordered fewest to most units (the
+   *  `landscapeToStore` join). */
   readonly byGood: Readonly<Record<number, readonly LayeredBobRef[]>>;
-  /** The delivery-flag sprite drawn for an empty pile (a collection point holding no goods). */
+  /** The delivery-flag sprite (`ls_temp` player sign) drawn for a pile holding no goods. */
   readonly flag: LayeredBobRef;
   /** Fallback frame for a held pile whose good has no bound heap frames (drawn at any fill). */
   readonly default: LayeredBobRef;

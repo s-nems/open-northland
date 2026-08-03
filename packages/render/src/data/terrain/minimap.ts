@@ -3,10 +3,10 @@ import type { SceneGround } from '../scene/terrain-scene.js';
 
 /**
  * The pure minimap raster: cell grid → RGBA picture, plus the ground-lane → cell-colour join it
- * samples. Shared by the in-game minimap, the menu's client-side map preview, and the asset
- * pipeline's synthesized map thumbnails, so all three rasterise a map identically.
- * NAMED APPROXIMATION: a cell is coloured with the mean texel of its two triangles' pattern rects -
- * transition overlays, elevation shading and the `embr` brightness lane are ignored.
+ * samples. One owner for the in-game minimap, the menu's client-side map preview and the asset
+ * pipeline's synthesized thumbnails, so all three rasterise a map identically. Named approximation: a
+ * cell takes the mean texel of its two triangles' pattern rects, ignoring transition overlays,
+ * elevation shading and the `embr` brightness lane.
  */
 
 /** The world-space (projected px, pre-camera) axis-aligned bounds of a whole terrain grid. */
@@ -18,9 +18,10 @@ export interface WorldBounds {
 }
 
 /**
- * The world box covering every cell diamond of a `mapW × mapH` cell grid. Centres span
- * `x ∈ [0, (2·mapW−1)·TILE_HALF_W]` (odd rows staggered half a cell right), `y ∈ [0, (mapH−1)·TILE_HALF_H]`;
- * each diamond extends ±TILE_HALF_W / ±TILE_HALF_H around its centre.
+ * The world box covering every cell diamond of a `mapW × mapH` cell grid: centres span
+ * `x ∈ [0, (2·mapW−1)·TILE_HALF_W]` (odd rows staggered half a cell right) and
+ * `y ∈ [0, (mapH−1)·TILE_HALF_H]`, and each diamond extends ±TILE_HALF_W / ±TILE_HALF_H around its
+ * centre.
  */
 export function terrainWorldBounds(mapW: number, mapH: number): WorldBounds {
   return {
@@ -38,8 +39,7 @@ export interface TerrainCells {
   readonly typeIds: readonly number[];
 }
 
-/** The menu map-preview raster cap (px). One owner for the client's fallback raster and the
- *  pipeline's synthesized thumbnails, so both come out identical in scale. */
+/** The menu map-preview raster cap (px). */
 const MAP_PREVIEW_MAX_WIDTH = 720;
 const MAP_PREVIEW_MAX_HEIGHT = 420;
 
@@ -57,12 +57,11 @@ export function mapPreviewSize(
 }
 
 /**
- * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px) - built once
- * per map (terrain is static). Each pixel samples the cell diamond containing its world point:
- * candidate centres on the two nearest rows (odd rows staggered half a cell right, matching
- * `tileToScreen`), picked by the diamond metric `|dx|/TILE_HALF_W + |dy|/TILE_HALF_H`
- * (≤ 1 ⇔ inside the diamond - the diamonds tile the plane, so the minimum is the containing cell).
- * `colourOfCell` maps the winning cell (row-major index + its typeId) to `0xRRGGBB`.
+ * Rasterize the whole terrain into an RGBA byte grid (`pxW × pxH`, row-major, 4 bytes/px), built once
+ * per map. Each pixel takes the cell diamond containing its world point, picked among the two nearest
+ * rows by the diamond metric `|dx|/TILE_HALF_W + |dy|/TILE_HALF_H` (≤ 1 inside the diamond, and the
+ * diamonds tile the plane, so the minimum is the containing cell). `colourOfCell` maps the winning cell
+ * to `0xRRGGBB`.
  */
 export function rasterizeTerrain(
   terrain: TerrainCells,
@@ -167,9 +166,8 @@ export function cellColoursFromGround(
 
 /**
  * The minimap cell-colour precedence: a baked ground-lane colour (below
- * {@link MINIMAP_CELL_UNRESOLVED}) wins, else the per-typeId `colourOfType` fills in. Returns the
- * `colourOfCell` callback {@link rasterizeTerrain} consumes; a null/absent colour table degrades
- * every cell to `colourOfType`.
+ * {@link MINIMAP_CELL_UNRESOLVED}) wins, else the per-typeId `colourOfType` fills in. A null or absent
+ * colour table degrades every cell to `colourOfType`.
  */
 export function cellColourResolver(
   cellColours: ArrayLike<number> | null | undefined,
