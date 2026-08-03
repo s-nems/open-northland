@@ -33,6 +33,9 @@ const GAUGE_BOTTOM_DARKEN = 0.34;
 const GAUGE_SPECULAR_ALPHA = 0.28;
 /** How far the fill's leading-edge lip is darkened, so the gauge end reads as a surface. */
 const GAUGE_LIP_DARKEN = 0.45;
+/** The lip's own opacity - the one fill in a gauge draw painted at it, which is what lets a test tell
+ *  the lip apart from the fill strips under it. */
+export const GAUGE_LIP_ALPHA = 0.9;
 
 /** The gauge groove's shared bevel palette - the panel's inner-box dark/light lines, passed in from the
  *  {@link import('./chrome.js').Chrome} kit so the gauge outline matches the rest of the panel framing. */
@@ -80,7 +83,8 @@ export function drawGauge(
   g.rect(r.x + line, r.y + line, r.w - 2 * line, line).fill({ color: 0x000000, alpha: 0.45 });
   g.rect(r.x, r.y + r.h, r.w, line).fill({ color: bevel.light, alpha: 0.35 });
 
-  const fillW = Math.max(0, Math.round((r.w - line * 2) * (clamped / 100)));
+  const innerW = r.w - line * 2;
+  const fillW = Math.max(0, Math.round(innerW * (clamped / 100)));
   if (fillW === 0) return;
   const fill: Rect = { x: r.x + line, y: r.y + line, w: fillW, h: Math.max(1, r.h - line * 2) };
   // Vertical gradient: a lit top rolling over the base into a shaded bottom - one strip per px.
@@ -98,12 +102,13 @@ export function drawGauge(
     g.rect(fill.x, y0, fill.w, y1 - y0 + 0.5).fill(color);
   }
   // A hair of specular along the very top and a darker lip on the fill's leading (right) edge, so the
-  // gauge end reads as a surface, not a paint cutoff.
+  // gauge end reads as a surface, not a paint cutoff. A fill that reaches the track wall has no leading
+  // edge, and a lip there stacks a second dark column on the outline (the gauge reads short of full).
   g.rect(fill.x, fill.y, fill.w, line).fill({ color: 0xffffff, alpha: GAUGE_SPECULAR_ALPHA });
-  if (fillW > line * 2) {
+  if (fillW > line * 2 && fillW < innerW) {
     g.rect(fill.x + fill.w - line, fill.y, line, fill.h).fill({
       color: mixColor(base, 0x000000, GAUGE_LIP_DARKEN),
-      alpha: 0.9,
+      alpha: GAUGE_LIP_ALPHA,
     });
   }
 }

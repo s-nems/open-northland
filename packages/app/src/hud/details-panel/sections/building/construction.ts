@@ -8,10 +8,12 @@ import { STOCK_AMOUNT_INSET, STOCK_ICON_W, stockAmount } from './shared.js';
 const CONSTRUCTION_BAR_LEFT = 40;
 
 /**
- * Construction window (a site only): the health gauge that ramps with the build (the sim raises hitpoints
- * in step with `built`) beside the numeric %, then one stock-style row per material line reading
- * "delivered / needed". No extracted title exists for a site window - 'Construction' is a named
- * approximation (English pending the i18n pass), like 'Produkcja'.
+ * Construction window (a site only): the build-progress bar beside its numeric %, then one stock-style
+ * row per material line reading "delivered / needed". The building's hitpoints are the general section's
+ * gauge, never this one - an upgrade site is 0% built while its old tier still stands at full health, and
+ * progress takes the neutral bar rather than the health ramp so a young site does not read "critical". No
+ * extracted title exists for a site window - 'Construction' is a named approximation (English pending the
+ * i18n pass), like 'Produkcja'.
  */
 export function drawConstructionSection(
   chrome: Chrome,
@@ -33,8 +35,7 @@ export function drawConstructionSection(
       w: body.x + body.w - barX,
       h: Math.round(BAR_H * s),
     },
-    model.construction.hpPct ?? model.builtPct,
-    'gauge',
+    model.builtPct,
   );
   model.construction.rows.forEach((row, i) => {
     const rowY = body.y + (i + 1) * rowH;

@@ -1,8 +1,10 @@
 import { ONE } from '@open-northland/sim';
+import { healthOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import { messages } from '../../../i18n/index.js';
 
 /**
  * The details panel's bar/percentage primitives - the gauge model + colour banding + the two clamped
- * 0..100 percent helpers, shared by the settler and building model halves.
+ * 0..100 percent helpers + the Zdrowie bar, shared by the settler and building model halves.
  */
 
 /**
@@ -16,6 +18,24 @@ export interface PanelBar {
   /** The cursor-tooltip value for the hovered bar row: raw points for health ("300/1000"),
    *  the satisfaction percent for a need ("75%"). */
   readonly hover: string;
+}
+
+/**
+ * The Zdrowie bar of anything carrying a `Health` pool: gauge `hitpoints/max`, hover the raw points.
+ * Null when the entity has no pool (a building type declaring no hitpoints).
+ *
+ * Label approximation: the original names a building's equivalent row `housewindow` 20
+ * "Zniszczenia"/"Damage" - the complement of a bar that FILLS when healthy.
+ */
+export function healthBar(ent: SnapshotEntity): PanelBar | null {
+  const health = healthOf(ent);
+  // A capacity-less pool is no pool: an empty bar hovering "0/0" would read as destroyed.
+  if (health === undefined || health.max <= 0) return null;
+  return {
+    label: messages().hud.health,
+    pct: pctRatio(health.hitpoints, health.max),
+    hover: `${health.hitpoints}/${health.max}`,
+  };
 }
 
 /** A bar gauge's colour band: full/high draws green, a draining stat turns orange, a nearly-empty one red. */

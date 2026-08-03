@@ -27,7 +27,7 @@ function buttonFallback(action: ButtonAction): string {
   return hud.help;
 }
 
-/** General window: the building preview bob, the name row + selected underline, and the action buttons. */
+/** General window: the building preview bob, the name row + health gauge, and the action buttons. */
 export function drawGeneralSection(
   chrome: Chrome,
   layout: BuildingLayout,
@@ -56,9 +56,10 @@ export function drawGeneralSection(
     chrome.guiCentered(GUI_FRAME.tool_button_buildings, layout.preview, 'full');
   }
 
-  // Name line + the selected-strip under it (the original highlights the selected house's name row).
   chrome.textCentered(model.title, layout.name, 'white');
-  chrome.selectedUnderline(layout.underline);
+  // Bare gauge, no label column: it spans the whole column and its exact hitpoints live in the cursor
+  // tooltip, which is the only thing that names it (user rule).
+  if (model.health !== null) chrome.bar(layout.health, model.health.pct, 'gauge');
 
   for (const hit of layout.buttons) {
     // Every building button has a BUTTON_STRING entry; the `?? help` guard only satisfies the Partial type

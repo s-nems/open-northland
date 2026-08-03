@@ -41,6 +41,7 @@ import {
   type SettlerPanelModel,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/index.js';
+import type { PanelBar } from '../src/hud/details-panel/model/index.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
@@ -165,7 +166,9 @@ describe('selection details panel model', () => {
     expect(model.kind).toBe('building');
     if (model.kind !== 'building') return;
     expect(model.builtPct).toBe(25);
-    expect(model.construction?.hpPct).toBe(25); // the sim ramps Health with built - the gauge's source
+    // A site carries the health gauge too: the sim ramps its hitpoints with `built`, so the bar fills as
+    // the foundation rises (user rule - a house under construction shows its HP growing).
+    expect(model.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '25/100' });
     // One row per construction cost line (the farm's wood+stone parcel), delivered read off the hold.
     expect(model.construction?.rows).toEqual([
       expect.objectContaining({ goodType: GOOD_WOOD, delivered: 2, needed: 3 }),
@@ -178,6 +181,62 @@ describe('selection details panel model', () => {
       sandboxCtx(),
     );
     expect(finished.kind === 'building' && finished.construction).toBeNull();
+  });
+
+  it('gives a building the settler Zdrowie bar off its Health pool', () => {
+    /** The panel's health bar for a farm holding `hitpoints`/1000. */
+    const healthOfBuilding = (hitpoints: number): PanelBar | null => {
+      const model = buildUnitPanelModel(
+        snapshotOf(
+          [buildingEntity(1, BUILDING_FARM, { components: { Health: { hitpoints, max: 1000 } } })],
+          1,
+        ),
+        new Set([1]),
+        sandboxCtx(),
+      );
+      if (model.kind !== 'building') throw new Error('expected a building panel');
+      return model.health;
+    };
+
+    // Same shape as a settler's health bar: pinned label, hp/max gauge, raw points in the hover value.
+    expect(healthOfBuilding(300)).toEqual({ label: 'Zdrowie', pct: 30, hover: '300/1000' });
+    // Damage moves the model, which is what makes the drawn bar follow the building's hitpoints.
+    expect(healthOfBuilding(120)).toEqual({ label: 'Zdrowie', pct: 12, hover: '120/1000' });
+
+    // A building whose type declares no hitpoints carries no bar at all (never a zeroed one).
+    const poolless = buildUnitPanelModel(
+      snapshotOf([buildingEntity(1, BUILDING_FARM)], 1),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    expect(poolless.kind === 'building' && poolless.health).toBeNull();
+  });
+
+  it("keeps an upgrade site's two numbers apart: standing health beside 0% built", () => {
+    const model = buildUnitPanelModel(
+      snapshotOf(
+        [
+          buildingEntity(1, BUILDING_FARM, {
+            built: 0,
+            components: {
+              UnderConstruction: { labor: 0 },
+              Upgrading: { savedStock: [] },
+              Health: { hitpoints: 1000, max: 1000 },
+              Stockpile: { amounts: [] },
+            },
+          }),
+        ],
+        1,
+      ),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    if (model.kind !== 'building') throw new Error('expected a building panel');
+    // The sim never ramps an upgrading building's pool (`construction.ts` skips setHealth for
+    // `Upgrading`): the old tier stands at full health while `built` restarts from 0. Both readouts are
+    // real and different - the panel must not render one of them twice.
+    expect(model.builtPct).toBe(0);
+    expect(model.health).toEqual({ label: 'Zdrowie', pct: 100, hover: '1000/1000' });
   });
 
   it('offers Upgrade on a built chained home and Cancel on a running upgrade site - never both', () => {

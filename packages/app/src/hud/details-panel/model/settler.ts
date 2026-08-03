@@ -1,8 +1,8 @@
 import { entityById, fx, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
-import { num, settlerExperienceOf } from '../../../game/snapshot.js';
+import { num, type SnapshotEntity, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { type PanelBar, pct, pctRatio } from './bars.js';
+import { healthBar, type PanelBar, pct } from './bars.js';
 import {
   type Comp,
   goodLabel,
@@ -82,24 +82,20 @@ function needBar(label: string, deficit: number | undefined): PanelBar {
 /**
  * The Ogólne stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier); the original's
  * window shows the satisfaction level (full = content), so each need bar is `100 − need`. Health leads
- * (only for a unit with a `Health` component, as `hitpoints/max` - its hover shows the raw points, the
- * need bars their percent). A cared-for BABY (an `Age` carrier in a baby stage) hides the four need bars
- * - its needs never accumulate (the NeedsSystem skips it whole), so only Health shows (combat can still
- * hurt it). The labels are pinned, deliberately diverging from the decoded `humanwindow`
- * 11–15 strings (Zdrowie/Energia/Wytrzymałość/Motywacja Społeczna/Religia): each bar is named after the
- * need it actually shows - Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment - because the original's stat
- * names don't map 1:1 to the sim's four needs and read poorly (user decision 2026-07-11).
+ * ({@link healthBar}, only for a unit carrying a pool). A cared-for BABY (an `Age` carrier in a baby
+ * stage) hides the four need bars - its needs never accumulate (the NeedsSystem skips it whole), so
+ * only Health shows (combat can still hurt it). The labels are pinned, deliberately diverging from
+ * the decoded `humanwindow` 11–15 strings (Zdrowie/Energia/Wytrzymałość/Motywacja Społeczna/Religia):
+ * each bar is named after the need it actually shows - Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment
+ * - because the original's stat names don't map 1:1 to the sim's four needs and read poorly (user rule).
  */
-export function satisfactionBars(comps: Comp): PanelBar[] {
+export function satisfactionBars(ent: SnapshotEntity): PanelBar[] {
   const hud = messages().hud;
+  const comps: Comp = ent.components;
   const s = (comps.Settler ?? {}) as Comp;
   const bars: PanelBar[] = [];
-  const health = comps.Health as { hitpoints?: unknown; max?: unknown } | undefined;
-  if (health !== undefined) {
-    const hp = num(health.hitpoints) ?? 0;
-    const max = num(health.max) ?? 0;
-    bars.push({ label: hud.health, pct: pctRatio(hp, max), hover: `${hp}/${max}` });
-  }
+  const health = healthBar(ent);
+  if (health !== null) bars.push(health);
   if (comps.Age !== undefined && systems.isBaby(num(s.jobType) ?? null)) return bars;
   bars.push(needBar(hud.hunger, num(s.hunger)));
   bars.push(needBar(hud.sleep, num(s.fatigue)));

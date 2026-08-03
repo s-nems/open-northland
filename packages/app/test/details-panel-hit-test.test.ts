@@ -97,6 +97,30 @@ describe('details panel hit-testing', () => {
     expect(tooltipTextAt(view, p.x, p.y, SCALE, ALL_STOCK_TAB)).toBe(heldLabel);
   });
 
+  it('reads the hitpoints off a hovered health bar - the building gauge naming itself', () => {
+    const HEALTH = { hitpoints: 300, max: 1000 };
+
+    const settler = viewOfKind(
+      modelOf({ id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Health: HEALTH } }),
+      'settler',
+    );
+    const settlerBar = settler.layout.bars[0];
+    if (settlerBar === undefined) throw new Error('expected the settler Zdrowie row');
+    const sp = center(settlerBar);
+    expect(tooltipTextAt(settler, sp.x, sp.y, SCALE, ALL_STOCK_TAB)).toBe('300/1000');
+
+    const building = viewOfKind(
+      modelOf(buildingEntity(1, BUILDING_HEADQUARTERS, { components: { Health: HEALTH } })),
+      'building',
+    );
+    const bp = center(building.layout.health);
+    // The building gauge is drawn bare, so its tooltip carries the caption the settler row has printed
+    // beside it - hovering an unnamed bar must not answer with a bare number pair.
+    expect(tooltipTextAt(building, bp.x, bp.y, SCALE, ALL_STOCK_TAB)).toBe('Zdrowie: 300/1000');
+    // The row is a hover target only - it must not steal a click from the buttons below it.
+    expect(hitButton(building, bp.x, bp.y)).toBeNull();
+  });
+
   it('routes the equip action buttons and names them (with the worn good) in the tooltip', () => {
     const view = viewOfKind(
       modelOf({
