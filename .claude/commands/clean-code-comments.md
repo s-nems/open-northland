@@ -27,8 +27,14 @@ Resolve `sim`, `render`, and `app` to their packages, and `pipeline` to `tools/a
 
 - Delete history and prose already expressed by code, names, types, or tests.
 - Shorten a useful comment to one current fact in one direct sentence, normally one to three lines.
+- Never strengthen a claim while shortening: do not introduce `only`, `always`, `never`, or `exactly`
+  unless the code proves it; keep the original's hedges.
 - Rewrite provenance impersonally and keep the fact: a dated user decision becomes `authored`, a
   recollection becomes `observation`; preserve `.ini` keys, byte evidence, and approximation names.
+  Reserve `approximation` for divergence from the original game; a performance cap or tuning value
+  is `authored`.
+- A deliberate exception that still binds ("X is intentionally not in this list") is a current fact,
+  not history: rewrite it impersonally, never delete it.
 - Keep indivisible protocol layouts, security or legal boundaries, and byte-level format evidence.
 - Leave a comment unchanged when its real fix requires a rename, type, extraction, or behavior change;
   report that hotspot as a candidate for `/refactor-cleanup` instead.
@@ -36,13 +42,24 @@ Resolve `sim`, `render`, and `app` to their packages, and `pipeline` to `tools/a
 ## Keep the pass comment-only
 
 - Change comment text only. Do not modify executable code, types, data, assertions, or snapshots.
+- Deleting an import left unused solely by a removed `{@link}` is the one allowed code edit; name it
+  in the report.
+- Do not edit string literals - test titles and shader or template-literal sources are code, not
+  comments - and do not re-join or re-wrap code lines after removing a trailing comment; leave code
+  layout untouched.
 - Do not move discarded prose into a new ticket or document.
 - Do not perform blind replacements. Re-read every result beside the code.
 
 ## Verify, commit, report
 
-Review the full diff and confirm every changed line belongs to a comment. Run `git diff --check` and
-the normal repository gates required by `AGENTS.md`.
+Review the full diff and confirm every changed line belongs to a comment. Then check both sides of
+the diff:
+
+- old side: every deleted attribution or dated marker has an impersonal successor carrying the same
+  fact;
+- new side: no touched comment still carries a date, attribution, revision label, or ticket/PR path.
+
+Run `git diff --check` and the normal repository gates required by `AGENTS.md`.
 
 In an autonomous cleanup loop, commit each verified batch in the repository's Conventional Commit
 style without asking. Otherwise do not commit unless requested.
