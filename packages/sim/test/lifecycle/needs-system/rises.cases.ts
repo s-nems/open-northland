@@ -18,6 +18,8 @@ import { ctxOf, settlerWithHunger } from './support.js';
 const SOLDIER_JOB = 31;
 /** The fixture bear (tribe 10), a tribe with an `[animaltype]` record - what `isAnimalTribe` reads. */
 const ANIMAL_TRIBE = 10;
+/** The fixture monster tribe (16): no `[animaltype]` record, so not wildlife, and no `jobEnables`. */
+const MONSTER_TRIBE = 16;
 
 describe('needsSystem - hunger rises over time', () => {
   it('raises a settler hunger by exactly HUNGER_RISE_PER_TICK each tick', () => {
@@ -87,6 +89,24 @@ describe('needsSystem: the wildlife exemption, and only wildlife', () => {
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(idle, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
+  });
+});
+
+describe('needsSystem: a person of a tribe that declares no trades', () => {
+  it('freezes every need of a monster-tribe settler, which is a person and not wildlife', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // As the decoded maps place them: an owned soldier of a tribe with no economy behind it.
+    const monster = settlerWithHunger(sim, fx.fromInt(0), {
+      tribe: MONSTER_TRIBE,
+      jobType: SOLDIER_JOB,
+    });
+    expect(sim.world.has(monster, components.Person)).toBe(true);
+
+    for (let i = 0; i < 100; i++) needsSystem(sim.world, ctxOf(sim));
+    const settler = sim.world.get(monster, Settler);
+    expect(settler.hunger).toBe(fx.fromInt(0));
+    expect(settler.fatigue).toBe(fx.fromInt(0));
+    expect(settler.enjoyment).toBe(fx.fromInt(0));
   });
 });
 

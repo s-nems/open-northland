@@ -13,6 +13,11 @@ import {
 import { testContent } from '../../fixtures/content.js';
 import { settlerWithHunger } from './support.js';
 
+/** The fixture monster tribe (16): no `[animaltype]` record and no `jobEnables`, as the map monsters are. */
+const MONSTER_TRIBE = 16;
+/** The soldier trade the decoded maps give every placed monster. */
+const MONSTER_JOB = 31;
+
 describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
   /** A settler whose hunger is already pinned at ONE, carrying an explicit Health pool. */
   function starvingSettler(sim: Simulation, hitpoints: number): Entity {
@@ -57,6 +62,16 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 300);
     setSettlerJob(sim.world, e, null);
+    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
+    expect(sim.world.get(e, Health).hitpoints).toBe(300);
+  });
+
+  it('exempts a monster-tribe soldier - its tribe declares no trades, so no store is ever its own', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    // The decoded maps place 2341 of these as owned soldiers. Their bars are frozen, so this pins the
+    // other half of the exemption: an already-pinned one still takes no bite.
+    const e = settlerWithHunger(sim, ONE, { tribe: MONSTER_TRIBE, jobType: MONSTER_JOB });
+    sim.world.add(e, Health, { hitpoints: 300, max: 300 });
     for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });
