@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type PlayerColourLut, paletteLutRow } from '../src/gpu/sprite-sheet.js';
 
-/** The pipeline's LUT row scheme is `row = tier * playerRows + player`. */
-
 /** An 80-row LUT with the armor axis: 16 players x 5 tiers, chain armor = good 35 -> tier 3. */
 function armorLut(colours: number): PlayerColourLut {
   return {

@@ -16,9 +16,8 @@ export interface HudPlacement {
   readonly panelX: number;
   /** Panel top-left y in canvas pixels. */
   readonly panelY: number;
-  /** Panel width in pixels, carried through from the layout. */
+  /** Panel size in canvas pixels. */
   readonly width: number;
-  /** Panel height in pixels, carried through from the layout. */
   readonly height: number;
   /** The text rows with absolute screen `(x, y)`. */
   readonly rows: readonly HudTextRow[];

@@ -8,8 +8,6 @@ import {
   headBobId,
 } from '../src/gpu/gallery/index.js';
 
-/** Cell pixel sizes are deliberately not asserted: they are a visual tuning knob. */
-
 const clip = (over: Partial<GalleryClip> & { start: number; length: number }): GalleryClip => ({
   label: 'x',
   dirs: clipDirs(over.length),
@@ -31,6 +29,7 @@ describe('galleryCellLayout', () => {
   });
 
   it('advances x by a constant per column and y by a constant per row', () => {
+    // The cell pixel sizes themselves are a visual tuning knob, so only their sign and sharing hold.
     const boxes = galleryCellLayout(4, 2);
     expect(nth(boxes, 1).x - nth(boxes, 0).x).toBeGreaterThan(0);
     expect(nth(boxes, 2).y - nth(boxes, 0).y).toBeGreaterThan(0);

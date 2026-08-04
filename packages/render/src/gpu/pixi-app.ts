@@ -61,8 +61,8 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
 
 /**
  * Load a decoded atlas PNG as a Pixi {@link TextureSource}. The default `nearest` keeps pixel-art bobs
- * crisp; ground texture pages pass `linear` because the original samples its terrain pages bilinearly
- * (source basis: docs/SOURCES.md "terrain tessellation"), which melts the transition masks into seams.
+ * crisp; ground texture pages pass `linear` because the original samples its terrain pages bilinearly, so
+ * nearest filtering melts their transition masks into seams.
  *
  * `alpha: 'straight'` is required for palette-indexed sheets (`<stem>.indexed`): their red channel is a
  * palette index, not colour, so Pixi's default premultiply-on-upload would scale the index by the frame's

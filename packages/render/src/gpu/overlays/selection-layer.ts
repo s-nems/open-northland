@@ -10,14 +10,8 @@ import { retireUndrawn } from './retained-pool.js';
 /**
  * The selection layer - a feet-anchored ring under each selected entity, drawn in world space below the
  * sprite layer so it reads as a marker on the ground. Selection is a client-side view concern, not sim
- * state: the app owns the selected-id set and this layer only projects it.
- *
- * Retained per entity id: a ring's ellipse geometry is built once and only its position moves each
- * frame. Cost follows the selection, not the map - each id is resolved through `entityById` rather than
- * by scanning the snapshot.
- *
- * A ring is sized to its target: a settler gets a small feet ellipse, a building a ground ellipse sized
- * to its actual sprite footprint, so a headquarters and a hut each get a fitting marker.
+ * state: the app owns the selected-id set and this layer only projects it, resolving each id through
+ * `entityById` so cost follows the selection rather than the map.
  */
 
 /** Settler feet ring half-extents (px) - fitted to the ~40 px body, not the 68×76 cell diamond, which
@@ -47,10 +41,6 @@ interface RingSpec {
   readonly cx: number;
 }
 
-/**
- * The frame's projection inputs the selection rings draw from. Both seams are optional: without them a
- * ring falls back to the raw snapshot projection at a fixed size (the no-sheet / not-yet-drawn path).
- */
 export interface SelectionFrame {
   readonly snapshot: WorldSnapshot;
   /** The pool's drawn sprites - glide a ring with the interpolated bob and size a building ring to its

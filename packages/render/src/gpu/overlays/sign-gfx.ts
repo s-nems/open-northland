@@ -105,8 +105,9 @@ export function chainedFrame(kind: BuildingSignKind, frame: AtlasFrame): AtlasFr
   return cropped;
 }
 
-/** World-px the widest sign frame (the disc, 25 px) reaches sideways from a stack's anchor - the
- *  click-pick half-width. */
+/** World-px half-width of a stack's click box. The widest badge frame is the worker disc, 25 px at
+ *  `offsetX` -13, so it reaches 13 px left and 12 px right of the anchor; the box is symmetric at 14, a
+ *  pixel of slack past that reach. */
 const SIGN_HALF_WIDTH = 14;
 
 /**

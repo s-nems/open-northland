@@ -23,8 +23,7 @@ function walkCounting(snapshot: WorldSnapshot): { snapshot: WorldSnapshot; walks
 
 describe('targetPositionsOf', () => {
   it('indexes only the referenced targets, never every positioned entity', () => {
-    // One attacker aiming at entity 2, plus bystanders 3..5 that nothing targets: a busy map's
-    // standing forests must not be re-indexed each tick just because someone somewhere is fighting.
+    // One attacker aiming at entity 2, plus bystanders 3..5 that nothing targets.
     const snap = snapshotOf([
       entity(1, 1, 1, {
         Settler: { tribe: 0 },
@@ -81,8 +80,8 @@ describe('targetPositionsOf', () => {
 });
 
 describe('the shared scene walk', () => {
-  // navRadius is a NODE count, like the sim's SIGNPOST_NAV_RADIUS_NODES: 6 + 6 reaches the neighbour
-  // two tiles away, so both posts nail a board.
+  // navRadius is a node count, like the sim's SIGNPOST_NAV_RADIUS_NODES: 6 + 6 reaches the neighbour
+  // two tiles away, so both posts draw a board.
   const SIGNPOST = { Signpost: { navRadius: 6 }, Owner: { player: 0 } };
   const world = () =>
     snapshotOf([

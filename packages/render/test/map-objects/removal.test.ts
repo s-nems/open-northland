@@ -5,12 +5,6 @@ import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { decorPositions, FRAME_0, FRAME_1, WIDE } from './support.js';
 
-/**
- * A first-worked node's built-once static drawing must come out and stay out: a tall object's pooled
- * sprite detaches, a decor object's quad zeroes in place, and an animated decor quad must not be written
- * back by the play-head rewrite on the next tick.
- */
-
 function decorObject(x: number, frames: readonly AtlasFrame[]): MapObjectSprite {
   return { x, y: 0, source: Texture.WHITE.source, frames, scale: 1, decor: true, phase: 0 };
 }
@@ -46,7 +40,7 @@ describe('MapObjectLayer.remove (the handover seam)', () => {
     const kept = decorObject(100, [FRAME_0, FRAME_1]);
     layer.set([removed, kept]);
     layer.remove(removed);
-    // Advance the animation clock twice - the rewrite loop must SKIP the removed (nulled) slot.
+    // Advance the animation clock twice - the rewrite loop must skip the removed (nulled) slot.
     layer.update(WIDE, 1);
     layer.update(WIDE, 2);
     const positions = decorPositions(layer);

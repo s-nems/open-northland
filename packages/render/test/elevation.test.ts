@@ -3,7 +3,7 @@ import { cellNode, elevationLiftPerUnit } from '../src/data/terrain/index.js';
 import { buildSpriteScene, makeElevationField, TILE_HALF_H, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
-/** Elevation lifts by elevation/16 half-row-steps; source basis docs/SOURCES.md "terrain tessellation". */
+/** Elevation lifts by elevation/16 half-row-steps, from observed map alignment. */
 const LIFT = elevationLiftPerUnit();
 
 describe('elevationLiftPerUnit - the engine tessellation divisor', () => {
@@ -101,7 +101,7 @@ describe('elevation lift on sprites - draw up, but sort by PRE-LIFT row', () => 
     expect(farItem?.lift).toBeUndefined(); // sea level, so the field is omitted
   });
 
-  it('draws the lifted-up NEAR sprite ABOVE the far one yet still sorts it in FRONT (depth = pre-lift row)', () => {
+  it('draws the lifted-up near sprite above the far one yet still sorts it in front (depth = pre-lift row)', () => {
     const items = buildSpriteScene(snapshotOf([far, near]), { elevation: field });
     const nearItem = items.find((d) => d.ref === 2);
     const farItem = items.find((d) => d.ref === 1);

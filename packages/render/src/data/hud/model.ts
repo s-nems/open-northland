@@ -24,7 +24,6 @@ export interface StockCount {
 }
 
 export interface HudModel {
-  /** The snapshot tick this model was built for. */
   readonly tick: number;
   readonly tribe: number;
   /** Every living settler of the tribe, working or not, baby or adult. */

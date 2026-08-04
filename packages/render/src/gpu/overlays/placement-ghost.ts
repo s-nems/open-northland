@@ -12,12 +12,6 @@ import { mintLayerSprite } from './layer-sprite.js';
  * half-cell node, the anchor grid buildings actually place on. The app decides where it hovers and
  * whether it shows at all (the original's house icon vanishes over ground the placement probe rejects);
  * this layer only projects that decision.
- *
- * It lives inside the depth-sorted sprite layer with a feet-anchor depth key, so the ghost occludes and
- * is occluded like the placed house would be. The sprite stack is rebuilt only on a building-type
- * change, through the same {@link resolveLayers} path a placed building takes, so the ghost always
- * previews what the placement will draw; without a sheet it degrades to a translucent placeholder
- * diamond at the same anchor.
  */
 
 /** The hovered placement, with `col`/`row` as half-cell coordinates on the `2W×2H` lattice. */

@@ -20,15 +20,10 @@ export type { DoorBadgeRole, DoorBadgeRow, HouseholdKind } from './sign-gfx.js';
  * The door-badge layer - a stacked marker at each staffed building's sign post showing who works there
  * (one sign per settler) and, for a home, its resident families. The app's `computeDoorBadges` resolves
  * each building's anchor and its bottom-to-top rows from the read-only snapshot; this layer draws them.
- *
- * Stacks live in the depth-sorted sprite layer, keyed just above the owning building's depth rather than
- * the post's own planted spot, so a marker never swallows the unit the player is watching. That costs a
- * band between house anchor and post where a settler draws in front of a post he stands behind.
- * APPROXIMATION: how the original sorts its sign records against units is not established.
- *
- * Retained per building id and rebuilt only when its rows, family banners, or owner change; an off-screen
- * stack detaches from the depth sort. Without decoded `ls_temp` art the layer draws placeholder squares,
- * and a manned post flies its garrison flag as a second mark at its own mast anchor.
+ * Stacks live in the depth-sorted sprite layer keyed just above the owning building's depth rather than
+ * the post's own planted spot, so a marker never swallows the unit the player is watching, at the cost
+ * of a band between house anchor and post where a settler draws in front of a post he stands behind.
+ * How the original sorts its sign records against units is not established (approximation).
  */
 
 /** One building's badge data: its stack anchor (snapshot `Position` fixed-point units + an optional
@@ -145,7 +140,7 @@ export class BadgeLayer {
       const sheet = this.gfx === undefined ? undefined : sheetFor(this.gfx, colour);
       const player = sheet === undefined ? 0 : colour;
       const rows = rowsKey(badge);
-      // Capped here, so the key is what the flag LOOKS like: the sixth man onto a post does not rebuild
+      // Capped here, so the key is what the flag looks like: the sixth man onto a post does not rebuild
       // a stack that would draw the same five stars.
       const stars = Math.min(badge.garrison?.stars ?? 0, GARRISON_STAR_MAX);
       if (
@@ -162,7 +157,7 @@ export class BadgeLayer {
       stack.node.visible = true;
       if (stack.node.parent === null) this.spriteLayer.addChild(stack.node);
       stack.node.position.set(p.x + (badge.dx ?? 0), p.y + (badge.dy ?? 0) - lift + stack.baseDrop);
-      // `p` is the PRE-lift projection the line above then lifts - the same key the pool builds a
+      // `p` is the pre-lift projection the line above then lifts - the same key the pool builds a
       // building from, so the chain sorts with its house on a hill too.
       const depth = screenDepth(p.x, p.y, 'building') + SIGN_DEPTH_EPS;
       stack.node.zIndex = depth;
@@ -197,8 +192,8 @@ export class BadgeLayer {
         : makeSquareStack(badge.rows, hearts);
     const baseDrop = sheet === undefined ? STACK_BASE_DROP : 0;
     const base = { node, rows, hearts, stars, player, baseDrop };
-    // Keyed on `stars`, not on the field's presence: the rebuild condition compares star counts, so a
-    // flag that existed under a count the next frame also computes would otherwise never be retired.
+    // Gated on the capped `stars`, not on `garrison` being present: `stars` is the whole garrison term
+    // in the rebuild key, and a zero-star garrison keys the same as none, so such a flag never retires.
     if (badge.garrison === undefined || stars < 1) return base;
     const flag = makeGarrisonFlag(stars, gfx?.textures, sheet);
     return { ...base, flag: flag.node, advanceFlag: flag.advance };

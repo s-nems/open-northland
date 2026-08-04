@@ -2,27 +2,20 @@ import { type Container, Rectangle, type Renderer, RenderTexture, Sprite, Textur
 import { clamp } from '../data/math.js';
 
 /**
- * Off-screen supersampling for the screen-space `PalettedSprite` HUD meshes. The GUI art is a
- * nearest-sampled indexed atlas (palette indices cannot be linearly filtered), so drawing it straight at a
- * fractional UI scale doubles texel columns unevenly. Rasterizing at an integer oversample (nearest is
- * exact at an integer zoom) and drawing that resolved-RGBA texture linear-downscaled is smooth instead.
+ * Off-screen supersampling for the screen-space `PalettedSprite` HUD meshes. Palette indices cannot be
+ * linearly filtered, so nearest-sampled GUI art drawn straight at a fractional UI scale doubles texel
+ * columns unevenly; rasterizing at an integer oversample and linear-downscaling that resolved-RGBA
+ * texture is smooth instead.
  *
- * A WebGL render texture is stored bottom-up and a `PalettedSprite` hand-rolls its screen→clip projection
- * for the on-screen Y convention, so baking one lands it upside-down. {@link bakeToFlippedSprite} Y-flips
- * the whole baked sprite (correct only when every element is a PalettedSprite; caller bottom-anchors);
- * {@link bakeToSprite} takes a source that already renders upright (Pixi-native content plus
- * PalettedSprites with `flipY = true`; caller top-anchors). The app forces a WebGL backend, so the
- * inversion is fixed; a WebGPU switch would revisit it here.
+ * A WebGL render texture (the backend the app forces) is stored bottom-up while a `PalettedSprite`
+ * hand-rolls its screen→clip projection for the on-screen Y convention, so a baked source lands
+ * upside-down unless one side corrects it.
  */
 /**
- * The integer oversample a supersampled bake needs. Merely covering the display's `scale × resolution`
- * device px per design px (`ceil`) is not enough: at a near-integer device scale the downscale ratio lands
- * ≈1, the linear tap barely averages, and nearest-hard palette edges survive. `floor(2×)` pins the ratio
- * into (1, 2], where every device px is fully covered by the GPU's 2×2 linear tap (above 2 would
- * undersample) and integer device scales stay pixel-exact. The `ceil` term only bites below 0.5 device px
- * per design px, where `floor(2×)` alone would upscale. `floor` is the caller's quality floor (a
- * hard-clipped disc rim wants ≥3 for smoothing headroom); `cap` bounds the texture memory a pathological
- * `?uiscale=`/DPR combination could request.
+ * The integer oversample for a supersampled bake. `floor(2×)` the device px per design px pins the
+ * downscale ratio into (1, 2]: a ratio near 1 leaves nearest-hard palette edges, above 2 undersamples the
+ * GPU's 2×2 linear tap. The `ceil` term only bites below 0.5 device px per design px, where `floor(2×)`
+ * alone would upscale. `floor` is the caller's quality floor; `cap` bounds the bake's texture memory.
  */
 export function oversampleFor(scale: number, resolution: number, floor: number, cap: number): number {
   const devicePerDesign = scale * resolution;
@@ -31,8 +24,7 @@ export function oversampleFor(scale: number, resolution: number, floor: number, 
 }
 
 export interface SupersampledTexture {
-  /** The baked, linear-downscaled display sprite: Y-flipped by {@link bakeToFlippedSprite}
-   *  (bottom-anchor), upright by {@link bakeToSprite} (top-anchor). */
+  /** The baked, linear-downscaled display sprite; the bake entry point fixes its flip and anchor. */
   readonly display: Sprite;
   /** Re-rasterize `source` into the texture (call after a mesh in it changes frame). */
   redraw(): void;
@@ -42,8 +34,7 @@ export interface SupersampledTexture {
 /**
  * Rasterize `source` - a detached container already placed at an integer oversample into a `texW × texH`
  * box - into an off-screen texture and return it as one `Sprite` linear-downscaled by `invScale`
- * (= displayScale ÷ oversample). `flipDisplay` negates the sprite's y-scale. Owns the texture and
- * `source` lifetime via `dispose`.
+ * (= displayScale ÷ oversample). Owns the texture and `source` lifetime via `dispose`.
  */
 function bake(
   renderer: Renderer,
@@ -73,8 +64,7 @@ function bake(
   };
 }
 
-/** Bake an all-PalettedSprite source, which renders upside-down into the texture: the display is
- *  Y-flipped and the caller bottom-anchors it. */
+/** Bake an all-PalettedSprite source: the display is Y-flipped and the caller bottom-anchors it. */
 export function bakeToFlippedSprite(
   renderer: Renderer,
   source: Container,
@@ -85,8 +75,8 @@ export function bakeToFlippedSprite(
   return bake(renderer, source, texW, texH, invScale, true);
 }
 
-/** Bake an upright source (Pixi-native content + `flipY` PalettedSprites): the display is not flipped and
- *  the caller top-anchors it. */
+/** Bake an already-upright source (Pixi-native content plus `flipY` PalettedSprites): the display is not
+ *  flipped and the caller top-anchors it. */
 export function bakeToSprite(
   renderer: Renderer,
   source: Container,
@@ -123,7 +113,7 @@ export function createReusableBaker(renderer: Renderer): ReusableBaker {
       view?.destroy(false);
       target?.destroy(true);
       target = RenderTexture.create({ width: grownW, height: grownH, resolution: 1, antialias: false });
-      target.source.scaleMode = 'linear'; // linear so the fractional downscale to screen is smooth
+      target.source.scaleMode = 'linear';
       view = new Texture({ source: target.source, frame: new Rectangle(0, 0, w, h) });
     } else if (view.frame.width !== w || view.frame.height !== h) {
       view.frame.width = w;

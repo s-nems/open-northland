@@ -2,18 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { signpostBoardsOf } from '../../src/data/scene/signpost-boards.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
 
-/**
- * A post on an odd row anchors at node `2c + 1`, so the link decision must read that staggered node; a
- * bare `c · 2` places it half a cell west and draws boards the sim's confinement never granted.
- */
-
 const PLAYER = 1;
-/** Unequal radii summing to 11 nodes - unequal so the pair also proves the SUM is the reach, and 11 so
- *  that reach falls between the staggered and unstaggered node: at a 2-node row gap `withinNodeRadius`
- *  admits dx ≤ 10 nodes and rejects 11. */
+/** Unequal radii summing to 11 nodes: the sum is the reach, and at a 2-node row gap
+ *  `withinNodeRadius` admits dx ≤ 10 nodes and rejects 11. */
 const RADIUS_A = 6;
 const RADIUS_B = 5;
-/** The tile column at which the two verdicts split: node 11 on an odd row, node 10 on an even one. */
+/** The tile column at which the two verdicts split: an odd row anchors at node `2c + 1`, putting this
+ *  column at node 11 there and at node 10 on an even row. */
 const SPLIT_COLUMN = 5;
 
 function post(id: number, tileX: number, tileY: number, navRadius: number) {

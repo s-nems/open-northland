@@ -16,7 +16,7 @@ const PAUSE_WASH_TINT = 0xc9a87c;
 export class WorldChrome {
   private readonly pauseWash = new Sprite(Texture.WHITE);
   private readonly vignette: Sprite | null;
-  /** Atlas pages currently flipped to linear minification: exactly the set to restore to nearest on zoom in. */
+  /** Atlas pages currently flipped to linear minification. */
   private readonly linearPages = new Set<TextureSource>();
 
   constructor(
@@ -56,16 +56,16 @@ export class WorldChrome {
   }
 
   /**
-   * Match the SPRITE atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
-   * the zoomed-out bobs sparkle while panning, so the texture-cache pages (RGB bob + shadow atlases -
-   * never the indexed character sheets, which don't pass through the cache) flip to linear; at scale ≥ 1
-   * exactly the flipped set restores to nearest, keeping magnified pixel art crisp. The terrain pages
-   * are untouched - they load linear at every zoom (the original samples them bilinearly). Walks every
-   * cached page each frame while zoomed out ({@link linearPages} skips the write, not the visit) - a
-   * handful of atlases, so the scan is free. Known limit: the portrait
-   * inset re-renders the world magnified in the same frame, so while zoomed out its cutout samples the
-   * flipped pages linear (slightly soft) - accepted; a per-render flip would touch every page twice a
-   * frame.
+   * Match the sprite atlases' minification to the zoom: below scale 1 nearest sampling drops texels and
+   * the zoomed-out bobs sparkle while panning, so the texture-cache pages flip to linear; at scale ≥ 1
+   * exactly the flipped set restores to nearest, keeping magnified pixel art crisp.
+   *
+   * While zoomed out this visits every cached page each frame ({@link linearPages} skips the write, not
+   * the visit) - a handful of atlases.
+   *
+   * Known limit: the portrait inset re-renders the world magnified in the same frame, so while zoomed
+   * out its cutout samples the flipped pages linear and slightly soft. A per-render flip would touch
+   * every page twice a frame.
    */
   applyWorldSampling(scale: number): void {
     if (scale < 1) {
