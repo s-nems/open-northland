@@ -2,8 +2,8 @@ import {
   Building,
   DefenceMode,
   Health,
-  Livestock,
   Owner,
+  Person,
   Position,
   Settler,
 } from '../../../../components/index.js';
@@ -58,7 +58,7 @@ export function watchBandOf(world: World, ctx: SystemContext, building: Entity):
 
 /**
  * Every enemy fighter loose on the map, canonical ascending id. Fighting trades only, so a colonist walking
- * past a tower is not a raid; a claimed herd is no threat either, and a wild animal carries no {@link Owner}.
+ * past a tower is not a raid, and the {@link Person} key keeps a claimed herd out.
  *
  * A man holding his own tower is dropped because `conflict/targeting.ts` refuses him as a target: a
  * garrison parked within reach of this seat's edge would otherwise hold the town in cover forever.
@@ -73,9 +73,9 @@ export function seatRaiders(
   player: number,
 ): Raider[] {
   const raiders: Raider[] = [];
-  for (const e of canonicalById(world.query(Settler, Owner))) {
+  for (const e of canonicalById(world.query(Person, Owner))) {
     if (world.get(e, Owner).player === player) continue;
-    if (world.has(e, Livestock) || !world.has(e, Position)) continue;
+    if (!world.has(e, Position)) continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
     if (standsAtPost(world, e) !== null) continue;

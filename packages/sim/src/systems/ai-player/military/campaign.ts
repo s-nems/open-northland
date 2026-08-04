@@ -1,4 +1,4 @@
-import { Building, Health, Livestock, Owner, ownerOf, Position, Settler } from '../../../components/index.js';
+import { Building, Health, Owner, ownerOf, Person, Position } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -44,10 +44,8 @@ export function campaignTarget(
     if (winner !== null) return winner;
   }
 
-  const people = canonicalById(world.query(Settler, Owner)).filter(
-    // A claimed herd is loot, not a war aim.
-    (e) => isEnemy(world, e, player) && !world.has(e, Livestock),
-  );
+  // The {@link Person} key is what keeps a claimed herd out: it is loot, not a war aim.
+  const people = canonicalById(world.query(Person, Owner)).filter((e) => isEnemy(world, e, player));
   return nearestReachable(terrain, people, rally, home, approachOf);
 }
 
