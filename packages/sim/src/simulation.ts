@@ -314,7 +314,7 @@ export class Simulation {
 
   /** Run the core (or given) invariants against the current world; returns violation strings. */
   checkInvariants(invariants?: readonly _Invariant[]): string[] {
-    return _checkInvariants(this.world, invariants);
+    return _checkInvariants(this.world, this.content, invariants);
   }
 
   /**

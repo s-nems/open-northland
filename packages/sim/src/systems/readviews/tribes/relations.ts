@@ -1,7 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import { isHunterJob } from '../jobs.js';
-import { animalCannotBeAttacked, isAggressiveAnimal, isHuntablePrey } from './animals.js';
-import { isAnimalTribe } from './civilizations.js';
+import { animalCannotBeAttacked, isAggressiveAnimal, isAnimalTribe, isHuntablePrey } from './animals.js';
 
 /**
  * The predation relation, gated by the attacker's job rather than by tribe hostility, and one direction
@@ -20,8 +19,8 @@ export function mayHunt(content: ContentSet, attackerJobType: number | null, tar
  * eligibility and the per-candidate check. A different-tribe combatant with no record at all is not an
  * animal, so it counts as a civilization and a valid enemy.
  *
- * The extracted params are faithful: the civ-versus-animal split off the tech-graph signature and
- * `aggressive`/`cannotbeattacked` off `animaltypes.ini`. Approximation: every different tribe is an enemy,
+ * The extracted params are faithful: the civ-versus-animal split off the `[animaltype]` record and
+ * `aggressive`/`cannotbeattacked` off its own flags. Approximation: every different tribe is an enemy,
  * a civilization engages only aggressive animals, and animals never fight each other.
  */
 export function mayAttack(content: ContentSet, attackerTribe: number, targetTribe: number): boolean {

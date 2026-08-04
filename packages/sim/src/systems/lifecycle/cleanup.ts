@@ -1,4 +1,13 @@
-import { Building, Health, Marriage, Owner, Position, Settler, Wedding } from '../../components/index.js';
+import {
+  Building,
+  Health,
+  isWildlife,
+  Marriage,
+  Owner,
+  Position,
+  Settler,
+  Wedding,
+} from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import { type Fixed, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -8,7 +17,6 @@ import { droppedEquipmentOf, scatterSpilledStock, spilledStockOf } from '../econ
 import { removeWorkFlag } from '../economy/work-flag.js';
 import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
-import { isAnimalTribe } from '../readviews/index.js';
 
 /**
  * Destroy every entity whose {@link Health} pool has been drained to 0 and announce it with a
@@ -63,7 +71,7 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
   const pos = world.tryGet(e, Position);
   const settler = world.tryGet(e, Settler);
-  const animal = settler !== undefined && isAnimalTribe(ctx.content, settler.tribe);
+  const animal = isWildlife(world, e);
   ctx.events.emit({
     kind: 'settlerDied',
     entity: e,

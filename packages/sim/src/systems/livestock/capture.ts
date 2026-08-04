@@ -4,6 +4,7 @@ import {
   LivestockVisit,
   Owner,
   ownerOf,
+  Person,
   Position,
   Resting,
   Settler,
@@ -36,7 +37,7 @@ export const livestockCaptureSystem: System = (world, ctx) => {
   const herds = [...world.query(Livestock, Position)];
   if (herds.length === 0) return;
   const scouts: Entity[] = [];
-  for (const e of world.query(Settler, Owner, Position)) {
+  for (const e of world.query(Person, Owner, Position)) {
     if (isScoutJob(ctx.content, world.get(e, Settler).jobType)) scouts.push(e);
   }
   if (scouts.length === 0) return;

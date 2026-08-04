@@ -17,10 +17,10 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
 import { tribeContent } from './support.js';
 
 describe('isAnimalTribe', () => {
-  it('is true for a recorded animal tribe (no tech graph) and false for a civilization', () => {
+  it('is true for a tribe with an animaltypes record and false for a civilization', () => {
     const content = tribeContent();
-    expect(isAnimalTribe(content, 9)).toBe(true); // wolves - recorded, no jobEnables
-    expect(isAnimalTribe(content, 8)).toBe(true); // bears - recorded, no jobEnables
+    expect(isAnimalTribe(content, 9)).toBe(true); // wolves - a passive animaltypes record
+    expect(isAnimalTribe(content, 8)).toBe(true); // bears - an aggressive animaltypes record
     expect(isAnimalTribe(content, 1)).toBe(false); // viking - a civilization
     expect(isAnimalTribe(content, 2)).toBe(false); // frank - a civilization
   });
@@ -32,11 +32,19 @@ describe('isAnimalTribe', () => {
     expect(isAnimalTribe(tribeContent(), 99)).toBe(false);
   });
 
-  it('partitions every RECORDED tribe with isPlayableTribe (exactly one of the two holds)', () => {
+  it('is false for a MONSTER tribe - recorded, no tech graph, but no animaltypes record either', () => {
+    // The werewolf (6) is the source's own third state: `logicdefines.inc` declares it
+    // `TRIBE_TYPE_HUMAN_WEREWOLF` and `animaltypes.ini` gives it no record, yet it carries no tech
+    // graph. An empty `jobEnables` must therefore not be read as wildlife.
+    const content = tribeContent();
+    expect(isPlayableTribe(content, 6)).toBe(false);
+    expect(isAnimalTribe(content, 6)).toBe(false);
+  });
+
+  it('never holds together with isPlayableTribe (a tribe is at most one of the two)', () => {
     const content = tribeContent();
     for (const tribe of content.tribes) {
-      // For a recorded tribe, animal and playable are exact complements (XOR).
-      expect(isAnimalTribe(content, tribe.typeId)).toBe(!isPlayableTribe(content, tribe.typeId));
+      expect(isAnimalTribe(content, tribe.typeId) && isPlayableTribe(content, tribe.typeId)).toBe(false);
     }
   });
 });
@@ -45,7 +53,7 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
   it('isAggressiveAnimal reads the `aggressive` flag off the animaltypes record', () => {
     const content = tribeContent();
     expect(isAggressiveAnimal(content, 8)).toBe(true); // bears - aggressive record
-    expect(isAggressiveAnimal(content, 9)).toBe(false); // wolves - animal tribe but NO animaltypes record
+    expect(isAggressiveAnimal(content, 9)).toBe(false); // wolves - a record leaving `aggressive` at default
     expect(isAggressiveAnimal(content, 1)).toBe(false); // viking - a civilization, not an animal
     expect(isAggressiveAnimal(content, 99)).toBe(false); // unknown tribe - no record
   });
@@ -53,7 +61,7 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
   it('animalHitpoints returns the adult HP pool, or null for a tribe with no animal record', () => {
     const content = tribeContent();
     expect(animalHitpoints(content, 8)).toBe(15000); // bears - hitpointsAdult
-    expect(animalHitpoints(content, 9)).toBeNull(); // wolves - no animaltypes record
+    expect(animalHitpoints(content, 6)).toBeNull(); // werewolf - a monster tribe, no animaltypes record
     expect(animalHitpoints(content, 1)).toBeNull(); // viking - a civilization
   });
 
@@ -61,7 +69,7 @@ describe('isAggressiveAnimal / animalCannotBeAttacked / animalHitpoints (animalt
     const content = tribeContent();
     expect(animalBabyHitpoints(content, 8)).toBe(8000); // bears - hitpointsBaby, NOT the 15000 adult pool
     expect(animalBabyHitpoints(content, 10)).toBe(0); // cows - record with no hitpointsBaby → extractor default 0
-    expect(animalBabyHitpoints(content, 9)).toBeNull(); // wolves - no animaltypes record
+    expect(animalBabyHitpoints(content, 9)).toBe(0); // wolves - record with no hitpointsBaby → default 0
     expect(animalBabyHitpoints(content, 1)).toBeNull(); // viking - a civilization
   });
 
@@ -130,9 +138,9 @@ describe('herdParams (the animal herd/spawn read view)', () => {
     });
   });
 
-  it('returns null for a tribe with no animal record (an animal tribe lacking the record, or a civ)', () => {
+  it('returns null for a tribe with no animal record (a monster tribe, a civ, or an unknown id)', () => {
     const content = tribeContent();
-    expect(herdParams(content, 9)).toBeNull(); // wolves - animal tribe but NO animaltypes record
+    expect(herdParams(content, 6)).toBeNull(); // werewolf - a monster tribe, no animaltypes record
     expect(herdParams(content, 1)).toBeNull(); // viking - a civilization
     expect(herdParams(content, 99)).toBeNull(); // unknown tribe - no record
   });
@@ -174,9 +182,9 @@ describe('locomotionOf (the animal pace read view)', () => {
     expect(params).toEqual({ walkSpeed: 8 });
   });
 
-  it('returns null for a tribe with no animal record (an animal tribe lacking the record, or a civ)', () => {
+  it('returns null for a tribe with no animal record (a monster tribe, a civ, or an unknown id)', () => {
     const content = tribeContent();
-    expect(locomotionOf(content, 9)).toBeNull(); // wolves - animal tribe but NO animaltypes record
+    expect(locomotionOf(content, 6)).toBeNull(); // werewolf - a monster tribe, no animaltypes record
     expect(locomotionOf(content, 1)).toBeNull(); // viking - a civilization
     expect(locomotionOf(content, 99)).toBeNull(); // unknown tribe - no record
   });

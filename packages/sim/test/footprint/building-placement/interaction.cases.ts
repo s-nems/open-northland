@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { PathFollow, PathRequest, Position, Settler } from '../../../src/components/index.js';
+import { addPerson, PathFollow, PathRequest, Position } from '../../../src/components/index.js';
 import { findPath, fx, positionOfNode, Simulation } from '../../../src/index.js';
 import { buildingBlockedCells, interactionNode, presentOperatorCount } from '../../../src/systems/index.js';
 
@@ -35,7 +35,7 @@ describe('door cell - settlers interact with a house at its entry point', () => 
     sim.step();
     const hut = placedBuilding(sim);
     const worker = sim.world.create();
-    sim.world.add(worker, Settler, {
+    addPerson(sim.world, worker, {
       tribe: VIKING,
       jobType: WOODCUTTER,
       hunger: fx.fromInt(0),

@@ -1,19 +1,22 @@
+import type { ContentSet } from '@open-northland/data';
 import {
   Building,
   Engagement,
   HuntFocus,
+  Person,
   Settler,
   Stockpile,
   stockpileEntries,
 } from '../components/index.js';
 import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
+import { isAnimalTribe } from '../systems/readviews/index.js';
 
 /**
  * A property that must hold after every tick, returning one message per violation and an empty list
  * when the world is sound. Run through `Simulation.checkInvariants()`.
  */
-export type Invariant = (world: World) => string[];
+export type Invariant = (world: World, content: ContentSet) => string[];
 
 /** Stock ceiling past which an amount is an over/underflow artefact rather than a plausible pile. */
 const IMPLAUSIBLE_STOCK = 0x7fffffff;
@@ -81,15 +84,36 @@ const preyHoldWithinEngagement: Invariant = (world) => {
   return out;
 };
 
+/**
+ * A {@link Settler} carries {@link Person} exactly when its tribe has no `[animaltype]` record. The
+ * `addPerson`/`addWildlife` constructors keep this true, so a spawn path that hand-rolls the component
+ * instead fails here with the entity named.
+ */
+const personhoodMatchesTribe: Invariant = (world, content) => {
+  const out: string[] = [];
+  for (const e of world.query(Settler)) {
+    const tribe = world.get(e, Settler).tribe;
+    if (world.has(e, Person) === isAnimalTribe(content, tribe)) {
+      out.push(`entity ${e}: tribe ${tribe} ${world.has(e, Person) ? 'has' : 'lacks'} Person`);
+    }
+  }
+  return out;
+};
+
 export const CORE_INVARIANTS: readonly Invariant[] = [
   stockNonNegative,
   needsInRange,
   buildingSane,
   preyHoldWithinEngagement,
+  personhoodMatchesTribe,
   cachesCoherent,
 ];
 
 /** Run a set of invariants; returns all violations across them. */
-export function checkInvariants(world: World, invariants: readonly Invariant[] = CORE_INVARIANTS): string[] {
-  return invariants.flatMap((inv) => inv(world));
+export function checkInvariants(
+  world: World,
+  content: ContentSet,
+  invariants: readonly Invariant[] = CORE_INVARIANTS,
+): string[] {
+  return invariants.flatMap((inv) => inv(world, content));
 }

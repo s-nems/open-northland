@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   CurrentAtomic,
   Engagement,
   Health,
@@ -7,7 +8,6 @@ import {
   PathFollow,
   PlayerOrder,
   Position,
-  Settler,
   Stance,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -55,7 +55,7 @@ function fighterAt(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),

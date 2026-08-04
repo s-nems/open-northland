@@ -2,7 +2,7 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { Owner, Position, Resource, Settler } from '../../../src/components/index.js';
+import { addPerson, Owner, Position, Resource } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -41,7 +41,7 @@ export function orderMove(s: Simulation, entity: Entity, x: number, y: number): 
 export function ownedWoodcutter(s: Simulation, x: number, y: number, player = HUMAN_PLAYER): Entity {
   const e = s.world.create();
   s.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  s.world.add(e, Settler, {
+  addPerson(s.world, e, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),

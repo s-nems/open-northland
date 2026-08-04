@@ -4,7 +4,7 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { Building, Position, Resource, Settler, Stockpile } from '../../../src/components/index.js';
+import { addPerson, Building, Position, Resource, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
 
@@ -22,7 +22,7 @@ export function anchorCell(sim: Simulation, x: number, y: number): number {
 export function woodcutterAt(sim: Simulation, x: number, y: number): Entity {
   const entity = sim.world.create();
   sim.world.add(entity, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(entity, Settler, {
+  addPerson(sim.world, entity, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),

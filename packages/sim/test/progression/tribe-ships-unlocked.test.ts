@@ -1,11 +1,11 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { tribeShipsUnlocked } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 
 /**
  * tribeShipsUnlocked - the ship vehicle types a tribe has currently UNLOCKED: the `vehicle_ship` rows
@@ -61,7 +61,7 @@ function shipContent(): ContentSet {
 
 function settlerOf(sim: Simulation, jobType: number, tribe: number): Entity {
   const e = sim.world.create();
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType,
     hunger: fx.fromInt(0),

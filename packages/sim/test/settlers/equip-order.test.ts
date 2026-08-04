@@ -2,6 +2,7 @@ import { type ContentSet, type EquipCategory, parseContentSet } from '@open-nort
 import { describe, expect, it } from 'vitest';
 import {
   Age,
+  addPerson,
   Building,
   Carrying,
   Engagement,
@@ -11,7 +12,6 @@ import {
   MISC_EQUIP_SLOTS,
   Owner,
   Position,
-  Settler,
   Stance,
   Stockpile,
   setNeedsEnabled,
@@ -71,7 +71,7 @@ function freshSim(): Simulation {
 function ownedSettler(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),

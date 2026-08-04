@@ -5,7 +5,7 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 export { grassMap };
 
 import { expect } from 'vitest';
-import { GroundDrop, Position, Resource, Settler, Stockpile } from '../../../src/components/index.js';
+import { addPerson, GroundDrop, Position, Resource, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, positionOfNode, Simulation, type TerrainMap } from '../../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
@@ -40,7 +40,7 @@ export function placeResource(
 export function placeSettler(sim: Simulation, jobType: number, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),

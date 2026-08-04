@@ -17,7 +17,7 @@ import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
  * foundation - so a site drops through those to employment rather than answering with a dead click.
  */
 
-const { Building, Owner, Position, Settler, Stockpile, UnderConstruction } = components;
+const { addPerson, Building, Owner, Position, Stockpile, UnderConstruction } = components;
 
 /** A bakery - the workplace whose craft slot the click should hire into. */
 const BAKERY = 'work_bakery_00';
@@ -43,7 +43,7 @@ function siteAt(sim: Simulation, buildingType: number): Entity {
 function settlerAt(sim: Simulation, jobType: number | null): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(2), y: fx.fromInt(4) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: PRIMARY_TRIBE,
     jobType,
     hunger: ONE,

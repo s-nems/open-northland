@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Simulation, scenario } from '../../src/index.js';
+import { components, fx, Simulation, scenario } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
 const WOODCUTTER = 1;
 const VIKING = 1;
+/** The fixture's bear - an animal tribe (it carries an `animaltypes` record). */
+const BEAR = 10;
 
 /**
  * INTEGRATION + GAME-LEVEL (e2e) examples. These run the whole deterministic sim headless via the
@@ -61,6 +63,37 @@ describe('e2e game-level: scenario harness', () => {
     const result = scenario(testContent(), { seed: 42 }).run(1000, { checkInvariantsEachTick: true });
     expect(result.invariantViolations).toEqual([]);
     result.assertOk();
+  });
+
+  it('the personhood invariant names a settler minted without deciding person-or-wildlife', () => {
+    // Both directions of the mismatch the two constructors exist to prevent: a viking with no `Person`
+    // (which would silently drop out of every human system) and a bear carrying one.
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const stray = sim.world.create();
+    sim.world.add(stray, components.Settler, {
+      tribe: VIKING,
+      jobType: null,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+      experience: new Map(),
+    });
+    const bear = sim.world.create();
+    components.addPerson(sim.world, bear, {
+      tribe: BEAR,
+      jobType: null,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+      experience: new Map(),
+    });
+
+    expect(sim.checkInvariants()).toEqual([
+      `entity ${stray}: tribe ${VIKING} lacks Person`,
+      `entity ${bear}: tribe ${BEAR} has Person`,
+    ]);
   });
 
   it('scenario.expect reports a readable failure', () => {

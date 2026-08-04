@@ -43,7 +43,7 @@ describe('hunter - shoot, leave a carcass, carry it home to the flag (the full l
       sim.step();
       for (const body of sim.world.query(KilledBy)) killers.add(sim.world.get(body, KilledBy).by);
       if (violations.length === 0) {
-        const v = checkInvariants(sim.world, CORE_INVARIANTS);
+        const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
         if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
       }
     }

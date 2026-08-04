@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Owner,
   Position,
   Resource,
   ResourceFootprint,
-  Settler,
   WorkFlag,
 } from '../../src/components/index.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -44,7 +44,7 @@ const HARVEST_ATOMIC = 24;
 function ownedGatherer(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),

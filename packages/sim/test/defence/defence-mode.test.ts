@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Age,
   AttackOrder,
+  addPerson,
   Building,
   Carrying,
   CurrentAtomic,
@@ -118,7 +119,7 @@ function grass(width: number, height: number): TerrainMap {
 function settlerAt(sim: Simulation, x: number, y: number, owner: number, jobType: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   CurrentAtomic,
   JobAssignment,
   MoveGoal,
   Position,
-  Settler,
   Stockpile,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -24,7 +24,7 @@ describe('atomicPlanner - walk-to-workplace drive (a BOUND operator reaches ITS 
   function carpenterAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-    sim.world.add(e, Settler, {
+    addPerson(sim.world, e, {
       tribe: VIKING,
       jobType: CARPENTER,
       hunger: fx.fromInt(0),

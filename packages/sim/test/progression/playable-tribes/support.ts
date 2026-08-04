@@ -3,15 +3,15 @@ import { TEST_MANIFEST } from '../../fixtures/content.js';
 
 /**
  * The playable-tribes read view - `playableTribes`/`isPlayableTribe` distinguish the controllable
- * civilizations from the animal/monster tribes *by the data alone* (a non-empty `jobEnables` tech
+ * civilizations from the monster and animal tribes *by the data alone* (a non-empty `jobEnables` tech
  * graph), never by a hardcoded name or count. These tests pin that data-defined split: a civilization
- * (carries `jobEnables`) is playable, an animal (only atomic bindings) is not, the list is sorted by
+ * (carries `jobEnables`) is playable, a record-less monster tribe and an animal are not, the list is sorted by
  * `typeId` regardless of declaration order, and the membership predicate matches the list (incl. the
  * unknown-tribe boundary). A pure read over content - no world, no mechanic added.
  */
 
 // Two civilizations and two animal tribes, deliberately declared OUT of typeId order so the sort is
-// exercised. A civilization is signed by a `jobEnables` edge; an animal is pure atomic bindings.
+// exercised. A civilization is signed by a `jobEnables` edge; wildlife by an `animaltypes` record.
 export function tribeContent(): ContentSet {
   return parseContentSet({
     manifest: TEST_MANIFEST,
@@ -32,17 +32,20 @@ export function tribeContent(): ContentSet {
     tribes: [
       // frank (typeId 2) declared first - a civilization (has a tech-graph edge).
       { typeId: 2, id: 'frank', jobEnables: [{ jobType: 5, kind: 'good', targetId: 3 }] },
-      // wolves (typeId 9) - an animal: atomic bindings only, no jobEnables.
+      // wolves (typeId 9) - an animal: it carries the passive `animaltypes` record below.
       { typeId: 9, id: 'wolves', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'wolf_walk' }] },
       // viking (typeId 1) declared after frank - proves the sort, not declaration order.
       { typeId: 1, id: 'viking', jobEnables: [{ jobType: 5, kind: 'house', targetId: 4 }] },
-      // bears (typeId 8) - another animal, even though it has many bindings it has no tech graph.
+      // bears (typeId 8) - another animal, recorded below as the aggressive one.
       { typeId: 8, id: 'bears', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'bear_walk' }] },
       // cows (typeId 10) - a huntable prey animal (the `mayHunt` fixture).
       { typeId: 10, id: 'cows', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'cow_walk' }] },
+      // werewolf (typeId 6) - a MONSTER tribe: no tech graph AND no `animaltypes` record, the shape
+      // `logicdefines.inc` gives TRIBE_TYPE_HUMAN_WERESNAKE/WEREWOLF. Neither playable nor wildlife.
+      { typeId: 6, id: 'werewolf', atomicBindings: [{ jobType: 0, atomicId: 1, animation: 'ww_walk' }] },
     ],
-    // animaltypes records (keyed on tribeType): the bears (8) are aggressive with a HP pool; the
-    // wolves (9) deliberately have NO record (a known animal tribe with no animaltypes behaviour). A
+    // animaltypes records (keyed on tribeType) - carrying one is what makes a tribe wildlife. The
+    // bears (8) are aggressive with a HP pool; the wolves (9) are the all-defaults PASSIVE animal. A
     // cannotBeAttacked entry for tribe 8 is NOT added so the bear stays attackable; a separate
     // exemption case is exercised in the mayAttack block with an inline content set.
     animals: [
@@ -71,9 +74,12 @@ export function tribeContent(): ContentSet {
       // (owned penned livestock - isWarrantableAnimal); it does NOT ignore houses (paths around them
       // like any settler). Its huntability comes from the huntPrey row below, not this record.
       { id: 'cow', tribeType: 10, catchable: true, warrantable: true, hitpointsAdult: 1000 },
+      // The wolf (tribe 9) is a PASSIVE wild animal: a record with every behaviour flag left at its
+      // default - not aggressive, not getAngry, not catchable, not warrantable.
+      { id: 'wolf', tribeType: 9, hitpointsAdult: 500 },
     ],
     // The hunter's prey table: membership is huntability (`mayHunt`/`isHuntablePrey`), so the bears
-    // (8) and wolves (9) stay unhuntable with no row.
+    // (8) and wolves (9) stay unhuntable with no row - having an animaltypes record is not enough.
     huntPrey: [{ tribeType: 10, yields: [{ goodType: 21, amount: 4 }] }],
   });
 }

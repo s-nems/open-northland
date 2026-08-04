@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
+import { addPerson, Building, Carrying, Position, Settler, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { housingCapacity } from '../../src/simulation/hud.js';
@@ -77,7 +77,7 @@ function builtHomeAt(sim: Simulation, x: number, y: number): Entity {
 function builderAt(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: BUILDER,
     hunger: fx.fromInt(0),
@@ -93,7 +93,7 @@ function builderAt(sim: Simulation, x: number, y: number): Entity {
 function loadedCarrierAt(sim: Simulation, x: number, y: number, goodType: number, amount: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: CARRIER,
     hunger: fx.fromInt(0),

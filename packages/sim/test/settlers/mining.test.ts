@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Carrying,
   CurrentAtomic,
@@ -52,7 +53,7 @@ const DEPOSIT_LEVELS = STONE_GATHERING?.depositLevels ?? 0;
 function makeMiner(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: MINER,
     hunger: fx.fromInt(0),
@@ -276,7 +277,7 @@ describe('mining - end-to-end through the real schedule', () => {
       sim.step();
       maxStone = Math.max(maxStone, totalStone(sim));
       if (violations.length === 0) {
-        const v = checkInvariants(sim.world, CORE_INVARIANTS);
+        const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
         if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
       }
     }

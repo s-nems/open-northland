@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   LOCAL_NAV_RADIUS_NODES,
   MoveGoal,
   Owner,
@@ -32,7 +33,7 @@ const P0 = 0;
 function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),
@@ -144,7 +145,7 @@ describe('navigationLimitFor, the per-settler memo', () => {
     expect(moved?.allowsNode(pastOldRim)).toBe(true);
 
     // A trade change to a fighter lifts the confinement: jobType is part of the memo key.
-    sim.world.add(u, Settler, { ...sim.world.get(u, Settler), jobType: SOLDIER });
+    addPerson(sim.world, u, { ...sim.world.get(u, Settler), jobType: SOLDIER });
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBeNull();
   });
 

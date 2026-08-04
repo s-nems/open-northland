@@ -1,9 +1,10 @@
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health, Position, Projectile, Settler } from '../../src/components/index.js';
+import { CurrentAtomic, Health, Position, Projectile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { PROJECTILE_TILES_PER_SPEED_UNIT } from '../../src/systems/index.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -97,7 +98,7 @@ function fighterAt(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType,
     hunger: fx.fromInt(0),

@@ -286,7 +286,7 @@ describe('felling - end-to-end through the real schedule', () => {
       sim.step();
       maxWood = Math.max(maxWood, totalWood(sim));
       if (violations.length === 0) {
-        const v = checkInvariants(sim.world, CORE_INVARIANTS);
+        const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
         if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
       }
     }

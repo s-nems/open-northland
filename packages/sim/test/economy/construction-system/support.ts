@@ -6,10 +6,10 @@ export { grassMap };
 
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import {
+  addPerson,
   Building,
   Carrying,
   Position,
-  Settler,
   Stockpile,
   UnderConstruction,
 } from '../../../src/components/index.js';
@@ -227,7 +227,7 @@ export function siteAt(sim: Simulation, buildingType: number, x: number, y: numb
 export function builderAt(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: BUILDER,
     hunger: fx.fromInt(0),
@@ -249,7 +249,7 @@ export function loadedCarrierAt(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: CARRIER,
     hunger: fx.fromInt(0),

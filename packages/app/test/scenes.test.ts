@@ -25,7 +25,7 @@ describe('acceptance scenes', () => {
       }, () => {
         const sim = createSceneSim(scene);
         sim.run(scene.runTicks);
-        expect(checkInvariants(sim.world, CORE_INVARIANTS)).toEqual([]);
+        expect(checkInvariants(sim.world, sim.content, CORE_INVARIANTS)).toEqual([]);
         for (const check of scene.checks) {
           expect(check.predicate(sim), check.label).toBe(true);
         }

@@ -1,10 +1,10 @@
 import {
+  addWildlife,
   Health,
   HerdMember,
   Livestock,
   MoveSpeed,
   Position,
-  Settler,
   StayPoint,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -69,15 +69,7 @@ export function spawnAnimalHerd(
     const off = herdMemberOffset(i, range);
     const e = world.create();
     world.add(e, Position, positionOfNode(command.x + off.dx, command.y + off.dy));
-    world.add(e, Settler, {
-      tribe: command.tribe,
-      jobType: null,
-      hunger: fx.fromInt(0),
-      fatigue: fx.fromInt(0),
-      piety: fx.fromInt(0),
-      enjoyment: fx.fromInt(0),
-      experience: new Map<number, number>(),
-    });
+    addWildlife(world, e, command.tribe);
     world.add(e, Health, { hitpoints, max: hitpoints });
     // The marker mirrors the content flag so the husbandry systems query this small store rather than the
     // whole population.

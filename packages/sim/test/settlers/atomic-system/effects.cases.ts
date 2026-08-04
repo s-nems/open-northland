@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Carrying, Health, Resource, Settler, Stockpile } from '../../../src/components/index.js';
+import {
+  addPerson,
+  Building,
+  Carrying,
+  Health,
+  Resource,
+  Settler,
+  Stockpile,
+} from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { atomicSystem, EAT_HUNGER_RESTORE } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -101,7 +109,7 @@ describe('atomicSystem - effects', () => {
   it('eat takes one meal off the settler hunger, not the whole bar', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();
-    sim.world.add(settler, Settler, {
+    addPerson(sim.world, settler, {
       tribe: 1,
       jobType: null,
       hunger: ONE,
@@ -118,7 +126,7 @@ describe('atomicSystem - effects', () => {
   it('enjoy clears the settler enjoyment (no goods consumed)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();
-    sim.world.add(settler, Settler, {
+    addPerson(sim.world, settler, {
       tribe: 1,
       jobType: null,
       hunger: fx.fromInt(0),
@@ -136,7 +144,7 @@ describe('atomicSystem - effects', () => {
   it('make_love clears the settler enjoyment (same leisure channel as enjoy, no goods consumed)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const settler = sim.world.create();
-    sim.world.add(settler, Settler, {
+    addPerson(sim.world, settler, {
       tribe: 1,
       jobType: null,
       hunger: fx.fromInt(0),

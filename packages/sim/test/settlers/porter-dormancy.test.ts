@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   JobAssignment,
   MoveGoal,
   Position,
-  Settler,
   Stockpile,
   setStockAmount,
 } from '../../src/components/index.js';
@@ -37,7 +37,7 @@ const VIKING = 1;
 function porterAt(sim: Simulation, x: number, y: number, boundTo: Entity): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: CARRIER,
     hunger: fx.fromInt(0),

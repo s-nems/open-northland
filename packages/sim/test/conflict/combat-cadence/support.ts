@@ -1,6 +1,6 @@
 export { ctxOf } from '../../fixtures/context.js';
 
-import { Armor, CurrentAtomic, Health, Position, Settler } from '../../../src/components/index.js';
+import { Armor, CurrentAtomic, Health, Position } from '../../../src/components/index.js';
 import type { AtomicEffect } from '../../../src/core/atomic-effect.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
@@ -11,7 +11,7 @@ import {
   type Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-
+import { addSettlerOfTribe } from '../../fixtures/settler.js';
 import { ATTACK_ATOMIC } from './content.js';
 
 export * from './content.js';
@@ -54,7 +54,7 @@ export function fighterAtPosition(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: position.x, y: position.y });
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType,
     hunger: fx.fromInt(0),

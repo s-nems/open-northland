@@ -8,6 +8,7 @@ import {
   LivestockVisit,
   MoveGoal,
   ownerOf,
+  Person,
   Position,
   Production,
   Settler,
@@ -66,7 +67,7 @@ export function summonToWorkplaces(world: World, ctx: SystemContext): void {
       const best = feedAnimalPick(world, ctx, building, tribe);
       if (best === null) continue;
       if (seatsLeft === null) {
-        operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
+        operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Person, Position)));
         seatsLeft = spareSeats(
           world,
           building,

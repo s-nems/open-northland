@@ -6,7 +6,7 @@
  * promotion.
  */
 
-import { Age, Health, Residence, Settler, setSettlerJob } from '../../components/index.js';
+import { Age, Health, Person, Residence, Settler, setSettlerJob } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, System } from '../context.js';
@@ -90,7 +90,7 @@ function isMaleStage(jobType: number | null): boolean {
  */
 export const growthSystem: System = (world, ctx) => {
   const graduated: Entity[] = [];
-  for (const e of world.query(Age, Settler)) {
+  for (const e of world.query(Age, Person)) {
     const age = world.get(e, Age);
     const settler = world.get(e, Settler);
     age.ticks += 1;

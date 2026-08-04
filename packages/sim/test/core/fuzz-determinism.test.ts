@@ -668,7 +668,7 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     if (gen.int(COMMAND_EVERY) === 0) sim.enqueue(nextCommand(gen));
     sim.step();
     if (violations.length === 0) {
-      const v = checkInvariants(sim.world, CORE_INVARIANTS);
+      const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
       if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
     }
     if (!sheltered) for (const _ of sim.world.query(Sheltering)) sheltered = true;

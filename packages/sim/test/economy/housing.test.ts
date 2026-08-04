@@ -1,10 +1,11 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Settler } from '../../src/components/index.js';
+import { Building } from '../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
 import { housingCapacity, tribePopulation } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 
 /**
  * The housing read model - `housingCapacity` (the sum of a tribe's built `home` buildings' `homeSize`,
@@ -42,7 +43,7 @@ function placeBuilding(sim: Simulation, buildingType: number, tribe: number, bui
 
 function spawnSettler(sim: Simulation, tribe: number): void {
   const e = sim.world.create();
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType: null,
     hunger: fx.fromInt(0),

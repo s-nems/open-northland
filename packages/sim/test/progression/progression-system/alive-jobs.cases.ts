@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Settler, setSettlerJob } from '../../../src/components/index.js';
+import { addPerson, Settler, setSettlerJob } from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { goodEnabled } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -15,7 +15,9 @@ import { ctxOf, MINER, WOODCUTTER } from './support.js';
 
 const VIKING = 1;
 /** The fixture bear tribe, a second tribe to hold a woodcutter that must not count for {@link VIKING}. */
-const OTHER_TRIBE = 10;
+/** A tribe the fixture declares no record for - not the viking, and not wildlife (no `animaltypes`
+ *  record), so a settler of it is an ordinary person of another civilization. */
+const OTHER_TRIBE = 99;
 /** The fixture gates producing PLANK on a living woodcutter (`jobEnablesGood 1 2`). */
 const PLANK = 2;
 
@@ -47,7 +49,7 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
 
     // Re-`add` is the only way a settler's tribe can change, so the memo leans on it bumping the
     // membership generation even though the entity was already in the store.
-    sim.world.add(cutter, Settler, { ...sim.world.get(cutter, Settler), tribe: OTHER_TRIBE });
+    addPerson(sim.world, cutter, { ...sim.world.get(cutter, Settler), tribe: OTHER_TRIBE });
     expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

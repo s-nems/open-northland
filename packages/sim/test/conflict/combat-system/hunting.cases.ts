@@ -340,7 +340,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
       combatSystem(sim.world, { ...ctxOf(sim), tick: 1 });
 
       expect(sim.world.has(hunter, HuntFocus), `mode ${mode}`).toBe(false);
-      expect(checkInvariants(sim.world), `mode ${mode}`).toEqual([]);
+      expect(checkInvariants(sim.world, sim.content), `mode ${mode}`).toEqual([]);
     }
   });
 

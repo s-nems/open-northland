@@ -1,8 +1,9 @@
-import { Settler } from '../../components/index.js';
+import { Person, Settler } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 
 interface AliveTribeJobsCache {
-  /** Settler membership generation: a birth, a spawn, and a death all move through add/destroy. */
+  /** Settler membership generation: a birth, a spawn, and a death all move through add/destroy. The
+   *  derivation below walks `Person`, which `addPerson` keeps in lockstep with `Settler`. */
   membershipGeneration: number;
   /** Settler value generation: a trade is written in place, invisible to the membership generation above.
    *  Any `World.write` to Settler bumps it, so this stays a cache only while the per-tick Settler writers
@@ -16,9 +17,9 @@ const aliveTribeJobsCache = new WeakMap<World, AliveTribeJobsCache>();
 /** The one derivation path, shared by the rebuild and the verifier's reference run. */
 function deriveAliveTribeJobs(world: World): Map<number, Set<number>> {
   const byTribe = new Map<number, Set<number>>();
-  for (const e of world.query(Settler)) {
+  for (const e of world.query(Person)) {
     const s = world.get(e, Settler);
-    if (s.jobType === null) continue; // wildlife, a child and an idle adult hold no trade
+    if (s.jobType === null) continue; // a child and an idle adult hold no trade
     let jobs = byTribe.get(s.tribe);
     if (jobs === undefined) {
       jobs = new Set<number>();

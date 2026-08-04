@@ -21,7 +21,7 @@ import { hasRealIr, loadContentUnderTest } from './helpers.js';
  * the overlaid `farming` block - the pieces a fixture can never regress. Skips without content.
  */
 
-const { Building, JobAssignment, Position, Settler, Stockpile } = components;
+const { addPerson, Building, JobAssignment, Position, Stockpile } = components;
 
 const SEED = 7;
 const MAP_CELLS = 10;
@@ -88,7 +88,7 @@ function buildScenario(content: ContentSet): { sim: Simulation; farmEntity: Enti
   sim.world.add(farmEntity, Stockpile, { amounts: new Map() });
   const farmerEntity = sim.world.create();
   sim.world.add(farmerEntity, Position, { x: fx.fromInt(FARM_AT.x), y: fx.fromInt(FARM_AT.y) });
-  sim.world.add(farmerEntity, Settler, {
+  addPerson(sim.world, farmerEntity, {
     tribe: tribe.typeId,
     jobType: farmer.typeId,
     hunger: fx.fromInt(0),
@@ -108,7 +108,7 @@ describe.runIf(hasRealIr())('field-farming cycle over merged real content', () =
     const { sim, farmEntity } = buildScenario(merge.content);
     for (let t = 0; t < FARM_TICKS; t++) {
       sim.step();
-      const violations = checkInvariants(sim.world);
+      const violations = checkInvariants(sim.world, sim.content);
       expect(violations, `invariant broke at tick ${t + 1}`).toEqual([]);
     }
     const banked = sim.world.get(farmEntity, Stockpile).amounts.get(wheat.typeId) ?? 0;

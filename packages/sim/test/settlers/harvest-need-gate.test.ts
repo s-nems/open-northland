@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, MoveGoal, Position, Resource, Settler } from '../../src/components/index.js';
+import { addPerson, CurrentAtomic, MoveGoal, Position, Resource } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
@@ -50,7 +50,7 @@ function woodGatedContent(): ReturnType<typeof testContent> {
 function woodcutterAt(sim: Simulation, x: number, y: number, woodXp: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),

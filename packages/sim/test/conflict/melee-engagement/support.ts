@@ -2,10 +2,11 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { Health, Owner, Position, Settler, Stance } from '../../../src/components/index.js';
+import { Health, Owner, Position, Stance } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, halfCellMapFromCells, type Simulation, type TerrainMap } from '../../../src/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
+import { addSettlerOfTribe } from '../../fixtures/settler.js';
 
 export const WOOD = 1;
 export const HARVEST_ATOMIC = 24;
@@ -43,7 +44,7 @@ export function fighterAt(
 ): Entity {
   const entity = sim.world.create();
   sim.world.add(entity, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(entity, Settler, {
+  addSettlerOfTribe(sim, entity, {
     tribe,
     jobType,
     hunger: fx.fromInt(0),

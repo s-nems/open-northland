@@ -7,6 +7,7 @@ import { ctxOf } from '../../fixtures/context.js';
 export { ctxOf };
 
 import {
+  addPerson,
   CurrentAtomic,
   DeliveryFlag,
   Felling,
@@ -14,7 +15,6 @@ import {
   HarvestedBy,
   Position,
   Resource,
-  Settler,
   Stockpile,
   WorkFlag,
 } from '../../../src/components/index.js';
@@ -72,7 +72,7 @@ export function riverMap(width: number, height: number, riverCols: readonly numb
 export function makeWoodcutter(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),
@@ -150,7 +150,7 @@ export function runTicks(sim: Simulation, ticks: number): string[] {
   for (let i = 0; i < ticks; i++) {
     sim.step();
     if (violations.length === 0) {
-      const v = checkInvariants(sim.world, CORE_INVARIANTS);
+      const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
       if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
     }
   }

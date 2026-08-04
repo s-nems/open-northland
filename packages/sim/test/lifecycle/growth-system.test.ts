@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Age, Health, Position, Residence, Settler } from '../../src/components/index.js';
+import { Age, addPerson, Health, Position, Residence, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation, TICKS_PER_SECOND } from '../../src/index.js';
 import {
@@ -56,7 +56,7 @@ function growthContent(tribeHitpoints = 0): ContentSet {
 function bornSettler(sim: Simulation, jobType: number, ticks: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),
@@ -195,7 +195,7 @@ describe('GrowthSystem - non-working settlers mature into workers', () => {
     const sim = new Simulation({ seed: 1, content: growthContent() });
     const adult = sim.world.create();
     sim.world.add(adult, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(adult, Settler, {
+    addPerson(sim.world, adult, {
       tribe: VIKING,
       jobType: 6, // an adult trade (civilist)
       hunger: fx.fromInt(0),

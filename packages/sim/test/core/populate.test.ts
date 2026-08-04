@@ -6,8 +6,9 @@ import { testContent } from '../fixtures/content.js';
 /**
  * Tests for the **map populator** `seedAnimalHerds` - the pure command-producer that seeds a map's
  * wildlife by issuing `spawnAnimalHerd` commands at walkable birth points. The fixture's recorded
- * animal tribes are the BEAR (tribe 10, herd of 3, searchForLeader), the BEE (tribe 11, solitary), the
- * BOAR (tribe 12, passive-but-provokable), the COW (tribe 13, catchable prey), and the DEER (tribe 14,
+ * animal tribes are the WOLF (tribe 9, passive), the BEAR (tribe 10, herd of 3, searchForLeader), the
+ * BEE (tribe 11, solitary), the BOAR (tribe 12, passive-but-provokable), the COW (tribe 13, catchable
+ * prey), and the DEER (tribe 14,
  * catchable + provokable); the VIKING (tribe 1) is a civilization (no animaltypes record) and is never
  * seeded.
  *
@@ -15,6 +16,7 @@ import { testContent } from '../fixtures/content.js';
  * enqueues through the one mutation seam - so the end-to-end test enqueues them and runs `step()`.
  */
 
+const WOLF = 9;
 const BEAR = 10;
 const BEE = 11;
 const BOAR = 12;
@@ -53,17 +55,17 @@ describe('seedAnimalHerds (map populator)', () => {
     const content = testContent();
     const cmds = seedAnimalHerds(content, grass(10, 1));
     const tribes = new Set(cmds.map((c) => (c.kind === 'spawnAnimalHerd' ? c.tribe : -1)));
-    // The recorded LIVING animals (BEAR/BEE/BOAR/COW/DEER); the VIKING civilization is never seeded,
-    // and neither is the fixture's hitpoints-0 decorative butterfly (its spawn would place nothing).
-    expect([...tribes].sort((a, b) => a - b)).toEqual([BEAR, BEE, BOAR, COW, DEER]);
+    // The recorded LIVING animals (WOLF/BEAR/BEE/BOAR/COW/DEER); the VIKING civilization is never
+    // seeded, and neither is the fixture's hitpoints-0 decorative butterfly (its spawn places nothing).
+    expect([...tribes].sort((a, b) => a - b)).toEqual([WOLF, BEAR, BEE, BOAR, COW, DEER]);
   });
 
   it('round-robins successive birth points across the animal tribes', () => {
     const content = testContent();
-    const cmds = seedAnimalHerds(content, grass(10, 1)); // 10 walkable cells, 5 tribes
+    const cmds = seedAnimalHerds(content, grass(12, 1)); // 12 walkable cells, 6 tribes
     const tribes = cmds.map((c) => (c.kind === 'spawnAnimalHerd' ? c.tribe : -1));
-    // Canonical tribe order [10, 11, 12, 13, 14] assigned round-robin to birth points 0..9.
-    expect(tribes).toEqual([BEAR, BEE, BOAR, COW, DEER, BEAR, BEE, BOAR, COW, DEER]);
+    // Canonical tribe order [9, 10, 11, 12, 13, 14] assigned round-robin to birth points 0..11.
+    expect(tribes).toEqual([WOLF, BEAR, BEE, BOAR, COW, DEER, WOLF, BEAR, BEE, BOAR, COW, DEER]);
   });
 
   it('cellStride spreads birth points out (every Nth walkable cell)', () => {

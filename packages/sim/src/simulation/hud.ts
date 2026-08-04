@@ -1,5 +1,5 @@
 import type { ContentSet, ProductionInput } from '@open-northland/data';
-import { Building, Settler, Stockpile, stockpileEntries } from '../components/index.js';
+import { Building, Person, Settler, Stockpile, stockpileEntries } from '../components/index.js';
 import { contentIndex } from '../core/content-index.js';
 import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
@@ -30,11 +30,11 @@ export function housingCapacity(world: World, ctx: SystemContext, tribe: number)
   return capacity;
 }
 
-/** The number of a `tribe`'s living {@link Settler}s, regardless of job - idle settlers are still mouths to
+/** The number of a `tribe`'s living {@link Person}s, regardless of job - idle settlers are still mouths to
  *  house. The count half of the readout {@link housingCapacity} is the ceiling for. */
 export function tribePopulation(world: World, tribe: number): number {
   let count = 0;
-  for (const e of world.query(Settler)) {
+  for (const e of world.query(Person)) {
     if (world.get(e, Settler).tribe === tribe) count++;
   }
   return count;
@@ -50,7 +50,7 @@ export function tribePopulation(world: World, tribe: number): number {
  */
 export function tribePopulationByJob(world: World, tribe: number): Map<number, number> {
   const counts = new Map<number, number>();
-  for (const e of world.query(Settler)) {
+  for (const e of world.query(Person)) {
     const settler = world.get(e, Settler);
     if (settler.tribe !== tribe) continue;
     const key = settler.jobType ?? IDLE_JOB;

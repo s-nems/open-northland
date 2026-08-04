@@ -26,7 +26,7 @@ import {
 describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
   it('an AGGRESSIVE animal attacks a nearby civilization (the unprovoked aggression drive)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER); // aggressive animal - drives an attack
+    const bear = fighterAt(sim, 0, 0, BEAR, null); // aggressive animal - drives an attack
     const viking = fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // a settler within range
 
     combatSystem(sim.world, ctxOf(sim));
@@ -40,7 +40,7 @@ describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
   it('a civilization fights an aggressive animal BACK (the fight is mutual)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const bear = fighterAt(sim, 1, 0, BEAR, WOODCUTTER); // an aggressive animal - a valid target for the civ
+    const bear = fighterAt(sim, 1, 0, BEAR, null); // an aggressive animal - a valid target for the civ
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -48,10 +48,10 @@ describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
     expect(sim.world.get(viking, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: bear });
   });
 
-  it('a PASSIVE animal (no animaltypes record) neither attacks nor is attacked', () => {
+  it('a PASSIVE animal (a record with no aggression flags) neither attacks nor is attacked', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const wolf = fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // armed, but NOT aggressive (no record)
+    const wolf = fighterAt(sim, 1, 0, WOLVES, null); // armed by its tribe, but NOT aggressive
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -62,7 +62,7 @@ describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
   it('a cannotBeAttacked animal (decorative fauna) is exempt from a civilization attacking it', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    fighterAt(sim, 1, 0, BEES, WOODCUTTER); // a bee - aggressive in the record, but cannotBeAttacked
+    fighterAt(sim, 1, 0, BEES, null); // a bee - aggressive in the record, but cannotBeAttacked
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -72,8 +72,8 @@ describe('combatSystem - civ-vs-animal aggression (animaltypes.ini)', () => {
 
   it('two animals do NOT fight each other (no inter-species wildlife aggression)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER); // aggressive
-    fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // another animal, adjacent
+    const bear = fighterAt(sim, 0, 0, BEAR, null); // aggressive
+    fighterAt(sim, 1, 0, WOLVES, null); // another animal, adjacent
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -190,7 +190,7 @@ describe('combatSystem - hunter strike on catchable prey (animaltypes.ini catcha
 describe('combatSystem - hostile-animal advance (the ambush lunge)', () => {
   it('an aggressive animal beyond weapon reach but inside its aggro radius chases the civ', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
     fighterAt(sim, 3, 0, VIKING, WOODCUTTER); // 6 nodes - beyond test_bearfist reach 2, inside aggro 8
 
     combatSystem(sim.world, ctxOf(sim));
@@ -202,7 +202,7 @@ describe('combatSystem - hostile-animal advance (the ambush lunge)', () => {
 
   it('an aggressive animal leaves a civ beyond its aggro radius alone (no map-wide hunt)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
     fighterAt(sim, 5, 0, VIKING, WOODCUTTER); // 10 nodes - past ANIMAL_AGGRO_RADIUS_NODES (8)
 
     combatSystem(sim.world, ctxOf(sim));
@@ -225,7 +225,7 @@ describe('combatSystem - hostile-animal advance (the ambush lunge)', () => {
 
   it('the chase closes the loop: the ambushing animal reaches its victim and draws blood', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
-    fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    fighterAt(sim, 0, 0, BEAR, null);
     const viking = fighterAt(sim, 3, 0, VIKING, WOODCUTTER);
 
     // Full ticks (pathfinding + movement + combat + atomic): the bear walks its ~2-cell approach at the
@@ -343,10 +343,10 @@ describe('combatSystem - provoked anger (getAngry/angryGameTime)', () => {
     expect(sim.world.get(boar, Anger).until).toBe(sim.tick + 10);
   });
 
-  it('a non-provokable animal (wolf, no animaltypes record) gets no Anger when struck', () => {
+  it('a non-provokable animal (wolf, a record without getAngry) gets no Anger when struck', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    const wolf = fighterAt(sim, 1, 0, WOLVES, null, 1000); // passive, NOT getAngry (no record)
+    const wolf = fighterAt(sim, 1, 0, WOLVES, null, 1000); // passive, NOT getAngry
 
     strike(sim, viking, wolf, 50);
 

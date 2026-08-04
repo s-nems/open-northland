@@ -112,7 +112,7 @@ describe.runIf(hasRealIr())('gathering cycle over merged real content', () => {
     const sim = buildScenario(merge.content);
     for (let t = 0; t < CYCLE_TICKS; t++) {
       sim.step();
-      const violations = checkInvariants(sim.world);
+      const violations = checkInvariants(sim.world, sim.content);
       expect(violations, `invariant broke at tick ${t + 1}`).toEqual([]);
     }
     expect(bankedGood(sim, wood.typeId), 'no wood ever banked - the cycle stalled').toBeGreaterThan(0);

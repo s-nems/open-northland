@@ -199,7 +199,7 @@ describe('placeResource command', () => {
         deposit: { levels: 5 },
       });
       for (let t = 0; t < 5; t++) sim.step();
-      expect(checkInvariants(sim.world, CORE_INVARIANTS)).toEqual([]); // includes cachesCoherent
+      expect(checkInvariants(sim.world, sim.content, CORE_INVARIANTS)).toEqual([]); // includes cachesCoherent
       return sim.hashState();
     };
     expect(runOnce()).toBe(runOnce());

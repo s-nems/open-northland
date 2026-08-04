@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, Health, Position, Settler } from '../../src/components/index.js';
+import { CurrentAtomic, Health, Position } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   type Fixed,
@@ -12,6 +12,7 @@ import {
 } from '../../src/index.js';
 import { isPlayableTribe, mayAttack } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 
 /**
  * Two fully-defined playable civilizations fighting through the real `Simulation.step()` schedule,
@@ -126,7 +127,7 @@ function fighterAtPosition(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: position.x, y: position.y });
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType: SOLDIER,
     hunger: fx.fromInt(0),
