@@ -54,8 +54,9 @@ Pipeline and real-content gates remain local-only requirements when their scope 
 ## 4. Review the diff
 
 Run `code-reviewer` for every code diff, plus the other applicable lenses from `/audit`, before
-handoff. Triage findings against the source and fix agreed blockers and should-fix items. Repeat
-focused verification after fixes.
+handoff. The review unit is the full `main...HEAD` diff, not individual commits: cumulative effects
+across a branch's commits are part of what is reviewed. Triage findings against the source and fix
+agreed blockers and should-fix items. Repeat focused verification after fixes.
 
 Read every touched production module in full, once with comments mentally hidden. Names, types, and
 boundaries must still expose its responsibilities and control flow. Require the review to report
@@ -114,8 +115,11 @@ implied approval.
 Check `git log --oneline main..<branch>` first: empty means another session already rebased and
 landed this work, so verify the behavior survived and go straight to cleanup.
 
-Fetch current `main` and rebase the task branch onto it. Resolve conflicts inside the worktree. If the
-effective diff changed, rerun relevant checks and review the changed parts before merging.
+Fetch current `main` and rebase the task branch onto it. Resolve conflicts inside the worktree: at
+every conflict stop, list all conflicted files before resolving anything, and never stage blindly
+with `git add -A`. After the rebase, audit the result for leftover conflict markers and unintended
+deletions. If the effective diff changed, rerun relevant checks and review the changed parts before
+merging.
 
 Fast-forward `main` only:
 
