@@ -4,9 +4,14 @@ import { IDLE_JOB } from '../src/data/hud/model.js';
 import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 
-/** A snapshot settler entity; a null `jobType` is an idle adult. */
+/** A snapshot person entity; a null `jobType` is an idle adult. */
 function settler(id: number, tribe: number, jobType: number | null): WorldSnapshot['entities'][number] {
-  return { id, components: { Settler: { tribe, jobType } } };
+  return { id, components: { Settler: { tribe, jobType }, Person: { person: true } } };
+}
+
+/** A snapshot creature: the same `Settler` model with no `Person` marker, as the sim clones wildlife. */
+function creature(id: number, tribe: number): WorldSnapshot['entities'][number] {
+  return { id, components: { Settler: { tribe, jobType: null } } };
 }
 
 function store(
@@ -30,6 +35,14 @@ describe('buildHud', () => {
     );
     expect(hud.population).toBe(3);
     expect(hud.tribe).toBe(0);
+  });
+
+  it('counts people only, keyed on the marker rather than on the tribe id', () => {
+    // Sharing the tribe id is synthetic - no decoded animal tribe collides with a civilization - and that
+    // is the point: what keeps a creature out of the count is the `Person` marker, as it is in the sim.
+    const hud = buildHud(snapshotOf([settler(1, 0, 5), creature(2, 0), creature(3, 0)]), 0);
+    expect(hud.population).toBe(1);
+    expect(hud.jobs).toEqual([{ jobType: 5, count: 1 }]);
   });
 
   it('breaks settlers down by jobType, idle adults under the IDLE_JOB sentinel, ascending', () => {

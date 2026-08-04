@@ -44,7 +44,7 @@ export function campaignTarget(
     if (winner !== null) return winner;
   }
 
-  // The {@link Person} key is what keeps a claimed herd out: it is loot, not a war aim.
+  // The Person key is what keeps a claimed herd out: it is loot, not a war aim.
   const people = canonicalById(world.query(Person, Owner)).filter((e) => isEnemy(world, e, player));
   return nearestReachable(terrain, people, rally, home, approachOf);
 }
