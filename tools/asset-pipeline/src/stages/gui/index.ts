@@ -9,34 +9,8 @@ import { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strin
 import { convertWindowBitmaps } from './window-bitmaps.js';
 
 /**
- * GUI extraction stage - the original in-game HUD art, colorization palettes, UI strings, and mouse
- * cursors, converted from an owned game copy into `content/` for the app to consume. It is the GUI twin
- * of the character/building bob stages, reusing their pieces:
- *
- *  - **Atlas art.** `ls_gui_window.bmd` (193 bobs: tool-panel chrome, order buttons, window frames,
- *    progress/hit bars, minimap chrome) and `ls_gui_bubbles.bmd` (23 speech/thought bubbles) are the same
- *    CBobManager `.bmd` the settlers use, so each becomes (a) an indexed atlas (`packIndexedBobAtlas` -
- *    palette index in red, mask in alpha) the renderer colours per element at draw time through a palette
- *    LUT, plus (b) an RGBA preview atlas (`packBobAtlas`) coloured with one sensible default palette so
- *    a human can eyeball "chrome, not noise". Both ride the existing `/bobs/` route (`<stem>.png` +
- *    `<stem>.atlas.json`), so the app's `loadLayer` reads them unchanged.
- *  - **Palettes.** The engine colours each HUD element with a `Data/gui/palettes/*.pcx` (2×2 carriers
- *    whose real payload is the 256-colour trailer). We stack them into one `256 × N` LUT PNG - the exact
- *    mechanism as the player-colour LUT (`buildPaletteLut`) - with the row order fixed by
- *    `GUI_PALETTES` (in `palette-lut.ts`, mirrored app-side, so no sidecar descriptor is needed). The renderer reads an
- *    indexed atlas pixel through the LUT row for its element's palette. Which palette pairs with which
- *    element is documented in `docs/formats/GRAPHICS.md`: `iconsleft` for the tool panel, `context`
- *    for order icons, and the named `frame`/`bg_*`/`bar_*`/`papyrus` palettes for windows and bars.
- *  - **Strings.** The nine `ingamegui*.cif` UI tables per language are `CStringArray`s (already decoded by
- *    `cif.ts`); we emit id→text JSON per language, re-decoded to CP1250 for the display glyphs.
- *  - **Cursors.** The three `DataX/Mouse/*.cur` are standard Win32 cursors - decoded to PNG (with hotspot)
- *    and copied through verbatim so the app can use either the `.cur` (CSS `cursor: url()`) or the PNG.
- *
- * Boundary failures are warned-and-skipped, never fatal (matching the other tree-walk stages): a missing
- * `.bmd`/palette/string table/cursor drops that one output rather than aborting the run. All sources are
- * loose files read straight from `roots` (the HUD ships unpacked; the culturesnation mod does not
- * override it), so this stage does not depend on the `.lib` unpack. No copyrighted bytes enter the repo -
- * everything lands under the gitignored `content/`.
+ * GUI extraction stage. Every source is a loose file read straight from `roots` (the HUD ships unpacked
+ * and the culturesnation mod does not override it), so this stage does not depend on the `.lib` unpack.
  */
 
 export { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
@@ -45,7 +19,7 @@ export { convertGuiPaletteLut, GUI_PALETTE_LUT_STEM } from './palette-lut.js';
 export { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strings.js';
 export { BODY_SHADOW_MIN_LUMA, convertWindowBitmaps, liftPaletteShadows } from './window-bitmaps.js';
 
-/** The top-level `content/gui/manifest.json` - the app's single entry point to discover every GUI output. */
+/** The emitted `content/gui/manifest.json`, the app's entry point to every GUI output. */
 export interface GuiManifest {
   readonly atlases: GuiAtlasResult[];
   readonly paletteLut: { readonly stem: string; readonly names: string[] };
@@ -53,7 +27,7 @@ export interface GuiManifest {
   readonly cursors: GuiCursorResult[];
 }
 
-/** What {@link convertGuiStage} did, for the CLI log line. */
+/** Counts for the CLI log line. */
 export interface GuiStageSummary {
   readonly atlases: number;
   readonly frames: number;
@@ -63,10 +37,8 @@ export interface GuiStageSummary {
 }
 
 /**
- * Runs the whole GUI extraction: palette LUT (which also yields the preview palettes) → indexed + preview
- * atlases → per-language strings → cursors → the top-level `content/gui/manifest.json`. Returns a summary
- * for the CLI log. Each sub-step is independently resilient (warn-and-skip), so a partial game install
- * still produces whatever it can.
+ * Runs the GUI extraction and writes `content/gui/manifest.json`. Each sub-step warns and skips on its own,
+ * so a partial game install still produces whatever it can.
  */
 export async function convertGuiStage(roots: SourceRoots, outDir: string): Promise<GuiStageSummary> {
   const palettes = await convertGuiPaletteLut(roots, outDir);

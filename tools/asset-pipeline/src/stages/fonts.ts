@@ -6,44 +6,13 @@ import { emitIndexedAndPreviewAtlas, writeJsonFile } from './content-tree.js';
 import { buildPaletteLut, identityPalette, type PaletteLutResult } from './palette-lut.js';
 import { readSourceFile } from './source-files.js';
 
-/**
- * Font extraction stage - the original UI bitmap fonts (`Data/gui/fonts/*.fnt`), converted from an owned
- * game copy into `content/` so the renderer can draw text. It is the font twin of the GUI stage
- * ({@link import('./gui/index.js')}), reusing its pieces:
- *
- *  - **Glyph atlas.** Each `.fnt` is a CFont (id 0x3F5) wrapping the same CBobManager `.bmd` bob container
- *    the settlers/HUD use (one bob per glyph; char `c` → bob `c - 0x20`), so its bobs pack into the same
- *    atlas: an indexed atlas ({@link packIndexedBobAtlas} - palette index in red, mask in alpha) the
- *    renderer colours per text-colour at draw time through a colour LUT, plus an RGBA preview
- *    ({@link packBobAtlas}) coloured with the default (`white`) font palette for human inspection. Both ride
- *    the existing `/bobs/` route (`<stem>.png` + `<stem>.atlas.json`), loaded unchanged by `loadLayer`.
- *  - **Colours.** The engine colours glyphs with a `Data/gui/palettes/font_{white,dark,dimmed,red}.pcx`
- *    palette carrier. We stack them into one `256 × 4` LUT PNG - the same mechanism as the player-colour
- *    and GUI palette LUTs - with the row order fixed by {@link FONT_COLORS} (mirrored app-side in
- *    `packages/app/src/content/font-gfx.ts`). The renderer reads an indexed glyph pixel through the LUT row
- *    for its text colour.
- *  - **Metrics.** Per font, a `content/gui/fonts/<key>.metrics.json` carries the {@link FontMetrics}: the
- *    per-glyph advance/offset/size, line height, baseline, and space bob - the layout the renderer needs
- *    (the atlas gives where the pixels are; the metrics give how to lay them out). Metrics are
- *    derived from decoded font rectangles and pinned by synthetic layout tests.
- *
- * The three shipped sets - the root `Data/gui/fonts/` (the central-European set that carries the Polish
- * CP1250 glyph range) plus the `latin/` and `rus/` alternate-codepage variants - are all extracted, keyed
- * by variant (see {@link FONT_SOURCES}); the fonts are byte-indexed (`char = 0x20 + bobId`), so the codepage
- * a variant is read in belongs to the consuming language, not this decoder.
- *
- * Boundary failures are warned-and-skipped, never fatal (matching the other loose-file stages): a missing
- * `.fnt`/palette drops that one output rather than aborting the run. Everything lands under the gitignored
- * `content/`; no copyrighted bytes enter the repo.
- */
-
-/** The `content/gui/fonts/` subtree the per-font metrics + manifest are written to (served at `/gui/fonts/`). */
+/** Per-font metrics and manifest land here, served at `/gui/fonts/`. */
 const FONTS_CONTENT_DIR = join('gui', 'fonts');
-/** Dir holding the `.fnt` files (root set); `latin/` and `rus/` variants live in sibling subdirs. */
+/** The root font set; the `latin/` and `rus/` variants live in sibling subdirs. */
 const FONTS_DIR = join('Data', 'gui', 'fonts');
 /** Dir holding the `font_*.pcx` colour palette carriers. */
 const FONT_PALETTES_DIR = join('Data', 'gui', 'palettes');
-/** Filename stem of the emitted `256 × 4` font-colour LUT (a `/bobs/` PNG, loaded like the player/GUI LUTs). */
+/** Stem of the emitted `256 x 4` font-colour LUT PNG, served at `/bobs/`. */
 export const FONT_COLOR_LUT_STEM = 'font-palettes-lut';
 /** The colour a font's RGBA preview atlas is rendered in (the LUT's first row). */
 export const DEFAULT_FONT_COLOR = 'white';
@@ -55,9 +24,8 @@ interface FontColorSource {
 }
 
 /**
- * The font text colours, in LUT-row order (row index = array index). The renderer reads an indexed glyph
- * pixel through the row named here for the colour it draws text in. This order is the contract with the app
- * (mirrored in `packages/app/src/content/font-gfx.ts`) - append, never reorder, or the app's row indices drift.
+ * The font text colours, in LUT-row order (row index = array index). The order is mirrored in
+ * `packages/app/src/content/font-gfx.ts`: append, never reorder, or the app's row indices drift.
  */
 const FONT_COLORS: readonly FontColorSource[] = [
   { name: 'white', file: join(FONT_PALETTES_DIR, 'font_white.pcx') },
@@ -69,15 +37,15 @@ const FONT_COLORS: readonly FontColorSource[] = [
 /** The four font sizes shipped in each set. */
 const FONT_STEMS = ['font08', 'font10', 'font12', 'fontdebug'] as const;
 
-/** A font set (codepage variant): its name and the subdir under {@link FONTS_DIR} (root set = `''`). */
+/** A font set (codepage variant): its name and the subdir under `FONTS_DIR` (root set = `''`). */
 interface FontVariant {
   readonly name: string;
   readonly dir: string;
 }
 
 /**
- * The shipped font sets. The root (`default`) set is the central-European one carrying the Polish CP1250
- * glyphs the UI needs; `latin` and `rus` are the alternate-codepage sets the original swaps in per language.
+ * The shipped font sets. The root (`default`) set carries the central-European CP1250 glyphs; `latin`
+ * and `rus` are the alternate-codepage sets the original swaps in per language.
  */
 const FONT_VARIANTS: readonly FontVariant[] = [
   { name: 'default', dir: '' },
@@ -104,12 +72,7 @@ const FONT_SOURCES: readonly FontSource[] = FONT_VARIANTS.flatMap((v) =>
   })),
 );
 
-/**
- * Reads every {@link FONT_COLORS} carrier, stacks their 256-colour trailers into one `256 × 4` LUT PNG (via
- * {@link buildPaletteLut}, the same mechanism as the player-colour / GUI palette LUTs), and writes it
- * under `BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale row
- * so the row order (the app's contract) stays fixed regardless of a partial install.
- */
+/** Stacks the {@link FONT_COLORS} carriers' 256-colour trailers into one `256 x 4` LUT PNG. */
 export function convertFontColorLut(roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
   return buildPaletteLut(roots, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, {
     label: 'fonts',
@@ -146,11 +109,9 @@ interface FontMetricsFile extends FontMetrics {
 }
 
 /**
- * Decodes each `.fnt` into an indexed glyph atlas + an RGBA preview atlas (default colour) + a metrics JSON,
- * written under `BOBS_DIR` (atlases) and `content/gui/fonts/` (metrics). `previewPalette` supplies the
- * preview colours (from {@link convertFontColorLut}); an absent one falls back to a neutral palette so a
- * preview still renders. A missing/malformed `.fnt` warns-and-skips that font. Returns one {@link FontResult}
- * per font that converted, in {@link FONT_SOURCES} order.
+ * Decodes each `.fnt` into an indexed glyph atlas, an RGBA preview atlas, and a metrics JSON. An absent
+ * `previewPalette` falls back to a neutral palette; a missing or malformed `.fnt` warns and skips that
+ * font. Results follow {@link FONT_SOURCES} order.
  */
 export async function convertFonts(
   roots: SourceRoots,
@@ -167,8 +128,6 @@ export async function convertFonts(
       console.warn(`[pipeline] fonts: skipped ${src.key}: ${errorMessage(err)}`);
       continue;
     }
-    // decode + metrics + atlas emit share one warn-and-skip guard so a malformed-but-decodable font
-    // drops only itself, never aborting the batch (matching the goods/GUI stages).
     let metrics: FontMetrics;
     let indexedStem: string;
     let previewStem: string;
@@ -198,8 +157,7 @@ export async function convertFonts(
       indexedStem,
       previewStem,
       previewColor: DEFAULT_FONT_COLOR,
-      // The manifest records a forward-slash URL path (a browser fetches `/gui/fonts/<key>.metrics.json`),
-      // so it must not carry OS separators.
+      // A browser fetches this path, so it must not carry OS separators.
       metricsPath: metricsPath.split(/[\\/]/).join('/'),
       glyphs: metrics.charCount,
       lineHeight: metrics.lineHeight,
@@ -210,25 +168,19 @@ export async function convertFonts(
   return done;
 }
 
-/** The top-level `content/gui/fonts/manifest.json` - the app's single entry point to discover every font output. */
+/** Body of `content/gui/fonts/manifest.json`, the app's entry point to every font output. */
 export interface FontManifest {
   readonly fonts: FontResult[];
   readonly colorLut: { readonly stem: string; readonly names: string[] };
 }
 
-/** What {@link convertFontStage} did, for the CLI log line. */
 export interface FontStageSummary {
   readonly fonts: number;
   readonly glyphs: number;
   readonly colors: number;
 }
 
-/**
- * Runs the whole font extraction: colour LUT (which also yields the preview palettes) → per-font indexed +
- * preview atlases + metrics → the top-level `content/gui/fonts/manifest.json`. Returns a summary for the CLI
- * log. Each sub-step is independently resilient (warn-and-skip), so a partial game install still produces
- * whatever it can.
- */
+/** Runs the font extraction end to end; each sub-step warns and skips, so a partial install still converts. */
 export async function convertFontStage(roots: SourceRoots, outDir: string): Promise<FontStageSummary> {
   const colors = await convertFontColorLut(roots, outDir);
   const fonts = await convertFonts(roots, outDir, colors.byName.get(DEFAULT_FONT_COLOR));

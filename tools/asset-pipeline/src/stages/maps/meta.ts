@@ -9,10 +9,7 @@ import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from '../../roots.js';
 import { STRING_TABLE_DIR } from './info.js';
 
-/**
- * The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, resolved to one
- * language (see {@link MAP_TEXT_LANGS}). Written only when the map folder carries a string table.
- */
+/** The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, one language. */
 export interface MapMetaFile {
   /** The map's display name (the string at the header's `mapnamestringid`). */
   readonly name?: string;
@@ -20,17 +17,13 @@ export interface MapMetaFile {
   readonly description?: string;
 }
 
-/**
- * Language preference for the emitted {@link MapMetaFile} (the menu shows one language): the
- * culturesnation mod is Polish-authored, so `pol` first, `eng` as the fallback.
- */
+/** The menu shows one language, and the culturesnation mod is Polish-authored, so `pol` wins. */
 const MAP_TEXT_LANGS = ['pol', 'eng'] as const;
 
 /**
- * String-table ids of the map name/description when no header names them (no readable `misc.inc`/
- * `map.ini` and no `map.cif`). Source basis: observed - 87 of the 113 readable `[misc_mapname]`
- * headers in the owned copy say `0`/`1`; the rest override (24× `99`/`98`, 1× `40`/`41`, plus the
- * tutorial/military `map.cif`s at `99`/`98`), which is why the header is consulted first.
+ * String-table ids of the map name/description when no header names them. Source basis: observed -
+ * most readable `[misc_mapname]` headers say `0`/`1`, and the overriding minority is why the header
+ * is consulted first.
  */
 const DEFAULT_NAME_STRING_ID = 0;
 const DEFAULT_DESCRIPTION_STRING_ID = 1;
@@ -52,12 +45,8 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
 
 /**
  * Resolves which string-table ids carry the map's name/description. The `[misc_mapname]` header ships
- * in three forms; per golden rule #4 the readable ones win: the split `misc.inc` (111 of the owned
- * copy's map folders), the monolithic `map.ini` (2 folders, e.g. `oasis_o_plenty`), then the encrypted
- * `map.cif`'s sections (the tutorial/military maps are `.cif`-only - pass the already-decoded sections
- * in; this module never re-decodes the cif). A map with no header at all keeps the observed
- * {@link DEFAULT_NAME_STRING_ID}/{@link DEFAULT_DESCRIPTION_STRING_ID}. Name and description ids
- * resolve independently, first source naming each wins.
+ * in three forms and the readable ones win: the split `misc.inc`, the monolithic `map.ini`, then the
+ * encrypted `map.cif`'s sections, passed in already decoded so this module never re-decodes the cif.
  */
 async function resolveMapNameStringIds(
   mapDirs: readonly string[],
@@ -89,13 +78,8 @@ async function resolveMapNameStringIds(
 
 /**
  * Loads one map folder's string table (`<mapDir>/text/<lang>/strings.*`) as `{ <stringId>: <text> }`,
- * trying each {@link MAP_TEXT_LANGS} language in order. Per language the readable `strings.ini` is
- * preferred (golden rule #4; {@link iniBytesToSections} already yields CP1250 text) over the encrypted
- * `strings.cif` twin ({@link decodeCifStringTable}) - e.g. the tutorial maps ship `.cif`-only. Paths
- * resolve case-insensitively ({@link findPathCaseInsensitiveInDirs}); a missing file is normal absence, an
- * unreadable one warns and falls through, and an empty table falls through to the next form/language.
- * Returns undefined when no language yields strings - the caller then emits no meta sidecar (the menu
- * card degrades).
+ * preferring the readable `strings.ini` over its encrypted `strings.cif` twin per language. An
+ * unreadable or empty table falls through to the next form, then the next language.
  */
 export async function loadMapStringTable(
   mapDirs: readonly string[],
@@ -123,12 +107,10 @@ export async function loadMapStringTable(
 }
 
 /**
- * Resolves one map folder's {@link MapMetaFile}: the header's string ids ({@link resolveMapNameStringIds})
- * looked up in the folder's string table ({@link loadMapStringTable}). Returns undefined when neither a
- * name nor a description resolves (no text, or the table lacks the header's ids) - the caller then emits
- * no sidecar. `cifSections` is the already-decoded sibling `map.cif` (or undefined), passed in so the
- * cif is decoded once per map, by the caller that also needs its entity layer. A caller that also
- * needs the string table (the script sidecar's player names) passes its one load via `strings`.
+ * Resolves one map folder's display strings: the `[misc_mapname]` header's ids looked up in the
+ * folder's string table. Returns undefined when neither a name nor a description resolves.
+ * `cifSections` and `strings` come from the caller so each map decodes its cif and loads its table
+ * once.
  */
 export async function resolveMapMeta(
   mapDirs: readonly string[],

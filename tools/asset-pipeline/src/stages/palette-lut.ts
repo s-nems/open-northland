@@ -8,11 +8,7 @@ import type { SourceRoots } from '../roots.js';
 import { BOBS_DIR } from './content-tree.js';
 import { readSourceFile } from './source-files.js';
 
-/**
- * A neutral 256-colour grayscale palette (index i → (i,i,i)), used to keep a colour-LUT row stable when a
- * palette carrier is absent, so the LUT's row order (the app-side contract) stays fixed regardless of a
- * partial install.
- */
+/** A neutral 256-colour grayscale palette (index i to (i,i,i)): the stand-in row for an absent carrier. */
 export function identityPalette(): Uint8Array {
   const p = new Uint8Array(PALETTE_RGB_BYTES);
   for (let i = 0; i < PALETTE_ENTRIES; i++) p.fill(i, i * 3, i * 3 + 3);
@@ -36,12 +32,9 @@ export interface PaletteLutResult {
 }
 
 /**
- * Reads each `sources` carrier's 256-colour `.pcx` trailer, stacks them (in source order) into one
- * `256 × N` LUT PNG under {@link BOBS_DIR}, and returns the stem + row order + name→palette map. A
- * missing/palette-less carrier is warned (`[pipeline] ${log.label}: ${log.noun} <name> unreadable …`)
- * and replaced with an {@link identityPalette} row so the row order (the app-side contract) stays fixed
- * regardless of a partial install. Shared by the GUI-palette and font-colour LUT stages, which differ
- * only in their carrier list, stem, and log wording.
+ * Reads each `sources` carrier's 256-colour `.pcx` trailer and stacks them, in source order, into one
+ * `256 x N` LUT PNG under {@link BOBS_DIR}. A missing or palette-less carrier is warned and replaced
+ * with an {@link identityPalette} row, so a partial install still leaves the row order fixed.
  */
 export async function buildPaletteLut(
   roots: SourceRoots,
@@ -70,9 +63,8 @@ export async function buildPaletteLut(
 }
 
 /**
- * Stacks `orderedPalettes` (one 768-byte RGB row per LUT slot, in row order) into a `256 × N` player-LUT
- * PNG at `<BOBS_DIR>/<stem>.png`. The single emit step every palette-LUT stage ends with - the row
- * resolution differs per stage (fixed carrier files vs the goods alias graph), the write does not.
+ * Stacks `orderedPalettes` (one 768-byte RGB row per LUT slot, in row order) into a `256 x N` LUT PNG at
+ * `<BOBS_DIR>/<stem>.png`.
  */
 export async function writeLutPng(
   outDir: string,

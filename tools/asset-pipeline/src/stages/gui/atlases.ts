@@ -9,21 +9,18 @@ import { readSourceFile } from '../source-files.js';
 interface GuiAtlasSource {
   readonly stem: string;
   readonly bmd: string;
-  /** A {@link GUI_PALETTES} name - the palette that colours the most of this sheet (best default preview). */
   readonly previewPalette: string;
 }
 
 /**
- * The GUI bob sheets. `ls_gui_window` is drawn mostly through `iconsleft` (the whole tool panel; the order
- * icons use `context`) based on visual checks, so `iconsleft` is the best single preview palette; the
- * bubble sheet uses its own `gui_bubbles` palette.
+ * The GUI bob sheets. By visual check `ls_gui_window` is drawn mostly through `iconsleft` (its order icons
+ * use `context`), so that is its best single preview palette; the bubble sheet uses `gui_bubbles`.
  */
 const GUI_ATLASES: readonly GuiAtlasSource[] = [
   { stem: 'ls_gui_window', bmd: join(BOBS_DIR, 'ls_gui_window.bmd'), previewPalette: 'iconsleft' },
   { stem: 'ls_gui_bubbles', bmd: join(BOBS_DIR, 'ls_gui_bubbles.bmd'), previewPalette: 'gui_bubbles' },
 ];
 
-/** One emitted GUI bob atlas: the app-side `loadLayer` stems for its indexed + preview forms, plus frame count. */
 export interface GuiAtlasResult {
   readonly stem: string;
   /** `loadLayer` stem for the recolourable indexed atlas (`<stem>.indexed`). */
@@ -35,10 +32,8 @@ export interface GuiAtlasResult {
 }
 
 /**
- * Decodes each GUI bob sheet into an indexed atlas + an RGBA preview atlas, written under `BOBS_DIR`.
- * `paletteByName` supplies the preview colours (from {@link convertGuiPaletteLut}). A missing/malformed
- * `.bmd`, or an absent preview palette, warns-and-skips that sheet. Returns one {@link GuiAtlasResult} per
- * sheet that converted.
+ * Decodes each GUI bob sheet into an indexed atlas plus an RGBA preview atlas under `BOBS_DIR`, taking the
+ * preview colours from `paletteByName`. A missing sheet or preview palette skips that sheet only.
  */
 export async function convertGuiAtlases(
   roots: SourceRoots,
@@ -61,8 +56,6 @@ export async function convertGuiAtlases(
       );
       continue;
     }
-    // decode + atlas emit share one warn-and-skip guard so a malformed-but-decodable sheet drops only
-    // itself, never aborting the batch (matching the goods/font stages).
     let indexedStem: string;
     let previewStem: string;
     let frames: number;

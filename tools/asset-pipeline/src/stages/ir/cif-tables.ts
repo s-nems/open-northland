@@ -3,13 +3,9 @@ import { cifBytesToSections, type RuleSection, type SourceRef } from '../../deco
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
- * Loads a `.cif`-only table at `relFile` (no readable `.ini` twin - overlay-first, since the CnMod
- * zip ships patched copies of several base `.cif` tables) and runs `extract` over its sections,
- * returning `fallback` when the file is absent. Collapses the five identical load→guard→extract
- * triples buildIr does for the pattern, triangle, transition, landscape, and sound tables.
- *
- * An absent table degrades to `fallback`. A present but undecodable table aborts the run so corrupt
- * input is not mistaken for absent input.
+ * Loads a `.cif`-only table at `relFile`, resolved overlay-first because the mod ships patched copies
+ * of several base `.cif` tables, and runs `extract` over its sections. An absent file degrades to
+ * `fallback`; a present but undecodable one throws, so corrupt input is not mistaken for absent input.
  */
 export async function loadCifTable<T>(
   roots: SourceRoots,

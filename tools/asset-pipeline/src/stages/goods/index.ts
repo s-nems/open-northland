@@ -14,56 +14,28 @@ export { resolveGoodIcons } from './icons.js';
 export { resolveGoodNames } from './names.js';
 
 /**
- * Goods-icon extraction stage - the per-good resource icons the HUD draws (storehouse rows, the carry
- * indicator, anywhere a good is named with its glyph). Unlike the tool-panel/order-icon art (that lives in
- * `ls_gui_window.bmd`, handled by the GUI stage), a good's icon is its on-map pile graphic: the engine
- * shares one monochrome bob sheet - `Data/engine2d/bin/bobs/ls_goods.bmd` (155 bobs, 5 growth states per
- * good) - and recolours it per good through a `goods_*`/landscape `.pcx` palette. So a good maps to a
- * (frame index, recolor palette), not to a unique pre-rendered bitmap. It reuses the same machinery as the
- * GUI stage:
- *
- *  - **Atlas art.** `ls_goods.bmd` becomes (a) an indexed atlas (`packIndexedBobAtlas` - palette index
- *    in red, mask in alpha) the app colours per good at draw time through the goods palette LUT, plus (b) an
- *    RGBA preview atlas (one default palette) so a human can eyeball it. Both ride the `/bobs/` route.
- *  - **Palettes.** The distinct `goods_*` recolor palettes the good-pile records reference are stacked into
- *    one `256 × N` LUT PNG ({@link writeLutPng}, as the player/GUI LUTs). Row order is emitted in the
- *    manifest (`palettes`), so the app resolves palette-name → row from data rather than a hardcoded mirror.
- *  - **Binding.** `goodtypes.ini` (good `landscapeType`) joined onto the `[GfxLandscape]` "good pile" records
- *    (`editGroups` ∋ `"good piles all"`, matched by `logicType`) yields, per good, the state-1 store-icon bob
- *    (`frame`) + all growth-state bobs fewest→most (`fillFrames`, the on-map heap grows through them) + its
- *    palette - emitted as `icons: { goodStringId → {frame, palette, fillFrames} }`, keyed by the good's string
- *    id (stable across the sandbox and the extracted IR, which number goods differently).
- *
- * Source basis: the atlas + palettes are decoded original data; the state-1-pile-frame = store-icon choice
- * is observed from the original 1024×768 storehouse (its row icons are each good's smallest pile - a single
- * stone, a small wheat sheaf), not an extracted lookup. Binding prefers
- * a good's dedicated `good piles all` record, falling back to its broader `goods all` item record (see
- * {@link ./icons}). The goods sharing `landscapeType 1` with no record at all (prey, sheep, cattle, hand/ox
- * carts, ships, catapult, chest) stay unbound and render iconless.
- *
- * Boundary failures are warned-and-skipped, never fatal (matching the other stages). No copyrighted bytes
- * enter the repo - everything lands under the gitignored `content/`.
- *
- * The good→icon and good→name join rules live in {@link ./icons} / {@link ./names} (pure, unit-tested);
- * recolour-palette resolution in {@link ./palettes}. This module orchestrates them + the atlas/LUT emit.
+ * Goods-icon extraction. A good's icon is its on-map pile graphic: the engine shares one monochrome bob
+ * sheet and recolours it per good through a `goods_*`/landscape palette, so a good maps to a (frame,
+ * palette) pair rather than a pre-rendered bitmap. Taking the state-1 pile frame as the storehouse icon is
+ * observed from the original 1024×768 storehouse, not an extracted lookup.
  */
 
-/** `Data/engine2d/bin/bobs/ls_goods.bmd` - the shared good-pile bob sheet (155 bobs, 5 states per good). */
+/** The shared good-pile bob sheet (155 bobs, up to 5 growth states per good). */
 const GOODS_BMD = join(BOBS_DIR, 'ls_goods.bmd');
 
-/** `loadLayer` stem of the emitted indexed goods atlas (the recolourable `ls_goods.indexed`). */
+/** `loadLayer` stem of the emitted recolourable indexed goods atlas. */
 const GOODS_INDEXED_STEM = `${GOODS_ATLAS_STEM}.indexed`;
-/** `loadLayer`/`loadAtlasSource` stem of the emitted `256 × N` goods palette LUT PNG (under `/bobs/`). */
+/** Stem of the emitted `256 × N` goods palette LUT PNG under `/bobs/`. */
 const GOODS_PALETTE_LUT_STEM = 'goods-palettes-lut';
-/** The `content/goods/` subtree the manifest is written to (served at `/goods/`). */
+/** The `content/goods/` subtree, served at `/goods/`. */
 const GOODS_CONTENT_DIR = 'goods';
-/** The palette the human-readable RGBA preview atlas is coloured through (any real goods palette). */
+/** The palette the RGBA preview atlas is coloured through; any real goods palette works. */
 const PREVIEW_PALETTE = 'goods_wood';
-/** The neutral palette the app's GENERIC_GOOD_ICON fallback recolours through - pinned into the LUT so an
- *  iconless good always has a valid row, even if no bound good happens to reference it. */
+/** The neutral palette the app's iconless-good fallback recolours through, pinned into the LUT so its row
+ *  exists even when no bound good references it. */
 const GENERIC_ICON_PALETTE = 'goods01';
 
-/** The emitted `goods/manifest.json`: the app's contract for loading + binding good icons. */
+/** The emitted `goods/manifest.json`. */
 export interface GoodsManifest {
   readonly indexedStem: string;
   readonly previewStem: string;
@@ -73,11 +45,8 @@ export interface GoodsManifest {
   /** good string id → its icon binding. */
   readonly icons: Record<string, GoodIcon>;
   /**
-   * Localized display names: locale code → (good string id → name), extracted from the game's own
-   * `text/<lang>/strings/gameobjects/goods.{ini,cif}` string tables. The app resolves a good's shown name
-   * through this with a locale fallback chain, so the whole catalog reads in the player's language and
-   * adding a language is a data edit, not code. A locale whose string file is missing is simply absent
-   * (the app falls back to the next locale, then the machine id).
+   * Localized display names: locale code → (good string id → name). A locale whose string file is missing
+   * is simply absent, and the app falls back to the next locale, then the machine id.
    */
   readonly names: Record<string, Record<string, string>>;
 }
@@ -90,8 +59,7 @@ export interface GoodsStageSummary {
 
 /**
  * Decode `ls_goods.bmd` into an indexed + preview atlas, stack the referenced recolor palettes into a LUT,
- * build the good→icon bindings, and write them under `outDir`. Warns-and-returns-empty if the atlas or good
- * tables are unreadable (a partial install still leaves the rest of the pipeline intact).
+ * build the good→icon bindings, and write them under `outDir`.
  */
 export async function convertGoodsStage(roots: SourceRoots, outDir: string): Promise<GoodsStageSummary> {
   let icons: Record<string, GoodIcon>;
@@ -106,12 +74,9 @@ export async function convertGoodsStage(roots: SourceRoots, outDir: string): Pro
     names = {};
   }
 
-  // The name→.pcx alias graph (palettes.ini), so a palette editname resolves to its real file - the same
-  // resolution the bmd stage uses, without which the aliased landscape palettes render white in the HUD.
   const paletteAliases = await loadPaletteAliases(roots);
 
-  // The distinct recolor palettes the icons reference, in a deterministic (sorted) LUT row order. Include
-  // the preview palette so the same LUT can colour the preview atlas if a consumer ever wants it.
+  // Sorted so the LUT row order is stable across runs.
   const paletteNames = [
     ...new Set([...Object.values(icons).map((i) => i.palette), PREVIEW_PALETTE, GENERIC_ICON_PALETTE]),
   ].sort();

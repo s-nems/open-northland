@@ -22,55 +22,31 @@ import { minimapToPng } from './minimap.js';
 import { resolveMapScript } from './script.js';
 import { type MapDatTerrainFile, mapDatToTerrain } from './terrain/index.js';
 
-/** One emitted map terrain artifact: its slug id + the relative `maps/<id>.json` path under `outDir`. */
+/** One emitted map terrain artifact. */
 export interface MapDatConversion {
-  /** The map's slug id ({@link mapIdFromPath}) - the same key as its `map.cif` `MapInfo`. */
+  /** The map's slug id, the same key as its `map.cif` `MapInfo`. */
   readonly id: string;
-  /** Grid width/height (cells = width × height) - surfaced so a batch can report sane dims. */
   readonly width: number;
   readonly height: number;
   /** The terrain JSON's path relative to `outDir` (native separators). */
   readonly output: string;
-  /** Whether a `maps/<id>.meta.json` name/description sidecar was emitted (the folder carried strings). */
+  /** Whether a `maps/<id>.meta.json` name/description sidecar was emitted. */
   readonly meta: boolean;
-  /** Whether a `maps/<id>.png` minimap was emitted (decoded from `minimap/minimap.pcx`, or synthesized). */
+  /** Whether a `maps/<id>.png` minimap was emitted, decoded or synthesized. */
   readonly minimap: boolean;
-  /** The emitted minimap was synthesized from the decoded cells (no usable `minimap.pcx`). */
+  /** The emitted minimap was synthesized from the decoded cells. */
   readonly minimapSynthesized: boolean;
-  /** Whether a `maps/<id>.script.json` sidecar was emitted (the map carried playerdata/missions). */
+  /** Whether a `maps/<id>.script.json` roster/mission sidecar was emitted. */
   readonly script: boolean;
 }
 
 /**
- * Decodes every `map.dat` under the source roots (overlay-first union) into a per-cell landscape-typeId grid (the sim's
- * `TerrainMap` shape) and writes it to `<outDir>/maps/<id>.json` - closing the
- * `map.dat` → `lmltToTerrainMap` → `buildTerrainGraph` chain into the pipeline so the sim loads a real
- * map's grid instead of a synthetic scenario one. Each map's `id` comes from its containing folder
- * ({@link mapIdFromPath}), so the artifact joins onto the same-folder `map.cif`'s `MapInfo` `id`.
- * Maps are visited in a stable (path-sorted) order so a re-run is reproducible.
- *
- * Beside each grid, three optional sidecars are emitted when the map folder carries them:
- * `maps/<id>.meta.json` (the display name/description - {@link resolveMapMeta}), `maps/<id>.png`
- * (the shipped minimap decoded to a cropped transparent-filler PNG - {@link minimapToPng}), and
- * `maps/<id>.script.json` (the validated player roster/diplomacy/mission script -
- * {@link resolveMapScript}). The stage owns `<outDir>/maps/` wholesale and clears it up front, so a
- * re-run drops artifacts whose map vanished from discovery (a renamed folder, an excluded stray) and
- * sidecars a source no longer carries - the menu scans `maps/*.json`, so a stale artifact would
- * resurface as a card. The dev server's `/maps-index` route joins them onto the map list for the
- * main menu's cards.
- *
- * A `map.dat` that fails to read or decode (not a container, missing `lsiz`/`lmlt`, an `X6el`-only
- * grid, a dims/length mismatch, corrupt RLE) is logged and skipped - a batch over many maps must not
- * abort on one bad file, matching the other tree-walk stages. An output-write failure (and a missing
- * `gameDir`) propagates: that's an environmental error, not a per-file boundary failure.
- *
- * Ids collapse on the folder name, so two maps in same-named folders under different roots
- * (e.g. `Data/maps/oasis_o_plenty` vs `CnModMaps/oasis_o_plenty`) write the same `<id>.json`
- * last-write-wins (on the real game, 128 kept `map.dat` → 124 files). This is deliberately the same
- * `mapIdFromPath` collapse `decodeMapTree` applies to `map.cif`, so the terrain artifact and its
- * `MapInfo` agree on the id and stay joinable - a path-scoped unique id would have to change both
- * legs together. Stray copies inside a map's `text/` string-table subfolder are excluded on both
- * legs ({@link excludeStringTableCopies}).
+ * Decodes every `map.dat` under the source roots into `<outDir>/maps/<id>.json` plus its optional
+ * meta, minimap and script sidecars, in path-sorted order so a re-run is reproducible. The id is the
+ * containing folder's slug, the same collapse `decodeMapTree` applies to `map.cif`, so the artifact
+ * and its `MapInfo` stay joinable and same-named folders under different roots write one file,
+ * last write wins. A `map.dat` that fails to read or decode is logged and skipped; a write failure
+ * and a missing `gameDir` propagate.
  */
 export async function convertMapDatTree(
   roots: SourceRoots,
@@ -79,8 +55,7 @@ export async function convertMapDatTree(
   synthesizeMinimap?: (terrain: MapDatTerrainFile) => Promise<Uint8Array | undefined>,
 ): Promise<MapDatConversion[]> {
   const found = excludeStringTableCopies(await collectSourceFilesNamed(roots, 'map.dat'));
-  // This stage is the only writer under <outDir>/maps; an interrupted run already reads as
-  // "regenerate" (the manifest is cleared before the first stage), so a wholesale reset is safe.
+  // This stage is the only writer under <outDir>/maps, so a wholesale reset is safe.
   await rm(join(outDir, 'maps'), { recursive: true, force: true });
   const done: MapDatConversion[] = [];
   for (const [processed, { rel, path }] of found.entries()) {
@@ -93,18 +68,15 @@ export async function convertMapDatTree(
       console.warn(`[pipeline] skipped map.dat ${rel}: ${errorMessage(err)}`);
       continue;
     }
-    // The authored entity placements live in the sibling map.cif's `StaticObjects` section (the
-    // map.dat carries only terrain + landscape lanes). Absent/undecodable cif → the terrain still
-    // emits, just without the optional layer - the same per-layer degradation `ground`/`objects` get.
-    // The decoded sections also feed the meta sidecar's `[misc_mapname]` fallback (resolveMapMeta),
-    // so the cif is decoded at most once per map. Sibling files resolve overlay-first through the
-    // map folder's candidate dirs (an over-installed mod merges folder contents, so a two-root
-    // conversion must too).
+    // Authored entity placements live in the sibling `map.cif`'s `StaticObjects` section, and the same
+    // decoded sections feed the meta sidecar's `[misc_mapname]` fallback, so the cif is decoded at most
+    // once per map. An over-installed mod merges folder contents, so siblings resolve overlay-first
+    // across the map folder's candidate dirs.
     const mapDirs = rootsInOrder(roots).map((root) => join(root, dirname(rel)));
     let cifSections: readonly RuleSection[] | undefined;
     for (const mapDir of mapDirs) {
-      // Case-insensitively, like every sibling read here: the map folders mix casing freely, which a
-      // case-sensitive filesystem would otherwise turn into a silently missing entity layer.
+      // The map folders mix casing freely, which a case-sensitive filesystem would otherwise turn
+      // into a silently missing entity layer.
       const cifPath = await findPathCaseInsensitive(mapDir, ['map.cif']);
       if (cifPath === undefined) continue;
       try {
@@ -113,16 +85,13 @@ export async function convertMapDatTree(
         if (entities !== undefined) terrain = { ...terrain, entities };
         break;
       } catch {
-        // no map.cif in this candidate dir (or undecodable) - try the next; absent everywhere,
-        // the entity layer is simply skipped
+        // Missing or undecodable here: try the next candidate dir; absent everywhere the entity
+        // layer is skipped.
       }
     }
-    // Unpacked maps (the CnMod majority - 108 of 121 folders) ship no map.cif: their StaticObjects
-    // live in a sibling plaintext `staticobjects.inc`, with the identical `[StaticObjects]` grammar
-    // (sethouse/sethuman/setanimal - verified against the real files). Read it when the cif path yielded
-    // no entities, so those maps (e.g. magiczny_las, blekiny_nurt) import their authored starting HQs +
-    // settlers instead of appearing empty. Readable mod source is preferred over the encrypted cif
-    // (golden rule #4); undecodable/malformed is logged and skipped like the cif path.
+    // Unpacked maps ship no map.cif: their placements live in a sibling plaintext
+    // `staticobjects.inc` with the identical `[StaticObjects]` grammar (sethouse/sethuman/setanimal),
+    // and readable mod source is preferred over the encrypted cif.
     if (terrain.entities === undefined) {
       const incPath = await findPathCaseInsensitiveInDirs(mapDirs, ['staticobjects.inc']);
       if (incPath !== undefined) {
@@ -137,14 +106,11 @@ export async function convertMapDatTree(
     const output = join('maps', `${id}.json`);
     const outPath = join(outDir, output);
     await mkdir(dirname(outPath), { recursive: true });
-    // Compact JSON: the ground/object lanes are hundreds of thousands of numbers - pretty-printing
-    // them one-per-line would blow the artifact up ~8×.
+    // Compact JSON: the lanes are hundreds of thousands of numbers, and one per line costs ~8x size.
     await writeFile(outPath, `${JSON.stringify(terrain)}\n`);
 
-    // Menu-facing sidecars, all optional (the menu card degrades per missing piece). A same-id twin
-    // converted earlier this run may have emitted sidecars; clear them so last-write-wins covers the
-    // sidecars, not just the grid. The string table is loaded once and feeds both the meta strings
-    // and the script's slot names.
+    // A same-id twin converted earlier this run may have emitted sidecars; clear them so
+    // last-write-wins covers the sidecars, not just the grid.
     const metaPath = join(outDir, 'maps', `${id}.meta.json`);
     const pngPath = join(outDir, 'maps', `${id}.png`);
     const scriptPath = join(outDir, 'maps', `${id}.script.json`);
@@ -160,8 +126,7 @@ export async function convertMapDatTree(
     try {
       scriptFile = await resolveMapScript(mapDirs, rel, cifSections, strings);
     } catch (err) {
-      // A schema-invalid script (unexpected codes in one authored map) degrades that map to no
-      // roster rather than aborting the batch; an output-write failure below still propagates.
+      // A schema-invalid script degrades that map to no roster rather than aborting the batch.
       console.warn(`[pipeline] map ${rel}: script undecodable: ${errorMessage(err)}`);
     }
     if (scriptFile !== undefined) {
@@ -178,8 +143,8 @@ export async function convertMapDatTree(
         console.warn(`[pipeline] map ${rel}: minimap undecodable: ${errorMessage(err)}`);
       }
     }
-    // No shipped card (or an undecodable one): rasterize a thumbnail from the decoded cells, so
-    // the menu never has to pull the multi-MB terrain JSON just to draw a list row.
+    // No usable shipped card: rasterize one from the decoded cells, so the menu never has to pull
+    // the multi-MB terrain JSON just to draw a list row.
     if (!minimap && synthesizeMinimap !== undefined) {
       try {
         const png = await synthesizeMinimap(terrain);

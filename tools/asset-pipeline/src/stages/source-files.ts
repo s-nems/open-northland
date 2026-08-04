@@ -30,11 +30,8 @@ const ATLAS_SOURCE_RE = /\.(bmd|pcx)$/;
  * Indexes every `.bmd`/`.pcx` across the layers by its normalized reference. The binding extractors
  * lower-case and forward-slash their references while each layer keeps its own spelling, so a direct
  * `join` would miss on a case-sensitive filesystem; this map bridges the two. Read the bytes from
- * `SourceFile.path` (the winning layer); a derived file's own path under `--out` comes from the served
- * layout (`servedRelPath`, `bobAtlasStem` in `content-tree.ts`), not the layer's spelling of `rel`.
- *
- * Built once after the unpack stage and threaded into every consumer - it walks every layer in full,
- * which no per-lookup resolution could afford.
+ * `SourceFile.path`; a derived file's own path under `--out` comes from the served layout, not the
+ * layer's spelling of `rel`. Walks every layer in full, so build it once and thread it through.
  */
 export async function indexSourceAssets(roots: SourceRoots): Promise<SourceAssetIndex> {
   const index = new Map<string, SourceFile>();

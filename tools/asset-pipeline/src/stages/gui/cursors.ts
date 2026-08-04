@@ -11,12 +11,11 @@ import { GUI_CONTENT_DIR } from './paths.js';
 const CURSORS = ['MouseNormal', 'MousePressed', 'MouseRight'] as const;
 const MOUSE_DIR = join('DataX', 'Mouse');
 
-/** One converted cursor: the copied `.cur`, the decoded `.png`, the hotspot, and the pixel size. */
 export interface GuiCursorResult {
   readonly name: string;
-  /** URL path relative to `/gui/` (forward slashes) of the verbatim `.cur` - for CSS `cursor: url(/gui/<cur>)`. */
+  /** URL path relative to `/gui/` of the verbatim `.cur`, for CSS `cursor: url(/gui/<cur>)`. */
   readonly cur: string;
-  /** URL path relative to `/gui/` (forward slashes) of the decoded RGBA PNG fallback/preview. */
+  /** URL path relative to `/gui/` of the decoded RGBA PNG fallback. */
   readonly png: string;
   readonly hotspotX: number;
   readonly hotspotY: number;
@@ -25,8 +24,8 @@ export interface GuiCursorResult {
 }
 
 /**
- * Decodes each `DataX/Mouse/*.cur` to a PNG (with its hotspot) and copies the raw `.cur` through, both
- * under `content/gui/cursors/`. A missing/malformed cursor warns-and-skips. Returns one result per cursor.
+ * Decodes each `DataX/Mouse/*.cur` to a PNG with its hotspot and copies the raw `.cur` through, both under
+ * `content/gui/cursors/`.
  */
 export async function convertCursors(roots: SourceRoots, outDir: string): Promise<GuiCursorResult[]> {
   const done: GuiCursorResult[] = [];
@@ -47,9 +46,8 @@ export async function convertCursors(roots: SourceRoots, outDir: string): Promis
       console.warn(`[pipeline] gui: skipped cursor ${name}: ${errorMessage(err)}`);
       continue;
     }
-    // Disk write uses a native path; the manifest records a forward-slash URL path relative to `/gui/`
-    // (a browser consumer fetches `/gui/<cur>`), so it must not carry OS separators or a `gui/` prefix.
-    await writeFile(join(outDir, GUI_CONTENT_DIR, 'cursors', `${name}.cur`), bytes); // verbatim, for CSS cursor: url()
+    // The disk write takes a native path; the manifest paths below stay forward-slash URLs relative to `/gui/`.
+    await writeFile(join(outDir, GUI_CONTENT_DIR, 'cursors', `${name}.cur`), bytes);
     await writeFile(join(outDir, GUI_CONTENT_DIR, 'cursors', `${name}.png`), encodePng(cursor.image));
     done.push({
       name,

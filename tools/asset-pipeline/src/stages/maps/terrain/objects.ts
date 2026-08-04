@@ -16,15 +16,11 @@ export interface ObjectsLayer {
 }
 
 /**
- * Decodes the `emla` half-cell landscape-object lane + the `eald` object-name dictionary into a sparse
- * flat `[hx, hy, typeIndex]` triple list (row-major half-cell scan order - deterministic) over a
- * compacted per-map type-name list. This is every pre-placed tree/stone/bush/mine decal/wave the map
- * ships; a name joins onto the extracted `[GfxLandscape]` table (`LandscapeGfx.editName`). The sibling
- * `lmlv` byte lane carries each placement's level - 1-based, counting up from the lowest state (level 1
- * = sapling/dregs, level N = full-grown/full/intact) onto the record's highest-first `GfxFrames` lists,
- * so consumers map `index = N − level` (a wall's `100` sentinel = intact) - emitted as a parallel
- * `levels` array (omitted when the map lacks the lane). Returns undefined when the map lacks either
- * object chunk; throws on an index outside the dictionary.
+ * Decodes the `emla` half-cell landscape-object lane and the `eald` dictionary into a sparse flat
+ * `[hx, hy, typeIndex]` triple list in row-major half-cell order, over a compacted per-map type-name
+ * list. The sibling `lmlv` lane's per-placement level is emitted as a parallel `levels` array, omitted
+ * when the map lacks the lane. Returns undefined when either object chunk is missing; throws on an
+ * index outside the dictionary.
  */
 export function objectsFromMapDat({ map, size }: DecodedMap): ObjectsLayer | undefined {
   const emla = findChunk(map, 'emla');

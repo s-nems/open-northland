@@ -8,11 +8,9 @@ export interface GroundLayer {
 }
 
 /**
- * Decodes the `empa`/`empb` per-cell ground-pattern lanes + the `eapd` pattern-name dictionary: each
- * cell's two triangles as indices into a compacted per-map pattern-name list. The u16 lane values
- * index `eapd` positionally; the emitted layer carries the names (the engine's version-robust join key
- * onto the extracted `GfxPattern` table). Returns undefined when the map lacks any of the three chunks
- * (older/foreign saves); throws on an index outside the dictionary.
+ * Decodes the `empa`/`empb` per-cell ground-pattern lanes and the `eapd` dictionary into each cell's
+ * two triangle indices over a compacted per-map pattern-name list. Returns undefined when the map
+ * lacks any of the three chunks; throws on an index outside the dictionary.
  */
 export function groundFromMapDat({ map, size }: DecodedMap): GroundLayer | undefined {
   const empa = findChunk(map, 'empa');
