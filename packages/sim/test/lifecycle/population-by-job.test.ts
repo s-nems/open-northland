@@ -1,9 +1,9 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Settler } from '../../src/components/index.js';
 import { fx, Simulation } from '../../src/index.js';
 import { IDLE_JOB, tribePopulationByJob } from '../../src/simulation/hud.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 
 /**
  * The jobs read model - `tribePopulationByJob` tallies a tribe's settlers by `jobType` (the third HUD
@@ -39,7 +39,7 @@ function jobsContent(): ContentSet {
 
 function spawnSettler(sim: Simulation, tribe: number, jobType: number | null): void {
   const e = sim.world.create();
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType,
     hunger: fx.fromInt(0),

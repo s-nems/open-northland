@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   DeliveryFlag,
   MoveGoal,
@@ -7,7 +8,6 @@ import {
   PathRequest,
   Position,
   Resource,
-  Settler,
   Stockpile,
   WorkFlag,
 } from '../../../../src/components/index.js';
@@ -144,7 +144,7 @@ describe('setWorkFlag command - place / move a gatherer flag (Ctrl+Right-Click)'
     const unowned = makeWoodcutter(sim, 0, 0); // a gatherer, but no Owner
     const jobless = sim.world.create();
     sim.world.add(jobless, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
-    sim.world.add(jobless, Settler, {
+    addPerson(sim.world, jobless, {
       tribe: VIKING,
       jobType: null, // employed at nothing → cannot harvest → no flag
       hunger: fx.fromInt(0),

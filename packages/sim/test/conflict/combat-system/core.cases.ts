@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic, MoveGoal, Position, Settler } from '../../../src/components/index.js';
+import { addPerson, CurrentAtomic, MoveGoal, Position } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { combatSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -69,7 +69,7 @@ describe('combatSystem - target selection + issuing the attack atomic', () => {
     const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
     const civilian = sim.world.create();
     sim.world.add(civilian, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
-    sim.world.add(civilian, Settler, {
+    addPerson(sim.world, civilian, {
       tribe: FRANK,
       jobType: WOODCUTTER,
       hunger: fx.fromInt(0),
@@ -119,7 +119,7 @@ describe('combatSystem - target selection + issuing the attack atomic', () => {
   it('does NOT target a recorded ANIMAL tribe - civ-vs-animal is a separate aggression model', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const viking = fighterAt(sim, 0, 0, VIKING, WOODCUTTER);
-    fighterAt(sim, 1, 0, WOLVES, WOODCUTTER); // a wolf adjacent - a DIFFERENT tribe, but an animal
+    fighterAt(sim, 1, 0, WOLVES, null); // a wolf adjacent - a DIFFERENT tribe, but an animal
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -130,7 +130,7 @@ describe('combatSystem - target selection + issuing the attack atomic', () => {
   it('an ANIMAL-tribe combatant does not run the player-vs-player drive (even armed, vs a civ)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     // The wolf IS armed (test_claw, tribe 9/job 1) - so it is skipped for being an animal, not unarmed.
-    const wolf = fighterAt(sim, 0, 0, WOLVES, WOODCUTTER);
+    const wolf = fighterAt(sim, 0, 0, WOLVES, null);
     fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // a viking adjacent
 
     combatSystem(sim.world, ctxOf(sim));

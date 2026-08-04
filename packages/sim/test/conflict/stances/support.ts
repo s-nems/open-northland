@@ -4,7 +4,7 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { Health, Owner, Position, Settler, Stance } from '../../../src/components/index.js';
+import { addPerson, Health, Owner, Position, Stance } from '../../../src/components/index.js';
 import { type Fixed, fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, positionOfNode, type Simulation } from '../../../src/index.js';
@@ -66,7 +66,7 @@ export function combatantAtPosition(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: position.x, y: position.y });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: opts.jobType ?? WOODCUTTER,
     hunger: fx.fromInt(0),

@@ -1,6 +1,6 @@
 import type { AtomicEffect } from '../core/atomic-effect.js';
 import type { Command } from '../core/commands/index.js';
-import type { Fixed } from '../core/fixed.js';
+import { type Fixed, fx } from '../core/fixed.js';
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
@@ -38,6 +38,44 @@ export const Settler = defineComponent<{
   /** specialization id -> experience points (humanjobexperiencetypes). */
   experience: Map<number, number>;
 }>('Settler');
+
+/** The {@link Settler} component value, as the constructors below take it. */
+export type SettlerState = NonNullable<(typeof Settler)['__value']>;
+
+/**
+ * Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. It exists
+ * to be a query key: `World.query` has no exclusion, so a human-only system says `query(Person, …)` and
+ * no creature can reach it. Stamped by {@link addPerson}, never removed.
+ */
+export const Person = defineComponent<{ readonly person: true }>('Person');
+
+/** The marker carries no per-entity data, so every person shares this one frozen value. */
+const PERSON = Object.freeze({ person: true } as const);
+
+/** Add a person: a {@link Settler} carrying the {@link Person} marker. The only path that mints one. */
+export function addPerson(world: World, entity: Entity, state: SettlerState): void {
+  world.add(entity, Settler, state);
+  world.add(entity, Person, PERSON);
+}
+
+/** Add a creature of an animal `tribe`: a {@link Settler} with no {@link Person} and no trade, its need
+ *  bars and experience left at zero. */
+export function addWildlife(world: World, entity: Entity, tribe: number): void {
+  world.add(entity, Settler, {
+    tribe,
+    jobType: null,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map<number, number>(),
+  });
+}
+
+/** Whether `entity` is a creature rather than a person - a {@link Settler} with no {@link Person}. */
+export function isWildlife(world: World, entity: Entity): boolean {
+  return world.has(entity, Settler) && !world.has(entity, Person);
+}
 
 /** The write view of {@link Settler}'s otherwise-`readonly` trade, held only by {@link setSettlerJob}. */
 type SettlerTradeWrite = { jobType: number | null };

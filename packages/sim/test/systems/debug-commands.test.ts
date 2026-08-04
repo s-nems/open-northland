@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Health,
   Position,
@@ -38,7 +39,7 @@ function fresh(seed = 1): Simulation {
 function unitWithHealth(sim: Simulation, hitpoints: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: null,
     hunger: fx.fromInt(0),
@@ -63,7 +64,7 @@ function healthOnlyEntity(sim: Simulation, hitpoints: number): Entity {
 function settlerWithNeeds(sim: Simulation, level: Fixed): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(3), y: fx.fromInt(3) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: null,
     hunger: level,

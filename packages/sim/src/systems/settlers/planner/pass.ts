@@ -24,7 +24,8 @@ export interface PlannerPass {
   readonly terrain: TerrainGraph;
   /** Every positioned settler in ascending entity-id order, shared by the assistant dispatch and the
    *  ladder sweep: the per-tick claim maps hand out targets first come, first served, so visit order
-   *  decides who gets what. */
+   *  decides who gets what. Wildlife is in this list: the sweep's `releaseStaleIntent` is the only
+   *  failed-route recovery a parked creature has. */
   readonly settlers: readonly Entity[];
   readonly targets: TargetCandidates;
   /** Whether any workplace holds a haulable output: the tick-level dormancy gate for the store-carrier

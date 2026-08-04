@@ -1,11 +1,11 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Carrying,
   JobAssignment,
   Position,
-  Settler,
   Stockpile,
   Vehicle,
 } from '../../src/components/index.js';
@@ -54,7 +54,7 @@ function boatContent(): ContentSet {
 function carrierAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: CARRIER,
     hunger: fx.fromInt(0),

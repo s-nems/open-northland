@@ -65,13 +65,13 @@ describe('combat hostility - the owner (player) axis', () => {
     // An aggressive BEAR would normally attack a nearby viking. But when BOTH are owned, the player axis
     // alone decides: same player → friendly (no attack); different player → enemies (they fight).
     const same = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const bearSame = fighterAt(same, 0, 0, BEAR, WOODCUTTER, { owner: P0 });
+    const bearSame = fighterAt(same, 0, 0, BEAR, null, { owner: P0 });
     fighterAt(same, 1, 0, VIKING, WOODCUTTER, { owner: P0 });
     combatSystem(same.world, ctxOf(same));
     expect(same.world.has(bearSame, CurrentAtomic)).toBe(false); // same player - the bear holds its swing
 
     const diff = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const bearDiff = fighterAt(diff, 0, 0, BEAR, WOODCUTTER, { owner: P0 });
+    const bearDiff = fighterAt(diff, 0, 0, BEAR, null, { owner: P0 });
     const vikingDiff = fighterAt(diff, 1, 0, VIKING, WOODCUTTER, { owner: P1 });
     combatSystem(diff.world, ctxOf(diff));
     expect(diff.world.get(bearDiff, CurrentAtomic).effect).toMatchObject({

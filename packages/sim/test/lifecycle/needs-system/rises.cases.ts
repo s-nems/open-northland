@@ -16,7 +16,7 @@ import { ctxOf, settlerWithHunger } from './support.js';
 
 /** A soldier job id (jobtypes.ini soldiers 31..41) - a fighter, whose company need is frozen. */
 const SOLDIER_JOB = 31;
-/** The fixture bear (tribe 10), a recorded tribe with no `jobEnables`, what `isAnimalTribe` reads. */
+/** The fixture bear (tribe 10), a tribe with an `[animaltype]` record - what `isAnimalTribe` reads. */
 const ANIMAL_TRIBE = 10;
 
 describe('needsSystem - hunger rises over time', () => {

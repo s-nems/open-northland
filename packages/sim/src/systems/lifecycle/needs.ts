@@ -1,11 +1,11 @@
-import { Age, Health, needsEnabled, Settler } from '../../components/index.js';
+import { Age, Health, needsEnabled, Person, Settler } from '../../components/index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { tryDeathSaveDraught } from '../equipment/index.js';
-import { isAnimalTribe, isFighterJob } from '../readviews/index.js';
+import { isFighterJob } from '../readviews/index.js';
 import { isBaby } from './ageclass.js';
 
 // Need rise rates, in fixed-point [0,ONE] units per tick.
@@ -89,9 +89,10 @@ export const STARVATION_BITES_TO_DIE = 240;
  * `fatigue` rise, and `enjoyment` too for every non-fighter, each clamped at `ONE`. `piety` is not touched
  * here: it climbs only through {@link chargeMilitaryPiety} and resets at a temple.
  *
- * Wildlife and babies accumulate nothing. Named approximation: the original tracks no need bars for
- * animals, and a baby is cared for by its family. Both are keyed on the same state the planner gates on,
- * so a fixture whose synthetic job id collides with an age-class id still lives a full needs life.
+ * Wildlife is out of the sweep structurally: the query is over {@link Person}. A baby accumulates
+ * nothing either, keyed on the same state the planner gates on, so a fixture whose synthetic job id
+ * collides with an age-class id still lives a full needs life. Named approximation: the original tracks
+ * no need bars for animals, and a baby is cared for by its family.
  *
  * A settler pinned at `ONE` hunger loses hitpoints on the {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat
  * until it is fed or the pool empties. A jobless settler is exempt: the eat drive lives in the job
@@ -101,10 +102,9 @@ export const STARVATION_BITES_TO_DIE = 240;
 export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
   const starvationBeat = ctx.tick % STARVATION_DAMAGE_INTERVAL_TICKS === 0;
-  for (const e of world.query(Settler)) {
+  for (const e of world.query(Person)) {
     const settler = world.get(e, Settler);
-    // Wildlife and a cared-for baby accumulate nothing.
-    if (isAnimalTribe(ctx.content, settler.tribe)) continue;
+    // A cared-for baby accumulates nothing.
     if (world.has(e, Age) && isBaby(settler.jobType)) continue;
     const risenHunger = fx.add(settler.hunger, HUNGER_RISE_PER_TICK);
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;

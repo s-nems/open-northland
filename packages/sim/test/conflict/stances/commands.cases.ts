@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Position, Settler, Stance } from '../../../src/components/index.js';
+import { addPerson, Position, Settler, Stance } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
@@ -71,7 +71,7 @@ describe('setStance command', () => {
     // Unowned: no Owner → the command is skipped (no Stance ever added).
     const neutral = sim.world.create();
     sim.world.add(neutral, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(neutral, Settler, {
+    addPerson(sim.world, neutral, {
       tribe: VIKING,
       jobType: WOODCUTTER,
       hunger: fx.fromInt(0),

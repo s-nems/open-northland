@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Carrying,
   CurrentAtomic,
   JobAssignment,
   MoveGoal,
   Position,
-  Settler,
   Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -45,7 +45,7 @@ const VIKING = 1;
 function carrierAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: CARRIER,
     hunger: fx.fromInt(0),
@@ -86,7 +86,7 @@ function granaryAt(sim: Simulation, x: number, y: number): Entity {
 function settlerWithJob(sim: Simulation, x: number, y: number, jobType: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),

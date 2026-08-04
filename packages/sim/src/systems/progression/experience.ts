@@ -1,10 +1,10 @@
 import type { ContentSet, HumanJobExperienceType } from '@open-northland/data';
-import { Settler } from '../../components/index.js';
+import { isWildlife, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
-import { isAnimalTribe, isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
+import { isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
@@ -210,7 +210,7 @@ export function grantFightExperience(
   if (weaponMainType === undefined) return;
   const s = world.tryGet(attacker, Settler);
   if (s === undefined) return;
-  if (isAnimalTribe(ctx.content, s.tribe)) return;
+  if (isWildlife(world, attacker)) return;
   const bucket = fightExperienceTypeFor(weaponMainType);
   const rate = fightExperienceRate(ctx);
   if (bucket !== undefined && rate > 0) accrueExperience(s, bucket, rate);

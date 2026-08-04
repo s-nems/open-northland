@@ -84,7 +84,7 @@ describe('combatSystem - armor material column (the target armor material join)'
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     // The bear's test_bearfist lists only `damage["0"]` 40. A leather-clad (material 1) target selects
     // the material-1 column, which bearfist doesn't list → 0 damage (no subtraction, never negative).
-    const bear = fighterAt(sim, 0, 0, BEAR, WOODCUTTER);
+    const bear = fighterAt(sim, 0, 0, BEAR, null);
     const viking = fighterAt(sim, 1, 0, VIKING, WOODCUTTER);
     sim.world.add(viking, Armor, { armorClass: 1 });
 

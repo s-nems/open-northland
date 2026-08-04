@@ -60,8 +60,9 @@ function buildingOf(components: Readonly<Record<string, unknown>>): BuildingValu
 
 /**
  * Build a tribe's {@link HudModel} from a frame {@link WorldSnapshot}, mirroring the sim read views
- * `tribePopulation`, `tribePopulationByJob` and `tribeStocks`. Output ordering is total (sorted by
- * id), so the same snapshot yields an identical model every call.
+ * `tribePopulation`, `tribePopulationByJob` and `tribeStocks`; population counts the tribe's people, not
+ * its wildlife. Output ordering is total (sorted by id), so the same snapshot yields an identical model
+ * every call.
  */
 export function buildHud(snapshot: WorldSnapshot, tribe: number): HudModel {
   let population = 0;

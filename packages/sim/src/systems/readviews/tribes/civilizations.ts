@@ -1,7 +1,8 @@
 import type { ContentSet, TribeType } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
 
-// Read views for the data-defined civ-vs-animal tribe split, read off each tribe's tech graph.
+// Read views over the tribe table: which tribes a player may command, and their per-tribe constants.
+// The civ-vs-animal split lives in ./animals.ts, keyed on the `animaltypes.ini` record.
 
 /**
  * The playable (controllable) tribes, distinguished from the animal/monster tribes by the data alone rather
@@ -34,16 +35,4 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
  */
 export function settlerHitpoints(content: ContentSet, tribeType: number): number {
   return contentIndex(content).tribes.get(tribeType)?.hitpoints ?? 0;
-}
-
-/**
- * Whether `tribeType` is a known animal/monster tribe - an extracted `[tribetype]` carrying no tech graph
- * (`jobEnables.length === 0`), the same signature {@link playableTribes} splits on.
- *
- * Not the negation of {@link isPlayableTribe}: an unknown `tribeType` with no record at all is
- * `!isPlayableTribe` but is not an animal, and must not be silently reclassified as wildlife.
- */
-export function isAnimalTribe(content: ContentSet, tribeType: number): boolean {
-  const tribe = contentIndex(content).tribes.get(tribeType);
-  return tribe !== undefined && tribe.jobEnables.length === 0;
 }

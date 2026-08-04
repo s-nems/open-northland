@@ -9,6 +9,7 @@ import {
   FamilyDuty,
   Fleeing,
   ownerOf,
+  Person,
   PlayerOrder,
   Position,
   Resting,
@@ -74,7 +75,7 @@ export class GossipCandidates {
 
   ensure(): NodeBuckets {
     if (this.buckets === null) {
-      const eligible = canonicalById(this.world.query(Settler, Position)).filter((e) => {
+      const eligible = canonicalById(this.world.query(Person, Position)).filter((e) => {
         const s = this.world.get(e, Settler);
         return s.jobType !== null && !isFighterJob(this.content, s.jobType) && !this.world.has(e, Age);
       });

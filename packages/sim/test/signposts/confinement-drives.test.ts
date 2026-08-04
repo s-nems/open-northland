@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Carrying,
   CurrentAtomic,
@@ -7,7 +8,6 @@ import {
   MoveGoal,
   Owner,
   Position,
-  Settler,
   Stockpile,
 } from '../../src/components/index.js';
 import { type Fixed, fx, ONE } from '../../src/core/fixed.js';
@@ -59,7 +59,7 @@ function ownedSettler(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: needs.hunger ?? fx.fromInt(0),

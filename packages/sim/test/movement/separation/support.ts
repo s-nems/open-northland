@@ -2,7 +2,7 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 
 export { grassMap };
 
-import { MoveGoal, Owner, PathFollow, Position, Settler } from '../../../src/components/index.js';
+import { addPerson, MoveGoal, Owner, PathFollow, Position } from '../../../src/components/index.js';
 import { fx, ZERO } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
@@ -30,7 +30,7 @@ export function settlerAt(
 ): Entity {
   const entity = simulation.world.create();
   simulation.world.add(entity, Position, positionOfNode(x, y));
-  simulation.world.add(entity, Settler, {
+  addPerson(simulation.world, entity, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),

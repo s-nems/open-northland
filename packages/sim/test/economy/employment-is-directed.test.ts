@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Carrying,
   CurrentAtomic,
@@ -48,7 +49,7 @@ function buildingAt(sim: Simulation, buildingType: number, x: number, stock: Arr
 function settlerAt(sim: Simulation, x: number, jobType: number | null): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(0) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Owner,
   Position,
   progressionRulesEntity,
@@ -66,7 +67,7 @@ describe('setJob - the profession tree gates the manual trade change', () => {
   function ownedSettler(sim: Simulation, jobType: number, xp?: Map<number, number>): Entity {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
-    sim.world.add(e, Settler, {
+    addPerson(sim.world, e, {
       tribe: 1,
       jobType,
       hunger: fx.fromInt(0),

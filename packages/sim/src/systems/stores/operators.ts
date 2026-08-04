@@ -1,4 +1,4 @@
-import { Building, Position, Settler } from '../../components/index.js';
+import { Building, Person, Position, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -65,7 +65,7 @@ export function presentOperators(
   if (at === null) return DESERTED; // a placed-but-position-less workplace can't be stood on
   const cap = operatorSlotHeadcount(world, ctx, building, jobs);
   if (cap <= 0) return DESERTED;
-  const index = operatorsByNode ?? new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
+  const index = operatorsByNode ?? new NodeBuckets(world, canonicalById(world.query(Person, Position)));
   const present: Entity[] = [];
   for (const e of index.at(at.x, at.y)) {
     const jobType = world.get(e, Settler).jobType;

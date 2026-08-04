@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AssistantGrants,
+  addPerson,
   Building,
   Carrying,
   Equipment,
@@ -10,7 +11,6 @@ import {
   MISC_EQUIP_SLOTS,
   Owner,
   Position,
-  Settler,
   Stance,
   Stockpile,
   setNeedsEnabled,
@@ -63,7 +63,7 @@ function freshSim(): Simulation {
 function ownedSettler(sim: Simulation, x: number, y: number, player = HUMAN_PLAYER): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: WOODCUTTER,
     hunger: fx.fromInt(0),

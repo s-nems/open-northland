@@ -47,14 +47,14 @@ const SURROUND_STARTS: readonly { x: number; y: number }[] = [
 /** Manhattan spread in half-cell nodes the settled ring may cover. */
 const SURROUND_MAX_SPREAD = 5;
 
-const { MoveGoal, Owner, Position, Settler } = components;
+const { addPerson, MoveGoal, Owner, Position, Settler } = components;
 
 /** Placed at a node directly: the spawn command rounds to cell anchors, too coarse for the sub-node
  *  collision geometry this scene authors. */
 function settlerAtNode(sim: Simulation, job: number, x: number, y: number, player: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: PRIMARY_TRIBE,
     jobType: job,
     hunger: fx.fromInt(0),

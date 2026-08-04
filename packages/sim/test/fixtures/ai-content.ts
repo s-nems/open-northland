@@ -373,7 +373,13 @@ export function aiContent(): ContentSet {
           { requirement: 'need', target: 'good', targetId: 5, amount: 10, experienceTypes: [4, 5] },
         ],
       },
+      // The claimable cow's tribe (`COW_TRIBE` in the ai-player cases), so its `animaltypes` record
+      // below has a tribe to reference.
+      { typeId: 13, id: 'cattle' },
     ],
+    // Carrying an `animaltypes` record is what makes the tribe wildlife, so a claimed cow is never
+    // counted as one of the seat's men.
+    animals: [{ id: 'cow', tribeType: 13, catchable: true, warrantable: true, hitpointsAdult: 1000 }],
     landscape: [
       { typeId: 0, id: 'grass', walkable: true, buildable: true, plantable: true },
       { typeId: 1, id: 'water', walkable: false, buildable: false },

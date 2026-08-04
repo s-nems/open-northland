@@ -18,7 +18,7 @@ export { ctxOf, grassMap };
 
 export const VIKING = 1; // tribe 1 in the fixture (has test_axe for job 1)
 export const FRANK = 2; // a different tribe with NO record in the fixture - still a valid enemy (not an animal)
-export const WOLVES = 9; // a recorded ANIMAL tribe in the fixture (no jobEnables; test_claw for job 1) - PASSIVE (no animaltypes record)
+export const WOLVES = 9; // a PASSIVE animal tribe (test_claw for job 1): an animaltypes record with every behaviour flag at its default
 export const BEAR = 10; // an AGGRESSIVE animal tribe (animaltypes record: aggressive, hitpointsAdult 15000; test_bearfist for job 1)
 export const BEES = 11; // a cannotBeAttacked animal tribe (decorative fauna - a civ is exempt from attacking it)
 export const BOAR = 12; // a PASSIVE-but-PROVOKABLE animal tribe (getAngry, NOT aggressive; angryGameTime 10; test_tusk)

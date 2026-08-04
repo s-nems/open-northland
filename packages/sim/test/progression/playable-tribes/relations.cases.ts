@@ -28,7 +28,7 @@ describe('mayAttack (the combat hostility relation)', () => {
   it('lets a civilization engage an AGGRESSIVE animal but leaves a PASSIVE animal alone', () => {
     const content = tribeContent();
     expect(mayAttack(content, 1, 8)).toBe(true); // viking -> aggressive bear
-    expect(mayAttack(content, 1, 9)).toBe(false); // viking -> passive wolves (no record) - hunting is separate
+    expect(mayAttack(content, 1, 9)).toBe(false); // viking -> passive wolves - hunting is separate
   });
 
   it('lets an aggressive animal attack a civilization (the unprovoked drive)', () => {
@@ -39,9 +39,17 @@ describe('mayAttack (the combat hostility relation)', () => {
     expect(mayAttack(tribeContent(), 8, 9)).toBe(false); // bear -> wolves
   });
 
-  it('a PASSIVE animal (no record / not aggressive) attacks NOTHING (the gate is self-contained)', () => {
+  it('treats a MONSTER tribe as a civilization on both sides, not as wildlife', () => {
+    // The werewolf (6) has no animaltypes record, so it is not wildlife: the passive-animal exemption
+    // must not cover it, in either direction.
     const content = tribeContent();
-    // wolves (tribe 9) are a known animal tribe with no animaltypes record -> not aggressive.
+    expect(mayAttack(content, 1, 6)).toBe(true); // viking -> werewolf
+    expect(mayAttack(content, 6, 1)).toBe(true); // werewolf -> viking
+  });
+
+  it('a PASSIVE animal (a record that sets no aggression) attacks NOTHING (the gate is self-contained)', () => {
+    const content = tribeContent();
+    // wolves (tribe 9) carry an animaltypes record with every behaviour flag at its default.
     expect(mayAttack(content, 9, 1)).toBe(false); // passive wolf -> viking: no fight
     expect(mayAttack(content, 9, 2)).toBe(false); // passive wolf -> frank: no fight
     expect(mayAttack(content, 9, 8)).toBe(false); // passive wolf -> bear: animals don't fight anyway

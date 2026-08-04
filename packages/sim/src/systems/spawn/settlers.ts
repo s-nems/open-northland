@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import {
   Age,
   Armor,
+  addPerson,
   Equipment,
   type EquipmentSlot,
   FEMALE,
@@ -11,7 +12,6 @@ import {
   MoveSpeed,
   Owner,
   Position,
-  Settler,
   stampOwner,
   Weapon,
   WorkFlag,
@@ -29,7 +29,7 @@ import { spawnAgeTicks } from '../lifecycle/ageclass.js';
 import { rollInitialNeed } from '../lifecycle/needs.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { stampDefaultStance } from '../orders/index.js';
-import { settlerHitpoints } from '../readviews/index.js';
+import { isAnimalTribe, settlerHitpoints } from '../readviews/index.js';
 
 /**
  * The data of a settler to create: the `spawnSettler` command payload minus its `kind`, so a scene's direct
@@ -52,9 +52,9 @@ export const DEFAULT_SETTLER_HITPOINTS = 300;
 const IDLE_JOB_TYPE = 0;
 
 /**
- * Assemble a settler entity from a {@link SettlerSpec}, or return null for an unknown job id. Shared by the
- * `spawnSettler` command handler and the sanctioned pre-tick-0 scene helpers; it emits no event, because the
- * birth event belongs to the runtime seam only.
+ * Assemble a settler entity from a {@link SettlerSpec}, or return null for an unknown job id or an animal
+ * tribe. Shared by the `spawnSettler` command handler and the sanctioned pre-tick-0 scene helpers; it emits
+ * no event, because the birth event belongs to the runtime seam only.
  *
  * Stamp set and order are hash-significant. It draws four values from `rng` to seed the starting needs
  * ({@link rollInitialNeed}) in the order hunger, fatigue, piety, enjoyment, which is part of the
@@ -62,10 +62,13 @@ const IDLE_JOB_TYPE = 0;
  */
 export function createSettler(world: World, content: ContentSet, rng: Rng, spec: SettlerSpec): Entity | null {
   if (spec.jobType !== IDLE_JOB_TYPE && !contentIndex(content).commandJobs.has(spec.jobType)) return null;
+  // This path mints a person, so an animal tribe is bad input: creatures come from `spawnAnimalHerd`,
+  // and a `Person` on one is the exact state the personhood invariant rejects.
+  if (isAnimalTribe(content, spec.tribe)) return null;
 
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));
-  world.add(e, Settler, {
+  addPerson(world, e, {
     tribe: spec.tribe,
     jobType: spec.jobType === IDLE_JOB_TYPE ? null : spec.jobType,
     hunger: rollInitialNeed(rng),

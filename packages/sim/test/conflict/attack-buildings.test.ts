@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
+  addPerson,
   Building,
   CurrentAtomic,
   Engagement,
@@ -11,7 +12,6 @@ import {
   PathFollow,
   PathRequest,
   Position,
-  Settler,
   Stance,
   Stockpile,
   UnderConstruction,
@@ -170,7 +170,7 @@ function bankAndIslet(
 function warriorAt(sim: Simulation, x: number, y: number, owner: number, jobType = SOLDIER): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),
@@ -344,7 +344,7 @@ describe('warriors attack enemy buildings', () => {
     // An unowned viking "soldier" - no Owner, so not a player's warrior. It carries a weapon but no side.
     const feral = sim.world.create();
     sim.world.add(feral, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(feral, Settler, {
+    addPerson(sim.world, feral, {
       tribe: VIKING,
       jobType: SOLDIER,
       hunger: fx.fromInt(0),

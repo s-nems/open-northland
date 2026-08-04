@@ -1,6 +1,6 @@
 export { ctxOf } from '../../fixtures/context.js';
 
-import { Building, Position, Settler, Stockpile } from '../../../src/components/index.js';
+import { addPerson, Building, Position, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, type Simulation } from '../../../src/index.js';
 
@@ -28,7 +28,7 @@ export function spawnSettler(
   xp: Iterable<readonly [number, number]> = [],
 ): Entity {
   const entity = sim.world.create();
-  sim.world.add(entity, Settler, {
+  addPerson(sim.world, entity, {
     tribe: 1,
     jobType,
     hunger: fx.fromInt(0),

@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   CurrentAtomic,
   FEMALE,
@@ -9,7 +10,6 @@ import {
   Owner,
   Position,
   Residence,
-  Settler,
   Stockpile,
   Wedding,
 } from '../../src/components/index.js';
@@ -73,7 +73,7 @@ function confinedSim(): Simulation {
 function adultAt(sim: Simulation, x: number, y: number, jobType: number, female: boolean): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0) as Fixed,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AttackOrder,
+  addPerson,
   CurrentAtomic,
   Engagement,
   MoveGoal,
@@ -8,7 +9,6 @@ import {
   PathFollow,
   PathRequest,
   Position,
-  Settler,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../src/index.js';
@@ -57,7 +57,7 @@ describe('attackUnit - the explicit attack order', () => {
     // A plain settler with NO Health (a non-combatant) that owns nothing to fight with.
     const civilian = sim.world.create();
     sim.world.add(civilian, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
-    sim.world.add(civilian, Settler, {
+    addPerson(sim.world, civilian, {
       tribe: VIKING,
       jobType: WOODCUTTER,
       hunger: fx.fromInt(0),

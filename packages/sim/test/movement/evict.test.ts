@@ -31,6 +31,7 @@ import {
 } from '../../src/systems/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import {
   HQ,
@@ -73,7 +74,7 @@ function settlerAtNode(
 ): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType: null,
     hunger: fx.fromInt(0),

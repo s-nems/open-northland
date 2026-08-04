@@ -8,9 +8,10 @@ import {
   Livestock,
   MoveGoal,
   Owner,
+  PathRequest,
   Position,
-  Settler,
   StayPoint,
+  Stranded,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
@@ -26,6 +27,7 @@ import {
 import { SYSTEM_ORDER } from '../../src/systems/schedule.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -48,7 +50,7 @@ const SETTLE_TICKS = 400;
 function grazerAt(sim: Simulation, x: number, y: number, anchor = { x, y }, tribe = BEAR): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe,
     jobType: null,
     hunger: fx.fromInt(0),
@@ -353,5 +355,30 @@ describe('animalWanderSystem: the grazing drive', () => {
       return sim.hashState();
     };
     expect(run()).toBe(run());
+  });
+});
+
+describe('a creature whose route the router refused', () => {
+  it('sheds the dead route and grazes again - wildlife runs the same stranded recovery as a settler', () => {
+    // The grazing and herding drives both skip a travelling creature, and nothing on the nav side
+    // retries a failed request, so the planner's stale-intent janitor is what un-parks the animal
+    // (`settlers/planner/replan.ts`). It sweeps `Settler`, not `Person`: a creature left out of that
+    // sweep would stand frozen for the rest of the game.
+    const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(20, 20) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the fixture sim needs a terrain graph');
+    const bear = grazerAt(sim, 10, 10);
+    sim.world.add(bear, MoveGoal, { cell: terrain.nodeAt(12, 10) });
+    sim.world.add(bear, PathRequest, {
+      start: terrain.nodeAt(10, 10),
+      goal: terrain.nodeAt(12, 10),
+      failed: true,
+    });
+
+    // Well past the planner's stranded retry window, so the park-then-shed has had its turn.
+    for (let i = 0; i < SETTLE_TICKS; i++) sim.step();
+
+    expect(sim.world.has(bear, PathRequest)).toBe(false);
+    expect(sim.world.has(bear, Stranded)).toBe(false);
   });
 });

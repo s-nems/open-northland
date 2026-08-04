@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Carrying,
   CurrentAtomic,
   MoveGoal,
   Position,
   Resource,
-  Settler,
 } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
 import { plannerSystem } from '../../../src/systems/index.js';
@@ -118,7 +118,7 @@ describe('atomicPlanner - choosing the next atomic', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    sim.world.add(e, Settler, {
+    addPerson(sim.world, e, {
       tribe: VIKING,
       jobType: null,
       hunger: fx.fromInt(0),

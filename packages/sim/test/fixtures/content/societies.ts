@@ -60,18 +60,18 @@ export const societyContent = {
       ],
     },
     {
-      // An ANIMAL tribe (typeId 9): a recorded `[tribetype]` with **no** `jobEnables` tech graph -
-      // the data signature `isAnimalTribe` recognises (only a civilization carries `jobEnables`). It
-      // binds the attack atomic (81) so an animal *could* swing, which lets the combat test prove the
-      // animal is left out of the **player-vs-player** drive by its tribe class, not by being unarmed.
-      // Declared AFTER the viking so `tribes[0]` stays the viking (other fixtures index `tribes[0]`).
+      // A PASSIVE animal tribe (typeId 9): its `animaltypes` record below leaves every behaviour flag
+      // at its default, which is what makes it wildlife (`isAnimalTribe`) without making it hostile.
+      // It binds the attack atomic (81) so an animal *could* swing, which lets the combat test prove
+      // the animal is left out of the **player-vs-player** drive by its tribe class, not by being
+      // unarmed. Declared AFTER the viking so `tribes[0]` stays the viking (other fixtures index it).
       typeId: 9,
       id: 'test_wolves',
       atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'wolf_attack' }],
     },
     {
-      // An AGGRESSIVE animal tribe (bear, typeId 10): like the wolves it carries no `jobEnables` tech
-      // graph (so `isAnimalTribe` is true), but its `animaltypes` record below sets `aggressive`, so it
+      // An AGGRESSIVE animal tribe (bear, typeId 10): like the wolves it carries an `animaltypes`
+      // record (so `isAnimalTribe` is true), and that record sets `aggressive`, so it
       // DOES run the civ-vs-animal attack drive - a bear charges a nearby settler, and the settler
       // fights back (the mutual `mayAttack` relation). Binds the attack atomic (81) so it can swing.
       typeId: 10,
@@ -79,15 +79,15 @@ export const societyContent = {
       atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'bear_attack' }],
     },
     {
-      // A decorative-fauna animal tribe (bee, typeId 11): a known animal tribe (no `jobEnables`) whose
+      // A decorative-fauna animal tribe (bee, typeId 11): a known animal tribe whose
       // `animaltypes` record sets `cannotBeAttacked`, so a civilization is EXEMPT from attacking it
       // (the bee is never a valid target) - even though the record also flags it aggressive.
       typeId: 11,
       id: 'test_bees',
     },
     {
-      // A PASSIVE-but-PROVOKABLE animal tribe (boar, typeId 12): a known animal tribe (no `jobEnables`)
-      // whose `animaltypes` record sets `getAngry` (and NOT `aggressive`) - it picks no fight on its
+      // A PASSIVE-but-PROVOKABLE animal tribe (boar, typeId 12): a known animal tribe whose
+      // `animaltypes` record sets `getAngry` (and NOT `aggressive`) - it picks no fight on its
       // own, but if STRUCK it turns hostile for `angryGameTime` ticks (the provoked-anger half). Binds
       // the attack atomic (81) so a provoked boar can swing back.
       typeId: 12,
@@ -95,7 +95,7 @@ export const societyContent = {
       atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'boar_attack' }],
     },
     {
-      // A CATCHABLE prey animal tribe (cow, typeId 13): a known animal tribe (no `jobEnables`) whose
+      // A CATCHABLE prey animal tribe (cow, typeId 13): a known animal tribe whose
       // `animaltypes` record sets `catchable` (and is passive - not aggressive, not getAngry). An
       // ordinary civilization leaves it alone, but a HUNTER (job 15) may strike it (the hunter-strike
       // mechanic). It binds no attack atomic - prey doesn't fight back unless provoked, and a plain cow
@@ -118,11 +118,11 @@ export const societyContent = {
       id: 'test_butterfly',
     },
   ],
-  // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe). The bear
-  // (tribe 10) is `aggressive` (attacks civilizations unprovoked) with an adult HP pool the
-  // `Health`-stamp reads; the wolves (tribe 9) deliberately have NO record (the "known animal tribe
-  // with no animaltypes record" path - not aggressive, never targeted). A `cannotBeAttacked` bee
-  // (tribe 11) is recorded to exercise the decorative-fauna target exemption.
+  // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe) - carrying one
+  // is what makes a tribe wildlife. The bear (tribe 10) is `aggressive` (attacks civilizations
+  // unprovoked) with an adult HP pool the `Health`-stamp reads; the wolves (tribe 9) are the
+  // all-defaults PASSIVE animal - not aggressive, never targeted. A `cannotBeAttacked` bee (tribe 11)
+  // is recorded to exercise the decorative-fauna target exemption.
   animals: [
     // The bear also carries herd params so the spawnAnimalHerd command has a real group to place: a
     // pack of 3 that follows a leader (searchForLeader). All three distances are half-cell nodes: 2 from
@@ -176,6 +176,9 @@ export const societyContent = {
       angryGameTime: 10,
       hitpointsAdult: 1000,
     },
+    // The wolf is the PASSIVE wild animal: every behaviour flag left at its default - not aggressive,
+    // not getAngry, not catchable. It is wildlife purely by having a record.
+    { id: 'wolf', tribeType: 9, hitpointsAdult: 500 },
   ],
   // The hunter's prey/yield table (authored, like the app catalog's): membership is huntability, so
   // the wolves (9), bear (10) and bee (11) stay unhuntable with no row. The deer is normal game with a

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   CurrentAtomic,
   DeferredOrder,
   ErectSignpostOrder,
@@ -47,7 +48,7 @@ function freshSim(width = 12, height = 4): Simulation {
 function ownedSettler(sim: Simulation, x: number, y: number, jobType: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),

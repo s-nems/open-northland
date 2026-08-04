@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   Carrying,
   Health,
@@ -8,7 +9,6 @@ import {
   PathFollow,
   PlayerOrder,
   Position,
-  Settler,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
@@ -58,7 +58,7 @@ describe('moveUnit order', () => {
     const s = sim();
     const e = s.world.create();
     s.world.add(e, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
-    s.world.add(e, Settler, {
+    addPerson(s.world, e, {
       tribe: VIKING,
       jobType: WOODCUTTER,
       hunger: fx.fromInt(0),

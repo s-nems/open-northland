@@ -5,10 +5,10 @@ import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
 export { grassMap };
 
 import {
+  addPerson,
   Building,
   JobAssignment,
   Position,
-  Settler,
   Stockpile,
   UnderConstruction,
 } from '../../../src/components/index.js';
@@ -64,7 +64,7 @@ export const PICKUP_ATOMIC = 22;
 export function settlerAt(sim: Simulation, x: number, y: number, jobType: number, boundTo?: Entity): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),

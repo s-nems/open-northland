@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addPerson,
   Building,
   CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
@@ -100,7 +101,7 @@ describe('cleanupSystem - reaping 0-HP combatants', () => {
     const workplace = sim.world.create();
     const dead = sim.world.create();
     sim.world.add(dead, Position, { x: fx.fromInt(3), y: fx.fromInt(4) });
-    sim.world.add(dead, Settler, {
+    addPerson(sim.world, dead, {
       tribe: 1,
       jobType: 7,
       hunger: fx.fromInt(0),

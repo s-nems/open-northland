@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   Armor,
+  addPerson,
   CurrentAtomic,
   DEFAULT_WORK_FLAG_RADIUS,
   DeliveryFlag,
@@ -61,7 +62,7 @@ describe('setJob order', () => {
 
     const neutral = s.world.create();
     s.world.add(neutral, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
-    s.world.add(neutral, Settler, {
+    addPerson(s.world, neutral, {
       tribe: VIKING,
       jobType: WOODCUTTER,
       hunger: fx.fromInt(0),

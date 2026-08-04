@@ -1,4 +1,4 @@
-import { Carrying, Female, ownerOf, Position, type Settler, Stance } from '../../../components/index.js';
+import { Carrying, Female, ownerOf, Position, type SettlerState, Stance } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
@@ -36,8 +36,6 @@ import { planTraining } from './training.js';
 // The drive ladder: pick the next atomic for one idle settler. Each drive returns `true` when it takes
 // the settler for the tick, and the rung order is a behavior contract the state goldens cover. Atomic
 // ids and durations come from the tribe's `setatomic` bindings, never from code.
-
-type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
 /**
  * Plan a growing settler: it never runs economy or combat work. A child runs the needs ladder first,

@@ -1,5 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
-import { Age, Female, Marriage, Position, Settler, TrainingOrder, Wedding } from '../../components/index.js';
+import {
+  Age,
+  Female,
+  Marriage,
+  Person,
+  Position,
+  Settler,
+  TrainingOrder,
+  Wedding,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -28,11 +37,11 @@ export function isOnMission(content: ContentSet, jobType: number | null): boolea
   return isFighterJob(content, jobType) || isScoutJob(content, jobType);
 }
 
-/** Whether `e` is a grown settler: no {@link Age}, the born-young marker, and no age-class job. */
+/** Whether `e` is a grown person: a {@link Person} with no {@link Age}, the born-young marker, and no
+ *  age-class job. A claimed cow is a jobless {@link Settler} and would otherwise read as an adult. */
 export function isAdultSettler(world: World, e: Entity): boolean {
-  if (world.has(e, Age)) return false;
-  const settler = world.tryGet(e, Settler);
-  return settler !== undefined && !isNonWorkingAge(settler.jobType);
+  if (!world.has(e, Person) || world.has(e, Age)) return false;
+  return !isNonWorkingAge(world.get(e, Settler).jobType);
 }
 
 /** Whether `e` currently counts as married: a {@link Marriage} to a living spouse, or a widowed parent
@@ -73,7 +82,7 @@ export function findPartnerFor(
   const tribe = world.get(seeker, Settler).tribe;
   const seekerFemale = world.has(seeker, Female);
   let best: { entity: Entity; dist: number } | null = null;
-  for (const e of canonicalById(world.query(Settler, Position))) {
+  for (const e of canonicalById(world.query(Person, Position))) {
     if (e === seeker || !mayMarry(world, content, e)) continue;
     if (world.get(e, Settler).tribe !== tribe) continue;
     if (world.has(e, Female) === seekerFemale) continue;

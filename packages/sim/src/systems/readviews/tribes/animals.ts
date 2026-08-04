@@ -10,6 +10,19 @@ export function animalRecord(content: ContentSet, tribeType: number): AnimalType
   return contentIndex(content).animalsByTribe.get(tribeType) ?? null;
 }
 
+/**
+ * Whether `tribeType` is wildlife - a tribe the source gave an `[animaltype]` record. False for a
+ * civilization, for an unknown tribe, and for the two humanoid monster tribes; none may be silently
+ * reclassified as wildlife.
+ *
+ * Source basis: `animaltypes.ini` records cover exactly `tribetype` 8..41, the `TRIBE_TYPE_ANIMAL_*`
+ * block of `logicdefines.inc`. An empty `jobEnables` tech graph is not the signature - weresnake (5)
+ * and werewolf (6) carry none either, yet `logicdefines.inc` declares them `TRIBE_TYPE_HUMAN_*`.
+ */
+export function isAnimalTribe(content: ContentSet, tribeType: number): boolean {
+  return animalRecord(content, tribeType) !== null;
+}
+
 /** `animaltypes.ini` `aggressive`: the animal attacks civilizations unprovoked. */
 export function isAggressiveAnimal(content: ContentSet, tribeType: number): boolean {
   return animalRecord(content, tribeType)?.aggressive ?? false;

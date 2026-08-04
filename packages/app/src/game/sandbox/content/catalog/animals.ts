@@ -22,8 +22,8 @@ export {
   ANIMAL_TRIBE_WOLVES,
 };
 
-/** The id slugs are the IR `tribes` slugs. No `jobEnables`, because an empty tech graph is what makes a
- *  tribe an animal tribe. */
+/** The id slugs are the IR `tribes` slugs. Each row needs a matching `[animaltype]` record below,
+ *  because carrying one is what makes a tribe wildlife. */
 export const SANDBOX_ANIMAL_TRIBES: readonly { typeId: number; id: string }[] = [
   { typeId: ANIMAL_TRIBE_BEARS, id: 'bears' },
   { typeId: ANIMAL_TRIBE_CATTLE, id: 'cattle' },

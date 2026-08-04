@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Position, Production, Settler, Stockpile } from '../../../src/components/index.js';
+import { addPerson, Building, Position, Production, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import { productionSystem } from '../../../src/systems/index.js';
@@ -32,7 +32,7 @@ describe('productionSystem - worker-presence gate', () => {
     const { mill } = sawmill(sim, [[WOOD, 5]], false);
     // A woodcutter (job 1) - NOT the carpenter (2) the sawmill employs - stands on the mill's tile.
     const wrong = sim.world.create();
-    sim.world.add(wrong, Settler, {
+    addPerson(sim.world, wrong, {
       tribe: 1,
       jobType: 1,
       hunger: fx.fromInt(0),

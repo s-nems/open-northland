@@ -1,4 +1,4 @@
-import { Building, Position, Production, Settler, Stockpile } from '../../components/index.js';
+import { Building, Person, Position, Production, Stockpile } from '../../components/index.js';
 import { ONE } from '../../core/fixed.js';
 import type { System } from '../context.js';
 import { heldSeatCount } from '../livestock/processing.js';
@@ -39,7 +39,7 @@ export const productionSystem: System = (world, ctx) => {
   // NodeBuckets contract.
   let operatorsByNode: NodeBuckets | undefined;
   const operatorIndex = (): NodeBuckets => {
-    operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Settler, Position)));
+    operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Person, Position)));
     return operatorsByNode;
   };
   // Advance running cycles before starting new ones, so a cycle started this tick begins counting next

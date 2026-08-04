@@ -6,7 +6,6 @@ import {
   MoveGoal,
   Position,
   Resting,
-  Settler,
   StayPoint,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -14,6 +13,7 @@ import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.
 import { ANIMAL_SPACING_NODES, herdingSystem, manhattan } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { addSettlerOfTribe } from '../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
@@ -34,7 +34,7 @@ const LEADER_DISTANCE = 3; // the fixture bear's maximumLeaderDistance, in half-
 function herderAt(sim: Simulation, x: number, y: number, leader: Entity | 'self'): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(x, y));
-  sim.world.add(e, Settler, {
+  addSettlerOfTribe(sim, e, {
     tribe: BEAR,
     jobType: null,
     hunger: fx.fromInt(0),

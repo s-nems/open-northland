@@ -19,8 +19,18 @@ import {
 import { ANCHOR_ONLY_FOOTPRINT, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
-export const { Building, Carrying, Crop, GroundDrop, JobAssignment, Position, Resource, Settler, Stockpile } =
-  components;
+export const {
+  addPerson,
+  Building,
+  Carrying,
+  Crop,
+  GroundDrop,
+  JobAssignment,
+  Position,
+  Resource,
+  Settler,
+  Stockpile,
+} = components;
 
 /**
  * FIELD FARMING (`systems/economy/fields.ts` + `settlers/drives/farming`): the farm's
@@ -64,7 +74,7 @@ export const FARM_WHEAT_CAP = 25;
 export function farmerAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType: FARMER,
     hunger: fx.fromInt(0),

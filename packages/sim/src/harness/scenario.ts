@@ -48,7 +48,7 @@ class Scenario {
     for (let i = 0; i < ticks; i++) {
       this.sim.step();
       if (opts.checkInvariantsEachTick) {
-        const v = checkInvariants(this.sim.world, invariants);
+        const v = checkInvariants(this.sim.world, this.sim.content, invariants);
         if (v.length > 0) {
           invariantViolations.push(`tick ${this.sim.tick}: ${v.join('; ')}`);
           break; // the first broken tick is the actionable signal
@@ -56,7 +56,7 @@ class Scenario {
       }
     }
     if (!opts.checkInvariantsEachTick) {
-      invariantViolations.push(...checkInvariants(this.sim.world, invariants));
+      invariantViolations.push(...checkInvariants(this.sim.world, this.sim.content, invariants));
     }
 
     const failures: string[] = [...invariantViolations];

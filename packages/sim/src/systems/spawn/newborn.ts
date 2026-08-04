@@ -1,5 +1,15 @@
 import type { ContentSet } from '@open-northland/data';
-import { Age, FEMALE, Female, Health, Owner, Position, Residence, Settler } from '../../components/index.js';
+import {
+  Age,
+  addPerson,
+  FEMALE,
+  Female,
+  Health,
+  Owner,
+  Position,
+  Residence,
+  Settler,
+} from '../../components/index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { BABY_FEMALE, BABY_MALE } from '../lifecycle/ageclass.js';
@@ -23,7 +33,7 @@ export function spawnNewborn(
   const p = world.get(mother, Position); // she stands at the door she entered by, so the baby appears there
   const baby = world.create();
   world.add(baby, Position, { x: p.x, y: p.y });
-  world.add(baby, Settler, {
+  addPerson(world, baby, {
     tribe: world.get(mother, Settler).tribe,
     jobType: sex === 'male' ? BABY_MALE : BABY_FEMALE,
     hunger: fx.fromInt(0),

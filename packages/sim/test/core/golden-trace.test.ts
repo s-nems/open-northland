@@ -127,7 +127,7 @@ function runSlice(seed: number, ticks: number): GoldenRun {
       else if (ev.kind === 'goodProduced') produced += ev.amount;
     }
     if (invariantViolations.length === 0) {
-      const v = checkInvariants(sim.world, CORE_INVARIANTS);
+      const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
       if (v.length > 0) invariantViolations.push(`tick ${sim.tick}: ${v.join('; ')}`);
     }
   }
@@ -251,7 +251,7 @@ describe('golden: the vertical slice over ~1000 ticks', () => {
     const run = runSlice(SEED, TICKS);
     // The hash covers every component on every entity, so it moves on any intentional mechanic change;
     // each move is named in its own completing commit (`git log -S` this literal for the history).
-    expect(run.hash).toBe('0d010571');
+    expect(run.hash).toBe('7ca0816a');
   });
 
   it('matches the golden atomic-action trace', () => {

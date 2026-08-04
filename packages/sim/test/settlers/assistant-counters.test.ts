@@ -4,6 +4,7 @@ import {
   AssistantChildOrder,
   AssistantCounters,
   AssistantRecruit,
+  addPerson,
   Building,
   ChildOrder,
   Equipment,
@@ -190,7 +191,7 @@ function trainSim(map = grassMap(16, 6)): Simulation {
 function settlerAt(sim: Simulation, jobType: number | null, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),
@@ -584,7 +585,7 @@ function coupleSim(couples: number): { sim: Simulation; wives: Entity[] } {
 function spawnAdult(sim: Simulation, jobType: number, x: number, y: number, female: boolean): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Settler, {
+  addPerson(sim.world, e, {
     tribe: VIKING,
     jobType,
     hunger: fx.fromInt(0),
