@@ -20,6 +20,8 @@ const SOLDIER_JOB = 31;
 const ANIMAL_TRIBE = 10;
 /** The fixture monster tribe (16): no `[animaltype]` record, so not wildlife, and no `jobEnables`. */
 const MONSTER_TRIBE = 16;
+/** A tribe id the fixture content declares no `[tribetype]` for at all. */
+const UNRECORDED_TRIBE = 99;
 
 describe('needsSystem - hunger rises over time', () => {
   it('raises a settler hunger by exactly HUNGER_RISE_PER_TICK each tick', () => {
@@ -107,6 +109,16 @@ describe('needsSystem: a person of a tribe that declares no trades', () => {
     expect(settler.hunger).toBe(fx.fromInt(0));
     expect(settler.fatigue).toBe(fx.fromInt(0));
     expect(settler.enjoyment).toBe(fx.fromInt(0));
+  });
+
+  it('still ages the needs of a settler whose tribe has no record at all', () => {
+    // The gate reads "recorded, and declares no trades". `!isPlayableTribe` would also be true for a tribe
+    // the content never described, which would freeze the bars of a settler nothing classified.
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const stranger = settlerWithHunger(sim, fx.fromInt(0), { tribe: UNRECORDED_TRIBE });
+
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(stranger, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
   });
 });
 

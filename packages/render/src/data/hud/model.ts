@@ -26,7 +26,7 @@ export interface StockCount {
 export interface HudModel {
   readonly tick: number;
   readonly tribe: number;
-  /** Every living settler of the tribe, working or not, baby or adult. */
+  /** Every living person of the tribe, working or not, baby or adult; its wildlife is not counted. */
   readonly population: number;
   /** Per-job head-counts, ascending by `jobType`. */
   readonly jobs: readonly JobCount[];
@@ -62,9 +62,8 @@ function buildingOf(components: Readonly<Record<string, unknown>>): BuildingValu
 
 /**
  * Build a tribe's {@link HudModel} from a frame {@link WorldSnapshot}, mirroring the sim read views
- * `tribePopulation`, `tribePopulationByJob` and `tribeStocks`; population counts the tribe's people, not
- * its wildlife. Output ordering is total (sorted by id), so the same snapshot yields an identical model
- * every call.
+ * `tribePopulation`, `tribePopulationByJob` and `tribeStocks`. Output ordering is total (sorted by id), so
+ * the same snapshot yields an identical model every call.
  */
 export function buildHud(snapshot: WorldSnapshot, tribe: number): HudModel {
   let population = 0;

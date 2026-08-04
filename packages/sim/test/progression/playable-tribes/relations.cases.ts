@@ -47,6 +47,17 @@ describe('mayAttack (the combat hostility relation)', () => {
     expect(mayAttack(content, 6, 1)).toBe(true); // werewolf -> viking
   });
 
+  it('puts a MONSTER tribe and wildlife on opposite sides, the way a civilization stands to them', () => {
+    // The pair the reclassification actually changes on the maps: a monster is always a seat's unit and
+    // wild game is never owned, so the owner short-circuit in targeting cannot decide it and this relation
+    // does. Reading the tech graph instead would have made both sides animals and left them inert.
+    const content = tribeContent();
+    expect(mayAttack(content, 6, 8)).toBe(true); // werewolf -> aggressive bear
+    expect(mayAttack(content, 8, 6)).toBe(true); // aggressive bear -> werewolf
+    expect(mayAttack(content, 6, 9)).toBe(false); // werewolf -> passive wolf: hunting is the separate path
+    expect(mayAttack(content, 9, 6)).toBe(false); // a passive animal still attacks nothing
+  });
+
   it('a PASSIVE animal (a record that sets no aggression) attacks NOTHING (the gate is self-contained)', () => {
     const content = tribeContent();
     // wolves (tribe 9) carry an animaltypes record with every behaviour flag at its default.

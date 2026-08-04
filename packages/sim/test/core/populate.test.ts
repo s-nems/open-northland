@@ -8,9 +8,8 @@ import { testContent } from '../fixtures/content.js';
  * wildlife by issuing `spawnAnimalHerd` commands at walkable birth points. The fixture's recorded
  * animal tribes are the WOLF (tribe 9, passive), the BEAR (tribe 10, herd of 3, searchForLeader), the
  * BEE (tribe 11, solitary), the BOAR (tribe 12, passive-but-provokable), the COW (tribe 13, catchable
- * prey), and the DEER (tribe 14,
- * catchable + provokable); the VIKING (tribe 1) is a civilization (no animaltypes record) and is never
- * seeded.
+ * prey), and the DEER (tribe 14, catchable + provokable); the VIKING (tribe 1) is a civilization (no
+ * animaltypes record) and is never seeded.
  *
  * The populator is pure (no world mutation): it returns `spawnAnimalHerd` commands, which a caller
  * enqueues through the one mutation seam - so the end-to-end test enqueues them and runs `step()`.

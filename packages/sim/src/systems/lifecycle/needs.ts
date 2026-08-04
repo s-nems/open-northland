@@ -5,7 +5,7 @@ import type { Rng } from '../../core/rng.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
 import { tryDeathSaveDraught } from '../equipment/index.js';
-import { isFighterJob, isPlayableTribe } from '../readviews/index.js';
+import { declaresNoTrades, isFighterJob } from '../readviews/index.js';
 import { isBaby } from './ageclass.js';
 
 // Need rise rates, in fixed-point [0,ONE] units per tick.
@@ -85,16 +85,19 @@ export const STARVATION_DAMAGE_INTERVAL_TICKS = 10;
 export const STARVATION_BITES_TO_DIE = 240;
 
 /**
- * The rise half of settler needs, plus starvation damage. Each tick every {@link Settler}'s `hunger` and
- * `fatigue` rise, and `enjoyment` too for every non-fighter, each clamped at `ONE`. `piety` is not touched
- * here: it climbs only through {@link chargeMilitaryPiety} and resets at a temple.
+ * The rise half of settler needs, plus starvation damage. Each tick every person's `hunger` and `fatigue`
+ * rise, and `enjoyment` too for every non-fighter, each clamped at `ONE`. `piety` is not touched here: it
+ * climbs only through {@link chargeMilitaryPiety} and resets at a temple.
  *
- * Wildlife is out of the sweep structurally: the query is over {@link Person}. A person of a tribe that
- * declares no trades is out too - the monster tribes, whose empty `jobEnables` means no building can
- * employ them and no store is theirs, so a rising bar could only ever end in starvation. A baby
- * accumulates nothing either, keyed on the same state the planner gates on, so a fixture whose synthetic
- * job id collides with an age-class id still lives a full needs life. Named approximation: the original
- * tracks no need bars for animals, and a baby is cared for by its family.
+ * Wildlife is out of the sweep structurally: the query is over {@link Person}. Two conventional gates sit
+ * inside it. A person of a recorded tribe with no `jobEnables` is skipped - the maps place the monster
+ * tribes as a seat's soldiers that no building can employ, so their bars would only ever pin. A baby is
+ * skipped on the same state the planner gates on, so a fixture whose synthetic job id collides with an
+ * age-class id still lives a full needs life.
+ *
+ * Approximation on both: `tribetypes.ini` binds the monster soldier an eat and a sleep clip
+ * (`setatomic 31 10` / `31 8`), so the original's treatment of their bars is undecided rather than
+ * answered here; and a baby is fed by its family.
  *
  * A settler pinned at `ONE` hunger loses hitpoints on the {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat
  * until it is fed or the pool empties. A jobless settler is exempt: the eat drive lives in the job
@@ -106,9 +109,7 @@ export const needsSystem: System = (world, ctx) => {
   const starvationBeat = ctx.tick % STARVATION_DAMAGE_INTERVAL_TICKS === 0;
   for (const e of world.query(Person)) {
     const settler = world.get(e, Settler);
-    // A tribe that declares no trades has no economy to answer a need with.
-    if (!isPlayableTribe(ctx.content, settler.tribe)) continue;
-    // A cared-for baby accumulates nothing.
+    if (declaresNoTrades(ctx.content, settler.tribe)) continue;
     if (world.has(e, Age) && isBaby(settler.jobType)) continue;
     const risenHunger = fx.add(settler.hunger, HUNGER_RISE_PER_TICK);
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;

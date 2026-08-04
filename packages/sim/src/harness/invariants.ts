@@ -85,9 +85,13 @@ const preyHoldWithinEngagement: Invariant = (world) => {
 };
 
 /**
- * A {@link Settler} carries {@link Person} exactly when its tribe has no `[animaltype]` record. The
- * `addPerson`/`addWildlife` constructors keep this true, so a spawn path that hand-rolls the component
- * instead fails here with the entity named.
+ * A {@link Settler} carries {@link Person} exactly when its tribe has no `[animaltype]` record, and a
+ * {@link Person} always carries a {@link Settler}, which every `query(Person, …)` sweep reads. The
+ * `addPerson`/`addWildlife` constructors keep both true, so a spawn path that hand-rolls the components
+ * fails here with the entity named instead of at the first `world.get` downstream.
+ *
+ * The rule keys on the animal record, not the tech graph: a monster tribe has neither, which makes it a
+ * person whose tribe declares no trade rather than a third personhood state.
  */
 const personhoodMatchesTribe: Invariant = (world, content) => {
   const out: string[] = [];
@@ -96,6 +100,9 @@ const personhoodMatchesTribe: Invariant = (world, content) => {
     if (world.has(e, Person) === isAnimalTribe(content, tribe)) {
       out.push(`entity ${e}: tribe ${tribe} ${world.has(e, Person) ? 'has' : 'lacks'} Person`);
     }
+  }
+  for (const e of world.query(Person)) {
+    if (!world.has(e, Settler)) out.push(`entity ${e}: Person without a Settler`);
   }
   return out;
 };

@@ -27,6 +27,19 @@ export function isPlayableTribe(content: ContentSet, tribeType: number): boolean
 }
 
 /**
+ * Whether `tribeType` has a `[tribetype]` record but no `jobEnables` edges, so no building can employ it
+ * and it reaches no rung of the trade ladder. The monster tribes read this way, and so does every animal
+ * tribe; a caller that means only the monsters pairs it with the {@link Person} key.
+ *
+ * Not `!isPlayableTribe`: a tribe id with no record at all declares nothing either way, and answering
+ * "declares no trades" for it would silently reclassify a settler the content never described.
+ */
+export function declaresNoTrades(content: ContentSet, tribeType: number): boolean {
+  const tribe = contentIndex(content).tribes.get(tribeType);
+  return tribe !== undefined && tribe.jobEnables.length === 0;
+}
+
+/**
  * The hitpoint pool an adult settler of `tribeType` carries, `0` when the tribe has no record or leaves it
  * unset - which each caller answers for itself.
  *

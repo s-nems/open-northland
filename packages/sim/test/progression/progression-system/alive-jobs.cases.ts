@@ -14,7 +14,6 @@ import { ctxOf, MINER, WOODCUTTER } from './support.js';
  */
 
 const VIKING = 1;
-/** The fixture bear tribe, a second tribe to hold a woodcutter that must not count for {@link VIKING}. */
 /** A tribe the fixture declares no record for - not the viking, and not wildlife (no `animaltypes`
  *  record), so a settler of it is an ordinary person of another civilization. */
 const OTHER_TRIBE = 99;

@@ -129,7 +129,8 @@ describe('combatSystem - target selection + issuing the attack atomic', () => {
 
   it('an ANIMAL-tribe combatant does not run the player-vs-player drive (even armed, vs a civ)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    // The wolf IS armed (test_claw, tribe 9/job 1) - so it is skipped for being an animal, not unarmed.
+    // The wolf IS armed - test_claw resolves through the jobless tribe-keyed path - so it is skipped for
+    // being an animal, not for being unarmed.
     const wolf = fighterAt(sim, 0, 0, WOLVES, null);
     fighterAt(sim, 1, 0, VIKING, WOODCUTTER); // a viking adjacent
 
