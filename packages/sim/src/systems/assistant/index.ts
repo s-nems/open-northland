@@ -15,6 +15,7 @@ import {
   JobAssignment,
   Marriage,
   ownerOf,
+  Person,
   Residence,
   Settler,
   TrainingOrder,
@@ -26,7 +27,7 @@ import { isMarried } from '../family/eligibility.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { mayBearChild } from '../orders/family.js';
 import { mayDrillAt, startDrill } from '../orders/training.js';
-import { isAnimalTribe, isBarracks, isSoldierJob } from '../readviews/index.js';
+import { isBarracks, isSoldierJob } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS } from '../settlers/drives/training.js';
 import { anotherSystemOwns } from '../settlers/planner/replan.js';
 import { canonicalById } from '../spatial/nodes.js';
@@ -67,21 +68,21 @@ export const assistantSystem: System = (world, ctx) => {
 };
 
 /** The beat's canonical scans, built lazily and shared across the carriers. Sharing is safe: dispatching
- *  adds orders and bookings, never settlers or buildings, so the first seat's snapshot still holds for the
+ *  adds orders and bookings, never people or buildings, so the first seat's snapshot still holds for the
  *  last. */
 interface BeatScans {
   readonly mothers: () => readonly Entity[];
-  readonly settlers: () => readonly Entity[];
+  readonly people: () => readonly Entity[];
   readonly buildings: () => readonly Entity[];
 }
 
 function beatScans(world: World): BeatScans {
   let mothers: Entity[] | null = null;
-  let settlers: Entity[] | null = null;
+  let people: Entity[] | null = null;
   let buildings: Entity[] | null = null;
   return {
     mothers: () => (mothers ??= canonicalById(world.query(Female, Marriage, Residence))),
-    settlers: () => (settlers ??= canonicalById(world.query(Settler))),
+    people: () => (people ??= canonicalById(world.query(Person))),
     buildings: () => (buildings ??= canonicalById(world.query(Building))),
   };
 }
@@ -165,7 +166,7 @@ function dispatchTraining(
   const houses = ownedBarracks(world, ctx, player, scans);
   if (houses.length === 0) return;
 
-  const free = scans.settlers().filter((e) => isFreeMan(world, ctx, e, player));
+  const free = scans.people().filter((e) => isFreeMan(world, e, player));
   const candidates = [
     ...free.filter((e) => !isMarried(world, e)),
     ...free.filter((e) => isMarried(world, e)),
@@ -216,14 +217,12 @@ export function draftableTrade(jobType: number | null): boolean {
 /**
  * Whether the assistant may take `e` for a drill: `player`'s adult, trade-less man that no other drive owns
  * and no errand occupies; `mayDrillAt` re-checks the rest per house. The civilist trade implies "adult
- * man", the `jobType: null` shape does not, so women, children, and animals are excluded explicitly.
+ * man", the `jobType: null` shape does not, so women and children are excluded explicitly.
  */
-function isFreeMan(world: World, ctx: SystemContext, e: Entity, player: number): boolean {
+function isFreeMan(world: World, e: Entity, player: number): boolean {
   if (ownerOf(world, e) !== player) return false;
-  const settler = world.get(e, Settler);
-  if (!draftableTrade(settler.jobType)) return false;
+  if (!draftableTrade(world.get(e, Settler).jobType)) return false;
   if (world.has(e, Female) || world.has(e, Age)) return false;
-  if (isAnimalTribe(ctx.content, settler.tribe)) return false;
   if (world.has(e, JobAssignment) || world.has(e, TrainingOrder) || world.has(e, AssistantRecruit))
     return false;
   if (world.has(e, EquipOrder) || world.has(e, CurrentAtomic)) return false;

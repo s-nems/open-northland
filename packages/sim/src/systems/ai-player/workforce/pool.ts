@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler } from '../../family/eligibility.js';
-import { isAnimalTribe, isFighterJob, isScoutJob } from '../../readviews/index.js';
+import { isFighterJob, isScoutJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
 import { ownedSettlers } from '../shared.js';
@@ -32,14 +32,11 @@ export function builderJobOf(ctx: SystemContext): number | null {
   return best;
 }
 
-/** Whether the settler is labour the allocator may move: an adult man of a real tribe, neither a
- *  fighter nor committed to a drill. Captured livestock is an owner-stamped, trade-less settler of an
- *  animal tribe that would otherwise land in the pool and inflate every count downstream. */
+/** Whether the settler is labour the allocator may move: an adult man, neither a fighter nor committed
+ *  to a drill. */
 export function isAllocatableMan(world: World, ctx: SystemContext, e: Entity): boolean {
   if (world.has(e, Female) || !isAdultSettler(world, e)) return false;
-  const settler = world.get(e, Settler);
-  if (isAnimalTribe(ctx.content, settler.tribe)) return false;
-  if (isFighterJob(ctx.content, settler.jobType)) return false;
+  if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) return false;
   return !world.has(e, TrainingOrder);
 }
 
