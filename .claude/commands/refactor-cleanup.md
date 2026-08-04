@@ -102,8 +102,9 @@ irreducible fact. A refactor with fragmented scope or either `regressed` verdict
 handoff.
 
 Do not create follow-up tickets during cleanup by default. Report other verified findings so the user
-can choose the next run. File one only when the user requested backlog updates or a material blocker
-would otherwise be lost; dedupe first and keep it compact.
+can choose the next run, and end the report with the remaining verified hotspots ranked, so the next
+run starts from the top without re-diagnosing the scope. File a ticket only when the user requested
+backlog updates or a material blocker would otherwise be lost; dedupe first and keep it compact.
 
 Do not commit unless requested. Report the completed hotspot, changed files, verification, preserved
 behavior, scope, structure and comment verdicts, reviewer triage, and remaining risk.
