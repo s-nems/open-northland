@@ -106,9 +106,9 @@ export const needsSystem: System = (world, ctx) => {
   const starvationBeat = ctx.tick % STARVATION_DAMAGE_INTERVAL_TICKS === 0;
   for (const e of world.query(Person)) {
     const settler = world.get(e, Settler);
-    // A tribe with no trades has no economy to answer a need with, and a cared-for baby accumulates
-    // nothing.
+    // A tribe that declares no trades has no economy to answer a need with.
     if (!isPlayableTribe(ctx.content, settler.tribe)) continue;
+    // A cared-for baby accumulates nothing.
     if (world.has(e, Age) && isBaby(settler.jobType)) continue;
     const risenHunger = fx.add(settler.hunger, HUNGER_RISE_PER_TICK);
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;

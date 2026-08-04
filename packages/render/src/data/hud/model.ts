@@ -45,8 +45,10 @@ interface BuildingValue {
   tribe?: unknown;
 }
 
-/** The entity's `Settler` component, or null when `tribe` is missing or not a number. */
-function settlerOf(components: Readonly<Record<string, unknown>>): SettlerValue | null {
+/** A person's `Settler` component, or null when the entity is not one: the `Person` marker is the sim's
+ *  own query key, so wildlife and a claimed animal are left out here the same way. */
+function personOf(components: Readonly<Record<string, unknown>>): SettlerValue | null {
+  if (components.Person === undefined) return null;
   const s = components.Settler as SettlerValue | undefined;
   if (s === undefined || typeof s.tribe !== 'number') return null;
   return s;
@@ -70,7 +72,7 @@ export function buildHud(snapshot: WorldSnapshot, tribe: number): HudModel {
   const stockTotals = new Map<number, number>();
 
   for (const entity of snapshot.entities) {
-    const settler = settlerOf(entity.components);
+    const settler = personOf(entity.components);
     if (settler !== null && settler.tribe === tribe) {
       population++;
       // A job id of 0 is valid, so idle is detected by type, never by a falsy test.
