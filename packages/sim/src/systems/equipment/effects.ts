@@ -6,9 +6,8 @@ import type { SystemContext } from '../context.js';
 import { isCarrierJob } from '../stores/index.js';
 import { applyEquipWear, wearStepOf } from './wear.js';
 
-// The worn-equipment effect reads: what a worn good currently grants its bearer, resolved from the
-// content equip axis (`EquipClass` owns the fields and the balance provenance) - no id-specific
-// rules here. A spent unit (degreeOfUse >= ONE) grants nothing.
+// The worn-equipment effect reads: what a worn good grants its bearer, resolved from the content equip
+// axis with no id-specific rules. A spent unit (degreeOfUse >= ONE) grants nothing.
 
 /** An integer percent as a Fixed fraction - one deterministic truncating division (at most an ulp low). */
 const pctFraction = (pct: number): Fixed => fx.div(fx.fromInt(pct), fx.fromInt(100));
@@ -26,9 +25,8 @@ export function bootsSpeedBonus(world: World, ctx: SystemContext, e: Entity): Fi
   return pct === undefined ? ZERO : pctFraction(pct);
 }
 
-/** Whether `operator` crafts for itself: a non-carrier with a trade. The tool credit's and tool wear's
- *  shared gate (a carrier-run utility's delivery work is not crafting - the same exclusion the XP
- *  bonus applies in {@link import('../progression/index.js').operatorProductionBonus}). */
+/** Whether `operator` crafts for itself: a non-carrier with a trade. The shared gate for the tool credit
+ *  and tool wear, since a carrier-run utility's delivery work is not crafting. */
 export function isCraftingOperator(world: World, ctx: SystemContext, operator: Entity): boolean {
   const s = world.tryGet(operator, Settler);
   return s !== undefined && s.jobType !== null && !isCarrierJob(ctx, s.jobType);
@@ -59,15 +57,13 @@ export function draughtRestores(
 }
 
 /**
- * The healing draught's DEATH-SAVE: called where a lethal blow/bite is about to land, it drinks one sip
- * of the lowest-indexed live healing draught and sets the bearer to its restore percent of max
- * hitpoints (floored at 1) instead of dying. Instant - death is instant, so no atomic plays. Returns
- * false when no draught is held (the caller kills as before).
+ * The healing draught's death save: called where a lethal blow is about to land, it drinks one sip of the
+ * lowest-indexed live healing draught and sets the bearer to its restore percent of max hitpoints, floored
+ * at 1, instead of dying. Instant, since death is instant, so no atomic plays.
  *
- * Named deviation from the manual, which triggers the potion on injury ("A soldier equipped with this
- * potion will automatically take it when he is injured by an enemy or wild beast", p. 18): the user
- * chose a death-save instead (2026-07-24), so a bottle is worth one life rather than a top-up, and the
- * starvation bite gets the same protection.
+ * Authored deviation from the manual, which triggers the potion on injury ("A soldier equipped with this
+ * potion will automatically take it when he is injured by an enemy or wild beast", p. 18): a bottle is
+ * worth one life rather than a top-up, and the starvation bite gets the same protection.
  */
 export function tryDeathSaveDraught(world: World, ctx: SystemContext, e: Entity): boolean {
   const eq = world.tryGet(e, Equipment);

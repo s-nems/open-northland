@@ -22,23 +22,13 @@ export interface EquipPickEntry {
 }
 
 /**
- * The equip pick-menu's read view: every good wearable in a `group` slot that `entity` could actually
- * go and fetch right now - held by a store or ground pile the settler's signpost confinement allows
- * (or anywhere, when confinement is off / the settler is exempt) - with the reachable unit count.
- * Rows keep the content `goods` order; a good with no reachable unit is omitted (the menu shows what
- * IS available, per the feature spec).
+ * Every good wearable in a `group` slot that `entity` could fetch right now, in content `goods` order,
+ * with the reachable unit count. A good with no reachable unit is omitted, and a fighter's tool menu is
+ * empty because `equipGood` refuses a tool on a soldier or hero.
  *
- * Mirrors the equip errand's source predicate (`nearestStoreHolding`): a positioned stockpile on the
- * settler's own side that is not a construction site, and not a workshop holding the good as its own
- * recipe input (`mayFetchGoodFrom`). Two named approximations against the errand's exact walk: the
- * confinement gate tests the store's own node (not its interaction cell), and the
- * buried-under-a-building filter is skipped - a menu row may thus rarely name a unit the fetch then
- * fails to reach, which the errand already survives (it returns empty-handed).
- *
- * A fighter's tool menu is empty: `equipGood` refuses a tool on a soldier/hero (orders/equipment.ts),
- * so the menu must not offer what no click can wear. The manual's other bearer rules are NOT enforced
- * yet (p. 17-18: potions for everyone "excepting women and heroes", amulets for men but not heroes) -
- * out of scope for this phase, so the menu currently offers a misc slot to every settler.
+ * Mirrors the equip errand's source predicate, with two approximations against its exact walk: the
+ * confinement gate tests the store's own node rather than its interaction cell, and the
+ * buried-under-a-building filter is skipped, so a row may rarely name a unit the fetch cannot reach.
  */
 export function equipPickList(
   world: World,
@@ -55,7 +45,7 @@ export function equipPickList(
   if (available.size === 0) return [];
   const ctx: ContentContext = { content };
   const limit = terrain === undefined ? null : navigationLimitFor(world, content, terrain, entity);
-  const onSide = sameSideAs(world, ownerOf(world, entity)); // never count a rival's stock (the errand won't fetch it)
+  const onSide = sameSideAs(world, ownerOf(world, entity)); // the errand never fetches a rival's stock
   for (const store of world.query(Stockpile, Position)) {
     if (world.has(store, UnderConstruction)) continue; // a site is a sink, never a source
     if (!onSide(store)) continue;

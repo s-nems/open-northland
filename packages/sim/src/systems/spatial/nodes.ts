@@ -5,44 +5,27 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { closer, forEachRingOffset, manhattan, nodeKey } from '../footprint/geometry.js';
 
-// The cross-system spatial primitives: canonical scan order, the per-tick node bucket + ring search, and
-// the node/distance helpers. The leaf of this folder, and the only systems/ module below it is
-// footprint/geometry.ts, so every per-system file imports it without creating cycles; systems/stores/ is
-// the same split for the store/economy read-model.
-
 /**
- * Ascending entity-id (canonical) ordering of `entities` - the deterministic scan order a system needs when
- * it picks an entity (nearest target, first open job): the same order `World.canonicalEntities` uses, so a
- * distance / first-match tie-break lands on the identical winner. Build this once per tick from a
- * `world.query(...)` and scan the result across all units, instead of each unit re-scanning the whole world
- * - turning `O(units · entities · log n)` into `O(entities + units · matching)`.
- *
- * Fed a `world.query(C)` this yields the same ascending-id subsequence the old `canonicalEntities()`-then-
- * filter scan did, but only because the ECS holds `store ⊆ alive` (a store never keeps a destroyed entity):
- * a use-after-`destroy` bug would make query-based pickers diverge from `alive`-based ones.
+ * Ascending entity-id order: the same canonical order `World.canonicalEntities` uses, so a distance or
+ * first-match tie-break lands on the identical winner. Fed a `world.query(C)` it matches an `alive`-based
+ * scan only because a store never holds a destroyed entity.
  */
 export function canonicalById(entities: Iterable<Entity>): Entity[] {
   return [...entities].sort((a, b) => a - b);
 }
 
-/** The empty bucket returned for an unoccupied node - shared + frozen so a miss allocates nothing. */
+/** Shared and frozen so an unoccupied-node lookup allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
-// nodeKey lives in footprint/geometry.ts (the leaf below this one, which needs it first);
-// re-exported here so consumers keep a single spatial import site.
 export { nodeKey };
 
-/** A per-entity spatial-index visitor: called once per node the entity occupies (see {@link forEachIndexNode}). */
+/** Called once per node an entity is indexed at. */
 export type IndexNodeVisitor = (e: Entity, x: number, y: number) => void;
 
 /**
- * Visit each node an entity is spatially indexed at: the ONE resolution ladder every node-indexed structure
- * builds through. The multi-node `nodesOf` (a building at EVERY wall cell) wins, then the single-node
- * `nodeOf`, then the entity's {@link Position} node; nothing is visited when the entity resolves to none
- * (dropped from the grid).
- *
- * A callback rather than a returned array so the per-tick index build allocates no per-entity `[{x,y}]`; each
- * consumer passes one reused visitor, so the common Position case allocates nothing beyond the node lookup.
+ * The one resolution ladder every node-indexed structure builds through: multi-node `nodesOf` first, then
+ * single-node `nodeOf`, then the entity's {@link Position} node. An entity resolving to none is dropped
+ * from the grid.
  */
 export function forEachIndexNode(
   world: World,
@@ -67,30 +50,22 @@ export function forEachIndexNode(
 }
 
 /**
- * How many rings past the first hit {@link NodeBuckets.nearestFew} keeps walking for alternatives. It is
- * what bounds that walk: a band holding fewer acceptors than the caller asked for would otherwise cost
- * every ring out to `maxDist` - a house bow's 29 - which is exactly the case of a few raiders closing on a
- * full tower. Three rings is the huddle around the nearest man, so a garrison still fans onto the enemies
- * beside its closest target rather than onto stragglers half a map behind them.
+ * How many rings past the first hit {@link NodeBuckets.nearestFew} keeps walking. Without it a band holding
+ * fewer acceptors than the caller asked for costs every ring out to `maxDist`. Approximation: three rings is
+ * the huddle around the nearest target, so a garrison fans onto enemies beside its closest one rather than
+ * onto stragglers half a map behind them.
  */
 const NEAREST_FEW_TAIL_RINGS = 3;
 
 /**
- * A per-tick spatial bucket: `entities` grouped by their integer node, each bucket preserving the input
- * order. Feed it a {@link canonicalById} list - the ring search's first-accepted-per-node shortcut
- * ({@link NodeBuckets.nearest}) is only canonical because buckets hold ascending ids; a raw `world.query`
- * iterable would silently change ring-search winners. Answers "what is on node (x,y)?" in O(1) via
- * {@link NodeBuckets.at}, replacing a full-world scan for on-node checks. The bucket grid is the half-cell
- * node lattice (`nodeOfPosition`). By default an entity buckets by its {@link Position}'s node; an optional
- * `nodeOf` resolver overrides that per entity (a caller may bucket buildings by their door-aware
- * {@link interactionNode}) - an entity the resolver maps to `null` (and a Position-less one) is dropped. The
- * nested numeric maps keep negative/off-map probes collision-free without string keys; rebuilt each tick
- * (derived state, never hashed).
+ * Entities grouped by their half-cell node, each bucket preserving input order. Feed it a
+ * {@link canonicalById} list: {@link NodeBuckets.nearest} is only canonical because buckets hold ascending
+ * ids. An entity buckets by its {@link Position} node unless a `nodeOf` resolver overrides that; an entity
+ * resolving to `null` is dropped. Derived state, rebuilt each tick and never hashed.
  */
 export class NodeBuckets {
   private readonly byX = new Map<number, Map<number, Entity[]>>();
-  /** One reused visitor for the whole build (no per-entity closure), appending rather than sorted-inserting:
-   *  fed a pre-sorted list, append keeps buckets ascending-id. */
+  /** Fed a pre-sorted list, appending keeps buckets ascending-id. */
   private readonly pushNode: IndexNodeVisitor = (e, x, y) => {
     this.bucketFor(x, y).push(e);
   };
@@ -100,8 +75,8 @@ export class NodeBuckets {
     entities: Iterable<Entity>,
     nodeOf?: (e: Entity) => { x: number; y: number } | null,
     nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
-    /** A second per-node sink fed by this build's walk, for a structure indexing the SAME list through the
-     *  SAME resolver: it then holds exactly the nodes these buckets hold, for one walk rather than two. */
+    /** A second sink fed by this build's walk, valid only for a structure indexing the same list through
+     *  the same resolver. */
     alsoVisit?: IndexNodeVisitor,
   ) {
     const visit: IndexNodeVisitor =
@@ -114,7 +89,6 @@ export class NodeBuckets {
     for (const e of entities) forEachIndexNode(world, e, nodeOf, nodesOf, visit);
   }
 
-  /** The bucket for node (x,y), minting its column and bucket on first use. */
   private bucketFor(x: number, y: number): Entity[] {
     let column = this.byX.get(x);
     if (column === undefined) {
@@ -129,19 +103,18 @@ export class NodeBuckets {
     return bucket;
   }
 
-  /** The entities on node (x,y), in ascending-id order - empty (shared) when the node is unoccupied. */
+  /** The entities on node (x,y), in ascending-id order. */
   at(x: number, y: number): readonly Entity[] {
     return this.byX.get(x)?.get(y) ?? NO_ENTITIES;
   }
 
-  /** Insert `e` into node (x,y)'s bucket keeping it ascending-id - the incremental-index maintenance seam
-   *  (the per-tick constructor path appends instead; it is fed a pre-sorted list). */
+  /** Insert `e` into node (x,y)'s bucket, keeping it ascending-id. */
   insert(e: Entity, x: number, y: number): void {
     insertSortedById(this.bucketFor(x, y), e, (id) => id);
   }
 
-  /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket/column so membership never leaks -
-   *  a no-op when `e` is not there (the verifier catches the inconsistency, not this seam). */
+  /** Remove `e` from node (x,y)'s bucket, dropping an emptied bucket and column. A no-op when `e` is
+   *  not there. */
   remove(e: Entity, x: number, y: number): void {
     const column = this.byX.get(x);
     const bucket = column?.get(y);
@@ -153,7 +126,7 @@ export class NodeBuckets {
     }
   }
 
-  /** Every non-empty bucket with its node - the verifier's fresh-versus-held comparison walk. */
+  /** Every non-empty bucket with its node. */
   *buckets(): IterableIterator<{ x: number; y: number; entities: readonly Entity[] }> {
     for (const [x, column] of this.byX) {
       for (const [y, entities] of column) yield { x, y, entities };
@@ -161,25 +134,15 @@ export class NodeBuckets {
   }
 
   /**
-   * The nearest bucketed entity to node `(fromX, fromY)` that satisfies `accept`, searched as expanding
-   * Manhattan node-rings from `minDist` outward to `maxDist` - the grid ring search the scaling doctrine
-   * (packages/sim/AGENTS.md "Full ring-search nearest-X") calls for, so a per-seeker "who's the closest
-   * enemy?" query costs O(bounded rings) instead of a full-world scan. Returns the entity + its integer
-   * Manhattan distance, or null when nothing in the band matches.
+   * The nearest bucketed entity to node `(fromX, fromY)` satisfying `accept`, searched as expanding
+   * Manhattan node-rings over `minDist..maxDist`. The metric is integer half-cell-node Manhattan, the same
+   * one the bucket key is derived from; `minDist` skips a near floor such as the seeker itself at 0.
    *
-   * The winner is the same one a canonical full scan would pick - min distance, then min entity id -
-   * because the search finishes the whole minimum-distance ring before choosing: it scans every node of that
-   * ring and keeps the smallest id (buckets are ascending-id), so the result is independent of node-iteration
-   * order. Rings are visited in strictly increasing distance, so the first ring with any accepted entity
-   * holds the nearest and the search returns without touching a farther ring; it stops entirely once `d`
-   * passes `maxDist`.
+   * The winner matches a canonical full scan (min distance, then min entity id) because each ring is
+   * finished before choosing and buckets are ascending-id, so node-iteration order cannot decide it.
    *
-   * `minDist` skips entities nearer than a floor (a ranged weapon's near reach, or excluding the seeker
-   * itself at distance 0). The metric is integer half-cell-node Manhattan - the exact metric
-   * {@link manhattan} measures and the one an entity's bucket key (`nodeOfPosition`) is derived from.
-   * `accept` is the caller's pure per-candidate relation, evaluated at most once per candidate in the band.
-   * It may re-enter this method (the hunter's last-resort probe does): all ring state is call-local, so a
-   * nested search cannot disturb the outer one - do not hoist `best`/`visit` onto the instance.
+   * `accept` may re-enter this method: all ring state is call-local, so do not hoist `best` or `visit`
+   * onto the instance.
    */
   nearest(
     fromX: number,
@@ -188,8 +151,6 @@ export class NodeBuckets {
     maxDist: number,
     accept: (e: Entity) => boolean,
   ): { entity: Entity; distance: number } | null {
-    // One visitor for the whole search (not one per ring): `best` resets per ring, so the first ring
-    // with a hit still returns before any farther ring is touched.
     let best: Entity | null = null;
     const visit = (dx: number, dy: number): void => {
       best = this.pickMinId(fromX + dx, fromY + dy, accept, best);
@@ -203,14 +164,10 @@ export class NodeBuckets {
   }
 
   /**
-   * The `limit` nearest bucketed entities to `(fromX, fromY)` that satisfy `accept`, in the same
-   * (distance, then id) order {@link nearest} picks its single winner from - so `[0]` is exactly what
-   * `nearest` returns. Every ring is finished before the walk stops, keeping the result independent of
-   * node-iteration order; an entity bucketed at several nodes is listed once, at its nearest.
-   *
-   * Costs more than {@link nearest}, which returns at the first ring that hits. The walk stops at the
-   * first of `limit` acceptors, `maxDist`, or {@link NEAREST_FEW_TAIL_RINGS} past the first ring that hit
-   * - that last bound is what keeps a band holding one or two acceptors from costing the whole radius.
+   * The `limit` nearest bucketed entities satisfying `accept`, in the same (distance, then id) order
+   * {@link nearest} picks its winner from, so `[0]` is exactly what `nearest` returns. An entity bucketed
+   * at several nodes is listed once, at its nearest. The walk stops at the first of `limit` acceptors,
+   * `maxDist`, or {@link NEAREST_FEW_TAIL_RINGS} past the first ring that hit.
    */
   nearestFew(
     fromX: number,
@@ -222,7 +179,6 @@ export class NodeBuckets {
   ): readonly { entity: Entity; distance: number }[] {
     const found: { entity: Entity; distance: number }[] = [];
     const taken = new Set<Entity>();
-    // Pulled in to the tail bound by the first ring that hits, and never pushed back out by a later one.
     let lastRing = maxDist;
     for (let d = minDist; d <= lastRing && found.length < limit; d++) {
       const ring: Entity[] = [];
@@ -241,9 +197,7 @@ export class NodeBuckets {
     return found.length > limit ? found.slice(0, limit) : found;
   }
 
-  /** The lower-id of `best` and the smallest accepted entity on node (x,y) - the per-node step of the
-   *  ring search's min-id pick (buckets are ascending-id, so the first accepted entity on a node is its
-   *  smallest, but we still min against `best` across the ring's other nodes). */
+  /** The lower-id of `best` and the smallest accepted entity on node (x,y). */
   private pickMinId(
     x: number,
     y: number,
@@ -252,8 +206,7 @@ export class NodeBuckets {
   ): Entity | null {
     for (const e of this.at(x, y)) {
       if (!accept(e)) continue;
-      // Ascending-id bucket: the first accepted entity is this node's smallest - take it against the
-      // running ring minimum and stop scanning this node.
+      // Ascending-id bucket: the first accepted entity is already this node's smallest.
       return best === null || e < best ? e : best;
     }
     return best;
@@ -261,38 +214,28 @@ export class NodeBuckets {
 }
 
 /**
- * Whether a raw node id is a valid index into the terrain graph (`0..nodeCount-1`, integer). A
- * request/goal id outside the grid is boundary input - callers treat it as "no route" rather than
- * letting it throw inside the search.
- *
- * Cross-system: used by the AI navigation planner (drop an off-map goal) and the pathfinding system
- * (guard the A* endpoints).
+ * Whether a raw node id is a valid index into the terrain graph (integer, `0..nodeCount-1`). An off-grid
+ * goal is boundary input: callers treat it as "no route" rather than letting it throw inside the search.
  */
 export function isValidNodeId(terrain: TerrainGraph, node: number): node is NodeId {
   return Number.isInteger(node) && node >= 0 && node < terrain.nodeCount;
 }
 
 /**
- * The half-cell node an entity occupies - its {@link Position} snapped to the navigation lattice. The plain
- * positional resolver for units/creatures/fixtures (a settler, a herd animal, a resource node), where the
- * entity's own node is the node to measure from. Building targets a settler must reach through a door use the
- * AI planner's interaction-aware resolver instead (walls are walk-blocked); this is the common case, shared
- * by combat targeting and the herding follow-drive.
+ * The half-cell node an entity occupies: its {@link Position} snapped to the navigation lattice. A building
+ * a settler must reach through a door needs the AI planner's interaction-aware resolver instead, because
+ * walls are walk-blocked.
  */
 export function entityNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const p = world.get(e, Position);
   return terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
 }
 
-// closer, manhattan and forEachRingOffset live in footprint/geometry.ts (the leaf, which needs them for
-// its nearest-node picks) and are re-exported here with nodeKey so consumers keep the single spatial import site.
 export { closer, forEachRingOffset, manhattan };
 
 /**
- * The 8 compass step offsets (E, W, S, N, then the four diagonals) in the fixed canonical order the sim's
- * direction-indexed picks share: the herd-spawn scatter ring walks it by member index and the combat flee
- * drive scores destinations along it. One shared tuple so the two can never drift - the order is part of the
- * goldens (an index into this array is a deterministic pick).
+ * The 8 compass step offsets (E, W, S, N, then the diagonals). Callers index this array to make a
+ * deterministic pick, so the order is part of the goldens.
  */
 export const COMPASS_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
   [1, 0],
@@ -305,16 +248,12 @@ export const COMPASS_DIRECTIONS: ReadonlyArray<readonly [number, number]> = [
   [-1, 1],
 ];
 
-/** Whether `e` is mid-journey: it has a navigation goal, a pending path request, or a path it is
- *  walking. The shared "is it travelling?" predicate the combat gates and the AI planner's idle
- *  checks apply identically. */
+/** Whether `e` has a navigation goal, a pending path request, or a path it is walking. */
 export function isTravelling(world: World, e: Entity): boolean {
   return world.has(e, MoveGoal) || world.has(e, PathRequest) || world.has(e, PathFollow);
 }
 
-/** Drop `e`'s whole navigation state (goal + pending request + followed path + stranded-retry pacing)
- *  - the counterpart of {@link isTravelling}, used when an authoritative drive (a chase ending, an
- *  order) cancels travel. */
+/** Drop `e`'s whole navigation state: goal, pending request, followed path, and stranded-retry pacing. */
 export function clearNavState(world: World, e: Entity): void {
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
@@ -322,11 +261,10 @@ export function clearNavState(world: World, e: Entity): void {
   world.remove(e, Stranded);
 }
 
-/** Re-aim `e`'s live route at `dest` - the throttled-re-aim twin of {@link clearNavState} (chase and
- *  flee): keep any PathFollow so the routing splice carries the gait through the turn (clearing it
- *  resets the gait to zero every re-aim - a visible lurch), drop only a stale in-flight request, and
- *  leave an unchanged goal alone so a same-dest request keeps its routing-queue slot. Stranded is
- *  untouched: the callers' units (Engagement/Fleeing) are exempt from the planner's parking. */
+/** Re-aim `e`'s live route at `dest`. PathFollow survives so the routing splice carries the gait through
+ *  the turn; clearing it would reset the gait to zero on every re-aim. An unchanged goal is left alone so
+ *  a same-dest request keeps its routing-queue slot, and Stranded is untouched because chasing and fleeing
+ *  units are exempt from the planner's parking. */
 export function redirectRoute(world: World, e: Entity, dest: NodeId): void {
   if (world.tryGet(e, MoveGoal)?.cell === dest) return;
   world.remove(e, PathRequest);

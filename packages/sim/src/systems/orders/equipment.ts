@@ -24,10 +24,9 @@ import { isFighterJob } from '../readviews/index.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
- * The equip-window order handlers: `equipGood` and `unequipGood` only validate and stamp the
- * {@link EquipOrder} errand (`settlers/drives/equip-order.ts` drives it). The original's soldier-only
- * `allowequip` gate is enforced by the panel's row model, not here - a raw command can still dress a
- * civilian in a display-only weapon.
+ * The equip-window order handlers only validate and stamp the {@link EquipOrder} errand; a drive runs it.
+ * The original's soldier-only `allowequip` gate lives in the panel's row model, not here, so a raw command
+ * can still dress a civilian in a display-only weapon.
  */
 
 /** Whether (`group`, `slot`) addresses a real equipment slot (the misc row indexed, 0 elsewhere). */
@@ -37,10 +36,9 @@ function isValidSlotAddress(group: EquipCategory, slot: number): boolean {
   return slot === 0;
 }
 
-/** The shared issuer guard: a living owned ADULT settler with a trade, standing somewhere. A
- *  still-growing child is the GrowthSystem's to dress, not the player's; a jobless settler
- *  (`jobType` null) is refused because the planner ladder never plans one, so its errand would sit
- *  inert forever. */
+/** The shared issuer guard: a living owned adult settler with a trade, standing somewhere. A still-growing
+ *  child is the GrowthSystem's to dress, not the player's, and a jobless settler is refused because the
+ *  planner ladder never plans one, so its errand would sit inert forever. */
 function isEquipOrderable(world: World, e: Entity): boolean {
   return (
     isOrderableSettler(world, e) &&
@@ -51,9 +49,8 @@ function isEquipOrderable(world: World, e: Entity): boolean {
 }
 
 /**
- * Stamp the errand and make it authoritative, like `moveUnit`: the current action/route is cancelled
- * so the settler obeys now (a carried load is set down by the equip rung's first step), and a fresh
- * errand replaces a previous one. `returnTo` captures the node the settler stands on at issue.
+ * Stamp the errand and make it authoritative like `moveUnit`: the current action and route are cancelled,
+ * and a fresh errand replaces a previous one. `returnTo` captures the node the settler stands on at issue.
  */
 function stampEquipOrder(
   world: World,
@@ -78,10 +75,9 @@ function stampEquipOrder(
 }
 
 /**
- * Order one owned adult settler to put `goodType` on in slot (`group`, `slot`) - see the command doc.
- * Validation: the slot address must exist and the good's content `equip.category` must match `group`
- * (a good with no `equip` class is not wearable). Whether any source actually holds the good is the
- * errand's problem, not the command's - an empty settlement returns the settler empty-handed.
+ * Order one owned adult settler to put `goodType` on in slot (`group`, `slot`). The slot address must
+ * exist and the good's content `equip.category` must match `group`, since a good with no `equip` class is
+ * not wearable. Whether any source actually holds the good is the errand's problem, not the command's.
  */
 export function equipGood(
   world: World,
@@ -95,8 +91,7 @@ export function equipGood(
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined || good.equip.category !== command.group) return;
-  // A fighter keeps no tool, so the order is refused rather than shed later (shedToolOnEnlist,
-  // work/employment.ts, owns the rule).
+  // A fighter keeps no tool, so the order is refused here rather than shed on enlistment later.
   if (command.group === 'tool' && isFighterJob(ctx.content, world.get(e, Settler).jobType)) return;
   stampEquipOrder(world, terrain, e, {
     group: command.group,

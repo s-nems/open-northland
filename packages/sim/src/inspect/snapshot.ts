@@ -4,19 +4,9 @@ import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
 import type { Entity, World } from '../ecs/world.js';
 
 /**
- * A read-only snapshot of the world at a tick boundary - the seam `render`/audio read instead of the live
- * component stores. Taken after a `step()` completes (never mid-mutation), it is a plain, structurally-cloned
- * value: no class instances, no live `Map`s, no `Entity` brands - every component value is JSON-ish data. That
- * has two payoffs:
- *
- *  1. **Render never reads mid-mutation.** `render` consumes a detached snapshot + the tick's events, so a system
- *     writing a component store can't be observed half-applied. (The double-buffer alternative would keep two
- *     live worlds; a cloned snapshot is simpler and, being plain, also transferable.)
- *  2. **Transferable for free.** A plain structure with no class instances / live Maps can be `postMessage`d to
- *     a render thread (the "run the sim in a Web Worker" win) without a serialization retrofit later.
- *
- * It is not an on-disk save format; persisted saves are future work. This is a per-frame view. Determinism is
- * unaffected because a snapshot is a pure function of the world and is never read back into sim logic.
+ * The detached view render and audio read instead of the live component stores, taken after a `step()`
+ * completes. Every value is plain data with no class instances or live `Map`s, so a consumer can never
+ * reach the live store and the whole structure is transferable to another thread. Not a save format.
  */
 export interface WorldSnapshot {
   readonly tick: number;
@@ -33,15 +23,10 @@ export interface EntitySnapshot {
 }
 
 /**
- * Per-world cache of scenery entities' cloned {@link EntitySnapshot}s - a decoded map plants tens of thousands
- * of {@link Resource} nodes that then sit unchanged for thousands of ticks, and deep-cloning them every snapshot
- * was the 28 ms/frame that pinned a real map at ~20 fps (golden rule 6: per-frame cost scales with active work).
- * An entry is reused verbatim until the World's touched-entity log names its entity (any `add`/`remove`/`destroy`,
- * or a {@link World.write} - the harvest decrements). Only entities carrying {@link Resource} or {@link Stump}
- * are cached: their mutation sites are few and named, unlike a settler whose Position mutates in place every
- * tick. Coherence is enforced by a {@link World.registerCacheVerifier} verifier (a fresh re-clone must equal
- * every cached entry), so a future mutation that bypasses the seam fails invariant-checked runs at the tick it
- * happens instead of shipping a stale render.
+ * Per-world cache of cloned scenery snapshots, so standing forests cost O(changed) per snapshot instead of
+ * O(map). An entry is reused until the World's touched-entity log names its entity, which requires every
+ * mutation of a cached entity to go through `World.write` or an add/remove/destroy. A registered cache
+ * verifier re-clones and compares, so a mutation that bypasses that seam fails invariant-checked runs.
  */
 const sceneryClones = new WeakMap<World, Map<Entity, EntitySnapshot>>();
 
@@ -77,16 +62,9 @@ function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnap
 }
 
 /**
- * Capture a detached snapshot of the world (+ the tick's events) at a tick boundary. Entities are
- * emitted in canonical ascending-id order; component values are deep-cloned to plain data so the
- * snapshot can't alias (and so a consumer mutating it can't reach the live store). A `Map` value is
- * converted to a sorted `[key, value]` array - the same canonical ordering `hashState` uses - so the
- * snapshot stays plain (transferable) and deterministic.
- *
- * Unchanged SCENERY entities (see {@link sceneryClones}) reuse their previously-cloned snapshot object
- * - same plain data, shared identity across snapshots - so a map's standing forests cost O(changed)
- * per snapshot, not O(map). Draining the World's touched log here also evicts entries of destroyed
- * entities, so the cache never outgrows the alive scenery set by more than one drain interval.
+ * Capture a detached snapshot of the world and the tick's events at a tick boundary. Entities are
+ * emitted in canonical ascending-id order and `Map` values become sorted `[key, value]` arrays, the same
+ * canonical ordering `hashState` uses. Unchanged scenery entities reuse their cached clone object.
  */
 export function takeSnapshot(world: World, tick: number, events: readonly SimEvent[]): WorldSnapshot {
   const cache = sceneryCloneCache(world);
@@ -101,24 +79,19 @@ export function takeSnapshot(world: World, tick: number, events: readonly SimEve
     }
     const snap = cloneEntity(world, id);
     entities.push(snap);
-    // BerryBush joins Resource/Stump as cached scenery: a bush sits unchanged between growth stages, so it is
-    // re-cloned only at the logged moments it changes stage (foraged, bloomed, ripened) - not every frame
-    // like a moving settler. `nextStageAtTick` is an absolute schedule, so a regrowing bush doesn't churn.
+    // Cacheable scenery: these change only at logged moments, unlike a settler whose Position moves every tick.
     if (world.has(id, Resource) || world.has(id, Stump) || world.has(id, BerryBush)) {
       cache.set(id, snap);
     }
   }
-  // SimEvents are plain (Map-free) data, so PlainOf<SimEvent> stays structurally a SimEvent and this
-  // single assertion holds. Adding a Map field to an event would lower it to a [k,v] array here and break
-  // this cast - the intended signal that a snapshot consumer can no longer read that field as a Map.
+  // SimEvents carry no Map fields, so PlainOf<SimEvent> is structurally a SimEvent and this cast holds.
+  // Adding one would lower it to a [k, v] array and break the cast.
   return { tick, entities, events: events.map(clonePlain) as readonly SimEvent[] };
 }
 
 /**
- * The snapshot entity with `id`, or `undefined` once it has left the snapshot (died, despawned).
- * Binary-searched: {@link takeSnapshot} emits one entity per alive id in canonical ascending-id order,
- * so `entities` is already the index. A narrowed view that re-orders `entities` breaks that
- * precondition and must not be passed here.
+ * The snapshot entity with `id`, or `undefined` once it has left the snapshot. Binary search: a narrowed
+ * view that re-orders `entities` breaks the ascending-id precondition and must not be passed here.
  */
 export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot | undefined {
   const entities = snapshot.entities;
@@ -136,16 +109,12 @@ export function entityById(snapshot: WorldSnapshot, id: number): EntitySnapshot 
 }
 
 /**
- * The plain shape {@link clonePlain} produces from `T`: every `Map<K, V>` becomes a sorted
- * `[PlainOf<K>, PlainOf<V>]` pair array, arrays and objects recurse, scalars pass through. This
- * mirrors the runtime transform, so a caller sees the real snapshot shape instead of a `T` the clone never
- * actually returns.
- *
- * `extends object` cannot express "plain record", so shapes the clone rejects (a `Set`, a class instance,
- * `bigint`, `symbol`, a function) still satisfy this type; `clonePlain` throws on them at runtime.
+ * The plain shape {@link clonePlain} produces from `T`. `extends object` cannot express "plain record", so
+ * shapes the clone rejects (a `Set`, a class instance, `bigint`, `symbol`, a function) still satisfy this
+ * type and are rejected at runtime instead.
  */
 type PlainOf<T> = T extends null | undefined | string | number | boolean | bigint | symbol
-  ? T // scalars pass through - including branded primitives (`Entity` is a `number`), which stay numbers at runtime
+  ? T // branded primitives included: an `Entity` stays a number at runtime
   : T extends Map<infer K, infer V>
     ? [PlainOf<K>, PlainOf<V>][]
     : T extends readonly (infer E)[]
@@ -155,16 +124,12 @@ type PlainOf<T> = T extends null | undefined | string | number | boolean | bigin
         : T;
 
 /**
- * Deep-clone a value to plain data: Maps -> sorted [k,v] arrays, arrays/objects recursed, scalars as-is.
- * The public overload carries the honest {@link PlainOf} shape; the wider implementation signature lets the
- * body build the plain value without casting away type safety (a conditional type can't be proven over the
- * unresolved generic `T` inside the body).
+ * Deep-clone a value to plain data. Object keys keep insertion order because a component value is a
+ * fixed-shape literal whose keys are already deterministic; `Map` entries are sorted because a Map's key
+ * set varies at runtime and snapshot-diff's canonical-JSON equality depends on that ordering.
  *
- * Object keys keep their insertion order rather than being re-sorted: a component value is a fixed-shape
- * literal, so its keys already appear in one deterministic order every clone (the per-clone key sort bought no
- * canonical gain). `Map` entries ARE sorted: a Map's key set varies at runtime, and
- * {@link import('./snapshot-diff.js').diffSnapshots}'s canonical-JSON equality (and its agreement with
- * `hashState`) depends on that ordering.
+ * The wide implementation signature lets the body build the plain value without a cast: a conditional type
+ * cannot be proven over the unresolved generic `T`.
  */
 function clonePlain<T>(value: T): PlainOf<T>;
 function clonePlain(value: unknown): unknown {

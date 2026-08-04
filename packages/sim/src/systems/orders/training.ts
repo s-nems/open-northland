@@ -20,16 +20,14 @@ import { clearNavState } from '../spatial/nodes.js';
 import { isTradeAssignable } from './guards.js';
 
 /**
- * Send one owned settler to drill at a barracks - see the command doc. The handler validates and stamps
- * the {@link TrainingOrder} errand; the planner's drill rung (`settlers/drives/training.ts`) walks it out.
- * Authoritative like the employment orders: the current action, route, player walk and construction-crew
- * membership are dropped so the recruit sets off this tick and its site stops counting it.
+ * Send one owned settler to drill at a barracks: validate and stamp the {@link TrainingOrder} errand for
+ * the planner's drill rung to walk out. Authoritative like the employment orders, so the current action,
+ * route, player walk, and construction-crew membership are dropped.
  *
- * The house must be a standing same-tribe, same-side barracks whose door is open to the settler - the same
- * confinement `assignWorker` applies, plus the failed-goal memo the drill rung itself reads, so an order
- * the rung would abandon next tick is refused instead of accepted and then dropped. Re-issuing the same
- * order is a no-op rather than a restart: a double right-click must not silently throw away the drill
- * already served.
+ * The gate reads the same confinement `assignWorker` applies plus the failed-goal memo the drill rung
+ * itself reads, so an order the rung would abandon next tick is refused rather than accepted and dropped.
+ * Re-issuing the same order is a no-op, because a double right-click must not throw away drill already
+ * served.
  */
 export function trainSoldier(
   world: World,
@@ -41,9 +39,8 @@ export function trainSoldier(
 }
 
 /**
- * Whether `e` may be sent to drill at `house` right now - every refusal the command doc lists, shared
- * with the assistant's training dispatcher (`systems/assistant/`) so an auto-issued drill obeys
- * exactly the player order's gates.
+ * Whether `e` may be sent to drill at `house` right now, shared with the assistant's training dispatcher so
+ * an auto-issued drill obeys exactly the player order's gates.
  */
 export function mayDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
   if (!isTradeAssignable(world, e)) return false;
@@ -57,8 +54,8 @@ export function mayDrillAt(world: World, ctx: SystemContext, e: Entity, house: E
   return drillDoorOpen(world, ctx, e, door, navigationLimitFor(world, ctx.content, terrain, e));
 }
 
-/** Stamp the drill errand and drop what it supersedes - the accepting half of {@link trainSoldier},
- *  after {@link mayDrillAt} passed. `drillTicks` is the caller's serving length. */
+/** Stamp the drill errand and drop what it supersedes, the accepting half of {@link trainSoldier} once
+ *  {@link mayDrillAt} passed. `drillTicks` is the caller's serving length. */
 export function startDrill(world: World, e: Entity, house: Entity, drillTicks: number): void {
   world.add(e, TrainingOrder, { house, drillTicksLeft: drillTicks });
   world.remove(e, CurrentAtomic);

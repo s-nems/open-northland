@@ -26,33 +26,24 @@ import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js
 import { isOrderableSettler } from '../guards.js';
 
 /**
- * How far {@link setWorkFlag} snaps a click that landed on a blocked node. Sized to clear the body under
- * the cursor - a resource cluster or a building - while keeping the flag where the player pointed: past
- * this the click is treated as "not workable ground" rather than silently relocating the gatherer's yard.
- * Named approximation: the original's click tolerance is not decoded, and 3 tiles sits well inside
- * {@link DEFAULT_WORK_FLAG_RADIUS}, so a snapped flag still covers the patch the player aimed at.
+ * How far {@link setWorkFlag} snaps a click that landed on a blocked node, in half-cell nodes. Sized to
+ * clear the body under the cursor while keeping the flag where the player pointed; past this the click
+ * counts as "not workable ground" rather than silently relocating the gatherer's yard. Approximation: the
+ * original's click tolerance is not decoded, and 3 tiles sits well inside the default work-flag radius.
  */
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
 /**
- * Place / move one owned gatherer's work flag to node (x,y) - the player's "work here" order (the gathering
- * twin of {@link moveUnit}, mapped from Ctrl+Right-Click). If the gatherer already carries a {@link WorkFlag}
- * whose flag entity still exists, that flag is relocated to (x,y) - only the marker moves; the goods already
- * dropped stay pinned to their tiles (a flag stores nothing). Otherwise a fresh flag - a pure
- * {@link DeliveryFlag} marker (no {@link Stockpile}: the harvest piles on the ground around it, not into it) -
- * is created there and bound with the trade's radius ({@link workFlagRadiusFor}). From then on the gatherer harvests only
- * within that flag's radius, carries only what it dug, and banks it there ({@link planGatherer}).
+ * Place or move one owned gatherer's work flag to node (x,y), the player's "work here" order. An existing
+ * flag is relocated and only the marker moves, because a flag stores nothing and the goods already dropped
+ * stay pinned to their tiles. Otherwise a fresh flag is minted there and bound with the trade's radius, and
+ * from then on the gatherer harvests only within it.
  *
- * The clicked node is snapped to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}
- * ({@link nearestWorkFlagPlacement}): the player aims at the patch to work, and a resource body blocks its
- * own cells, so "work this iron mine" lands on the ore itself. The snap carries the settler's signpost
- * confinement, so it can only land on ground that settler may work - a narrow stream snaps to its bank.
- *
- * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim; a dead/stale target, a
- * non-settler, a neutral (unowned) entity, a settler whose job cannot harvest - only a gatherer carries a
- * work flag, so Ctrl+Right-Click on a soldier is a no-op, never a stray flag - or a click with no legal node
- * in snapping range (mid-lake, a walled-in pocket, wholly outside the settler's signpost area). Carries no
- * issuing-player yet; the per-player authority check lands with lockstep.
+ * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
+ * iron mine" lands on the ore itself. The snap carries the settler's signpost confinement, so the flag can
+ * only land on ground that settler may work. Only a gatherer carries a work flag, so the order on any other
+ * trade is a no-op rather than a stray flag. It carries no issuing player yet; the per-player authority
+ * check lands with lockstep.
  */
 export function setWorkFlag(
   world: World,
@@ -67,12 +58,10 @@ export function setWorkFlag(
   if (jobType === null || !jobCanHarvest(ctx, jobType)) return; // only a gatherer carries a work flag
 
   const live = liveWorkFlag(world, e);
-  // Signpost confinement: a gatherer can't be sent to work ground it doesn't know the way to. Folded into
-  // the snap rather than applied to its winner, so a click near the band edge snaps INWARD to allowed
-  // ground instead of being pushed out and then rejected.
+  // Confinement folds into the snap rather than filtering its winner, so a click near the band edge snaps
+  // inward to allowed ground instead of being pushed out and then rejected.
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
-  // Clamp an off-map click onto the grid (like moveUnit), then snap off any body it landed on. The clicked
-  // node is the search's own first candidate, so an unblocked click resolves to itself.
+  // The clicked node is the search's own first candidate, so an unblocked click resolves to itself.
   const target = nearestWorkFlagPlacement(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y), {
     ignoreFlag: live?.flag,
     ...(limit !== null ? { accept: (node) => limit.allowsNode(node) } : {}),
@@ -83,12 +72,9 @@ export function setWorkFlag(
   const pos = positionOfNode(c.x, c.y);
 
   if (live !== undefined) {
-    // Relocate the existing flag - only the marker moves, and its gatherer sheds the delivery/nav state
-    // that cached the old position (see {@link relocateWorkFlag}).
     relocateWorkFlag(world, live.flag, pos, e);
     return;
   }
-  // No live flag yet (fresh gatherer, or its flag was removed) - mint one here and bind / re-point.
   bindFreshFlag(world, ctx, e, pos);
   clearNavState(world, e);
 }
@@ -116,10 +102,8 @@ export function setGatherGood(
       else binding.goodType = goodType;
     });
   } else {
-    // The flag-less employed path: the pick lives in a GatherSelection and must be a good the bound
-    // workplace stockpiles (the "an employed gatherer forages only for its workplace" rule) - judged by
-    // {@link workplaceStocksGood}, the same test `planGatherer` filters on, so the order never drops a
-    // pick the drive would have honoured.
+    // An employed gatherer forages only for its workplace, so the pick must be a good that workplace
+    // stockpiles, judged by the same test the gatherer drive filters on.
     const workplace = world.tryGet(e, JobAssignment)?.workplace;
     if (workplace === undefined || !world.isAlive(workplace)) return;
     if (goodType === null) {
@@ -142,14 +126,11 @@ export function setGatherGood(
 }
 
 /**
- * Set a craft worker's product selection ({@link CraftSelection}) - which of its bound workplace's
- * products it crafts, alternating when several are chosen (see the component doc for the rotation).
- * The selection is stored ascending and deduped (canonical; the rotation order is by goodType, not
- * click order) with the cursor reset. Goods the workplace's recipes don't make are dropped; a
- * selection with none left is ignored (recoverable bad input), and an empty selection restores the
- * all-products default by removing the component. Batches already grinding keep their product - the
- * choice applies from the next cycle start, mirroring how a mid-harvest `setGatherGood` cancels only
- * the not-yet-banked work.
+ * Set a craft worker's product selection: which of its bound workplace's products it crafts, alternating
+ * when several are chosen. The selection is stored ascending and deduped, so the rotation order is by
+ * goodType rather than click order. Goods the workplace's recipes don't make are dropped, and an empty
+ * selection restores the all-products default. A batch already grinding keeps its product, so the choice
+ * applies from the next cycle start.
  */
 export function setCraftGoods(
   world: World,

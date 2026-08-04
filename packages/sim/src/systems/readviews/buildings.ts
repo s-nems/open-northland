@@ -4,17 +4,14 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
-/** The stable content id of the start building a fortress-style map opens with - the seat's
- *  headquarters. Both the AI's per-seat HQ resolver and the combat siege-priority classifier
- *  ({@link buildingCombatClass}) key on it. Lives here (the building read views) because it is a
- *  building content fact, not an AI-only constant. */
+/** The content id of the seat's headquarters, the start building a fortress-style map opens with. */
 export const HEADQUARTERS_BUILDING_ID = 'headquarters';
 
-/** A building's siege-priority class: the {@link HEADQUARTERS_BUILDING_ID} headquarters and a
- *  {@link BUILDING_KIND.tower} defensive tower are the high-value structures a warrior auto-targets
- *  on par with an enemy unit; every other building is the low-priority `'other'` tier a warrior only
- *  turns on once no unit, HQ, or tower remains in sight. An unknown type (synthetic content) reads as
- *  `'other'`. */
+/**
+ * Siege priority: a headquarters and a defensive tower are auto-targeted on par with an enemy unit,
+ * while `'other'` is the fallback tier a warrior turns on only when nothing better is in sight. An
+ * unknown type reads as `'other'`.
+ */
 export type BuildingCombatClass = 'hq' | 'tower' | 'other';
 
 export function buildingCombatClass(ctx: SystemContext, buildingType: number): BuildingCombatClass {
@@ -25,28 +22,23 @@ export function buildingCombatClass(ctx: SystemContext, buildingType: number): B
   return 'other';
 }
 
-/** Whether `t` is a low-priority (`'other'`) building - the autofocus fallback tier. A settler, an HQ,
- *  or a tower is NOT low-priority; the two-pass target search prefers those and drops to this tier only
- *  when none is in sight. A non-building entity is never low-priority. */
+/** A settler, a headquarters, a tower, and any non-building entity are never low-priority. */
 export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t: Entity): boolean {
   const b = world.tryGet(t, Building);
   return b !== undefined && buildingCombatClass(ctx, b.buildingType) === 'other';
 }
 
 /**
- * Whether a building TYPE is the barracks - the house a settler drills at to become a soldier. The
- * original's `logicmaintype 4` (LEARN) class holds exactly two houses ({@link BUILDING_KIND.training}),
- * and the barracks is the one that employs anybody: `logicworker 24 4` (four haulers keeping its arsenal
- * stocked) against the school's none. A structural signature like {@link isTemple}'s, because the field
- * that names the difference outright - `logicSchoolSize`, 25 at the barracks against the school's 5 - is
- * readable but not carried into the IR yet (docs/tickets/pipeline/building-school-size.md).
+ * The house a settler drills at to become a soldier. `logicmaintype 4` (LEARN) holds exactly two houses,
+ * and only the barracks employs anybody: `logicworker 24 4` against the school's none. A structural
+ * signature, because the field that names the difference outright, `logicSchoolSize` 25 against the
+ * school's 5, is readable but not carried into the IR.
  */
 export function isBarracksType(type: Pick<BuildingType, 'kind' | 'workers'>): boolean {
   return type.kind === BUILDING_KIND.training && type.workers.length > 0;
 }
 
-/** Whether a STANDING building is a barracks ({@link isBarracksType}); a foundation still under
- *  construction is not one yet. */
+/** A foundation still under construction is not a barracks yet. */
 export function isBarracks(world: World, ctx: SystemContext, building: Entity): boolean {
   if (!world.isAlive(building) || world.has(building, UnderConstruction)) return false;
   const b = world.tryGet(building, Building);
@@ -56,18 +48,12 @@ export function isBarracks(world: World, ctx: SystemContext, building: Entity): 
 }
 
 /**
- * Whether a building is a temple - the satisfier site for the piety need (where a settler runs the `pray`
- * atomic). The original's "work temple" (`logichousetype` `logictype 37`, the `HOUSE_TYPE_WORK_TEMPLE`
- * constant) is a `logicmaintype 3` workplace that, unlike a real production workplace, declares no
- * `logicworker`, no `logicstock`, no `logicproduction` - so it surfaces in the IR as `kind === 'workplace'`
- * with an empty `workers`, empty `stock`, and no `recipes`. That "workplace with nothing to make and no one to
- * staff it" shape is how a temple is told apart from a sawmill/mill.
+ * The satisfier site for the piety need. The original's "work temple" (`logictype 37`) is a
+ * `logicmaintype 3` workplace declaring no `logicworker`, `logicstock` or `logicproduction`, so it
+ * reaches the IR as a workplace with no workers, stock or recipes.
  *
- * Approximated: the temple→pray need→satisfier link lives below the readable rule files (the original binds
- * the religious building to the pray slot at the engine level, not in `houses.ini`), so the satisfier is
- * inferred from this structural signature - like the food→eat-slot binding ({@link isFood}) is inferred from
- * the `food_` id prefix. Refine to a content flag if the building→need binding is later decoded. Cross-system:
- * the AI pray-drive planner uses it to find the nearest temple to walk to.
+ * Approximation: the temple-to-pray binding lives below the readable rule files, so the satisfier is
+ * inferred from that structural signature.
  */
 export function isTemple(world: World, ctx: SystemContext, building: Entity): boolean {
   const b = world.tryGet(building, Building);

@@ -8,14 +8,12 @@ export interface Step {
 }
 
 /**
- * A reusable sink for {@link TerrainGraph.stepsInto}. The A* inner loop and the build-time component
- * flood fill re-fill one buffer per settled node instead of minting an array plus a record per edge;
- * slots are created on first use (at most 8 - the lattice's edge count) and overwritten thereafter,
- * with `length` marking how many are live. Contents are valid only until the next fill.
+ * A reusable sink for {@link TerrainGraph.stepsInto}. Slots are minted on first use, at most the
+ * lattice's 8 edges, and overwritten thereafter. Contents are valid only until the next fill.
  */
 export class StepBuffer {
   private readonly slots: Step[] = [];
-  /** Number of live slots - everything at or past this index is stale from an earlier fill. */
+  /** Number of live slots; everything at or past this index is stale from an earlier fill. */
   length = 0;
 
   /** Drop the live slots, keeping their storage for the next fill. */
@@ -34,8 +32,7 @@ export class StepBuffer {
     this.length += 1;
   }
 
-  /** The live edge at `index`. Throws past {@link length} - reading a stale slot is a programmer
-   *  error, not a recoverable boundary. */
+  /** The live edge at `index`. Throws past {@link length}, since a stale slot is never a valid read. */
   at(index: number): Readonly<Step> {
     const slot = index < this.length ? this.slots[index] : undefined;
     if (slot === undefined) throw new Error(`step index ${index} out of range (0..${this.length - 1})`);

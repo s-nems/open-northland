@@ -46,12 +46,11 @@ const SEPARATION_PUSH_CAP: Fixed = fx.div(fx.mul(MOVE_SPEED_PER_TICK, fx.fromInt
 const CONVOY_ALIGNMENT_MIN: Fixed = fx.div(fx.fromInt(1), fx.fromInt(2));
 
 /**
- * Resolves this tick's body overlaps, right after the MovementSystem (`bodies.ts` holds the tier model and
- * its source basis). Only movers are displaced: a mover-vs-mover overlap resolves softly, either as a convoy
- * brake or a radial split of half the overlap each, while a firm mover additionally ejects fully back onto
- * the radius of a post it overlaps, so a post is impenetrable but never jitters. A displaced position must
- * land on walkable, unblocked ground, or the offending axis and then the whole displacement is discarded, so
- * collision can never push a body into water or through a wall.
+ * Resolves this tick's body overlaps, right after the MovementSystem; `bodies.ts` holds the tier model and
+ * its source basis. Only movers are displaced: a mover-vs-mover overlap resolves softly, as a convoy brake
+ * or a radial split of half the overlap each, while a firm mover additionally ejects fully back onto the
+ * radius of a post it overlaps, so a post is impenetrable but never jitters. A displaced position must land
+ * on walkable, unblocked ground, or the offending axis and then the whole displacement is discarded.
  *
  * Movers are processed in ascending entity id, mover-vs-mover pushes read the tick's pre-separation
  * snapshot, and post resolutions apply in bucket-scan order, so no result depends on store order.
@@ -62,14 +61,14 @@ export const separationSystem: System = (world, ctx) => {
 
   const scratch = separationScratch(world);
   const colliders = collectColliders(world, ctx, scratch);
-  if (colliders === null) return; // dormancy: nobody walking → nothing can overlap anything
+  if (colliders === null) return; // nobody walking, so nothing can overlap anything
   const { movers, firmMovers, before, moverIndex, postIndex } = colliders;
   const gates = new SeparationGates(world, ctx, terrain, scratch.ghostMemo);
   const { nearMovers, nearPosts } = scratch;
 
   for (const e of movers) {
     const start = before.get(e);
-    if (start === undefined) continue; // movers ⊆ before by construction; guard for the checked access
+    if (start === undefined) continue; // every mover is in `before`; this only satisfies the checked access
     const nodeHx = nodeHxOfPosition(start.x, start.y);
     const nodeHy = nodeHyOfPosition(start.y);
     const isFirm = firmMovers.has(e);
@@ -149,17 +148,16 @@ function resolveMoverPush(
           fx.mul(fx.sub(otherW.x, startW.x), start.hx),
           fx.mul(fx.sub(otherW.y, startW.y), start.hy),
         );
-        // Exactly abreast or stacked: the higher id yields, a named pick that seeds the fore/aft order the
-        // geometric test then keeps stable. Both sides can transiently read "follower" and brake, which is
-        // harmless. Known gap: a follower on a faster gait out-closes the capped brake and briefly merges.
+        // Exactly abreast or stacked: the higher id yields, seeding the fore and aft order the geometric
+        // test then keeps stable. Known gap: a follower on a faster gait out-closes the capped brake and
+        // briefly merges.
         if (ahead > ZERO || (ahead === ZERO && e > n)) {
           pushX = fx.sub(pushX, fx.mul(start.hx, half));
           pushY = fx.sub(pushY, fx.mul(start.hy, half));
           continue; // braked in line, no radial component
         }
-        // This side reads itself as the leader and skips the counter-shove only if the other side will
-        // brake; both iterations read the same snapshot, so e's prediction equals n's own decision exactly.
-        // A pair that both read "leader" falls through to the radial split rather than riding merged.
+        // The leader skips its counter-shove only when the other side will brake. Both iterations read the
+        // same snapshot, so this prediction equals the other side's own decision exactly.
         const otherAhead = fx.add(
           fx.mul(fx.sub(startW.x, otherW.x), other.hx),
           fx.mul(fx.sub(startW.y, otherW.y), other.hy),

@@ -8,14 +8,8 @@ import { createResourceNode } from '../footprint/index.js';
 import { razeBuilding } from '../lifecycle/cleanup.js';
 import { dropOrStackGood } from '../settlers/atomics/effects/goods/index.js';
 
-// The map-editing commands - put a standing resource / a loose good pile on the map, or take a building /
-// signpost off it. The runtime analogue of the scene-setup `place*` helpers, behind the HUD tools and the
-// debug spawn palette. Each validates its target's KIND at execution (not just its liveness) and skips bad
-// input, which is still logged for faithful replay.
-
-/** Build a standing {@link Resource} node (a tree / mined deposit / plucked node) through the shared
- *  {@link createResourceNode} assembly. A `good` with no footprint record is bad input -
- *  `createResourceNode` returns null and the world is untouched. */
+/** Build a standing resource node through the shared {@link createResourceNode} assembly. A `good` with no
+ *  footprint record is bad input, and the world is left untouched. */
 export function placeResource(
   world: World,
   ctx: SystemContext,
@@ -46,11 +40,10 @@ export function dropGood(
   dropOrStackGood(world, pos.x, pos.y, command.good, command.amount);
 }
 
-/** Take a building off the map - the player's demolish. Kind-at-execution guard: in lockstep any peer can
- *  send any command (and a queued command's target can change between issue and apply), so a demolish aimed
- *  at a non-building entity - a settler, a resource node, a boat - must be a skip, never a destroy. The
- *  teardown itself (worker unbind + the `buildingDestroyed` collapse cue + destroy) is the shared
- *  {@link razeBuilding} seam combat razing uses, so the two paths can never drift. */
+/** Take a building off the map. The kind is checked at execution, not just liveness: in lockstep any peer
+ *  can send any command and a queued target can change between issue and apply, so a demolish aimed at a
+ *  settler or a boat must skip rather than destroy. Teardown goes through the shared {@link razeBuilding}
+ *  seam combat razing uses, so the two paths cannot drift. */
 export function demolish(
   world: World,
   ctx: SystemContext,
@@ -60,9 +53,8 @@ export function demolish(
   razeBuilding(world, ctx, command.building);
 }
 
-/** Destroy a signpost - the same kind-at-execution rule as {@link demolish}: only a live {@link Signpost}
- *  falls. Destroying it moves the Signpost generation, so the network memo, placement blockers, and vision
- *  all pick it up. */
+/** Destroy a signpost, under the same kind-at-execution rule as {@link demolish}. The destroy moves the
+ *  Signpost generation, so the network memo, placement blockers, and vision all pick it up. */
 export function demolishSignpost(
   world: World,
   command: Extract<Command, { kind: 'demolishSignpost' }>,

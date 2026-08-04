@@ -22,41 +22,22 @@ import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
 const HERD_COUNT_CAP = 100;
 
 /**
- * Spawn a herd of an animal tribe around a birth point - put a group of creatures on the map, consuming the
- * {@link herdParams}/{@link animalHitpoints} read views.
+ * Spawn a herd of an animal tribe around a birth point: `max(1, maximumgroupsize)` creatures, or the
+ * command's clamped `count` override, each a {@link Settler} of the animal `tribe` at `jobType: null`
+ * carrying its `hitpoints_adult` pool. Members scatter around (x,y) within `maximumdistancetobirthpoint`,
+ * and an animal with `searchforleader` records the herd's lowest-id member as every member's
+ * {@link HerdMember} leader. A tribe with no `animaltypes` record is bad input.
  *
- * The herd is `max(1, maximumgroupsize)` creatures - or exactly the command's clamped `count` override
- * (one authored map record = one creature) - each a
- * {@link Settler} of the animal `tribe` (animals reuse the same entity/AI model as a settler) at
- * `jobType: null` carrying a {@link Health} pool stamped from its `hitpoints_adult` ({@link animalHitpoints}).
- * The creatures are scattered around (x,y) within `maximumdistancetobirthpoint` by a deterministic offset
- * ({@link herdMemberOffset} - an expanding 8-direction ring, no RNG), so a herd spreads out instead of stacking
- * on one tile; a member landing on walk-blocked ground is pushed off it ({@link evictSettlerFromBlockedSpawn}).
- * When the animal's `searchforleader` is set the herd gets a leader - its lowest-id member, which every
- * member (including the leader, self-referentially) records via a {@link HerdMember} - the relation the
- * follow-the-leader drive (`herdingSystem`) reads to keep a strayed follower within `maximumleaderdistance`; a
- * solitary animal carries no `HerdMember`. On a map (not a mapless sim) every member also records its settled
- * node as a {@link StayPoint}, the territory anchor the grazing drive leashes it to.
+ * Source basis: group size, HP pool, birth-point range, leader presence, and `movespeed` are the verbatim
+ * extracted `animaltypes.ini` params. `runspeed` is deliberately not consumed, since no run gait exists.
  *
- * A `tribe` with no `animaltypes` record (a civilization, or an unknown tribe) is bad input - no herd params to
- * read - so the command is skipped (still logged for faithful replay).
+ * Approximations: the scatter pattern, pushing a member off blocked ground, spawning adult at
+ * `jobType: null` with no weapon binding, the one-shot placement with no respawn or territory upkeep, and
+ * reading `movespeed` as a step period so a larger value walks slower, which is the only direction
+ * consistent with the source's `runspeed < movespeed`.
  *
- * Source basis: the group size, HP pool, birth-point range, leader presence, and walking-pace magnitude
- * (`movespeed`) are the verbatim extracted `animaltypes.ini` params (faithful). A creature with an explicit
- * `movespeed` gets a {@link MoveSpeed}{`perTick = ONE/movespeed`} (a larger `movespeed` walks a slower step);
- * one whose record omits it carries no `MoveSpeed` and walks at the universal settler default. The `runspeed`
- * param is deliberately not consumed - no run/sprint gait exists.
- * Approximated (no oracle): the scatter pattern, the blocked-spawn push (whether the original places herd
- * members off blocked ground is unobserved - its spawn points are per-map scenario data below the readable
- * `.ini`), that animals spawn at `jobType: null` (so no weapon yet - the animal→weapon `(tribeType, typeId)`
- * binding is a deferred refinement), that the spawn is a one-shot placement with no respawn/territory upkeep,
- * and the direction of the `movespeed` scale (larger = slower - the step-period reading, the only one
- * consistent with the source's `runspeed < movespeed`). No births→growth
- * here: an animal is spawned adult (carries no {@link Age}); the spawn cadence / map populator is a later slice.
- *
- * Determinism: the leader is the herd's lowest-id member (creation is monotonic - a canonical pick), the
- * scatter offsets are a fixed function of the member index, and `animalHitpoints`/`herdParams` are pure content
- * reads.
+ * Determinism: the leader is the herd's lowest-id member, the scatter offsets are a fixed function of the
+ * member index, and the content reads are pure.
  */
 export function spawnAnimalHerd(
   world: World,
@@ -66,21 +47,18 @@ export function spawnAnimalHerd(
   const herd = herdParams(ctx.content, command.tribe);
   if (herd === null) return; // not an animal tribe (a civilization / unknown) - bad input, skip
   const hitpoints = animalHitpoints(ctx.content, command.tribe) ?? 0; // an animal record always has both
-  // A `hitpoints 0` record (the real butterflies/bees/mosquitos) is a decorative swarm the original
-  // draws as an ambient effect, not a creature. Our model mints living Settlers with a Health pool, so
-  // such a spawn would be born dead and reaped the same tick - spawn nothing instead (named
-  // approximation: no swarm-effect layer exists yet).
+  // A `hitpoints 0` record (the real butterflies, bees, and mosquitos) is a decorative swarm rather than a
+  // creature, and a living Settler minted from one would be born dead and reaped the same tick.
+  // Approximation: no swarm-effect layer exists yet.
   if (hitpoints <= 0) return;
 
-  // The animal's data-pinned pace: `movespeed` N → ONE/N tile/tick (see the movespeed note above). A record
-  // omitting it (walkSpeed 0) stamps no MoveSpeed and walks at the universal settler default.
+  // `movespeed` N walks ONE/N tile per tick; a record omitting it walks at the universal settler default.
   const locomotion = locomotionOf(ctx.content, command.tribe);
   const walkSpeed = locomotion?.walkSpeed ?? 0;
   const movePace = walkSpeed > 0 ? fx.div(ONE, fx.fromInt(walkSpeed)) : null;
 
-  // The command's count override wins (one authored map record = one creature at its half-cell);
-  // else the record's group size. A 0/solitary group still yields one creature; the floor + cap keep a
-  // malformed external count (fractional, negative, absurd) from minting a map of creatures in one tick.
+  // A solitary group still yields one creature, and the floor plus cap keep a malformed external count
+  // (fractional, negative, absurd) from minting a map of creatures in one tick.
   const count = Math.min(HERD_COUNT_CAP, Math.max(1, Math.floor(command.count ?? herd.maxGroupSize)));
   const range = Math.max(0, herd.birthPointRange);
   const members: Entity[] = [];
@@ -93,7 +71,7 @@ export function spawnAnimalHerd(
     world.add(e, Position, positionOfNode(command.x + off.dx, command.y + off.dy));
     world.add(e, Settler, {
       tribe: command.tribe,
-      jobType: null, // an animal isn't born into a trade (no weapon binding yet - see fidelity note)
+      jobType: null,
       hunger: fx.fromInt(0),
       fatigue: fx.fromInt(0),
       piety: fx.fromInt(0),
@@ -101,17 +79,15 @@ export function spawnAnimalHerd(
       experience: new Map<number, number>(),
     });
     world.add(e, Health, { hitpoints, max: hitpoints });
-    // A catchable species is livestock: the marker mirrors the content flag so the husbandry systems
-    // (capture, assignment, regen, the feed gate) query this small store, never the whole population.
+    // The marker mirrors the content flag so the husbandry systems query this small store rather than the
+    // whole population.
     if (isCatchableAnimal(ctx.content, command.tribe)) world.add(e, Livestock, {});
     if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace });
-    // The birth point or a scatter offset may name walk-blocked or already-taken ground (a tree's cell,
-    // a house body, an earlier member's node) - push the creature off it before the born event, the same
-    // spawn push a commanded settler gets: no drive ever re-tasks an idle animal off a blocked cell
-    // (herding only recalls a strayed follower).
+    // The birth point or a scatter offset may name blocked or already-taken ground, and no drive ever
+    // re-tasks an idle animal off a blocked cell, so the push has to happen here.
     evictSettlerFromBlockedSpawn(world, ctx, e, claimed);
-    // The settled node becomes the creature's territory anchor, the point the grazing drive keeps it
-    // near. Read after the push, so a creature moved off blocked ground anchors where it stands.
+    // The territory anchor is read after the push, so a creature moved off blocked ground anchors where it
+    // ends up standing.
     if (ctx.terrain !== undefined) {
       world.add(e, StayPoint, { cell: entityNode(world, ctx.terrain, e) });
     }
@@ -119,8 +95,7 @@ export function spawnAnimalHerd(
     ctx.events.emit({ kind: 'settlerBorn', entity: e });
   }
 
-  // A herd whose animal seeks a leader gets one: the lowest-id member (members[0], `create()` ids being
-  // monotonic), recorded on every member via HerdMember (the leader points at itself).
+  // `members[0]` is the lowest-id member because `create()` ids are monotonic; the leader points at itself.
   if (herd.searchForLeader) {
     const leader = members[0];
     if (leader !== undefined) for (const e of members) world.add(e, HerdMember, { leader });
@@ -128,21 +103,17 @@ export function spawnAnimalHerd(
 }
 
 /**
- * The deterministic (no-RNG) tile offset for the `i`-th member of a herd, kept within `range` of the birth
- * point. Member 0 lands on the birth point; the rest spiral out along an expanding 8-direction ring, the radius
- * growing each time the 8 directions are exhausted and clamped at `range`. A fixed function of `(i, range)`, so
- * the same herd command always scatters identically.
+ * The deterministic tile offset for the `i`-th member of a herd, kept within `range` of the birth point.
+ * Member 0 lands on the birth point and the rest spiral out along an expanding 8-direction ring whose radius
+ * is clamped at `range`, a fixed function of `(i, range)` with no RNG.
  *
- * Distinct tiles hold up to 9 members (the centre + 8 first-ring directions) given `range >= 1`; beyond that -
- * or with `range` 0 - the radius clamp re-uses ring directions, so two members can be OFFSET to the same tile
- * (never reached by real data - `maximumgroupsize` is 3..6); the spawn's shared claim set then fans the later
- * one onto a neighbouring node. The scatter is an approximated placement (source basis), not a packing guarantee.
+ * Past 9 members, or with `range` 0, the clamp re-uses ring directions and two members can be offset onto
+ * the same tile; real `maximumgroupsize` values (3..6) never reach that, and the spawn's claim set fans the
+ * later one aside. This is an approximated placement, not a packing guarantee.
  */
 function herdMemberOffset(i: number, range: number): { dx: number; dy: number } {
   if (i === 0 || range <= 0) return { dx: 0, dy: 0 }; // the first (leader) sits on the birth point
-  // The shared 8-compass-direction ring (spatial/nodes.ts), in its fixed canonical order. Ring `r`
-  // (1-based) places up to 8 members at radius `min(r, range)`; member index within the ring picks
-  // the direction.
+  // COMPASS_DIRECTIONS is in a fixed canonical order, so the scatter reproduces exactly.
   const ring = Math.floor((i - 1) / COMPASS_DIRECTIONS.length) + 1; // 1, 2, 3, … as the rings fill
   const dir = COMPASS_DIRECTIONS[(i - 1) % COMPASS_DIRECTIONS.length];
   if (dir === undefined) return { dx: 0, dy: 0 }; // unreachable: a modulo index is always in range

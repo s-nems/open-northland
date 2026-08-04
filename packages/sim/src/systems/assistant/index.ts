@@ -32,26 +32,20 @@ import { anotherSystemOwns } from '../settlers/planner/replan.js';
 import { canonicalById } from '../spatial/nodes.js';
 
 /**
- * The assistant's production dispatcher - turns the chest window's counters (`AssistantCounters`)
- * into standing orders: child orders on eligible mothers (daughters outrank sons while `extraWomen`
- * remains) and barracks drills on free men (the four `train*` kinds). Each dispatch books itself with
- * an `AssistantChildOrder`/`AssistantRecruit` marker; a counter pays only when the product exists
- * (the birth, the enlistment, the landed weapon), so a recruit lost mid-pipeline re-dispatches
- * instead of silently draining the queue.
- *
- * Runs before the FamilySystem and the planner, so a fresh child order and a fresh drill both start
- * moving the same tick. The counters window is a project reconstruction (see
- * `app/hud/tool-panel/extras-menu.ts`); this pacing and the dispatch policies are ours (named
- * approximation), with each order passing exactly the player command's own gates
- * (`mayBearChild`/`mayDrillAt`).
+ * The assistant's production dispatcher: turns the chest window's `AssistantCounters` into standing child
+ * orders and barracks drills. Each dispatch books itself with a marker, and a counter pays only when the
+ * product exists, so a recruit lost mid-pipeline re-dispatches instead of silently draining the queue. Runs
+ * before the FamilySystem and the planner, so a fresh child order and a fresh drill both start moving the
+ * same tick. Approximation: the counters window is a project reconstruction, and the pacing and dispatch
+ * policies are authored, with each order passing the player command's own gates.
  */
 
-/** Decision beat: dispatching is a queue top-up, not a reflex, so one beat a second keeps the scan
- *  cost off the per-tick path. Our pacing (nothing decodable to match). */
+/** Decision beat: dispatching is a queue top-up, not a reflex, so one beat a second keeps the scan cost off
+ *  the per-tick path. Approximation: nothing decodable to match. */
 export const ASSISTANT_DECISION_PERIOD_TICKS = TICKS_PER_SECOND;
 
-/** Drill orders issued per player per beat - the trickle brake (the grants pass's rationale): an
- *  infinite counter empties the village into the barracks over minutes, not in one tick. Our balance. */
+/** Drill orders issued per player per beat, the trickle brake: an infinite counter empties the village into
+ *  the barracks over minutes, not in one tick. Authored balance. */
 export const TRAIN_DISPATCHES_PER_DECISION = 2;
 
 export const assistantSystem: System = (world, ctx) => {
@@ -72,9 +66,9 @@ export const assistantSystem: System = (world, ctx) => {
   }
 };
 
-/** The beat's canonical scans, built lazily and shared across the carriers (one copy+sort per beat,
- *  not per seat). Sharing is safe: dispatching adds orders and bookings, never settlers or
- *  buildings, so a list snapshot taken for the first seat still holds for the last. */
+/** The beat's canonical scans, built lazily and shared across the carriers. Sharing is safe: dispatching
+ *  adds orders and bookings, never settlers or buildings, so the first seat's snapshot still holds for the
+ *  last. */
 interface BeatScans {
   readonly mothers: () => readonly Entity[];
   readonly settlers: () => readonly Entity[];
@@ -93,9 +87,8 @@ function beatScans(world: World): BeatScans {
 }
 
 /**
- * Drop bookings whose underlying order vanished (a widowed order dropped, a drill abandoned, a
- * recruit re-traded), so they stop holding an in-flight slot and the queue re-dispatches. A recruit
- * still drilling, or already enlisted into the soldier band, keeps its booking.
+ * Drop bookings whose underlying order vanished, so they stop holding an in-flight slot and the queue
+ * re-dispatches. A recruit still drilling, or already enlisted as a soldier, keeps its booking.
  */
 function sweepStaleBookings(world: World, ctx: SystemContext): void {
   // Copies, not sorts: removal here is order-independent; the copy only guards the live iteration.
@@ -109,10 +102,9 @@ function sweepStaleBookings(world: World, ctx: SystemContext): void {
 }
 
 /**
- * Top the standing child orders up to the two birth counters: every eligible mother without an order
- * gets one, daughters first while `extraWomen`'s remainder lasts (its stated priority), sons after
- * (`extraMen`, which may be infinite). In-flight assistant orders count against the remainder, so a
- * counter of N never books more than N wombs at once.
+ * Top the standing child orders up to the two birth counters: every eligible mother without an order gets
+ * one, daughters first while `extraWomen`'s remainder lasts, then sons. In-flight assistant orders count
+ * against the remainder, so a counter of N never books more than N wombs at once.
  */
 function dispatchBirths(
   world: World,
@@ -142,12 +134,10 @@ function dispatchBirths(
 }
 
 /**
- * Send free men to drill for the four `train*` counters. "Free" is the user's rule (2026-07-31):
- * a trade-less civilist with no workplace, not owned by another drive - nobody is pulled off a job.
- * Unmarried men drill first (a soldier never marries, so taking a bachelor spares a family line;
- * married men go only when the queue still wants more), canonical order within each band. Intents
- * take turns via a beat-rotated round robin, so an infinite counter cannot starve a finite one;
- * {@link TRAIN_DISPATCHES_PER_DECISION} paces the outflow.
+ * Send free men to drill for the four `train*` counters. Authored rule: "free" is a trade-less civilist
+ * with no workplace that no other drive owns, so nobody is pulled off a job. Unmarried men drill first,
+ * since a soldier never marries, and intents take turns through a beat-rotated round robin, so an infinite
+ * counter cannot starve a finite one.
  */
 function dispatchTraining(
   world: World,
@@ -181,7 +171,7 @@ function dispatchTraining(
     ...free.filter((e) => isMarried(world, e)),
   ];
   let budget = TRAIN_DISPATCHES_PER_DECISION;
-  // Beat-rotated starting intent: fairness without stored state (deterministic in the tick).
+  // Beat-rotated starting intent: fairness without stored state.
   let turn = Math.floor(ctx.tick / ASSISTANT_DECISION_PERIOD_TICKS) % wanted.length;
   for (const e of candidates) {
     if (budget <= 0) return;
@@ -189,8 +179,8 @@ function dispatchTraining(
     if (intent === null) return;
     const house = houses.find((h) => mayDrillAt(world, ctx, e, h));
     if (house === undefined) continue;
-    // Every recruit serves the one standard drill and exits unarmed ({@link BARRACKS_DRILL_TICKS}
-    // states the rule); the arming pass dresses the class recruits later (`planner/recruit-arming.ts`).
+    // Every recruit serves the one standard drill and exits unarmed; the arming pass dresses the class
+    // recruits later.
     startDrill(world, e, house, BARRACKS_DRILL_TICKS);
     world.add(e, AssistantRecruit, { intent, armed: false });
     remaining.set(intent, (remaining.get(intent) ?? 1) - 1);
@@ -217,19 +207,16 @@ function ownedBarracks(world: World, ctx: SystemContext, player: number, scans: 
   return scans.buildings().filter((e) => ownerOf(world, e) === player && isBarracks(world, ctx, e));
 }
 
-/** The trade shapes the training dispatcher may draft - a civilist or an unemployed (`jobType:
- *  null`) settler. Shared with the AI's garrison sizing (`ai-player/workforce/garrison.ts`), so the
- *  target it publishes counts exactly the men this dispatcher would take. */
+/** The trade shapes the training dispatcher may draft. Shared with the AI's garrison sizing, so the target
+ *  it publishes counts exactly the men this dispatcher would take. */
 export function draftableTrade(jobType: number | null): boolean {
   return jobType === CIVILIST_JOB || jobType === null;
 }
 
 /**
- * Whether the assistant may take `e` for a drill: `player`'s adult, trade-less man - a civilist or an
- * unemployed (`jobType: null`) settler, e.g. an admin-spawned townsperson - that no other drive owns
- * and no errand or gesture occupies. The command-level gates (`mayDrillAt`) re-check the rest per
- * house. The civilist trade implies "adult man"; the null shape does not, so women, children and
- * (owned) animals are excluded explicitly.
+ * Whether the assistant may take `e` for a drill: `player`'s adult, trade-less man that no other drive owns
+ * and no errand occupies; `mayDrillAt` re-checks the rest per house. The civilist trade implies "adult
+ * man", the `jobType: null` shape does not, so women, children, and animals are excluded explicitly.
  */
 function isFreeMan(world: World, ctx: SystemContext, e: Entity, player: number): boolean {
   if (ownerOf(world, e) !== player) return false;
@@ -241,7 +228,7 @@ function isFreeMan(world: World, ctx: SystemContext, e: Entity, player: number):
     return false;
   if (world.has(e, EquipOrder) || world.has(e, CurrentAtomic)) return false;
   if (anotherSystemOwns(world, e)) return false;
-  // A man already wearing a weapon good (a manual civilian equip) is no arming candidate: the slot
-  // this queue would fill is taken, and the class transform only fires when a SOLDIER takes one up.
+  // A man already wearing a weapon good is no arming candidate: the slot this queue would fill is taken,
+  // and the class transform only fires when a soldier takes one up.
   return (world.tryGet(e, Equipment)?.weapon ?? null) === null;
 }

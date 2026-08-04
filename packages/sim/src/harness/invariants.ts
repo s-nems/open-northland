@@ -10,13 +10,8 @@ import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
 
 /**
- * Invariants: properties that must hold after EVERY tick. They are the cheapest, most powerful
- * feedback signal for an agent - a system that breaks the world fails an invariant immediately,
- * with a human-readable message, instead of producing subtly wrong state a golden hash can't
- * explain. Run them in dev/tests via Simulation.checkInvariants(); see docs/TESTING.md.
- *
- * An invariant returns a list of violation strings (empty = ok). Add domain invariants as systems
- * land (goods conservation, no-deadlock/liveness, path validity, population vs housing capacity).
+ * A property that must hold after every tick, returning one message per violation and an empty list
+ * when the world is sound. Run through `Simulation.checkInvariants()`.
  */
 export type Invariant = (world: World) => string[];
 
@@ -24,9 +19,8 @@ export type Invariant = (world: World) => string[];
 const IMPLAUSIBLE_STOCK = 0x7fffffff;
 
 /**
- * Home-level ceiling (`home level 00..04` - {@link Building}). Content owns the real bound: a building
- * upgrades only while its type's `upgradeTarget` chain continues, so this tracks the home chain's length
- * rather than enforcing it. Content adding a sixth tier must move this with it.
+ * Tracks the length of the `home level 00..04` upgrade chain. Content owns the real bound through
+ * `upgradeTarget`, so a sixth tier in content must move this with it.
  */
 const MAX_HOME_LEVEL = 4;
 
@@ -59,12 +53,8 @@ const needsInRange: Invariant = (world) => {
 };
 
 /**
- * Every incrementally-maintained World cache re-derives to the same value as its live copy -
- * incremental caches are the classic lockstep-desync source, so the derived value is recomputed
- * from scratch and asserted equal on every checked tick. The actual recomputation lives with the
- * caches ({@link World.verifyCaches}); this invariant just runs it, so a missed invalidation is
- * caught at the tick it happens with a named cache, not later as an unexplained golden/hash
- * divergence.
+ * Every incrementally-maintained World cache re-derives to its live value, so a missed invalidation
+ * names its cache at the tick it happens instead of surfacing later as a hash divergence.
  */
 const cachesCoherent: Invariant = (world) => world.verifyCaches();
 
@@ -80,10 +70,8 @@ const buildingSane: Invariant = (world) => {
 };
 
 /**
- * A hunter's prey hold never outlives its {@link Engagement}. The hold is only reaped by the branch that
- * consumes it (the IGNORE-hunter spec), so any seam that sheds the engagement without shedding the hold
- * would strand a dead entity id in the state hash and resume a half-forgotten animal later. Structural,
- * because the removal sites are spread across combat, orders and the trade change.
+ * A hunter's prey hold never outlives its {@link Engagement}. Only the consuming branch reaps the hold,
+ * so a seam that sheds the engagement alone would strand a dead entity id in the state hash.
  */
 const preyHoldWithinEngagement: Invariant = (world) => {
   const out: string[] = [];

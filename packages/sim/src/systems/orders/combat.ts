@@ -24,11 +24,9 @@ import { clearNavState } from '../spatial/nodes.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
- * Stamp the job-based **default military stance** on an owned settler (the
- * {@link import('../readviews/stances.js').defaultStanceForJob} lookup) - the single stamp point shared
- * by the spawn handler and the profession-change handler, so the default rule lives in one place. Resets
- * the anchor to null (only `setStance(DEFEND)` sets an anchor). The caller guarantees `e` is owned; the
- * Stance component stays owned-only so no unowned/golden entity ever carries one.
+ * Stamp the job-based default military stance on an owned settler, the one stamp point shared by the spawn
+ * and profession-change handlers. The anchor resets to null, since only `setStance(DEFEND)` sets one. The
+ * caller guarantees `e` is owned, and Stance stays owned-only.
  */
 export function stampDefaultStance(
   world: World,
@@ -40,19 +38,12 @@ export function stampDefaultStance(
 }
 
 /**
- * Set one OWNED unit's **military stance** (the `setStance` command) - the player's control over how a
- * unit reacts to enemies (the original's `MILITARY_MODE`). It writes the new `mode` onto the unit's
- * {@link Stance}; for `DEFEND` it also captures the unit's **current tile as the anchor** (the centre of
- * the defend radius / the tile it returns to when clear), and for every other mode it clears the anchor.
- * The CombatSystem re-decides the unit's behavior from the new mode on its next pass - it disengages an
- * IGNORE unit, starts a FLEE unit running when a threat is near, holds a DEFEND unit at its anchor - so
- * the handler itself only updates the mode; it does NOT force-cancel a running swing or an explicit
- * {@link AttackOrder} (an attack order intentionally overrides the stance, e.g. IGNORE + "attack that one").
+ * Set one owned unit's military stance, the original's `MILITARY_MODE`. `DEFEND` captures the unit's current
+ * tile as the anchor it guards and returns to; every other mode clears the anchor.
  *
- * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale target, a non-settler,
- * a NEUTRAL (unowned) entity - only a player's own unit has a military mode - or a `mode` outside the five
- * {@link MILITARY_MODE} ids. Mapless is fine (a DEFEND anchor is simply null with no cells). The command
- * carries no issuing-player yet; the per-player authority check lands with lockstep.
+ * The CombatSystem re-decides the unit's behavior from the new mode on its next pass, so this handler does
+ * not cancel a running swing or an explicit {@link AttackOrder}, which intentionally overrides the stance.
+ * The command carries no issuing player yet; the per-player authority check lands with lockstep.
  */
 export function setStance(
   world: World,
@@ -63,9 +54,7 @@ export function setStance(
   if (!isOrderableSettler(world, e)) return;
   if (!isMilitaryMode(command.mode)) return; // an out-of-range mode is bad input - skip
 
-  // A DEFEND stance anchors on the tile the unit stands on now (the centre it guards / returns to). Every
-  // other mode carries no anchor. Mapless (no terrain) leaves the anchor null - DEFEND then behaves like a
-  // radius around the unit's own cell only where cells exist.
+  // A mapless sim leaves the anchor null, since a DEFEND radius only means something where cells exist.
   let anchorCell: NodeId | null = null;
   if (command.mode === MILITARY_MODE.DEFEND && ctx.terrain !== undefined && world.has(e, Position)) {
     const p = world.get(e, Position);
@@ -76,24 +65,14 @@ export function setStance(
 }
 
 /**
- * Order one OWNED combatant to ATTACK a specific `target` unit (the RTS "attack that one" - the combat
- * twin of {@link moveUnit}). It stamps an {@link AttackOrder} focus the CombatSystem reads: the unit
- * chases and strikes `target` **regardless of sight radius** until the target dies / stops being a valid
- * target (source basis - the soft-override philosophy of {@link moveUnit}: the economy leaves an
- * engaged unit alone, but needs still preempt). Like a move order it is authoritative - it cancels the
- * unit's current action/route/hold so it obeys at once - and it also stamps the {@link Engagement} marker
- * up front so the PlannerSystem skips economy planning for the unit from the very next tick (before the
- * CombatSystem's own pass re-stamps it), avoiding a one-tick economy leak.
+ * Order one owned combatant to attack a specific `target`, which may be an enemy unit or an enemy building.
+ * The {@link AttackOrder} focus makes the CombatSystem chase and strike regardless of sight radius until the
+ * target dies or stops being valid; the economy leaves an engaged unit alone, but needs still preempt it.
+ * Like a move order it is authoritative and cancels the unit's current action, route, and hold.
  *
- * The target may be an enemy unit OR an enemy building (the siege order - a right-clicked structure):
- * anything positioned and Health-bearing that is a settler or a building qualifies here.
- *
- * Recoverable bad input (skipped, still logged for faithful replay): a mapless sim (no cells to fight
- * over); a dead/stale issuer, a non-settler, a NEUTRAL (unowned - wildlife isn't the player's to command)
- * or NON-combatant (no {@link Health}) issuer; a dead/stale/non-combatant target; or a self-target.
- * Hostility is NOT checked here - the CombatSystem re-validates {@link mayTarget} each tick and drops an
- * order whose target is (or becomes) friendly, so a stale/illegal order self-corrects deterministically.
- * The command carries no issuing-player yet; the per-player authority check lands with lockstep.
+ * Hostility is not checked here: the CombatSystem re-validates the target each tick and drops an order whose
+ * target is or becomes friendly, so a stale order self-corrects deterministically. The command carries no
+ * issuing player yet; the per-player authority check lands with lockstep.
  */
 export function attackUnit(
   world: World,
@@ -109,9 +88,8 @@ export function attackUnit(
   if (!world.isAlive(target) || !world.has(target, Health) || !world.has(target, Position)) return;
   if (!world.has(target, Settler) && !world.has(target, Building)) return; // a unit or a besiegeable building
 
-  // The order is authoritative - cancel the unit's current action + any in-flight route/hold so it obeys
-  // now. Unlike moveUnit/setJob this still cancels a NON-interruptible atomic too - a remaining member of
-  // the class tracked in docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
+  // Unlike moveUnit and setJob this still cancels a non-interruptible atomic, a remaining member of that
+  // class.
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // an attack order executing now supersedes any earlier parked order
   clearNavState(world, e);
@@ -119,7 +97,7 @@ export function attackUnit(
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode - stop running, fight
   world.remove(e, HuntFocus); // and supersedes a hunter's self-committed prey, like a move order does
   world.add(e, AttackOrder, { target });
-  // Stamp Engagement up front so plannerSystem skips economy for this unit on the same tick the order lands;
-  // repathAt = tick means the CombatSystem re-paths the chase on its first pass.
+  // Stamped up front so plannerSystem skips economy for this unit on the tick the order lands rather than
+  // leaking one tick; `repathAt = tick` makes the CombatSystem re-path the chase on its first pass.
   world.add(e, Engagement, { repathAt: ctx.tick });
 }
