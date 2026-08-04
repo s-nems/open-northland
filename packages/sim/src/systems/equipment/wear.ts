@@ -6,9 +6,8 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
 // Equipment wear: a wearing item spends its content-rated `equip.uses` in equal steps (one walked
-// waypoint for boots, one production cycle for tools, one sip for consumables) and BREAKS at ONE -
-// the slot clears and the unit leaves the economy. Provenance of the ratings lives on the schema's
-// `uses` field and the catalog constants.
+// waypoint for boots, one production cycle for tools, one sip for consumables) and breaks at ONE, so the
+// slot clears and the unit leaves the economy.
 
 /** One use's wear step for `goodType`: `divCeil(ONE, uses)`, so an item never outlives its rating
  *  (truncation would give a 5-use bottle a 6th sip). ZERO for a non-wearing or unrated good. */
@@ -19,10 +18,8 @@ export function wearStepOf(ctx: SystemContext, goodType: number): Fixed {
 }
 
 /**
- * Advance the addressed worn slot's `degreeOfUse` by `step`; reaching ONE breaks the item - the slot
- * clears and the unit is gone (deliberate sink, like the destroy-used rule - see
- * `settlers/atomics/effects/goods/equip.ts`). No-op for an empty slot, a ZERO step, or an already-spent unit
- * (a scene can stamp one at 100%).
+ * Advance the addressed worn slot's `degreeOfUse` by `step`; reaching ONE breaks the item, so the slot
+ * clears and the unit leaves the economy. No-op for an empty slot, a ZERO step, or an already spent unit.
  */
 export function applyEquipWear(
   world: World,

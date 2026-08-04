@@ -1,27 +1,16 @@
 /**
  * A* pathfinding over the terrain half-cell adjacency graph.
  *
- * The pure search the PathfindingSystem drives. It walks {@link TerrainGraph.stepsInto} (the canonical
- * 8-direction half-cell edge set: E,W then NE,SE,SW,NW then the vertical N,S), using {@link latticeDistanceTo} as the
- * admissible heuristic and each step's own cost (its real world length: half-column ½, diagonal ≈ ¾, half-row ≈
- * 0.28) as the edge cost. The result is the lowest-cost node sequence from `start` to `goal`, inclusive of both,
- * or `null` when no walkable route exists - minimising true on-screen distance, so a route reads straight under
- * the staggered raster.
+ * Each edge costs its real world length (half-column 1/2, diagonal about 3/4, half-row about 0.28) and the
+ * heuristic is the admissible {@link latticeDistanceTo}, so a route minimises true on-screen distance and
+ * reads straight under the staggered raster. All costs are {@link Fixed}; no float enters the search.
  *
- * Determinism: every tie is broken by a fixed, history-independent rule so two runs (or two clients in
- * lockstep) pick byte-identical paths. The open set is a binary min-heap ordered by the total canonical order
- * (lowest f, then lowest h, then lowest deviation from the start→goal line, then lowest node id) - with a total
- * order the minimum is unique, so the root is the canonical pick no matter how the heap's internal layout
- * evolved; a relaxation decreases a record's key in place and sifts it up. Neighbours are expanded in the
- * graph's canonical order. The line-deviation key only ever separates routes that already tie on cost, so
- * optimality is untouched - its job is visual: the lattice offers many equal-cost weaves to the same node, and
- * without it the id tie-break picks one that drifts sideways before correcting; with it the route hugs the
- * straight screen line a player expects. It is a pure function of (node, start, goal) world coordinates - no
- * history, so lockstep-safe. No floats touch the search: all costs are {@link Fixed}. `start`/`goal` must be
- * walkable - an unwalkable endpoint yields `null` (no route), not a throw, since it is a recoverable query.
+ * Ties break on a history-independent total order, so two clients in lockstep pick byte-identical paths.
+ * The line-deviation key only separates routes that already tie on cost, so optimality is untouched: the
+ * lattice offers many equal-cost weaves to one node, and the id tie-break alone picks one that drifts
+ * sideways before correcting.
  *
- * A query's working storage is reused across queries on the same graph (`scratch.ts`), so a search allocates
- * records for its discovered nodes only - never an O(mapArea) backing store per call.
+ * Working storage is reused per graph, so a query allocates records only for the nodes it discovers.
  */
 import { fx } from '../../core/fixed.js';
 import type { BlockOverlay } from '../block-overlay.js';
@@ -29,8 +18,8 @@ import { latticeDistanceTo, type NodeId, type TerrainGraph } from '../terrain/in
 import { siftDown, siftUp } from './heap.js';
 import { MAX_QUERY_GENERATION, type NodeRecord, scratchFor } from './scratch.js';
 
-/** The canonical open-set order: (f, h, dev, node id), all ascending - a total order (the id last), so the
- *  heap's minimum is unique and the pick is independent of the heap's internal layout. */
+/** The canonical open-set order (f, h, dev, node id), all ascending. Ending on the id makes it total, so
+ *  the heap's minimum is unique and independent of the heap's internal layout. */
 function betterRecord(a: NodeRecord, b: NodeRecord): boolean {
   if (a.f !== b.f) return a.f < b.f;
   if (a.h !== b.h) return a.h < b.h;
@@ -39,42 +28,33 @@ function betterRecord(a: NodeRecord, b: NodeRecord): boolean {
 }
 
 /**
- * A search's cost report, for callers that budget pathfinding work: `explored` is incremented once per node
- * settled (popped from the open set and expanded) - the unit the search's running time is proportional to. A
- * pure out-parameter: it never influences the search, and the count is itself a deterministic function of the
- * query (lockstep-safe to budget on).
+ * `explored` counts settled nodes, the unit a search's running time is proportional to. A pure
+ * out-parameter, and a deterministic function of the query, so a budget may be keyed on it.
  */
 export interface SearchStats {
   explored: number;
 }
 
 /**
- * The settle cap of the goal-side pocket probe - the bounded reverse search {@link findPath} runs before the
- * real one whenever a walk-block overlay is in play. The overlay can seal the goal inside a pocket (a ring of
- * standing unit bodies around a contested melee slot is the hot case); the forward search then proves "no
- * route" only by flooding the walker's entire reachable region (tens of thousands of settles on a battle map),
- * and a crowd re-planning against a sealed goal saturated the whole per-tick pathfinding budget every tick. A
- * probe from the goal exhausts such a pocket within its size - cheap and exact (edges are symmetric, so "the
- * goal's region does not contain the start" is "no route") - while an open goal beelines to the start (≈ the
- * path length) or hits this cap and hands over to the full search. Sized comfortably above any melee ring's
- * free band, far under a map flood; a pocket larger than the cap falls back to the full-flood cost.
+ * The settle cap of the goal-side pocket probe. A reverse search exhausts a pocket the overlay sealed the
+ * goal into at the pocket's own size, and edges are symmetric, so "the goal's region excludes the start"
+ * is exactly "no route". Approximation: sized above a melee ring's free band and far under a map flood, so
+ * an open goal instead beelines to the start or hands over to the full search at this cap.
  */
 export const POCKET_PROBE_MAX_EXPLORED = 128;
 
 /**
- * The forward search's settle guard under a walk-block overlay: past this many settles with no verdict,
- * {@link findPath} suspects a sealed goal whose pocket outgrew {@link POCKET_PROBE_MAX_EXPLORED} and runs
- * the goal-side exhaust before letting the forward search flood the walker's whole region. Profiled
- * trigger (magiczny_las, 6 AI seats): a goal sealed inside a 494-node overlay pocket cost ~123k settles
- * (~240 ms) to refute per request - the exhaust refutes it at pocket size. Sized above routine long
- * routes so the guard fires only on floods; a pure performance knob (the answer never changes).
+ * The forward search's settle guard under a walk-block overlay. Past this many settles with no verdict,
+ * {@link findPath} suspects a pocket that outgrew {@link POCKET_PROBE_MAX_EXPLORED} and runs the goal-side
+ * exhaust rather than flooding the walker's whole region. Observation: a goal sealed inside a 494-node
+ * pocket cost about 123k settles to refute forward, against pocket size in reverse. A pure performance
+ * knob sized above routine long routes; the answer never changes.
  */
 export const FLOOD_GUARD_MAX_EXPLORED = 4096;
 
 /**
- * The goal-side exhaust's own settle cap - a sealed pocket larger than this falls back to the full
- * forward flood (today's cost), so the exhaust can never lose to the flood by more than this bound
- * when both sides are huge. Far above any profiled pocket, far under a map flood.
+ * The goal-side exhaust's own settle cap. A pocket larger than this falls back to the full forward flood,
+ * bounding how much the exhaust can lose by when both sides are huge.
  */
 export const GOAL_EXHAUST_MAX_EXPLORED = 32768;
 
@@ -83,15 +63,11 @@ export const GOAL_EXHAUST_MAX_EXPLORED = 32768;
  * both endpoints. Returns `null` when no route exists or either endpoint is unwalkable.
  * `start === goal` yields the single-node path `[start]` (when walkable).
  *
- * `blocked` is the dynamic walk-block overlay (standing building bodies, resource footprints and standing unit
- * bodies - see `dynamicBlockOverlay`/`unitWalkBlocks`), applied on top of the graph's static terrain
- * walkability: a blocked node is never entered (goal included), but a blocked start is deliberately exempt - an
- * entity standing where a foundation just appeared must be able to step off the footprint (its first move
- * leaves the blocked node; it can never move back in).
+ * `blocked` is the dynamic walk-block overlay applied on top of static terrain walkability: a blocked node
+ * is never entered, the goal included, but a blocked start is exempt so an entity standing where a
+ * foundation just appeared can step off the footprint. It can never step back in.
  *
- * `stats`, when given, accumulates the search's {@link SearchStats.explored} node count (the early-out answers
- * - bad endpoint, blocked goal, cross-component - settle nothing and cost 0; the pocket probe's settles are
- * counted - they are real search work the budget must see).
+ * `stats` accumulates settled nodes, including the pocket probe's; the early-out answers settle nothing.
  */
 export function findPath(
   graph: TerrainGraph,
@@ -101,24 +77,17 @@ export function findPath(
   stats?: SearchStats,
 ): NodeId[] | null {
   if (!graph.isWalkable(start) || !graph.isWalkable(goal)) return null;
-  // Already-there wins over the overlay: consistent with the blocked-START exemption, an entity
-  // standing on its own (even occupied) goal node trivially succeeds rather than reading "unreachable".
+  // Already-there wins over the overlay, consistent with the blocked-start exemption.
   if (start === goal) return [start];
-  if (blocked?.has(goal)) return null; // an occupied goal is unreachable
-  // Static-connectivity elision: `blocked` only ever removes edges, so endpoints in different static components
-  // are provably unreachable - answer "no route" without flooding the whole reachable component (an island
-  // right-click used to cost a full-map Dijkstra). Same component proves nothing (the overlay may still wall the
-  // goal off), so the search below runs unchanged.
+  if (blocked?.has(goal)) return null;
+  // `blocked` only removes edges, so endpoints in different static components are provably unreachable.
+  // Sharing a component proves nothing, since the overlay may still wall the goal off.
   if (graph.componentOf(start) !== graph.componentOf(goal)) return null;
-  // Sealed-goal elision ({@link POCKET_PROBE_MAX_EXPLORED}): with an overlay in play, a bounded probe from the
-  // goal either exhausts the goal's pocket without meeting the start (exact "no route", at pocket cost instead
-  // of a map flood), confirms reachability early, or gives up at the cap and lets the full search decide. A
-  // blocked start is exempt in reverse exactly as the forward search exempts it (the wrapper below re-admits it
-  // as the probe's target): forward, the walker may leave its blocked node but never re-enter it - in reverse
-  // that is precisely "the node may be entered as the final step and nothing else", so the two searches see the
-  // same edge set and the probe's "unreachable" stays exact.
+  // The reverse probe re-admits a blocked start as its target: forward, the walker may leave that node but
+  // never re-enter it, which in reverse is exactly "enterable as the final step only", so both directions
+  // see the same edge set and the probe's "unreachable" stays exact.
   if (blocked === undefined || blocked.size === 0) {
-    // No overlay: same static component ⇒ reachable, so the forward search can never flood on a refusal.
+    // Without an overlay a shared static component means reachable, so the search can never flood.
     const result = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
     return typeof result === 'string' ? null : result;
   }
@@ -127,16 +96,13 @@ export function findPath(
     : blocked;
   const probe = runSearch(graph, goal, start, probeBlocked, stats, POCKET_PROBE_MAX_EXPLORED);
   if (probe === 'unreachable') return null;
-  // Forward under the flood guard: everything but a flooding search resolves here, byte-identically to
-  // the unguarded search (the guard only ever aborts a search that has no verdict yet).
+  // The guard only aborts a search with no verdict yet, so anything resolving here is byte-identical to
+  // the unguarded search.
   const first = runSearch(graph, start, goal, blocked, stats, FLOOD_GUARD_MAX_EXPLORED);
   if (first !== 'aborted') return typeof first === 'string' ? null : first;
-  // Flooding with no verdict - a sealed goal whose pocket outgrew the probe cap floods the walker's
-  // whole region to prove "no route" (profiled ~123k settles against a 494-node pocket). Exhaust the
-  // goal's side first: it either exhausts its pocket (exact "no route", at pocket cost - the same
-  // symmetric-edge argument as the probe), reaches the start (reachable - rerun the forward search to
-  // completion; the reverse path's costs are asymmetric, so it cannot be reused), or outgrows its own
-  // cap and hands back to the full flood.
+  // Exhausting the goal's side refutes a sealed goal at pocket cost by the probe's symmetric-edge
+  // argument. Reaching the start only proves reachability: reverse costs are asymmetric, so the forward
+  // search must still run to completion.
   const exhaust = runSearch(graph, goal, start, probeBlocked, stats, GOAL_EXHAUST_MAX_EXPLORED);
   if (exhaust === 'unreachable') return null;
   const full = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
@@ -144,10 +110,8 @@ export function findPath(
 }
 
 /**
- * The A* core over the shared per-graph scratch: settle nodes from `start` toward `goal` until the
- * goal is reached (the path), the open set exhausts (`'unreachable'` - an exact answer), or
- * `maxExplored` settles have been spent (`'aborted'` - no answer; only the pocket probe passes a
- * finite cap). Endpoint validity is the caller's contract ({@link findPath}'s early-outs).
+ * The A* core over the shared per-graph scratch. `'unreachable'` is an exact answer, `'aborted'` is no
+ * answer at all. Endpoint validity is the caller's contract.
  */
 function runSearch(
   graph: TerrainGraph,
@@ -168,12 +132,10 @@ function runSearch(
   const recordAt = (node: NodeId): NodeRecord | undefined =>
     stamps[node] === query ? records[node] : undefined;
 
-  // The start→goal line for the line-deviation tie-break: a node's deviation is the (unnormalised) cross
-  // product |Δnode × Δline| - zero on the line, growing with sideways drift. Computed in plain exact integers
-  // over raw half-cell coordinates (each axis's true world scale - ×½ column, ×19/68 column - is a constant
-  // factor that multiplies both cross terms alike, so the ordering - all a tie-break needs - is unchanged,
-  // while the magnitudes stay ≤ ~2·span², exact far past any map size). Unnormalised is fine: it only ever
-  // compares against candidates of the same search, so the |Δline| factor cancels too.
+  // Deviation is the unnormalised cross product of the node offset with the start-to-goal line, zero on
+  // the line and growing with sideways drift. Exact integers over raw half-cell coordinates: each axis's
+  // world scale multiplies both cross terms alike and the shared |line| factor cancels within one search,
+  // so only the ordering matters and it is unchanged. Magnitudes stay near 2*span^2, exact past any map.
   const startX = graph.xOf(start);
   const startY = graph.yOf(start);
   const goalX = graph.xOf(goal);
@@ -190,7 +152,7 @@ function runSearch(
     g: fx.fromInt(0),
     h: startH,
     f: startH,
-    dev: 0, // the start sits on its own line by definition
+    dev: 0, // the start sits on its own line
     cameFrom: null,
     open: true,
     heapIdx: 0,
@@ -201,17 +163,15 @@ function runSearch(
 
   let settled = 0;
   for (;;) {
-    // Pop the canonical minimum from the open set: the heap root - unique under the total order.
     const current = heap[0];
-    if (current === undefined) return 'unreachable'; // open set exhausted
-    if (settled >= maxExplored) return 'aborted'; // probe cap hit - the full search decides
+    if (current === undefined) return 'unreachable';
+    if (settled >= maxExplored) return 'aborted';
 
     settled += 1;
-    if (stats !== undefined) stats.explored += 1; // one settle = one unit of search work
+    if (stats !== undefined) stats.explored += 1;
     if (current.node === goal) return reconstruct(recordAt, current);
 
-    // Close it - admissible heuristic means it is now settled. Standard root removal: move the
-    // last element to the root and sift it down.
+    // The heuristic is admissible, so the popped minimum is settled and can be closed.
     current.open = false;
     const last = heap.pop();
     if (last !== undefined && heap.length > 0) {
@@ -219,8 +179,7 @@ function runSearch(
       siftDown(heap, 0, betterRecord);
     }
 
-    // Lattice steps carry their own cost and already exclude blocked/unwalkable nodes, so the
-    // search body just relaxes each.
+    // Lattice steps carry their own cost and already exclude blocked and unwalkable nodes.
     graph.stepsInto(current.node, blocked, steps);
     for (let i = 0; i < steps.length; i++) {
       const { node: next, cost } = steps.at(i);
@@ -243,9 +202,8 @@ function runSearch(
         heap.push(rec);
         siftUp(heap, rec.heapIdx, betterRecord);
       } else if (existing.open && tentativeG < existing.g) {
-        // A cheaper route to an already-discovered, still-open node - relax it: its key only decreases, so
-        // restoring the heap invariant is a sift toward the root. (Closed nodes are never relaxed: with an
-        // admissible, consistent heuristic their g is already optimal.)
+        // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
+        // Closed nodes are never relaxed: under a consistent heuristic their g is already optimal.
         existing.g = tentativeG;
         existing.f = fx.add(tentativeG, existing.h);
         existing.cameFrom = current.node;
@@ -262,8 +220,7 @@ function reconstruct(recordAt: (node: NodeId) => NodeRecord | undefined, goalRec
   while (node !== null) {
     path.push(node);
     const rec = recordAt(node);
-    // The chain is built only from cells we discovered, so a record must exist; a missing one would
-    // be a programmer error in the search above, not a recoverable boundary failure.
+    // The chain only ever names discovered nodes, so a miss is a search bug, not a boundary case.
     if (rec === undefined) throw new Error(`path reconstruction hit an undiscovered node ${node}`);
     node = rec.cameFrom;
   }

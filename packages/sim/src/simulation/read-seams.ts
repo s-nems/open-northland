@@ -1,9 +1,6 @@
 /**
- * The resolution logic behind the {@link import('../simulation.js').Simulation}'s read seams - the
- * sanctioned way app/render observe state instead of reaching into live component stores. Each function
- * resolves the façade's optional world resources (a mapless sim has no terrain graph and no fog) and
- * delegates to the owning system; none mutate, so none affect determinism. The public contract of each
- * seam is documented on its `Simulation` method.
+ * Resolution logic behind `Simulation`'s read seams. Each function resolves the optional world resources
+ * a mapless sim lacks and delegates to the owning system; the public contract lives on the seam method.
  */
 import type { ContentSet } from '@open-northland/data';
 import { FOG_MODE, type FogMode, fogMode } from '../components/index.js';
@@ -13,23 +10,19 @@ import { type PlacementProbe, placementProbe } from '../systems/footprint/index.
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
 import { effectiveFogState, type FogState } from '../systems/vision/index.js';
 
-/**
- * The fog-of-war read view for one viewer player (see {@link import('../simulation.js').Simulation.fogView})
- * - plain data + one pure accessor, so render/minimap layers consume fog without touching the live
- * {@link FogState}.
- */
+/** One viewer player's fog: plain data and one pure accessor over the live {@link FogState}. */
 export interface FogView {
-  /** The active {@link import('../components/rules.js').FOG_MODE} (never OFF - OFF yields null). */
+  /** Never `OFF`, which yields a null view instead. */
   readonly mode: FogMode;
   readonly cellsWide: number;
   readonly cellsHigh: number;
-  /** Bumps only when the masks rebuilt - the render layers' re-composite key. */
+  /** Bumps only when the masks rebuilt, so render layers use it as a re-composite key. */
   readonly generation: number;
-  /** The viewer's EFFECTIVE `FOG_STATE` at a cell (RECON's known-terrain mapping applied). */
+  /** The viewer's effective `FOG_STATE` at a cell, with RECON's known-terrain mapping applied. */
   readonly stateAt: (cellX: number, cellY: number) => number;
 }
 
-/** Resolve {@link import('../simulation.js').Simulation.placementProbe} - null for a mapless sim. */
+/** Null for a mapless sim. */
 export function placementProbeFor(
   world: World,
   content: ContentSet,
@@ -40,7 +33,7 @@ export function placementProbeFor(
   return placementProbe(world, content, terrain, buildingType);
 }
 
-/** Resolve {@link import('../simulation.js').Simulation.signpostProbe} - null for a mapless sim. */
+/** Null for a mapless sim. */
 export function signpostProbeFor(
   world: World,
   content: ContentSet,
@@ -51,7 +44,7 @@ export function signpostProbeFor(
   return signpostProbe(world, content, terrain, player);
 }
 
-/** Resolve {@link import('../simulation.js').Simulation.fogView} - null when fog is OFF or the sim is mapless. */
+/** Null when fog is OFF or the sim is mapless. */
 export function fogViewFor(world: World, fog: FogState | undefined, player: number): FogView | null {
   if (fog === undefined) return null;
   const mode = fogMode(world);

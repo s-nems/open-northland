@@ -60,8 +60,7 @@ export function approachPartner(
 
 /**
  * Halt both halves and start their paired atomics on one shared `duration` clock so they finish together,
- * each atomic targeting the other half so the render faces them. The wedding kiss and every gossip
- * talk/listen round begin this way.
+ * each atomic targeting the other half so the render faces them.
  */
 export function startPairedAtomics(
   world: World,

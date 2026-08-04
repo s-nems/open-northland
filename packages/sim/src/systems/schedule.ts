@@ -41,45 +41,41 @@ interface ScheduledSystem {
 /** Canonical per-tick execution order. Engine wiring, not part of the public systems namespace. */
 export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'command', system: commandSystem },
-  // Straight after the orders that raise and lower alarms, and before the planner: a shelter that stopped
-  // qualifying this tick has released its civilians in time for them to claim another one on this same
-  // pass (see systems/defence/).
+  // After the orders that raise and lower alarms and before the planner, so a shelter that stopped
+  // qualifying releases its civilians in time to claim another one on this same pass.
   { name: 'defence', system: defenceSystem },
   { name: 'needs', system: needsSystem },
-  // Before herding, so a fresh scatter outranks the cohesion recall (a frightened follower runs first,
-  // the herd pulls it home only once the scare lapses).
+  // Before herding, so a fresh scatter outranks the cohesion recall.
   { name: 'animalFright', system: animalFrightSystem },
   { name: 'herding', system: herdingSystem },
-  // After herding, so cohesion outranks grazing: a follower the herd drive just recalled is already
-  // travelling when the wander pass reaches it.
+  // After herding, so cohesion outranks grazing.
   { name: 'animalWander', system: animalWanderSystem },
   { name: 'playerOrder', system: playerOrderSystem },
-  // After playerOrderSystem retires the walk and before plannerSystem could re-task the scout: an arrived
-  // erect order starts its hammer swing this same tick.
+  // After playerOrderSystem retires the walk and before the planner could re-task the scout, so an
+  // arrived erect order starts its hammer swing this same tick.
   { name: 'signpostOrder', system: signpostOrderSystem },
   // The assistant dispatches before family and the planner, so a fresh child order is driven and a
   // fresh drill routed the same tick it was booked.
   { name: 'assistant', system: assistantSystem },
   // Family runs before the planner so its walks route the same tick and its duty/wedding fences are fresh.
   { name: 'family', system: familySystem },
-  // Gossip drives the standing chat pairs with the same placement rationale as family: its walks route
-  // this tick and its Chat fence is fresh for the planner.
+  // Before the planner for the same reason as family: its walks route this tick and its Chat fence is
+  // fresh for the planner.
   { name: 'gossip', system: gossipSystem },
   { name: 'planner', system: plannerSystem },
   { name: 'pathfinding', system: pathfindingSystem },
   { name: 'movement', system: movementSystem },
   { name: 'separation', system: separationSystem },
-  // After the walk settles (movement + separation), so a scout's contact claim uses this tick's final
-  // nodes; assignment then re-anchors the freshly claimed stock, regen tops livestock up BEFORE the
-  // visit summon reads its HP, and the summon/escort runs before production admits arrived visitors
-  // into starting batches later this tick.
+  // After the walk settles, so a scout's contact claim uses this tick's final nodes; regen then tops
+  // livestock up before the visit summon reads its HP, and the summon runs before production admits
+  // arrived visitors into starting batches.
   { name: 'livestockCapture', system: livestockCaptureSystem },
   { name: 'livestockAssign', system: livestockAssignmentSystem },
   { name: 'livestockRegen', system: livestockRegenSystem },
   { name: 'livestockVisit', system: livestockVisitSystem },
   { name: 'atomic', system: atomicSystem },
-  // Directly after the executor: an order parked behind a non-interruptible atomic applies the tick that
-  // atomic completes, before any drive could see the freed settler (plannerSystem already ran this tick).
+  // Directly after the executor, so an order parked behind a non-interruptible atomic applies the tick
+  // that atomic completes, before any drive could see the freed settler.
   { name: 'deferredOrder', system: deferredOrderSystem },
   { name: 'production', system: productionSystem },
   { name: 'cropGrowth', system: cropGrowthSystem },
@@ -92,7 +88,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'projectile', system: projectileSystem },
   { name: 'growth', system: growthSystem },
   { name: 'cleanup', system: cleanupSystem },
-  // The strategic AI player runs last, after cleanup, so its decisions read the settled world of this
-  // tick (no reaped-this-tick targets); its enqueued commands apply on next tick's command pass.
+  // Last, after cleanup, so its decisions read the settled world with no reaped-this-tick targets; its
+  // enqueued commands apply on next tick's command pass.
   { name: 'aiPlayer', system: aiPlayerSystem },
 ];

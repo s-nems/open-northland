@@ -2,8 +2,8 @@ import { FOG_MODE } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 
-/** The tri-state visibility values one mask byte holds. Order matters: a HIGHER state shows more, so
- *  "at least explored" is `>= EXPLORED` - the render + minimap key off these exact bytes. */
+/** The tri-state visibility values one mask byte holds. Order matters: a higher state shows more, so
+ *  "at least explored" is `>= EXPLORED`, and render and minimap key off these exact bytes. */
 export const FOG_STATE = {
   UNEXPLORED: 0,
   EXPLORED: 1,
@@ -11,45 +11,40 @@ export const FOG_STATE = {
 } as const;
 
 /**
- * The per-player fog masks - a `Simulation`-owned world resource (like the terrain graph), NOT a
- * component. One `Uint8Array` of {@link FOG_STATE} bytes per player that ever owned a positioned
- * entity, allocated lazily (`W×H` cells each); `generation` bumps on every rebuild so render layers
- * re-composite only when the fog actually changed.
+ * The per-player fog masks, a `Simulation`-owned world resource rather than a component: one lazily
+ * allocated `W×H` array of {@link FOG_STATE} bytes per player that ever owned a positioned entity.
+ * `generation` bumps on every rebuild so render layers re-composite only when the fog changed.
  */
 export class FogState {
   /** Cell-grid dimensions (the half-cell lattice quartered). */
   readonly cellsWide: number;
   readonly cellsHigh: number;
-  /** player → per-cell {@link FOG_STATE} bytes. Iterate via {@link playersWithMasks} (ascending) for
-   *  any decision/hash - raw Map order is insertion order (history-dependent). */
+  /** player → per-cell {@link FOG_STATE} bytes. Iterate through {@link playersWithMasks} for any decision
+   *  or hash; raw Map order is insertion order, so it is history-dependent. */
   private readonly masks = new Map<number, Uint8Array>();
   /**
-   * player → the cell bounding box that may still hold VISIBLE bytes - the union of every stamp
-   * rect since the last downgrade (REVEAL never downgrades, so there it keeps growing). The
-   * downgrade pass scans only this box instead of the whole mask, so rebuild cost follows the
-   * players' actual vision coverage, not the map area (golden rule 6). Derived bookkeeping over
-   * deterministic stamps - never hashed; VISIBLE cannot exist outside the box by construction
-   * (stamps are the only writer of VISIBLE and every stamp merges its rect in).
+   * player → the cell box that may still hold VISIBLE bytes, the union of every stamp rect since the last
+   * downgrade. The downgrade pass scans only this box, so rebuild cost follows vision coverage rather than
+   * map area. Derived bookkeeping, never hashed: stamps are the only writer of VISIBLE and each merges its
+   * rect in, so VISIBLE cannot exist outside the box.
    */
   private readonly visibleBounds = new Map<
     number,
     { minC: number; maxC: number; minR: number; maxR: number }
   >();
-  /** Bumped on every rebuild/reset - the render's re-composite key (a read-path aid, never hashed). */
+  /** Bumped on every rebuild or reset; a read-path aid for re-compositing, never hashed. */
   generation = 0;
-  /** The mode the LAST completed rebuild ran under - combat reads it (visionSystem runs earlier in the
-   *  same tick, so it is current), and a change forces an off-cadence rebuild. Starts OFF. */
+  /** The mode the last completed rebuild ran under; a change forces an off-cadence rebuild. */
   activeMode: number = FOG_MODE.OFF;
-  /** Tick of the last rebuild, -1 before the first - the cadence anchor. */
+  /** Tick of the last rebuild, -1 before the first. */
   lastRebuildTick = -1;
 
   constructor(terrain: TerrainGraph, world: World) {
     // The terrain graph is the 2W×2H half-cell lattice; cells quarter it (ceil for odd safety).
     this.cellsWide = Math.max(1, Math.ceil(terrain.width / 2));
     this.cellsHigh = Math.max(1, Math.ceil(terrain.height / 2));
-    // The may-hold-VISIBLE boxes are an incrementally-maintained cache, so this registers its verifier
-    // on construction (the sim contract: the fuzz harness's `cachesCoherent` invariant tripwires a
-    // silent divergence) - self-registration, like every other derived cache in the sim.
+    // The may-hold-VISIBLE boxes are incrementally maintained, so the verifier registers here for the
+    // fuzz harness's `cachesCoherent` invariant.
     world.registerCacheVerifier('fogVisibleBounds', () => this.verifyVisibleBounds());
   }
 
@@ -94,9 +89,8 @@ export class FogState {
     if (maxR > b.maxR) b.maxR = maxR;
   }
 
-  /** Downgrade every VISIBLE byte of `player` to EXPLORED - scans only the may-hold-VISIBLE box,
-   *  then clears it (the following stamp pass re-establishes it). Byte-identical to a full-mask
-   *  scan (see visibleBounds for why nothing VISIBLE can live outside the box). */
+  /** Downgrade every VISIBLE byte of `player` to EXPLORED, scanning only the may-hold-VISIBLE box and
+   *  then clearing it. Byte-identical to a full-mask scan. */
   downgradeVisible(player: number): void {
     const b = this.visibleBounds.get(player);
     if (b === undefined) return;
@@ -113,11 +107,9 @@ export class FogState {
   }
 
   /**
-   * Verify the may-hold-VISIBLE boxes against the masks - a
-   * {@link import('../../ecs/world.js').World} cache-verifier body (`registerCacheVerifier`, the sim
-   * contract for incrementally-maintained caches): a VISIBLE byte OUTSIDE its player's box would
-   * silently never downgrade, so the fuzz harness's `cachesCoherent` invariant re-derives the
-   * invariant here on checked ticks. O(players × cells), verify-only - never on the tick path.
+   * Verify the may-hold-VISIBLE boxes against the masks: a VISIBLE byte outside its player's box would
+   * silently never downgrade. A `registerCacheVerifier` body, so it runs on checked ticks only, never on
+   * the tick path.
    */
   verifyVisibleBounds(): string[] {
     const violations: string[] = [];
@@ -138,10 +130,9 @@ export class FogState {
   }
 
   /**
-   * Mix this state's canonical bytes into a hash - per player ASCENDING, the player id then its raw mask
-   * bytes. The masks are simulated state living outside the components, so `Simulation.hashState` calls
-   * this after the components; a world that never enabled fog holds no masks and contributes nothing, so
-   * every pre-fog hash is byte-identical. Read-only: never allocates a mask.
+   * Mix this state's canonical bytes into a hash, per player ascending: the player id then its raw mask
+   * bytes. A world that never enabled fog holds no masks and contributes nothing, so every pre-fog hash
+   * stays byte-identical.
    */
   hashInto(mix: (n: number) => void): void {
     for (const player of this.playersWithMasks()) {
@@ -152,8 +143,8 @@ export class FogState {
     }
   }
 
-  /** The RAW {@link FOG_STATE} of a cell for `player` (out-of-grid / maskless = UNEXPLORED). RECON's
-   *  "terrain known from the start" is a VIEW mapping (see effectiveFogState), not raw state. */
+  /** The raw {@link FOG_STATE} of a cell for `player`; out of grid or maskless reads UNEXPLORED. RECON's
+   *  terrain-known-from-the-start is a view mapping in `effectiveFogState`, not raw state. */
   stateAt(player: number, cellX: number, cellY: number): number {
     if (cellX < 0 || cellY < 0 || cellX >= this.cellsWide || cellY >= this.cellsHigh) {
       return FOG_STATE.UNEXPLORED;

@@ -1,35 +1,29 @@
-/**
- * Terrain map inputs and graph construction: the {@link TerrainMap} half-cell grid, the
- * cell-resolution {@link CellTerrainMap} and its {@link halfCellMapFromCells} upsampler, and
- * {@link buildTerrainGraph}. See {@link TerrainGraph} for the lattice geometry and movement model.
- */
 import type { ContentSet, LandscapeType } from '@open-northland/data';
 
 import { TerrainGraph } from './graph.js';
 import { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js';
 
 /**
- * A terrain map at HALF-CELL resolution: dimensions + a row-major landscape-typeId grid - the
- * graph input. `resolution` is a compile-time discriminant so a cell-resolution grid (a scene's
- * authored `W×H` strip, a decoded map's baked per-cell lane) can never reach the graph unscaled -
- * route those through {@link halfCellMapFromCells}.
+ * The graph input: a terrain map at half-cell resolution. `resolution` is a compile-time discriminant
+ * so a cell-resolution grid can never reach the graph unscaled, only through
+ * {@link halfCellMapFromCells}.
  */
 export interface TerrainMap {
   readonly resolution: 'half-cell';
-  /** Half-cell grid width - 2× the map's cell columns. */
+  /** Half-cell grid width, twice the map's cell columns. */
   readonly width: number;
-  /** Half-cell grid height - 2× the map's cell rows. */
+  /** Half-cell grid height, twice the map's cell rows. */
   readonly height: number;
   /** Row-major landscape typeId per half-cell; length must equal width*height. */
   readonly typeIds: ReadonlyArray<number>;
 }
 
-/** A terrain grid authored at VISUAL-CELL resolution (`W×H`) - scenes and the decoded map's baked
- *  per-cell lane. Upsample via {@link halfCellMapFromCells} before building a graph. */
+/** A terrain grid authored at visual-cell resolution. Upsample through {@link halfCellMapFromCells}
+ *  before building a graph. */
 export interface CellTerrainMap {
-  /** Never present - the inverse discriminant. A half-cell {@link TerrainMap} is otherwise a
-   *  structural SUPERSET of this shape, so without it `halfCellMapFromCells(someHalfCellMap)`
-   *  would compile and silently double-upsample to 4W×4H. */
+  /** The inverse discriminant. A half-cell {@link TerrainMap} is otherwise a structural superset of
+   *  this shape, so without it `halfCellMapFromCells(someHalfCellMap)` would compile and silently
+   *  double-upsample. */
   readonly resolution?: never;
   readonly width: number;
   readonly height: number;
@@ -38,13 +32,12 @@ export interface CellTerrainMap {
 }
 
 /**
- * Upsample a cell-resolution grid to the half-cell lattice: cell `(x, y)` stamps its typeId onto
- * the 2×2 half-cell block `(2x..2x+1, 2y..2y+1)` - the SAME block convention the original's
- * half-cell lanes use (source basis: mapdat lane layout - cell (x,y) owns exactly that block).
+ * Upsample a cell-resolution grid to the half-cell lattice: cell `(x, y)` stamps its typeId onto the
+ * 2x2 half-cell block `(2x..2x+1, 2y..2y+1)`. Source basis: the mapdat lane layout gives cell `(x, y)`
+ * exactly that block.
  */
 export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
-  // The runtime twin of the `resolution?: never` discriminant, for callers that reach here past
-  // the type system - double-upsampling a half-cell grid would silently misplace every node.
+  // The runtime twin of the `resolution?: never` discriminant, for callers arriving past the types.
   if ((map as { resolution?: unknown }).resolution !== undefined) {
     throw new Error('halfCellMapFromCells expects a CELL-resolution grid, got a half-cell TerrainMap');
   }
@@ -80,8 +73,8 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
   for (const t of content.landscape) props.set(t.typeId, resolveLandscapeProps(t));
 
   const typeIds = Int32Array.from(map.typeIds);
-  // Surface a content gap loudly rather than silently treating cells as blocking - a typeId in the
-  // map with no matching LandscapeType is almost always a bad map/IR pairing the caller wants to know.
+  // A typeId with no matching LandscapeType means a bad map and IR pairing; fail rather than silently
+  // treating those nodes as blocking.
   for (const id of typeIds) {
     if (!props.has(id)) throw new Error(`terrain map references landscape typeId ${id} absent from content`);
   }

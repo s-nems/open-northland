@@ -4,9 +4,9 @@ import type { NodeId } from './node-id.js';
 import { StepBuffer } from './step-buffer.js';
 
 /**
- * The terrain half-cell adjacency graph, the sim's navigation model (docs/ECS.md), distinct from the
- * triangle render tessellation: the node lattice and its 8-direction edge set, plus each node's static
- * connectivity label. Construct via {@link buildTerrainGraph}.
+ * The sim's navigation model: the half-cell node lattice with its 8-direction edge set and each node's
+ * static connectivity label. Distinct from the render's triangle tessellation. Construct through
+ * {@link buildTerrainGraph}.
  */
 export class TerrainGraph extends TerrainEdges {
   /** Static-connectivity label per node (-1 = unwalkable). See {@link componentOf}. */
@@ -24,20 +24,18 @@ export class TerrainGraph extends TerrainEdges {
 
   /**
    * The static-connectivity label of a node: nodes reachable over static terrain share a label,
-   * unwalkable nodes are -1. The dynamic walk-block overlay only ever removes edges, so two nodes with
-   * different labels are provably unreachable under any overlay - the pathfinder uses this to answer
-   * "no route" without flooding the component. Labels are assigned by ascending seed id at build time,
-   * so they are a pure function of the terrain (lockstep-safe).
+   * unwalkable nodes are -1. A walk-block overlay only removes edges, so two differently labelled nodes
+   * are provably unreachable under any overlay. Labels are assigned by ascending seed id at build time,
+   * making them a pure function of the terrain.
    */
   componentOf(node: NodeId): number {
     return this.checkedSlot(this.components, node);
   }
 
-  /** Flood-fill the static components over the pathfinder's own edge set ({@link stepsInto} with no
-   *  overlay), so the diagonal flank-seam rule has exactly one owner. Edges are symmetric within
-   *  the walkable set (destination-walkability + the shared flank pair), so a BFS labelling is
-   *  well-defined. One-time O(nodes) build cost, run from the constructor, so an override of
-   *  {@link stepsInto} would see a subclass's own fields still uninitialised. */
+  /** Flood-fill the static components over the pathfinder's own edge set, so the diagonal flank-seam
+   *  rule has one owner. Edges are symmetric within the walkable set, so the BFS labelling is
+   *  well-defined. Runs from the constructor, so an override of {@link stepsInto} would see a
+   *  subclass's own fields still uninitialised. */
   private computeComponents(): Int32Array {
     const components = new Int32Array(this.nodeCount).fill(-1);
     const queue: NodeId[] = [];

@@ -7,32 +7,29 @@ export interface NodeRecord {
   g: Fixed;
   f: Fixed;
   h: Fixed;
-  /** The node's deviation from the start→goal line (the visual-straightness tie-break) - a plain integer cross
-   *  product in half-cell units (only its ordering matters: each axis's true world scale is a constant factor
-   *  multiplying both cross terms alike), a pure function of the node + endpoints computed once at discovery,
-   *  never path-dependent. Exact integers well under 2^53 even on huge maps - no Fixed mul overflow. */
+  /** The node's integer deviation from the start-to-goal line, the visual-straightness tie-break. A pure
+   *  function of the node and endpoints, computed once at discovery and never path-dependent. */
   readonly dev: number;
   /** Predecessor node on the best known path, or null for the start node. */
   cameFrom: NodeId | null;
-  /** False once popped from the open set (closed) - a settled node is never re-expanded. */
+  /** False once popped from the open set; a settled node is never re-expanded. */
   open: boolean;
-  /** Position in the open heap while `open` - maintained by the sift ops so a relaxation can
+  /** Position in the open heap while `open`, maintained by the sift ops so a relaxation can
    *  decrease-key in place. Meaningless once closed. */
   heapIdx: number;
 }
 
 /**
- * Reusable per-graph search storage. `records[node]`/`stamps[node]` are valid only when the stamp
- * equals the current query's generation - everything else is stale garbage from an earlier query
- * and is treated as undiscovered, so reuse can never leak state between queries.
+ * Reusable per-graph search storage. A node's record is valid only while its stamp equals the current
+ * query generation; anything else is stale and counts as undiscovered, so reuse leaks no state.
  */
 export interface SearchScratch {
   readonly records: Array<NodeRecord | undefined>;
   readonly stamps: Int32Array;
   readonly heap: NodeRecord[];
-  /** The settled node's outgoing edges, re-filled per expansion (see {@link TerrainGraph.stepsInto}). */
+  /** The settled node's outgoing edges, re-filled per expansion. */
   readonly steps: StepBuffer;
-  /** Generation counter - incremented per query; wraps by refilling `stamps` (see below). */
+  /** Generation counter, incremented per query. */
   query: number;
 }
 

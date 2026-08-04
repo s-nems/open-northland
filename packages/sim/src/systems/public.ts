@@ -2,15 +2,15 @@
 // stay package-private; scenes consume authored-setup constructors, read views, and shared constants.
 
 export { withinNodeRadius } from '../nav/node-circle.js';
-// The AI opening plan's content bindings - exported so the real-content suite can pin every id in
-// the plan against the served IR (an unknown id silently skips its entry in the sim).
+// The AI opening plan's content bindings, exported so the real-content suite can pin every id against
+// the served IR: an unknown id silently skips its entry in the sim.
 export {
   BASE_REPLACEMENT_ENTRY,
   type BuildOrderEntry,
   DEFAULT_BUILD_ORDER,
   TOWER_CONTENT_IDS,
 } from './ai-player/build-order/index.js';
-// The seat's own defence rules - exported so an acceptance scene can pin the garrison it walls in.
+// Exported so an acceptance scene can pin the garrison the AI seat walls in.
 export { TOWER_GARRISON_ARCHERS } from './ai-player/military/index.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
@@ -30,7 +30,7 @@ export {
   TICKS_PER_AGE_YEAR,
 } from './lifecycle/ageclass.js';
 export { EAT_HUNGER_RESTORE, SLEEP_FATIGUE_RESTORE } from './lifecycle/needs.js';
-// The herding ring bound - the livestock scene asserts claimed stock grazes AROUND the farm door.
+// The herding ring bound, asserted by the livestock scene.
 export { LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
 export {
   experienceBonus,
@@ -47,8 +47,8 @@ export {
   TRAINING_EXPERIENCE_TYPE,
 } from './progression/experience.js';
 export { schoolingMet } from './progression/unlocks.js';
-// The need-atomic clip resolution (the civilist fallback + the at-home twin's name), exported so the
-// real-content suite can pin both joins against the served IR rather than a fixture.
+// The need-atomic clip resolution, exported so the real-content suite can pin both joins against the
+// served IR rather than a fixture.
 export {
   atomicDurationForName,
   needAtomicAnimationName,
@@ -56,8 +56,8 @@ export {
 } from './readviews/animations.js';
 export { HEADQUARTERS_BUILDING_ID, isBarracksType } from './readviews/buildings.js';
 export { EDIBLE_FORM_BY_DISH, edibleGoodFormOf } from './readviews/food.js';
-// The content-derived job roles - the profession picker and the action ring offer exactly what the
-// matching commands accept, off the same roles.
+// The content-derived job roles, so the profession picker and the action ring offer exactly what the
+// matching commands accept.
 export {
   hunterJobType,
   isCarrierJobRow,
@@ -70,19 +70,18 @@ export {
   scoutJobType,
 } from './readviews/jobs.js';
 export { MILITARY_MODE } from './readviews/stances.js';
-// The catchable-species classification - the app's livestock-heart projection keys on the same
-// content read as the sim's capture drive.
+// Exported so the app's livestock-heart projection keys on the same content read as the capture drive.
 export { isCatchableAnimal } from './readviews/tribes/animals.js';
-// The livestock join - the details panel hides the slaughter recipe the sim's recipe table drops at
-// a livestock workplace, and the real-content suite pins the slug join on the extracted ids.
+// The livestock join, so the details panel hides the same slaughter recipe the sim's recipe table drops
+// and the real-content suite can pin the slug join on the extracted ids.
 export {
   isLivestockWorkplaceType,
   livestockGoodOfTribe,
   livestockMeatGoodOf,
   livestockTribeOfGood,
 } from './readviews/tribes/livestock.js';
-// The "can this trade raise a foundation" gate - the app routes a right-click on a site through the very
-// function the sim's own assignBuilder and builder drive ask, so the click cannot drift from the rule.
+// The "can this trade raise a foundation" gate, so the app's right-click on a site cannot drift from the
+// rule assignBuilder and the builder drive ask.
 export { jobCanBuild } from './settlers/atomics/start.js';
 export {
   FATIGUE_BUBBLE_THRESHOLD,

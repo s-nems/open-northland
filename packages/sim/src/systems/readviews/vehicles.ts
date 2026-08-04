@@ -1,37 +1,22 @@
 import type { ContentSet, VehicleType } from '@open-northland/data';
 
-// Pure read views over the extracted vehicle IR - the data-defined ship/boat classification the Sea/Northland
-// slice (water travel, boats as mobile stores, embark/disembark) builds on. No mechanic here; see ./index.ts
-// for why read views are grouped together.
-
 /**
- * Whether a {@link VehicleType} is a ship/boat rather than a land cart or a siege engine.
- *
- * source-basis: the extracted `passengerslots` param. In `vehicletypes.ini` only the two ships carry
- * passengers (`ship small` 19, `ship big` 9); every cart and the catapult list 0. The ships are also the only
- * rows with `logicsize 2` and `logiccommander 24`, so three independent signals converge. Keyed on
- * `passengerSlots` rather than `logicSize` because it is the semantic "carries people" param, not a graphics
- * footprint.
+ * A ship or boat rather than a land cart or siege engine, keyed on `vehicletypes.ini` `passengerslots`
+ * because it is the semantic "carries people" param rather than a graphics footprint. Only the two ships
+ * carry passengers; every cart and the catapult list 0.
  */
 export function isShipVehicle(vehicle: VehicleType): boolean {
   return vehicle.passengerSlots > 0;
 }
 
-/**
- * The ship vehicle types a tribe can field, sorted ascending by `typeId` so enumeration order is stable
- * regardless of `content.vehicles` declaration order. {@link isShipVehicle} is the single-vehicle predicate.
- */
+/** Sorted ascending by `typeId`, so enumeration does not depend on declaration order. */
 export function shipVehicles(content: ContentSet): VehicleType[] {
   return content.vehicles.filter(isShipVehicle).sort((a, b) => a.typeId - b.typeId);
 }
 
 /**
- * The largest ship cargo capacity in content - the maximum `stockSlots` over {@link shipVehicles} (`ship
- * small` 50, `ship big` 200), or 0 when no ship exists. Unlike the tribe unlock gates this is the static
- * content capacity: it does not gate on a tribe's tech graph, since the unlock rides on the later boat-entity
- * slice.
- *
- * source-basis: the extracted `stockslots` param.
+ * The maximum `stockslots` over the ship rows, or 0 when content ships none. Static content capacity, not
+ * gated on a tribe's tech graph.
  */
 export function largestShipCapacity(content: ContentSet): number {
   let best = 0;
@@ -42,30 +27,21 @@ export function largestShipCapacity(content: ContentSet): number {
 }
 
 /**
- * The good types a vehicle's hold may carry, as a membership set - the "what" filter beside
- * {@link largestShipCapacity}'s "how much". A vehicle with no `logicgood` (the catapult) yields an empty set.
- * Applies to carts as well as ships.
- *
- * source-basis: the extracted `logicgood` param - carts and both ships enumerate the full haulable-goods list
- * (49 ids) while the catapult lists none.
+ * The `logicgood` ids a hold may carry, for carts as well as ships. Carts and both ships enumerate the
+ * full haulable-goods list while the catapult lists none, yielding an empty set.
  */
 export function vehicleCargoGoods(vehicle: VehicleType): Set<number> {
   return new Set(vehicle.cargoGoods);
 }
 
-/** Whether a vehicle's hold may carry `goodType` - the single-good form of {@link vehicleCargoGoods}. */
+/** The single-good form of {@link vehicleCargoGoods}. */
 export function vehicleMayCarry(vehicle: VehicleType, goodType: number): boolean {
   return vehicle.cargoGoods.includes(goodType);
 }
 
 /**
- * A {@link VehicleType}'s footprint/size class: the extracted `logicSize` (0 = land cart, 1 = catapult,
- * 2 = ship in the base data). A coarser axis than {@link isShipVehicle}'s boat/cart split - it separates the
- * catapult from the carts, which that predicate lumps together as "not a ship".
- *
- * The schema defaults `logicSize` to 0, so this returns a plain number: 0 *is* the cart footprint, not a "no
- * record" sentinel (unlike a weapon's `mainType`, which is `undefined` when absent). Read by a deferred
- * placement/rendering slice to size a vehicle's tile occupancy.
+ * The extracted `logicSize` footprint class: 0 land cart, 1 catapult, 2 ship in the base data. The schema
+ * defaults it to 0, so 0 is the cart footprint rather than a missing-record sentinel.
  */
 export function vehicleSizeOf(vehicle: VehicleType): number {
   return vehicle.logicSize;

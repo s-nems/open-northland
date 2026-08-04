@@ -14,12 +14,10 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 
 /**
- * The per-player SIGNPOST NETWORK - which signposts exist, where, and which belong to one connected
- * group. Two same-player signposts are connected iff their navigation circles OVERLAP (world-metric
- * distance ≤ the sum of their `navRadius`), and connectivity is transitive: the original's rule that
- * signposts must stay linked for settlers to travel between them ("Make sure the signposts are always
- * connected!" - tutorial_001 briefing, source basis). Two groups on opposite map sides never merge, so
- * a settler cannot cross between them.
+ * The per-player signpost network: which signposts exist, where, and which belong to one connected group.
+ * Two same-player signposts connect iff their navigation circles overlap, world-metric distance ≤ the sum
+ * of their `navRadius`, and connectivity is transitive. Source basis: the tutorial_001 briefing requires
+ * signposts to stay linked, so two groups on opposite map sides never merge.
  */
 export interface SignpostSite {
   readonly entity: Entity;
@@ -37,10 +35,8 @@ interface NetworkMemo {
   byPlayer: ReadonlyMap<number, readonly SignpostSite[]>;
 }
 
-/** Per-world memo of the network, keyed by the Signpost store's add/remove generation - signposts never
- *  move or mutate once erected, so the memo can only be invalidated by an erect/tear-down. A coherence
- *  verifier re-derives it on invariant-checked runs (the `cachesCoherent` contract for derived state
- *  that feeds sim decisions). */
+/** Per-world memo keyed by the Signpost store's generation: signposts never move or mutate once erected,
+ *  so only an erect or tear-down invalidates it. A verifier re-derives it on invariant-checked runs. */
 const networkMemo = new WeakMap<World, NetworkMemo>();
 const verifierRegistered = new WeakSet<World>();
 
@@ -133,25 +129,18 @@ function verifyNetwork(world: World): string[] {
 }
 
 /**
- * One settler's navigation confinement - a {@link SpatialGate}: the union of its LOCAL circle (radius
- * {@link LOCAL_NAV_RADIUS_NODES} around where it stands) and the nav circles of every signpost group it
- * can reach - a group is reachable iff some member's circle intersects the settler's local circle. The
- * whole of the user-facing rule keys on `allowsNode`: a gatherer only harvests, a worker only fetches, a
- * builder only builds, and a move order only walks to an allowed node; `bounds` lets the searches shrink
- * their scans to the confined area.
+ * One settler's navigation confinement as a {@link SpatialGate}: the union of its local circle, radius
+ * {@link LOCAL_NAV_RADIUS_NODES} around where it stands, and the nav circles of every signpost group that
+ * circle reaches. Every rule keys on `allowsNode`; `bounds` lets searches shrink their scans.
  *
- * Named approximation: the local circle travels WITH the settler (re-centred on every query), so
- * repeated in-circle hops can walk a unit - and drift an autonomous worker - arbitrarily far outside the
- * network, one local radius at a time. The original's anchor for "near where I am allowed to be" is not
- * decoded; anchoring the circle to something stationary is the open follow-up
- * (docs/tickets/sim/signpost-local-circle-anchor.md).
+ * Approximation: the local circle re-centres on every query, so repeated in-circle hops can walk a unit
+ * arbitrarily far outside the network, one local radius at a time. The original's anchor is not decoded.
  */
 export type NavigationLimit = SpatialGate;
 
-/** One settler's memoized limit plus every input it derives from. Each input is re-checked on read
- *  (position node, owner, job, Signpost generation; posts never move, so only an erect/tear-down
- *  changes the network), which is what lets the memo skip a coherence verifier: a stale entry cannot
- *  be served, only recomputed. `terrain` and `content` are per-world constants, so they need no slot. */
+/** One settler's memoized limit plus every input it derives from. Each input is re-checked on read, so a
+ *  stale entry can never be served and the memo needs no coherence verifier. `terrain` and `content` are
+ *  per-world constants, so they need no slot. */
 interface LimitMemoEntry {
   readonly hx: number;
   readonly hy: number;
@@ -163,9 +152,8 @@ interface LimitMemoEntry {
 
 interface LimitMemo {
   readonly entries: Map<Entity, LimitMemoEntry>;
-  /** Entry count that triggers the next dead-entry sweep: entity ids are never reused, so without a
-   *  sweep the map would grow with every settler that ever lived. Doubled after each sweep (amortized
-   *  O(1) per insert). */
+  /** Entry count that triggers the next dead-entry sweep: entity ids are never reused, so without a sweep
+   *  the map would grow with every settler that ever lived. Doubled after each sweep. */
   sweepAt: number;
 }
 
@@ -174,14 +162,10 @@ const LIMIT_MEMO_SWEEP_MIN = 256;
 const limitMemo = new WeakMap<World, LimitMemo>();
 
 /**
- * The navigation limit confining settler `e`, or `null` when it is UNLIMITED: signpost navigation off
- * (the default - every pre-signpost world), a mapless sim, a non-settler/unowned target, or an exempt
- * job - the scout and every fighter roam globally (source basis: observed original behaviour; the
- * user-specified rule set).
- *
- * Memoized per settler ({@link LimitMemoEntry} holds the key semantics). The
- * `signpostNavigationEnabled` toggle is read live on every call (an in-place rules flip bumps no
- * generation), so it needs no slot in the memo key.
+ * The navigation limit confining settler `e`, or null when it is unlimited: signpost navigation off, a
+ * mapless sim, a non-settler or unowned target, or an exempt job. Source basis: observed original
+ * behaviour, the scout and every fighter roam globally. The `signpostNavigationEnabled` toggle is read
+ * live on every call, since an in-place rules flip bumps no generation, so it needs no memo slot.
  */
 export function navigationLimitFor(
   world: World,
@@ -219,8 +203,6 @@ export function navigationLimitFor(
   return limit;
 }
 
-/** Drop memo entries whose entity no longer is a settler, then push the next sweep out to double the
- *  surviving size. */
 function sweepDeadEntries(world: World, memo: LimitMemo): void {
   for (const entity of memo.entries.keys()) {
     if (!world.has(entity, Settler)) memo.entries.delete(entity);
@@ -228,8 +210,6 @@ function sweepDeadEntries(world: World, memo: LimitMemo): void {
   memo.sweepAt = Math.max(LIMIT_MEMO_SWEEP_MIN, memo.entries.size * 2);
 }
 
-/** The uncached derivation behind {@link navigationLimitFor}: the job exemptions, then the network gate
- *  at the settler's own spot. */
 function computeNavigationLimit(
   world: World,
   content: ContentSet,
@@ -239,17 +219,16 @@ function computeNavigationLimit(
   hx: number,
   hy: number,
 ): NavigationLimit | null {
-  // Scouts and fighters roam globally; so does the hunter - like the scout, it never gets lost
-  // (design rule, user-specified), its range bounded by its own work flag instead.
+  // Scouts, fighters, and hunters roam globally; an authored rule bounds the hunter by its own work flag
+  // instead.
   if (isScoutJob(content, jobType) || isFighterJob(content, jobType) || isHunterJob(content, jobType))
     return null;
   return networkLimitAt(world, terrain, player, hx, hy);
 }
 
-/** The confinement a spot carries whoever stands on it: the union of the LOCAL circle around `(hx, hy)`
- *  and the nav circles of every signpost group that circle reaches, or null when signpost navigation is
- *  off. {@link navigationLimitFor} is this plus the per-job exemptions, which an errand does not inherit
- *  (`settlers/drives/equip-order.ts`). */
+/** The confinement a spot carries whoever stands on it: the local circle around `(hx, hy)` unioned with the
+ *  nav circles of every signpost group it reaches. {@link navigationLimitFor} adds the per-job exemptions,
+ *  which an errand does not inherit. */
 export function networkLimitAt(
   world: World,
   terrain: TerrainGraph,

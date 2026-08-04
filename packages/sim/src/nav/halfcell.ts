@@ -1,15 +1,12 @@
 /**
- * HALF-CELL ↔ POSITION conversions - the single seam between the sim's fixed-point positions
- * (fractional VISUAL-TILE coords: `x` = column, `y` = row, stagger applied by the projection) and
- * the navigation lattice's integer HALF-CELL nodes (the original's `2W×2H` grid - source basis: the
- * decoded map lanes `lmlt`/`emla`/`lmlv` and `map.cif` StaticObjects all address this grid).
+ * The single seam between fixed-point positions (fractional visual-tile coordinates, stagger applied by
+ * the projection) and the navigation lattice's integer half-cell nodes. Source basis: the decoded map
+ * lanes `lmlt`, `emla`, `lmlv` and `map.cif` StaticObjects all address the original's `2W x 2H` grid.
  *
- * The half-cell grid is RECTANGULAR in world space: node `(hx, hy)` sits at world
- * `(hx·½ column, hy·½ row)` - no stagger of its own; the visual stagger arises from WHICH nodes the
- * cell centres occupy (cell `(c, r)` sits at node `(2c + (r&1), 2r)`, the render's
- * `halfCellToScreen` twin). Every integer grid coordinate inside the sim (commands, footprints,
- * NodeBuckets keys, `NodeId`s) is a half-cell coordinate; these helpers are how a fractional
- * Position enters and leaves that grid. Pure fixed-point - quarters of ONE are exact.
+ * The half-cell grid is rectangular in world space: node `(hx, hy)` sits at world `(hx/2 column,
+ * hy/2 row)` and carries no stagger of its own. The visual stagger comes from which nodes the cell
+ * centres occupy, cell `(c, r)` sitting at node `(2c + (r&1), 2r)`. Every integer grid coordinate inside
+ * the sim is a half-cell coordinate. Pure fixed-point, and quarters of ONE are exact.
  */
 import { type Fixed, fx } from '../core/fixed.js';
 import { staggerShift, worldX } from './world-metric.js';
@@ -23,32 +20,29 @@ export interface HalfCellNode {
 }
 
 /**
- * The half-cell node a fixed-point position occupies - its world coordinates scaled to half-cell
- * units and truncated (the same floor-until-arrival semantics `fx.toInt` gave the old full-cell
- * snap; a position standing exactly on a node maps to it exactly, quarters being exact in fixed
- * point). Callers clamp into the grid via `TerrainGraph.nodeAtClamped`, so a border-seam transient
- * (world x briefly < 0 on a west-border leg) truncates to 0 harmlessly.
+ * The half-cell node a fixed-point position occupies: its world coordinates scaled to half-cell units and
+ * truncated, so a position standing exactly on a node maps to it exactly. The result is unclamped, and
+ * callers clamp into the grid through `TerrainGraph.nodeAtClamped`.
  */
 export function nodeOfPosition(x: Fixed, y: Fixed): HalfCellNode {
   return { hx: nodeHxOfPosition(x, y), hy: nodeHyOfPosition(y) };
 }
 
-/** {@link nodeOfPosition}'s `hx` alone, the scalar variant for per-entity-per-tick loops (index builds,
- *  collision neighbourhoods, per-candidate scans), where minting a node object per call is measured churn. */
+/** {@link nodeOfPosition}'s `hx` alone, for per-tick loops where minting a node object per call is
+ *  measured churn. */
 export function nodeHxOfPosition(x: Fixed, y: Fixed): number {
   return fx.toInt(fx.mul(worldX(x, y), TWO));
 }
 
-/** {@link nodeOfPosition}'s `hy` alone. `hy` depends only on the row, so the scalar pair recomputes
- *  nothing the object form would have shared. */
+/** {@link nodeOfPosition}'s `hy` alone. It depends only on the row. */
 export function nodeHyOfPosition(y: Fixed): number {
   return fx.toInt(fx.mul(y, TWO));
 }
 
 /**
- * The fixed-point Position of a half-cell node's centre: row `hy/2`, and `x` = the node's world
- * column `hx/2` with that row's stagger shift removed (the projection re-adds it). Exact: ONE is
- * divisible by 4, and the stagger at a half-integer row is exactly ¼.
+ * The fixed-point Position of a half-cell node's centre: row `hy/2`, and `x` the node's world column
+ * `hx/2` with that row's stagger shift removed, which the projection re-adds. Exact, because ONE divides
+ * by 4 and the stagger at a half-integer row is exactly a quarter.
  */
 export function positionOfNode(hx: number, hy: number): { x: Fixed; y: Fixed } {
   const y = fx.div(fx.fromInt(hy), TWO);
@@ -56,29 +50,22 @@ export function positionOfNode(hx: number, hy: number): { x: Fixed; y: Fixed } {
 }
 
 /**
- * The Position `x` of a WORLD column coordinate at row `y` - the stagger shift removed (the
- * projection re-adds it). The off-lattice twin of {@link positionOfNode} for points BETWEEN nodes
- * (e.g. a diagonal leg's seam waypoint at an edge midpoint), so the stagger-removal convention has
- * exactly one owner.
+ * The Position `x` of a world column coordinate at row `y`, stagger shift removed. The off-lattice twin
+ * of {@link positionOfNode}, for points between nodes.
  */
 export function positionXOfWorld(wx: Fixed, y: Fixed): Fixed {
   return fx.sub(wx, staggerShift(y));
 }
 
-/**
- * The half-cell node of a VISUAL-TILE centre `(cx, cy)` - `(2cx + (cy&1), 2cy)`, the stagger made
- * integral. The authoring seam: scenes and sandbox helpers keep placing content by whole tiles, and
- * this is where a tile address becomes the node the sim actually anchors on.
- */
+/** The half-cell node of a visual-tile centre: `(2cx + (cy&1), 2cy)`, the stagger made integral. */
 export function cellAnchorNode(cx: number, cy: number): HalfCellNode {
   return { hx: 2 * cx + (cy & 1), hy: 2 * cy };
 }
 
 /**
- * The visual tile whose CENTRE is node `(hx, hy)` - {@link cellAnchorNode}'s inverse, undoing the row's
- * stagger parity. Exact only for a centre node (even `hy`, `hx` carrying the row's parity); a node
- * between centres has no tile of its own, so callers that may probe one clamp per their own rule. Not
- * the same question as which cell OWNS a node (its 2×2 block - the fog layer's `cellOfNode`).
+ * The visual tile whose centre is node `(hx, hy)`, inverting {@link cellAnchorNode}. Exact only for a
+ * centre node, since a node between centres has no tile of its own. This is not the question of which
+ * cell owns a node.
  */
 export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number; readonly cy: number } {
   const cy = hy / 2;
@@ -86,9 +73,8 @@ export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number;
 }
 
 /**
- * Whether two nodes are the same or neighbouring lattice points (Chebyshev ≤ 1) - the
- * standing-together predicate for paired interactions (the wedding kiss, the gossip chat): the pair
- * occupies adjacent half-cells with no free node between them (observed original behavior).
+ * Whether two nodes are the same or neighbouring lattice points (Chebyshev distance at most 1).
+ * Observation: a paired interaction in the original leaves no free node between the two participants.
  */
 export function nodesAdjacent(a: HalfCellNode, b: HalfCellNode): boolean {
   return Math.abs(a.hx - b.hx) <= 1 && Math.abs(a.hy - b.hy) <= 1;

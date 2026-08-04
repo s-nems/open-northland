@@ -27,11 +27,9 @@ import { moveUnit } from './movement.js';
 export const BUILD_GUIDE_ATOMIC_ID = 43;
 
 /**
- * Order one owned scout to erect a signpost at (x,y) - the `placeSignpost` handler. Validates the
- * issuer (an orderable settler whose job is scout) and the spot ({@link canPlaceSignpost}), then sends
- * the scout there as a normal {@link moveUnit} walk carrying an {@link ErectSignpostOrder}; the
- * {@link signpostOrderSystem} swings the hammer on arrival. Recoverable bad input (skipped, still
- * logged for faithful replay): a dead/stale/non-settler/neutral issuer, a non-scout, or an illegal spot.
+ * Order one owned scout to erect a signpost at (x,y): validate the issuer and the spot, then send the
+ * scout there as a normal {@link moveUnit} walk carrying an {@link ErectSignpostOrder}, which
+ * {@link signpostOrderSystem} turns into the hammer swing on arrival.
  */
 export function placeSignpost(
   world: World,
@@ -46,35 +44,28 @@ export function placeSignpost(
   const goal = terrain.nodeAtClamped(command.x, command.y);
   const player = world.get(e, Owner).player;
   if (!canPlaceSignpost(world, ctx, terrain, goal, player)) return;
-  // A non-interruptible atomic (typically the scout's own previous build-guide swing) parks the WHOLE
-  // command - deferring only the inner moveUnit would strand an ErectSignpostOrder the parked move erases
-  // on apply. Replayed (revalidating the spot) once the swing completes, so an AI re-order mid-swing no
-  // longer destroys the swing.
+  // A non-interruptible atomic parks the whole command: deferring only the inner moveUnit would strand an
+  // ErectSignpostOrder that the parked move erases on apply. The replay re-validates the spot.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
   const c = terrain.coordsOf(goal);
-  // The walk reuses the whole moveUnit order dance (cancel current action, drop a carried load first,
-  // PlayerOrder en-route marker); the erect intent rides beside it. canPlaceSignpost proved the goal
-  // standable, so the move's goal snap leaves it in place.
+  // canPlaceSignpost already proved the goal standable, so the move's goal snap leaves it in place.
   moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y });
   world.add(e, ErectSignpostOrder, { goal });
 }
 
 /**
- * SignpostOrderSystem - turns an arrived {@link ErectSignpostOrder} into the one-shot build-guide
- * hammer swing. Runs after {@link import('./movement.js').playerOrderSystem} (which retires the walk)
- * and before the plannerSystem (so the swing starts before the economy could re-task the scout).
+ * Turn an arrived {@link ErectSignpostOrder} into the one-shot build-guide hammer swing. It runs after the
+ * player-order system retires the walk and before the planner, so the swing starts before the economy
+ * could re-task the scout.
  *
- * Per scout under an order: while the erect swing runs, wait for its effect; on arrival at the goal,
- * re-validate the spot (the world may have changed en route - a rival post, a new building) and start
- * the atomic - the signpost itself spawns when the swing completes (the `erectSignpost` effect, one
- * strike, instant, free). The order is dropped when the scout stopped being a scout, another action
- * took over (a need drive), the walk failed, or the spot became illegal.
+ * The spot is re-validated on arrival because the world may have changed en route, and the signpost itself
+ * spawns only when the swing's `erectSignpost` effect completes.
  */
 export const signpostOrderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless: no orders were issuable
-  // Canonical order: two scouts arriving the same tick at mutually-exclusive spots (overlapping spacing
-  // circles) race - the lower entity id must win, not whichever the store iterated first.
+  // Canonical order: two scouts arriving the same tick at mutually-exclusive spots race, and the lower
+  // entity id must win rather than whichever the store iterated first.
   for (const e of canonicalById(world.query(Settler, ErectSignpostOrder))) {
     const settler = world.get(e, Settler);
     const owner = world.tryGet(e, Owner);

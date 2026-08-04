@@ -19,21 +19,18 @@ export interface SystemContext {
   /** Emit one-shot events for render/audio (never read back in sim logic). */
   readonly events: EventBuffer;
   /**
-   * The serializable command queue - the single mutation seam. CommandSystem drains and applies it;
-   * the AiPlayerSystem enqueues its decisions into it (applied next tick, logged like player input);
-   * no other system touches it.
+   * The serializable command queue, the single mutation seam: CommandSystem drains and applies it and the
+   * AiPlayerSystem enqueues into it; no other system touches it.
    */
   readonly commands: CommandQueue;
   /**
-   * The terrain cell-adjacency graph - the navigation/placement model (see nav/terrain/). Optional
-   * because trivial fixtures (the determinism golden) run with no map; the pathfinding/terrain
-   * systems that need it must check and no-op when it is absent rather than assume it exists.
+   * The terrain cell-adjacency graph. Optional because a trivial fixture runs with no map, so a system
+   * that needs it must check and no-op rather than assume it exists.
    */
   readonly terrain?: TerrainGraph;
   /**
-   * The per-player fog-of-war masks (see systems/vision.ts) - a mutable world resource the
-   * VisionSystem rebuilds and the combat gates read. Optional like `terrain` (a mapless sim has no
-   * grid to mask); present but inert while the fog mode is OFF (the default).
+   * The per-player fog-of-war masks, a mutable world resource the VisionSystem rebuilds and the combat
+   * gates read. Optional like `terrain`, and present but inert while the fog mode is off.
    */
   readonly fog?: FogState;
 }

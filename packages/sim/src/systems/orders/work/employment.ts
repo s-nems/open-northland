@@ -28,15 +28,12 @@ import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '.
  * Change one owned settler's profession: reset it to a fresh idle worker of the new trade
  * ({@link reidleAsJob}) and drop the old workplace binding ({@link JobAssignment}).
  *
- * It leaves the settler UNPOSTED, and nothing employs it again on its own: a trade whose work runs
- * through a binding (a carrier's haul rung, a craftsman's producer loop) stays inert until the player
- * also posts it somewhere ({@link assignWorker}). Trading and posting are two decisions in this engine.
+ * It leaves the settler unposted and nothing employs it again on its own, so a trade whose work runs
+ * through a binding stays inert until the player also posts it somewhere ({@link assignWorker}). Trading
+ * and posting are two decisions in this engine.
  *
- * Recoverable bad input (skipped, still logged): a target {@link isTradeAssignable} rejects, an unknown
- * `jobType`, or a trade whose `needforjob` XP threshold this settler hasn't earned yet
- * ({@link settlerMeetsNeed} - the tech tree's manual seam: a profession must be discovered through
- * accrued repeats; the profession-progression toggle lifts the civilian gates, fighters stay
- * barracks-gated either way).
+ * A trade whose `needforjob` XP threshold this settler has not earned is refused: that gate is the tech
+ * tree's manual seam, and fighters stay barracks-gated whatever the profession-progression toggle says.
  */
 export function setJob(
   world: World,
@@ -47,7 +44,6 @@ export function setJob(
   if (!isTradeAssignable(world, e)) return;
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job - skip
   if (!settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', command.jobType)) return; // unearned trade
-  // A non-interruptible atomic parks the whole order instead of being discarded (see deferOrderDuringAtomic).
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
 
   world.remove(e, JobAssignment); // the old post is not the new trade's - the player picks the next one
@@ -56,36 +52,27 @@ export function setJob(
 
 /**
  * The authoritative half of a profession change: cancel whatever the settler was doing under the old trade
- * (its action, its route, any live or parked {@link PlayerOrder}) and set its load down, before taking up
- * `jobType` ({@link applyTradeChange}). Shared by the employment orders and the barracks drill
- * (`settlers/drives/training.ts`).
+ * and set its load down before taking up `jobType`. Shared by the employment orders and the barracks drill.
  */
 export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  // setJob vets interruptibility before reaching here (deferOrderDuringAtomic); assignWorker still cancels
-  // unconditionally, a remaining member of the uninterruptible-atomic class, tracked in
-  // docs/tickets/sim/orders-cancel-remaining-atomic-stomps.md.
+  // setJob vets interruptibility before reaching here; assignWorker still cancels unconditionally, a
+  // remaining member of the uninterruptible-atomic class.
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
   world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   clearNavState(world, e);
-  // A hands-full settler sets the old trade's haul down here rather than carrying it on into the new job
-  // (the requested "drop when you change job" behavior). Before the trade change, so the arms a disarmed
-  // soldier is about to take up ({@link applyTradeChange}) are not swept into this drop.
+  // The old trade's haul goes down rather than into the new job. Before the trade change, so the arms a
+  // disarmed soldier is about to take up are not swept into this drop.
   if (world.has(e, Carrying)) startDrop(world, ctx, e);
   applyTradeChange(world, ctx, e, jobType);
 }
 
 /**
- * Assign one owned settler to work at a specific `building` (the `assignWorker` command - the one way a
- * settler becomes employed): resolve the building's open worker job in the command's
- * `jobPriority` preference order ({@link openWorkerJobFromList} - a same-tribe/same-owner building with an
- * understaffed slot), re-idle the settler as that job, and bind it to the chosen building
- * ({@link bindEmployment}). The priority expresses the RTS intent (a tradesman first, a hauler as fallback):
- * a settler that has not earned the trade's `needforjob` repeats falls through to the hauler slot.
- *
- * Recoverable bad input (skipped, still logged for faithful replay): a target {@link isTradeAssignable}
- * rejects, a dead/stale/non-building target, or a building that offers this settler no open worker job right
- * now (full, wrong tribe, not a workplace, or gated).
+ * Assign one owned settler to work at a specific `building`, the one way a settler becomes employed:
+ * resolve the building's open worker job in the command's `jobPriority` order, re-idle the settler as that
+ * job, and bind it to the building. The priority expresses the RTS intent of a tradesman first and a hauler
+ * as fallback, so a settler that has not earned the trade's `needforjob` repeats falls through to the
+ * hauler slot.
  */
 export function assignWorker(
   world: World,
@@ -97,7 +84,7 @@ export function assignWorker(
   const b = command.building;
   if (!world.isAlive(b) || !world.has(b, Building)) return;
   // Signpost confinement: a workplace beyond the settler's allowed area is refused like an out-of-area
-  // move order (moveUnit) - the player extends the network first, then staffs the far building.
+  // move order, so the player extends the network first and staffs the far building after.
   const terrain = ctx.terrain;
   if (terrain !== undefined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
@@ -128,24 +115,14 @@ export function assignWorker(
 }
 
 /**
- * Assign one owned builder to a specific construction `site` - the original's "put a builder on a foundation"
- * (right-click a site with a builder selected). It pins a {@link SiteAssignment} so the builder drive raises
- * that site over the nearest one and the site's workers window lists the settler until the build finishes
- * ({@link import('../../settlers/drives/economy/index.js').planBuilder} re-stamps or drops the pin). Only the
- * builder trade qualifies - a civilian right-clicked onto a site is a no-op (the app routes normal buildings
- * to `assignWorker` instead). Authoritative like every employment order: it cancels the current
- * action/route/hold so the builder heads for its site this tick.
+ * Assign one owned builder to a specific construction `site`, the original's "put a builder on a
+ * foundation". The {@link SiteAssignment} pin makes the builder drive raise that site over the nearest one
+ * until the build finishes. Only the builder trade qualifies, since {@link jobCanBuild} below admits only a
+ * settler already holding a builder job, which is also why this order needs no women-take-no-trade gate.
  *
- * Recoverable bad input (skipped, still logged for faithful replay): a dead/stale/non-settler/neutral
- * issuer, a still-growing child, a dead or not-under-construction target, a wrong-tribe site, or a site
- * owned by another player (a player pins only its own foundations - two same-tribe players stay apart).
- * Unlike {@link setJob}/{@link assignWorker} it applies no women-take-no-trade gate: this order pins a site
- * rather than changing a trade, and the {@link jobCanBuild} check below already admits only a settler that
- * holds a builder job.
- *
- * Deliberately NO signpost-confinement gate (unlike `assignWorker`): a pinned site is how the player
- * extends the network's frontier, and the builder drive treats the pinned site as a bound sink
- * (`toOwnCrewSite`) so the crew can raise it from outside the walkable-area rule.
+ * Deliberately no signpost-confinement gate, unlike {@link assignWorker}: a pinned site is how the player
+ * extends the network's frontier, and the builder drive treats it as a bound sink so the crew can raise it
+ * from outside the walkable-area rule.
  */
 export function assignBuilder(
   world: World,
@@ -163,13 +140,11 @@ export function assignBuilder(
   if (settler.jobType === null || !jobCanBuild(ctx.content, settler.jobType)) return;
 
   world.add(e, SiteAssignment, { site, pinned: true });
-  // Obey now - the planner heads for the pinned site this tick. Still an unconditional cancel (a remaining
-  // member of the uninterruptible-atomic class, same ticket as reidleAsJob's note).
+  // Still an unconditional cancel, a remaining member of the uninterruptible-atomic class.
   world.remove(e, CurrentAtomic);
   world.remove(e, DeferredOrder); // a builder pin executing now supersedes any earlier parked order
-  // A builder pinned mid-haul keeps its load (unlike a profession change): re-pinning is the same trade, just a
-  // different site, so it carries the (often scarce) material onward and the delivery drive banks it, rather
-  // than dumping it in the field. Only a job change or an enemy makes a carrier set its load down.
+  // A builder pinned mid-haul keeps its load, unlike a profession change: the trade is unchanged, so it
+  // carries the material onward instead of dumping it in the field.
   world.remove(e, PlayerOrder);
   clearNavState(world, e);
 }

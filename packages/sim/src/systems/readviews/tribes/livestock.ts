@@ -1,9 +1,8 @@
 import type { ContentSet, Recipe } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
 
-// The husbandry read views over the species⇄good join (`content-index/livestock.ts`): a fed animal is
-// stocked as a good, the live creature is a `catchable` animal tribe. Capture/regen/anchoring key on
-// `isCatchableAnimal` (./animals.ts); these views serve the processing side, which needs the good link.
+// The husbandry species-to-good join: a fed animal is stocked as a good, while the live creature stays a
+// `catchable` animal tribe.
 
 /** The good stocking one FED animal of livestock species `tribeType`, or null for a non-livestock tribe. */
 export function livestockGoodOfTribe(content: ContentSet, tribeType: number): number | null {
@@ -21,14 +20,12 @@ export function livestockTribeFedBy(content: ContentSet, recipe: Recipe): number
   return product === undefined ? null : livestockTribeOfGood(content, product);
 }
 
-/** Whether building type `buildingType` carries a feed recipe - the workplace claimed livestock is
- *  herded to (the anchor set of the livestock-assignment drive). */
+/** A building type carrying a feed recipe, the workplace claimed livestock is herded to. */
 export function isLivestockWorkplaceType(content: ContentSet, buildingType: number): boolean {
   return contentIndex(content).livestockWorkplaceTypes.has(buildingType);
 }
 
-/** The feed-cycle byproduct ware - the `meat` good resolved by slug (never the numeric `goodtypes.ini`
- *  id, which the sandbox catalog offsets); null when the content ships no meat good. */
+/** The feed-cycle byproduct, resolved by slug because the sandbox catalog offsets the numeric good id. */
 export function livestockMeatGoodOf(content: ContentSet): number | null {
   return contentIndex(content).livestockMeatGood;
 }

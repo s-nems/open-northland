@@ -28,24 +28,20 @@ export * from './movement/system.js';
 export * from './orders/index.js';
 export * from './progression/index.js';
 export * from './readviews/index.js';
-// The meal length (the eat/forage atomic duration): exposed so tests can assert it without reaching
-// into the internal action vocabulary wholesale.
+// The meal length, exposed so tests can assert it without pulling in the action vocabulary wholesale.
 export { eatDuration } from './settlers/atomics/start.js';
 export * from './settlers/atomics/system.js';
 export * from './settlers/planner/system.js';
 export * from './signposts/index.js';
 export * from './social/index.js';
 export * from './spatial/nodes.js';
-// `spawn` otherwise stays private (its `spawnSettler`/`spawnAnimalHerd` are the command handler's), but
-// `createSettler` is the scene-facing entity constructor - the settler twin of `createResourceNode` - so
-// pre-tick-0 scene setup can place a settler directly and stamp its bindings (a gatherer's WorkFlag).
+// `spawn` otherwise stays private to the command handler, but `createSettler` is the scene-facing entity
+// constructor, so pre-tick-0 setup can place a settler directly and stamp its bindings.
 export { createSettler, DEFAULT_SETTLER_HITPOINTS, type SettlerSpec } from './spawn/index.js';
 export * from './stores/index.js';
 export * from './vision/index.js';
-// The package-internal systems barrel: per-system modules are re-exported wholesale so tests and
-// implementation helpers share one import site. The canonical schedule is deliberately separate in
-// schedule.ts, and the external `@open-northland/sim` systems namespace is curated in public.ts.
-// Only the system ENTRY modules (and the cross-system helper leaves) are star-exported; a module a
-// system entry re-exports its public names from - planner internals like targets/economy supply, the
-// drive/effect/targeting submodules - stays private to its cluster.
+// The package-internal systems barrel, so tests and implementation helpers share one import site. The
+// canonical schedule stays separate in schedule.ts and the external namespace is curated in public.ts.
+// Only system entry modules and cross-system helper leaves are star-exported; a cluster's internals stay
+// private to it.
 export type { System, SystemContext };

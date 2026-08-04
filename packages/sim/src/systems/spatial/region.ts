@@ -4,45 +4,42 @@ import { createSpatialMemo } from './memo.js';
 import { NodeBuckets, nodeKey } from './nodes.js';
 
 /**
- * The per-world region spatial index shared by the resource and berry-bush indexes - the golden-rule-6
- * lever that lets a radius-bounded scan (a flag-bound gatherer, a hungry forager) read only the standing
- * entities near a point instead of every one on a decoded map. A {@link createSpatialMemo} rider: kept
- * incrementally against the indexed component's store generation (a standing entity never moves or loses
- * its Position without dying - the invariant the registered verifier re-checks), and its `near` answers
- * are provable supersets the caller's unchanged canonical filter/rank loop re-checks, so no winner can
- * differ from a full scan.
+ * The per-world region spatial index shared by the resource and berry-bush indexes, so a radius-bounded
+ * scan reads only the standing entities near a point. Maintained incrementally against the indexed
+ * component's store generation, which holds because a standing entity never moves or loses its Position
+ * without dying. `near` answers are provable supersets that the caller's own canonical filter and rank
+ * loop re-checks, so no winner can differ from a full scan.
  */
 
-/** Region edge (half-cell nodes): 32×32 (≈16×16 cells) - a flag/forage-radius query touches a handful of
- *  regions while region lists stay big enough that the merge cost is trivial. Only query cost depends on
+/** Region edge in half-cell nodes. Approximation: sized so a flag or forage radius touches a handful of
+ *  regions while region lists stay long enough for the merge cost to vanish. Only query cost depends on
  *  it, never a winner. */
 const REGION_NODES = 32;
-/** Region key packing (`rx * STRIDE + ry`): maps up to 65k regions per axis while staying a plain-number
- *  key (no per-lookup string mint). */
+/** Region key packing (`rx * STRIDE + ry`): up to 65k regions per axis with a plain-number key. */
 const REGION_KEY_STRIDE = 1 << 16;
 
 interface RegionMember {
   readonly e: Entity;
-  /** The member's anchor node - kept beside the id so the box filter needs no store read per query. */
+  /** The member's anchor node, kept beside the id so the box filter needs no store read per query. */
   readonly hx: number;
   readonly hy: number;
 }
 
 interface RegionState<Extra> {
   byRegion: Map<number, RegionMember[]>;
-  /** The same members re-bucketed at NODE granularity, minted by the first {@link RegionIndex.atNode}
-   *  caller and maintained from then on - an index nobody probes per node never pays for it. */
+  /** The same members re-bucketed at node granularity, minted by the first {@link RegionIndex.atNode}
+   *  caller and maintained from then on. */
   byNode: NodeBuckets | null;
-  /** Ascending-id canonical membership - the mutable master copy behind {@link RegionIndex.canonical}. */
+  /** Ascending-id canonical membership, the mutable master copy behind {@link RegionIndex.canonical}. */
   list: Entity[];
-  /** The shared frozen view handed to consumers, minted lazily and dropped on every change - a consumer
-   *  holding one keeps an immutable snapshot (an in-place .sort() throws at the mutation site). */
+  /** The shared frozen view handed to consumers, dropped on every change, so a consumer holding one
+   *  keeps an immutable snapshot. */
   frozen: readonly Entity[] | null;
   extra: Extra;
 }
 
-/** Diagnostic labels for the cache verifier and its divergence messages (surfaced only by the
- *  `cachesCoherent` invariant). `verifier` must be the unique {@link World.registerCacheVerifier} id. */
+/** Diagnostic labels for the cache verifier and its divergence messages. `verifier` must be the unique
+ *  {@link World.registerCacheVerifier} id. */
 export interface RegionIndexLabels {
   readonly verifier: string;
   readonly plural: string;
@@ -52,8 +49,8 @@ export interface RegionIndexLabels {
 
 /**
  * The per-index derived extra, maintained incrementally beside the membership. `capture` runs at insert
- * and must record everything `remove` needs - the entity may be destroyed by the time its removal replays.
- * `diverges` is the verifier's extra leg (held versus freshly folded).
+ * and must record everything `remove` needs, because the entity may be destroyed by the time its removal
+ * replays.
  */
 export interface RegionExtraOps<Extra, Capture> {
   empty(): Extra;
@@ -63,7 +60,7 @@ export interface RegionExtraOps<Extra, Capture> {
   diverges(held: Extra, fresh: Extra): boolean;
 }
 
-/** The no-derived-extra ops for indexes that only need membership (the berry index). */
+/** The no-derived-extra ops for indexes that only need membership. */
 export const NO_REGION_EXTRA: RegionExtraOps<undefined, undefined> = {
   empty: () => undefined,
   capture: () => undefined,
@@ -72,30 +69,26 @@ export const NO_REGION_EXTRA: RegionExtraOps<undefined, undefined> = {
   diverges: () => false,
 };
 
-/** A memoized region index over `(component, Position)` entities - see {@link createRegionIndex}. */
+/** A memoized region index over `(component, Position)` entities. */
 export interface RegionIndex<Extra> {
-  /** The memoized ascending-id list of every indexed entity - shared, read-only and frozen (a consumer's
-   *  in-place sort throws at the mutation site). */
+  /** The memoized ascending-id list of every indexed entity, shared and frozen. */
   canonical(world: World): readonly Entity[];
   /** Every indexed entity whose anchor node lies within the axis-aligned box `reach` nodes around
-   *  `(hx, hy)`, ascending-id - the caller's candidate superset (valid when `reach ≥ radius + the max
-   *  anchor→interaction-cell offset`). Cost: O(regions touched + matches), not O(all indexed). */
+   *  `(hx, hy)`, ascending-id. A candidate superset, valid only when `reach` covers the caller's radius
+   *  plus the largest anchor-to-interaction-cell offset. */
   near(world: World, hx: number, hy: number, reach: number): Entity[];
-  /** Whether any indexed entity inside the same box passes `test` - the existence-only twin of
-   *  {@link near}: no collection, no sort (order-independent for a pure "is there one?"), first hit
-   *  returns. For scans like "does any live resource of this good stand nearby". */
+  /** Whether any indexed entity inside the same box passes `test`. Unordered and first-hit, which a pure
+   *  existence question does not need. */
   someNear(world: World, hx: number, hy: number, reach: number, test: (e: Entity) => boolean): boolean;
-  /** Every indexed entity whose anchor node IS `(hx, hy)`, ascending-id - the exact-node twin of
-   *  {@link near}, for the per-node occupancy probes ("is anything standing on this tile?"). O(1) where
-   *  the same question through `near(..., 0)` costs a whole region bucket. Unlike {@link near} this is
-   *  the index's LIVE bucket, not a copy: a caller that destroys members must copy it first. */
+  /** Every indexed entity whose anchor node is exactly `(hx, hy)`, ascending-id. This is the index's live
+   *  bucket, not a copy, so a caller that destroys members must copy it first. */
   atNode(world: World, hx: number, hy: number): readonly Entity[];
   /** The per-index derived extra, maintained incrementally beside the membership. */
   extra(world: World): Extra;
 }
 
-/** Pack a region coordinate pair into a map key. Both axes are >= 0 (an anchor is an in-bounds node),
- *  which is what keeps the packing collision-free and lets a box scan clamp its min bounds to 0. */
+/** Pack a region coordinate pair into a map key. Both axes are non-negative because an anchor is an
+ *  in-bounds node, which keeps the packing collision-free and lets a box scan clamp its min bounds to 0. */
 function regionKey(rx: number, ry: number): number {
   return rx * REGION_KEY_STRIDE + ry;
 }
@@ -122,9 +115,9 @@ function inBox(m: RegionMember, hx: number, hy: number, reach: number): boolean 
   return Math.abs(m.hx - hx) <= reach && Math.abs(m.hy - hy) <= reach;
 }
 
-/** The minted node layer's held-versus-fresh leg. It rides its own insert/remove calls beside `byRegion`,
- *  so a missed one is invisible to the region walk and would surface only as a wrong occupancy answer.
- *  Element-wise like the stockpile index's, so it still holds once an `atNode` caller picks a winner. */
+/** The node layer's held-versus-fresh verifier leg. The layer rides its own insert and remove calls
+ *  beside `byRegion`, so a missed one is invisible to the region walk and would surface only as a wrong
+ *  occupancy answer. Compared element-wise, so it still holds once an `atNode` caller picks a winner. */
 function nodeLayerDivergence(
   verifier: string,
   held: NodeBuckets,
@@ -159,7 +152,7 @@ function nodeLayerDivergence(
 
 /**
  * Build a memoized region index over the entities carrying `component` and a Position, maintained
- * incrementally against that component's store generation (see {@link createSpatialMemo}).
+ * incrementally against that component's store generation.
  */
 export function createRegionIndex<Extra, Capture>(
   component: Component<unknown>,
@@ -252,8 +245,8 @@ export function createRegionIndex<Extra, Capture>(
           for (const m of bucket) if (inBox(m, hx, hy, reach)) out.push(m.e);
         }
       }
-      // Region lists are each ascending, but cross-region concatenation is not - restore the canonical
-      // ascending-id order the nearest-scan's first-wins tie-break depends on.
+      // Each region list is ascending, but concatenating across regions is not, and a nearest-scan's
+      // first-wins tie-break depends on the canonical ascending-id order.
       out.sort((a, b) => a - b);
       return out;
     },

@@ -9,7 +9,7 @@ import { dynamicBlockOverlay } from '../../../footprint/index.js';
 import { calmZonesByPlayer } from '../bodies.js';
 
 /** The tick's two terrain-derived gates, built on first ask so a tick where no pair interacts builds
- *  neither. Construct one PER TICK: both caches are snapshots, so a pooled instance would keep approving
+ *  neither. Construct one per tick: both caches are snapshots, so a pooled instance would keep approving
  *  displacements onto ground blocked since, and keep answering the old calm zones. */
 export class SeparationGates {
   private zones: Map<number, Set<NodeId>> | undefined;

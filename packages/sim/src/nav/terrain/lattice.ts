@@ -1,16 +1,13 @@
 /**
- * Navigation, pathfinding, and placement operate on the original's `2W×2H` logic lattice (source
- * basis: decoded map object lanes `lmlt`/`emla`/`lmlv`, `map.cif` StaticObjects placements, and
- * `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address `2W×2H`; the half-cell
- * anchoring is the best-aligned reading of the `lmlt` blocking lane, measurement in
- * docs/formats/MAPDAT.md). A `W×H`-cell map becomes a width×height grid of half-cell nodes, each
- * carrying a landscape `typeId` (IR's {@link LandscapeType}) that resolves to walkability and a
- * fixed-point walk cost.
+ * Navigation, pathfinding, and placement operate on the original's `2W x 2H` logic lattice. Source
+ * basis: the decoded map object lanes `lmlt`, `emla`, `lmlv`, `map.cif` StaticObjects placements, and
+ * `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address `2W x 2H`; the half-cell
+ * anchoring is the best-aligned reading of the `lmlt` blocking lane, measured in docs/formats/MAPDAT.md.
+ * Each node carries a landscape `typeId` resolving to walkability and a fixed-point walk cost.
  *
- * Geometry: node `(hx, hy)` sits at world `(hx·½ column, hy·½ row)` = (34 px, 19 px) pitch under the
- * measured 68×38 px projection; cell `(c, r)` = node `(2c + (r&1), 2r)`, so the staggered raster
- * becomes a rectangular lattice with one parity-independent neighbour table. Determinism: a
- * plain-data world resource (not entities), nodes addressed by row-major id (`hy * width + hx`).
+ * Node `(hx, hy)` sits at world `(hx/2 column, hy/2 row)`, a 34 px by 19 px pitch under the measured
+ * 68x38 px projection, and cell `(c, r)` is node `(2c + (r&1), 2r)`, so the staggered raster becomes a
+ * rectangular lattice with one parity-independent neighbour table. Nodes are addressed by row-major id.
  */
 import type { Fixed } from '../../core/fixed.js';
 
@@ -53,8 +50,7 @@ export abstract class TerrainLattice {
     return x >= 0 && y >= 0 && x < this.width && y < this.height;
   }
 
-  /** The row-major node id for in-bounds coordinates - the class's addressing invariant, unchecked
-   *  (callers that reach here have already bounds- or clamp-checked `x`, `y`). */
+  /** The row-major node id for coordinates the caller has already bounds- or clamp-checked. */
   protected idAt(x: number, y: number): NodeId {
     return (y * this.width + x) as NodeId;
   }
@@ -76,17 +72,15 @@ export abstract class TerrainLattice {
     return Math.floor(node / this.width);
   }
 
-  /** The (x, y) coordinates of a node id. Callers on a per-node hot path use {@link xOf}/{@link yOf}
-   *  instead, so a coordinate lookup costs no object. */
+  /** The (x, y) coordinates of a node id. A per-node hot path uses {@link xOf} and {@link yOf} to
+   *  avoid the object. */
   coordsOf(node: NodeId): { x: number; y: number } {
     return { x: this.xOf(node), y: this.yOf(node) };
   }
 
   /**
-   * The node at integer half-cell coordinates (`x`, `y`), clamped into the grid. Unlike
-   * {@link nodeAt} this never throws - it is the navigation planner's seam from an entity's node
-   * address (`nodeOfPosition`) to a node id, so an out-of-range coordinate clamps to the nearest
-   * border node rather than crashing a tick.
+   * The node at integer half-cell coordinates, clamped into the grid. Unlike {@link nodeAt} this never
+   * throws, so a border-seam transient clamps to the nearest border node rather than crashing a tick.
    */
   nodeAtClamped(x: number, y: number): NodeId {
     const cx = x < 0 ? 0 : x >= this.width ? this.width - 1 : x;
@@ -94,15 +88,14 @@ export abstract class TerrainLattice {
     return this.idAt(cx, cy);
   }
 
-  /** A per-node value from one of the row-major arrays, throwing on an id outside the grid
-   *  (a programmer error). Shared by {@link typeAt} and the graph's connectivity labels. */
+  /** A per-node value from one of the row-major arrays, throwing on an id outside the grid. */
   protected checkedSlot(arr: Int32Array, node: NodeId): number {
     const v = arr[node];
     if (v === undefined) throw new Error(`node id ${node} out of range (0..${this.nodeCount - 1})`);
     return v;
   }
 
-  /** The landscape typeId tagged on a node. Throws on an id outside the grid (programmer error). */
+  /** The landscape typeId tagged on a node. Throws on an id outside the grid. */
   typeAt(node: NodeId): number {
     return this.checkedSlot(this.typeIds, node);
   }
@@ -116,16 +109,15 @@ export abstract class TerrainLattice {
     return this.propsOf(node).walkable;
   }
 
-  /** True if a building's reserved zone may cover this node (the landscape row's `buildable` flag -
-   *  water/rock/void are neither walkable nor buildable; a real map's object margin is walkable but
-   *  not buildable). Placement-only; navigation reads {@link isWalkable}. */
+  /** True if a building's reserved zone may cover this node, from the landscape row's `buildable` flag.
+   *  A real map's object margin is walkable but not buildable. Placement only; navigation reads
+   *  {@link isWalkable}. */
   isBuildable(node: NodeId): boolean {
     return this.propsOf(node).buildable;
   }
 
-  /** True if crops may be SOWN on this node (the landscape row's `plantable` flag - the original's
-   *  `biocanplanton` ground class, carried only by grass/land). Farming-only; navigation and
-   *  placement never read it. */
+  /** True if crops may be sown on this node, from the landscape row's `plantable` flag, which follows
+   *  the original's `biocanplanton` ground class. Farming only. */
   isPlantable(node: NodeId): boolean {
     return this.propsOf(node).plantable;
   }

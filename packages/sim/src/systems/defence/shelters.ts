@@ -27,12 +27,9 @@ export interface ShelterSite {
 export type ShelterSites = ReadonlyMap<number, readonly ShelterSite[]>;
 
 /**
- * Read the tick's shelter ledger. Built once per planner pass and shared by every settler it plans, so
- * the seats are handed out first-come-first-served instead of each settler re-deriving the same counts
- * (see {@link Sheltering} for why the claim, not the arrival, is what capacity counts).
- *
- * A building drops out the moment it stops holding a garrison ({@link shelterStillHolds}); the
- * DefenceSystem sheds the claims it still held, so the two readings can never disagree.
+ * Read the tick's shelter ledger, built once per planner pass and shared by every settler it plans, so
+ * seats are handed out first come first served. A building drops out the moment it stops holding a
+ * garrison, and the DefenceSystem sheds the claims it held, so the two readings can never disagree.
  */
 export function collectShelters(world: World, ctx: SystemContext): ShelterSites {
   const byPlayer = new Map<number, ShelterSite[]>();

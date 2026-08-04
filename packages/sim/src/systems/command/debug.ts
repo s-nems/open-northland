@@ -5,16 +5,14 @@ import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 
-// The dev/admin `debug*` commands - the spawn/inspect palette's direct pokes at world state. They are real
-// commands (logged and replayed like any other), so each is a no-op on a target of the wrong kind rather
-// than a throw.
+// The `debug*` commands are real commands, logged and replayed like any other, so each is a no-op on a
+// target of the wrong kind rather than a throw.
 
 /**
- * Kill a unit: drain its {@link Health} pool to 0 and let the CleanupSystem reap it next tick (the real
- * death path + event), rather than a silent destroy. Gated on {@link Settler} (animals are settlers too) so
- * a building that carries a Health pool while under construction can't be drained-and-reaped here - that
- * would destroy the building through CleanupSystem, bypassing demolish's worker-unbind seam and emitting a
- * `settlerDied` cue for a non-settler. A non-settler / already-reaped target is a no-op.
+ * Kill a unit by draining its {@link Health} pool to 0, so the CleanupSystem reaps it through the real
+ * death path instead of a silent destroy. Gated on {@link Settler} because a building under construction
+ * also carries a Health pool, and reaping one that way would bypass demolish's worker-unbind seam and emit
+ * a `settlerDied` cue for a non-settler.
  */
 export function debugKill(world: World, command: Extract<Command, { kind: 'debugKill' }>): void {
   if (!world.has(command.target, Settler)) return;

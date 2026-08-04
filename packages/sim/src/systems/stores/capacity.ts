@@ -7,45 +7,22 @@ import { exportedGoodForm } from '../readviews/food.js';
 import { vehicleMayCarry } from '../readviews/vehicles.js';
 import { constructionBillOf } from './construction.js';
 
-// What a store can hold: per-good stockpile capacity across the store kinds (construction site, built
-// building, boat hull, loose ground heap) plus the ground-heap predicates the gathering economy shares.
+// Per-good stockpile capacity across the store kinds, plus the ground-heap predicates the economy shares.
 
-/** The capacity a bare position-less test-fixture store (no Building/Vehicle type, not on the map)
- *  advertises - uncapped, so a mapless fixture still accepts deposits. */
+/** What a position-less fixture store advertises, so a mapless fixture still accepts deposits. */
 const UNCAPPED_CAPACITY = Number.MAX_SAFE_INTEGER;
 
 /**
- * The most units of one good a loose ground heap can hold on one tile - the engine's global per-tile limit
- * for goods resting on the ground. Source basis: extracted - every good-pile `[GfxLandscape]` record declares
- * `LogicMaximumValency 5` (uniform across all 43 "good piles" rows in `ir.json`'s `landscapeGfx[].maxValency`),
- * matching observed original behaviour and the `ls_goods.bmd` art's 5 fill states per good. Kept as one engine
- * constant while the value is uniform; if a mod ever varies it per good, this moves onto the per-record
- * `maxValency`.
+ * The most units of one good a loose ground heap can hold on one tile. Source basis: extracted - every
+ * good-pile `[GfxLandscape]` record declares `LogicMaximumValency 5`, uniform across all 43 good-pile rows
+ * in `ir.json`'s `landscapeGfx[].maxValency`, matching the `ls_goods.bmd` art's 5 fill states per good.
  */
 export const MAX_GROUND_STACK = 5;
 
 /**
- * The per-good capacity of a store's stockpile. Every branch returns the total per-good ceiling; callers
- * subtract what's on hand (`nearestStoreFor`'s `have >= capacity` full-check, `pileup`'s `capacity - have`).
- *
- * - An **under-construction building** (a {@link Building} still at `built < ONE`): the per-good ceiling is
- *   that good's line in the site's construction bill ({@link constructionBillOf} - the from-scratch
- *   cumulative bill, or for an upgrading building the target tier's own cost); any other good gets 0
- *   (refused). So a site advertises room for exactly its outstanding materials - the carrier path hauls
- *   the `construction` goods in and the ConstructionSystem consumes them and flips `built`. An unbuilt
- *   building never produces (`productionSystem` gates on `built >= ONE`), so its stockpile can't be
- *   raided to feed a recipe.
- * - A built **building** store: from its building type's stock slots - a good with no declared slot gets 0.
- *   (Upgrade materials are never pre-hoarded at a built building: an upgrade starts by command, turning
- *   the building back into a site that then advertises the difference bill through the branch above.)
- * - A **boat hull** ({@link Vehicle} carrying a `Stockpile`): gated by the ship's `cargoGoods` allow-list - a
- *   good the hold may carry ({@link vehicleMayCarry}) gets the whole `stockSlots` capacity, one it may not
- *   gets 0. The `stockSlots` total is applied as a per-good upper bound (the whole-hold-shared-across-goods
- *   cap is a deferred refinement; see source basis).
- * - A **loose ground heap** (a positioned Stockpile with neither Building nor Vehicle): the global per-tile
- *   limit, {@link MAX_GROUND_STACK} units of the one good it holds; a heap already holding a different good
- *   refuses ours (capacity 0 - piles never mix goods, matching `stackOntoTile`/`dropOrStackGood`).
- * - A store with **none** of the above and no Position (a mapless test fixture) stays uncapped.
+ * The total per-good ceiling of a store's stockpile, not the room left: callers subtract what is on hand.
+ * A boat hull applies its whole-hold `stockSlots` total as a per-good bound (approximation: the cap shared
+ * across goods is not modelled).
  */
 export function stockCapacity(world: World, ctx: SystemContext, store: Entity, goodType: number): number {
   const building = world.tryGet(store, Building);
@@ -53,16 +30,13 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
     if (type === undefined) return 0;
     if (building.built < ONE) {
-      // Construction site: the per-good ceiling is that good's line in the site's bill (cumulative
-      // from-scratch, or the upgrade difference - constructionBillOf resolves which); a non-material
-      // good gets 0 - refused. A plain loop: the AI sink scan probes this per candidate per query.
+      // Construction site: the ceiling is that good's line in the bill, cumulative from-scratch or the
+      // upgrade difference; any other good is refused.
       for (const line of constructionBillOf(world, ctx, store)) {
         if (line.goodType === goodType) return line.amount;
       }
       return 0;
     }
-    // Built building: its per-good stock-slot ceiling (the memoized slot table - the planner's sink
-    // scans probe this thousands of times per tick) - a good with no declared slot gets 0.
     return contentIndex(ctx.content).stockSlotCapacityByBuilding.get(type.typeId)?.get(goodType) ?? 0;
   }
   const hull = world.tryGet(store, Vehicle);
@@ -73,10 +47,8 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
   }
   const stock = world.tryGet(store, Stockpile);
   if (stock !== undefined && world.has(store, Position)) {
-    // Broader than {@link isYardHeap} (the sink/pick predicate): the ground clamp applies to every
-    // building-less, hull-less pile on the map - a yard heap, a flag pile, or an uncollected GroundDrop
-    // trunk. Trunks/flags are excluded from being chosen as delivery sinks elsewhere; this is only what a
-    // pile could hold if something did deposit into it.
+    // Deliberately broader than isYardHeap: the ground clamp applies to every building-less, hull-less
+    // pile, including a flag pile or an uncollected trunk that no sink scan would pick.
     const held = lowestStockedGood(stock);
     if (held !== null && held !== goodType) return 0; // a ground heap never mixes goods
     return MAX_GROUND_STACK;
@@ -86,12 +58,8 @@ export function stockCapacity(world: World, ctx: SystemContext, store: Entity, g
 
 /**
  * The slot `store` would shelve a delivered unit of `goodType` in: the good's own where the store type
- * declares one, else its edible form's ({@link exportedGoodForm}) - a larder with no raw dish slot banks
- * the hunter's meat as food. Neither declared yields the raw good at capacity 0, a refusal.
- *
- * Returns the capacity WITH the form so the sink scan, which probes this per candidate per query, still
- * spends one {@link stockCapacity} lookup per candidate: only a dish whose raw slot is absent costs the
- * second. Handing back the form alone would make every caller resolve the capacity again.
+ * declares one, else its edible form's ({@link exportedGoodForm}), so a larder with no raw dish slot banks
+ * the hunter's meat as food. Capacity 0 is a refusal.
  */
 export function bankedSlot(
   world: World,
@@ -107,9 +75,8 @@ export function bankedSlot(
   return converted > 0 ? { goodType: edible, capacity: converted } : { goodType, capacity: 0 };
 }
 
-/** The lowest-id good a stockpile holds ≥1 unit of, or null if it is empty. A min over the Map's keys,
- *  insertion-order independent, so the pick stays canonical without minting a sorted entries array
- *  (the ground-pile scans probe this per candidate per query). */
+/** The lowest-id good a stockpile holds at least one unit of, or null if empty. A min over the map keys,
+ *  so the pick stays canonical regardless of insertion order. */
 export function lowestStockedGood(stock: { amounts: Map<number, number> }): number | null {
   let lowest: number | null = null;
   for (const [goodType, amount] of stock.amounts) {
@@ -119,11 +86,9 @@ export function lowestStockedGood(stock: { amounts: Map<number, number> }): numb
 }
 
 /**
- * Whether `e` is a loose gatherer-yard heap - a bare {@link Stockpile}+{@link Position} that is none of a
- * persistent store ({@link Building} warehouse / {@link Vehicle} hull), an uncollected {@link GroundDrop}
- * trunk, or a {@link DeliveryFlag} marker. The one shared definition of "a settled goods heap resting on the
- * ground": the tile a flag-bound gatherer stacks onto (`stackOntoTile`), a candidate the yard search considers
- * (`nearestFreeYardNode`), and what a scene check sums (`yardGood`).
+ * Whether `e` is a loose gatherer-yard heap: a bare positioned stockpile that is none of a building store,
+ * a boat hull, an uncollected trunk, or a delivery-flag marker. The one shared definition of a settled
+ * goods heap resting on the ground.
  */
 export function isYardHeap(world: World, e: Entity): boolean {
   return (

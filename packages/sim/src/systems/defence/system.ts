@@ -7,17 +7,11 @@ import { clearNavState } from '../spatial/nodes.js';
 import { shelterStillHolds } from './shelters.js';
 
 /**
- * DefenceSystem - the release half of defence mode: a civilian keeps its {@link Sheltering} claim only
- * while the building it claimed still holds a garrison and it is still a civilian. Everything else about
- * the mode lives elsewhere - the alarm itself is the `setDefenceMode` order, the run for cover is the
- * planner's shelter drive (`settlers/drives/shelter.ts`), and the fire from inside is the CombatSystem's.
- *
- * Releasing HERE rather than in the drive is what makes "switch one tower off and its people run to the
- * other" work: the claim is gone before the planner's next pass, so the freed settler re-claims a
- * still-enabled building the same tick instead of standing in a building that stopped sheltering it.
- *
- * Scale: iterates the {@link Sheltering} carriers alone - a set bounded by the enabled buildings' total
- * `shelterCapacity` - so a peaceful map with no alarm pays one empty query.
+ * The release half of defence mode: a civilian keeps its {@link Sheltering} claim only while the building
+ * it claimed still holds a garrison and it is still a civilian. Releasing here rather than in the drive
+ * frees the claim before the planner's next pass, so a settler whose building stopped sheltering it
+ * re-claims a still-enabled one the same tick. Iterates the `Sheltering` carriers alone, so a map with no
+ * alarm pays one empty query.
  */
 export const defenceSystem: System = (world, ctx) => {
   // Releasing deletes the key just yielded, which a live-Map walk tolerates - no snapshot needed.

@@ -7,15 +7,12 @@ import type { SystemContext } from '../context.js';
 import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
 
 // Construction-material accounting: what a site's `construction` cost demands, how much is delivered,
-// and the next good a builder must fetch. Read by the ConstructionSystem, the builder drive, and the
-// store capacity math (a site advertises room for exactly its outstanding materials).
+// and the next good a builder must fetch.
 
 /**
- * The next level in `type`'s upgrade chain, or undefined for a top-level / unchained type. The chain is
- * the extracted `upgradeTarget` join (the `[GfxHouse]` record's `LogicType` table - the typeId at the
- * next `sizeIdx`), so it is data-driven across every leveled kind: homes, storages, workplaces, the
- * tower (the wonder is NOT chained - its record maps every size level to one typeId, a self-link the
- * extractor skips). Undefined too when the target id is absent from content (malformed data).
+ * The next level in `type`'s upgrade chain, or undefined for a top-level or unchained type. Source basis:
+ * extracted - the `[GfxHouse]` record's `LogicType` table gives the typeId at the next `sizeIdx`; the
+ * wonder maps every size level to one typeId, a self-link the extractor skips.
  */
 export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingType | undefined {
   if (type.upgradeTarget === undefined) return undefined;
@@ -23,15 +20,9 @@ export function upgradeTierOf(type: BuildingType, ctx: SystemContext): BuildingT
 }
 
 /**
- * The material cost of raising a building entity: for a plain site its type's FROM-SCRATCH construction
- * bill (for a leveled type, the merged cost of every chain stage up to it - see
- * {@link import('../../core/content-index.js').ContentIndex.constructionBillByBuilding}); for an
- * **upgrading** building ({@link Upgrading}) the target tier's OWN `construction` - the level
- * difference, which the source encodes per tier. Empty when the entity is not a typed building (a bare
- * fixture) or its type declares no cost (a free type). The shared read behind
- * {@link deliveredConstructionFraction}, {@link constructionMaterialsPresent},
- * {@link neededConstructionGoods}, {@link constructionTotalUnits}, and the site branch of
- * {@link import('./capacity.js').stockCapacity}.
+ * The material cost of raising a building: a plain site carries its type's from-scratch bill, merged over
+ * every chain stage for a leveled type, while an {@link Upgrading} building costs the target tier's own
+ * `construction`, the level difference the source encodes per tier.
  */
 export function constructionBillOf(world: World, ctx: SystemContext, site: Entity): readonly GoodsLine[] {
   const b = world.tryGet(site, Building);
@@ -46,8 +37,8 @@ export function constructionBillOf(world: World, ctx: SystemContext, site: Entit
 
 const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];
 
-/** Total material units a construction site's cost sums to (Σ amount) - the denominator the delivered
- *  fraction and the per-swing labor quantum divide against. 0 for a free (empty-cost) type. */
+/** Total material units a site's construction cost sums to, the denominator the delivered fraction and the
+ *  per-swing labor quantum divide against. */
 export function constructionTotalUnits(world: World, ctx: SystemContext, site: Entity): number {
   let units = 0;
   for (const line of constructionBillOf(world, ctx, site)) units += line.amount;
@@ -55,11 +46,9 @@ export function constructionTotalUnits(world: World, ctx: SystemContext, site: E
 }
 
 /**
- * The delivered-material fraction of a construction site, 0..ONE - Σ min(held, need) / Σ need over the
- * `construction` cost, each line capped at its own need so an over-delivery of one good can't mask a
- * missing other. ONE for a free (empty-cost) type. This is the MATERIAL cap on `Building.built`: the
- * ConstructionSystem sets `built = min(labor, this)`, and the builder drive hammers a site only while
- * its builder-work `labor` is below this fraction (there is material on hand to install).
+ * The delivered-material fraction of a construction site, 0..ONE, each line capped at its own need so an
+ * over-delivery of one good cannot mask a missing other. This is the material cap on `Building.built`: the
+ * ConstructionSystem sets `built = min(labor, this)`.
  */
 export function deliveredConstructionFraction(world: World, ctx: SystemContext, site: Entity): Fixed {
   const stock = world.tryGet(site, Stockpile)?.amounts;
@@ -73,20 +62,15 @@ export function deliveredConstructionFraction(world: World, ctx: SystemContext, 
   return fx.div(fx.fromInt(delivered), fx.fromInt(needed));
 }
 
-/** Whether a construction site holds every `construction` material in full (delivered fraction == ONE).
- *  A free (empty-cost) type is trivially satisfied. The completion gate the ConstructionSystem ANDs with
- *  a fully-hammered `labor`. */
+/** Whether a site holds every `construction` material in full; a free type is trivially satisfied. */
 export function constructionMaterialsPresent(world: World, ctx: SystemContext, site: Entity): boolean {
   return holdsAll(world.tryGet(site, Stockpile)?.amounts, constructionBillOf(world, ctx, site));
 }
 
 /**
- * Every `construction` material a site still lacks, with each line's unclaimed shortfall
- * (`need − held − inbound`, the `inbound` tally per {@link inboundSupplyOf}) - the fetch menu a builder
- * works through to keep its OWN site supplied. Ordered LEAST-COVERED first (`(held+inbound)/need`,
- * compared by integer cross-multiplication) so a crew spreads over different materials instead of
- * queueing on one; ties break by ascending goodType, so the order never depends on Map insertion order.
- * Empty when every material is on hand or already inbound.
+ * Every `construction` material a site still lacks, each line's shortfall net of the {@link inboundSupplyOf}
+ * tally. Ordered least-covered first so a crew spreads over different materials instead of queueing on one,
+ * ties broken by ascending goodType so the order never depends on map insertion order.
  */
 export function neededConstructionGoods(
   world: World,
@@ -99,7 +83,7 @@ export function neededConstructionGoods(
   for (const line of constructionBillOf(world, ctx, site)) {
     const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
     const covered = Math.min(held + inboundSupplyOf(inbound, site, line.goodType), line.amount);
-    if (covered >= line.amount) continue; // fully on hand or inbound
+    if (covered >= line.amount) continue;
     shortfalls.push({ goodType: line.goodType, amount: line.amount - covered, covered, need: line.amount });
   }
   shortfalls.sort((a, b) => a.covered * b.need - b.covered * a.need || a.goodType - b.goodType);

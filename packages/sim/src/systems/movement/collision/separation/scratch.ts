@@ -37,8 +37,8 @@ export function separationScratch(world: World): SeparationScratch {
     };
     scratchByWorld.set(world, scratch);
   }
-  // Return only the previous tick's ACTIVE snapshots to a dense pool. Entity ids are monotonic, so
-  // retaining an id-indexed array here would grow with every historical mover in a long game.
+  // Return only the previous tick's active snapshots to a dense pool. Entity ids are monotonic, so an
+  // id-indexed array here would grow with every historical mover in a long game.
   for (const snapshot of scratch.before.values()) scratch.snapshotPool.push(snapshot);
   scratch.before.clear();
   scratch.movers.length = 0;

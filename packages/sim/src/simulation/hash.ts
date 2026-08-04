@@ -3,10 +3,8 @@ import type { World } from '../ecs/world.js';
 import type { FogState } from '../systems/vision/index.js';
 
 /**
- * A canonical hash of ALL simulation state for determinism golden tests (see
- * {@link import('../simulation.js').Simulation.hashState}): tick, RNG state, every registered component
- * on every alive entity in canonical (ascending) order, then the fog masks. If two runs from the same
- * seed + inputs diverge in ANY hashed field, this changes - which is the point.
+ * A canonical hash of all simulation state, in a fixed order: tick, RNG state, every registered
+ * component on every alive entity by ascending id, then the fog masks. Any divergence must change it.
  */
 export function hashSimState(
   world: World,
@@ -19,20 +17,19 @@ export function hashSimState(
     h ^= n | 0;
     h = Math.imul(h, 16777619) >>> 0;
   };
-  // Length first, so a differing split of the same characters ('ab'+'c' vs 'a'+'bc') stays distinct;
-  // charCodeAt covers both halves of a surrogate pair.
+  // Length first, so a different split of the same characters stays distinct. charCodeAt covers both
+  // halves of a surrogate pair.
   const mixString = (s: string): void => {
     mix(s.length);
     for (let i = 0; i < s.length; i++) mix(s.charCodeAt(i));
   };
   const hashValue = (v: unknown): void => {
     if (typeof v === 'number') {
-      // hash both halves so large fixed-point doubles are fully covered.
+      // Both halves, so a large fixed-point double is fully covered.
       mix(v | 0);
       mix(Math.trunc(v / 0x100000000));
     } else if (typeof v === 'string') {
-      // String values carry real state (an AtomicEffect's `kind`, ChildOrder's `child`), so a run
-      // diverging only in one must move the hash.
+      // String values carry real state, so a run diverging only in one must move the hash.
       mixString(v);
     } else if (typeof v === 'boolean') {
       mix(v ? 1 : 0);
@@ -52,8 +49,8 @@ export function hashSimState(
         hashValue(v[k]);
       }
     } else {
-      // A shape no branch covers hides a real divergence: a Set or a bigint mixes in nothing at all, a class
-      // instance only whatever `Object.keys` happens to expose.
+      // An uncovered shape would hide a divergence: a Set or bigint mixes in nothing, a class instance
+      // only whatever `Object.keys` exposes.
       throw new Error(`hashState: unhashable value shape ${valueShapeName(v)}`);
     }
   };
@@ -69,8 +66,7 @@ export function hashSimState(
       hashValue(val);
     }
   }
-  // The fog masks are simulated state living OUTSIDE the components (see systems/vision) - they mix their
-  // own canonical bytes in after the components.
+  // Fog masks are simulated state living outside the components, so they mix their own canonical bytes.
   fog?.hashInto(mix);
   return h.toString(16).padStart(8, '0');
 }

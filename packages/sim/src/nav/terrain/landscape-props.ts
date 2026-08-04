@@ -1,22 +1,21 @@
 import type { LandscapeType } from '@open-northland/data';
 import { type Fixed, ONE } from '../../core/fixed.js';
 
-/** Resolved, sim-ready properties of one landscape type (derived once from the IR at build time). */
+/** Resolved, sim-ready properties of one landscape type, derived once from the IR at build time. */
 export interface LandscapeProps {
   readonly walkable: boolean;
-  /** Whether a building's reserved zone may cover a node of this type. Distinct from `walkable`: a
-   *  real map's margin band around a tree/rock is walkable ground you may not build on, while water
-   *  is neither. Read by build placement, never by navigation. */
+  /** Whether a building's reserved zone may cover a node of this type. Distinct from `walkable`: a real
+   *  map's margin band around a tree or rock is walkable ground you may not build on. */
   readonly buildable: boolean;
-  /** Whether crops may be sown on a node of this type (the farmer drive's field gate) - the original's
-   *  `biocanplanton` ground flag (`trianglepatterntypes.cif`, only `land` carries it). Distinct from
-   *  the flags above: desert sand is walkable and buildable but grows nothing. */
+  /** Whether crops may be sown on a node of this type, from the original's `biocanplanton` ground flag
+   *  in `trianglepatterntypes.cif`, which only `land` carries. Desert sand is walkable and buildable but
+   *  grows nothing. */
   readonly plantable: boolean;
   /** Cost to step onto a node of this type, in fixed-point. Walkable nodes cost one unit. */
   readonly walkCost: Fixed;
 }
 
-/** Default props for a landscape typeId not present in the content table (treated as blocking). */
+/** Default props for a landscape typeId absent from the content table, treated as blocking. */
 export const UNKNOWN_LANDSCAPE_PROPS: LandscapeProps = {
   walkable: false,
   buildable: false,
@@ -29,12 +28,9 @@ export function resolveLandscapeProps(t: LandscapeType): LandscapeProps {
     walkable: t.walkable,
     buildable: t.buildable,
     plantable: t.plantable,
-    // Uniform unit cost per walkable step - faithful for this table: `landscapetypes.ini` carries no
-    // per-type movement weight (its per-type numbers are `maximumValency` and the
-    // `allowedon{land,water,everything}` placement flags, neither a traversal cost). The original
-    // weights movement by ground class instead (`trianglepatterntypes.cif` `moveresistance`: land 2,
-    // sand 3, mountain 4, snow 5, emitted as the IR's `trianglePatternTypes`) - a ground-class
-    // walk-cost is a future step. Stays Fixed so the pathfinder never converts.
+    // Uniform unit cost per walkable step: `landscapetypes.ini` carries no per-type movement weight,
+    // only `maximumValency` and the `allowedon{land,water,everything}` placement flags. The original
+    // weights movement by ground class instead, through `trianglepatterntypes.cif` `moveresistance`.
     walkCost: ONE,
   };
 }

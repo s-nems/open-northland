@@ -4,24 +4,21 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import { canonicalById } from './nodes.js';
 
 /**
- * The shared scaffold of the per-world generation-keyed spatial index memos (the region indexes, the
- * stockpile node buckets, the resource tile map). One state per `(memo, World)`, keyed on the indexed
- * component's store generation and caught up incrementally by replaying the World's membership journal -
- * so one sown field or felled tree costs O(changed entities), not a full rebuild of a ~17k-member index
- * mid-dispatch (the wholesale rebuild measurably lost to the plain store scan it replaced when reads
- * interleave with creates). A full rebuild stays the fallback whenever the journal cannot cover the span.
+ * The shared scaffold of the per-world generation-keyed spatial index memos. One state per
+ * `(memo, World)`, keyed on the indexed component's store generation and caught up by replaying the
+ * World's membership journal, so one sown field or felled tree costs O(changed entities). A full rebuild
+ * is the fallback whenever the journal cannot cover the span.
  *
  * Derived read-state, never hashed. Correctness rests on the invariant every rider documents: an indexed
- * entity's Position never changes while the component is held, so only add/remove/destroy - all journaled -
- * can change the index. The registered verifier re-derives the whole state under `verifyCaches()`, so a
- * violation or a missed delta surfaces at the tick it happens instead of as a distant golden divergence.
+ * entity's Position never changes while the component is held, so only journaled membership changes can
+ * change the index. The registered verifier re-derives the whole state under `verifyCaches()`, so a
+ * violation surfaces at the tick it happens rather than as a distant golden divergence.
  */
 
 /**
- * One memo's payload operations. `insert` must keep every bucket ascending-id (ids are monotonic, so an
- * insert is usually an append; a re-added old id must still land sorted) - that is what keeps every
- * first-match/min-id pick byte-identical to a full canonical scan. A full rebuild runs through the same
- * `empty` + `insert` path as the incremental catch-up, so the two cannot drift.
+ * One memo's payload operations. `insert` must keep every bucket ascending-id, which is what keeps a
+ * first-match or min-id pick byte-identical to a full canonical scan. A rebuild runs the same `empty` and
+ * `insert` path as the incremental catch-up, so the two cannot drift.
  */
 export interface SpatialMemoPayload<S, M> {
   /** A fresh empty payload - the rebuild starting point. */
@@ -31,8 +28,7 @@ export interface SpatialMemoPayload<S, M> {
   member(world: World, e: Entity, hx: number, hy: number): M;
   insert(state: S, e: Entity, m: M): void;
   remove(state: S, e: Entity, m: M): void;
-  /** Full divergence messages comparing the held payload against a fresh rebuild - the payload-specific
-   *  leg of the verifier (membership itself is compared by the scaffold). */
+  /** The verifier's payload-specific leg; the scaffold compares membership itself. */
   diverges(held: S, fresh: S): string[];
 }
 
@@ -46,18 +42,17 @@ export interface SpatialMemoLabels {
 
 interface MemoState<S, M> {
   generation: number;
-  /** Member records by entity - the removal side's data source and the verifier's membership ledger. */
+  /** Member records by entity: the removal side's data source and the verifier's membership ledger. */
   members: Map<Entity, M>;
   payload: S;
 }
 
 export interface SpatialMemo<S> {
-  /** The up-to-date payload for `world` - journal-replayed when possible, rebuilt otherwise. */
+  /** The up-to-date payload for `world`, journal-replayed when possible and rebuilt otherwise. */
   read(world: World): S;
 }
 
-/** Build a memoized spatial index over the entities carrying `component` and a {@link Position} - see the
- *  module doc for the invalidation model. */
+/** Build a memoized spatial index over the entities carrying `component` and a {@link Position}. */
 export function createSpatialMemo<S, M>(
   component: Component<unknown>,
   labels: SpatialMemoLabels,
@@ -67,14 +62,14 @@ export function createSpatialMemo<S, M>(
 
   const admit = (world: World, state: MemoState<S, M>, e: Entity): void => {
     const p = world.tryGet(e, Position);
-    if (p === undefined) return; // Position-less: unindexable, exactly as the query-driven build skips it
+    if (p === undefined) return; // unindexable, exactly as the query-driven build skips it
     const m = payload.member(world, e, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
     payload.insert(state.payload, e, m);
     state.members.set(e, m);
   };
 
   /** Replay one journal entry: drop any held record, then re-admit from live state. Idempotent, so a
-   *  same-entity op sequence (add + destroy, remove + re-add) converges on the final membership. */
+   *  run of ops on one entity converges on its final membership. */
   const resync = (world: World, state: MemoState<S, M>, e: Entity): void => {
     const held = state.members.get(e);
     if (held !== undefined) {

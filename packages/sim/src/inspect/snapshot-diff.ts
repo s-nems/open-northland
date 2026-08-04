@@ -1,63 +1,24 @@
 import type { EntitySnapshot, WorldSnapshot } from './snapshot.js';
 
-/**
- * `diffSnapshots` - the **"diff state between two ticks"** half of the time-travel / replay inspector
- * (plan "Cross-cutting DX"). `replay()` jumps to tick N and `HashTrace` finds tick N; this turns
- * two of those reconstructed states into a per-entity / per-component DELTA the overlay renders ("what
- * changed between tick 431 and tick 432?", "dump entity 7's changes").
- *
- * It is a pure function of two {@link WorldSnapshot} values - plain, structurally-cloned data with no
- * class instances, live `Map`s, or `Entity` brands (see `snapshot.ts`). So it is render-agnostic and
- * agent-self-verifiable headlessly, exactly like `replay()`/`HashTrace`; the human-eyed dev overlay
- * consumes this rather than reimplementing the comparison.
- *
- * ## Determinism / ordering
- *
- * Snapshots are already canonical: entities ascending by id, and a component `Map` is cloned to a
- * sorted `[key,value]` array (`snapshot.ts` `clonePlain`). This diff walks both entity lists in that
- * ascending-id order (a merge join) and re-sorts each entity's component names here, so its output
- * arrays are deterministic without relying on store traversal order.
- *
- * ## Equality
- *
- * Component values are compared by **canonical JSON** (`JSON.stringify` over the plain clone). A
- * component value is a fixed-shape literal, so `clonePlain` leaves its object keys in their one
- * deterministic insertion order (it only sorts Map entries, whose key set varies), and two deeply-equal
- * values therefore serialize identically - the snapshot's plain shape has no functions/cycles to trip
- * `stringify`. This mirrors how `hashState()` fingerprints a component, so "diverged" here agrees with
- * the hash.
- */
-
-/** A single component's change on an entity present in both snapshots. */
 export interface ComponentChange {
   readonly name: string;
-  /**
-   * `'added'` - the component is on the entity in `b` but not `a`; `'removed'` - on `a` but not `b`;
-   * `'changed'` - on both, but the value differs.
-   */
+  /** Whether the component is on the entity in `b` only, `a` only, or on both with a different value. */
   readonly kind: 'added' | 'removed' | 'changed';
-  /** The value in `a` (the "before"), or `undefined` for an `'added'` component. */
+  /** The value in `a`, or `undefined` for an `'added'` component. */
   readonly before?: unknown;
-  /** The value in `b` (the "after"), or `undefined` for a `'removed'` component. */
+  /** The value in `b`, or `undefined` for a `'removed'` component. */
   readonly after?: unknown;
 }
 
-/** An entity that exists in BOTH snapshots but whose components differ, with its per-component delta. */
 export interface ChangedEntity {
   readonly id: number;
-  /** The component changes, in ascending component-name order (at least one). */
+  /** Ascending by component name, never empty. */
   readonly changes: readonly ComponentChange[];
 }
 
-/**
- * The delta between two snapshots: which entities appeared, which vanished, and - for survivors - what
- * changed on them. Entities with NO component change are omitted from `changed`. All arrays are in
- * ascending-id order; `changed[].changes` is in ascending component-name order.
- */
+/** Entities with no component change are omitted from `changed`. */
 export interface SnapshotDiff {
-  /** The tick of the "before" snapshot (`a.tick`). */
   readonly fromTick: number;
-  /** The tick of the "after" snapshot (`b.tick`). */
   readonly toTick: number;
   /** Entities present in `b` but not `a`, ascending by id. */
   readonly added: readonly EntitySnapshot[];
@@ -67,21 +28,23 @@ export interface SnapshotDiff {
   readonly changed: readonly ChangedEntity[];
 }
 
-/** Canonical equality over two already-sorted plain snapshot values (mirrors how `hashState` fingerprints). */
+/**
+ * Canonical-JSON equality. Sound because `clonePlain` leaves a component's object keys in one
+ * deterministic order and sorts Map entries, and it matches how `hashState` fingerprints a component.
+ */
 function valuesEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /**
- * Compute the per-component delta for an entity present in both snapshots (empty when nothing changed).
- * Exported so `entity-dump.ts`'s `traceEntity` reuses the EXACT comparison - a single-entity per-tick
- * delta is then guaranteed to equal that entity's slice of the full two-tick diff (they can't drift).
+ * The per-component delta for an entity present in both snapshots. Shared with `traceEntity` so a
+ * single-entity delta cannot drift from that entity's slice of the full diff.
  */
 export function diffComponents(
   before: Readonly<Record<string, unknown>>,
   after: Readonly<Record<string, unknown>>,
 ): ComponentChange[] {
-  // Union of component names, sorted, so the output is deterministic regardless of store traversal.
+  // Sorted union, so the output does not depend on store traversal order.
   const names = new Set<string>([...Object.keys(before), ...Object.keys(after)]);
   const changes: ComponentChange[] = [];
   for (const name of [...names].sort()) {
@@ -99,17 +62,14 @@ export function diffComponents(
 }
 
 /**
- * Diff two world snapshots into a per-entity / per-component delta. Pure: it reads only the two plain
- * snapshot values and allocates a fresh result, never touching the live world. Both snapshots are
- * assumed canonical (ascending entity ids - guaranteed by `takeSnapshot`); the entity lists are merged
- * in that order, so the diff is O(|a| + |b|) and its arrays come out ascending-id without a re-sort.
+ * Diff two world snapshots into a per-entity, per-component delta. Both must be canonical (ascending
+ * entity ids), so the merge join is O(|a| + |b|) and the output stays ascending-id without a re-sort.
  */
 export function diffSnapshots(a: WorldSnapshot, b: WorldSnapshot): SnapshotDiff {
   const added: EntitySnapshot[] = [];
   const removed: EntitySnapshot[] = [];
   const changed: ChangedEntity[] = [];
 
-  // Merge join over the two ascending-id entity lists.
   let i = 0;
   let j = 0;
   const ea = a.entities;
@@ -130,7 +90,6 @@ export function diffSnapshots(a: WorldSnapshot, b: WorldSnapshot): SnapshotDiff 
       j++;
     }
   }
-  // Tails: whatever remains in `a` was removed; whatever remains in `b` was added.
   for (; i < ea.length; i++) removed.push(ea[i] as EntitySnapshot);
   for (; j < eb.length; j++) added.push(eb[j] as EntitySnapshot);
 

@@ -77,9 +77,9 @@ export function setAssistantCounter(
 }
 
 /**
- * Reset `kinds` of `player`'s counters to the default (zero, finite) - the strategic AI's teardown
- * seam (`orders/ai.ts`): a detached module's standing queues stop, while counters other hands own
- * (the class rows a human set) survive. Destroys the carrier at all-default like any write.
+ * Reset `kinds` of `player`'s counters to zero and finite, the strategic AI's teardown seam: a detached
+ * module's standing queues stop while counters another hand set survive. Destroys the carrier at
+ * all-default like any write.
  */
 export function resetAssistantCounters(
   world: World,

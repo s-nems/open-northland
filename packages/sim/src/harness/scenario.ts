@@ -5,42 +5,27 @@ import type { TerrainMap } from '../nav/terrain/index.js';
 import { type Simulation, simFor } from '../simulation.js';
 import { CORE_INVARIANTS, checkInvariants, type Invariant } from './invariants.js';
 
-/**
- * Headless scenario harness - the "e2e at the game level" layer that an AGENT can run and judge by
- * itself, with no screen. A scenario scripts the same serializable commands the UI would issue,
- * runs the deterministic sim for N ticks, and asserts outcomes + invariants. Because the sim is
- * pure and headless, this fully exercises game logic (placement -> AI -> atomics -> economy)
- * end-to-end as a normal `vitest` run. See docs/TESTING.md for the testing pyramid.
- *
- * Example:
- *   const r = scenario(content)
- *     .run(1000, { checkInvariantsEachTick: true })
- *     .expect('settlement produced wood', (sim) => totalGood(sim, WOOD) > 0);
- *   r.assertOk();
- */
+/** The outcome of a headless run: the sim it left behind plus every collected failure. */
 export interface ScenarioResult {
   readonly sim: Simulation;
   readonly failures: readonly string[];
   readonly invariantViolations: readonly string[];
-  /** Chainable, and safe to destructure - the methods close over the run, not over `this`. */
+  /** Chainable, and safe to destructure: the methods close over the run, not over `this`. */
   expect(label: string, predicate: (sim: Simulation) => boolean): ScenarioResult;
-  /** Throws with all collected failures (for use inside a test's it()). */
+  /** Throws with all collected failures. */
   assertOk(): void;
 }
 
 export interface RunOptions {
-  /** Run the invariant checks after every tick (catches the exact tick a system breaks). */
+  /** Check after every tick, so a violation names the exact tick a system broke the world. */
   checkInvariantsEachTick?: boolean;
   invariants?: readonly Invariant[];
 }
 
-/**
- * Options for a scenario run. `seed` fixes the RNG (default 1); `map` supplies a real terrain grid -
- * e.g. a `parseTerrainMap`'d `content/maps/<id>.json` - so the sim navigates an actual decoded map in
- * place of a synthetic grid. Omitting `map` runs mapless (the determinism golden does this).
- */
 export interface ScenarioOptions {
+  /** Fixes the RNG stream. Defaults to 1. */
   seed?: number;
+  /** A decoded terrain grid. Omit to run mapless. */
   map?: TerrainMap;
 }
 
@@ -51,10 +36,7 @@ class Scenario {
     this.sim = simFor({ content, seed, map });
   }
 
-  /**
-   * Script a serializable command exactly as the UI would issue it - the only way to mutate state.
-   * Commands enqueued before `run` are applied on the first tick's CommandSystem pass. Chainable.
-   */
+  /** Commands enqueued before `run` apply on the first tick's CommandSystem pass. */
   command(command: Command): this {
     this.sim.enqueue(command);
     return this;
@@ -69,7 +51,7 @@ class Scenario {
         const v = checkInvariants(this.sim.world, invariants);
         if (v.length > 0) {
           invariantViolations.push(`tick ${this.sim.tick}: ${v.join('; ')}`);
-          break; // stop at first broken tick - that's the actionable signal
+          break; // the first broken tick is the actionable signal
         }
       }
     }

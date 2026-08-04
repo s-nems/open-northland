@@ -32,48 +32,35 @@ import { stampDefaultStance } from '../orders/index.js';
 import { settlerHitpoints } from '../readviews/index.js';
 
 /**
- * The DATA of a settler to create - the {@link Command} `spawnSettler` payload minus its `kind`, so a
- * scene's direct pre-tick-0 placement and the runtime command share the one entity-assembly path (the
- * settler analogue of {@link createResourceNode}'s {@link ResourceNodeSpec}). `x`/`y` are half-cell node
+ * The data of a settler to create: the `spawnSettler` command payload minus its `kind`, so a scene's direct
+ * pre-tick-0 placement and the runtime command share one entity-assembly path. `x`/`y` are half-cell node
  * coords, like every sim command.
  */
 export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind'>;
 
 /**
  * The hitpoint pool a settler carries before its tribe's adult pool applies: every baby and child, and an
- * adult whose tribe declares no pool. Every human carries a {@link Health} pool (user decision: civilians
- * have health too - the panel shows it, a soldier can strike them, starvation drains it). The magnitude is
- * approximated - a human's hitpoints are below the readable `.ini` (source basis "Combat hit resolution");
- * 300 is the sandbox scale the combat scenes and admin palette already use. Keeping a child on it while its
- * tribe's adults carry theirs is a user decision; the ratio that implies is uncalibrated
- * (docs/tickets/features/combat-calibration.md).
+ * adult whose tribe declares no pool. Authored: every human carries a {@link Health} pool, so the panel can
+ * show it, a soldier can strike a civilian, and starvation can drain one. Approximation: a human's hitpoints
+ * are below the readable `.ini`, and 300 is the sandbox scale the combat scenes and admin palette use. The
+ * child-to-adult ratio this implies is uncalibrated.
  */
 export const DEFAULT_SETTLER_HITPOINTS = 300;
 
-/** The idle/unemployed job sentinel - always a valid {@link createSettler} input, even on content whose
- *  job table starts at typeId 1 (real ir.json has no job 0). It is the command wire form of `jobType:
- *  null` (a command field can't carry null for "no trade"): the spawned settler lands trade-less, for the
- *  player to trade and post. */
+/** The idle/unemployed job sentinel: the command wire form of `jobType: null`, since a command field cannot
+ *  carry null. Valid on any content, including one whose job table starts at typeId 1. */
 const IDLE_JOB_TYPE = 0;
 
 /**
- * Assemble a settler entity from a {@link SettlerSpec} and return it (or null for an unknown job id - bad
- * input, no entity created). The pure entity-construction core shared by the `spawnSettler` command handler
- * (which then announces `settlerBorn`) and the sanctioned pre-tick-0 scene helpers (which create authored
- * fixture state directly, like {@link createResourceNode}, and stamp their own bindings on the returned
- * entity - e.g. a gatherer's {@link WorkFlag}). It emits no event and takes `content` (not a full
- * `SystemContext`), matching {@link createResourceNode}: the birth event belongs to the runtime seam only.
+ * Assemble a settler entity from a {@link SettlerSpec}, or return null for an unknown job id. Shared by the
+ * `spawnSettler` command handler and the sanctioned pre-tick-0 scene helpers; it emits no event, because the
+ * birth event belongs to the runtime seam only.
  *
- * Stamp set and order are hash-significant - keep them stable. Each optional stamp follows the
- * separate-optional-component pattern: absent input leaves the component off and the golden hash untouched.
- *
- * Draws four values from `rng` (one per need) to seed the settler's starting needs at a random 50–100%
- * satisfaction ({@link rollInitialNeed}); the draw order (hunger, fatigue, piety, enjoyment) is part of the
- * deterministic RNG stream, so keep it stable.
+ * Stamp set and order are hash-significant. It draws four values from `rng` to seed the starting needs
+ * ({@link rollInitialNeed}) in the order hunger, fatigue, piety, enjoyment, which is part of the
+ * deterministic RNG stream.
  */
 export function createSettler(world: World, content: ContentSet, rng: Rng, spec: SettlerSpec): Entity | null {
-  // The idle sentinel is valid on any content (even one whose job table starts at typeId 1); any other
-  // id must be in the job table or it is bad input.
   if (spec.jobType !== IDLE_JOB_TYPE && !contentIndex(content).commandJobs.has(spec.jobType)) return null;
 
   const e = world.create();
@@ -85,70 +72,60 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
     fatigue: rollInitialNeed(rng),
     piety: rollInitialNeed(rng),
     enjoyment: rollInitialNeed(rng),
-    // Starting XP (a spawned veteran) or empty; the map hashes in sorted-key order either way.
+    // The map hashes in sorted-key order, so a spawned veteran's starting XP is order-independent.
     experience: new Map<number, number>(spec.experience ?? []),
   });
-  // Sex is explicit (the `Female` marker) because `jobType` loses it on adult trades: the sex-tagged
-  // job slugs (`baby_female`/`child_female`/`woman`) stamp it at creation; every other spawn is male.
-  // Matched by the job's `id` slug, not its numeric id (a fixture's adult trade may reuse a low id).
-  // Births stamp it from the parents' `makeChild` choice instead (./newborn.ts).
+  // Sex is explicit because `jobType` loses it on adult trades: the sex-tagged job slugs stamp it at
+  // creation and every other spawn is male. Matched by the job's `id` slug, not its numeric id, because a
+  // fixture's adult trade may reuse a low id.
   const jobId = contentIndex(content).commandJobs.get(spec.jobType)?.id;
   if (isFemaleJobId(jobId)) {
     world.add(e, Female, FEMALE);
   }
-  // A settler spawned directly into a baby/child job (an authored map's `sethuman` children) carries an
-  // `Age` at its stage's starting tick, exactly like a born baby: `Age` is what makes the renderer pick
-  // the young body and the GrowthSystem mature it into an adult. Slug-matched, like `Female` above.
+  // A settler spawned directly into a baby/child job (an authored map's `sethuman` children) starts at its
+  // stage's tick like a born baby; `Age` is what makes the GrowthSystem mature it. Slug-matched, like
+  // `Female` above.
   const ageTicks = spawnAgeTicks(jobId);
   if (ageTicks !== null) {
     world.add(e, Age, { ticks: ageTicks });
   }
-  // Every settler carries a `Health` pool. An ADULT takes it from the content - the settler's tribe HP
-  // ({@link settlerHitpoints}), the human counterpart to an animal's `hitpointsAdult` - so every adult spawn on
-  // one content base shares one value (no per-scene tuning). A young stage keeps the childhood default and
-  // grows into the tribe pool (GrowthSystem); an explicit positive `hitpoints` (admin/debug) wins over both.
+  // An adult takes its tribe's pool ({@link settlerHitpoints}), so every adult spawn on one content base
+  // shares one value; a young stage keeps the childhood default and grows into the tribe pool. An explicit
+  // positive `hitpoints` wins over both.
   const young = ageTicks !== null;
   const override = spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : undefined;
   const tribeHitpoints = settlerHitpoints(content, spec.tribe);
   const adultPool = tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS;
   const hitpoints = override ?? (young ? DEFAULT_SETTLER_HITPOINTS : adultPool);
   world.add(e, Health, { hitpoints, max: hitpoints });
-  // A combatant wearing armor carries an `Armor` class: an incoming hit selects that tier's damage
-  // column instead of the unarmored class 0 (`weaponDamageVsMaterial`). Only a positive class is stamped.
+  // An incoming hit selects this tier's `weaponDamageVsMaterial` column instead of the unarmored class 0.
   if (spec.armorClass !== undefined && spec.armorClass > 0) {
     world.add(e, Armor, { armorClass: spec.armorClass });
   }
-  // A combatant with a specific weapon carries a `Weapon{weaponTypeId}`: the CombatSystem resolves its attack
-  // through that weapon instead of the default `(tribe, jobType)` first-match. Only a positive id is stamped.
+  // The CombatSystem resolves this settler's attack through the named weapon rather than the default
+  // `(tribe, jobType)` first-match.
   if (spec.weaponTypeId !== undefined && spec.weaponTypeId > 0) {
     world.add(e, Weapon, { weaponTypeId: spec.weaponTypeId });
   }
-  // The player-facing inventory (boots/tool/consumables + a soldier's weapon/armour) the selection panel shows,
-  // independent of the combat `Weapon`/`Armor` above. `!= null` (not `!== undefined`) because a command is the
-  // serialize/replay/lockstep wire format, where an explicit `null` also means "no equipment".
+  // The player-facing inventory, independent of the combat `Weapon`/`Armor` above. `!= null` because a
+  // command is the replay wire format, where an explicit `null` also means "no equipment".
   if (spec.equipment != null) {
     world.add(e, Equipment, equipmentFromCommand(spec.equipment));
   }
-  // An explicit walk pace: `perTick = ONE/moveSpeed` (ticks-per-tile, larger = slower), read by the same
-  // drift-free arrival-snap as the universal default. Only a positive value is stamped; absent walks at
+  // `perTick = ONE/moveSpeed` in ticks per tile, so a larger `moveSpeed` walks slower. Absent walks at
   // MOVE_SPEED_PER_TICK.
   if (spec.moveSpeed !== undefined && spec.moveSpeed > 0) {
     world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)) });
   }
-  // A settler spawned for a specific player carries an `Owner` - the human player's to select and order.
-  // Omitted / out-of-range leaves it neutral.
   stampOwner(world, e, spec.owner);
-  // An owned settler also gets its job's default military stance (soldiers→ATTACK, scout/hunter→IGNORE, other
-  // civilians→FLEE); the player overrides with `setStance`. Owned-only (gated on Owner), so an unowned/golden
-  // settler carries no Stance.
+  // The default stance is owned-only, so an unowned or golden settler carries no Stance at all.
   if (world.has(e, Owner)) stampDefaultStance(world, content, e, spec.jobType);
   return e;
 }
 
 /**
- * The `spawnSettler` COMMAND handler: create a {@link Settler} from the command payload
- * ({@link createSettler}) and, when one was made, announce `settlerBorn` for render/audio. An unknown job
- * id is bad input - no entity, no event (still logged by commandSystem, so replay stays faithful).
+ * The `spawnSettler` command handler: create the settler and announce `settlerBorn` for render and audio.
+ * An unknown job id yields no entity and no event, and is still logged so replay stays faithful.
  */
 export function spawnSettler(
   world: World,
@@ -157,14 +134,12 @@ export function spawnSettler(
 ): void {
   const e = createSettler(world, ctx.content, ctx.rng, command);
   if (e === null) return;
-  // A commanded spawn takes its (x,y) on trust, and authored maps routinely name a cell inside a house
-  // body - push such a settler out before anything reads its position, so the work flag below plants at
-  // its real feet and render/audio see the final spot.
+  // A commanded spawn takes its (x,y) on trust and authored maps routinely name a cell inside a house body,
+  // so the eviction must run before anything reads the position, including the work flag planted below.
   evictSettlerFromBlockedSpawn(world, ctx, e);
-  // A gatherer is never "free": bind it to a work flag planted at its feet the moment it is born (the
-  // spawn-time twin of the profession-change auto-plant, `syncWorkFlagToJob`), so it only searches its
-  // flag's radius, not the whole map. A non-gathering trade gets no flag. Source basis: a design rule
-  // (user-specified), approximating the original's observed collector-flag work-area model.
+  // A gatherer is bound to a work flag planted at its feet the moment it is born, so it searches its flag's
+  // radius rather than the whole map. A non-gathering trade gets no flag. Authored rule approximating the
+  // original's observed collector-flag work area.
   syncWorkFlagToJob(world, ctx, e, command.jobType);
   stampGatherGood(world, ctx, e, command);
   ctx.events.emit({ kind: 'settlerBorn', entity: e });
@@ -172,17 +147,12 @@ export function spawnSettler(
 
 /**
  * Narrow a freshly spawned gatherer's work flag to its authored `gatherGood` (a decoded map's
- * `setproducedgood`), so an imported wood collector stays a wood collector instead of starting on the
- * gather-everything default. Bad input is skipped, leaving that default: no pick, a trade with no flag
- * (`syncWorkFlagToJob` planted none), or a good the trade cannot harvest.
+ * `setproducedgood`), so an imported wood collector does not start on the gather-everything default. Bad
+ * input leaves that default: no pick, a trade with no flag, or a good the trade cannot harvest.
  *
- * Named approximation: only a flag-harvestable pick lands, which is 573 of the decoded corpus's 819.
- * The original authors the verb for every trade, but the picks it drops have no home in this model and
- * no behavior to change - a workshop product (`baker` → `bread`) and a `fisher` → `fish` carry no work
- * flag at all; a `farmer` → `wheat` is bound to its farm by the farming rule ({@link jobCanHarvest});
- * and a `hunter` → `prey` names the resource, not a good, so the hunter falls back to every good it can
- * harvest - `leather` + `meat`, which is what hunting prey yields anyway. Per-settler workshop product
- * selection is tracked in docs/tickets/sim/authored-workshop-product-picks.md.
+ * Approximation: only a flag-harvestable pick lands, 573 of the decoded corpus's 819. The picks that drop
+ * have no home in this model and no behavior to change - a workshop product carries no work flag, a farmer
+ * is bound to its farm by the farming rule, and a `hunter` → `prey` names a resource rather than a good.
  */
 function stampGatherGood(
   world: World,
