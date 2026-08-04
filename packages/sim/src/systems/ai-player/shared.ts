@@ -198,11 +198,8 @@ export function ownedBuildings(world: World, player: number): Entity[] {
   return canonicalById(world.query(Building, Owner)).filter((e) => ownerOf(world, e) === player);
 }
 
-/** The seat's PEOPLE, canonical ascending-id order. Claimed livestock carries an {@link Owner} too and
- *  reads as an adult with no trade, so without the {@link Person} key every module here would treat the
- *  herd as manpower: the round-up would hand the pool a cow, `setJob` would make it a builder (which
- *  also poisons the tribe's alive-trade set), and it would count as a bachelor the garrison may draft
- *  against. */
+/** The seat's people, canonical ascending-id order; claimed livestock carries an {@link Owner} too, so the
+ *  {@link Person} key is what keeps the herd out of the seat's manpower. */
 export function ownedSettlers(world: World, player: number): Entity[] {
   return canonicalById(world.query(Person, Owner)).filter((e) => ownerOf(world, e) === player);
 }

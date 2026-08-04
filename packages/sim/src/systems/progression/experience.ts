@@ -4,7 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { WEAPON_MAIN_TYPE } from '../readviews/combat.js';
-import { isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
+import { declaresNoTrades, isHeroJob, isScoutJob, isSoldierJob } from '../readviews/index.js';
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
@@ -211,6 +211,8 @@ export function grantFightExperience(
   const s = world.tryGet(attacker, Settler);
   if (s === undefined) return;
   if (isWildlife(world, attacker)) return;
+  // A tribe with no `jobEnables` reaches no rung, so the points would be hashed state nothing reads.
+  if (declaresNoTrades(ctx.content, s.tribe)) return;
   const bucket = fightExperienceTypeFor(weaponMainType);
   const rate = fightExperienceRate(ctx);
   if (bucket !== undefined && rate > 0) accrueExperience(s, bucket, rate);

@@ -8,12 +8,12 @@
 nothing raises them (`systems/lifecycle/needs.ts` sweeps `Person`), nothing reads them
 (`systems/progression/experience.ts` returns early on wildlife), and `hashSimState` mixes all five for
 every creature on the map. A monster-tribe person carries the same five inert fields: `needsSystem`
-skips a tribe whose `jobEnables` is empty, because no building can employ it and no store is its own.
+skips a recorded tribe with no `jobEnables`, because no building can employ it.
 
 Splitting them into human-only components drops five dead fields per creature out of the hash, and
 turns the two remaining conventional gates structural: `grantFightExperience` still asks `isWildlife` at
 runtime, where an XP grant keyed on `Experience` could not reach a creature at all, and `needsSystem`
-still asks `isPlayableTribe` per entity, where the stamp could answer it once. `tribe` and `jobType`
+still asks `declaresNoTrades` per entity, where the stamp could answer it once. `tribe` and `jobType`
 stay shared - `conflict/weapons.ts` reads a creature's null `jobType` to pick its animal weapon.
 
 ## Scope

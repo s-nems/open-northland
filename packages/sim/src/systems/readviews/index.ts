@@ -92,6 +92,7 @@ export {
   animalCannotBeAttacked,
   animalHitpoints,
   animalRecord,
+  declaresNoTrades,
   herdParams,
   huntYieldsOf,
   ignoresHousesAnimal,
