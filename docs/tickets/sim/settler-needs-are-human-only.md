@@ -7,18 +7,19 @@
 `hunger`, `fatigue`, `piety`, `enjoyment`, `experience`. `addWildlife` writes them all as inert zeros,
 nothing raises them (`systems/lifecycle/needs.ts` sweeps `Person`), nothing reads them
 (`systems/progression/experience.ts` returns early on wildlife), and `hashSimState` mixes all five for
-every creature on the map.
+every creature on the map. A monster-tribe person carries the same five inert fields: `needsSystem`
+skips a tribe whose `jobEnables` is empty, because no building can employ it and no store is its own.
 
 Splitting them into human-only components drops five dead fields per creature out of the hash, and
-turns the one remaining conventional gate structural: `grantFightExperience` still asks `isWildlife` at
-runtime, where an XP grant keyed on `Experience` could not reach a creature at all. `tribe` and
-`jobType` stay shared - `conflict/weapons.ts` reads a creature's null `jobType` to pick its animal
-weapon.
+turns the two remaining conventional gates structural: `grantFightExperience` still asks `isWildlife` at
+runtime, where an XP grant keyed on `Experience` could not reach a creature at all, and `needsSystem`
+still asks `isPlayableTribe` per entity, where the stamp could answer it once. `tribe` and `jobType`
+stay shared - `conflict/weapons.ts` reads a creature's null `jobType` to pick its animal weapon.
 
 ## Scope
 
 - Extract `Needs { hunger, fatigue, piety, enjoyment }` and the experience map off `Settler`; keep the
-  two constructors as the only stamp path.
+  two constructors as the only stamp path, and stamp `Needs` only for a tribe that declares trades.
 - Retarget `needsSystem`, `experience.ts`, `alive-jobs.ts` and the `needsInRange` invariant at the new
   components, and drop the `Person` requirement where the new component already implies it.
 - The state hash moves (fewer hashed fields per creature); the atomic trace must not.

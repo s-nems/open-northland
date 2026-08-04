@@ -117,6 +117,14 @@ export const societyContent = {
       typeId: 15,
       id: 'test_butterfly',
     },
+    {
+      // The MONSTER tribe (typeId 16), the weresnake/werewolf shape: no `animaltypes` record, so it is
+      // not wildlife, and no `jobEnables`, so it declares no trade and has no economy. The maps place
+      // these as owned soldiers, which makes them people who can never feed themselves.
+      typeId: 16,
+      id: 'test_monster',
+      atomicBindings: [{ jobType: 31, atomicId: 81, animation: 'monster_attack' }],
+    },
   ],
   // animaltypes.ini records, keyed on `tribeType` (an animal's identity IS its tribe) - carrying one
   // is what makes a tribe wildlife. The bear (tribe 10) is `aggressive` (attacks civilizations
