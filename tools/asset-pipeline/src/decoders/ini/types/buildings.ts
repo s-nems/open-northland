@@ -28,7 +28,9 @@ function houseKind(mainType: number | undefined): BuildingType['kind'] {
 
 /**
  * A house record keys its id on `logictype`, not the `type` every other table uses, and its name on
- * `debugname`.
+ * `debugname`. The combat, graphics and placement extras (`debugcolor`, `logicCanEnableDefenceMode`,
+ * `logicSchoolSize`, `logicvehicletype`, `logicbuildon*`/`logicignore*`) are skipped here: they belong
+ * with the construction, combat and placement systems rather than this type-table slice.
  */
 export function extractBuildings(sections: readonly RuleSection[], src: SourceRef): BuildingType[] {
   const buildings: BuildingType[] = [];
