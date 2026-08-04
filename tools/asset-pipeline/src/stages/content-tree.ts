@@ -24,11 +24,8 @@ const SERVED_DIRS: readonly string[] = [BOBS_DIR, TEXTURES_DIR, SOUNDS_DIR, GUI_
 
 /**
  * The output-relative path a derived file must be written at, given the path its source won in some
- * layer. Inside a served subtree the spelling is canonical - the route's own casing, then a lower-cased
- * tail (the casing `normalizeAssetPath` gives the tail of every app-side reference) - because the
- * content routes match case-sensitively: a layer spelling `data/` or `Bin/Bobs/` would otherwise write
- * outside its route and the loaders would read the 404 as absent content. Paths outside those subtrees
- * pass through, no route addresses them.
+ * layer. The content routes match case-sensitively, so inside a served subtree the spelling is
+ * canonical: the route's own casing plus a lower-cased tail. Paths outside those subtrees pass through.
  */
 export function servedRelPath(rel: string): string {
   const segments = rel.split(/[\\/]+/);
@@ -43,7 +40,7 @@ export function servedRelPath(rel: string): string {
 
 /**
  * Writes `value` as pretty-printed JSON (2-space indent, trailing newline) to `<outDir>/<relPath>`,
- * creating the parent directory. The single JSON-artifact writer the stage manifest/metrics emitters end with.
+ * creating the parent directory.
  */
 export async function writeJsonFile(outDir: string, relPath: string, value: unknown): Promise<void> {
   const path = join(outDir, relPath);
@@ -58,9 +55,8 @@ export interface BobAtlasFiles {
 }
 
 /**
- * Writes a packed bob atlas's `<stem>.png` + `<stem>.atlas.json` under {@link BOBS_DIR} (the `/bobs/`
- * convention), plus `<stem>.build.png` for a `'build-time'` bake's time sheet (announced by the
- * manifest's `build` flag), and returns their relative paths.
+ * Writes a packed bob atlas's `<stem>.png` and `<stem>.atlas.json` under {@link BOBS_DIR}, plus
+ * `<stem>.build.png` for a `'build-time'` bake's time sheet.
  */
 async function writeBobAtlas(outDir: string, stem: string, atlas: BobAtlas): Promise<BobAtlasFiles> {
   await mkdir(join(outDir, BOBS_DIR), { recursive: true });
@@ -84,11 +80,9 @@ export interface IndexedAtlasStems {
 }
 
 /**
- * Packs a decoded bob container into (a) an indexed atlas the app recolours at draw time and (b) an RGBA
- * preview coloured through `previewPalette`, writes both under {@link BOBS_DIR} as `<keyStem>.indexed` and
- * `<keyStem>.<previewSuffix>`, and returns the two stems + frame count. The shared emit path for the
- * goods/GUI/font indexed-atlas stages, which differ only in their key stem, preview suffix, and palette -
- * centralizing the `<stem>.indexed` / `<stem>.<colour>` naming the app-side loaders mirror.
+ * Packs a decoded bob container into an indexed atlas the app recolours at draw time plus an RGBA
+ * preview coloured through `previewPalette`, written under {@link BOBS_DIR} as `<keyStem>.indexed` and
+ * `<keyStem>.<previewSuffix>` (the naming the app-side loaders mirror).
  */
 export async function emitIndexedAndPreviewAtlas(
   outDir: string,
@@ -107,11 +101,10 @@ export async function emitIndexedAndPreviewAtlas(
 }
 
 /**
- * The flat {@link BOBS_DIR} stem a source `.bmd`'s derived atlas is served at: the lower-cased
- * basename plus `.<suffix>`. The app addresses every atlas by basename under one flat `/bobs/` route
- * (`servedAtlasStem`, packages/app), so a bob in a `bobs/` subdirectory or in a mixed-case layer must
- * still land at exactly this name. `suffix` distinguishes recolours of one shared body bob (a palette
- * slug, or `indexed`/`shadow`) so variants don't clobber each other.
+ * The flat {@link BOBS_DIR} stem a source `.bmd`'s derived atlas is served at: the lower-cased basename
+ * plus `.<suffix>`. The app addresses every atlas by basename under one flat `/bobs/` route, so a bob in
+ * a subdirectory or a mixed-case layer must still land at exactly this name. `suffix` (a palette slug,
+ * or `indexed`/`shadow`) keeps recolours of one shared body bob apart.
  */
 export function bobAtlasStem(bmdRel: string, suffix: string): string {
   const name = basename(bmdRel).replace(/\.bmd$/i, '');
@@ -130,10 +123,9 @@ export async function writeSourceBobAtlas(
 
 /**
  * Rejects distinct `.bmd` sources whose atlases would claim one {@link bobAtlasStem}. The served
- * namespace is flat, so `bobs/nowe/mur.bmd` and `bobs/mur.bmd` would silently clobber each other and
- * half the buildings would draw the wrong body; the owned corpus has no such pair. Pass one suffix
- * family at a time (bodies carry a palette slug, shadows a fixed `shadow`) - across families the
- * names cannot meet. Every colliding pair is reported at once: a rerun costs a full conversion.
+ * namespace is flat, so `bobs/nowe/mur.bmd` and `bobs/mur.bmd` would silently clobber each other; the
+ * owned corpus has no such pair. Pass one suffix family at a time, since across families the names
+ * cannot meet. Every colliding pair is reported at once because a rerun costs a full conversion.
  */
 export function assertDistinctBobBasenames(bmdRefs: Iterable<string>): void {
   const byBasename = new Map<string, string>();

@@ -10,32 +10,22 @@ import { readSourceFile } from '../source-files.js';
 import type { GoodLike } from './icons.js';
 
 /**
- * The localized good-name join: read each locale's `text/<lang>/strings/gameobjects/goods.{ini,cif}`
- * string table and join it (good `type` → display name) onto the goods by `typeId`, producing
- * `locale → (good string id → name)`. The join ({@link resolveGoodNames}) is pure and unit-tested.
- */
-
-/**
- * The languages whose localized good-name table we extract, most-preferred first. Each good-name string
- * file lives at `text/<dir>/strings/gameobjects/goods.{ini,cif}`; the mod ships Polish as a plaintext `.ini`
- * (CP1250, decoded directly) and English as encrypted `.cif` (byte-preserving latin1, then
- * re-decoded to CP1250 for display). The app intentionally exposes only Polish and English.
+ * The locales whose good-name table is extracted, most-preferred first, from
+ * `text/<dir>/strings/gameobjects/goods.{ini,cif}`. The mod ships Polish as a plaintext `.ini` and English
+ * as an encrypted `.cif`.
  */
 const GOOD_NAME_LOCALES = [
   { code: 'pl', dir: 'pol', encrypted: false },
   { code: 'en', dir: 'eng', encrypted: true },
 ] as const;
 
-/** Path of a locale's good-name string table (plaintext `.ini` when not encrypted, else the `.cif`). */
 function goodNamesPath(dir: string, encrypted: boolean): string {
   return join('Data', 'text', dir, 'strings', 'gameobjects', encrypted ? 'goods.cif' : 'goods.ini');
 }
 
 /**
- * Join the localized good-name string tables (good `type` → display name, per locale) onto the goods by
- * `typeId`, producing `locale → (good string id → name)`. Pure (no I/O) so the join is unit-tested. A good
- * absent from a locale's table (or a locale with no table) simply gets no entry there; the app's fallback
- * chain covers it. The `type`-keyed singular is the faithful display name (see {@link extractStringnById}).
+ * Join the localized good-name string tables onto the goods by `typeId`, producing
+ * `locale → (good string id → name)`. A good or locale absent from a table simply gets no entry.
  */
 export function resolveGoodNames(
   goods: readonly (GoodLike & { readonly typeId: number })[],

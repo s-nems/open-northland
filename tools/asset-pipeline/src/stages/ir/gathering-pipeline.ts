@@ -2,23 +2,15 @@ import type { GoodType, LandscapeGfx } from '@open-northland/data';
 import { GatheringPipeline } from '@open-northland/data';
 
 /**
- * Resolves the {@link GatheringPipeline} join for every map-gathered good: `goodType` → its three
- * `landscapeTo{Harvest,Pickup,Store}` stage ids → the {@link LandscapeGfx} records that place each
- * stage. The stage→gfx leg joins by `LandscapeGfx.logicType == the stage's landscape type` (the
- * `[GfxLandscape]` cross-ref to the `[landscapetype]` table - the houses analog is `[GfxHouse]
- * LogicType`). Materialized once here so a later gathering system reads the stages + their placeable
- * gfx directly instead of re-scanning the 866-record gfx table each time.
- *
- * One record per good carrying a `gathering` chain (the ~11 raw goods); produced/in-house goods are
- * skipped. A lane the good omits (honey has no `harvest`) is left absent. A stage whose landscape
- * type has no placeable gfx record yields an empty `gfxIndices` - faithful data (some store lanes are
- * pure-logic "dropped good" markers), surfaced at build time rather than silently dropped.
+ * Resolves the gathering join for every good carrying a `gathering` chain: its three
+ * `landscapeTo{Harvest,Pickup,Store}` stages, each bound to the `[GfxLandscape]` records whose
+ * `logicType` equals that stage's landscape type.
  */
 export function buildGatheringPipeline(
   goods: readonly GoodType[],
   landscapeGfx: readonly LandscapeGfx[],
 ): GatheringPipeline[] {
-  // logicType -> the gfx records (by positional index, ascending) that place it, built once.
+  // logicType -> the ascending `LandscapeGfx.index` values that place it.
   const gfxByLogicType = new Map<number, number[]>();
   for (const g of landscapeGfx) {
     const list = gfxByLogicType.get(g.logicType);

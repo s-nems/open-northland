@@ -1,27 +1,21 @@
 import type { BuildingFootprint, BuildingType, GoodQuantity } from '@open-northland/data';
 
 /**
- * The graphics-table (`[GfxHouse]`) overlays keyed by building `typeId`, applied onto the logic-table
- * buildings by {@link applyBuildingGraphicsOverlays}. The logic table carries none of them - cost,
- * hitpoints, level chain, and footprint all live only in the graphics twin (see the `extract*`
- * producers in `decoders/ini/buildings-gfx`).
+ * The `[GfxHouse]` graphics-table fields keyed by building `typeId`. The logic house table carries none
+ * of them.
  */
 export interface BuildingGraphicsOverlays {
-  /** typeId → build-material cost (repeat-encoded goods folded to quantities). */
   readonly constructionCosts: ReadonlyMap<number, GoodQuantity[]>;
-  /** typeId → max hitpoints (the full life pool the ConstructionSystem ramps up as the building rises). */
+  /** Building `typeId` → max hitpoints. */
   readonly hitpoints: ReadonlyMap<number, number>;
-  /** typeId → the next size level's typeId in the same record (the level-chain join). */
+  /** Building `typeId` → the next size level's `typeId`. */
   readonly upgradeTargets: ReadonlyMap<number, number>;
-  /** typeId → ground footprint (collision body / build-exclusion zone / door). */
   readonly footprints: ReadonlyMap<number, BuildingFootprint>;
 }
 
 /**
- * Overlays every {@link BuildingGraphicsOverlays} member onto the logic-table {@link BuildingType}s,
- * joined by `typeId`. A building the graphics table omits keeps its schema-default empty cost and no
- * hitpoints/upgrade target/footprint (it places with no collision - the pre-footprint behavior).
- * Pure - the maps are gathered by the caller during the source scan.
+ * Joins the graphics-table overlays onto the logic buildings by `typeId`. A building the graphics table
+ * omits keeps its schema defaults, which leaves it with no hitpoints, upgrade target, or collision.
  */
 export function applyBuildingGraphicsOverlays(
   buildings: readonly BuildingType[],

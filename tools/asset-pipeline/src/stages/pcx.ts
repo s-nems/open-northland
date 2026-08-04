@@ -17,10 +17,8 @@ export interface MaskedTexturePair {
 }
 
 /**
- * Pure composition: `.pcx` bytes -> `.png` bytes (indexed RLE -> palette-expanded RGBA -> PNG
- * container). The three decoders stay pure; this is the only wiring between them. Throws a
- * `pcx:`/`png:`-prefixed error for a malformed or palette-less picture - {@link convertPcxTree}
- * catches it per-file so one bad image can't abort the batch.
+ * `.pcx` bytes to `.png` bytes. Throws a `pcx:`/`png:`-prefixed error for a malformed or palette-less
+ * picture.
  */
 export function pcxToPng(bytes: Uint8Array): Uint8Array {
   return encodePng(expandToRgba(decodePcx(bytes)));
@@ -33,17 +31,13 @@ export interface PcxConversion {
 }
 
 /**
- * Composes each transition overlay's RGB texture + alpha-mask `.pcx` pair into one RGBA
- * `<stem>.masked.png` under {@link TEXTURES_DIR} (the `/textures/` serving contract). The mask's
- * raw palette-index bytes become the alpha channel directly (the engine's convention - the mask
- * picture's index is the coverage value; format oracle in docs/SOURCES.md), which the plain
- * palette-expanding conversion cannot represent.
+ * Composes each transition overlay's RGB texture and alpha-mask `.pcx` pair into one RGBA
+ * `<stem>.masked.png` under {@link TEXTURES_DIR}. The mask picture's raw palette-index byte is the
+ * coverage value and becomes the alpha channel directly (format oracle in docs/SOURCES.md).
  *
- * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} - the IR's normalized
- * paths are lowercased, so joining them verbatim would miss on a case-sensitive filesystem; every
- * real `[transition]` record lives in that one directory, and a record pointing elsewhere degrades
- * to the warn-and-skip below. Pairs are deduped by texture path (several records share one page); a
- * missing/undecodable picture is logged and skipped like {@link convertPcxTree}'s per-file boundary.
+ * Sources resolve by basename under the real-cased {@link TEXTURES_DIR} because the IR's normalized
+ * paths are lowercased; every real `[transition]` record lives in that one directory. Pairs are deduped
+ * by texture path, and a missing or undecodable picture is logged and skipped.
  */
 export async function composeMaskedTransitionPages(
   roots: SourceRoots,
@@ -82,14 +76,10 @@ export async function composeMaskedTransitionPages(
 }
 
 /**
- * Converts every `.pcx` under the source `roots` (layer-ordered union - one `.png` per relative path,
- * decoded from the layer that wins it) to a `.png` under `outDir`, at the source's relative path
- * canonicalized for the served subtrees ({@link servedRelPath}).
- * Returns the conversions performed (input/output relative paths). A
- * picture that fails to read or decode is logged and skipped - a batch pipeline must not abort on one
- * malformed/palette-less image. An output-write failure (and a missing/unreadable game root)
- * propagates instead: that's an environmental error, not a per-file boundary failure, and should
- * fail loudly rather than be lost.
+ * Converts every `.pcx` under the source `roots` to a `.png` under `outDir`, one per relative path
+ * (decoded from the layer that wins it) and canonicalized for the served subtrees
+ * ({@link servedRelPath}). A picture that fails to read or decode is logged and skipped; an output-write
+ * failure or an unreadable game root propagates as an environmental error.
  */
 export async function convertPcxTree(
   roots: SourceRoots,

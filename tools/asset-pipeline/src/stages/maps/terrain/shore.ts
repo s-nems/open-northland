@@ -2,13 +2,9 @@ import { findChunk, unpackMapLayer } from '../../../decoders/mapdat/index.js';
 import type { DecodedMap } from './lane.js';
 
 /**
- * Decodes the `lmms` lane: the max moveable-unit size per half-cell node, a distance transform from
- * blocked nodes capped at 7 (meaning per the CulturesNation dat-format documentation; the 0..7 value
- * range is verified across the owned corpus, see `docs/formats/MAPDAT.md`). HALF-CELL resolution
- * (2W x 2H, like `emla`), collapsed to one value per cell by sampling each cell's CENTRE node
- * (`(2x + (y&1), 2y)`, the vertex the ground mesh bakes for the cell) - a named approximation that
- * halves the lane's resolution. Exported as the `shore` lane: no renderer consumes it yet, and as a
- * distance-from-obstruction field it still fits the shore-foam use the name anticipates. Returns
+ * Decodes the `lmms` max moveable-unit-size lane, stored at `2W x 2H` half-cell resolution, to one
+ * value per cell by sampling each cell's centre node `(2x + (y & 1), 2y)`: a named approximation that
+ * halves the lane's resolution. Emitted as the `shore` lane, which no renderer consumes yet. Returns
  * undefined when the map lacks the lane; throws on a length mismatch.
  */
 export function shoreFromMapDat({ map, size }: DecodedMap): number[] | undefined {

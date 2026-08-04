@@ -18,9 +18,8 @@ import { CULTURESNATION_MOD } from '../../probe.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
- * The graphics-binding resolution {@link resolveGraphicsBindings} produces and
- * {@link import('./convert.js').convertBmdTree} consumes: every `(bmd, palette)` binding, the palette
- * `editname` index, and the `.bmd`s that bake build-time alpha. The three always travel together.
+ * One graphics-binding resolution: every `(bmd, palette)` binding, the palette `editname` index, and the
+ * `.bmd`s that bake build-time alpha.
  */
 export interface GraphicsBindingSet {
   readonly bindings: readonly BmdPaletteBinding[];
@@ -34,9 +33,8 @@ export function bindingKey(binding: Pick<BmdPaletteBinding, 'bmd' | 'paletteName
 }
 
 /**
- * Drops `(bmd, palette)` duplicates within one source's records, keeping the first: the repeats carry
- * no extra cross-refs worth keeping in the binding list. Scoped to the source, not to the bindings
- * already accumulated - a pair a later source repeats is kept and dedups again at conversion.
+ * Drops `(bmd, palette)` duplicates within one source's records, keeping the first. Scoped to the
+ * source, not to the bindings already accumulated: a pair a later source repeats dedups at conversion.
  */
 function dedupeBindings(records: readonly BmdPaletteBinding[]): BmdPaletteBinding[] {
   const seen = new Set<string>();
@@ -49,17 +47,11 @@ function dedupeBindings(records: readonly BmdPaletteBinding[]): BmdPaletteBindin
 }
 
 /**
- * Flattens the mod's richer `[jobbasegraphics]` records ({@link JobBaseGraphicsBinding}) into the flat
- * {@link BmdPaletteBinding} shape {@link import('./convert.js').convertBmdTree} already consumes - so the
- * human body/head bob sets reuse the exact same resolve→decode→atlas path as the readable `[jobgraphics]`
- * animals leg, with no second copy of the conversion logic. A human draws from a body bob (coloured by
- * `gfxpalettebasebody`) plus numbered head bobs (coloured by `gfxpalettebasehead`), so each indexed slot
- * becomes one binding paired with the matching palette. A slot whose palette `editname` is absent
- * is dropped here (there is nothing to resolve it against - not even a name `convertBmdTree` could
- * warn about); the `gfxpaletterandom` tint is a per-settler runtime range, not a bob palette, so it is
- * not emitted. The `logictribe`/`logicjob` cross-refs ride along on each binding. Head bobs carry no
- * shadow `.bmd` (the extractor never sets one); body `shadowBmd`s ride along for
- * {@link import('./convert.js').convertShadowBmdTree}.
+ * Flattens `[jobbasegraphics]` records into the flat {@link BmdPaletteBinding} shape. A human draws from
+ * a body bob (coloured by `gfxpalettebasebody`) plus numbered head bobs (`gfxpalettebasehead`), so each
+ * indexed slot becomes one binding paired with its palette. A slot whose palette `editname` is absent is
+ * dropped, and the `gfxpaletterandom` tint is a per-settler runtime range rather than a bob palette, so
+ * it is never emitted.
  */
 export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBinding[]): BmdPaletteBinding[] {
   const bindings: BmdPaletteBinding[] = [];
@@ -89,15 +81,14 @@ export function jobBaseGraphicsToBindings(records: readonly JobBaseGraphicsBindi
 }
 
 /** One binding skin: where it lives, how its records reach the flat {@link BmdPaletteBinding} shape,
- *  and the per-source handling {@link resolveGraphicsBindings} applies to them. */
+ *  and the per-source handling applied to them. */
 interface GraphicsBindingSource {
-  /** Path under the game root, or under `DataCnmd/` for the mod's readable twins (golden rule #4). */
+  /** Path under the game root, or under `DataCnmd/` for the mod's readable twins. */
   readonly path: string;
   readonly encrypted?: true;
   readonly read: (sections: readonly RuleSection[]) => readonly BmdPaletteBinding[];
   readonly dedupe?: true;
-  /** The source's `.bmd`s bake construction-progress thresholds rather than coverage - see
-   *  {@link import('../../decoders/atlas.js').AtlasAlphaMode}. */
+  /** The source's `.bmd`s bake construction-progress thresholds rather than coverage (`AtlasAlphaMode`). */
   readonly buildTime?: true;
 }
 
@@ -128,9 +119,8 @@ const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
     encrypted: true,
     read: readHumanJobGraphics,
   },
-  /** The map's pre-placed landscape-object bobs (trees, bushes, signs, wonders, harbours) - the leg
-   *  that makes `ls_trees.bmd` an atlas. The ~99 tree species share a dozen palettes, so records
-   *  repeat a `(bmd, palette)` pair. */
+  /** The map's pre-placed landscape-object bobs (trees, bushes, signs, wonders, harbours). The ~99 tree
+   *  species share a dozen palettes, so records repeat a `(bmd, palette)` pair. */
   {
     path: join(INIS, 'landscapes', 'landscapes.cif'),
     encrypted: true,
@@ -139,18 +129,15 @@ const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
   },
   /** The mod's readable human twin. */
   { path: join(CULTURESNATION_MOD, 'types', 'humanstype', 'jobgraphics.ini'), read: readHumanJobGraphics },
-  /** The mod carries the broader per-tribe cart/ship set (22 records across tribes 1..4 vs the base
-   *  `.cif`'s 6 across tribes 1 and 4 only); the base pairs are a strict subset and dedup at
-   *  conversion, while the extra rows carry their own `logicvehicle` cross-refs. */
+  /** The mod's broader per-tribe cart/ship set (22 records across tribes 1..4 against the base `.cif`'s
+   *  6 across tribes 1 and 4); the base pairs are a strict subset and dedup at conversion. */
   {
     path: join(CULTURESNATION_MOD, 'types', 'vehiclestype', 'jobgraphics.ini'),
     read: extractGraphicsBindings,
   },
-  /** Every settlement house bound to its `ls_houses_*.bmd` body + palette. One record commonly repeats
-   *  a bob+palette across tribes and levels (the ~25 viking-home records all bind `ls_houses_viking` +
-   *  `house01`/`house02`). The only source claiming build-time `.bmd`s, so a run whose mod lacks it
-   *  bakes the house family per-pixel - acceptable while the conversion requires the mod
-   *  (`resolveModRoot`). */
+  /** Every settlement house bound to its `ls_houses_*.bmd` body and palette. Records repeat a
+   *  bob+palette across tribes and levels (the ~25 viking-home records all bind `ls_houses_viking` with
+   *  `house01`/`house02`). The only source claiming build-time `.bmd`s. */
   {
     path: join(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'),
     read: extractBuildingGraphics,
@@ -163,13 +150,11 @@ const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
 const PALETTE_INDEX_INI = join(INIS, 'palettes', 'palettes.ini');
 
 /**
- * The scout's guidepost is bound by the ENGINE, not by any data table - "guidepost" appears in no
- * decodable binding (landscapes.cif and palettes.ini both checked), only in the executables - so it is
- * hand-authored here. Frame layout (decoded): bob 0 is the post, bobs 1..18 the direction board in ~20°
- * angular steps around the post top. `bridge01` is the single-colour fallback - a plausible wooden
- * palette, a named approximation; the per-player atlases the engine actually draws are baked by
- * `convertGuidepostPlayerAtlases` (stages/player-colors.ts). `convertBmdTree` skips this binding
- * silently when unresolvable.
+ * The scout's guidepost is bound by the engine, not by any data table: "guidepost" appears in no
+ * decodable binding (landscapes.cif and palettes.ini both checked), so it is hand-authored here.
+ * Decoded frame layout: bob 0 is the post, bobs 1..18 the direction board in ~20 degree steps around
+ * the post top. `bridge01` is a named approximation, the single-colour fallback for the per-player
+ * atlases `convertGuidepostPlayerAtlases` bakes.
  */
 const GUIDEPOST_BINDING: BmdPaletteBinding = {
   bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',
@@ -197,14 +182,12 @@ async function readSections(
 }
 
 /**
- * Reads every {@link GRAPHICS_BINDING_SOURCES} skin and merges their `.bmd`→palette pairings into the
- * one flat list {@link import('./convert.js').convertBmdTree} consumes, followed by the
- * {@link GUIDEPOST_BINDING}.
+ * Reads every {@link GRAPHICS_BINDING_SOURCES} skin and merges their `.bmd`-to-palette pairings into one
+ * flat list, followed by the {@link GUIDEPOST_BINDING}.
  *
  * The goods graphics table (`goods/goodgraphics.cif`) is deliberately absent: its `[goodgraphics]`
  * records carry only a `graphicshumanrandompalette` runtime-tint name and no `gfxbobmanagerbody`, so
- * there is no bob set to atlas (carried-good sprites live in the human/vehicle sheets, tinted at
- * runtime).
+ * there is no bob set to atlas.
  */
 export async function resolveGraphicsBindings(roots: SourceRoots): Promise<GraphicsBindingSet> {
   const bindings: BmdPaletteBinding[] = [];

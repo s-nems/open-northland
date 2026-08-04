@@ -13,15 +13,9 @@ import { encodePng } from '../../decoders/png.js';
 import type { MapDatTerrainFile } from './terrain/index.js';
 
 /**
- * Synthesizes a minimap PNG for a map folder without a usable `minimap/minimap.pcx`, so the menu
- * gets a thumbnail for every map instead of rasterizing multi-MB terrain JSON in the browser.
- * The recipe is the shared `@open-northland/render/data` raster (see its named approximation):
- * ground-lane pattern mean colours first, the typeId's `debugColor` as the laneless fallback.
+ * Fill for cells whose lanes and typeId both resolve no colour, a deliberate divergence from the
+ * browser preview's `flatTileColour` palette, which lives outside the pure seam.
  */
-
-/** Cells whose lanes and typeId both resolve no colour (foreign typeIds on mod maps). A deliberate
- *  divergence from the browser preview's `flatTileColour` palette, which lives outside the pure
- *  seam; a flat dark fill reads fine on the rare mod map this touches. */
 const UNRESOLVED_CELL_COLOUR = 0x18222e;
 
 export interface MinimapSynthesizerSources {
@@ -34,10 +28,9 @@ export interface MinimapSynthesizerSources {
 }
 
 /**
- * Build the per-run synthesizer: pattern mean colours and page pixels are memoised across maps
- * (pattern names repeat corpus-wide), so each referenced page is read and averaged once.
- * The returned function yields the PNG bytes, or undefined when the map carries no ground lanes or
- * not one lane pattern resolves a colour - the caller then simply emits no thumbnail, as today.
+ * Builds the per-run synthesizer: pattern mean colours and page pixels are memoised across maps, so
+ * each referenced page is read and averaged once. The returned function yields undefined when the map
+ * carries no ground lanes or no lane pattern resolves a colour.
  */
 export function createMinimapSynthesizer(
   sources: MinimapSynthesizerSources,

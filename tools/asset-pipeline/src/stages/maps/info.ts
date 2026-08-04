@@ -6,20 +6,17 @@ import { errorMessage } from '../../errors.js';
 import { collectSourceFilesNamed, type SourceFile, type SourceRoots } from '../../roots.js';
 
 /**
- * Pure composition: one `map.cif`'s bytes + a slug id -> its validated {@link MapInfo} logic header
- * ({@link cifBytesToSections} then {@link extractMapInfo}). The decoders stay pure; this is the only
- * wiring. Throws an `ini:`/`cif:`-prefixed error for a non-map or header-less `.cif`;
- * {@link decodeMapTree} catches it per-file so one bad map can't abort the batch.
+ * One `map.cif`'s bytes plus a slug id to its validated logic header. Throws an `ini:`/`cif:`-prefixed
+ * error for a non-map or header-less `.cif`.
  */
 export function mapCifToInfo(bytes: Uint8Array, id: string, src: SourceRef): MapInfo {
   return extractMapInfo(cifBytesToSections(bytes), id, src);
 }
 
 /**
- * Slugs a map's containing-folder name into its {@link MapInfo} `id`: lower-cased, non-alphanumerics
- * collapsed to `_`. Maps live one-per-folder (`CnModMaps/<name>/map.cif`), and the `.cif` logic header
- * carries no human-readable id, so the folder name is the stable cross-reference key. Mirrors the `slug`
- * the `.ini` extractors use for type ids.
+ * Slugs a map's containing-folder name into its `MapInfo` `id`. The `.cif` logic header carries no
+ * human-readable id, so the one-per-folder name is the stable cross-reference key, slugged like the
+ * type ids the `.ini` extractors mint.
  */
 export function mapIdFromPath(mapCifRelPath: string): string {
   const folder = dirname(mapCifRelPath).split(/[\\/]/).pop() ?? mapCifRelPath;
@@ -34,11 +31,10 @@ export function mapIdFromPath(mapCifRelPath: string): string {
 export const STRING_TABLE_DIR = 'text';
 
 /**
- * Drops stray string-table copies from a map-file candidate list: an author's `text/` subfolder can
- * carry a stale revision of the map file (the owned corpus ships `WICHRY_ZIMY/text/map.dat`), which
- * would otherwise convert as a ghost map with id `text`. A candidate is dropped only when its folder
- * case-folds to `text` AND the parent folder holds a candidate of its own; a top-level map folder
- * that happens to be named `text` still converts.
+ * Drops stray string-table copies from a map-file candidate list: a `text/` subfolder can carry a
+ * stale revision of the map file, which would otherwise convert as a ghost map with id `text`. A
+ * candidate is dropped only when the parent folder holds a candidate of its own, so a top-level map
+ * folder named `text` still converts.
  */
 export function excludeStringTableCopies(found: readonly SourceFile[]): SourceFile[] {
   const candidateDirs = new Set(found.map(({ rel }) => dirname(rel).toLowerCase()));
@@ -50,16 +46,11 @@ export function excludeStringTableCopies(found: readonly SourceFile[]): SourceFi
 }
 
 /**
- * Decodes the logic header of every `map.cif` under the source roots (overlay-first union, minus
- * string-table strays, {@link excludeStringTableCopies}) into a validated {@link MapInfo}, in a
- * stable order (the maps are sorted by their relative path so the IR is reproducible regardless of
- * directory-entry order). Each map's `id` comes from its containing
- * folder ({@link mapIdFromPath}). A `.cif` that fails to read or decode (not a map, missing
- * `mapsize`/`mapguid`, corrupt container) is logged and skipped - a batch over many maps must not
- * abort on one bad file, matching the other tree-walk stages. Only the declarative header metadata is
- * extracted here; the binary tile grid, the `StaticObjects` placements and the
- * `playerdata`/`MissionData` script land in per-map artifacts via `convertMapDatTree` (see
- * {@link extractMapInfo}).
+ * Decodes the logic header of every `map.cif` under the source roots into a validated `MapInfo`, in
+ * path-sorted order so the IR is reproducible regardless of directory-entry order. A `.cif` that
+ * fails to read or decode is logged and skipped so one bad file cannot abort the batch. Only the
+ * declarative header lands here; the tile grid, `StaticObjects` placements and
+ * `playerdata`/`MissionData` script land in per-map artifacts via `convertMapDatTree`.
  */
 export async function decodeMapTree(roots: SourceRoots): Promise<MapInfo[]> {
   const found = excludeStringTableCopies(await collectSourceFilesNamed(roots, 'map.cif'));

@@ -11,13 +11,10 @@ export interface TransitionsLayer {
 }
 
 /**
- * Decodes the `emt1..emt4` per-cell transition-overlay lanes + the `eatd` transition-name dictionary.
- * Each lane is one u8 per cell (row-major, length === width·height - same resolution as `empa`/`empb`,
- * confirmed on the real maps); `255` = no overlay, `v < 255` selects transition `⌊v/6⌋` from the
- * dictionary and pair variant `v % 6` of its six UV pairs. The lanes and the dictionary are carried
- * verbatim (no compaction - the ⌊v/6⌋ join is positional, and re-encoding packed values could collide
- * with the 255 sentinel). Source basis in docs/SOURCES.md "terrain tessellation". Returns undefined
- * when the map lacks any of the five chunks; throws on a length mismatch or an out-of-dictionary value.
+ * Decodes the `emt1..emt4` per-cell transition-overlay lanes and the `eatd` dictionary verbatim: the
+ * `⌊v/6⌋` join is positional, so compacting the ids could collide with the `TRANSITION_NONE` sentinel.
+ * Returns undefined when the map lacks any of the five chunks; throws on a length mismatch or an
+ * out-of-dictionary value.
  */
 export function transitionsFromMapDat({ map, size }: DecodedMap): TransitionsLayer | undefined {
   const eatd = findChunk(map, 'eatd');
@@ -40,7 +37,7 @@ export function transitionsFromMapDat({ map, size }: DecodedMap): TransitionsLay
     }
     return Array.from(lane);
   };
-  // Naming the four lanes proves the arity by construction (no tuple cast); any missing lane omits the layer.
+  // Four named lanes prove the arity by construction, without a tuple cast.
   const a1 = decodeLane('emt1');
   const b1 = decodeLane('emt2');
   const a2 = decodeLane('emt3');

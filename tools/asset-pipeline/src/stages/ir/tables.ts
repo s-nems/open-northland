@@ -36,13 +36,9 @@ function foldOverlay<V>(into: Map<number, V>, rows: ReadonlyMap<number, V>): voi
 }
 
 /**
- * Reads + parses every resolved `.ini` source and runs the typed extractors over it, returning one
- * table per record kind plus the {@link BuildingGraphicsOverlays} group. Decoding stays pure
- * (`iniBytesToSections`/`extract*` take bytes/text, not the filesystem); the only I/O here is reading
- * the resolved files. Each extractor pulls only its own `[section]`s from a file, so passing every
- * file's sections to every extractor is correct.
- *
- * These are the per-source tables only. The cross-table joins over them live in {@link buildIr}.
+ * Runs every extractor over every source's sections, returning one table per record kind. An extractor
+ * pulls only its own `[section]`s, so a file with no matching section contributes nothing. These are
+ * the per-source tables only; the cross-table joins run afterwards.
  */
 export async function extractIniTables(sources: readonly IniSource[]) {
   const goods = [];

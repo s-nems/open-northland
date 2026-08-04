@@ -2,11 +2,11 @@ import { join } from 'node:path';
 import type { SourceRoots } from '../../roots.js';
 import { buildPaletteLut, type PaletteLutResult } from '../palette-lut.js';
 
-/** The dir holding the 2×2 palette carriers the engine colours HUD elements with. */
+/** The dir holding the palette carriers the engine colours HUD elements with. */
 const GUI_PALETTES_DIR = join('Data', 'gui', 'palettes');
-/** The speech/thought-bubble palette (a different tree from the element palettes). */
+/** The speech/thought-bubble palette, which lives outside the element-palette tree. */
 const BUBBLES_PALETTE_FILE = join('Data', 'engine2d', 'bin', 'palettes', 'gui', 'gui_bubbles.pcx');
-/** Filename stem of the emitted GUI palette LUT (a `/bobs/` PNG, loaded like the player-colour LUT). */
+/** Filename stem of the emitted GUI palette LUT PNG under `/bobs/`. */
 export const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
 
 /** One GUI colorization palette: its LUT-row name and the `.pcx` carrier it is read from (under `roots`). */
@@ -16,12 +16,10 @@ interface GuiPaletteSource {
 }
 
 /**
- * The GUI colorization palettes, in LUT-row order (row index = array index). The 13 in-game HUD element
- * palettes from `Data/gui/palettes/` (the `font_*` ones belong to the later font step; `campaignmap`/
- * `campaignbuttons`/`menu_remap` are menu/campaign, not in-game HUD), then `gui_bubbles` for the bubble
- * sheet. The renderer reads an indexed GUI atlas pixel through the row named here for its element. This
- * order is the contract with the app (mirrored in `packages/app/src/content/gui-gfx.ts`) - append, never
- * reorder, or the app's row indices drift.
+ * The GUI colorization palettes in LUT-row order, row index = array index. The in-game HUD element palettes
+ * from `Data/gui/palettes/` (`font_*` belongs to the font step, `campaignmap`/`campaignbuttons`/`menu_remap`
+ * are menu art), then `gui_bubbles`. `packages/app/src/content/gui-gfx.ts` mirrors this order: append,
+ * never reorder, or the app's row indices drift.
  */
 const GUI_PALETTES: readonly GuiPaletteSource[] = [
   { name: 'iconsleft', file: join(GUI_PALETTES_DIR, 'iconsleft.pcx') },
@@ -40,12 +38,7 @@ const GUI_PALETTES: readonly GuiPaletteSource[] = [
   { name: 'gui_bubbles', file: BUBBLES_PALETTE_FILE },
 ];
 
-/**
- * Reads every {@link GUI_PALETTES} carrier, stacks their 256-colour trailers into one `256 × N` LUT PNG
- * (via {@link buildPaletteLut}, the same mechanism as the font-colour + player-colour LUTs), and writes
- * it under `BOBS_DIR`. A missing/palette-less carrier is warned and replaced with a neutral grayscale
- * row so the row order (the app's contract) stays fixed regardless of a partial install.
- */
+/** Stacks every {@link GUI_PALETTES} carrier into one `256 × N` LUT PNG under `BOBS_DIR`. */
 export function convertGuiPaletteLut(roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
   return buildPaletteLut(roots, outDir, GUI_PALETTES, GUI_PALETTE_LUT_STEM, {
     label: 'gui',

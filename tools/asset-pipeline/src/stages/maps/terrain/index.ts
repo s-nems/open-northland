@@ -17,19 +17,19 @@ import { type TransitionsLayer, transitionsFromMapDat } from './transitions.js';
 
 /** The emitted `maps/<id>.json` shape: the sim grid + the optional 1:1 render layers. */
 export interface MapDatTerrainFile extends MapDatTerrainMap {
-  /** Per-triangle ground patterns (`empa`/`empb` lanes joined through the `eapd` name dictionary). */
+  /** Per-triangle ground patterns (`empa`/`empb` lanes, `eapd` names). */
   readonly ground?: GroundLayer;
-  /** Per-triangle transition overlays (`emt1..emt4` lanes + the `eatd` name dictionary, verbatim). */
+  /** Per-triangle transition overlays (`emt1..emt4` lanes, `eatd` names). */
   readonly transitions?: TransitionsLayer;
-  /** Placed landscape objects (`emla` half-cell lane joined through the `eald` name dictionary). */
+  /** Placed landscape objects (`emla` half-cell lane, `eald` names). */
   readonly objects?: ObjectsLayer;
-  /** Per-cell terrain height (`lmhe` lane, one byte per cell, 0..250 observed); omitted when the map lacks it. */
+  /** Per-cell terrain height (`lmhe` lane); omitted when the map lacks it. */
   readonly elevation?: number[];
-  /** Per-cell baked brightness (`embr` lane, one byte per cell, 127 = neutral); omitted when the map lacks it. */
+  /** Per-cell baked brightness (`embr` lane); omitted when the map lacks it. */
   readonly brightness?: number[];
-  /** Per-cell `lmms` band, the lane collapsed to the cell-centre node; semantics unconfirmed. */
+  /** Per-cell `lmms` band, the lane collapsed to the cell-centre node. */
   readonly shore?: number[];
-  /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs, names verbatim). */
+  /** Authored entity placements (the sibling `map.cif`'s `StaticObjects` verbs). */
   readonly entities?: MapStaticObjects;
 }
 
@@ -51,12 +51,11 @@ function layer<K extends keyof MapDatTerrainFile, T extends NonNullable<MapDatTe
 }
 
 /**
- * One `map.dat`'s bytes -> the emitted `maps/<id>.json` value: the mandatory sim grid (`lsiz` dims plus
- * the `lmlt` half-cell lane collapsed to the per-cell typeId grid `buildTerrainGraph` consumes; the
- * build tool never imports `sim`) and the optional 1:1 render lanes. Throws a `mapdat:`-prefixed error
- * for a non-container or a missing/corrupt `lsiz`/`lmlt` (`convertMapDatTree` catches per file); a
- * corrupt render lane only warns and omits its layer, so a map whose nav grid decodes fine never
- * disappears over its enrichments.
+ * One `map.dat`'s bytes to the emitted `maps/<id>.json` value: the mandatory sim grid (`lsiz` dims and
+ * the `lmlt` half-cell lane collapsed per cell) plus the optional render lanes. Throws a
+ * `mapdat:`-prefixed error for a non-container or a missing/corrupt `lsiz`/`lmlt`; a corrupt render
+ * lane only warns and omits its layer, so a map whose grid decodes never disappears over its
+ * enrichments.
  */
 export function mapDatToTerrain(bytes: Uint8Array): MapDatTerrainFile {
   const map = decodeMapDat(bytes);

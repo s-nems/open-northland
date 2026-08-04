@@ -16,10 +16,9 @@ export interface CompactedDictionary {
 }
 
 /**
- * Compacts a lane's dictionary: collect the ids the lanes actually use, order them ascending, and
- * remap them onto a dense list of names. Ascending source-id order is load-bearing - it is the
- * emitted layer's join key onto the extracted tables, so a re-run stays byte-identical. `skip` is the
- * lane's empty sentinel, if it has one. Throws (`mapdat:` prefix) on an id outside `names`.
+ * Compacts a lane's dictionary onto the ids the lanes actually use. Ascending source-id order is
+ * load-bearing: it keeps a re-run byte-identical. `skip` is the lane's empty sentinel, if it has one.
+ * Throws (`mapdat:` prefix) on an id outside `names`.
  */
 export function compactDictionary(
   lanes: readonly Iterable<number>[],

@@ -7,16 +7,15 @@ import { collectSourceFiles, type SourceRoots } from '../roots.js';
 import { DATA_DIR, servedRelPath } from './content-tree.js';
 
 /**
- * Maps a `.lib` member name (a backslash path like `data\engine2d\bin\bobs\ls_bridge.bmd`) to a
- * safe path relative to the extraction root, or `undefined` if it would escape it. Archive names
- * use Windows backslashes regardless of host OS, so they are rewritten to the native separator before
- * normalizing. A normalized path that is absolute or still starts with `..` (i.e. climbs out of the
- * root) is rejected - defence against a malformed/hostile archive even though the real `data0001.lib`
- * has no such entries. An empty or all-separator name yields `undefined` (nothing to write).
+ * Maps a `.lib` member name (a backslash path like `data\engine2d\bin\bobs\ls_bridge.bmd`) to a safe
+ * path relative to the extraction root, or `undefined` if it would escape it. Archive names use Windows
+ * backslashes on every host, so they are rewritten to the native separator before normalizing; a
+ * normalized path that is absolute or still climbs out of the root is rejected as a defence against a
+ * malformed or hostile archive.
  *
  * The leading segment folds to {@link DATA_DIR} and a member landing in a served subtree takes that
  * route's spelling ({@link servedRelPath}): the real archive stores members lowercase under `data\`
- * (all 2691 in the owned copy), the content routes serve the exact-case `Data/` tree, and on a
+ * (all 2691 in the owned copy) while the content routes serve the exact-case `Data/` tree, and on a
  * case-sensitive filesystem the verbatim spelling would split extraction and routes into two trees.
  */
 export function libMemberRelPath(name: string): string | undefined {
@@ -38,19 +37,14 @@ export interface LibExtraction {
 }
 
 /**
- * Unpacks every `.lib` archive under the source `roots` (overlay-first union), writing each member to
- * `outDir` under its sanitized, `Data/`-canonicalized internal path - the documented stage-1 unpack that feeds the
- * loose-file decoders (`.pcx`/`.bmd`/`.cif` embedded in `data0001.lib`). Member names use backslash
- * paths; {@link libMemberRelPath} rewrites them to native separators and drops any that would escape
- * `outDir`.
+ * Unpacks every `.lib` archive under the source `roots`, writing each member to `outDir` under its
+ * sanitized, `Data/`-canonicalized internal path ({@link libMemberRelPath}).
  *
- * A `.lib` that fails to decode is logged and skipped - a batch pipeline must not abort on one corrupt
- * archive - as is an individual member with an unsafe name (warned, not written). Two same-archive
- * members extracting to one case-folded path throw: a silent winner would differ by host filesystem,
- * and the real archive has no such pair. An output-write failure (and a missing/unreadable game root)
- * propagates: that's an environmental error, not a per-file boundary failure. The whole archive is
- * read into memory; `decodeLib` returns zero-copy payload views, so members are sliced from that
- * single buffer rather than re-read.
+ * A `.lib` that fails to decode is logged and skipped, as is a member with an unsafe name. Two
+ * same-archive members extracting to one case-folded path throw, because a silent winner would differ
+ * by host filesystem and the real archive has no such pair. An output-write failure or an unreadable
+ * game root propagates as an environmental error. The whole archive is read into memory and members are
+ * sliced from that single buffer through `decodeLib`'s zero-copy payload views.
  */
 export async function unpackLibTree(
   roots: SourceRoots,

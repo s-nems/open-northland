@@ -19,10 +19,8 @@ export const STRING_TABLES = [
   'vehiclewindow',
 ] as const;
 
-/** Languages whose GUI strings are extracted (the deliverable's "at least eng and pol"). */
 const STRING_LANGS = ['eng', 'pol'] as const;
 
-/** One converted language's GUI strings: the served path + how many tables it carried. */
 export interface GuiStringsResult {
   readonly lang: string;
   /** Path under `content/` (served at `/gui/strings/<lang>.json`). */
@@ -32,11 +30,9 @@ export interface GuiStringsResult {
 }
 
 /**
- * Decodes the nine `ingamegui*.cif` UI string tables for each language into one `content/gui/strings/<lang>.json`
- * of `{ <table>: { <stringId>: <displayText> } }` - the display id is not the container slot id but the
- * running string id, and the text is CP1250 display text ({@link decodeCifStringTable}, shared with the
- * map folders' `strings.cif`). A missing table warns-and-skips (that table is simply absent from the
- * language's JSON); a language with no tables at all is skipped entirely.
+ * Decodes each language's {@link STRING_TABLES} into one `content/gui/strings/<lang>.json` of
+ * `{ <table>: { <stringId>: <displayText> } }`. A missing table is absent from that language's JSON, and a
+ * language with no tables at all emits nothing.
  */
 export async function convertGuiStrings(
   roots: SourceRoots,
@@ -61,7 +57,7 @@ export async function convertGuiStrings(
       tableCount++;
       stringCount += Object.keys(byId).length;
     }
-    if (tableCount === 0) continue; // no tables for this language - emit nothing
+    if (tableCount === 0) continue;
     const path = join(GUI_CONTENT_DIR, 'strings', `${lang}.json`);
     await writeJsonFile(outDir, path, tables);
     done.push({ lang, path, tables: tableCount, strings: stringCount });
