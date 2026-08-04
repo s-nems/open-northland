@@ -49,7 +49,9 @@ comment budget. Do not add a bespoke source scanner when types, structure, or an
 can express the boundary.
 
 Run focused tests while working, then the matching gates from `AGENTS.md` and `docs/TESTING.md`.
-Pipeline and real-content gates remain local-only requirements when their scope applies.
+Pipeline and real-content gates remain local-only requirements when their scope applies. Run a
+`bench:*` benchmark only when the task's claim is about performance; a task without such a claim
+does not benchmark.
 
 ## 4. Review the diff
 

@@ -83,8 +83,9 @@ nearby observations in the report rather than fixing or documenting them in the 
 
 Run focused tests first, then the applicable repository gates. Review the final diff with
 `code-reviewer`, plus `engine-reviewer` for sim or hot frame paths, when the change is non-trivial.
-For performance work, compare a benchmark or report the exact operation/complexity reduction without
-inventing wall-clock gains.
+Run a `bench:*` benchmark only when the selected finding's claim is about performance: there, compare
+a benchmark or report the exact operation/complexity reduction without inventing wall-clock gains. A
+pass with no performance claim proves itself with tests and deterministic evidence, not wall-clock.
 
 Re-read each touched production module once with comments mentally hidden. For moved or extracted
 code, compare the combined comment prose before and after rather than judging each destination in
