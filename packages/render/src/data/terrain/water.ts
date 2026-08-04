@@ -3,15 +3,13 @@ import { clampedCellAt } from './cell-field.js';
 import { nodeCell } from './tessellation.js';
 
 /**
- * The water-surface wave field - an Open Northland enhancement; the original's water is a static ground
- * texture plus animated foam decor. Each terrain-mesh node gets a wave amplitude the ground shader bobs
- * by (`gpu/shading.ts`).
+ * The water-surface wave the ground shader bobs by - an Open Northland enhancement; the original's water
+ * is a static ground texture plus animated foam decor.
  *
- * The mask comes from the map's own ground-pattern names (`empa`/`empb` → `eapd`, the lanes the mesh
- * already draws), the one signal authoritative on every textured map. The `lmms` lane is deliberately
- * not used: it tracks water depth on maps that have water (oasis_o_plenty: band 7 = `block water`,
- * 1..6 = `water shallow`) but carries the same 1..7 bands across plain meadow on waterless maps
- * (Tale_of_Six_Sons, probed on the owned copies), so keying off it would bob grass.
+ * The mask keys off the map's own ground-pattern names (`empa`/`empb` → `eapd`), the one signal
+ * authoritative on every textured map. Not the `lmms` lane: it carries the same 1..7 bands across plain
+ * meadow on waterless maps (Tale_of_Six_Sons) that mean water depth on watered ones (oasis_o_plenty),
+ * probed on the owned copies, so keying off it would bob grass.
  */
 
 /** A terrain-mesh node's wave amplitude factor in [0, 1] (0 = still ground). */
@@ -24,10 +22,6 @@ export const NO_WAVE: NodeWaveFn = () => 0;
  *  'block water shallow …' across the owned corpus). */
 const WATER_PATTERN_NAME = /water/i;
 
-/**
- * Build the per-node wave field from a decoded map's ground lanes, or {@link NO_WAVE} when the map has
- * no ground layer or no water-patterned cell at all.
- */
 export function makeWaveField(ground: SceneGround | undefined, width: number, height: number): NodeWaveFn {
   if (ground === undefined || width <= 0 || height <= 0) return NO_WAVE;
   const waterPattern = ground.patterns.map((name) => (WATER_PATTERN_NAME.test(name) ? 1 : 0));
@@ -43,8 +37,8 @@ export function makeWaveField(ground: SceneGround | undefined, width: number, he
   if (!anyWater) return NO_WAVE; // a dictionary may name water no cell draws - still a land map
   const at = clampedCellAt(water, width, height);
   // Node amplitude = the minimum water fraction over the node's 3×3 cell neighbourhood, so any node a
-  // land triangle can reach stays exactly still, the coastline never warps, and the swell lives
-  // offshore. The shader's varying interpolation ramps the band between them across one triangle.
+  // land triangle can reach stays exactly still and the coastline never warps. The shader's varying
+  // interpolation ramps the band between them across one triangle.
   const amp = new Float32Array(cells);
   for (let row = 0; row < height; row++) {
     for (let col = 0; col < width; col++) {

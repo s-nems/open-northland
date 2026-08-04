@@ -10,11 +10,9 @@ export type CombatEffectKind = 'blood' | 'bones';
 
 export interface CombatEffect {
   readonly kind: CombatEffectKind;
-  /** Half-cell node x. */
+  /** Half-cell node coordinates. */
   readonly hx: number;
-  /** Half-cell node y. */
   readonly hy: number;
-  /** The sim tick it was spawned on. */
   readonly spawnTick: number;
   /** Per-mark jitter seed from the source entity and tick - deterministic, no `Math.random`. */
   readonly seed: number;

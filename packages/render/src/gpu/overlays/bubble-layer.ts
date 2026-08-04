@@ -11,15 +11,8 @@ import { retireUndrawn } from './retained-pool.js';
  * The settler-bubble layer - the decoded `ls_gui_bubbles` thought bubble floating over a settler in a
  * standing family state (a make-child order, a wedding walk) or a pressing need. A client-side
  * projection of the read-only snapshot: the app decides who wears one, this layer draws it in world
- * space above the sprites.
- *
- * The bubble rides the sprite pool's drawn, inter-tick-lerped bounds, so it glides with the interpolated
- * bob; a settler the pool didn't draw (standing inside a house) falls back to the raw snapshot
- * projection of its `Position`.
- *
- * Retained per visible settler id and re-minted on return, rather than the sprite pool's
- * detach-and-retain: need bubbles are common transients (a famine puts one over most settlers map-wide),
- * so retaining hidden nodes would grow with the needy population, not the screen.
+ * space above the sprites. Bubbles retire on cull and re-mint on return instead of detaching and
+ * retaining like the sprite pool, under the settler-bubble policy in the package contract.
  */
 
 /** Which standing state a bubble marks: a make-child order, a wedding walk, or a pressing need. */
@@ -46,10 +39,6 @@ interface BubbleGfx extends SettlerBubbleGfx {
   readonly textures: TextureCache;
 }
 
-/**
- * The frame's projection seams. Both are optional: without a drawn entity the layer falls back to the raw
- * snapshot projection plus the terrain lift.
- */
 export interface SettlerBubbleFrame {
   readonly bubbles: readonly SettlerBubble[];
   /** The pool's drawn sprites - the head is the sprite box's top edge. */

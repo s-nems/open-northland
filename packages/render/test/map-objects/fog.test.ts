@@ -6,8 +6,6 @@ import { MapObjectLayer, type MapObjectSprite } from '../../src/gpu/map-objects/
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import { decorUVs, FRAME_0, FRAME_1, type TallSprite, tallSprites, WIDE } from './support.js';
 
-/** A ghost is a memory: swaying trees under the fog would read as watched ground. */
-
 /** A two-frame tall object anchored at the origin, cell (0, 0). */
 function swayingTree(): MapObjectSprite {
   return {
@@ -38,6 +36,7 @@ function wavingBush(): MapObjectSprite {
   };
 }
 
+// A ghost is a memory: a swaying tree under the fog would read as watched ground.
 describe('MapObjectLayer fog gate (tall objects)', () => {
   it('hides in UNEXPLORED, draws live in VISIBLE, dims in EXPLORED', () => {
     const spriteLayer = new Container();

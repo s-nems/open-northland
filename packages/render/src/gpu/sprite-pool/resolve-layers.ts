@@ -17,15 +17,13 @@ import {
 } from './layered-layers.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 
-/** Resolution returns layer data, never display objects, so the pool keeps reusing its sprites. */
-
 /** Shared empty list so a non-building draw allocates nothing. */
 const NO_EXTRAS: readonly ResolvedLayer[] = [];
 
 /**
- * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder. A missing or
- * empty frame in a loaded layer returns `null` rather than borrowing a frame from another layer,
- * whose id space differs.
+ * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder. Returns layer
+ * data, never display objects, so the pool keeps reusing its sprites. A missing or empty frame in a
+ * loaded layer returns `null` rather than borrowing a frame from another layer, whose id space differs.
  */
 export function resolveLayers(
   sheet: SpriteSheet | undefined,

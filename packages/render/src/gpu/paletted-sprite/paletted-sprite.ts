@@ -12,23 +12,16 @@ import { createPalettedGeometry, createPalettedShader, type PalettedUniforms } f
 export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
 
 /**
- * A feet-anchored sprite whose colour is a per-player palette lookup rather than a baked texture. The
- * character atlas is decoded as indices (palette index in red, mask in alpha), and this sprite reads each
- * index through one row of a `256 × N` palette LUT texture chosen by {@link PalettedSprite.player}, so one
- * indexed atlas plus one LUT draw all N player colours. Team colour is a band-limited palette remap, not a
- * flat tint, which would recolour the whole figure rather than the team band alone.
+ * A feet-anchored sprite whose colour is a per-player palette lookup rather than a baked texture: the
+ * indexed atlas holds a palette index in red and a mask in alpha, and each index is read through the
+ * `256 × N` LUT row chosen by {@link PalettedSprite.player}. Team colour is a palette-band remap, not a
+ * whole-sprite tint, and one indexed atlas plus one LUT draw all N player colours.
  *
  * It is a custom-shader {@link Mesh} because Pixi's batched `Sprite` cannot run a custom fragment shader.
  * That bypasses batching (one draw call each), so keep it to characters.
  *
- * Positioning is manual, in screen space: Pixi does not wire its transform uniform blocks into a custom
- * `Shader.from` program, so the mesh cannot ride the scene-graph transform. The caller supplies a
- * feet-anchor screen position and scale via {@link place}, and the vertex shader maps screen pixels
- * straight to clip space with `uScreen`.
- *
- * Every per-mesh uniform is a `Float32Array` mutated in place. These meshes share one compiled GL program,
- * and on a shared program Pixi re-uploads a loose uniform only when its backing array's contents change -
- * reassigning a scalar `f32` is not picked up, so every mesh would draw the last-written value.
+ * Positioning is manual, in screen space via {@link place}: Pixi does not wire its transform uniform
+ * blocks into a custom `Shader.from` program, so the mesh cannot ride the scene-graph transform.
  */
 export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   private readonly positions = new Float32Array(8);
@@ -100,10 +93,9 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
   }
 
   /**
-   * Render upright into a bottom-up WebGL render texture (default `false` = straight-to-canvas). The
-   * hand-rolled screen→clip projection assumes the on-canvas Y convention, so a mesh baked into a render
-   * texture lands upside-down. Flipping at the source lets a panel that mixes PalettedSprites with
-   * Pixi-native content bake without the whole-texture flip that only an all-PalettedSprite source allows.
+   * Render upright into a bottom-up WebGL render texture (default `false` = straight-to-canvas). Flipping
+   * at the source lets a panel that mixes PalettedSprites with Pixi-native content bake without the
+   * whole-texture flip that only an all-PalettedSprite source allows.
    */
   set flipY(on: boolean) {
     this.vars.uniforms.uFlip[0] = on ? 1 : 0;

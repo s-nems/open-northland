@@ -3,14 +3,11 @@ import { SelectionLayer } from '../src/gpu/overlays/selection-layer.js';
 import { makeElevationField, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
-/**
- * The selection ring anchors at a unit's feet, so on a hill it has to ride the same elevation lift the
- * sprite pool applies to the bob, or it floats on the flat ground beneath the lifted unit.
- */
 function settler(id: number, tileX: number, tileY: number): ReturnType<typeof entity> {
   return entity(id, tileX, tileY, { Settler: { tribe: 0 } });
 }
 
+// The ring anchors at a unit's feet, so it must ride the same lift the sprite pool applies to the bob.
 describe('SelectionLayer elevation lift', () => {
   const W = 4;
   const H = 12;
@@ -26,7 +23,7 @@ describe('SelectionLayer elevation lift', () => {
     const feet = tileToScreen(1, 8);
     expect(ring?.position.x).toBe(feet.x);
     expect(ring?.position.y).toBeCloseTo(feet.y - field.liftAt(1, 8), 6);
-    // The lift is real (the hill cell is 160), so the ring drew well ABOVE the flat-ground anchor.
+    // The hill cell is 160, so the ring clears the flat-ground anchor by far more than 100.
     expect(ring?.position.y).toBeLessThan(feet.y - 100);
   });
 

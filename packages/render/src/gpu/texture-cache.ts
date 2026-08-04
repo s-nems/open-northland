@@ -13,9 +13,8 @@ const REVEAL_QUANT = 4;
 
 /**
  * Baked reveal textures retained per atlas frame - enough for a few same-type sites at different progress
- * on screen at once. These are real pixel copies, unlike the free sub-rect views of
- * {@link TextureCache.cropped}, hence the tight cap; progress only rises, so an evicted bake is not
- * coming back and its texture is destroyed.
+ * on screen at once. A bake is a real pixel copy rather than a free sub-rect view, hence the tight cap;
+ * progress only rises, so an evicted bake is not coming back.
  */
 const REVEAL_BAKES_PER_ATLAS_FRAME = 4;
 
@@ -32,8 +31,7 @@ interface RevealBake {
  */
 export class TextureCache {
   private readonly cache = new Map<AtlasFrame, Texture>();
-  /** Every distinct atlas page a texture was minted from; the world-sampling toggle flips these between
-   *  nearest and linear. */
+  /** Every distinct atlas page a texture was minted from. */
   private readonly pages = new Set<TextureSource>();
   /** Bottom-cropped views of a frame, keyed by how many top pixels are hidden ({@link cropped}). Nested
    *  so the primary frame→texture cache above stays a clean 1:1. */
@@ -54,9 +52,9 @@ export class TextureCache {
     return tex;
   }
 
-  /** The distinct atlas pages served so far: world RGB and shadow bob atlases only, since paletted
-   *  character meshes and the reveal bakes never pass through here. A sampling toggle therefore cannot
-   *  touch an indexed sheet, whose palette indices must stay nearest-sampled. */
+  /** The distinct atlas pages served so far: world RGB and shadow bob atlases only. Paletted character
+   *  meshes bypass this cache, and a reveal bake's own `CanvasSource` is never registered here, so a
+   *  sampling toggle cannot reach an indexed sheet, whose palette indices must stay nearest-sampled. */
   pageSources(): ReadonlySet<TextureSource> {
     return this.pages;
   }
@@ -114,10 +112,8 @@ export class TextureCache {
 
   /**
    * The frame with only its pixels whose baked build-time threshold ({@link BuildTimeSheet}) is
-   * `<= threshold` - the per-pixel construction reveal. Unlike {@link cropped}'s free sub-rect views this
-   * is a real canvas bake, so thresholds are quantised ({@link REVEAL_QUANT}) and only the freshest
-   * {@link REVEAL_BAKES_PER_ATLAS_FRAME} bakes per atlas frame are kept; `frameStamp` (the pool's frame
-   * counter) keeps a bake bound earlier this frame from being evicted mid-frame under a live sprite.
+   * `<= threshold` - the per-pixel construction reveal, baked onto a canvas at a quantised threshold
+   * ({@link REVEAL_QUANT}). `frameStamp` is the pool's frame counter, which the eviction guard reads.
    * Threshold 255 returns the plain full frame; `null` (pixels not CPU-readable) sends the caller to the
    * crop fallback.
    */

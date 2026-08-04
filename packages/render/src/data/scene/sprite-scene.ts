@@ -105,8 +105,8 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions 
 /**
  * Build the draw list and the pre-cull liveness view in one pass, so a caller needing both does not
  * classify every entity twice per frame. The per-kind reads run only for items that survive the cull.
- * Sorted by feet anchor `(y, x)` then entity id - a total, stable order, so neither culling nor the
- * entity source (full walk or the index's arbitrary bucket order) changes the emitted list.
+ * The emitted order is total and stable, so neither culling nor the entity source (full walk or the
+ * index's arbitrary bucket order) changes the list.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
   return collectScene(snapshot, opts);
@@ -255,7 +255,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   }
 
   if (ghosts !== undefined) pushGhostItems(items, collected, ghosts, viewport, elevation);
-  // Stable, total order: (y, x) via `depth`, then the id tie-break for two sprites on one tile.
+  // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
   return { items, liveRefs };
 }

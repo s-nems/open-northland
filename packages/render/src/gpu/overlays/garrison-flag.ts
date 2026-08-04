@@ -13,17 +13,17 @@ import type { BuildingSignSheet } from './sign-gfx.js';
  */
 
 /**
- * The most stars a flag flies. EXTRACTED: exactly five records per player slot, drawing 1..5 stars in
- * that order (`soldier 01` = bob 36 … `soldier 05` = bob 68). APPROXIMATION, from observation: one star
- * means one man, and a bigger post (the big tower employs eight bows) saturates here rather than gauging
- * its capacity across the same five steps.
+ * The most stars a flag flies: the extracted art has exactly five records per player slot, drawing 1..5
+ * stars in that order (`soldier 01` = bob 36 … `soldier 05` = bob 68). One star per man, with a bigger
+ * post (the big tower employs eight bows) saturating here rather than gauging its capacity across the
+ * same five steps, is an approximation from observation.
  */
 export const GARRISON_STAR_MAX = 5;
 
 /**
- * Sim ticks per wave frame. `GfxLoopAnimation` says the frames loop, never how fast, so this is an
- * APPROXIMATION: the mill rotor's cadence, which puts a full 8-frame wave at 16 ticks (~1.3 s at x1,
- * `TICKS_PER_SECOND` 12).
+ * Sim ticks per wave frame. `GfxLoopAnimation` says the frames loop, never how fast, so this borrows the
+ * mill rotor's cadence (approximation): a full 8-frame wave takes 16 ticks, ~1.3 s at x1 with
+ * `TICKS_PER_SECOND` 12.
  */
 export const GARRISON_TICKS_PER_FRAME = 2;
 

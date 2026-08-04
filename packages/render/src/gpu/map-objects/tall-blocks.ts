@@ -39,8 +39,7 @@ interface PooledObject {
 
 /**
  * One block of tall map objects, AABB-culled as a whole before its members are point-tested, so the
- * per-frame cull cost tracks the visible blocks rather than the map. A whole-map flat scan would be
- * an O(objects) loop per frame on maps with 10k-270k trees.
+ * per-frame cull cost tracks the visible blocks rather than the map.
  */
 interface TallBlock {
   readonly minX: number;
@@ -69,8 +68,7 @@ export class TallObjectLayer {
     private readonly textures: TextureCache,
   ) {}
 
-  /** Build the AABB-culled blocks from the tall placements grouped by chunk key. Every member starts
-   *  sprite-less, minted on first visibility. */
+  /** Build the AABB-culled blocks from the tall placements grouped by chunk key. */
   build(tallByBlock: Map<string, MapObjectSprite[]>): void {
     for (const block of tallByBlock.values()) {
       let minX = Number.POSITIVE_INFINITY;
@@ -78,7 +76,7 @@ export class TallObjectLayer {
       let maxX = Number.NEGATIVE_INFINITY;
       let maxY = Number.NEGATIVE_INFINITY;
       for (const obj of block) {
-        // Box covers only the feet anchors; the per-object cull is a point test against it.
+        // Box covers only the feet anchors, never the sprite extents.
         minX = Math.min(minX, obj.x);
         minY = Math.min(minY, obj.y);
         maxX = Math.max(maxX, obj.x);
@@ -146,8 +144,6 @@ export class TallObjectLayer {
     const sprite = new Sprite();
     sprite.scale.set(obj.scale);
     sprite.zIndex = depth;
-    // Baked-shading multiplier as a grey tint. A batch tint cannot brighten, so the lane's >1 half
-    // clamps at ×1 - a named approximation (see MapObjectSprite.brightness).
     po.baseTint = obj.brightness !== undefined ? scaleColour(0xffffff, obj.brightness) : 0xffffff;
     po.ghostTint = fogGhostTint(po.baseTint);
     if (obj.shadow !== undefined) {
@@ -188,9 +184,7 @@ export class TallObjectLayer {
 
   /**
    * Advance the tall objects for one frame: block-cull to the viewport, then per-member point-test the
-   * visible blocks, so the scan cost tracks the visible blocks rather than the map. A member's sprite
-   * is minted on first visibility and depth-sorted by its feet anchor, the same world-`y` key the
-   * entity containers use.
+   * visible blocks.
    *
    * `fogStateOfCell` is the fog-of-war gate over cell coords (the viewer's effective `FOG_STATE`). An
    * object on unexplored ground is treated exactly like a viewport-culled one: detached, kept pooled

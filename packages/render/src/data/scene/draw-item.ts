@@ -61,7 +61,7 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** Isometric screen position of the item's anchor: tile centre for tiles, feet for sprites. */
   readonly x: number;
   readonly y: number;
-  /** The sort key the item was ordered by. */
+  /** Composed sort key: the anchor's depth plus the per-kind paint bias. */
   readonly depth: number;
   /** For a stockpile pile: units of {@link goodType} held, which grows the drawn heap with its
    *  contents. Omitted for an empty pile (a flag) and non-stockpile kinds. */

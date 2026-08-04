@@ -6,8 +6,9 @@ import { TILE_HALF_H, TILE_HALF_W, type Viewport, visibleTileRange } from '../..
 /**
  * The fog-of-war wash over the ground. The sim's VisionSystem decides which cell is unexplored,
  * explored-but-unwatched, or visible and hands the mask over as a {@link FogView}; this layer is a pure
- * projection of it. Only the visible cell band is rasterized, and only when the band moved or the mask
- * rebuilt (`FogView.generation`).
+ * projection of it. Only the visible cell band is rasterized, and only when the band moved, the mask
+ * rebuilt (`FogView.generation`), or the fog mode changed (`FogView.mode` remaps what `stateAt`
+ * reports).
  *
  * One texel per cell, stretched over the band and sampled with linear filtering: the GPU's bilinear
  * interpolation spreads each state transition across a whole cell (~68 px), which is what melts the mask
@@ -79,10 +80,8 @@ export class FogLayer {
     // Crop the sampled region to the band (the frame), then stretch it over the band's world box: texel
     // (i, j) centres on cell (minCol+i, minRow+j), whose centre sits at (2c·HALF_W, r·HALF_H), so the box
     // starts half a texel before the first centre and spans one full cell pitch per texel.
-    // `texture.update()` (not a bare `updateUvs()`) is required after the frame mutation: it emits the
-    // texture's `update` event, the only signal a bound `dynamic` Sprite re-reads UVs on. Without it the
-    // sprite keeps the previous band's UVs and draws a wrong-sized mask slice as soon as a zoom changes
-    // the band dimensions.
+    // The frame mutation needs `texture.update()`, not a bare `updateUvs()`: only the former notifies
+    // the sprite, which would otherwise draw the previous band's slice once a zoom resizes the band.
     texture.frame.width = bandW;
     texture.frame.height = bandH;
     texture.update();
@@ -108,8 +107,8 @@ export class FogLayer {
     this.texture?.destroy(true);
     this.buffer = new Uint8Array(this.texW * this.texH * 4); // RGB stay 0 (black); alpha is written per band
     // Both options are load-bearing: an explicit `frame` keeps `noFrame` false, so `texture.update()`
-    // cannot clobber the band crop back to the full source; `dynamic: true` makes the Sprite subscribe to
-    // `update` and re-read UVs when the band resizes.
+    // cannot clobber the band crop back to the full source; `dynamic: true` subscribes the Sprite to the
+    // texture's `update` event, the only signal it re-reads UVs on.
     this.texture = new Texture({
       source: new BufferImageSource({
         resource: this.buffer,

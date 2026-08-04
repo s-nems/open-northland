@@ -3,7 +3,7 @@ import { depositVisualLevel } from '../../src/data/scene/index.js';
 
 describe('depositVisualLevel - the shrink-by-level fill bucket', () => {
   it('buckets remaining/initial into [1, levels]: full → levels, dregs → 1, exhausted → 0', () => {
-    // initial 10 over 5 levels - ~2 units per level (ceil rounds a partial level UP).
+    // 10 units over 5 levels is ~2 units per level, and ceil rounds a partial level up.
     expect(depositVisualLevel(10, 10, 5)).toBe(5); // full
     expect(depositVisualLevel(9, 10, 5)).toBe(5); // still reads full until a whole level is gone
     expect(depositVisualLevel(8, 10, 5)).toBe(4);

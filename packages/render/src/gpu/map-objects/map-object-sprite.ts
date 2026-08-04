@@ -32,9 +32,9 @@ export interface MapObjectSprite {
    * The baked `embr` luminance multiplier over the ground this object covers, 1 being neutral. The
    * original shades landscape-object pixels with the ground's baked plane, measured on the corpus for
    * mine decals, stones and grass (masked opaque-pixel ratio tracks embr from ×0.58 to ×1.58), except
-   * trees, which draw full-bright even on embr=0 border cells and so omit the field. Decor batches
-   * apply the full range per vertex; tall pooled sprites apply it as a tint, which clamps at ×1 - a
-   * named approximation, since Pixi's batch tint cannot brighten.
+   * trees, which draw full-bright even on embr=0 border cells and so omit the field. Decor batches apply
+   * the full range per vertex; a tall pooled sprite applies it as a Pixi tint, which cannot brighten, so
+   * a multiplier above 1 clamps there - a named approximation.
    */
   readonly brightness?: number;
   /**

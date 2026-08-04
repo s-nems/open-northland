@@ -15,8 +15,8 @@ import {
 import { DEFAULT_TILE_COLOUR, dominantGroundColour, flatTileColour } from '../src/gpu/terrain/geometry.js';
 import { halfCellToScreen, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../src/index.js';
 
-/** Tessellation source basis: the original engine's ground mesh, per docs/SOURCES.md "terrain
- *  tessellation". */
+/** Tessellation source basis: the original engine's ground mesh, as the decoded map's per-triangle
+ *  `empa`/`empb` picks address it. */
 
 describe('cellNode / nodeCell - the cell-centre lattice', () => {
   it('places even-row centres at (2c, 2r) and odd-row centres staggered half a cell right', () => {

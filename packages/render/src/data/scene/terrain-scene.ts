@@ -120,6 +120,6 @@ export function buildScene(
     });
   }
 
-  // Stable, total order: tiles (all negative depth) ahead of sprites, sprites by (y, x, id).
+  // Tiles all carry negative depth, so they precede every sprite.
   return [...tiles, ...collectSpriteScene(snapshot, { elevation }).items];
 }

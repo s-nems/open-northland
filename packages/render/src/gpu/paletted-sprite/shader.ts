@@ -6,12 +6,9 @@ in vec2 aUV;
 out vec2 vUV;
 
 uniform vec4 uPlacement;  // xy = feet-anchor screen px, z = pixels-per-native-pixel (zoom), w = player row
-// Logical canvas size in px (the same CSS-px space uPlacement lives in). Deliberately not named
-// "uResolution": Pixi's GlobalUniformSystem publishes a global uniform of that exact name (the render
-// target's device-pixel size) and syncs it onto any mesh shader declaring it - on a HiDPI canvas
-// (resolution > 1) that overwrote this with 2× values after our group's value-cache said "unchanged,
-// skip", so the first paletted mesh drawn each frame landed at half position/size (the "body stands
-// beside the head" bug). A non-reserved name keeps this uniform ours alone.
+// Logical canvas size in px, the same CSS-px space uPlacement lives in. Not named "uResolution":
+// Pixi's GlobalUniformSystem publishes a global uniform of that name (the render target's
+// device-pixel size) and syncs it onto any mesh shader declaring it, overwriting this one.
 uniform vec2 uScreen;
 uniform vec2 uFlip;       // .x > 0.5: negate clip Y (render upright into a bottom-up render texture)
 
@@ -41,21 +38,12 @@ uniform vec2 uColorKey;     // .x > 0.5: key magenta; .y: near-black mode (0 off
 uniform vec4 uFrameUV;      // the current frame's atlas-UV box (min.xy, max.zw) - for the 'round' corner key
 uniform vec4 uSilhouette;   // .rgb: flat override colour, .w > 0.5: silhouette mode on (see the setter)
 
-// GUI transparent key - our floating-HUD deviation, not an original mechanism (the engine blitter has no
-// colour key; see source basis "Left tool panel"). The in-game GUI palettes (iconsleft/context/…) reserve
-// palette index 0 as a magenta sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255)
-// as each element's background. The indexed atlases bake every written pixel at its authored coverage
-// (graded alpha - see packIndexedBobAtlas), but a GUI element's background pixels are fully covered, so an
-// element drawn straight would carry an opaque dark rectangle over the world - which the original hid by
-// rendering gameplay in a dedicated area, but we render full-screen.
-//
-// The two classes are keyed independently (uColorKey.x = magenta, uColorKey.y = near-black band or round-disc
-// clip), because they are not both "background" for every element. Large panel/window elements (iconsleft) use
-// the near-black band as a removable backdrop → 'full' keys both. But the round wooden order buttons (context
-// palette) paint their own bevel rim and their engraved glyph in that same near-black - keying it there punches
-// holes through the art (the "chipped/holey" look). So 'round' instead keeps the near-black inside the disc and
-// geometrically clips everything outside the inscribed disc, dropping the square frame + corners for a clean
-// round button. Character LUTs produce neither class and leave both flags 0, so this is inert for world sprites.
+// GUI transparent key, a floating-HUD deviation with no original mechanism behind it (the engine blitter
+// has no colour key; source basis "Left tool panel"). The in-game GUI palettes reserve palette index 0 as a
+// magenta sentinel (255,0,255) and a band of near-black entries (max channel ≲ 28/255) as element background.
+// The two classes key independently because they are not both background for every element: panel elements
+// treat the near-black band as a removable backdrop, while the round order buttons paint their bevel rim and
+// glyph in that same near-black. Character LUTs produce neither class and leave both flags 0.
 const float KEY_MAGENTA_HI = 0.9;  // r AND b above this …
 const float KEY_MAGENTA_LO = 0.1;  // … with g below this → the magenta sentinel (index 0)
 const float KEY_NEAR_BLACK = 0.11; // max channel below this (≈28/255) → the near-black background band
@@ -63,8 +51,7 @@ const float KEY_ROUND_CLIP = 1.0;  // 'round' mode: fade out past this normalize
                                    // frame, touching its edges at rad 1.0; corners run to ~1.41) → clean disc
 
 void main(void) {
-  // textureLod(..., 0.0): sample the base level only. An index/LUT read must never hit a blended mip - an
-  // averaged index would decode to the wrong palette entry. (Pixi v8 defaults to no mipmaps, but be explicit.)
+  // textureLod(..., 0.0) samples the base level only: an averaged mip index decodes to the wrong entry.
   vec4 texel = textureLod(uTexture, vUV, 0.0);
   if (texel.a == 0.0) discard; // unwritten bob pixel
   // Recover the exact palette index (0..255) from the red channel, then read the player's LUT row.
@@ -80,12 +67,9 @@ void main(void) {
       // 'full': the whole near-black band is removable panel/window backdrop
       if (max(max(rgb.r, rgb.g), rgb.b) < KEY_NEAR_BLACK) discard;
     } else {
-      // 'round': hard-clip everything outside the inscribed disc so the square frame's corners - including
-      // the light bevel pixels a near-black-only key leaves behind - drop away and the button is a clean
-      // round disc, glyph intact. Only the settler action-ring order buttons use 'round', and they are
-      // supersampled (baked at an integer oversample, then linear-downscaled - hud/icon-texture.ts), so the
-      // downscale anti-aliases this hard edge uniformly and DPR-independently. (An in-shader fwidth feather
-      // instead varied with the device pixel ratio and left partial-alpha specks in the disc's corners.)
+      // 'round': hard-clip outside the inscribed disc, dropping the square frame's corners and the bevel
+      // pixels a near-black-only key leaves behind. Its callers supersample, so the downscale
+      // anti-aliases this hard edge DPR-independently.
       vec2 span = max(uFrameUV.zw - uFrameUV.xy, vec2(1e-6));
       vec2 local = (vUV - uFrameUV.xy) / span; // 0..1 within the frame box
       float rad = length(local - vec2(0.5)) * 2.0; // 0 centre, 1 edge-midpoint, ~1.41 corner
@@ -130,8 +114,6 @@ export interface PalettedUniforms {
   update(): void;
 }
 
-/** The per-mesh quad geometry: eight zeroed position/uv floats plus the shared two-triangle index
- *  buffer, which the sprite's `setFrame` rewrites. */
 export function createPalettedGeometry(): MeshGeometry {
   return new MeshGeometry({
     positions: new Float32Array(8),

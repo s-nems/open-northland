@@ -3,8 +3,6 @@ import { resolveSignpostDraw } from '../../src/data/sprites/layered.js';
 import type { SignpostBinding } from '../../src/data/sprites/layered-bindings.js';
 import { drawItem } from '../support/fixtures.js';
 
-/** `byPlayer` holds each player's baked `ls_guidepost.player_NN` atlas. */
-
 const base = (layer: string): SignpostBinding => ({
   post: { layer, bob: 0 },
   boards: [

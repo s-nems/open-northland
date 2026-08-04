@@ -31,15 +31,9 @@ interface BonesGfx {
 
 /**
  * The combat-feedback layer - the transient marks a fight leaves: a blood spurt where a blow lands, a
- * bone pile where a unit falls. A client-side projection of the sim's one-shot events, never sim state:
- * one world-space node per mark keyed by `effectKey`, its shape drawn once and thereafter only
- * repositioned, re-alpha'd and culled.
- *
- * Bones are ground litter below the sprite layer; blood sits above it, lifted onto the body by
- * {@link BLOOD_RISE} so the spurt reads on the struck unit instead of hiding under its feet. The live
- * list is capped by `MAX_ACTIVE_EFFECTS` and an off-screen mark is hidden rather than repositioned, so
- * cost tracks the screen. Blood is a named procedural approximation; bones draw the real decoded cadaver
- * sprite when supplied.
+ * bone pile where a unit falls. A client-side projection of the sim's one-shot events, never sim state,
+ * with one world-space node per mark keyed by `effectKey`. Blood is a named procedural approximation;
+ * bones draw the real decoded cadaver sprite when supplied.
  */
 
 /** Blood: dark and bright red droplets, with a dark rim so a drop reads on any ground. */

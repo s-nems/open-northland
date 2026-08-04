@@ -7,6 +7,7 @@ export const ONE: number = SIM_ONE;
  * The original's cell pitch in native px, by observation of the running game: the cell is 68.0 px wide
  * (`TILE_HALF_W` is half of it, so a column step right is `2·TILE_HALF_W`) and rows step 38.0 px
  * (±0.1), which is also half the cell diamond's height because rows interlock at half-diamond spacing.
+ * At this pitch the pattern-page texture triangles (~64 px) rasterize ~1:1 onto the cell diamond.
  */
 export const TILE_HALF_W = 34;
 export const TILE_HALF_H = 38;

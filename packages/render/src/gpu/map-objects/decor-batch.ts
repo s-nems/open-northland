@@ -7,10 +7,6 @@ import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
  * The decor half of the map-object feature: flat ground decor batched into per-block quad meshes
  * under the entity sprites, one draw call per texture page per block. Translucency rides in the
  * atlas texture's own alpha channel; there is no per-object opacity.
- *
- * On a brightness-shaded map each quad carries its anchor cell's multiplier as a constant per-vertex
- * `aBrightness`, because the original bakes the `embr` shading into these ground-coupled decals too
- * (measured on the corpus; see {@link MapObjectSprite.brightness}).
  */
 
 /** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
