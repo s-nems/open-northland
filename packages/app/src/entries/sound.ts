@@ -6,6 +6,7 @@ import {
   type VoiceClass,
 } from '@open-northland/audio';
 import type { SoundBank } from '@open-northland/data';
+import { withBaseUrl } from '../base-url.js';
 import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { hasSoundContent } from '../content/audio.js';
 import { loadIr } from '../content/ir/load.js';
@@ -163,7 +164,7 @@ let current: HTMLAudioElement | null = null;
 /** Plays one wav off the `/sounds` dev route; the click gesture satisfies the autoplay policy. */
 function play(file: string): void {
   if (current !== null) current.pause();
-  current = new Audio(`/sounds/${file}`);
+  current = new Audio(withBaseUrl(`/sounds/${file}`));
   void current.play().catch(() => undefined);
 }
 

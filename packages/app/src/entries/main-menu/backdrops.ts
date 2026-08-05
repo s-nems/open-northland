@@ -1,3 +1,4 @@
+import { withBaseUrl } from '../../base-url.js';
 import { fetchJsonOrNull } from '../../content/net.js';
 import { diag } from '../../diag/index.js';
 
@@ -53,7 +54,7 @@ async function boot(host: HTMLElement): Promise<boolean> {
   const order = shuffledOrder(files.length, Math.random);
   const urlAt = (position: number): string => {
     const file = files[order[position % order.length] ?? 0] ?? '';
-    return `/backdrops/${encodeURIComponent(file)}`;
+    return withBaseUrl(`/backdrops/${encodeURIComponent(file)}`);
   };
 
   // Walk the shuffled order until one still actually loads: a stale index entry or a half-written

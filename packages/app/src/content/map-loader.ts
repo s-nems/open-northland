@@ -1,4 +1,5 @@
 import { MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import { withBaseUrl } from '../base-url.js';
 import { diag } from '../diag/index.js';
 
 /**
@@ -30,7 +31,7 @@ export async function loadTerrainMap(
     return null;
   }
   try {
-    const res = await fetchImpl(`/maps/${safe}.json`);
+    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.json`));
     if (!res.ok) {
       diag.warn(
         'content',
@@ -57,7 +58,7 @@ export async function loadMapScript(id: string, fetchImpl: typeof fetch = fetch)
   const safe = safeMapId(id);
   if (safe === null) return null;
   try {
-    const res = await fetchImpl(`/maps/${safe}.script.json`);
+    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.script.json`));
     if (!res.ok) return null;
     return MapScript.parse(await res.json());
   } catch (err) {

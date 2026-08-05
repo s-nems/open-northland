@@ -1,0 +1,13 @@
+.git
+.playwright-mcp
+bench-out
+content
+node_modules
+packages/desktop/release
+**/dist
+**/dist-types
+**/*.tsbuildinfo
+**/.DS_Store
+**/*.log
+.env
+.env.*

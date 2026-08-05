@@ -7,6 +7,7 @@
     { "path": "packages/audio" },
     { "path": "packages/app" },
     { "path": "packages/content-resolver" },
+    { "path": "packages/web-host" },
     { "path": "packages/desktop" },
     { "path": "tools/asset-pipeline" }
   ]

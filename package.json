@@ -30,6 +30,7 @@
     "tickets:list": "node scripts/list-tickets.mjs",
     "desktop": "npm run build && npm run start --workspace @open-northland/desktop",
     "desktop:dist": "npm run build && npm run dist --workspace @open-northland/desktop",
+    "web:image:local": "node scripts/build-local-web-image.mjs",
     "dev": "npm run dev --workspace @open-northland/app",
     "dev:ports": "scripts/dev-ports.sh",
     "dev:reset": "scripts/dev-reset.sh",

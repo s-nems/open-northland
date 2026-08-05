@@ -1,4 +1,5 @@
 import { loadAtlasSource, type TextureSource } from '@open-northland/render';
+import { withBaseUrl } from '../base-url.js';
 import { diag } from '../diag/log.js';
 
 /**
@@ -14,7 +15,7 @@ import { diag } from '../diag/log.js';
  */
 export async function fetchJsonOrNull<T>(url: string, fetchImpl: typeof fetch = fetch): Promise<T | null> {
   try {
-    const res = await fetchImpl(url);
+    const res = await fetchImpl(withBaseUrl(url));
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch {
@@ -28,9 +29,10 @@ export async function fetchJsonOrNull<T>(url: string, fetchImpl: typeof fetch = 
  */
 export async function loadTextureIfPresent(url: string): Promise<TextureSource | undefined> {
   try {
-    const res = await fetch(url, { method: 'HEAD' });
+    const resolvedUrl = withBaseUrl(url);
+    const res = await fetch(resolvedUrl, { method: 'HEAD' });
     if (!res.ok) return undefined;
-    return await loadAtlasSource(url);
+    return await loadAtlasSource(resolvedUrl);
   } catch (err) {
     diag.warn('content', `net: optional texture ${url} failed to load; its caller falls back`, err);
     return undefined;
@@ -43,7 +45,7 @@ export async function loadTextureIfPresent(url: string): Promise<TextureSource |
  */
 export async function fetchImageData(url: string): Promise<ImageData | null> {
   try {
-    const res = await fetch(url);
+    const res = await fetch(withBaseUrl(url));
     if (!res.ok) return null;
     const bitmap = await createImageBitmap(await res.blob());
     const canvas = document.createElement('canvas');
