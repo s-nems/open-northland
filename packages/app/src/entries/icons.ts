@@ -1,4 +1,5 @@
 import type { BobsIndexEntry } from '@open-northland/content-resolver/wire';
+import { withBaseUrl } from '../base-url.js';
 import { GUI_FRAMES } from '../content/gui-atlas-map.js';
 import { fetchJsonOrNull } from '../content/net.js';
 import { formatMessage, messages } from '../i18n/index.js';
@@ -182,7 +183,7 @@ export function renderIconGallery(_canvas: HTMLCanvasElement, params: URLSearchP
         meta.textContent = formatMessage(messages().icons.loadFailed, { stem });
         return;
       }
-      grid.style.setProperty('--sheet', `url('/bobs/${stem}.png')`);
+      grid.style.setProperty('--sheet', `url('${withBaseUrl(`/bobs/${stem}.png`)}')`);
       grid.style.setProperty('--sw', String(atlas.width));
       grid.style.setProperty('--sh', String(atlas.height));
       const withName = stem.startsWith(`${GUI_BASE}.`);

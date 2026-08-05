@@ -1,3 +1,4 @@
+import { withBaseUrl } from '../../base-url.js';
 import { loadMapList } from '../../content/maps-index.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import { SCENES } from '../../scenes/index.js';
@@ -178,7 +179,7 @@ export function mapSelectScreen(
     thumb.className = 'main-menu__map-thumb';
     if (item.kind === 'map' && item.minimap) {
       const img = document.createElement('img');
-      img.src = `/maps/${encodeURIComponent(item.id)}.png`;
+      img.src = withBaseUrl(`/maps/${encodeURIComponent(item.id)}.png`);
       img.alt = '';
       img.loading = 'lazy';
       // A stale minimap flag falls back to the rasterized thumb; removing the img shows the

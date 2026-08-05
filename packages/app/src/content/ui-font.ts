@@ -9,6 +9,8 @@
  * and Latin-Extended for the Polish diacritics.
  */
 
+import { withBaseUrl } from '../base-url.js';
+
 /** The text fill colours, shared with the bitmap font's fallback. */
 export { FONT_FILL as UI_TEXT_FILL } from './font-gfx.js';
 
@@ -74,7 +76,7 @@ export function loadUiFont(): Promise<UiFont> {
     try {
       await Promise.all(
         SUBSETS.map(async (subset) => {
-          const face = new FontFace(UI_FONT_FAMILY, `url(${subset.file}) format('woff2')`, {
+          const face = new FontFace(UI_FONT_FAMILY, `url(${withBaseUrl(subset.file)}) format('woff2')`, {
             weight: '400',
             style: 'normal',
             unicodeRange: subset.unicodeRange,

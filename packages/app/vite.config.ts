@@ -19,13 +19,22 @@ const here = dirname(fileURLToPath(import.meta.url));
 // otherwise serve `index.html` as HTTP 200 `text/html` and the loaders' `!res.ok` absence checks would
 // mis-read a missing `content/` as bytes. Off-namespace paths fall through to Vite as before.
 const contentRoot = resolve(here, '../../content');
+const configuredBasePath = process.env.OPEN_NORTHLAND_BASE_PATH ?? '/';
+const basePath =
+  configuredBasePath === '/' ? '/' : `/${configuredBasePath.split('/').filter(Boolean).join('/')}/`;
 
 function serveContent(): Plugin {
   return {
     name: 'opennorthland-serve-content',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        const pathname = (req.url ?? '').split('?')[0] ?? '';
+        const requestPathname = (req.url ?? '').split('?')[0] ?? '';
+        const pathname =
+          basePath === '/'
+            ? requestPathname
+            : requestPathname.startsWith(basePath)
+              ? `/${requestPathname.slice(basePath.length)}`
+              : requestPathname;
         const hit = resolveContentRequest(pathname, contentRoot);
         if (hit === undefined) {
           if (isContentRoute(pathname)) {
@@ -49,6 +58,7 @@ function serveContent(): Plugin {
 }
 
 export default defineConfig({
+  base: basePath,
   plugins: [serveContent()],
   server: { port: 5173, open: false },
   // Pixi + the app ship as one ~810 kB main chunk (≈248 kB gzip). That is expected for a Pixi game
