@@ -65,8 +65,9 @@ art stands in. Direct entries are useful during focused work:
 | `?shot` | single-frame screenshot entry used by the harness |
 | `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
 
-Common modifiers include `lang=<pol|eng|ger|rus>`, `fog=<...>`, `player=<...>`, `ai=<...>`,
-`sound=off`, and `postfx=off`. The HUD scales from the canvas height sampled at game start times the
+Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, `sound=off`, and
+`postfx=off`. Without `lang` the language follows the browser, and English stands in for a browser
+language with no shipped catalog. The HUD scales from the canvas height sampled at game start times the
 stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reproducible diagnostics
 and is not carried across menu/game switches. The menu's settings screen covers the player-facing
 options, so direct query parameters are mainly for reproducible diagnostics.

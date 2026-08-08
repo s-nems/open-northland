@@ -26,17 +26,26 @@ export function routePathOf(host: string, rawPathname: string): string | undefin
 /** The queries `packages/app/src/main.ts` routes to a playable world rather than to the main menu. */
 const SESSION_PARAMS = ['map', 'scene'] as const;
 
-/**
- * Whether a game page has a world in progress, so navigating away loses it (there is no saving yet).
- * The menu page is a game URL too and always carries `?lang=`, so a non-empty query proves nothing.
- */
-export function isInGameSession(url: string): boolean {
+function gamePageUrl(url: string): URL | undefined {
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch {
-    return false;
+    return undefined;
   }
-  if (parsed.protocol !== `${APP_SCHEME}:` || parsed.host !== GAME_HOST) return false;
-  return SESSION_PARAMS.some((param) => parsed.searchParams.has(param));
+  return parsed.protocol === `${APP_SCHEME}:` && parsed.host === GAME_HOST ? parsed : undefined;
+}
+
+/**
+ * Whether a game page has a world in progress, so navigating away loses it (there is no saving yet).
+ * The menu page is a game URL too and carries params of its own, so a non-empty query proves nothing.
+ */
+export function isInGameSession(url: string): boolean {
+  const parsed = gamePageUrl(url);
+  return parsed !== undefined && SESSION_PARAMS.some((param) => parsed.searchParams.has(param));
+}
+
+/** Whether `url` is a web-app page at all - the menu, a world, or any of its direct entries. */
+export function isGamePage(url: string): boolean {
+  return gamePageUrl(url) !== undefined;
 }

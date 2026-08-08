@@ -1,9 +1,8 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 
 /**
- * Two projects for one reason: the app's tests boot with the app-wide `diag` logger's console echo
- * silenced (`packages/app/test/support/silence-diag.ts`), so an expected `diag.warn` doesn't have to be
- * spied away test by test. Every other package keeps the plain default run.
+ * Two projects because only the app's tests need setup files. Every other package keeps the plain
+ * default run.
  */
 export default defineConfig({
   test: {
@@ -12,7 +11,10 @@ export default defineConfig({
         test: {
           name: 'app',
           include: ['packages/app/test/**/*.test.ts'],
-          setupFiles: ['./packages/app/test/support/silence-diag.ts'],
+          setupFiles: [
+            './packages/app/test/support/silence-diag.ts',
+            './packages/app/test/support/fixed-locale.ts',
+          ],
         },
       },
       {

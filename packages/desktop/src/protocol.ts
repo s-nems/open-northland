@@ -11,7 +11,7 @@ import type { Locale } from './i18n/index.js';
 export const GAME_URL = `${APP_ORIGIN_PREFIX}${GAME_HOST}/index.html`;
 export const SETUP_URL = `${APP_ORIGIN_PREFIX}${SETUP_HOST}/setup.html`;
 
-/** The game URL carrying the installer language in the `?lang=` seam the web app reads. */
+/** The game URL carrying the shell language in the `?lang=` seam the web app reads. */
 export function gameUrlForLocale(locale: Locale): string {
   return `${GAME_URL}?lang=${locale}`;
 }

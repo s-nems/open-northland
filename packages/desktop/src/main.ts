@@ -7,6 +7,7 @@ import { wireIpc } from './ipc-handlers.js';
 import { configFileOf, contentDirOf, DATA_DIR_ENV, modsDirOf, resolveDataRoot } from './paths.js';
 import { PipelineHost } from './pipeline-host.js';
 import { handleAppProtocol, registerAppScheme } from './protocol.js';
+import { watchGameLocale } from './shell-locale.js';
 import { createShellState, type ShellPaths } from './shell-state.js';
 import { buildAppMenu, createWindow } from './window.js';
 
@@ -46,13 +47,15 @@ if (app.requestSingleInstanceLock()) {
   });
 
   // Set before any window or menu so both the setup page and the native menu open localized.
-  setActiveLocale(readConfig(paths.configFile).locale ?? resolveLocale(app.getLocale()));
+  // Not `app.getLocale()`: that one reads empty until `ready`.
+  setActiveLocale(readConfig(paths.configFile).locale ?? resolveLocale(app.getPreferredSystemLanguages()));
 
   void app.whenReady().then(async () => {
     handleAppProtocol({ appRoot, setupRoot, contentRoot: paths.contentDir });
     mainWindow = createWindow(await state.contentStatus(), join(here, 'preload.cjs'), currentLocale());
     buildAppMenu(mainWindow, dataRoot.path);
     wireIpc({ win: mainWindow, paths, state, pipeline });
+    watchGameLocale(mainWindow, paths);
   });
 } else {
   app.quit();

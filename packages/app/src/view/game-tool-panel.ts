@@ -42,7 +42,7 @@ export interface GameToolPanelDeps {
   readonly owner: number;
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
-  /** UI string language (`pol`/`eng`); defaults to Polish. */
+  /** UI string language (`pol`/`eng`); defaults to the active locale. */
   readonly lang?: string;
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** A higher overlay's claim: the panel yields left clicks it covers, so hit priority follows draw order. */

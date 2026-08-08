@@ -3,18 +3,16 @@ import { pl } from './pl.js';
 
 interface LocaleEntry {
   readonly messages: Messages;
-  /** BCP-47 language tag. */
+  /** BCP-47 language tag, and the primary subtag this language claims in an OS preference list. */
   readonly tag: string;
-  /** Lowercased OS-locale prefix this language claims; the first entry whose prefix matches wins. */
-  readonly osPrefix: string;
   readonly flag: string;
   readonly labelKey: keyof Messages['setup']['language'];
 }
 
 /** In flag-button order. */
 export const LOCALES = {
-  pol: { messages: pl as Messages, tag: 'pl', osPrefix: 'pl', flag: '🇵🇱', labelKey: 'polish' },
-  eng: { messages: en as Messages, tag: 'en', osPrefix: 'en', flag: '🇬🇧', labelKey: 'english' },
+  pol: { messages: pl as Messages, tag: 'pl', flag: '🇵🇱', labelKey: 'polish' },
+  eng: { messages: en as Messages, tag: 'en', flag: '🇬🇧', labelKey: 'english' },
 } as const satisfies Record<string, LocaleEntry>;
 
 export type Locale = keyof typeof LOCALES;
@@ -30,11 +28,14 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === 'string' && Object.hasOwn(LOCALES, value);
 }
 
-/** Maps an OS locale tag such as `"pl-PL"` onto a shipped language. */
-export function resolveLocale(raw: string | undefined): Locale {
-  const lower = raw?.toLowerCase();
-  if (lower === undefined) return DEFAULT_LOCALE;
-  return LOCALE_CODES.find((code) => lower.startsWith(LOCALES[code].osPrefix)) ?? DEFAULT_LOCALE;
+/** The first shipped language in an OS preference list such as `["cs-CZ", "pl-PL"]`. */
+export function resolveLocale(preferred: readonly string[]): Locale {
+  for (const tag of preferred) {
+    const primary = tag.toLowerCase().split('-')[0];
+    const match = LOCALE_CODES.find((code) => LOCALES[code].tag === primary);
+    if (match !== undefined) return match;
+  }
+  return DEFAULT_LOCALE;
 }
 
 export function localeTag(locale: Locale = activeLocale): LocaleTag {

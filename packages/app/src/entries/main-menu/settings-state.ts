@@ -1,4 +1,4 @@
-import { DEFAULT_LOCALE, localeParam, setActiveLocale } from '../../i18n/index.js';
+import { defaultLocale, localeParam, setActiveLocale } from '../../i18n/index.js';
 import { type MenuSettings, persistSettings, readStoredSettings } from '../../view/settings-store.js';
 
 /**
@@ -47,7 +47,8 @@ export function carriedSettingParams(settings: MenuSettings): readonly CarriedSe
     {
       key: 'language',
       param: 'lang',
-      value: settings.language === DEFAULT_LOCALE ? null : settings.language,
+      // The elided default is the browser's language, so a `lang`-less link follows whoever opens it.
+      value: settings.language === defaultLocale() ? null : settings.language,
     },
     { key: 'soundEnabled', param: 'sound', value: settings.soundEnabled ? null : 'off' },
   ];
