@@ -6,10 +6,9 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, sameCells, translatedCells } from './geometry.js';
 
-// The memoized per-world cache of cells standing buildings make unwalkable, plus its coherence
-// verifier - the building twin of ./resource-blocked-cache.ts. A call burst (an authored map load's
-// spawn pushes, a box-select's move orders) shares one build instead of re-scanning the Building
-// store per call.
+// The memoized per-world cache of cells standing buildings make unwalkable, plus its coherence verifier -
+// the building twin of ./resource-blocked-cache.ts. A call burst shares one build instead of re-scanning
+// the Building store per call.
 
 interface BuildingBlockedCache {
   /** Building MEMBERSHIP generation (add/remove/destroy) the cells were derived at. */
@@ -71,23 +70,20 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
 
 /**
  * The cells standing buildings make UNWALKABLE right now - the union of every placed building's
- * `footprint.blocked` cells (its CURRENT level's walls). The walk-block applies from the placement
- * tick: a grey foundation already occupies its cells, exactly like the original.
+ * `footprint.blocked` cells at its current level. The walk-block applies from the placement tick, so a grey
+ * foundation already occupies its cells, exactly like the original.
  *
- * A building's own DOOR cell is always left walkable, even when the source lists it inside the
- * walk-block - the real data does exactly that for the defence-wall gate (`work_pottery_02`'s
- * `LogicDoorPoint` sits inside its `LogicWalkBlockArea`: a wall's door IS its passable gate). Without
- * this carve-out the walk-to-door goal would be a blocked cell → `findPath` fails → the request is
- * never re-issued → the settler wedges permanently. The extractor keeps the source cells verbatim
- * (provenance); the consumer applies the gate semantics.
+ * A building's own DOOR cell is always left walkable, even where the source lists it inside the walk-block:
+ * `work_pottery_02`'s `LogicDoorPoint` sits inside its `LogicWalkBlockArea`, because a wall's door IS its
+ * passable gate. Without the carve-out the walk-to-door goal is a blocked cell, `findPath` fails, the
+ * request is never re-issued, and the settler wedges permanently. The extractor keeps the source cells
+ * verbatim; the consumer applies the gate semantics.
  *
- * DERIVED state - never hashed, never stored on an entity. Memoized per world against the Building
- * store's membership AND value generations (the home tier upgrade swaps `buildingType` in place under
- * a `World.write` value bump - see the cache key doc), so a burst of callers between two building
- * mutations shares one O(buildings × footprint cells) build. The returned set is the SHARED cached
- * copy: membership reads only - a caller that must mutate copies first.
- * Determinism: a set union over `world.query` - order-independent (membership only, no pick; the door
- * carve-out is per-building, keyed to its own cells), so store-order iteration is fine.
+ * Derived state, never hashed and never stored on an entity. Memoized per world on the Building store's
+ * membership and value generations, so a burst of callers between two building mutations shares one
+ * O(buildings x footprint cells) build. The returned set is the SHARED cached copy: membership reads only,
+ * and a caller that must mutate copies first. A set union with no pick, so store-iteration order cannot
+ * change it.
  */
 export function buildingBlockedCells(
   world: World,
