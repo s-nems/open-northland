@@ -56,9 +56,8 @@ describe('buildSoundGalleryModel', () => {
     const axe = model.cues.find((c) => c.group === 'Woodcutter Axe');
     expect(axe?.soundType).toBe(9);
     expect(axe?.clips).toEqual(['static/axe01.wav', 'static/axe02.wav', 'static/axe03.wav']);
-    // A group the extraction left without an id is still listed, just unreachable from a cue.
-    expect(model.cues.find((c) => c.group === 'Hammer Wood')?.soundType).toBeUndefined();
-    expect(model.cues).toHaveLength(bank.staticGroups.length);
+    // A group the extraction left without an id is unreachable from a cue, so it is not offered as one.
+    expect(model.cues.map((c) => c.group)).toEqual(['Woodcutter Axe']);
   });
 
   it('binds a finished building to the house-built jingle, marked screen-gated', () => {

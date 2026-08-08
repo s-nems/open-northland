@@ -1,56 +1,37 @@
+import type { AtomicEvent } from '@open-northland/data';
+import { systems } from '@open-northland/sim';
+
 /**
  * The sandbox clips' authored sound cues, transcribed from `DataCnmd/atomicanimations12/atomicanimations.ini`.
  * The sim plays a settler's action sound off its animation's `event <at> 34 <id>` rows, so a sandbox clip
  * without them works in silence.
  */
 
-/** `ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX` in `logicdefines.inc` (l.754): the frame an animation sounds
- *  its FX, which is mid-swing rather than at completion. */
-const PLAY_SOUND_FX_EVENT_TYPE = 34;
-
 /**
- * The `soundfx.cif` `SoundFXStatic` `logicSoundType` ids the cues below name, with the group each resolves
- * to. `STONE_STRIKE` and `IRON_STRIKE` resolve to no group in the mod's bank, so those two swings work
- * silently here exactly as they do on a real map.
+ * The `soundfx.cif` `SoundFXStatic` `logicSoundType` ids the cues below name. `STONE_STRIKE` and
+ * `IRON_STRIKE` resolve to no group in the mod's bank, so those two swings work silently here exactly as
+ * they do on a real map.
  */
 const SOUND = {
-  /** Hammer Wood */
   HAMMER_WOOD: 1,
-  /** Hammer Sign */
   HAMMER_SIGN: 2,
   STONE_STRIKE: 3,
-  /** Stone Ore */
   STONE_ORE: 5,
   IRON_STRIKE: 6,
-  /** Shovel Clay */
   SHOVEL_CLAY: 7,
-  /** Shovel Clay2 */
   SHOVEL_CLAY_2: 8,
-  /** Woodcutter Axe */
   WOODCUTTER_AXE: 9,
-  /** Farmer Scythe */
   FARMER_SCYTHE: 12,
-  /** Watering Can */
   WATERING_CAN: 13,
-  /** SocialTalk Male */
   SOCIALTALK_MALE: 61,
-  /** SocialTalk Female */
   SOCIALTALK_FEMALE: 62,
-  /** Weapon Spear */
   WEAPON_SPEAR: 67,
-  /** Weapon Bow Short */
   WEAPON_BOW_SHORT: 73,
-  /** Weapon Bow Short Arrow */
   WEAPON_BOW_SHORT_ARROW: 74,
-  /** Weapon Bow Long */
   WEAPON_BOW_LONG: 75,
-  /** Weapon Bow Long Arrow */
   WEAPON_BOW_LONG_ARROW: 76,
-  /** Weapon Sword Short */
   WEAPON_SWORD_SHORT: 81,
-  /** Weapon Sword Long */
   WEAPON_SWORD_LONG: 85,
-  /** Weapon Fist */
   WEAPON_FIST: 92,
 } as const;
 
@@ -110,15 +91,13 @@ const SOUND_CUES: Readonly<Record<string, readonly AuthoredSoundCue[]>> = {
 
 /** The `event <at> 34 <id>` rows a sandbox clip carries, rescaled from the authored length onto the
  *  `length` this clip actually runs; `[]` for a clip the original leaves silent. */
-export function soundCueEvents(
-  animation: string,
-  length: number,
-): readonly { at: number; type: number; value: number }[] {
+export function soundCueEvents(animation: string, length: number): AtomicEvent[] {
   const cues = SOUND_CUES[animation];
   if (cues === undefined) return [];
   return cues.map((c) => ({
     at: Math.round((c.at * length) / c.of),
-    type: PLAY_SOUND_FX_EVENT_TYPE,
+    type: systems.ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
     value: c.soundType,
+    extended: false,
   }));
 }

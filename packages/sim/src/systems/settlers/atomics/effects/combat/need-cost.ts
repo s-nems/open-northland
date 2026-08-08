@@ -2,7 +2,7 @@ import { needsEnabled, Settler } from '../../../../../components/index.js';
 import { type Fixed, fx, ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
-import { atomicAnimationName } from '../../../../readviews/animations.js';
+import { boundAtomicAnimation } from '../../../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL, atomicEventChannelDelta } from '../../../../readviews/index.js';
 
 /** The per-need reserve span the raw `event <at> <channel> <delta>` need tuples move against; the sim's
@@ -20,7 +20,7 @@ export function paySwingNeedCost(world: World, ctx: SystemContext, attacker: Ent
   if (!needsEnabled(world)) return;
   const s = world.tryMut(attacker, Settler);
   if (s === undefined) return;
-  const animation = atomicAnimationName(ctx.content, s, atomicId);
+  const animation = boundAtomicAnimation(ctx.content, s, atomicId);
   if (animation === undefined) return;
   const restDelta = atomicEventChannelDelta(ctx.content, animation, ATOMIC_EVENT_CHANNEL.REST);
   const hungerDelta = atomicEventChannelDelta(ctx.content, animation, ATOMIC_EVENT_CHANNEL.HUNGER);

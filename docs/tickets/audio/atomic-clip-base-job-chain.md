@@ -1,0 +1,36 @@
+# Resolve a settler's atomic clip through the data's `baseatomics` chain
+
+**Area:** sim, app · **Focus:** clip join · **Priority:** P2
+
+`atomicClipName` (`packages/sim/src/systems/readviews/animations.ts`) resolves an atomic's animation as
+"the settler's own `setatomic` row, else the tribe's civilist row". The data's rule is a per-job parent:
+`jobtypes.ini` `baseatomics` is 6 only for the civilian trades, 31 for armed soldiers, 33-41 for the hero
+bodies, and **48 (`adult_animal`) for wildlife**. The IR already carries it as `JobType.baseJob`, and
+`@open-northland/data` already walks it (`resolveJobAtomics`, covered by
+`packages/app/test/content/job-atomics.test.ts`).
+
+Two consequences, verified against the owned copy:
+
+- **No animal resolves any clip.** `addWildlife` mints wildlife as a `Settler` with `jobType: null`, so
+  `boundAtomicAnimation` returns nothing and the civilist fallback is deliberately withheld from beasts.
+  The mod binds animal atomics under jobs 48/49 (`content/ir.json` tribe 20 `wolves` carries
+  `{jobType: 48|49, atomicId: 81, animation: 'animal_bear_attack'|'animal_wolve_attack'}`). So a wolf's
+  attack takes the 4-tick unresolved default instead of its clip's length, and its authored roar
+  (`Wolve Attack` 104, `Bear Attack` 101, `Lion Attack` 107) never sounds - the generic
+  `byEvent.combatSwing` swoosh covers it instead.
+- **The sandbox binds no animal atomics at all** (`packages/app/src/game/sandbox/content/catalog/tribes.ts`
+  registers animal tribes with `typeId`/`id` only), so the scene cannot exercise the fix.
+
+## Scope
+
+- Give the sim the job's real atomic parent chain instead of the civilist flattening, and a wildlife body
+  the job its tribe binds its clips under.
+- Add the sandbox animal attack clips and their tribe bindings so `?scene=wildlife` can be judged. Their
+  lengths are a swing-cadence change, so check the combat tests that pin animal attack timing.
+- Drop the approximation note on `atomicClipName` once the chain is real.
+
+## Verify
+
+- Unit: a soldier resolves through job 31, a hero through its own parent, and a bear through 48 - each to
+  the clip the data names, not the civilist's.
+- Human ear on `?scene=wildlife`: a bear and a wolf attack with their own roars, at their own cadence.

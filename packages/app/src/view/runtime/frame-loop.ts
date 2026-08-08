@@ -215,8 +215,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
         localPlayer, // life-event jingles ring only for our own entities, not enemies or wildlife
-        // Chat voices locate their emitter off the snapshot, not off events, so they need their own
-        // fog gate: a hidden enemy must not natter from empty black.
+        // A settler's authored action cues locate their emitter off the snapshot, not off events, so
+        // they need their own fog gate: a hidden enemy must not natter or hammer out of empty black.
         visibleTile: fogGates.visibleTile,
       });
     }

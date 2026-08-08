@@ -49,7 +49,7 @@ const DEFAULT_ATOMIC_DURATION = 4;
 
 /** An atomic's duration in ticks: the `length` of the animation the settler's tribe binds it to. */
 export function atomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
-  return atomicDurationForName(content, atomicAnimationName(content, settler, atomicId));
+  return atomicDurationForName(content, boundAtomicAnimation(content, settler, atomicId));
 }
 
 /**
@@ -64,16 +64,22 @@ export function needAtomicDuration(content: ContentSet, settler: SettlerIdentity
   return atomicDurationForName(content, atomicClipName(content, settler, atomicId));
 }
 
-/** The clip a settler actually plays for `atomicId`: its own trade's `setatomic` binding, falling back to
- *  the tribe's civilist body (the original's `baseatomics 6` inheritance). */
+/**
+ * The clip a settler actually plays for `atomicId`: its own trade's `setatomic` binding, falling back to
+ * the tribe's civilist body.
+ *
+ * Approximation: `jobtypes.ini` gives each job its own `baseatomics` parent (6 for the civilian trades,
+ * but 31 for armed soldiers and 33-41 for the hero bodies), so routing every gap to the civilist is a
+ * flattening of that chain, the same join the render makes.
+ */
 export function atomicClipName(
   content: ContentSet,
   settler: SettlerIdentity,
   atomicId: number,
 ): string | undefined {
   return (
-    atomicAnimationName(content, settler, atomicId) ??
-    atomicAnimationName(content, { tribe: settler.tribe, jobType: CIVILIST_JOB }, atomicId)
+    boundAtomicAnimation(content, settler, atomicId) ??
+    boundAtomicAnimation(content, { tribe: settler.tribe, jobType: CIVILIST_JOB }, atomicId)
   );
 }
 
@@ -87,9 +93,10 @@ export function atomicDurationForName(content: ContentSet, animation: string | u
 
 /**
  * The animation name a settler's tribe binds `(jobType, atomicId)` to - the `setatomic` join key, last-wins
- * over file order, matching the original's config-override semantics.
+ * over file order, matching the original's config-override semantics. A trade that binds none resolves
+ * nothing; {@link atomicClipName} is the lookup that then inherits the civilist's.
  */
-export function atomicAnimationName(
+export function boundAtomicAnimation(
   content: ContentSet,
   settler: SettlerIdentity,
   atomicId: number,
@@ -142,12 +149,6 @@ export function atomicEventChannelDelta(content: ContentSet, name: string, chann
  */
 export function atomicHasExtendedEvents(content: ContentSet, name: string): boolean {
   return atomicAnimationByName(content, name)?.events.some((e) => e.extended) ?? false;
-}
-
-/** An authored event frame clamped into the `[1, duration]` ticks an atomic actually runs, so a frame the
- *  data puts past the animation length still fires exactly once, on the last tick. */
-export function atomicEventTick(frame: number, duration: number): number {
-  return Math.min(Math.max(1, frame), duration);
 }
 
 /** The frame (`at`) of the named animation's first `event`/`eventx` of `eventType`, or `undefined` when it

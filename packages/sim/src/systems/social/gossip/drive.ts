@@ -209,8 +209,8 @@ function drivePair(
     const sl = talker === a ? sb : sa;
     const duration = Math.max(chatDuration(ctx, st, TALK_ATOMIC_ID), chatDuration(ctx, sl, LISTEN_ATOMIC_ID));
     startPairedAtomics(world, talker, TALK_ATOMIC_ID, listener, LISTEN_ATOMIC_ID, duration);
-    // Frame 0 plays now, since the AtomicSystem advances `elapsed` to 1 before the next gossip pass, so
-    // the clip's authored frame-0 voice cue must fire here or never.
+    // Frame 0 plays now: the AtomicSystem advances `elapsed` to 1 before the next gossip pass, so a clip
+    // opening with a channel-3 pulse would otherwise skip it. No shipped clip authors one there.
     applyChatFrame(world, ctx, a, sa);
     applyChatFrame(world, ctx, b, sb);
     ca.talking = true;

@@ -240,7 +240,9 @@ export const societyContent = {
         ...[4, 8, 12, 16, 19].map((at) => ({ at, type: 3, value: 800 })),
       ],
     },
-    { id: 'viking_attack', name: 'viking_attack', length: 4 },
+    // The swing carries the original's per-weapon sound cue (`event <at> 34 81` - PLAY_SOUND_FX naming
+    // the Weapon Sword Short `logicSoundType`), as every `viking_soldier_attack_*` row does.
+    { id: 'viking_attack', name: 'viking_attack', length: 4, events: [{ at: 2, type: 34, value: 81 }] },
     { id: 'viking_hunter_attack', name: 'viking_hunter_attack', length: 4 },
     { id: 'wolf_attack', name: 'wolf_attack', length: 4 },
     { id: 'bear_attack', name: 'bear_attack', length: 4 },

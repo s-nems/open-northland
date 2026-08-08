@@ -2,7 +2,7 @@ import { CurrentAtomic, Settler } from '../../../../../../components/index.js';
 import { fx } from '../../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../../context.js';
-import { atomicAnimationName, atomicDuration } from '../../../../../readviews/animations.js';
+import { atomicDuration, boundAtomicAnimation } from '../../../../../readviews/animations.js';
 import { isInterruptibleAtomic } from '../../../../../readviews/index.js';
 
 /**
@@ -53,11 +53,11 @@ export function collectStagger(
 ): void {
   const victim = world.tryGet(target, Settler);
   if (victim === undefined) return;
-  const staggerAnim = atomicAnimationName(ctx.content, victim, ATTACKED_ATOMIC_ID);
+  const staggerAnim = boundAtomicAnimation(ctx.content, victim, ATTACKED_ATOMIC_ID);
   if (staggerAnim === undefined) return; // no `82` binding, so this class does not flinch
   const current = world.tryGet(target, CurrentAtomic);
   if (current !== undefined) {
-    const currentAnim = atomicAnimationName(ctx.content, victim, current.atomicId);
+    const currentAnim = boundAtomicAnimation(ctx.content, victim, current.atomicId);
     // An action with no timing record is treated as non-interruptible rather than preempted.
     if (currentAnim === undefined || !isInterruptibleAtomic(ctx.content, currentAnim)) return;
   }

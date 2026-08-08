@@ -19,6 +19,10 @@ import { resolveAttackHit } from '../../src/systems/settlers/atomics/effects/com
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
+/** The fixture's attack swing (`setatomic 1 81 "viking_attack"`, length 4) at its landing frame - the
+ *  shape `resolveAttackHit` reads to decide whether the clip announces the swing itself. */
+const ATTACK_SWING = { atomicId: 81, elapsed: 4, duration: 4 } as const;
+
 /**
  * The AUTO-DRINK drives + the healing draught's death-save. A pressing settler with a matching misc
  * draught drinks it IN PLACE (the drink replaces the walk to food/bed - manual: "will automatically
@@ -158,16 +162,37 @@ describe('healing draught - the death-save', () => {
     const settler = woundedBearer(sim, 10, [fresh(POTION_HEAL)]);
     const attacker = needsSettlerAt(sim, 1, 0, {});
 
-    resolveAttackHit(sim.world, ctxOf(sim), attacker, { kind: 'attack', target: settler, damage: 999 }, []);
+    resolveAttackHit(
+      sim.world,
+      ctxOf(sim),
+      attacker,
+      ATTACK_SWING,
+      { kind: 'attack', target: settler, damage: 999 },
+      [],
+    );
     const health = sim.world.get(settler, Health);
     expect(health.hitpoints).toBe(HP_MAX / 2); // regenerated, not dead
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
 
     // The second save drains the bottle; the third blow kills - the shield is finite.
-    resolveAttackHit(sim.world, ctxOf(sim), attacker, { kind: 'attack', target: settler, damage: 999 }, []);
+    resolveAttackHit(
+      sim.world,
+      ctxOf(sim),
+      attacker,
+      ATTACK_SWING,
+      { kind: 'attack', target: settler, damage: 999 },
+      [],
+    );
     expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX / 2);
     expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
-    resolveAttackHit(sim.world, ctxOf(sim), attacker, { kind: 'attack', target: settler, damage: 999 }, []);
+    resolveAttackHit(
+      sim.world,
+      ctxOf(sim),
+      attacker,
+      ATTACK_SWING,
+      { kind: 'attack', target: settler, damage: 999 },
+      [],
+    );
     expect(sim.world.get(settler, Health).hitpoints).toBe(0);
   });
 
@@ -175,7 +200,14 @@ describe('healing draught - the death-save', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const settler = woundedBearer(sim, HP_MAX, [fresh(POTION_HEAL)]);
     const attacker = needsSettlerAt(sim, 1, 0, {});
-    resolveAttackHit(sim.world, ctxOf(sim), attacker, { kind: 'attack', target: settler, damage: 40 }, []);
+    resolveAttackHit(
+      sim.world,
+      ctxOf(sim),
+      attacker,
+      ATTACK_SWING,
+      { kind: 'attack', target: settler, damage: 40 },
+      [],
+    );
     expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX - 40);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_HEAL));
   });

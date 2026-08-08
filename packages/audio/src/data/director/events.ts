@@ -1,4 +1,10 @@
-import { eventNode, type HalfCellNode, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import {
+  entityById,
+  eventNode,
+  type HalfCellNode,
+  type SimEvent,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { groupFiles } from '../bank.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
@@ -13,7 +19,12 @@ import { entityOwner, entityTile, type TilePoint } from './snapshot.js';
 
 /** Base gain of a life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
 export const JINGLE_GAIN = 0.9;
-/** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. */
+/**
+ * Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. Approximation:
+ * settler voices ride this too rather than a quieter one of their own - the data ranks no cue above
+ * another, and a village now sounds every clip that authors one, so a separate voice level would be a
+ * mix decision with nothing behind it.
+ */
 export const SFX_GAIN = 0.8;
 
 /**
@@ -96,22 +107,21 @@ interface EmitterFacts {
 }
 
 /**
- * The positions and owners of exactly the `needed` entities, in one snapshot pass that allocates only
- * for them (never an all-entities table - battle-scale frames carry a handful of emitters among
- * thousands of entities) and stops as soon as every needed id is found.
+ * The positions and owners of exactly the `needed` entities, looked up one by one through the snapshot's
+ * ascending-id binary search and allocating only for them. Every working settler cues its own animation,
+ * so the emitter set follows the busy population rather than staying a handful, and a linear pass would
+ * grow with the map instead of with the callers.
  */
 function emitterFacts(snapshot: WorldSnapshot, needed: ReadonlySet<number>): EmitterFacts {
   const tiles = new Map<number, TilePoint>();
   const owners = new Map<number, number>();
-  let remaining = needed.size;
-  for (const e of snapshot.entities) {
-    if (!needed.has(e.id)) continue;
+  for (const id of needed) {
+    const e = entityById(snapshot, id);
+    if (e === undefined) continue;
     const tile = entityTile(e.components);
-    if (tile !== null) tiles.set(e.id, tile);
+    if (tile !== null) tiles.set(id, tile);
     const owner = entityOwner(e.components);
-    if (owner !== undefined) owners.set(e.id, owner);
-    remaining -= 1;
-    if (remaining === 0) break;
+    if (owner !== undefined) owners.set(id, owner);
   }
   return { tiles, owners };
 }

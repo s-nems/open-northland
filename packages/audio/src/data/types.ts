@@ -15,7 +15,7 @@ export interface OneShot {
   readonly gain: number;
   /** Stereo pan, -1 (hard left) .. +1 (hard right); 0 for non-spatial jingles. */
   readonly pan: number;
-  /** Emitter identity for debounce/dedup (e.g. `"atomicCompleted:42"`). */
+  /** Emitter identity for debounce/dedup (e.g. `"atomicSound:9:42"`). */
   readonly key: string;
 }
 
