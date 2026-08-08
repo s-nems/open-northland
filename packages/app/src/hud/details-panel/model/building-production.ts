@@ -11,8 +11,6 @@ import {
   visibleRecipes,
 } from './context.js';
 
-// The building's Produkcja model: a workshop's per-product recipe rows, or a farm's live field state.
-
 /** One product row of a workshop's Produkcja section. */
 export interface ProductionRow {
   readonly goodType: number;
@@ -95,8 +93,8 @@ export function productionModel(
   ent: SnapshotEntity,
 ): ProductionModel | null {
   // A field-farmed good is checked before the recipes, mirroring the sim's own rung order: extracted
-  // content synthesizes an abstract recipe for every producer, so wherever the sim farms, the panel must
-  // show live field state rather than a dead recipe bar.
+  // content synthesizes an abstract recipe for every producer, so a farm would otherwise draw a dead
+  // recipe bar.
   const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
     const { growing, ripe } = fieldCountsByFarm(snapshot).get(ent.id) ?? { growing: 0, ripe: 0 };
