@@ -200,6 +200,19 @@ describe('validateCrossReferences', () => {
       },
       error: /tribe "viking" needforgood requires unknown goodType 99/,
     },
+    {
+      name: 'a schooling requirement naming an unknown good target',
+      overrides: {
+        tribes: [
+          {
+            typeId: 1,
+            id: 'viking',
+            jobRequirements: [{ requirement: 'train', target: 'good', targetId: UNKNOWN, amount: 1 }],
+          },
+        ],
+      },
+      error: /tribe "viking" trainforgood requires unknown goodType 99/,
+    },
     // equipment
     {
       name: 'a weapon naming an unknown wielding job',

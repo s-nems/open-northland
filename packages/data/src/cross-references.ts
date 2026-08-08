@@ -1,5 +1,10 @@
 import { firstByTypeId } from './lookup.js';
-import { type ContentSet, LOGIC_TYPE_NONE } from './schema/index.js';
+import {
+  type ContentSet,
+  type JobEnablesKind,
+  type JobRequirementTarget,
+  LOGIC_TYPE_NONE,
+} from './schema/index.js';
 
 /** Reject a set whose numeric references dangle, at load rather than as a crash mid-game. */
 export function validateCrossReferences(set: ContentSet): void {
@@ -93,7 +98,25 @@ function checkBuildings(set: ContentSet, { goodIds, jobIds }: IdSets): string[] 
   return errors;
 }
 
-function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds }: IdSets): string[] {
+interface ReferenceTarget {
+  readonly idSet: keyof IdSets;
+  readonly label: string;
+}
+
+const JOB_ENABLES_TARGET: Readonly<Record<JobEnablesKind, ReferenceTarget>> = {
+  good: { idSet: 'goodIds', label: 'goodType' },
+  house: { idSet: 'buildingIds', label: 'buildingType' },
+  job: { idSet: 'jobIds', label: 'jobType' },
+  vehicle: { idSet: 'vehicleIds', label: 'vehicleType' },
+};
+
+const JOB_REQUIREMENT_TARGET: Readonly<Record<JobRequirementTarget, ReferenceTarget>> = {
+  job: { idSet: 'jobIds', label: 'jobType' },
+  good: { idSet: 'goodIds', label: 'goodType' },
+};
+
+function checkTribes(set: ContentSet, ids: IdSets): string[] {
+  const { jobIds } = ids;
   const errors: string[] = [];
   for (const t of set.tribes) {
     // Atomic ids resolve against no extracted table (see `AtomicId`), so only the binding's job is checked.
@@ -101,27 +124,19 @@ function checkTribes(set: ContentSet, { goodIds, jobIds, buildingIds, vehicleIds
       if (!jobIds.has(b.jobType))
         errors.push(`tribe "${t.id}" binds atomic ${b.atomicId} to unknown jobType ${b.jobType}`);
     }
-    // A `jobEnables` edge resolves its `targetId` in the table its kind names; the `vehicle` kind keys
-    // into the `vehicletypes` `logicvehicletype` namespace, distinct from buildings.
     for (const e of t.jobEnables) {
       if (!jobIds.has(e.jobType))
         errors.push(`tribe "${t.id}" jobEnables-edge has unknown jobType ${e.jobType}`);
-      if (e.kind === 'good' && !goodIds.has(e.targetId))
-        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown goodType ${e.targetId}`);
-      if (e.kind === 'house' && !buildingIds.has(e.targetId))
-        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown buildingType ${e.targetId}`);
-      if (e.kind === 'job' && !jobIds.has(e.targetId))
-        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown jobType ${e.targetId}`);
-      if (e.kind === 'vehicle' && !vehicleIds.has(e.targetId))
-        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown vehicleType ${e.targetId}`);
+      const target = JOB_ENABLES_TARGET[e.kind];
+      if (!ids[target.idSet].has(e.targetId))
+        errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown ${target.label} ${e.targetId}`);
     }
-    // A requirement's `experienceTypes` stay unchecked: their ids span a wider space than the extracted
-    // `humanjobexperiencetypes` table (observed 72/73/75, plus the synthetic school markers 57/77).
     for (const r of t.jobRequirements) {
-      if (r.target === 'job' && !jobIds.has(r.targetId))
-        errors.push(`tribe "${t.id}" ${r.requirement}forjob requires unknown jobType ${r.targetId}`);
-      if (r.target === 'good' && !goodIds.has(r.targetId))
-        errors.push(`tribe "${t.id}" ${r.requirement}forgood requires unknown goodType ${r.targetId}`);
+      const target = JOB_REQUIREMENT_TARGET[r.target];
+      if (!ids[target.idSet].has(r.targetId))
+        errors.push(
+          `tribe "${t.id}" ${r.requirement}for${r.target} requires unknown ${target.label} ${r.targetId}`,
+        );
     }
   }
   return errors;
