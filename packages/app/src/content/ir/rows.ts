@@ -117,7 +117,7 @@ export interface LandscapeGfxRow {
   readonly editGroups?: readonly string[];
   readonly logicType: number;
   /** `LogicMaximumValency` - the record's harvest capacity in units, which sizes a spawned mineral
-   *  deposit. Not the authored {@link frames} count (see `map-resources.ts` `HarvestObjectRef.states`). */
+   *  deposit. Not the authored {@link frames} count. */
   readonly maxValency?: number;
   readonly bmd?: string;
   /** The shadow bob set (`GfxBobLibs` second value) - its silhouettes parallel the body's bob ids. */
@@ -159,10 +159,9 @@ export interface LandscapeTypeRow {
 }
 
 /**
- * The app's view of the served `content/ir.json`. Every lane is optional: an `ir.json` generated before a
- * lane existed still loads, and each consumer degrades per-lane. The pipeline writes the file through the
- * `@open-northland/data` zod schema, so casting the fetched JSON to this view at the I/O boundary is the
- * boundary's stance - no re-validation of a multi-MB document per boot.
+ * The app's view of the served `content/ir.json`. Every lane is optional, so an `ir.json` generated before a
+ * lane existed still loads. The pipeline writes the file through the `@open-northland/data` zod schema, so
+ * the fetched JSON is cast to this view at the I/O boundary rather than re-validated per boot.
  */
 export interface ContentIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
@@ -186,12 +185,11 @@ export interface ContentIr {
   readonly gfxPatterns?: readonly GfxPattern[];
   /** The `[transition]` ground-overlay table - a decoded map's `transitions.types` names join onto it. */
   readonly gfxPatternTransitions?: readonly GfxPatternTransition[];
-  /** The per-logicType ground classes (`trianglepatterntypes.cif`) - the walk/build flags the
-   *  map-collision join (`content/collision.ts`) classes real ground by. */
+  /** The per-logicType ground classes (`trianglepatterntypes.cif`) - the walk/build flags the map-collision
+   *  join classes real ground by. */
   readonly trianglePatternTypes?: readonly TrianglePatternType[];
-  /** Type-table views the authored-entity joins read, plus the extracted ground `footprint` (collision
-   *  body, build-exclusion zone, door) the live content attaches so the real-content view enforces and
-   *  shows placement collision. */
+  /** Type-table views the authored-entity joins read, plus the extracted ground `footprint`: collision
+   *  body, build-exclusion zone, and door. */
   readonly buildings?: readonly {
     typeId?: number;
     id?: string;
@@ -201,8 +199,7 @@ export interface ContentIr {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`). */
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
-  /** The `animaltypes.ini` records, read for tribe membership and spawnability: which tribes are animals
-   *  (the species-look and authored-placement joins key on `tribeType`), and whether the record is a
+  /** The `animaltypes.ini` records, read for tribe membership (`tribeType`) and for whether the record is a
    *  living creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns. Behaviour fields
    *  stay sim-side. */
   readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
