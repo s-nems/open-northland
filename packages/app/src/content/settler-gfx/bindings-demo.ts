@@ -24,12 +24,9 @@ import {
 } from './sequences.js';
 
 /**
- * The demo binding into the human atlases - the render twin of the global sandbox content. The settler's
- * walk/chop ranges are derived from `seqByName` (the extracted `bobSequences` for `cr_hum_body_00.bmd`), so
- * no frame ids are hard-coded here; an absent manifest falls back to the known-good `FALLBACK_*` ranges.
- * The building's per-type bobs overlay the extracted `houseBobsByType` onto the transcribed
- * {@link VIKING_HOUSE01_BOBS}, so a partial IR degrades type-by-type. `building` and `resource` resolve in
- * their own per-kind layers, so their ids index the house/tree bobs rather than the body's.
+ * The demo binding into the human atlases - the render twin of the global sandbox content. `building` and
+ * `resource` resolve in their own per-kind layers, so their ids index the house/tree bobs rather than the
+ * body's.
  */
 export function buildHumanBindings(
   seqByName: ReadonlyMap<string, BobSeqRow>,
