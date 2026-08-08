@@ -13,7 +13,7 @@ const PRODUCTION_LABEL_GAP = 6;
 /** Gap between a row's stacked product icons (design px). */
 const EXTRA_ICON_GAP = 2;
 
-/** Production window; no extracted title exists, so 'Produkcja' is a named approximation. */
+/** Production window; no extracted title exists, so the headline is an approximation. */
 export function drawProductionSection(
   chrome: Chrome,
   layout: BuildingLayout,

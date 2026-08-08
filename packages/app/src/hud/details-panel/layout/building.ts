@@ -8,7 +8,7 @@ type BuildingModel = Extract<UnitPanelModel, { kind: 'building' }>;
 
 /** A stock cell row (icon + amount plate) - ≈22 px in the original. */
 export const STOCK_ROW_H = 22;
-/** The stock section's category-tab strip (the row of eight 32×18 tab plates). */
+/** Height of the stock body's category-tab strip, matching the decoded tab plate. */
 const STOCK_TAB_H = 18;
 /** Gap under the tab strip before the first stock row. */
 const STOCK_TAB_GAP = 4;
@@ -19,17 +19,14 @@ const PREVIEW_W = 183;
 const PREVIEW_H = 183;
 /** The building-name line at the top of the right column. */
 const NAME_H = 14;
-/** The health gauge's top, under the name line; an approximation, not a metric measured off the original. */
+/** The health gauge's top, under the name line; an approximation, not measured off the original. */
 const HEALTH_BAR_TOP = 22;
-/**
- * Buttons start this far below the general body's top: the original puts the name and a capacity line
- * (`housewindow` 21 "Ładowność", not yet extracted) above them, and the health gauge shares that room.
- */
+/** Buttons start this far below the general body's top: the original puts the name and a capacity line
+ *  (`housewindow` 21 "Ładowność", not drawn here) above them, and the health gauge shares that room. */
 const BUTTONS_TOP = 60;
-/** The defence body's single row - a text line plus the round alarm toggle, so it stands taller than
- *  a plain {@link ROW_H} line. */
+/** The defence body's single row: a text line plus the round alarm toggle, so taller than {@link ROW_H}. */
 const DEFENCE_ROW_H = 20;
-/** The alarm toggle's diameter - the equip-slot action button's size, the round control it copies. */
+/** The alarm toggle's diameter, matching the equip-slot action button it copies. */
 const DEFENCE_TOGGLE_BTN = 15;
 /** Gap between the alarm toggle and the status line it leads. */
 export const DEFENCE_LABEL_GAP = 5;
@@ -39,12 +36,12 @@ export const BAR_H = 10;
 export const PREVIEW_INSET = 4;
 /** The amount plate's height inside a {@link STOCK_ROW_H} stock cell (≈11 px in the original). */
 export const STOCK_PLATE_H = 11;
-/** Stock rows per column (two columns). The body reserves all six: the original's stock window is
- *  fixed-height, not fit-to-content. */
+/** Stock rows per column (two columns); the body reserves them all, since the original's stock window is
+ *  fixed-height rather than fit-to-content. */
 export const MAX_STOCK_ROWS = 6;
 /** Worker rows the fixed-height workers body always reserves (the original's bottom window ≈4 rows). */
 const MAX_WORKER_ROWS = 4;
-/** Horizontal gap between the stock window's two columns (a window pad). */
+/** Horizontal gap between the stock window's two columns. */
 const STOCK_COL_GAP = WIN_PAD;
 
 export type ButtonAction =
@@ -81,29 +78,24 @@ export interface BuildingLayout {
   /** Null whenever there is no defence window. */
   readonly defenceToggle: ButtonHit | null;
   readonly production: SectionRect | null;
-  /** One rect per Produkcja product row, in `ProductionModel.rows` order; empty for a farm's fields
-   *  view or no production window. */
+  /** One rect per `ProductionModel.rows` entry; empty for a farm's fields view or no production window. */
   readonly productionRowRects: readonly Rect[];
   /** Null for a building that stores nothing, which has no store window at all. */
   readonly stock: SectionRect | null;
-  /**
-   * Whether the stock body is the compact shape: a store of at most {@link COMPACT_STOCK_MAX} goods
-   * drops the category tabs and sizes the body to exactly its rows. The rule is keyed on the good
-   * count, never on the building type.
-   */
+  /** Whether the stock body drops the category tabs and sizes itself to its rows, a shape keyed on the
+   *  good count rather than the building type. */
   readonly stockCompact: boolean;
   /** Rows per column the stock body reserves ({@link MAX_STOCK_ROWS}, or the compact fitted count). */
   readonly stockRows: number;
   /** The category-tab plate rects at the top of the stock body; empty for a compact or absent one. */
   readonly stockTabHits: readonly Rect[];
-  /** Always present: the bound workers for a finished building, the live crew for a construction site. */
+  /** Always present: a construction site keeps its workers window. */
   readonly workers: SectionRect;
 }
 
 /**
  * The stock body's cell rects (icon + amount plate together), column-major: the left column top→bottom,
- * then the right. `s` is the caller's scale (the draw oversample or the hit scale), so the same fixed
- * metrics resolve into either space.
+ * then the right. `s` is the caller's scale, so the same fixed metrics resolve into draw or hit space.
  */
 export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MAX_STOCK_ROWS): Rect[] {
   const colGap = Math.round(STOCK_COL_GAP * s);
@@ -124,15 +116,12 @@ export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MA
   return slots;
 }
 
-/**
- * A store with up to this many goods draws the compact tab-less body; bigger stores keep the fixed
- * tabbed window. Sized to the biggest specialist workshop store, the mint's 16 slots, so it reads on
- * one page.
- */
+/** A store with up to this many goods draws the compact tab-less body; bigger stores keep the fixed
+ *  tabbed window. Sized to the mint's 16 slots, the biggest specialist workshop store. */
 const COMPACT_STOCK_MAX = 16;
 
-/** Both upgrade actions sit above demolish, matching the original's button order (housewindow 110/112
- *  before 114); a building is never both upgradable and cancelable. */
+/** Both upgrade actions sit above demolish, matching the original's button order; a building under
+ *  upgrade is never also upgradable, so the two never appear together. */
 function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAction; enabled: boolean }> {
   return [
     ...(model.upgradable ? [{ action: 'upgrade', enabled: true } as const] : []),
@@ -171,9 +160,8 @@ export function layoutBuilding(
   const buttonH = Math.round(BUTTON_H * s);
   const buttonGap = Math.round(BUTTON_GAP * s);
   const generalBodyH = Math.round(PREVIEW_H * s);
-  // A construction site swaps production/stock/defence for the Construction window, whose body is one
-  // gauge row plus one row per material line; the workers window stays.
   const underConstruction = model.construction !== null;
+  // The Construction window's body is one gauge row plus one row per material line.
   const constructionBodyH = underConstruction
     ? (1 + (model.construction?.rows.length ?? 0)) * Math.round(STOCK_ROW_H * s)
     : 0;

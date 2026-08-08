@@ -47,8 +47,7 @@ export function drawGeneralSection(
     w: layout.preview.w - previewInset * 2,
     h: layout.preview.h - previewInset * 2,
   };
-  // A construction site skips the finished-building bob: whenever the live portrait inset cannot draw,
-  // the box must show the neutral plate rather than a misleading complete house.
+  // A site or a failed portrait draw falls back to the neutral plate, never a misleading complete house.
   if (model.construction !== null || !chrome.buildingPreview(model.typeId, previewArt)) {
     chrome.guiCentered(GUI_FRAME.house_plate, layout.preview, 'magenta', 'bg_normal');
     chrome.guiCentered(GUI_FRAME.tool_button_buildings, layout.preview, 'full');
@@ -59,8 +58,8 @@ export function drawGeneralSection(
   if (model.health !== null) chrome.bar(layout.health, model.health.pct, 'gauge');
 
   for (const hit of layout.buttons) {
-    // The `?? help` guard only satisfies the Partial type; a building action without a BUTTON_STRING row
-    // would silently draw the help label.
+    // The `?? help` guard only satisfies the Partial type; an action missing from BUTTON_STRING would
+    // silently draw the help label.
     chrome.button(
       hit,
       ui('housewindow', BUTTON_STRING[hit.action] ?? HOUSEWINDOW.help, buttonFallback(hit.action)),

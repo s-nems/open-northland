@@ -25,7 +25,6 @@ export function drawStockSection(
   chrome.headline(layout.stock.title, ui('housewindow', HOUSEWINDOW.stock, messages().hud.stock));
   if (!layout.stockCompact) drawStockTabs(chrome, layout.stockTabHits, activeTab, s);
   const body = layout.stock.body;
-  // Slots and rows are the sources the hover hit-test reads too, so drawing and hits cannot drift.
   const slots = stockSlotRects(body, s, layout.stockRows);
   const cellH = Math.round(STOCK_ROW_H * s);
   const rows = visibleStockRows(model.stock, layout.stockCompact, activeTab);
@@ -33,7 +32,7 @@ export function drawStockSection(
   shown.forEach((row, i) => {
     const slot = slots[i];
     if (slot === undefined) return;
-    // Icon, plate and amount share the row's vertical centre so a row reads on one level.
+    // Icon, plate and amount share the row's vertical centre.
     const icon: Rect = {
       x: slot.x,
       y: slot.y + Math.round(s),
@@ -62,8 +61,8 @@ export function drawStockSection(
 }
 
 /**
- * Original tab-plate glyph per details tab, indexed by tab. The glyph semantics are undecoded, so
- * pairing each frame with a category is an approximation identified by eye.
+ * Original tab-plate glyph per details tab. The glyph semantics are undecoded, so pairing each frame
+ * with a category is an approximation identified by eye.
  */
 const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
   GUI_FRAME.stock_tab_0 + 7, // 0 Wszystkie - assorted-goods pile
@@ -78,8 +77,8 @@ const STOCK_TAB_GLYPH: readonly (number | undefined)[] = [
 ];
 
 /**
- * Stock tabs: "Wszystkie" then the eight categories. Justifying them across the body width and
- * drawing the glyphs through `bg_invert` are legibility approximations, not read from the original.
+ * Justifying the tabs across the body width and drawing the glyphs through `bg_invert` are legibility
+ * approximations, not read from the original.
  */
 function drawStockTabs(chrome: Chrome, rects: readonly Rect[], activeTab: number, s: number): void {
   rects.forEach((r, i) => {

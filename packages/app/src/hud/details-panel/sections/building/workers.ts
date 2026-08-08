@@ -5,7 +5,7 @@ import { type BuildingLayout, ROW_TEXT_PAD } from '../../layout/index.js';
 import type { BuildingPanelModel } from '../../model/index.js';
 import { HOUSEWINDOW } from './shared.js';
 
-/** Whether the window draws a limits strip; the panel insets the sprite field by exactly this row. */
+/** Whether the window reserves its limits row; the panel insets the sprite field by exactly that row. */
 export function hasWorkerLimitsRow(model: BuildingPanelModel): boolean {
   return model.home === null || model.construction === null;
 }

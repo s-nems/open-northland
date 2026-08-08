@@ -3,21 +3,21 @@ import type { Rect } from '../../geometry.js';
 
 // The panel-wide metrics and section/panel rect builders every kind's layout is measured from, so the
 // height a section reserves and the rows it draws cannot drift apart. Metrics are design px, multiplied
-// by uiscale at build time; each is an approximation measured from native 1024×768 original screenshots.
+// by uiscale at build time; each is an approximation eyeballed against the original's native 1024×768
+// screenshots.
 
 export const PANEL_W = 322;
 /** Gap between the panel and the screen's right/bottom edge. */
 const PANEL_MARGIN = 6;
-/** Vertical gap between two section windows; the original stacks them flush, with adjacent rope borders
- *  touching and no parchment seam between. */
+/** Vertical gap between two section windows; the original stacks them flush, rope borders touching. */
 export const SECTION_GAP = 0;
-/** The headline strip's height (fits the font-12 small-caps titles like the original). */
+/** The headline strip's height, sized to fit the title face. */
 const TITLE_H = 18;
 /** Vertical padding between a section's headline/body/end. */
 const BODY_PAD_Y = 5;
 /** A plain text row (key/value lines, worker rows). */
 export const ROW_H = 15;
-/** Top padding that vertically centers a font-10 line in a {@link ROW_H} row. */
+/** Top padding that vertically centers a body line in a {@link ROW_H} row. */
 export const ROW_TEXT_PAD = 2;
 
 /** One section window: its whole frame, the headline strip, and the padded body below it. */

@@ -14,8 +14,8 @@ import { PANEL_W, panelRect, ROW_H, SECTION_GAP, type SectionRect, sectionAt } f
 
 type SettlerModel = Extract<UnitPanelModel, { kind: 'settler' }>;
 
-/** The settler portrait box, a square smaller than the building's 183 px preview so the name and stat
- *  bars fit beside it (measured against the original's human window). */
+/** The settler portrait box, smaller than the building preview so the name and stat bars fit beside it
+ *  (observed off the original's human window). */
 const SETTLER_PREVIEW = 96;
 /** The profession (name) line at the top of the Ogólne right column. */
 const SETTLER_NAME_H = 15;
@@ -56,15 +56,15 @@ export interface CraftChoiceHit {
   readonly rect: Rect;
 }
 
-/** The Praca body's post-and-home controls. The four labels are decoded (`humanwindow` 28/29/31/32);
- *  stacking them as rows in the work section is authored, like the rest of the panel's metrics. */
+/** The Praca body's post-and-home controls. The labels are decoded `humanwindow` strings; stacking them
+ *  as rows in the work section is authored, like the rest of the panel's metrics. */
 export type WorkControlAction = Extract<
   ButtonAction,
   'assign-workplace' | 'unassign-workplace' | 'assign-home' | 'unassign-home'
 >;
 
 /** One control row: the round glyph button, which is the whole clickable area, and the description
- *  column right of it - so pointing at the label does nothing. */
+ *  column right of it, which is not hit-tested. */
 export interface WorkControlRow {
   readonly action: WorkControlAction;
   readonly button: ButtonHit;
@@ -88,7 +88,7 @@ export interface SettlerLayout {
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
   readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
-  /** One row per `model.experience` entry; empty when untrained. */
+  /** One row per trained specialization, then one per upcoming unlock. */
   readonly expRows: readonly Rect[];
   readonly equipment: SectionRect;
   /** One entry per `model.equipmentRows` (same order): its label rect + slot-socket rects. */
@@ -105,8 +105,8 @@ export function layoutSettler(
   const w = Math.round(PANEL_W * s);
   const gap = Math.round(SECTION_GAP * s);
 
-  // Each body reserves a fixed height, since the original's human window does not fit to content; the
-  // equipment body scales with its row count.
+  // The original's human window does not fit to content, so the fixed rows below stay reserved whether
+  // or not the settler fills them.
   const pad = Math.round(WIN_PAD * s);
   const rowH = Math.round(ROW_H * s);
   const barRowH = Math.round(BAR_ROW_H * s);
@@ -118,18 +118,17 @@ export function layoutSettler(
   const gatherIconGap = Math.round(GATHER_ICON_GAP * s);
   const gatherRowGap = Math.round(GATHER_ROW_GAP * s);
   const gatherAssignSep = Math.round(GATHER_ASSIGN_SEP * s);
-  // Every section's body is inset from the panel width the same way, so probe it before the section
-  // rects exist to size the wrapped round-button block.
+  // Every section body is inset the same way, so probe one to size the wrapped round-button block before
+  // the section rects exist.
   const bodyW = sectionAt(0, 0, w, 0, s).body.w;
   const gatherPerRow = Math.max(1, Math.floor((bodyW + gatherIconGap) / (gatherIcon + gatherIconGap)));
-  // Gather and craft choices never coexist; the one non-empty list sizes the block they share.
+  // The one non-empty choice list sizes the block they share.
   const choiceCount = model.work.gatherChoices.length + model.work.craftChoices.length;
   const gatherRows = choiceCount > 0 ? Math.ceil(choiceCount / gatherPerRow) : 0;
   const hasGather = gatherRows > 0;
   const gatherBlockH = hasGather ? gatherRows * gatherIcon + (gatherRows - 1) * gatherIconGap : 0;
   const gatherTopGap = hasGather ? gatherRowGap : 0;
   const preAssignGap = hasGather ? gatherAssignSep : assignRowGap;
-  // The stacked control rows close the Praca body, each trade control above its home twin.
   const controls: readonly { action: WorkControlAction; enabled: boolean }[] = [
     { action: 'assign-workplace', enabled: model.canAssignWorkplace },
     { action: 'unassign-workplace', enabled: model.canUnassignWorkplace },
@@ -138,7 +137,6 @@ export function layoutSettler(
   ];
   const controlsH = controls.length * assignIconSize + (controls.length - 1) * assignRowGap;
   const workBodyH = WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + controlsH;
-  // The Doświadczenie body holds the trained specializations plus the dimmed upcoming-unlock rows.
   const expRowCount = model.experience.length + model.upcomingUnlocks.length;
   const expBodyH = expRowCount * rowH;
   const { slotsPerLine } = equipSlotMetrics(bodyW, s);
