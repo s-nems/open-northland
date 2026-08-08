@@ -14,10 +14,9 @@ import type { TextureCache } from '../texture-cache.js';
 import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
 
 /**
- * The tall landscape objects - anything that occludes a settler: pooled sprites in the renderer's
- * shared entity layer, depth-sorted against entities by their world-`y` feet anchor and
- * viewport-culled each frame. A member's sprite is minted on first visibility, because a big map
- * holds 10k-270k tall objects and most never scroll into view.
+ * The tall landscape objects - anything that occludes a settler: pooled sprites in the renderer's shared
+ * entity layer, depth-sorted against entities by their feet anchor or `depthY` override. A member's
+ * sprite is minted on first visibility, since most of a map's tall objects never scroll into view.
  */
 
 interface PooledObject {
@@ -58,11 +57,7 @@ export class TallObjectLayer {
   /** The animation tick the tall-object frames were last refreshed for. */
   private lastAnimTick = -1;
 
-  /**
-   * @param spriteLayer the renderer's shared, depth-sorted entity layer - tall objects attach here so
-   *   they interleave with settlers and buildings in one painter order.
-   * @param textures the renderer's shared frame→texture cache.
-   */
+  /** Tall objects attach to `spriteLayer` so they interleave with entities in one painter order. */
   constructor(
     private readonly spriteLayer: Container,
     private readonly textures: TextureCache,
@@ -124,11 +119,7 @@ export class TallObjectLayer {
     return true;
   }
 
-  /**
-   * Detach a tall object's pooled sprite from the shared entity layer, returning whether it was
-   * attached so the caller can keep its block's `attachedCount` correct. Leaves the sprite pooled for
-   * re-attach; does not destroy it.
-   */
+  /** Leaves the sprite pooled for re-attach; does not destroy it. */
   private detach(po: PooledObject): boolean {
     if (!po.attached || po.sprite === null) return false;
     this.spriteLayer.removeChild(po.sprite);
@@ -139,7 +130,6 @@ export class TallObjectLayer {
 
   private mint(po: PooledObject): Sprite {
     const obj = po.obj;
-    // Sorted at the object's own row, or at the row the app overrode it to (a bridge deck).
     const depth = depthKey(obj.x, obj.depthY ?? obj.y);
     const sprite = new Sprite();
     sprite.scale.set(obj.scale);
@@ -183,14 +173,10 @@ export class TallObjectLayer {
   }
 
   /**
-   * Advance the tall objects for one frame: block-cull to the viewport, then per-member point-test the
-   * visible blocks.
-   *
-   * `fogStateOfCell` is the fog-of-war gate over cell coords (the viewer's effective `FOG_STATE`). An
-   * object on unexplored ground is treated exactly like a viewport-culled one: detached, kept pooled
-   * for when the fog lifts. On explored ground it draws dimmed to the ghost grading with its
-   * animation frozen, since a ghost is a memory, not a live feed. A virgin map object never changes
-   * until first worked, so the real object is its own last-seen ghost.
+   * Advance the tall objects for one frame. An object on unexplored ground is treated exactly like a
+   * viewport-culled one: detached, kept pooled for when the fog lifts. On explored ground it draws
+   * dimmed with its animation frozen, since a ghost is a memory, not a live feed - and a virgin map
+   * object never changes until first worked, so the real object is its own last-seen ghost.
    */
   update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
     const animAdvanced = tick !== this.lastAnimTick;
@@ -219,7 +205,7 @@ export class TallObjectLayer {
         const watched = fogState === FOG_STATE.VISIBLE;
         const tint = watched ? po.baseTint : po.ghostTint;
         if (sprite.tint !== tint) sprite.tint = tint;
-        // A watched↔ghosted flip rebinds once, so the frozen/live pose switches with the tint.
+        // The frozen/live pose switches with the tint.
         const rebind =
           !po.attached || watched !== po.lastWatched || (watched && animAdvanced && obj.frames.length > 1);
         if (rebind && !this.bindPose(po, sprite, watched ? tick : 0)) continue;

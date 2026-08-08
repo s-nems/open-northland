@@ -9,34 +9,25 @@ import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 import { TallObjectLayer } from './tall-blocks.js';
 
 /**
- * The retained landscape-object layers, split by whether an object occludes a settler. Flat decor
- * batches into per-block meshes in this layer's own container, which the renderer keeps above the
- * terrain and below the sprites. Tall objects become pooled sprites in the renderer's shared
- * `spriteLayer`, owned by {@link TallObjectLayer}, so they interleave with entities in one painter
- * order. Both halves are built once per map.
+ * The retained landscape-object layers, split by whether an object occludes a settler. Both halves are
+ * built once per map.
  */
 
-/**
- * Decor chunks partition world space into square blocks of this many px - the same scale as the
- * terrain chunks ({@link TERRAIN_CHUNK_TILES}), so the two layers cull in lockstep.
- */
+/** Decor chunks partition world space into square blocks of this many px - the same horizontal pitch as
+ *  a terrain chunk. */
 const DECOR_CHUNK_PX = TERRAIN_CHUNK_TILES * TILE_HALF_W * 2;
 
 export class MapObjectLayer {
-  /** Flat map-object decor (waves, grass, mine stains) - batched meshes above terrain, below sprites. */
+  /** Flat map-object decor (waves, grass, mine stains). */
   readonly decorContainer = new Container();
   private decorChunks: DecorChunk[] = [];
   private readonly tall: TallObjectLayer;
 
-  /**
-   * @param spriteLayer the renderer's shared, depth-sorted entity layer.
-   * @param textures the renderer's shared frame→texture cache.
-   */
   constructor(spriteLayer: Container, textures: TextureCache) {
     this.tall = new TallObjectLayer(spriteLayer, textures);
   }
 
-  /** (Re)build the retained landscape-object layers from a decoded map's placements - call once per map. */
+  /** Call once per map. */
   set(objects: readonly MapObjectSprite[]): void {
     this.destroy();
     const byBlock = new Map<string, MapObjectSprite[]>();
@@ -61,10 +52,9 @@ export class MapObjectLayer {
   }
 
   /**
-   * Take one placed object out of the built layers: the moment a virgin resource node is first
-   * worked, its static drawing is removed here and the live sprite pool draws the entity from then
-   * on. A decor object's quad is zeroed in place rather than rebuilding the batch. O(block members),
-   * and only on that first-touch event, never per frame. An unknown object is a no-op.
+   * Take one placed object out of the built layers. A decor object's quad is zeroed in place rather than
+   * rebuilding the batch: O(block members), and only on that first-touch event, never per frame. An
+   * unknown object is a no-op.
    */
   remove(obj: MapObjectSprite): void {
     if (this.tall.remove(obj)) return;
@@ -74,19 +64,14 @@ export class MapObjectLayer {
       chunk.quads.delete(obj);
       quad.positions.fill(0, quad.quadIndex * 8, quad.quadIndex * 8 + 8); // degenerate quad → invisible
       quad.geometry.getBuffer('aPosition').update();
-      if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null; // rewrite loop skips it
+      if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null;
       return;
     }
   }
 
   /**
-   * Advance the landscape objects for one frame: cull the decor blocks like terrain and rewrite only
-   * the visible animated batches at the sim tick rate, so an off-screen wave costs nothing and a
-   * static block is never touched after build.
-   *
-   * `fogStateOfCell` is the fog-of-war gate over cell coords (the viewer's effective `FOG_STATE`).
-   * Flat decor keeps drawing on non-visible ground because it reads as terrain dressing, but its
-   * animation freezes there - the same memory-not-live-feed rule the tall objects follow.
+   * Advance the landscape objects for one frame. Flat decor keeps drawing on ground the viewer does not
+   * watch, because it reads as terrain dressing, but its animation freezes there.
    */
   update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
     for (const chunk of this.decorChunks) {
@@ -97,10 +82,9 @@ export class MapObjectLayer {
       for (const batch of chunk.animated) {
         for (let q = 0; q < batch.objects.length; q++) {
           const obj = batch.objects[q];
-          if (obj === null || obj === undefined) continue; // removed (handed to the sprite pool) - stays zeroed
-          // Animated decor freezes on ground the viewer does not currently watch, decided per object
-          // cell. The loop rewrites every on-screen animated quad each tick anyway, so a frozen quad
-          // just re-writes its fixed-clock frame and needs no extra state.
+          if (obj === null || obj === undefined) continue; // removed - its quad stays zeroed
+          // The loop rewrites every on-screen animated quad each tick anyway, so a frozen quad just
+          // re-writes its fixed-clock frame and needs no extra state.
           const cell = screenToCell(obj.x, obj.y);
           const watched =
             fogStateOfCell === undefined || fogStateOfCell(cell.col, cell.row) === FOG_STATE.VISIBLE;
@@ -119,7 +103,6 @@ export class MapObjectLayer {
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */
   destroy(): void {
     for (const chunk of this.decorChunks) {
-      // A shaded decor mesh's geometry and custom shader are not freed by Mesh.destroy.
       destroyMeshChildren(chunk.container);
       chunk.container.destroy({ children: true });
     }
