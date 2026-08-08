@@ -1,0 +1,132 @@
+Patch over libdmusic 790662e71120ff70359033083eb5a8a5751d5300 (MIT, https://github.com/frabert/libdmusic)
+applied by scripts/build-dmrender.sh before building. What it changes and why:
+
+- Common.h littleEndianRead: cast each byte to the target type before shifting; the int-promoted
+  shift is undefined beyond bit 31, so every 64-bit field (GUID Data4, reference times) read garbage.
+- Region/Instrument/Articulator: also accept the DLS Level 2 chunk ids (rgn2/lar2/art2). The
+  Cultures banks are DLS2 files whose region and articulator payloads use the DLS1 layouts.
+- PlayingContext prepareSegment: play DX8 pattern tracks (DMPT). The Cultures segments carry all
+  music as pattern tracks with embedded parts; libdmusic parsed them but never scheduled them.
+- dmrender: renderBlock counts interleaved samples, so size the buffer by channels and write
+  length/channels wav frames; stereo renders wrote half music, half out-of-bounds reads.
+
+diff --git i/include/dmusic/Common.h w/include/dmusic/Common.h
+index 374cb2c..aac77b6 100644
+--- i/include/dmusic/Common.h
++++ w/include/dmusic/Common.h
+@@ -65,7 +65,7 @@ namespace DirectMusic {
+         T result = 0;
+ 
+         for (std::size_t i = 0; i < numBytes; i++) {
+-            result |= ptr[i] << i * 8;
++            result |= static_cast<T>(ptr[i]) << (i * 8);
+         }
+ 
+         return result;
+diff --git i/src/Articulator.cpp w/src/Articulator.cpp
+index 7cc48e3..114f2d5 100644
+--- i/src/Articulator.cpp
++++ w/src/Articulator.cpp
+@@ -5,7 +5,7 @@ using namespace an original routine;
+ using namespace an original routine;
+ 
+ an original routine(const Chunk& c) {
+-    if (c.getId() != "art1")
++    if (c.getId() != "art1" && c.getId() != "art2")
+         throw an original routine("art1", c.getId());
+ 
+     const std::uint8_t *data = c.getData().data();
+diff --git i/src/Instrument.cpp w/src/Instrument.cpp
+index 465333d..d644ac3 100644
+--- i/src/Instrument.cpp
++++ w/src/Instrument.cpp
+@@ -23,7 +23,7 @@ an original routine(const Chunk& c) {
+                 for (Chunk rgn : subchunk.getSubchunks()) {
+                     m_regions.push_back(Region(rgn));
+                 }
+-            } else if (subchunk.getListId() == "lart") {
++            } else if (subchunk.getListId() == "lart" || subchunk.getListId() == "lar2") {
+                 for (Chunk art : subchunk.getSubchunks()) {
+                     m_articulators.push_back(Articulator(art));
+                 }
+diff --git i/src/PlayingContext.cpp w/src/PlayingContext.cpp
+index 78686e6..d1986bf 100644
+--- i/src/PlayingContext.cpp
++++ w/src/PlayingContext.cpp
+@@ -278,6 +278,33 @@ std::shared_ptr<SegmentInfo> an original routine(const SegmentForm& s
+                 newSegment->initialTempo = styleForm->getHeader().dblTempo;
+                 newSegment->initialSignature = styleForm->getHeader().timeSig;
+             }
++        } else if (*header.ckid == 0 && fccType == "DMPT") {
++            // DX8 pattern track: one embedded pattern with its own style header and parts.
++            auto patternTrack = std::static_pointer_cast<PatternTrack>(track.getData());
++            const auto& form = patternTrack->getPattern();
++            if (form != nullptr) {
++                std::map<GUID, StylePart> parts;
++                for (const auto& part : form->getParts()) {
++                    parts[part.getHeader().guidPartID] = part;
++                }
++                Pattern pttn;
++                pttn.header = form->getHeader();
++                for (const auto& partRefTuple : form->getPartReferences()) {
++                    const auto& partRef = partRefTuple.first;
++                    const auto& partGuid = partRef.guidPartID;
++                    if (parts.find(partGuid) == parts.end()) {
++                        throw std::runtime_error("Couldn't find part: " + partGuid.toString());
++                    }
++                    pttn.parts.push_back(std::make_pair(partRef, parts[partGuid]));
++                }
++                newSegment->patterns.push_back(pttn);
++                if (form->getBand() != nullptr) {
++                    auto message = std::make_shared<BandChangeMessage>(*this, 0, *form->getBand());
++                    newSegment->messages.push_back(message);
++                }
++                newSegment->initialTempo = patternTrack->getStyleHeader().dblTempo;
++                newSegment->initialSignature = patternTrack->getStyleHeader().timeSig;
++            }
+         } else if (*header.ckid == 0 && fccType == "DMBT") {
+             loadBandTrack(track, newSegment->messages, *this);
+         } else if (*header.ckid == 0 && fccType == "cord") {
+diff --git i/src/Region.cpp w/src/Region.cpp
+index 0026f08..9d19262 100644
+--- i/src/Region.cpp
++++ w/src/Region.cpp
+@@ -5,14 +5,14 @@ using namespace an original routine;
+ using namespace an original routine;
+ 
+ an original routine(const Chunk& c) {
+-    if (c.getId() != "LIST" || c.getListId() != "rgn ")
++    if (c.getId() != "LIST" || (c.getListId() != "rgn " && c.getListId() != "rgn2"))
+         throw an original routine("LIST rgn", c.getId() + " " + c.getListId());
+ 
+     for(const Chunk& subchunk: c.getSubchunks()) {
+         const std::string& id = subchunk.getId();
+         if(id == "rgnh") {
+             m_rgnHeader = RegionHeader(subchunk.getData().data());
+-        } else if(id == "LIST" && subchunk.getListId() == "lart") {
++        } else if(id == "LIST" && (subchunk.getListId() == "lart" || subchunk.getListId() == "lar2")) {
+             for (Chunk art1ck : subchunk.getSubchunks()) {
+                 m_articulators.push_back(Articulator(art1ck));
+             }
+diff --git i/utils/dmrender/src/dmrender.cpp w/utils/dmrender/src/dmrender.cpp
+index 2b5b6f2..8222b81 100644
+--- i/utils/dmrender/src/dmrender.cpp
++++ w/utils/dmrender/src/dmrender.cpp
+@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
+         std::cerr << "dmrender: Invalid number of channels" << std::endl;
+         return 1;
+     }
+-    std::uint64_t length = (chunkLength ? args::get(chunkLength) : 60) * sampleRate;
++    std::uint64_t length = (chunkLength ? args::get(chunkLength) : 60) * sampleRate * channels;
+ 
+     // Store soundfonts based on their name
+     PlayingContext ctx(sampleRate, channels, an original routine());
+@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
+     format.bitsPerSample = 16;
+ 
+     drwav* dr = drwav_open_file_write(args::get(outputFile).c_str(), &format);
+-    drwav_write_pcm_frames(dr, length, buffer);
++    drwav_write_pcm_frames(dr, length / channels, buffer);
+     drwav_close(dr);
+ 
+     delete[] buffer;

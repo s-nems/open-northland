@@ -71,3 +71,7 @@ map.dat
 # Logs
 *.log
 npm-debug.log*
+
+# Locally built DirectMusic renderer + its third-party sources (scripts/build-dmrender.sh output).
+tools/asset-pipeline/vendor/build/
+tools/asset-pipeline/vendor/dmrender

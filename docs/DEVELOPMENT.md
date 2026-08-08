@@ -38,6 +38,16 @@ CulturesNation mod is unpacked elsewhere. CnMod 1.3.1 is the current verified in
 release as unverified until the real pipeline and content gates pass. The generated `content/` tree
 is ignored by Git.
 
+The music stage renders the DirectMusic soundtrack (`DataX/DM2`) to looping ogg tracks. It shells
+out to a locally built renderer; build it once with `cmake` on PATH (`brew install cmake`):
+
+```bash
+tools/asset-pipeline/scripts/build-dmrender.sh
+```
+
+Without the binary the stage is skipped with a note and the game simply has no music.
+`OPEN_NORTHLAND_DMRENDER` overrides the binary path.
+
 Local content gates:
 
 ```bash

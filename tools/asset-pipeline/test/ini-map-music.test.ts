@@ -15,7 +15,9 @@ describe('extractMusicType', () => {
   });
 
   it('drops an unknown macro, an out-of-range int, and a missing section', () => {
-    expect(extractMusicType(parseIniSections('[misc_music]\nmusictype #DM_MUSIC_TYPE_BOGUS\n'))).toBeUndefined();
+    expect(
+      extractMusicType(parseIniSections('[misc_music]\nmusictype #DM_MUSIC_TYPE_BOGUS\n')),
+    ).toBeUndefined();
     expect(extractMusicType(parseIniSections('[misc_music]\nmusictype 39\n'))).toBeUndefined();
     expect(extractMusicType(parseIniSections('[misc_mapname]\nmapnamestringid 0\n'))).toBeUndefined();
   });
