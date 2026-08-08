@@ -9,10 +9,10 @@ import { fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
 /**
  * Goods-icon content bindings for the pipeline's `goods` stage. A good's HUD icon is its on-map pile
- * graphic: the engine shares one monochrome `ls_goods.bmd` sheet recoloured through a `goods_*` palette,
- * so a good maps to (atlas frame, palette row), not a unique bitmap. The binding is keyed by the good's
- * string id, stable across the sandbox and the extracted IR, which number goods differently. A checkout
- * without `content/` yields `null` and consumers draw their text row without an icon.
+ * graphic: the engine shares one monochrome `ls_goods.bmd` sheet recoloured through one of the goods-LUT
+ * palettes, so a good maps to (atlas frame, palette row), not a unique bitmap. The binding is keyed by the
+ * good's string id, stable across the sandbox and the extracted IR, which number goods differently. A
+ * checkout without `content/` yields `null` and consumers draw their text row without an icon.
  */
 
 /** One good's icon binding as it ships in `content/goods/manifest.json`. */

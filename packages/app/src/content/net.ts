@@ -3,10 +3,10 @@ import { withBaseUrl } from '../base-url.js';
 import { diag } from '../diag/log.js';
 
 /**
- * The fetch idioms every `content/` loader in this folder shares, kept in one place so the
- * degrade-gracefully policy cannot drift per file: optional content that is absent or unreadable resolves
- * to `null`/`undefined` instead of throwing, since a checkout without `content/` must still boot. Absence
- * is silent (the pipeline stage has not run); an unreadable artifact warns.
+ * The fetch idioms this folder's optional-`content/` loaders share, kept in one place so the
+ * degrade-gracefully policy cannot drift per file: content that is absent or unreadable resolves to
+ * `null`/`undefined` instead of throwing, since a checkout without `content/` must still boot. Absence is
+ * expected and is not diagnosed.
  */
 
 /**

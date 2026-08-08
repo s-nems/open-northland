@@ -112,7 +112,7 @@ function resolveSlot(
 
 /** One slot's five garrison-flag wave loops, or `undefined` unless all five resolve off the slot's own
  *  sheet: a partial ladder would fly the wrong star count, so the flag degrades to the placeholder
- *  instead. It is optional, unlike the six sign kinds. */
+ *  instead. */
 function resolveGarrisonBobs(
   byName: ReadonlyMap<string, LandscapeGfxRow>,
   prefix: string,

@@ -5,8 +5,7 @@ import type { ContentIr } from './ir/rows.js';
 
 /**
  * The audio content boundary: build the {@link SoundDriver} the live loop pumps from the decoded sound
- * bank in the shared IR. Degrades to silence when the gitignored `content/` is absent or predates the
- * sound bank, so a checkout without it still boots.
+ * bank in the shared IR.
  */
 
 /**

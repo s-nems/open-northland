@@ -166,10 +166,10 @@ export function mergeRealContent(
   const tribes = real.tribes.map((t) =>
     t.hitpoints > 0 || t.jobEnables.length === 0 ? t : { ...t, hitpoints: HUMAN_HITPOINTS },
   );
+  const weapons = real.weapons.map(withCivilianBowBalance);
   // Wool's pipeline row is leather's whole row re-keyed: the cadaver stage (landscape 79 / gfx 847), its
   // footprint, and the store-pile stage, so a wool heap draws the hide pile's decal. The same named
   // approximation as the harvest atomic.
-  const weapons = real.weapons.map(withCivilianBowBalance);
   const woolType = goods.find((g) => g.id === 'wool')?.typeId;
   const leatherRow = real.gatheringPipeline.find((p) => p.goodId === 'leather');
   const needsWoolRow =

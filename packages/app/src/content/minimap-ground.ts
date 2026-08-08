@@ -13,9 +13,9 @@ import { fetchImageData } from './net.js';
  * in those per-triangle `GfxPattern` picks, not its landscape typeIds (~97% of a real map shares one), so
  * the typeId palette cannot depict it.
  *
- * Source basis: the original's in-game minimap is dynamically generated, and the shipped per-map
- * `minimap.pcx` is a map-selection card, sometimes a painted scene, so it cannot serve in-game. This
- * module owns only the browser fetch; the pure join halves live in `@open-northland/render`.
+ * Observed: the original generates its in-game minimap dynamically, and the shipped per-map `minimap.pcx`
+ * is a map-selection card, sometimes a painted scene, so it cannot serve in-game. This module owns only
+ * the browser fetch; the pure join halves live in `@open-northland/render`.
  */
 
 /** Fetch a served ground page PNG and read its pixels back (browser-only - canvas 2D readback).
