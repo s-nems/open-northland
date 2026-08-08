@@ -5,6 +5,7 @@ import {
   FoodReserve,
   Marriage,
   Residence,
+  Settler,
   Stockpile,
   setStockAmount,
   stockpileEntries,
@@ -91,6 +92,24 @@ export function familiesOf(world: World, house: Entity): Entity[][] {
     else groups.set(minor, [minor]);
   }
   return [...groups.values()];
+}
+
+/**
+ * Move `e`'s household into `house`, where `e` is a settler. Refuses anything but a completed home of its
+ * own tribe with a free family slot; the caller owns whichever admission rules its path adds on top.
+ */
+export function moveFamilyInto(world: World, ctx: SystemContext, e: Entity, house: Entity): void {
+  const type = builtHomeType(world, ctx, house);
+  if (type === undefined) return;
+  if (world.get(house, Building).tribe !== world.get(e, Settler).tribe) return;
+  const family = familyOf(world, e);
+  const members = new Set(family);
+  // The mover's own household is excluded, so a re-assign into the same home costs no extra slot.
+  const others = familiesOf(world, house).filter((fam) => !fam.some((m) => members.has(m))).length;
+  if (others + 1 > type.homeSize) return; // no free family slot
+  for (const member of family) {
+    world.add(member, Residence, { home: house }); // add overwrites - a move drops the old home
+  }
 }
 
 /** Total edible units ({@link isFood}) in `house`'s stockpile - the larder the family draws on. */

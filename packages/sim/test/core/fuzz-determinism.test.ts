@@ -1,6 +1,6 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Sheltering } from '../../src/components/index.js';
+import { Building, JobAssignment, Settler, Sheltering } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
@@ -213,6 +213,15 @@ const MAP_W = 12;
 const MAP_H = 12;
 const NODE_W = MAP_W * 2;
 const NODE_H = MAP_H * 2;
+/** The anchor {@link runFuzz}'s preamble builds its home on - the one node an authored attachment can bind
+ *  to before the stream places anything. */
+const PREAMBLE_HOME_NODE = { x: 10, y: 10 } as const;
+/** The trade the preamble's attached settler spawns in: the one worker slot the type at
+ *  {@link PREAMBLE_HOME_NODE} resolves to, since an attachment is only ever posted in its own trade. */
+const ATTACH_TRADE = 2;
+/** The preamble's attached settler: the last entity it creates. The attach assertion pins the id, so a
+ *  preamble that grows another entity fails loudly here rather than quietly stopping the coverage. */
+const ATTACHED_SETTLER = 11 as Entity;
 const FUZZ_SEEDS = [11, 29, 47] as const;
 const TICKS = 600;
 
@@ -335,6 +344,17 @@ function nextCommand(rng: Rng): Command {
         // harvestable wood good - a stamp only the gatherer trades in JOB_TYPES take - or an unknown
         // good the handler must reject. Both branches must hash and replay identically.
         ...(rng.int(4) === 0 ? { gatherGood: rng.int(2) === 0 ? RESOURCE_GOOD : INVALID_TYPE } : {}),
+        // Occasionally an authored house attachment (a decoded map's `attachtohouse`), aimed at the
+        // preamble's building or at a free node. Both shapes must hash and replay identically; the
+        // preamble's own attached spawn is what covers the ACCEPT path.
+        ...(rng.int(4) === 0
+          ? { home: rng.int(2) === 0 ? PREAMBLE_HOME_NODE : { x: rng.int(NODE_W), y: rng.int(NODE_H) } }
+          : {}),
+        ...(rng.int(4) === 0
+          ? {
+              workplace: rng.int(2) === 0 ? PREAMBLE_HOME_NODE : { x: rng.int(NODE_W), y: rng.int(NODE_H) },
+            }
+          : {}),
       };
     }
     case 2:
@@ -631,6 +651,9 @@ interface FuzzRun {
    *  buys, pinned so a content or gate change cannot quietly turn the defence half of the stream into a
    *  skip path. */
   readonly sheltered: boolean;
+  /** Whether the preamble's authored attachment actually took a post - pinned so a gate change cannot
+   *  quietly turn every attached spawn in the stream into a refusal. */
+  readonly attachedToWork: boolean;
 }
 
 function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
@@ -651,6 +674,19 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     });
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 6 + 4 * i, y: 14, tribe: VIKING, owner: 0 });
   }
+  // A settler carrying both authored attachment anchors, so the attach ACCEPT path runs on every seed
+  // instead of waiting for the stream to roll one at a valid owner. Fixed input, logged like every
+  // command, so replay fidelity covers it.
+  sim.enqueueSetup({
+    kind: 'spawnSettler',
+    jobType: ATTACH_TRADE,
+    x: 12,
+    y: 12,
+    tribe: VIKING,
+    owner: 0,
+    home: PREAMBLE_HOME_NODE,
+    workplace: PREAMBLE_HOME_NODE,
+  });
   // Loose food outside the home - the source the housed women's hoard rung and a child order's haul
   // stage draw from.
   sim.enqueueSetup({ kind: 'dropGood', good: FOOD_GOOD, x: 14, y: 10, amount: 5 });
@@ -669,6 +705,7 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
   const checkpoints: string[] = [];
   const violations: string[] = [];
   let sheltered = false;
+  let attachedToWork = false;
   for (let t = 0; t < ticks; t++) {
     // House one nucleus woman and man on the second tick (ids are monotonic from 1: the home, then the
     // six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
@@ -705,10 +742,22 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
       if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
     }
     if (!sheltered) for (const _ of sim.world.query(Sheltering)) sheltered = true;
+    // Latched, not read at the end: the stream is free to kill or demolish its way out of the post. The
+    // trade check keeps a drifted id from latching on some other settler the stream happened to employ.
+    if (!attachedToWork && sim.world.tryGet(ATTACHED_SETTLER, Settler)?.jobType === ATTACH_TRADE) {
+      attachedToWork = sim.world.has(ATTACHED_SETTLER, JobAssignment);
+    }
     if (sim.tick % CHECKPOINT_EVERY === 0) checkpoints.push(sim.hashState());
   }
   // The log is plain data owned by this sim instance - copy the array so it outlives store reuse.
-  return { finalHash: sim.hashState(), checkpoints, violations, sheltered, log: [...sim.commands.log] };
+  return {
+    finalHash: sim.hashState(),
+    checkpoints,
+    violations,
+    sheltered,
+    attachedToWork,
+    log: [...sim.commands.log],
+  };
 }
 
 /** The per-tick snapshot+verifier pass makes a fuzz run integration-priced; headroom for a loaded box. */
@@ -722,6 +771,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       const a = runFuzz(seed, TICKS);
       const b = runFuzz(seed, TICKS);
       expect(a.sheltered).toBe(true); // the stream really reached defence mode, not just its skip paths
+      expect(a.attachedToWork).toBe(true); // and the authored attachment really bound, not just refused
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);
       // Checkpoint-wise equality first: on a divergence the failing index names the 50-tick window.

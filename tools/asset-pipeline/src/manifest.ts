@@ -12,7 +12,7 @@ import { IR_VERSION } from '@open-northland/data';
  * (IR_VERSION covers that leg). A mismatch reads as "regeneration recommended", so a forgotten bump
  * costs staleness detection, never correctness.
  */
-export const CONTENT_REVISION = 4;
+export const CONTENT_REVISION = 5;
 
 export const PIPELINE_MANIFEST_NAME = 'pipeline-manifest.json';
 

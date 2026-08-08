@@ -84,6 +84,8 @@ export interface MapStaticObjects {
     hy: number;
     /** The human's authored produced good (`setproducedgood`): a good name verbatim. */
     producedGood?: string;
+    /** The buildings this human is authored into (`attachtohouse`), in source order. */
+    attach?: { hx: number; hy: number; slot: number }[];
   }[];
   animals: { species: string; hx: number; hy: number }[];
 }
@@ -102,6 +104,7 @@ const PLACEMENT_VERBS = new Set(['sethouse', 'sethuman', 'setanimal', 'setvehicl
  * setanimal <class> "<species>" "<age>" <hx> <hy> <a> <b>
  * addgoods  "<goodtype name>" <count>
  * setproducedgood "<goodtype name>"
+ * attachtohouse <hx> <hy> <slot>
  * ```
  *
  * `addgoods` stocks the entity placed by the immediately preceding placement verb, so a run after an
@@ -112,7 +115,10 @@ const PLACEMENT_VERBS = new Set(['sethouse', 'sethuman', 'setanimal', 'setvehicl
  * rather than its hut, and its own UI names the window `CSelectedSingleHumanChangeProducedGood`. It is
  * not only a gatherer's resource, since workshop trades author their product the same way
  * (`baker` -> `bread`). Names stay verbatim, the join key the loader resolves against the IR.
- * The `setguide` verb is not captured.
+ *
+ * `attachtohouse` scopes to its enclosing `sethuman` the same way, and repeats: a human may name both a
+ * home and a workplace. Its coordinates are the target `sethouse`'s own anchor half-cell, never an
+ * interior one. The `setguide` verb is not captured.
  */
 export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
   const sec = sections.find((s) => s.name === 'StaticObjects');
@@ -125,15 +131,23 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
   // The building the next `addgoods` run stocks: the last captured `sethouse`, which any other line
   // retargets away from.
   let goodsTarget: MapStaticObjects['buildings'][number] | undefined;
-  // The human the next `setproducedgood` picks for: the last captured `sethuman`. It survives the
+  // The human the next in-block modifier applies to: the last captured `sethuman`. It survives the
   // uncaptured in-block modifiers, so only a placement verb retargets it.
-  let producedGoodTarget: MapStaticObjects['humans'][number] | undefined;
+  let humanTarget: MapStaticObjects['humans'][number] | undefined;
   for (const p of sec.props) {
     if (p.key !== 'addgoods') goodsTarget = undefined;
-    if (PLACEMENT_VERBS.has(p.key)) producedGoodTarget = undefined;
+    if (PLACEMENT_VERBS.has(p.key)) humanTarget = undefined;
     if (p.key === 'setproducedgood') {
       const [name] = p.values;
-      if (producedGoodTarget !== undefined && name !== undefined) producedGoodTarget.producedGood = name;
+      if (humanTarget !== undefined && name !== undefined) humanTarget.producedGood = name;
+    } else if (p.key === 'attachtohouse') {
+      const [hxRaw, hyRaw, slotRaw] = p.values;
+      const hx = int(hxRaw);
+      const hy = int(hyRaw);
+      const slot = int(slotRaw);
+      if (humanTarget === undefined || hx === undefined || hy === undefined || slot === undefined) continue;
+      humanTarget.attach ??= [];
+      humanTarget.attach.push({ hx, hy, slot });
     } else if (p.key === 'addgoods') {
       const [name, countRaw] = p.values;
       const count = int(countRaw);
@@ -173,7 +187,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
         continue;
       const human = { tribe, role, player, hx, hy };
       out.humans.push(human);
-      producedGoodTarget = human;
+      humanTarget = human;
     } else if (p.key === 'setanimal') {
       const [, species, , hxRaw, hyRaw] = p.values;
       const hx = int(hxRaw);

@@ -36,6 +36,9 @@ export function newWorldSim(
  * Enqueue resolved placements in list order, so determinism follows the placement list. Buildings are
  * forced because both callers place fixture state that loads as-is, exactly as the original loads a
  * scenario map; the tech and collision gates govern the player's interactive placements instead.
+ *
+ * The list holds every building before any human, which is what lets a settler's authored home and
+ * workplace resolve to a standing building as it spawns.
  */
 export function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
   for (const p of placements) {
@@ -68,6 +71,8 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         ...own,
         ...(equipment !== undefined ? { equipment } : {}),
         ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
+        ...(p.home !== undefined ? { home: p.home } : {}),
+        ...(p.workplace !== undefined ? { workplace: p.workplace } : {}),
       });
     }
   }
