@@ -13,9 +13,8 @@ import {
  * per-type construction-stage binding for one tribe. A typeId whose chosen stage group has any stage in an
  * unloaded family is omitted entirely, so it keeps its normal body draw.
  *
- * A typeId's stages must all come from one source record at one size level - several records can carry the
+ * A typeId's stages must all come from one source record at one size level: several records can carry the
  * same typeId, and merging their per-record `stackIdx` streams would interleave two different stage stacks.
- * Stages keep the source stacking order (`stackIdx`) within the group one record contributes.
  */
 export function constructionRefsByType(
   rows: readonly ConstructionLayerRow[],
@@ -27,9 +26,9 @@ export function constructionRefsByType(
 }
 
 /**
- * The upgrade-pass twin of {@link constructionRefsByType}: the `upgrade === true` rows - each keyed by the
- * tier being upgraded, its bob the next tier's finished body - under the same family and one-source-record
- * rules. An upgrading building draws its old finished body with these layers revealing over it.
+ * The upgrade-pass twin of {@link constructionRefsByType}: the `upgrade === true` rows, each keyed by the
+ * tier being upgraded with its bob the next tier's finished body. An upgrading building draws its old
+ * finished body with these layers revealing over it.
  */
 export function upgradeRefsByType(
   rows: readonly ConstructionLayerRow[],
@@ -40,7 +39,7 @@ export function upgradeRefsByType(
   return stageRefsByType(rows, tribeId, defaultFamily, families, (r) => r.upgrade);
 }
 
-/** The shared reduction behind the from-scratch and upgrade passes - see {@link constructionRefsByType}. */
+/** The shared reduction behind the from-scratch and upgrade passes. */
 function stageRefsByType(
   rows: readonly ConstructionLayerRow[],
   tribeId: number,
@@ -86,7 +85,7 @@ function stageRefsByType(
     for (const r of candidates) {
       const layer = familyLayerFor(r.bmd, r.paletteName, defaultFamily, families);
       if (layer === null) {
-        dropped = true; // a stage in an unloaded family - the whole type keeps its body draw
+        dropped = true;
         break;
       }
       refs.push(

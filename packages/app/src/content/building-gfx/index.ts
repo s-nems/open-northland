@@ -1,6 +1,6 @@
 /**
- * The building render binding: reduce the decoded `[GfxHouse]` IR joins to the renderer's per-type refs,
- * one module per render aspect. The reducers are pure; the byte loading lives in `../sprite-sheet/`.
+ * The building render binding: reduce the decoded `[GfxHouse]` IR joins to the renderer's per-type refs.
+ * The reducers are pure; the byte loading lives in `../sprite-sheet/`.
  */
 
 export * from './construction.js';

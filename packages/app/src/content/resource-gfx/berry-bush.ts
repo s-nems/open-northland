@@ -4,8 +4,7 @@ import { BUSH_WITH_FRUITS_LOGIC_TYPE } from '../map-resources.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 
 /** A resolved berry-bush draw: the fruited-record index (the `gfxIndex` join key) and its three render
- *  states - `ripe` (holds fruit), `flowering` (the regrow midpoint) and `bare` (foraged), each a served
- *  atlas stem + bob. */
+ *  states, `flowering` being the regrow midpoint between foraged and fruiting. */
 export interface BerryBushRef {
   readonly gfxIndex: number;
   readonly ripe: GatheringNodeRef;
@@ -15,9 +14,8 @@ export interface BerryBushRef {
 
 /**
  * Resolve every forageable berry bush's three-stage draw from the IR landscape gfx: each fruited-bush record
- * (`logicType === bush with fruits`) paired with its species twins, the "… flower" (`bush flowering`) and
- * "… empty" (`bush naked`) records, matched by editName ("bush 01 fruits" → "bush 01 flower" / "bush 01
- * empty"). Keyed by the fruited record index.
+ * paired with its `bush flowering` and `bush naked` species twins, matched by editName ("bush 01 fruits" →
+ * "bush 01 flower" / "bush 01 empty"). Keyed by the fruited record index.
  */
 export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   const records = ir?.landscapeGfx ?? [];
@@ -40,8 +38,8 @@ export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   return out;
 }
 
-/** Atlas stems a set of {@link BerryBushRef}s draw from, folded into the loaded gathering families so the
- *  live pool can draw a bush in any state. */
+/** The atlas stems these bushes draw from, folded into the loaded gathering families so the live pool can
+ *  draw a bush in any state. */
 export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> {
   const out = new Set<string>();
   for (const r of refs) {
@@ -53,11 +51,11 @@ export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> 
 }
 
 /**
- * Reduce resolved berry-bush refs to a {@link ResourceTypeBinding}: each bush keyed under its fruited
- * `gfxIndex` with a three-frame level list, bare → flowering → ripe (the empty→full order `DrawItem.level`
- * indexes straight). A flowering/bare frame whose atlas family didn't load reuses the next-higher loaded
- * frame; a bush whose ripe family didn't load is dropped to the placeholder. `default` is the first bush's
- * ripe frame, what a bush with no matching `gfxIndex` draws. `undefined` when nothing loaded.
+ * Reduce resolved berry-bush refs to a binding keyed under each bush's fruited `gfxIndex`, with a
+ * three-frame level list bare → flowering → ripe (the empty→full order `DrawItem.level` indexes straight).
+ * A flowering or bare frame whose atlas family didn't load reuses the next-higher loaded frame; a bush
+ * whose ripe family didn't load is dropped to the placeholder. `default` is the first bush's ripe frame,
+ * what a bush with no matching `gfxIndex` draws.
  */
 export function buildBerryBushBinding(
   refs: readonly BerryBushRef[],
