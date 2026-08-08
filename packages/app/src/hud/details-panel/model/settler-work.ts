@@ -22,8 +22,8 @@ export interface SettlerWorkModel {
   readonly gatherChoices: readonly {
     readonly goodType: number | null;
     readonly label: string;
-    /** The good's string id, the key the round button draws its icon by; absent for the "Wszystko"
-     *  choice, which has no single good and draws the generic pile instead. */
+    /** The good's string id, the button's icon key; absent for the "Wszystko" choice, which has no
+     *  single good. */
     readonly goodId?: string;
   }[];
   readonly selectedGood: number | null;
@@ -55,8 +55,8 @@ export function settlerWork(
       : `${goodLabel(ctx, num(carry.goodType) ?? -1)} ×${num(carry.amount) ?? 0}`;
   const settlerComp = comps.Settler as { tribe?: unknown; jobType?: unknown } | undefined;
   const jobType = num(settlerComp?.jobType);
-  // The `needforgood` filter, mirrored sim-side by the rotation and harvest gates: both product menus
-  // offer only what this settler may actually make or dig right now.
+  // The `needforgood` filter the sim's rotation and harvest gates apply, so both product menus offer
+  // only what this settler may make or dig right now.
   const experience = settlerExperienceOf(comps);
   const earned = (goodType: number): boolean =>
     goodUnlockedFor(ctx, progressionGated, num(settlerComp?.tribe), experience, goodType);
@@ -81,10 +81,10 @@ export function settlerWork(
   const ent = entityById(snapshot, workplaceId);
   const rawType = num((ent?.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
   const def = buildingDef(ctx, rawType);
-  // A building-employed gatherer forages only what its workplace stockpiles, counting a good's edible
-  // form too, matching the sim's forage filter: the HQ has no meat slot, but its hunter's kill banks
-  // there as food. The gather menu wins over the craft menu, because such a job runs the gather drive in
-  // the sim's planner ladder and never the craft loop.
+  // The sim's forage filter: a building-employed gatherer forages what its workplace stockpiles, a
+  // good's edible form counting too, so a hunter's kill banks as food at an HQ that has no meat slot.
+  // The gather menu wins over the craft menu, because such a job runs the sim's gather drive and never
+  // the craft loop.
   const harvestable = harvestableGoodsFor(ctx, jobType);
   if (harvestable.length > 0) {
     const stored = new Set((def?.stock ?? []).map((slot) => slot.goodType));
@@ -133,7 +133,7 @@ export function settlerWork(
 type GoodEntry = UnitPanelModelContext['goods'][number];
 
 /** The non-farmed goods `jobType` may harvest, in goods-catalog order. Shares `resolveJobAtomics` with
- *  the sim's permission gate, so the menu cannot offer a good the planner would refuse. */
+ *  the sim's permission gate, so the menu cannot offer what the planner would refuse. */
 function harvestableGoodsFor(ctx: UnitPanelModelContext, jobType: number | undefined): GoodEntry[] {
   if (jobType === undefined) return [];
   const allowed = resolveJobAtomics(ctx.jobs).get(jobType);
@@ -162,7 +162,7 @@ function gatherWork(
 
 /**
  * The craft product toggles for a settler bound to a recipe workplace, or null when there is nothing to
- * choose. Operator slots mirror the sim's `operatorJobsOf`: worker slots minus the carrier transport
+ * choose. Operator slots follow the sim's `operatorJobsOf`: worker slots minus the carrier transport
  * slot, unless every slot is a carrier one (the well), when the carrier does choose.
  */
 function craftChoicesFor(

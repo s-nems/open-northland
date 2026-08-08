@@ -4,8 +4,7 @@ import { actorsOf, isSettler, num } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type BuildingDef, type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
 
-/** One declared `workers` slot as a filled/capacity line, so each trade shows its own limit rather than
- *  one aggregate. */
+/** One declared `workers` slot as its own filled/capacity line, so each trade shows its own limit. */
 export interface WorkerSlotRow {
   readonly jobType: number;
   readonly label: string;
@@ -43,10 +42,8 @@ export function workerSlotsFor(
   }));
 }
 
-/**
- * The defence window's status line. The alarm leads because the toggle beside the line controls it;
- * posted archers are a separate mechanic and shoot whether or not the alarm is up.
- */
+/** The defence window's status line, led by the alarm the toggle beside it controls; posted archers are
+ *  a separate mechanic and shoot whether or not the alarm is up. */
 export function defenseLine(
   snapshot: WorldSnapshot,
   def: BuildingDef | undefined,

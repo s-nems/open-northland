@@ -23,8 +23,8 @@ export interface ProductionRow {
   /** The highest progress among the in-flight `Production.cycles` crafting this product; 0 when none
    *  runs, since a finished batch deposits and leaves the list. */
   readonly pct: number;
-  /** The hover tooltip's ingredient lines, one "- Żelazo ×2" per recipe input, or the no-materials
-   *  label for an input-less craft; empty when the inputs are unknown. */
+  /** The hover tooltip's ingredient lines, one "- Żelazo ×2" per recipe input; empty when the inputs are
+   *  unknown. */
   readonly inputs: string;
 }
 
@@ -58,8 +58,8 @@ interface FieldCounts {
   readonly ripe: number;
 }
 
-/** Keyed by snapshot like the `snapshot-base.ts` memos: the panel re-derives its model every tick a farm
- *  stays selected, and `Crop` is outside `actorsOf`, so the full-entity walk would otherwise repeat. */
+/** Keyed by snapshot: the panel re-derives its model every tick a farm stays selected, and `Crop` is
+ *  outside `actorsOf`, so the full-entity walk below would otherwise repeat. */
 const FIELD_COUNTS = new WeakMap<WorldSnapshot, ReadonlyMap<number, FieldCounts>>();
 
 /** Every farm's field tally in one entity pass, split into still growing vs ripe (`stage >= stages`). */
@@ -92,9 +92,8 @@ export function productionModel(
   def: BuildingDef | undefined,
   ent: SnapshotEntity,
 ): ProductionModel | null {
-  // A field-farmed good is checked before the recipes, mirroring the sim's own rung order: extracted
-  // content synthesizes an abstract recipe for every producer, so a farm would otherwise draw a dead
-  // recipe bar.
+  // A field-farmed good is checked before the recipes, as the sim does: extracted content synthesizes an
+  // abstract recipe for every producer, so a farm would otherwise draw a dead recipe bar.
   const fieldGood = (def?.produces ?? []).map((g) => goodDef(ctx, g)).find((g) => g?.farming !== undefined);
   if (fieldGood !== undefined) {
     const { growing, ripe } = fieldCountsByFarm(snapshot).get(ent.id) ?? { growing: 0, ripe: 0 };
@@ -131,8 +130,6 @@ export function productionModel(
   return { kind: 'recipe', rows };
 }
 
-/** The front-runner batch per product: the highest progress among the in-flight `Production.cycles`
- *  crafting that good. */
 function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
   const production = ent.components.Production as { cycles?: unknown } | undefined;
   const bestPct = new Map<number, number>();
@@ -147,10 +144,9 @@ function cycleFrontRunners(ent: SnapshotEntity): Map<number, number> {
 }
 
 /**
- * A livestock workplace's Produkcja: one row per species chain rather than per good, so the internal
- * fed-animal token gets no row of its own. The row is named after the species, its icons are every ware
- * the visit yields, and its bar is the chain's front-runner across both stages. Empty at any other
- * workplace, which falls through to the per-good rows.
+ * A livestock workplace's Produkcja: one row per species chain rather than per good, named after the
+ * species, carrying every ware the visit yields as icons, and barred by the chain's front-runner across
+ * both stages. Empty at any other workplace, which falls through to the per-good rows.
  */
 function livestockChainRows(
   ctx: UnitPanelModelContext,
@@ -183,7 +179,7 @@ function livestockChainRows(
   return rows;
 }
 
-/** A recipe's inputs as the tooltip's ingredient lines, or the no-materials label for an input-less craft. */
+/** A recipe's inputs as tooltip ingredient lines, or the no-materials label for an input-less craft. */
 function recipeInputsLabel(
   ctx: UnitPanelModelContext,
   inputs: readonly { goodType: number; amount: number }[],

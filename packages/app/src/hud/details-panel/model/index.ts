@@ -99,9 +99,9 @@ export function buildUnitPanelModel(
 ): UnitPanelModel {
   if (selected.size === 0) return { kind: 'empty' };
 
-  // Classifying goes through the snapshot's id index, so it costs O(selected · log entities) rather
-  // than a walk over a decoded map's scenery. The sorts below, not the selection's iteration order,
-  // keep the single-pick branches' winner deterministic.
+  // Classifying goes through the snapshot's id index, so it costs O(selected · log entities) rather than
+  // a walk over a decoded map's scenery. The sorts below, not the selection's iteration order, decide the
+  // single-pick branches' winner.
   const settlerIds: number[] = [];
   const buildingIds: number[] = [];
   const signpostIds: number[] = [];
@@ -140,7 +140,6 @@ export function buildUnitPanelModel(
     // an order the sim refuses. Neither side gates on ownership: an enemy garrison offers its alarm too.
     const shelterCapacity = def?.shelterCapacity ?? 0;
     const defenseEnabled = ent.components.DefenceMode !== undefined;
-    // While anyone holds a seat, the workers field draws the garrison instead of the staff.
     const sheltered = shelterClaimCount(snapshot, entityId);
     return {
       kind: 'building',
@@ -196,11 +195,10 @@ export function buildUnitPanelModel(
       tribe: num(s.tribe) ?? '-',
       stance: stanceSuffix,
     });
-    // Only a born-young (baby or child) settler carries `Age`.
     const young = comps.Age !== undefined;
-    // Whether the experience tree gates this settler; an AI-owned unit never is.
     const progressionGated = progressionGatesSettler(snapshot, ent);
-    // Adulthood at 12 years ends the `Age` component, so the rendered age is only ever 0..11.
+    // `Age` is the sim's marker for a settler still growing up, dropped at adulthood, so this reads out
+    // whole years below the adult age.
     const ageTicks = num((comps.Age as { ticks?: unknown } | undefined)?.ticks);
     const ageSuffix =
       young && ageTicks !== undefined
@@ -220,15 +218,14 @@ export function buildUnitPanelModel(
         isFemale(ent),
       ),
       profession: jobDisplayName(ctx, num(s.jobType)),
-      // A woman takes no trade at all, a child's class is the GrowthSystem's, and an idle settler has no
-      // trade to place - the three refusals `isTradeAssignable` makes sim-side.
+      // The child and woman gates are the sim's own `isTradeAssignable` refusals. The idle gate is the
+      // panel's alone: a settler with no trade has nothing to place.
       canAssignWorkplace:
         !young && !isFemale(ent) && num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE,
       // Releasing a post keeps the trade, so beyond that same gate it needs only a post.
       canUnassignWorkplace: !young && !isFemale(ent) && workplaceOf(ent) !== undefined,
       // A growing child moves with its parents instead of picking a home.
       canAssignHome: !young,
-      // Removing a home moves the settler's whole family out and frees the slot.
       canUnassignHome: !young && residenceHomeOf(ent) !== undefined,
       meta: meta + ageSuffix,
       statusCaption: settlerStatus(snapshot, comps),

@@ -6,8 +6,8 @@ import { remainingPct } from './bars.js';
 import { type Comp, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 import { HUMANWINDOW } from './humanwindow.js';
 
-/** The equipment slot groups the sim `Equipment` component carries. The content category itself, so a
- *  category added to the data schema surfaces here as a compile error. */
+/** The equipment slot groups the sim `Equipment` component carries. Aliasing the content category makes
+ *  a category added to the data schema a compile error here. */
 export type EquipGroup = EquipCategory;
 
 /** One equipment slot's contents. Empty (`occupied` false, `conditionPct` null) for an unworn slot. */
@@ -24,18 +24,16 @@ export interface EquipSlotModel {
   readonly conditionPct: number | null;
 }
 
-/**
- * One labeled equipment row, each a `humanwindow` label id with a pinned fallback and its slots. The
- * base rows carry one slot; the misc `Ekwipunek` row carries {@link components.MISC_EQUIP_SLOTS}.
- */
+/** One labeled equipment row, keyed by a `humanwindow` label id with a pinned fallback. The base rows
+ *  carry one slot; the misc `Ekwipunek` row carries {@link components.MISC_EQUIP_SLOTS}. */
 export interface EquipRow {
   readonly titleId: number;
   readonly fallback: string;
   /** Which sim `Equipment` field this row shows - the slot address its action buttons order against. */
   readonly group: EquipGroup;
   readonly slots: readonly EquipSlotModel[];
-  /** Whether this settler may still put something in the row; false only for a fighter's stray tool,
-   *  which the sim refuses to re-equip, so the layout then offers the take-off cross alone. */
+  /** Whether this settler may still put something in the row; false for a fighter's stray tool, which
+   *  the sim refuses to re-equip. */
   readonly wearable: boolean;
 }
 
@@ -68,12 +66,10 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
 
 /**
  * The settler's equipment as labeled rows, combat gear first, from the sim `Equipment` component; a
- * settler without one shows every base slot empty.
- *
- * Which rows a trade offers follows the job: Broń/Zbroja are the original's soldier-only equip slots
- * (`tribetypes` `allowequip`), and a fighter keeps no tool. Two escapes keep worn gear reachable: a row
- * the job would not offer still shows
- * while something is worn in it, and an armed non-fighter keeps its arms rows.
+ * settler without one shows every base slot empty. Which rows a trade offers follows the job: Broń/Zbroja
+ * are the original's soldier-only equip slots (`tribetypes` `allowequip`) and a fighter keeps no tool.
+ * Two escapes keep worn gear reachable: a row the job would not offer still shows while something is
+ * worn in it, and a settler carrying the combat `Weapon` component keeps its arms rows.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {
   const slots = messages().hud.equipmentSlots;

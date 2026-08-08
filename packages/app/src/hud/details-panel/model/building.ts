@@ -7,9 +7,8 @@ export * from './building-materials.js';
 export * from './building-production.js';
 export * from './building-workers.js';
 
-/** Residents of a `home`-kind building: its families and the family-slot capacity (`logichomesize`). */
 export interface HomeResidentsModel {
-  /** One entry per resident family in ascending head-id order; members list adults before the child. */
+  /** One entry per resident family; a family's members list its adults before the child. */
   readonly families: readonly { readonly members: readonly number[] }[];
   /** Family slots this home tier offers (`homeSize`). */
   readonly capacity: number;
@@ -44,8 +43,8 @@ export interface BuildingPanelModel {
   readonly construction: ConstructionModel | null;
   /** Whether the general section offers the Upgrade button (`housewindow` 110). */
   readonly upgradable: boolean;
-  /** Whether the general section offers the Cancel-upgrade button (`housewindow` 112); aborting
-   *  restores the previous level and loses the delivered materials. */
+  /** Whether the general section offers the Cancel-upgrade button (`housewindow` 112); aborting keeps the
+   *  tier the building already had and loses what the hold took in beyond the building's own inventory. */
   readonly cancelable: boolean;
   /** Material cost of the upgrade target tier; empty unless `upgradable`. */
   readonly upgradeCost: readonly UpgradeCostRow[];
