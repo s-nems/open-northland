@@ -25,11 +25,11 @@ import { nearestUnblockedNode } from '../../nav/nearest.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
+import { clearNavState, isTravelling } from '../movement/nav-state.js';
 import { MILITARY_MODE } from '../readviews/index.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { clearNavState, isTravelling } from '../spatial/nodes.js';
 import { deferOrderDuringAtomic } from './guards.js';
 
 /**

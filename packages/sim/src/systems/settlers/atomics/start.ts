@@ -13,8 +13,8 @@ import { fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { clearNavState } from '../../movement/nav-state.js';
 import { atomicDuration, needAtomicDuration } from '../../readviews/animations.js';
-import { clearNavState } from '../../spatial/nodes.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 

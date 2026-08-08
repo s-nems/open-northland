@@ -4,7 +4,8 @@ import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { constructionWorkCells, dynamicBlockOverlay } from '../../footprint/index.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
+import { isTravelling } from '../../movement/nav-state.js';
+import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
 
 /**
  * The 4-connected radius of a completed workplace's loiter yard, in half-cell steps, about two visual

@@ -20,8 +20,8 @@ import {
   relocateWorkFlag,
 } from '../../economy/work-flag.js';
 import { nearestWorkFlagPlacement } from '../../footprint/index.js';
+import { clearNavState } from '../../movement/nav-state.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { clearNavState } from '../../spatial/nodes.js';
 import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js';
 import { isOrderableSettler } from '../guards.js';
 

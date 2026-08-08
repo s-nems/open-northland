@@ -10,8 +10,8 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { closer, manhattan, nearestCell } from '../spatial/metric.js';
-import { clearNavState, isTravelling, redirectRoute } from '../spatial/nodes.js';
 import type { CombatantStance, EngageSpec } from './engagement.js';
 import type { MeleeSlots, WeaponBand } from './melee-slots.js';
 

@@ -10,15 +10,10 @@ import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { isHunterJob } from '../readviews/index.js';
 import { startDrop } from '../settlers/atomics/start.js';
-import {
-  COMPASS_DIRECTIONS,
-  clearNavState,
-  entityNode,
-  isTravelling,
-  redirectRoute,
-} from '../spatial/nodes.js';
+import { COMPASS_DIRECTIONS, entityNode } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatIndex } from './combat-index.js';
 import { isFleeThreat, SIGHT_RADIUS_NODES } from './targeting.js';

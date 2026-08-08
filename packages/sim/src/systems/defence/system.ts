@@ -1,9 +1,9 @@
 import { Settler, Sheltering } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { clearNavState } from '../movement/nav-state.js';
 import { sheltersOnAlarm } from '../readviews/index.js';
 import { stepOut } from '../settlers/indoors.js';
-import { clearNavState } from '../spatial/nodes.js';
 import { shelterStillHolds } from './shelters.js';
 
 /**
