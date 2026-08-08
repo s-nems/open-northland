@@ -47,42 +47,37 @@ export function harvestJobsOf(content: ContentSet): ReadonlySet<number> {
  * O(1) lookup maps over a {@link ContentSet}'s arrays, keyed the way per-tick code queries them. Pure
  * derived data over immutable content, never hashed and never mutated, so it is determinism-neutral.
  *
- * A duplicate key keeps the first array entry unless a field says otherwise; the two exceptions are
- * `atomicBindingsByTribe` and `landscapeGfxByIndex`, which are last-wins.
+ * A duplicate key keeps the first array entry unless the field says otherwise; the last-wins tables say
+ * so on themselves.
  */
 export interface ContentIndex {
-  /** Building types by `typeId`. */
   readonly buildings: ReadonlyMap<number, BuildingType>;
-  /** Good types by `typeId`. */
   readonly goods: ReadonlyMap<number, GoodType>;
-  /** Job types by `typeId`. */
   readonly jobs: ReadonlyMap<number, JobType>;
-  /** Tribe types by `typeId`. */
   readonly tribes: ReadonlyMap<number, TribeType>;
-  /** The `jobEnables*` tech graph grouped for the unlock gate. See {@link EnablingJobTables}. */
+  /** The `jobEnables*` tech graph grouped for the unlock gate. */
   readonly enablingJobsByTribe: EnablingJobTables;
-  /** Vehicle types by `typeId`. */
   readonly vehicles: ReadonlyMap<number, VehicleType>;
   /** Command-boundary building lookup - last-wins on a duplicate typeId, unlike {@link buildings}. */
   readonly commandBuildings: ReadonlyMap<number, BuildingType>;
   /** Command-boundary job lookup - last-wins on a duplicate typeId, unlike {@link jobs}. */
   readonly commandJobs: ReadonlyMap<number, JobType>;
-  /** Armor types by `typeId` (the armor-class id - see readviews/combat.ts). */
+  /** Armor types by their armor-class `typeId`. */
   readonly armor: ReadonlyMap<number, ArmorType>;
   /** Armor types by the good that IS the armor (`goodType`), how a worn `Equipment.armor` slot joins
    *  its `[armortype]` record; first-wins, a record with no `goodType` is absent. */
   readonly armorByGoodType: ReadonlyMap<number, ArmorType>;
-  /** Good types that are themselves a weapon or piece of armor - the `goodType` a {@link WeaponType} or
-   *  {@link ArmorType} resolves into. The natural-weapon sentinel (no `goodType`) contributes nothing. */
+  /** Good types that are themselves a weapon or piece of armor. The natural-weapon sentinel (no
+   *  `goodType`) contributes nothing. */
   readonly militaryGoods: ReadonlySet<number>;
-  /** Experience tracks by `typeId`. */
+  /** Experience tracks by the track's own `typeId`, not by job. */
   readonly jobExperience: ReadonlyMap<number, HumanJobExperienceType>;
   /** Animal records by their `tribeType` (an animal's identity is its tribe). */
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
   /** Hunt-prey rows by the prey's `tribeType` - membership IS huntability ({@link HuntPrey}). */
   readonly huntPreyByTribe: ReadonlyMap<number, HuntPrey>;
-  /** Livestock species (`catchable` animal tribeType) → the good stocking one FED animal of that
-   *  species (the animal farm's feed-recipe product). See `content-index/livestock.ts` for the join. */
+  /** Livestock species (`catchable` animal tribeType) → the good stocking one fed animal of that
+   *  species, the animal farm's feed-recipe product. */
   readonly livestockGoodByTribe: ReadonlyMap<number, number>;
   /** Reverse of {@link livestockGoodByTribe}: livestock goodType → the species' animal tribeType. */
   readonly livestockTribeByGood: ReadonlyMap<number, number>;
@@ -104,8 +99,8 @@ export interface ContentIndex {
    */
   readonly stockSlotCapacityByBuilding: ReadonlyMap<number, ReadonlyMap<number, number>>;
   /**
-   * Per producing building type: `product goodType → its recipe` (the recipe whose first output is
-   * that good; first-wins on a duplicate product). The ProductionSystem's cycle-start/deposit lookup.
+   * Per producing building type: `product goodType → the recipe whose first output is that good`;
+   * first-wins on a duplicate product.
    */
   readonly recipeByProductByBuilding: ReadonlyMap<number, ReadonlyMap<number, Recipe>>;
   /**
@@ -120,14 +115,11 @@ export interface ContentIndex {
    * building mints from nothing.
    */
   readonly inputlessProducersByGood: ReadonlyMap<number, ReadonlySet<number>>;
-  /** Weapons by `(tribeType, typeId)` - the worn-weapon override key; first-wins per pair (source
-   *  order). */
+  /** The worn-weapon override key; first-wins per pair in source order. */
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
-  /** Weapons by `(tribeType, jobType)` - how a jobbed combatant binds its class weapon; first-wins
-   *  per pair (source order). */
+  /** How a jobbed combatant binds its class weapon; first-wins per pair in source order. */
   readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
-  /** Weapons by `(tribeType, goodType)` - which weapon a craftable good IS (`weapons.ini` `goodtype`),
-   *  the equip-drive's good→class join; first-wins per pair (source order). */
+  /** Which weapon a craftable good IS (`weapons.ini` `goodtype`); first-wins per pair in source order. */
   readonly weaponByTribeAndGoodType: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** The first weapon row of each tribe (source order) - a jobless animal's weapon (its combat identity is
    *  its tribe alone). */
@@ -140,13 +132,10 @@ export interface ContentIndex {
    * file order so a later `setatomic` line for the same (job, atomic) shadows an earlier one.
    */
   readonly atomicBindingsByTribe: ReadonlyMap<number, ReadonlyMap<number, ReadonlyMap<number, string>>>;
-  /** Per-good gathering pipelines by `goodType`. */
   readonly gatheringPipelinesByGood: ReadonlyMap<number, GatheringPipeline>;
-  /** Landscape gfx records by their `index` (the gathering pipeline's join key); last-wins on a
-   *  duplicate index. */
+  /** Landscape gfx by their `index`, the gathering pipeline's join key; last-wins on a duplicate. */
   readonly landscapeGfxByIndex: ReadonlyMap<number, LandscapeGfx>;
-  /** Per job type: the atomic ids the job may run (`resolveJobAtomics`), the `jobtypes` permission
-   *  gate. */
+  /** Per job type: the atomic ids the job may run - the `jobtypes` permission gate. */
   readonly atomicsByJob: ReadonlyMap<number, ReadonlySet<number>>;
   /** The flag-gathering trades: jobs whose {@link atomicsByJob} include a non-farmed good's harvest
    *  atomic. */
@@ -157,12 +146,12 @@ export interface ContentIndex {
   readonly scoutJobs: ReadonlySet<number>;
   readonly hunterJobs: ReadonlySet<number>;
   /**
-   * Per building type: the from-scratch construction bill a newly-placed site must be delivered, merged
-   * per goodType and sorted ascending. For a leveled type it sums every tier's own `construction` up to
-   * and including it, so placing tier N costs what building tier 1 and upgrading N-1 times costs; an
-   * unchained type's bill is its own `construction`. Source basis: the per-tier costs and the
-   * `upgradeTarget` chain are extracted, the merge is authored, because the original only ever places a
-   * chain's base tier. An upgrading site instead pays the target tier's own cost (`constructionBillOf`).
+   * Per building type: the from-scratch construction bill a newly-placed site must be delivered. A
+   * leveled type sums every tier's own `construction` up to and including it, merged per goodType and
+   * sorted ascending, so placing tier N costs tier 1 plus N-1 upgrades; an unchained type's bill is its
+   * own `construction`, and an upgrading site instead pays the target tier's own cost. The per-tier costs
+   * and `upgradeTarget` chain are extracted; the merge is authored, because the original only ever places
+   * a chain's base tier.
    */
   readonly constructionBillByBuilding: ReadonlyMap<number, readonly GoodsLine[]>;
   /**
@@ -174,8 +163,7 @@ export interface ContentIndex {
   readonly maxResourceWorkOffset: number;
 }
 
-/** One index per ContentSet, built lazily on first use and shared by every consumer; a WeakMap so a
- *  dropped content set frees its index with it. */
+/** One index per ContentSet, built lazily and shared; a WeakMap so a dropped set frees its index. */
 const indexCache = new WeakMap<ContentSet, ContentIndex>();
 
 export function contentIndex(content: ContentSet): ContentIndex {

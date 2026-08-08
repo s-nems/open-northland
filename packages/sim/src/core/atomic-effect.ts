@@ -3,8 +3,7 @@ import type { Entity } from '../ecs/world.js';
 
 /**
  * The effect an atomic action applies on completion. The numeric `atomicId` stays the content
- * cross-reference, while the effect itself is a typed union so the AtomicSystem's apply switch is
- * exhaustive and golden traces stay readable.
+ * cross-reference; the effect itself is a typed union, so the apply switch is exhaustive.
  */
 export type AtomicEffect =
   | { readonly kind: 'move'; readonly to: { x: number; y: number } }
@@ -50,19 +49,17 @@ export type AtomicEffect =
    *  drill time. Nothing else accrues: the TRAINING bucket grants no experience. */
   | { readonly kind: 'exercise' }
   /** The settler swings at `target`, subtracting `damage` from its `Health.hitpoints`, clamped at 0.
-   *  `damage` arrives already resolved from the weapon's `damagevalue[targetMaterial]` (attacker weapon
-   *  by target armor material), so the executor stays a pure subtraction. The blow lands at `hitAt`, the
-   *  animation's `ATOMIC_EVENT_TYPE_ATTACK` frame, falling back to the completion frame when omitted.
-   *  `weaponMainType` (`WeaponType.mainType`) keys the fight-experience bucket; omitting it accrues no
-   *  fight XP. A `target` with no `Health` is a no-op.
+   *  `damage` arrives already resolved from the weapon's `damagevalue[targetMaterial]`. The blow lands at
+   *  `hitAt`, the animation's `ATOMIC_EVENT_TYPE_ATTACK` frame, falling back to the completion frame when
+   *  omitted. `weaponMainType` (`WeaponType.mainType`) keys the fight-experience bucket; omitting it
+   *  accrues no fight XP. A `target` with no `Health` is a no-op.
    *
-   *  `projectile` is present iff this is a ranged swing: at `hitAt` the executor launches a projectile
-   *  carrying the ammunition class and travel `speed` toward `target` instead of landing the blow in
-   *  place, and the projectile deals the same `damage` on contact.
+   *  `projectile` is present for a ranged swing that carries a travel `speed`: at `hitAt` a projectile
+   *  with that ammunition class and speed flies at `target` instead of the blow landing in place, dealing
+   *  the same `damage` on contact.
    *
    *  `maxRange` is the melee weapon's reach in half-cell nodes, re-checked at the hit frame: a target
-   *  that stepped beyond it during the swing takes no damage. Absent means the blow always lands on a
-   *  live target. */
+   *  that stepped beyond it during the swing takes no damage. Absent means no reach check. */
   | {
       readonly kind: 'attack';
       readonly target: Entity;
