@@ -28,7 +28,7 @@ export function tileToScreenX(col: number, row: number): number {
   return (2 * col + rowStagger(row)) * TILE_HALF_W;
 }
 
-/** {@link tileToScreenX} for the Y axis (row-only: a column step is purely horizontal). */
+/** {@link tileToScreenX} for the Y axis. */
 export function tileToScreenY(row: number): number {
   return row * TILE_HALF_H;
 }
@@ -47,7 +47,7 @@ export function rowStagger(row: number): number {
  * at a half-cell never picks up the fractional-row stagger a walking entity interpolates through.
  * {@link tileToScreen} of an integer cell lands exactly here. Placing odd half-cell rows at the
  * rectangular spot is a named approximation: `lmwb` byte evidence suggests they sit a quarter cell
- * further +x (docs/tickets/sim/odd-microrow-world-x-quarter-shift.md).
+ * further +x.
  */
 export function halfCellToScreen(hx: number, hy: number): { x: number; y: number } {
   return {
@@ -72,12 +72,9 @@ export function nodeDiamondPoly(cx: number, cy: number, hw: number, hh: number):
   return [cx, cy - hh, cx + hw, cy, cx, cy + hh, cx - hw, cy];
 }
 
-/**
- * The camera transform every projected position passes through, `screen = world·scale + offset`. Plain
- * data, so the pure cull math can invert it without touching the GPU layer.
- */
+/** The camera transform every projected position passes through, `screen = world·scale + offset`. */
 export interface Camera {
-  /** Pixel offset added to every item's screen position (pan). */
+  /** Pan, in screen px. */
   readonly offsetX: number;
   readonly offsetY: number;
   /** Uniform zoom about the layer origin. Defaults to 1. */
@@ -101,7 +98,7 @@ export function snapCameraToDevicePixels(camera: Camera, resolution: number): Ca
 /**
  * Apply the camera to one world axis for draws that cannot ride the camera-transformed layer: a
  * custom-shader mesh self-places in screen space and must mirror the transform plain sprites inherit
- * from the scene graph. Split X/Y (not a `{x,y}` return) so the per-frame path allocates nothing.
+ * from the scene graph.
  */
 export function cameraScreenX(camera: Camera, worldX: number): number {
   return camera.offsetX + (camera.scale ?? 1) * worldX;
@@ -123,8 +120,7 @@ const DEPTH_X_TIEBREAK = 1 / (1 << 20);
  * The screen-depth sort key for a feet anchor at projected `(x, y)` px: the screen `y` first (lower on
  * screen draws in front), then a tiny `x` tiebreak so same-row sprites order deterministically instead
  * of flickering with attach/detach churn - Pixi's `sortableChildren` sort is stable only in
- * children-array order, which panning reshuffles. Every depth-sorted draw shares this key, so entities
- * and map objects fall into one painter order.
+ * children-array order, which panning reshuffles.
  */
 export function depthKey(x: number, y: number): number {
   return y + x * DEPTH_X_TIEBREAK;

@@ -1,10 +1,7 @@
 import { clamp } from '../math.js';
 import { type Camera, TILE_HALF_H, TILE_HALF_W } from './iso.js';
 
-/**
- * The pure viewport-culling math, kept out of the GPU so it is unit-testable without a screen. Keep it
- * Pixi-free: `import type` is erased at build, a value import would pull Pixi into every consumer.
- */
+/** The pure viewport-culling math, unit-testable without a screen. */
 
 /**
  * A world-space (pre-camera) axis-aligned rectangle - the slice of the projected plane the camera
@@ -31,15 +28,12 @@ export function cameraViewport(camera: Camera, canvasW: number, canvasH: number,
   return { minX, minY, maxX, maxY };
 }
 
-/**
- * Whether a world-space point `(x, y)` falls inside `vp`, with an extra per-point `margin` on top of
- * any slack already baked into the viewport.
- */
+/** `margin` stacks on top of any slack already baked into the viewport. */
 export function isVisible(vp: Viewport, x: number, y: number, margin = 0): boolean {
   return x >= vp.minX - margin && x <= vp.maxX + margin && y >= vp.minY - margin && y <= vp.maxY + margin;
 }
 
-/** A world-space axis-aligned box (a terrain/decor chunk or a tall-object block AABB). */
+/** A world-space axis-aligned box. */
 export interface Box {
   readonly minX: number;
   readonly minY: number;
@@ -47,10 +41,7 @@ export interface Box {
   readonly maxY: number;
 }
 
-/**
- * Whether an axis-aligned world-space `box` overlaps the viewport. Touching edges count as visible,
- * and any slack is baked into the box's own bounds by the caller.
- */
+/** Touching edges count as visible, and any slack is baked into the box's own bounds by the caller. */
 export function aabbIntersects(vp: Viewport, box: Box): boolean {
   return box.maxX >= vp.minX && box.minX <= vp.maxX && box.maxY >= vp.minY && box.minY <= vp.maxY;
 }

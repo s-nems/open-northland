@@ -1,6 +1,5 @@
 /**
- * The terrain mesh's node geometry, the CPU twin of the GPU mesh build in
- * `gpu/terrain/terrain-layer.ts`. Mesh vertices are the cell-centre nodes of the half-cell lattice the
+ * The terrain mesh's node geometry. Mesh vertices are the cell-centre nodes of the half-cell lattice the
  * sim's nav grid addresses, and each map cell contributes two triangles spanning between neighbouring
  * cell centres:
  *
@@ -11,7 +10,7 @@
  * (`empa`/`empb` → A/B) blend across cells rather than seaming on lattice edges.
  */
 
-/** A half-cell node address `[hx, hy]` - the sim lattice's integer coordinates (`nav/halfcell.ts`). */
+/** The sim lattice's integer coordinates (`nav/halfcell.ts`). */
 export type NodeXY = readonly [number, number];
 
 /**
@@ -22,10 +21,7 @@ export function cellNode(col: number, row: number): NodeXY {
   return [2 * col + (row & 1), 2 * row];
 }
 
-/**
- * Triangle A (△) of cell `(col, row)`: `[own centre, SE-below centre, SW-below centre]` - the vertex
- * order `coordsA`'s (TL, BR, BL) UV points map onto.
- */
+/** The vertex order `coordsA`'s (TL, BR, BL) UV points map onto. */
 export function triangleANodes(col: number, row: number): readonly [NodeXY, NodeXY, NodeXY] {
   const [hx, hy] = cellNode(col, row);
   return [
@@ -35,10 +31,7 @@ export function triangleANodes(col: number, row: number): readonly [NodeXY, Node
   ];
 }
 
-/**
- * Triangle B (▽) of cell `(col, row)`: `[own centre, E centre, SE-below centre]` - the vertex order
- * `coordsB`'s (TL, TR, BR) UV points map onto.
- */
+/** The vertex order `coordsB`'s (TL, TR, BR) UV points map onto. */
 export function triangleBNodes(col: number, row: number): readonly [NodeXY, NodeXY, NodeXY] {
   const [hx, hy] = cellNode(col, row);
   return [
@@ -78,9 +71,8 @@ export function nodeLift(
 /**
  * A node vertex's brightness-lane texture UV: its own cell centre at the lane texel's centre
  * (`(coord + 0.5) / size`), clamped into the grid, so the per-fragment bilinear blends each triangle's
- * shading between its three cell-centre samples - the engine model of one lighting value per node,
- * interpolated across the triangle. `paddedWidth` is the lane texture's alignment-padded width; the
- * clamp uses the unpadded grid.
+ * shading between its three cell-centre samples. `paddedWidth` is the lane texture's alignment-padded
+ * width; the clamp uses the unpadded grid.
  */
 export function nodeLaneUV(
   hx: number,

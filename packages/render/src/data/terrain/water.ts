@@ -7,15 +7,14 @@ import { nodeCell } from './tessellation.js';
  * is a static ground texture plus animated foam decor.
  *
  * The mask keys off the map's own ground-pattern names (`empa`/`empb` → `eapd`), the one signal
- * authoritative on every textured map. Not the `lmms` lane: it carries the same 1..7 bands across plain
- * meadow on waterless maps (Tale_of_Six_Sons) that mean water depth on watered ones (oasis_o_plenty),
- * probed on the owned copies, so keying off it would bob grass.
+ * authoritative on every textured map. Not the `lmms` lane: probed on the owned copies it carries the
+ * same bands across plain meadow on waterless maps, so keying off it would bob grass.
  */
 
 /** A terrain-mesh node's wave amplitude factor in [0, 1] (0 = still ground). */
 export type NodeWaveFn = (hx: number, hy: number) => number;
 
-/** The still field - no ground lanes / no water. Shared so land maps allocate nothing. */
+/** Shared so land maps allocate nothing. */
 export const NO_WAVE: NodeWaveFn = () => 0;
 
 /** A ground pattern drawing water surface, by `EditName` ('water 01', 'block water …',

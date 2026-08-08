@@ -5,16 +5,15 @@ import { elevationLiftPerUnit } from './elevation.js';
 
 /**
  * Slope hillshading from the map's elevation lane - an Open Northland enhancement, not an original
- * mechanism: the original's slope light is pre-baked into `embr` (`brightness.ts`). It stands in as the
- * whole lane on a map without one, and only accents an `embr` map at {@link HILLSHADE_ENHANCE} so the
- * bake stays the faithful signal. Light direction, slope exaggeration and enhance strength are all
- * named approximations - tuned constants awaiting a human pass, not measured values.
+ * mechanism. It stands in as the whole lane on a map without `embr`, and only accents an `embr` map at
+ * {@link HILLSHADE_ENHANCE} so the bake stays the faithful signal. Light direction, slope exaggeration
+ * and enhance strength are all named approximations, not measured values.
  */
 
 /**
  * The fixed light direction in screen space (+x right, +y down, +z out of the ground plane), pointing
  * from the surface toward the light - upper-left, consistent with the baked cast-shadow art. Stored
- * unnormalized; the field build normalizes it once.
+ * unnormalized.
  */
 const HILLSHADE_LIGHT = { x: -0.6, y: -0.45, z: 0.7 } as const;
 
@@ -33,10 +32,8 @@ const HILLSHADE_MIN = 0.55;
 const HILLSHADE_MAX = 1.45;
 
 /**
- * Compose the per-cell shading lane the ground and the anchored sprites multiply by: the decoded
- * `embr` lane accented by elevation hillshade, pure hillshade when the map has no `embr`, or the inputs
- * unchanged when there is no elevation to shade from. Row-major and u8-range, neutral at
- * {@link BRIGHTNESS_NEUTRAL}, or `undefined` when there is nothing to shade with at all.
+ * Compose the per-cell shading lane the ground and the anchored sprites multiply by: row-major, u8-range,
+ * neutral at {@link BRIGHTNESS_NEUTRAL}, or `undefined` when there is nothing to shade with at all.
  */
 export function composeShadingLane(
   brightness: readonly number[] | undefined,
@@ -47,7 +44,7 @@ export function composeShadingLane(
   const cells = width * height;
   if (elevation === undefined || elevation.length !== cells || cells === 0) return brightness;
   const relative = hillshadeField(elevation, width, height);
-  if (relative === null) return brightness; // flat map - nothing to shade from
+  if (relative === null) return brightness;
   const out = new Array<number>(cells);
   if (brightness === undefined || brightness.length !== cells) {
     for (let i = 0; i < cells; i++) {
@@ -62,16 +59,14 @@ export function composeShadingLane(
   return out;
 }
 
-/** Round + clamp a shading value into the lane's byte range. */
 function clampByte(v: number): number {
   const r = Math.round(v);
   return r < 0 ? 0 : r > 255 ? 255 : r;
 }
 
 /**
- * The relative hillshade multiplier per cell (flat ground = 1, lit slope > 1, shadowed slope < 1), or
- * `null` when the lane is entirely flat. Central-difference gradient in world px, Lambert against
- * {@link HILLSHADE_LIGHT}, normalized so flat ground is exactly neutral.
+ * The relative hillshade multiplier per cell (flat ground = 1), or `null` when the lane is entirely
+ * flat. Central-difference gradient in world px, Lambert against {@link HILLSHADE_LIGHT}.
  */
 function hillshadeField(
   elevation: readonly number[],

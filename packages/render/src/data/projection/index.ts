@@ -1,7 +1,4 @@
 /**
- * The isometric projection, the camera transform, and the viewport-cull math inverted out of it -
- * Pixi-free, so every other `data/` folder and the GPU renderer can hang off it.
- *
  * Modules here import each other directly (`./iso.js`), never through this barrel: that cycle would
  * force a TDZ workaround.
  */
