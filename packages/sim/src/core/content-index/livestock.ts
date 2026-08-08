@@ -6,7 +6,7 @@ export interface LivestockTables {
   readonly goodByTribe: ReadonlyMap<number, number>;
   /** Reverse of {@link goodByTribe}: livestock goodType → the species' animal tribeType. */
   readonly tribeByGood: ReadonlyMap<number, number>;
-  /** Building typeIds with a FEED recipe (a recipe whose product is a livestock good) - the
+  /** Building typeIds with a feed recipe (a recipe whose product is a livestock good) - the
    *  workplaces claimed livestock is herded to and processed at. */
   readonly workplaceTypes: ReadonlySet<number>;
   /** The feed-cycle byproduct ware - the `meat` good, resolved by slug (the sandbox catalog rides an
@@ -15,7 +15,7 @@ export interface LivestockTables {
 }
 
 /**
- * The species⇄good join behind husbandry: the original stocks a FED animal as a good (`goodtypes.ini`
+ * The species⇄good join behind husbandry: the original stocks a fed animal as a good (`goodtypes.ini`
  * `sheep` 57 / `cattle` 58, produced from grain+water by the animal farm's feed recipes), while the
  * live creature is an `animaltypes.ini` record keyed by tribe. No numeric link exists in the readable
  * data, but both sides carry the same species slug (good id `sheep` = tribe id `sheep`), so the join

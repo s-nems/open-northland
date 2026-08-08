@@ -37,18 +37,15 @@ import { maxWorkCellOffset } from './content-index/terrain.js';
 
 export { constructionBillForType } from './content-index/construction.js';
 
-/** The job types whose atomics can harvest a standing resource - the sim's definition of a gatherer
- *  trade. */
+/** The job types whose atomics can harvest a standing resource ({@link harvestCapableJobs}). */
 export function harvestJobsOf(content: ContentSet): ReadonlySet<number> {
   return contentIndex(content).harvestJobs;
 }
 
 /**
  * O(1) lookup maps over a {@link ContentSet}'s arrays, keyed the way per-tick code queries them. Pure
- * derived data over immutable content, never hashed and never mutated, so it is determinism-neutral.
- *
- * A duplicate key keeps the first array entry unless the field says otherwise; the last-wins tables say
- * so on themselves.
+ * derived data over immutable content, never hashed and never mutated, so it is determinism-neutral. A
+ * duplicate key keeps the first array entry unless the field says otherwise.
  */
 export interface ContentIndex {
   readonly buildings: ReadonlyMap<number, BuildingType>;
@@ -64,7 +61,7 @@ export interface ContentIndex {
   readonly commandJobs: ReadonlyMap<number, JobType>;
   /** Armor types by their armor-class `typeId`. */
   readonly armor: ReadonlyMap<number, ArmorType>;
-  /** Armor types by the good that IS the armor (`goodType`), how a worn `Equipment.armor` slot joins
+  /** Armor types by the good that is the armor (`goodType`), how a worn `Equipment.armor` slot joins
    *  its `[armortype]` record; first-wins, a record with no `goodType` is absent. */
   readonly armorByGoodType: ReadonlyMap<number, ArmorType>;
   /** Good types that are themselves a weapon or piece of armor. The natural-weapon sentinel (no
@@ -74,7 +71,7 @@ export interface ContentIndex {
   readonly jobExperience: ReadonlyMap<number, HumanJobExperienceType>;
   /** Animal records by their `tribeType` (an animal's identity is its tribe). */
   readonly animalsByTribe: ReadonlyMap<number, AnimalType>;
-  /** Hunt-prey rows by the prey's `tribeType` - membership IS huntability ({@link HuntPrey}). */
+  /** Hunt-prey rows by the prey's `tribeType` - membership is huntability ({@link HuntPrey}). */
   readonly huntPreyByTribe: ReadonlyMap<number, HuntPrey>;
   /** Livestock species (`catchable` animal tribeType) → the good stocking one fed animal of that
    *  species, the animal farm's feed-recipe product. */
@@ -119,7 +116,7 @@ export interface ContentIndex {
   readonly weaponsByTribeAndTypeId: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** How a jobbed combatant binds its class weapon; first-wins per pair in source order. */
   readonly weaponsByTribeAndJob: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
-  /** Which weapon a craftable good IS (`weapons.ini` `goodtype`); first-wins per pair in source order. */
+  /** Which weapon a craftable good is (`weapons.ini` `goodtype`); first-wins per pair in source order. */
   readonly weaponByTribeAndGoodType: ReadonlyMap<number, ReadonlyMap<number, WeaponType>>;
   /** The first weapon row of each tribe (source order) - a jobless animal's weapon (its combat identity is
    *  its tribe alone). */
@@ -147,18 +144,17 @@ export interface ContentIndex {
   readonly hunterJobs: ReadonlySet<number>;
   /**
    * Per building type: the from-scratch construction bill a newly-placed site must be delivered. A
-   * leveled type sums every tier's own `construction` up to and including it, merged per goodType and
-   * sorted ascending, so placing tier N costs tier 1 plus N-1 upgrades; an unchained type's bill is its
-   * own `construction`, and an upgrading site instead pays the target tier's own cost. The per-tier costs
-   * and `upgradeTarget` chain are extracted; the merge is authored, because the original only ever places
-   * a chain's base tier.
+   * leveled type sums every tier's own `construction` up to and including it, so placing tier N costs
+   * tier 1 plus N-1 upgrades; an upgrading site instead pays the target tier's own cost. The per-tier
+   * costs and `upgradeTarget` chain are extracted; the merge is authored, because the original only ever
+   * places a chain's base tier.
    */
   readonly constructionBillByBuilding: ReadonlyMap<number, readonly GoodsLine[]>;
   /**
-   * The largest Manhattan node-offset any resource's work cell can sit from its anchor, over every
-   * `landscapeGfx` work-area cell, floored at 3 to cover the lattice's widest single step (a diagonal,
-   * `(±1,±2)`). A radius-bounded candidate query widened by this slack provably contains every node
-   * whose work cell could pass the radius test; over-covering only grows the queried box.
+   * The largest Manhattan node-offset any resource's work cell can sit from its anchor, floored at the
+   * lattice's widest single step ({@link maxWorkCellOffset}). A radius-bounded candidate query widened by
+   * this slack contains every node whose work cell could pass the radius test; over-covering only grows
+   * the queried box.
    */
   readonly maxResourceWorkOffset: number;
 }
@@ -218,8 +214,6 @@ function buildIndex(content: ContentSet): ContentIndex {
     scoutJobs: roles.scout,
     hunterJobs: roles.hunter,
     maxResourceWorkOffset: maxWorkCellOffset(content),
-    // A weapon row's tribeType/jobType are optional in the schema; a row missing the key is absent
-    // from that table.
     weaponsByTribeAndTypeId: byPairKey(
       content.weapons,
       (w) => w.tribeType,
@@ -243,5 +237,5 @@ function buildIndex(content: ContentSet): ContentIndex {
   };
 }
 
-/** The stable `weapons.ini` id of the wall bow ({@link ContentIndex.houseBowByTribe}). */
+/** The stable `weapons.ini` id of the wall bow. */
 const HOUSE_BOW_WEAPON_ID = 'house_bow';

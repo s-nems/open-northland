@@ -1,10 +1,7 @@
 import type { EquipCategory } from '@open-northland/data';
 import type { Entity } from '../ecs/world.js';
 
-/**
- * The effect an atomic action applies on completion. The numeric `atomicId` stays the content
- * cross-reference; the effect itself is a typed union, so the apply switch is exhaustive.
- */
+/** The effect an atomic action applies on completion. */
 export type AtomicEffect =
   | { readonly kind: 'move'; readonly to: { x: number; y: number } }
   | { readonly kind: 'harvest'; readonly resource: Entity; readonly goodType: number }
@@ -32,14 +29,13 @@ export type AtomicEffect =
     }
   /** The settler drinks the draught in misc equipment slot `slot`, in place, on the eat animation. */
   | { readonly kind: 'drink'; readonly slot: number }
-  /** The settler sleeps: takes `SLEEP_FATIGUE_RESTORE` off its `fatigue` on completion, a partial refill
-   *  against the NeedsSystem's fatigue rise. No goods are consumed. */
+  /** The settler sleeps: takes `SLEEP_FATIGUE_RESTORE` off its `fatigue` on completion. No goods are
+   *  consumed. */
   | { readonly kind: 'sleep' }
-  /** The settler prays: zeroes its `piety` on completion. Building-bound, unlike `sleep`: the settler
-   *  must stand on a temple to run it. */
+  /** The settler prays: zeroes its `piety` on completion. The settler must stand on a temple to run it. */
   | { readonly kind: 'pray' }
-  /** The settler enjoys itself: zeroes its `enjoyment` on completion (the `enjoy` atomic, id 17). The
-   *  need-to-satisfier drive is deferred because `enjoy` has no readable building satisfier. */
+  /** The settler enjoys itself: zeroes its `enjoyment` on completion (the `enjoy` atomic, id 17). No need
+   *  drive routes a settler to it, because `enjoy` has no readable building satisfier. */
   | { readonly kind: 'enjoy' }
   /** The settler makes love, which zeroes its `enjoyment` as well. The `make_love` atomic (id 78) is not
    *  a separate need: `viking_civilist_make_love` restores the same channel 3 as `enjoy` through
@@ -49,24 +45,22 @@ export type AtomicEffect =
    *  drill time. Nothing else accrues: the TRAINING bucket grants no experience. */
   | { readonly kind: 'exercise' }
   /** The settler swings at `target`, subtracting `damage` from its `Health.hitpoints`, clamped at 0.
-   *  `damage` arrives already resolved from the weapon's `damagevalue[targetMaterial]`. The blow lands at
-   *  `hitAt`, the animation's `ATOMIC_EVENT_TYPE_ATTACK` frame, falling back to the completion frame when
-   *  omitted. `weaponMainType` (`WeaponType.mainType`) keys the fight-experience bucket; omitting it
-   *  accrues no fight XP. A `target` with no `Health` is a no-op.
-   *
-   *  `projectile` is present for a ranged swing that carries a travel `speed`: at `hitAt` a projectile
-   *  with that ammunition class and speed flies at `target` instead of the blow landing in place, dealing
-   *  the same `damage` on contact.
-   *
-   *  `maxRange` is the melee weapon's reach in half-cell nodes, re-checked at the hit frame: a target
-   *  that stepped beyond it during the swing takes no damage. Absent means no reach check. */
+   *  `damage` arrives already resolved from the weapon's `damagevalue[targetMaterial]`. A `target` with
+   *  no `Health` is a no-op. */
   | {
       readonly kind: 'attack';
       readonly target: Entity;
       readonly damage: number;
+      /** The animation's `ATOMIC_EVENT_TYPE_ATTACK` frame the blow lands on; the completion frame when
+       *  omitted. */
       readonly hitAt?: number;
+      /** `WeaponType.mainType`, which keys the fight-experience bucket; omitting it accrues no fight XP. */
       readonly weaponMainType?: number;
+      /** The melee weapon's reach in half-cell nodes, re-checked at the hit frame: a target that stepped
+       *  beyond it during the swing takes no damage. Absent means no reach check. */
       readonly maxRange?: number;
+      /** Present for a ranged swing: at `hitAt` a projectile of this ammunition class and travel speed
+       *  flies at `target` instead of the blow landing in place, dealing the same `damage` on contact. */
       readonly projectile?: { readonly munitionType: number; readonly speed: number };
     }
   /** A builder's construction swing at `site`: advances the site's builder-work `labor` by one strike's
@@ -96,8 +90,7 @@ export type AtomicEffect =
    *  are not decoded. A field already reaped, ripe, or gone is a no-op. */
   | { readonly kind: 'water'; readonly crop: Entity }
   /** The settler sets its whole carried load down on its own tile, spilling any remainder over the
-   *  `MAX_GROUND_STACK` cap onto the nearest free walkable nodes. No good is lost. Carries no payload:
-   *  the load is read off the settler at apply time. */
+   *  `MAX_GROUND_STACK` cap onto the nearest free walkable nodes. No good is lost. */
   | { readonly kind: 'drop' }
   /** The settler lifts one unit of `goodType` out of the store or pile `from` straight into equipment
    *  slot (`group`, `slot`). A fresh swapped-out good moves onto the back for stowing and a part-used

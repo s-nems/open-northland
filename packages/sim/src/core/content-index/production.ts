@@ -62,7 +62,6 @@ export function mergedRecipes(content: ContentSet): ReadonlyMap<number, Recipe> 
  * First-wins per typeId.
  */
 export function inputlessProducerTypes(content: ContentSet): ReadonlyMap<number, ReadonlySet<number>> {
-  // A carrier/gatherer-only building has no operator trade.
   const carrierJobs = new Set(content.jobs.filter((j) => isCarrierJobId(j.id)).map((j) => j.typeId));
   const harvestJobs = harvestCapableJobs(content);
   const isOperatorSlot = (jobType: number): boolean => !carrierJobs.has(jobType) && !harvestJobs.has(jobType);

@@ -4,9 +4,8 @@ import type { JobType } from '@open-northland/data';
 export type JobRole = 'soldier' | 'hero' | 'scout' | 'hunter';
 
 /**
- * The role a `jobtypes` id slug names: every soldier class is `soldier_*`, every hero `hero_*` or
- * `heroine_*`, while the scout and the hunter are single trades whose whole id is the slug. Soldier and
- * hero stay apart because fight-XP routing feeds their general tracks separately.
+ * The role a `jobtypes` id slug names; `hero` matches by prefix, so the `heroine_*` classes count too.
+ * Soldier and hero stay apart because fight-XP routing feeds their general tracks separately.
  *
  * Approximation over the extracted job name: `jobtypes.ini` declares no role field, and slug
  * classification is the existing precedent for a trade the data does not flag (`_sea`, `carrier`).
@@ -19,8 +18,7 @@ export function jobRoleOfId(id: string): JobRole | null {
   return null;
 }
 
-/** Whether `role` is one of the two combat trades, owned here so the row-level and content-keyed
- *  predicates cannot drift apart. */
+/** Whether `role` is one of the two combat trades. */
 export function isFighterRole(role: JobRole | null): boolean {
   return role === 'soldier' || role === 'hero';
 }

@@ -24,10 +24,9 @@ function prevTierLinks(buildings: readonly BuildingType[]): ReadonlyMap<number, 
   return prev;
 }
 
-/** One type's from-scratch bill over the typeId-keyed building view + the reverse chain links: the
- *  tier's chain is walked DOWN to its base via `prev` and every visited tier's own cost is merged per
- *  goodType, sorted ascending; an unchained type is its own cost. The visited-set guards a malformed
- *  content cycle (a→b→a) from hanging the walk. */
+/** One type's from-scratch bill: the tier's chain is walked down to its base via `prev` and every visited
+ *  tier's own cost is merged per goodType, sorted ascending; an unchained type is its own cost. The
+ *  visited set keeps a malformed content cycle (a→b→a) from hanging the walk. */
 function billOf(
   buildings: ReadonlyMap<number, BuildingType>,
   prev: ReadonlyMap<number, number>,
