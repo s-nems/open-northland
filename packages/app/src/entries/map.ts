@@ -168,7 +168,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const initialCamera =
     centerTile(params.get('center'), app.screen.width, app.screen.height) ??
     cameraCenteredOnTile(focus.x, focus.y, 1, app.screen.width, app.screen.height);
-  const cameraCtl = createCameraController(canvas, initialCamera, app.renderer.resolution);
+  const cameraCtl = createCameraController(canvas, initialCamera, () => app.renderer.resolution);
 
   // Averaged from the real texture pages the map's ground lanes point at: the shipped `minimap.pcx` is
   // map-selection card art, not an overview raster. Null without lanes or textures.

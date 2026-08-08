@@ -10,7 +10,8 @@ const FALLBACK_RIM = 0x2a1d0e;
 
 interface ButtonVisual {
   readonly button: ActionButton;
-  readonly icon: BakedIcon | null;
+  /** Mutable: a live DPR change replaces the bake at the new density. */
+  icon: BakedIcon | null;
   readonly fallback: Graphics | null;
 }
 
@@ -59,6 +60,21 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
     visualByButton.set(button, v);
   }
 
+  /** The renderer resolution the icons were baked at; a DPR change re-bakes them at the next placement pass. */
+  let bakedResolution = app.renderer.resolution;
+  const rebakeIcons = (): void => {
+    bakedResolution = app.renderer.resolution;
+    for (const v of visuals) {
+      if (v.icon === null) continue;
+      const sprite = iconSprite(v.button.icon);
+      if (sprite === null) continue;
+      v.icon.display.destroy();
+      v.icon.dispose();
+      v.icon = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
+      container.addChild(v.icon.display);
+    }
+  };
+
   /** Centre one button's visual in its layout rect (the original's `SetCenterGraphicsFlag`). */
   const placeVisual = (v: ButtonVisual, rect: { x: number; y: number; w: number; h: number }): void => {
     if (v.icon !== null) {
@@ -82,6 +98,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
 
   return {
     placeLayout(layout: ActionRingLayout): void {
+      if (app.renderer.resolution !== bakedResolution) rebakeIcons();
       hideAll();
       for (const placed of layout.buttons) {
         const v = visualByButton.get(placed.button);

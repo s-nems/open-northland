@@ -176,7 +176,7 @@ async function startGallery(
   const cameraCtl = createCameraController(
     canvas,
     { offsetX: GRID_MARGIN, offsetY: GRID_MARGIN, scale: zoom },
-    app.renderer.resolution,
+    () => app.renderer.resolution,
   );
 
   // The direction buttons drive `setDirection` live; the character and view buttons navigate, so the

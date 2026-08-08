@@ -29,8 +29,9 @@ export interface SpeedButtonDeps {
   readonly stripContainer: Container;
   /** The decoded GUI art, or null → the flat-Graphics fallback (a text glyph on the button rect). */
   readonly art: GuiArt | null;
-  /** The baked strip texture (real-art path) - re-rasterized when the speed glyph changes. */
-  readonly supersampled: SupersampledStrip | null;
+  /** The current baked strip texture (real-art path) - re-rasterized when the speed glyph changes. A
+   *  getter, because a live DPR change replaces the bake. */
+  readonly strip: () => SupersampledStrip | null;
   /** The speed button's outline stamps and glyph; a speed change re-frames all of them. */
   readonly speedSprites: readonly PalettedSprite[];
   /** The speed button's placed rect, for the fallback glyph position (undefined → no fallback glyph). */
@@ -45,8 +46,8 @@ export interface SpeedButton {
   cycle(): void;
   /** The `P` key: toggle pause, remembering the running speed for the resume. */
   togglePause(): void;
-  /** Mount-time init: set the button graphic only, never push to the loop. */
-  init(): void;
+  /** Set the button graphic from the current state without pushing to the loop (mount, strip re-bake). */
+  syncGlyph(): void;
 }
 
 /**
@@ -54,7 +55,7 @@ export interface SpeedButton {
  * and re-rasterizes the strip on a change; the flat fallback draws a `×N`/`||` text glyph instead.
  */
 export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
-  const { ctx, app, scale, stripContainer, art, supersampled, speedSprites, speedBtnRect } = deps;
+  const { ctx, app, scale, stripContainer, art, strip, speedSprites, speedBtnRect } = deps;
   let speedControl: GameSpeedControl = DEFAULT_GAME_SPEED_CONTROL;
   let speedRun: TextRun | null = null; // fallback glyph (the flat mode has no distinct per-state sprite)
 
@@ -69,7 +70,7 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
           s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
         }
         // The strip is baked into a texture, so re-rasterize it with the new speed glyph.
-        supersampled?.redraw();
+        strip()?.redraw();
       }
     }
     if (art === null && speedBtnRect !== undefined) {
@@ -100,6 +101,6 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
       speedControl = toggleGameSpeedPause(speedControl);
       applySpeed('pause-toggle');
     },
-    init: () => applySpeed(null),
+    syncGlyph: () => applySpeed(null),
   };
 }

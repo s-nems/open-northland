@@ -41,11 +41,12 @@ export interface CameraController {
   dispose(): void;
 }
 
-/** `resolution` is the owning renderer's device px per screen px, needed to map mouse deltas on a HiDPI canvas. */
+/** `resolution` reads the owning renderer's live device px per screen px, needed to map mouse deltas on
+ *  a HiDPI canvas; a captured value would go stale when a DPR change re-sizes the renderer. */
 export function createCameraController(
   canvas: HTMLCanvasElement,
   initial: Camera,
-  resolution: number,
+  resolution: () => number,
 ): CameraController {
   let cam: Camera = initial;
   const tuning: CameraTuning = DEFAULT_CAMERA_TUNING;
@@ -76,7 +77,7 @@ export function createCameraController(
     // over the canvas gets none. Tested by hit target, so a DOM element stacked over the canvas disarms it.
     pointerSample = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
     if (!dragging) return;
-    const { sx, sy } = screenScale(canvas, resolution);
+    const { sx, sy } = screenScale(canvas, resolution());
     cam = panCamera(cam, (e.clientX - lastX) * sx, (e.clientY - lastY) * sy);
     lastX = e.clientX;
     lastY = e.clientY;
@@ -92,7 +93,7 @@ export function createCameraController(
     // The event is left for the claiming panel's own handler, which scrolls its list and preventDefaults.
     if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
-    const { x, y } = clientToScreen(canvas, resolution, e.clientX, e.clientY);
+    const { x, y } = clientToScreen(canvas, resolution(), e.clientX, e.clientY);
     // Retarget the glide rather than zoom outright, so stacked notches read as one magnification.
     const factor = e.deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP;
     targetScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, targetScale * factor));
@@ -160,7 +161,7 @@ export function createCameraController(
         document.hasFocus() &&
         edgeGuard?.(pointerSample.x, pointerSample.y) !== true
       ) {
-        const { sx, sy, rect } = screenScale(canvas, resolution);
+        const { sx, sy, rect } = screenScale(canvas, resolution());
         const edge = edgePanVelocity(
           pointerSample.x - rect.left,
           pointerSample.y - rect.top,

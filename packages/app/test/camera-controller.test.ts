@@ -47,7 +47,7 @@ const install = () => {
   vi.stubGlobal('window', win);
   vi.stubGlobal('document', { hasFocus: () => true });
   const start: Camera = { offsetX: 0, offsetY: 0 };
-  const ctl = createCameraController(canvas, start, 1);
+  const ctl = createCameraController(canvas, start, () => 1);
   return {
     ctl,
     win,

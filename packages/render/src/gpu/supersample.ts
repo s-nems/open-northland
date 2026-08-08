@@ -25,6 +25,7 @@ export interface SupersampledTexture {
   readonly display: Sprite;
   /** Re-rasterize `source` into the texture (call after a mesh in it changes frame). */
   redraw(): void;
+  /** Free the texture and the baked source, never `display`: its scene-graph owner destroys that. */
   dispose(): void;
 }
 
