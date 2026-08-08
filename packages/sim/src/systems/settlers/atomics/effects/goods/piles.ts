@@ -10,7 +10,7 @@ import type { Fixed } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../../nav/terrain/index.js';
-import { forEachRingOffset } from '../../../../spatial/nodes.js';
+import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../../spatial/nodes.js';
 import { stockpilesAtNode } from '../../../../spatial/stockpiles.js';
 import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../../../stores/index.js';
 
@@ -124,14 +124,17 @@ export function spillOverRings(
 ): number {
   let left = amount;
   const { x: cx, y: cy } = terrain.coordsOf(from);
+  // Refilled per ring and fully spilled before the next one, so one buffer serves the whole walk.
+  const ring: NodeId[] = [];
   for (let r = 0; r <= SPILL_MAX_RADIUS && left > 0; r++) {
-    const ring: NodeId[] = [];
-    forEachRingOffset(r, (dx, dy) => {
-      const node = terrain.nodeAtClamped(cx + dx, cy + dy);
-      if (!terrain.isWalkable(node)) return;
-      if (accept !== undefined && !accept(node)) return;
+    ring.length = 0;
+    const offsets = ringOffsetCount(r);
+    for (let i = 0; i < offsets; i++) {
+      const node = terrain.nodeAtClamped(cx + ringOffsetDx(r, i), cy + ringOffsetDy(r, i));
+      if (!terrain.isWalkable(node)) continue;
+      if (accept !== undefined && !accept(node)) continue;
       ring.push(node);
-    });
+    }
     ring.sort((a, b) => a - b); // canonical ascending-NodeId placement order
     for (const node of ring) {
       if (left <= 0) break;
