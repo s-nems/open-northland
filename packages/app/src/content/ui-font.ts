@@ -1,12 +1,8 @@
 /**
- * The details panel's vector text face: a named approximation of the original UI font. The original draws
- * HUD text with a small (~10 px) bitmap `.fnt` serif, which has no sub-pixel detail to stay crisp at the
- * panel's fractional UI scale, so the panel swaps it for Tinos, a metric-compatible "Times"-class serif
- * (Apache-2.0, see `public/fonts/LICENSE-Tinos.txt`) rendered as vector Pixi text. The bitmap path stays
- * for the tool-panel HUD.
- *
- * The UI strings are Polish (CP1250-origin), so two woff2 subsets are registered under one family: Latin
- * and Latin-Extended for the Polish diacritics.
+ * The HUD's vector text face. Approximation: the original draws HUD text with a small (~10 px) bitmap
+ * `.fnt` serif, which has no sub-pixel detail to stay crisp at the HUD's fractional UI scale, so the HUD
+ * substitutes Tinos, a metric-compatible "Times"-class serif (Apache-2.0, see
+ * `public/fonts/LICENSE-Tinos.txt`) rendered as vector text by Pixi and by the DOM pickers.
  */
 
 import { withBaseUrl } from '../base-url.js';
@@ -19,7 +15,6 @@ export { FONT_FILL as UI_TEXT_FILL } from './font-gfx.js';
  *  makes a caller's `y` mean the visible glyph top. */
 export const CAP_TOP_RATIO = 0.22;
 
-/** The registered family name, shared by both subsets. */
 const UI_FONT_FAMILY = 'OpenNorthlandUi';
 /** System serifs close to the Tinos/Times look, tried before generic `serif`. */
 const SERIF_FALLBACK = "'Times New Roman', Georgia, 'Nimbus Roman', serif";
@@ -49,7 +44,6 @@ const SUBSETS: readonly FontSubset[] = [
 
 /** A loaded UI font: the CSS `font-family` string a Pixi `TextStyle` draws with. */
 export interface UiFont {
-  /** The family stack: the bundled Tinos, when it loaded, ahead of the serif fallback. */
   readonly family: string;
 }
 
@@ -59,9 +53,8 @@ type FontRegistry = { add(font: FontFace): void };
 let uiFontOnce: Promise<UiFont> | null = null;
 
 /**
- * Register the bundled Tinos subsets as one browser font family and resolve once they are ready to raster.
- * Memoized. Never throws: an absent `FontFace` API or a failed subset degrades to the serif fallback
- * stack, so a `Text` always renders.
+ * Register the bundled Tinos subsets as one browser family and resolve once they are ready to raster.
+ * Memoized, and never throws: an absent `FontFace` API or a failed subset degrades to the serif fallback.
  */
 export function loadUiFont(): Promise<UiFont> {
   if (uiFontOnce !== null) return uiFontOnce;
@@ -87,7 +80,6 @@ export function loadUiFont(): Promise<UiFont> {
       );
       return { family: `${UI_FONT_FAMILY}, ${SERIF_FALLBACK}` };
     } catch {
-      // A missing/blocked woff2: keep the serif fallback so text stays legible (just not the exact face).
       return fallback;
     }
   })();

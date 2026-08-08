@@ -5,10 +5,10 @@ import { BRAND_BACKDROP } from './brand-art.js';
 
 /**
  * The boot progress card a playable entry shows while it assembles a world. Plain DOM, so it draws
- * before Pixi exists and while Pixi is busy. Each entry passes the steps it actually runs, in order.
+ * before Pixi exists and while Pixi is busy.
  */
 
-/** The ordered boot steps a playable entry can report. Each is one label and one step of the bar. */
+/** The ordered boot steps a playable entry can report; an entry passes the ones it actually runs. */
 export const BOOT_PHASES = [
   'graphics',
   'map',
@@ -31,14 +31,13 @@ export interface BootProgress {
 }
 
 /**
- * The share of an entry's boot that is done when `phase` starts. Approximation: steps are weighted
- * equally although their real costs differ, so the bar is a coarse position in the list rather than a
- * time estimate. A phase outside `phases` reads as 0, since a mislabelled bar must not break boot.
+ * The share of an entry's boot that is done when `phase` starts. Steps are weighted equally although
+ * their real costs differ, so the bar is a coarse position in the list rather than a time estimate. A
+ * phase outside `phases` reads as 0, since a mislabelled bar must not break boot.
  */
 export function bootFraction(phases: readonly BootPhase[], phase: BootPhase): number {
   const index = phases.indexOf(phase);
   if (index < 0) {
-    // Nothing breaks, but the bar rewinds to empty mid-boot, which is otherwise a silent mystery.
     diag.warn('boot', 'phase outside the entry step list', { phase, phases });
     return 0;
   }
@@ -53,8 +52,7 @@ const PAINT_TIMEOUT_MS = 250;
 /**
  * Resolve once the browser has painted what was just written, since a boot step's long synchronous
  * stretch would otherwise put its own label on screen only after finishing. Boot never depends on this
- * resolving: a hidden tab fires no rAF, so it skips the yield and a mid-yield hide falls through on the
- * timeout.
+ * resolving. A hidden tab fires no rAF, so it skips the yield.
  */
 function nextPaint(): Promise<void> {
   if (document.hidden) return Promise.resolve();
@@ -89,7 +87,6 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   const root = node('boot-card', node('boot-card__frame', node('boot-card__track', bar)), label);
   root.style.setProperty('--boot-backdrop', `url("${BRAND_BACKDROP}")`);
   root.style.setProperty('--boot-still', bootStillImage(lastShownStill()));
-  // The card says what is happening, which a screen reader must hear too.
   root.setAttribute('role', 'status');
   label.setAttribute('aria-live', 'polite');
   document.body.append(root);
@@ -98,12 +95,10 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
     async begin(phase: BootPhase): Promise<void> {
       label.textContent = messages().loading[phase];
       bar.style.width = `${bootFraction(phases, phase) * 100}%`;
-      // Rides the `boot` channel into the diagnostics bundle, so a slow load is readable there.
       diag.info('boot', 'phase', { phase });
       await nextPaint();
     },
     async finish(): Promise<void> {
-      // Pixi renders on rAF, so waiting a frame guarantees the world is drawn before the card comes off.
       await nextPaint();
       dismissBootProgress();
     },
