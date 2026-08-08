@@ -115,7 +115,7 @@ export function resolveCombatHit(
       });
     }
   }
-  // Computed before the drain so an overkill still counts as a damaging blow.
+  // A blow counts as damaging by its damage value, so an overkill still earns fight experience.
   const dealtDamage = damage > 0;
   const dealt = Math.max(0, damage); // a malformed negative hit must not heal the target
   // The carcass spawns only on the alive-to-dead transition, so a second blow landing this tick on an
