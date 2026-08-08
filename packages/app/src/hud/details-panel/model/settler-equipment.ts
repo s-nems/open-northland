@@ -70,9 +70,9 @@ function slotModel(ctx: UnitPanelModelContext, slot: RawEquipSlot): EquipSlotMod
  * The settler's equipment as labeled rows, combat gear first, from the sim `Equipment` component; a
  * settler without one shows every base slot empty.
  *
- * Which rows a trade offers follows the job, so changing profession swaps the arms rows for the tool row
- * and back: Broń/Zbroja are the original's soldier-only equip slots (`tribetypes` `allowequip`), and a
- * fighter keeps no tool. Two escapes keep worn gear reachable: a row the job would not offer still shows
+ * Which rows a trade offers follows the job: Broń/Zbroja are the original's soldier-only equip slots
+ * (`tribetypes` `allowequip`), and a fighter keeps no tool. Two escapes keep worn gear reachable: a row
+ * the job would not offer still shows
  * while something is worn in it, and an armed non-fighter keeps its arms rows.
  */
 export function equipmentRows(ctx: UnitPanelModelContext, comps: Comp): EquipRow[] {

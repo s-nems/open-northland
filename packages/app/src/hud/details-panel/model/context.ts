@@ -5,11 +5,6 @@ import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import { currentLocale, messages, professionLabel } from '../../../i18n/index.js';
 
-/**
- * The shared context both panel-model halves resolve names through, so a settler's profession label and
- * a building's worker-slot label always resolve identically.
- */
-
 export type BuildingDef = ContentSet['buildings'][number];
 export type GoodDef = ContentSet['goods'][number];
 export type JobDef = ContentSet['jobs'][number];
@@ -59,9 +54,8 @@ export function buildingDef(ctx: UnitPanelModelContext, typeId: number | undefin
   return ctx.buildings.find((b) => b.typeId === typeId);
 }
 
-/** A building def's recipes minus the slaughter production the sim drops at a livestock workplace
- *  (the `isLivestockWorkplace` seam mirrors the sim's recipe table, `core/content-index/production.ts`)
- *  - so no panel row shows a production bar that no cycle can ever move. */
+/** A building def's recipes minus the slaughter production the sim drops at a livestock workplace, so no
+ *  panel row shows a production bar that no cycle can ever move. */
 export function visibleRecipes(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
@@ -71,10 +65,9 @@ export function visibleRecipes(
   return recipes.filter((r) => r.inputs.length > 0);
 }
 
-/** A building def's production outputs: one line per per-product recipe (its first output), minus the
- *  internal fed-animal tokens (`isLivestockGood` - a chain's real products are its converter's wares),
- *  else a unit-amount entry per `produces` good, else empty - the one source the settler Praca product
- *  and the building Produkcja list must agree on. */
+/** A building def's production outputs: one line per per-product recipe (its first output) minus the
+ *  internal fed-animal tokens, else a unit-amount entry per `produces` good, else empty. The one source the
+ *  settler Praca product and the building Produkcja list must agree on. */
 export function recipeOutputs(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
@@ -89,8 +82,7 @@ export function recipeOutputs(
 export function buildingTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
   if (typeId === undefined) return messages().hud.build;
   const catalog = vikingBuildingByTypeId(typeId);
-  // The panel title reads the same localized name the build menu shows (catalog/building-i18n.ts -
-  // "Farma", "Chata"), falling back to the English catalog label for a building not yet localized.
+  // The same localized name the build menu shows, falling back to the English catalog label.
   if (catalog !== undefined) return localizedBuildingName(catalog.id, catalog.label, currentLocale());
   return buildingDef(ctx, typeId)?.id ?? `#${typeId}`;
 }
@@ -108,12 +100,10 @@ export function goodLabel(ctx: UnitPanelModelContext, goodType: number): string 
 
 /**
  * A job's display name - shared by a building's worker-slot rows and a settler's own profession title, so
- * the two never drift. The shared profession catalog + i18n names a known job (a gatherer → "Zbieracz
- * drewna", carrier → "Tragarz"); the life-stage roles (baby/child/woman/civilist - not picker
- * professions) resolve by their content job SLUG through `messages().lifeStage`; a trade the catalog
- * doesn't carry (a rebased building slot like "Cieśla"/"Druid" - a bound settler's `jobType` is that same
- * rebased id) falls back to its content job name, then to the localized idle label. `undefined` (an
- * unbound settler) resolves to the idle label.
+ * the two never drift. The life-stage roles (baby/child/woman/civilist, not picker professions) are keyed
+ * by the content job's string id through `messages().lifeStage`; a trade the catalog doesn't carry (a
+ * rebased building slot - a bound settler's `jobType` is that same rebased id) falls back to its content
+ * job name, then to the localized idle label.
  */
 export function jobDisplayName(ctx: UnitPanelModelContext, jobType: number | undefined): string {
   if (jobType === undefined) return jobLabel(undefined);

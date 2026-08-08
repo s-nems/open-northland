@@ -3,8 +3,6 @@ import { num, type SnapshotEntity } from '../../../game/snapshot.js';
 import { goodCategoryTab } from '../../good-categories.js';
 import { type BuildingDef, goodDef, goodLabel, type UnitPanelModelContext } from './context.js';
 
-// The building's goods model: the Magazyn stock rows plus the construction and upgrade material bills.
-
 export interface StockRow {
   readonly goodType: number;
   /** The good's string id (stable across content sets) - the key the HUD resolves its icon by. */
@@ -71,12 +69,11 @@ function bonusFractions(productionBonus: unknown): Map<number, number> {
 }
 
 /**
- * The Magazyn rows: every good the building can store (its `def.stock` slots) with its current amount,
- * 0 when empty, matching the original window, which lists a store's accepted goods rather than whatever
- * it happens to hold; held goods outside the declared slots never show. Rows keep the declared slot
- * order so a compact store's rows never swap places mid-work, and only the big tabbed store re-sorts,
- * at draw time. Each row's `category` is the tab the render filters by, from a named approximation of
- * the good→category mapping rather than from extracted data.
+ * The Magazyn rows: every good the building can store (its `def.stock` slots) with its current amount, 0
+ * when empty, matching the original window, which lists a store's accepted goods rather than whatever it
+ * happens to hold. Rows keep the declared slot order so a compact store's rows never swap places mid-work.
+ * Each row's `category` is the tab the render filters by, from a named approximation of the good→category
+ * mapping rather than from extracted data.
  */
 export function stockRows(
   ctx: UnitPanelModelContext,
@@ -151,10 +148,7 @@ export function constructionModel(
   return { rows };
 }
 
-/**
- * The Upgrade button's pre-commit cost rows: the same level-difference bill a running upgrade shows.
- * Empty when the type has no upgrade target or the target declares no build cost.
- */
+/** The Upgrade button's pre-commit cost rows: the same level-difference bill a running upgrade shows. */
 export function upgradeCostRows(ctx: UnitPanelModelContext, def: BuildingDef | undefined): UpgradeCostRow[] {
   return upgradeTargetBill(ctx, def).map((line) => ({
     goodType: line.goodType,

@@ -16,12 +16,9 @@ import type { UnlockProgressRowModel } from './settler-unlocks.js';
 import type { SettlerWorkModel } from './settler-work.js';
 
 /**
- * The settler's personal-state half of the details-panel model: satisfaction bars, experience rows,
- * equipment rows and the live status caption.
- *
  * The original has no string for the sim's own states (stance names, status lines, need names), so those
- * carry pinned Polish labels here; everything it does provide is looked up from the decoded string
- * tables at render time.
+ * carry pinned Polish labels here; everything it does provide is looked up from the decoded string tables
+ * at render time.
  */
 
 /** The four military stances (`MILITARY_MODE`), with Polish labels for the live "Postawa" line. */
@@ -52,8 +49,7 @@ export interface SettlerPanelModel {
   /** A short live-state caption drawn in the portrait box, standing in for the original's animated
    *  "what it's doing" preview. */
   readonly statusCaption: string;
-  /** The Ogólne stat bars: Zdrowie (only for a unit with Health) then Głód/Sen/Towarzystwo/Religia,
-   *  all as satisfaction levels. */
+  /** The Ogólne stat bars: Zdrowie (only for a unit with Health) then Głód/Sen/Towarzystwo/Religia. */
   readonly bars: readonly PanelBar[];
   readonly work: SettlerWorkModel;
   /** Every specialization the settler has trained, most-trained first; empty when it has none. */
@@ -100,7 +96,6 @@ export interface ExperienceRowModel {
   readonly bonusPct: number | null;
 }
 
-/** The fight-XP buckets' i18n keys - `systems.FIGHT_EXPERIENCE_TYPE` id → `hud.weaponXp` label key. */
 const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud']['weaponXp']> = new Map([
   [systems.FIGHT_EXPERIENCE_TYPE.FIST, 'fist'],
   [systems.FIGHT_EXPERIENCE_TYPE.SPEAR, 'spear'],
@@ -131,9 +126,9 @@ export function experienceLabel(
 }
 
 /**
- * A specialization row's percent is the actual effect of that experience, never a raw curve read: a
- * fight bucket shows its damage scale, the scout bucket its vision gain over the scout's base radius,
- * a carrier track none, and every other work track the shared output/speed curve.
+ * A specialization row's percent is the actual effect of that experience, never a raw curve read: the
+ * scout bucket shows its vision gain over the scout's base radius, a carrier track none, and every other
+ * work track the shared output/speed curve.
  */
 function experienceBonusPct(
   ctx: UnitPanelModelContext,
@@ -183,8 +178,8 @@ export function settlerStatus(snapshot: WorldSnapshot, components: Comp): string
   if ('PlayerOrder' in components) return statuses.ordered;
   if ('CurrentAtomic' in components) return statuses.working;
   if ('PathFollow' in components || 'MoveGoal' in components) return statuses.walking;
-  // A settler posted to a site still going up waits there by design; without its own caption that
-  // deliberate wait reads as plain idleness.
+  // A settler posted to a site still going up waits there by design, which without its own caption reads
+  // as plain idleness.
   if (awaitsItsWorkplace(snapshot, components)) return statuses.awaitingWorkplace;
   return statuses.idle;
 }
