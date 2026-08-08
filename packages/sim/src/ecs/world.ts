@@ -259,6 +259,20 @@ export class World {
     });
   }
 
+  /** The id the next {@link create} takes; with the alive set this is the complete allocation state. */
+  get nextEntityId(): number {
+    return this.nextId;
+  }
+
+  /** Visit every component store in first-registration order, entries in per-store insertion order
+   *  (the query iteration contract). Values are live; a persisting visitor must clone them. */
+  forEachStore(visit: (name: string, entries: IterableIterator<[Entity, unknown]>) => void): void {
+    for (const c of this.registered) {
+      const store = this.stores.get(c);
+      if (store !== undefined) visit(c.name, store.entries());
+    }
+  }
+
   /** Visit an entity's components in registration order and O(carried components), without allocating.
    *  The revision changes only when this stored value is added or acquired through {@link mut}. */
   forEachComponent(entity: Entity, visit: (name: string, value: unknown, revision: number) => void): void {

@@ -1,5 +1,5 @@
 import type { SimEvent } from '../core/events.js';
-import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
+import { isPlainRecord, sortedMapEntries, valueShapeName } from '../core/plain-value.js';
 import type { Entity, World } from '../ecs/world.js';
 
 /**
@@ -151,8 +151,7 @@ function clonePlain(value: unknown): unknown {
   if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value !== 'object') throw uncloneable(value); // bigint, symbol, function
   if (value instanceof Map) {
-    const entries = [...value.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
-    return entries.map(([k, v]) => [clonePlain(k), clonePlain(v)]);
+    return sortedMapEntries(value).map(([k, v]) => [clonePlain(k), clonePlain(v)]);
   }
   if (Array.isArray(value)) return value.map((e) => clonePlain(e));
   if (!isPlainRecord(value)) throw uncloneable(value);

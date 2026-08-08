@@ -134,3 +134,30 @@ For a schema or pipeline change:
 
 Generated output stays local. Commit schemas, decoder code, synthetic fixtures, and concise format
 notes only.
+
+## Save files
+
+A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
+(`packages/sim/src/save/`). It is a distinct format: not content JSON, not the render-facing
+`WorldSnapshot`, and not a replay log.
+
+```json
+{ "header": { "...": "..." }, "sections": [] }
+```
+
+- `header` holds `{kind, formatVersion, irVersion, contentRevision, mapId, mapFingerprint, seed,
+  tick}` and is the document's first key, so a reader classifies compatibility without touching
+  sections. A later format may compress the sections but never the header.
+- `sections` is an array with append-only string identifiers, never reused: `entities` (the
+  allocation counter plus the alive list), one `component` section per store in first-registration
+  order with entries in per-store insertion order (both orders are behavior contracts), `rng` (the
+  whole mulberry32 state), `fog` (per-player masks ascending by player, one visibility digit per
+  cell, plus the rebuild-cadence fields), and `commands` (pending envelopes plus the next sequence
+  number). The applied command log is replay history and stays out.
+- The encoding is canonical: object keys keep construction order, `Map` component fields become
+  key-sorted entry arrays, `Fixed` values are plain integers, and export throws (naming the
+  component) on any shape JSON would corrupt, such as `undefined`, a non-finite number, or a class
+  instance. The same state always serializes byte-identically, and parse plus re-serialize
+  round-trips the bytes.
+
+`SAVE_FORMAT_VERSION` is a single monotonic integer; any layout change bumps it.

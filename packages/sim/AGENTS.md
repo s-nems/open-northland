@@ -76,6 +76,7 @@ The hygiene suite enforces the import and nondeterminism boundary. Normal change
 - `systems/`: behavior grouped by domain, plus the schedule
 - `nav/`: half-cell conversion, terrain graphs, and routing
 - `replay/`: command replay and divergence tools
+- `save/`: the persisted SaveGame format
 - `inspect/`: snapshots, hashes, and state diagnostics
 - `harness/`: scenarios, population helpers, and invariants
 
