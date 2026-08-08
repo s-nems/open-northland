@@ -172,3 +172,46 @@ export function setDiplomacyStance(world: World, from: number, to: number, state
     world.mut(rules, DiplomacyRules).stances.set(stanceKey(from, to), state);
   }
 }
+
+/**
+ * The first-contact singleton - which players each player has ever seen an entity of. The vision
+ * system records a contact when an owned entity stands in a cell the viewer's fog reads VISIBLE, and
+ * a contact never expires: a nation once met stays known even after fog resets. Absent until the
+ * first contact under fog, so a fog-off world's hash stays untouched. Approximation: the maps'
+ * `noseenfirstmessage` rows prove the original tracks first sighting per pair, but its exact trigger
+ * is unobserved.
+ */
+export const PlayerContacts = defineComponent<{
+  /** viewer player → bitmask of player slots seen (fits one integer: slots are < {@link MAX_PLAYERS}). */
+  met: Map<number, number>;
+}>('PlayerContacts');
+
+/** The contacts singleton's entity, or null when no contact was ever recorded. */
+export function playerContactsEntity(world: World): Entity | null {
+  return singletonCarrier(world, PlayerContacts);
+}
+
+/** Whether `viewer` ever saw an entity of `other` - the raw table, with no fog-mode rule applied. A
+ *  player never holds a contact with itself, and an invalid slot reads false. */
+export function hasMetContact(world: World, viewer: number, other: number): boolean {
+  if (!isValidPlayer(viewer) || !isValidPlayer(other)) return false;
+  const e = playerContactsEntity(world);
+  if (e === null) return false;
+  const bits = world.get(e, PlayerContacts).met.get(viewer) ?? 0;
+  return (bits & (1 << other)) !== 0;
+}
+
+/** Record that `viewer` saw an entity of `other`. A self-contact or an invalid slot is skipped. */
+export function recordContact(world: World, viewer: number, other: number): void {
+  if (viewer === other || !isValidPlayer(viewer) || !isValidPlayer(other)) return;
+  const e = playerContactsEntity(world);
+  if (e === null) {
+    world.add(world.create(), PlayerContacts, { met: new Map([[viewer, 1 << other]]) });
+    return;
+  }
+  // Re-recording a held contact is a no-op, kept off the mut path so it never dirties the snapshot.
+  const bits = world.get(e, PlayerContacts).met.get(viewer) ?? 0;
+  const withOther = bits | (1 << other);
+  if (withOther === bits) return;
+  world.mut(e, PlayerContacts).met.set(viewer, withOther);
+}

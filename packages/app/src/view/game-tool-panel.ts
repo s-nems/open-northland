@@ -6,6 +6,7 @@ import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
+import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
@@ -43,6 +44,8 @@ export interface GameToolPanelDeps {
   readonly owner: number;
   readonly grants: ExtrasGrantsSeam;
   readonly counters: ExtrasCountersSeam;
+  /** The diplomacy window's roster: one row per discovered player. */
+  readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** UI string language (`pol`/`eng`); defaults to the active locale. */
   readonly lang?: string;
   readonly bindings: KeyBindings;
@@ -138,6 +141,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     enqueueAdmin: deps.enqueueAdmin,
     grants: deps.grants,
     counters: deps.counters,
+    diplomacyRows: deps.diplomacyRows,
     screenToTile: clientToTile,
     canPlaceAt: deps.canPlaceAt,
     onSpeedChange: deps.onSpeed,

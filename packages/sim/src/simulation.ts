@@ -34,7 +34,7 @@ import {
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
-import { FogState } from './systems/vision/index.js';
+import { FogState, playerHasMet } from './systems/vision/index.js';
 
 export type { FogView } from './simulation/read-seams.js';
 
@@ -251,6 +251,12 @@ export class Simulation {
    *  command sets; a pair never set reads `enemy`. */
   diplomacyStance(from: number, to: number): DiplomacyState {
     return diplomacyStance(this.world, from, to);
+  }
+
+  /** Whether `viewer` has discovered `other`: true with fog off or absent (everything is in plain
+   *  sight), else the vision system's recorded first contacts decide. */
+  hasMetPlayer(viewer: number, other: number): boolean {
+    return playerHasMet(this.world, this.fog, viewer, other);
   }
 
   /**

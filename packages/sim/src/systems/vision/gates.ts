@@ -1,4 +1,4 @@
-import { FOG_MODE, Position } from '../../components/index.js';
+import { FOG_MODE, hasMetContact, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import { FOG_STATE, type FogState } from './state.js';
@@ -34,6 +34,23 @@ function playerSeesNode(fog: FogState | undefined, player: number, hx: number, h
   if (fog === undefined || fog.activeMode === FOG_MODE.OFF) return true;
   const { cx, cy } = cellOfNode(hx, hy);
   return fog.stateAt(player, cx, cy) === FOG_STATE.VISIBLE;
+}
+
+/**
+ * Whether `viewer` has discovered `other` - the first-contact gate the diplomacy roster reads. With fog
+ * off or absent everything is in plain sight, so every player reads discovered, mirroring
+ * {@link playerSeesEntity}; under fog the vision system's recorded contacts decide. A player always
+ * knows itself.
+ */
+export function playerHasMet(
+  world: World,
+  fog: FogState | undefined,
+  viewer: number,
+  other: number,
+): boolean {
+  if (viewer === other) return true;
+  if (fog === undefined || fog.activeMode === FOG_MODE.OFF) return true;
+  return hasMetContact(world, viewer, other);
 }
 
 /**

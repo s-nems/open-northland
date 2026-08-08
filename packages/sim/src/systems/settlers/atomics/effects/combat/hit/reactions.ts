@@ -1,9 +1,11 @@
 import {
   Anger,
   diplomacyStance,
+  FOG_MODE,
   Owner,
-  setDiplomacyStance,
+  recordContact,
   Settler,
+  setDiplomacyStance,
 } from '../../../../../../components/index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../../context.js';
@@ -36,11 +38,17 @@ export function provokeAnger(world: World, ctx: SystemContext, target: Entity): 
  * original behavior). The already-`enemy` guard keeps a default-hostile world from ever growing the
  * `DiplomacyRules` singleton, so pre-diplomacy hashes stay put.
  */
-export function provokeHostility(world: World, attacker: Entity, target: Entity): void {
+export function provokeHostility(world: World, ctx: SystemContext, attacker: Entity, target: Entity): void {
   const attackerOwner = world.tryGet(attacker, Owner);
   const targetOwner = world.tryGet(target, Owner);
   if (attackerOwner === undefined || targetOwner === undefined) return;
   if (attackerOwner.player === targetOwner.player) return;
+  // A blow also teaches the victim who struck it, even from beyond every eye (a standoff archer), so
+  // the diplomacy roster cannot show nobody while units die. Approximation: the original's first-
+  // contact trigger is unobserved. Fog-off worlds skip the write - discovery already reads true there.
+  if (ctx.fog !== undefined && ctx.fog.activeMode !== FOG_MODE.OFF) {
+    recordContact(world, targetOwner.player, attackerOwner.player);
+  }
   if (diplomacyStance(world, targetOwner.player, attackerOwner.player) === 'enemy') return;
   setDiplomacyStance(world, targetOwner.player, attackerOwner.player, 'enemy');
 }

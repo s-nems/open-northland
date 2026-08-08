@@ -9,6 +9,7 @@ import { childrenScene } from './children.js';
 import { collisionScene } from './collision.js';
 import { constructionScene } from './construction.js';
 import { deathLootScene } from './death-loot.js';
+import { diplomacyScene } from './diplomacy.js';
 import { equipmentScene } from './equipment.js';
 import { equipmentEffectsScene } from './equipment-effects.js';
 import { familyScene } from './family.js';
@@ -38,6 +39,7 @@ export const SCENES: readonly SceneDefinition[] = [
   siegeScene,
   towerDefenceScene,
   attackMoveScene,
+  diplomacyScene,
   goodsCatalogScene,
   berriesScene,
   chainScene,

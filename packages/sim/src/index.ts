@@ -1,6 +1,7 @@
 export * as components from './components/index.js';
-// Fog-of-war mode ids, flattened to the package root for render and app consumers.
-export { FOG_MODE, type FogMode } from './components/rules.js';
+// Fog-of-war mode ids and the diplomacy stance union, flattened to the package root for render and
+// app consumers.
+export { type DiplomacyState, FOG_MODE, type FogMode } from './components/rules.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
 export type { LoggedCommand } from './core/command-queue.js';

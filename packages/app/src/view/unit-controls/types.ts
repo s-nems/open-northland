@@ -26,6 +26,8 @@ export interface UnitControlsOptions {
   /** In an observer session every player's entities are pickable as if owned and no unit reads as an
    *  enemy. Default false. */
   readonly observer?: boolean;
+  /** Whether the human seat holds an `enemy` stance toward `owner`; gates the right-click attack set. */
+  readonly hostileToward: (owner: number) => boolean;
   readonly lang: string;
   readonly bindings: KeyBindings;
   readonly professions: readonly PickerEntry[];

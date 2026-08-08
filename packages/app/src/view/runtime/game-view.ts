@@ -21,6 +21,7 @@ import { pickerEntries } from '../../catalog/professions.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
+import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import { buildToolPanelLayout } from '../../hud/tool-panel/layout.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
@@ -37,7 +38,7 @@ import {
 import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import { createFogGates } from '../projections/index.js';
+import { createFogGates, diplomacyPanelRows } from '../projections/index.js';
 import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
@@ -81,6 +82,8 @@ export interface GameViewDeps {
   readonly playerColourOf?: (player: number) => number;
   /** Owner slot to the roster's authored seat name, which the stats header prefers over the slot id. */
   readonly seatNameOf?: (player: number) => string | undefined;
+  /** The map roster's player slots; the diplomacy window lists the discovered ones. Default empty. */
+  readonly rosterPlayers?: readonly number[];
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /** Sim events from the frame's step(s), delivered before the renderer draws. Skipped on frames that did not step. */
@@ -158,6 +161,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     sim.enqueue(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
   };
 
+  const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
+    diplomacyPanelRows(sim, {
+      localPlayer,
+      rosterPlayers: deps.rosterPlayers ?? [],
+      observer: deps.observer === true,
+      ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+      ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+    });
+
   const toolPanel = await mountGameToolPanel({
     app,
     canvas,
@@ -169,6 +181,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     },
     grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
     counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
+    diplomacyRows,
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
@@ -232,6 +245,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     humanPlayer: localPlayer,
     observer: deps.observer === true,
+    hostileToward: (owner) => sim.diplomacyStance(localPlayer, owner) === 'enemy',
     lang,
     bindings: keyBindings,
     professions: pickerEntries(),

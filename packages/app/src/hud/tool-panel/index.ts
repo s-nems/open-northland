@@ -10,6 +10,7 @@ import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
+import type { DiplomacyPanelRow } from './diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
@@ -48,6 +49,8 @@ export interface ToolPanelOptions {
   readonly grants: ExtrasGrantsSeam;
   /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
   readonly counters: ExtrasCountersSeam;
+  /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
+  readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
@@ -188,6 +191,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     goods: opts.goods,
     grants: opts.grants,
     counters: opts.counters,
+    diplomacyRows: opts.diplomacyRows,
     onPickBuilding: (typeId) => placement.enter(typeId),
     onPickGood: (goodType) => goodsDrop.enter(goodType),
   });
