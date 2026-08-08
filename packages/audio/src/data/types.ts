@@ -41,8 +41,9 @@ export interface AudioFrame {
 /**
  * How a single sim event maps to a sound. A `spatial` binding names a {@link SoundBank} static group
  * that plays positioned at the event's world location (viewport-culled + attenuated + panned). A
- * `jingle` binding names a `MusicType` that plays non-spatially as a life-event stinger (full gain,
- * centred) - UI feedback, not world sound.
+ * `jingle` binding names a `MusicType` that plays as a life-event stinger (full gain, centred);
+ * `screenGated` anchors the stinger to the event's world position so it rings only from the visible
+ * screen.
  */
 export type EventSound =
   | { readonly kind: 'spatial'; readonly group: string }
@@ -50,11 +51,20 @@ export type EventSound =
       readonly kind: 'jingle';
       readonly musicType: number;
       /**
-       * When set, the jingle plays only for a death of the local player's own unit - a notification, not
-       * a world sound; a non-local or unowned (`null`) death is silent. Absent/false → it always plays (a
-       * birth).
+       * When set, the jingle rings only for the local player's own event, decided by the event's
+       * `player` field; a `screenGated` jingle whose event carries none falls back to the emitter
+       * entity's snapshot `Owner`. An unowned or undeterminable owner is silent - the safe default
+       * for a notification sound.
        */
       readonly localPlayerOnly?: boolean;
+      /**
+       * When set, the jingle rings only while the event's position (`at` node or emitter entity) is
+       * inside the viewport plus the spatial cull margin; it keeps full gain and centre - the gate
+       * decides audibility, not attenuation. An event whose position cannot be located stays silent.
+       * Approximation: the original ships no audibility data (`soundfx.cif` has no range keys), so
+       * screen-locality is a choice, not extracted behaviour.
+       */
+      readonly screenGated?: boolean;
     };
 
 /**
@@ -103,8 +113,8 @@ export interface DirectorInput {
   readonly bindings: SoundBindings;
   /**
    * The player slot whose life-events are "ours" - gates an {@link EventSound.localPlayerOnly} jingle
-   * (the death stinger) to this player's own deaths. Omit → such a jingle never plays; a plain jingle (a
-   * birth) is unaffected.
+   * to this player's own events. Omit → such a jingle never plays; a jingle without the flag is
+   * unaffected.
    */
   readonly localPlayer?: number;
   /** The viewer's fog-of-war visibility at a fractional tile - gates a `chatVoice` (a settler hidden by

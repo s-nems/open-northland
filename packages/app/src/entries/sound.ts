@@ -31,8 +31,10 @@ export interface ActionRow {
   readonly trigger: string;
   /** The bound sound's handle (the `SoundFXStatic` group name, or the jingle name). */
   readonly sound: string;
-  /** Spatial (positioned in the world) vs jingle (non-spatial life-event stinger). */
+  /** Spatial (positioned in the world) vs jingle (life-event stinger). */
   readonly kind: EventSound['kind'];
+  /** Whether a jingle rings only while its event's position is on screen; always false for spatial. */
+  readonly screenGated: boolean;
   readonly clips: readonly string[];
 }
 
@@ -80,15 +82,21 @@ function groupClips(sounds: SoundBank, name: string): readonly string[] {
 function resolveSound(
   sound: EventSound | undefined,
   sounds: SoundBank,
-): { readonly sound: string; readonly kind: EventSound['kind']; readonly clips: readonly string[] } | null {
+): Pick<ActionRow, 'sound' | 'kind' | 'screenGated' | 'clips'> | null {
   if (sound === undefined) return null;
   if (sound.kind === 'spatial') {
-    return { sound: sound.group, kind: 'spatial', clips: groupClips(sounds, sound.group) };
+    return {
+      sound: sound.group,
+      kind: 'spatial',
+      screenGated: false,
+      clips: groupClips(sounds, sound.group),
+    };
   }
   const j = sounds.jingles.find((x) => x.musicType === sound.musicType);
   return {
     sound: j?.name && j.name.length > 0 ? j.name : `MusicType ${sound.musicType}`,
     kind: 'jingle',
+    screenGated: sound.screenGated === true,
     clips: j?.sfx.map((s) => s.file) ?? [],
   };
 }
@@ -213,7 +221,11 @@ function actionRow(a: ActionRow): HTMLElement {
   const head = el('div', 'display:flex;align-items:baseline;gap:8px;flex-wrap:wrap');
   head.append(el('span', 'font-weight:700', a.label));
   const badge =
-    a.kind === 'jingle' ? messages().soundGallery.nonPositional : messages().soundGallery.positional;
+    a.kind === 'spatial'
+      ? messages().soundGallery.positional
+      : a.screenGated
+        ? messages().soundGallery.screenGatedJingle
+        : messages().soundGallery.nonPositional;
   head.append(el('span', 'opacity:0.6;font-size:12px', `→ ${a.sound}  ·  ${badge}`));
   row.append(head);
   row.append(el('div', 'opacity:0.7;font-size:12px;margin-top:2px', a.trigger));

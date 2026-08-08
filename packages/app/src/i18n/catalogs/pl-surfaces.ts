@@ -282,15 +282,19 @@ export const plSurfaces = {
     ambient: 'Odgłosy terenu',
     positional: 'dźwięk pozycyjny',
     nonPositional: 'dżingiel bez pozycji',
+    screenGatedJingle: 'dżingiel, tylko na ekranie',
     children: 'Dzieci',
     actionsCatalog: {
       chop: { label: 'Rąbanie drzewa', trigger: 'każde uderzenie siekierą w drzewo' },
       buildingPlaced: { label: 'Postawienie budynku', trigger: 'gdy gracz stawia nowy budynek' },
       boatPlaced: { label: 'Zwodowanie łodzi', trigger: 'gdy powstaje łódź' },
       goodProduced: { label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
-      buildingFinished: { label: 'Ukończenie budowy', trigger: 'gdy budynek zostaje dokończony' },
-      settlerBorn: { label: 'Narodziny', trigger: 'gdy rodzi się osadnik' },
-      settlerDied: { label: 'Śmierć', trigger: 'gdy osadnik ginie' },
+      buildingFinished: {
+        label: 'Ukończenie budowy',
+        trigger: 'gdy twój budynek zostaje dokończony na ekranie',
+      },
+      settlerBorn: { label: 'Narodziny', trigger: 'gdy twój osadnik rodzi się na ekranie' },
+      settlerDied: { label: 'Śmierć', trigger: 'gdy twój osadnik ginie na ekranie' },
     },
     voicesCatalog: {
       male: 'Mężczyźni',

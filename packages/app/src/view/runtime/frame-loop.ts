@@ -212,7 +212,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         canvasW: app.screen.width,
         canvasH: app.screen.height,
         terrain: deps.terrainGrid,
-        localPlayer, // the death stinger rings only for our own units, not enemies or wildlife
+        localPlayer, // life-event jingles ring only for our own entities, not enemies or wildlife
         // Chat voices locate their emitter off the snapshot, not off events, so they need their own
         // fog gate: a hidden enemy must not natter from empty black.
         visibleTile: fogGates.visibleTile,

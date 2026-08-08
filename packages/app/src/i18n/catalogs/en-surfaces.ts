@@ -283,15 +283,19 @@ export const enSurfaces = {
     ambient: 'Terrain ambience',
     positional: 'positional sound',
     nonPositional: 'non-positional jingle',
+    screenGatedJingle: 'jingle, on-screen only',
     children: 'Children',
     actionsCatalog: {
       chop: { label: 'Chop tree', trigger: 'each axe strike on a tree' },
       buildingPlaced: { label: 'Place building', trigger: 'when a player places a new building' },
       boatPlaced: { label: 'Launch boat', trigger: 'when a boat is created' },
       goodProduced: { label: 'Produce good', trigger: 'when a workshop completes a good' },
-      buildingFinished: { label: 'Finish construction', trigger: 'when a building is completed' },
-      settlerBorn: { label: 'Birth', trigger: 'when a settler is born' },
-      settlerDied: { label: 'Death', trigger: 'when a settler dies' },
+      buildingFinished: {
+        label: 'Finish construction',
+        trigger: 'when your building is completed on screen',
+      },
+      settlerBorn: { label: 'Birth', trigger: 'when your settler is born on screen' },
+      settlerDied: { label: 'Death', trigger: 'when your settler dies on screen' },
     },
     voicesCatalog: {
       male: 'Men',
