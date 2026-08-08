@@ -32,8 +32,6 @@ interface PlaceBuildingFields {
   readonly x: number;
   readonly y: number;
   readonly tribe: number;
-  /** Start the building at `built = 0` (under construction) rather than already built. Omit (the default)
-   *  for an immediately-built placement. */
   readonly underConstruction?: boolean;
   /** The player that owns this building (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). An explicit
    *  out-of-range value rejects the command; omit it for a neutral building, or in a seat envelope to
@@ -44,16 +42,15 @@ interface PlaceBuildingFields {
 /** The `placeBuilding` options only trusted authored setup may set. */
 interface AuthoredPlaceBuildingFields {
   /** Skip the tech + ground-collision gates and place as-is, for map-authored imports (a decoded map's
-   *  `sethouse` records) and pinned demo fixtures: the original loads a map's houses verbatim, never
-   *  re-validating them against the interactive placement rule. */
+   *  `sethouse` records): the original loads a map's houses verbatim, never re-validating them against
+   *  the interactive placement rule. */
   readonly force?: boolean;
-  /** Seed every stock slot of a fully-built placement to its capacity, for authored fixtures like a
-   *  scene's pre-stocked warehouse. Ignored for an `underConstruction` site, whose hold accumulates
-   *  delivered materials instead. */
+  /** Seed every stock slot of a fully-built placement to its capacity. Ignored for an `underConstruction`
+   *  site, whose hold accumulates delivered materials instead. */
   readonly fillStock?: boolean;
-  /** Authored starting stock (a decoded map's `addgoods` runs after this house's `sethouse`): each
-   *  entry adds `amount` × `good` on top of whatever the default/`fillStock` seeding put in the
-   *  stockpile. Ignored for an `underConstruction` site, like `fillStock`. */
+  /** Authored starting stock (a decoded map's `addgoods`): each entry adds `amount` × `good` on top of
+   *  whatever the default/`fillStock` seeding put in the stockpile. Ignored for an `underConstruction`
+   *  site, like `fillStock`. */
   readonly initialGoods?: readonly { readonly good: number; readonly amount: number }[];
 }
 
@@ -83,8 +80,8 @@ export interface PlaceBoatCommand {
 
 /**
  * Place a resource node of `good` at (x,y) through the one mutation seam, so a node dropped while the
- * sim runs stays replay-faithful (the direct-`world` setup path is only sound before tick 0). The
- * footprint is stamped from `good`'s content record; a `good` with none is skipped.
+ * sim runs stays replay-faithful. The footprint is stamped from `good`'s content record; a `good` with
+ * none is skipped.
  */
 export interface PlaceResourceCommand {
   readonly kind: 'placeResource';
@@ -105,9 +102,8 @@ export interface PlaceResourceCommand {
 
 /**
  * Drop a loose pile of `amount` × `good` on the ground at (x,y), in the same shape a felled trunk
- * takes, so the existing pickup and delivery machinery hauls it off unchanged. Unlike `placeResource`
- * this drops the finished good rather than planting a harvestable node. Skipped for a `good` absent
- * from the content catalog or an `amount <= 0`.
+ * takes, so the existing pickup and delivery machinery hauls it off unchanged. Skipped for a `good`
+ * absent from the content catalog or an `amount <= 0`.
  */
 export interface DropGoodCommand {
   readonly kind: 'dropGood';
@@ -118,12 +114,10 @@ export interface DropGoodCommand {
 }
 
 /**
- * Begin upgrading a built building into its type's `upgradeTarget` level. The building re-opens as a
- * construction site at the target tier's own `construction` cost: `built` drops to 0, occupants walk
- * out keeping their job/residence bindings, and its inventory is stashed so the emptied stockpile can
- * serve as the build hold. Completion adopts the target tier and restores the stash. Skipped for a
- * target that is dead, not a building, still unbuilt, already a site, of a top-level or unchained type,
- * or not tech-unlocked by the tribe.
+ * Begin upgrading a built building into its type's `upgradeTarget` level: it re-opens as a construction
+ * site at the target tier's own `construction` cost, keeping its occupants' job and residence bindings,
+ * and completion adopts that tier. Skipped for a target that is dead, not a building, still unbuilt,
+ * already a site, of a top-level or unchained type, or not tech-unlocked by the tribe.
  */
 export interface UpgradeBuildingCommand {
   readonly kind: 'upgradeBuilding';

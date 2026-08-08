@@ -1,8 +1,7 @@
 /**
  * One equipped item in a {@link spawnSettler} `equipment` payload. `goodType` is the equip good's
  * `typeId`; `degreeOfUsePct` is the item's used-up fraction as a whole percent `0..100`, omitted for a
- * fresh item and meaningful only for a wearing good. The wire form carries no branded `Fixed`, so the
- * handler converts the percent into the `Equipment` component's `degreeOfUse`.
+ * fresh item and meaningful only for a wearing good.
  */
 export interface SettlerEquipmentSlot {
   readonly goodType: number;
@@ -29,8 +28,8 @@ export type SpawnCommand =
        * Spawn one {@link Settler} of `jobType` for `tribe` at (x,y). Every settler, civilians included,
        * is stamped a {@link Health} pool: a positive `hitpoints` sets its size, otherwise it is the
        * tribe's adult pool, or `DEFAULT_SETTLER_HITPOINTS` when the job's slug is a baby/child stage.
-       * Approximation: only `animaltypes.ini` carries readable hitpoints, so a human's pool sits below
-       * the readable data (source basis "Combat hit resolution").
+       * Approximation: human hitpoints are not in the readable data (source basis "Combat hit
+       * resolution"), so every pool a human carries is authored.
        */
       readonly kind: 'spawnSettler';
       readonly jobType: number;
@@ -38,7 +37,7 @@ export type SpawnCommand =
       readonly y: number;
       readonly tribe: number;
       /** The settler's max hitpoint pool. Omit (or a non-positive value) for the stage-appropriate pool
-       *  above - every settler carries `Health`. */
+       *  above. */
       readonly hitpoints?: number;
       /** A combatant's worn armor class (a `[armortype]` tier 1..4; stamps an `Armor` component), which
        *  selects the damage column an incoming hit reads. Omit (or a non-positive value) for an
@@ -48,10 +47,8 @@ export type SpawnCommand =
        *  vs the settler's own tribe). Omit (or a non-positive value) to fight with the class's default
        *  `(tribe, jobType)` weapon. */
       readonly weaponTypeId?: number;
-      /**
-       * The settler's worn equipment, stamping an `Equipment` component. This inventory/display axis is
-       * independent of the combat `weaponTypeId`/`armorClass` above; a unit that both fights and
-       * displays gear sets both. Omit and the settler carries none. */
+      /** The settler's worn equipment (stamps an `Equipment` component), an inventory/display axis
+       *  independent of the combat `weaponTypeId`/`armorClass` above. Omit and the settler carries none. */
       readonly equipment?: SettlerEquipment;
       /**
        * The settler's walk pace as ticks to cross one tile (the animal `movespeed` semantics: a
@@ -74,9 +71,8 @@ export type SpawnCommand =
   | {
       /**
        * Spawn a herd of an animal tribe around a birth point: `maximumgroupsize` creatures of `tribe`
-       * scattered within `maximumdistancetobirthpoint` of (x,y), each a {@link Settler} carrying a
-       * {@link Health} pool from `hitpoints_adult`, with a designated leader when the animal's
-       * `searchforleader` is set. A `tribe` with no `animaltypes` record is skipped.
+       * scattered within `maximumdistancetobirthpoint` of (x,y). A `tribe` with no `animaltypes` record
+       * is skipped.
        */
       readonly kind: 'spawnAnimalHerd';
       readonly tribe: number;

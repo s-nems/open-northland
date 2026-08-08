@@ -16,8 +16,7 @@ export type CommandEnvelope = SeatEnvelope | TrustedEnvelope;
 
 /**
  * An envelope acting for one player: `player` is a human seat and `ai` a machine seat, and both reach
- * only that player's assets. It can only hold a {@link PlayerCommand}, so a forced placement or a
- * global rule change is unrepresentable in one.
+ * only that player's assets.
  */
 export type SeatEnvelope =
   | {
@@ -30,8 +29,7 @@ export type SeatEnvelope =
 
 /**
  * An envelope from a producer the sim trusts with any command: `setup` is authored pre-run assembly
- * (scenes, decoded map imports, fixtures) and `admin` the rules, debug, and overseer channel. Both may
- * edit the world, set global rules, and create intentionally neutral entities.
+ * (scenes, decoded map imports, fixtures) and `admin` the rules, debug, and overseer channel.
  */
 export type TrustedEnvelope =
   | { readonly v: Version; readonly origin: 'setup'; readonly command: Command }
@@ -56,9 +54,8 @@ export function adminCommand(command: Command): CommandEnvelope {
 }
 
 /**
- * Which origins may issue each command kind, mirroring the {@link PlayerCommand} type so the import
- * validator enforces at runtime what the types enforce at compile time. The mapped value is derived
- * from that type, so a kind moving between the two sides fails to compile until this table follows.
+ * Which origins may issue each command kind - the runtime gate, read by the authority check and the
+ * import validator, for what {@link PlayerCommand} enforces at compile time.
  */
 export const COMMAND_ISSUER: {
   readonly [K in Command['kind']]: K extends PlayerCommand['kind'] ? 'seat' : 'trusted';
@@ -125,15 +122,14 @@ export function ownedEnvelope(envelope: CommandEnvelope): CommandEnvelope {
   }
 }
 
-/** A seat's own copy of `command`; an omitted owner on a placement is the issuing seat's. */
 function seatOwned(command: PlayerCommand, player: number): PlayerCommand {
   const owned = clonePlainData(command);
   return owned.kind === 'placeBuilding' && owned.owner === undefined ? { ...owned, owner: player } : owned;
 }
 
 /**
- * Commands are plain serializable data by contract, so anything else in a payload is a caller bug the
- * queue must not silently flatten into the replay log. The accumulator is prototype-less because a
+ * Commands are plain serializable data by contract, so anything else in a payload throws rather than
+ * being silently flattened into the replay log. The accumulator is prototype-less because a
  * `JSON.parse`d payload can carry an own `__proto__` key, which an object literal would apply as a
  * prototype instead of copying - and the authority gate reads `owner`/`player` with `in`.
  */

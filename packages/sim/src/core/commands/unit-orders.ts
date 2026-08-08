@@ -26,8 +26,8 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Change one owned settler's trade: set `jobType` and reset it to an unposted idle worker of that
-       * trade. The civilist job (`jobtypes.ini` 6) is an ordinary assignable record no workplace employs.
+       * Change one owned settler's trade, resetting it to an unposted idle worker of that trade. The
+       * civilist job (`jobtypes.ini` 6) is an ordinary assignable record no workplace employs.
        */
       readonly kind: 'setJob';
       readonly entity: Entity;
