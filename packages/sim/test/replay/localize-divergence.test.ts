@@ -35,7 +35,7 @@ function recordRun(
   const sim = new Simulation({ seed, content: testContent(), map });
   const trace = new HashTrace({ snapshotCapacity: ticks });
   for (let tick = 1; tick <= ticks; tick++) {
-    for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+    for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
     sim.step();
     trace.record(sim.tick, sim.hashState(), sim.snapshot());
   }

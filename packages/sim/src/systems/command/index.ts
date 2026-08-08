@@ -36,19 +36,21 @@ import {
   unequipGood,
 } from '../orders/index.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
+import { isAuthorized } from './authority.js';
 import { debugFillStockpile, debugKill, debugSetNeeds } from './debug.js';
 import { cancelUpgrade, placeBoat, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
 /**
- * Apply queued external commands in FIFO order, then record each one for deterministic replay. Command
- * variants own their validation and treat stale ids as recoverable input so one rejected order cannot abort
- * the tick.
+ * Apply queued external commands in FIFO order, then record each one for deterministic replay. A
+ * command whose origin is not entitled to it is skipped but still recorded, so the log replays to the
+ * same state. Command variants own their payload validation and treat stale ids as recoverable input so
+ * one rejected order cannot abort the tick.
  */
 export const commandSystem: System = (world, ctx) => {
-  for (const command of ctx.commands.drain()) {
-    applyCommand(world, ctx, command);
-    ctx.commands.record(ctx.tick, command);
+  for (const queued of ctx.commands.drain()) {
+    if (isAuthorized(world, queued)) applyCommand(world, ctx, queued.command);
+    ctx.commands.record(ctx.tick, queued);
   }
 };
 

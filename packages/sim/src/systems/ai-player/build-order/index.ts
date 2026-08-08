@@ -1,6 +1,6 @@
 import type { BuildingType } from '@open-northland/data';
 import { Building, UnderConstruction } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -39,7 +39,7 @@ function runBuildOrder(
   ctx: SystemContext,
   player: number,
   order: readonly BuildOrderEntry[],
-): readonly Command[] {
+): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const owned = ownedBuildings(world, player);
@@ -93,7 +93,7 @@ function siteCommand(
   spot: HalfCellNode,
   tribe: number,
   player: number,
-): Extract<Command, { kind: 'placeBuilding' }> {
+): Extract<PlayerCommand, { kind: 'placeBuilding' }> {
   return {
     kind: 'placeBuilding',
     buildingType: type.typeId,
@@ -113,7 +113,7 @@ function replaceMissingBase(
   terrain: TerrainGraph,
   player: number,
   owned: readonly Entity[],
-): readonly Command[] {
+): readonly PlayerCommand[] {
   const tribeSource = owned[0];
   const centre = anchorCentroid(world, owned);
   if (tribeSource === undefined || centre === null) return [];

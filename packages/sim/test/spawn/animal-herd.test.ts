@@ -28,7 +28,7 @@ function fresh(seed = 1): Simulation {
 /** Enqueue a herd spawn at visual tile (x, y) - command coords are half-cell nodes, so anchor-convert. */
 function spawnHerdAt(sim: Simulation, tribe: number, x: number, y: number): void {
   const n = cellAnchorNode(x, y);
-  sim.enqueue({ kind: 'spawnAnimalHerd', tribe, x: n.hx, y: n.hy });
+  sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe, x: n.hx, y: n.hy });
 }
 
 /** Every spawned creature, in canonical (ascending-id) order. */
@@ -111,7 +111,7 @@ describe('spawnAnimalHerd command', () => {
   it('count 1 overrides maximumGroupSize: exactly one creature, on the birth node (the map setanimal shape)', () => {
     const sim = fresh();
     const n = cellAnchorNode(5, 5);
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: n.hx, y: n.hy, count: 1 });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: BEAR, x: n.hx, y: n.hy, count: 1 });
     sim.step();
 
     const herd = creatures(sim);
@@ -150,7 +150,7 @@ describe('spawnAnimalHerd command', () => {
 
   it('skips a non-animal tribe (a civilization - no animaltypes record), still logging the command', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: VIKING, x: 0, y: 0 });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: VIKING, x: 0, y: 0 });
     expect(() => sim.step()).not.toThrow();
 
     expect(creatures(sim)).toHaveLength(0); // nothing spawned - the viking has no herd params

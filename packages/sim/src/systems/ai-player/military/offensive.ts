@@ -1,4 +1,4 @@
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -28,7 +28,7 @@ export function runOffensive(
   terrain: TerrainGraph,
   player: number,
   { army, awaitingWeapon }: CampaignForce,
-): Command[] {
+): PlayerCommand[] {
   if (army.length === 0 && awaitingWeapon.length === 0) return [];
   // No barracks, no rally point - and no army either, since its drill is the seat's only route to a
   // soldier (workforce/garrison.ts).

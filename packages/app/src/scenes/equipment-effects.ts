@@ -59,7 +59,7 @@ function build(sim: Simulation): void {
 
   const mill = placeBuiltSandboxBuilding(sim, BUILDING_MILL, MILL.x, MILL.y, HUMAN_PLAYER);
   const pile = cellAnchorNode(WHEAT_PILE.x, WHEAT_PILE.y);
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'dropGood',
     good: goodBySlug(sim, 'wheat'),
     x: pile.hx,

@@ -8,7 +8,7 @@ import {
   Settler,
   TrainingOrder,
 } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { draftableTrade } from '../../assistant/index.js';
 import type { SystemContext } from '../../context.js';
@@ -48,7 +48,7 @@ export function trainGarrison(
   ctx: SystemContext,
   player: number,
   force: SpareForce,
-): Command[] {
+): PlayerCommand[] {
   const wants = standingOrder(world, ctx, player, force);
   return GARRISON_INTENTS.flatMap((intent) => {
     const command = assistantCounterCommand(world, player, intent, wants.get(intent) ?? 0, false);

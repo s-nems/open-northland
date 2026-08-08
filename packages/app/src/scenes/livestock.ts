@@ -50,7 +50,7 @@ function build(sim: Simulation): void {
     { tribe: ANIMAL_TRIBE_CATTLE, at: CATTLE_BIRTH },
   ]) {
     const node = cellAnchorNode(herd.at.x, herd.at.y);
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: herd.tribe, x: node.hx, y: node.hy });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: herd.tribe, x: node.hx, y: node.hy });
     // The claim is contact, so the scout spawns amid the herd and it wanders into him.
     spawnSandboxSettler(sim, JOB_SCOUT, herd.at.x, herd.at.y, HUMAN_PLAYER);
   }

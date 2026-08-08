@@ -11,7 +11,7 @@ describe('needsSystem - the setNeedsEnabled world rule (the dev/admin toggle)', 
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
 
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     for (let i = 0; i < 50; i++) sim.step();
     const frozen = sim.world.get(e, Settler);
     expect(frozen.hunger).toBe(fx.fromInt(0));
@@ -19,7 +19,7 @@ describe('needsSystem - the setNeedsEnabled world rule (the dev/admin toggle)', 
     expect(frozen.piety).toBe(fx.fromInt(0));
     expect(frozen.enjoyment).toBe(fx.fromInt(0));
 
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: true });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: true });
     sim.step(); // the toggle applies (commandSystem) before needsSystem the same tick
     expect(sim.world.get(e, Settler).hunger).toBe(HUNGER_RISE_PER_TICK);
     expect(sim.checkInvariants()).toEqual([]);
@@ -27,10 +27,10 @@ describe('needsSystem - the setNeedsEnabled world rule (the dev/admin toggle)', 
 
   it('reuses the one WorldRules singleton across repeated toggles', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     sim.step();
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: true });
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: true });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     sim.step();
     expect([...sim.world.query(components.WorldRules)]).toHaveLength(1);
     expect(components.needsEnabled(sim.world)).toBe(false);

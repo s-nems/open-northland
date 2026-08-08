@@ -47,7 +47,7 @@ const ORDER: readonly BuildOrderEntry[] = [
 ];
 
 function place(sim: Simulation, buildingType: number, x: number, y: number): void {
-  sim.enqueue({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
 }
 
 function placementOf(commands: readonly Command[]): Extract<Command, { kind: 'placeBuilding' }> | null {
@@ -69,7 +69,7 @@ function staffOf(sim: Simulation, building: Entity): Entity[] {
 
 /** Run the allocator and apply everything it decided, so the next run sees the posts it made. */
 function allocateAndApply(sim: Simulation): void {
-  for (const command of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(command);
+  for (const command of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(command);
   sim.step();
 }
 
@@ -130,7 +130,7 @@ describe('build-order module - rebuilding what combat took', () => {
     expect(first?.buildingType).toBe(STOCK_TYPE);
     if (first === null) return;
 
-    sim.enqueue(first);
+    sim.enqueueSetup(first);
     sim.step();
     expect([...sim.world.query(UnderConstruction)]).toHaveLength(1);
     // Still baseless (the site is unbuilt), but the one-site gate outranks the recovery rung.
@@ -150,7 +150,7 @@ describe('build-order module - rebuilding what combat took', () => {
     place(sim, BAKERY_TYPE, 34, 16);
     spawnMen(sim, 4, CIVILIST); // no builder survives the raid
     // A mill site is already open when the base falls - the normal state, since the seat keeps one.
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,
       x: 38,
@@ -170,7 +170,7 @@ describe('build-order module - rebuilding what combat took', () => {
       .filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
     expect(hires.length).toBeGreaterThan(0);
 
-    sim.enqueue({ kind: 'debugCompleteConstruction', target: entityOfBuilding(sim, MILL_TYPE) });
+    sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: entityOfBuilding(sim, MILL_TYPE) });
     sim.step();
     expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TYPE);
   });
@@ -186,7 +186,7 @@ describe('build-order module - rebuilding what combat took', () => {
     placeHq(sim);
     place(sim, BAKERY_TYPE, 34, 16);
     spawnMen(sim, 2, jobType);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,
       x: 38,
@@ -214,11 +214,11 @@ describe('build-order module - rebuilding what combat took', () => {
     const bakery = entityOfBuilding(sim, BAKERY_TYPE);
     const man = [...sim.world.query(Settler)][0];
     if (man === undefined) throw new Error('setup: no settler spawned');
-    sim.enqueue({ kind: 'assignWorker', entity: man, building: bakery, jobPriority: [BAKER] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: man, building: bakery, jobPriority: [BAKER] });
     sim.step();
     expect(staffOf(sim, bakery)).toEqual([man]);
 
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,
       x: 38,
@@ -245,7 +245,7 @@ describe('build-order module - rebuilding what combat took', () => {
     placeHq(sim);
     place(sim, BAKERY_TYPE, 34, 16);
     spawnMen(sim, 12, CIVILIST); // more than the builder reserve claims
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,
       x: 38,

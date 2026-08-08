@@ -12,7 +12,7 @@ import {
   professionProgressionEnabled,
 } from './components/index.js';
 import { CommandQueue } from './core/command-queue.js';
-import type { Command } from './core/commands/index.js';
+import { type Command, type CommandEnvelope, setupCommand } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
 import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
@@ -101,12 +101,18 @@ export class Simulation {
   }
 
   /**
-   * Queue a serializable command, the only way to mutate sim state from outside once the sim is ticking.
-   * CommandSystem applies and logs it on the next `step()`. Only authored pre-tick-0 setup writes to
-   * `world` directly.
+   * Queue an authorized command envelope, the only way to mutate sim state from outside once the sim is
+   * ticking. CommandSystem applies and logs it on the next `step()`, admitting it only if the envelope's
+   * origin is entitled to it. Only authored pre-tick-0 setup writes to `world` directly.
    */
-  enqueue(command: Command): void {
-    this.commands.enqueue(command);
+  enqueue(envelope: CommandEnvelope): void {
+    this.commands.enqueue(envelope);
+  }
+
+  /** {@link enqueue} under the trusted authored-setup origin: scene assembly, decoded map imports, and
+   *  fixtures, which place neutral entities and use the authored placement options. */
+  enqueueSetup(command: Command): void {
+    this.commands.enqueue(setupCommand(command));
   }
 
   /** Advance exactly one tick by running every system in order. */

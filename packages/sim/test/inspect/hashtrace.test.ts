@@ -33,7 +33,7 @@ function traceRun(
     ...(opts?.snapshotCapacity !== undefined ? { snapshotCapacity: opts.snapshotCapacity } : {}),
   });
   for (let tick = 1; tick <= ticks; tick++) {
-    for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+    for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
     sim.step();
     trace.record(tick, sim.hashState(), opts?.snapshots ? sim.snapshot() : undefined);
   }

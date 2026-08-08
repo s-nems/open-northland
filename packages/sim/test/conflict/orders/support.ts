@@ -34,7 +34,7 @@ export function sim(): Simulation {
 /** Order `entity` to visual tile (x, y) - moveUnit coords are half-cell nodes, so anchor-convert. */
 export function orderMove(s: Simulation, entity: Entity, x: number, y: number): void {
   const n = cellAnchorNode(x, y);
-  s.enqueue({ kind: 'moveUnit', entity, x: n.hx, y: n.hy });
+  s.enqueueSetup({ kind: 'moveUnit', entity, x: n.hx, y: n.hy });
 }
 
 /** An OWNED viking woodcutter (the player's to command) placed directly on the world. */

@@ -42,7 +42,7 @@ function build(sim: Simulation): void {
   // Raw command so `initialGoods` seeds exactly wood + stone; `fillStock` would also stock production
   // goods that a finished bakery would then pull.
   const depot = cellAnchorNode(DEPOT.x, DEPOT.y);
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType: BUILDING_WAREHOUSE_00,
     x: depot.hx,

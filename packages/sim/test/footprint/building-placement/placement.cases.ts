@@ -36,38 +36,38 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
   it('accepts a footprinted type on open ground and places it through the command seam', () => {
     const sim = mappedSim();
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 5)).toBe(true);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
   });
 
   it('rejects a placement whose reserved zone would overlap an existing building’s reserved zone', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
     // Odd-row anchors: a ring's odd-dy rows stamp one node +x (the parity shift). First hut ring:
     // x∈[4..7] on rows 5/7, x∈[5..8] on rows 4/6.
     // Anchor (3,5): its ring reaches x 5 (rows 5/7) and x 6 (rows 4/6) - overlaps on every row
     // (the first hut's body node (5,5) is inside too) - rejected.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
     // Anchor (8,5): the new body (x∈[8..9]) clears the first zone, but its ring starts at x 7 on
     // rows 5/7 - touching that zone at x=7 - so the zone-vs-zone rule rejects it. (The old
     // body-vs-zone rule allowed this; it is exactly the tight packing the widened clearance removes.)
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 8, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 8, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(1);
     // Anchor (9,5): its ring starts at x 8 (rows 5/7) / x 9 (rows 4/6), past the first ring's
     // per-row ends (7 and 8) - accepted, the two reserved zones are disjoint on every row.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 5, tribe: VIKING });
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2);
   });
 
   it('reserves the family’s FULL footprint from level 0 (the max-level body blocks neighbours)', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
     // (6,6) is the level-max growth node - blocked for OTHERS via the family zone even though the
     // level-0 walls don't cover it: a placement whose body would take it is rejected.
@@ -100,7 +100,7 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
 
   it('keeps a footprinted house away from a footprint-less building (1-cell body/zone) and vice versa', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 6, y: 6, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ, x: 6, y: 6, tribe: VIKING });
     sim.step();
     // The HQ (no footprint) occupies its anchor node (6,6); a hut at (5,5) would reserve that node.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 5, 5)).toBe(false);
@@ -109,8 +109,8 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
 
   it('places a footprint-less type freely (synthetic content keeps the pre-footprint behavior)', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING }); // same node!
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ, x: 5, y: 5, tribe: VIKING }); // same node!
     sim.step();
     expect(buildingsPlaced(sim)).toBe(2); // no collision model - both land, like before footprints
   });
@@ -125,7 +125,7 @@ describe('the dense mask rule agrees with an independent derivation', () => {
     const cells = grassCells(16, 16);
     cells.typeIds[5 * 16 + 8] = WATER; // blocking terrain - cell (8,5), nodes (16..17, 10..11)
     const sim = new Simulation({ seed: 1, content: placementContent(), map: halfCellMapFromCells(cells) });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
     sim.step();
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(3, 3));
@@ -177,7 +177,7 @@ describe('placementBlockerVersion - the shared memo key that decouples the block
     const sim = mappedSim();
     const v0 = sim.placementBlockerVersion();
 
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
     sim.step();
     const v1 = sim.placementBlockerVersion();
     expect(v1).not.toBe(v0); // a new building moved the obstacle set
@@ -201,7 +201,7 @@ describe('placementBlockerVersion - the shared memo key that decouples the block
     sim.run(5);
 
     // …but re-derive the instant a hut lands, so the overlay can never keep tinting a taken spot green.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 11, y: 11, tribe: VIKING });
     sim.step();
 
     const probe = placementProbe(sim.world, sim.content, terrain, HUT);
@@ -286,11 +286,11 @@ describe('forced placement - authored map imports load as-is', () => {
     });
     expect(canPlaceBuilding(wetSim.world, ctxOf(wetSim), terrainOf(wetSim), HUT, 9, 9)).toBe(false);
 
-    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 9, tribe: VIKING });
+    wetSim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 9, tribe: VIKING });
     wetSim.step();
     expect(buildingsPlaced(wetSim)).toBe(0); // gated command: dropped
 
-    wetSim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 9, tribe: VIKING, force: true });
+    wetSim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 9, y: 9, tribe: VIKING, force: true });
     wetSim.step();
     expect(buildingsPlaced(wetSim)).toBe(1); // authored import: placed as-is
   });
@@ -301,7 +301,7 @@ describe('building walk-block - houses have collision', () => {
     const sim = mappedSim(grassMap(8, 5));
     // A hut whose body occupies nodes (3,1)-(4,1): the straight west→east walk along node row 1 is
     // blocked. (The 8×5-cell map upsamples to 16×10 nodes, so the reserved ring y∈[0..3] fits.)
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HUT,
       x: 3,
@@ -336,7 +336,7 @@ describe('building walk-block - houses have collision', () => {
 
   it('fails a path whose goal is inside a building', () => {
     const sim = mappedSim(grassMap(8, 5));
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 1, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 1, tribe: VIKING });
     sim.step();
     const walker = sim.world.create();
     sim.world.add(walker, Position, positionOfNode(0, 1));
@@ -367,7 +367,7 @@ describe('placement razes wild berry bushes in the reserved zone', () => {
     const outside = createBerryBush(sim.world, { x: 12, y: 12 });
     expect(survivingBushes(sim)).toBe(2);
 
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
 
     expect(buildingsPlaced(sim)).toBe(1);
@@ -382,7 +382,7 @@ describe('placement razes wild berry bushes in the reserved zone', () => {
   it('razes bushes even under a forced (map-authored) placement', () => {
     const sim = mappedSim();
     const under = createBerryBush(sim.world, { x: 5, y: 5 }); // the anchor node itself
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
     sim.step();
     expect(sim.world.isAlive(under)).toBe(false);
   });
@@ -410,7 +410,7 @@ describe('placement razes felled-tree stumps in the reserved zone', () => {
     const outside = placeStump(sim, 12, 12);
     expect(survivingStumps(sim)).toBe(2);
 
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
 
     expect(buildingsPlaced(sim)).toBe(1);
@@ -422,7 +422,7 @@ describe('placement razes felled-tree stumps in the reserved zone', () => {
     // the sprite pool reaps its quad when it leaves the snapshot. Proven against a stumpless control: the same
     // placement with no stump present produces the identical event stream.
     const control = mappedSim();
-    control.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    control.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     control.step();
     expect(sim.events.current().map((ev) => ev.kind)).toEqual(control.events.current().map((ev) => ev.kind));
   });
@@ -430,7 +430,7 @@ describe('placement razes felled-tree stumps in the reserved zone', () => {
   it('razes a stump even under a forced (map-authored) placement', () => {
     const sim = mappedSim();
     const under = placeStump(sim, 5, 5); // the anchor node itself
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING, force: true });
     sim.step();
     expect(sim.world.isAlive(under)).toBe(false);
   });
@@ -441,9 +441,9 @@ describe('determinism', () => {
     const run = (): string => {
       const sim = mappedSim();
       createBerryBush(sim.world, { x: 6, y: 6 }); // razed by the hut below - its removal must be deterministic
-      sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
-      sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 6, y: 5, tribe: VIKING }); // rejected
-      sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 5, tribe: VIKING });
+      sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+      sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 6, y: 5, tribe: VIKING }); // rejected
+      sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 5, tribe: VIKING });
       for (let i = 0; i < 50; i++) sim.step();
       return sim.hashState();
     };

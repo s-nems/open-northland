@@ -1,7 +1,6 @@
 # Report deterministic command admission outcomes
 
 **Area:** sim, app · **Focus:** systems/command · **Priority:** P2
-**Blocked by:** [Authorized command envelopes](player-command-authority.md)
 
 `CommandSystem` calls void handlers and appends every drained input to the applied replay log. Invalid
 content ids, stale entities, unavailable upgrades, and unauthorized targets are recoverable no-ops in

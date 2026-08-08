@@ -37,9 +37,12 @@ renderer or mutate the sim.
 
 ## Runtime data flow
 
-External intent enters the simulation as serializable commands. The app calls `sim.enqueue(command)`,
-then `sim.step()` applies queued commands and runs the fixed system schedule. Systems mutate their
-own world during the tick.
+External intent enters the simulation as serializable command envelopes. An envelope names the
+authority it acts under - a human seat, an AI seat, authored setup, or the admin channel - and a seat
+envelope can only carry the commands that seat may issue. The app calls `sim.enqueue(envelope)`, then
+`sim.step()` admits each queued command its origin is entitled to, applies it, and runs the fixed
+system schedule. Systems mutate their own world during the tick. Authored world assembly uses
+`sim.enqueueSetup(command)`, and an imported log passes `parseCommandLog` before it drives a sim.
 
 At the tick boundary, `sim.snapshot()` returns a detached plain-data view for rendering, audio, HUD,
 and diagnostics. It is memoized while the world is unchanged. Consumers treat it as read-only, but
@@ -49,7 +52,7 @@ One-shot simulation events share the same boundary. Presentation code may react 
 must not reach back into live component stores.
 
 ```text
-input -> enqueue commands -> step systems -> snapshot + events -> render/audio/HUD
+input -> enqueue envelopes -> authorize + step systems -> snapshot + events -> render/audio/HUD
 ```
 
 This keeps tests and replays independent of frame rate and prevents the renderer from observing a

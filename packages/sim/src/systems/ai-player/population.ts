@@ -6,7 +6,7 @@ import {
   Marriage,
   Residence,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands/index.js';
+import type { PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -22,9 +22,9 @@ import { assistantCounterCommand, isBuilt, ownedBuildings, ownedSettlers } from 
  * settlement assistant - daughters up to the housing stock, sons continuously past it.
  */
 
-function runPopulation(world: World, ctx: SystemContext, player: number): readonly Command[] {
+function runPopulation(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   if (seatBaseOf(world, ctx, player) === null) return [];
-  const commands: Command[] = [];
+  const commands: PlayerCommand[] = [];
   const settlers = ownedSettlers(world, player);
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));
 

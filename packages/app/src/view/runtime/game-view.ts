@@ -6,9 +6,12 @@ import type {
   WorldRenderer,
 } from '@open-northland/render';
 import {
+  adminCommand,
   type Command,
   type Entity,
   FixedTimestep,
+  type PlayerCommand,
+  playerCommand,
   type SimEvent,
   type Simulation,
   type WorldSnapshot,
@@ -138,8 +141,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   let minimap: MinimapHandle | undefined;
 
   // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
-  const issueCommand =
-    deps.readOnly === true ? (_command: Command) => {} : (command: Command) => sim.enqueue(command);
+  // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
+  // seat reaching into another's units.
+  const readOnly = deps.readOnly === true;
+  const overseer = deps.observer === true && !readOnly;
+  const issueAdminCommand = (command: Command): void => {
+    if (!readOnly) sim.enqueue(adminCommand(command));
+  };
+  const issueCommand = (command: PlayerCommand): void => {
+    if (readOnly) return;
+    sim.enqueue(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
+  };
 
   const toolPanel = await mountGameToolPanel({
     app,
@@ -147,8 +159,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     uiscale,
     camera: () => cameraCtl.camera(),
     enqueue: issueCommand,
-    grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, deps.readOnly !== true),
-    counters: assistantCountersSeam(sim, localPlayer, issueCommand, deps.readOnly !== true),
+    enqueueAdmin: issueAdminCommand,
+    grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
+    counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
@@ -256,6 +269,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     canvas,
     params,
     sim,
+    enqueue: issueAdminCommand,
     renderer,
     cameraCtl,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),

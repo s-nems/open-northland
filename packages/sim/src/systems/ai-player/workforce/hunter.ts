@@ -1,5 +1,5 @@
 import { Building, CurrentAtomic, JobAssignment, Settler } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -35,7 +35,7 @@ export function allocateOpeningHunter(
   base: Entity,
   force: SpareForce,
   builderJob: number | null,
-): Command[] {
+): PlayerCommand[] {
   const hunterJob = hunterJobType(ctx.content);
   if (hunterJob === null) return [];
   if (!offersHunterSeat(world, ctx, base, hunterJob)) return [];
@@ -75,7 +75,7 @@ function openingHuntOver(world: World, ctx: SystemContext, player: number): bool
 }
 
 /** Hand the opening hunters back to the pool as builders, leaving a man mid-action alone. */
-function retireHunters(world: World, posted: readonly Entity[], builderJob: number | null): Command[] {
+function retireHunters(world: World, posted: readonly Entity[], builderJob: number | null): PlayerCommand[] {
   if (builderJob === null) return [];
   return posted
     .filter((e) => !world.has(e, CurrentAtomic))

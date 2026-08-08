@@ -131,7 +131,7 @@ describe('arrival vs the combat drive', () => {
   /** Order `e` to cell (x, y) and step until the order retires (arrived), then `extra` more ticks. */
   function orderAndArrive(sim: Simulation, e: Entity, x: number, y: number, extra: number): void {
     const spot = cellAnchorNode(x, y);
-    sim.enqueue({ kind: 'moveUnit', entity: e, x: spot.hx, y: spot.hy });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: e, x: spot.hx, y: spot.hy });
     let arrived = false;
     for (let t = 0; t < 300 && !arrived; t++) {
       sim.step();

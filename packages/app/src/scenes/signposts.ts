@@ -49,7 +49,7 @@ function treeAt(sim: Simulation, x: number, y: number): Entity | null {
 }
 
 function build(sim: Simulation): void {
-  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+  sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   const wood = GATHERERS.find((g) => g.id === 'wood');
   if (wood === undefined) throw new Error('signposts scene: no wood gatherer spec');
   placeResourceNode(sim, wood, NEAR_TREE.x, NEAR_TREE.y);
@@ -61,7 +61,7 @@ function build(sim: Simulation): void {
   spawnSettlerDirect(sim, JOB_COLLECTOR, COLLECTOR.x, COLLECTOR.y);
   const scout = spawnSettlerDirect(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
   const erectNode = cellAnchorNode(ERECT_AT.x, ERECT_AT.y);
-  sim.enqueue({ kind: 'placeSignpost', entity: scout, x: erectNode.hx, y: erectNode.hy });
+  sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: erectNode.hx, y: erectNode.hy });
 }
 
 export const signpostsScene: SceneDefinition = {

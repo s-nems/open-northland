@@ -1,7 +1,6 @@
 # Persist and restore simulation state
 
 **Area:** sim, data · **Priority:** P1
-**Blocked by:** [Authorized command envelopes](../sim/player-command-authority.md)
 
 The project has deterministic replay for diagnostics, but no persisted save format or load API.
 Replaying `{content, seed, map, commandLog}` can rebuild a short session and prove determinism. It is

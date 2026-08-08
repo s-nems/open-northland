@@ -326,7 +326,7 @@ describe('animalWanderSystem: the grazing drive', () => {
   it('walks every creature of a spawned herd off its birth point over a full step() schedule', () => {
     const sim = new Simulation({ seed: 9, content: testContent(), map: grassMap(30, 30) });
     const birth = cellAnchorNode(8, 8);
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: birth.hx, y: birth.hy });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: BEAR, x: birth.hx, y: birth.hy });
     sim.step(); // the command lands the herd (each member stamped with its StayPoint)
 
     const herd = [...sim.world.query(StayPoint, Position)];
@@ -350,7 +350,7 @@ describe('animalWanderSystem: the grazing drive', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 21, content: testContent(), map: grassMap(30, 30) });
       const birth = cellAnchorNode(8, 8);
-      sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: birth.hx, y: birth.hy });
+      sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: BEAR, x: birth.hx, y: birth.hy });
       for (let i = 0; i < 200; i++) sim.step();
       return sim.hashState();
     };

@@ -48,7 +48,7 @@ const P1 = 1;
 
 function simOn(mode: FogMode, w = 24, h = 8): Simulation {
   const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(w, h) });
-  sim.enqueue({ kind: 'setFogMode', mode });
+  sim.enqueueSetup({ kind: 'setFogMode', mode });
   return sim;
 }
 
@@ -202,10 +202,10 @@ describe('fog modes - update rules over the per-player mask', () => {
     sim.run(1);
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.VISIBLE);
     teleport(sim, e, 20, 2);
-    sim.enqueue({ kind: 'setFogMode', mode: FOG_MODE.OFF });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
     sim.run(1);
     expect(sim.fogView(P0)).toBeNull();
-    sim.enqueue({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
     sim.run(1);
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.UNEXPLORED); // history gone - only the new spot shows
     expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
@@ -248,7 +248,7 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
     const sim = simOn(FOG_MODE.REVEAL);
     const attacker = unit(sim, ATTACKER.x, ATTACKER.y, P0, { mode: MILITARY_MODE.ATTACK });
     const enemy = unit(sim, ENEMY.x, ENEMY.y, P1);
-    sim.enqueue({ kind: 'attackUnit', entity: attacker, target: enemy });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: attacker, target: enemy });
     sim.run(1);
     expect(sim.world.has(attacker, AttackOrder)).toBe(true);
     expect(sim.world.has(attacker, Engagement)).toBe(true);

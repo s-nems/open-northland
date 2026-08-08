@@ -185,7 +185,14 @@ describe('resource footprints', () => {
     const digger = placeSettler(sim, CLAY_DIGGER, 0, 1);
     const buried = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1); // nearer, but about to be walled under a house
     placeResource(sim, CLAY, CLAY_ATOMIC, 6, 1); // farther, open ground
-    sim.enqueue({ kind: 'placeBuilding', buildingType: TEST_HUT, x: 2, y: 1, tribe: VIKING, force: true });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TEST_HUT,
+      x: 2,
+      y: 1,
+      tribe: VIKING,
+      force: true,
+    });
     sim.step();
     expect(sim.world.isAlive(buried)).toBe(true); // a deposit is a resource, not decor - it survives under the house
 
@@ -204,7 +211,14 @@ describe('resource footprints', () => {
     const terrain = terrainOf(sim);
     const digger = placeSettler(sim, CLAY_DIGGER, 0, 1);
     const buried = placeResource(sim, CLAY, CLAY_ATOMIC, 2, 1);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: TEST_HUT, x: 2, y: 1, tribe: VIKING, force: true });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TEST_HUT,
+      x: 2,
+      y: 1,
+      tribe: VIKING,
+      force: true,
+    });
     sim.step();
 
     sim.run(80);
@@ -226,7 +240,7 @@ describe('resource footprints', () => {
     const treeNode = terrain.nodeAt(4, 2);
     const startX = sim.world.get(worker, Position).x;
 
-    sim.enqueue({ kind: 'moveUnit', entity: worker, x: 4, y: 2 }); // right on the tree body
+    sim.enqueueSetup({ kind: 'moveUnit', entity: worker, x: 4, y: 2 }); // right on the tree body
     sim.step();
 
     const goal = sim.world.get(worker, MoveGoal).cell;
@@ -246,7 +260,7 @@ describe('resource footprints', () => {
     const worker = placeWoodcutter(sim, 0, 2);
     sim.world.add(worker, Owner, { player: VIKING });
 
-    sim.enqueue({ kind: 'moveUnit', entity: worker, x: 5, y: 2 }); // open grass
+    sim.enqueueSetup({ kind: 'moveUnit', entity: worker, x: 5, y: 2 }); // open grass
     sim.step();
 
     expect(sim.world.get(worker, MoveGoal).cell).toBe(terrain.nodeAt(5, 2)); // untouched - fast path

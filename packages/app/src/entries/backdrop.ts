@@ -77,7 +77,7 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
   // cast while the extra ticks run.
   const ticks = intParam(params, 'ticks', 1);
   if (ticks > 1) {
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     for (let tick = ticks; tick > 1; tick -= 1) sim.step();
   }
 

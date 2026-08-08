@@ -20,8 +20,8 @@ import {
 describe('door cell - settlers interact with a house at its entry point', () => {
   it('resolves the interaction tile to the door (footprinted) or the anchor (footprint-less)', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: 9, y: 9, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ, x: 9, y: 9, tribe: VIKING });
     sim.step();
     const hut = placedBuilding(sim, 0);
     const hq = placedBuilding(sim, 1);
@@ -31,7 +31,7 @@ describe('door cell - settlers interact with a house at its entry point', () => 
 
   it('counts a worker standing at the DOOR as present (and one on the anchor as absent)', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 5, y: 5, tribe: VIKING });
     sim.step();
     const hut = placedBuilding(sim);
     const worker = sim.world.create();
@@ -85,7 +85,7 @@ describe('wall gate - a door listed inside the walls stays walkable', () => {
 
   it('leaves the door cell out of the walk-block overlay and routes THROUGH the gate', () => {
     const sim = new Simulation({ seed: 1, content: gateContent(), map: grassMap(9, 7) });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: GATE, x: 4, y: 3, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: GATE, x: 4, y: 3, tribe: VIKING });
     sim.step();
     const terrain = terrainOf(sim);
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);
@@ -109,7 +109,7 @@ describe('wall gate - a door listed inside the walls stays walkable', () => {
 describe('findPath - the blocked-start/goal exemptions', () => {
   it('trivially succeeds when start === goal even on a building cell (already there)', () => {
     const sim = mappedSim(grassMap(8, 5));
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 1, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: 3, y: 1, tribe: VIKING });
     sim.step();
     const terrain = terrainOf(sim);
     const blocked = buildingBlockedCells(sim.world, ctxOf(sim), terrain);

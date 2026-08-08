@@ -40,7 +40,7 @@ describe('nearestWorkFlagPlacement', () => {
 
   it('picks the whole-map reference winner from every origin around a placed building', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     const terrain = terrainOf(sim);
     for (let y = 0; y < terrain.height; y++) {

@@ -103,7 +103,7 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
   it('stops starving while needs are disabled', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 300);
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });

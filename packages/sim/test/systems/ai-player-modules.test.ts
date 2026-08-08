@@ -123,7 +123,7 @@ describe('workforce module (collectResources)', () => {
     expect(new Set(claimed).size).toBe(claimed.length);
 
     // Applying the decision settles the seat: the next decision has nothing left to do.
-    for (const c of commands) sim.enqueue(c);
+    for (const c of commands) sim.enqueueSetup(c);
     sim.step();
     expect([...collectModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
     const bound = [...sim.world.query(Settler, WorkFlag)];
@@ -153,7 +153,7 @@ describe('workforce module (collectResources)', () => {
     expect(new Set(spots).size).toBe(spots.length);
 
     // Every post is recognized on the next decision - no churn, nothing left to do.
-    for (const c of commands) sim.enqueue(c);
+    for (const c of commands) sim.enqueueSetup(c);
     sim.step();
     expect([...collectModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
@@ -178,14 +178,14 @@ describe('workforce module (collectResources)', () => {
   it('retires a generic collector whose circle holds nothing its trade can harvest', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({ kind: 'spawnSettler', jobType: COLLECTOR, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 10, y: 10, tribe: VIKING, owner: SEAT });
     sim.step();
     const gatherer = [...sim.world.query(Settler)].find(
       (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
     );
     if (gatherer === undefined) throw new Error('setup: gatherer missing');
-    sim.enqueue({ kind: 'setWorkFlag', entity: gatherer, x: 12, y: 12 });
-    sim.enqueue({ kind: 'setGatherGood', entity: gatherer, goodType: null });
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, x: 12, y: 12 });
+    sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: null });
     sim.step();
 
     // No resource stands anywhere: the generic flag feeds nothing - back to the builder pool.
@@ -219,13 +219,13 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.wood]);
     spawnMen(sim, 1);
     sim.step();
-    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(c);
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
     sim.step();
 
     // Drain the standing node and offer a fresh one across the map - outside the flag's circle.
     const FAR = { x: 8, y: 24 };
     for (const e of sim.world.query(Resource)) sim.world.get(e, Resource).remaining = 0;
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeResource',
       good: WOOD,
       x: FAR.x,
@@ -251,7 +251,14 @@ describe('workforce module (collectResources)', () => {
   it('staffs the farm with one farmer at the minimum, never the carrier slot', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: FARM_TYPE, x: 40, y: 16, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: FARM_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     // No resources on this map: no collectors are wanted, staffing draws straight from the builders.
     spawnMen(sim, 6, BUILDER);
     sim.step();
@@ -268,7 +275,7 @@ describe('workforce module (collectResources)', () => {
     const staffFarm = (men: number): number => {
       const sim = aiSim();
       placeHq(sim);
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: FARM_TYPE,
         x: 40,
@@ -294,7 +301,7 @@ describe('workforce module (collectResources)', () => {
     const staffJoinery = (men: number): number => {
       const sim = aiSim();
       placeHq(sim);
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: JOINERY_TYPE,
         x: 40,
@@ -317,7 +324,7 @@ describe('workforce module (collectResources)', () => {
   it('staffs the HQ and a warehouse with three carriers each once men are spare', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: STOCK_TYPE,
       x: 40,
@@ -349,7 +356,7 @@ describe('workforce module (collectResources)', () => {
   it("staffs the bakery with its carrier on top of the baker (the plan's one carrier post)", () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BAKERY_TYPE,
       x: 40,
@@ -369,7 +376,14 @@ describe('workforce module (collectResources)', () => {
   it('leaves a carrier-only workplace (the well) unstaffed', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: WELL_TYPE, x: 40, y: 16, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: WELL_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     spawnMen(sim, 6, BUILDER);
     sim.step();
 
@@ -399,7 +413,14 @@ describe('workforce module (collectResources)', () => {
 
     // A standing farm (any construction state counts) satisfies the entry - iron is now wanted,
     // and the hire lands on the one man whose XP clears the threshold.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: FARM_TYPE, x: 36, y: 16, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: FARM_TYPE,
+      x: 36,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     sim.step();
     const after = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(after.filter((c) => c.kind === 'setGatherGood')).toEqual([
@@ -415,7 +436,7 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, 1);
     sim.step();
     const both = workforceModule([]);
-    for (const c of both.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(c);
+    for (const c of both.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
     sim.step();
 
     // Wood has no collector and no spare man. Stealing stone's would only move the shortage, and
@@ -439,7 +460,7 @@ describe('workforce module (collectResources)', () => {
     // Fresh men: stone hires (ungated); iron finds no qualified spare and no veteran - it waits.
     const fresh = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(fresh.filter((c) => c.kind === 'setGatherGood').map((c) => c.goodType)).toEqual([STONE]);
-    for (const c of fresh) sim.enqueue(c);
+    for (const c of fresh) sim.enqueueSetup(c);
     sim.step();
 
     // The stone collector has dug (its stone-track XP stands): the next decision re-posts IT onto
@@ -456,12 +477,12 @@ describe('workforce module (collectResources)', () => {
     const toIron = Math.abs(flag.x - RESOURCE_SPOTS.iron.x) + Math.abs(flag.y - RESOURCE_SPOTS.iron.y);
     expect(toIron).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
     expect(toIron).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
-    for (const c of swap) sim.enqueue(c);
+    for (const c of swap) sim.enqueueSetup(c);
     sim.step();
 
     // The vacated stone post is rehired once a spare man exists again - self-healing. (The first
     // decision's ladder claimed every original man: collector, scout, HQ carrier.)
-    sim.enqueue({ kind: 'spawnSettler', jobType: CIVILIST, x: 6, y: 6, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 6, y: 6, tribe: VIKING, owner: SEAT });
     sim.step();
     const rehire = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(rehire.filter((c) => c.kind === 'setGatherGood').map((c) => c.goodType)).toEqual([STONE]);
@@ -473,7 +494,7 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.wood]);
     spawnMen(sim, 1);
     sim.step();
-    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueue(c);
+    for (const c of collectModule.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
     sim.step();
 
     // Drain the original node; a survivor stands INSIDE the work circle but beyond the 2–3-tile
@@ -481,7 +502,7 @@ describe('workforce module (collectResources)', () => {
     // periodic upkeep can move the flag.
     const DRIFTED = { x: RESOURCE_SPOTS.wood.x + 14, y: RESOURCE_SPOTS.wood.y };
     for (const e of sim.world.query(Resource)) sim.world.get(e, Resource).remaining = 0;
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeResource',
       good: WOOD,
       x: DRIFTED.x,
@@ -505,7 +526,7 @@ describe('workforce module (collectResources)', () => {
   it('staffs the upgraded bakery with two bakers plus the carrier (the per-building targets)', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BAKERY_TOP_TYPE,
       x: 40,
@@ -546,7 +567,7 @@ describe('workforce module (collectResources)', () => {
     // A map too small for any first-ring lattice target (±22 columns / ±34 rows off the HQ).
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(20, 12) });
     placeHq(sim, 10, 6);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 4, y: 4, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 4, y: 4, tribe: VIKING, owner: SEAT });
     sim.step();
     plantPostAtHq(sim); // the centre target is satisfied; every ring target falls off this small map
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
@@ -571,10 +592,10 @@ describe('build-order module (houseBuild)', () => {
 
   /** Apply one module command, then force-finish every open site (upgrades adopt their tier). */
   function applyAndFinish(sim: Simulation, command: Command): void {
-    sim.enqueue(command);
+    sim.enqueueSetup(command);
     sim.step();
     for (const e of [...sim.world.query(UnderConstruction)]) {
-      sim.enqueue({ kind: 'debugCompleteConstruction', target: e });
+      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: e });
     }
     sim.step();
   }
@@ -595,13 +616,13 @@ describe('build-order module (houseBuild)', () => {
     const dist = Math.abs(first.x - HQ_X) + Math.abs(first.y - HQ_Y);
     expect(dist).toBeGreaterThan(0); // never on the HQ's own node
     expect(dist).toBeLessThanOrEqual(4); // the closest free ring, not a far scatter
-    sim.enqueue(first);
+    sim.enqueueSetup(first);
     sim.step();
 
     // One open site - the executor stalls until it finishes.
     expect(nextPlacement(sim)).toBeUndefined();
     for (const e of [...sim.world.query(UnderConstruction)]) {
-      sim.enqueue({ kind: 'debugCompleteConstruction', target: e });
+      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: e });
     }
     sim.step();
 
@@ -637,12 +658,12 @@ describe('build-order module (houseBuild)', () => {
     // The gated iron-collector entry: the executor waits (the workforce module does the hiring); a
     // standing collector unblocks the tail.
     expect(nextPlacement(sim)).toBeUndefined();
-    sim.enqueue({ kind: 'spawnSettler', jobType: COLLECTOR, x: 12, y: 24, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 12, y: 24, tribe: VIKING, owner: SEAT });
     sim.step();
     const settler = [...sim.world.query(Settler)].at(-1);
     if (settler === undefined) throw new Error('setup: collector missing');
-    sim.enqueue({ kind: 'setWorkFlag', entity: settler, x: 14, y: 26 });
-    sim.enqueue({ kind: 'setGatherGood', entity: settler, goodType: IRON });
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: settler, x: 14, y: 26 });
+    sim.enqueueSetup({ kind: 'setGatherGood', entity: settler, goodType: IRON });
     sim.step();
 
     // Past the gate: the barracks, the bakery upgrade, then the late tail - the tower coverage entry
@@ -681,12 +702,12 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     const first = nextPlacement(sim);
     if (first?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
-    sim.enqueue(first);
+    sim.enqueueSetup(first);
     sim.step();
     const farm = entityOfBuilding(sim, FARM_TYPE);
-    sim.enqueue({ kind: 'debugCompleteConstruction', target: farm });
+    sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: farm });
     sim.step();
-    sim.enqueue({ kind: 'demolish', building: farm });
+    sim.enqueueSetup({ kind: 'demolish', building: farm });
     sim.step();
     const again = nextPlacement(sim);
     if (again?.kind !== 'placeBuilding') throw new Error('expected a repair placement');
@@ -787,7 +808,7 @@ describe('build-order placement - affinity and ground rules', () => {
     const WELL_AT = { x: 44, y: 20 };
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: WELL_TYPE,
       x: WELL_AT.x,
@@ -847,7 +868,7 @@ describe('build-order tower coverage and outskirts', () => {
 
   function completeSites(sim: Simulation): void {
     for (const e of [...sim.world.query(UnderConstruction)]) {
-      sim.enqueue({ kind: 'debugCompleteConstruction', target: e });
+      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: e });
     }
     sim.step();
   }
@@ -860,7 +881,7 @@ describe('build-order tower coverage and outskirts', () => {
 
     // A home 31 columns east leaves the 29-node circle: the next decision places a covering tower.
     const FAR = { x: HQ_X + 31, y: HQ_Y };
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
       x: FAR.x,
@@ -881,12 +902,12 @@ describe('build-order tower coverage and outskirts', () => {
 
     // The tower SITE already counts as coverage; a finished tower keeps the entry satisfied - and
     // the entry is perpetual: another far building re-arms it.
-    sim.enqueue(order);
+    sim.enqueueSetup(order);
     sim.step();
     expect([...coverage.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
     completeSites(sim);
     expect([...coverage.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
       x: HQ_X - 31,
@@ -902,7 +923,7 @@ describe('build-order tower coverage and outskirts', () => {
     const sim = aiSim();
     placeHq(sim);
     const FAR = { x: HQ_X + 31, y: HQ_Y };
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
       x: FAR.x,
@@ -910,7 +931,7 @@ describe('build-order tower coverage and outskirts', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: WALL_TYPE,
       x: FAR.x - 2,
@@ -929,7 +950,7 @@ describe('build-order tower coverage and outskirts', () => {
     const sim = aiSim();
     placeHq(sim);
     const FRONTIER = { x: HQ_X + 14, y: HQ_Y };
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
       x: FRONTIER.x,
@@ -950,7 +971,7 @@ describe('build-order tower coverage and outskirts', () => {
     const frontierDist = Math.abs(FRONTIER.x - centroid.x) + Math.abs(FRONTIER.y - centroid.y);
     const spotDist = Math.abs(first.x - centroid.x) + Math.abs(first.y - centroid.y);
     expect(spotDist).toBeGreaterThan(frontierDist);
-    sim.enqueue(first);
+    sim.enqueueSetup(first);
     sim.step();
     completeSites(sim);
 
@@ -966,7 +987,7 @@ describe('build-order tower coverage and outskirts', () => {
     placeHq(sim);
     // A settlement with an east and a west wing: each warehouse should claim one.
     for (const dx of [14, -14]) {
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: HOME_TYPE,
         x: HQ_X + dx,
@@ -981,7 +1002,7 @@ describe('build-order tower coverage and outskirts', () => {
     ]);
     const first = [...stocks.run(sim.world, ctxOf(sim), SEAT)][0];
     if (first?.kind !== 'placeBuilding') throw new Error('expected the first warehouse placement');
-    sim.enqueue(first);
+    sim.enqueueSetup(first);
     sim.step();
     completeSites(sim);
 
@@ -998,7 +1019,14 @@ describe('population module (homeExpansion)', () => {
     const sim = aiSim();
     placeHq(sim);
     for (let i = 0; i < 2; i++) {
-      sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 6 + 2 * i, y: 8, tribe: VIKING, owner: SEAT });
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: WOMAN,
+        x: 6 + 2 * i,
+        y: 8,
+        tribe: VIKING,
+        owner: SEAT,
+      });
     }
     spawnMen(sim, 2);
     sim.step();
@@ -1020,8 +1048,15 @@ describe('population module (homeExpansion)', () => {
 
   it('houses married women and drives the birth counters: daughters to the slots, sons infinite', () => {
     const sim = populationSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 36, y: 16, tribe: VIKING, owner: SEAT });
-    for (const woman of womenOf(sim)) sim.enqueue({ kind: 'marry', entity: woman });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: 36,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    for (const woman of womenOf(sim)) sim.enqueueSetup({ kind: 'marry', entity: woman });
     // Let the couples walk together and kiss - both marriages must stand before the module houses them.
     for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) sim.step();
     expect(womenOf(sim).every((w) => sim.world.has(w, Marriage))).toBe(true);
@@ -1035,14 +1070,21 @@ describe('population module (homeExpansion)', () => {
     expect(houseCommands.filter((c) => c.kind === 'setAssistantCounter')).toEqual([
       { kind: 'setAssistantCounter', player: SEAT, counter: 'extraMen', value: 0, infinite: true },
     ]);
-    for (const c of houseCommands) sim.enqueue(c);
+    for (const c of houseCommands) sim.enqueueSetup(c);
     sim.step();
 
     // Both counters at their wanted state, everyone married and housed: the decision is a no-op.
     expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
 
     // A second home (2 more slots) opens a two-daughter deficit; the son counter stands untouched.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 24, y: 16, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: 24,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     sim.step();
     expect([...populationModule.run(sim.world, ctxOf(sim), SEAT)]).toEqual([
       { kind: 'setAssistantCounter', player: SEAT, counter: 'extraWomen', value: 2, infinite: false },
@@ -1058,8 +1100,8 @@ describe('the full strategic registry - determinism and replay', () => {
     placeHq(sim);
     placeResources(sim);
     spawnMen(sim, 5);
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN, x: 20, y: 8, tribe: VIKING, owner: SEAT });
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 20, y: 8, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     sim.run(TICKS);
     return sim;
   }
@@ -1078,7 +1120,7 @@ describe('the full strategic registry - determinism and replay', () => {
     timeout: 60_000,
   }, () => {
     const sim = aiSim(21);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HQ_TYPE,
       x: HQ_X,
@@ -1097,7 +1139,7 @@ describe('the full strategic registry - determinism and replay', () => {
     // keeps slack without dragging the suite (per-tick cost here is dominated by the settler
     // micro-planner, not the strategic AI).
     spawnMen(sim, 26);
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     sim.run(6000);
     const built = [...sim.world.query(Building)].filter(
       (e) => !sim.world.has(e, UnderConstruction) && sim.world.get(e, Building).buildingType !== HQ_TYPE,

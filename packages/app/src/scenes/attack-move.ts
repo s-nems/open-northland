@@ -34,7 +34,7 @@ function build(sim: Simulation): void {
       const warrior = spawnSettlerDirect(sim, JOB_SOLDIER_SWORD, x, y, HUMAN_PLAYER);
       // One command per unit, as the player's A + left-click formation order issues.
       const goal = cellAnchorNode(GOAL_X, y);
-      sim.enqueue({ kind: 'attackMoveUnit', entity: warrior, x: goal.hx, y: goal.hy });
+      sim.enqueueSetup({ kind: 'attackMoveUnit', entity: warrior, x: goal.hx, y: goal.hy });
     }
   }
   for (const y of PICKET_Y)

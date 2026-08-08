@@ -1,5 +1,5 @@
 import { Building, Settler } from '../../../../components/index.js';
-import type { Command } from '../../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
@@ -20,7 +20,7 @@ export const TOWER_GARRISON_ARCHERS = 3;
 
 /** The postings this decision made, and the men they spend. */
 export interface PostOrders {
-  readonly commands: readonly Command[];
+  readonly commands: readonly PlayerCommand[];
   /** Men sent to a wall this decision. Their assignment only applies next tick, so the army has to be told
    *  here or it would march them off again in the same batch. */
   readonly claimed: ReadonlySet<Entity>;
@@ -40,7 +40,7 @@ export function towerPostOrders(
   owned: readonly Entity[],
   ready: readonly Entity[],
 ): PostOrders {
-  const commands: Command[] = [];
+  const commands: PlayerCommand[] = [];
   const claimed = new Set<Entity>();
   if (ready.length === 0) return { commands, claimed }; // nobody to post: the tally below is a full scan
   // Resolved on the first tower and not before: most seats own no garrison building for most of a game.

@@ -1,5 +1,5 @@
 import { Building, DefenceMode } from '../../../../components/index.js';
-import type { Command } from '../../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
@@ -16,8 +16,8 @@ export function alarmOrders(
   terrain: TerrainGraph,
   owned: readonly Entity[],
   raiders: readonly Raider[],
-): Command[] {
-  const commands: Command[] = [];
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
   for (const e of owned) {
     const building = world.get(e, Building);
     if (shelterCapacityOf(ctx.content, building.buildingType) === 0) continue;

@@ -8,7 +8,7 @@ import type { AuthoredPlacement } from './authored-placements.js';
  *  to it, which keeps pre-signpost goldens byte-identical. */
 export function newWorldSim(seed: number, map: TerrainMap, content: ContentSet): Simulation {
   const sim = new Simulation({ seed, content, map });
-  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+  sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   return sim;
 }
 
@@ -20,12 +20,12 @@ export function newWorldSim(seed: number, map: TerrainMap, content: ContentSet):
 export function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
   for (const p of placements) {
     if (p.kind === 'animal') {
-      sim.enqueue({ kind: 'spawnAnimalHerd', tribe: p.tribe, x: p.x, y: p.y, count: 1 });
+      sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: p.tribe, x: p.x, y: p.y, count: 1 });
       continue;
     }
     const own = p.owner !== undefined ? { owner: p.owner } : {};
     if (p.kind === 'building') {
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: p.typeId,
         x: p.x,
@@ -39,7 +39,7 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
       // A warrior placement carries its class weapon in the equipment slot, so its drawn weapon and its
       // Broń row agree. Authored humans spawn with no experience, earning the `needfor*` gates normally.
       const equipment = weaponEquipmentFor(p.jobType, sim.content.goods);
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'spawnSettler',
         jobType: p.jobType,
         x: p.x,

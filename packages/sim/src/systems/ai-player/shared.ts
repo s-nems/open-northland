@@ -13,7 +13,7 @@ import {
   Position,
   Resource,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands/index.js';
+import type { PlayerCommand } from '../../core/commands/index.js';
 import type { ContentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -184,7 +184,7 @@ export function assistantCounterCommand(
   kind: AssistantCounterKind,
   value: number,
   infinite: boolean,
-): Command | null {
+): PlayerCommand | null {
   const wanted = Math.min(ASSISTANT_COUNTER_MAX, Math.max(ASSISTANT_COUNTER_MIN, value));
   const carrier = assistantCountersEntity(world, player);
   const current =

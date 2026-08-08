@@ -24,7 +24,7 @@ function recordRun(
   const sim = new Simulation({ seed, content: testContent(), ...(map !== undefined ? { map } : {}) });
   const hashes: string[] = [];
   for (let tick = 1; tick <= ticks; tick++) {
-    for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+    for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
     sim.step();
     hashes.push(sim.hashState());
   }
@@ -132,6 +132,26 @@ describe('replay', () => {
 
   it('throws only on a negative untilTick (a nonsense target)', () => {
     expect(() => replay({ content: testContent(), seed: 1, log: [], untilTick: -1 })).toThrow(/must be >= 0/);
+  });
+
+  it('replays an authorized log twice to the same hashes and the same (applyTick, sequence) order', () => {
+    const schedule = new Map<number, Command[]>([
+      [1, [{ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 2, y: 0, tribe: VIKING, owner: 0 }]],
+      [3, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, owner: 0 }]],
+    ]);
+    const { log, hashes } = recordRun(9, 20, schedule, grassMap(4, 1));
+    const order = (entries: readonly LoggedCommand[]): Array<readonly [number, number]> =>
+      entries.map((e) => [e.applyTick, e.sequence] as const);
+
+    const first = replay({ content: testContent(), seed: 9, map: grassMap(4, 1), log, untilTick: 20 });
+    const second = replay({ content: testContent(), seed: 9, map: grassMap(4, 1), log, untilTick: 20 });
+
+    expect(first.hashState()).toBe(hashes[hashes.length - 1]);
+    expect(second.hashState()).toBe(first.hashState());
+    // A replayed log carries the numbering its live run recorded, so a bug report's entry index means
+    // the same thing in the reconstruction.
+    expect(order(first.commands.log)).toEqual(order(log));
+    expect(order(second.commands.log)).toEqual(order(log));
   });
 
   it('faithfully replays a skipped (recoverable-bad) command that is still in the log', () => {

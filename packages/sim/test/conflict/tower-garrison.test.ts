@@ -157,7 +157,7 @@ function run(sim: Simulation, ticks: number): void {
 
 /** Post `soldier` to `tower` and run until he is up there (or the walk budget runs out). */
 function manTheTower(sim: Simulation, soldier: Entity, tower: Entity): void {
-  sim.enqueue({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
+  sim.enqueueSetup({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
   run(sim, WALK_TICKS);
 }
 
@@ -197,7 +197,7 @@ describe('the tower garrison - taking the post', () => {
 
     // The right-click priority a tower offers a non-fighter: its own class is never on the list, so the
     // command only ever reaches the hauler slot.
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'assignWorker',
       entity: civilian,
       building: tower,
@@ -234,7 +234,7 @@ describe('the tower garrison - calling the posting off', () => {
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
 
-    sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
     run(sim, 40);
 
     expect(sim.world.has(soldier, JobAssignment)).toBe(false); // the posting is cancelled outright
@@ -253,10 +253,10 @@ describe('the tower garrison - calling the posting off', () => {
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
-    sim.enqueue({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
     run(sim, 4); // walking to the door, not up there yet
 
-    sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
     run(sim, 400);
 
     expect(sim.world.has(soldier, JobAssignment)).toBe(false);
@@ -269,10 +269,10 @@ describe('the tower garrison - calling the posting off', () => {
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);
     const hauler = settlerAt(sim, CARRIER_JOB, 2, 3);
-    sim.enqueue({ kind: 'assignWorker', entity: hauler, building: tower, jobPriority: [CARRIER_JOB] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: hauler, building: tower, jobPriority: [CARRIER_JOB] });
     run(sim, 4);
 
-    sim.enqueue({ kind: 'moveUnit', entity: hauler, x: 2, y: 6 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: hauler, x: 2, y: 6 });
     run(sim, 40);
 
     expect(sim.world.tryGet(hauler, JobAssignment)).toEqual({ workplace: tower });
@@ -291,7 +291,7 @@ describe('the tower garrison - calling the posting off', () => {
     for (let i = 0; i < WALK_TICKS && !sim.world.has(soldier, CurrentAtomic); i++) sim.step();
     expect(sim.world.has(soldier, CurrentAtomic)).toBe(true); // eating at his post
 
-    sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: soldier, x: 2, y: 6 });
     sim.step();
     expect(sim.world.has(soldier, DeferredOrder)).toBe(true); // parked behind the meal, not discarded
     for (let i = 0; i < WALK_TICKS && sim.world.has(soldier, DeferredOrder); i++) sim.step();
@@ -308,9 +308,9 @@ describe('the tower garrison - where the watch sits in the drive ladder', () => 
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
-    sim.enqueue({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
     run(sim, 2); // after the posting: it re-idles him, which re-stamps his stance to the class default
-    sim.enqueue({ kind: 'setStance', entity: soldier, mode: MILITARY_MODE.DEFEND });
+    sim.enqueueSetup({ kind: 'setStance', entity: soldier, mode: MILITARY_MODE.DEFEND });
 
     run(sim, WALK_TICKS);
 
@@ -324,7 +324,7 @@ describe('the tower garrison - where the watch sits in the drive ladder', () => 
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
-    sim.enqueue({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: soldier, building: tower, jobPriority: [SOLDIER_JOB] });
     run(sim, 2);
     // The errand outranks the watch, so it holds him off the tower for as long as it lasts. Stamped
     // rather than ordered: what is under test is the rung order, not where the gear comes from.

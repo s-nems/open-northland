@@ -52,7 +52,7 @@ describe('assignWorker → door badge, over sandbox content', () => {
 
     // Build the priority exactly as the right-click gesture does, and assign the settler there.
     const jobPriority = assignmentPriority(doorTable.get(buildingTypeOf(building) ?? -1)?.workers);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'assignWorker',
       entity: settler.id as Entity,
       building: building.id as Entity,

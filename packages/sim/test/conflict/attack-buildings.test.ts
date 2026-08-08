@@ -319,7 +319,7 @@ describe('warriors attack enemy buildings', () => {
     // non-Settler target, silently dropping the order, while an in-sight fixture let auto-engage mask it).
     const home = buildingAt(sim, 20, 0, HOME, P2);
 
-    sim.enqueue({ kind: 'attackUnit', entity: soldier, target: home });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: home });
     sim.step();
     expect(sim.world.has(soldier, AttackOrder)).toBe(true); // the order is stamped, not dropped
 
@@ -503,7 +503,7 @@ describe('warriors attack enemy buildings', () => {
     buildingAt(sim, 3, 1, FORT, P1); // the attacker's own fort hugging the target's west face
     const soldier = warriorAt(sim, 1, 1, P1);
 
-    sim.enqueue({ kind: 'attackUnit', entity: soldier, target: fort });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: soldier, target: fort });
     // The target's whole west contact band lies under the friendly fort's body - statically walkable
     // grass, blocked only by the dynamic nav overlay, and routing denies a stand-in for such a goal.
     // Dealing one of those cells would fail the route and silently cancel the attack order; the slot

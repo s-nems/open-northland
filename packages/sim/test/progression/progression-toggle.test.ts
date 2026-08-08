@@ -26,10 +26,10 @@ describe('setProfessionProgression - the rules command and its default', () => {
 
   it('flips the probe through the command seam and back', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.enqueue({ kind: 'setProfessionProgression', enabled: false });
+    sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: false });
     sim.step();
     expect(sim.professionProgressionEnabled()).toBe(false);
-    sim.enqueue({ kind: 'setProfessionProgression', enabled: true });
+    sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: true });
     sim.step();
     expect(sim.professionProgressionEnabled()).toBe(true);
     expect(progressionRulesEntity(sim.world)).not.toBeNull(); // re-enabling keeps the singleton
@@ -38,7 +38,7 @@ describe('setProfessionProgression - the rules command and its default', () => {
   it('replays deterministically: same seed and commands produce the same state hash', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 7, content: testContent() });
-      sim.enqueue({ kind: 'setProfessionProgression', enabled: false });
+      sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: false });
       sim.run(10);
       return sim.hashState();
     };

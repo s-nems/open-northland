@@ -19,8 +19,8 @@ function runSim(instrumented: boolean): { sim: Simulation; calls: string[] } {
       run();
     });
   }
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
+  sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 0, tribe: VIKING });
   for (let i = 0; i < TICKS; i++) sim.step();
   return { sim, calls };
 }

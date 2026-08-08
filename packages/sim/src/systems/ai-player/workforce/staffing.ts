@@ -1,6 +1,6 @@
 import type { BuildingType } from '@open-northland/data';
 import { Building, Settler } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -90,8 +90,8 @@ export function staffBuildings(
   force: SpareForce,
   tally: StaffingTally,
   tier: StaffingTier,
-): Command[] {
-  const commands: Command[] = [];
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
   const owned = ownedBuildings(world, player);
   const ordered = [
@@ -133,9 +133,9 @@ export function staffBuildings(
  * churn. Claiming rather than posting leaves the later tiers only the surplus beyond the reserve; the
  * cap is one-way and never demotes a man.
  */
-export function reserveBuilders(world: World, force: SpareForce, builderJob: number | null): Command[] {
+export function reserveBuilders(world: World, force: SpareForce, builderJob: number | null): PlayerCommand[] {
   if (builderJob === null) return [];
-  const commands: Command[] = [];
+  const commands: PlayerCommand[] = [];
   let builders = 0;
   while (builders < BUILDER_CAP) {
     const keep = force.take((e) => world.get(e, Settler).jobType === builderJob);

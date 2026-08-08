@@ -95,7 +95,7 @@ function wearBoots(sim: Simulation, e: Entity, goodType: number): void {
 }
 
 function grant(sim: Simulation, goodType: number, enabled = true, player = HUMAN_PLAYER): void {
-  sim.enqueue({ kind: 'setAssistantGrant', player, goodType, enabled });
+  sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled });
 }
 
 /** The shared fixture plus a workplace that CONSUMES a wearable - the `work_coin_mint` shape, which
@@ -168,7 +168,7 @@ describe('setAssistantGrant - the per-player grant list', () => {
   it('refuses a non-wearable good and an out-of-range player', () => {
     const sim = freshSim();
     grant(sim, WOOD);
-    sim.enqueue({ kind: 'setAssistantGrant', player: 99, goodType: SHOES, enabled: true });
+    sim.enqueueSetup({ kind: 'setAssistantGrant', player: 99, goodType: SHOES, enabled: true });
     sim.run(1);
     expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([]);
     expect(sim.assistantGrants(99)).toEqual([]);
@@ -476,7 +476,7 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
   it('still hands a grant to a settler whose job is exempt from confinement', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(64, 6) });
     setNeedsEnabled(sim.world, false);
-    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
     // A scout ranges the map, so he carries no signpost confinement at all. The ARMING errand overrides
     // that with the settlement network on purpose; a plain grant must not, or the dispatcher would pick a

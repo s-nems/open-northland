@@ -34,7 +34,7 @@ describe('workforce module - the opening hunter', () => {
     const posts = [...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'assignWorker');
     expect(posts).toHaveLength(1);
     expect(posts[0]).toMatchObject({ building: hq, jobPriority: [HUNTER] });
-    for (const c of posts) sim.enqueue(c);
+    for (const c of posts) sim.enqueueSetup(c);
     sim.step();
 
     // One post, not one per decision: the standing hunter is recognized and nobody else is drafted.
@@ -46,7 +46,7 @@ describe('workforce module - the opening hunter', () => {
     expect([...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'assignWorker')).toEqual([]);
 
     // The milestone lands: the hunt ends and the man rejoins the pool as a builder.
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BAKERY_TOP_TYPE,
       x: 36,

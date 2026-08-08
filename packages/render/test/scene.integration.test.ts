@@ -27,10 +27,10 @@ function grassMap(width: number, height: number): TerrainMap {
 describe('buildScene over a real Simulation snapshot', () => {
   it('renders the vertical-slice world: terrain behind, every entity drawn and depth-sorted', () => {
     const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(6, 1) });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 4, y: 0, tribe: VIKING });
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
-    sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 1, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SAWMILL, x: 4, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CARRIER, x: 1, y: 0, tribe: VIKING });
     for (const x of [2, 3]) {
       const tree = sim.world.create();
       sim.world.add(tree, Position, { x: fx.fromInt(x), y: fx.fromInt(0) });

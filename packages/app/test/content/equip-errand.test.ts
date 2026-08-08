@@ -26,7 +26,7 @@ describe.runIf(hasRealIr())('equip errand on real content', () => {
     if (mead?.equip === undefined) throw new Error('merged real content lost the mead equip overlay');
     expect(sim.equipPickList(soldier, 'misc')).toContainEqual({ goodType: mead.typeId, available: 2 });
 
-    sim.enqueue({ kind: 'equipGood', entity: soldier, group: 'misc', slot: 1, goodType: mead.typeId });
+    sim.enqueueSetup({ kind: 'equipGood', entity: soldier, group: 'misc', slot: 1, goodType: mead.typeId });
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(soldier, components.Equipment).misc[1]?.goodType).toBe(mead.typeId);

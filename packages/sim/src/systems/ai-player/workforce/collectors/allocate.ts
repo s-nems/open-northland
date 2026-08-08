@@ -1,5 +1,5 @@
 import { Settler } from '../../../../components/index.js';
-import type { Command } from '../../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
@@ -33,7 +33,7 @@ function postCollector(
   holders: Entity[],
   collectorsByGood: Map<number, Entity[]>,
   taken: TakenFlagNodes,
-  commands: Command[],
+  commands: PlayerCommand[],
 ): void {
   commands.push({ kind: 'setJob', entity: spare, jobType: w.job });
   commands.push({ kind: 'setWorkFlag', entity: spare, x: spot.hx, y: spot.hy });
@@ -45,7 +45,7 @@ function postCollector(
 
 interface VeteranSteal {
   readonly veteran: Entity;
-  readonly commands: readonly Command[];
+  readonly commands: readonly PlayerCommand[];
   readonly vacatedGood: WantedGood;
 }
 
@@ -71,7 +71,7 @@ function stealVeteranFor(
     if (!needsVeteran(ctx, tribe, w.good.typeId)) continue;
     if (needsVeteran(ctx, tribe, other.good.typeId)) continue;
     if (!meetsNeed(world, ctx, veteran, w.good.typeId)) continue;
-    const commands: Command[] = [];
+    const commands: PlayerCommand[] = [];
     if (jobType !== w.job) commands.push({ kind: 'setJob', entity: veteran, jobType: w.job });
     commands.push({ kind: 'setWorkFlag', entity: veteran, x: spot.hx, y: spot.hy });
     commands.push({ kind: 'setGatherGood', entity: veteran, goodType: w.good.typeId });
@@ -94,10 +94,10 @@ export function allocateCollectors(
   force: SpareForce,
   taken: TakenFlagNodes,
   builderJob: number | null,
-): Command[] {
+): PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
-  const commands: Command[] = [];
+  const commands: PlayerCommand[] = [];
   const relocateDue = flagRelocateDue(ctx);
   const baseNode = anchorNodeOf(world, base);
   for (const w of wanted) {
@@ -136,12 +136,12 @@ export function topUpCollectors(
   collectorsByGood: Map<number, Entity[]>,
   force: SpareForce,
   taken: TakenFlagNodes,
-): Command[] {
+): PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const baseNode = anchorNodeOf(world, base);
   if (baseNode === null) return [];
-  const commands: Command[] = [];
+  const commands: PlayerCommand[] = [];
   for (const w of wanted) {
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     while (holders.length > 0 && holders.length < w.target) {
@@ -169,10 +169,10 @@ export function allocateGenericCollectors(
   force: SpareForce,
   taken: TakenFlagNodes,
   builderJob: number | null,
-): Command[] {
+): PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
-  const commands: Command[] = [];
+  const commands: PlayerCommand[] = [];
   for (const g of genericCollectors) {
     const flag = liveWorkFlag(world, g);
     const flagNode = flag === undefined ? null : anchorNodeOf(world, flag.flag);

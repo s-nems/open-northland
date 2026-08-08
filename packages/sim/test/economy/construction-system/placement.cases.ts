@@ -7,7 +7,7 @@ import { constructionContent, fullyHammer, HOUSE, HOUSE_MAX_HP, STONE, VIKING, W
 describe('placeBuilding underConstruction (CommandSystem)', () => {
   it('starts a building at built=0 with an empty hold + a foundation Health + marker, then builds once hammered', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOUSE,
       x: 0,
@@ -40,7 +40,7 @@ describe('placeBuilding underConstruction (CommandSystem)', () => {
 
   it('places an already-built building (default) seeded from its stock initials, with no site marker', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HOUSE, x: 0, y: 0, tribe: VIKING }); // no flag
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOUSE, x: 0, y: 0, tribe: VIKING }); // no flag
     sim.step();
     const e = [...sim.world.query(Building)][0];
     if (e === undefined) throw new Error('building was not placed');

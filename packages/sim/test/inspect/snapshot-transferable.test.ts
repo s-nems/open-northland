@@ -31,7 +31,7 @@ function realRunSnapshot(): WorldSnapshot {
     [3, [{ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING }]],
   ]);
   for (let tick = 1; tick <= 8; tick++) {
-    for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+    for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
     sim.step();
   }
   return sim.snapshot();

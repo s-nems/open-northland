@@ -85,7 +85,7 @@ describe('signpostProbe invalidation on a work-flag move', () => {
     const flag = sim.world.get(g, WorkFlag).flag;
     const before = nodeXY(sim, flag);
 
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
 
     const after = nodeXY(sim, flag);

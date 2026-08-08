@@ -1,5 +1,5 @@
 import type { ElevationField, WorldRenderer } from '@open-northland/render';
-import type { Simulation } from '@open-northland/sim';
+import type { Command, Simulation } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
@@ -26,6 +26,8 @@ export interface DebugMountsOptions {
   readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
   readonly clientToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
+  /** The trusted admin channel: every debug poke is a world edit, not a seat's order. */
+  readonly enqueue: (command: Command) => void;
   /** The composed HUD claim an admin spawn click must defer to. */
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
   /** The localized good name by sim goodType. */
@@ -44,7 +46,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
   // Mounted before the RTS controls so arming a spawn click never also selects a unit.
   mountAdminDebug({
     canvas,
-    enqueue: (command) => sim.enqueue(command),
+    enqueue: opts.enqueue,
     clientToTile: (x, y) => opts.clientToTile(x, y),
     // A viewport-bounded pass over every owner, rebuilt per click rather than cached like the
     // per-frame hover set.

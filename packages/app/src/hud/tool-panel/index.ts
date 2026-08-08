@@ -1,5 +1,5 @@
 import type { HudLayout, PalettedSprite } from '@open-northland/render';
-import type { Command } from '@open-northland/sim';
+import type { Command, PlayerCommand } from '@open-northland/sim';
 import { type Application, Container, Graphics, Texture } from 'pixi.js';
 import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
@@ -44,7 +44,10 @@ export interface ToolPanelOptions {
   /** The player slot a placed building is owned by. */
   readonly owner: number;
   /** Submit a command into the sim (the one-way seam) - the building menu's `placeBuilding`. */
-  readonly enqueue: (command: Command) => void;
+  readonly enqueue: (command: PlayerCommand) => void;
+  /** The goods palette's seam: dropping a loose pile materializes goods, so it is a sandbox world
+   *  edit rather than an order the seat is entitled to issue. */
+  readonly enqueueAdmin: (command: Command) => void;
   /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
   readonly grants: ExtrasGrantsSeam;
   /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
@@ -174,7 +177,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     ctx,
     container: bannerContainer,
     labelByGood: new Map(opts.goods.map((g) => [g.goodType, g.label])),
-    enqueue,
+    enqueue: opts.enqueueAdmin,
     screenToTile: opts.screenToTile,
   });
   /** The modes that claim the canvas until the player commits or cancels them. */

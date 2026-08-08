@@ -60,7 +60,7 @@ function resolveActors(content: ContentSet): {
 function buildScenario(content: ContentSet): Simulation {
   const { wood, gathering, harvest, gatherer, tribe } = resolveActors(content);
   const sim = new Simulation({ seed: SEED, content, map: grassMap(MAP_CELLS) });
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'spawnSettler',
     jobType: gatherer.typeId,
     x: SPAWN.x,

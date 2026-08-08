@@ -134,7 +134,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
     const sim = mappedSim();
     const onAnchor = settlerAtNode(sim, 5, 5, PLAYER);
     const onWall = settlerAtNode(sim, 6, 5, PLAYER);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(onBody(sim, onAnchor)).toBe(false);
     expect(onBody(sim, onWall)).toBe(false);
@@ -146,7 +146,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
     const sim = mappedSim();
     const door = HUT_FOOTPRINT.door;
     const atDoor = settlerAtNode(sim, ANCHOR.x + door.dx, ANCHOR.y + door.dy, PLAYER);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, atDoor)).toEqual({ x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy });
   });
@@ -155,7 +155,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
     const sim = mappedSim();
     const unowned = settlerAtNode(sim, 5, 5); // no Owner - a scenario fixture
     const cow = animalAtNode(sim, 6, 5); // an animal is a Settler without an Owner
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     for (const e of [unowned, cow]) {
       expect(onBody(sim, e)).toBe(false); // off every wall cell…
@@ -168,7 +168,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
     const sim = mappedSim();
     const walker = settlerAtNode(sim, 6, 5, PLAYER);
     sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(10, 5) }); // passing through
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     // The walker was not teleported by the eviction - it is still travelling its own route.
     expect(sim.world.has(walker, MoveGoal) || onBody(sim, walker)).toBe(true);
@@ -179,14 +179,14 @@ describe('footprint displacement - settlers never end up standing inside walls',
     // with a neutral unit already standing there - the class the spacing drive would never de-stack.
     const lone = mappedSim();
     const solo = settlerAtNode(lone, 5, 5, PLAYER);
-    lone.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    lone.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     lone.step();
     const contested = nodeOf(lone, solo);
 
     const sim = mappedSim();
     const evictee = settlerAtNode(sim, 5, 5, PLAYER);
     const bystander = animalAtNode(sim, contested.x, contested.y);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, bystander)).toEqual(contested); // the sitting unit never moves…
     expect(nodeOf(sim, evictee)).not.toEqual(contested); // …and the evictee goes around it
@@ -196,7 +196,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
   it('never lands an evictee under a walker passing over the landing cell', () => {
     const lone = mappedSim();
     const solo = settlerAtNode(lone, 5, 5, PLAYER);
-    lone.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    lone.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     lone.step();
     const contested = nodeOf(lone, solo);
 
@@ -204,7 +204,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
     const evictee = settlerAtNode(sim, 5, 5, PLAYER);
     const walker = settlerAtNode(sim, contested.x, contested.y, PLAYER);
     sim.world.add(walker, MoveGoal, { cell: terrainOf(sim).nodeAt(12, 12) }); // mid-transit on the cell
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, evictee)).not.toEqual(contested); // occupancy counts travellers too
     expect(onBody(sim, evictee)).toBe(false);
@@ -229,8 +229,8 @@ describe('footprint displacement - settlers never end up standing inside walls',
     // The authored map-load order: every `placeBuilding` enqueues BEFORE any `spawnSettler`, so the
     // building's own eviction pass runs while the settler does not yet exist - the spawn push is what
     // covers this. Both land in one tick, exactly as `enqueuePlacements` sends them.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, tribe: VIKING, x: 6, y: 5, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, tribe: VIKING, x: 6, y: 5, owner: PLAYER });
     sim.step();
     const walled = spawnedSettler(sim);
     expect(onBody(sim, walled)).toBe(false);
@@ -240,11 +240,11 @@ describe('footprint displacement - settlers never end up standing inside walls',
 
   it('an animal herd spawned onto a standing body is pushed off it, member by member', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     // Birth point ON the walls: the leader lands on (5,5) and the first scatter offset on (6,5) - both
     // body cells - while the second lands on the door (4,5), a legal stand that must NOT be pushed.
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: BEAR, x: ANCHOR.x, y: ANCHOR.y });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: BEAR, x: ANCHOR.x, y: ANCHOR.y });
     sim.step();
     const herd = [...sim.world.query(Settler, HerdMember)].sort((a, b) => a - b);
     expect(herd).toHaveLength(3); // the BEAR fixture's maximumGroupSize
@@ -312,7 +312,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
     // The fixture proves itself: the authored cell really has no route out before the push.
     expect(findPath(terrain, walled, away, blocks)).toBeNull();
 
-    sim.enqueue({ kind: 'spawnSettler', jobType: 0, tribe: VIKING, x: 8, y: 8, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, tribe: VIKING, x: 8, y: 8, owner: PLAYER });
     sim.step();
     const freed = spawnedSettler(sim);
     const at = nodeOf(sim, freed);
@@ -323,8 +323,15 @@ describe('footprint displacement - settlers never end up standing inside walls',
 
   it('a settler spawned on free ground keeps its authored cell', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, tribe: VIKING, x: 10, y: 10, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      tribe: VIKING,
+      x: 10,
+      y: 10,
+      owner: PLAYER,
+    });
     sim.step();
     expect(nodeOf(sim, spawnedSettler(sim))).toEqual({ x: 10, y: 10 });
   });
@@ -333,8 +340,8 @@ describe('footprint displacement - settlers never end up standing inside walls',
     const sim = mappedSim();
     const door = HUT_FOOTPRINT.door;
     const at = { x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy };
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
-    sim.enqueue({
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType: WOODCUTTER,
       tribe: VIKING,
@@ -389,7 +396,7 @@ describe('footprint displacement - settlers never end up standing inside walls',
     sim.world.add(home, Building, { buildingType: HOME_S, tribe: VIKING, built: ONE, level: 0 });
     sim.world.add(home, Stockpile, { amounts: new Map<number, number>() });
     const beside = settlerAtNode(sim, 6, 5, PLAYER); // legal today, enclosed by HOME_L's body
-    sim.enqueue({ kind: 'upgradeBuilding', building: home });
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
     sim.step(); // opens the upgrade site (the small body doesn't reach (6,5) - the settler stays)
     // Deliver the difference and hammer the site out by hand; the finish adopts the larger tier.
     sim.world.get(home, Stockpile).amounts.set(STONE, 1);
@@ -477,7 +484,7 @@ describe('footprint displacement - a finish that seals a nook beside the body di
       sim.world.add(walls, Position, positionOfNode(NOOK.x, NOOK.y));
       sim.world.add(walls, Building, { buildingType: uType, tribe: VIKING, built: ONE, level: 0 });
     }
-    sim.enqueue({ kind: 'upgradeBuilding', building: home });
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
     sim.step();
     sim.world.get(home, Stockpile).amounts.set(STONE, 1);
     sim.world.get(home, UnderConstruction).labor = ONE;
@@ -527,7 +534,7 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
   it('a house placed onto a flag pushes it to a legal field it could be re-planted on', () => {
     const sim = mappedSim();
     const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y); // on the anchor, under the walls-to-be
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     const at = nodeOf(sim, flag);
     expect(FAMILY_BODY).not.toContainEqual(at); // off the body…
@@ -546,7 +553,7 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
     expect(BODY).not.toContainEqual(growth); // the fixture proves itself: not walk-blocked…
     expect(FAMILY_BODY).toContainEqual(growth); // …but inside the family body
     const flag = flagAtNode(sim, growth.x, growth.y);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, flag)).not.toEqual(growth);
   });
@@ -554,7 +561,7 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
   it('leaves a flag on open ground beside the plot alone', () => {
     const sim = mappedSim();
     const flag = flagAtNode(sim, 10, 10);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, flag)).toEqual({ x: 10, y: 10 });
   });
@@ -565,14 +572,14 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
     // blocker set (each has its own nearest cell), so the contested cell has to be the SAME one.
     const lone = mappedSim();
     const solo = flagAtNode(lone, ANCHOR.x, ANCHOR.y);
-    lone.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    lone.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     lone.step();
     const contested = nodeOf(lone, solo);
 
     const sim = mappedSim();
     const evicted = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
     const bystander = flagAtNode(sim, contested.x, contested.y); // legal ground, outside the body
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, bystander)).toEqual(contested); // the sitting flag never moves…
     expect(nodeOf(sim, evicted)).not.toEqual(contested); // …and the evicted one goes around it
@@ -583,7 +590,7 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
     const sim = mappedSim();
     const onAnchor = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
     const onWall = flagAtNode(sim, ANCHOR.x + 1, ANCHOR.y);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, onAnchor)).not.toEqual(nodeOf(sim, onWall));
     for (const f of [onAnchor, onWall]) expect(FAMILY_BODY).not.toContainEqual(nodeOf(sim, f));
@@ -593,7 +600,7 @@ describe('footprint displacement - a work flag is never sealed inside a placed h
     const sim = mappedSim();
     const flag = flagAtNode(sim, ANCHOR.x, ANCHOR.y);
     const beside = flagAtNode(sim, ANCHOR.x + 1, ANCHOR.y); // off HQ's anchor - no body to be inside
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HQ, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, flag)).not.toEqual({ x: ANCHOR.x, y: ANCHOR.y });
     expect(nodeOf(sim, beside)).toEqual({ x: ANCHOR.x + 1, y: ANCHOR.y });
@@ -680,7 +687,7 @@ describe('footprint displacement - loose goods never end up buried under walls',
     const sim = mappedSim();
     pileAtNode(sim, 5, 5, WOOD_GOOD, 3, true); // a felled trunk on the anchor
     pileAtNode(sim, 6, 5, STONE_GOOD, 2); // a bare heap on the wall cell
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     const piles = loosePiles(sim);
     expect(piles).toHaveLength(2);
@@ -708,7 +715,7 @@ describe('footprint displacement - loose goods never end up buried under walls',
     }
     const carpet = loosePiles(sim).length;
 
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
 
     const piles = loosePiles(sim);
@@ -720,7 +727,7 @@ describe('footprint displacement - loose goods never end up buried under walls',
     const sim = mappedSim();
     const door = HUT_FOOTPRINT.door;
     const heap = pileAtNode(sim, ANCHOR.x + door.dx, ANCHOR.y + door.dy, WOOD_GOOD, 2);
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     expect(nodeOf(sim, heap)).toEqual({ x: ANCHOR.x + door.dx, y: ANCHOR.y + door.dy });
   });

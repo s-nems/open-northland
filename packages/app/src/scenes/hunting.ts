@@ -34,7 +34,7 @@ function build(sim: Simulation): void {
     { tribe: ANIMAL_TRIBE_SHEEP, cell: SHEEP_HERD_CELL },
   ]) {
     const node = cellAnchorNode(herd.cell.x, herd.cell.y);
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: herd.tribe, x: node.hx, y: node.hy });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: herd.tribe, x: node.hx, y: node.hy });
   }
 }
 

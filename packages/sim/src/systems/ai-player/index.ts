@@ -1,5 +1,5 @@
 import { type AiModuleId, AiPlayer } from '../../components/ai-player.js';
-import type { Command } from '../../core/commands/index.js';
+import { aiCommand, type PlayerCommand } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
@@ -31,7 +31,7 @@ export * from './workforce/index.js';
  *  `run` returns the commands the seat issues this decision; the system enqueues them. */
 export interface AiPlayerModule {
   readonly id: AiModuleId;
-  readonly run: (world: World, ctx: SystemContext, player: number) => readonly Command[];
+  readonly run: (world: World, ctx: SystemContext, player: number) => readonly PlayerCommand[];
 }
 
 /**
@@ -68,7 +68,9 @@ export function runAiPlayerModules(
     if (ctx.tick % AI_DECISION_INTERVAL_TICKS !== seat.player % AI_DECISION_INTERVAL_TICKS) continue;
     for (const module of modules) {
       if (!seat.modules[module.id]) continue;
-      for (const command of module.run(world, ctx, seat.player)) ctx.commands.enqueue(command);
+      for (const command of module.run(world, ctx, seat.player)) {
+        ctx.commands.enqueue(aiCommand(seat.player, command));
+      }
     }
   }
 }

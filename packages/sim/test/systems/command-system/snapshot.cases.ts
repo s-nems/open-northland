@@ -6,7 +6,7 @@ import { fresh, HEADQUARTERS, nthEntity, VIKING, WOOD, WOODCUTTER } from './supp
 describe('snapshot read-view', () => {
   it('is a plain, canonical, non-aliasing copy of the world (Maps -> sorted [k,v] arrays)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 1, y: 1, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 1, y: 1, tribe: VIKING });
     sim.step();
 
     const snap = sim.snapshot();
@@ -31,8 +31,8 @@ describe('snapshot read-view', () => {
 
   it('snapshot entities are in canonical ascending-id order', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 1, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 1, y: 0, tribe: VIKING });
     sim.step();
 
     const snap = sim.snapshot();

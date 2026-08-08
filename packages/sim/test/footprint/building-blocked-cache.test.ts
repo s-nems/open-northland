@@ -21,7 +21,7 @@ const ANCHOR = { x: 5, y: 5 };
 describe('buildingBlockedCells memo', () => {
   it('a burst of callers between two building mutations shares one cached set', () => {
     const sim = mappedSim();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: ANCHOR.x, y: ANCHOR.y, tribe: VIKING });
     sim.step();
     const first = buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
     expect(first.size).toBeGreaterThan(0);

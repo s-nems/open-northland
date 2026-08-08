@@ -63,14 +63,14 @@ function build(sim: Simulation): void {
   for (const start of LONG_BOW_STARTS) man(sim, tower, JOB_ARCHER_LONG, start);
   // The tower's third slot is a plain hauler (`logicworker 24`), not garrison.
   const carrier = spawnSettlerDirect(sim, JOB_CARRIER, CARRIER_START.x, CARRIER_START.y);
-  sim.enqueue({ kind: 'assignWorker', entity: carrier, building: tower, jobPriority: [JOB_CARRIER] });
+  sim.enqueueSetup({ kind: 'assignWorker', entity: carrier, building: tower, jobPriority: [JOB_CARRIER] });
   for (const y of ASSAULT_ROWS) enemySwordsman(sim, ASSAULT_X, y);
 }
 
 /** The `jobPriority` offers him only his own class, never the tower's hauler slot. */
 function man(sim: Simulation, tower: Entity, jobType: number, start: Tile): void {
   const archer = spawnSettlerDirect(sim, jobType, start.x, start.y);
-  sim.enqueue({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [jobType] });
+  sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [jobType] });
 }
 
 function enemySwordsman(sim: Simulation, x: number, y: number): void {

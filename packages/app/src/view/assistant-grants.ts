@@ -1,4 +1,4 @@
-import type { Command, Simulation } from '@open-northland/sim';
+import type { PlayerCommand, Simulation } from '@open-northland/sim';
 import type { AssistantGrantId } from '../hud/tool-panel/extras-menu.js';
 import type { ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 
@@ -39,7 +39,7 @@ export function assistantGrantsSeam(
   sim: Pick<Simulation, 'assistantGrants'>,
   content: GrantContent,
   player: number,
-  enqueue: (command: Command) => void,
+  enqueue: (command: PlayerCommand) => void,
   writable = true,
 ): ExtrasGrantsSeam {
   const grantGoods = resolveGrantGoods(content);
@@ -65,7 +65,7 @@ export function assistantGrantsSeam(
 
 /** Grants start enabled in a playable map only; scenes keep the sim default of nothing granted. */
 export function grantAssistantDefaults(
-  sim: Pick<Simulation, 'enqueue'>,
+  sim: Pick<Simulation, 'enqueueSetup'>,
   content: GrantContent,
   players: readonly number[],
 ): void {
@@ -73,7 +73,7 @@ export function grantAssistantDefaults(
   for (const player of new Set(players)) {
     for (const id of GRANT_IDS) {
       for (const goodType of grantGoods[id]) {
-        sim.enqueue({ kind: 'setAssistantGrant', player, goodType, enabled: true });
+        sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled: true });
       }
     }
   }

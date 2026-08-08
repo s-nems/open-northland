@@ -36,7 +36,7 @@ const { MoveSpeed, Owner, Position, Settler, StayPoint } = components;
 function build(sim: Simulation): void {
   for (const herd of HERDS) {
     const node = cellAnchorNode(herd.x, herd.y);
-    sim.enqueue({ kind: 'spawnAnimalHerd', tribe: herd.tribe, x: node.hx, y: node.hy });
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: herd.tribe, x: node.hx, y: node.hy });
   }
 }
 

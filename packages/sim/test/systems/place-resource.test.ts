@@ -110,7 +110,7 @@ function nodeOf(sim: Simulation, good: number): Entity | null {
 describe('placeResource command', () => {
   it('stamps a felled tree for a fell good (Felling, no MineDeposit)', () => {
     const sim = newSim();
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeResource',
       good: WOOD,
       x: 3,
@@ -131,7 +131,7 @@ describe('placeResource command', () => {
 
   it('stamps a mined deposit for a mine good (MineDeposit.initial === remaining, no Felling)', () => {
     const sim = newSim();
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeResource',
       good: STONE,
       x: 2,
@@ -152,7 +152,7 @@ describe('placeResource command', () => {
 
   it('stamps a pluck-whole node for a pick good (neither Felling nor MineDeposit)', () => {
     const sim = newSim();
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeResource',
       good: MUSHROOM,
       x: 5,
@@ -172,7 +172,14 @@ describe('placeResource command', () => {
   it('skips a good with no footprint record (no node created, id-neutral)', () => {
     const sim = newSim();
     const before = [...sim.world.query(Resource)].length;
-    sim.enqueue({ kind: 'placeResource', good: 999, x: 1, y: 1, remaining: 3, harvestAtomic: WOOD_ATOM });
+    sim.enqueueSetup({
+      kind: 'placeResource',
+      good: 999,
+      x: 1,
+      y: 1,
+      remaining: 3,
+      harvestAtomic: WOOD_ATOM,
+    });
     sim.step();
     expect([...sim.world.query(Resource)].length).toBe(before);
   });
@@ -180,7 +187,7 @@ describe('placeResource command', () => {
   it('is byte-identical from the same seed and holds the core invariants', () => {
     const runOnce = (): string => {
       const sim = newSim();
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeResource',
         good: WOOD,
         x: 3,
@@ -189,7 +196,7 @@ describe('placeResource command', () => {
         harvestAtomic: WOOD_ATOM,
         felling: { chopsLeft: 3 },
       });
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeResource',
         good: STONE,
         x: 7,

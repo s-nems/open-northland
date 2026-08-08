@@ -1,4 +1,4 @@
-import type { Command } from '@open-northland/sim';
+import type { PlayerCommand } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { PanelContext } from './context.js';
@@ -11,7 +11,7 @@ export interface PlacementDeps {
   /** typeId → display label for the banner text. */
   readonly labelByType: ReadonlyMap<number, string>;
   /** Submit the `placeBuilding` command (the one-way seam). */
-  readonly enqueue: (command: Command) => void;
+  readonly enqueue: (command: PlayerCommand) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule for the held type at a tile (`Simulation.placementProbe`). A click on

@@ -1,5 +1,5 @@
 import { Stance } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -82,8 +82,8 @@ export function waveReady(ctx: SystemContext, mix: WeaponMix, meleeCore: number)
 
 /** March `units` on `target`: the ATTACK stance (so they engage what they meet on the road and keep
  *  fighting once the objective falls) and the focus that carries them to it regardless of sight. */
-export function marchOrders(world: World, units: readonly Entity[], target: Entity): Command[] {
-  const commands: Command[] = [];
+export function marchOrders(world: World, units: readonly Entity[], target: Entity): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
   for (const e of units) {
     if (world.tryGet(e, Stance)?.mode !== MILITARY_MODE.ATTACK) {
       commands.push({ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK });
@@ -108,12 +108,12 @@ export function gatherAt(
   terrain: TerrainGraph,
   units: readonly Entity[],
   home: NodeId,
-): Command[] {
-  const commands: Command[] = [];
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
   const reachable = terrain.componentOf(home);
   for (const e of units) {
     if (terrain.componentOf(entityNode(world, terrain, e)) !== reachable) continue;
-    const restance: Command[] =
+    const restance: PlayerCommand[] =
       world.tryGet(e, Stance)?.mode === MILITARY_MODE.ATTACK
         ? []
         : [{ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK }];
