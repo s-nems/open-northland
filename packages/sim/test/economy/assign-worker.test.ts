@@ -30,14 +30,21 @@ import { ctxOf } from '../fixtures/context.js';
  */
 
 const VIKING = 1;
+const FRANK = 2;
 const HUMAN = 0;
 const CARPENTER = 2; // the sawmill's worker job
 const SAWMILL = 2; // building type
 
-function placeBuilding(sim: Simulation, buildingType: number, x: number, y: number): Entity {
+function placeBuilding(
+  sim: Simulation,
+  buildingType: number,
+  x: number,
+  y: number,
+  tribe: number = VIKING,
+): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Building, { buildingType, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+  sim.world.add(e, Building, { buildingType, tribe, built: fx.fromInt(1), level: 0 });
   return e;
 }
 
@@ -152,6 +159,17 @@ describe('assignWorker - bind an owned settler to a chosen building', () => {
 
     expect(sim.world.get(neutral, Settler).jobType).toBeNull();
     expect(sim.world.has(neutral, JobAssignment)).toBe(false);
+  });
+
+  it('skips a workplace of ANOTHER TRIBE - the stamp on a building decides who may staff it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const frankMill = placeBuilding(sim, SAWMILL, 5, 5, FRANK);
+    const viking = settler(sim);
+
+    assignWorker(sim.world, ctxOf(sim), assign(viking, frankMill));
+
+    expect(sim.world.get(viking, Settler).jobType).toBeNull();
+    expect(sim.world.has(viking, JobAssignment)).toBe(false);
   });
 
   it('binds the FIRST job in the priority list that the building actually offers', () => {

@@ -1,6 +1,7 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
 import { entityById, ONE, type WorldSnapshot } from '@open-northland/sim';
 import {
+  buildingTribeOf,
   buildingTypeOf,
   builtFractionOf,
   familiesByHome,
@@ -11,6 +12,7 @@ import {
   marriageOf,
   ownerPlayerOf,
   type SnapshotEntity,
+  settlerTribeOf,
 } from '../../../game/snapshot.js';
 
 /** `homeSize` (the original `logichomesize`, 1..5 by level) counts FAMILIES, not settlers. */
@@ -70,7 +72,10 @@ export function computeHouseHighlight(
   for (const e of snapshot.entities) {
     if (!isBuiltHome(e, housesByType)) continue;
     if (ownerPlayerOf(e) !== ownerPlayerOf(settler)) continue;
-    items.push({ id: e.id, ok: houseFitsFamily(e, family, families.get(e.id), housesByType) });
+    const ok =
+      buildingTribeOf(e) === settlerTribeOf(settler) &&
+      houseFitsFamily(e, family, families.get(e.id), housesByType);
+    items.push({ id: e.id, ok });
   }
   return items;
 }
@@ -86,6 +91,7 @@ export function houseAssignableAt(
   if (settler === undefined || !isSettler(settler) || house === undefined) return false;
   if (!isBuiltHome(house, housesByType)) return false;
   if (ownerPlayerOf(house) !== ownerPlayerOf(settler)) return false;
+  if (buildingTribeOf(house) !== settlerTribeOf(settler)) return false;
   const families = familiesByHome(snapshot).get(buildingId);
   return houseFitsFamily(house, familyIdsOf(snapshot, settlerId), families, housesByType);
 }

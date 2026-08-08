@@ -1,14 +1,14 @@
 import { MAP_PLAYER_COLOR_COUNT, type MapScript } from '@open-northland/data';
 import { components } from '@open-northland/sim';
-import { HUMAN_PLAYER } from './rules.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from './rules.js';
 
 const { isValidPlayer } = components;
 
 /**
  * The local player session a `?map=` start carries from the menu: which roster seat the person controls
  * (`?player=N`) and each slot's team colour (`?colors=<slot>:<colorId>,…`, overriding the map script's
- * authored colours). Pure param parsing and colour-map building. The roster's AI toggles ride separately
- * as `?ai=<seat>,…`.
+ * authored colours). Pure param parsing and roster lookups. The roster's AI toggles ride separately as
+ * `?ai=<seat>,…`.
  */
 
 /** The two spectator pseudo-seats the menu offers in place of a slot. Both drop fog and make every
@@ -67,6 +67,16 @@ export function playerColourMap(
   for (const [slot, color] of overrides) bySlot.set(slot, color);
   if (bySlot.size === 0) return (player) => player;
   return (player) => bySlot.get(player) ?? player;
+}
+
+/**
+ * The seat's tribe (`MapPlayerSlot.tribeId`), which the entities it raises are stamped with, falling back
+ * to {@link PRIMARY_TRIBE} off-roster. Reading the roster row as the *build* tribe is readable-semantics
+ * inference: `tribetypes.ini` scopes `allowhouse` per tribe, and the row is the only tribe a seat carries
+ * before it owns anything.
+ */
+export function playerTribe(script: Pick<MapScript, 'players'> | null, player: number): number {
+  return script?.players.find((p) => p.player === player)?.tribeId ?? PRIMARY_TRIBE;
 }
 
 /**
