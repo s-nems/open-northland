@@ -26,9 +26,8 @@ export async function loadAnimalCharacters(
   }
   if (tribes.size === 0) return undefined;
 
-  // One load per distinct recolour (bear01 serves bears and camels); the shared shadow set decodes once via
-  // loadLayer's memoized body cache. A missing atlas drops the palette's tribes to unbound; a real decode
-  // failure still propagates.
+  // One load per distinct recolour: bear01 serves bears and camels. A missing atlas drops the palette's
+  // tribes to unbound; a real decode failure still propagates.
   const stems = new Map<string, Promise<Awaited<ReturnType<typeof loadLayer>> | undefined>>();
   for (const tribe of tribes) {
     const palette = ANIMAL_PALETTE_BY_TRIBE.get(tribe);

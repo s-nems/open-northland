@@ -3,11 +3,8 @@ import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import type { BobSeqRow, ContentIr, GfxAnimAtomicRow } from '../ir/rows.js';
 import { eightDirAnim, frameListsByFacing } from '../settler-gfx/index.js';
 
-/**
- * The pure animal-look binding: one animal tribe's `[gfxwalkatomic]` / `[gfxanimatomic]` rows at the animal
- * jobs become a {@link SettlerStateBinding} over the shared `cr_ani` body sequences. The atlas loading
- * lives in `load.ts`.
- */
+// The pure animal-look binding: one tribe's `[gfxwalkatomic]` / `[gfxanimatomic]` rows at the animal jobs
+// become a SettlerStateBinding over the shared `cr_ani` body sequences.
 
 /** The animal pseudo-jobs (`jobtypes.ini` / `logicdefines.inc`: `baby_animal` 48, `adult_animal` 49). Rows
  *  are read at the adult job first, the baby lane as a defensive fallback. The lanes bind the same
@@ -39,8 +36,8 @@ function animalGfxAtomicRow(
 
 /**
  * The tribe's walk `[bobseq]` name: the first `[gfxwalkatomic]` unloaded row across the animal jobs whose
- * sequence is a clean ×8 strip. The wolves/lions author a second `..._running` row after the walk;
- * first-wins keeps the walk, matching the sim's unconsumed `runspeed`.
+ * sequence is a clean ×8 strip. The wolves/lions author a second `..._running` row; first-wins keeps the walk,
+ * matching the sim's unconsumed `runspeed`.
  */
 export function animalWalkSeqName(
   ir: ContentIr | null,
@@ -57,18 +54,13 @@ export function animalWalkSeqName(
 }
 
 /**
- * Build one animal tribe's {@link SettlerStateBinding} from the IR lanes: the walk row as `moving`,
- * the first wait-action row as `idle`, and the action-81 row as the `byAtomic` attack swing (the
- * bear/wolf/lion fight cycles; a tribe without one just stands while striking). Returns `null` when
- * no idle resolves (a tribe with no usable rows), so the caller leaves the tribe unbound instead of
- * binding a bogus range.
+ * Build one animal tribe's {@link SettlerStateBinding} from the IR lanes. Returns `null` when no idle
+ * resolves, so the caller leaves the tribe unbound instead of binding a bogus range.
  *
- * The idle is the row's authored frame-list program, looped on the free tick clock: a single-list row plays
- * facing-locked, a per-direction row per facing. Playing the program rather than the raw wait strip
- * matters: a strip packs several poses back-to-back (the bear's sniff, lie, sit) and the program picks one
- * with its authored holds. Approximations: every animal of a species breathes in lockstep (the free tick
- * clock has no per-entity phase), and the ladder keeps only its first hit, dropping the original's idle
- * variety.
+ * The idle plays the row's authored frame-list program rather than the raw wait strip, which packs several
+ * poses back-to-back. Approximations: every animal of a species breathes in lockstep, since the free tick
+ * clock has no per-entity phase, and the idle probe stops at the first usable row in
+ * {@link ANIMAL_IDLE_ACTIONS}, dropping the original's idle variety.
  */
 export function animalBinding(
   ir: ContentIr | null,
