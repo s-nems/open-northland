@@ -22,6 +22,7 @@ import {
   stampDot,
   viewportRectOnMinimap,
 } from './model.js';
+import { createDotReplotGate } from './replot-gate.js';
 
 /**
  * The bottom-left minimap in the original's braided overview frame: the static ground raster, the
@@ -212,7 +213,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   window.addEventListener('mouseup', onMouseUp);
   window.addEventListener('blur', onBlur);
 
-  let lastDotsTick = -1;
+  const claimDotReplot = createDotReplotGate(() => performance.now());
   let lastHeight = -1;
   let disposed = false;
   /** Monotonic guard: only the newest in-flight frame re-bake may swap the braid in. */
@@ -274,10 +275,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       container.position.set(layout.panel.x, layout.panel.y);
       if (app.renderer.resolution !== bakedResolution) rebuildDensity();
       fogMask.draw(fog);
-      if (snapshot.tick !== lastDotsTick) {
-        lastDotsTick = snapshot.tick;
-        drawDots(snapshot, fog);
-      }
+      if (claimDotReplot(snapshot)) drawDots(snapshot, fog);
       const vp = viewportRectOnMinimap(
         layout,
         bounds,
