@@ -68,6 +68,23 @@ export class FogState {
     return [...this.masks.keys()].sort((a, b) => a - b);
   }
 
+  /** Restore seam: adopt a saved mask verbatim and rebuild the player's may-hold-VISIBLE box from
+   *  its bytes - derived bookkeeping is recomputed, never loaded. */
+  restoreMask(player: number, mask: Uint8Array): void {
+    const cells = this.cellsWide * this.cellsHigh;
+    if (mask.length !== cells) {
+      throw new Error(`fog mask for player ${player} holds ${mask.length} bytes, the grid ${cells} cells`);
+    }
+    this.masks.set(player, mask);
+    for (let r = 0; r < this.cellsHigh; r++) {
+      for (let c = 0; c < this.cellsWide; c++) {
+        if (mask[r * this.cellsWide + c] === FOG_STATE.VISIBLE) {
+          this.mergeVisibleBounds(player, c, c, r, r);
+        }
+      }
+    }
+  }
+
   /** Drop every mask (fog switched OFF): exploration history resets, generation bumps once. */
   reset(): void {
     if (this.masks.size === 0) return;

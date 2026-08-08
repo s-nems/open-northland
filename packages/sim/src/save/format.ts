@@ -6,6 +6,10 @@ export const SAVE_KIND = 'open-northland-save';
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. */
 export const SAVE_FORMAT_VERSION = 1;
 
+/** The single key wrapping a serialized `Map`'s entry pairs; reserved, so a plain record carrying it
+ *  is rejected at export. */
+export const SAVE_MAP_KEY = '$map';
+
 /** The identity block a reader classifies compatibility from before touching sections; the full
  *  format contract lives in docs/DATA-FORMAT.md. */
 export interface SaveGameHeader {

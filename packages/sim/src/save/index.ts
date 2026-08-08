@@ -7,7 +7,10 @@ export {
   type RngSection,
   SAVE_FORMAT_VERSION,
   SAVE_KIND,
+  SAVE_MAP_KEY,
   type SaveGame,
   type SaveGameHeader,
   type SaveGameSection,
 } from './format.js';
+export { parseSaveGame } from './parse.js';
+export { type RestoredSimulation, type RestoreOptions, restoreSimulation } from './restore.js';

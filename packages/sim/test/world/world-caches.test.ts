@@ -12,6 +12,10 @@ import { defineComponent, World } from '../../src/ecs/world.js';
  *    invalidation is caught at the tick it happens (it runs inside CORE_INVARIANTS as
  *    `cachesCoherent`), not later as an unexplained golden/hash divergence.
  */
+// Component names are unique per process, so the cases share these two rather than redefining them.
+const A = defineComponent<{ n: number }>('A');
+const B = defineComponent<{ n: number }>('B');
+
 describe('World cache coherence', () => {
   it('canonicalEntities returns a frozen array - in-place mutation throws at the offender', () => {
     const w = new World();
@@ -40,8 +44,6 @@ describe('World cache coherence', () => {
 
   it('forEachComponent walks registration order regardless of per-entity add order', () => {
     const w = new World();
-    const A = defineComponent<{ n: number }>('A');
-    const B = defineComponent<{ n: number }>('B');
     const first = w.create();
     w.add(first, A, { n: 1 }); // registers A before B
     w.add(first, B, { n: 2 });
@@ -62,7 +64,6 @@ describe('World cache coherence', () => {
 
   it('verifyCaches reports a membership list that disagrees with the stores', () => {
     const w = new World();
-    const A = defineComponent<{ n: number }>('A');
     const e = w.create();
     w.add(e, A, { n: 1 });
     expect(w.verifyCaches()).toEqual([]);
@@ -82,7 +83,6 @@ describe('World cache coherence', () => {
 
   it('verifyCaches reports the canonical memo, then memberships, then registered verifiers', () => {
     const w = new World();
-    const A = defineComponent<{ n: number }>('A');
     const e = w.create();
     w.add(e, A, { n: 1 });
     w.canonicalEntities();

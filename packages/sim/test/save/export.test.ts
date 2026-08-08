@@ -15,6 +15,7 @@ import {
   exportSaveGame,
   SAVE_FORMAT_VERSION,
   SAVE_KIND,
+  SAVE_MAP_KEY,
   type SaveGame,
   type SaveGameSection,
   Simulation,
@@ -119,7 +120,7 @@ describe('exportSaveGame sections', () => {
     });
   });
 
-  it('serializes a Map component field as key-sorted entries', () => {
+  it('serializes a Map component field as a $map wrapper keeping insertion order', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const Amounts = defineComponent<{ amounts: Map<number, number> }>('MapProbe');
     const amounts = new Map<number, number>();
@@ -127,11 +128,13 @@ describe('exportSaveGame sections', () => {
     sim.world.add(sim.world.create(), Amounts, { amounts });
     const entries = componentSection(exportSaveGame(sim), 'MapProbe')?.entries;
     expect(entries?.[0]?.[1]).toEqual({
-      amounts: [
-        [1, 10],
-        [2, 20],
-        [3, 30],
-      ],
+      amounts: {
+        [SAVE_MAP_KEY]: [
+          [3, 30],
+          [1, 10],
+          [2, 20],
+        ],
+      },
     });
   });
 
@@ -202,6 +205,14 @@ describe('exportSaveGame rejection', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.world.add(sim.world.create(), defineComponent<unknown>('SetProbe'), { bag: new Set([1]) });
     expect(() => exportSaveGame(sim)).toThrow(/component:SetProbe\/1\.bag: unsaveable value shape Set/);
+  });
+
+  it('throws naming the path for a record using the reserved $map key', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    sim.world.add(sim.world.create(), defineComponent<unknown>('ReservedProbe'), {
+      bag: { [SAVE_MAP_KEY]: [] },
+    });
+    expect(() => exportSaveGame(sim)).toThrow(/component:ReservedProbe\/1\.bag: the key '\$map' is reserved/);
   });
 
   it('throws naming the path for a non-finite number and for undefined', () => {

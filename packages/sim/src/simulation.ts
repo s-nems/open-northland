@@ -102,6 +102,12 @@ export class Simulation {
     return this.currentTick;
   }
 
+  /** Restore seam: adopt a saved run position; only valid before the first {@link step}. */
+  restoreTick(tick: number): void {
+    if (this.currentTick !== 0) throw new Error('restoreTick: the sim has already ticked');
+    this.currentTick = tick;
+  }
+
   /**
    * Install (or clear) the per-system instrumentation hook. The hook must call `run` exactly once; the
    * timer stays in the caller, keeping wall-clock reads out of sim source. Purely observational, so an

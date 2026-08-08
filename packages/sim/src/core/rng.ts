@@ -30,7 +30,10 @@ export class Rng {
     return this.state;
   }
 
+  /** Adopt a stream position verbatim, exactly as {@link getState} reported it - `next()`'s `| 0` can
+   *  leave a negative state, and normalizing here would break a save's byte-identical round trip. */
   setState(state: number): void {
-    this.state = state >>> 0;
+    if (!Number.isInteger(state)) throw new Error(`rng state must be an integer, got ${state}`);
+    this.state = state;
   }
 }

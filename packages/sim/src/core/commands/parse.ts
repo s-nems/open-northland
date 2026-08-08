@@ -1,4 +1,5 @@
 import type { LoggedCommand } from '../command-queue.js';
+import { asCount, asRecord, typeName } from '../untrusted.js';
 import {
   COMMAND_ENVELOPE_VERSION,
   COMMAND_ISSUER,
@@ -57,8 +58,8 @@ export function parseCommandLog(value: unknown): readonly LoggedCommand[] {
   value.forEach((entry: unknown, i) => {
     const at = `command log[${i}]`;
     const raw = asRecord(entry, at);
-    const applyTick = positiveIndex(raw.applyTick, `${at}.applyTick`);
-    const sequence = positiveIndex(raw.sequence, `${at}.sequence`);
+    const applyTick = asCount(raw.applyTick, `${at}.applyTick`);
+    const sequence = asCount(raw.sequence, `${at}.sequence`);
     if (previous !== undefined && !ascends(previous, applyTick, sequence)) {
       throw new Error(`${at}: (${applyTick}, ${sequence}) does not follow the previous entry`);
     }
@@ -71,23 +72,4 @@ export function parseCommandLog(value: unknown): readonly LoggedCommand[] {
 
 function ascends(previous: LoggedCommand, applyTick: number, sequence: number): boolean {
   return applyTick > previous.applyTick || (applyTick === previous.applyTick && sequence > previous.sequence);
-}
-
-function positiveIndex(value: unknown, at: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
-    throw new Error(`${at}: expected a non-negative integer, got ${JSON.stringify(value)}`);
-  }
-  return value;
-}
-
-function asRecord(value: unknown, at: string): Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error(`${at}: expected an object, got ${typeName(value)}`);
-  }
-  return value as Record<string, unknown>;
-}
-
-function typeName(value: unknown): string {
-  if (value === null) return 'null';
-  return Array.isArray(value) ? 'an array' : typeof value;
 }
