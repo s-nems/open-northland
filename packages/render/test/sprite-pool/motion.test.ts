@@ -9,8 +9,8 @@ import {
 } from '../../src/gpu/sprite-pool/motion.js';
 
 /**
- * The gait phase is a walk-cycle clock scaled by ground actually covered: the animation-only tuning plays
- * the authored 12-frame cycle in 17 ticks while a cell crossing still takes 18.
+ * The gait phase is a walk-cycle clock scaled by ground actually covered: one authored frame per tick
+ * at full cruise, while a cell crossing still takes 18 ticks.
  */
 
 const WALK_TICKS_PER_CELL = 18;
@@ -114,13 +114,13 @@ describe('projectile snap policy', () => {
 });
 
 describe('motion gait phase', () => {
-  it('plays the walk cycle in 17 ticks without changing the 18-tick cell crossing', () => {
+  it('advances one frame per tick at full cruise without changing the 18-tick cell crossing', () => {
     const m = fresh();
     trackMotion(m, 0, 0, 0, 1); // a first sighting snaps, so it adds no strides
     for (let t = 1; t <= WALK_TICKS_PER_CELL; t++) {
       trackMotion(m, t, t * FULL_GAIT_PX_PER_TICK, 0, 1);
     }
-    expect(m.gaitPhase).toBeCloseTo((12 * 18) / 17);
+    expect(m.gaitPhase).toBeCloseTo(WALK_TICKS_PER_CELL);
   });
 
   it('slows proportionally when the anchor advances less than the gait (no walk-in-place)', () => {
@@ -129,7 +129,7 @@ describe('motion gait phase', () => {
     for (let t = 1; t <= 10; t++) {
       trackMotion(m, t, t * FULL_GAIT_PX_PER_TICK * 0.2, 0, 1); // pressed to 20%
     }
-    expect(m.gaitPhase).toBeCloseTo(24 / 17); // legs retain 20% of the tuned 12/17-frame cadence
+    expect(m.gaitPhase).toBeCloseTo(2); // legs retain 20% of the one-frame-per-tick cadence
   });
 
   it('freezes on a stationary tick and contributes nothing on a snap/teleport', () => {
@@ -147,7 +147,7 @@ describe('motion gait phase', () => {
     const m = fresh();
     trackMotion(m, 0, 0, 0, 1);
     trackMotion(m, 1, 100, 0, 1); // under the snap threshold, far over any gait
-    expect(m.gaitPhase).toBeLessThanOrEqual(2.5);
+    expect(m.gaitPhase).toBe(3.5); // lands exactly at the cap
   });
 });
 
