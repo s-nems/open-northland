@@ -1,7 +1,7 @@
 import { DEFAULT_MASTER_GAIN } from '@open-northland/audio';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
-import { DEFAULT_SETTINGS, type MenuSettings } from '../../view/settings-store.js';
+import { defaultSettings, type MenuSettings } from '../../view/settings-store.js';
 import { type SegHandle, segControl, togglePill } from './controls.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
@@ -265,7 +265,7 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
   restore.className = 'main-menu__ghost';
   restore.textContent = text.restoreDefaults;
   restore.addEventListener('click', () => {
-    updateSettings(DEFAULT_SETTINGS);
+    updateSettings(defaultSettings());
     if (document.fullscreenElement !== null) void document.exitFullscreen();
     open('settings');
   });

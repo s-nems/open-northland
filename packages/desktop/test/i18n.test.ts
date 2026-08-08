@@ -11,13 +11,17 @@ import {
 } from '../src/i18n/index.js';
 
 describe('installer i18n', () => {
-  it('maps an OS locale onto the two languages, defaulting non-Polish to English', () => {
-    expect(resolveLocale('pl')).toBe('pol');
-    expect(resolveLocale('pl-PL')).toBe('pol');
-    expect(resolveLocale('PL')).toBe('pol');
-    expect(resolveLocale('en-US')).toBe('eng');
-    expect(resolveLocale('de-DE')).toBe('eng');
-    expect(resolveLocale(undefined)).toBe('eng');
+  it('takes the first preferred system language with a shipped catalog', () => {
+    expect(resolveLocale(['pl'])).toBe('pol');
+    expect(resolveLocale(['pl-PL'])).toBe('pol');
+    expect(resolveLocale(['PL'])).toBe('pol');
+    expect(resolveLocale(['en-US'])).toBe('eng');
+    expect(resolveLocale(['cs-CZ', 'pl-PL'])).toBe('pol');
+  });
+
+  it('falls back to English when no preference has a catalog', () => {
+    expect(resolveLocale(['de-DE'])).toBe('eng');
+    expect(resolveLocale([])).toBe('eng');
   });
 
   it('accepts only the shipped locale codes', () => {

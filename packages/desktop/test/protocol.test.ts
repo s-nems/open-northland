@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAppUrl, isInGameSession, routePathOf } from '../src/protocol-routing.js';
+import { isAppUrl, isGamePage, isInGameSession, routePathOf } from '../src/protocol-routing.js';
 
 /**
  * Pixi workers mis-join root-relative asset URLs on a custom scheme, so `/bobs/x.png` arrives as
@@ -53,7 +53,7 @@ describe('isInGameSession', () => {
     expect(isInGameSession('app://game/index.html?lang=eng&scene=first-hut')).toBe(true);
   });
 
-  it('sees no session in the main menu, whose URL always carries the installer language', () => {
+  it('sees no session in the main menu, whose URL carries settings params of its own', () => {
     expect(isInGameSession('app://game/index.html?lang=pol')).toBe(false);
     expect(isInGameSession('app://game/index.html')).toBe(false);
   });
@@ -62,5 +62,19 @@ describe('isInGameSession', () => {
     expect(isInGameSession('app://setup/setup.html')).toBe(false);
     expect(isInGameSession('https://example.com/index.html?map=campaign01')).toBe(false);
     expect(isInGameSession('not a url')).toBe(false);
+  });
+});
+
+describe('isGamePage', () => {
+  it('accepts every web-app page, with or without params', () => {
+    expect(isGamePage('app://game/index.html')).toBe(true);
+    expect(isGamePage('app://game/index.html?lang=pol')).toBe(true);
+    expect(isGamePage('app://game/index.html?map=campaign01')).toBe(true);
+  });
+
+  it('rejects the setup page and anything off the app scheme', () => {
+    expect(isGamePage('app://setup/setup.html')).toBe(false);
+    expect(isGamePage('https://example.com/index.html')).toBe(false);
+    expect(isGamePage('not a url')).toBe(false);
   });
 });

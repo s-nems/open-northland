@@ -4,22 +4,15 @@ import { type BrowserWindow, dialog, ipcMain } from 'electron';
 import { patchConfig } from './config.js';
 import { detectGameFolders } from './detect.js';
 import { createEventThrottle } from './event-throttle.js';
-import {
-  currentLocale,
-  formatMessage,
-  isLocale,
-  type Locale,
-  messages,
-  setActiveLocale,
-} from './i18n/index.js';
+import { currentLocale, formatMessage, isLocale, type Locale, messages } from './i18n/index.js';
 import type { GameFolderCandidate, IpcInvokeChannel, ModEvent, PipelineEvent } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 import { findModRootUnder, installCnMod, isFinalModEvent } from './mod-install/index.js';
 import type { PipelineHost } from './pipeline-host.js';
 import { gameUrlForLocale } from './protocol.js';
 import { isAppUrl } from './protocol-routing.js';
+import { applyShellLocale } from './shell-locale.js';
 import type { ShellPaths, ShellState } from './shell-state.js';
-import { buildAppMenu } from './window.js';
 
 export interface IpcDeps {
   readonly win: BrowserWindow;
@@ -126,9 +119,6 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
 
   handleFromAppFrame(IPC_CHANNELS.setLocale, (locale: unknown) => {
     assertLocale(locale);
-    setActiveLocale(locale);
-    patchConfig(paths.configFile, { locale });
-    // The native menu does not re-localize itself; rebuild it for the new language.
-    buildAppMenu(win, paths.dataRoot.path);
+    applyShellLocale(win, paths, locale);
   });
 }
