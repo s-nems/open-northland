@@ -1,9 +1,7 @@
 /**
- * The gathering-economy render binding, split by concern: the pipeline-join resolution into per-good
- * {@link GatheringRefs} (`refs.ts`), the renderer node/trunk/stockpile bindings that consume them
- * (`bindings.ts`), and the two extra resource kinds - the felled-tree stump (`stump.ts`) and the forageable
- * berry bush (`berry-bush.ts`). The reducers are pure; the atlas byte loading and family registration live
- * in `../sprite-sheet/`.
+ * The gathering-economy render binding: pure reducers from the pipeline join to the renderer's node, trunk,
+ * stockpile, stump and berry-bush bindings. Atlas byte loading and family registration live in
+ * `../sprite-sheet/`.
  */
 
 export * from './berry-bush.js';

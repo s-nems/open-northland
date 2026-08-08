@@ -5,21 +5,12 @@ import { servedAtlasStem } from '../ir/joins.js';
 import type { ContentIr, GatheringPipelineRow, GatheringStageRow, LandscapeGfxRow } from '../ir/rows.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 
-/**
- * The gathering-economy draw resolution: reduce the `gatheringPipeline` join (good → its
- * `landscapeTo{Harvest,Pickup,Store}` stage → the `[GfxLandscape]` records that place it) to the per-good
- * {@link GatheringRefs} the renderer bindings consume, independent of which atlases actually loaded.
- */
-
-/** The `ls_goods.bmd` served-atlas stem prefix - a good's recoloured pile atlas is `ls_goods.<palette>`, so
- *  the goods-manifest `{frame, palette}` maps straight to a {@link GatheringPileRef}. */
+/** The `ls_goods.bmd` served-atlas stem prefix - a good's recoloured pile atlas is `ls_goods.<palette>`. */
 const GOODS_PILE_BMD_STEM = 'ls_goods';
 
 /**
  * The default resource atlas family - the shared `ls_trees.tree_yew01` layer drawn as the renderer's
- * `resource` kind. A good whose node record lives in this family binds a bare bob id; every other good
- * binds a layer-qualified ref into its own loaded `families` atlas. {@link TREE_BOB} backs a good with no
- * node.
+ * `resource` kind.
  */
 export const DEFAULT_RESOURCE_STEM = TREE_ATLAS;
 
@@ -33,9 +24,8 @@ export const DEFAULT_RESOURCE_STEM = TREE_ATLAS;
 export const FLAG_EDIT_NAME = 'player01 work extern 01';
 
 /**
- * A bare fallback bob for a stockpile slot with no real frame. A stockpile has no `kindLayers` layer of its
- * own, so a bare ref draws the placeholder heap rather than a wrong atlas frame - only its bare-ness
- * matters, not the value.
+ * A bare fallback bob for a stockpile slot with no real frame: a stockpile has no `kindLayers` layer of its
+ * own, so only the ref's bare-ness matters, not the value.
  */
 export const STOCKPILE_PLACEHOLDER_BOB = 0;
 
@@ -71,11 +61,11 @@ export interface GatheringRefs {
    */
   readonly nodesByGfxIndex: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /**
-   * Freshly-dropped, not-yet-collected pile ref per scene `goodType` - the good's `landscapeToPickup`
-   * record (wood's "trunk" stage, a felled log distinct from the tidy delivered heap:
-   * `tree → trunk(pickup) → wood(store)`). Carries the record's full fewest→most state ladder (the ore and
-   * wheat pickup records author 5 states, state ≡ units; stone's authors a single state), so a drop is
-   * drawn by its actual unit count rather than always the full heap.
+   * Freshly-dropped, not-yet-collected pile ref per scene `goodType` - the good's `landscapeToPickup` record
+   * (wood's "trunk" stage, a felled log distinct from the tidy delivered heap:
+   * `tree → trunk(pickup) → wood(store)`). Carries the record's full fewest→most state ladder, state ≡
+   * units, so a drop draws by its actual unit count rather than always the full heap. Records that author a
+   * single state (stone, leather, mushroom, meat) draw that one frame at any count.
    */
   readonly trunksByGood: Readonly<Record<number, GatheringNodeLevelsRef>>;
   /** Ground-pile ref per scene `goodType` (its `landscapeToStore` record's per-fill heap frames). */
@@ -85,10 +75,9 @@ export interface GatheringRefs {
 }
 
 /**
- * The representative full-grown bob of a node record: its highest-state frame list's first bob. States
- * count up with growth/valency (a tree's `s3` is the full tree, `s1` a sapling; a mine's `s5` is the full
- * deposit), so the top state is the fresh, undepleted node a static or full node draws. `undefined` when
- * the record has no frames.
+ * The representative full-grown bob of a node record: its highest-state frame list's first bob. States count
+ * up with growth/valency (a tree's `s3` is the full tree, `s1` a sapling; a mine's `s5` is the full deposit),
+ * so the top state is the fresh, undepleted node.
  */
 export function nodeBob(record: LandscapeGfxRow): number | undefined {
   let best: { state: number; bob: number } | undefined;
@@ -112,7 +101,7 @@ export function nodeRefFrom(record: LandscapeGfxRow): GatheringNodeRef | undefin
  * The first bob of each of a record's frame states, ordered by ascending state (`state 1` → index 0). A
  * higher state is always more (more units in a pile, a fuller deposit), so a 1-based `fill`/`level` indexes
  * `[value - 1]`. The `ls_goods` piles and the `ls_ground` clay/iron/gold mines carry 5 states; a non-mined
- * node has one, drawn at any level. `undefined` when the record has no frames.
+ * node has one, drawn at any level. `undefined` when the record contributes no bobs.
  *
  * Named approximation: each state contributes only its first bob, drawn as a still - the original loops the
  * state's whole frame list (e.g. "wheat mine 01" carries 16 frames per growth state, `loopAnimation true`),
@@ -139,8 +128,7 @@ function representativeRecord(
   byIndex: ReadonlyMap<number, LandscapeGfxRow>,
 ): LandscapeGfxRow | undefined {
   if (stage === undefined) return undefined;
-  // gfxIndices are ascending, so the first that resolves is the lowest-index ("01") variant - typically
-  // the canonical species or decal (wood → "yew 01", stone → "stones 01").
+  // gfxIndices are ascending, so the first that resolves is the "01" variant (wood → "yew 01").
   for (const idx of stage.gfxIndices) {
     const record = byIndex.get(idx);
     if (record !== undefined) return record;
@@ -149,11 +137,10 @@ function representativeRecord(
 }
 
 /**
- * Resolve the per-good gathering draws from the pipeline join for the goods a scene or the demo world runs:
- * the node (its `landscapeToHarvest` record, falling back to `landscapeToPickup` for a good with no
- * standing stage like the mushroom's direct pickup) and the pile (its `landscapeToStore` record), matched
- * by `goodId === good.id` and keyed under the scene's `typeId`. The flag resolves once from the
- * {@link FLAG_EDIT_NAME} record. Independent of which atlases actually load.
+ * Resolve the per-good gathering draws from the pipeline join, matched by `goodId === good.id` and keyed
+ * under the scene's `typeId`. The node comes from the `landscapeToHarvest` record, falling back to
+ * `landscapeToPickup` for a good with no standing stage (honey's direct pickup). Independent of which
+ * atlases actually load.
  */
 export function resolveGatheringRefs(
   goods: readonly GoodRef[],
@@ -181,7 +168,6 @@ export function resolveGatheringRefs(
       const ref = levelsRefFrom(record);
       if (ref !== undefined) nodesByGfxIndex[idx] = ref;
     }
-    // The freshly-dropped trunk (the `landscapeToPickup` stage); a good without one falls back to the pile.
     const trunkRecord = representativeRecord(p.pickup, byIndex);
     const trunkRef = trunkRecord !== undefined ? levelsRefFrom(trunkRecord) : undefined;
     if (trunkRef !== undefined) trunksByGood[good.typeId] = trunkRef;
@@ -200,10 +186,9 @@ export function resolveGatheringRefs(
     pilesByGood[plankType] = { stem: woodTrunk.stem, fillBobs: woodTrunk.bobs };
   }
 
-  // Every other good (not gathered, so absent from the pipeline) gets its on-the-ground graphic from the
-  // goods-icon manifest - its recoloured `ls_goods` heap, pile and trunk both on the manifest's full
-  // fewest→most `fillFrames`. Only the goods with no manifest icon at all (the animal/vehicle/special
-  // tokens sharing `landscapeType 1`) fall back to the neutral generic heap.
+  // Every other good (not gathered, so absent from the pipeline) draws its recoloured `ls_goods` heap from
+  // the goods-icon manifest. A good with no manifest icon (the animal/vehicle/special tokens sharing
+  // `landscapeType 1`) falls back to the neutral generic heap.
   if (goodIcons != null) {
     for (const good of goods) {
       const icon = goodIcons.get(good.id) ?? GENERIC_GOOD_ICON;
@@ -221,9 +206,9 @@ export function resolveGatheringRefs(
 }
 
 /**
- * The non-default served atlas stems the gathering draws reference - exactly the atlases the sheet loader
- * must register in `families` for the layer-qualified refs to draw. The default-family node stem (the yew)
- * is excluded since it is already the `kindLayers.resource` layer.
+ * The non-default served atlas stems the gathering draws reference - the atlases the sheet loader must
+ * register in `families` for the layer-qualified refs to draw. The default-family node stem (the yew) is
+ * excluded since it is already the `kindLayers.resource` layer.
  */
 export function gatheringAtlasStems(refs: GatheringRefs): Set<string> {
   const stems = new Set<string>();

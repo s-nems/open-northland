@@ -17,7 +17,7 @@ export interface BerryBushRef {
  * Resolve every forageable berry bush's three-stage draw from the IR landscape gfx: each fruited-bush record
  * (`logicType === bush with fruits`) paired with its species twins, the "… flower" (`bush flowering`) and
  * "… empty" (`bush naked`) records, matched by editName ("bush 01 fruits" → "bush 01 flower" / "bush 01
- * empty"). A twin with no decoded record reuses a fallback frame. Keyed by the fruited record index. Pure.
+ * empty"). Keyed by the fruited record index.
  */
 export function resolveBerryBushRefs(ir: ContentIr | null): BerryBushRef[] {
   const records = ir?.landscapeGfx ?? [];
@@ -57,7 +57,7 @@ export function berryBushAtlasStems(refs: readonly BerryBushRef[]): Set<string> 
  * `gfxIndex` with a three-frame level list, bare → flowering → ripe (the empty→full order `DrawItem.level`
  * indexes straight). A flowering/bare frame whose atlas family didn't load reuses the next-higher loaded
  * frame; a bush whose ripe family didn't load is dropped to the placeholder. `default` is the first bush's
- * ripe frame, what a bush with no matching `gfxIndex` draws. `undefined` when nothing loaded. Pure.
+ * ripe frame, what a bush with no matching `gfxIndex` draws. `undefined` when nothing loaded.
  */
 export function buildBerryBushBinding(
   refs: readonly BerryBushRef[],
@@ -66,15 +66,15 @@ export function buildBerryBushBinding(
   const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
   let fallback: LayeredBobRef | undefined;
   for (const r of refs) {
-    if (!loaded.has(r.ripe.stem)) continue; // no fruited atlas - drop it (placeholder)
+    if (!loaded.has(r.ripe.stem)) continue;
     const ripeRef: LayeredBobRef = { layer: r.ripe.stem, bob: r.ripe.bob };
     const floweringRef: LayeredBobRef = loaded.has(r.flowering.stem)
       ? { layer: r.flowering.stem, bob: r.flowering.bob }
-      : ripeRef; // no flower atlas - fall back to the fruited frame
+      : ripeRef;
     const bareRef: LayeredBobRef = loaded.has(r.bare.stem)
       ? { layer: r.bare.stem, bob: r.bare.bob }
-      : floweringRef; // no empty atlas - fall back to the flowering frame
-    byGfxIndex[r.gfxIndex] = [bareRef, floweringRef, ripeRef]; // level 1 = bare, 2 = flowering, 3 = ripe
+      : floweringRef;
+    byGfxIndex[r.gfxIndex] = [bareRef, floweringRef, ripeRef];
     fallback ??= ripeRef;
   }
   if (fallback === undefined) return undefined;
