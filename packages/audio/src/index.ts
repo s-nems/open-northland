@@ -20,6 +20,14 @@ export {
   SFX_GAIN,
 } from './data/director/index.js';
 export {
+  DEFAULT_MUSIC_STEMS,
+  MENU_MUSIC_TYPE,
+  type MusicManifest,
+  type MusicTrack,
+  musicTrackForType,
+  parseMusicManifest,
+} from './data/music.js';
+export {
   CULL_MARGIN_PX,
   computeSpatial,
   EDGE_GAIN,
@@ -40,8 +48,13 @@ export {
   AMBIENT_FADE_S,
   type AudioEngineOptions,
   DEFAULT_MASTER_GAIN,
+  DEFAULT_MUSIC_BASE_URL,
+  DEFAULT_MUSIC_VOLUME,
+  DEFAULT_SFX_VOLUME,
   DEFAULT_SOUNDS_BASE_URL,
+  MUSIC_FADE_S,
   ONE_SHOT_COOLDOWN_S,
+  VOLUME_RAMP_S,
   WebAudioEngine,
 } from './web/engine/index.js';
 // Impure Web Audio sink (browser-only). The default-tuning constants stay exported as the documented

@@ -39,6 +39,8 @@ export class FakePanner extends FakeNode {
 export class FakeSource extends FakeNode {
   buffer: unknown = null;
   loop = false;
+  loopStart = 0;
+  loopEnd = 0;
   started = false;
   stoppedAt: number | null = null;
   start(): void {

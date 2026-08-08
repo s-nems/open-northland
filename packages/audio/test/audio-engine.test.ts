@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { OneShot } from '../src/index.js';
-import { AMBIENT_FADE_S, DEFAULT_MASTER_GAIN, ONE_SHOT_COOLDOWN_S, WebAudioEngine } from '../src/index.js';
+import {
+  AMBIENT_FADE_S,
+  DEFAULT_MASTER_GAIN,
+  DEFAULT_SFX_VOLUME,
+  ONE_SHOT_COOLDOWN_S,
+  WebAudioEngine,
+} from '../src/index.js';
 import { FakeContext, FakeGain, type FakePanner, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**
@@ -43,7 +49,7 @@ const shot = (over: Partial<OneShot> = {}): OneShot => ({
 });
 
 describe('WebAudioEngine one-shots', () => {
-  it('plays a one-shot through a pan+gain graph into the master', async () => {
+  it('plays a one-shot through a pan+gain graph into the sfx bus', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
     expect(engine.started).toBe(true);
@@ -53,14 +59,17 @@ describe('WebAudioEngine one-shots', () => {
     expect(ctx.sources).toHaveLength(1);
     const source = ctx.sources[0] as FakeSource;
     expect(source.started).toBe(true);
-    // source → panner (pan applied) → gain (shot gain) → master (created first, at the default volume).
+    // source → panner (pan applied) → gain (shot gain) → sfx bus → master → destination.
     const panner = source.connectedTo[0] as FakePanner;
     expect(panner.pan.value).toBeCloseTo(-0.3, 5);
     const gain = panner.connectedTo[0] as FakeGain;
     expect(gain.gain.value).toBeCloseTo(0.42, 5);
-    expect(gain.connectedTo[0]).toBe(ctx.gains[0]); // the master gain
-    expect(ctx.gains[0]?.gain.value).toBeCloseTo(DEFAULT_MASTER_GAIN, 5);
-    expect(ctx.gains[0]?.connectedTo[0]).toBe(ctx.destination);
+    const [master, sfxBus] = ctx.gains as [FakeGain, FakeGain];
+    expect(gain.connectedTo[0]).toBe(sfxBus);
+    expect(sfxBus.gain.value).toBeCloseTo(DEFAULT_SFX_VOLUME, 5);
+    expect(sfxBus.connectedTo[0]).toBe(master);
+    expect(master.gain.value).toBeCloseTo(DEFAULT_MASTER_GAIN, 5);
+    expect(master.connectedTo[0]).toBe(ctx.destination);
   });
 
   it('debounces an identical key within the cooldown and replays it after', async () => {
