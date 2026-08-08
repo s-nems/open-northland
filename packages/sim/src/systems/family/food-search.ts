@@ -18,8 +18,8 @@ import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
 
 /**
  * The greatest Manhattan ring radius (half-cell nodes) {@link ExternalFoodIndex.nearest} expands to before
- * falling back to the linear scan. Authored performance cap, not a decoded distance: the fallback
- * reproduces the exact linear winner.
+ * falling back to the linear scan. Authored performance cap: the fallback reproduces the exact linear
+ * winner.
  */
 const RING_MAX_RADIUS = 48;
 
