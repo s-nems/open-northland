@@ -1,4 +1,4 @@
-import type { AtomicAnimation } from '@open-northland/data';
+import type { AtomicAnimation, AtomicEvent } from '@open-northland/data';
 import { isWildlife, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -40,6 +40,13 @@ function soundingClip(
   return anim === undefined || atomic.duration < anim.length ? undefined : anim;
 }
 
+/** Whether `event` is a sound this clip can land: a valued `event <at> 34 <id>` inside its own length. */
+function isPlaceableCue(event: AtomicEvent, anim: AtomicAnimation): boolean {
+  return (
+    event.type === ATOMIC_EVENT_TYPE_PLAY_SOUND_FX && event.value !== undefined && event.at <= anim.length
+  );
+}
+
 /** Whether this atomic's clip sounds itself, so no engine-chosen sound is wanted for it. */
 export function atomicClipSounds(
   world: World,
@@ -48,7 +55,7 @@ export function atomicClipSounds(
   atomic: SoundingAtomic,
 ): boolean {
   const anim = soundingClip(world, ctx, settler, atomic);
-  return anim !== undefined && anim.events.some((e) => e.type === ATOMIC_EVENT_TYPE_PLAY_SOUND_FX);
+  return anim !== undefined && anim.events.some((e) => isPlaceableCue(e, anim));
 }
 
 /**
@@ -65,8 +72,7 @@ export function emitAtomicSoundCues(
   const anim = soundingClip(world, ctx, settler, atomic);
   if (anim === undefined) return;
   for (const event of anim.events) {
-    if (event.type !== ATOMIC_EVENT_TYPE_PLAY_SOUND_FX || event.value === undefined) continue;
-    if (event.at > anim.length) continue; // authored past its own clip: no frame to land on
+    if (!isPlaceableCue(event, anim) || event.value === undefined) continue;
     if (Math.max(1, event.at) !== atomic.elapsed) continue; // frame 0 plays on the clip's first tick
     ctx.events.emit({ kind: 'atomicSound', entity: settler, soundType: event.value });
   }

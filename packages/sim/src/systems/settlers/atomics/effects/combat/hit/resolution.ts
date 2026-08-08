@@ -33,9 +33,7 @@ export function resolveAttackHit(
     launchProjectile(world, ctx, attacker, effect, hunterShotMisses(world, ctx, attacker));
     return;
   }
-  // The swoosh fires before the reach check so every swing is heard, hit or whiff. A clip that authors its
-  // own per-weapon sound announces the swing itself, so this covers only the ones that do not - the hero
-  // bodies, and every beast, whose clip the tribe binds under a job no animal carries.
+  // Before the reach check, so a whiff is heard too; a clip that sounds its own swing is left to do so.
   const swingFrom = world.tryGet(attacker, Position);
   if (swingFrom !== undefined && !atomicClipSounds(world, ctx, attacker, atomic)) {
     ctx.events.emit({ kind: 'combatSwing', attacker, at: eventAt(swingFrom.x, swingFrom.y) });

@@ -1,3 +1,4 @@
+import type { AtomicEvent } from '@open-northland/data';
 import {
   HUNTER_BOW_DRAW_LENGTH,
   HUNTER_BOW_RELEASE_FRAME,
@@ -58,7 +59,7 @@ import {
 function clip(
   name: string,
   length: number,
-  extra: readonly object[] = [],
+  extra: readonly Omit<AtomicEvent, 'extended'>[] = [],
 ): { id: string; name: string; length: number; events: object[] } {
   return { id: name, name, length, events: [...extra, ...soundCueEvents(name, length)] };
 }
