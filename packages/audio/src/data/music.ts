@@ -21,7 +21,8 @@ export interface MusicManifest {
 /**
  * `DM_MUSIC_TYPE_*` code → the base-mood segment stem: `Theme_*` plays `Neutral`, `Mission_*` plays
  * `Standard`, `Attack_*` has one variant. Mood switching (diplomacy themes, Wealthy/Danger missions)
- * is not modelled yet; jingle codes (22-30) are wav one-shots, not segments.
+ * is not modelled yet; jingle codes (22-30) are wav one-shots, not segments, and code 1
+ * (`CULTURE_MISSION`) has no segment and no map in the decoded corpus uses it.
  */
 export const DEFAULT_MUSIC_STEMS: Readonly<Record<number, string>> = {
   2: 'theme_viking_neutral',
@@ -53,9 +54,6 @@ export const DEFAULT_MUSIC_STEMS: Readonly<Record<number, string>> = {
   37: 'mission_addon_underworld_standard',
   38: 'mission_addon_asgard_standard',
 };
-
-/** The `Theme_Viking_*` code - what the original main menu plays (`StartTrack(2)` in `the original`). */
-export const MENU_MUSIC_TYPE = 2;
 
 /** Tolerantly parses a fetched `music/manifest.json`; null when the shape is unusable. */
 export function parseMusicManifest(raw: unknown): MusicManifest | null {

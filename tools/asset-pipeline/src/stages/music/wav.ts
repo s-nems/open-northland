@@ -43,9 +43,9 @@ export function decodePcm16Wav(bytes: Uint8Array): WavAudio {
   const dataView = viewOf(data);
   const frames = Math.floor(data.length / (2 * fmt.channels));
   const channels = Array.from({ length: fmt.channels }, () => new Float32Array(frames));
-  for (let i = 0; i < frames; i++) {
-    for (let c = 0; c < fmt.channels; c++) {
-      (channels[c] as Float32Array)[i] = dataView.getInt16((i * fmt.channels + c) * 2, true) / PCM16_SCALE;
+  for (const [c, channel] of channels.entries()) {
+    for (let i = 0; i < frames; i++) {
+      channel[i] = dataView.getInt16((i * fmt.channels + c) * 2, true) / PCM16_SCALE;
     }
   }
   return { sampleRate: fmt.sampleRate, channels };
