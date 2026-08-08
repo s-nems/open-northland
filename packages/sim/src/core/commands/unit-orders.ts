@@ -66,6 +66,15 @@ export type UnitOrderCommand =
     }
   | {
       /**
+       * Take one owned settler off its workplace, keeping its trade - the original's "Remove Work Place"
+       * (`humanwindow` 32). Nothing re-employs it, so it stays trade-ful and unposted until the player
+       * posts it again.
+       */
+      readonly kind: 'unassignWorker';
+      readonly entity: Entity;
+    }
+  | {
+      /**
        * Pin one owned builder to construction `site` so it raises that site over the nearest one. Only a
        * job that can run the build atomic qualifies; other trades take the `assignWorker` path.
        */

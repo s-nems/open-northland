@@ -228,7 +228,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(44);
+  const roll = rng.int(45);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -601,6 +601,11 @@ function nextCommand(rng: Rng): Command {
         building: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
         enabled: rng.int(2) === 0,
       };
+    case 44:
+      // A worker release at a random id: the posts the stream's case-9 assignments made (a mid-craft
+      // producer, a carrier mid-run, a garrison stepping off its tower), plus unposted / child / woman /
+      // unowned / dead targets. Exercises the unassignWorker skip paths and the unbind under the stream.
+      return { kind: 'unassignWorker', entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }

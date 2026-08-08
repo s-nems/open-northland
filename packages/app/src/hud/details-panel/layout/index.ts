@@ -16,7 +16,12 @@ export {
   STOCK_ROW_H,
   stockSlotRects,
 } from './building.js';
-export { layoutSettler, type SettlerLayout } from './settler.js';
+export {
+  layoutSettler,
+  type SettlerLayout,
+  type WorkControlAction,
+  type WorkControlRow,
+} from './settler.js';
 export {
   EQUIP_ROW_H,
   type EquipActionHit,
@@ -87,15 +92,11 @@ export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => R
       bars: layout.bars.map(fn),
       work: sec(layout.work),
       workRows: layout.workRows.map(fn),
-      assignButton: { ...layout.assignButton, rect: fn(layout.assignButton.rect) },
-      assignIcon: fn(layout.assignIcon),
-      assignLabel: fn(layout.assignLabel),
-      homeButton: { ...layout.homeButton, rect: fn(layout.homeButton.rect) },
-      homeIcon: fn(layout.homeIcon),
-      homeLabel: fn(layout.homeLabel),
-      unassignButton: { ...layout.unassignButton, rect: fn(layout.unassignButton.rect) },
-      unassignIcon: fn(layout.unassignIcon),
-      unassignLabel: fn(layout.unassignLabel),
+      workControls: layout.workControls.map((c) => ({
+        ...c,
+        button: { ...c.button, rect: fn(c.button.rect) },
+        label: fn(c.label),
+      })),
       gatherChoiceHits: layout.gatherChoiceHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
       craftChoiceHits: layout.craftChoiceHits.map((hit) => ({ ...hit, rect: fn(hit.rect) })),
       experience: sec(layout.experience),

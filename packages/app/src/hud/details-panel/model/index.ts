@@ -16,6 +16,7 @@ import {
   residenceHomeOf,
   shelterClaimCount,
   surnameSourceOf,
+  workplaceOf,
 } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { healthBar, pct } from './bars.js';
@@ -219,8 +220,12 @@ export function buildUnitPanelModel(
         isFemale(ent),
       ),
       profession: jobDisplayName(ctx, num(s.jobType)),
-      // A woman takes no trade at all, and an idle settler has no trade to place.
-      canAssignWorkplace: num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE && !isFemale(ent),
+      // A woman takes no trade at all, a child's class is the GrowthSystem's, and an idle settler has no
+      // trade to place - the three refusals `isTradeAssignable` makes sim-side.
+      canAssignWorkplace:
+        !young && !isFemale(ent) && num(s.jobType) !== undefined && num(s.jobType) !== JOB_IDLE,
+      // Releasing a post keeps the trade, so beyond that same gate it needs only a post.
+      canUnassignWorkplace: !young && !isFemale(ent) && workplaceOf(ent) !== undefined,
       // A growing child moves with its parents instead of picking a home.
       canAssignHome: !young,
       // Removing a home moves the settler's whole family out and frees the slot.

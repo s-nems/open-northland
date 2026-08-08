@@ -21,8 +21,9 @@ import type { SystemContext } from '../context.js';
 import { destroyBerryBushesInReserved } from '../economy/berries.js';
 import { destroyFieldsUnderBuilding } from '../economy/fields.js';
 import { evictLooseGoodsFromFootprint } from '../economy/goods-evict.js';
+import { releaseEmployment } from '../economy/jobs/index.js';
 import { destroyStumpsInReserved } from '../economy/stumps.js';
-import { evictWorkFlagsFromFootprint, syncWorkFlagToJob } from '../economy/work-flag.js';
+import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
 import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
@@ -41,11 +42,7 @@ export function unbindWorkersOf(world: World, ctx: SystemContext, building: Enti
   for (const e of world.query(Settler, JobAssignment)) {
     if (world.get(e, JobAssignment).workplace === building) bound.push(e);
   }
-  for (const e of bound) {
-    world.remove(e, JobAssignment);
-    const jobType = world.get(e, Settler).jobType;
-    if (jobType !== null) syncWorkFlagToJob(world, ctx, e, jobType);
-  }
+  for (const e of bound) releaseEmployment(world, ctx, e);
 }
 
 export function placeBuilding(

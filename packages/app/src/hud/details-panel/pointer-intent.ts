@@ -25,6 +25,7 @@ export type PanelClick =
   | { readonly kind: 'setDefenceMode'; readonly entityId: number; readonly enabled: boolean }
   | { readonly kind: 'demolishSignpost'; readonly entityId: number }
   | { readonly kind: 'assignWorkplace'; readonly entityId: number }
+  | { readonly kind: 'unassignWorkplace'; readonly entityId: number }
   | { readonly kind: 'assignHome'; readonly entityId: number }
   | { readonly kind: 'unassignHome'; readonly entityId: number };
 
@@ -70,9 +71,19 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
     }
     case 'settler': {
       const entityId = view.model.entityId;
-      if (action === 'assign-workplace') return { kind: 'assignWorkplace', entityId };
-      if (action === 'assign-home') return { kind: 'assignHome', entityId };
-      return action === 'unassign-home' ? { kind: 'unassignHome', entityId } : null;
+      // Exhaustive over the Praca controls, so a fifth one cannot compile into a silent no-op.
+      switch (action) {
+        case 'assign-workplace':
+          return { kind: 'assignWorkplace', entityId };
+        case 'unassign-workplace':
+          return { kind: 'unassignWorkplace', entityId };
+        case 'assign-home':
+          return { kind: 'assignHome', entityId };
+        case 'unassign-home':
+          return { kind: 'unassignHome', entityId };
+        default:
+          return null; // a building-only action, which no settler layout routes
+      }
     }
     case 'signpost':
       return action === 'demolish' ? { kind: 'demolishSignpost', entityId: view.model.entityId } : null;

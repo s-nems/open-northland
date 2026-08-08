@@ -45,6 +45,15 @@ const bootedSettler: EntitySnapshot = {
   },
 };
 
+/** A tradesman posted to a workplace and living nowhere - three of the four Praca controls live. */
+const postedSettler: EntitySnapshot = {
+  id: SETTLER_ID,
+  components: {
+    Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+    JobAssignment: { workplace: 9 },
+  },
+};
+
 const signpost: EntitySnapshot = { id: 7, components: { Signpost: {} } };
 
 /** A settler view spliced to offer two craft products under the all-mode default selection. No sandbox
@@ -121,6 +130,22 @@ describe('details panel click intents', () => {
       entityId: SETTLER_ID,
       ref: off.ref,
     });
+  });
+
+  it('resolves each live Praca control into its own order, and skips the dead ones', () => {
+    const view = viewOfKind(panelModelOf(postedSettler), 'settler');
+    const intents = view.layout.workControls.map((control) => {
+      const p = center(control.button.rect);
+      return [control.action, panelClickAt(view, p.x, p.y, NO_TOGGLE)] as const;
+    });
+
+    expect(intents).toEqual([
+      ['assign-workplace', { kind: 'assignWorkplace', entityId: SETTLER_ID }],
+      ['unassign-workplace', { kind: 'unassignWorkplace', entityId: SETTLER_ID }],
+      ['assign-home', { kind: 'assignHome', entityId: SETTLER_ID }],
+      // No Residence, so remove-from-home is drawn dimmed and its click resolves to nothing.
+      ['unassign-home', null],
+    ]);
   });
 
   it('resolves a click on the portrait box into a re-centre on the entity it shows', () => {

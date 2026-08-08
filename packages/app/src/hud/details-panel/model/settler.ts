@@ -40,6 +40,8 @@ export interface SettlerPanelModel {
   readonly profession: string;
   /** False for an idle or jobless settler, which has no trade to place. */
   readonly canAssignWorkplace: boolean;
+  /** True for a settler currently posted to a workplace, the only state the release has anything to do. */
+  readonly canUnassignWorkplace: boolean;
   /** Any adult may be housed; false for a growing child, whose family is housed through its parents. */
   readonly canAssignHome: boolean;
   /** True for an adult that currently has a `Residence` to move its family out of. */
