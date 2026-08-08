@@ -30,7 +30,10 @@ export const atomicSystem: System = (world, ctx) => {
       if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect, pendingStaggers);
     }
 
-    emitAtomicSoundCues(world, ctx, e, atomic.atomicId, atomic.elapsed, duration);
+    // The inter-swing breather extends the atomic past its clip, so it carries none of the clip's sounds.
+    if (atomic.restTail !== true) {
+      emitAtomicSoundCues(world, ctx, e, atomic.atomicId, atomic.elapsed, duration);
+    }
 
     if (atomic.elapsed < duration) continue;
 
