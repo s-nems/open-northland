@@ -29,16 +29,49 @@ export function directionalAnimFromSeq(
 
 /**
  * A named ×8 `[bobseq]` row as a {@link DirectionalAnim}, or `undefined` when the row is missing, empty, or
- * not a clean ×8 strip, so a malformed IR can never become a bogus frame range.
+ * not a clean ×8 strip, so a malformed IR can never become a bogus frame range. When `walkLists` carries
+ * the sequence's `gfxwalkframelist` lists, their authored cut wins over the whole-block reading: some
+ * cycles play fewer frames than the block holds (the baby crawl plays 12 of each 13-frame block). Pure.
  */
 export function eightDirAnim(
   seqByName: ReadonlyMap<string, BobSeqRow>,
   name: string | undefined,
+  walkLists?: ReadonlyMap<string, readonly (readonly number[])[]>,
 ): DirectionalAnim | undefined {
   if (name === undefined) return undefined;
   const row = seqByName.get(name);
   if (row === undefined || row.length <= 0 || row.length % DIRS !== 0) return undefined;
+  const lists = walkLists?.get(name);
+  if (lists !== undefined) {
+    const fromLists = blockAnimFromLists(row, lists);
+    if (fromLists !== undefined) return fromLists;
+  }
   return { start: row.start, dirs: DIRS, stride: row.length / DIRS };
+}
+
+/**
+ * Reduce a walk row's per-`<dir>` frame lists to a {@link DirectionalAnim} cutting {@link
+ * DirectionalAnim.frames} frames out of each block. Valid only when every facing's list is the same
+ * contiguous run `facing*stride .. facing*stride + frames - 1` - true of every extracted walk list;
+ * anything else returns `undefined` and the caller keeps the whole-block reading. Pure.
+ */
+function blockAnimFromLists(
+  row: BobSeqRow,
+  dirLists: readonly (readonly number[])[],
+): DirectionalAnim | undefined {
+  const byFacing = frameListsByFacing(dirLists);
+  if (byFacing.length !== DIRS) return undefined;
+  const stride = row.length / DIRS;
+  const frames = byFacing[0]?.length ?? 0;
+  if (frames <= 0 || frames > stride) return undefined;
+  for (let facing = 0; facing < DIRS; facing++) {
+    const list = byFacing[facing];
+    if (list === undefined || list.length !== frames) return undefined;
+    for (let i = 0; i < frames; i++) {
+      if (list[i] !== facing * stride + i) return undefined;
+    }
+  }
+  return { start: row.start, dirs: DIRS, stride, ...(frames < stride ? { frames } : {}) };
 }
 
 /**

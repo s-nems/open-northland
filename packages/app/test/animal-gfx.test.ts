@@ -99,6 +99,30 @@ describe('animalBinding', () => {
     expect(idle.loop).toBe(true); // the ear-flick program cycles instead of freezing after one pass
   });
 
+  it('prefers the gfxanimmode-1 base wait over an earlier one-shot fidget on the ladder', () => {
+    const ir: ContentIr = {
+      gfxAtomics: [
+        {
+          tribe: 8,
+          job: ADULT,
+          action: IDLE_ACTION,
+          bodySeq: 'animal_bear_wait',
+          dirFrames: [[9, 9, 10]],
+          mode: 0,
+        },
+        {
+          tribe: 8,
+          job: ADULT,
+          action: IDLE_ACTION + 1,
+          bodySeq: 'animal_bear_wait',
+          dirFrames: [[0, 1, 2]],
+          mode: 1,
+        },
+      ],
+    };
+    expect(animalBinding(ir, 8, seqs)?.idle).toEqual({ start: 88, frameLists: [[0, 1, 2]], loop: true });
+  });
+
   it('skips a wait row whose program is empty (falls through to the walk-hold pose)', () => {
     const ir: ContentIr = {
       gfxWalkAtomics: [{ tribe: 8, job: ADULT, goodType: 0, bodySeq: 'animal_bear_walk' }],

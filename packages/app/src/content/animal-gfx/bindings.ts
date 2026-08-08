@@ -1,5 +1,6 @@
 import type { FrameListAnim, SettlerStateBinding, SpriteFrameRef } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
+import { GFX_ANIM_MODE_LOOP, gfxWalkFrameLists } from '../ir/joins.js';
 import type { BobSeqRow, ContentIr, GfxAnimAtomicRow } from '../ir/rows.js';
 import { eightDirAnim, frameListsByFacing } from '../settler-gfx/index.js';
 
@@ -53,33 +54,52 @@ export function animalWalkSeqName(
   return undefined;
 }
 
+/** The `[gfxanimatomic]` wait row the idle loop plays and its `[bobseq]` pool start. */
+interface IdlePick {
+  readonly start: number;
+  readonly row: GfxAnimAtomicRow;
+}
+
 /**
  * Build one animal tribe's {@link SettlerStateBinding} from the IR lanes. Returns `null` when no idle
  * resolves, so the caller leaves the tribe unbound instead of binding a bogus range.
  *
- * The idle plays the row's authored frame-list program rather than the raw wait strip, which packs several
- * poses back-to-back. Approximations: every animal of a species breathes in lockstep, since the free tick
- * clock has no per-entity phase, and the idle probe stops at the first usable row in
- * {@link ANIMAL_IDLE_ACTIONS}, dropping the original's idle variety.
+ * The idle is the row's authored frame-list program, looped on the free tick clock: a single-list row plays
+ * facing-locked, a per-direction row per facing. Playing the program rather than the raw wait strip
+ * matters: a strip packs several poses back-to-back (the bear's sniff, lie, sit) and the program picks one
+ * with its authored holds. The `gfxanimmode 1` row is the authored looping base wait and wins the ladder;
+ * a tribe without one loops its first one-shot fidget, dropping the original's idle variety (named
+ * approximation). Every animal of a species breathes in lockstep - the free tick clock has no per-entity
+ * phase.
  */
 export function animalBinding(
   ir: ContentIr | null,
   tribe: number,
   seqByName: ReadonlyMap<string, BobSeqRow>,
 ): SettlerStateBinding | null {
+  const walkLists = gfxWalkFrameLists(ir, tribe);
   const walkName = animalWalkSeqName(ir, tribe, seqByName);
-  const walk = eightDirAnim(seqByName, walkName);
+  const walk = eightDirAnim(seqByName, walkName, walkLists);
 
-  let idle: SpriteFrameRef | null = null;
+  let first: IdlePick | undefined;
+  let loopBase: IdlePick | undefined;
   for (const action of ANIMAL_IDLE_ACTIONS) {
     const row = animalGfxAtomicRow(ir, tribe, action);
     if (row === undefined) continue;
     const seq = seqByName.get(row.bodySeq);
     if (seq === undefined || seq.length <= 0) continue;
     if (row.dirFrames.every((list) => list.length === 0)) continue; // no program - nothing to play
-    idle = { start: seq.start, frameLists: frameListsByFacing(row.dirFrames), loop: true };
-    break;
+    first ??= { start: seq.start, row };
+    if (row.mode === GFX_ANIM_MODE_LOOP) {
+      loopBase = { start: seq.start, row };
+      break;
+    }
   }
+  const pick = loopBase ?? first;
+  let idle: SpriteFrameRef | null =
+    pick !== undefined
+      ? { start: pick.start, frameLists: frameListsByFacing(pick.row.dirFrames), loop: true }
+      : null;
   // No authored wait: hold the walk's first frame per facing (still the right species and heading).
   idle ??= walk !== undefined ? { ...walk, frames: 1 } : null;
   if (idle === null) return null;
