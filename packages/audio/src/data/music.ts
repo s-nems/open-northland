@@ -67,8 +67,7 @@ export function parseMusicManifest(raw: unknown): MusicManifest | null {
     if (typeof entry !== 'object' || entry === null) continue;
     const { file, loopStartS } = entry as Record<string, unknown>;
     if (typeof file !== 'string' || file.length === 0) continue;
-    parsed[stem] =
-      typeof loopStartS === 'number' && loopStartS > 0 ? { file, loopStartS } : { file };
+    parsed[stem] = typeof loopStartS === 'number' && loopStartS > 0 ? { file, loopStartS } : { file };
   }
   return { tracks: parsed };
 }

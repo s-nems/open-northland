@@ -31,6 +31,8 @@ describe('parseStoredSettings', () => {
       postFxEnabled: false,
       fpsLimit: 30,
       soundEnabled: false,
+      soundVolume: 0.35,
+      musicVolume: 0.6,
       language: 'eng',
       keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
     } as const;
@@ -95,6 +97,12 @@ describe('persistSettings', () => {
     const blob = storedBlob({ ...defaultSettings(), soundEnabled: false });
     expect('language' in blob).toBe(false);
     expect(blob.soundEnabled).toBe(false);
+  });
+
+  it('clamps stored volumes into 0..1 and defaults deformed ones', () => {
+    expect(parseStoredSettings('{"soundVolume":1.4}').soundVolume).toBe(1);
+    expect(parseStoredSettings('{"musicVolume":-0.5}').musicVolume).toBe(0);
+    expect(parseStoredSettings('{"musicVolume":"loud"}').musicVolume).toBe(DEFAULT_SETTINGS.musicVolume);
   });
 });
 
