@@ -45,12 +45,22 @@ describe('parseSaveGame header rejection', () => {
     expect(() => parseSaveGame(doc)).toThrow(/save\.header\.kind: expected 'open-northland-save'/);
   });
 
-  it('rejects a future format version naming the path', () => {
+  it('rejects a version written by a newer build', () => {
     const doc = populatedDoc();
     doc.header.formatVersion = 2;
     expect(() => parseSaveGame(doc)).toThrow(
-      /save\.header\.formatVersion: unsupported version 2, this build reads 1/,
+      /save\.header\.formatVersion: version 2 was written by a newer build; this build reads up to 1/,
     );
+  });
+
+  it('rejects a version below the oldest supported one instead of silently parsing it', () => {
+    const doc = populatedDoc();
+    doc.header.formatVersion = 0;
+    expect(() => parseSaveGame(doc)).toThrow(
+      /save\.header\.formatVersion: version 0 predates the oldest supported version 1/,
+    );
+    doc.header.formatVersion = 1.5;
+    expect(() => parseSaveGame(doc)).toThrow(/save\.header\.formatVersion: expected an integer/);
   });
 
   it('rejects malformed provenance fields', () => {

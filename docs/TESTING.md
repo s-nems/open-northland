@@ -65,6 +65,11 @@ A golden is a tripwire, not a snapshot to refresh automatically. When it changes
 
 A golden change during a claimed refactor means the refactor changed behavior.
 
+The committed save fixture (`packages/sim/test/fixtures/save-v1.golden`) follows the same rule;
+`UPDATE_SAVE_FIXTURE=1 npx vitest run packages/sim/test/save/fixture.test.ts` rewrites it once the
+change is confirmed intentional. Regeneration alone silences the test, so for a save-layout change
+the fixture test's header states the stricter policy a review holds the commit to.
+
 The sim hygiene test rejects browser and I/O imports, nondeterministic globals, and other boundary
 violations in `packages/sim/src`.
 

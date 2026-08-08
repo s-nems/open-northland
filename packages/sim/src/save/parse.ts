@@ -13,15 +13,17 @@ import {
   type SaveGameHeader,
   type SaveGameSection,
 } from './format.js';
+import { migratedToCurrent } from './migrate.js';
 
 /**
  * Validate a save decoded from untrusted JSON into a structurally sound {@link SaveGame}: header
- * identity, the exact section order, allocation coherence, and every pending envelope. Component
+ * identity, the exact section order, allocation coherence, and every pending envelope. An older
+ * supported document is first lifted to the current layout by {@link migratedToCurrent}. Component
  * entry values stay opaque here; `restoreSimulation` validates them as it materializes, along with
  * everything that needs loaded content or a map.
  */
 export function parseSaveGame(value: unknown): SaveGame {
-  const raw = asRecord(value, 'save');
+  const raw = migratedToCurrent(value);
   const header = parsedHeader(raw.header);
   return { header, sections: parsedSections(raw.sections, header) };
 }
