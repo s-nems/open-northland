@@ -1,17 +1,5 @@
-/** Rebindable player actions. A binding is a `KeyboardEvent.code`; `null` is unbound. */
-export type KeybindingAction =
-  | 'panLeft'
-  | 'panRight'
-  | 'panUp'
-  | 'panDown'
-  | 'pauseToggle'
-  | 'actionRing'
-  | 'attackMove';
-
-export type KeyBindings = Readonly<Record<KeybindingAction, string | null>>;
-
 /** Display order of the bindings table; also the priority order when stored codes collide. */
-export const KEYBINDING_ACTIONS: readonly KeybindingAction[] = [
+export const KEYBINDING_ACTIONS = [
   'panLeft',
   'panRight',
   'panUp',
@@ -19,7 +7,12 @@ export const KEYBINDING_ACTIONS: readonly KeybindingAction[] = [
   'pauseToggle',
   'actionRing',
   'attackMove',
-];
+] as const;
+
+/** Rebindable player actions. A binding is a `KeyboardEvent.code`; `null` is unbound. */
+export type KeybindingAction = (typeof KEYBINDING_ACTIONS)[number];
+
+export type KeyBindings = Readonly<Record<KeybindingAction, string | null>>;
 
 export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   panLeft: 'ArrowLeft',

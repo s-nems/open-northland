@@ -1,17 +1,11 @@
 import { DEFAULT_MASTER_GAIN } from '@open-northland/audio';
-import {
-  assignBinding,
-  isBindableCode,
-  KEYBINDING_ACTIONS,
-  type KeybindingAction,
-  keyDisplayLabel,
-} from '../../hud/keybindings.js';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
 import { defaultSettings, type MenuSettings } from '../../view/settings-store.js';
 import { type SegHandle, segControl, togglePill } from './controls.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
+import { createControlsTab } from './settings-controls.js';
 import {
   menuSettings,
   SETTINGS_TABS,
@@ -246,89 +240,19 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     ];
   };
 
-  // One key capture at a time; arming a chip disarms the previous one, and any panel rebuild disarms.
-  let cancelCapture: (() => void) | null = null;
-
-  const paintKeyChip = (chip: HTMLElement, code: string | null): void => {
-    chip.classList.remove('is-capturing');
-    chip.classList.toggle('is-unassigned', code === null);
-    chip.textContent =
-      code === null ? text.bindingUnassigned : keyDisplayLabel(code, { space: text.keySpace });
-  };
-
-  const startCapture = (action: KeybindingAction, chip: HTMLButtonElement): void => {
-    cancelCapture?.();
-    chip.classList.add('is-capturing');
-    chip.textContent = text.bindingPrompt;
-    const stop = (): void => {
-      cancelCapture = null;
-      window.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('mousedown', onPress, true);
-      window.removeEventListener('blur', stop);
-      paintKeyChip(chip, menuSettings().keyBindings[action]);
-    };
-    const onKey = (e: KeyboardEvent): void => {
-      if (!chip.isConnected) {
-        // The screen was rebuilt under the capture (e.g. restore defaults); release the key untouched.
-        stop();
-        return;
-      }
-      // Captured before the menu's own handlers, so Esc cancels the capture instead of navigating back.
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.code === 'Escape') {
-        stop();
-        return;
-      }
-      if (!isBindableCode(e.code)) return;
-      updateSettings({ keyBindings: assignBinding(menuSettings().keyBindings, action, e.code) });
-      stop();
-      renderPanel(); // a takeover may have unbound another row
-    };
-    const onPress = (e: MouseEvent): void => {
-      if (e.target !== chip) stop(); // clicking away disarms
-    };
-    cancelCapture = stop;
-    window.addEventListener('keydown', onKey, true);
-    window.addEventListener('mousedown', onPress, true);
-    window.addEventListener('blur', stop);
-  };
-
-  const controlsRows = (): HTMLElement[] => {
-    const bindings = menuSettings().keyBindings;
-    const rows = KEYBINDING_ACTIONS.map((action) => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'main-menu__settings-key';
-      chip.title = text.bindingRebindTip;
-      paintKeyChip(chip, bindings[action]);
-      chip.addEventListener('click', () => startCapture(action, chip));
-      return settingRow(text.bindings[action], chip);
-    });
-    const fixedRow = (label: string, keys: string): HTMLDivElement => {
-      const chip = document.createElement('span');
-      chip.className = 'main-menu__settings-key is-fixed';
-      chip.textContent = keys;
-      const row = settingRow(label, chip);
-      row.title = text.bindingFixedTip;
-      return row;
-    };
-    return [
-      ...rows,
-      fixedRow(text.bindings.cancel, 'Esc'),
-      fixedRow(text.bindings.coarseStep, text.ctrlClick),
-      fixedRow(text.bindings.workFlagOrder, text.ctrlRightClick),
-    ];
-  };
+  const controls = createControlsTab({
+    settingRow,
+    repaintPanel: () => renderPanel(),
+  });
 
   const rowsFor: Record<SettingsTab, () => HTMLElement[]> = {
     graphics: graphicsRows,
     audio: audioRows,
     gameplay: gameplayRows,
-    controls: controlsRows,
+    controls: controls.rows,
   };
   const renderPanel = (): void => {
-    cancelCapture?.();
+    controls.disarm(); // a rebuild discards a capturing chip
     panel.replaceChildren(...rowsFor[memory.tab]());
   };
   paintTabs();
