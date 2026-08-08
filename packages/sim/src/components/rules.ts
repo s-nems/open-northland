@@ -1,37 +1,25 @@
-import { type Component, defineComponent, type Entity, type World } from '../ecs/world.js';
+import type { World } from '../ecs/world.js';
+import { defineWorldSingleton } from '../ecs/world-singleton.js';
 import { isValidPlayer, MAX_PLAYERS } from './ownership.js';
 
-/** The lowest-id carrier of a world-scope singleton `component`, or null when none exists. Ascending id
- *  wins, so hashed state stays deterministic should a command handler ever leave more than one carrier. */
-function singletonCarrier(world: World, component: Component<unknown>): Entity | null {
-  return world.lowestEntityWith(component);
-}
-
-/**
- * The world-rules singleton - global gameplay toggles that are part of simulated, hashed state, which a
- * plain `Simulation` field would escape. At most one entity carries it, created on first use; an absent
- * singleton means every rule sits at its default, so a command stream that never touches a rule leaves the
- * world's entity set and hash untouched.
- */
-export const WorldRules = defineComponent<{
+const worldRules = defineWorldSingleton<{
   /** Whether the needs mechanic runs: the hunger, fatigue and enjoyment rise, the per-swing combat need
-   *  cost, the forge's piety charge, and starvation. Default true. */
+   *  cost, the forge's piety charge, and starvation. */
   needsEnabled: boolean;
-}>('WorldRules');
+}>('WorldRules', () => ({ needsEnabled: true }));
 
-export function worldRulesEntity(world: World): Entity | null {
-  return singletonCarrier(world, WorldRules);
-}
+/** Global gameplay toggles that are part of simulated, hashed state, which a plain `Simulation` field
+ *  would escape. */
+export const WorldRules = worldRules.component;
 
 export function needsEnabled(world: World): boolean {
-  const e = worldRulesEntity(world);
-  return e === null ? true : world.get(e, WorldRules).needsEnabled;
+  return worldRules.read(world).needsEnabled;
 }
 
 export function setNeedsEnabled(world: World, enabled: boolean): void {
-  const rules = worldRulesEntity(world);
-  if (rules === null) world.add(world.create(), WorldRules, { needsEnabled: enabled });
-  else world.mut(rules, WorldRules).needsEnabled = enabled;
+  worldRules.write(world, (rules) => {
+    rules.needsEnabled = enabled;
+  });
 }
 
 /**
@@ -55,74 +43,63 @@ export function isFogMode(mode: number): mode is FogMode {
   return mode === FOG_MODE.OFF || mode === FOG_MODE.REVEAL || mode === FOG_MODE.RECON;
 }
 
-/**
- * The fog-of-war rules singleton - the {@link FOG_MODE} the VisionSystem runs under, kept apart from
- * {@link WorldRules} so a command stream that never touches fog leaves that value shape untouched. The
- * masks the mode drives live outside the ECS, in `Simulation.fog`, which `hashState` mixes in too.
- */
-export const FogRules = defineComponent<{ mode: FogMode }>('FogRules');
+const fogRules = defineWorldSingleton<{ mode: FogMode }>('FogRules', () => ({ mode: FOG_MODE.OFF }));
 
-export function fogRulesEntity(world: World): Entity | null {
-  return singletonCarrier(world, FogRules);
-}
+/** The {@link FOG_MODE} the VisionSystem runs under, kept apart from {@link WorldRules} so setting one
+ *  rule never materializes the other. The masks the mode drives live outside the ECS, in `Simulation.fog`,
+ *  which `hashState` mixes in too. */
+export const FogRules = fogRules.component;
 
 export function fogMode(world: World): FogMode {
-  const e = fogRulesEntity(world);
-  return e === null ? FOG_MODE.OFF : world.get(e, FogRules).mode;
+  return fogRules.read(world).mode;
 }
 
 export function setFogMode(world: World, mode: number): void {
   if (!isFogMode(mode)) return;
-  const rules = fogRulesEntity(world);
-  if (rules === null) world.add(world.create(), FogRules, { mode });
-  else world.mut(rules, FogRules).mode = mode;
+  fogRules.write(world, (rules) => {
+    rules.mode = mode;
+  });
 }
 
-/**
- * The signpost-navigation rules singleton - whether civilian settlers are confined to the signpost
- * work-area network (`systems/signposts/`). Default off, an approximation: the original always confines,
- * but maps and scenes here opt in through the `setSignpostNavigation` command.
- */
-export const SignpostRules = defineComponent<{ navigationEnabled: boolean }>('SignpostRules');
+const signpostRules = defineWorldSingleton<{ navigationEnabled: boolean }>('SignpostRules', () => ({
+  navigationEnabled: false,
+}));
 
-export function signpostRulesEntity(world: World): Entity | null {
-  return singletonCarrier(world, SignpostRules);
-}
+/** Whether civilian settlers are confined to the signpost work-area network (`systems/signposts/`). Off by
+ *  default, an approximation: the original always confines, but maps and scenes here opt in through the
+ *  `setSignpostNavigation` command. */
+export const SignpostRules = signpostRules.component;
 
 export function signpostNavigationEnabled(world: World): boolean {
-  const e = signpostRulesEntity(world);
-  return e === null ? false : world.get(e, SignpostRules).navigationEnabled;
+  return signpostRules.read(world).navigationEnabled;
 }
 
 export function setSignpostNavigation(world: World, enabled: boolean): void {
-  const rules = signpostRulesEntity(world);
-  if (rules === null) world.add(world.create(), SignpostRules, { navigationEnabled: enabled });
-  else world.mut(rules, SignpostRules).navigationEnabled = enabled;
+  signpostRules.write(world, (rules) => {
+    rules.navigationEnabled = enabled;
+  });
 }
 
-/**
- * The profession-progression rules singleton - whether the experience tech tree gates who may work what.
- * While disabled the `needfor*` XP thresholds and the `jobEnables` presence graph stop gating civilian jobs
- * and goods; fighter-band jobs stay gated regardless, reserved for barracks training, and XP keeps accruing
- * either way. Default on - the original always gates.
- */
-export const ProgressionRules = defineComponent<{ professionProgressionEnabled: boolean }>(
+const progressionRules = defineWorldSingleton<{ professionProgressionEnabled: boolean }>(
   'ProgressionRules',
+  () => ({ professionProgressionEnabled: true }),
 );
 
-export function progressionRulesEntity(world: World): Entity | null {
-  return singletonCarrier(world, ProgressionRules);
-}
+/**
+ * Whether the experience tech tree gates who may work what. While disabled the `needfor*` XP thresholds
+ * and the `jobEnables` presence graph stop gating civilian jobs and goods; fighter-band jobs stay gated
+ * regardless, reserved for barracks training, and XP keeps accruing either way. The original always gates.
+ */
+export const ProgressionRules = progressionRules.component;
 
 export function professionProgressionEnabled(world: World): boolean {
-  const e = progressionRulesEntity(world);
-  return e === null ? true : world.get(e, ProgressionRules).professionProgressionEnabled;
+  return progressionRules.read(world).professionProgressionEnabled;
 }
 
 export function setProfessionProgression(world: World, enabled: boolean): void {
-  const rules = progressionRulesEntity(world);
-  if (rules === null) world.add(world.create(), ProgressionRules, { professionProgressionEnabled: enabled });
-  else world.mut(rules, ProgressionRules).professionProgressionEnabled = enabled;
+  progressionRules.write(world, (rules) => {
+    rules.professionProgressionEnabled = enabled;
+  });
 }
 
 /** A directed player-to-player stance, the values map `diplomacy <from> <to> <state>` rows author. */
@@ -133,85 +110,66 @@ export function isDiplomacyState(state: string): state is DiplomacyState {
   return state === 'friend' || state === 'neutral' || state === 'enemy';
 }
 
-/**
- * The diplomacy rules singleton - the directed stance table combat hostility consults when both sides
- * are player-owned. A pair never set reads `enemy`, so an absent singleton keeps the everyone-hostile
- * default and a command stream that never sets a stance leaves the hash untouched.
- */
-export const DiplomacyRules = defineComponent<{
+const diplomacyRules = defineWorldSingleton<{
   /** Stances keyed `from * MAX_PLAYERS + to` - directed, so the two directions of a pair can differ. */
   stances: Map<number, DiplomacyState>;
-}>('DiplomacyRules');
+}>('DiplomacyRules', () => ({ stances: new Map() }));
+
+/** The directed stance table combat hostility consults when both sides are player-owned. */
+export const DiplomacyRules = diplomacyRules.component;
 
 function stanceKey(from: number, to: number): number {
   return from * MAX_PLAYERS + to;
 }
 
-/** The diplomacy-rules singleton's entity, or null when no stance was ever set. */
-export function diplomacyRulesEntity(world: World): Entity | null {
-  return singletonCarrier(world, DiplomacyRules);
-}
-
-/** The directed stance `from` holds toward `to`, defaulting to `enemy` when never set. An invalid
- *  slot also reads `enemy` - the key arithmetic is injective over valid slots only. */
+/** The directed stance `from` holds toward `to`. A pair never set reads `enemy`, the everyone-hostile
+ *  default. An invalid slot also reads `enemy` - the key arithmetic is injective over valid slots only. */
 export function diplomacyStance(world: World, from: number, to: number): DiplomacyState {
   if (!isValidPlayer(from) || !isValidPlayer(to)) return 'enemy';
-  const e = diplomacyRulesEntity(world);
-  if (e === null) return 'enemy';
-  return world.get(e, DiplomacyRules).stances.get(stanceKey(from, to)) ?? 'enemy';
+  return diplomacyRules.read(world).stances.get(stanceKey(from, to)) ?? 'enemy';
 }
 
-/** Create the {@link DiplomacyRules} singleton on first use and mutate it thereafter. An invalid player
- *  slot or unknown state is skipped. */
 export function setDiplomacyStance(world: World, from: number, to: number, state: string): void {
   if (!isValidPlayer(from) || !isValidPlayer(to) || !isDiplomacyState(state)) return;
-  const rules = diplomacyRulesEntity(world);
-  if (rules === null) {
-    world.add(world.create(), DiplomacyRules, { stances: new Map([[stanceKey(from, to), state]]) });
-  } else {
-    world.mut(rules, DiplomacyRules).stances.set(stanceKey(from, to), state);
-  }
+  diplomacyRules.write(world, (rules) => {
+    rules.stances.set(stanceKey(from, to), state);
+  });
 }
 
-/**
- * The first-contact singleton - which players each player has ever seen an entity of. The vision
- * system records a contact when an owned entity stands in a cell the viewer's fog reads VISIBLE, and
- * a contact never expires: a nation once met stays known even after fog resets. Absent until the
- * first contact under fog, so a fog-off world's hash stays untouched. Approximation: the maps'
- * `noseenfirstmessage` rows prove the original tracks first sighting per pair, but its exact trigger
- * is unobserved.
- */
-export const PlayerContacts = defineComponent<{
+const playerContacts = defineWorldSingleton<{
   /** viewer player → bitmask of player slots seen (fits one integer: slots are < {@link MAX_PLAYERS}). */
   met: Map<number, number>;
-}>('PlayerContacts');
+}>('PlayerContacts', () => ({ met: new Map() }));
 
-/** The contacts singleton's entity, or null when no contact was ever recorded. */
-export function playerContactsEntity(world: World): Entity | null {
-  return singletonCarrier(world, PlayerContacts);
+/**
+ * Which players each player has ever seen an entity of. The vision system records a contact when an owned
+ * entity stands in a cell the viewer's fog reads VISIBLE, and a contact never expires: a nation once met
+ * stays known even after fog resets. Approximation: the maps' `noseenfirstmessage` rows prove the original
+ * tracks first sighting per pair, but its exact trigger is unobserved.
+ */
+export const PlayerContacts = playerContacts.component;
+
+/** The slots `viewer` has ever seen an entity of, as a bitmask - the raw table, with no fog-mode rule
+ *  applied. Unguarded: an invalid viewer reads 0, since only valid slots are ever recorded. */
+export function metContactBits(world: World, viewer: number): number {
+  return playerContacts.read(world).met.get(viewer) ?? 0;
 }
 
-/** Whether `viewer` ever saw an entity of `other` - the raw table, with no fog-mode rule applied. A
- *  player never holds a contact with itself, and an invalid slot reads false. */
+/** Whether `viewer` ever saw an entity of `other`. A player never holds a contact with itself, and an
+ *  invalid slot reads false. */
 export function hasMetContact(world: World, viewer: number, other: number): boolean {
   if (!isValidPlayer(viewer) || !isValidPlayer(other)) return false;
-  const e = playerContactsEntity(world);
-  if (e === null) return false;
-  const bits = world.get(e, PlayerContacts).met.get(viewer) ?? 0;
-  return (bits & (1 << other)) !== 0;
+  return (metContactBits(world, viewer) & (1 << other)) !== 0;
 }
 
 /** Record that `viewer` saw an entity of `other`. A self-contact or an invalid slot is skipped. */
 export function recordContact(world: World, viewer: number, other: number): void {
   if (viewer === other || !isValidPlayer(viewer) || !isValidPlayer(other)) return;
-  const e = playerContactsEntity(world);
-  if (e === null) {
-    world.add(world.create(), PlayerContacts, { met: new Map([[viewer, 1 << other]]) });
-    return;
-  }
-  // Re-recording a held contact is a no-op, kept off the mut path so it never dirties the snapshot.
-  const bits = world.get(e, PlayerContacts).met.get(viewer) ?? 0;
+  const bits = metContactBits(world, viewer);
   const withOther = bits | (1 << other);
+  // Re-recording a held contact is a no-op, kept off the write path so it never dirties the snapshot.
   if (withOther === bits) return;
-  world.mut(e, PlayerContacts).met.set(viewer, withOther);
+  playerContacts.write(world, (contacts) => {
+    contacts.met.set(viewer, withOther);
+  });
 }
