@@ -159,9 +159,10 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   single-key `{"$map": [[key, value], ...]}` wrapper holding its live insertion order (raw Map order
   is observable sim state a restore must reproduce; the `$map` key is reserved, and export rejects a
   plain record carrying it), `Fixed` values are plain integers, and export throws (naming the
-  component) on any shape JSON would corrupt, such as `undefined`, a non-finite number, or a class
-  instance. The same state always serializes byte-identically, and parse plus re-serialize
-  round-trips the bytes.
+  component) on any shape JSON would corrupt, such as `undefined`, a non-finite number, a class
+  instance, or an object appearing twice in one export, since shared or cyclic state would restore
+  as disconnected copies. The same state always serializes byte-identically, and parse plus
+  re-serialize round-trips the bytes.
 
 Reading is split in two: `parseSaveGame` validates an untrusted document's structure (header
 identity, the exact section order, allocation coherence, pending envelopes), and `restoreSimulation`

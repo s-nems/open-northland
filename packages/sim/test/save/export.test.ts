@@ -215,6 +215,27 @@ describe('exportSaveGame rejection', () => {
     expect(() => exportSaveGame(sim)).toThrow(/component:ReservedProbe\/1\.bag: the key '\$map' is reserved/);
   });
 
+  it('throws naming both paths for a cyclic component value', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const cyclic: { self?: unknown } = {};
+    cyclic.self = cyclic;
+    sim.world.add(sim.world.create(), defineComponent<unknown>('CycleProbe'), { bag: cyclic });
+    expect(() => exportSaveGame(sim)).toThrow(
+      /component:CycleProbe\/1\.bag\.self: object already saved at component:CycleProbe\/1\.bag/,
+    );
+  });
+
+  it('throws naming both paths for an object shared between two entities', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const Probe = defineComponent<unknown>('AliasProbe');
+    const shared = { n: 1 };
+    sim.world.add(sim.world.create(), Probe, { bag: shared });
+    sim.world.add(sim.world.create(), Probe, { bag: shared });
+    expect(() => exportSaveGame(sim)).toThrow(
+      /component:AliasProbe\/2\.bag: object already saved at component:AliasProbe\/1\.bag/,
+    );
+  });
+
   it('throws naming the path for a non-finite number and for undefined', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.world.add(sim.world.create(), defineComponent<unknown>('NanProbe'), { hp: Number.NaN });

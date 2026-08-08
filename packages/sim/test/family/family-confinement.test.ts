@@ -4,7 +4,6 @@ import {
   addPerson,
   Building,
   CurrentAtomic,
-  FEMALE,
   Female,
   MoveGoal,
   Owner,
@@ -83,7 +82,7 @@ function adultAt(sim: Simulation, x: number, y: number, jobType: number, female:
     experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: PLAYER });
-  if (female) sim.world.add(e, Female, FEMALE);
+  if (female) sim.world.add(e, Female, { female: true });
   return e;
 }
 

@@ -2,7 +2,6 @@ import type { ContentSet } from '@open-northland/data';
 import {
   Age,
   addPerson,
-  FEMALE,
   Female,
   Health,
   Owner,
@@ -42,7 +41,7 @@ export function spawnNewborn(
     enjoyment: fx.fromInt(0),
     experience: new Map<number, number>(),
   });
-  if (sex === 'female') world.add(baby, Female, FEMALE);
+  if (sex === 'female') world.add(baby, Female, { female: true });
   world.add(baby, Age, { ticks: 0 });
   world.add(baby, Health, { hitpoints: DEFAULT_SETTLER_HITPOINTS, max: DEFAULT_SETTLER_HITPOINTS });
   const owner = world.tryGet(mother, Owner)?.player;

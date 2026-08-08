@@ -13,6 +13,9 @@
   local calculation that is converted without accumulating float state and is proven deterministic.
 - A `World` owns its component stores. `new World()` and `new Simulation()` are complete isolated
   resets; never add a global clearing ritual.
+- Component values form an ownership tree: mint each payload fresh, never stamp a shared module
+  constant or an object another component already holds. Save export rejects the alias, because a
+  restore would fork it into disconnected copies.
 
 External callers mutate a running simulation only through serializable commands. Systems mutate the
 world during `step()`. Authored scenes and fixtures may assemble pre-tick-zero state directly.

@@ -42,12 +42,10 @@ export type SettlerView = DeepReadonly<SettlerState>;
  *  removed, so `query(Person, …)` is a human-only system's filter. */
 export const Person = defineComponent<{ readonly person: true }>('Person');
 
-const PERSON = Object.freeze({ person: true } as const);
-
 /** Add a person: a {@link Settler} carrying the {@link Person} marker. The only path that mints one. */
 export function addPerson(world: World, entity: Entity, state: SettlerState): void {
   world.add(entity, Settler, state);
-  world.add(entity, Person, PERSON);
+  world.add(entity, Person, { person: true });
 }
 
 /** Add a creature of an animal `tribe`: a {@link Settler} with no {@link Person} and no trade. */

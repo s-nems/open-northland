@@ -1,4 +1,4 @@
-import { parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Settler, Sheltering } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
@@ -6,18 +6,23 @@ import {
   CORE_INVARIANTS,
   type Command,
   checkInvariants,
+  exportSaveGame,
   type LoggedCommand,
+  parseSaveGame,
   Rng,
   replay,
+  restoreSimulation,
   Simulation,
+  serializeSaveGame,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * Seeded command-stream fuzz covers input combinations that curated goldens miss. It checks
- * run-twice hashes, command replay, invariants, and cache coherence. Invalid commands are included so
- * stale targets and rejected orders remain deterministic; generation depends only on its own RNG.
+ * run-twice hashes, command replay, save round-trips, invariants, and cache coherence. Invalid
+ * commands are included so stale targets and rejected orders remain deterministic; generation
+ * depends only on its own RNG.
  */
 
 const VIKING = 1;
@@ -204,7 +209,8 @@ const TARGET_ID_RANGE = 80;
 const NUCLEUS_ID_RANGE = 8;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
 const COMMAND_EVERY = 4;
-/** Hash checkpoint cadence - a run-twice divergence is localized to a 50-tick window. */
+/** Hash checkpoint cadence - a run-twice divergence is localized to a 50-tick window. The save
+ *  self-check round-trips at the same points, so its cost stays a dozen exports per run. */
 const CHECKPOINT_EVERY = 50;
 
 // A 12×12-CELL map - the graph is its 24×24 half-cell lattice, and command coords draw from the
@@ -656,8 +662,25 @@ interface FuzzRun {
   readonly attachedToWork: boolean;
 }
 
-function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
-  const sim = new Simulation({ seed: fuzzSeed, content: fuzzContent(), map: grassMap(MAP_W, MAP_H) });
+/** Export → parse → restore at a live checkpoint: the restored sim must hash exactly like the live
+ *  one and re-export the same bytes. */
+function assertSaveRoundTrip(sim: Simulation, liveHash: string, content: ContentSet): void {
+  const bytes = serializeSaveGame(exportSaveGame(sim));
+  const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+    content,
+    map: grassMap(MAP_W, MAP_H),
+  }).sim;
+  if (restored.hashState() !== liveHash) {
+    throw new Error(`tick ${sim.tick}: the restored sim hashes differently from the live one`);
+  }
+  if (serializeSaveGame(exportSaveGame(restored)) !== bytes) {
+    throw new Error(`tick ${sim.tick}: the restored sim re-exports different bytes`);
+  }
+}
+
+function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolean } = {}): FuzzRun {
+  const content = fuzzContent();
+  const sim = new Simulation({ seed: fuzzSeed, content, map: grassMap(MAP_W, MAP_H) });
   // A fixed family nucleus ahead of the stream - a built home and three owned couples-to-be - so the
   // AIMED family rolls (24–26) have eligible targets and the wedding → household → child machinery runs
   // under the fuzz harness. Part of the input by construction (identical for both live runs), and
@@ -747,7 +770,11 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     if (!attachedToWork && sim.world.tryGet(ATTACHED_SETTLER, Settler)?.jobType === ATTACH_TRADE) {
       attachedToWork = sim.world.has(ATTACHED_SETTLER, JobAssignment);
     }
-    if (sim.tick % CHECKPOINT_EVERY === 0) checkpoints.push(sim.hashState());
+    if (sim.tick % CHECKPOINT_EVERY === 0) {
+      const hash = sim.hashState();
+      checkpoints.push(hash);
+      if (opts.saveRoundTrip === true) assertSaveRoundTrip(sim, hash, content);
+    }
   }
   // The log is plain data owned by this sim instance - copy the array so it outlives store reuse.
   return {
@@ -768,7 +795,9 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
     it(`seed ${seed}: two live runs are byte-identical and invariant-clean`, {
       timeout: FUZZ_TIMEOUT_MS,
     }, () => {
-      const a = runFuzz(seed, TICKS);
+      // Only run `a` save-round-trips, so the checkpoint equality below additionally proves the
+      // export/restore cycle never perturbs the live sim it snapshots.
+      const a = runFuzz(seed, TICKS, { saveRoundTrip: true });
       const b = runFuzz(seed, TICKS);
       expect(a.sheltered).toBe(true); // the stream really reached defence mode, not just its skip paths
       expect(a.attachedToWork).toBe(true); // and the authored attachment really bound, not just refused
