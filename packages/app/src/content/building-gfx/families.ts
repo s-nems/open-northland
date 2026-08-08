@@ -11,10 +11,7 @@ import type { BuildingBobRow } from '../ir/rows.js';
 export const TREE_ATLAS = 'ls_trees.tree_yew01';
 export const TREE_BOB = 60;
 
-/**
- * The loaded building atlas kept as its `(bmd, palette)` parts, so {@link buildingBobRefsByType} matches
- * the IR's `buildingBobs` rows by trailing basename. {@link HOUSE_ATLAS} is the served atlas stem.
- */
+/** The default building atlas kept as its `(bmd, palette)` parts; {@link HOUSE_ATLAS} is the served stem. */
 const HOUSE_BMD = 'ls_houses_viking.bmd';
 const HOUSE_PALETTE = 'house01';
 
@@ -29,9 +26,9 @@ const HOUSE_PALETTE = 'house01';
 export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
 /**
- * Render scale for the building kind - native (1), like every other bob: the tile pitch is calibrated to
- * the art, so the authored bob size is already correct against the terrain. Decoded bob sizes differ a lot
- * (well 63×88, home 299×340), so a uniform scale preserves their real relative proportions.
+ * Render scale for the building kind - native (1), like every other bob: the tile pitch is calibrated to the
+ * art. Decoded bob sizes differ a lot (well 63×88, home 299×340), so a uniform scale preserves their real
+ * relative proportions.
  */
 export const BUILDING_SCALE = 1;
 
@@ -55,8 +52,7 @@ export const VIKING_TRIBE = 1;
 
 /**
  * The default building atlas family - the single `ls_houses_viking.house01` layer drawn as the `building`
- * kind. Its `(bmd, palette)` identity tells {@link buildingBobRefsByType} which canonical rows draw from
- * that shared layer (a bare bob id) versus a named family layer (a `{ layer, bob }`).
+ * kind.
  */
 export const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HOUSE_PALETTE } as const;
 
@@ -149,10 +145,9 @@ export function preferredPalettePool<T extends { paletteName: string }>(
 }
 
 /**
- * Pick the single canonical `buildingBobs` row for one `typeId` from its candidate rows (already filtered
- * to the tribe and typeId), deterministically and insertion-order-independently: restrict to
- * {@link preferredPalette} rows when any exist, then to the {@link CANONICAL_EDIT_NAME} row when one is
- * named for this typeId, then tiebreak on highest `level` and lowest `bobId`.
+ * Pick the single canonical `buildingBobs` row for one `typeId` from its candidate rows (already filtered to
+ * the tribe and typeId). The palette → canonical-name → highest `level` → lowest `bobId` ladder makes the
+ * choice independent of row insertion order.
  */
 function pickCanonicalBuildingRow(
   typeId: number,
@@ -194,10 +189,9 @@ export function familyLayerFor(
 }
 
 /**
- * Reduce the decoded `buildingBobs` join to the render's per-type bob binding for one tribe: the canonical
- * row per `(tribeId, typeId)` becomes a bare bob id from the {@link defaultFamily}'s shared layer, or a
- * layer-qualified `{ layer, bob }` from a loaded named {@link families} atlas. A row whose family is
- * neither is dropped, degrading that typeId to {@link VIKING_HOUSE01_BOBS} or the render-side default.
+ * Reduce the decoded `buildingBobs` join to the render's per-type bob binding for one tribe. A row whose
+ * family is neither the default nor a loaded named one is dropped, degrading that typeId to
+ * {@link VIKING_HOUSE01_BOBS} or the render-side default.
  */
 export function buildingBobRefsByType(
   rows: readonly BuildingBobRow[],

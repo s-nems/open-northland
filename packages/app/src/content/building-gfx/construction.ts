@@ -9,18 +9,16 @@ import {
 } from './families.js';
 
 /**
- * Reduce the decoded `constructionLayers` IR to the render's per-type construction-stage binding for one
- * tribe, under {@link import('./families.js').buildingBobRefsByType}'s family rules: a row in an unloaded
- * family is dropped (its frame-id space differs, so never borrow), and a typeId whose stages all drop is
- * omitted entirely so it keeps its normal body draw. This pass consumes the from-scratch rows
- * (`upgrade === false`); {@link upgradeRefsByType} is the `upgrade === true` twin.
+ * Reduce the decoded `constructionLayers` IR's from-scratch rows (`upgrade === false`) to the render's
+ * per-type construction-stage binding for one tribe. A typeId whose chosen stage group has any stage in an
+ * unloaded family is omitted entirely, so it keeps its normal body draw.
  *
  * A typeId's stages must all come from one source record at one size level - several records can carry the
- * same typeId, and merging their per-record `stackIdx` streams would interleave two different stage
- * stacks. So the reduction first restricts to the preferred palette, then picks one `(editName, level)`
- * group: the {@link CANONICAL_EDIT_NAME} match when it names this typeId, else the lowest `level` (the
- * base build stage), ties to the lexicographically smallest `editName`. The chosen group's stages keep
- * their source stacking order (`stackIdx`). Pure.
+ * same typeId, and merging their per-record `stackIdx` streams would interleave two different stage stacks.
+ * So the reduction first restricts to the preferred palette, then picks one `(editName, level)` group: the
+ * {@link CANONICAL_EDIT_NAME} match when it names this typeId, else the lowest `level` (the base build
+ * stage), ties to the lexicographically smallest `editName`. The chosen group's stages keep their source
+ * stacking order (`stackIdx`). Pure.
  */
 export function constructionRefsByType(
   rows: readonly ConstructionLayerRow[],
