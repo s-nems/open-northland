@@ -5,10 +5,12 @@ import {
   Building,
   CurrentAtomic,
   DeferredOrder,
+  Engagement,
   EquipOrder,
   Garrison,
   Health,
   JobAssignment,
+  MoveGoal,
   Owner,
   Position,
   Projectile,
@@ -21,9 +23,10 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { TOWER_RANGE_BONUS_NODES } from '../../src/systems/conflict/tower-post.js';
+import { plannerSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { testContent } from '../fixtures/content.js';
-import { grassMap } from '../settlers/needs/support.js';
+import { ctxOf, grassMap } from '../settlers/needs/support.js';
 
 /**
  * The tower garrison: a bow soldier posted to a watchtower walks in, holds it, and shoots from cover at
@@ -493,6 +496,51 @@ describe('the tower garrison - its needs', () => {
     expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower); // and never left the wall
     expect(tileOf(sim, soldier)).toEqual(post);
     expect(sim.world.get(tower, Stockpile).amounts.get(FOOD_GOOD)).toBeLessThan(5); // off its own shelf
+  });
+
+  it('eats its post’s rations while ENGAGED, the one meal a fighting unit can still reach', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    sim.world.add(tower, Stockpile, { amounts: new Map([[FOOD_GOOD, 5]]) });
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    manTheTower(sim, soldier, tower);
+    sim.world.mut(soldier, Settler).hunger = STARVING;
+    sim.world.add(soldier, Engagement, { repathAt: sim.tick });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const atomic = sim.world.get(soldier, CurrentAtomic);
+    expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD_GOOD, from: tower });
+    expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower); // still on the wall
+  });
+
+  it('sleeps on its post while ENGAGED, the fatigue twin of the ration rung', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    manTheTower(sim, soldier, tower);
+    sim.world.mut(soldier, Settler).fatigue = EXHAUSTED;
+    sim.world.add(soldier, Engagement, { repathAt: sim.tick });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(soldier, CurrentAtomic).effect).toEqual({ kind: 'sleep' });
+    expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower);
+  });
+
+  it('holds an EMPTY tower while ENGAGED rather than climbing down to eat', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3); // no Stockpile: nothing to eat up there
+    larderAt(sim, 18, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    manTheTower(sim, soldier, tower);
+    sim.world.mut(soldier, Settler).hunger = STARVING;
+    sim.world.add(soldier, Engagement, { repathAt: sim.tick });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(soldier, MoveGoal)).toBe(false); // the wall outranks the larder under fire
+    expect(sim.world.tryGet(soldier, Garrison)?.post).toBe(tower);
   });
 
   it('leaves an EMPTY tower for food, and comes back to the post once fed', () => {

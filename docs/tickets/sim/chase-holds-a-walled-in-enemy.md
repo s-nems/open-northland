@@ -1,13 +1,16 @@
 # Release a chase whose target is walled in by buildings, not by terrain
 
-**Area:** sim · **Priority:** P3
+**Area:** sim · **Priority:** P2
 
 `chase` (`packages/sim/src/systems/conflict/chase.ts`) only deals contact cells in the chaser's own
 static walk component, so an enemy across a river no longer benches its watcher. A target sealed off
 by the *dynamic* overlay instead - an enemy standing inside a walled compound, a unit ringed by
 standing bodies - is still in the chaser's own component, so the chase keeps issuing a route that
 keeps failing, and the `Engagement` marker keeps the unit out of the economy for as long as the seal
-holds.
+holds. That marker now also means the unit answers a need only from its own rations, so an indefinite
+seal starves it rather than merely benching it - about 400 s of game time from the eat trigger to
+death. The same applies to the second-rank hold, where men who never swing hold an `Engagement` for as
+long as the front rank stands.
 
 That was left alone deliberately: a crowd-sealed contact cell usually clears within a few ticks, and
 releasing there would drop a fighter out of a live battle. A building ring does not clear.

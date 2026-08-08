@@ -17,7 +17,7 @@ import {
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell, nearestFood, nearestTemple, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { type DraughtNeed, draughtSlotFor, startDrink } from './drink.js';
+import { draughtSlotFor, startDrink } from './drink.js';
 import { restingCell } from './rest-spot.js';
 import { sleepAtHome } from './sleep-at-home.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
@@ -33,10 +33,10 @@ import { eatAtPost, sleepAtPost } from './tower-post.js';
 export const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /**
- * Hunger at or above which the HUD floats the hunger bubble. The gap above the eat trigger means a settler
- * that can feed itself eats long before the icon shows, so the bubble reports a famine rather than one
- * settler being due a meal. Source basis: observation of the original, where the icon appears when
- * settlers have trouble finding food; the fraction itself is an approximation.
+ * Hunger at or above which the HUD floats the hunger bubble. The gap above the eat trigger means the icon
+ * marks a settler that cannot feed itself where it stands - out of reach of food, or engaged and out of
+ * rations - rather than one merely due a meal. Source basis: observation of the original, where the icon
+ * appears when settlers have trouble finding food; the fraction itself is an approximation.
  */
 export const HUNGER_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
 
@@ -73,9 +73,8 @@ export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: F
 }
 
 /**
- * The in-place half of the needs ladder: what a settler that must not move, such as a garrison holding its
- * post, can still answer for a pressing need. Hunger before fatigue, and within hunger a carried edible
- * before a bottle, as the full ladder orders them.
+ * The in-place half of the needs ladder, for a settler that must not move: {@link planNeeds}'s rung order
+ * with every tail that walks or lies down removed.
  */
 export function answerNeedInPlace(
   world: World,
@@ -83,15 +82,22 @@ export function answerNeedInPlace(
   e: Entity,
   settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
 ): boolean {
-  const pressing: DraughtNeed[] = [];
-  if (settler.hunger >= HUNGER_EAT_THRESHOLD) pressing.push('hunger');
-  if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) pressing.push('fatigue');
-  for (const need of pressing) {
-    if (need === 'hunger' && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
-    const draught = draughtSlotFor(world, ctx, e, need);
-    if (draught === null) continue;
-    startDrink(world, ctx, e, settler, draught);
-    return true;
+  if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
+    if (eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
+    const draught = draughtSlotFor(world, ctx, e, 'hunger');
+    if (draught !== null) {
+      startDrink(world, ctx, e, settler, draught);
+      return true;
+    }
+    if (eatAtPost(world, ctx, e, settler)) return true;
+  }
+  if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
+    const draught = draughtSlotFor(world, ctx, e, 'fatigue');
+    if (draught !== null) {
+      startDrink(world, ctx, e, settler, draught);
+      return true;
+    }
+    if (sleepAtPost(world, ctx, e, settler)) return true;
   }
   return false;
 }

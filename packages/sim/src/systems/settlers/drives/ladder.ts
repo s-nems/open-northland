@@ -12,7 +12,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { stepOut } from '../indoors.js';
 import type { PlannerContext } from '../planner/context.js';
 import type { PlannerPass } from '../planner/pass.js';
-import { anotherSystemOwns } from '../planner/replan.js';
+import { anotherSystemOwns, combatOwnsFeet } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
 import {
   planBuilder,
@@ -26,7 +26,7 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
-import { anyNeedPressing, planNeeds } from './needs.js';
+import { answerNeedInPlace, anyNeedPressing, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { deStackIdle } from './spacing.js';
@@ -71,6 +71,15 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // The alarm outranks every other drive: hunger, the ownership gate, and a live equip errand alike.
   if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
 
+  // A pressing need on a fighting unit is answered from what it carries or what its post holds, never by
+  // walking to food, a bed or a temple and never by bedding down on the field. Under the alarm, which still
+  // outranks combat. Departure: the manual gives the need rule no combat exemption and carves a soldier out
+  // only for sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice.
+  if (combatOwnsFeet(world, e)) {
+    answerNeedInPlace(world, ctx, e, settler);
+    return;
+  }
+
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in -
     // unless it is the bed the sleep rung just put it in, or a garrison that served its need on the
@@ -80,7 +89,8 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   }
 
   // Ownership gate, below the needs drives on purpose: hunger, fatigue and piety are soft overrides that
-  // still pull the unit away, so a marrying or child-making settler still eats.
+  // still pull the unit away, so a marrying or child-making settler still eats. Engagement is the one
+  // member that never gets here, having been answered in place above.
   if (anotherSystemOwns(world, e)) return;
   // BARRACKS DRILL: a player errand outranking the settler's trade for as long as it lasts, and above the
   // equip errand below because the drill ends in a profession change.
