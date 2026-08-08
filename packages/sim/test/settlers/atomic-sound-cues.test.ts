@@ -90,14 +90,18 @@ function cueContent(): ContentSet {
 }
 
 /** Run one `atomicId` swing to completion, returning `(tick, soundType)` for every cue it fired. */
-function cuesOverSwing(jobType: number, atomicId: number): { tick: number; soundType: number }[] {
+function cuesOverSwing(
+  jobType: number,
+  atomicId: number,
+  duration = CHOP_LENGTH,
+): { tick: number; soundType: number }[] {
   const sim = new Simulation({ seed: 1, content: cueContent() });
   const e: Entity = settlerAt(sim, { jobType });
   sim.world.add(e, CurrentAtomic, {
     atomicId,
     elapsed: 0,
     progress: fx.fromInt(0),
-    duration: CHOP_LENGTH,
+    duration,
     effect: { kind: 'idle' },
     targetEntity: null,
     targetTile: null,
@@ -129,8 +133,16 @@ describe('atomicSystem - authored sound cues', () => {
     ]);
   });
 
-  it('fires a cue authored past the clip length once, on the last tick', () => {
-    expect(cuesOverSwing(COLLECTOR_JOB, OVERRUN_ATOMIC)).toEqual([{ tick: CHOP_LENGTH, soundType: AXE }]);
+  it('stays silent for a cue authored past the clip it belongs to', () => {
+    // There is no frame to land on, and guessing one would put the sound somewhere the data never asked.
+    expect(cuesOverSwing(COLLECTOR_JOB, OVERRUN_ATOMIC)).toEqual([]);
+  });
+
+  it('stays silent when the atomic runs shorter than the clip, so frames cannot be placed', () => {
+    // The at-home sleeper's case: the drive starts a short `_home` twin under the bound clip's atomic id,
+    // so the bound clip's frames belong to an animation this atomic is not playing.
+    expect(cuesOverSwing(COLLECTOR_JOB, CHOP_ATOMIC, CHOP_LENGTH - 1)).toEqual([]);
+    expect(cuesOverSwing(COLLECTOR_JOB, CHOP_ATOMIC)).toHaveLength(1); // same clip, its own clock
   });
 
   it('sounds a clip a trade inherits from the civilist body', () => {

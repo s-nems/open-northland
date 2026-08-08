@@ -24,7 +24,11 @@ export const GROUP_HAMMER_WOOD = 'Hammer Wood';
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 
 // --- Combat impact SFX (SoundFXStatic `Name`s, the weapon-impact `LogicSoundType` 67–96 set decoded from
-//     `soundfx.cif`). The swings themselves come from the attack clip's own cue, not from here. ---
+//     `soundfx.cif`). ---
+/** Melee swing swoosh, for the bodies whose attack clip authors no sound of its own. The melee weapons
+ *  share one swing wav set in the bank (`Weapon Sword Short` / `Weapon Spear` / `Weapon Fist` all point at
+ *  the same `swing0N.wav`), so one generic swing group covers sword/spear/fist. */
+export const GROUP_MELEE_SWING = 'Weapon Sword Short';
 /** Fist impact - a bare-handed civilian brawl connecting (LogicSoundType 93). */
 export const GROUP_FIST_HIT = 'Weapon Fist Hit';
 /** Spear thrust connecting (LogicSoundType 68). */
@@ -83,9 +87,11 @@ export function defaultBindings(): SoundBindings {
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true, screenGated: true },
       defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
-      // No swing or release entry: the attack clip authors its own per-weapon swoosh and bowstring
-      // (`viking_soldier_attack_spear_iron` `event 16 34 67`), and a second hand-picked sound a tick or
-      // two off it reads as an echo. Only the impacts below are the engine's own choice.
+      // The sim withholds `combatSwing` from a clip that authors its own per-weapon swoosh
+      // (`viking_soldier_attack_spear_iron` `event 16 34 67`), so this generic one never doubles it. No
+      // release entry: every ranged clip in the data authors its bowstring, and `projectileLaunched`
+      // fires whether it does or not.
+      combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },
       combatHit: { kind: 'spatial', group: GROUP_SWORD_HIT },
       projectileHit: { kind: 'spatial', group: GROUP_ARROW_HIT },
     },

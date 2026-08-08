@@ -1,7 +1,6 @@
 import { CurrentAtomic, DeferredOrder } from '../../../components/index.js';
 import { fx } from '../../../core/fixed.js';
 import type { System } from '../../context.js';
-import { atomicEventTick } from '../../readviews/animations.js';
 import { applyEffect } from './effects/apply.js';
 import {
   applyPendingStaggers,
@@ -26,14 +25,14 @@ export const atomicSystem: System = (world, ctx) => {
     // An attack lands mid-animation at its `hitAt` frame, the follow-through then playing out to
     // `duration`. `elapsed` equals the clamped frame exactly once, so one swing lands one blow.
     if (atomic.effect.kind === 'attack') {
-      const hitFrame = atomicEventTick(atomic.effect.hitAt ?? duration, duration);
-      if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect, pendingStaggers);
+      const hitFrame = eventFrameWithin(atomic.effect.hitAt ?? duration, duration);
+      if (atomic.elapsed === hitFrame) {
+        resolveAttackHit(world, ctx, e, atomic, atomic.effect, pendingStaggers);
+      }
     }
 
     // The inter-swing breather extends the atomic past its clip, so it carries none of the clip's sounds.
-    if (atomic.restTail !== true) {
-      emitAtomicSoundCues(world, ctx, e, atomic.atomicId, atomic.elapsed, duration);
-    }
+    if (atomic.restTail !== true) emitAtomicSoundCues(world, ctx, e, atomic);
 
     if (atomic.elapsed < duration) continue;
 
@@ -75,3 +74,9 @@ export const atomicSystem: System = (world, ctx) => {
 
   applyPendingStaggers(world, pendingStaggers);
 };
+
+/** Clamp an animation's event frame into the `[1, duration]` ticks the atomic actually runs, so a blow the
+ *  data puts past the animation length still lands exactly once, on the last tick. */
+function eventFrameWithin(frame: number, duration: number): number {
+  return Math.min(Math.max(1, frame), duration);
+}

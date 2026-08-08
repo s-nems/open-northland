@@ -4,7 +4,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { atomicAnimationName, atomicDurationForName } from '../readviews/animations.js';
+import { atomicDurationForName, boundAtomicAnimation } from '../readviews/animations.js';
 import {
   ARMOR_MATERIAL,
   ATOMIC_EVENT_TYPE_ATTACK,
@@ -93,7 +93,7 @@ export function startAttack(
   damage: number,
   weapon: WeaponType,
 ): void {
-  const animation = atomicAnimationName(ctx.content, attacker, ATTACK_ATOMIC_ID);
+  const animation = boundAtomicAnimation(ctx.content, attacker, ATTACK_ATOMIC_ID);
   const hitAt =
     animation === undefined ? undefined : atomicEventFrame(ctx.content, animation, ATOMIC_EVENT_TYPE_ATTACK);
   // A ranged weapon with a positive travel `speed` fires a projectile at the release frame instead of

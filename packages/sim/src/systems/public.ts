@@ -50,6 +50,7 @@ export { schoolingMet } from './progression/unlocks.js';
 // The need-atomic clip resolution, exported so the real-content suite can pin both joins against the
 // served IR rather than a fixture.
 export {
+  ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicClipName,
   atomicDurationForName,
   needAtomicDuration,

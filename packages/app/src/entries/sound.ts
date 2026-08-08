@@ -48,9 +48,10 @@ export interface VoiceClassView {
 
 export interface SoundGalleryModel {
   readonly actions: readonly ActionRow[];
-  /** Every static group in the bank, carrying the `logicSoundType` id an animation cue names it by. This
-   *  is where a settler's own action sounds live - the axe, the hammer, the scythe - since those are
-   *  chosen by the animation data rather than bound to an event here. */
+  /** The static groups an animation cue can name, by their `logicSoundType` id. This is where a settler's
+   *  own action sounds live - the axe, the hammer, the scythe - since those are chosen by the animation
+   *  data rather than bound to an event here. A group the extraction left without an id is unreachable
+   *  from a cue and omitted. */
   readonly cues: readonly ClipList[];
   readonly voices: readonly VoiceClassView[];
   readonly jingles: readonly ClipList[];
@@ -136,11 +137,13 @@ export function buildSoundGalleryModel(sounds: SoundBank, bindings: SoundBinding
     clips: a.sfx.map((s) => s.file),
   }));
 
-  const cues: ClipList[] = sounds.staticGroups.map((g) => ({
-    group: g.name,
-    clips: g.sfx.map((s) => s.file),
-    ...(g.logicSoundType !== undefined ? { soundType: g.logicSoundType } : {}),
-  }));
+  const cues: ClipList[] = sounds.staticGroups
+    .filter((g) => g.logicSoundType !== undefined)
+    .map((g) => ({
+      group: g.name,
+      clips: g.sfx.map((s) => s.file),
+      ...(g.logicSoundType !== undefined ? { soundType: g.logicSoundType } : {}),
+    }));
 
   return { actions, cues, voices, jingles, ambient };
 }

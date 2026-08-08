@@ -98,8 +98,9 @@ export type SimEvent =
     }
   | {
       /**
-       * A melee swing was loosed at the attacker's node, whether it connects or whiffs; the impact is the
-       * separate `combatHit`. Ranged swings emit `projectileLaunched` instead.
+       * A melee swing was loosed at the attacker's node by a body whose attack clip authors no sound of
+       * its own, whether the swing connects or whiffs; a cued clip announces itself through `atomicSound`
+       * instead. The impact is the separate `combatHit`, and ranged swings emit `projectileLaunched`.
        */
       readonly kind: 'combatSwing';
       readonly attacker: Entity;

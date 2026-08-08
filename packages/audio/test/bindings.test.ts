@@ -42,13 +42,15 @@ describe('defaultBindings', () => {
     expect(alarm).toEqual({ kind: 'jingle', musicType: 24, localPlayerOnly: true });
   });
 
-  it("binds combat impacts only, leaving swing and release to the attack clip's own cue", () => {
+  it('binds the impacts, plus the swing the attack clip does not sound itself', () => {
     const b = defaultBindings();
     expect(b.byEvent.combatHit).toEqual({ kind: 'spatial', group: 'Weapon Sword Short Hit' });
     expect(b.byEvent.projectileHit).toEqual({ kind: 'spatial', group: 'Weapon Bow Hit' });
-    // The swoosh and the bowstring are authored per weapon in the animation, so binding them here would
-    // fire a second, near-simultaneous sound on every swing.
-    expect(b.byEvent.combatSwing).toBeUndefined();
+    // The generic swoosh covers a body whose clip authors none - a hero, or a beast. The sim withholds
+    // `combatSwing` from a cued clip, so this never doubles a per-weapon cue.
+    expect(b.byEvent.combatSwing).toEqual({ kind: 'spatial', group: 'Weapon Sword Short' });
+    // No release entry: `projectileLaunched` fires whether or not the clip sounds, and every ranged clip
+    // in the data authors its own bowstring.
     expect(b.byEvent.projectileLaunched).toBeUndefined();
     // Per-weapon melee impacts: fist / spear / sword (mainType 1 / 2 / 3).
     expect(b.byCombatWeapon?.get(1)).toEqual({ kind: 'spatial', group: 'Weapon Fist Hit' });

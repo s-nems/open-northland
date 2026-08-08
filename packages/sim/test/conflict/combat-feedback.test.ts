@@ -4,6 +4,7 @@ import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
+import { settlerAt } from '../fixtures/settler.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
 /**
@@ -83,6 +84,36 @@ describe('combatHit - a landed melee blow', () => {
 });
 
 describe('combatSwing - the swing swoosh at the strike frame', () => {
+  it('withholds the swoosh from a body whose attack clip sounds its own swing', () => {
+    // The woodcutter's `viking_attack` runs 4 ticks and authors `event 2 34 81`, so the clip announces the
+    // swing per weapon; a generic swoosh on top of it would ring twice, a tick or two apart.
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(4), y: fx.fromInt(2) } });
+    const target = settlerAt(sim, { jobType: 1, position: { x: fx.fromInt(5), y: fx.fromInt(2) } });
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    sim.world.add(attacker, CurrentAtomic, {
+      atomicId: 81,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 4, // the clip's own length, so its authored frames land where the data put them
+      effect: { kind: 'attack', target, damage: 100, weaponMainType: 3 },
+      targetEntity: target,
+      targetTile: null,
+    });
+
+    const evts = [];
+    for (let i = 0; i < 4; i++) {
+      sim.step();
+      evts.push(...sim.snapshot().events);
+    }
+
+    expect(evts.filter((ev) => ev.kind === 'combatSwing')).toHaveLength(0);
+    expect(evts.filter((ev) => ev.kind === 'atomicSound')).toMatchObject([
+      { entity: attacker, soundType: 81 },
+    ]);
+    expect(evts.filter((ev) => ev.kind === 'combatHit')).toHaveLength(1); // the blow still lands
+  });
+
   it('emits combatSwing at the attacker on a connecting swing (the audible twin of a bow release)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();

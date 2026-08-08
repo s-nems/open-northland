@@ -9,7 +9,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { CIVILIST_JOB, WOMAN_JOB } from '../../lifecycle/ageclass.js';
-import { atomicAnimationName, atomicDurationForName } from '../../readviews/animations.js';
+import { atomicDurationForName, boundAtomicAnimation } from '../../readviews/animations.js';
 import { stepOut } from '../../settlers/indoors.js';
 import { spawnNewborn } from '../../spawn/index.js';
 
@@ -25,7 +25,7 @@ const MAKE_LOVE_DURATION_FALLBACK = 200;
  *  fallback when neither resolves. */
 export function makeLoveDuration(ctx: SystemContext, tribe: number): number {
   const durations = [WOMAN_JOB, CIVILIST_JOB]
-    .map((jobType) => atomicAnimationName(ctx.content, { tribe, jobType }, MAKE_LOVE_ATOMIC_ID))
+    .map((jobType) => boundAtomicAnimation(ctx.content, { tribe, jobType }, MAKE_LOVE_ATOMIC_ID))
     .filter((name): name is string => name !== undefined)
     .map((name) => atomicDurationForName(ctx.content, name));
   return durations.length > 0 ? Math.max(...durations) : MAKE_LOVE_DURATION_FALLBACK;

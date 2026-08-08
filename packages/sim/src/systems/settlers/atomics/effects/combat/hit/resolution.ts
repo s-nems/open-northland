@@ -8,6 +8,7 @@ import { tryDeathSaveDraught } from '../../../../../equipment/index.js';
 import { grantFightExperience } from '../../../../../progression/index.js';
 import { manhattan } from '../../../../../spatial/metric.js';
 import { entityNode } from '../../../../../spatial/nodes.js';
+import { atomicClipSounds, type SoundingAtomic } from '../../../sound-cue.js';
 import { hunterShotMisses } from './aim.js';
 import { spawnCarcasses } from './carcass.js';
 import { launchProjectile } from './projectile-launch.js';
@@ -23,6 +24,7 @@ export function resolveAttackHit(
   world: World,
   ctx: SystemContext,
   attacker: Entity,
+  atomic: SoundingAtomic,
   effect: Extract<AtomicEffect, { kind: 'attack' }>,
   pendingStaggers: PendingStagger[],
 ): void {
@@ -31,9 +33,11 @@ export function resolveAttackHit(
     launchProjectile(world, ctx, attacker, effect, hunterShotMisses(world, ctx, attacker));
     return;
   }
-  // The swoosh fires before the reach check so every swing is heard, hit or whiff.
+  // The swoosh fires before the reach check so every swing is heard, hit or whiff. A clip that authors its
+  // own per-weapon sound announces the swing itself, so this covers only the ones that do not - the hero
+  // bodies, and every beast, whose clip the tribe binds under a job no animal carries.
   const swingFrom = world.tryGet(attacker, Position);
-  if (swingFrom !== undefined) {
+  if (swingFrom !== undefined && !atomicClipSounds(world, ctx, attacker, atomic)) {
     ctx.events.emit({ kind: 'combatSwing', attacker, at: eventAt(swingFrom.x, swingFrom.y) });
   }
   // Without a node graph or a `maxRange` the blow always lands on a live target.

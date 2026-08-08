@@ -53,6 +53,16 @@ import {
   WOMAN_TALK_PULSE_FRAMES,
 } from '../../work-animations.js';
 
+/** One clip, with its transcribed `event <at> 34 <id>` cues resolved from its own name and length so the
+ *  two never drift apart, plus any `extra` rows the clip authors on other channels. */
+function clip(
+  name: string,
+  length: number,
+  extra: readonly object[] = [],
+): { id: string; name: string; length: number; events: object[] } {
+  return { id: name, name, length, events: [...extra, ...soundCueEvents(name, length)] };
+}
+
 /** A clip restoring the company bar in channel-3 pulses of `value` at the extracted event `frames`. */
 function chatClip(
   name: string,
@@ -60,150 +70,53 @@ function chatClip(
   frames: readonly number[],
   value: number,
 ): { id: string; name: string; length: number; interruptible: true; events: object[] } {
-  return {
-    id: name,
-    name,
-    length,
-    // `interruptable 1` in the source rows.
-    interruptible: true,
-    events: [
-      ...frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value })),
-      ...soundCueEvents(name, length),
-    ],
-  };
+  const pulses = frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value }));
+  // `interruptable 1` in the source rows.
+  return { ...clip(name, length, pulses), interruptible: true };
 }
 
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
-    ...GATHERERS.map((gatherer) => {
-      const length = HARVEST_TICKS[gatherer.atomic] ?? 1;
-      return {
-        id: gatherer.animation,
-        name: gatherer.animation,
-        length,
-        events: soundCueEvents(gatherer.animation, length),
-      };
-    }),
-    { id: STORE_PICKUP_ANIMATION, name: STORE_PICKUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
-    { id: STORE_PILEUP_ANIMATION, name: STORE_PILEUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
+    ...GATHERERS.map((gatherer) => clip(gatherer.animation, HARVEST_TICKS[gatherer.atomic] ?? 1)),
+    clip(STORE_PICKUP_ANIMATION, STORE_EXCHANGE_LENGTH),
+    clip(STORE_PILEUP_ANIMATION, STORE_EXCHANGE_LENGTH),
     // Extracted lengths from the mod's `atomicanimations12/atomicanimations.ini`. The hearts phase runs
     // the longer civilist clock.
-    { id: 'viking_woman_kiss', name: 'viking_woman_kiss', length: 50 },
-    { id: 'viking_woman_kissed', name: 'viking_woman_kissed', length: 50 },
-    { id: 'viking_civilist_kiss', name: 'viking_civilist_kiss', length: 50 },
-    { id: 'viking_civilist_kissed', name: 'viking_civilist_kissed', length: 50 },
-    { id: 'viking_woman_make_love', name: 'viking_woman_make_love', length: 50 },
-    { id: 'viking_civilist_make_love', name: 'viking_civilist_make_love', length: 200 },
+    clip('viking_woman_kiss', 50),
+    clip('viking_woman_kissed', 50),
+    clip('viking_civilist_kiss', 50),
+    clip('viking_civilist_kissed', 50),
+    clip('viking_woman_make_love', 50),
+    clip('viking_civilist_make_love', 200),
     // Extracted lengths and channel-3 pulse rows. The woman restores little while listening because she
     // recovers on her talking turn, the pair alternating roles.
     chatClip(CIVILIST_TALK_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
     chatClip(CIVILIST_LISTEN_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
     chatClip(WOMAN_TALK_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
     chatClip(WOMAN_LISTEN_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, LISTEN_QUIET_PULSE_VALUE),
-    {
-      id: 'viking_fist_attack',
-      name: 'viking_fist_attack',
-      length: FIST_SWING_LENGTH,
-      events: [
-        { at: FIST_HIT_FRAME, type: ATTACK_EVENT_TYPE },
-        ...soundCueEvents('viking_fist_attack', FIST_SWING_LENGTH),
-      ],
-    },
-    {
-      id: 'viking_spear_attack',
-      name: 'viking_spear_attack',
-      length: SPEAR_SWING_LENGTH,
-      events: [
-        { at: SPEAR_HIT_FRAME, type: ATTACK_EVENT_TYPE },
-        ...soundCueEvents('viking_spear_attack', SPEAR_SWING_LENGTH),
-      ],
-    },
-    {
-      id: 'viking_sword_attack',
-      name: 'viking_sword_attack',
-      length: SWORD_SWING_LENGTH,
-      events: [
-        { at: SWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE },
-        ...soundCueEvents('viking_sword_attack', SWORD_SWING_LENGTH),
-      ],
-    },
-    {
-      id: 'viking_broadsword_attack',
-      name: 'viking_broadsword_attack',
-      length: BROADSWORD_SWING_LENGTH,
-      events: [
-        { at: BROADSWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE },
-        ...soundCueEvents('viking_broadsword_attack', BROADSWORD_SWING_LENGTH),
-      ],
-    },
-    {
-      id: 'viking_bow_attack',
-      name: 'viking_bow_attack',
-      length: SHORT_BOW_DRAW_LENGTH,
-      events: [
-        { at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
-        ...soundCueEvents('viking_bow_attack', SHORT_BOW_DRAW_LENGTH),
-      ],
-    },
-    {
-      id: 'viking_hunter_attack',
-      name: 'viking_hunter_attack',
-      length: HUNTER_BOW_DRAW_LENGTH,
-      events: [
-        { at: HUNTER_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
-        ...soundCueEvents('viking_hunter_attack', HUNTER_BOW_DRAW_LENGTH),
-      ],
-    },
-    {
-      id: 'viking_hunter_harvest_cadaver',
-      name: 'viking_hunter_harvest_cadaver',
-      length: HUNTER_HARVEST_CADAVER_LENGTH,
-    },
-    {
-      id: 'viking_bow_long_attack',
-      name: 'viking_bow_long_attack',
-      length: LONG_BOW_DRAW_LENGTH,
-      events: [
-        { at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
-        ...soundCueEvents('viking_bow_long_attack', LONG_BOW_DRAW_LENGTH),
-      ],
-    },
-    {
-      id: BUILD_HOUSE_ANIMATION,
-      name: BUILD_HOUSE_ANIMATION,
-      length: BUILD_HOUSE_SWING_LENGTH,
-      events: soundCueEvents(BUILD_HOUSE_ANIMATION, BUILD_HOUSE_SWING_LENGTH),
-    },
-    {
-      id: BUILD_GUIDE_ANIMATION,
-      name: BUILD_GUIDE_ANIMATION,
-      length: BUILD_GUIDE_SWING_LENGTH,
-      events: soundCueEvents(BUILD_GUIDE_ANIMATION, BUILD_GUIDE_SWING_LENGTH),
-    },
-    {
-      id: CIVILIST_EXERCISE_ANIMATION,
-      name: CIVILIST_EXERCISE_ANIMATION,
-      length: CIVILIST_EXERCISE_LENGTH,
-      events: [
-        {
-          at: CIVILIST_EXERCISE_XP_FRAME,
-          type: TRAINING_EXPERIENCE_EVENT_TYPE,
-          value: CIVILIST_EXERCISE_XP,
-        },
-      ],
-    },
-    {
-      id: FARMER_REAP_ANIMATION,
-      name: FARMER_REAP_ANIMATION,
-      length: FARMER_REAP_LENGTH,
-      events: soundCueEvents(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH),
-    },
-    { id: FARMER_SOW_ANIMATION, name: FARMER_SOW_ANIMATION, length: FARMER_SOW_LENGTH },
-    {
-      id: FARMER_WATER_ANIMATION,
-      name: FARMER_WATER_ANIMATION,
-      length: FARMER_WATER_LENGTH,
-      events: soundCueEvents(FARMER_WATER_ANIMATION, FARMER_WATER_LENGTH),
-    },
+    clip('viking_fist_attack', FIST_SWING_LENGTH, [{ at: FIST_HIT_FRAME, type: ATTACK_EVENT_TYPE }]),
+    clip('viking_spear_attack', SPEAR_SWING_LENGTH, [{ at: SPEAR_HIT_FRAME, type: ATTACK_EVENT_TYPE }]),
+    clip('viking_sword_attack', SWORD_SWING_LENGTH, [{ at: SWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE }]),
+    clip('viking_broadsword_attack', BROADSWORD_SWING_LENGTH, [
+      { at: BROADSWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE },
+    ]),
+    clip('viking_bow_attack', SHORT_BOW_DRAW_LENGTH, [
+      { at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
+    ]),
+    clip('viking_hunter_attack', HUNTER_BOW_DRAW_LENGTH, [
+      { at: HUNTER_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
+    ]),
+    clip('viking_hunter_harvest_cadaver', HUNTER_HARVEST_CADAVER_LENGTH),
+    clip('viking_bow_long_attack', LONG_BOW_DRAW_LENGTH, [
+      { at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
+    ]),
+    clip(BUILD_HOUSE_ANIMATION, BUILD_HOUSE_SWING_LENGTH),
+    clip(BUILD_GUIDE_ANIMATION, BUILD_GUIDE_SWING_LENGTH),
+    clip(CIVILIST_EXERCISE_ANIMATION, CIVILIST_EXERCISE_LENGTH, [
+      { at: CIVILIST_EXERCISE_XP_FRAME, type: TRAINING_EXPERIENCE_EVENT_TYPE, value: CIVILIST_EXERCISE_XP },
+    ]),
+    clip(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH),
+    clip(FARMER_SOW_ANIMATION, FARMER_SOW_LENGTH),
+    clip(FARMER_WATER_ANIMATION, FARMER_WATER_LENGTH),
   ];
 }
