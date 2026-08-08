@@ -9,16 +9,15 @@ import {
 } from './action-ring-layout.js';
 
 /**
- * The settler action menu's content as plain data. The command-to-icon binding is an observation of the
- * running original, read clockwise from the top-left button; the frame names are glyph descriptions, so a
- * command's icon name needn't match its label.
+ * The settler action menu's content as plain data. The command-to-icon binding is read clockwise from the
+ * top-left button of the running original and stays provisional; the frame names are glyph descriptions,
+ * so a command's icon name needn't match its label.
  */
 
-/** The default order-button gfx: frame 0x6b, observed in the last bottom slot. Command-to-frame
- *  bindings stay provisional until checked in the running original. */
+/** The default order-button gfx: frame 0x6b, observed in the last bottom slot. */
 const ACTION_ICON_FALLBACK = 'order_icon_fallback';
 
-/** Opens the profession list window. Its icon is the original's two-screws glyph (observation). */
+/** Opens the profession list window; its icon is the original's two-screws glyph. */
 const CHANGE_JOB: ActionButton = {
   kind: 'open-jobs',
   id: 'changeProfession',
@@ -83,7 +82,7 @@ export interface SettlerMenuState {
   readonly canAssignHouse: boolean;
   /** A married woman with no growing child may order a son/daughter. */
   readonly canOrderChild: boolean;
-  /** A scout swaps the top-right alert/query pair for "Erect Signpost" (observed original). */
+  /** A scout swaps the alert/query pair for "Erect Signpost". */
   readonly erectSignpost: boolean;
 }
 
@@ -97,10 +96,7 @@ export const DEFAULT_MENU_STATE: SettlerMenuState = {
   erectSignpost: false,
 };
 
-/**
- * The default civilian menu for a settler `state`, arm by arm, in the frame binding observed in the
- * running original.
- */
+/** The default civilian menu for a settler `state`, arm by arm. */
 export function menuForSettler(state: SettlerMenuState): readonly ActionGroup[] {
   return [
     // Top row, left→right (0x70 change-profession, 0x86 hammer, 0x6e "!", 0x63 "?").

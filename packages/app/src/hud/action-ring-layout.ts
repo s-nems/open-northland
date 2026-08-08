@@ -3,9 +3,9 @@ import { contains, type Rect } from './geometry.js';
 import { MIN_UI_SCALE } from './ui-scale.js';
 
 /**
- * Radial geometry for the settler action menu: up to five short button groups around a 232 px box centred
- * on the cursor. The 100 px arm offset, 32 px button step, and 5 px corner nudge are approximations
- * awaiting visual confirmation against the running original.
+ * Radial geometry for the settler action menu: up to five short button groups around a screen anchor. The
+ * 100 px arm offset, 32 px button step, and 5 px corner nudge are approximations, not confirmed against
+ * the running original.
  */
 
 export type ActionIconFrame = GuiFrameName;
@@ -88,10 +88,8 @@ const ACTION_INNER_ARM_PX = 0x44;
 /** First/last-in-group corner nudge. */
 const ACTION_EDGE_NUDGE_PX = 5;
 
-/**
- * The whole ring footprint runs at 75% of the shared HUD scale so it does not crowd the selected settler:
- * a deliberate deviation from the original's 1:1 size (approximation).
- */
+/** The ring runs at 75% of the shared HUD scale so it does not crowd the selected settler: a deliberate
+ *  deviation from the original's 1:1 size (approximation). */
 export const ACTION_RING_UI_FACTOR = 0.75;
 
 /**
@@ -108,10 +106,8 @@ export const TOP_ARM = 1;
 export const RIGHT_ARM = 2;
 export const LEFT_ARM = 3;
 
-/**
- * Per group-type (0..4): `base` is the arm's fixed offset from the menu centre in design px, `axis` the
- * axis its buttons march along in reading order, `nudge` the first/last corner bias.
- */
+/** Per group-type (0..4): `base` is the arm's offset from the menu centre in design px, `axis` the axis
+ *  its buttons march along in reading order, `nudge` the first/last corner bias. */
 interface ArmSpec {
   readonly axis: 'x' | 'y';
   readonly base: { readonly x: number; readonly y: number };

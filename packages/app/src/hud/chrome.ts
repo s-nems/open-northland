@@ -12,31 +12,25 @@ export const WIN_PAD = 6;
 export const WIN_TITLE_H = 16;
 export const WIN_LINE_H = 12;
 
-/** Parchment window fill/border. */
 const WINDOW_FILL = 0x241d12;
 export const WINDOW_BORDER = 0x6b5836;
-/** Warmer wood fill used when the decoded `bg` bitmap is absent, so the flat fallback still reads as wood. */
+/** The wood fill drawn when the decoded `bg` bitmap is absent, so the flat fallback still reads as wood. */
 export const WOOD_FILL = 0x3a2c1a;
-/** The gold window frame (a bright bead between two dark lines) echoing the original's gilt border. */
 const FRAME_GOLD = 0xb79860;
 const FRAME_DARK = 0x120d07;
-/** The two-tone bevel: a warm highlight on the light edge, near-black on the shadow edge. */
 const BEVEL_LIGHT = 0x8a744a;
 const BEVEL_DARK = 0x120d07;
 /** Rust headline band (the title bar) fill - the fallback when the decoded headline bitmap is absent. */
 export const HEADLINE_FILL = 0x3a2a18;
-/** Tab faces: a slightly lit body for the selected (pressed-in) tab, a duller one for the rest. */
 const TAB_FILL = 0x2c2114;
 const TAB_SELECTED_FILL = 0x4a3720;
-/** Scrollbar: a recessed track and a raised thumb. */
 const SCROLL_TRACK = 0x161009;
 const SCROLL_THUMB = 0x6b5836;
-/** The pale control-glyph stroke (the close-box X, the extras window's −/+ steppers). */
+/** The pale control-glyph stroke: the close-box X and the extras window's −/+ steppers. */
 export const CLOSE_X_COLOR = 0xd8ccb0;
-/** The close-box backdrop dim. */
 const CLOSE_BOX_ALPHA = 0.3;
 
-/** Hover highlight tint + strength over a flat button/row (the strip buttons, menu tabs, list rows). */
+/** Hover highlight tint + strength over a flat button, row, or tab. */
 export const HOVER_TINT = 0xffffff;
 export const HOVER_ALPHA = 0.16;
 
@@ -57,7 +51,7 @@ export function drawBevel(g: Graphics, r: Rect, scale: number, style: 'raised' |
   g.rect(r.x + r.w - w, r.y, w, r.h).fill(dark);
 }
 
-/** Draw the standard parchment window panel: wood fill + outer border + a raised inner bevel. */
+/** Draw the standard parchment window panel: fill, outer border, raised inner bevel. */
 export function drawWindowPanel(g: Graphics, r: Rect, scale: number): void {
   g.rect(r.x, r.y, r.w, r.h)
     .fill(WINDOW_FILL)
@@ -82,8 +76,8 @@ export function tileBitmap(target: Container, texture: Texture | undefined, r: R
   return true;
 }
 
-/** Draw the gilt window frame around `r`: a bright gold bead between two dark lines (a flat evocation of
- *  the original's gilded rope border). */
+/** Draw the gilt window frame around `r`: a bright gold bead between two dark lines, a flat evocation of
+ *  the original's gilded rope border (approximation). */
 export function drawWindowFrame(g: Graphics, r: Rect, scale: number): void {
   const w = bevelLine(scale);
   g.rect(r.x, r.y, r.w, r.h).stroke({ color: FRAME_DARK, width: w, alignment: 0 });
@@ -114,12 +108,12 @@ export function drawScrollbar(g: Graphics, track: Rect, thumb: Rect, scale: numb
   drawBevel(g, thumb, scale, 'raised');
 }
 
-/** Fill `r` with the hover highlight (a light wash over a button/row/tab under the cursor). */
+/** Fill `r` with the hover highlight: a light wash over the control under the cursor. */
 export function drawHoverHighlight(g: Graphics, r: Rect): void {
   g.rect(r.x, r.y, r.w, r.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
 }
 
-/** Draw the close affordance (a dimmed box with an X) into `r` - the top-right close hot-region. */
+/** Draw the close affordance into `r`: a dimmed box with an X. */
 export function drawCloseX(g: Graphics, r: Rect, scale: number): void {
   const m = Math.max(2, 2 * scale);
   g.rect(r.x, r.y, r.w, r.h)

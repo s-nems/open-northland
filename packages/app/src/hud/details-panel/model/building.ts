@@ -38,7 +38,7 @@ export interface BuildingPanelModel {
   readonly garrison: { readonly sheltered: number; readonly capacity: number } | null;
   readonly defenseLabel: string;
   readonly production: ProductionModel | null;
-  /** Non-null while the building is a site: the panel swaps its production, stock, and workers windows
+  /** Non-null while the building is a site: the panel swaps its defence, production, and stock windows
    *  for the one Construction window. */
   readonly construction: ConstructionModel | null;
   /** Whether the general section offers the Upgrade button (`housewindow` 110). */

@@ -1,9 +1,4 @@
 /**
- * Pixel surgery for the braided frame art: keying the removable near-black backdrop out of the baked
- * frame and restoring its silhouette outline.
- */
-
-/**
  * The removable-backdrop band of the GUI art (max channel below ≈28/255). It mirrors the `PalettedSprite`
  * shader's `KEY_NEAR_BLACK`, but is applied by connectivity here rather than colour alone.
  */
