@@ -1,18 +1,16 @@
 import type { BuildingFlagPointRow, ContentIr } from '../ir/rows.js';
 import { CANONICAL_EDIT_NAME, rowsByType, VIKING_TRIBE } from './families.js';
 
-/** A building's marker anchor in screen px from its bob draw anchor (+y down) - `GfxFlagPoint` for the
- *  sign post, `gfxsoldierflagpoint` for the garrison mast. */
+/** A building's marker anchor in screen px from its bob draw anchor, +y down. */
 export interface FlagPoint {
   readonly x: number;
   readonly y: number;
 }
 
 /**
- * The per-typeId sign-post anchor from the IR's `buildingFlagPoints` lane, restricted to the tribe skin
- * the render draws ({@link VIKING_TRIBE}): the point is a per-skin pixel offset, so another tribe's value
- * would misplace the chain. Variant rows sharing one typeId resolve through {@link pickFlagPointRow}. A
- * typeId with no row keeps the caller's derived fallback anchor.
+ * The per-typeId sign-post anchor from the IR's `buildingFlagPoints` lane (`GfxFlagPoint`), restricted to
+ * the tribe skin the render draws: the point is a per-skin pixel offset, so another tribe's value would
+ * misplace the chain. A typeId with no row keeps the caller's derived fallback anchor.
  */
 export function flagPointByType(ir: ContentIr | null): ReadonlyMap<number, FlagPoint> {
   return pointsByType(ir?.buildingFlagPoints);
@@ -20,9 +18,9 @@ export function flagPointByType(ir: ContentIr | null): ReadonlyMap<number, FlagP
 
 /**
  * The per-typeId garrison mast from the IR's `buildingSoldierFlagPoints` lane (`gfxsoldierflagpoint`),
- * resolved exactly like {@link flagPointByType}. The tribe filter earns its keep here: the frank tower
- * authors a different height from the viking one on the same typeId. Only the tower records carry the key,
- * which is the source's own statement of which buildings hold a garrison.
+ * resolved like {@link flagPointByType}. The tribe filter earns its keep here: the frank tower authors a
+ * different height from the viking one on the same typeId. Only the tower records carry the key, which is
+ * the source's own statement of which buildings hold a garrison.
  */
 export function soldierFlagPointByType(ir: ContentIr | null): ReadonlyMap<number, FlagPoint> {
   return pointsByType(ir?.buildingSoldierFlagPoints);
@@ -38,7 +36,7 @@ function pointsByType(rows: readonly BuildingFlagPointRow[] | undefined): Readon
 }
 
 /** The {@link CANONICAL_EDIT_NAME} row when named, else highest level, then the lowest offset - mirroring
- *  `pickCanonicalBuildingRow`'s policy with a value tiebreak instead of bobId (a flag-point row has none).
+ *  `pickCanonicalBuildingRow`'s ladder with a value tiebreak, since a flag-point row carries no bobId.
  *  Accepted divergence: a multi-variant typeId without a canonical name may take its point from a different
  *  variant record than the drawn bob; in the viking data every such collision is value-identical. */
 function pickFlagPointRow(

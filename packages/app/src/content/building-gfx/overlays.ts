@@ -16,9 +16,8 @@ export const OVERLAY_TICKS_PER_FRAME = 2;
 
 /**
  * Reduce the decoded `buildingOverlays` IR (the `[GfxHouse]` type-4 `GfxOverlay` rows) to the render's
- * per-type animated-state-overlay binding for one tribe: the still `idle` blade and the `working` spin
- * cycle. Shares the bob binding's family rules and the construction reduction's one-source-record stance
- * (lowest `level` group).
+ * per-type animated-state-overlay binding for one tribe. Shares the bob binding's family rules and the
+ * construction reduction's one-source-record stance, here the lowest `level` group.
  */
 export function buildingOverlayRefsByType(
   rows: readonly BuildingOverlayRow[],
@@ -37,8 +36,7 @@ export function buildingOverlayRefsByType(
     const anchor = idleRow ?? workingRow;
     if (anchor === undefined) continue;
     // Named limitation: the row's x/y draw offset is not carried into the binding. Every pinned viking
-    // overlay row is `0 0`, so the overlay anchors like the body bob; a mod row with a real offset would
-    // draw misplaced.
+    // overlay row is `0 0`, so a mod row with a real offset would draw misplaced.
     if (anchor.x !== 0 || anchor.y !== 0) {
       diag.warn(
         'content',

@@ -25,8 +25,7 @@ export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
 /**
  * Render scale for the building kind - native, because the tile pitch is calibrated to the art. Decoded bob
- * sizes differ a lot (well 63×88, home 299×340), so a uniform scale preserves their real relative
- * proportions.
+ * sizes differ a lot (well 63×88, home 299×340), so a uniform scale keeps their real relative proportions.
  */
 export const BUILDING_SCALE = 1;
 
@@ -48,18 +47,13 @@ export const VIKING_HOUSE01_BOBS: Readonly<Record<number, number>> = {
 /** The `LogicTribeType` whose `buildingBobs` rows the render binds (viking 1). */
 export const VIKING_TRIBE = 1;
 
-/**
- * The default building atlas family - the single `ls_houses_viking.house01` layer drawn as the `building`
- * kind.
- */
 export const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HOUSE_PALETTE } as const;
 
 /**
- * The served atlas stems for the named viking building families loaded beside the default
- * `ls_houses_viking.house01`. Three are sibling `.bmd`s on the `house01` skin (`viking2`/`viking3`/
- * `viking4`); two are a different palette on a shared `.bmd` - `housemiller01` recolours
- * `ls_houses_viking.bmd` and `housedruid01` recolours `ls_houses_viking4.bmd` - so the served stem is
- * `<bmd>.<palette>`.
+ * The served atlas stems for the named viking building families loaded beside the default one. Three are
+ * sibling `.bmd`s on the `house01` skin; two are a different palette on a shared `.bmd` (`housemiller01`
+ * recolours `ls_houses_viking.bmd`, `housedruid01` recolours `ls_houses_viking4.bmd`), so the served stem
+ * is `<bmd>.<palette>`.
  */
 const VIKING4_HOUSE01 = 'ls_houses_viking4.house01';
 const VIKING2_HOUSE01 = 'ls_houses_viking2.house01';
@@ -72,19 +66,18 @@ const VIKING_HOUSE02 = 'ls_houses_viking.house02';
 const VIKING2_HOUSE02 = 'ls_houses_viking2.house02';
 
 export interface BuildingFamily {
-  /** The `.bmd` basename the family's rows carry, e.g. `ls_houses_viking4.bmd`. */
   readonly bmdBasename: string;
-  /** The `GfxPalette` recolour skin loaded for this family, e.g. `house01`. */
+  /** The `GfxPalette` recolour skin loaded for this family. */
   readonly paletteName: string;
-  /** The `SpriteSheet.families` key (= the served atlas stem), e.g. `ls_houses_viking4.house01`. */
+  /** The `SpriteSheet.families` key, which is the served atlas stem. */
   readonly layer: string;
 }
 
 /**
- * The named building-family atlases loaded beside the default one - each a separate decoded
- * `ls_houses_*.bmd` × palette PNG with its own frame-id space, registered under `layer`. A family must be
- * both listed here and loaded by the sheet loader for its types to draw their real bob. `bmdBasename` may
- * repeat across entries, so the `(bmdBasename, paletteName)` pair is what disambiguates a family.
+ * The named building-family atlases loaded beside the default one, each a separate decoded
+ * `ls_houses_*.bmd` × palette PNG with its own frame-id space. A family must be both listed here and loaded
+ * by the sheet loader for its types to draw their real bob. `bmdBasename` may repeat across entries, so the
+ * `(bmdBasename, paletteName)` pair is what disambiguates a family.
  */
 export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
   { bmdBasename: 'ls_houses_viking4.bmd', paletteName: HOUSE_PALETTE, layer: VIKING4_HOUSE01 },
@@ -98,10 +91,9 @@ export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
 
 /**
  * The pinned canonical `EditName` for a viking `typeId` whose `(tribe, typeId)` maps to several bobs that
- * are not a recolour/level variant. The HQ (typeId 1) is `ls_houses_viking4.bmd` bob 34
+ * are not a recolour or level variant. The HQ (typeId 1) is `ls_houses_viking4.bmd` bob 34
  * `"viking headquarters"`, not the alt bob 44 `"viking headquarters house"` (source basis "Building
- * graphics families"). A typeId with no entry falls through to each reducer's own tiebreak - for the bob
- * binding, palette → max-level → lowest-bob.
+ * graphics families"). A typeId with no entry falls through to each reducer's own tiebreak.
  */
 export const CANONICAL_EDIT_NAME: Readonly<Record<number, string>> = {
   1: 'viking headquarters',
@@ -129,8 +121,7 @@ export function rowsByType<T extends { tribeId: number; typeId: number }>(
   return byType;
 }
 
-/** The "bind the skin we actually draw" rule the per-type reducers share: a type's rows in the preferred
- *  (loaded) palette when any exist, else all of them. */
+/** A type's rows in the preferred (loaded) palette when any exist, else all of them. */
 export function preferredPalettePool<T extends { paletteName: string }>(
   rows: readonly T[],
   paletteName: string,
@@ -140,9 +131,9 @@ export function preferredPalettePool<T extends { paletteName: string }>(
 }
 
 /**
- * Pick the single canonical `buildingBobs` row for one `typeId` from its candidate rows (already filtered to
- * the tribe and typeId). The palette → canonical-name → highest `level` → lowest `bobId` ladder makes the
- * choice independent of row insertion order.
+ * Pick the single canonical `buildingBobs` row for one `typeId` from rows already filtered to that tribe and
+ * typeId. The palette → canonical-name → highest `level` → lowest `bobId` ladder makes the choice
+ * independent of row insertion order.
  */
 function pickCanonicalBuildingRow(
   typeId: number,
@@ -166,10 +157,10 @@ function pickCanonicalBuildingRow(
 
 /**
  * Resolve a row's `(bmd, palette)` to the atlas family it draws from: `{}` = the default building layer (a
- * bare-id ref), `{ layer }` = a loaded named family (a layer-qualified ref), `null` = an unloaded family
- * the caller must drop, because the renderer would fall an unknown family through to the default layer and
- * draw a wrong bob from a disjoint frame-id space. `bmd` is matched on its trailing basename so a sibling
- * like `ls_houses_viking2.bmd` can't be a false positive.
+ * bare-id ref), `{ layer }` = a loaded named family, `null` = an unloaded family the caller must drop,
+ * because the renderer would fall an unknown family through to the default layer and draw a wrong bob from
+ * a disjoint frame-id space. `bmd` is matched on its trailing basename so a sibling like
+ * `ls_houses_viking2.bmd` can't be a false positive.
  */
 export function familyLayerFor(
   bmd: string,

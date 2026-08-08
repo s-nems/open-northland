@@ -3,9 +3,9 @@ import { TREE_BOB } from '../building-gfx/index.js';
 import { bobRef, DEFAULT_RESOURCE_STEM, type GatheringRefs, STOCKPILE_PLACEHOLDER_BOB } from './refs.js';
 
 /**
- * Reduce the resolved node refs to the renderer's per-good {@link ResourceTypeBinding}: each good whose
- * node stem is the default or a loaded named family binds its own node bob; a good whose family failed to
- * load falls back to the {@link TREE_BOB} default rather than a wrong tree-atlas frame.
+ * Reduce the resolved node refs to the renderer's per-good binding: a good whose node stem is the default
+ * or a loaded named family binds its own node bob, one whose family failed to load falls back to
+ * {@link TREE_BOB} rather than a wrong tree-atlas frame.
  *
  * `familyFrames` (stem → the frame ids its loaded atlas actually holds) marks data-pinned invisible levels:
  * a level naming a bob its own atlas lacks, while its other levels resolve, binds `null` and draws nothing.
@@ -27,8 +27,7 @@ export function buildResourceBinding(
       anyPresent && !(atlasFrames?.has(bob) ?? true) ? null : bobRef(node.stem, bob),
     );
   }
-  // The per-variant table (a decoded-map node's own species/decal); an unloaded variant family leaves the
-  // node on the per-good representative.
+  // An unloaded variant family leaves the node on its per-good representative.
   const byGfxIndex: Record<number, readonly LayeredBobRef[]> = {};
   for (const [idx, node] of Object.entries(refs.nodesByGfxIndex)) {
     if (node.stem !== DEFAULT_RESOURCE_STEM && !loaded.has(node.stem)) continue;
@@ -38,10 +37,9 @@ export function buildResourceBinding(
 }
 
 /**
- * Reduce the resolved trunk refs (the `landscapeToPickup` stage) to the renderer's per-good
- * {@link ResourceTypeBinding} - what a loose ground drop draws while its felled wood or chipped ore lies on
- * the ground. Binds the record's whole fewest→most state ladder, indexed by the drop's unit count
- * (`DrawItem.fill`), the original's state ≡ remaining-units read. Same load-then-drop-unloaded rule as
+ * Reduce the resolved trunk refs (the `landscapeToPickup` stage) to what a loose ground drop draws while
+ * its felled wood or chipped ore lies on the ground. Binds the record's whole fewest→most state ladder,
+ * indexed by the drop's unit count (`DrawItem.fill`). Same load-then-drop-unloaded rule as
  * {@link buildResourceBinding}.
  */
 export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): ResourceTypeBinding {
@@ -54,9 +52,9 @@ export function buildTrunkBinding(refs: GatheringRefs, loaded: ReadonlySet<strin
 }
 
 /**
- * Reduce the resolved pile and flag refs to the renderer's {@link StockpileBinding}: each good whose pile
- * atlas loaded binds its per-fill heap frames, and the flag binds the loaded `ls_temp` sign. Anything
- * unloaded falls back to the placeholder heap, a bare ref the renderer draws as the sandy marker.
+ * Reduce the resolved pile and flag refs: each good whose pile atlas loaded binds its per-fill heap frames,
+ * and the flag binds the loaded `ls_temp` sign. Anything unloaded falls back to the placeholder heap, a
+ * bare ref the renderer draws as the sandy marker.
  */
 export function buildStockpileBinding(refs: GatheringRefs, loaded: ReadonlySet<string>): StockpileBinding {
   const byGood: Record<number, readonly LayeredBobRef[]> = {};
