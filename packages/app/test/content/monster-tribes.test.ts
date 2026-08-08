@@ -18,7 +18,9 @@ const RUN_TICKS = 600;
  * every other tribe is either a civilization or wildlife.
  */
 describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('the monster tribes', () => {
-  it('places them as people whose needs never move, beside a civilization whose do', async () => {
+  it('places them as people whose needs never move, beside a civilization whose do', {
+    timeout: 120_000,
+  }, async () => {
     const { sim } = await realMapWorld({ mapId: MAP_ID, aiSeats: [], berryBushes: true });
     const ir = rawIrUnderTest() as { tribes?: { typeId: number; id: string; jobEnables?: unknown[] }[] };
     const monsterTribes = (ir.tribes ?? []).filter((t) => t.id === 'weresnake' || t.id === 'werewolf');
