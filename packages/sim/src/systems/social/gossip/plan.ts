@@ -25,11 +25,6 @@ import { isFighterJob } from '../../readviews/index.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives/needs.js';
 import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
 
-/**
- * The gossip planner half: the rungs that start a chat, plus their shared candidate machinery. The pair is
- * then driven per tick by `drive.ts`, and `index.ts` carries the mechanic's source basis.
- */
-
 /** Company deficit at or above which a working settler leaves its work to find a chat partner, ¾ of a full
  *  bar, mirroring the eat/sleep/pray triggers in `drives/needs.ts` on the same approximation basis. */
 const CHAT_SEEK_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));

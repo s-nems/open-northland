@@ -4,9 +4,8 @@
  * readable fog source.
  *
  * Masks are per player, never per tribe, and only owned entities see, so wildlife and neutral fixtures
- * reveal nothing. Resolution is the visual cell, not the half-cell node. The masks sit outside the ECS
- * because a dense per-player byte grid inside a component would be deep-cloned per snapshot and walked per
- * `hashState` object-hash.
+ * reveal nothing. The masks sit outside the ECS because a dense per-player byte grid inside a component
+ * would be deep-cloned per snapshot and walked per `hashState` object-hash.
  */
 
 export * from './gates.js';
