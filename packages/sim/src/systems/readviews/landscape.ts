@@ -1,7 +1,7 @@
 import type { ContentSet, LandscapeType } from '@open-northland/data';
 
-// Which layer a landscape type may sit on, read off `landscapetypes.ini`'s `allowedon{land,water,everything}`
-// flags. Placement-side only: whether a cell is water is the map tile grid's terrain valency.
+// `landscapetypes.ini` `allowedon{land,water,everything}`, placement-side only: whether a cell is water is
+// the map tile grid's terrain valency.
 
 /** `allowedonwater`, carried by exactly the three wall and gate structures in the real table. */
 export function isWaterLayerType(type: LandscapeType): boolean {

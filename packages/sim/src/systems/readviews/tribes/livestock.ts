@@ -1,9 +1,6 @@
 import type { ContentSet, Recipe } from '@open-northland/data';
 import { contentIndex } from '../../../core/content-index.js';
 
-// The husbandry species-to-good join: a fed animal is stocked as a good, while the live creature stays a
-// `catchable` animal tribe.
-
 /** The good stocking one FED animal of livestock species `tribeType`, or null for a non-livestock tribe. */
 export function livestockGoodOfTribe(content: ContentSet, tribeType: number): number | null {
   return contentIndex(content).livestockGoodByTribe.get(tribeType) ?? null;

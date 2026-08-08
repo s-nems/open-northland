@@ -2,8 +2,6 @@ import type { ArmorType, ContentSet, WeaponType } from '@open-northland/data';
 import { contentIndex } from '../../core/content-index.js';
 import { armorMaterialOf } from './classes/index.js';
 
-// Read views for the static weapon-vs-armor damage table and the damage-column resolution behind it.
-
 /**
  * The armor material tier a weapon's `damagevalue <material> <value>` table is indexed by - the victim's
  * armor `materialType` (`logicdefines.inc` `ARMOR_MATERIAL_TYPE_*`, l.951). The per-material value is the
@@ -52,14 +50,14 @@ export function weaponDamageVsMaterial(weapon: Pick<WeaponType, 'damage'>, mater
   return weapon.damage[String(material)] ?? 0;
 }
 
-/** The damage a weapon does to a tree/wall target - its {@link ARMOR_MATERIAL.WOOD} column, not an armor
- *  tier, so it is not one of the living-target rows {@link combatDamage} tabulates. */
+/** The damage a weapon does to a tree/wall target - its {@link ARMOR_MATERIAL.WOOD} column, not an
+ *  armor tier. */
 export function damageVsWood(weapon: Pick<WeaponType, 'damage'>): number {
   return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.WOOD);
 }
 
-/** The damage a weapon does to a building target - its {@link ARMOR_MATERIAL.HOUSE} column, not an armor
- *  tier, so it is not one of the living-target rows {@link combatDamage} tabulates. */
+/** The damage a weapon does to a building target - its {@link ARMOR_MATERIAL.HOUSE} column, not an
+ *  armor tier. */
 export function damageVsBuilding(weapon: Pick<WeaponType, 'damage'>): number {
   return weaponDamageVsMaterial(weapon, ARMOR_MATERIAL.HOUSE);
 }
@@ -102,12 +100,11 @@ interface CombatDamageRow {
 /** One weapon's identity and its damage against every armor material a living target can wear. */
 export interface CombatProfile {
   tribeType: number | undefined;
-  /** Recurs per tribe, so not globally unique on its own. */
+  /** Recurs per tribe, so not unique. */
   typeId: number;
-  /** The weapon's `id` slug, also not globally unique. */
+  /** The weapon's `id` slug, also not unique. */
   id: string;
-  /** The composite `"<tribeType>:<typeId>"` key ({@link weaponKey}); a few animal weapons reuse a pair, so
-   *  it is not unique either. */
+  /** The composite `"<tribeType>:<typeId>"` key ({@link weaponKey}), not unique either. */
   key: string;
   /** Ascending by `material`. */
   rows: readonly CombatDamageRow[];
@@ -119,9 +116,8 @@ export interface CombatProfile {
  * a tier still gets a `0`-damage row. The structure columns {@link ARMOR_MATERIAL.WOOD}/`HOUSE` are not rows
  * here.
  *
- * An array in `content.weapons` source order rather than a Map, because no weapon key is unique: `typeId`
- * recurs per tribe, and the animal weapons reuse even the composite `(tribeType, typeId)` (tribe 5 has both
- * `chicken` and `claw` at typeId 1), so a Map would silently drop records.
+ * An array in `content.weapons` source order rather than a Map, because no weapon key is unique
+ * ({@link weaponKey}), so a Map would silently drop records.
  */
 export function combatDamage(content: ContentSet): CombatProfile[] {
   const materials = new Set<number>([ARMOR_MATERIAL.NONE]);
@@ -147,8 +143,8 @@ export function combatDamage(content: ContentSet): CombatProfile[] {
 
 /**
  * A weapon's cross-ref identity `"<tribeType>:<typeId>"`, mirroring how the extractor keys `weapontypes`; a
- * weapon with no `tribeType` keys under the empty-tribe slot. A few animal weapons reuse the pair, so this
- * names a weapon's class but is not a unique key.
+ * weapon with no `tribeType` keys under the empty-tribe slot. Not unique - tribe 5 carries both `chicken`
+ * and `claw` at typeId 1 - so this names a weapon's class rather than one record.
  */
 export function weaponKey(weapon: Pick<WeaponType, 'tribeType' | 'typeId'>): string {
   return `${weapon.tribeType ?? ''}:${weapon.typeId}`;
