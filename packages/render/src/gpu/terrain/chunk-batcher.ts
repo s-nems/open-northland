@@ -11,7 +11,6 @@ export type TerrainChild = Mesh<MeshGeometry, Shader> | Graphics;
  */
 export type TerrainLayerKind = 'base' | 'overlay2' | 'overlay1';
 
-/** Paint order of {@link TerrainLayerKind}s within one chunk (lower draws first). */
 const LAYER_ORDER: Readonly<Record<TerrainLayerKind, number>> = { base: 0, overlay2: 1, overlay1: 2 };
 
 /** The batched geometry accumulated for one draw call (a colour, or a texture page × layer) within a chunk. */
@@ -19,11 +18,8 @@ export interface TerrainBatch {
   readonly positions: number[];
   readonly uvs: number[];
   readonly indices: number[];
-  /**
-   * Per-vertex UVs into the map's brightness-lane texture, 2 per position pair, pushed in lockstep
-   * with {@link positions} only on a shaded map. Empty on the unshaded path so its geometry stays
-   * byte-identical.
-   */
+  /** Per-vertex UVs into the map's brightness-lane texture, 2 per position pair, pushed in lockstep with
+   *  {@link positions} only on a shaded map. */
   readonly brightnessUVs: number[];
   /**
    * Per-vertex water-wave amplitude, 1 per position pair. The shaded ground program declares both
@@ -37,9 +33,8 @@ export function emptyBatch(): TerrainBatch {
 }
 
 /**
- * Upload one accumulated terrain batch as a {@link MeshGeometry}. A batch carrying brightness-lane
- * UVs gains the `aBrightnessUV` attribute the shaded ground shader consumes; an empty lane adds
- * nothing and draws through the stock mesh shader.
+ * A batch carrying brightness-lane UVs gains the `aBrightnessUV` attribute the shaded ground shader
+ * consumes; an empty lane adds nothing and draws through the stock mesh shader.
  */
 export function meshGeometry(batch: TerrainBatch): MeshGeometry {
   const geometry = new MeshGeometry({
@@ -64,15 +59,11 @@ export class ChunkBatcher {
   private readonly fallback = new Graphics();
   private fallbackUsed = false;
 
-  /** @param brightnessTex the map's `embr` lane as an R8 texture, bound into the shaded ground
-   *  shader of every mesh whose batch accumulated `brightnessUVs`; undefined on an unshaded map.
-   *  @param wave the map's single shared water-animation uniform group, bound into the same shaders. */
   constructor(
     private readonly brightnessTex?: TextureSource,
     private readonly wave?: WaveUniforms,
   ) {}
 
-  /** The (created-on-first-use) batch for triangles sampling `pageKey` on the given draw layer. */
   batchFor(pageKey: string, source: TextureSource, layer: TerrainLayerKind = 'base'): TerrainBatch {
     const key = `${layer}:${pageKey}`;
     let batch = this.byLayerPage.get(key);

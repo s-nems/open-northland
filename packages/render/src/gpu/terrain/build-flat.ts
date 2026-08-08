@@ -15,9 +15,8 @@ import { buildChunks, flatTileColour, liftFn, positions, type TerrainChunk } fro
 const FLAT_SHADE_STEPS = 8;
 
 /**
- * The flat-tint placeholder ground: each block's cell triangles batched into one {@link Mesh} per
- * distinct tile colour (a white texel tinted by the colour), built once, so a single-type block is
- * one draw call regardless of tile count. A shaded map scales each cell's tint CPU-side.
+ * The flat-tint placeholder ground: a single-type block is one draw call regardless of tile count. A
+ * shaded map scales each cell's tint CPU-side.
  */
 export function buildFlat(
   parent: Container,

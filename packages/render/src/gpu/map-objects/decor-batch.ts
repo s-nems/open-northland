@@ -4,12 +4,11 @@ import { makeShadedDecorShader } from '../shading.js';
 import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 
 /**
- * The decor half of the map-object feature: flat ground decor batched into per-block quad meshes
- * under the entity sprites, one draw call per texture page per block. Translucency rides in the
- * atlas texture's own alpha channel; there is no per-object opacity.
+ * Flat ground decor batched into per-block quad meshes, one draw call per texture page per block, split
+ * static/animated. Translucency rides in the atlas texture's own alpha channel; there is no per-object
+ * opacity.
  */
 
-/** Write one object's current frame as a quad into flat position/uv buffers at `quadIndex`. */
 export function writeObjectQuad(
   positions: Float32Array | number[],
   uvs: Float32Array | number[],
@@ -20,7 +19,7 @@ export function writeObjectQuad(
   pageH: number,
 ): void {
   const x0 = obj.x + frame.offsetX * obj.scale;
-  // Lift the drawn quad up the hill (the anchor + depth stay pre-lift; only the draw y moves).
+  // Only the draw y moves; the anchor and depth stay pre-lift.
   const y0 = obj.y - (obj.lift ?? 0) + frame.offsetY * obj.scale;
   const x1 = x0 + frame.width * obj.scale;
   const y1 = y0 + frame.height * obj.scale;
@@ -95,8 +94,7 @@ interface AnimatedDecorBatch {
   readonly pageH: number;
 }
 
-/** Where one decor object's quad lives. Removing it means zeroing the 8 floats at `quadIndex`, then
- *  updating the buffer and, for an animated batch, nulling its slot. */
+/** Where one decor object's quad lives. */
 interface DecorQuadRef {
   readonly positions: Float32Array;
   readonly geometry: MeshGeometry;

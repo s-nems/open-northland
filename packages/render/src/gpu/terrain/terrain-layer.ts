@@ -25,40 +25,32 @@ import { padLaneRows } from './lane-texture.js';
 
 /**
  * The retained terrain layer: the static ground, meshed once per map into world-space AABB blocks and
- * drawn per visible block, so render cost tracks the screen rather than the map. The mesh follows the
- * original's tessellation - vertices are cell-centre nodes and each cell contributes two triangles
- * spanning between neighbouring centres, so pattern picks and transition overlays blend across cells
- * instead of along per-cell diamond seams.
+ * drawn per visible block, so render cost tracks the screen rather than the map.
  */
 
-/** A flat field (no lift) - the shared default for the elevation-free path (synthetic grids / no lane). */
+/** The shared default for the elevation-free path (synthetic grids / no lane). */
 const FLAT_ELEVATION: ElevationField = makeElevationField(undefined, 0, 0);
 
-/** WebGL's default UNPACK_ALIGNMENT, in bytes (1 byte per R8 texel) - the brightness lane's row padding. */
+/** WebGL's default UNPACK_ALIGNMENT, in R8 texels (1 byte each). */
 const ROW_ALIGN = 4;
 
 export class TerrainLayer {
-  /** Static, built once by {@link set}; the renderer keeps it behind the sprite layer. */
   readonly container = new Container();
   private chunks: TerrainChunk[] = [];
   /** The grass default until a map is loaded. */
   private ground = DEFAULT_TILE_COLOUR;
-  /** The composed shading lane as an R8 texture (per-fragment shading); undefined on an unshaded map. */
   private brightnessTex: BufferImageSource | undefined;
-  /** The lane texture's padded width in texels - the brightness-lane `u` denominator. */
   private laneTexWidth = 0;
   private field: BrightnessField = makeBrightnessField(undefined, 0, 0);
   /** The map's single shared water-animation uniform group, bound into every shaded mesh, so
    *  {@link animate} is one write per frame rather than one per chunk. */
   private waveGroup: WaveUniforms | undefined;
-  /** Whether the current map has any water-patterned cell - a land map skips {@link animate} outright. */
   private hasWater = false;
 
   /**
    * (Re)build the cached terrain from a grid - call once per map, since a terrain edit re-invalidates
-   * it. With `textures` the draw-call count is about one per texture page per draw layer, independent
-   * of map size; without them it draws the flat placeholder triangles. The map's baked `embr` shading
-   * rides as an R8 lane texture sampled per fragment at each vertex's own cell-centre coordinate.
+   * it. With `textures` the draw-call count is about one per texture page per draw layer per visible
+   * block; without them it draws the flat placeholder triangles.
    */
   set(terrain: SceneTerrain, textures?: TerrainTextureSet, elevation: ElevationField = FLAT_ELEVATION): void {
     this.destroy();
@@ -73,9 +65,6 @@ export class TerrainLayer {
     );
     const brightness = makeBrightnessField(shadingLane, terrain.width, terrain.height);
     this.field = brightness;
-    // The lane texture the shaded ground shader samples per fragment: the composed lane bytes as an
-    // R8 grid, ~W×H bytes once per map. Undefined on an unshaded map and on the flat placeholder
-    // path, which shades CPU-side.
     if (brightness.shaded && shadingLane !== undefined && textures !== undefined) {
       const lane = padLaneRows(shadingLane, terrain.width, terrain.height, ROW_ALIGN);
       this.laneTexWidth = lane.paddedWidth;
@@ -113,14 +102,12 @@ export class TerrainLayer {
     return this.ground;
   }
 
-  /** The composed shading field the ground drew with - the one source sprite-anchor shading must share
-   *  so an entity cannot disagree with the ground it stands on. Neutral until a shaded map is set. */
+  /** Neutral until a shaded map is set. */
   brightnessField(): BrightnessField {
     return this.field;
   }
 
-  /** Draw only the blocks whose box meets the viewport; off-screen blocks stay in the graph but skip
-   *  rasterization. A bounded minimum zoom keeps the visible-block count small even fully zoomed out. */
+  /** A bounded minimum zoom keeps the visible-block count small even fully zoomed out. */
   cull(vp: Viewport): void {
     for (const chunk of this.chunks) {
       chunk.container.visible = aabbIntersects(vp, chunk);
@@ -134,18 +121,10 @@ export class TerrainLayer {
    */
   animate(timeTicks: number): void {
     if (!this.hasWater || this.waveGroup === undefined) return;
-    // Wrapped modulo the waves' exact common period: identical phases, but the f32 uniform never
-    // grows into `sin` precision loss over a long session.
     this.waveGroup.uniforms.uWave[0] = timeTicks % WAVE_TIME_PERIOD_TICKS;
     this.waveGroup.update();
   }
 
-  /**
-   * Free the current terrain. `Mesh.destroy` releases neither the GPU buffers nor a custom shader, so
-   * {@link destroyMeshChildren} frees those before the containers go. The tile textures and
-   * `Texture.WHITE` are shared sources and are deliberately left alone, as is the shaded ground's
-   * process-wide GL program.
-   */
   destroy(): void {
     for (const chunk of this.chunks) {
       destroyMeshChildren(chunk.container);

@@ -6,17 +6,16 @@ import type { WaveUniforms } from '../shading.js';
 import type { TerrainChild } from './chunk-batcher.js';
 
 /**
- * Terrain is meshed in square blocks of this many tiles a side, and only blocks whose world-space
- * box meets the viewport are drawn. 32 keeps the visible-block count low while still culling tightly
- * at the screen edges. The map-object blocks partition world space at the same scale, so the two
- * layers cull in lockstep.
+ * Terrain is meshed in square blocks of this many tiles a side, and only blocks whose world-space box
+ * meets the viewport are drawn. 32 keeps the visible-block count low while still culling tightly at the
+ * screen edges.
  */
 export const TERRAIN_CHUNK_TILES = 32;
 
 /** A flat colour per landscape typeId for the placeholder terrain, cycled past the table's end.
- *  Indexed by the app's semantic terrain classes. The app keeps its `TERRAIN_CLASS_BASE` a multiple
- *  of this length so re-banded class ids still index back to their own colour
- *  (`flatTileColour(base + k) === TILE_COLOURS[k]`); changing the length breaks that. */
+ *  Indexed by the app's semantic terrain classes. The app keeps its `TERRAIN_CLASS_BASE` a multiple of
+ *  this length so re-banded class ids still index back to their own colour; changing the length breaks
+ *  that. */
 const TILE_COLOURS: readonly number[] = [
   0x4a7c3a, // 0: grass (open)
   0x3a6ea5, // 1: water (impassable)
@@ -25,11 +24,10 @@ const TILE_COLOURS: readonly number[] = [
   0xc9b26b, // 4: sand (barren - open ground crops can't be sown on)
 ];
 
-/** The default flat tint for an unbound landscape typeId (the fallback triangle's colour). */
 export const DEFAULT_TILE_COLOUR = 0x4a7c3a;
 
-/** The placeholder flat tint for a landscape typeId (`0xRRGGBB`), exported so other typeId→colour
- *  consumers such as the app's minimap raster share the ground's palette. */
+/** The placeholder flat tint for a landscape typeId (`0xRRGGBB`), exported so a typeId→colour consumer
+ *  with no palette of its own falls back to the ground's. */
 export function flatTileColour(typeId: number): number {
   return TILE_COLOURS[typeId % TILE_COLOURS.length] ?? DEFAULT_TILE_COLOUR;
 }
@@ -51,14 +49,13 @@ export function dominantGroundColour(typeIds: readonly number[]): number {
   return best === undefined ? DEFAULT_TILE_COLOUR : flatTileColour(best);
 }
 
-/** A node's upward lift in world px - 0 on a flat map, per-node elevation otherwise. */
+/** A node's upward lift in world px. */
 export type NodeLiftFn = (hx: number, hy: number) => number;
 
 export const NO_LIFT: NodeLiftFn = () => 0;
 
-/** The map's shading and water inputs: the R8 lane texture (undefined → unshaded), its padded width
- *  (the brightness-lane `u` denominator), the per-node wave amplitude field, and the single shared
- *  water-animation uniform group every shaded mesh binds. */
+/** The map's shading and water inputs. `laneTexWidth` is the padded width, the brightness-lane `u`
+ *  denominator. */
 export interface LaneShading {
   readonly brightnessTex: BufferImageSource | undefined;
   readonly laneTexWidth: number;
@@ -66,8 +63,6 @@ export interface LaneShading {
   readonly waveUniforms: WaveUniforms;
 }
 
-/** The per-node lift for this map: 0 everywhere on a flat field, else the node's own cell's lift with
- *  the map-border ring clamped to 0. */
 export function liftFn(terrain: SceneTerrain, elevation: ElevationField): NodeLiftFn {
   if (elevation.maxLift <= 0) return NO_LIFT;
   return (hx, hy) => nodeLift(elevation.liftAt, hx, hy, terrain.width, terrain.height);
@@ -84,9 +79,9 @@ export function positions(nodes: readonly [NodeXY, NodeXY, NodeXY], lift: NodeLi
 }
 
 /**
- * One meshed terrain block: its display {@link Container} plus the world-space AABB used to toggle
- * `.visible` against the viewport each frame. Children hold absolute world coords (the container sits
- * at the origin), so the box math and the sprite cull share one coordinate space.
+ * One meshed terrain block: its display container plus the world-space AABB used to toggle `.visible`
+ * against the viewport each frame. Children hold absolute world coords, so the box math and the sprite
+ * cull share one coordinate space.
  */
 export interface TerrainChunk {
   readonly container: Container;
@@ -97,10 +92,9 @@ export interface TerrainChunk {
 }
 
 /**
- * Split the grid into {@link TERRAIN_CHUNK_TILES}-square blocks and hand each block's inclusive tile
- * range to `meshBlock`; empty blocks are skipped. Each block's AABB comes from its corner cells'
- * triangle extents (`x ∈ [(2c−1)·halfW, (2c+3)·halfW]`, `y ∈ [r·rowStep, (r+1)·rowStep]`), so no
- * per-cell scan is needed. The block container stays at the world origin.
+ * Split the grid into {@link TERRAIN_CHUNK_TILES}-square blocks, handing `meshBlock` each block's
+ * inclusive tile range. A block's AABB comes from its corner cells' triangle extents, so no per-cell
+ * scan is needed. The block container stays at the world origin.
  */
 export function buildChunks(
   parent: Container,

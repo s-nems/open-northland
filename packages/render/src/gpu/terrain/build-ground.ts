@@ -26,12 +26,10 @@ import {
 } from './geometry.js';
 
 /**
- * The textured terrain emitters: one batched mesh per texture page per draw layer, built once per
- * map. A decoded map's 1:1 `ground` lanes take the exact path; the per-typeId path is an
- * approximation kept for synthetic grids.
+ * The textured terrain emitters. A decoded map's 1:1 `ground` lanes take the exact path; the per-typeId
+ * path is an approximation kept for synthetic grids.
  */
 
-/** One resolved transition record ready to draw: its RGBA page + the six per-pair UV tuples. */
 interface ResolvedTransition {
   readonly pageKey: string;
   readonly source: TextureSource;
@@ -112,10 +110,9 @@ export function buildTextured(
 }
 
 /**
- * The 1:1 per-triangle ground: each cell's two triangles draw the {@link GroundPattern} the decoded
- * map baked into its `empa`/`empb` lanes (A = △ down-left, B = ▽ to the east), plus the `emt1..emt4`
- * transition overlays as translucent RGBA triangles. A triangle whose pattern or page is unresolved
- * falls back to a flat triangle; an unresolved overlay is skipped.
+ * The 1:1 per-triangle ground: each cell's two triangles draw the {@link GroundPattern} the decoded map
+ * baked into its `empa`/`empb` lanes, plus the `emt1..emt4` transition overlays as translucent RGBA
+ * triangles.
  */
 function buildGround(
   parent: Container,
@@ -135,8 +132,8 @@ function buildGround(
       if (source === undefined) return null;
       return { source, pageKey: pattern.pageKey, pattern };
     });
-  // Resolve the map's transition dictionary once (index-aligned; `⌊lane/6⌋` indexes it). A name the
-  // IR lacks, or a page that failed to load, resolves null and that overlay is skipped.
+  // Resolve the map's transition dictionary once (index-aligned). A name the IR lacks, or a page that
+  // failed to load, resolves null and that overlay is skipped.
   const transitions = terrain.transitions;
   const resolvedTransitions: (ResolvedTransition | null)[] = (transitions?.types ?? []).map((name) => {
     const t = textures.transitionFor?.(name);
@@ -204,8 +201,7 @@ function buildGround(
           );
         }
         if (transitions !== undefined) {
-          // Layer 1 (`emt1`/`emt2`) composites on top of layer 2 (`emt3`/`emt4`). Paint order lives
-          // in the batcher's layer buckets, so push order here is immaterial.
+          // Paint order lives in the batcher's layer buckets, so push order here is immaterial.
           pushOverlay(transitions.a1[cell] ?? TRANSITION_NONE, nodesA, 'a', 'overlay1');
           pushOverlay(transitions.b1[cell] ?? TRANSITION_NONE, nodesB, 'b', 'overlay1');
           pushOverlay(transitions.a2[cell] ?? TRANSITION_NONE, nodesA, 'a', 'overlay2');
