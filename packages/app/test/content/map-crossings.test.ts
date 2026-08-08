@@ -32,9 +32,13 @@ const CROSSINGS = [
  *  abutment's own build margin, shallow enough to stay on the near shore. */
 const BANK_SEARCH_ROWS = 16;
 
+/** Whichever crossing runs first pays the cold `loadContentUnderTest()` join; the rest reuse it. */
+const REAL_CONTENT_TIMEOUT_MS = 60_000;
+
 describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))('real-map crossings', () => {
   for (const crossing of CROSSINGS) {
-    it(`${crossing.object} on ${crossing.map} joins its two banks over the deck`, async () => {
+    const name = `${crossing.object} on ${crossing.map} joins its two banks over the deck`;
+    it(name, { timeout: REAL_CONTENT_TIMEOUT_MS }, async () => {
       const { merge } = await loadContentUnderTest();
       const ir = rawIrUnderTest() as ContentIr;
       const mapPath = resolve(contentDir(), `maps/${crossing.map}.json`);
