@@ -1,7 +1,6 @@
 /**
- * Components are plain data only. Positions and velocities are fixed-point (see core/fixed.ts), never
- * floats. Component registration order follows the runtime first-`add()` sequence, not module-load order,
- * so regrouping these modules is hash-neutral.
+ * Component registration order follows the runtime first-`add()` sequence, not module-load order, so
+ * regrouping these modules is hash-neutral.
  */
 
 export * from './ai-player.js';
