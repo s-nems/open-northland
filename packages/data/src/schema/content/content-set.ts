@@ -24,7 +24,11 @@ import { MapInfo } from '../maps/info.js';
 
 /** Current IR schema version and the only stamp {@link IrManifest} accepts; bump on a breaking
  *  shape change. */
-export const IR_VERSION = 2 as const;
+export const IR_VERSION = 3 as const;
+
+/** The manifest stamp of content that never went through the pipeline: synthetic sandbox and test
+ *  sets, and the absent-field default. A pipeline conversion always writes its real revision. */
+export const NO_PIPELINE_REVISION = 0;
 
 /** Top-level manifest written to content/ir.json. */
 export const IrManifest = z.strictObject({
@@ -32,6 +36,8 @@ export const IrManifest = z.strictObject({
     error: (issue) =>
       `IR version mismatch: content reports ${String(issue.input)}, this build reads ${IR_VERSION}.`,
   }),
+  /** The pipeline's conversion revision, part of a save file's content identity. */
+  contentRevision: z.number().int().nonnegative().default(NO_PIPELINE_REVISION),
   generatedFrom: z.strictObject({
     game: z.string(),
     mod: z.string().optional(),

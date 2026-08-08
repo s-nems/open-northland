@@ -37,7 +37,8 @@ The document also contains a manifest:
 ```json
 {
   "manifest": {
-    "version": 2,
+    "version": 3,
+    "contentRevision": 4,
     "generatedFrom": {
       "game": "<local game path>",
       "mod": "<optional local mod path>"
@@ -49,6 +50,10 @@ The document also contains a manifest:
   "buildings": []
 }
 ```
+
+`contentRevision` is the pipeline's conversion revision, embedded so a running game can name its
+content identity (a save file records it). Synthetic content without pipeline provenance parses as
+revision 0.
 
 The remaining arrays are omitted from this example. Read the schema for the current complete list.
 The `generatedFrom` paths are local provenance. Do not paste the manifest into an issue or diagnostic

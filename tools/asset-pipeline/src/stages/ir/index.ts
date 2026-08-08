@@ -7,6 +7,7 @@ import {
   extractSounds,
   extractTrianglePatternTypes,
 } from '../../decoders/ini.js';
+import { CONTENT_REVISION } from '../../manifest.js';
 import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { decodeMapTree } from '../maps/index.js';
@@ -70,6 +71,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
   return parseContentSet({
     manifest: {
       version: IR_VERSION,
+      contentRevision: CONTENT_REVISION,
       generatedFrom: { game: roots.game, mod: roots.mod },
     },
     goods,

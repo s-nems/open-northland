@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IR_VERSION, parseContentSet } from '../src/index.js';
+import { IR_VERSION, NO_PIPELINE_REVISION, parseContentSet } from '../src/index.js';
 
 function contentSet(version: unknown): Record<string, unknown> {
   return {
@@ -31,5 +31,15 @@ describe('the IR version gate', () => {
   it('rejects a missing or non-numeric stamp', () => {
     expect(() => parseContentSet(contentSet(undefined))).toThrow('IR version mismatch');
     expect(() => parseContentSet(contentSet(String(IR_VERSION)))).toThrow('IR version mismatch');
+  });
+
+  it('defaults an absent contentRevision to the no-pipeline stamp', () => {
+    expect(parseContentSet(contentSet(IR_VERSION)).manifest.contentRevision).toBe(NO_PIPELINE_REVISION);
+  });
+
+  it('keeps a pipeline-stamped contentRevision', () => {
+    const raw = contentSet(IR_VERSION);
+    (raw.manifest as Record<string, unknown>).contentRevision = 7;
+    expect(parseContentSet(raw).manifest.contentRevision).toBe(7);
   });
 });

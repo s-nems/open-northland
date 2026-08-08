@@ -1,7 +1,6 @@
 # Export a versioned SaveGame payload from the sim
 
 **Area:** sim · **Priority:** P1
-**Blocked by:** [content and map identity](save-load-content-map-identity.md)
 
 The project has no persisted save format. Replay is explicitly not a load path
 (`packages/sim/src/replay/replay.ts`), and `WorldSnapshot` is a presentation view: it flattens

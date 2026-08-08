@@ -2,6 +2,7 @@ export * from './footprint.js';
 export * from './job-atomics.js';
 export * from './lookup.js';
 export * from './schema/index.js';
+export * from './terrain-fingerprint.js';
 
 import { validateCrossReferences } from './cross-references.js';
 import { ContentSet, TerrainMapFile } from './schema/index.js';
