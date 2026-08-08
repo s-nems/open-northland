@@ -42,7 +42,8 @@ authority it acts under - a human seat, an AI seat, authored setup, or the admin
 envelope can only carry the commands that seat may issue. The app calls `sim.enqueue(envelope)`, then
 `sim.step()` admits each queued command its origin is entitled to, applies it, and runs the fixed
 system schedule. Systems mutate their own world during the tick. Authored world assembly uses
-`sim.enqueueSetup(command)`, and an imported log passes `parseCommandLog` before it drives a sim.
+`sim.enqueueSetup(command)`; `parseCommandLog` is the validator an importer of untrusted replay or
+diagnostics JSON has to run before that log drives a sim.
 
 At the tick boundary, `sim.snapshot()` returns a detached plain-data view for rendering, audio, HUD,
 and diagnostics. It is memoized while the world is unchanged. Consumers treat it as read-only, but

@@ -45,8 +45,8 @@ export interface ToolPanelOptions {
   readonly owner: number;
   /** Submit a command into the sim (the one-way seam) - the building menu's `placeBuilding`. */
   readonly enqueue: (command: PlayerCommand) => void;
-  /** The goods palette's seam: dropping a loose pile materializes goods, so it is a sandbox world
-   *  edit rather than an order the seat is entitled to issue. */
+  /** The goods palette's seam. Dropping a loose pile materializes goods from nothing, so it is a
+   *  trusted world edit the shipped HUD hands every seat, not an order a seat is entitled to issue. */
   readonly enqueueAdmin: (command: Command) => void;
   /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
   readonly grants: ExtrasGrantsSeam;

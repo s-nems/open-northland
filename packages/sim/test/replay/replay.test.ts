@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { type Command, type LoggedCommand, replay, Simulation, type TerrainMap } from '../../src/index.js';
+import {
+  type Command,
+  type Entity,
+  type LoggedCommand,
+  playerCommand,
+  replay,
+  Simulation,
+  type TerrainMap,
+} from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
@@ -132,6 +140,28 @@ describe('replay', () => {
 
   it('throws only on a negative untilTick (a nonsense target)', () => {
     expect(() => replay({ content: testContent(), seed: 1, log: [], untilTick: -1 })).toThrow(/must be >= 0/);
+  });
+
+  it('reproduces a seat command the authority gate refused', () => {
+    // Player 1 orders player 0's settler. The order is logged like any other, so replay must re-issue it
+    // and reach the same refusal rather than a state where it moved.
+    const live = new Simulation({ seed: 2, content: testContent(), map: grassMap(6, 1) });
+    live.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING, owner: 0 });
+    live.step();
+    live.enqueue(playerCommand(1, { kind: 'moveUnit', entity: 1 as Entity, x: 10, y: 0 }));
+    for (let tick = 2; tick <= 20; tick++) live.step();
+
+    const log = [...live.commands.log];
+    expect(log.map((e) => e.origin)).toEqual(['setup', 'player']);
+
+    const reconstructed = replay({
+      content: testContent(),
+      seed: 2,
+      map: grassMap(6, 1),
+      log,
+      untilTick: 20,
+    });
+    expect(reconstructed.hashState()).toBe(live.hashState());
   });
 
   it('replays an authorized log twice to the same hashes and the same (applyTick, sequence) order', () => {

@@ -5,10 +5,13 @@ import {
   adminCommand,
   aiCommand,
   type Command,
+  type CommandEnvelope,
+  type PlayerCommand,
   playerCommand,
   type Simulation,
   setupCommand,
 } from '../../../src/index.js';
+import { isAuthorized } from '../../../src/systems/command/authority.js';
 import { fresh, HEADQUARTERS, nthEntity, SAWMILL, VIKING, WOODCUTTER } from './support.js';
 
 /** The fixture HQ declares three woodcutter slots, so a spawned woodcutter qualifies for one. */
@@ -22,6 +25,13 @@ function settlerFor(sim: Simulation, player: number, x: number): Entity {
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x, y: 0, tribe: VIKING, owner: player });
   sim.step();
   return nthEntity(sim, sim.world.canonicalEntities().length - 1);
+}
+
+/** A bare entity carrying only an `Owner`, for gate checks that never reach a handler. */
+function ownedEntity(sim: Simulation, player: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Owner, { player });
+  return e;
 }
 
 function buildingFor(sim: Simulation, player: number | undefined, x: number): Entity {
@@ -145,7 +155,7 @@ describe('CommandSystem - command authority', () => {
       },
     ];
     for (const command of cheats) {
-      sim.enqueue({ v: 1, origin: 'player', player: MINE, command } as never);
+      sim.enqueue({ v: 1, origin: 'player', player: MINE, command } as unknown as CommandEnvelope);
     }
     sim.step();
 
@@ -172,6 +182,33 @@ describe('CommandSystem - command authority', () => {
     sim.step();
 
     expect(sim.commands.log[1]).toMatchObject({ origin: 'admin' });
+  });
+
+  it('holds every asset key to the seat and leaves an attack target free', () => {
+    // One case per key `assetTargetOf` reads, checked on the gate directly: a workplace, a build site,
+    // a home or garrison, and a signpost owned by another player are all out of reach, while the unit
+    // an attack names is deliberately not an asset.
+    const sim = fresh();
+    const mine = ownedEntity(sim, MINE);
+    const theirs = ownedEntity(sim, THEIRS);
+    const refused: readonly PlayerCommand[] = [
+      { kind: 'assignWorker', entity: mine, building: theirs, jobPriority: HQ_JOBS },
+      { kind: 'assignBuilder', entity: mine, site: theirs },
+      { kind: 'assignHouse', entity: mine, house: theirs },
+      { kind: 'trainSoldier', entity: mine, house: theirs },
+      { kind: 'setDefenceMode', building: theirs, enabled: true },
+      { kind: 'demolish', building: theirs },
+      { kind: 'upgradeBuilding', building: theirs },
+      { kind: 'cancelUpgrade', building: theirs },
+      { kind: 'demolishSignpost', signpost: theirs },
+    ];
+    for (const command of refused) {
+      expect(isAuthorized(sim.world, playerCommand(MINE, command)), command.kind).toBe(false);
+      expect(isAuthorized(sim.world, adminCommand(command)), command.kind).toBe(true);
+    }
+
+    const attack: PlayerCommand = { kind: 'attackUnit', entity: mine, target: theirs };
+    expect(isAuthorized(sim.world, playerCommand(MINE, attack))).toBe(true);
   });
 
   it('keeps the queued and logged envelope owned, not aliased to the caller`s object', () => {

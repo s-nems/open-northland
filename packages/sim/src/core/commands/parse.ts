@@ -8,11 +8,12 @@ import {
 import type { Command } from './index.js';
 
 /**
- * Validate an envelope decoded from untrusted JSON (an imported replay or a diagnostics bundle) and
- * return it as owned plain data. The envelope's own contract is checked here - version, origin, seat
- * id, and whether that origin may issue the command kind at all. Payload fields stay the handlers'
- * business: they already treat a stale id or an unknown type as a recoverable no-op, and the world-aware
- * authority gate re-checks ownership when the command applies.
+ * Validate an envelope decoded from untrusted JSON (an imported replay or a diagnostics bundle). The
+ * envelope's own contract is checked here - version, origin, seat id, and whether that origin may issue
+ * the command kind at all - and the returned value still references the caller's payload, which
+ * `CommandQueue.enqueue` copies. Payload fields are unchecked: the handlers treat a stale id or an
+ * unknown type as a recoverable no-op, and the world-aware authority gate re-checks ownership when the
+ * command applies, but a field of the wrong primitive type reaches its handler as written.
  */
 export function parseCommandEnvelope(value: unknown, at = 'envelope'): CommandEnvelope {
   const raw = asRecord(value, at);
@@ -21,7 +22,7 @@ export function parseCommandEnvelope(value: unknown, at = 'envelope'): CommandEn
   }
   const command = asRecord(raw.command, `${at}.command`);
   const kind = command.kind;
-  if (typeof kind !== 'string' || !(kind in COMMAND_ISSUER)) {
+  if (typeof kind !== 'string' || !Object.hasOwn(COMMAND_ISSUER, kind)) {
     throw new Error(`${at}.command: unknown kind ${JSON.stringify(kind)}`);
   }
   const origin = raw.origin;

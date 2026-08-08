@@ -60,9 +60,9 @@ export type SpawnCommand =
        * `MOVE_SPEED_PER_TICK`.
        */
       readonly moveSpeed?: number;
-      /** The player that owns this settler (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit (or an
-       *  out-of-range value) for a neutral/unowned settler. Orthogonal to `tribe` (the civilization). Only an
-       *  owned settler is selectable/orderable. */
+      /** The player that owns this settler (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). An explicit
+       *  out-of-range value rejects the command; omit it for a neutral settler. Orthogonal to `tribe` (the
+       *  civilization). Only an owned settler is selectable/orderable. */
       readonly owner?: number;
       /** Starting specialization XP as `[trackTypeId, points]` pairs. Omit for a fresh settler. */
       readonly experience?: ReadonlyArray<readonly [number, number]>;

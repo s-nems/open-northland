@@ -145,9 +145,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // seat reaching into another's units.
   const readOnly = deps.readOnly === true;
   const overseer = deps.observer === true && !readOnly;
-  const issueAdminCommand = (command: Command): void => {
-    if (!readOnly) sim.enqueue(adminCommand(command));
-  };
+  const issueTrusted = (command: Command): void => sim.enqueue(adminCommand(command));
   const issueCommand = (command: PlayerCommand): void => {
     if (readOnly) return;
     sim.enqueue(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
@@ -159,7 +157,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     uiscale,
     camera: () => cameraCtl.camera(),
     enqueue: issueCommand,
-    enqueueAdmin: issueAdminCommand,
+    enqueueAdmin: (command) => {
+      if (!readOnly) issueTrusted(command);
+    },
     grants: assistantGrantsSeam(sim, sim.content, localPlayer, issueCommand, !readOnly),
     counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
     canPlaceAt,
@@ -269,7 +269,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     canvas,
     params,
     sim,
-    enqueue: issueAdminCommand,
+    // The `?debug=` panel is a dev channel rather than part of the seat's HUD, so a read-only
+    // spectator still pokes with it.
+    enqueue: issueTrusted,
     renderer,
     cameraCtl,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),

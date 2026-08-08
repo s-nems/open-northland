@@ -4,14 +4,13 @@ export * as components from './components/index.js';
 export { FOG_MODE, type FogMode } from './components/rules.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
-export type { LoggedCommand, QueuedCommand } from './core/command-queue.js';
+export type { LoggedCommand } from './core/command-queue.js';
 export {
   adminCommand,
   aiCommand,
   COMMAND_ENVELOPE_VERSION,
   type Command,
   type CommandEnvelope,
-  type CommandOrigin,
   type PlayerCommand,
   playerCommand,
   type SettlerEquipment,

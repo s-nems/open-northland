@@ -54,8 +54,9 @@ export function sameSideAs(world: World, owner: number | undefined): (e: Entity)
 
 /**
  * Stamp an {@link Owner} on `e` when `owner` is a valid player slot; an omitted or out-of-range `owner`
- * leaves the entity neutral. The single stamp point shared by every spawn handler, so an out-of-range owner
- * is a recoverable bad input rather than a throw.
+ * leaves the entity neutral. The single stamp point shared by every spawn handler and by direct
+ * pre-tick-0 assembly; a command naming an out-of-range slot never reaches here, because the command
+ * system rejects it before the spawn (`systems/command/authority.ts`).
  */
 export function stampOwner(world: World, e: Entity, owner: number | undefined): void {
   if (owner !== undefined && isValidPlayer(owner)) world.add(e, Owner, { player: owner });
