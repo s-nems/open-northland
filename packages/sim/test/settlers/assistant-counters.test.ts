@@ -10,7 +10,6 @@ import {
   Equipment,
   EquipOrder,
   FamilyDuty,
-  FEMALE,
   Female,
   JobAssignment,
   Marriage,
@@ -602,7 +601,7 @@ function spawnAdult(sim: Simulation, jobType: number, x: number, y: number, fema
     experience: new Map<number, number>(),
   });
   sim.world.add(e, Owner, { player: PLAYER });
-  if (female) sim.world.add(e, Female, FEMALE);
+  if (female) sim.world.add(e, Female, { female: true });
   return e;
 }
 

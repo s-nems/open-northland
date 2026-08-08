@@ -54,7 +54,9 @@ appropriate for a narrow system fixture or pre-tick scene setup.
 ## Determinism and goldens
 
 The same seed and inputs must produce the same state hash. Relevant tests also compare repeated runs,
-replays, and atomic-action traces.
+replays, and atomic-action traces. The fuzz suite additionally round-trips a save (export, restore,
+hash and byte compare) at every checkpoint, so new mutable sim state that misses a save section fails
+there in the commit that adds it.
 
 A golden is a tripwire, not a snapshot to refresh automatically. When it changes:
 

@@ -38,7 +38,7 @@ export {
 } from './placement/index.js';
 export { resourceBlockedCells } from './resource-blocked-cache.js';
 export {
-  ANCHOR_ONLY_FOOTPRINT,
+  anchorOnlyFootprint,
   createResourceNode,
   type ResourceNodeSpec,
   resourceFootprintForGood,

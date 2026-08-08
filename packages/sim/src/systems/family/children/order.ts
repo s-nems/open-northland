@@ -4,7 +4,6 @@ import {
   ChildOrder,
   CurrentAtomic,
   Engagement,
-  FAMILY_DUTY,
   FamilyDuty,
   Fleeing,
   MakingLove,
@@ -169,7 +168,7 @@ function haulFood(
 
 /** Claim `e` for family duty this tick (idempotent). */
 function claimDuty(world: World, e: Entity, pass: ChildOrderPass): void {
-  if (!world.has(e, FamilyDuty)) world.add(e, FamilyDuty, FAMILY_DUTY);
+  if (!world.has(e, FamilyDuty)) world.add(e, FamilyDuty, { duty: true });
   pass.dutyClaimed.add(e);
 }
 

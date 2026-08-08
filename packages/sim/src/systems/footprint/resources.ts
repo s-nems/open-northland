@@ -87,13 +87,11 @@ export function stampResourceFootprint(
  * neighbour ring. Declaring a footprint at all also moves the node from the placement rule's OBSTACLE
  * channel to RESOURCE_ANCHOR, which admits a building over the node but refuses a work flag on it.
  */
-export const ANCHOR_ONLY_FOOTPRINT: ResourceFootprintData = Object.freeze({
-  walk: [],
-  build: [],
-  work: [{ dx: 0, dy: 0 }],
-});
+export function anchorOnlyFootprint(): ResourceFootprintData {
+  return { walk: [], build: [], work: [{ dx: 0, dy: 0 }] };
+}
 
-/** Stamp a node with its good's content-derived footprint, falling back to {@link ANCHOR_ONLY_FOOTPRINT}
+/** Stamp a node with its good's content-derived footprint, falling back to {@link anchorOnlyFootprint}
  *  when the content ships no record. */
 export function stampResourceFootprintOrFallback(
   world: World,
@@ -102,7 +100,7 @@ export function stampResourceFootprintOrFallback(
   goodType: number,
 ): void {
   if (stampResourceFootprint(world, content, resource, goodType)) return;
-  stampResourceFootprintData(world, resource, ANCHOR_ONLY_FOOTPRINT);
+  stampResourceFootprintData(world, resource, anchorOnlyFootprint());
 }
 
 /** Remove a resource footprint through the incremental blocked-cell cache before destroying a node. */

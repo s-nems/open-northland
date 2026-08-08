@@ -20,13 +20,16 @@ export interface ExportSaveOptions {
  * with the live world.
  */
 export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): SaveGame {
+  // One visit per object across the whole export: a repeat is a cycle or a cross-entity alias,
+  // and either would silently restore as disconnected copies.
+  const seen = new WeakMap<object, string>();
   const sections: SaveGameSection[] = [
     { id: 'entities', nextId: sim.world.nextEntityId, alive: [...sim.world.canonicalEntities()] },
   ];
   sim.world.forEachStore((name, entries) => {
     const saved: Array<readonly [number, unknown]> = [];
     for (const [entity, value] of entries) {
-      saved.push([entity, savedValue(value, `component:${name}/${entity}`)]);
+      saved.push([entity, savedValue(value, `component:${name}/${entity}`, seen)]);
     }
     sections.push({ id: 'component', name, entries: saved });
   });
@@ -52,7 +55,7 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
     pending: sim.commands.pendingSnapshot().map(
       (envelope, i) =>
         // The walk is a shape-preserving deep copy, so the result is still the envelope it copied.
-        savedValue(envelope, `commands.pending[${i}]`) as CommandEnvelope,
+        savedValue(envelope, `commands.pending[${i}]`, seen) as CommandEnvelope,
     ),
   });
   return {
@@ -78,29 +81,37 @@ export function serializeSaveGame(save: SaveGame): string {
 /**
  * Deep-copy one component or envelope value to JSON-safe plain data: a `Map` becomes a single-key
  * `{'$map': entries}` wrapper, record keys keep insertion order, and a throw names `path` for any
- * shape JSON would corrupt - `undefined`, a non-finite number, or a non-plain object.
+ * shape JSON would corrupt - `undefined`, a non-finite number, a non-plain object, or an object
+ * `seen` already holds from anywhere in the same export.
  */
-function savedValue(value: unknown, path: string): unknown {
+function savedValue(value: unknown, path: string, seen: WeakMap<object, string>): unknown {
   if (value === null) return null;
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) throw new Error(`${path}: non-finite number does not survive JSON`);
     return value;
   }
   if (typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'object') {
+    const prior = seen.get(value);
+    if (prior !== undefined) {
+      throw new Error(`${path}: object already saved at ${prior}; shared or cyclic state cannot round-trip`);
+    }
+    seen.set(value, path);
+  }
   if (value instanceof Map) {
     // Entry order is the Map's live insertion order, not key-sorted: systems iterate component Maps
     // directly, so the order is observable state a restore must reproduce.
     const entries: unknown[] = [];
     for (const [k, v] of value) {
       const i = entries.length;
-      entries.push([savedValue(k, `${path}[${i}].key`), savedValue(v, `${path}[${i}]`)]);
+      entries.push([savedValue(k, `${path}[${i}].key`, seen), savedValue(v, `${path}[${i}]`, seen)]);
     }
     return { [SAVE_MAP_KEY]: entries };
   }
   if (Array.isArray(value)) {
     // An index loop, not `map`: a sparse hole must hit the undefined throw, never serialize as null.
     const out = new Array<unknown>(value.length);
-    for (let i = 0; i < value.length; i++) out[i] = savedValue(value[i], `${path}[${i}]`);
+    for (let i = 0; i < value.length; i++) out[i] = savedValue(value[i], `${path}[${i}]`, seen);
     return out;
   }
   if (isPlainRecord(value)) {
@@ -108,7 +119,7 @@ function savedValue(value: unknown, path: string): unknown {
       throw new Error(`${path}: the key '${SAVE_MAP_KEY}' is reserved for the Map encoding`);
     }
     const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value)) out[key] = savedValue(value[key], `${path}.${key}`);
+    for (const key of Object.keys(value)) out[key] = savedValue(value[key], `${path}.${key}`, seen);
     return out;
   }
   throw new Error(`${path}: unsaveable value shape ${valueShapeName(value)}`);

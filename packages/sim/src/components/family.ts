@@ -13,8 +13,6 @@ import { defineComponent, type Entity } from '../ecs/world.js';
  */
 export const Female = defineComponent<{ readonly female: true }>('Female');
 
-export const FEMALE = { female: true } as const;
-
 /**
  * A married settler: `spouse` is its partner for life, mirrored on both, removed on a spouse's death unless
  * the couple's child still grows - the widowed parent then carries the parent-child edge until the child
@@ -46,8 +44,6 @@ export const ChildOrder = defineComponent<{ child: 'female' | 'male' }>('ChildOr
  * and its `Resting` marker survives a replan that would otherwise strip it.
  */
 export const FamilyDuty = defineComponent<{ readonly duty: true }>('FamilyDuty');
-
-export const FAMILY_DUTY = { duty: true } as const;
 
 /**
  * Food units in a home's stockpile held back for the resident couple's child-making: the eat drive treats

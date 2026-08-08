@@ -16,7 +16,7 @@ import {
   type Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-import { ANCHOR_ONLY_FOOTPRINT, stampResourceFootprintData } from '../../../src/systems/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 export const {
@@ -108,7 +108,7 @@ export function fieldAt(
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WHEAT, remaining: ripe ? 1 : 0, harvestAtomic: REAP_ATOMIC });
-  stampResourceFootprintData(sim.world, e, ANCHOR_ONLY_FOOTPRINT); // the shape applySow produces
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint()); // the shape applySow produces
   sim.world.add(e, Crop, {
     goodType: WHEAT,
     farm,
@@ -139,7 +139,7 @@ export function fieldAtNode(
     remaining: stage >= STAGES ? 1 : 0,
     harvestAtomic: REAP_ATOMIC,
   });
-  stampResourceFootprintData(sim.world, e, ANCHOR_ONLY_FOOTPRINT); // the shape applySow produces
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint()); // the shape applySow produces
   sim.world.add(e, Crop, {
     goodType: WHEAT,
     farm,

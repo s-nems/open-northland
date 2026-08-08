@@ -5,7 +5,6 @@ import {
   addPerson,
   Equipment,
   type EquipmentSlot,
-  FEMALE,
   Female,
   Health,
   MISC_EQUIP_SLOTS,
@@ -83,7 +82,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   // fixture's adult trade may reuse a low id.
   const jobId = contentIndex(content).commandJobs.get(spec.jobType)?.id;
   if (isFemaleJobId(jobId)) {
-    world.add(e, Female, FEMALE);
+    world.add(e, Female, { female: true });
   }
   // A settler spawned directly into a baby/child job (an authored map's `sethuman` children) starts at its
   // stage's tick like a born baby; `Age` is what makes the GrowthSystem mature it. Slug-matched, like
