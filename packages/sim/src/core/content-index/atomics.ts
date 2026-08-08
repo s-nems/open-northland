@@ -34,7 +34,7 @@ export function atomicBindingTables(
         byAtomic = new Map<number, string>();
         byJob.set(b.jobType, byAtomic);
       }
-      byAtomic.set(b.atomicId, b.animation); // last-wins: a later binding overwrites
+      byAtomic.set(b.atomicId, b.animation);
     }
     byTribe.set(tribe.typeId, byJob);
   }

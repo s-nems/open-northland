@@ -10,9 +10,9 @@ export type EnablingJobTables = ReadonlyMap<
 >;
 
 /**
- * Group each tribe's `jobEnables` edges by `(kind, targetId)`, the shape the unlock gate probes. Built from
- * the index's by-typeId tribe table, so it reads the same single record `tribes.get(tribe)` does. A repeated
- * `(jobType, kind, targetId)` triple collapses into the set, since membership is the whole question.
+ * Group each tribe's `jobEnables` edges by `(kind, targetId)`. Built from the index's by-typeId tribe
+ * table, so it reads the same single record `tribes.get(tribe)` does. A repeated `(jobType, kind,
+ * targetId)` triple collapses into the set, since membership is the whole question.
  */
 export function enablingJobTables(tribes: ReadonlyMap<number, TribeType>): EnablingJobTables {
   const tables = new Map<number, Map<JobEnablesKind, Map<number, Set<number>>>>();

@@ -58,7 +58,7 @@ export type SimEvent =
       /**
        * A building came down this tick, razed in combat or demolished by its owner; both paths share the
        * one cue. `player` (`null` for an unowned structure), `at`, and `buildingType` are read before the
-       * destroy, since the entity is gone by the snapshot.
+       * destroy.
        */
       readonly kind: 'buildingDestroyed';
       readonly entity: Entity;
@@ -217,10 +217,7 @@ export function eventAt(x: Fixed, y: Fixed): HalfCellNode {
   return nodeOfPosition(x, y);
 }
 
-/**
- * The half-cell node an event locates at, or `null` for one that locates by its emitter entity instead.
- * Derived from the event itself, because a structural cast hides a missing variant from the compiler.
- */
+/** The half-cell node an event locates at, or `null` for one that locates by its emitter entity instead. */
 export function eventNode(ev: SimEvent): HalfCellNode | null {
   return 'at' in ev && ev.at !== undefined ? ev.at : null;
 }

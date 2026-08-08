@@ -1,8 +1,7 @@
 /**
- * Deterministic seeded PRNG (mulberry32). The ONLY source of randomness allowed in the sim.
- *
- * Never use Math.random in `sim`. Get one of these from the world (`world.rng`). The same seed
- * always yields the same sequence on every platform, which is what makes runs reproducible.
+ * Deterministic seeded PRNG (mulberry32), the only source of randomness allowed in the sim; never use
+ * Math.random there. `Simulation` owns the sim's instance and systems reach it as `ctx.rng`. The same
+ * seed always yields the same sequence on every platform, which is what makes runs reproducible.
  */
 export class Rng {
   private state: number;
@@ -26,7 +25,7 @@ export class Rng {
     return Math.floor(this.next() * maxExclusive);
   }
 
-  /** Snapshot the internal state (for save/load and golden tests). */
+  /** Snapshot the internal state; it is part of the golden state hash. */
   getState(): number {
     return this.state;
   }

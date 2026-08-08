@@ -1,10 +1,8 @@
 /**
- * Fixed-timestep driver. The sim advances in whole ticks at a fixed rate; the renderer runs as
- * fast as the display allows and interpolates the leftover fraction. This decoupling is what keeps
- * the simulation deterministic regardless of frame rate.
- *
- * This helper is pure timing bookkeeping - it holds no game state and uses no wall-clock itself;
- * the caller passes elapsed milliseconds (so tests can drive it with synthetic time).
+ * Fixed-timestep driver. The sim advances in whole ticks at a fixed rate while the renderer runs as fast
+ * as the display allows and interpolates the leftover fraction, which is what keeps the simulation
+ * deterministic regardless of frame rate. Holds no game state and reads no wall clock: the caller passes
+ * elapsed milliseconds.
  */
 /** Approximation: the base game clock advances at 12 simulation ticks per second. */
 export const TICKS_PER_SECOND = 12;
@@ -45,8 +43,8 @@ export class FixedTimestep {
       this.accumulatorMs -= MS_PER_TICK;
       steps++;
     }
-    // If we hit the cap, drop backlog rather than spiral. Rounded, not floored: repeated subtraction
-    // leaves the accumulator a hair under a whole multiple, which would under-report every frame.
+    // Rounded, not floored: repeated subtraction leaves the accumulator a hair under a whole multiple,
+    // which would under-report every frame.
     if (steps === this.maxStepsPerFrame && this.accumulatorMs > MS_PER_TICK) {
       this.dropped += Math.round(this.accumulatorMs / MS_PER_TICK);
       this.accumulatorMs = 0;

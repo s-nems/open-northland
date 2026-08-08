@@ -2,7 +2,8 @@ import { type ContentSet, footprintCellMaxAbsDx, fullStateBlockAreaCells } from 
 
 /**
  * The largest |dx|+|dy| any `landscapeGfx` work-area cell can stamp at from its record's anchor, taken
- * worst-case over the odd-row parity shift and floored at 3, which covers the lattice's widest step.
+ * worst-case over the odd-row parity shift and floored at 3, the lattice's widest single step (a
+ * diagonal, `(±1,±2)`).
  */
 export function maxWorkCellOffset(content: ContentSet): number {
   let max = 3;

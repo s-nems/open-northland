@@ -2,10 +2,9 @@ import { type CommandEnvelope, ownedEnvelope } from './commands/envelope.js';
 
 /**
  * An applied command: the queue's own copy of the caller's envelope, plus where it sits in the run.
- * This is the unit of the replay log and a candidate future lockstep input. `(applyTick, sequence)` is
- * the log's total order, so commands from different origins sharing a tick stay explicitly ordered, and
- * a replay of the log reproduces both numbers. It is not a persisted save format; long sessions also
- * need restorable state.
+ * `(applyTick, sequence)` is the replay log's total order, so commands from different origins sharing a
+ * tick stay explicitly ordered, and a replay of the log reproduces both numbers. Not a persisted save
+ * format.
  */
 export type LoggedCommand = CommandEnvelope & {
   readonly applyTick: number;
@@ -13,12 +12,11 @@ export type LoggedCommand = CommandEnvelope & {
 };
 
 /**
- * The command queue is the single external mutation seam into the sim. Player, UI, AI and replay code
- * {@link enqueue} an authorized {@link CommandEnvelope}; systems own internal world updates. Each tick
- * CommandSystem {@link drain}s the pending commands in FIFO enqueue order, admits the ones the origin
- * is entitled to, and {@link record}s every one. The queue is a plain array, so apply order is exactly
- * enqueue order and two runs that enqueue the same commands on the same ticks produce byte-identical
- * state.
+ * The single external mutation seam into the sim: callers {@link enqueue} an authorized
+ * {@link CommandEnvelope}, and each tick CommandSystem {@link drain}s the pending commands in FIFO
+ * enqueue order, admits the ones the origin is entitled to, and {@link record}s every one. Apply order
+ * is exactly enqueue order, so two runs that enqueue the same commands on the same ticks produce
+ * byte-identical state.
  */
 export class CommandQueue {
   private pending: CommandEnvelope[] = [];
@@ -47,10 +45,10 @@ export class CommandQueue {
 
   /**
    * Throw away the pending commands without applying them - replay reconstruction's seam (see
-   * `stepReplaying`): a replaying sim's own systems (the AI player) re-emit their commands live, but
-   * the log already carries the applied copies verbatim, so the re-emissions must be discarded or
-   * every sim-emitted command would double-apply. A discarded command never happened, so it takes no
-   * sequence and a replayed log stays numbered like the run it reconstructs.
+   * `stepReplaying`): a replaying sim's own systems re-emit their commands live, but the log already
+   * carries the applied copies verbatim, so the re-emissions must be discarded or every sim-emitted
+   * command would double-apply. A discarded command takes no sequence, so a replayed log stays numbered
+   * like the run it reconstructs.
    */
   discardPending(): void {
     this.pending = [];
