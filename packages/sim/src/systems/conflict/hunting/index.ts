@@ -5,4 +5,5 @@ export {
   huntingGround,
 } from './ground.js';
 export { claimedByAnotherHunter } from './kill-claim.js';
-export { HUNT_SEARCH_REST_TICKS, holdPrey, hunterEngageSpec } from './spec.js';
+export { HUNT_SEARCH_REST_TICKS, preySearchResting, restPreySearch } from './rest.js';
+export { holdPrey, hunterEngageSpec } from './spec.js';

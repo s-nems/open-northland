@@ -7,7 +7,6 @@ import {
   Fleeing,
   Health,
   HuntFocus,
-  HuntRest,
   MoveGoal,
   Owner,
   PlayerOrder,
@@ -37,7 +36,7 @@ import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
-import { HUNT_SEARCH_REST_TICKS, holdPrey } from './hunting/index.js';
+import { holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
@@ -129,19 +128,15 @@ export function engageCombatant(
   // acquire past what it can actually hit.
   const weapon = stance.post === null ? held : garrisonReach(held);
 
-  if (huntSearchRests(world, ctx, e, attacker, stance)) return;
+  if (preySearchResting(world, ctx, e, attacker.jobType, stance)) return;
 
   // A garrison acquires and measures reach from the tower, not from the door node it stands on inside, so
   // the band it shoots into is the band its arrow leaves from.
   const here = entityNode(world, terrain, stance.shelter?.building ?? e);
-  const spec = engageSpec(world, ctx, terrain, index, e, stance, attacker, weapon);
+  const spec = engageSpec(world, ctx, terrain, index, e, here, stance, attacker, weapon);
   const found = resolveTarget(world, ctx, terrain, pass, e, here, attacker, spec);
   if (found === null) {
-    // Not under a DEFEND post: there the band is small, and a rest would also skip the walk-back retry
-    // below for its duration.
-    if (isHunterJob(ctx.content, attacker.jobType) && spec.defend?.hold !== true && !world.has(e, HuntRest)) {
-      world.add(e, HuntRest, { until: ctx.tick + HUNT_SEARCH_REST_TICKS });
-    }
+    restPreySearch(world, ctx, e, spec);
     breakOff(world, e, here, spec.defend);
     return;
   }
@@ -163,7 +158,8 @@ export function engageCombatant(
     node: combatTargetNode(world, ctx, terrain, here, target),
     body: world.has(target, Building) ? buildingBodyNodes(world, ctx, terrain, target) : null,
   };
-  chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
+  const gaveUp = chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
+  if (gaveUp) restPreySearch(world, ctx, e, spec);
 }
 
 /** The weapon typeId this combatant fights with, overriding its `(tribe, job)` class binding: the house bow
@@ -264,25 +260,6 @@ function carriesKillHome(
   stance: CombatantStance,
 ): boolean {
   return !stance.ordered && isHunterJob(ctx.content, attacker.jobType) && world.has(e, Carrying);
-}
-
-/** Whether a resting hunter skips this tick's acquisition, reaping a lapsed {@link HuntRest} as it reads it.
- *  Never rests an ordered focus or a live chase: an Engagement must keep re-resolving every tick so the
- *  chaser swings the instant it is in reach. */
-function huntSearchRests(
-  world: World,
-  ctx: SystemContext,
-  e: Entity,
-  attacker: SettlerIdentity,
-  stance: CombatantStance,
-): boolean {
-  if (!isHunterJob(ctx.content, attacker.jobType)) return false;
-  if (stance.ordered || world.has(e, Engagement)) return false;
-  const rest = world.tryGet(e, HuntRest);
-  if (rest === undefined) return false;
-  if (ctx.tick < rest.until) return true;
-  world.remove(e, HuntRest);
-  return false;
 }
 
 /** A travelling unit that is neither engaged nor commanded walks under another drive and must not be yanked

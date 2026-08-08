@@ -384,6 +384,23 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     expect(sim.world.has(hunter, HuntRest)).toBe(true); // the search came up empty, so it rests
   });
 
+  it('rests after a chase that gave its prey up, not only after an empty search', () => {
+    // Prey inside the ground but shootable only from outside the chase leash: the hunter stands 20 nodes from
+    // its flag, so every cell of the spear's band around the deer lies past `radius + slack` of the anchor and
+    // the chase hands the hunter back rather than the search coming up empty.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 60, 40, 4); // a tight ground the hunter is standing well away from
+    fighterAtNode(sim, 62, 40, DEER, null); // in the ground, 22 nodes off - past the spear's 17-node reach
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // out of reach, so no swing
+    expect(sim.world.has(hunter, Engagement)).toBe(false); // the chase gave up at the leash
+    expect(sim.world.has(hunter, HuntFocus)).toBe(false);
+    expect(sim.world.has(hunter, HuntRest)).toBe(true);
+  });
+
   it('an UNPOSTED hunter (no flag, no workplace) holds its prey out to plain sight', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
     const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });

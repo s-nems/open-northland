@@ -103,8 +103,9 @@ describe('attackMoveUnit - a march that fights everything on the way', () => {
   });
 
   it('gives up a target it cannot reach and walks on (no standing at a river forever)', () => {
-    // The enemy is inside sight but across an unswimmable column, so every chase route fails. Left
-    // unbounded the marcher would re-path at it every tick and the order could never complete.
+    // The enemy is inside sight but across an unswimmable column, so no cell an axe could strike it from is
+    // one the marcher can stand on. Taken as a target anyway it would re-path at the water every tick and the
+    // order could never complete.
     const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
     const a = fighterAt(sim, 2, 2, VIKING, WOODCUTTER, { owner: P0 });
     fighterAt(sim, 9, 2, VIKING, WOODCUTTER, { owner: P1 }); // unreachable, well inside SIGHT_RADIUS_NODES

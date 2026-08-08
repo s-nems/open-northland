@@ -4,9 +4,17 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
-import { buildingFootprintOf, nearestCell, translatedCells } from '../footprint/geometry.js';
+import {
+  buildingFootprintOf,
+  nearestCell,
+  ringOffsetCount,
+  ringOffsetDx,
+  ringOffsetDy,
+  translatedCells,
+} from '../footprint/geometry.js';
 import { interactionNode } from '../footprint/index.js';
-import { entityNode } from '../spatial/nodes.js';
+import { entityNode, manhattan } from '../spatial/nodes.js';
+import type { WeaponBand } from './melee-slots.js';
 
 // The nodes combat measures a target's distance to, and paths a chaser toward, so the ring-search index, the
 // chase drive and the mid-swing whiff check all resolve a building target's approach the same way.
@@ -138,4 +146,61 @@ export function combatTargetNode(
     if (nearest !== null) return nearest;
   }
   return entityNode(world, terrain, target);
+}
+
+/**
+ * The acquisition gate for a candidate the chase would refuse: it is admitted while the seeker's own static
+ * walk component holds a cell inside `weapon`'s band of it - the firing position the chase walks to. A
+ * candidate whose whole band lies across a terrain seam can never be closed on, and an ungated nearest-first
+ * search re-picks it every tick instead of reaching a candidate farther out. A besieger encircles, so any one
+ * wall answers for a building's whole body. Static terrain only, a superset of what the chase accepts: a band
+ * cell the block overlay covers still admits here, and the chase releases it a tick later.
+ *
+ * A seeker on an unlabelled node (unwalkable, truncated onto it mid-stride) admits everything, as the chase
+ * does. The ring walk is the melee case alone - a candidate inside the seeker's own band answers in O(1), so
+ * a garrison, a shelter and every bow seeker skip it.
+ *
+ * Nothing readable records how the original filtered candidates, so refusing one here is an approximation
+ * (source basis "Combat chase"), held to the chase's own release rule so the two cannot disagree.
+ */
+export function reachableTargetGate(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: NodeId,
+  weapon: WeaponBand,
+): (t: Entity) => boolean {
+  const bank = terrain.componentOf(here);
+  if (bank < 0) return () => true;
+  return (t) => {
+    if (!world.has(t, Building)) {
+      return firingCellIn(terrain, bank, here, entityNode(world, terrain, t), weapon);
+    }
+    return buildingBodyNodes(world, ctx, terrain, t).some((wall) =>
+      firingCellIn(terrain, bank, here, wall, weapon),
+    );
+  };
+}
+
+/** Whether walk component `component` holds a cell in `weapon`'s band around `target`. */
+function firingCellIn(
+  terrain: TerrainGraph,
+  component: number,
+  here: NodeId,
+  target: NodeId,
+  weapon: WeaponBand,
+): boolean {
+  if (terrain.componentOf(target) === component) return true;
+  const dist = manhattan(terrain, here, target);
+  if (dist >= weapon.minRange && dist <= weapon.maxRange) return true; // the seeker stands on one already
+  const t = terrain.coordsOf(target);
+  for (let d = weapon.minRange; d <= weapon.maxRange; d++) {
+    const offsets = ringOffsetCount(d);
+    for (let i = 0; i < offsets; i++) {
+      const x = t.x + ringOffsetDx(d, i);
+      const y = t.y + ringOffsetDy(d, i);
+      if (terrain.inBounds(x, y) && terrain.componentOf(terrain.nodeAt(x, y)) === component) return true;
+    }
+  }
+  return false;
 }
