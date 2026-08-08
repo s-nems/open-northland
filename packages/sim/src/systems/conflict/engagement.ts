@@ -72,8 +72,9 @@ export function engageSpec(
   weapon: { minRange: number; maxRange: number },
 ): EngageSpec {
   const { owned, ordered } = stance;
-  // Fog gate: an owned unit auto-acquires only targets its player currently sees. The explicit-AttackOrder
-  // path stays ungated - an ordered chase follows its target into fog. Unowned combatants have no fog.
+  // Fog gate (authored): an owned unit auto-acquires only targets its player currently sees. The
+  // explicit-AttackOrder path stays ungated - an ordered chase follows its target into fog. Unowned
+  // combatants have no fog.
   const viewer = owned ? world.tryGet(e, Owner) : undefined;
   const seesTarget = (t: Entity): boolean =>
     viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);

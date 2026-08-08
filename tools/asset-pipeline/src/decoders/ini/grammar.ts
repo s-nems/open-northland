@@ -115,7 +115,10 @@ export function cifBytesToSections(bytes: Uint8Array): RuleSection[] {
   return cifLinesToSections(decodeCifStringArray(bytes).lines);
 }
 
-/** First property with this key, or undefined. Repeated keys (e.g. `transition`) keep file order. */
+/**
+ * First property with this key, matched case-sensitively: source keys like `mainType` and `blockingValue`
+ * are camelCase, so lower-casing stored keys hides them. Repeated keys (e.g. `transition`) keep file order.
+ */
 export function findProp(sec: RuleSection, key: string): RuleProp | undefined {
   return sec.props.find((p) => p.key === key);
 }

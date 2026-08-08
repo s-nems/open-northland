@@ -37,8 +37,8 @@ import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 /**
  * The fog-of-war layer (systems/vision.ts): per-player masks over the cell grid, the three modes'
  * update rules (OFF revealed / REVEAL sticky / RECON known-terrain), the OFF default + reset, and
- * the combat/flee fog gates. All OUR design (no readable fog source; radii user-tuned 2026-07-11) -
- * these tests pin self-consistency, not original fidelity.
+ * the combat/flee fog gates. Authored throughout, radii included (no readable fog source), so these
+ * tests pin self-consistency, not original fidelity.
  */
 
 const VIKING = 1;
