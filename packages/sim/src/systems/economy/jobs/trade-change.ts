@@ -22,12 +22,12 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
-// Deliberately the module, not `orders/index.js`: that barrel re-exports `orders/work/employment.js`,
-// which imports this package's barrel, so routing the stance stamp through it would close an import cycle.
+// Deliberately the module, not `orders/index.js`: that barrel re-exports `orders/work/employment.js`, which
+// imports this package's barrel, so a barrel import would close an import cycle.
 import { stampDefaultStance } from '../../orders/combat.js';
 import { isFighterJob } from '../../readviews/index.js';
-// Deliberately the leaves, not the goods barrel: that barrel re-exports the equip effect, which applies
-// the good-to-class transform through this module, so a barrel import would close a cycle.
+// Deliberately the leaves, not the goods barrel: that barrel re-exports the equip effect, which applies the
+// good-to-class transform through this module, so a barrel import would close a cycle.
 import { addCarry } from '../../settlers/atomics/effects/goods/carry.js';
 import { placeUnitOnTile } from '../../settlers/atomics/effects/goods/piles.js';
 import { isUsed } from '../../settlers/atomics/effects/goods/wear.js';
@@ -36,9 +36,8 @@ import { syncWorkFlagToJob } from '../work-flag.js';
 /**
  * Take up `jobType`: retire what the old trade owned - its errands, its auto-combat state, and the gear the
  * new trade may not wear - and stamp the new trade's defaults. The single home of "this settler's trade
- * changed", so no caller can apply half of it. It re-tasks nothing and touches no workplace binding:
- * cancelling the settler's action, route and player order, and setting or dropping the binding, are the
- * calling path's own steps.
+ * changed", so no caller can apply half of it. Cancelling the settler's action, route and player order, and
+ * setting or dropping the workplace binding, stay the calling path's own steps.
  */
 export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   setSettlerJob(world, e, jobType);
@@ -56,8 +55,8 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   // Owned-only, like the spawn stamp: an unowned settler keeps its content-relation combat behavior and
   // carries no Stance at all, so a neutral settler must not gain one here.
   if (world.has(e, Owner)) stampDefaultStance(world, ctx.content, e, jobType);
-  // Leaving the fighter trades disarms both the Equipment display slots and the combat Weapon/Armor,
-  // because the render draws the armed look from the equipped weapon good over the job.
+  // Leaving the fighter trades disarms both the Equipment display slots and the combat Weapon/Armor, since
+  // the render draws the armed look from the equipped weapon good over the job.
   if (!isFighterJob(ctx.content, jobType)) {
     world.remove(e, Weapon);
     world.remove(e, Armor);

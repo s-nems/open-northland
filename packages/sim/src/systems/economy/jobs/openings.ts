@@ -30,9 +30,9 @@ export interface OpeningsQuery extends NeedSubject {
  *    earning it, so that case skips the gate.
  *
  * A building still under construction answers like a finished one, and an upgrade site reports the slots of
- * the tier it currently is, so a higher tier's extra seats cannot be filled early. Authored: the original
- * offers no pre-completion staffing, so hiring onto a foundation and the upgrade's base-tier cap have no
- * oracle. The slot counts and the tier chain themselves are extracted (`logicworker`, `upgradeTarget`).
+ * the tier it currently is, so a higher tier's extra seats cannot be filled early. The slot counts and the
+ * tier chain are extracted (`logicworker`, `upgradeTarget`); hiring onto a foundation and the upgrade's
+ * base-tier cap are authored, since the original offers no pre-completion staffing to read.
  */
 export function openWorkerJobFromList(
   query: OpeningsQuery,
@@ -43,7 +43,7 @@ export function openWorkerJobFromList(
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace
-  if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null; // building-unlock gate, a no-op today
+  if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null;
   const offered = buildingWorkerJobs(world, ctx, building);
   for (const jobType of jobPriority) {
     if (!offered.has(jobType)) continue;

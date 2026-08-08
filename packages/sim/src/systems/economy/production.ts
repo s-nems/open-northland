@@ -19,24 +19,22 @@ export { shelfBlockedOutput, startableCycleCount } from './production/cycles.js'
 export { craftablePool } from './production/rotation.js';
 
 /**
- * One workplace turns input goods into output goods over time. It runs one independent batch per present
- * operator, advanced oldest first, so a twin-staffed mill turns out two flours per cycle length - the
- * parallel-batch model is observed original behavior. With every operator away all cycles pause and
- * `elapsed` is held rather than lost.
+ * One workplace turns input goods into output goods over time, one independent batch per present operator,
+ * advanced oldest first. Observed: a multi-worker workshop out-produces a single-worker one. With every
+ * operator away all cycles pause and `elapsed` is held rather than lost.
  *
- * A workplace produces only while an operator is present, the original's staffed-workshop rule; a carrier
- * at the door neither runs nor speeds the craft. A building type declaring no worker slots is
+ * A workplace produces only while an operator is present, the original's staffed-workshop rule; a carrier at
+ * the door neither runs nor speeds the craft. A building type declaring no worker slots is
  * unstaffed-by-design and produces one anonymous batch freely.
  *
- * Inputs are consumed at cycle start and outputs deposited at completion, so goods are conserved, and
- * timing is the exact integer compare `elapsed >= duration` rather than an accumulated fixed-point step.
+ * Inputs are consumed at cycle start and outputs deposited at completion, so goods are conserved, and timing
+ * is the exact integer compare `elapsed >= duration` rather than an accumulated fixed-point step.
  */
 export const productionSystem: System = (world, ctx) => {
   // Settlers bucketed by their node once per tick, so each workplace's operator lookup is an O(1) door-node
-  // probe instead of a full settler scan. Built lazily by the first lookup, so a tick whose workshops are
-  // all starved or blocked pays no scan or sort; deferring moves nothing, since the constructor reads only
-  // the Settler+Position query, which the loops below never mutate. Canonical input order per the
-  // NodeBuckets contract.
+  // probe instead of a full settler scan. Built lazily, so a tick whose workshops are all starved or blocked
+  // pays no scan or sort; deferring moves nothing, since the constructor reads only the Settler+Position
+  // query, which the loops below never mutate.
   let operatorsByNode: NodeBuckets | undefined;
   const operatorIndex = (): NodeBuckets => {
     operatorsByNode ??= new NodeBuckets(world, canonicalById(world.query(Person, Position)));
@@ -73,9 +71,8 @@ export const productionSystem: System = (world, ctx) => {
     if (world.get(e, Building).built < ONE) continue;
     const recipes = recipesByProductOf(world, ctx, e);
     if (recipes === undefined) continue;
-    // Dormancy gate before the operator lookup: the per-recipe gates are cheap and operator-independent,
-    // so a starved or output-blocked workshop skips the door-node lookup entirely. It elides only a
-    // provably-empty start loop.
+    // Dormancy gate before the operator lookup: the per-recipe gates are cheap and operator-independent, so
+    // a starved or output-blocked workshop skips the door-node lookup. It elides only a provably-empty loop.
     if (!anyCycleStartable(world, ctx, e, recipes)) continue;
     const running = world.tryGet(e, Production)?.cycles.length ?? 0;
     const staffing = presentOperators(world, ctx, e, operatorIndex());
@@ -89,9 +86,8 @@ export const productionSystem: System = (world, ctx) => {
     const spares = staffing.operators.slice(running);
     let served = 0;
     while (served < spares.length && startArrivedFeedCycle(world, ctx, e, recipes)) served++;
-    // The holdback invariant lives here: one seat stays open per summoned animal still walking whose feed
-    // remains input-startable, so its batch begins on arrival instead of finding every operator
-    // mid-rotation and parking the animal at the door for a whole batch.
+    // One seat stays open per summoned animal still walking whose feed remains input-startable, so its batch
+    // begins on arrival instead of finding every operator mid-rotation and parking it at the door.
     const holdback = Math.min(spares.length - served, heldSeatCount(world, ctx, e, recipes));
     for (const operator of spares.slice(served, spares.length - holdback)) {
       startCycleFor(world, ctx, e, operator, recipes);

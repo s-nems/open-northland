@@ -27,17 +27,15 @@ import { evictLooseGoodsFromFootprint } from './goods-evict.js';
 import { destroyStumpsInReserved } from './stumps.js';
 
 /**
- * Raise placed foundations into finished buildings: `built` is the lower of builder labor and the
- * delivered-material fraction, and a site finishes once both are complete.
+ * Raise placed foundations into finished buildings: a site finishes once builder labor and the delivered
+ * material are both complete.
  *
- * Source basis: the per-tier material cost (`construction`, graphics-table `LogicConstructionGoods`), the
- * level chain (`upgradeTarget`, the record's `LogicType` table), and the per-building max HP
- * (`logichitpoints`) are extracted; the upgrade re-opening a building as a site with a separate build store
- * and kept occupants is observed. The builder-driven pace, consuming the cost at completion, and a
- * directly-placed higher tier paying its whole cumulative chain bill are approximations. No construction-HP
- * rule is readable (`atomicanimations.ini`'s build atomic carries no CHANGE_HITPOINTS event), so the
- * built-proportional ceiling and the pool a finish opens with are approximations around one observed fact:
- * a fresh foundation falls to a single blow.
+ * Source basis: the level chain (`upgradeTarget`, the record's `LogicType` table) and the per-building max
+ * HP (`logichitpoints`) are extracted. Consuming the cost at completion and a directly-placed higher tier
+ * paying its whole cumulative chain bill are approximations. No construction-HP rule is readable
+ * (`atomicanimations.ini`'s build atomic carries no CHANGE_HITPOINTS event), so the built-proportional
+ * ceiling and the pool a finish opens with are approximations around one observed fact: a fresh foundation
+ * falls to a single blow.
  */
 export const constructionSystem: System = (world, ctx) => {
   for (const e of world.query(Building, Stockpile)) {
@@ -56,10 +54,8 @@ export const constructionSystem: System = (world, ctx) => {
 
 type BuildingState = NonNullable<(typeof Building)['__value']>;
 
-/**
- * Advance one construction site this tick. `cost` is the site's bill (cumulative from scratch, or the
- * upgrade tier difference), spent into the structure on completion.
- */
+/** Advance one construction site this tick. `cost` is the site's bill, spent into the structure on
+ *  completion. */
 function advanceSite(
   world: World,
   ctx: SystemContext,
@@ -102,8 +98,7 @@ function finishSite(
   if (upgrading !== undefined) {
     const type = contentIndex(ctx.content).buildings.get(building.buildingType);
     const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
-    // The command validated the chain and content is immutable per sim, so this only catches malformed
-    // content: the site then finishes as its old tier, reported as a plain finish.
+    // Malformed content only: the site then finishes as its old tier, reported as a plain finish.
     if (target !== undefined) {
       adoptedTier = true;
       // The type swap changes every buildingType-derived answer, so it goes through the mut seam and
@@ -114,7 +109,7 @@ function finishSite(
       const health = world.tryMut(e, Health);
       if (health !== undefined && target.hitpoints !== undefined) health.max = target.hitpoints;
     }
-    // Restore the stashed pre-upgrade inventory into the post-build stockpile, in canonical good order.
+    // Canonical good order, so the merge cannot depend on the stashed map's insertion order.
     const amounts = world.get(e, Stockpile).amounts;
     for (const [goodType, amount] of stockpileEntries({ amounts: upgrading.savedStock })) {
       setStockAmount(world, e, goodType, (amounts.get(goodType) ?? 0) + amount);
@@ -124,10 +119,9 @@ function finishSite(
   world.mut(e, Building).built = ONE;
   world.remove(e, UnderConstruction);
   fillHealth(world, e);
-  // Settlers, piles and decor can occupy the plot during a build, and an upgraded tier's reserved zone
-  // can grow over decor the level-0 placement never covered. Work flags need no re-pass: flag legality
-  // is family-body-wide from the moment the Building appears. A field never refused the site at all,
-  // since it declares no build area.
+  // Settlers, piles and decor can occupy the plot during a build, and an upgraded tier's reserved zone can
+  // grow over decor the level-0 placement never covered. Work flags need no re-pass: flag legality is
+  // family-body-wide from the moment the Building appears.
   evictSettlersFromFootprint(world, ctx, e);
   evictLooseGoodsFromFootprint(world, ctx, e);
   destroyBerryBushesInReserved(world, ctx, e);
@@ -149,8 +143,8 @@ export function forceFinishConstruction(world: World, ctx: SystemContext, site: 
   finishSite(world, ctx, site, world.get(site, Building));
 }
 
-/** Ramp a site's {@link Health} for a rise from `before` to `after`: the pool gains what the ceiling
- *  gained, clamped to it, so a build that shrank never leaves the pool above the ceiling. */
+/** Ramp a site's {@link Health} for a rise from `before` to `after`: the pool gains what the ceiling gained
+ *  and is clamped to it, so a build that shrank never leaves the pool above the ceiling. */
 function rampHealth(world: World, e: Entity, before: Fixed, after: Fixed): void {
   const health = world.tryMut(e, Health);
   if (health === undefined) return;
@@ -171,8 +165,8 @@ function fillHealth(world: World, e: Entity): void {
   if (health !== undefined) health.hitpoints = health.max;
 }
 
-/** Spend the `cost` materials into the structure; the caller has verified every material is present in
- *  full via {@link constructionMaterialsPresent}. */
+/** Spend the `cost` materials into the structure; the caller has verified
+ *  {@link constructionMaterialsPresent}. */
 function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLine[]): void {
   consumeGoods(world, building, cost);
 }

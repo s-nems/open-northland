@@ -21,10 +21,10 @@ import { recipesByProductOf, stockCapacity } from '../../stores/index.js';
 
 /**
  * How many more cycles of `recipe`'s product the workplace could start right now, beyond the same-product
- * batches already in flight. Reserving output room at start is the capacity enforcement: a cycle that
- * could not deposit is never started, so the stockpile never overflows. In-flight batches are counted by
- * product key, so an authored multi-output recipe reserves only under its product - a simplification;
- * pipeline recipes are single-output. Does not check `built >= ONE` or worker presence.
+ * batches already in flight. Reserving output room at start is the capacity enforcement: a cycle that could
+ * not deposit is never started, so the stockpile never overflows. In-flight batches are counted by product
+ * key, so an authored multi-output recipe reserves only under its product - a simplification; pipeline
+ * recipes are single-output. Does not check `built >= ONE` or worker presence.
  */
 export function startableCycleCount(
   world: World,
@@ -81,9 +81,8 @@ export function outputRoomForCycles(
 
 /**
  * The stocked output good whose full shelf stopped this workplace, or null when it can still start any
- * cycle. A shelf block is the one stall no fetching can clear, because only a unit physically leaving
- * frees the slot, and the good is named so the unblocking haul carries the right one. Recipe iteration
- * follows the type's fixed content order, so the pick is canonical.
+ * cycle. Only a unit physically leaving frees the slot, so the good is named for the unblocking haul to
+ * carry. Recipe iteration follows the type's fixed content order, so the pick is canonical.
  */
 export function shelfBlockedOutput(world: World, ctx: SystemContext, building: Entity): number | null {
   const b = world.tryGet(building, Building);
@@ -205,9 +204,8 @@ export function depositCycleOutput(
       amount: output.amount,
     });
   }
-  // A completed feed cycle lets its visiting animal out and also lands one meat, the no-slaughter
-  // design's food output. Best effort on room: the shelf slot was never reserved, so a full meat shelf
-  // forfeits the unit (approximation).
+  // A completed feed cycle lets its visiting animal out and also lands one meat, the no-slaughter design's
+  // food output. The shelf slot was never reserved, so a full meat shelf forfeits the unit (approximation).
   const fedTribe = livestockTribeOfGood(ctx.content, cycle.goodType);
   if (fedTribe !== null) {
     releaseLivestockVisit(world, building, fedTribe);

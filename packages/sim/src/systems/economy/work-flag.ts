@@ -21,16 +21,9 @@ import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.j
 import { isHunterJob } from '../readviews/index.js';
 import { canonicalById, clearNavState, entityNode } from '../spatial/nodes.js';
 
-/**
- * The gatherer work-flag lifecycle: create, relocate and destroy of a gatherer's drop-off flag. Minting and
- * removal go through {@link bindFreshFlag} and {@link removeWorkFlag}, so a `DeliveryFlag` exists exactly
- * while a live gatherer references it.
- *
- * A flag is a pure `Position + DeliveryFlag` marker storing no goods; the harvest piles on the ground around
- * it as separate heaps. The work radii are approximations, since the original's work-area sizes are not
- * decoded, and auto-planting a flag the moment a settler becomes a gatherer is an OpenNorthland convention
- * rather than observed behavior.
- */
+// The gatherer work-flag lifecycle. Minting and removal go through `bindFreshFlag` and `removeWorkFlag`, so
+// a `DeliveryFlag` exists exactly while a live gatherer references it. Authored: auto-planting a flag the
+// moment a settler becomes a gatherer is a convention of this engine rather than observed behavior.
 
 /** The gatherer's work flag while its flag entity still exists; a stale binding reads as undefined. */
 export function liveWorkFlag(
@@ -68,11 +61,11 @@ export function bindFreshFlag(
 }
 
 /**
- * Move an existing flag marker to `pos` and re-plan its gatherer. Only the marker moves: goods already
- * dropped are separate ground heaps pinned to their own tiles. Three pieces of delivery state cache the old
- * position - the sticky {@link YardDeliveryRoute} goal, an in-flight `pileup` into this flag, and the live
- * nav goal - so all three are dropped and the gatherer re-plans next tick. Omitting `gatherer` scans for the
- * one {@link WorkFlag} referencing `flag`, which the placement push-out needs since it starts from the marker.
+ * Move an existing flag marker to `pos` and re-plan its gatherer. Three pieces of delivery state cache the
+ * old position - the sticky {@link YardDeliveryRoute} goal, an in-flight `pileup` into this flag, and the
+ * live nav goal - so all three are dropped and the gatherer re-plans next tick. Omitting `gatherer` scans
+ * for the one {@link WorkFlag} referencing `flag`, which the placement push-out needs since it starts from
+ * the marker.
  */
 export function relocateWorkFlag(
   world: World,
@@ -146,8 +139,8 @@ export function jobCanHarvestGood(ctx: SystemContext, jobType: number, goodType:
 /**
  * Sync a settler's work flag to its new `jobType`: a job that can harvest keeps its live flag or gets a
  * fresh one at its feet, and any other job drops the flag rather than stranding an owner-less one on the
- * map. A settler already bound to a workplace takes no flag, since a bound gatherer harvests its building's
- * stored goods, so a caller that binds employment must bind before calling here.
+ * map. A settler already bound to a workplace takes no flag, so a caller that binds employment must bind
+ * before calling here.
  */
 export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   if (jobCanHarvest(ctx, jobType) && !world.has(e, JobAssignment)) {
@@ -183,10 +176,7 @@ function plantWorkFlagAtFeet(world: World, ctx: SystemContext, e: Entity): void 
   bindFreshFlag(world, ctx, e, positionOfNode(c.x, c.y));
 }
 
-/**
- * The single un-bind point: destroy the flag marker and remove the {@link WorkFlag} binding. Goods already
- * piled on the ground are separate `Stockpile+Position` heaps pinned to their own tiles and stay put.
- */
+/** The single un-bind point: destroy the flag marker and remove the {@link WorkFlag} binding. */
 export function removeWorkFlag(world: World, e: Entity): void {
   const wf = world.tryGet(e, WorkFlag);
   if (wf === undefined) return;

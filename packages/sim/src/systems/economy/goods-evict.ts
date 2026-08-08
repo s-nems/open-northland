@@ -11,15 +11,14 @@ import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
 /**
  * Push every loose ground pile lying inside `building`'s walk-blocked footprint out onto the nearest free
- * cell. Left buried, a pile stays indexed and geometrically nearest while its stand is unreachable, so
- * every fetcher path-fails against it on a loop. Placement legally lands on piles, so building on a heap of
- * felled wood displaces the wood rather than losing it.
+ * cell. Left buried, a pile stays indexed and geometrically nearest while its stand is unreachable, so every
+ * fetcher path-fails against it on a loop. Placement legally lands on piles, so building on a heap of felled
+ * wood displaces the wood rather than losing it.
  *
  * A pile is any positioned {@link Stockpile} that is not a persistent store. Each is re-created at its
- * landing node rather than moved in place: the stockpile node index's invariant is that a positioned
- * stockpile never moves, so displacement is destroy plus create, carrying its markers over. A boxed-in pile
- * stays put. Buried piles are visited in canonical ascending-id order and each landed pile occupies its
- * node in the index before the next search runs.
+ * landing node rather than moved in place, since a positioned stockpile never moves in the node index.
+ * Buried piles are visited in canonical ascending-id order and each landed pile occupies its node in the
+ * index before the next search runs.
  */
 export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, building: Entity): void {
   const terrain = ctx.terrain;
@@ -67,13 +66,12 @@ export function evictLooseGoodsFromFootprint(world: World, ctx: SystemContext, b
 
 /**
  * The nearest walkable node outside every walk-block where a displaced pile may lie: unblocked and not a
- * door cell. It may traverse the evicting building's own `body`, since the pile is displaced across its
- * plot rather than carried, but never any other blocked cell. Settler occupancy is not tested, as a pile
- * and a settler share a tile freely.
+ * door cell. It may traverse the evicting building's own `body`, since the pile is displaced across its plot
+ * rather than carried, but never any other blocked cell. Settler occupancy is not tested, as a pile and a
+ * settler share a tile freely.
  *
  * A tile with no pile yet is preferred so a different-good heap is never buried under the landing; when the
- * cap runs out before one turns up, the second pass lands on an occupied tile. Two heaps on one tile is a
- * supported state and beats sealing this one inside the new walls.
+ * cap runs out before one turns up, the second pass lands on an occupied tile, which is a supported state.
  */
 function nearestPileLanding(
   world: World,

@@ -9,9 +9,9 @@ import { beginCycle, canStartCycle } from './cycles.js';
 /**
  * The products of `recipes` this operator may craft, in rotation order: its {@link CraftSelection} goods,
  * else every product of the workplace, each narrowed to what the operator has earned. Observed: a
- * `needforgood` XP threshold locks a ware until the operator's repeats clear it, so a fresh smith forges
- * only the ungated wares. A selection naming nothing this workplace makes, or nothing earned, degrades to
- * the all-products default rather than stalling a staffed workshop.
+ * `needforgood` XP threshold locks a ware until the operator's repeats clear it. A selection naming nothing
+ * this workplace makes, or nothing earned, degrades to the all-products default rather than stalling a
+ * staffed workshop.
  */
 export function craftablePool(
   world: World,
@@ -46,10 +46,10 @@ function withFeedStages(
 }
 
 /**
- * Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start. The
- * walk takes the first startable product from the rotation cursor and advances the cursor past it, so
- * alternation resumes after the started product and a blocked one is retried at the next start rather than
- * skipped forever. A first-ever start stamps an empty selection so the rotation position persists.
+ * Start one cycle of `operator`'s next product choice, or nothing when no chosen product can start. The walk
+ * takes the first startable product from the rotation cursor and advances the cursor past it, so alternation
+ * resumes after the started product; a blocked one stays in the walk and is retried at the next start rather
+ * than skipped forever. A first-ever start stamps an empty selection so the rotation position persists.
  */
 export function startCycleFor(
   world: World,

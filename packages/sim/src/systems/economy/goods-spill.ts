@@ -15,8 +15,8 @@ import { dynamicBlockOverlay } from '../footprint/index.js';
 import { isUsed, spillOverRings } from '../settlers/atomics/effects/goods/index.js';
 
 // What a destroy leaves behind, in two steps around it: read what the entity holds while it still stands,
-// then heap it on the ground where it stood. The order is forced for a building, since the heaps land on
-// its own cells, which stay walk-blocked until it is gone.
+// then heap it on the ground where it stood. The order is forced for a building, whose heaps land on its
+// own cells, which stay walk-blocked until it is gone.
 
 /** The contents a destroy spills, and the tile it spills onto. */
 export interface SpilledStock {
@@ -38,8 +38,8 @@ function spillOf(
 
 /**
  * Everything inside `store` that should end up on the ground when it is destroyed: its {@link Stockpile}
- * plus an upgrading building's stashed pre-upgrade inventory, since {@link Upgrading} holds the real
- * inventory aside while the live stockpile serves as the build hold. Call it before the destroy.
+ * plus an upgrading building's stashed pre-upgrade inventory, which {@link Upgrading} holds aside. Call it
+ * before the destroy.
  */
 export function spilledStockOf(world: World, store: Entity): SpilledStock | null {
   const pos = world.tryGet(store, Position);

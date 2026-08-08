@@ -17,10 +17,10 @@ import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../.
 /**
  * The bonus-output half of a completed batch: each done cycle credits its operator's experience bonus plus
  * its worn tool's credit - a sum, never a product - times its recipe outputs into the workplace's
- * {@link ProductionBonus} remainders, pairing cycles to operators index for index, then whole remainder
- * units flush into the stockpile. A crafting operator's tool also wears one step per completed cycle,
- * whether or not it rates a credit. The flush runs on every completion regardless of the crediting
- * operator's bonus, so a unit banked earlier is never stranded behind a fresh worker.
+ * {@link ProductionBonus} remainders, pairing cycles to operators index for index. A crafting operator's
+ * tool wears one step per completed cycle, whether or not it rates a credit. The flush runs on every
+ * completion regardless of the crediting operator's bonus, so a unit banked earlier is never stranded
+ * behind a fresh worker.
  */
 export function accrueBonusOutput(
   world: World,
@@ -61,8 +61,7 @@ function creditBonus(world: World, building: Entity, goodType: number, extra: Fi
 
 /**
  * Flush a workplace's banked whole bonus units after stock left it: a withdrawal frees the space a
- * capacity-blocked unit was waiting for, and the completion-path flush may never come again, so the
- * withdrawal seam must release it too.
+ * capacity-blocked unit was waiting for, and the completion-path flush may never come again.
  */
 export function flushBankedBonus(world: World, ctx: SystemContext, building: Entity): void {
   if (!world.has(building, ProductionBonus)) return;

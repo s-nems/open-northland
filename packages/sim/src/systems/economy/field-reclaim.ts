@@ -11,12 +11,10 @@ import {
   unstampResourceFootprint,
 } from '../footprint/index.js';
 
-// Destroy a field no farmer can ever reach again so its `maxFields` slot returns to the plot. These are
-// the cases the under-wall pass cannot see: a field sealed inside a pocket of buildings (walls are a
-// dynamic overlay and never split a static terrain component, so the planner's component check passes
-// while its route fails forever), a plot split from its farm by impassable terrain, and ground grown over
-// its work cells. A liveness rule of this engine, not decoded original behavior: the span, cadence and
-// probe bound are authored recovery pacing.
+// Destroy a field no farmer can ever reach again so its `maxFields` slot returns to the plot. These are the
+// cases the under-wall pass cannot see: a field sealed inside a pocket of buildings, a plot split from its
+// farm by impassable terrain, and ground grown over its work cells. A liveness rule of this engine, not
+// decoded original behavior: the span, cadence and probe bound are authored recovery pacing.
 
 /** How often one field is re-examined. Sweeps are staggered by entity id so the per-tick cost is
  *  `crops / period` route probes, never a same-tick spike across a whole plot. */
@@ -30,20 +28,20 @@ export const STRANDED_FIELD_CHECK_PERIOD_TICKS = 5 * TICKS_PER_SECOND;
 export const STRANDED_FIELD_RECLAIM_TICKS = 60 * TICKS_PER_SECOND;
 
 /**
- * Flood cap of one route probe, in visited nodes. Far above a healthy field's stance-to-door flood and any
- * wall-ringed pocket, far under a map region. A sealed region bigger than this reads as `giveup`, which
- * keeps the field: the cap can defer reclaiming a monstrous pocket but never destroys a workable field,
- * and it bounds the sweep's worst tick against a flood across half a map.
+ * Flood cap of one route probe, in visited nodes: far above a healthy field's stance-to-door flood and any
+ * wall-ringed pocket, far under a map region, so it bounds the sweep's worst tick against a flood across
+ * half a map. A sealed region bigger than this reads as `giveup`, which keeps the field, so the cap can
+ * defer reclaiming a monstrous pocket but never destroys a workable one.
  */
 export const STRANDED_FIELD_PROBE_MAX_VISITED = 2048;
 
 type ProbeResult = 'reached' | 'exhausted' | 'giveup';
 
 /**
- * Bounded breadth-first reachability over walkable, unblocked ground. Callers flood from the field side,
- * so a sealed pocket exhausts at pocket size while the open side stops the moment the door turns up. Edges
- * are symmetric within the walkable set, so `exhausted` is an exact "no route". A `to` under an overlay
- * block is never entered and reads `exhausted`: a farm whose door is sealed cannot be worked.
+ * Bounded breadth-first reachability over walkable, unblocked ground. Callers flood from the field side, so
+ * a sealed pocket exhausts at pocket size. Edges are symmetric within the walkable set, so `exhausted` is an
+ * exact "no route", and a `to` under an overlay block is never entered: a farm whose door is sealed cannot
+ * be worked.
  */
 function probeRoute(
   terrain: TerrainGraph,
