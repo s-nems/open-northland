@@ -5,10 +5,28 @@ applied by scripts/build-dmrender.sh before building. What it changes and why:
   shift is undefined beyond bit 31, so every 64-bit field (GUID Data4, reference times) read garbage.
 - Region/Instrument/Articulator: also accept the DLS Level 2 chunk ids (rgn2/lar2/art2). The
   Cultures banks are DLS2 files whose region and articulator payloads use the DLS1 layouts.
-- PlayingContext prepareSegment: play DX8 pattern tracks (DMPT). The Cultures segments carry all
-  music as pattern tracks with embedded parts; libdmusic parsed them but never scheduled them.
+- Forms/Tracks.cpp: instantiate SequenceTrack for 'seqt' chunks; the class existed but the track
+  factory never created it, so sequence-track notes were silently dropped.
+- PlayingContext prepareSegment: schedule DX8 pattern tracks (DMPT) and sequence tracks (seqt) as
+  absolute-time note messages. Every pattern track of a segment plays its embedded pattern
+  simultaneously, looping until the segment header's mtLength (evidence: segments carry several
+  DMPT tracks in one group with identical groove ranges, and the 30-measure patterns fit the
+  30-measure segments exactly once). The upstream path pushed patterns into a groove-driven picker
+  that nothing triggers in segments without a command track, so no notes ever played.
+- PlayingContext loadBandTrack: clamp negative physical band times to 0. Cultures band items carry
+  -1 ("apply before start"); as unsigned that landed at the end of the message queue and no
+  instruments were ever loaded.
+- MusicMessages BandChangeMessage: priority above notes, so instrument setup precedes notes that
+  share its timestamp.
+- MusicMessages getOffsetFromScale: a degree beyond the chord's note count projects into the next
+  octave (the 4th tone of a triad is the root an octave up) instead of dropping the note; half the
+  Cultures notes resolve chord tone 3 against the default triad.
+- MusicMessages scheduleDx8PatternTrack/scheduleSequenceTrack: the schedulers the DMPT/seqt
+  branches above use. Approximations: the default C chord (no segment carries a chord track),
+  sequential variation choice per pattern repeat.
 - dmrender: renderBlock counts interleaved samples, so size the buffer by channels and write
-  length/channels wav frames; stereo renders wrote half music, half out-of-bounds reads.
+  length/channels wav frames; stereo renders wrote half music, half out-of-bounds reads. The
+  buffer is zero-initialised so silent stretches are silence, not heap garbage.
 
 diff --git i/include/dmusic/Common.h w/include/dmusic/Common.h
 index 374cb2c..aac77b6 100644
@@ -36,6 +54,19 @@ index 7cc48e3..114f2d5 100644
          throw an original routine("art1", c.getId());
  
      const std::uint8_t *data = c.getData().data();
+diff --git i/src/Forms/Tracks.cpp w/src/Forms/Tracks.cpp
+index cbcfd11..f58a056 100644
+--- i/src/Forms/Tracks.cpp
++++ w/src/Forms/Tracks.cpp
+@@ -57,6 +57,8 @@ an original routine(const Chunk& c)
+             m_data = std::make_shared<CommandTrack>(subchunk);
+         } else if (id == "mute") {
+             m_data = std::make_shared<MuteTrack>(subchunk);
++        } else if (id == "seqt") {
++            m_data = std::make_shared<SequenceTrack>(subchunk);
+         } else if (id == "sgnp") {
+             m_data = std::make_shared<SignpostTrack>(subchunk);
+         } else if (id == "syex") {
 diff --git i/src/Instrument.cpp w/src/Instrument.cpp
 index 465333d..d644ac3 100644
 --- i/src/Instrument.cpp
@@ -49,40 +80,234 @@ index 465333d..d644ac3 100644
                  for (Chunk art : subchunk.getSubchunks()) {
                      m_articulators.push_back(Articulator(art));
                  }
+diff --git i/src/MusicMessages.cpp w/src/MusicMessages.cpp
+index 9692438..1e0fd65 100644
+--- i/src/MusicMessages.cpp
++++ w/src/MusicMessages.cpp
+@@ -119,13 +119,18 @@ static bool getOffsetFromScale(std::uint8_t degree, std::uint32_t scale, std::ui
+         }
+     }
+ 
+-    if (degree < degrees.size()) {
+-        *offset = degrees[degree];
+-        return true;
+-    } else {
+-        *offset = degrees[degrees.size() - 1];
++    if (degrees.empty()) {
++        *offset = 0;
+         return false;
+     }
++    if (degree < degrees.size()) {
++        *offset = degrees[degree];
++    } else {
++        // A degree beyond the available notes projects into the next octave (the 4th tone of a
++        // triad is the root an octave up), instead of dropping the note.
++        *offset = degrees[degree % degrees.size()] + 12 * (degree / degrees.size());
++    }
++    return true;
+ }
+ 
+ static bool MusicValueToMIDI(std::uint32_t chord, const std::vector<DMUS_IO_SUBCHORD>& subchords, DMUS_IO_STYLENOTE note, DMUS_IO_STYLEPART part, std::uint8_t* value) {
+@@ -497,4 +502,128 @@ void an original routine(PlayingContext& ctx) {
+         player->controlChange(m_control, m_value);
+     }
+     assert(player != nullptr);
+-}
+\ No newline at end of file
++}
++
++// --- DX8 pattern/sequence track scheduling ---------------------------------------------------
++
++// Default performance chord (root C in the top byte) used when a segment carries no chord track;
++// matches the default subchord MusicValueToMIDI falls back to.
++static const std::uint32_t DEFAULT_CHORD = 12u << 24;
++
++// Percussion channel folding, as in playPattern.
++static std::uint32_t foldPercussionChannel(std::uint32_t pChannel) {
++    if (pChannel >= 9 && (pChannel - 9) % 16 == 0) return 9;
++    return pChannel;
++}
++
++// Sequential variation choice: repeat r plays the r-th authored variation, wrapping around.
++static std::uint8_t pickSequentialVariation(const DMUS_IO_STYLEPART& partHeader, std::uint32_t repeat) {
++    std::uint8_t available[32];
++    std::uint8_t count = 0;
++    for (std::uint8_t i = 0; i < 32; i++) {
++        if (partHeader.dwVariationChoices[i] & 0x0FFFFFFF) {
++            available[count++] = i;
++        }
++    }
++    if (count == 0) return 0;
++    return available[repeat % count];
++}
++
++void an original routine(const PatternTrack& track, std::uint32_t segmentLength,
++    std::vector<std::shared_ptr<MusicMessage>>& messages) {
++    const auto& form = track.getPattern();
++    if (form == nullptr) return;
++
++    std::map<GUID, StylePart> parts;
++    for (const auto& part : form->getParts()) {
++        parts[part.getHeader().guidPartID] = part;
++    }
++
++    const auto& patternHeader = form->getHeader();
++    std::uint32_t patternLength = patternHeader.wNbrMeasures * getMeasureLength(patternHeader.timeSig);
++    if (patternLength == 0) return;
++
++    const std::vector<DMUS_IO_SUBCHORD> noSubchords;
++
++    for (const auto& partRefTuple : form->getPartReferences()) {
++        const auto& partRef = partRefTuple.first;
++        auto found = parts.find(partRef.guidPartID);
++        if (found == parts.end()) {
++            throw std::runtime_error("Couldn't find part: " + partRef.guidPartID.toString());
++        }
++        const StylePart& part = found->second;
++        const auto& partHeader = part.getHeader();
++        std::uint32_t pChannel = foldPercussionChannel(partRef.wLogicalPartID);
++
++        std::uint32_t repeat = 0;
++        for (std::uint32_t start = 0; start < segmentLength; start += patternLength, repeat++) {
++            std::uint32_t variation = 1u << pickSequentialVariation(partHeader, repeat);
++
++            for (const auto& note : part.getNotes()) {
++                if (!(note.dwVariation & variation)) continue;
++
++                std::int64_t time = (std::int64_t)start
++                    + getMusicOffset(note.mtGridStart, note.nTimeOffset, partHeader.timeSig);
++                if (time < 0 || time >= (std::int64_t)segmentLength) continue;
++
++                std::uint8_t midiNote;
++                if (MusicValueToMIDI(DEFAULT_CHORD, noSubchords, note, partHeader, &midiNote)) {
++                    messages.push_back(std::make_shared<NoteOnMessage>((std::uint32_t)time,
++                        midiNote, note.bVelocity, 0, partRef.wLogicalPartID, pChannel));
++                    messages.push_back(std::make_shared<NoteOffMessage>((std::uint32_t)(time + note.mtDuration),
++                        midiNote, partRef.wLogicalPartID, pChannel));
++                }
++            }
++
++            for (const auto& curve : part.getCurves()) {
++                if (!(curve.dwVariation & variation)) continue;
++                if (curve.bEventType != DMUS_CURVET_CCCURVE) continue;
++                if (curve.nStartValue > 127 || curve.nEndValue > 127) continue;
++
++                std::int64_t timeStart = (std::int64_t)start
++                    + getMusicOffset(curve.mtGridStart, curve.nTimeOffset, partHeader.timeSig);
++                std::uint32_t duration = curve.mtDuration;
++                float startValue = (float)curve.nStartValue / 127, endValue = (float)curve.nEndValue / 127;
++                auto control = (an original routine)curve.bCCData;
++
++                for (std::uint32_t i = 0; i < duration / DMUSIC_CURVE_MESSAGE_SPACING; i++) {
++                    std::uint32_t offset = i * DMUSIC_CURVE_MESSAGE_SPACING;
++                    float phase = (float)offset / duration;
++                    std::int64_t time = timeStart + offset;
++                    if (time < 0 || time >= (std::int64_t)segmentLength) continue;
++
++                    float value;
++                    switch (curve.bCurveShape) {
++                    case DMUS_CURVES_INSTANT: value = endValue; break;
++                    case DMUS_CURVES_EXP: value = lerp(phase * phase * phase * phase, startValue, endValue); break;
++                    case DMUS_CURVES_LOG: value = lerp(sqrtf(phase), startValue, endValue); break;
++                    case DMUS_CURVES_SINE: value = lerp((sinf((phase - 0.5f) * PI) + 1) * 0.5f, startValue, endValue); break;
++                    case DMUS_CURVES_LINEAR:
++                    default: value = lerp(phase, startValue, endValue); break;
++                    }
++
++                    messages.push_back(std::make_shared<ControlChangeMessage>((std::uint32_t)time,
++                        partRef.wLogicalPartID, pChannel, control, value));
++                }
++            }
++        }
++    }
++}
++
++void an original routine(const SequenceTrack& track,
++    std::vector<std::shared_ptr<MusicMessage>>& messages) {
++    static const std::uint8_t MIDI_NOTE_ON = 0x90;
++
++    for (const auto& item : track.getSequenceItems()) {
++        if ((item.bStatus & 0xF0) != MIDI_NOTE_ON) continue;
++
++        std::int64_t time = (std::int64_t)item.mtTime + item.nOffset;
++        if (time < 0) time = 0;
++        std::uint32_t pChannel = foldPercussionChannel(item.dwPChannel);
++
++        messages.push_back(std::make_shared<NoteOnMessage>((std::uint32_t)time,
++            item.bByte1, item.bByte2, 0, item.dwPChannel, pChannel));
++        messages.push_back(std::make_shared<NoteOffMessage>((std::uint32_t)(time + item.mtDuration),
++            item.bByte1, item.dwPChannel, pChannel));
++    }
++}
+diff --git i/src/MusicMessages.h w/src/MusicMessages.h
+index f29ecfc..db38e92 100644
+--- i/src/MusicMessages.h
++++ w/src/MusicMessages.h
+@@ -40,6 +40,9 @@ namespace DirectMusic {
+ 
+         virtual void Execute(PlayingContext& ctx);
+ 
++        // Instrument setup must precede notes carrying the same timestamp.
++        virtual int getPriority() { return 2; }
++
+     private:
+         std::map<std::uint32_t, std::shared_ptr<InstrumentPlayer>> instruments;
+     };
+@@ -182,4 +185,13 @@ namespace DirectMusic {
+         std::uint32_t m_channel, m_channelAlt;
+         an original routine m_control;
+     };
+-}
+\ No newline at end of file
++
++    // Schedules a DX8 pattern track's embedded pattern as absolute-time messages, looping the
++    // pattern until segmentLength. All pattern tracks of a segment play simultaneously.
++    void scheduleDx8PatternTrack(const PatternTrack& track, std::uint32_t segmentLength,
++        std::vector<std::shared_ptr<MusicMessage>>& messages);
++
++    // Schedules a sequence track's raw MIDI-like note events as absolute-time messages.
++    void scheduleSequenceTrack(const SequenceTrack& track,
++        std::vector<std::shared_ptr<MusicMessage>>& messages);
++}
 diff --git i/src/PlayingContext.cpp w/src/PlayingContext.cpp
-index 78686e6..d1986bf 100644
+index 78686e6..e801091 100644
 --- i/src/PlayingContext.cpp
 +++ w/src/PlayingContext.cpp
-@@ -278,6 +278,33 @@ std::shared_ptr<SegmentInfo> an original routine(const SegmentForm& s
+@@ -195,7 +195,9 @@ static void loadBandTrack(const TrackForm& track, std::vector<std::shared_ptr<Mu
+         DMUS_IO_BAND_ITEM_HEADER2 header = band.first;
+         BandForm bandForm = band.second;
+ 
+-        auto message = std::make_shared<BandChangeMessage>(ctx, header.lBandTimePhysical, bandForm);
++        std::int32_t bandTime = (std::int32_t)header.lBandTimePhysical;
++        if (bandTime < 0) bandTime = 0;
++        auto message = std::make_shared<BandChangeMessage>(ctx, bandTime, bandForm);
+         messageVector.push_back(message);
+     }
+ }
+@@ -278,6 +280,27 @@ std::shared_ptr<SegmentInfo> an original routine(const SegmentForm& s
                  newSegment->initialTempo = styleForm->getHeader().dblTempo;
                  newSegment->initialSignature = styleForm->getHeader().timeSig;
              }
 +        } else if (*header.ckid == 0 && fccType == "DMPT") {
-+            // DX8 pattern track: one embedded pattern with its own style header and parts.
++            // DX8 pattern track: every pattern track of a segment plays its embedded pattern
++            // simultaneously, looping until the segment's length. Scheduled as absolute-time
++            // messages because nothing triggers the groove-driven pattern picker in segments
++            // without a command track.
 +            auto patternTrack = std::static_pointer_cast<PatternTrack>(track.getData());
-+            const auto& form = patternTrack->getPattern();
-+            if (form != nullptr) {
-+                std::map<GUID, StylePart> parts;
-+                for (const auto& part : form->getParts()) {
-+                    parts[part.getHeader().guidPartID] = part;
-+                }
-+                Pattern pttn;
-+                pttn.header = form->getHeader();
-+                for (const auto& partRefTuple : form->getPartReferences()) {
-+                    const auto& partRef = partRefTuple.first;
-+                    const auto& partGuid = partRef.guidPartID;
-+                    if (parts.find(partGuid) == parts.end()) {
-+                        throw std::runtime_error("Couldn't find part: " + partGuid.toString());
-+                    }
-+                    pttn.parts.push_back(std::make_pair(partRef, parts[partGuid]));
-+                }
-+                newSegment->patterns.push_back(pttn);
-+                if (form->getBand() != nullptr) {
-+                    auto message = std::make_shared<BandChangeMessage>(*this, 0, *form->getBand());
++            if (patternTrack != nullptr && patternTrack->getPattern() != nullptr) {
++                scheduleDx8PatternTrack(*patternTrack, segment.getHeader().mtLength, newSegment->messages);
++                if (patternTrack->getPattern()->getBand() != nullptr) {
++                    auto message = std::make_shared<BandChangeMessage>(*this, 0, *patternTrack->getPattern()->getBand());
 +                    newSegment->messages.push_back(message);
 +                }
 +                newSegment->initialTempo = patternTrack->getStyleHeader().dblTempo;
 +                newSegment->initialSignature = patternTrack->getStyleHeader().timeSig;
++            }
++        } else if (ckid == "seqt") {
++            // Sequence track: raw MIDI-like note events with absolute times.
++            auto seqTrack = std::static_pointer_cast<SequenceTrack>(track.getData());
++            if (seqTrack != nullptr) {
++                scheduleSequenceTrack(*seqTrack, newSegment->messages);
 +            }
          } else if (*header.ckid == 0 && fccType == "DMBT") {
              loadBandTrack(track, newSegment->messages, *this);
@@ -109,7 +334,7 @@ index 0026f08..9d19262 100644
                  m_articulators.push_back(Articulator(art1ck));
              }
 diff --git i/utils/dmrender/src/dmrender.cpp w/utils/dmrender/src/dmrender.cpp
-index 2b5b6f2..8222b81 100644
+index 2b5b6f2..5dada55 100644
 --- i/utils/dmrender/src/dmrender.cpp
 +++ w/utils/dmrender/src/dmrender.cpp
 @@ -56,7 +56,7 @@ int main(int argc, char **argv) {
@@ -121,6 +346,15 @@ index 2b5b6f2..8222b81 100644
  
      // Store soundfonts based on their name
      PlayingContext ctx(sampleRate, channels, an original routine());
+@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
+     ctx.playSegment(*segment);
+     std::cout << " done.\nBegin rendering... \n";
+ 
+-    std::int16_t* buffer = new std::int16_t[length];
++    std::int16_t* buffer = new std::int16_t[length]();
+     for (std::uint64_t i = 0; i < length; i += sampleRate) {
+         ctx.renderBlock(buffer + i, sampleRate);
+         std::cout << "\rProgress: " <<  ceil((i / (float)length) * 100) << "%";
 @@ -80,7 +80,7 @@ int main(int argc, char **argv) {
      format.bitsPerSample = 16;
  
