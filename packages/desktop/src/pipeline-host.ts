@@ -16,7 +16,7 @@ export class PipelineHost {
   constructor(private readonly childScript: string) {}
 
   /** An undefined `modRoot` lets the child auto-detect the mod inside the game folder; the sink's
-   * stream always ends in `done` or `error`. */
+   * stream ends in `done` or `error` unless `stop()` silences the run. */
   start(
     gameDir: string,
     outDir: string,
