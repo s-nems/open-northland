@@ -19,6 +19,7 @@ import {
   observerParam,
   playerColourMap,
   playerNameMap,
+  playerTribe,
   readOnlyObserverParam,
 } from '../game/player-session.js';
 import { sandboxGoods } from '../game/sandbox/index.js';
@@ -199,6 +200,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     observer: observerParam(params),
     readOnly: readOnlyObserverParam(params),
     playerColourOf,
+    seatTribeOf: (player) => playerTribe(script, player),
     seatNameOf: playerNameMap(script),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],
     ...terrainColourOption(terrain),

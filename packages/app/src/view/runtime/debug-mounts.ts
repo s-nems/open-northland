@@ -32,6 +32,8 @@ export interface DebugMountsOptions {
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
   /** The localized good name by sim goodType. */
   readonly goodLabel: (typeId: number) => string | undefined;
+  /** Owner slot to its roster tribe, so a spawned settler can work the buildings that slot raises. */
+  readonly seatTribeOf: (player: number) => number;
 }
 
 export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverlay {
@@ -60,6 +62,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     }),
     claimPointer: (x, y) => opts.claimPointer(x, y),
     goodLabel: (typeId) => opts.goodLabel(typeId),
+    seatTribeOf: (player) => opts.seatTribeOf(player),
     goods: sim.content.goods.map((g) => ({ good: g.typeId, id: g.id })),
     // Skips decorative swarms (hitpoints 0) and species with no body in the render roster; first-wins
     // dedup matches the sim's `animalRecord` read, so a listed entry is the record a spawn consumes.

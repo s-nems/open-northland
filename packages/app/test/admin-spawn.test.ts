@@ -66,6 +66,7 @@ describe('admin spawn command mapping', () => {
     if (sword === undefined) throw new Error('missing sword preset');
     const cmd = unitSpawnCommand(sword, {
       player: 1,
+      tribe: PRIMARY_TRIBE,
       hitpoints: 250,
       armorClass: 2,
       x: 7,
@@ -92,6 +93,7 @@ describe('admin spawn command mapping', () => {
     if (unarmed === undefined) throw new Error('missing unarmed preset');
     const cmd = unitSpawnCommand(unarmed, {
       player: 0,
+      tribe: PRIMARY_TRIBE,
       hitpoints: 300,
       armorClass: 0,
       x: 4,
@@ -114,6 +116,7 @@ describe('admin spawn command mapping', () => {
     if (civilian === undefined) throw new Error('missing civilian preset');
     const cmd = unitSpawnCommand(civilian, {
       player: HUMAN_PLAYER,
+      tribe: PRIMARY_TRIBE,
       hitpoints: 0,
       armorClass: 0,
       x: 2,
@@ -131,6 +134,21 @@ describe('admin spawn command mapping', () => {
     expect('weaponTypeId' in cmd).toBe(false);
     expect('hitpoints' in cmd).toBe(false);
     expect('armorClass' in cmd).toBe(false);
+  });
+
+  it('stamps the seat’s tribe, so a spawn can staff the buildings that seat raises', () => {
+    if (civilian === undefined) throw new Error('missing civilian preset');
+    const FRANK = 2;
+    const cmd = unitSpawnCommand(civilian, {
+      player: 1,
+      tribe: FRANK,
+      hitpoints: 0,
+      armorClass: 0,
+      x: 2,
+      y: 3,
+      goods: sandboxGoods,
+    });
+    expect(cmd).toMatchObject({ tribe: FRANK, owner: 1 });
   });
 
   it('the palette offers every gatherable resource', () => {

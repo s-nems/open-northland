@@ -55,6 +55,9 @@ export interface AdminDebugDeps {
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
   /** Localized display name for a good typeId, or `undefined` to keep the catalog's built-in label. */
   readonly goodLabel?: (typeId: number) => string | undefined;
+  /** Owner slot to its roster tribe: a spawn is stamped for the slot it is dropped for, so it can work
+   *  that slot's buildings. */
+  readonly seatTribeOf: (player: number) => number;
   /** Every good the running content defines, each droppable as a loose pile. Live-sourced, so no entry
    *  can trip the sim's `dropGood` content guard. */
   readonly goods: readonly GoodEntry[];
@@ -260,7 +263,15 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
       return;
     }
     deps.enqueue(
-      unitSpawnCommand(armed.preset, { player, hitpoints, armorClass, x: col, y: row, goods: spawnGoods }),
+      unitSpawnCommand(armed.preset, {
+        player,
+        tribe: deps.seatTribeOf(player),
+        hitpoints,
+        armorClass,
+        x: col,
+        y: row,
+        goods: spawnGoods,
+      }),
     );
   };
 

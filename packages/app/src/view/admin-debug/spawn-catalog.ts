@@ -10,7 +10,6 @@ import {
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
 } from '../../catalog/jobs.js';
-import { PRIMARY_TRIBE } from '../../game/rules.js';
 import {
   GATHERERS,
   WEAPON_BROADSWORD,
@@ -41,6 +40,8 @@ export interface UnitPreset {
 export interface UnitSpawnOptions {
   /** A slot in `[0, MAX_PLAYERS)`. */
   readonly player: number;
+  /** The spawned settler's tribe, which decides whose buildings it may staff. */
+  readonly tribe: number;
   /** `<= 0` defers to the sim's default settler pool. */
   readonly hitpoints: number;
   /** The worn armor class 1..4; `<= 0` spawns unarmored. */
@@ -64,7 +65,7 @@ export function unitSpawnCommand(preset: UnitPreset, opts: UnitSpawnOptions): Co
     jobType: preset.jobType,
     x: opts.x,
     y: opts.y,
-    tribe: PRIMARY_TRIBE,
+    tribe: opts.tribe,
     owner: opts.player,
     ...(opts.hitpoints > 0 ? { hitpoints: opts.hitpoints } : {}),
     ...(preset.weaponTypeId !== undefined ? { weaponTypeId: preset.weaponTypeId } : {}),

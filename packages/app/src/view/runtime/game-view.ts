@@ -74,6 +74,9 @@ export interface GameViewDeps {
   readonly elevation?: ElevationField;
   /** The controlled seat (`?player=N`): fog perspective, selection and orders, placement ownership, HUD economy. */
   readonly localPlayer?: number;
+  /** Owner slot to its roster tribe, stamping the buildings a seat places and the admin panel's spawns.
+   *  Default {@link PRIMARY_TRIBE} for every seat. */
+  readonly seatTribeOf?: (player: number) => number;
   /** Spectator session: no fog view, and every player's entities are pickable as if owned. */
   readonly observer?: boolean;
   /** Read-only spectator: the interactive HUD's command seam is a no-op, so a selection can inspect but never re-task. */
@@ -102,6 +105,7 @@ const PERF_STRIP_GAP = 8;
 export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const { app, canvas, params, renderer, sim, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
+  const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
 
   // Installed before the HUD mounts so the system menu sees an active recording.
   const profile = installSessionInstruments(sim, params);
@@ -189,7 +193,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     goods: menuGoodsFromContent(sim.content),
     lang,
     bindings: keyBindings,
-    tribe: PRIMARY_TRIBE,
+    tribe: seatTribeOf(localPlayer),
     owner: localPlayer,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
@@ -304,6 +308,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     clientToTile: (x, y) => toolPanel.clientToTile(x, y),
     claimPointer: (x, y) => controls.claimsPointer(x, y),
     goodLabel,
+    seatTribeOf,
   });
 
   // Owns its own tooltip element, distinct from the details panel's stock-row tooltip above.

@@ -17,6 +17,8 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
  * home-for-home, so a green home never silently cancels the click and a red one never binds.
  */
 
+const TRIBE = 1; // the settlers' own tribe; OTHER_TRIBE below is the mismatch case
+const OTHER_TRIBE = 2;
 const HOME_TYPE = 2; // a `home`-kind building type
 const MILL_TYPE = 9; // any non-home type - never a candidate
 const HOME_SIZE = 2; // this home level holds two families
@@ -26,10 +28,10 @@ const HOUSES = new Map<number, HouseInfo>([
 ]);
 
 /** A built home of `player` (unbuilt/under-construction variants below are the negative cases). */
-function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE): Ent {
+function home(id: number, player = HUMAN_PLAYER, typeId = HOME_TYPE, tribe = TRIBE): Ent {
   return {
     id,
-    components: { Building: { buildingType: typeId, built: ONE }, Owner: { player } },
+    components: { Building: { buildingType: typeId, built: ONE, tribe }, Owner: { player } },
   };
 }
 
@@ -42,7 +44,7 @@ function person(
   return {
     id,
     components: {
-      Settler: { jobType: 0, tribe: 1 },
+      Settler: { jobType: 0, tribe: TRIBE },
       Owner: { player: opts.player ?? HUMAN_PLAYER },
       ...(opts.minor === true ? { Age: { ticks: 0 } } : {}),
       ...(opts.spouse !== undefined ? { Marriage: { spouse: opts.spouse, child: opts.child ?? null } } : {}),
@@ -122,6 +124,14 @@ describe('computeHouseHighlight / houseAssignableAt', () => {
     ]);
     expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([]); // never tinted, not even red
     for (const id of [11, 12, 13, 14]) expect(houseAssignableAt(snap, id, 1, HOUSES)).toBe(false);
+  });
+
+  it('reds an own home of ANOTHER TRIBE, which the sim’s assignHouse refuses', () => {
+    // A seat can field several tribes, so its own settlement holds homes this settler may not move
+    // into. Tinting one green would enqueue an order the sim silently drops.
+    const snap = snapshotOf([person(1), home(10, HUMAN_PLAYER, HOME_TYPE, OTHER_TRIBE)]);
+    expect(computeHouseHighlight(snap, 1, HOUSES)).toEqual([{ id: 10, ok: false }]);
+    expect(houseAssignableAt(snap, 10, 1, HOUSES)).toBe(false);
   });
 
   it('verdicts stay in lockstep with the click resolver across a mixed world', () => {
