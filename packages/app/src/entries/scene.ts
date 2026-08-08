@@ -9,6 +9,7 @@ import { applySessionRuleOverrides, sessionRuleOverrides } from '../game/session
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
+import { bindDisplayMode } from '../view/fullscreen.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import {
   createWorldRenderer,
@@ -49,6 +50,7 @@ export async function renderSceneMode(
   }
 
   diag.info('boot', 'game start', { entry: 'scene', sceneId, seed: scene.seed });
+  bindDisplayMode(params);
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
   // Window-tracking backing store at the stored render scale times the device oversample: resizing

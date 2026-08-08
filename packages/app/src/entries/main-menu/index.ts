@@ -1,6 +1,8 @@
 import { messages } from '../../i18n/index.js';
+import { bindDisplayMode } from '../../view/fullscreen.js';
 import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
+import { mountFullscreenPrompt } from './fullscreen-prompt.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
 import { mapSelectScreen } from './map-select.js';
@@ -8,7 +10,7 @@ import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.j
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VERSION_LINE } from './model.js';
 import { screenHead } from './screen-head.js';
 import { settingsScreen } from './settings.js';
-import { adoptStoredSettings, initialSettingsMemory } from './settings-state.js';
+import { adoptStoredSettings, initialSettingsMemory, updateSettings } from './settings-state.js';
 
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
@@ -85,6 +87,10 @@ function placeholderScreen(screen: SubScreen, open: (screen: MenuScreen) => void
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   // Runs before anything reads the locale or the URL.
   adoptStoredSettings(params);
+  // Through the menu's own writer, so the settings session it caches stays in step with the store.
+  bindDisplayMode(params, (displayMode) => {
+    updateSettings({ displayMode });
+  });
   const root = document.createElement('main');
   root.className = 'main-menu';
   // The scene layer hosts the opening still and the rotating ones above it. The menu draws no GL, so
@@ -103,6 +109,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   root.append(content);
   document.body.append(root);
   void startBackdropRotation(sceneLayer);
+  const fullscreenPrompt = mountFullscreenPrompt(root, params);
 
   let screen: MenuScreen = 'main';
   // Screen state that outlives the screens themselves, so a round trip keeps the filter and seats.
@@ -132,6 +139,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     // `replaceChildren` drops focus to <body>; the back link takes it so Esc and Enter keep working.
     // The main screen stays unfocused until an arrow key.
     if (next !== 'main') content.querySelector<HTMLButtonElement>('.main-menu__back')?.focus();
+    // The prompt sits outside `content`, so a language change reaches it only from here.
+    fullscreenPrompt.relabel();
   };
   show('main');
 
