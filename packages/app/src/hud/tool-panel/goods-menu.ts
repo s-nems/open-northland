@@ -4,8 +4,8 @@ import type { TabbedListSource } from './tabbed-list/index.js';
 
 /**
  * The goods-palette model: the eight category tabs, filtering, and the tabbed-list source the pop-up
- * draws from. Which tab a good falls under is an approximation, not extracted data, and is shared with
- * the details-panel warehouse through `hud/good-categories.ts`.
+ * draws from. Which tab a good falls under is an approximation shared with the details-panel warehouse
+ * through `hud/good-categories.ts`.
  */
 
 export interface MenuGoodEntry {
@@ -31,7 +31,6 @@ export function goodsInCategory(
 export function goodsTabbedList(entries: readonly MenuGoodEntry[]): TabbedListSource<number, MenuGoodEntry> {
   return {
     title: () => messages().hud.resources,
-    // The palette anchors to the mission button until the mission window exists.
     anchor: 'mission',
     tabColumns: TABS_PER_ROW,
     tabs: () => stockTabLabels().map((label, index) => ({ id: index, label })),

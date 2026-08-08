@@ -94,8 +94,7 @@ export function createStatsWindow(deps: StatsWindowDeps): StatsWindow {
     refresh: (hudFor): void => {
       if (!shell.isOpen()) return;
       const hud = hudFor();
-      // The key skips the tick row by index: the tick advances every frame, so keying on it would rebuild
-      // every glyph mesh each frame.
+      // The tick advances every frame, so keying on it would rebuild every glyph mesh each frame.
       let next = '';
       for (let i = TICK_ROW + 1; i < hud.rows.length; i++) {
         next += `${hud.rows[i]?.text}|`;

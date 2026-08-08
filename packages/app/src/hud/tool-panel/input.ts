@@ -44,8 +44,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     if (e.button === 2) {
       if (anyHeld()) {
         e.preventDefault();
-        // Cancelling clears the pointer claim, so unit-controls' later mousedown would read the press as a
-        // world move order. This handler is registered first, so stopping the event here wins.
+        // Cancelling clears the pointer claim, so unit controls would read the press as a world move
+        // order; this handler is registered first, so stopping the event here wins.
         e.stopImmediatePropagation();
         for (const mode of held) mode.cancel();
         return;
@@ -54,8 +54,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       // primary press and the Ctrl coarse step still works.
       if (!e.ctrlKey) return;
     } else if (e.button !== 0) return;
-    // A higher overlay covers this point, so the panel must not consume the press; the overlay's own
-    // handler acts on it instead.
+    // A higher overlay covers this point, so its own handler takes the press instead.
     if (deps.deferToOverlay?.(e.clientX, e.clientY) === true) return;
 
     // Priority: strip button > open pop-up > a held mode.
@@ -85,8 +84,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     }
   };
 
-  // A wheel over an open pop-up belongs to that window, and its default must not scroll the page behind
-  // the canvas.
+  // A wheel over an open pop-up belongs to that window; its default would scroll the page behind the
+  // canvas.
   const onWheel = (e: WheelEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
     if (windows.handleWheel(x, y, e.deltaY)) e.preventDefault();

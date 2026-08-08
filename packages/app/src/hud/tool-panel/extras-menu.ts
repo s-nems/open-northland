@@ -7,16 +7,14 @@ import { MIN_UI_SCALE } from '../ui-scale.js';
  * The extras ("chest") window model: the assistant/plans tabs, the counter and grant controls, their
  * layout and hit-test. Grants drive the sim's auto-equip, counters its birth and training queues.
  *
- * Source basis: the chest button binding is decoded (gfx 0x2d, tooltip `main/5`), and the original
- * window's labels exist in the decoded `miscwindow` table (500 the title, 501 "Papiery", 502 the block
- * header, 503-509 the grant commands). The tab pair, row wording, counter set and geometry are a
- * project reconstruction (named deviation).
+ * The decoded `miscwindow` table carries the original window's labels (500 the title, 501 "Papiery", 502
+ * the block header, 503-509 the grant commands); the tab pair, row wording, counter set and geometry are
+ * an approximation.
  */
 
 export type ExtrasTab = 'assistant' | 'plans';
 
-/** The assistant's six production counters: two birth queues and four training queues. Row order is
- *  this declaration order. */
+/** The assistant's six production counters: two birth queues and four training queues. */
 export type AssistantCounterId =
   | 'extraWomen'
   | 'extraMen'
@@ -106,20 +104,17 @@ export function toggleGrant(state: AssistantState, id: AssistantGrantId): Assist
 // Layout in design px, scaled by uiscale, at the building menu's proportions.
 
 const MENU_PAD = 6;
-/** The rust title band across the top of the window. */
 const HEADLINE_H = 18;
 const TAB_W = 80;
 const TAB_H = 18;
-/** Gap between the tab row and the first card, so the tabs read as a header. */
 const LIST_GAP = 3;
-/** Each control row sits on its own button-card, so the slot is taller than a plain text line. */
 const ROW_H = 20;
 const MENU_CLOSE = 13;
 /** Wood gap between the counter block and the grant block. */
 const BLOCK_GAP = 8;
 /** Fits the longest grant label ("Przyznaj wszystkim drewniane narzędzia") at the HUD text size. */
 const MENU_WIDTH = 260;
-/** The −/+ stepper plates and the recessed value cell between them. */
+/** Side of the −/+ stepper plates, and the height of the value cell between them. */
 const STEPPER = 14;
 /** Sized for the cap's three digits ("100") at the row text size; an overrun drifts toward the plus plate. */
 const VALUE_W = 28;
@@ -195,10 +190,7 @@ export const COUNTER_IDS: readonly AssistantCounterId[] = [
 ];
 const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 'giveIronTools', 'giveMead'];
 
-/**
- * Resolve the window to screen rects, with every row's controls right-aligned on a shared column. Text
- * fits each rect at render time.
- */
+/** Resolve the window to screen rects, with every row's controls right-aligned on a shared column. */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
   // Kept fractional, like the text runs, so a long grant label cannot overrun its switch.
   const s = Math.max(MIN_UI_SCALE, opts.scale);

@@ -26,10 +26,6 @@ const MAX_LIST_ROWS = 13;
  *  the overlay leaves room for fewer rows the window stays this tall and keeps overlapping. */
 const MIN_LIST_ROWS = 3;
 
-/**
- * What a tabbed-list window lists: its title, the strip button it drops from, its tab grid, and the
- * projection from a tab to the items shown under it.
- */
 export interface TabbedListSource<Id, Item extends TabbedListItem> {
   /** The headline text, resolved at rebuild time so a language change is picked up. */
   title(): string;
@@ -88,8 +84,8 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   let scrollTop = 0;
   let layout: TabbedListLayout<Id, Item> | null = null;
   let hovered: Item | null = null;
-  // The last canvas cursor point, so a scroll, tab change or resize can re-resolve which card a
-  // stationary cursor is over instead of leaving the highlight on an item that moved away.
+  // The last canvas cursor point, so a scroll, tab change or resize re-resolves which card a stationary
+  // cursor is over.
   let lastPointer: { x: number; y: number } | null = null;
   // The viewport row count the current layout was built for; a resize that changes it triggers a reflow.
   let builtRows = 0;
@@ -108,7 +104,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   };
 
   /** The lowest screen y the list should reach: the screen foot, raised to the top of the bottom-corner
-   *  overlay when this window's x-span crosses it. A target, not a guarantee, since `MIN_LIST_ROWS` wins. */
+   *  overlay when this window's x-span crosses it. */
   const listFloor = (): number => {
     const screenH = ctx.screen().height;
     const reserve = ctx.overlayReserve?.() ?? null;

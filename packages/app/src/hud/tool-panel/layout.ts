@@ -2,12 +2,8 @@ import { contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
- * The left in-game tool panel's geometry, pinned to the original.
- *
- * Every rect below maps into the original's 640×480–1024×768 design space, provisional until checked
- * against the running original. The strip anchors top-left and scales by `uiscale`, floored at
- * `MIN_UI_SCALE` and fractional-allowed. `gfx` is the original engine gfx id, which for
- * `ls_gui_window` equals the atlas frame id (firstBobId=0).
+ * The left in-game tool panel's geometry, pinned to the original. Every rect below maps into the
+ * original's 640×480–1024×768 design space, provisional until checked against the running original.
  */
 
 /** The tool buttons, identified by the checked-in atlas-map semantic name (`content/gui-atlas-map.ts`). */
@@ -31,7 +27,7 @@ export interface DesignRect {
   readonly h: number;
 }
 
-/** The left strip background element - `CBaseToolGfxElement _toolBackground`, gfx 0x33, rect (0,10,50,433). */
+/** The left strip background element (`CBaseToolGfxElement _toolBackground`). */
 const TOOL_PANEL_STRIP_GFX = 0x33;
 export const TOOL_PANEL_STRIP: DesignRect = { x: 0, y: 10, w: 0x32, h: 0x1b1 };
 

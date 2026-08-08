@@ -29,46 +29,38 @@ export interface SpeedButtonDeps {
   readonly stripContainer: Container;
   /** The decoded GUI art, or null → the flat-Graphics fallback (a text glyph on the button rect). */
   readonly art: GuiArt | null;
-  /** The current baked strip texture (real-art path) - re-rasterized when the speed glyph changes. A
-   *  getter, because a live DPR change replaces the bake. */
+  /** The current baked strip texture (real-art path). A getter, because a live DPR change replaces the
+   *  bake. */
   readonly strip: () => SupersampledStrip | null;
-  /** The speed button's outline stamps and glyph; a speed change re-frames all of them. */
   readonly speedSprites: readonly PalettedSprite[];
   /** The speed button's placed rect, for the fallback glyph position (undefined → no fallback glyph). */
   readonly speedBtnRect: PlacedRect | undefined;
-  /** Apply a game-speed change to the app loop (a pause toggle must not overwrite the wall-clock speed). */
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
 }
 
 /** The mounted game-speed button: the strip's one interactive glyph. */
 export interface SpeedButton {
-  /** A click while paused un-pauses instead of advancing the cycle. */
   cycle(): void;
   togglePause(): void;
   /** Set the button graphic from the current state without pushing to the loop (mount, strip re-bake). */
   syncGlyph(): void;
 }
 
-/**
- * The game-speed button's state and glyph. The real-art path re-frames the baked outline stamps and glyph
- * and re-rasterizes the strip on a change; the flat fallback draws a `×N`/`||` text glyph instead.
- */
 export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
   const { ctx, app, scale, stripContainer, art, strip, speedSprites, speedBtnRect } = deps;
   let speedControl: GameSpeedControl = DEFAULT_GAME_SPEED_CONTROL;
   let speedRun: TextRun | null = null; // fallback glyph (the flat mode has no distinct per-state sprite)
 
-  // A null `cause` is mount-time init: refresh the glyph only, never push to the loop.
+  // A null `cause` refreshes the glyph without pushing to the loop.
   const applySpeed = (cause: GameSpeedChangeCause | null): void => {
     const spec = effectiveGameSpeedSpec(speedControl);
     if (speedSprites.length > 0 && art !== null) {
       const frame = art.layer.atlas.frames.get(spec.gfx);
       if (frame !== undefined) {
-        // Outline stamps + real glyph share the frame (the rim must follow the new glyph's shape).
+        // Outline stamps + real glyph share the frame, so the rim follows the new glyph's shape.
         for (const s of speedSprites) {
           s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
         }
-        // The strip is baked into a texture, so re-rasterize it with the new speed glyph.
         strip()?.redraw();
       }
     }
@@ -84,14 +76,13 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
         app.screen.height,
       );
     }
-    // Push to the loop only on an actual change, never at mount: the entry seeds its own initial loop
-    // speed and the panel must not clobber it with ×1 before frame 0.
+    // The entry seeds its own initial loop speed, so mount must not clobber it with ×1 before frame 0.
     if (cause !== null) deps.onSpeedChange(spec, cause);
   };
 
   return {
     cycle: () => {
-      // From the pre-click state: a click while paused is an un-pause, not a speed pick.
+      // The cause is read from the pre-click state.
       const cause = gameSpeedClickCause(speedControl);
       speedControl = cycleGameSpeed(speedControl);
       applySpeed(cause);
