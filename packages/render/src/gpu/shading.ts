@@ -2,10 +2,8 @@ import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
 import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
 
 /**
- * The custom mesh shaders for the brightness-shaded ground and decor - the stock textured-mesh draw times
- * the baked `embr` multiplier (`data/terrain/brightness.ts`), which Pixi's built-in mesh shader cannot do
- * because a per-mesh `tint` cannot vary across a chunk. They swap the shader of the existing
- * one-mesh-per-page-per-chunk draws, so mesh and draw-call counts are unchanged.
+ * The custom mesh shaders for the brightness-shaded ground and decor, which Pixi's built-in mesh shader
+ * cannot serve because a per-mesh `tint` cannot vary across a chunk.
  *
  * The explicit `#version 300 es` matters: `GlProgram` only runs its ES-300 preprocessing when the source
  * already carries the directive.
@@ -19,8 +17,8 @@ const matrixBlock = `
   uniform mat3 uTransformMatrix;
 `;
 
-// Water-surface animation constants, an approximation tuned by eye. Time is measured in sim ticks, so a
-// `?shot` frame at a fixed tick is byte-reproducible.
+// Water-surface animation constants, an approximation tuned by eye. Time is measured in sim ticks, so
+// the phase follows the interpolated sim clock and never wall-clock time.
 /** Peak vertical bob (world px) at full wave amplitude. */
 const WAVE_AMPLITUDE_PX = 1.75;
 /** Swell angular speed: one bob cycle every 30 ticks (~2.5 s at the 12 Hz sim). */

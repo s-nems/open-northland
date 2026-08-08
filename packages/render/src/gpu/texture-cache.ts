@@ -4,10 +4,8 @@ import type { AtlasFrame, BuildTimeSheet } from '../data/sprites/index.js';
 import { isDrawableResource, readable2dContext } from './drawable-resource.js';
 
 /**
- * Threshold quantisation step for the per-pixel reveal bakes ({@link TextureCache.revealed}): the eased
- * reveal walks 0-255 thresholds in steps of this size, so one construction pass bakes at most 256/step
- * textures over its lifetime. Step 4 ≈ 1.6% build progress per re-bake, finer than the sim's per-swing
- * `built` increments, so the quantisation is invisible against the original's own 0-255 scale.
+ * Threshold quantisation step for the per-pixel reveal bakes: the eased reveal walks 0-255 thresholds in
+ * steps of this size, so one construction pass bakes at most 256/step textures over its lifetime.
  */
 const REVEAL_QUANT = 4;
 
@@ -18,30 +16,28 @@ const REVEAL_QUANT = 4;
  */
 const REVEAL_BAKES_PER_ATLAS_FRAME = 4;
 
-/** One baked reveal texture + the pool frame it was last bound on (the eviction guard). */
 interface RevealBake {
   readonly texture: Texture;
+  /** The pool frame this bake was last bound on - the eviction guard. */
   stamp: number;
 }
 
 /**
- * A cache of one {@link Texture} per atlas {@link AtlasFrame} (a sub-rect view into a shared page
- * {@link TextureSource}). Each frame belongs to exactly one atlas→source, so keying the cache by the
- * frame object is 1:1 and the retained draw path never re-mints a texture in the steady state.
+ * A cache of one texture per atlas frame (a sub-rect view into a shared page source). Each frame belongs
+ * to exactly one atlas→source, so keying by the frame object is 1:1 and the retained draw path never
+ * re-mints a texture in the steady state.
  */
 export class TextureCache {
   private readonly cache = new Map<AtlasFrame, Texture>();
-  /** Every distinct atlas page a texture was minted from. */
   private readonly pages = new Set<TextureSource>();
-  /** Bottom-cropped views of a frame, keyed by how many top pixels are hidden ({@link cropped}). Nested
-   *  so the primary frame→texture cache above stays a clean 1:1. */
+  /** Bottom-kept views of a frame, keyed by how many top pixels are hidden. Nested so the primary
+   *  frame→texture cache above stays a clean 1:1. */
   private readonly cropCache = new Map<AtlasFrame, Map<number, Texture>>();
-  /** Top-kept views of a frame, keyed by how many bottom pixels are hidden ({@link croppedBottom}). */
+  /** Top-kept views of a frame, keyed by how many bottom pixels are hidden. */
   private readonly bottomCropCache = new Map<AtlasFrame, Map<number, Texture>>();
-  /** Per-pixel reveal bakes per frame, keyed by quantised threshold ({@link revealed}). */
+  /** Reveal bakes per frame, keyed by quantised threshold. */
   private readonly revealCache = new Map<AtlasFrame, Map<number, RevealBake>>();
 
-  /** The reused {@link Texture} for `frame` on `source`, minted (and cached) on first request. */
   get(source: TextureSource, frame: AtlasFrame): Texture {
     let tex = this.cache.get(frame);
     if (tex === undefined) {
@@ -61,10 +57,8 @@ export class TextureCache {
 
   /**
    * A view of `frame` with its top `hiddenTop` pixels cropped off, for the bottom-up construction reveal.
-   * `hiddenTop` is an integer pixel count in the frame's own source space, clamped to the frame; the
-   * caller shifts the sprite down by `hiddenTop · scale` so the visible bottom stays anchored. The
-   * per-(frame, hiddenTop) sub-cache is bounded by the frame's height and holds sub-rect views sharing
-   * one GPU source, so it costs no new texture memory.
+   * `hiddenTop` is an integer pixel count in the frame's own source space, clamped to the frame. The
+   * sub-cache holds sub-rect views sharing one GPU source, so it costs no new texture memory.
    */
   cropped(source: TextureSource, frame: AtlasFrame, hiddenTop: number): Texture {
     const top = clamp(Math.round(hiddenTop), 0, frame.height);
@@ -87,9 +81,7 @@ export class TextureCache {
 
   /**
    * The mirror of {@link cropped}, for the building-collapse sink (the original's
-   * `PrintBob_UsingCollapseTimeMask` removes rows bottom-up). The caller shifts the sprite down by
-   * `hiddenBottom · scale` so the visible bottom edge stays pinned at the ground line while the top
-   * sinks. Same caching and bounds discipline as {@link cropped}.
+   * `PrintBob_UsingCollapseTimeMask` removes rows bottom-up). Same caching and bounds discipline.
    */
   croppedBottom(source: TextureSource, frame: AtlasFrame, hiddenBottom: number): Texture {
     const bottom = clamp(Math.round(hiddenBottom), 0, frame.height);
@@ -111,11 +103,9 @@ export class TextureCache {
   }
 
   /**
-   * The frame with only its pixels whose baked build-time threshold ({@link BuildTimeSheet}) is
-   * `<= threshold` - the per-pixel construction reveal, baked onto a canvas at a quantised threshold
-   * ({@link REVEAL_QUANT}). `frameStamp` is the pool's frame counter, which the eviction guard reads.
-   * Threshold 255 returns the plain full frame; `null` (pixels not CPU-readable) sends the caller to the
-   * crop fallback.
+   * The frame with only its pixels whose baked build-time threshold is `<= threshold`, baked onto a
+   * canvas at a {@link REVEAL_QUANT}-quantised threshold. `frameStamp` is the pool's frame counter, which
+   * the eviction guard reads. `null` (pixels not CPU-readable) sends the caller to the crop fallback.
    */
   revealed(
     source: TextureSource,

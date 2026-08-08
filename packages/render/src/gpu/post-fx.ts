@@ -18,10 +18,7 @@ const VIGNETTE_INNER_RADIUS = 0.55;
 /** Baked gradient texture size (px). */
 const VIGNETTE_TEXTURE_SIZE = 512;
 
-/**
- * Build the multiply-blended vignette sprite, sized by the caller to the screen each frame. `null` when
- * no 2d canvas is available to bake the gradient.
- */
+/** Build the multiply-blended vignette sprite; the caller sizes it to the screen each frame. */
 export function makeVignetteSprite(): Sprite | null {
   const ctx = readable2dContext(VIGNETTE_TEXTURE_SIZE, VIGNETTE_TEXTURE_SIZE);
   if (ctx === null) return null;
