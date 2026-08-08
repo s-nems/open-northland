@@ -27,8 +27,8 @@ export function bindEmployment(
  * {@link bindEmployment}, so the player's release order and a razed workplace leave a settler in one state.
  *
  * The picks must go here rather than at the next post: `presentOperators` seats a workshop from a settler's
- * tile and trade alone, so a released craftsman still standing in the doorway would steer that workshop's
- * rotation by a product he was picked for elsewhere.
+ * tile and trade alone, so a released craftsman still standing in the doorway would otherwise steer that
+ * workshop's rotation by a product he was picked for elsewhere.
  */
 export function releaseEmployment(world: World, ctx: SystemContext, e: Entity): void {
   world.remove(e, JobAssignment);

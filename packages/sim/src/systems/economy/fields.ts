@@ -15,18 +15,16 @@ import {
 import { resourcesAtNode } from '../spatial/resources.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
-// Field farming: the content resolution, growth system, and atomic-effect appliers behind the farm's
-// sow, water, grow and reap loop. Source basis: the loop's vocabulary is readable original data
+// Source basis for the farm's sow, water, grow and reap loop: its vocabulary is readable original data
 // (`goodtypes.ini` wheat atomics 34/35/29 plus `isProducedOnMapFlag`, `landscapetypes.ini` wheat lanes
 // 27/28/29 with `maximumValency 5`); its timings and areas are the content `farming` block's calibration
 // constants, since no readable growth timing or field radius exists.
 
-// Watering is the growth fuel: a field grows only while `watered` and every stage step consumes it, so a
-// field needs one sowing plus one watering per stage and the farm's throughput is its farmers' labor rather
-// than a wall-clock timer. Calibrated against the original's observed ~10 grain per farmer per 10 minutes,
-// up to the farm's four slots, on a plot of ~24 plants per crew. Approximation: the cultivate atomic exists
-// in the readable data (id 35, the watering-can animation) but its engine-side effect is not decoded. An
-// untended field stands at its stage and deadlocks nothing.
+// Watering is the growth fuel, so the farm's throughput is its farmers' labor rather than a wall-clock
+// timer. Calibrated against the original's observed ~10 grain per farmer per 10 minutes, up to the farm's
+// four slots, on a plot of ~24 plants per crew. Approximation: the cultivate atomic exists in the readable
+// data (id 35, the watering-can animation) but its engine-side effect is not decoded. An untended field
+// stands at its stage and deadlocks nothing.
 
 /** Distinct growth paces a field can be sown into, spread evenly across the good's `growthSpreadPercent`
  *  band. Approximation: enough to keep a plot of a couple of dozen fields visibly out of step. */
@@ -34,10 +32,10 @@ const GROWTH_BANDS = 8;
 
 /**
  * The per-stage growth time of a field sown at half-cell node `(x, y)`: the good's nominal `ticksPerStage`
- * shifted into one of {@link GROWTH_BANDS} paces spanning ±`growthSpreadPercent`. A pure coordinate hash,
- * never `world.rng`, so a field's pace is byte-stable across runs and replays; clamped to at least one tick.
- * Approximation: the spread keeps a burst-sown plot from ripening in one mass harvest, matching the mixed
- * heights the original shows, whose per-plant timing is not decoded.
+ * shifted into one of {@link GROWTH_BANDS} paces spanning ±`growthSpreadPercent`, clamped to at least one
+ * tick. A pure coordinate hash rather than a draw from the seeded `ctx.rng`, so a field's pace is identical
+ * in every run and replay. Approximation: the spread keeps a burst-sown plot from ripening in one mass
+ * harvest, matching the mixed heights the original shows, whose per-plant timing is not decoded.
  */
 function stageTicksAt(farming: GoodFarming, x: number, y: number): number {
   const spread = farming.growthSpreadPercent;
@@ -95,7 +93,7 @@ export function farmWorkGood(world: World, ctx: SystemContext, workplace: Entity
 /** Whether a resource, field or stockpile already occupies half-cell node `(hx, hy)` for sowing purposes.
  *  Both halves of the sow race share this rule, so it must read live state: a field or heap that landed on
  *  the node since the planner chose it still has to reject the swing. A membership test, so the node
- *  indexes' superset answers need no canonical ordering; the walls half is {@link applySow}'s block check. */
+ *  indexes' superset answers need no canonical ordering. */
 export function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
   return stockpilesAtNode(world, hx, hy).length > 0 || resourcesAtNode(world, hx, hy).length > 0;
 }
@@ -103,8 +101,7 @@ export function sowNodeOccupied(world: World, hx: number, hy: number): boolean {
 /**
  * Apply a completed `sow` swing: plant a {@link Crop} field of `goodType` for `farm` at half-cell node
  * `(x, y)`. A node taken since the planner chose it plants nothing, the same raced-target no-op stance
- * every goods effect takes. The field starts at stage 1 with `Resource.remaining` 0, which is the gate
- * that keeps the generic harvest scans off an unripe field.
+ * every goods effect takes.
  */
 export function applySow(
   world: World,
@@ -118,9 +115,8 @@ export function applySow(
   if (ctx.terrain !== undefined && !ctx.terrain.isPlantable(ctx.terrain.nodeAtClamped(effect.x, effect.y)))
     return;
   if (sowNodeOccupied(world, effect.x, effect.y)) return;
-  // Blocked since the planner chose it: a field there would be unreachable from birth, and only the
-  // building paths have a clearing pass. Tests the same memoized overlay `nextSowNode` filtered on, since a
-  // narrower one would admit a node the planner had rejected.
+  // Blocked since the planner chose it: a field there would be unreachable from birth. Tests the same
+  // memoized overlay `nextSowNode` filtered on, since a narrower one would admit a node it had rejected.
   if (ctx.terrain !== undefined) {
     const node = ctx.terrain.nodeAtClamped(effect.x, effect.y);
     if (dynamicBlockOverlay(world, ctx, ctx.terrain).has(node)) return;
@@ -180,10 +176,9 @@ export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, bui
 }
 
 /**
- * Advance every watered field's integer growth counter and step its stage; each step consumes the watering.
- * At the final stage {@link Resource.remaining} becomes the sown `yieldUnits`, which is what makes the field
- * harvestable. Per-field independent integer mutation with no cross-entity pick, so store-order iteration is
- * fine, and the stage step is the exact compare `growth >= ticksPerStage` rather than an accumulated fraction.
+ * Advance every watered field's integer growth counter and step its stage, on the exact compare
+ * `growth >= ticksPerStage` rather than an accumulated fraction. Per-field independent integer mutation with
+ * no cross-entity pick, so store-order iteration is fine.
  */
 export const cropGrowthSystem: System = (world) => {
   for (const e of world.query(Crop)) {

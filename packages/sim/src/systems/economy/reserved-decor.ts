@@ -10,10 +10,10 @@ import { entityNode } from '../spatial/nodes.js';
 type NearQuery = (world: World, hx: number, hy: number, reach: number) => Entity[];
 
 /**
- * The walkable landscape-decor entities standing inside `building`'s reserved build-exclusion zone, the
- * shared candidate resolution behind the placement razing passes. Each caller adds its own removal policy.
- * Bounded by the zone: reads only the decor within its Chebyshev reach, never every one on the map. The
- * returned list is a snapshot, so a caller may `world.destroy` each entry without disturbing the scan.
+ * The walkable landscape-decor entities standing inside `building`'s reserved build-exclusion zone; each
+ * caller adds its own removal policy. Bounded by the zone: reads only the decor within its Chebyshev reach,
+ * never every one on the map. The returned list is a snapshot, so a caller may `world.destroy` each entry
+ * without disturbing the scan.
  */
 export function decorInReservedZone(
   world: World,

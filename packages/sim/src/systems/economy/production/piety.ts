@@ -6,11 +6,9 @@ import { chargeMilitaryPiety } from '../../lifecycle/needs.js';
 import type { WorkplaceOperators } from '../../stores/index.js';
 
 /**
- * Charge each smith who finished forging this tick a fixed slice of piety. Forging a weapon or piece of
- * armor is the only thing that raises the piety deficit, and praying at a temple clears it. Applied once
- * per completed cycle whose product is a military good, to the operators on station in canonical order. An
- * unstaffed-by-design workplace is a no-op, since its anonymous operator is no entity to charge.
- * Authored: the piety cost has no original oracle.
+ * Apply one {@link chargeMilitaryPiety} step to one on-station operator per completed cycle whose product is
+ * a military good, in canonical order and capped at the operators present. An unstaffed-by-design workplace
+ * is a no-op, since its anonymous operator is no entity to charge.
  */
 export function chargeMilitaryPietyCost(
   world: World,
@@ -22,6 +20,5 @@ export function chargeMilitaryPietyCost(
   const military = contentIndex(ctx.content).militaryGoods;
   const forged = done.filter((c) => military.has(c.goodType)).length;
   if (forged === 0) return;
-  // One charge per completed military batch, one operator each, never more than were on station.
   for (const op of operators.operators.slice(0, forged)) chargeMilitaryPiety(world, op);
 }
