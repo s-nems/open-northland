@@ -25,7 +25,6 @@ import { type RafLoop, startRafLoop } from './raf-loop.js';
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
-  /** The stored drawn-frame cap; `null` follows the display refresh. */
   readonly fpsLimit: FpsLimit;
   readonly control: LoopSpeedControl;
   readonly timestep: FixedTimestep;

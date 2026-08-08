@@ -69,7 +69,7 @@ Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...
 `sound=off`. Without `lang` the language follows the browser, and English stands in for a browser
 language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides
-the stored post-fx choice for one session, so captures stay reproducible whatever the machine's
+the stored post-fx choice for that entry, so captures stay reproducible whatever the machine's
 settings. The HUD scales from the canvas height sampled at game start times the stored
 interface-scale setting; `uiscale=<n>` pins an absolute scale for reproducible diagnostics and is
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,

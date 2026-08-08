@@ -17,7 +17,7 @@ export interface ControlsTab {
 /** The Controls tab: a rebind chip per action plus the fixed-shortcut reference rows. */
 export function createControlsTab(opts: {
   /** The screen's shared label+control row builder. */
-  settingRow: (label: string, control: HTMLElement) => HTMLDivElement;
+  settingRow: (label: string, control: HTMLElement, options?: { readonly tip?: string }) => HTMLDivElement;
   /** Rebuild the whole panel after a successful bind; a takeover may have unbound another row. */
   repaintPanel: () => void;
 }): ControlsTab {
@@ -80,18 +80,15 @@ export function createControlsTab(opts: {
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'main-menu__settings-key';
-      chip.title = text.bindingRebindTip;
       paintKeyChip(chip, bindings[action]);
       chip.addEventListener('click', () => startCapture(action, chip));
-      return opts.settingRow(text.bindings[action], chip);
+      return opts.settingRow(text.bindings[action], chip, { tip: text.bindingRebindTip });
     });
     const fixedRow = (label: string, keys: string): HTMLDivElement => {
       const chip = document.createElement('span');
       chip.className = 'main-menu__settings-key is-fixed';
       chip.textContent = keys;
-      const row = opts.settingRow(label, chip);
-      row.title = text.bindingFixedTip;
-      return row;
+      return opts.settingRow(label, chip, { tip: text.bindingFixedTip });
     };
     return [
       ...rebindable,

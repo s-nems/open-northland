@@ -125,7 +125,7 @@ export const plSurfaces = {
       displayWindow: 'Okno',
       renderScale: 'Skala renderowania',
       renderScaleTip:
-        'Rozdzielczość, w której rysowany jest świat gry: niższa daje płynność na słabszym sprzęcie, wyższa ostrzejszy obraz.',
+        'Rozdzielczość, w której rysowany jest cały obraz gry: niższa daje płynność na słabszym sprzęcie, wyższa daje ostrzejszy obraz. Działa w grze.',
       fpsLimit: 'Limit klatek na sekundę',
       fpsLimitTip:
         'Ogranicza liczbę rysowanych klatek: mniejsze zużycie energii i cichszy wentylator. Działa w grze, nie w menu.',
