@@ -67,7 +67,7 @@ way for every collision above; an archive-**only** file of those kinds would sta
 | `.lib` | packed file library | decoder tests and `decoders/lib.ts` |
 | `.cur` | Windows cursor resource | decoder tests and `decoders/cur.ts` |
 | `.wav` | sound effects and voices | browser-native playback |
-| `.sgt` / `.dls` | DirectMusic soundtrack data | not yet supported |
+| `.sgt` / `.dls` | DirectMusic soundtrack data | loop timing via `decoders/sgt.ts`; audio rendered offline by a locally built, patched [libdmusic](https://github.com/frabert/libdmusic) (`scripts/build-dmrender.sh`) |
 
 ## Verification
 

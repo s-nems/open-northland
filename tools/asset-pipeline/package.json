@@ -21,7 +21,8 @@
   "dependencies": {
     "@open-northland/data": "*",
     "@open-northland/render": "*",
-    "@open-northland/vfs": "*"
+    "@open-northland/vfs": "*",
+    "wasm-media-encoders": "^0.7.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.1"

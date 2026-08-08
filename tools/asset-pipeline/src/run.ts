@@ -13,6 +13,7 @@ import { convertGuiStage } from './stages/gui/index.js';
 import { writeIr } from './stages/ir/index.js';
 import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
+import { renderMusicStage } from './stages/music/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
 import {
   convertGuidepostPlayerAtlases,
@@ -151,6 +152,15 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
       `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s) ` +
       `of which ${synthesized} synthesized, ${scripts} script sidecar(s)) into ${vjoin(args.out, 'maps')}`,
+  );
+
+  progress?.stage?.('music');
+  const music = await renderMusicStage(roots, args.out, progress?.item);
+  console.log(
+    music.skipped !== undefined
+      ? `[pipeline] music skipped: ${music.skipped}`
+      : `[pipeline] music: ${music.rendered} rendered, ${music.kept} kept, ${music.failed} failed ` +
+          `into ${join(args.out, 'music')}`,
   );
 
   // Stamped last: its presence is what marks a conversion that ran to completion.
