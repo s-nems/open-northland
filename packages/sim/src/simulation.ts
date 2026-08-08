@@ -1,4 +1,4 @@
-import type { ContentSet, EquipCategory } from '@open-northland/data';
+import { type ContentSet, type EquipCategory, terrainGridFingerprint } from '@open-northland/data';
 import {
   ASSISTANT_COUNTER_KINDS,
   AssistantCounters,
@@ -66,6 +66,11 @@ export class Simulation {
    * gates read, so `hashState` mixes its bytes in after the components. Empty while the fog mode is OFF.
    */
   readonly fog?: FogState;
+  /**
+   * Identity of the navigated half-cell grid, for a save file's map check; undefined for a mapless
+   * sim. An immutable input digest like `terrain`, so `hashState` does not mix it in.
+   */
+  readonly mapFingerprint?: string;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /** The serializable external-input queue, drained and logged each tick for replay. */
@@ -86,6 +91,7 @@ export class Simulation {
     if (opts.map !== undefined) {
       this.terrain = buildTerrainGraph(opts.content, opts.map);
       this.fog = new FogState(this.terrain, this.world);
+      this.mapFingerprint = terrainGridFingerprint(opts.map);
     }
   }
 
