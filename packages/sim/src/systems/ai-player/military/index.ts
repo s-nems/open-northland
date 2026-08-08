@@ -22,8 +22,6 @@ export {
 } from './defence/index.js';
 export { RALLY_HOLD_RADIUS_NODES, WAVE_FULL_SOLDIERS, WAVE_MIN_SOLDIERS } from './muster.js';
 
-// The seat's army: who holds its walls, who answers a raid at home, and what the rest march on.
-
 /**
  * One strategic decision for the seat's fighting men, home before abroad: the towers take their garrison
  * ({@link TOWER_GARRISON_ARCHERS}) out of the free band, a raid at the gates takes the rest of it, and the

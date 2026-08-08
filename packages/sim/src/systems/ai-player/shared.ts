@@ -25,14 +25,13 @@ import { anyResourceNear, canonicalResources, resourcesNearNode } from '../spati
 // AI_DECISION_INTERVAL_TICKS per seat, so plain canonical scans stay within the RTS budget).
 
 /**
- * Ticks between one seat's decision passes - 2 s at the 12 ticks/s base clock. A genre-convention
- * approximation (Widelands/KaM/Petra re-evaluate strategy on seconds-scale timers, not per tick);
- * per-tick cost scales with decisions, not ticks.
+ * Ticks between one seat's decision passes - 2 s at the 12 ticks/s base clock. Approximation: a
+ * genre-convention seconds-scale strategy cadence, not a decoded value.
  */
 export const AI_DECISION_INTERVAL_TICKS = 24;
 
 /** The building definition carrying the stable content id, or undefined when this content set lacks
- *  it - a module skips such an entry instead of failing, so partial content stays safe. */
+ *  it - a module skips such an entry instead of failing. */
 export function buildingTypeByContentId(content: ContentSet, id: string): BuildingType | undefined {
   return content.buildings.find((b) => b.id === id);
 }
@@ -44,8 +43,7 @@ export function goodTypeByContentId(content: ContentSet, id: string): GoodType |
 }
 
 /** The typeIds at or above `target` on its `upgradeTarget` chain: `target` itself plus everything it
- *  upgrades into. The visited guard bounds a malformed cyclic chain. Shared by the build-order
- *  progress counting and the `outskirts` affinity's own-kind exclusion. */
+ *  upgrades into. The visited guard bounds a malformed cyclic chain. */
 export function tiersAtOrAbove(index: ContentIndex, target: BuildingType): Set<number> {
   const tiers = new Set<number>();
   let step: BuildingType | undefined = target;
@@ -61,8 +59,7 @@ const RESOURCE_BOX_REACH_START = 16;
 /**
  * The largest box walked before the live-resource searches fall back to the whole-map reference
  * scan. The cap only bounds the cost of a hopeless neighbourhood - the fallback reproduces the
- * exact linear winner past it - so it is a pure performance knob, not a decoded distance (named
- * approximation; the `RING_MAX_RADIUS` convention).
+ * exact linear winner past it (authored; the `RING_MAX_RADIUS` convention).
  */
 const RESOURCE_BOX_REACH_MAX = 512;
 
@@ -99,8 +96,7 @@ function isLiveResource(world: World, e: Entity, goodType: number): boolean {
 /**
  * The standing not-yet-empty resource of `goodType` nearest to `from` (Manhattan node distance,
  * ties to the lower entity id), or null when the map holds none. Expanding boxes over the resource
- * region index, so a decision near a stocked neighbourhood never walks the whole canonical list;
- * the whole-map reference scan past the cap keeps the winner byte-identical on a sparse map.
+ * region index, so a decision near a stocked neighbourhood never walks the whole canonical list.
  */
 export function nearestLiveResource(world: World, goodType: number, from: HalfCellNode): Entity | null {
   for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
@@ -138,8 +134,6 @@ export function nearestLiveResource(world: World, goodType: number, from: HalfCe
  */
 export function anyLiveResource(world: World, goodType: number, near: HalfCellNode | null): boolean {
   if (near !== null) {
-    // The existence-only index path: no collection, no sort, first hit returns - a map holding none of
-    // the good (the gated iron entry on an iron-less map) pays box probes, not repeated full sorts.
     for (let reach = RESOURCE_BOX_REACH_START; reach <= RESOURCE_BOX_REACH_MAX; reach *= 2) {
       if (anyResourceNear(world, near.hx, near.hy, reach, (e) => isLiveResource(world, e, goodType))) {
         return true;
@@ -155,9 +149,7 @@ export function anyLiveResource(world: World, goodType: number, near: HalfCellNo
 /**
  * The standing assistant counters the strategic modules publish, keyed by the module gates that must
  * ALL run for the kinds to stay published (the garrison rung lives inside the workforce module and
- * self-gates on `military`, so its counter needs both). `setPlayerAi`'s teardown (`orders/ai.ts`)
- * withdraws an entry's kinds the moment its conjunction breaks - a headless seat must stop breeding
- * and drafting when its AI does.
+ * self-gates on `military`, so its counter needs both).
  */
 export const AI_PUBLISHED_COUNTERS: ReadonlyArray<{
   readonly modules: readonly AiModuleId[];
@@ -172,11 +164,10 @@ export const AI_PUBLISHED_COUNTERS: ReadonlyArray<{
 
 /**
  * The `setAssistantCounter` command moving `player`'s `kind` to exactly `{value, infinite}`, or null
- * when the counter already sits there - the modules' idempotence convention (a decision that changes
- * nothing issues nothing). `value` is clamped to the counter bounds here, so a want past the cap
- * settles instead of re-issuing an unsatisfiable set every decision. Accepted race: the absolute
- * value is a decision-tick snapshot applied through the command queue one tick later, so a counter
- * payment inside that window is transiently re-added and the next decision corrects it.
+ * when the counter already sits there. `value` is clamped to the counter bounds here, so a want past
+ * the cap settles instead of re-issuing an unsatisfiable set every decision. Accepted race: the
+ * absolute value is a decision-tick snapshot applied one tick later, so a counter payment inside that
+ * window is transiently re-added and the next decision corrects it.
  */
 export function assistantCounterCommand(
   world: World,
@@ -232,10 +223,10 @@ export function anchorCentroid(world: World, entities: readonly Entity[]): HalfC
 }
 
 /**
- * `from` pushed `push` nodes further away from `origin` along the straight `origin → from` ray - the
- * outskirts bias shared by the tower spot and the `outskirts` placement affinity. Integer-trunc ray
- * projection (the `searchCentre` idiom): plain `/` on integer operands is IEEE-exact-rounded, hence
- * byte-identical across engines. Coincident points have no direction - `from` is returned as-is.
+ * `from` pushed `push` nodes further away from `origin` along the straight `origin → from` ray.
+ * Integer-trunc ray projection (the `searchCentre` idiom): plain `/` on integer operands is
+ * IEEE-exact-rounded, hence byte-identical across engines. Coincident points have no direction -
+ * `from` is returned as-is.
  */
 export function outwardNode(origin: HalfCellNode, from: HalfCellNode, push: number): HalfCellNode {
   const dx = from.hx - origin.hx;

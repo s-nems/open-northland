@@ -18,13 +18,9 @@ export * from './shared.js';
 export * from './workforce/index.js';
 
 /**
- * AiPlayerSystem - the STRATEGIC per-player brain (build order, workforce, expansion, military), distinct
- * from the settler micro-planner in `settlers/planner/system.ts`. Each AI-flagged seat (the `AiPlayer`
- * component the `setPlayerAi` command sets) runs its enabled modules on a coarse staggered cadence and
- * enqueues the same `Command` union a human issues; CommandSystem applies them next tick through the one
- * mutation seam, so AI orders hash, log, and replay exactly like player input (replay discards the re-emitted
- * copies - see `stepReplaying`). Modules are pure functions of world state + the seeded RNG, never wall-clock
- * or app-side reads.
+ * The STRATEGIC per-player brain (build order, workforce, expansion, military), distinct from the settler
+ * micro-planner in `settlers/planner/system.ts`. Its modules return the same `PlayerCommand` union a
+ * human issues, so AI orders hash, log, and replay exactly like player input.
  */
 
 /** One strategic concern of the AI player (see {@link AiModuleId} - the HAI toggle decomposition).
@@ -35,9 +31,7 @@ export interface AiPlayerModule {
 }
 
 /**
- * The strategic modules, in fixed run order: the workforce allocator first, then building placement, the
- * scout's orders, population planning, and the army's walls, muster and campaign. A per-seat
- * `AiPlayer.modules` flag gates each.
+ * The strategic modules, in fixed run order.
  *
  * Two modules claim settlers, and they cannot race for one: the allocator's spare pool holds no fighter
  * (`workforce/pool.ts`) and the army's census admits nothing else (`military/census.ts`).
@@ -51,10 +45,9 @@ export const AI_PLAYER_MODULES: readonly AiPlayerModule[] = [
 ];
 
 /**
- * One tick of the strategic AI over `modules` - the system body, parameterized so tests can drive it
- * with stub modules. Seats run in ascending player order (the canonical decision order); a seat is
- * due when the tick lands on its stagger slot, so up to MAX_PLAYERS seats spread their decision cost
- * across the interval instead of spiking on one tick.
+ * One tick of the strategic AI over `modules`. Seats run in ascending player order (the canonical
+ * decision order); a seat is due when the tick lands on its stagger slot, so up to MAX_PLAYERS seats
+ * spread their decision cost across the interval instead of spiking on one tick.
  */
 export function runAiPlayerModules(
   world: World,

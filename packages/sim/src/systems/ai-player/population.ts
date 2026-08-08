@@ -17,9 +17,8 @@ import type { AiPlayerModule } from './index.js';
 import { assistantCounterCommand, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
 
 /**
- * The HomeExpansion module (authored): every adult woman marries as soon as a partner exists, a married
- * woman's family moves into the first home with a free family slot, and births run through the
- * settlement assistant - daughters up to the housing stock, sons continuously past it.
+ * The HomeExpansion module (authored): who marries, which family takes a free home slot, and the birth
+ * counters the settlement assistant is held at.
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {

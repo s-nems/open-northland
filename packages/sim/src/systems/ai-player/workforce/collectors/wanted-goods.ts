@@ -11,8 +11,8 @@ import { type BuildOrderEntry, collectorGoodsWanted, type EntryStatus } from '..
 export const COLLECTED_GOOD_IDS: readonly string[] = ['mud', 'stone', 'wood'];
 
 /** How many flag gatherers the plan keeps per good, by stable content id; an unlisted good keeps
- *  {@link DEFAULT_COLLECTOR_TARGET}. Approximation: iron runs three because the plan ends on two
- *  smithies and an iron-tool joinery. The first post is guaranteed, the rest best-effort. */
+ *  {@link DEFAULT_COLLECTOR_TARGET}. Authored: iron runs three because the plan ends on two smithies
+ *  and an iron-tool joinery. The first post is guaranteed, the rest best-effort. */
 export const COLLECTOR_TARGET_BY_GOOD_ID: Readonly<Record<string, number>> = {
   wood: 2,
   stone: 2,

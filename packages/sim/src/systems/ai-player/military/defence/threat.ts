@@ -15,9 +15,6 @@ import { houseBow, isFighterJob } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { canonicalById, entityNode } from '../../../spatial/nodes.js';
 
-// The raid a seat reads before it decides anything: which enemy fighters stand on its ground, and how close
-// they have come to a building of its own.
-
 /** An enemy fighter, at the node he stands on this decision, with the walkable component that node
  *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him. */
 export interface Raider {

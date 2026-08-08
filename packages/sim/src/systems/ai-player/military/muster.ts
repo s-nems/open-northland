@@ -9,8 +9,7 @@ import type { WeaponMix } from './census.js';
 import { spokenFor } from './errand.js';
 
 // Where the army gathers and when it leaves. The autonomous HAI exposes only `HAI_DisableMilitary`, so
-// every size and radius here is an approximation; the scripted `AI_MainTask_Attack` vocabulary in map
-// `[aidata]` blocks is readable per-map authoring, and is where a calibration pass would start.
+// every size and radius here is an approximation.
 
 /** How close to the barracks door (Manhattan half-cell nodes) counts as formed up; an idle fighter
  *  outside this ring is called in. */
