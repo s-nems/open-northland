@@ -24,8 +24,8 @@ const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
  * `tribetypes` `jobEnablesHouse <jobType> <houseType>` edges, a house enabled once a settler of the
  * gating job is present in the tribe.
  *
- * While {@link BUILDING_UNLOCK_GATE_ENABLED} is false this always returns true, but stays a live call at
- * every gate site, so flipping the switch restores the behaviour with no code moves.
+ * While {@link BUILDING_UNLOCK_GATE_ENABLED} is false this always returns true; every gate site keeps
+ * calling it, so flipping the switch needs no code moves.
  */
 export function buildingEnabled(
   world: World,
@@ -61,8 +61,8 @@ export function recipeOutputsEnabled(
 /**
  * Shared read side of the `jobEnables` tech-graph for a single `(kind, targetId)`: enabled when no edge of
  * `kind` gates the target, or a settler of a gating job is currently alive in the tribe. A tribe absent
- * from content gates nothing, so a map with no tribe-type data still places its start buildings. The
- * tribe id is the `TribeType` `typeId` that `Settler.tribe` and `Building.tribe` carry.
+ * from content gates nothing. The tribe id is the `TribeType` `typeId` that `Settler.tribe` and
+ * `Building.tribe` carry.
  *
  * Both halves are memoized, so a probe costs only the handful of edges that gate this one target. A pure
  * membership query, so nothing here needs canonical order.
@@ -87,9 +87,8 @@ function tribeUnlockEnabled(
 
 /**
  * The ship types `tribe` has currently unlocked, sorted ascending by `typeId` so the order cannot depend
- * on `content.vehicles` declaration order. Composes the `passengerSlots` ship classification with the
- * `vehicle`-kind tech gate. Both axes are pinned to extracted data, and this adds no mechanic: nothing
- * embarks and no hull is spawned.
+ * on `content.vehicles` declaration order. Composes the extracted `passengerSlots` ship classification
+ * with the `vehicle`-kind tech gate.
  */
 export function tribeShipsUnlocked(world: World, ctx: SystemContext, tribe: number): VehicleType[] {
   return ctx.content.vehicles
@@ -143,9 +142,9 @@ export function experienceGatesApply(world: World, owner: number | undefined): b
 
 /**
  * Whether a settler meets every `needfor*` XP threshold gating a `(target, targetId)` for its tribe. A
- * target with several must clear all of them, and a tribe absent from content thresholds nothing. Where
- * the tree does not apply every civilian target is unthresholded, but fighter jobs stay gated either way:
- * on accrued XP, or on the barracks schooling {@link schoolingMet} reads.
+ * target with several must clear all of them, and a tribe absent from content thresholds nothing. A
+ * fighter job, gated even where {@link experienceGatesApply} is false, is met by accrued XP or by the
+ * barracks schooling {@link schoolingMet} reads.
  */
 export function settlerMeetsNeed(
   world: World,
@@ -174,13 +173,13 @@ export function settlerMeetsNeed(
 
 /**
  * Whether a settler has paid a job's barracks schooling - every `trainforjob` row for `targetId` met in
- * TRAINING repeats. The alternative path onto a fighter trade: its `needforjob` rows read tracks only that
- * band itself accrues (viking `needforjob 31 5 69`), so a civilian could never earn one by working, and
- * meeting either path unlocks the trade. A target with no `train` row is not schooled, so this can only
- * widen the gate. Read for fighter targets only.
+ * TRAINING repeats. This is the alternative path onto a fighter trade: its `needforjob` rows read tracks
+ * only that band itself accrues (viking `needforjob 31 5 69`), so a civilian could never earn one by
+ * working. A target with no `train` row is not schooled, so this can only widen the gate. Read for fighter
+ * targets only.
  *
- * Source basis (readable-semantics inference): the data states both row kinds but not how they combine.
- * Reading them as alternatives is what keeps the `trainfor*` rows from being dead.
+ * Source basis (readable-semantics inference): the data states both row kinds but not how they combine,
+ * and reading them as alternatives is what keeps the `trainfor*` rows from being dead.
  */
 export function schoolingMet(
   tracks: readonly HumanJobExperienceType[],

@@ -22,9 +22,6 @@ import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js
  * Destroy every entity whose {@link Health} pool has been drained to 0 and announce it with a
  * `settlerDied` event. Runs last in the schedule, so a hit landed earlier this tick is reaped before
  * anything downstream or the renderer's snapshot can observe a 0-HP entity.
- *
- * Source basis: "a combatant at 0 hitpoints is dead and removed" is the faithful baseline; the hitpoint
- * pool and who drains it are approximated elsewhere. This system only reaps an emptied pool.
  */
 export const cleanupSystem: System = (world, ctx) => {
   // Collect-then-destroy: never `world.destroy` while iterating the store the scan reads, and in
@@ -95,7 +92,7 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
 }
 
 /** A render/audio hint, not simulated state: hunger pinned at ONE reads as starvation, everything else as
- *  combat damage. A swing landing on a starving settler is the accepted ambiguity. */
+ *  combat damage. A swing that kills a settler already pinned is the accepted ambiguity. */
 function causeOf(settler: { hunger: Fixed } | undefined): string {
   return settler !== undefined && settler.hunger === ONE ? DEATH_CAUSE_STARVATION : DEATH_CAUSE_DAMAGE;
 }

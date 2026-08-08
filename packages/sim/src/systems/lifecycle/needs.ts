@@ -62,7 +62,7 @@ export function relieveNeed(current: Fixed, amount: Fixed): Fixed {
 
 /** How much piety a smith spends forging one weapon or piece of armor - the only thing that raises the
  * piety deficit, which praying at a temple clears. Authored; the magnitude is approximated. */
-export const PIETY_PER_MILITARY_CYCLE: Fixed = fx.div(ONE, fx.fromInt(10)); // 10% of the bar per weapon/armor
+export const PIETY_PER_MILITARY_CYCLE: Fixed = fx.div(ONE, fx.fromInt(10));
 
 /** Add {@link PIETY_PER_MILITARY_CYCLE} to a settler's piety deficit, clamped at {@link ONE}. */
 export function chargeMilitaryPiety(world: World, settler: Entity): void {
@@ -86,24 +86,19 @@ export const STARVATION_DAMAGE_INTERVAL_TICKS = 10;
 export const STARVATION_BITES_TO_DIE = 240;
 
 /**
- * The rise half of settler needs, plus starvation damage. Each tick every person's `hunger` and `fatigue`
- * rise, and `enjoyment` too for every non-fighter, each clamped at `ONE`. `piety` is not touched here: it
- * climbs only through {@link chargeMilitaryPiety} and resets at a temple.
+ * The rise half of settler needs, plus starvation damage. `piety` is not touched here: it climbs only
+ * through {@link chargeMilitaryPiety} and resets at a temple.
  *
- * Wildlife is out of the sweep structurally: the query is over {@link Person}. Two conventional gates sit
- * inside it. A person of a recorded tribe with no `jobEnables` is skipped - the maps place the monster
- * tribes as a seat's soldiers that no building can employ, so their bars would only ever pin. A baby is
- * skipped on the same state the planner gates on, so a fixture whose synthetic job id collides with an
- * age-class id still lives a full needs life.
- *
- * Approximation on both: `tribetypes.ini` binds the monster soldier an eat and a sleep clip
- * (`setatomic 31 10` / `31 8`), so the original's treatment of their bars is undecided rather than
- * answered here; and a baby is fed by its family.
+ * Two skips, approximated on both counts. A person of a recorded tribe with no `jobEnables` is skipped
+ * because the maps place the monster tribes as a seat's soldiers no building can employ, so their bars
+ * would only ever pin - though `tribetypes.ini` does bind that soldier an eat and a sleep clip
+ * (`setatomic 31 10` / `31 8`). A baby is skipped because the planner's needs rung is keyed on `isChild`,
+ * so nothing would ever feed it, on the reading that its family does; the `Age` conjunct keeps a fixture's
+ * synthetic job id from being read as an age class, as the planner's own routing does.
  *
  * A settler pinned at `ONE` hunger loses hitpoints on the {@link STARVATION_DAMAGE_INTERVAL_TICKS} beat
  * until it is fed or the pool empties. A jobless settler is exempt: the eat drive lives in the job
- * planner, which skips it, so nothing could feed it. The whole system is gated by the
- * {@link needsEnabled} world rule.
+ * planner, which skips it, so nothing could feed it.
  */
 export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
@@ -120,7 +115,7 @@ export const needsSystem: System = (world, ctx) => {
       const risenEnjoyment = fx.add(settler.enjoyment, ENJOYMENT_RISE_PER_TICK);
       settler.enjoyment = risenEnjoyment > ONE ? ONE : risenEnjoyment;
     }
-    // Only a settler that could have fed itself bleeds; the 0-HP reap is CleanupSystem's.
+    // The 0-HP reap is CleanupSystem's.
     if (starvationBeat && settler.hunger === ONE && settler.jobType !== null && world.has(e, Health)) {
       const health = world.get(e, Health);
       const bite = Math.max(1, Math.trunc(health.max / STARVATION_BITES_TO_DIE));

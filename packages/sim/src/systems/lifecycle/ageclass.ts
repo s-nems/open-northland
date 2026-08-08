@@ -104,8 +104,8 @@ export const growthSystem: System = (world, ctx) => {
   }
   for (const e of graduated) {
     world.remove(e, Age);
-    // Authored: a grown child moves out, so it stops filling a slot in its parents' family and picks its
-    // own home when the player assigns one. Its Age removal also expires a widowed parent's carve-out.
+    // Authored: a grown child moves out instead of counting as a second family against its parents'
+    // `homeSize`. The Age removal above also expires a widowed parent's carve-out.
     world.remove(e, Residence);
     releaseWidowedParentsOf(world, e);
     applyAdultHitpoints(world, ctx, e);
