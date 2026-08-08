@@ -1,5 +1,5 @@
 import type { TextureSource } from 'pixi.js';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 /**
  * The house and building-family atlases are loaded by both the world sprite sheet
@@ -32,10 +32,13 @@ vi.mock('@open-northland/render', async (importOriginal) => {
 });
 
 /**
- * `content/ir/load.ts` pulls in the whole Pixi graph, and under a full-suite run its cold Vite transform costs
- * seconds that are charged to whichever test triggers it - well past the 5 s default. (Run this file
- * alone, against a warm cache, and the whole suite finishes in under 2 s.)
+ * The cold Vite transform of the Pixi graph `content/ir/load.ts` pulls in costs tens of seconds, and is
+ * charged to whichever test first triggers it. Pay it in a hook instead: a test that times out mid-load is
+ * abandoned but not stopped, and its `loadLayer` then fetches through the NEXT test's stub, failing that one.
  */
+const COLD_TRANSFORM_TIMEOUT_MS = 180_000;
+
+/** Re-executing that graph after each `vi.resetModules()` still costs seconds, well past the 5 s default. */
 const IR_LOADER_TIMEOUT_MS = 30_000;
 
 const BODY_STEM = 'ls_houses_viking.house01';
@@ -78,6 +81,10 @@ async function freshLoader() {
   uploads.length = 0;
   return await import('../src/content/ir/load.js');
 }
+
+beforeAll(async () => {
+  await import('../src/content/ir/load.js');
+}, COLD_TRANSFORM_TIMEOUT_MS);
 
 afterEach(() => {
   vi.unstubAllGlobals();
