@@ -117,7 +117,7 @@ function objectFootprints(
 }
 
 /**
- * The two triangle classes joined into the cell's class: it walks unless BOTH triangles refuse, and
+ * The two triangle classes joined into the cell's class: it walks unless both triangles refuse, and
  * builds or sows only on the worse of the two.
  *
  * Cell-resolution approximation of the original's per-node rule (`docs/formats/MAPDAT.md`): a walkable

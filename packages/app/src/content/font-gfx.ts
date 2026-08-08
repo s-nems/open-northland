@@ -23,8 +23,8 @@ export function fontColorRow(name: FontColorName): number {
 
 /**
  * CSS fill strings approximating the four font-colour LUT rows, for text a CSS `fill` draws without
- * sampling the indexed palette. A named colour choice sampled to sit on the wood and parchment chrome the
- * way the original's `font_*` palettes do, not decoded palette bytes, so it can drift from the LUT.
+ * sampling the indexed palette. Authored to sit on the wood and parchment chrome the way the original's
+ * `font_*` palettes do, not decoded palette bytes, so they can drift from the LUT.
  */
 export const FONT_FILL: Readonly<Record<FontColorName, string>> = {
   white: '#f2ead6',

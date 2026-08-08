@@ -16,10 +16,11 @@ import type { ContentIr } from './ir/rows.js';
  * The real-ground binding: draw terrain from the decoded `text_*.pcx` pages served out of the gitignored
  * `content/`. Two levels of fidelity: a decoded original map carries the exact `GfxPattern` per cell
  * triangle and joins it 1:1 by `EditName`, while a synthetic grid falls back to `terrainPatterns`, which
- * binds each landscape typeId to one representative pattern (a recorded deviation, source basis).
+ * binds each landscape typeId to one representative pattern (a recorded deviation).
  *
- * All ground pages load linear-filtered because the original samples its terrain pages bilinearly
- * (docs/SOURCES.md "terrain tessellation"); the sprite atlases stay `nearest`.
+ * All ground pages load linear-filtered against the original's bilinear terrain sampling. That reading
+ * comes from a community renderer used as an oracle, not from byte evidence, so it is an approximation.
+ * The sprite atlases stay `nearest`.
  */
 
 type LoadedSource = Awaited<ReturnType<typeof loadAtlasSource>>;

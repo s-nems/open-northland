@@ -124,8 +124,8 @@ export async function loadMapObjects(
     const key = record !== undefined ? servedAtlasStem(record) : undefined;
     if (key === undefined) continue;
     const shadowStem = servedShadowStem(record?.shadowBmd);
-    // First DEFINED shadow stem wins: records sharing one atlas may differ in `shadowBmd`, and a plain
-    // first-wins would let a shadow-less record block the twin for every type on that atlas.
+    // The first defined shadow stem wins: records sharing one atlas may differ in `shadowBmd`, and a
+    // plain first-wins would let a shadow-less record block the twin for every type on that atlas.
     if (!layerKeys.has(key) || (layerKeys.get(key) === undefined && shadowStem !== undefined)) {
       layerKeys.set(key, shadowStem);
     }
@@ -200,8 +200,8 @@ export async function loadMapObjects(
     // The lift is a draw offset only; `y` (the feet anchor and depth key) stays pre-lift so objects
     // occlude by map row.
     const lift = elevation?.liftAtNode(hx, hy) ?? 0;
-    // The baked `embr` multiplier over the ground this object covers (measured: mines, stones and grass
-    // track it, trees stay full-bright; source basis "brightness").
+    // The baked `embr` multiplier over the ground this object covers, skipped for the types
+    // `unshadedLogicTypeIds` exempts.
     const shade = brightness?.shaded && type.shaded ? brightness : undefined;
     const sprite: MapObjectSprite = {
       x: screen.x,
@@ -213,9 +213,8 @@ export async function loadMapObjects(
       decor: type.decor,
       ...(type.farRow !== undefined ? { depthY: halfCellToScreen(hx, hy + type.farRow).y } : {}),
       ...(lift !== 0 ? { lift } : {}),
-      // A slow spatial gradient, not a uniform phase: neighbouring half-cells stay within one frame of
-      // each other while the surface avoids pulsing as one stamp. The map stores no per-object phase
-      // (source basis).
+      // The map stores no per-object phase, so this gradient is invented here: neighbouring half-cells
+      // stay within one frame of each other while the surface avoids pulsing as one stamp.
       phase: hx + hy,
       // Named approximation: the engine's alpha blit folds the shade into each Double8Bit bob's baked
       // per-pixel alpha (a = alphaByte·(256−shade)/256), while shading here is a colour multiplier over

@@ -4,10 +4,10 @@ import { forEachPlacement } from './map-placements.js';
 
 /**
  * The decoded-map → sim resource join: which placed landscape objects are harvestable, and the good each
- * yields. Data-driven off `ir.json`: each good's gathering pipeline lists the `landscapeGfx` indices of its
- * standing harvest-stage forms, so inverting that list (index → EditName → goodId) names exactly the
- * objects the original treats as harvestable, and decor is absent by construction. The pipeline's `goodId`
- * string bridges the IR's original good numbering and the app's hand-authored one.
+ * yields. Each good's gathering pipeline lists the `landscapeGfx` indices of its standing harvest-stage
+ * forms, so inverting that list (index → EditName → goodId) names the objects the original treats as
+ * harvestable, and decor is absent by construction. The pipeline's `goodId` string bridges the IR's
+ * original good numbering and the app's hand-authored one.
  */
 
 /** What one harvestable object `EditName` resolves to: the good it yields and its own harvest-stage
@@ -16,7 +16,7 @@ export interface HarvestObjectRef {
   readonly goodId: string;
   readonly gfxIndex: number;
   /** The record's authored frame-list count, the denominator a placement's `objects.levels` entry is read
-   *  against. NOT the record's valency ceiling: `LogicMaximumValency` can be larger, so a level above this
+   *  against, not the record's valency ceiling: `LogicMaximumValency` can be larger, so a level above this
    *  count reads as out of range. 0 when the record authors no frames. */
   readonly states: number;
   /** The record's `LogicMaximumValency`: how many units a placement of it holds, which sizes a spawned
@@ -27,9 +27,8 @@ export interface HarvestObjectRef {
 /**
  * Map each placed landscape-object `EditName` to the `goodId` it yields and its own `[GfxLandscape]`
  * record index, from the IR gathering pipeline's harvest stage. Degrades to an empty map when either lane
- * is missing. The `gfxIndex` is an opaque render-variant tag: it rides the spawn onto `Resource.gfxIndex`
- * so a pool-drawn node keeps its exact original graphic, and it never reaches footprint resolution, which
- * stays the good's own record in the sim's content set.
+ * is missing. The `gfxIndex` rides the spawn onto `Resource.gfxIndex`, an opaque render-variant tag that
+ * keeps a pool-drawn node on its exact original graphic.
  */
 export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, HarvestObjectRef> {
   const recordByIndex = new Map<number, LandscapeGfxRow>();
@@ -56,8 +55,7 @@ export function harvestGoodByObjectName(ir: ContentIr): ReadonlyMap<string, Harv
 }
 
 /** One harvestable node a decoded map defines, anchored at half-cell `(hx, hy)`: the `map.objects` lattice
- *  is the sim's 2W×2H node grid verbatim. `placement` is the triplet ordinal in `objects.placements`, the
- *  join key back to the static layer's sprite for the same placement. */
+ *  is the sim's 2W×2H node grid verbatim. `placement` is its ordinal in `objects.placements`. */
 export interface MapResourceSpawn {
   readonly goodId: string;
   readonly gfxIndex: number;
@@ -76,9 +74,9 @@ export interface MapResourceSpawn {
 
 /**
  * The harvestable resource nodes a decoded map's placed objects define, for every placement whose EditName
- * maps to a good with a real gatherer trade. Deterministic: one pass over `map.objects.placements` in its
- * native row-major order, so the caller mints entity ids in a fixed order. A good that maps but has no
- * gatherer trade yet stays decor rather than spawning an unworkable node.
+ * maps to a good with a real gatherer trade; a good without one stays decor rather than spawning an
+ * unworkable node. Deterministic: one pass over `map.objects.placements` in its native row-major order, so
+ * the caller mints entity ids in a fixed order.
  */
 export function mapResourceSpawns(
   objects: TerrainObjects,
@@ -110,8 +108,8 @@ export function mapResourceSpawns(
 
 /**
  * The `[GfxLandscape].logicType` of a fruited bush (`bush with fruits`, `landscapetypes.ini` type 11): the
- * source-pinned marker that a placed bush object currently holds fruit. Bare, flowering and barren bush
- * states (types 8/9/10) stay decor.
+ * source-pinned marker that a placed bush object currently holds fruit. The `bush`, `bush naked` and
+ * `bush flowering` states (types 8/9/10) stay decor.
  */
 export const BUSH_WITH_FRUITS_LOGIC_TYPE = 11;
 
@@ -137,7 +135,6 @@ function fruitedBushRecordByName(ir: ContentIr): ReadonlyMap<string, number> {
 /**
  * The forageable berry bushes a decoded map's placed objects define. Deterministic: one pass over
  * `map.objects.placements` in native row-major order, so the caller mints entity ids in a fixed order.
- * Bare and flowering bush placements stay static decor.
  */
 export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapBerryBushSpawn[] {
   const byName = fruitedBushRecordByName(ir);
