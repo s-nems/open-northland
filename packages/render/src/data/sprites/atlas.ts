@@ -4,10 +4,7 @@ export interface AtlasFrame {
   readonly y: number;
   readonly width: number;
   readonly height: number;
-  /**
-   * Source draw offset (the original's `SBobData.Area` origin), added to the sprite's feet-anchor
-   * screen position.
-   */
+  /** Source draw offset, added to the sprite's feet-anchor screen position. */
   readonly offsetX: number;
   readonly offsetY: number;
 }
@@ -15,7 +12,6 @@ export interface AtlasFrame {
 export interface SpriteAtlas {
   readonly width: number;
   readonly height: number;
-  /** Frames by bob id (`bmd.firstBobId + index` from the build manifest). */
   readonly frames: ReadonlyMap<number, AtlasFrame>;
 }
 
@@ -25,7 +21,6 @@ export function lookupFrame(atlas: SpriteAtlas, id: number): AtlasFrame | null {
   return frame === undefined || frame.width === 0 || frame.height === 0 ? null : frame;
 }
 
-/** Last-writer-wins on a duplicate bob id, which the build does not emit. */
 export function indexAtlasFrames(
   width: number,
   height: number,
@@ -85,8 +80,8 @@ export interface AtlasManifest {
 
 /**
  * CPU-side copy of a `<stem>.build.png` time sheet: row-major 0-255 per-pixel thresholds at atlas
- * coordinates, where a pixel appears once construction progress reaches its threshold (the original's
- * time-mask byte). Values at transparent atlas pixels are meaningless.
+ * coordinates, where a pixel appears once construction progress reaches its threshold. Values at
+ * transparent atlas pixels are meaningless.
  */
 export interface BuildTimeSheet {
   readonly width: number;
@@ -95,7 +90,6 @@ export interface BuildTimeSheet {
   readonly values: Uint8Array;
 }
 
-/** Frame geometry only; the matching atlas image is loaded separately on the GPU side. */
 export function atlasFromManifest(manifest: AtlasManifest): SpriteAtlas {
   return indexAtlasFrames(manifest.width, manifest.height, manifest.frames);
 }
