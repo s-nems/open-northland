@@ -2,13 +2,12 @@ import type { DirectionalAnim } from '@open-northland/render';
 import type { BobSeqRow } from '../ir/rows.js';
 import { DIRS } from './sequences.js';
 
-/** The pure `[bobseq]` row → {@link DirectionalAnim} primitives the settler binding assemblers share. */
+// The `[bobseq]` row → {@link DirectionalAnim} primitives the settler binding assemblers share.
 
 /**
  * Build a {@link DirectionalAnim} from a decoded `[bobseq]` sequence: `start` is the run's first bob id and
- * `stride = length / DIRS` (the per-direction frame count). Returns {@link fallback} verbatim when the
- * named sequence is missing, so a partial IR keeps the known-good range rather than a computed bogus one.
- * Pure.
+ * `stride = length / DIRS`. Returns {@link fallback} verbatim when the named sequence is missing, so a
+ * partial IR keeps the known-good range rather than a computed bogus one.
  */
 export function directionalAnimFromSeq(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -30,7 +29,7 @@ export function directionalAnimFromSeq(
 
 /**
  * A named ×8 `[bobseq]` row as a {@link DirectionalAnim}, or `undefined` when the row is missing, empty, or
- * not a clean ×8 strip, so a malformed IR can never become a bogus frame range. Pure.
+ * not a clean ×8 strip, so a malformed IR can never become a bogus frame range.
  */
 export function eightDirAnim(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -56,7 +55,7 @@ const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
  * Reorder a `[gfxanimatomic]` per-`<dir>` frame-list table into the render's per-facing order. A
  * single-list table is facing-locked (a bare `gfxanimframelist`) and plays verbatim on every facing; any
  * multi-list table lives in the `<dir>` space and is remapped, a sparsely authored dir leaving an empty
- * list rather than borrowing a neighbour's swing. Pure.
+ * list rather than borrowing a neighbour's swing.
  */
 export function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly (readonly number[])[] {
   if (dirLists.length === 1) return dirLists; // facing-locked single list
@@ -70,17 +69,14 @@ export function frameListsByFacing(dirLists: readonly (readonly number[])[]): re
 /**
  * A `[bobseq]` row as a facing-locked clip (`dirs: 1`, the whole strip played on one facing) - the
  * `clipDirs` reading for a non-×8 strip. `undefined` for a missing/empty row so a caller can chain a
- * fallback. Pure.
+ * fallback.
  */
 export function singleDirAnim(row: BobSeqRow | undefined): DirectionalAnim | undefined {
   if (row === undefined || row.length <= 0) return undefined;
   return { start: row.start, dirs: 1, stride: row.length };
 }
 
-/**
- * A good the loaded content set defines - the `(typeId, id-slug)` pair the per-good carry join keys on.
- * Passed by the entry that knows which content the sim runs, since those ids are content-relative.
- */
+/** A good the loaded content set defines: the `(typeId, id-slug)` pair the per-good carry join keys on. */
 export interface GoodRef {
   readonly typeId: number;
   readonly id: string;

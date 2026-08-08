@@ -75,15 +75,14 @@ export interface CharacterSpec {
   /** The ×8 locomotion cycle; absent → the look stands its wait even while moving. */
   readonly walkSeq?: string;
   /**
-   * The standing-idle `[bobseq]`, played whole as a facing-locked loop: no wait strip is a clean ×8 (the
-   * generic waits 57/35/39, the weapon waits 22..29), and a non-×8 strip is facing-locked. Absent → idle
-   * holds the walk's first frame per facing.
+   * The standing-idle `[bobseq]`, played whole as a facing-locked loop - no wait strip is a clean ×8 (the
+   * generic waits 57/35/39, the weapon waits 22..29). Absent → idle holds the walk's first frame per facing.
    */
   readonly waitSeq?: string;
   /**
    * The viking `logicjob` this look hauls as - the `[gfxwalkatomic]` key for its per-good loaded gait.
-   * Civilian trades all use the civilist table (6); the source authors no per-trade carry records.
-   * Absent → no per-good carry look.
+   * Civilian trades all use the civilist table; the source authors no per-trade carry records. Absent → no
+   * per-good carry look.
    */
   readonly logicJob?: number;
   /** Prefix of this body's per-good carry cycles (`<prefix><good>`) - the floor for an IR with no
@@ -95,9 +94,8 @@ export interface CharacterSpec {
   >;
   /**
    * Atomic id → the action sequence whose per-facing layout comes from the `[gfxanimatomic]` `<dir>` frame
-   * lists, for a clip that is neither a clean ×8 strip nor a facing-locked one-off. A seq that resolves
-   * here overrides the plain {@link atomics} fallback for the same id; an object entry adds a cadence
-   * override.
+   * lists, for a clip that is neither a clean ×8 strip nor a facing-locked one-off. A seq that resolves here
+   * overrides the plain {@link atomics} fallback for the same id.
    */
   readonly dirListAtomics?: Readonly<
     Record<number, string | { readonly seq: string; readonly ticksPerFrame?: number }>
@@ -157,9 +155,8 @@ export const CHARACTER_SPECS = {
       [STORE_PILEUP_ATOMIC]: { seq: PICKUP_SEQ },
     },
     // The collector and farmer work clips draw through the `[gfxanimatomic]` per-direction frame lists
-    // (jobs 8 and 18), overriding the plain `atomics` fallbacks above. Each list bakes in one swing's
-    // impact hold and trailing rest (woodcutting 30/dir, stonecrushing 29/dir, shovel 23/dir; the pluck is
-    // a single facing-locked 19-frame list), so a chop reads as one strike facing the way the gatherer stands.
+    // (jobs 8 and 18). Each list bakes in one swing's impact hold and trailing rest (woodcutting 30/dir,
+    // stonecrushing 29/dir, shovel 23/dir; the pluck is a single facing-locked 19-frame list).
     dirListAtomics: {
       [HARVEST_ATOMIC]: CHOP_SEQ,
       [STONE_HARVEST_ATOMIC]: STONECRUSH_SEQ,
@@ -391,10 +388,10 @@ export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonl
 
 /**
  * Adult `jobType` → character spec id, the viking `[jobbasegraphics]` job → body join transcribed from the
- * mod's `types/humanstype/jobgraphics.ini` (`logictribe 1`) plus the `jobtypes` soldier family. The axe
- * jobs 38/39 borrow the broadsword (the body authors no axe set) and the sabers 36/37 the sword/broadsword
- * one-handers. Named approximation: heroes 42..47 borrow the warrior body of their `baseatomics` soldier
- * class until their own bodies are extracted. An unmapped job falls to the `civilian` default.
+ * mod's `types/humanstype/jobgraphics.ini` (`logictribe 1`) plus the `jobtypes` soldier family. The axe jobs
+ * borrow the broadsword because the body authors no axe set, and the sabers the sword bodies. Named
+ * approximation: heroes borrow the warrior body of their `baseatomics` soldier class until their own bodies
+ * are extracted. An unmapped job falls to the `civilian` default.
  */
 export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   [JOB_WOMAN]: 'woman',
@@ -445,7 +442,7 @@ export const WARRIOR_JOBS: readonly number[] = Object.keys(WEAPON_GOOD_SLUG_BY_J
 /**
  * Age-class `jobType` (a settler that carries `Age`) → character spec id, the baby/child bodies from the
  * same `[jobbasegraphics]` table. Kept separate from the adult table so a synthetic fixture's adult job id
- * 1/2 can never draw a baby.
+ * can never draw a baby.
  */
 export const YOUNG_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   [JOB_BABY_FEMALE]: 'baby',

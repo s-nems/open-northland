@@ -19,7 +19,7 @@ import { DIRS } from './sequences.js';
  *
  * A good with no record for this job is omitted, which is the source's own answer rather than a gap: that
  * job shows no load for it. A sequence the body doesn't author, or one that isn't a clean ×8 strip, is
- * likewise skipped. Pure.
+ * likewise skipped.
  */
 export function carryAnimsByGood(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -40,7 +40,7 @@ export function carryAnimsByGood(
 /**
  * Build one character's {@link SettlerStateBinding} from its spec and its body's decoded `[bobseq]` rows.
  * Returns `null` when neither the walk nor a loop wait resolves, so the character is dropped and its jobs
- * fall back to the default look rather than a bogus frame range. Pure.
+ * fall back to the default look rather than a bogus frame range.
  */
 export function characterBinding(
   spec: CharacterSpec,
@@ -90,8 +90,8 @@ export function characterBinding(
     }
   }
 
-  // The other frame-list actions: each binds only when both its `[bobseq]` row and its per-atomic
-  // `[gfxanimatomic]` lists resolve, overriding the plain `atomics` fallback for the same id.
+  // The other frame-list actions, each bound only when both its `[bobseq]` row and its per-atomic
+  // `[gfxanimatomic]` lists resolve.
   for (const [atomicId, entry] of Object.entries(spec.dirListAtomics ?? {})) {
     const { seq: seqName, ticksPerFrame } =
       typeof entry === 'string' ? { seq: entry, ticksPerFrame: undefined } : entry;
@@ -106,8 +106,6 @@ export function characterBinding(
     }
   }
 
-  // The combat-engaged gait: an ×8 aggressive walk plus a facing-locked aggressive wait. A look with no
-  // aggressive variant yields no `engaged` and stays on its relaxed gait while engaged.
   const engagedMoving = eightDirAnim(seqByName, spec.engaged?.moving);
   const engagedIdle = singleDirAnim(
     spec.engaged?.idle !== undefined ? seqByName.get(spec.engaged.idle) : undefined,
@@ -120,9 +118,7 @@ export function characterBinding(
         }
       : undefined;
 
-  // The loaded gait from the `[gfxwalkatomic]` table. Where that table covers this job it is complete - a
-  // good it omits genuinely draws no load - so the `<prefix>wood` gait is the floor only for an IR without
-  // the lane.
+  // The loaded gait: the `<prefix>wood` gait is the floor only for an IR without the `[gfxwalkatomic]` lane.
   const carryByGood = carrySeqBySlug !== undefined ? carryAnimsByGood(seqByName, carrySeqBySlug, goods) : {};
   const genericCarry =
     carrySeqBySlug === undefined || carrySeqBySlug.size === 0
@@ -154,7 +150,7 @@ export function characterBinding(
  * (19 of 27 in the real decode - the head is authored once, on the base walk), so a head drawn at the carry
  * range's own ids would vanish and a stone-hauler would walk headless. A good whose head frame is empty
  * borrows the base walk at the same (facing, frame) offset. Returns the input table by identity when
- * nothing borrows, so the caller can skip building a head binding at all. Pure.
+ * nothing borrows, so the caller can skip building a head binding at all.
  */
 export function carryHeadAnims(
   byGood: NonNullable<CarryingBinding['byGood']>,
