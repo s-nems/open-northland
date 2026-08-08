@@ -6,8 +6,8 @@ import { CONSTRUCTION_SIGN_DX, IDENTITY_COLOUR, type SignGfx, sheetFor } from '.
 
 /**
  * One player-coloured `ls_temp` stand per building site, planted {@link CONSTRUCTION_SIGN_DX} clear of the
- * site's sign post so it never sits over the site's door badges. The app's `computeConstructionSigns`
- * decides what counts as a site and where its post is; this layer only projects.
+ * site's sign post so it never sits over its door badges. The app's `computeConstructionSigns` decides
+ * what counts as a site and where its post is; this layer only projects.
  */
 export interface ConstructionSign {
   /** The building entity id - the retained-pool key. */

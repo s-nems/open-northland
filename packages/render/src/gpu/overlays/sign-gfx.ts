@@ -3,10 +3,8 @@ import type { AtlasFrame } from '../../data/sprites/index.js';
 import type { TextureCache } from '../texture-cache.js';
 
 /**
- * The decoded building-sign art contract shared by the door-badge and construction-sign layers, and the
- * one owner of two rules: a player slot with no recoloured sheet (the extras beyond the original's 10,
- * or a failed atlas load) draws slot 0's sheet, and the chain layout lives here so drawing and click
- * picking cannot disagree on where a row is.
+ * The decoded building-sign art contract shared by the door-badge and construction-sign layers. It owns
+ * the chain layout too, so drawing and click picking cannot disagree on where a row is.
  */
 
 /** One family living in a home, as its door banner reads it: a single, a childless couple, or a couple
@@ -48,12 +46,12 @@ export interface BuildingSignGfx {
   readonly byPlayer: readonly (BuildingSignSheet | undefined)[];
 }
 
-/** {@link BuildingSignGfx} plus the consuming layer's frame→texture cache. */
 export interface SignGfx extends BuildingSignGfx {
   readonly textures: TextureCache;
 }
 
-/** The sheet a marker draws for a resolved colour slot: its own recolour, else slot 0's. */
+/** The sheet a marker draws for a resolved colour slot: its own recolour, else slot 0's - the fallback a
+ *  slot beyond the original's 10, or a failed atlas load, lands on. */
 export function sheetFor(gfx: SignGfx, colour: number): BuildingSignSheet | undefined {
   return gfx.byPlayer[colour] ?? gfx.byPlayer[0];
 }
@@ -113,9 +111,8 @@ const SIGN_HALF_WIDTH = 14;
 /**
  * World-px the construction stand is planted left of the shared sign post, so it stands beside a site's
  * door badges instead of over them - both markers anchor on the same extracted `GfxFlagPoint`. Two
- * {@link SIGN_HALF_WIDTH}s clears the widest badge frame, the disc, which is what they collide over.
- * A named deviation: the original plants its stand on the flag point, and both the magnitude and the
- * flat-left direction are pixel judgements rather than measurements.
+ * {@link SIGN_HALF_WIDTH}s clears the widest badge frame, the disc. Approximation: the original plants
+ * its stand on the flag point, and this offset is a pixel judgement.
  */
 export const CONSTRUCTION_SIGN_DX = -2 * SIGN_HALF_WIDTH;
 /** World-px the planted base sign's rock clump extends below the stack anchor. */
@@ -126,9 +123,8 @@ const SIGN_BAND_BOTTOM = 6;
 
 /**
  * The stack row index at `(dx, dy)` world-px from the stack's anchor (+y down), or `null` outside the
- * stack. Row 0 is the planted base sign; each row above owns the {@link SIGN_STEP} band over its emblem,
- * and the base row additionally owns the clump below the anchor. The same layout `makeSignStack` draws,
- * so a click lands on the row the player sees.
+ * stack. Row 0 is the planted base sign and also owns the clump below the anchor; each row above owns the
+ * {@link SIGN_STEP} band over its emblem. The same layout `makeSignStack` draws.
  */
 export function signRowAt(rowCount: number, dx: number, dy: number): number | null {
   if (rowCount <= 0 || Math.abs(dx) > SIGN_HALF_WIDTH || dy > SIGN_BASE_BELOW) return null;

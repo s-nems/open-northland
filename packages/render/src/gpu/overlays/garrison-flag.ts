@@ -6,17 +6,17 @@ import type { BuildingSignSheet } from './sign-gfx.js';
 /**
  * The garrison flag - the marker a manned post flies from its roof instead of one worker sign per
  * soldier. The art is the original's player-coloured `ls_temp` `soldier 01`..`05` records, each an
- * eight-frame wave loop; the tower records' own `gfxsoldierflagpoint` says where it is planted, which is
- * what ties these five to a manned tower rather than to any other sign.
+ * eight-frame wave loop; the tower records' own `gfxsoldierflagpoint` ties those five to a manned tower
+ * rather than to any other sign.
  *
  * The badge layer owns where it flies and when it is rebuilt; this module owns what it looks like.
  */
 
 /**
- * The most stars a flag flies: the extracted art has exactly five records per player slot, drawing 1..5
- * stars in that order (`soldier 01` = bob 36 … `soldier 05` = bob 68). One star per man, with a bigger
- * post (the big tower employs eight bows) saturating here rather than gauging its capacity across the
- * same five steps, is an approximation from observation.
+ * The most stars a flag flies: the extracted art has five records per player slot, drawing 1..5 stars in
+ * that order (`soldier 01` = bob 36 … `soldier 05` = bob 68). Approximation: one star per man, with a
+ * bigger post (the big tower employs eight bows) saturating here rather than gauging its capacity across
+ * the same five steps.
  */
 export const GARRISON_STAR_MAX = 5;
 
@@ -30,8 +30,8 @@ export const GARRISON_TICKS_PER_FRAME = 2;
 /**
  * The flag's clickable band, world px from its mast anchor (+y down): the drawn `soldier` frame's own
  * extent (46x43 at offset -4,-38; the wave frames vary by up to 2 px, so the box is the authored one).
- * Owned here with the drawing, so a click lands on the cloth the player aimed at rather than falling
- * through to the ground ~230 px below the banner.
+ * Owned here with the drawing, so a click lands on the cloth rather than falling through to the ground
+ * ~230 px below the banner.
  */
 export function hitsGarrisonFlag(dx: number, dy: number): boolean {
   return dx >= -4 && dx <= 42 && dy >= -38 && dy <= 5;

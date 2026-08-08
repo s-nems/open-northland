@@ -6,10 +6,10 @@ import { hashCells } from './cell-signature.js';
 /**
  * The build-placement overlay: a translucent dark wash over everything the held building cannot anchor
  * on and a slight lift over the ground it can, with no visible tile grid. The sim's placement rule
- * (`Simulation.placementProbe`) decides the blocked set upstream; this layer is a pure projection of it
- * and never calls back into the sim. Each side is composited off-screen at half resolution first, where
- * the padded diamonds fuse by saturating instead of double-blending; the alpha and softness constants
- * are tuned by eye against the original's build-mode look (observation).
+ * (`Simulation.placementProbe`) decides the blocked set; this layer only projects it. Each side is
+ * composited off-screen at half resolution first, where the padded diamonds fuse by saturating instead
+ * of double-blending. The alpha and softness constants are tuned by eye against the original's
+ * build-mode look (observation).
  */
 
 /** One half-cell node of the probed band (integer col,row on the `2W×2H` lattice). */
@@ -120,7 +120,6 @@ export class PlacementOverlayLayer {
     const brightTexture = this.brightTexture;
     if (dimTexture === null || brightTexture === null) return; // ensureTextures always sets them
 
-    // Each side's fused-diamond surface, opaque white in composite-texture space.
     const blocked = new Set<string>();
     for (const c of frame.blocked) blocked.add(`${c.col},${c.row}`);
     const blockedG = this.blockedG.clear();
@@ -185,8 +184,8 @@ export class PlacementOverlayLayer {
   }
 }
 
-/** Order-sensitive signature of a frame. The caller emits blocked cells in a fixed tile-scan order,
- *  which is what makes equal frames hash equal. */
+/** Order-sensitive signature of a frame - equal frames hash equal because the caller emits blocked cells
+ *  in a fixed tile-scan order. */
 function signatureOf(frame: PlacementOverlayFrame): string {
   const h = hashCells(frame.blocked, frame.blocked.length);
   return `${frame.minCol},${frame.maxCol},${frame.minRow},${frame.maxRow}:${frame.blocked.length}:${h}`;

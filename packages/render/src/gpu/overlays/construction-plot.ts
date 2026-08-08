@@ -56,7 +56,8 @@ export class ConstructionPlotLayer {
  * frame (`u = col + row`, `v = col − row`), where a node diamond is the axis-aligned 2×2 square centred
  * `(u, v)` - so the union becomes unit grid squares whose rectilinear boundary is walked exactly. Loops
  * wind with the region on the left (holes wind opposite); at a corner-pinch vertex the walk prefers the
- * left turn, so loops never self-cross. Deterministic: squares and edges are visited in sorted-key order.
+ * left turn, so loops never self-cross. Deterministic: squares and edges are visited in sorted-key order,
+ * so the outlines do not depend on the caller's cell order.
  */
 export function plotOutlines(plots: readonly ConstructionPlotFrame[]): { u: number; v: number }[][] {
   // 1. The covered unit squares, keyed by their min corner "a,b" - 4 per cell (the 2×2 block).
