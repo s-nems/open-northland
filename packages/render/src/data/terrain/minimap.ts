@@ -2,11 +2,10 @@ import { TILE_HALF_H, TILE_HALF_W } from '../projection/iso.js';
 import type { SceneGround } from '../scene/terrain-scene.js';
 
 /**
- * The pure minimap raster: cell grid → RGBA picture, plus the ground-lane → cell-colour join it
- * samples. One owner for the in-game minimap, the menu's client-side map preview and the asset
- * pipeline's synthesized thumbnails, so all three rasterise a map identically. Named approximation: a
- * cell takes the mean texel of its two triangles' pattern rects, ignoring transition overlays,
- * elevation shading and the `embr` brightness lane.
+ * The pure minimap raster: cell grid → RGBA picture, plus the ground-lane → cell-colour join it samples.
+ * One owner, so every consumer rasterises a map identically. Named approximation: a cell takes the mean
+ * texel of its two triangles' pattern rects, ignoring transition overlays, elevation shading and the
+ * `embr` brightness lane.
  */
 
 /** The world-space (projected px, pre-camera) axis-aligned bounds of a whole terrain grid. */
@@ -19,9 +18,8 @@ export interface WorldBounds {
 
 /**
  * The world box covering every cell diamond of a `mapW × mapH` cell grid: centres span
- * `x ∈ [0, (2·mapW−1)·TILE_HALF_W]` (odd rows staggered half a cell right) and
- * `y ∈ [0, (mapH−1)·TILE_HALF_H]`, and each diamond extends ±TILE_HALF_W / ±TILE_HALF_H around its
- * centre.
+ * `x ∈ [0, (2·mapW−1)·TILE_HALF_W]` and `y ∈ [0, (mapH−1)·TILE_HALF_H]`, and each diamond extends
+ * ±TILE_HALF_W / ±TILE_HALF_H around its centre.
  */
 export function terrainWorldBounds(mapW: number, mapH: number): WorldBounds {
   return {
@@ -43,7 +41,7 @@ export interface TerrainCells {
 const MAP_PREVIEW_MAX_WIDTH = 720;
 const MAP_PREVIEW_MAX_HEIGHT = 420;
 
-/** Fit a `mapW × mapH` cell grid's world bounds into the preview cap, aspect preserved (min 1 px). */
+/** Aspect preserved, min 1 px. */
 export function mapPreviewSize(
   mapW: number,
   mapH: number,
@@ -80,7 +78,6 @@ export function rasterizeTerrain(
       let bestCol = 0;
       let bestRow = 0;
       let bestDist = Number.POSITIVE_INFINITY;
-      // The two candidate rows, unrolled (no per-pixel array) - this loop runs once per raster px.
       for (let candidate = 0; candidate < 2; candidate++) {
         const clampedRow = Math.min(terrain.height - 1, Math.max(0, rowLo + candidate));
         const stagger = clampedRow % 2 === 0 ? 0 : 1; // odd rows sit half a cell right (tileToScreen)

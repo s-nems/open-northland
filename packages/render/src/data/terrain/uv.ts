@@ -1,12 +1,11 @@
 /**
  * The pattern-page UV fold: a pattern record's pixel coords, or a plain sub-rect, onto a cell's two
- * triangles. The convention is verified across all 927 pattern records and 38 transition records:
- * `coordsA` lists the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB` lists
- * (TL, TR, BR) and maps onto B's [left, E, SE] - both in point order, divided by the page size
+ * triangles. `coordsA` lists the tile square's (TL, BR, BL) and maps onto A's [apex, SE, SW]; `coordsB`
+ * lists (TL, TR, BR) and maps onto B's [left, E, SE] - both in point order, divided by the page size
  * verbatim.
  */
 
-/** A source sub-rectangle in texture pixels - the pattern's tile region within its `text_NNN` page. */
+/** A source sub-rectangle in texture pixels. */
 export interface SrcRect {
   readonly x: number;
   readonly y: number;
@@ -19,9 +18,7 @@ export interface SrcRect {
  * the app derives it from a `TerrainPattern` IR row.
  */
 export interface CellTexture {
-  /** The texture page key (e.g. `text_003`) - the key into the loaded page sources. */
   readonly pageKey: string;
-  /** The tile's sub-rect within the page, in texture pixels. */
   readonly rect: SrcRect;
   /** The logic-type `debugColor` as `0xRRGGBB` - the flat-tint fallback when the page is unavailable. */
   readonly fallbackColour?: number;
@@ -44,9 +41,8 @@ export function triangleUVs(coords: readonly number[], pageW: number, pageH: num
 }
 
 /**
- * A page sub-rect's corners folded onto one cell triangle by the pattern-record convention (`a` gets
- * the rect's TL, BR, BL; `b` its TL, TR, BR), so the approximated representative-tile path shares the
- * 1:1 path's tessellation and differs only in which sub-rect it samples.
+ * A page sub-rect's corners folded onto one cell triangle, so the approximated representative-tile path
+ * shares the 1:1 path's tessellation and differs only in which sub-rect it samples.
  */
 export function rectTriangleUVs(rect: SrcRect, triangle: 'a' | 'b', pageW: number, pageH: number): number[] {
   const x0 = rect.x / pageW;
@@ -58,8 +54,8 @@ export function rectTriangleUVs(rect: SrcRect, triangle: 'a' | 'b', pageW: numbe
 
 /**
  * The source sub-rect (in texture pixels) a `TerrainPattern`'s two UV triangles span: the bounding box
- * of `coordsA ∪ coordsB` (each a `[x0,y0, x1,y1, x2,y2]` triple). For a representative full-tile
- * pattern this is the tile's 64×64 square within its page.
+ * of `coordsA ∪ coordsB` (each a `[x0,y0, x1,y1, x2,y2]` triple). Since the coords are inclusive
+ * corners, a full-tile pattern spans 63×63, one texel short of the 64 px tile.
  */
 export function patternSrcRect(coordsA: readonly number[], coordsB: readonly number[]): SrcRect {
   const xs = [coordsA[0], coordsA[2], coordsA[4], coordsB[0], coordsB[2], coordsB[4]];

@@ -1,18 +1,14 @@
 /**
- * The shared per-cell map-lane sampler core. The elevation lift (`elevation.ts`) and the baked
- * brightness shading (`brightness.ts`) are thin wrappers over it: they must sample at identical
- * coordinates, or a lifted sprite and its shading disagree.
+ * The shared per-cell map-lane sampler core. The elevation lift and the baked brightness shading must
+ * sample at identical coordinates, or a lifted sprite and its shading disagree.
  */
 
 import { lerp } from '../math.js';
 
-/** A bilinear sample of a per-cell lane at a continuous cell coordinate (raw lane units). */
+/** Raw lane units. */
 type CellSampler = (col: number, row: number) => number;
 
-/**
- * The edge-clamped integer-cell lookup over a row-major lane: an out-of-range coordinate repeats the
- * boundary cell, matching the GPU lane texture's clamp.
- */
+/** An out-of-range coordinate repeats the boundary cell, matching the GPU lane texture's clamp. */
 export function clampedCellAt(
   values: ArrayLike<number>,
   width: number,
@@ -26,9 +22,8 @@ export function clampedCellAt(
 }
 
 /**
- * Build the bilinear, edge-clamped sampler over a row-major per-cell lane: fractional inputs
- * interpolate, a sample past an edge repeats the boundary cell (no wrap, no OOB). Closes over the
- * array by reference, never mutating it. Callers must pass a non-empty lane and positive dimensions.
+ * Build the bilinear sampler over a row-major per-cell lane. Closes over the array by reference, never
+ * mutating it. Callers must pass a non-empty lane and positive dimensions.
  */
 export function makeCellSampler(values: readonly number[], width: number, height: number): CellSampler {
   const at = clampedCellAt(values, width, height);

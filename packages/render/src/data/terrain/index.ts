@@ -1,7 +1,5 @@
-/**
- * The Pixi-free half of drawing the ground: the twin of `gpu/terrain/`, so the vertex, UV, and shading
- * math is unit-tested headlessly.
- */
+/** The Pixi-free half of drawing the ground, so the vertex, UV, and shading math is unit-tested
+ *  headlessly. */
 
 export { BRIGHTNESS_NEUTRAL, type BrightnessField, makeBrightnessField, scaleColour } from './brightness.js';
 export { clampedCellAt, makeCellSampler } from './cell-field.js';

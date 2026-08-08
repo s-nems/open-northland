@@ -1,11 +1,10 @@
 import { makeCellSampler } from './cell-field.js';
 
 /**
- * The decoded map's `embr` lane (`content/maps/<id>.json` `brightness`, per-cell u8) is the original's
- * pre-baked shading plane - slope light and shadow over the hills plus the fade-to-black border whose
- * outermost 2-3 rows and columns hold 0 - carried verbatim instead of modelled as lighting.
+ * The decoded map's `embr` lane is the original's pre-baked shading plane, carried verbatim instead of
+ * modelled as lighting.
  *
- * Only the ground and landscape objects take the lane; buildings and settlers draw unshaded as in the
+ * Ground and non-exempt landscape objects take the lane; buildings and settlers draw unshaded as in the
  * original, whose bob-print core (`CBobManager.PrintBob_8BitCore`/`PrintBob_DoubleByteCore`) takes no
  * brightness argument.
  */
@@ -24,20 +23,14 @@ export const BRIGHTNESS_NEUTRAL = 127;
 export interface BrightnessField {
   /** False when the map has no lane, so consumers skip the shading work entirely. */
   readonly shaded: boolean;
-  /**
-   * The luminance multiplier (≥ 0, 1 = unchanged) at a continuous cell coordinate: the per-cell grid ÷
-   * {@link BRIGHTNESS_NEUTRAL}.
-   */
+  /** The luminance multiplier (≥ 0, 1 = unchanged) at a continuous cell coordinate. */
   brightnessAt(col: number, row: number): number;
 }
 
-/** The neutral field - no brightness lane. Shared so an unshaded map allocates nothing. */
+/** Shared so an unshaded map allocates nothing. */
 const NEUTRAL_FIELD: BrightnessField = { shaded: false, brightnessAt: () => 1 };
 
-/**
- * Build a {@link BrightnessField} from a decoded map's `brightness` lane (row-major, length
- * `width·height`). Closes over the array by reference, never mutating it.
- */
+/** Build a {@link BrightnessField} from a per-cell shading lane (row-major, length `width·height`). */
 export function makeBrightnessField(
   brightness: readonly number[] | undefined,
   width: number,
