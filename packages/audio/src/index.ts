@@ -21,7 +21,6 @@ export {
 } from './data/director/index.js';
 export {
   DEFAULT_MUSIC_STEMS,
-  MENU_MUSIC_TYPE,
   type MusicManifest,
   type MusicTrack,
   musicTrackForType,

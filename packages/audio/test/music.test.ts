@@ -126,6 +126,40 @@ describe('WebAudioEngine music', () => {
     expect(ctx.sources).toHaveLength(2); // restarted from the remembered desired track
   });
 
+  it('installs only one source when mute/unmute races an in-flight load', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(TRACK);
+    engine.setEnabled(false); // both while the first fetch is still in flight
+    engine.setEnabled(true);
+    await flush();
+    expect(ctx.sources.filter((s) => s.started && s.stoppedAt === null)).toHaveLength(1);
+  });
+
+  it('re-fetches nothing when returning to a recently played track', async () => {
+    const { engine, fetched } = makeEngine();
+    await engine.resume();
+    engine.setMusic(TRACK);
+    await flush();
+    engine.setMusic({ file: 'attack_arabs.ogg' });
+    await flush();
+    engine.setMusic(TRACK); // back within the decoded-buffer cache
+    await flush();
+    expect(fetched.filter((u) => u.endsWith('theme_viking_neutral.ogg'))).toHaveLength(1);
+  });
+
+  it('retries a track whose load landed while the context was suspended', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(TRACK);
+    ctx.state = 'suspended'; // external interruption (no stop()) while the load is in flight
+    await flush();
+    expect(ctx.sources).toHaveLength(0);
+    await engine.resume();
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+  });
+
   it('memoises a failed track load and never re-fetches it', async () => {
     const { engine, fetched } = makeEngine({ failFetch: true });
     await engine.resume();

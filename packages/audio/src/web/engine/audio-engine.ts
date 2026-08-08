@@ -50,9 +50,10 @@ export const DEFAULT_SOUNDS_BASE_URL = '/sounds/';
 export const DEFAULT_MUSIC_BASE_URL = '/music/';
 /** Default overall output gain. */
 export const DEFAULT_MASTER_GAIN = 0.8;
-/** Default game-sounds volume - the original options default (`opt_game.ini` `fx_volume 100`). */
+/** Default game-sounds volume - the owned install's `opt_game.ini` `fx_volume 100`. The linear
+ *  0..1 map of the original 0-100 scale onto Web Audio gain is an approximation. */
 export const DEFAULT_SFX_VOLUME = 1;
-/** Default music volume - the original options default (`opt_game.ini` `dm_volume 70`). */
+/** Default music volume - the owned install's `opt_game.ini` `dm_volume 70`. */
 export const DEFAULT_MUSIC_VOLUME = 0.7;
 /** A user volume change ramps over this many seconds - long enough to avoid a zipper click. */
 export const VOLUME_RAMP_S = 0.05;

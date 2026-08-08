@@ -15,4 +15,4 @@ export {
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './audio-engine.js';
-export { MUSIC_FADE_S, MusicPlayer } from './music-player.js';
+export { MUSIC_FADE_S } from './music-player.js';

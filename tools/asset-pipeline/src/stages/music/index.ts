@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { createOggEncoder } from 'wasm-media-encoders';
@@ -13,12 +13,11 @@ import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { decodePcm16Wav } from './wav.js';
 
 /**
- * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks. Each segment's
- * intro plays once and its `[mtLoopStart, mtLength]` region loops (the `segh` evidence: play start
- * 0, infinite repeats), so the emitted file is exactly one `mtLength` pass and the manifest carries
- * the loop-back point in seconds. Rendering needs the locally built dmrender binary
- * (`scripts/build-dmrender.sh`); without it, or without `DataX/DM2`, the stage is skipped and the
- * app plays no music.
+ * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - one `mtLength`
+ * pass per segment, with the loop-back point in the manifest (loop semantics: `decoders/sgt.ts`).
+ * `Theme_Viking_Hostile` alone authors `repeats: 1`; looping it like its 63 infinite siblings is an
+ * approximation. Rendering needs the locally built dmrender binary (`scripts/build-dmrender.sh`);
+ * without it, or without `DataX/DM2`, the stage is skipped and the app plays no music.
  */
 
 const execFileAsync = promisify(execFile);
@@ -61,26 +60,39 @@ function resolveDmrender(): string | undefined {
   return existsSync(vendored) ? vendored : undefined;
 }
 
-async function isUpToDate(outPath: string, sourcePath: string): Promise<boolean> {
+/** The ogg is current only if it is newer than every render input (segment, banks, renderer). */
+async function isUpToDate(outPath: string, sourcePath: string, inputsMtimeMs: number): Promise<boolean> {
   try {
     const [out, source] = await Promise.all([stat(outPath), stat(sourcePath)]);
-    return out.mtimeMs > source.mtimeMs;
+    return out.mtimeMs > source.mtimeMs && out.mtimeMs > inputsMtimeMs;
   } catch {
     return false;
   }
+}
+
+/** Latest mtime of the shared render inputs: the DLS banks and the dmrender binary itself. */
+async function sharedInputsMtimeMs(dm2: string, dmrender: string): Promise<number> {
+  let latest = (await stat(dmrender)).mtimeMs;
+  for (const entry of await readdir(dm2)) {
+    if (!entry.toLowerCase().endsWith('.dls')) continue;
+    const { mtimeMs } = await stat(join(dm2, entry));
+    if (mtimeMs > latest) latest = mtimeMs;
+  }
+  return latest;
 }
 
 /** Interleave planar float channels, trim to `frames`, encode to ogg/vorbis bytes. */
 async function encodeOgg(channels: readonly Float32Array[], frames: number): Promise<Uint8Array> {
   const encoder = await createOggEncoder();
   encoder.configure({ channels: CHANNELS, sampleRate: SAMPLE_RATE, vbrQuality: VBR_QUALITY });
+  const [left, right] = channels;
+  if (left === undefined || right === undefined) throw new Error('encode expects stereo channels');
   const parts: Uint8Array[] = [];
   // Encode in bounded slices so the wasm side never sees the whole track at once.
   const SLICE_FRAMES = 1 << 20;
   for (let start = 0; start < frames; start += SLICE_FRAMES) {
     const end = Math.min(frames, start + SLICE_FRAMES);
-    const slice = channels.map((c) => c.subarray(start, end)) as [Float32Array, Float32Array];
-    parts.push(encoder.encode(slice));
+    parts.push(encoder.encode([left.subarray(start, end), right.subarray(start, end)]));
   }
   parts.push(encoder.finalize());
   const total = parts.reduce((sum, p) => sum + p.length, 0);
@@ -119,6 +131,7 @@ export async function renderMusicStage(
 
   const musicDir = join(outDir, MUSIC_DIR);
   await mkdir(musicDir, { recursive: true });
+  const inputsMtimeMs = await sharedInputsMtimeMs(dm2, dmrender);
   // dmrender resolves the segments' DLS references against its working directory.
   const workDir = await mkdtemp(join(tmpdir(), 'dmrender-'));
   for (const entry of await readdir(dm2)) {
@@ -143,7 +156,7 @@ export async function renderMusicStage(
       const loopStartS = musicTimeToSeconds(timing.loopStartTicks, timing.tempos);
       const totalS = musicTimeToSeconds(timing.lengthTicks, timing.tempos);
       manifest.set(stem, loopStartS > 0 ? { file, loopStartS } : { file });
-      if (await isUpToDate(outPath, sourcePath)) {
+      if (await isUpToDate(outPath, sourcePath, inputsMtimeMs)) {
         kept++;
         return;
       }

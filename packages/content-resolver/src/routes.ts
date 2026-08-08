@@ -57,8 +57,8 @@ const FILE_ROUTES: readonly FileRoute[] = [
   { prefix: '/bobs/', root: BOBS_ROOT, extensions: ['.png', '.atlas.json'] },
   { prefix: '/textures/', root: 'Data/engine2d/bin/textures', extensions: ['.png'] },
   { prefix: '/sounds/', root: 'Data/engine2d/bin/sounds', extensions: ['.wav'] },
-  // Rendered music: `.ogg` tracks (a `.wav` fallback when no encoder ran) + the track manifest.
-  { prefix: '/music/', root: 'music', extensions: ['.ogg', '.wav', '.json'] },
+  // Rendered music tracks + the track manifest.
+  { prefix: '/music/', root: 'music', extensions: ['.ogg', '.json'] },
   { prefix: '/gui/', root: 'gui', extensions: ['.json', '.png', '.cur'] },
   { prefix: '/gui-bitmaps/', root: 'Data/gui/bitmaps', extensions: ['.png'] },
   { prefix: '/goods/', root: 'goods', extensions: ['.json'] },

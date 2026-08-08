@@ -16,8 +16,11 @@ change.
   only in `Game.exe`; any prosperity/threat heuristic is an approximation and must be named as one.
 - `Attack_<tribe>` (types 6-9): play during combat. Establish the selection basis (whose tribe,
   which fight) from evidence before implementing.
-- Main menu: play type 2 (`Theme_Viking_*`) - `StartTrack(2)` hardcoded in `Game.exe`. Needs a
-  music-capable driver in the menu entry, which today has no audio at all.
+- `Theme_Viking_Hostile` alone authors `repeats: 1` where its 63 siblings loop infinitely; decide
+  whether to honour that or keep looping it when the hostile variant becomes selectable.
+- Main menu: hypothesis from the OpenVikings reversing repo (not admissible evidence) is that the
+  menu plays type 2 (`Theme_Viking_*`); confirm by observing the original before implementing.
+  Needs a music-capable driver in the menu entry, which today has no audio at all.
 - Put the mood decision in the pure audio director (per-frame, from snapshot state), not in app
   control flow.
 
