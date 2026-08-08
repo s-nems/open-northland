@@ -105,6 +105,11 @@ export const plSurfaces = {
         on: 'Przez doświadczenie',
         off: 'Wszystkie od początku',
       },
+      needsLabel: 'Potrzeby osadników',
+      needsModes: {
+        on: 'Rosną z czasem',
+        off: 'Wyłączone',
+      },
       start: 'Rozpocznij grę',
       startNeedsSeat: 'Najpierw zajmij miejsce',
     },

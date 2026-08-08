@@ -1,4 +1,4 @@
-import { Settler } from '../../../../../components/index.js';
+import { needsEnabled, Settler } from '../../../../../components/index.js';
 import { type Fixed, fx, ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
@@ -17,6 +17,7 @@ const NEED_EVENT_RESERVE = 10000;
  * swing carries `event 2 1 -20`, a woman's -100.
  */
 export function paySwingNeedCost(world: World, ctx: SystemContext, attacker: Entity, atomicId: number): void {
+  if (!needsEnabled(world)) return;
   const s = world.tryGet(attacker, Settler);
   if (s === undefined) return;
   const animation = atomicAnimationName(ctx.content, s, atomicId);

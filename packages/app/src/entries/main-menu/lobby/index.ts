@@ -1,7 +1,6 @@
 import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { segControl, togglePill } from '../controls.js';
 import { createMapDetailsCard } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
@@ -10,11 +9,11 @@ import { targetSearch } from '../target-search.js';
 import {
   initialLobbyOptions,
   initialLobbyState,
-  LOBBY_FOG_MODES,
   type LobbySlotRow,
   lobbySlotRows,
   lobbyStartEntry,
 } from './model.js';
+import { lobbyOptionsCard } from './options-card.js';
 import {
   claimSeat,
   hasClaimableSeat,
@@ -81,52 +80,14 @@ export function lobbyScreen(
 
   const launch = document.createElement('div');
   launch.className = 'main-menu__lobby-launch';
-  const optionsCard = document.createElement('div');
-  optionsCard.className = 'main-menu__lobby-card';
-  const optionsTitle = document.createElement('div');
-  optionsTitle.className = 'main-menu__lobby-card-title';
-  optionsTitle.textContent = lobby.settingsTitle;
-  optionsCard.append(optionsTitle);
 
   const options = initialLobbyOptions(new URLSearchParams(window.location.search));
-
-  const fogLabel = document.createElement('div');
-  fogLabel.className = 'main-menu__lobby-option-label';
-  fogLabel.textContent = lobby.fogLabel;
-  const fogSeg = segControl(
-    LOBBY_FOG_MODES.map((mode) => ({
-      id: mode,
-      label: lobby.fogModes[mode].label,
-      title: lobby.fogModes[mode].detail,
-    })),
-    options.fog,
-    (mode) => {
-      options.fog = mode;
-      fogSeg.setActive(mode);
-    },
-  );
-  fogSeg.root.classList.add('main-menu__lobby-fog');
-  optionsCard.append(fogLabel, fogSeg.root);
-
-  const progressionRow = document.createElement('div');
-  progressionRow.className = 'main-menu__lobby-option-row';
-  const progressionLabel = document.createElement('span');
-  progressionLabel.textContent = lobby.progressionLabel;
-  const progressionToggle = togglePill(
-    options.professionProgression,
-    (on) => {
-      options.professionProgression = on;
-    },
-    (on) => lobby.progressionModes[on ? 'on' : 'off'],
-  );
-  progressionRow.append(progressionLabel, progressionToggle);
-  optionsCard.append(progressionRow);
 
   const start = document.createElement('button');
   start.type = 'button';
   start.className = 'main-menu__primary main-menu__lobby-start';
   start.textContent = lobby.start;
-  launch.append(optionsCard, start);
+  launch.append(lobbyOptionsCard(options), start);
   side.append(card.root, launch);
 
   body.append(main, side);

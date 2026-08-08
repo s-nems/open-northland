@@ -4,10 +4,8 @@ import type { Entity } from '../../ecs/world.js';
 export type RulesCommand =
   | {
       /**
-       * Toggle the needs mechanic globally: hunger, fatigue, piety and enjoyment stop rising, and
-       * starvation stops draining, while disabled. Sets the `WorldRules` singleton (created on first
-       * use), so the toggle hashes and replays like any other state. Authored: an admin lever that
-       * acceptance scenes disable so test units do not starve; live maps keep it enabled.
+       * Toggle the needs mechanic globally, as `WorldRules.needsEnabled` defines it. Sets that singleton
+       * (created on first use), so the toggle hashes and replays like any other state.
        */
       readonly kind: 'setNeedsEnabled';
       readonly enabled: boolean;

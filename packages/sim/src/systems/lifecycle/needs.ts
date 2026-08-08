@@ -66,6 +66,7 @@ export const PIETY_PER_MILITARY_CYCLE: Fixed = fx.div(ONE, fx.fromInt(10)); // 1
 
 /** Add {@link PIETY_PER_MILITARY_CYCLE} to a settler's piety deficit, clamped at {@link ONE}. */
 export function chargeMilitaryPiety(world: World, settler: Entity): void {
+  if (!needsEnabled(world)) return;
   if (!world.has(settler, Settler)) return;
   const s = world.get(settler, Settler);
   const risen = fx.add(s.piety, PIETY_PER_MILITARY_CYCLE);

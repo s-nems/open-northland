@@ -64,6 +64,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     assistantSeats: options.aiSeats,
     fog: options.fog ?? null,
     progression: null,
+    needs: null,
     berryBushes: options.berryBushes === true,
   });
   if (world.kind !== 'authored') throw new Error(`${options.mapId} resolved no authored placements`);

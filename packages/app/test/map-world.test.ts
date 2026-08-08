@@ -17,6 +17,7 @@ const NO_SESSION_FLAGS = {
   assistantSeats: [],
   fog: null,
   progression: null,
+  needs: null,
 } as const;
 
 /** The authored join rows as a served IR document. Sound for these fixtures: the assembly reads the

@@ -1,4 +1,5 @@
 import type { FogModeName } from '../../../game/fog.js';
+import { onOffParam } from '../../../game/session-rules.js';
 import type { MapPlayerSlot } from './roster-state.js';
 import {
   authoredVacantMode,
@@ -18,13 +19,16 @@ export const DEFAULT_FOG_MODE: FogModeName = 'reveal';
 export interface LobbyOptions {
   fog: FogModeName;
   professionProgression: boolean;
+  settlerNeeds: boolean;
 }
 
+/** Both rules default on, so only an explicit `off` in the URL clears the box. */
 export function initialLobbyOptions(params: URLSearchParams): LobbyOptions {
   const fog = params.get('fog');
   return {
     fog: LOBBY_FOG_MODES.find((mode) => mode === fog) ?? DEFAULT_FOG_MODE,
-    professionProgression: params.get('progression') !== 'off',
+    professionProgression: onOffParam(params, 'progression') !== false,
+    settlerNeeds: onOffParam(params, 'needs') !== false,
   };
 }
 
@@ -60,8 +64,8 @@ export function lobbySlotRows(
     }));
 }
 
-/** The `?map=` entry Start navigates to; fog and progression are always explicit so they override
- *  stale carried params. */
+/** The `?map=` entry Start navigates to; every option is written explicitly so it overrides a stale
+ *  carried param. */
 export function lobbyStartEntry(
   mapId: string,
   state: RosterState,
@@ -72,5 +76,6 @@ export function lobbyStartEntry(
   for (const [key, value] of rosterStartParams(state, players)) params.set(key, value);
   params.set('fog', options.fog);
   params.set('progression', options.professionProgression ? 'on' : 'off');
+  params.set('needs', options.settlerNeeds ? 'on' : 'off');
   return `?${params.toString()}`;
 }
