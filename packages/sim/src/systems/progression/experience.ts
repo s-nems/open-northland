@@ -12,9 +12,9 @@ import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
  * `(job, good)` pairing (`humanjobexperiencetypes`, e.g. "collector wood" = job 8 + good 5), not just per
  * job, so repeating the same work on the same good is what makes an expert.
  *
- * These are helpers called from the atomic executor rather than a per-tick `System`: XP accrues the
- * instant a work atomic completes, and sim events are render-only, so the grant lives where the
- * completion is known. XP is a whole-number counter on the original's integer scale.
+ * Helpers called from the atomic executor rather than a per-tick `System`: XP accrues the instant a work
+ * atomic completes, and sim events are render-only, so the grant lives where the completion is known. XP
+ * is a whole-number counter on the original's integer scale.
  */
 
 /**
@@ -52,8 +52,7 @@ export function workRepeatsFor(ctx: SystemContext, jobType: number | null, goodT
  * matched track's `experienceFactor` (the original's per-track accrual rate, 1..250 in the base data) per
  * unit. Authored: XP counts resource units gathered, never swings, so a felled trunk trains its whole
  * yield at once, and work trains only the matched track, so digging stone never advances the clay
- * specialization. A gate keyed to a job-general track stays reachable because {@link requirementRepeats}
- * counts it as the job's total repeats across all its tracks.
+ * specialization.
  */
 export function grantWorkExperience(
   world: World,
@@ -70,8 +69,6 @@ export function grantWorkExperience(
   accrueExperience(s, track.typeId, track.experienceFactor * units);
 }
 
-/** Accrue `amount` XP into a settler's `trackId` specialization bucket - the shared tail of the work- and
- *  fight-XP grants. */
 function accrueExperience(s: { experience: Map<number, number> }, trackId: number, amount: number): void {
   if (amount <= 0) return; // a zero-rate track must not plant a hash-visible bucket with no meaning
   s.experience.set(trackId, (s.experience.get(trackId) ?? 0) + amount);
@@ -130,7 +127,7 @@ export function grantCarryExperience(world: World, ctx: SystemContext, settler: 
 export const SCOUT_EXPERIENCE_TYPE = 100;
 
 /** Grant a scout one signpost-craft XP for a guidepost it actually erected; the caller checks the post
- *  stood. Only the scout trade trains it. */
+ *  stood. */
 export function grantScoutExperience(world: World, content: ContentSet, settler: Entity): void {
   const s = world.tryGet(settler, Settler);
   if (s === undefined || !isScoutJob(content, s.jobType)) return;
@@ -171,10 +168,7 @@ export const SOLDIER_GENERAL_EXPERIENCE_TYPE = 69;
  *  `generalTrackFor`. */
 export const HERO_GENERAL_EXPERIENCE_TYPE = 70;
 
-/**
- * The fight-XP bucket each weapon class accrues into. Saber has no fight track in the data (no
- * `JOB_EXPERIENCE_TYPE_FIGHT_SABER`), so a saber swing accrues no fight XP.
- */
+/** Saber has no fight track in the data (no `JOB_EXPERIENCE_TYPE_FIGHT_SABER`), so it is absent here. */
 const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = new Map([
   [WEAPON_MAIN_TYPE.UNARMED, FIGHT_EXPERIENCE_TYPE.FIST],
   [WEAPON_MAIN_TYPE.SPEAR, FIGHT_EXPERIENCE_TYPE.SPEAR],
@@ -185,8 +179,8 @@ const FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE: ReadonlyMap<number, number> = n
 ]);
 
 /**
- * The fight-experience bucket a `weaponMainType` accrues into, or `undefined` when the weapon has no
- * fight track: a saber, or a `mainType` outside {@link WEAPON_MAIN_TYPE}.
+ * The fight-experience bucket a `weaponMainType` accrues into, or `undefined` when the weapon has no fight
+ * track or its `mainType` falls outside {@link WEAPON_MAIN_TYPE}.
  */
 export function fightExperienceTypeFor(weaponMainType: number): number | undefined {
   return FIGHT_EXPERIENCE_TYPE_BY_WEAPON_MAIN_TYPE.get(weaponMainType);
