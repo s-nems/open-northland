@@ -4,9 +4,8 @@ import type { BuildingBobRow } from '../ir/rows.js';
 /**
  * The decoded tree atlas bound to the `resource` kind - `ls_trees.bmd` recoloured with the `tree_yew01`
  * palette, the `[GfxLandscape] "yew 01"` record's binding from `landscapes.cif`. It lives in its own
- * frame-id space (493 bobs), so it binds as a per-kind layer rather than the shared body atlas.
- * {@link TREE_BOB} 60 is that record's first full-grown frame, a 101×111 tree anchored at its base
- * (source basis "Tree bob").
+ * frame-id space (493 bobs), so it binds as a per-kind layer. {@link TREE_BOB} 60 is that record's first
+ * full-grown frame, a 101×111 tree anchored at its base (source basis "Tree bob").
  */
 export const TREE_ATLAS = 'ls_trees.tree_yew01';
 export const TREE_BOB = 60;
@@ -17,18 +16,17 @@ const HOUSE_PALETTE = 'house01';
 
 /**
  * The decoded building atlas bound to the `building` kind - `ls_houses_viking.bmd` recoloured with the
- * `house01` palette (the `[GfxHouse]` viking records from the mod's `budynki12/houses/houses.ini`). Like
- * the tree it lives in its own frame-id space (135 bobs), so it binds as a per-kind layer.
- * {@link HOUSE_BOB} 11 is the "viking home" record's first finished growth stage (213×198 anchored at its
- * base), serving only as the render-side default for a type with no `buildingBobs` row (source basis
- * "Building bob").
+ * `house01` palette (the `[GfxHouse]` viking records from the mod's `budynki12/houses/houses.ini`). Like the
+ * tree it lives in its own frame-id space (135 bobs), so it binds as a per-kind layer. {@link HOUSE_BOB} 11
+ * is the "viking home" record's first finished growth stage (213×198 anchored at its base), serving only as
+ * the render-side default for a type with no `buildingBobs` row (source basis "Building bob").
  */
 export const HOUSE_ATLAS = `ls_houses_viking.${HOUSE_PALETTE}`;
 export const HOUSE_BOB = 11;
 /**
- * Render scale for the building kind - native (1), like every other bob: the tile pitch is calibrated to the
- * art. Decoded bob sizes differ a lot (well 63×88, home 299×340), so a uniform scale preserves their real
- * relative proportions.
+ * Render scale for the building kind - native, because the tile pitch is calibrated to the art. Decoded bob
+ * sizes differ a lot (well 63×88, home 299×340), so a uniform scale preserves their real relative
+ * proportions.
  */
 export const BUILDING_SCALE = 1;
 
@@ -57,10 +55,11 @@ export const VIKING_TRIBE = 1;
 export const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HOUSE_PALETTE } as const;
 
 /**
- * The served atlas stems (= `families` keys) for the named viking building families loaded beside the
- * default `ls_houses_viking.house01`. Two are sibling `.bmd`s on the `house01` skin (`viking2`/`viking3`);
- * two are a different palette on a shared `.bmd` - `housemiller01` recolours `ls_houses_viking.bmd` and
- * `housedruid01` recolours `ls_houses_viking4.bmd` - so the served stem is `<bmd>.<palette>`.
+ * The served atlas stems for the named viking building families loaded beside the default
+ * `ls_houses_viking.house01`. Three are sibling `.bmd`s on the `house01` skin (`viking2`/`viking3`/
+ * `viking4`); two are a different palette on a shared `.bmd` - `housemiller01` recolours
+ * `ls_houses_viking.bmd` and `housedruid01` recolours `ls_houses_viking4.bmd` - so the served stem is
+ * `<bmd>.<palette>`.
  */
 const VIKING4_HOUSE01 = 'ls_houses_viking4.house01';
 const VIKING2_HOUSE01 = 'ls_houses_viking2.house01';
@@ -72,7 +71,6 @@ const VIKING4_DRUID01 = 'ls_houses_viking4.housedruid01';
 const VIKING_HOUSE02 = 'ls_houses_viking.house02';
 const VIKING2_HOUSE02 = 'ls_houses_viking2.house02';
 
-/** A loaded named building-family atlas: its `(bmd, palette)` identity + the `families` key it draws from. */
 export interface BuildingFamily {
   /** The `.bmd` basename the family's rows carry, e.g. `ls_houses_viking4.bmd`. */
   readonly bmdBasename: string;
@@ -102,23 +100,20 @@ export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
  * The pinned canonical `EditName` for a viking `typeId` whose `(tribe, typeId)` maps to several bobs that
  * are not a recolour/level variant. The HQ (typeId 1) is `ls_houses_viking4.bmd` bob 34
  * `"viking headquarters"`, not the alt bob 44 `"viking headquarters house"` (source basis "Building
- * graphics families"). A typeId with no entry falls through to the palette → max-level → lowest-bob
- * tiebreak.
+ * graphics families"). A typeId with no entry falls through to each reducer's own tiebreak - for the bob
+ * binding, palette → max-level → lowest-bob.
  */
 export const CANONICAL_EDIT_NAME: Readonly<Record<number, string>> = {
   1: 'viking headquarters',
 };
 
-/** The trailing path component of a (possibly slash-normalized) `bmd` path - `data/x/ls_houses_viking4.bmd` → `ls_houses_viking4.bmd`. */
 function bmdBasename(bmd: string): string {
   const slash = bmd.lastIndexOf('/');
   return slash === -1 ? bmd : bmd.slice(slash + 1);
 }
 
-/**
- * Group a decoded gfx-join's rows by typeId, keeping only this tribe's and, when `keep` is given, only the
- * rows it passes. Insertion order is preserved so the per-type reductions stay deterministic.
- */
+/** Group a decoded gfx-join's rows by typeId for one tribe. Insertion order is preserved so the per-type
+ *  reductions stay deterministic. */
 export function rowsByType<T extends { tribeId: number; typeId: number }>(
   rows: readonly T[],
   tribeId: number,
@@ -134,8 +129,8 @@ export function rowsByType<T extends { tribeId: number; typeId: number }>(
   return byType;
 }
 
-/** Restrict a type's rows to those in the preferred (loaded) palette when any exist, else keep them all -
- *  the "bind the skin we actually draw" rule the per-type reducers share. */
+/** The "bind the skin we actually draw" rule the per-type reducers share: a type's rows in the preferred
+ *  (loaded) palette when any exist, else all of them. */
 export function preferredPalettePool<T extends { paletteName: string }>(
   rows: readonly T[],
   paletteName: string,

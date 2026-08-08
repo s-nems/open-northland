@@ -15,10 +15,7 @@ import {
  *
  * A typeId's stages must all come from one source record at one size level - several records can carry the
  * same typeId, and merging their per-record `stackIdx` streams would interleave two different stage stacks.
- * So the reduction first restricts to the preferred palette, then picks one `(editName, level)` group: the
- * {@link CANONICAL_EDIT_NAME} match when it names this typeId, else the lowest `level` (the base build
- * stage), ties to the lexicographically smallest `editName`. The chosen group's stages keep their source
- * stacking order (`stackIdx`). Pure.
+ * Stages keep the source stacking order (`stackIdx`) within the group one record contributes.
  */
 export function constructionRefsByType(
   rows: readonly ConstructionLayerRow[],
@@ -71,7 +68,8 @@ function stageRefsByType(
       if (
         chosen === undefined ||
         current === undefined ||
-        // The canonical editName wins outright; otherwise lowest level, then smallest editName.
+        // The canonical editName wins outright; otherwise lowest level (the base build stage), then
+        // smallest editName.
         (canonName !== undefined && first.editName === canonName && current.editName !== canonName) ||
         (!(canonName !== undefined && current.editName === canonName) &&
           (first.level < current.level ||
