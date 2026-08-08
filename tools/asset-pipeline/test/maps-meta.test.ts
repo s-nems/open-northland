@@ -78,4 +78,31 @@ describe('resolveMapMeta', () => {
     await writeFile(join(dir, 'misc.inc'), '[misc_mapname]\nmapnamestringid 5\nmapdescriptionstringid 6\n');
     expect(await resolveMapMeta(fs, [dir], 'x/map.dat', undefined)).toBeUndefined();
   });
+
+  it('joins the [misc_music] musictype next to the display strings', async () => {
+    const dir = await mapFolder();
+    await writeStrings(dir, 'pol', 'string "Nazwa"\nstring "Opis"');
+    await writeFile(join(dir, 'misc.inc'), '[misc_music]\nmusictype #DM_MUSIC_TYPE_MISSION_BYZANZ3\n');
+    expect(await resolveMapMeta([dir], 'x/map.dat', undefined)).toEqual({
+      name: 'Nazwa',
+      description: 'Opis',
+      musicType: 15,
+    });
+  });
+
+  it('emits a music-only sidecar when the folder carries no string table', async () => {
+    const dir = await mapFolder();
+    await writeFile(join(dir, 'map.ini'), '[misc_music]\nmusictype 10\n');
+    expect(await resolveMapMeta([dir], 'x/map.dat', undefined)).toEqual({ musicType: 10 });
+  });
+
+  it('falls back to the decoded map.cif for the musictype', async () => {
+    const dir = await mapFolder();
+    await writeStrings(dir, 'pol', 'string "Nazwa"');
+    const cifSections = parseIniSections('[misc_music]\nmusictype 36\n');
+    expect(await resolveMapMeta([dir], 'x/map.dat', cifSections)).toEqual({
+      name: 'Nazwa',
+      musicType: 36,
+    });
+  });
 });

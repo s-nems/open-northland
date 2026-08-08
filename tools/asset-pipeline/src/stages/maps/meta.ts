@@ -1,6 +1,7 @@
 import type { Vfs } from '@open-northland/vfs';
 import {
   decodeCifStringTable,
+  extractMusicType,
   extractStringTable,
   iniBytesToSections,
   type RuleSection,
@@ -9,12 +10,14 @@ import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from '../../roots.js';
 import { STRING_TABLE_DIR } from './info.js';
 
-/** The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing display strings, one language. */
+/** The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing strings and music binding. */
 export interface MapMetaFile {
   /** The map's display name (the string at the header's `mapnamestringid`). */
   readonly name?: string;
   /** The map's flavor/mission description (the string at `mapdescriptionstringid`). */
   readonly description?: string;
+  /** The `[misc_music]` `musictype` code (`DM_MUSIC_TYPE_*`, 0-38). */
+  readonly musicType?: number;
 }
 
 /** The menu shows one language, and the culturesnation mod is Polish-authored, so `pol` wins. */
@@ -28,10 +31,11 @@ const MAP_TEXT_LANGS = ['pol', 'eng'] as const;
 const DEFAULT_NAME_STRING_ID = 0;
 const DEFAULT_DESCRIPTION_STRING_ID = 1;
 
-/** The resolved `[misc_mapname]` header: which string-table ids carry the map's name/description. */
-interface MapNameStringIds {
+/** The resolved map header: name/description string-table ids and the `[misc_music]` code. */
+interface MapHeader {
   readonly nameStringId: number;
   readonly descriptionStringId: number;
+  readonly musicType?: number;
 }
 
 /** Reads one int off a `[misc_mapname]` section prop, or undefined when absent/malformed. */
@@ -44,24 +48,26 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
 }
 
 /**
- * Resolves which string-table ids carry the map's name/description. The `[misc_mapname]` header ships
- * in three forms and the readable ones win: the split `misc.inc`, the monolithic `map.ini`, then the
- * encrypted `map.cif`'s sections, passed in already decoded so this module never re-decodes the cif.
+ * Resolves the map's `[misc_mapname]` string ids and `[misc_music]` code. The headers ship in three
+ * forms and the readable ones win: the split `misc.inc`, the monolithic `map.ini`, then the encrypted
+ * `map.cif`'s sections, passed in already decoded so this module never re-decodes the cif.
  */
-async function resolveMapNameStringIds(
+async function resolveMapHeader(
   fs: Vfs,
   mapDirs: readonly string[],
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
-): Promise<MapNameStringIds> {
+): Promise<MapHeader> {
   let nameStringId: number | undefined;
   let descriptionStringId: number | undefined;
+  let musicType: number | undefined;
   const consider = (sections: readonly RuleSection[]): void => {
     nameStringId ??= sectionInt(sections, 'mapnamestringid');
     descriptionStringId ??= sectionInt(sections, 'mapdescriptionstringid');
+    musicType ??= extractMusicType(sections);
   };
   for (const file of ['misc.inc', 'map.ini']) {
-    if (nameStringId !== undefined && descriptionStringId !== undefined) break;
+    if (nameStringId !== undefined && descriptionStringId !== undefined && musicType !== undefined) break;
     const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [file]);
     if (path === undefined) continue;
     try {
@@ -74,6 +80,7 @@ async function resolveMapNameStringIds(
   return {
     nameStringId: nameStringId ?? DEFAULT_NAME_STRING_ID,
     descriptionStringId: descriptionStringId ?? DEFAULT_DESCRIPTION_STRING_ID,
+    ...(musicType !== undefined ? { musicType } : {}),
   };
 }
 
@@ -109,10 +116,9 @@ export async function loadMapStringTable(
 }
 
 /**
- * Resolves one map folder's display strings: the `[misc_mapname]` header's ids looked up in the
- * folder's string table. Returns undefined when neither a name nor a description resolves.
- * `cifSections` and `strings` come from the caller so each map decodes its cif and loads its table
- * once.
+ * Resolves one map folder's meta sidecar: the `[misc_mapname]` header's ids looked up in the folder's
+ * string table, plus the `[misc_music]` code. Returns undefined when nothing resolves. `cifSections`
+ * and `strings` come from the caller so each map decodes its cif and loads its table once.
  */
 export async function resolveMapMeta(
   fs: Vfs,
@@ -122,13 +128,18 @@ export async function resolveMapMeta(
   strings?: Record<number, string>,
 ): Promise<MapMetaFile | undefined> {
   strings ??= await loadMapStringTable(fs, mapDirs, rel);
-  if (strings === undefined) return undefined;
-  const { nameStringId, descriptionStringId } = await resolveMapNameStringIds(fs, mapDirs, rel, cifSections);
-  const name = strings[nameStringId];
-  const description = strings[descriptionStringId];
-  if (name === undefined && description === undefined) return undefined;
+  const { nameStringId, descriptionStringId, musicType } = await resolveMapHeader(
+    fs,
+    mapDirs,
+    rel,
+    cifSections,
+  );
+  const name = strings?.[nameStringId];
+  const description = strings?.[descriptionStringId];
+  if (name === undefined && description === undefined && musicType === undefined) return undefined;
   return {
     ...(name !== undefined ? { name } : {}),
     ...(description !== undefined ? { description } : {}),
+    ...(musicType !== undefined ? { musicType } : {}),
   };
 }
