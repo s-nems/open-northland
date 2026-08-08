@@ -10,7 +10,7 @@ const BUILDING_DOT_PX = 3;
 const UNKNOWN_PLAYER_DOT_COLOUR = 0xffffff;
 
 /** A plotted dot: raster-px centre `(bx, by)`, half-extent `half`, packed `0xRRGGBB` `colour`. Loose
- *  primitives keep the per-dot path free of allocation. */
+ *  primitives keep the sink itself free of allocation. */
 export type MinimapDotSink = (bx: number, by: number, half: number, colour: number) => void;
 
 /**

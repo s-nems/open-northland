@@ -147,7 +147,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Before the renderer's render: the panel's screen-space sprites carry the canvas resolution in
     // their shader.
     toolPanel.controller.update(() => hudFor(snap));
-    // Re-placed every frame; the unit dots redraw only on a tick change, the fog mask only on a fog
+    // Re-placed every frame; the unit dots redraw on a throttled cadence, the fog mask only on a fog
     // generation change.
     mountedMinimap.update(snap, fogView);
     // Decided here from the sim's placement probe and handed over as plain data: the renderer stays a
