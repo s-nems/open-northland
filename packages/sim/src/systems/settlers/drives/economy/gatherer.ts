@@ -24,12 +24,10 @@ import {
   nearestHarvestableFor,
   nearestOwnDropFor,
 } from '../../targets/index.js';
-import { deliveryTargetFor } from './delivery-targets.js';
 import type { HarvestClaims } from './harvest-claims.js';
 
 /**
- * HARVEST / COLLECT - the gatherer drive. A flag-bound gatherer works only its flag's radius, carries off
- * only what it dug itself, and always owns the tick, so it never ferries other settlers' goods. An unbound
+ * HARVEST / COLLECT - the gatherer drive. A flag-bound gatherer works only its flag's radius; an unbound
  * roamer takes the nearest standing resource or loose trunk of its trade, whichever is nearer, and returns
  * false when nothing is reachable.
  *
@@ -95,8 +93,8 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims)
  * The flag-bound gatherer: carry off a pile it dug itself first, else harvest the nearest node inside the
  * flag's radius, else idle beside the flag. Clearing its own drop first keeps it from scattering
  * half-emptied trunks. Always returns true, so it never falls through to the porter, carrier, or de-stack
- * rungs; delivering the load stays the carrying rung's job, where {@link deliveryTargetFor} routes a
- * WorkFlag load to its flag. Source basis: authored.
+ * rungs; delivering the load stays the carrying rung's job, which routes a `WorkFlag` load to its flag.
+ * Source basis: authored.
  */
 function planFlagGatherer(
   plan: PlannerContext,
