@@ -37,6 +37,9 @@ export interface Qualified<P> {
 /** The verdict of a scan that derives nothing. Shared, so a plain accept allocates nothing per candidate. */
 export const QUALIFIES: Qualified<null> = { payload: null };
 
+/** An accept that qualifies every candidate, for a scan whose candidate list is already the answer set. */
+export const ACCEPT_ALL: (e: Entity) => Qualified<null> = () => QUALIFIES;
+
 export function qualifiedGood(goodType: number | null): Qualified<number> | null {
   return goodType === null ? null : { payload: goodType };
 }

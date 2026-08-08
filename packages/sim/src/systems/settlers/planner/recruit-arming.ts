@@ -160,15 +160,13 @@ function dispatchWeaponFetch(
   intent: keyof typeof INTENT_WEAPON_CLASS,
   owner: number,
 ): void {
-  const { world, ctx, terrain, targets } = pass;
+  const { world, ctx, targets } = pass;
   let route: FetchRoute | undefined;
   for (const goodType of armingGoodPreference(ctx.content, settler.tribe, intent)) {
     route ??= fetchRouteFor(pass, e, owner);
     const src = nearestStoreHolding(
-      targets.stockpileCells,
+      targets.bands,
       world,
-      ctx,
-      terrain,
       route.here,
       goodType,
       owner,
@@ -193,9 +191,9 @@ function dispatchWeaponFetch(
  * dispatched, false when no tier has a reachable unit (the caller releases the recruit unarmored).
  */
 function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolean {
-  const { world, ctx, terrain, targets } = pass;
+  const { world, ctx, targets } = pass;
   const route = fetchRouteFor(pass, e, owner);
-  const pick = pickReachableArmor(world, ctx, terrain, targets, route.here, owner, route.limit, route.veto);
+  const pick = pickReachableArmor(world, ctx, targets, route.here, owner, route.limit, route.veto);
   if (pick === null) return false;
   world.add(e, EquipOrder, {
     group: 'armor',
@@ -232,7 +230,7 @@ export function chainRecruitArmor(
     return null;
   }
   const limit = networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here));
-  const pick = pickReachableArmor(world, ctx, terrain, targets, here, owner, limit, veto);
+  const pick = pickReachableArmor(world, ctx, targets, here, owner, limit, veto);
   if (pick === null) {
     world.remove(e, AssistantRecruit); // no tier reachable: released unarmored
     return null;
@@ -245,7 +243,6 @@ export function chainRecruitArmor(
 function pickReachableArmor(
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   targets: TargetCandidates,
   here: NodeId,
   owner: number,
@@ -258,10 +255,8 @@ function pickReachableArmor(
     for (const armor of byClass.get(tier) ?? []) {
       if (armor.goodType === undefined) continue;
       const src = nearestStoreHolding(
-        targets.stockpileCells,
+        targets.bands,
         world,
-        ctx,
-        terrain,
         here,
         armor.goodType,
         owner,

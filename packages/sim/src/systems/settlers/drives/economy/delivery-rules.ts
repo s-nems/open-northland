@@ -119,9 +119,8 @@ function toStorageOffFarm(plan: PlannerContext, goodType: number, area: Delivery
   if (!isFarmCarrierHaulOutRole(world, ctx, home, jobType, tribe)) return null;
   if (!buildingProduces(world, ctx, home).includes(goodType)) return null;
   const store = nearestStoreFor(
-    targets.stockpileCells,
+    targets.bands,
     world,
-    ctx,
     here,
     goodType,
     owner,
@@ -208,18 +207,8 @@ function toNearestCapableStore(
   goodType: number,
   area: DeliverySearchArea,
 ): DeliveryVerdict {
-  const { world, ctx, here, owner, targets } = plan;
-  return nearestStoreFor(
-    targets.stockpileCells,
-    world,
-    ctx,
-    here,
-    goodType,
-    owner,
-    false,
-    area.gate,
-    area.avoid,
-  );
+  const { world, here, owner, targets } = plan;
+  return nearestStoreFor(targets.bands, world, here, goodType, owner, false, area.gate, area.avoid);
 }
 
 function boundWorkplace(plan: PlannerContext): Entity | undefined {

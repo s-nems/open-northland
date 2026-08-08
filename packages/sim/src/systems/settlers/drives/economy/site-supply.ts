@@ -19,10 +19,8 @@ export function fetchNeededMaterial(plan: PlannerContext, site: Entity): boolean
   const avoid = unreachableGoalVeto(world, ctx, e);
   for (const need of neededConstructionGoods(world, ctx, site, plan.inbound)) {
     const src = nearestStoreHolding(
-      targets.stockpileCells,
+      targets.bands,
       world,
-      ctx,
-      terrain,
       here,
       need.goodType,
       plan.owner,

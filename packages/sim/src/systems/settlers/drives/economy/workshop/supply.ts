@@ -1,25 +1,13 @@
 import type { Recipe } from '@open-northland/data';
-import {
-  Building,
-  Production,
-  Stockpile,
-  sameSideAs,
-  UnderConstruction,
-} from '../../../../../components/index.js';
+import { Building, Production, Stockpile, sameSideAs } from '../../../../../components/index.js';
 import { ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SpatialGate } from '../../../../../nav/node-circle.js';
-import type { NodeId, TerrainGraph } from '../../../../../nav/terrain/index.js';
+import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
 import { craftablePool, startableCycleCount } from '../../../../economy/production.js';
-import { buildingBlockedCells } from '../../../../footprint/index.js';
-import {
-  mayFetchGoodFrom,
-  recipesByProductOf,
-  stockCapacity,
-  typeProducesGoodWithoutInputs,
-} from '../../../../stores/index.js';
-import { buriedUnderBuilding, type InteractionCellIndex } from '../../../targets/index.js';
+import { recipesByProductOf, stockCapacity } from '../../../../stores/index.js';
+import type { InputSourceKind, TargetBands } from '../../../targets/index.js';
 
 // The producer supply scans: a worker fetches the recipe inputs its workplace is short on and hauls the
 // finished output out, so the loop closes without a dedicated carrier. Every choice is recipe-driven and
@@ -89,10 +77,9 @@ const FETCH: { readonly payload: 'fetch' } = { payload: 'fetch' };
 const DRAW: { readonly payload: 'draw' } = { payload: 'draw' };
 
 export function nearestMissingInputSource(
-  index: InteractionCellIndex,
+  bands: TargetBands,
   world: World,
   ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
   workplace: Entity,
   recipe: Recipe,
@@ -104,33 +91,15 @@ export function nearestMissingInputSource(
   avoid?: (cell: NodeId) => boolean,
 ): MissingInputSource | null {
   const stock = world.get(workplace, Stockpile).amounts;
-  const walls = buildingBlockedCells(world, ctx, terrain);
   for (const input of recipe.inputs) {
     const have = stock.get(input.goodType) ?? 0;
     const target = restockToCapacity ? stockCapacity(world, ctx, workplace, input.goodType) : input.amount;
     if (have >= target) continue;
-    const winner = index.nearest<'fetch' | 'draw'>(
+    const band = bands.inputSources(input.goodType);
+    const winner = band.index.nearest<InputSourceKind>(
       here,
-      (e) => {
-        if (e === workplace || world.has(e, UnderConstruction)) return null;
-        // A store that holds the good and may be stripped of it is a fetch; a buried pile is skipped,
-        // since an unreachable stand strands the fetcher.
-        if (
-          (world.get(e, Stockpile).amounts.get(input.goodType) ?? 0) > 0 &&
-          mayFetchGoodFrom(world, ctx, e, input.goodType)
-        ) {
-          return buriedUnderBuilding(world, terrain, walls, e) ? null : FETCH;
-        }
-        const b = world.tryGet(e, Building);
-        if (
-          b !== undefined &&
-          b.built >= ONE &&
-          typeProducesGoodWithoutInputs(ctx, b.buildingType, input.goodType)
-        ) {
-          return DRAW;
-        }
-        return null;
-      },
+      // The workplace never supplies itself; every other member's kind was derived with the band.
+      (e) => (e === workplace ? null : band.kindOf.get(e) === 'draw' ? DRAW : FETCH),
       gate,
       avoid,
       sameSideAs(world, owner),

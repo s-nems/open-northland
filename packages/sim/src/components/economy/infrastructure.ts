@@ -12,7 +12,8 @@ export const Building = defineComponent<{
 /**
  * A goods store attached to a building: goodType -> amount, with per-good capacity from the building type.
  * Never iterate this Map for a game decision - raw Map iteration is insertion-order and so
- * history-dependent; use {@link stockpileEntries}.
+ * history-dependent; use {@link stockpileEntries}. The one tolerated raw read is an order-free fold
+ * such as a min over entries.
  */
 export const Stockpile = defineComponent<{ amounts: Map<number, number> }>('Stockpile');
 

@@ -189,9 +189,8 @@ export function planNeeds(
 
   if (settler.piety >= PIETY_PRAY_THRESHOLD) {
     const temple = nearestTemple(
-      targets.buildingCells,
+      targets.bands,
       world,
-      ctx,
       here,
       ownerOf(world, e),
       gate,

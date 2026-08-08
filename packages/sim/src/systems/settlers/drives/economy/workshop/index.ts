@@ -38,7 +38,7 @@ export function planProducer(
   seatClaims: WorkSeatClaims,
   spacing: PlannerSpacing,
 ): void {
-  const { world, ctx, terrain, here, targets } = plan;
+  const { world, ctx, here, targets } = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
@@ -63,10 +63,9 @@ export function planProducer(
   const supply = own.length === 0 ? recipe : mergeRecipes(own);
 
   const source = nearestMissingInputSource(
-    targets.stockpileCells,
+    targets.bands,
     world,
     ctx,
-    terrain,
     here,
     workplace,
     supply,
@@ -92,17 +91,16 @@ export function planProducer(
  * output is removed so the operators do not starve; that priority is the existing named approximation.
  */
 export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, spacing: PlannerSpacing): void {
-  const { world, ctx, terrain, here, targets } = plan;
+  const { world, ctx, here, targets } = plan;
   const worker = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
   const restockToCapacity = true;
   const source = nearestMissingInputSource(
-    targets.stockpileCells,
+    targets.bands,
     world,
     ctx,
-    terrain,
     here,
     workplace,
     recipe,

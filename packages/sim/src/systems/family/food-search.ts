@@ -1,11 +1,4 @@
-import {
-  Building,
-  ownerOf,
-  ownersCompatible,
-  Position,
-  Stockpile,
-  stockpileEntries,
-} from '../../components/index.js';
+import { Building, ownerOf, ownersCompatible, Position, Stockpile } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
@@ -22,6 +15,13 @@ import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
  * winner.
  */
 const RING_MAX_RADIUS = 48;
+
+/**
+ * Candidate count at or below which {@link ExternalFoodIndex.nearest} goes straight to the linear scan.
+ * Performance knob with an identical winner: the ring and the linear scan share the
+ * (distance, entity-id) order. Approximation.
+ */
+const RING_MIN_CANDIDATES = 64;
 
 /**
  * A per-tick index over the stockpiles a family may draw food from: any store or ground pile holding a
@@ -65,7 +65,10 @@ export class ExternalFoodIndex {
       ownersCompatible(owner, ownerOf(this.world, e)) &&
       this.inArea(e, gate) &&
       !this.standRetired(e, from, avoid);
-    const hit = this.buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
+    const hit =
+      this.candidates.length <= RING_MIN_CANDIDATES
+        ? null
+        : this.buckets.nearest(from.hx, from.hy, 0, RING_MAX_RADIUS, accept);
     const store = hit?.entity ?? this.linearNearest(from, accept);
     if (store === null) return null;
     const goodType = lowestStockedFood(this.world, this.ctx, store);
@@ -116,13 +119,16 @@ export class ExternalFoodIndex {
 }
 
 /**
- * The lowest stocked good (canonical order) a family may take away from `store` as food, or null when it
- * holds none. Tested on the good's edible form, since the family's lift performs that conversion; the
- * returned type is the raw one to lift.
+ * The lowest stocked good (ascending good type) a family may take away from `store` as food, or null when
+ * it holds none. Tested on the good's edible form, since the family's lift performs that conversion; the
+ * returned type is the raw one to lift. A raw min-scan: the pick is order-free, and the canonical sorted
+ * view would allocate and sort per store per query on the candidate-filter hot path.
  */
 function lowestStockedFood(world: World, ctx: SystemContext, store: Entity): number | null {
-  for (const [goodType, amount] of stockpileEntries(world.get(store, Stockpile))) {
-    if (amount > 0 && isFood(ctx, exportedGoodForm(ctx, goodType))) return goodType;
+  let lowest: number | null = null;
+  for (const [goodType, amount] of world.get(store, Stockpile).amounts) {
+    if (amount <= 0 || (lowest !== null && goodType >= lowest)) continue;
+    if (isFood(ctx, exportedGoodForm(ctx, goodType))) lowest = goodType;
   }
-  return null;
+  return lowest;
 }

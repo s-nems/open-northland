@@ -16,6 +16,7 @@ import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import { canonicalResources } from '../../spatial/resources.js';
 import { isYardHeap, lowestStockedGood } from '../../stores/index.js';
+import { TargetBands } from './bands.js';
 import { InteractionCellIndex } from './cell-index.js';
 import { SinkAvailability } from './stores/sinks.js';
 
@@ -51,6 +52,8 @@ export interface TargetCandidates {
   readonly harvestAtomicByGood: ReadonlyMap<number, number>;
   /** Position-independent store-capacity probes, memoized by good for this planner tick. */
   readonly sinks: SinkAvailability;
+  /** Question-keyed candidate bands, each built at most once per tick and shared by every asker. */
+  readonly bands: TargetBands;
   /** Shared dynamic blocks and ground-heap occupancy for every flag delivery planned this tick. */
   readonly yard: YardTargets;
 }
@@ -114,6 +117,7 @@ export function collectTargets(world: World, ctx: SystemContext, terrain: Terrai
     cropsByFarm,
     harvestAtomicByGood,
     sinks: new SinkAvailability(stockpiles, world, ctx),
+    bands: new TargetBands(world, ctx, terrain, stockpiles, buildings),
     yard: { blocked: dynamicBlockOverlay(world, ctx, terrain), occupied: yardOccupied },
   };
 }
