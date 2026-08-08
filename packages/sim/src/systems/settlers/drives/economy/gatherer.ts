@@ -27,9 +27,9 @@ import {
 import type { HarvestClaims } from './harvest-claims.js';
 
 /**
- * HARVEST / COLLECT - the gatherer drive. A flag-bound gatherer works only its flag's radius; an unbound
- * roamer takes the nearest standing resource or loose trunk of its trade, whichever is nearer, and returns
- * false when nothing is reachable.
+ * HARVEST / COLLECT - the gatherer drive. A flag-bound gatherer harvests inside its flag's radius; an
+ * unbound roamer takes the nearest standing resource or loose trunk of its trade, whichever is nearer,
+ * and returns false when nothing is reachable.
  *
  * Harvesting is gated by the job's atomic permissions and the good's `needforgood` XP threshold; collecting
  * an already-dropped good is hauling, not harvesting.

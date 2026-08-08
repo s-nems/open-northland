@@ -37,9 +37,9 @@ import { planTraining } from './training.js';
 // the settler for the tick, and the rung order is a behavior contract the state goldens cover.
 
 /**
- * Plan a growing settler. A child runs the needs ladder, since the data binds child eat and sleep clips
- * (`setatomic 3/4` on `..._child_*_eat_slot_food` and `..._sleep`); a baby has no eat clip bound, so only
- * the stroll runs for it.
+ * Plan a growing settler: shelter first, then the needs ladder for a child, else a stroll. Only a child
+ * runs needs, on the source basis that the data binds child eat and sleep clips (`setatomic 3/4` on
+ * `..._child_*_eat_slot_food` and `..._sleep`) while a baby has no eat clip bound.
  */
 export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): void {
   const { world, ctx, terrain } = pass;
@@ -92,9 +92,9 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // TOWER WATCH: above the DEFEND hold below because it is the more specific standing order - a posted
   // archer whose stance is also DEFEND must still walk to his tower rather than freeze on the spot.
   if (planTowerPost(world, ctx, terrain, e, jobType, here)) return;
-  // DEFEND hold: a guard keeps its post against the company and economy rungs (the CombatSystem walks
-  // it back when displaced); owned-only, so unowned/golden fixtures are untouched. Below the equip
-  // errand on purpose: the one player order a guard still runs without dropping its stance.
+  // DEFEND hold: a guard keeps its post against the company and economy rungs, and the CombatSystem walks
+  // it back when displaced. Below the equip errand on purpose: the one player order a guard still runs
+  // without dropping its stance.
   if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) return;
   // The company rung: a lonely settler leaves its work to find a partner, above the economy rungs on
   // purpose - the "worker downs tools to socialize" beat.
