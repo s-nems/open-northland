@@ -8,11 +8,11 @@ import { anchorCentroid, anchorNodeOf, ownedBuildings } from './shared.js';
 
 /**
  * The building the seat's economy anchors and gates on: its built headquarters, else the built storage
- * building most central to its settlement, the fallback it regains an economy through after losing the
- * headquarters. Null leaves every strategic module idle for the seat (authored); the army is the one
- * exception, gating on its barracks instead. The fallback ranks by distance rather than id because
- * authored seats commonly put a warehouse well outside the build disc, and anchoring on a remote outpost
- * would move the placement disc, the signpost lattice and every search origin out to it.
+ * building most central to its settlement. Null leaves every strategic module idle for the seat
+ * (authored); the army is the one exception, gating on its barracks instead. The fallback ranks by
+ * distance rather than id because authored seats commonly put a warehouse well outside the build disc,
+ * and anchoring on a remote outpost would move the placement disc, the signpost lattice and every
+ * search origin out to it.
  */
 export function seatBaseOf(world: World, ctx: SystemContext, player: number): Entity | null {
   const buildings = contentIndex(ctx.content).buildings;

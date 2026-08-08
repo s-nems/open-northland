@@ -8,9 +8,9 @@ import { seatBaseOf } from '../base.js';
 import { anchorNodeOf, firstRingNode, ownedBuildings } from '../shared.js';
 
 /**
- * The signpost lattice the scout tiles the settlement with (authored): one post beside the seat's base,
- * six around it at near-minimal spacing, and outer lattice spots only once owned buildings stand near
- * them, so the covered field grows with the settlement.
+ * The signpost lattice the scout tiles the settlement with (authored): the innermost rings are always
+ * wanted, outer lattice spots only once owned buildings stand near them, so the covered field grows
+ * with the settlement.
  */
 
 /** Distance between neighbouring lattice targets, in nodes on the world metric: above the 18-node

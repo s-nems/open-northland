@@ -39,7 +39,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, Partial<BuildingSt
   // own output; the third and fourth only pay off out of genuine surplus.
   work_farm_00: { operatorTarget: 2, operatorSurplus: 4 },
   // Surplus-only: one farm grows roughly what one miller grinds, so the second seat is worth filling
-  // only once the farm's own extra hands have outgrown him. Approximation.
+  // only once the farm's own extra hands have outgrown him.
   work_mill_00: { operatorSurplus: 2 },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
   // A breeder works a single species line (CRAFT_RESTRICTIONS_BY_BUILDING_ID), so the pair is the

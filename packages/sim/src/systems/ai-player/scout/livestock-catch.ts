@@ -9,18 +9,15 @@ import { anchorNodeOf } from '../shared.js';
 /**
  * How far (half-cell node Manhattan) from the seat's base an animal is still the settlement's to
  * round up. It bounds the WALK, not the catch's worth: claimed stock herds itself home from anywhere
- * (`livestock/assignment.ts`). Calibrated, not guessed: across the 193 authored headquarters in the
- * mod map corpus (`CnModMaps/<map>/staticobjects.inc`), the nearest cattle or sheep is a median 13 cells
- * out, and 140 seats have stock within the 32 cells this radius covers.
+ * (`livestock/assignment.ts`). Sized from the mod map corpus (`CnModMaps/<map>/staticobjects.inc`):
+ * across its 193 authored headquarters the nearest cattle or sheep is a median 13 cells out, and 140
+ * seats have stock within the 32 cells this radius covers.
  *
- * KNOWN COLLISION, accepted: a base-employed hunter's ground is a circle around this same anchor
- * (`HUNTER_WORK_FLAG_RADIUS`), and an unclaimed animal is nobody's property, so it is valid last-resort
- * prey (`isHuntTarget`) - but only once no normal game stands anywhere in the wider probe around that
- * ground (`HUNT_LAST_RESORT_SCAN_FACTOR`), which is to say once the neighbourhood is hunted out. That
- * should make the race rarer than the ungated version this note was written for; unmeasured, since the
- * sweep behind those constants ran without AI seats. Both behaviours are what their own rules ask for
- * and the two duties were requested to run together, so the round-up is NOT gated behind the hunt: the
- * seat races its own hunter for a stray until the hunt ends (`workforce/hunter.ts`).
+ * A base-employed hunter's ground is a circle around this same anchor (`HUNTER_WORK_FLAG_RADIUS`), and
+ * an unclaimed animal is nobody's property, so it is valid last-resort prey (`isHuntTarget`) once no
+ * normal game stands anywhere in the wider probe around that ground (`HUNT_LAST_RESORT_SCAN_FACTOR`).
+ * The round-up is intentionally not gated behind the hunt: the seat races its own hunter for a stray
+ * until the hunt ends (`workforce/hunter.ts`).
  */
 export const SCOUT_CATCH_RADIUS_NODES = 64;
 
