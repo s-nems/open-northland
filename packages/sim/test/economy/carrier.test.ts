@@ -35,6 +35,8 @@ const SAWMILL = 2; // workplace: recipe wood->plank
 const HEADQUARTERS = 1; // passive store with a plank slot
 const GRANARY = 6; // passive store with ONLY a wheat slot - it can never take a plank
 const FARMER = 18; // a non-carrier trade with nothing to do on a bare strip
+const HUNTER = 15; // a gathering trade, posted to the store by hand (the fixture HQ seats no hunter slot)
+const WOOD = 1; // the HQ stocks it, so a loose wood pile is deliverable
 const VIKING = 1;
 
 // The WHOLE component namespace, not a hand-picked subset: a missed store leaks across the in-test
@@ -178,7 +180,6 @@ describe('carrier - choosing what to haul', () => {
     // A warehouse FULL of wood (150/150) but with room for planks; a porter bound to it; two loose piles -
     // wood (nearer, but the store is full of it) and plank (farther, deliverable). "Limit is limit": the
     // porter must STOP collecting wood entirely and fetch the plank instead - not loop, not stall.
-    const WOOD = 1;
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const wh = sim.world.create();
     sim.world.add(wh, Position, { x: fx.fromInt(7), y: fx.fromInt(0) });
@@ -198,6 +199,29 @@ describe('carrier - choosing what to haul', () => {
     expect(sim.world.get(wh, Stockpile).amounts.get(PLANK) ?? 0).toBe(3); // all the plank was hauled in
     expect(sim.world.get(woodPile, Stockpile).amounts.get(WOOD)).toBe(3); // the full good was left untouched
     expect(sim.world.has(porter, Carrying)).toBe(false); // the porter isn't stuck holding a surplus
+  });
+
+  it('a gathering trade posted to a store never ferries a loose pile - the carrier beside it does', () => {
+    // A store seats gathering trades beside its transport slot (the real `headquarters` declares carrier,
+    // collector, fisher and hunter), so the post alone does not make a settler a porter: the gathering
+    // trades bring in their own harvest. Both men are posted to the same store and share one pile, so the
+    // trade is the only thing that separates them.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const hq = hqAt(sim, 7, 0);
+    const hunter = settlerWithJob(sim, 0, 0, HUNTER);
+    sim.world.add(hunter, JobAssignment, { workplace: hq });
+    const carrier = carrierAt(sim, 1, 0, hq);
+    const pile = sim.world.create();
+    sim.world.add(pile, Position, { x: fx.fromInt(4), y: fx.fromInt(0) });
+    sim.world.add(pile, Stockpile, { amounts: new Map([[WOOD, 3]]) });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, MoveGoal)).toBe(false);
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
+    // The pile really is haulable: the carrier walks to that exact tile.
+    const pileNode = cellAnchorNode(4, 0);
+    expect(sim.world.tryGet(carrier, MoveGoal)?.cell).toBe(sim.terrain?.nodeAt(pileNode.hx, pileNode.hy));
   });
 
   it('an UNEMPLOYED settler and a LOOSE carrier never haul (transport is a worked assignment)', () => {

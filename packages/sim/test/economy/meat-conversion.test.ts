@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Carrying, CurrentAtomic, Stockpile } from '../../src/components/index.js';
+import { Carrying, CurrentAtomic, GroundDrop, Stockpile } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { plannerSystem, stockCapacity } from '../../src/systems/index.js';
 import { pickupFromStore, pileupIntoStore } from '../../src/systems/settlers/atomics/effects/goods/index.js';
@@ -63,17 +64,25 @@ describe("meat converts to food in every hand but the hunter's own", () => {
   });
 });
 
+/** An uncollected kill's drop: the heap plus the {@link GroundDrop} marker a real harvest stamps. */
+function dropAt(sim: Simulation, x: number, y: number, goodType: number, amount: number): Entity {
+  const e = pileAt(sim, x, y, [[goodType, amount]]);
+  sim.world.add(e, GroundDrop, { goodType });
+  return e;
+}
+
 /**
- * The routing half of the same rule: the planner must see the sink the deposit above would accept. The
- * hunter is the only trade that reaches a store still holding MEAT ({@link carriedGoodForm} spares his
- * lift), so he is the only one for whom "the larder banks the edible" and "the larder can take this
- * load" can disagree.
+ * The routing half of the same rule: both the collect scan and the delivery routing must see the larder
+ * through the banked form the deposit above would use. The hunter is the only trade that reaches a store
+ * still holding MEAT ({@link carriedGoodForm} spares his lift), so he is the only one for whom "the larder
+ * banks the edible" and "the larder can take this load" can disagree. He works his kill's own drop - the
+ * only meat a posted hunter collects, since ferrying loose stock is the carrier's trade.
  */
 describe('a hunter employed at a larder delivers his meat into it', () => {
   it('lifts a meat heap the larder can only bank as food', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const hq = buildingAt(sim, HEADQUARTERS, 4, 0);
-    const heap = pileAt(sim, 1, 0, [[MEAT, 3]]);
+    const heap = dropAt(sim, 1, 0, MEAT, 3);
     const hunter = settlerAt(sim, 1, 0, HUNTER, hq);
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -88,7 +97,7 @@ describe('a hunter employed at a larder delivers his meat into it', () => {
   it('end to end: the heap he collects reaches the larder as food', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const hq = buildingAt(sim, HEADQUARTERS, 4, 0);
-    pileAt(sim, 1, 0, [[MEAT, 2]]);
+    dropAt(sim, 1, 0, MEAT, 2);
     settlerAt(sim, 1, 0, HUNTER, hq);
 
     for (let i = 0; i < 400; i++) sim.step();

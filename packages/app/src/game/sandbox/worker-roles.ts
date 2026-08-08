@@ -10,10 +10,7 @@ import {
 } from '../../catalog/jobs.js';
 import { canonicalJobType, EXTRACTED_GATHERER_TRADES, GATHERERS } from './ids/index.js';
 
-/**
- * Badge and assignment buckets owned by this package, not a sim concept: the sim treats a carrier as
- * the job-agnostic haul fallback and never names one.
- */
+/** Badge and assignment buckets owned by this package: the sim groups no trade this way. */
 export type WorkerRole = 'gatherer' | 'carrier' | 'garrison' | 'craftsman';
 
 /** Gatherer job ids in the raw `jobtypes.ini` space. Membership is tested against the canonical
