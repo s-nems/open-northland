@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
-import { Simulation } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -105,6 +105,58 @@ describe('takeSnapshot entity clone cache', () => {
     expect(inB?.components.Resource).toMatchObject({ remaining: 4 });
     // The earlier snapshot stays what it observed - clones never alias the live store.
     expect(inA?.components.Resource).toMatchObject({ remaining: 5 });
+  });
+
+  it('reuses unchanged component clones inside a touched entity', () => {
+    const sim = newSim();
+    const mover = bareResource(sim, 5);
+    const a = sim.snapshot();
+    sim.world.mut(mover, Position).x = fx.fromInt(1);
+    const b = sim.snapshot();
+    const inA = a.entities.find((e) => e.id === (mover as number));
+    const inB = b.entities.find((e) => e.id === (mover as number));
+    expect(inB).not.toBe(inA);
+    expect(inB?.components.Position).not.toBe(inA?.components.Position);
+    expect(inB?.components.Resource).toBe(inA?.components.Resource);
+
+    sim.world.mut(mover, Position).x = fx.fromInt(2);
+    const inC = sim.snapshot().entities.find((e) => e.id === (mover as number));
+    expect(inC?.components.Position).not.toBe(inB?.components.Position);
+    expect(inC?.components.Resource).toBe(inB?.components.Resource);
+  });
+
+  it('does not reuse a component clone after removal and re-addition', () => {
+    const sim = newSim();
+    const node = bareResource(sim, 5);
+    const a = sim.snapshot();
+    const original = a.entities[0]?.components.Resource;
+    sim.world.remove(node, Resource);
+    expect(sim.snapshot().entities[0]?.components.Resource).toBeUndefined();
+    sim.world.add(node, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+    const replacement = sim.snapshot().entities[0]?.components.Resource;
+    expect(replacement).not.toBe(original);
+    expect(replacement).toMatchObject({ remaining: 3 });
+  });
+
+  it('does not reuse a component clone when add overwrites it before the next snapshot', () => {
+    const sim = newSim();
+    const node = bareResource(sim, 5);
+    const original = sim.snapshot().entities[0]?.components.Resource;
+    sim.world.add(node, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+    const replacement = sim.snapshot().entities[0]?.components.Resource;
+    expect(replacement).not.toBe(original);
+    expect(replacement).toMatchObject({ remaining: 3 });
+  });
+
+  it('does not reuse a component clone after remove and re-add before the next snapshot', () => {
+    const sim = newSim();
+    const node = bareResource(sim, 5);
+    const original = sim.snapshot().entities[0]?.components.Resource;
+    sim.world.remove(node, Resource);
+    sim.world.add(node, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+    const replacement = sim.snapshot().entities[0]?.components.Resource;
+    expect(replacement).not.toBe(original);
+    expect(replacement).toMatchObject({ remaining: 3 });
   });
 
   it('drops a destroyed entity from the next snapshot (destroy auto-logs)', () => {

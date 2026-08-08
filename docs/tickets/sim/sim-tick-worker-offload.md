@@ -21,9 +21,8 @@ dependencies, and `WorldSnapshot` is documented as surviving structured clone at
   bulk of the work.
 - Command flow becomes message passing; determinism and replay recording must survive unchanged
   (the worker owns the canonical loop, the main thread only enqueues).
-- Snapshot transfer cost then bounds the boundary; see
-  [snapshot clone floor](snapshot-clone-floor.md) - transferable or compact lanes pay off double
-  here.
+- Snapshot transfer cost then bounds the boundary; measure structured-clone and postMessage cost on a
+  developed snapshot before choosing between the current plain shape and compact lanes.
 - Keep a single-thread fallback (tests, headless scenarios, environments without workers).
 
 ## Verify

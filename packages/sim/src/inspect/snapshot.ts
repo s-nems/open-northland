@@ -23,18 +23,22 @@ export interface EntitySnapshot {
 }
 
 /**
- * Per-world cache of cloned entity snapshots, so a snapshot costs O(touched since the last one) instead
- * of O(alive). An entry is reused until the World's touched-entity log names its entity, which is what
- * requires every observable mutation to go through `World.mut` or an add/remove/destroy. A registered
- * cache verifier re-clones and compares, so a mutation that bypasses that seam fails invariant-checked
- * runs.
+ * Per-world cache of cloned entity snapshots. Untouched entities reuse the whole entry; touched entities
+ * reuse every component whose per-entity revision still matches. A registered cache verifier re-clones
+ * and compares, so a mutation that bypasses `World.mut` fails invariant-checked runs.
  */
-const cloneCaches = new WeakMap<World, Map<Entity, EntitySnapshot>>();
+interface CachedEntity {
+  readonly snap: EntitySnapshot;
+  readonly componentRevisions: Readonly<Record<string, number>>;
+  dirty: boolean;
+}
 
-function cloneCacheFor(world: World): Map<Entity, EntitySnapshot> {
+const cloneCaches = new WeakMap<World, Map<Entity, CachedEntity>>();
+
+function cloneCacheFor(world: World): Map<Entity, CachedEntity> {
   let cache = cloneCaches.get(world);
   if (cache === undefined) {
-    const created = new Map<Entity, EntitySnapshot>();
+    const created = new Map<Entity, CachedEntity>();
     cache = created;
     cloneCaches.set(world, created);
     world.registerCacheVerifier('snapshotClones', () => verifyClones(world, created));
@@ -42,21 +46,24 @@ function cloneCacheFor(world: World): Map<Entity, EntitySnapshot> {
   return cache;
 }
 
-function cloneEntity(world: World, id: Entity): EntitySnapshot {
+function cloneEntity(world: World, id: Entity, previous?: CachedEntity): CachedEntity {
   const components: Record<string, unknown> = {};
-  world.forEachComponent(id, (name, value) => {
-    components[name] = clonePlain(value);
+  const componentRevisions: Record<string, number> = {};
+  world.forEachComponent(id, (name, value, revision) => {
+    components[name] =
+      previous?.componentRevisions[name] === revision ? previous.snap.components[name] : clonePlain(value);
+    componentRevisions[name] = revision;
   });
-  return { id: id as number, components };
+  return { snap: { id: id as number, components }, componentRevisions, dirty: false };
 }
 
-function verifyClones(world: World, cache: ReadonlyMap<Entity, EntitySnapshot>): string[] {
+function verifyClones(world: World, cache: ReadonlyMap<Entity, CachedEntity>): string[] {
   const out: string[] = [];
   for (const [id, cached] of cache) {
     if (!world.isAlive(id)) continue; // evicted lazily on the next drain - absence is not incoherence
-    if (world.mutationPending(id)) continue; // logged for eviction - scheduled staleness, not a bypass
+    if (world.mutationPending(id)) continue; // logged for refresh - scheduled staleness, not a bypass
     const fresh = cloneEntity(world, id);
-    if (JSON.stringify(fresh.components) !== JSON.stringify(cached.components)) {
+    if (JSON.stringify(fresh.snap.components) !== JSON.stringify(cached.snap.components)) {
       out.push(`snapshot clone of entity ${id} is stale - an in-place mutation bypassed World.mut`);
     }
   }
@@ -66,21 +73,30 @@ function verifyClones(world: World, cache: ReadonlyMap<Entity, EntitySnapshot>):
 /**
  * Capture a detached snapshot of the world and the tick's events at a tick boundary. Entities are
  * emitted in canonical ascending-id order and `Map` values become sorted `[key, value]` arrays, the same
- * canonical ordering `hashState` uses. An entity untouched since the previous snapshot reuses its cached
- * clone object.
+ * canonical ordering `hashState` uses. An untouched entity reuses its cached clone object; a touched one
+ * receives a new entity object while retaining the detached clones of unchanged components.
  */
 export function takeSnapshot(world: World, tick: number, events: readonly SimEvent[]): WorldSnapshot {
   const cache = cloneCacheFor(world);
   // An overflowed log (a long snapshot-less run) lost its individual evictions - drop everything.
-  if (world.drainTouched((e) => cache.delete(e))) cache.clear();
+  if (
+    world.drainTouched((e) => {
+      const cached = cache.get(e);
+      if (cached === undefined) return;
+      if (world.isAlive(e)) cached.dirty = true;
+      else cache.delete(e);
+    })
+  ) {
+    cache.clear();
+  }
   const entities: EntitySnapshot[] = [];
   for (const id of world.canonicalEntities()) {
-    let snap = cache.get(id);
-    if (snap === undefined) {
-      snap = cloneEntity(world, id);
-      cache.set(id, snap);
+    let cached = cache.get(id);
+    if (cached === undefined || cached.dirty) {
+      cached = cloneEntity(world, id, cached);
+      cache.set(id, cached);
     }
-    entities.push(snap);
+    entities.push(cached.snap);
   }
   // SimEvents carry no Map fields, so PlainOf<SimEvent> is structurally a SimEvent and this cast holds.
   // Adding one would lower it to a [k, v] array and break the cast.
