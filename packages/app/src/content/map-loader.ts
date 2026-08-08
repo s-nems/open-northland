@@ -50,6 +50,25 @@ export async function loadTerrainMap(
 }
 
 /**
+ * The `musicType` code from a decoded map's meta sidecar, or null when the sidecar or key is absent
+ * or malformed (the map then plays no music).
+ */
+export async function loadMapMusicType(id: string, fetchImpl: typeof fetch = fetch): Promise<number | null> {
+  const safe = safeMapId(id);
+  if (safe === null) return null;
+  try {
+    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.meta.json`));
+    if (!res.ok) return null;
+    const meta: unknown = await res.json();
+    if (typeof meta !== 'object' || meta === null) return null;
+    const { musicType } = meta as Record<string, unknown>;
+    return typeof musicType === 'number' && Number.isInteger(musicType) ? musicType : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Load a decoded map's script sidecar: the player roster, diplomacy and mission triggers. A 404 is normal
  * absence and returns null silently; a malformed file returns null with a warning, so the entry degrades
  * to the roster-less defaults.

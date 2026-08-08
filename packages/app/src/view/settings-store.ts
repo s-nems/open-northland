@@ -1,3 +1,4 @@
+import { DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME } from '@open-northland/audio';
 import { DEFAULT_KEY_BINDINGS, type KeyBindings, parseKeyBindings } from '../hud/keybindings.js';
 import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../hud/ui-scale.js';
 import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
@@ -29,6 +30,10 @@ export interface MenuSettings {
   readonly fpsLimit: FpsLimit;
   /** Mirrors the `?sound` param: `false` starts the game without an audio driver. */
   readonly soundEnabled: boolean;
+  /** Game-sounds volume, 0..1 (effects, jingles, voices - the original `fx_volume`). */
+  readonly soundVolume: number;
+  /** Music volume, 0..1 (the original `dm_volume`). */
+  readonly musicVolume: number;
   readonly language: Locale;
   /** A launching game resolves its hotkeys from here, like the HUD scale factor. */
   readonly keyBindings: KeyBindings;
@@ -43,6 +48,8 @@ export function defaultSettings(): MenuSettings {
     postFxEnabled: true,
     fpsLimit: null,
     soundEnabled: true,
+    soundVolume: DEFAULT_SFX_VOLUME,
+    musicVolume: DEFAULT_MUSIC_VOLUME,
     language: defaultLocale(),
     keyBindings: DEFAULT_KEY_BINDINGS,
   };
@@ -62,6 +69,11 @@ function clampRenderScale(value: unknown): number {
 
 function parseFpsLimit(value: unknown): FpsLimit {
   return value === 30 || value === 60 ? value : null;
+}
+
+function clampVolume(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.min(1, Math.max(0, value));
 }
 
 /** Parse a stored settings blob; a missing or deformed field falls back to its default. */
@@ -84,6 +96,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     postFxEnabled: typeof record.postFxEnabled === 'boolean' ? record.postFxEnabled : defaults.postFxEnabled,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
+    soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
+    musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),
     language: isLocale(record.language) ? record.language : defaults.language,
     keyBindings: parseKeyBindings(record.keyBindings),
   };

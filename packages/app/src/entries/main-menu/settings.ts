@@ -1,4 +1,3 @@
-import { DEFAULT_MASTER_GAIN } from '@open-northland/audio';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
 import { enterFullscreen, isFullscreen, leaveFullscreen } from '../../view/fullscreen.js';
@@ -41,6 +40,7 @@ const PLACEHOLDER_SCROLL_SPEED = 1;
 const PLACEHOLDER_STEP = 0.05;
 const VOLUME_MIN = 0;
 const VOLUME_MAX = 1;
+const VOLUME_STEP = 0.05;
 const SCROLL_SPEED_MIN = 0.5;
 const SCROLL_SPEED_MAX = 2;
 
@@ -240,20 +240,27 @@ export function settingsScreen(
   };
 
   const audioRows = (): HTMLElement[] => {
-    const sound = togglePill(menuSettings().soundEnabled, (on) => updateSettings({ soundEnabled: on }));
+    const settings = menuSettings();
+    const sound = togglePill(settings.soundEnabled, (on) => updateSettings({ soundEnabled: on }));
     sound.setAttribute('aria-label', text.soundEnabled);
-    const volume = (label: string): HTMLDivElement =>
+    const volume = (label: string, value: number, commit: (value: number) => void): HTMLDivElement =>
       sliderControl(label, {
         min: VOLUME_MIN,
         max: VOLUME_MAX,
-        step: PLACEHOLDER_STEP,
-        value: DEFAULT_MASTER_GAIN,
+        step: VOLUME_STEP,
+        value,
+        onCommit: commit,
       });
     return [
       settingRow(text.soundEnabled, sound),
-      settingRow(text.masterVolume, volume(text.masterVolume), { soon }),
-      settingRow(text.musicVolume, volume(text.musicVolume), { soon }),
-      settingRow(text.sfxVolume, volume(text.sfxVolume), { soon }),
+      settingRow(
+        text.sfxVolume,
+        volume(text.sfxVolume, settings.soundVolume, (value) => updateSettings({ soundVolume: value })),
+      ),
+      settingRow(
+        text.musicVolume,
+        volume(text.musicVolume, settings.musicVolume, (value) => updateSettings({ musicVolume: value })),
+      ),
     ];
   };
 

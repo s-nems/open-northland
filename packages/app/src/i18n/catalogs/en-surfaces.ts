@@ -138,9 +138,8 @@ export const enSurfaces = {
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       soundEnabled: 'In-game sound',
-      masterVolume: 'Master volume',
       musicVolume: 'Music volume',
-      sfxVolume: 'Effects volume',
+      sfxVolume: 'Game sounds volume',
       language: 'Language',
       // Endonyms: each language names itself and is not translated per locale.
       languageNames: { pol: 'Polski', eng: 'English' },
