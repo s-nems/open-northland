@@ -20,9 +20,9 @@ import { loadIr, loadLayer, MissingAtlasError } from '../../content/ir/load.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 
 /**
- * Everything the details panel loads once at mount; every piece except the font degrades to
- * `null`/`undefined`/empty without `content/`. Textures are minted once here because a `Texture` pins a
- * resize listener on its shared `TextureSource`, so minting one per rebuild would leak those wrappers.
+ * The details panel's mount-time assets; every piece except the font degrades to `null`/`undefined`/empty
+ * without `content/`. Textures are minted once here because a `Texture` pins a resize listener on its
+ * shared `TextureSource`, so minting one per rebuild would leak those wrappers.
  */
 
 /** The original window/button fills from `Data/gui/bitmaps/bg*.pcx` (300×300 texture tiles). */
@@ -119,8 +119,7 @@ export interface DetailsPanelAssets {
   readonly bitmaps: GuiBitmapSet;
   readonly strings: GuiStrings | null;
   readonly previews: ReadonlyMap<number, BuildingPreview>;
-  /** The decoded level-to-colour gauge ramp (`bar_hitpoints`); without it the stat bars fall back to
-   *  flat banded colours. */
+  /** The decoded level-to-colour gauge ramp (`bar_hitpoints`). */
   readonly barRamp: GuiBarRamp | undefined;
 }
 

@@ -4,8 +4,8 @@ import { CAP_TOP_RATIO, UI_TEXT_FILL } from '../../content/ui-font.js';
 import type { Rect } from '../geometry.js';
 
 /**
- * The details panel's vector-text primitives: text draws in the bundled serif (`content/ui-font.ts`), not
- * the original bitmap `.fnt`, and is placed by Pixi `Text` anchors rather than baseline metrics.
+ * The details panel's text primitives: vector `Text` in the face `content/ui-font.ts` resolves, placed by
+ * Pixi anchors rather than by baseline metrics.
  */
 
 /** Which of the two panel text sizes a call draws at. */
@@ -43,10 +43,7 @@ export interface TextKit {
   textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
 }
 
-/**
- * Build the text-placement kit over the panel's `text` layer container. Each `Text` renders at
- * `FONT_PX * scale`, so the bake's oversample keeps it sharp.
- */
+/** Each `Text` renders at `FONT_PX * scale`, so the bake's oversample keeps it sharp. */
 export function createTextKit(textLayer: Container, fontFamily: string, scale: number): TextKit {
   const makeText = (text: string, color: FontColorName, variant: FontVariant): Text => {
     const t = new Text({

@@ -71,7 +71,6 @@ const buttonClick = (view: PanelView, action: ButtonAction): PanelClick | null =
     }
     case 'settler': {
       const entityId = view.model.entityId;
-      // Exhaustive over the Praca controls, so a fifth one cannot compile into a silent no-op.
       switch (action) {
         case 'assign-workplace':
           return { kind: 'assignWorkplace', entityId };
