@@ -17,7 +17,7 @@ import { fightExperienceTypeFor, generalTrackFor, SCOUT_EXPERIENCE_TYPE, trackFo
  * 3: 38% ... 11: 70%) within ~2 points. Authored: N = 100 is the chosen mastery point.
  */
 
-/** Repeats at which the bonus reaches exactly 100% (`N` in the curve), the mastery point. */
+/** `N` in the curve: the repeats at which the bonus reaches exactly 100%. */
 export const EXPERIENCE_MASTERY_REPEATS = 100;
 
 /** The curve's `K` in thousandths (K = 4.9); millis keep the ratio integer-exact below. */
@@ -77,8 +77,8 @@ export function requirementRepeats(
   return repeats;
 }
 
-/** The by-id and by-owning-job track lookups {@link requirementRepeats} reads, memoized per content array
- *  so the per-tick gate never rescans the catalog. First-wins per id. */
+/** The by-id and by-owning-job track lookups, memoized per content array so the per-tick gate never
+ *  rescans the catalog. First-wins per id. */
 const TRACK_TABLES = new WeakMap<
   readonly HumanJobExperienceType[],
   {
@@ -103,8 +103,7 @@ function trackTables(tracks: readonly HumanJobExperienceType[]) {
   return tables;
 }
 
-/** The raw XP worth `repeats` on an optional track - {@link experienceRepeats}' inverse, for seeding a
- *  veteran that must clear a repeats threshold. */
+/** The raw XP worth `repeats` on an optional track - {@link experienceRepeats}' inverse. */
 export function rawXpForRepeats(track: HumanJobExperienceType | undefined, repeats: number): number {
   return repeats * (track?.experienceFactor ?? 1);
 }

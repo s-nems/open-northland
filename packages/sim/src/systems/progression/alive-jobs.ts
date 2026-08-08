@@ -7,14 +7,14 @@ interface AliveTribeJobsCache {
   membershipGeneration: number;
   /** Settler value generation: a trade is written in place, invisible to the membership generation above.
    *  Any `World.write` to Settler bumps it, so this stays a cache only while the per-tick Settler writers
-   *  (needs decay, work XP, combat need cost) keep writing raw rather than through the seam. */
+   *  keep writing raw rather than through the seam. */
   valueGeneration: number;
   readonly jobsByTribe: ReadonlyMap<number, ReadonlySet<number>>;
 }
 
 const aliveTribeJobsCache = new WeakMap<World, AliveTribeJobsCache>();
 
-/** The one derivation path, shared by the rebuild and the verifier's reference run. */
+/** The one derivation path, so the verifier's reference run cannot drift from the rebuild. */
 function deriveAliveTribeJobs(world: World): Map<number, Set<number>> {
   const byTribe = new Map<number, Set<number>>();
   for (const e of world.query(Person)) {

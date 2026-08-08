@@ -15,9 +15,8 @@ import { isShipVehicle } from '../readviews/vehicles.js';
 import { aliveTribeJobs } from './alive-jobs.js';
 import { requirementRepeats } from './bonus.js';
 
-/** Kill-switch for the building tech-unlock gate ({@link buildingEnabled}), off pending a rework that
- *  ties it to the progression system the way {@link goodEnabled} consults `ProgressionRules`. Annotated
- *  `boolean` rather than the literal so both branches of the gate stay live for the type checker. */
+/** Kill-switch for the building tech-unlock gate, currently off. Annotated `boolean` rather than the
+ *  literal so both branches of the gate stay live for the type checker. */
 const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
 
 /**
@@ -25,8 +24,8 @@ const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
  * `tribetypes` `jobEnablesHouse <jobType> <houseType>` edges, a house enabled once a settler of the
  * gating job is present in the tribe.
  *
- * Disabled while {@link BUILDING_UNLOCK_GATE_ENABLED} is false: this always returns true, but stays a
- * live call at every gate site, so flipping the switch restores the behaviour with no code moves.
+ * While {@link BUILDING_UNLOCK_GATE_ENABLED} is false this always returns true, but stays a live call at
+ * every gate site, so flipping the switch restores the behaviour with no code moves.
  */
 export function buildingEnabled(
   world: World,
@@ -47,8 +46,6 @@ export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goo
   return tribeUnlockEnabled(world, ctx, tribe, 'good', goodType);
 }
 
-/** Whether every output of `recipe` is tech-unlocked for `tribe`, shared by the cycle-start gate and the
- *  livestock summon, which must not call an animal to a batch the tech-graph would refuse. */
 export function recipeOutputsEnabled(
   world: World,
   ctx: SystemContext,
@@ -77,7 +74,6 @@ function tribeUnlockEnabled(
   kind: JobEnablesKind,
   targetId: number,
 ): boolean {
-  // Absent = ungated: no tech-graph for this tribe, or no edge of this kind names this target.
   const enablingJobs = contentIndex(ctx.content).enablingJobsByTribe.get(tribe)?.get(kind)?.get(targetId);
   if (enablingJobs === undefined) return true;
 
@@ -122,7 +118,7 @@ export function experienceRequirementMet(
   return repeats >= requirement.amount;
 }
 
-/** Who is asking a `needfor*` gate: the settler's tribe, its owning player, and its accrued XP. */
+/** Who is asking a `needfor*` gate. */
 export interface NeedSubject {
   readonly tribe: number;
   /** The owning player, or `undefined` for a neutral settler (which the gates do apply to). */
@@ -148,9 +144,8 @@ export function experienceGatesApply(world: World, owner: number | undefined): b
 /**
  * Whether a settler meets every `needfor*` XP threshold gating a `(target, targetId)` for its tribe. A
  * target with several must clear all of them, and a tribe absent from content thresholds nothing. Where
- * the tree does not apply ({@link experienceGatesApply}) every civilian target is unthresholded, but
- * fighter jobs stay gated either way: on accrued XP, or on the barracks schooling {@link schoolingMet}
- * reads.
+ * the tree does not apply every civilian target is unthresholded, but fighter jobs stay gated either way:
+ * on accrued XP, or on the barracks schooling {@link schoolingMet} reads.
  */
 export function settlerMeetsNeed(
   world: World,
