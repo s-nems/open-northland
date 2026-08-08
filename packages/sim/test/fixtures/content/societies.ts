@@ -203,7 +203,9 @@ export const societyContent = {
     },
   ],
   atomicAnimations: [
-    { id: 'viking_chop', name: 'viking_chop', length: 3 },
+    // The chop carries the original's mid-swing sound cue (`event <at> 34 9` - PLAY_SOUND_FX naming
+    // the Woodcutter Axe `logicSoundType`), two thirds in like `viking_collector_harvest_tree`.
+    { id: 'viking_chop', name: 'viking_chop', length: 3, events: [{ at: 2, type: 34, value: 9 }] },
     { id: 'viking_mine', name: 'viking_mine', length: 3 },
     { id: 'viking_reap', name: 'viking_reap', length: 3 },
     { id: 'viking_sow', name: 'viking_sow', length: 3 },

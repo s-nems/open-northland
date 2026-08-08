@@ -1,12 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { CurrentAtomic } from '../../src/components/index.js';
+import { CurrentAtomic, Felling, Position, Resource } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { atomicSystem } from '../../src/systems/index.js';
-import { TEST_MANIFEST } from '../fixtures/content.js';
+import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
+import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
  * The AtomicSystem's authored sound cues: a settler's action sounds on its animation's
@@ -23,6 +24,9 @@ const AXE = 9;
 const VOICE = 61;
 
 const CHOP_ATOMIC = 24;
+/** The shared fixture's woodcutter and its wood good - the trade that binds `viking_chop` to CHOP_ATOMIC. */
+const WOODCUTTER_JOB = 1;
+const WOOD = 1;
 const SILENT_ATOMIC = 25;
 const TWO_CUE_ATOMIC = 26;
 const OVERRUN_ATOMIC = 27;
@@ -131,5 +135,57 @@ describe('atomicSystem - authored sound cues', () => {
 
   it('sounds a clip a trade inherits from the civilist body', () => {
     expect(cuesOverSwing(COLLECTOR_JOB, CIVILIST_ONLY_ATOMIC)).toEqual([{ tick: 3, soundType: VOICE }]);
+  });
+
+  it('sounds a multi-swing harvest once per swing, and never through the breather between them', () => {
+    // The fixture chop is 3 ticks with its cue at frame 2; a harvest burst re-arms the clip in place and
+    // appends a rest tail every few swings, so the cue must track the swings, not the atomic's lifetime.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
+    const cutter = settlerAt(sim, {
+      jobType: WOODCUTTER_JOB,
+      position: { x: fx.fromInt(0), y: fx.fromInt(0) },
+    });
+    // A standing tree is FELLED over several chops that each yield nothing, so the swing re-arms in place.
+    const felling = testContent().goods.find((g) => g.id === 'wood')?.gathering;
+    const chops = felling?.chopsToFell ?? 0;
+    const tree = sim.world.create();
+    sim.world.add(tree, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
+    sim.world.add(tree, Resource, {
+      goodType: WOOD,
+      remaining: felling?.yieldPerNode ?? 0,
+      harvestAtomic: CHOP_ATOMIC,
+    });
+    sim.world.add(tree, Felling, { chopsLeft: chops });
+    sim.world.add(cutter, CurrentAtomic, {
+      atomicId: CHOP_ATOMIC,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 3,
+      effect: { kind: 'harvest', resource: tree, goodType: WOOD },
+      targetEntity: tree,
+      targetTile: null,
+    });
+
+    let swings = 0;
+    let cues = 0;
+    let cuesInBreather = 0;
+    for (let tick = 0; tick < 60; tick++) {
+      const before = sim.world.tryGet(cutter, CurrentAtomic);
+      if (before === undefined) break;
+      const resting = before.restTail === true;
+      if (before.elapsed === 0) swings += 1;
+      sim.events.clear();
+      atomicSystem(sim.world, ctxOf(sim));
+      for (const ev of sim.events.current()) {
+        if (ev.kind !== 'atomicSound') continue;
+        cues += 1;
+        if (resting) cuesInBreather += 1;
+      }
+    }
+
+    expect(swings).toBeGreaterThan(2); // the burst really did re-arm, so the count means something
+    expect(swings).toBeLessThanOrEqual(chops); // and it stopped once the tree came down
+    expect(cues).toBe(swings);
+    expect(cuesInBreather).toBe(0);
   });
 });
