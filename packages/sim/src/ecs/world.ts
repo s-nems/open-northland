@@ -1,8 +1,7 @@
 /**
  * A tiny, explicit ECS. Deliberately not a library: iteration order is a determinism contract here (see
  * docs/ECS.md). Entity ids come from a monotonic counter and are never recycled, because id reuse would make
- * iteration order history-dependent. Components are plain data keys; systems (plain functions) carry all
- * behavior.
+ * iteration order history-dependent.
  */
 
 import type { Component, DeepReadonly, Entity } from './component.js';
@@ -42,7 +41,7 @@ export class World {
    *  verifier but keeps its position. */
   private readonly cacheVerifiers = new Map<string, CacheVerifier>();
   /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create} and
-   *  {@link destroy} since component add/remove cannot change membership. */
+   *  {@link destroy} since component add/remove cannot change the alive set. */
   private canonicalCache: readonly Entity[] | null = null;
 
   create(): Entity {
@@ -316,7 +315,7 @@ export class World {
     }
   }
 
-  /** {@link forEachComponent} collected into an array, for callers that want a materialized list. */
+  /** {@link forEachComponent} collected into an array. */
   componentEntries(entity: Entity): Array<[string, unknown]> {
     const out: Array<[string, unknown]> = [];
     this.forEachComponent(entity, (name, value) => out.push([name, value]));
