@@ -7,10 +7,8 @@ import { STOCK_AMOUNT_INSET, STOCK_ICON_W, stockAmount } from './shared.js';
 /** Left edge of the construction gauge (design px); the column before it fits the "100%" text. */
 const CONSTRUCTION_BAR_LEFT = 40;
 
-/**
- * Construction-site window: build progress on the neutral bar, never the general section's health ramp.
- * No extracted title exists for it, so 'Construction' is a named approximation.
- */
+/** Construction-site window: build progress on the neutral bar, not the general section's health ramp.
+ *  No extracted title exists for it, so the headline is an approximation. */
 export function drawConstructionSection(
   chrome: Chrome,
   layout: BuildingLayout,

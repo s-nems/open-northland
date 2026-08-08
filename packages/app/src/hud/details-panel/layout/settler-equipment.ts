@@ -1,19 +1,16 @@
 import type { Rect } from '../../geometry.js';
 import type { EquipGroup, EquipRow } from '../model/index.js';
 
-// The Ekwipunek section's geometry, plus the flat list of per-slot action buttons a click hit-tests
-// against.
-
 /** One labeled equipment row (Buty/Narzędzia/…): a label column + a row of slot sockets. */
 export const EQUIP_ROW_H = 24;
 /** A round equipment-slot socket's square bounding box (design px). */
 export const EQUIP_SOCKET = 18;
-/** Gap after a slot cell's last action button before the next socket (the misc Ekwipunek row). */
+/** Gap after a slot cell's last action button before the next socket. */
 const EQUIP_SOCKET_GAP = 4;
 /** The row-label column width before the sockets (fits the widest slot label, "Narzędzia"). */
 export const EQUIP_LABEL_W = 74;
-/** Diameter of a round per-slot action button (equip/swap, and the take-off cross beside it). Sized so
- *  four misc cells share one line with the label at every menu uiscale. */
+/** Diameter of a round per-slot action button, sized so four misc cells share one line with the label at
+ *  every menu uiscale. */
 const EQUIP_ACTION_BTN = 15;
 /** Gap between a socket and its first action button, clearing the icon's 3 px overflow past the ring. */
 const EQUIP_BTN_INSET = 4;
@@ -26,14 +23,14 @@ export interface EquipRowRect {
   readonly slots: readonly Rect[];
 }
 
-/** Which sim `Equipment` slot an action button addresses (`slot` indexes the misc row; 0 elsewhere). */
+/** Which sim `Equipment` slot an action button addresses. */
 export interface EquipSlotRef {
   readonly group: EquipGroup;
   readonly slot: number;
 }
 
-/** `equip` opens the pick menu for an empty slot, `swap` for an occupied one, `unequip` orders the worn
- *  item taken off. */
+/** `equip` opens the pick menu for an empty slot, `swap` for an occupied one, `unequip` takes the worn
+ *  item off. */
 export type EquipActionKind = 'equip' | 'swap' | 'unequip';
 
 /** One per-slot equipment action button. Always enabled: what can actually be worn is the pick menu's
@@ -50,10 +47,9 @@ export interface EquipActionHit {
 export const equipActionKey = (hit: EquipActionHit): string => `${hit.ref.group}:${hit.ref.slot}:${hit.kind}`;
 
 /**
- * The scaled slot-cell metrics: a cell is the socket, then its equip/swap button and take-off cross. The
- * pitch reserves both buttons for every cell so sockets stay column-aligned, and a row whose cells
- * overflow `bodyW` wraps onto further {@link EQUIP_ROW_H} lines. Separate from {@link layoutEquipRows}
- * because the caller needs `slotsPerLine` to size the body, before the section rects exist.
+ * The scaled slot-cell metrics. The pitch reserves both action buttons for every cell so sockets stay
+ * column-aligned, and a row whose cells overflow `bodyW` wraps onto further {@link EQUIP_ROW_H} lines.
+ * Separate from {@link layoutEquipRows} because the caller sizes the body from `slotsPerLine` first.
  */
 export function equipSlotMetrics(bodyW: number, s: number): { slotsPerLine: number } {
   const socket = Math.round(EQUIP_SOCKET * s);
@@ -78,9 +74,8 @@ export function equipRowLines(rows: readonly EquipRow[], slotsPerLine: number): 
 }
 
 /**
- * Lay the equipment rows into `body` and collect their action buttons. A worn slot offers swap and
- * take-off, an empty one only equip, and a row the settler may no longer wear offers only take-off, so
- * no button opens a menu the sim would refuse to fill.
+ * Lay the equipment rows into `body` and collect their action buttons. A row the settler may no longer
+ * wear offers only take-off, so no button opens a menu the sim would refuse to fill.
  */
 export function layoutEquipRows(
   rows: readonly EquipRow[],
@@ -121,8 +116,8 @@ export function layoutEquipRows(
       if (row.wearable) {
         hits.push({ ref, kind: slot.occupied ? 'swap' : 'equip', ...named, rect: btnRect(0) });
       }
-      // The cross keeps its column whether or not the first button is drawn, so an unwearable row's
-      // socket still lines up with the rows above it.
+      // The cross keeps column 1 with or without an equip button, so it lands in the same place on a
+      // wearable and an unwearable row.
       if (slot.occupied) hits.push({ ref, kind: 'unequip', ...named, rect: btnRect(1) });
       return { x: cellX, y: cellY + socketPadY, w: socket, h: socket };
     });

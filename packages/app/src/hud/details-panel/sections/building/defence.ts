@@ -17,13 +17,13 @@ export function drawDefenceSection(
   hover: ButtonAction | null,
   s: number,
 ): void {
-  const toggle = layout.defenceToggle; // built with the window, so the two are null together
+  const toggle = layout.defenceToggle;
   if (layout.defence === null || toggle === null) return;
   chrome.window(layout.defence.frame);
   chrome.headline(layout.defence.title, ui('housewindow', HOUSEWINDOW.defence, messages().hud.defence));
   chrome.roundButton(toggle.rect, true, hover === 'toggle-defence');
   chrome.glyphShield(toggle.rect, model.defenseEnabled);
-  // Light body text on the toggle's centre line, matching the original's defence status line (observed).
+  // The status line sits on the toggle's centre line, like the original's defence line (observed).
   const textX = toggle.rect.x + toggle.rect.w + Math.round(DEFENCE_LABEL_GAP * s);
   chrome.textLeftMiddle(
     model.defenseLabel,

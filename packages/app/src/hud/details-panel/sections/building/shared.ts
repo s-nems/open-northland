@@ -1,6 +1,6 @@
 /**
  * `housewindow` string ids from the original `ingamegui` tables, decoded into
- * `content/gui/strings/<lang>.json`; the glosses are the pinned fallbacks for a checkout without content.
+ * `content/gui/strings/<lang>.json`; the glosses quote each id's decoded Polish text.
  */
 export const HOUSEWINDOW = {
   general: 1, // 'Ogólny'
@@ -23,8 +23,8 @@ export const STOCK_ICON_W = 18;
 export const STOCK_AMOUNT_INSET = 6;
 
 /**
- * One decimal, left-aligned in the plate, with the extracted `logicstock` capacity appended when the row
- * declares a slot (observed off the original's 1024×768 screenshots).
+ * One decimal, with the row's limit appended when it has one: a store row's extracted `logicstock`
+ * capacity, or a construction row's needed amount (observed off the original's 1024×768 screenshots).
  */
 export function stockAmount(amount: number, capacity?: number): string {
   return capacity === undefined ? amount.toFixed(1) : `${amount.toFixed(1)} / ${capacity.toFixed(1)}`;

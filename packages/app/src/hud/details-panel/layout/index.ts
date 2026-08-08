@@ -49,14 +49,15 @@ export type DetailsLayout = BuildingLayout | SettlerLayout | CompactLayout | Sig
 
 /** One body row: the selection count lives in the headline, the body is the controls hint. */
 const COMPACT_ROWS = 1;
-/** The signpost tear-down button height/side inset (matches the settler assign button's proportions). */
+/** The signpost tear-down button's height. */
 const SIGNPOST_BUTTON_H = 18;
+/** Inset between that button and its section body, on both axes. */
 const SIGNPOST_BUTTON_PAD = 2;
 
 /**
  * Apply `fn` to every rect in a layout, returning a new layout of the same shape. The off-screen
  * supersample draw layout is derived from the on-canvas hit layout this way, so drawn geometry equals
- * hit-tested geometry by construction rather than by two layout passes agreeing on rounding.
+ * hit-tested geometry by construction rather than by two passes agreeing on rounding.
  */
 export function mapLayout<T extends DetailsLayout>(layout: T, fn: (r: Rect) => Rect): T {
   const sec = (s: SectionRect): SectionRect => ({ frame: fn(s.frame), title: fn(s.title), body: fn(s.body) });

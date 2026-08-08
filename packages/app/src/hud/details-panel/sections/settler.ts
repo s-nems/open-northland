@@ -31,7 +31,6 @@ const GATHER_ICON_PAD = 3;
  *  percent stays in the socket tooltip. */
 const WEAR_BAR_H = 3;
 
-/** The original's stacked human-window sections, each with a decoded `humanwindow` headline. */
 export function drawSettler(
   chrome: Chrome,
   layout: SettlerLayout,
@@ -92,8 +91,8 @@ function drawGeneralSection(
   });
 }
 
-/** Praca: the workplace and the good it makes. Key labels are pinned Polish, since the original shows
- *  an icon inline rather than a key column and so has no decoded key string. */
+/** Praca: the workplace and the good it makes. The key labels come from the app's message catalog: the
+ *  original shows an icon inline rather than a key column, so it has no decoded key string. */
 function drawWorkSection(
   chrome: Chrome,
   layout: SettlerLayout,
@@ -130,8 +129,7 @@ function drawWorkSection(
       product.w - keyW,
     );
   }
-  // A gatherer's single-select goods or a craft worker's multi-select products, never both; the choice
-  // names live in the cursor tooltip rather than beside the buttons.
+  // The choice names live in the cursor tooltip rather than beside the buttons.
   const iconPad = Math.round(GATHER_ICON_PAD * s);
   const drawChoice = (rect: Rect, goodId: string | undefined, active: boolean): void => {
     chrome.roundButton(rect, true, active);
@@ -178,8 +176,8 @@ function workControlLabel(action: WorkControlAction, ui: UiString): string {
   }
 }
 
-/** Doświadczenie: one left-aligned "label count (+bonus%)" line per trained specialization; an
- *  untrained settler's body stays empty, with no placeholder row. */
+/** Doświadczenie: one left-aligned "label count (+bonus%)" line per trained specialization, then the
+ *  dimmed upcoming-unlock lines; nothing is drawn where the settler has neither. */
 function drawExperienceSection(
   chrome: Chrome,
   layout: SettlerLayout,
@@ -199,7 +197,6 @@ function drawExperienceSection(
       chrome.textAt(`${row.label} ${row.repeats}${pct}`, r.x, r.y + ROW_TEXT_PAD * s, 'white');
       return;
     }
-    // Past the trained rows come the dimmed upcoming-unlock progress lines.
     const unlock = model.upcomingUnlocks[i - model.experience.length];
     if (unlock === undefined) return;
     chrome.textAt(unlock.label, r.x, r.y + ROW_TEXT_PAD * s, 'dimmed');
@@ -211,8 +208,7 @@ function drawExperienceSection(
  * showing the good's icon. A wearing good's condition draws as a thin gauge under its socket, a
  * deviation from the manual's "A percentage indicating the degree of use is displayed" (the original manual
  * p. 27), traded for four misc cells that fit one line at every ui scale. The per-slot plus/arrows/cross
- * glyphs are an approximation of the original's hand buttons described on the same page, and take-off
- * walks the item to a store instead of dropping it where the settler stands.
+ * glyphs are an approximation of the original's hand buttons described on the same page.
  */
 function drawEquipmentSection(
   chrome: Chrome,
