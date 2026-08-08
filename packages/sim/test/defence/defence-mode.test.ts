@@ -44,6 +44,8 @@ const FARMER = 2; // a civilian trade - runs for cover
 const SOLDIER = 31; // `soldier_unarmed` - the slug isFighterJob keys on; never shelters
 const SCOUT = 14; // `scout` - never shelters either
 const CHILD = 4; // `child_male` - the age class hides but never fights (`lifecycle/ageclass.ts`)
+const HUNTER = 15; // `hunter` - a civilian trade that shelters, but whose filter also admits game
+const DEER = 9; // an animal tribe with a huntPrey row: game a hunter may strike, and nobody else may
 const TOWER = 40;
 const HUT = 41; // no shelterCapacity: a building that cannot raise the alarm at all
 
@@ -51,8 +53,12 @@ const TOWER_CAPACITY = 2;
 const HOUSE_BOW_DAMAGE = 30;
 const HOUSE_BOW_RANGE = 6;
 const RAIDER_HP = 500;
+/** Game deep enough to outlive a long window, so the band under test never changes shape mid-run. */
+const GAME_HP = 100_000;
 /** A food good, so a settler under cover can answer hunger from what it carries. */
 const RATION = 1;
+/** The deer's carcass good; huntPrey yields need a harvest atomic. */
+const VENISON = 2;
 
 /** One tribe fought across two players, a tower that shelters {@link TOWER_CAPACITY} civilians and a hut
  *  that shelters nobody, the civilian house bow (bound by id, no jobType - a sheltering settler keeps its
@@ -63,11 +69,13 @@ function defenceContent(): ContentSet {
     goods: [
       { typeId: 0, id: 'none' },
       { typeId: RATION, id: 'food_simple', weight: 1 },
+      { typeId: VENISON, id: 'food_venison', weight: 1, atomics: { harvest: 32 } },
     ],
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: CHILD, id: 'child_male' },
       { typeId: FARMER, id: 'farmer' },
+      { typeId: HUNTER, id: 'hunter' },
       { typeId: SOLDIER, id: 'soldier_unarmed' },
       { typeId: SCOUT, id: 'scout' },
     ],
@@ -103,10 +111,14 @@ function defenceContent(): ContentSet {
         id: 'viking',
         atomicBindings: [
           { jobType: FARMER, atomicId: 81, animation: 'viking_attack' },
+          { jobType: HUNTER, atomicId: 81, animation: 'viking_attack' },
           { jobType: SOLDIER, atomicId: 81, animation: 'viking_attack' },
         ],
       },
+      { typeId: DEER, id: 'deer' },
     ],
+    animals: [{ id: 'deer', tribeType: DEER, catchable: true, hitpointsAdult: 1000 }],
+    huntPrey: [{ tribeType: DEER, yields: [{ goodType: VENISON, amount: 1 }] }],
     atomicAnimations: [{ id: 'viking_attack', name: 'viking_attack', length: 4 }],
   });
 }
@@ -134,6 +146,24 @@ function settlerAt(sim: Simulation, x: number, y: number, owner: number, jobType
     mode: jobType === SOLDIER ? MILITARY_MODE.ATTACK : MILITARY_MODE.FLEE,
     anchorCell: null,
   });
+  return e;
+}
+
+/** Wildlife: a positioned, {@link Health}-bearing settler of an animal tribe, owned by nobody. It carries
+ *  no stay point, so it neither roams nor is frightened off the node it is placed on. */
+function animalAt(sim: Simulation, x: number, y: number, tribe: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
+  addPerson(sim.world, e, {
+    tribe,
+    jobType: null,
+    hunger: fx.fromInt(0),
+    fatigue: fx.fromInt(0),
+    piety: fx.fromInt(0),
+    enjoyment: fx.fromInt(0),
+    experience: new Map<number, number>(),
+  });
+  sim.world.add(e, Health, { hitpoints: GAME_HP, max: GAME_HP });
   return e;
 }
 
@@ -355,6 +385,39 @@ describe('defence mode', () => {
     }
 
     expect(split).toBe(true); // both shooters drew on DIFFERENT raiders in the same tick
+  });
+
+  it('keeps a sheltering hunter’s game out of the trade sitting beside it', () => {
+    const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(12, 4) });
+    const tower = buildingAt(sim, 5, 1, TOWER, P1);
+    const hunter = settlerAt(sim, 4, 1, P1, HUNTER); // the lower id, so it takes seat 0 and resolves first
+    const farmer = settlerAt(sim, 4, 2, P1, FARMER);
+
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
+    stepUntil(sim, 400, () => insideOf(sim, hunter) === tower && insideOf(sim, farmer) === tower);
+    // Two heads of game in the bow's band, which only the hunter's predation filter admits, and an enemy
+    // house, which only the deprioritized tier holds. The two occupants share a node, a band and a reach,
+    // so the whole difference between their searches is the trade the filter keys on.
+    const nearGame = animalAt(sim, 6, 1, DEER);
+    animalAt(sim, 7, 1, DEER); // the second head - what seat 1 would take from a band it must not share
+    const enemyHouse = buildingAt(sim, 5 + HOUSE_BOW_RANGE / 2, 1, HUT, P2);
+
+    const drawnBy = (e: Entity): Entity | null => {
+      const swing = sim.world.tryGet(e, CurrentAtomic)?.effect;
+      return swing?.kind === 'attack' ? swing.target : null;
+    };
+    const hunterDrew = new Set<Entity>();
+    const farmerDrew = new Set<Entity>();
+    for (let i = 0; i < 600; i++) {
+      sim.step();
+      const game = drawnBy(hunter);
+      const house = drawnBy(farmer);
+      if (game !== null) hunterDrew.add(game);
+      if (house !== null) farmerDrew.add(house);
+    }
+
+    expect(hunterDrew).toEqual(new Set([nearGame])); // seat 0 takes the nearest of its own band
+    expect(farmerDrew).toEqual(new Set([enemyHouse])); // and seat 1 never inherits a head of it
   });
 
   it('seats only the settlers that have arrived, so the spread never doubles up on one raider', () => {

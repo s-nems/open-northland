@@ -13,7 +13,7 @@ import {
 import { entityNode, manhattan, type NodeBuckets } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import { hunterEngageSpec } from './hunting/index.js';
-import type { HostilePresence } from './presence.js';
+import type { CombatPass } from './pass.js';
 import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
@@ -82,9 +82,10 @@ export function engageSpec(
   const minDist = weapon.minRange;
   const sight = Math.max(weapon.maxRange, SIGHT_RADIUS_NODES);
 
+  const hunts = isHunterJob(ctx.content, attacker.jobType);
   // A hunter is never presence-gated, in any stance: its prey filter admits the passive wildlife the
   // presence grid discounts.
-  const player = isHunterJob(ctx.content, attacker.jobType) ? null : (viewer?.player ?? null);
+  const player = hunts ? null : (viewer?.player ?? null);
 
   // A garrison outranks every stance: its search band is the tower-boosted reach (`weapon` already carries
   // the bonus), never the advance sight radius. A sheltering civilian reads the same way, anchor-less
@@ -96,7 +97,9 @@ export function engageSpec(
       searchRadius: weapon.maxRange,
       player,
       // Only the sheltering crowd fans its fire; a tower's posted archers still stack on the nearest man.
-      ...(stance.shelter === null ? {} : { spread: stance.shelter.seat }),
+      ...(stance.shelter === null
+        ? {}
+        : { spread: { seat: stance.shelter.seat, group: garrisonGroup(viewer?.player, attacker, hunts) } }),
       lowPriority: lowPriorityBuildings,
       lock: null,
       defend: null,
@@ -146,6 +149,15 @@ export function engageSpec(
   };
 }
 
+/**
+ * The seeker inputs a garrison's `accept` keys on: the fog owner, the tribe the hostility relation reads,
+ * and whether the trade hunts - a trade reaches that filter only through `mayHunt`, so the flag is the
+ * whole of it. Two occupants agreeing on all three admit the same targets, so one search answers both.
+ */
+function garrisonGroup(player: number | undefined, attacker: SettlerIdentity, hunts: boolean): string {
+  return `${player}/${attacker.tribe}/${hunts}`;
+}
+
 export interface EngageSpec {
   /** The ring-search per-candidate hostility/predation filter. */
   readonly accept: (t: Entity) => boolean;
@@ -153,14 +165,15 @@ export interface EngageSpec {
   readonly minDist: number;
   /** Far reach - how far the unit spots a target to swing at / advance on. */
   readonly searchRadius: number;
-  /** The seeker's player for the {@link HostilePresence} early-out; null when the seeker must never skip
-   *  the search - an unowned one, or a hunter in any stance. */
+  /** The seeker's player for the coarse presence early-out; null when the seeker must never skip the
+   *  search - an unowned one, or a hunter in any stance. */
   readonly player: number | null;
-  /** A hostile wild animal seeking - gates on {@link HostilePresence.civsWithin} instead. */
+  /** A hostile wild animal seeking - gates on the presence grid's civilian count instead. */
   readonly animalSeeker?: boolean;
-  /** This seeker's seat in the firing line it shares a node with - its offset into the nearest
-   *  {@link GARRISON_SPREAD_TARGETS}. Absent means take the nearest. */
-  readonly spread?: number;
+  /** This seeker's place in the firing line it shares a node with: `seat` is its offset into the nearest
+   *  {@link GARRISON_SPREAD_TARGETS}, and `group` identifies the occupants whose search it is the same as.
+   *  Absent means take the nearest. */
+  readonly spread?: { readonly seat: number; readonly group: string };
   /** The deprioritized tier among accepted targets, searched only when the primary tier finds nothing in
    *  sight. It splits RAW ring-search candidates ahead of {@link EngageSpec.accept}, so it must stay total
    *  and pure over any indexed entity - a friendly unit, an own building, a carcass. */
@@ -191,14 +204,13 @@ export function resolveTarget(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: NodeBuckets,
-  presence: HostilePresence,
+  pass: CombatPass,
   self: Entity,
   here: NodeId,
   attacker: SettlerIdentity,
   spec: EngageSpec,
-  bodyNodes?: BuildingBodyNodeCache,
 ): { target: Entity; dist: number } | null {
+  const { bodyNodes, index, presence } = pass;
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
     // An ordered target is chased regardless of sight, so measure its real distance, uncapped by the ring
@@ -226,28 +238,40 @@ export function resolveTarget(
   // The animal seeker's twin: no civ in the band proves both empty.
   if (spec.animalSeeker === true && !presence.civsWithin(x, y, spec.searchRadius)) return null;
   // A nearer tier-2 target never preempts a tier-1 target in sight.
-  const primary = pickInBand(index, spec, x, y, (t) => !spec.lowPriority(t));
+  const primary = pickInBand(pass, spec, x, y, 'primary');
   if (primary !== null) return primary;
-  return pickInBand(index, spec, x, y, (t) => spec.lowPriority(t));
+  return pickInBand(pass, spec, x, y, 'low');
 }
+
+type TargetTier = 'primary' | 'low';
 
 /** One priority tier's pick from the search band: the nearest target the stance admits, or the seat's own
  *  share of the nearest {@link GARRISON_SPREAD_TARGETS} for a seeker carrying a `spread`. */
 function pickInBand(
-  index: NodeBuckets,
+  pass: CombatPass,
   spec: EngageSpec,
   x: number,
   y: number,
-  tier: (t: Entity) => boolean,
+  tier: TargetTier,
 ): { target: Entity; dist: number } | null {
-  const accept = (t: Entity): boolean => tier(t) && spec.accept(t);
-  if (spec.spread === undefined) {
-    const found = index.nearest(x, y, spec.minDist, spec.searchRadius, accept);
+  const wantsLowPriority = tier === 'low';
+  const accept = (t: Entity): boolean => spec.lowPriority(t) === wantsLowPriority && spec.accept(t);
+  const spread = spec.spread;
+  if (spread === undefined) {
+    const found = pass.index.nearest(x, y, spec.minDist, spec.searchRadius, accept);
     return found === null ? null : { target: found.entity, dist: found.distance };
   }
-  const band = index.nearestFew(x, y, spec.minDist, spec.searchRadius, accept, GARRISON_SPREAD_TARGETS);
+  // One search per garrison, not per seat: `spread.group`, the centre and the reach name every input the
+  // walk reads. The `t === self` exclusion is the one they cannot, and it never decides a garrison's band -
+  // `isValidTarget` already refuses every manning settler.
+  const key = `${x},${y},${spec.minDist},${spec.searchRadius},${spread.group},${tier}`;
+  let band = pass.bands.get(key);
+  if (band === undefined) {
+    band = pass.index.nearestFew(x, y, spec.minDist, spec.searchRadius, accept, GARRISON_SPREAD_TARGETS);
+    pass.bands.set(key, band);
+  }
   if (band.length === 0) return null;
-  const share = band[spec.spread % band.length];
+  const share = band[spread.seat % band.length];
   return share === undefined ? null : { target: share.entity, dist: share.distance };
 }
 
