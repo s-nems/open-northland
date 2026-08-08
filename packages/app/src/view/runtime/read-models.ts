@@ -19,6 +19,8 @@ export interface ViewReadModelDeps {
   readonly fogGates: FogGates;
   /** Owner slot → team-colour slot for the life hearts; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
+  /** Owner slot → the roster's authored seat name for the stats header; absent = the slot id. */
+  readonly seatNameOf?: ((player: number) => string | undefined) | undefined;
   /** The selection the life-heart projection reads; absent = nothing selected. */
   readonly selection?: HeartSelection | undefined;
 }
@@ -66,11 +68,18 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
     buildingDoors,
     overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer),
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
-    ...createSnapshotProjections(buildingDoors, workerRoleOf, fogGates, {
-      // The same content read the sim's capture drive keys on.
-      isLivestockTribe: (tribe) => systems.isCatchableAnimal(sim.content, tribe),
-      playerColourOf: deps.playerColourOf,
-      selection: deps.selection,
-    }),
+    ...createSnapshotProjections(
+      localPlayer,
+      buildingDoors,
+      workerRoleOf,
+      fogGates,
+      {
+        // The same content read the sim's capture drive keys on.
+        isLivestockTribe: (tribe) => systems.isCatchableAnimal(sim.content, tribe),
+        playerColourOf: deps.playerColourOf,
+        selection: deps.selection,
+      },
+      deps.seatNameOf,
+    ),
   };
 }

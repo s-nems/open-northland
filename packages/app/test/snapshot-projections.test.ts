@@ -14,8 +14,11 @@ import { building, type Ent, settler, snapshotOf, visitCountingSnapshot } from '
  */
 describe('createSnapshotProjections - memoized by snapshot identity', () => {
   const HOME_TYPE = 2;
+  const PLAYER = 0;
   const projectionsFor = () =>
-    createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), { isLivestockTribe: () => false });
+    createSnapshotProjections(PLAYER, new Map(), workerRoleOf, createFogGates(), {
+      isLivestockTribe: () => false,
+    });
   const snap = snapshotOf([building(10, HOME_TYPE, 1, 1), settler(1, 0, 10)]);
 
   it('returns the identical reference for the same snapshot, a fresh one for the next', () => {
@@ -30,7 +33,7 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
   it('re-reads the hearts when the selection moves under a held snapshot (a paused pick)', () => {
     const selected = new Set<number>();
     let version = 0;
-    const { lifeHeartsFor } = createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), {
+    const { lifeHeartsFor } = createSnapshotProjections(PLAYER, new Map(), workerRoleOf, createFogGates(), {
       isLivestockTribe: () => false,
       selection: { ids: () => selected, version: () => version },
     });
@@ -77,6 +80,7 @@ describe('per-tick projections - one walk of the map between them', () => {
     const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
 
     const { doorBadgesFor, settlerBubblesFor, lifeHeartsFor } = createSnapshotProjections(
+      PLAYER,
       new Map(),
       workerRoleOf,
       createFogGates(),
@@ -111,11 +115,11 @@ describe('per-tick projections - one walk of the map between them', () => {
     const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
     const heartInputs = { isLivestockTribe: () => false };
 
-    const first = createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), heartInputs);
+    const first = createSnapshotProjections(PLAYER, new Map(), workerRoleOf, createFogGates(), heartInputs);
     expect(first.lifeHeartsFor(snapshot)).toHaveLength(0); // hidden indoors
     expect(visits()).toBe(entities.length * 2); // the actor index, plus the scene index once
 
-    const second = createSnapshotProjections(new Map(), workerRoleOf, createFogGates(), heartInputs);
+    const second = createSnapshotProjections(PLAYER, new Map(), workerRoleOf, createFogGates(), heartInputs);
     second.lifeHeartsFor(snapshot);
     expect(visits()).toBe(entities.length * 2); // unchanged - both indexes key on the snapshot, not on us
   });

@@ -8,6 +8,3 @@ export const ENEMY_PLAYER = 1;
 
 /** The primary civilization shown in the current sandbox content. */
 export const PRIMARY_TRIBE = VIKING;
-
-/** The tribe whose settlement HUD is shown by the standard in-game HUD. */
-export const HUD_TRIBE = PRIMARY_TRIBE;

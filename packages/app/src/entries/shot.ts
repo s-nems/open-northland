@@ -10,7 +10,7 @@ import { halfCellMapFromCells } from '@open-northland/sim';
 import { loadTerrainMap } from '../content/map-loader.js';
 import { loadHumanSpriteSheet, syntheticSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
-import { HUD_TRIBE } from '../game/rules.js';
+import { HUMAN_PLAYER } from '../game/rules.js';
 import { runDemoWorld, terrainSceneFor } from '../game/world/index.js';
 import { cameraFor } from '../view/camera/index.js';
 import { floatParam, intParam } from '../view/params.js';
@@ -45,7 +45,10 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
 
-  const sim = runDemoWorld(seed, ticks, loaded !== null ? halfCellMapFromCells(loaded) : undefined);
+  // Owned rather than neutral, so the HUD panel below has a seat to aggregate.
+  const sim = runDemoWorld(seed, ticks, loaded !== null ? halfCellMapFromCells(loaded) : undefined, {
+    owner: HUMAN_PLAYER,
+  });
   const snap = sim.snapshot();
   const terrainGrid = terrainSceneFor(loaded ?? undefined);
 
@@ -72,7 +75,7 @@ export async function renderShot(canvas: HTMLCanvasElement): Promise<void> {
   const hud =
     params.get('hud') !== '0'
       ? {
-          placement: placeHud(layoutHud(buildHud(snap, HUD_TRIBE), hudLabels()), 'top-left', {
+          placement: placeHud(layoutHud(buildHud(snap, HUMAN_PLAYER), hudLabels()), 'top-left', {
             width: CANVAS_W,
             height: CANVAS_H,
           }),

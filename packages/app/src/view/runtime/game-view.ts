@@ -19,7 +19,7 @@ import {
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
-import { HUD_TRIBE, HUMAN_PLAYER } from '../../game/rules.js';
+import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
 import { currentLocale } from '../../i18n/index.js';
@@ -77,6 +77,8 @@ export interface GameViewDeps {
   readonly readOnly?: boolean;
   /** Owner slot to team-colour slot for player-coloured HUD bits. Default identity. */
   readonly playerColourOf?: (player: number) => number;
+  /** Owner slot to the roster's authored seat name, which the stats header prefers over the slot id. */
+  readonly seatNameOf?: (player: number) => string | undefined;
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /** Sim events from the frame's step(s), delivered before the renderer draws. Skipped on frames that did not step. */
@@ -168,7 +170,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     buildings: menuEntriesFromContent(sim.content, lang),
     goods: menuGoodsFromContent(sim.content),
     lang,
-    tribe: HUD_TRIBE,
+    tribe: PRIMARY_TRIBE,
     owner: localPlayer,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
@@ -259,6 +261,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     localPlayer,
     fogGates,
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+    ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
     selection: { ids: controls.selectedIds, version: controls.selectionVersion },
   });
   if (hasSignArt) pickableDoorBadges = () => doorBadgesFor(sim.snapshot());

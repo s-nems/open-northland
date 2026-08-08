@@ -146,7 +146,8 @@ export const plGame = {
       plansEmpty: 'Brak planów',
     },
     stats: {
-      tribeTick: 'Plemię {tribe} · krok {tick}',
+      seatTick: '{seat} · krok {tick}',
+      playerTick: 'Gracz {player} · krok {tick}',
       population: 'Populacja: {population}',
       jobs: 'Zawody',
       stocks: 'Zapasy',

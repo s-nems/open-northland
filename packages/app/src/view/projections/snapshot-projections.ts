@@ -1,6 +1,5 @@
 import { buildHud, fogTileVisible, type HudLayout, layoutHud, ONE } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { HUD_TRIBE } from '../../game/rules.js';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import { computeConstructionSigns } from './construction-signs.js';
 import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
@@ -40,12 +39,15 @@ export interface HeartProjectionInputs extends Omit<LifeHeartInputs, 'selected'>
   readonly selection?: HeartSelection | undefined;
 }
 
-/** The snapshot read projections the frame loop shares across HUD/render consumers. */
+/** The snapshot read projections the frame loop shares across HUD/render consumers; `localPlayer` is the
+ *  seat the HUD aggregates count for, and `seatNameOf` names it in the panel header. */
 export function createSnapshotProjections(
+  localPlayer: number,
   buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
   roleOf: (jobType: number) => WorkerRole,
   fogGates: FogGates,
   hearts: HeartProjectionInputs,
+  seatNameOf?: (player: number) => string | undefined,
 ): {
   readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
@@ -54,7 +56,7 @@ export function createSnapshotProjections(
   readonly lifeHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
 } {
   return {
-    hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, HUD_TRIBE), hudLabels())),
+    hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, localPlayer), hudLabels(seatNameOf))),
     doorBadgesFor: memoBySnapshot((snapshot) => {
       const badges = computeDoorBadges(snapshot, buildingsByType, roleOf);
       const fog = fogGates.current();

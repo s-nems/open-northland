@@ -5,13 +5,15 @@ import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
 import type { SystemContext } from '../systems/context.js';
 
-// Read views for the HUD. Nothing here may feed a sim decision, so `systems/` must not import this module.
+// Tribe-scoped read views. Nothing here may feed a sim decision, so `systems/` must not import this
+// module. They cut across seats, so they answer a different question than the panel, which counts one
+// `Owner.player`; no shipped HUD reads them today.
 // The returned Maps iterate in insertion order; a consumer needing a stable display order sorts the keys.
 
 /**
  * The summed `homeSize` of a tribe's built `home` buildings (the `logichousetype` `logichomesize` param,
- * home level 00 = 1 up to level 04 = 5). The ceiling half of the HUD readout only; births are gated per
- * home by its family slots.
+ * home level 00 = 1 up to level 04 = 5). A ceiling to display beside a head-count; births are gated per
+ * home by its family slots. Tribe-scoped, so it sums across every seat fielding that tribe.
  */
 export function housingCapacity(world: World, ctx: SystemContext, tribe: number): number {
   let capacity = 0;

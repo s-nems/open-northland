@@ -24,7 +24,7 @@ export interface HudLayout {
 
 /** User-facing text formatters supplied by the app locale layer. */
 export interface HudLabels {
-  readonly tribeTick: (tribe: number, tick: number) => string;
+  readonly playerTick: (player: number, tick: number) => string;
   readonly population: (population: number) => string;
   readonly jobs: string;
   readonly stocks: string;
@@ -50,7 +50,7 @@ export function layoutHud(model: HudModel, labels: HudLabels): HudLayout {
     y += HUD_LINE_H;
   };
 
-  push(labels.tribeTick(model.tribe, model.tick));
+  push(labels.playerTick(model.player, model.tick));
   push(labels.population(model.population));
 
   push(labels.jobs);

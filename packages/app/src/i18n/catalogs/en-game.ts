@@ -155,7 +155,8 @@ export const enGame = {
       plansEmpty: 'No plans yet',
     },
     stats: {
-      tribeTick: 'Tribe {tribe} · tick {tick}',
+      seatTick: '{seat} · tick {tick}',
+      playerTick: 'Player {player} · tick {tick}',
       population: 'Population: {population}',
       jobs: 'Jobs',
       stocks: 'Stocks',

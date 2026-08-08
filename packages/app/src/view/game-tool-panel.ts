@@ -36,7 +36,7 @@ export interface GameToolPanelDeps {
   readonly elevation?: ElevationField;
   readonly buildings: readonly MenuBuildingEntry[];
   readonly goods: readonly MenuGoodEntry[];
-  /** The tribe whose stats the statistics window shows. */
+  /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player a placed building is owned by. */
   readonly owner: number;
