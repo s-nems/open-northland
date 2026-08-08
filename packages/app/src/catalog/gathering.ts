@@ -8,11 +8,8 @@ import {
 } from './mining.js';
 
 /**
- * The gathering balance for one gathered good: the `gathering`-block fields deciding how it leaves the
- * landscape, sourced from `felling.ts` and `mining.ts`. A good's atomic ids are not here.
- *
- * `bioLandscape` is the exception: real content extracts it, so this value serves the sandbox builder
- * only and the real-content overlay preserves the extracted one.
+ * The `gathering`-block fields deciding how one good leaves the landscape. A good's atomic ids are not
+ * here.
  */
 export interface GatheringBalance {
   readonly bioLandscape: boolean;
@@ -23,9 +20,10 @@ export interface GatheringBalance {
 }
 
 /**
- * Felling and mining balance per gathered good, keyed by its stable string id: the one source both
- * content bases read, so neither can balance the same good differently. Extraction emits 0 for these
- * fields, so this table is the only lever.
+ * Felling and mining balance per gathered good, keyed by its stable string id, so both content bases read
+ * one source. Extraction emits 0 for these fields, so this table is the only lever. `bioLandscape` is the
+ * exception: real content extracts it, so that column serves the sandbox builder only and the
+ * real-content overlay preserves the extracted value.
  */
 export const GATHERING_BALANCE_BY_ID: Readonly<Record<string, GatheringBalance>> = {
   wood: { bioLandscape: true, chopsToFell: WOOD_CHOPS_TO_FELL, yieldPerNode: WOOD_YIELD_PER_NODE },
