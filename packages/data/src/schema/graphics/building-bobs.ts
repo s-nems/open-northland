@@ -75,8 +75,8 @@ export type BuildingFlagPoint = z.infer<typeof BuildingFlagPoint>;
 
 /**
  * One `[GfxHouse]` animated state overlay: `GfxOverlay <sizeIdx> 4 <state> <x> <y> <step> <bobId…>` - a
- * sprite drawn on top of the finished body, with one frame list per state. The only type-4 user in the
- * source is the mill, whose body bob has no rotor blades.
+ * sprite drawn on top of the finished body, with one frame list per state. The source uses it for the
+ * tribes' mills, whose body bob has no rotor blades, and for the frank mason hut.
  *
  * Only the type-`4` rows (the 2nd int) are extracted; the type-`3` rows have a different, undecoded
  * field shape and are skipped rather than guessed.

@@ -71,9 +71,8 @@ export const BuildingType = z.strictObject({
   /**
    * Build-material cost, joined onto the logic record from the graphics table's `[GfxHouse]`
    * `LogicConstructionGoods` line (`DataCnmd/budynki12/houses/houses.ini`, keyed by the same `LogicType`
-   * id). Empty for the always-present headquarters/wonder buildings and for any type the graphics table
-   * omits. Each level of a home's chain is a distinct `typeId` carrying its own cost, not a cumulative
-   * total.
+   * id). Empty for the pre-placed headquarters and for any type the graphics table omits. Each level of
+   * a home's chain is a distinct `typeId` carrying its own cost, not a cumulative total.
    */
   construction: z.array(GoodQuantity).default([]),
   /**
