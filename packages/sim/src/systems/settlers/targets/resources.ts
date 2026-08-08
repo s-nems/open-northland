@@ -15,14 +15,10 @@ import { interactionCell, jobAtomics } from './workplaces.js';
 
 /**
  * The nearest {@link Resource} this settler may harvest, by Manhattan distance with an ascending-cell-id
- * tie-break, or null when none qualifies. Two data-driven gates decide eligibility: the job's resolved
- * atomics must permit the resource good's harvest atomic, and the settler's accrued XP must clear that
- * good's `needforgood` thresholds for its tribe. A good with no `needforgood` row is open to anyone.
+ * tie-break, or null when none qualifies.
  *
- * A target in another static component, on a dynamically blocked work cell, or inside a sealed route
- * region is rejected: `findPath` refuses such a goal, so a gatherer that latched onto one would loop
- * park-repick-fail beside reachable work. Approximation: a deposit a building was legally placed over is
- * left un-mined when its work cell lands on the buried anchor, and mined from the side when it does not.
+ * Approximation: a deposit a building was legally placed over is left un-mined when its work cell lands
+ * on the buried anchor, and mined from the side when it does not.
  */
 export function nearestHarvestableFor(
   plan: PlannerContext,

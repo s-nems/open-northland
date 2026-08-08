@@ -30,19 +30,11 @@ import { unreachableGoalVeto } from '../unreachable-goals.js';
 import type { PlannerPass } from './pass.js';
 import { anotherSystemOwns } from './replan.js';
 
-/**
- * The assistant's auto-equip pass: for every player with {@link AssistantGrants}, send settlers with a
- * matching free slot to fetch the granted goods, as an ordinary {@link EquipOrder} errand stamped
- * without the manual order's interrupts. Two brakes keep a big settlement from mobbing one pair of
- * boots: a demand-side reservation that stops dispatching once errands underway match the player's
- * store stock, and a trickle that caps concurrent errands and staggers each settler's beat.
- *
- * Only empty slots are filled and a misc grant is one unit per settler. The manual states the intent
- * ("you want to have shoes given out to all civilians - if there are shoes available in your
- * village"), which the stock reservation matches, and the extras window ships per-good hoard commands
- * (decoded `miscwindow` 503-509). Approximation: the pacing and the caps are not decoded. Only the
- * tool grant is trade-scoped; boots and misc go to fighters too.
- */
+// The assistant's auto-equip pass sends settlers with a matching free slot to fetch a player's granted
+// goods. The manual states the intent ("you want to have shoes given out to all civilians - if there are
+// shoes available in your village"), which the dispatch matches against the player's store stock, and the
+// extras window ships per-good hoard commands (decoded `miscwindow` 503-509). Approximation: the pacing
+// and the caps are not decoded.
 
 /** One settler's grant consideration beat, staggered by entity id, so the per-tick scan costs
  *  `settlers / period` and a freshly-freed slot is re-dressed within seconds. Approximation, shared
@@ -102,8 +94,8 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     // A loaded hauler finishes its delivery first: the equip rung outranks the economy and would dump
     // the carried load where the settler stands, which only a manual order is urgent enough to do.
     if (world.has(e, Carrying) || world.has(e, SupplyRun)) continue;
-    // The equip rung outranks the DEFEND hold so the player can send a guard for gear, which is no
-    // reason for the assistant to walk one off its anchor unasked.
+    // A DEFEND guard stays on its anchor: the player may send one for gear, but this pass does not walk
+    // one off unasked.
     if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) continue;
     const toolless = !toolHelpsJob(ctx.content, jobType);
 
