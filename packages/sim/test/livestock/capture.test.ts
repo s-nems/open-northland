@@ -114,4 +114,20 @@ describe('livestock capture - a scout claims catchable animals by contact', () =
 
     expect(sim.world.has(bear, Owner)).toBe(false);
   });
+
+  it('is byte-identical across two same-seed runs (determinism)', () => {
+    const claim = (): { hash: string; claimed: boolean } => {
+      const sim = livestockSim();
+      scoutAt(sim, 10, 10, P0);
+      const cow = cowAt(sim, 11, 10);
+      sim.world.add(cow, HerdMember, { leader: cow });
+      farmAt(sim, 14, 10, { owner: P0 });
+      for (let i = 0; i < 120; i++) sim.step();
+      return { hash: sim.hashState(), claimed: sim.world.tryGet(cow, Owner)?.player === P0 };
+    };
+    const a = claim();
+    const b = claim();
+    expect(a.claimed).toBe(true); // the scout really claimed (not a vacuous hash)
+    expect(a.hash).toBe(b.hash);
+  });
 });

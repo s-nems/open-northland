@@ -117,4 +117,24 @@ describe('animalFrightSystem - the scatter and the calm-down', () => {
     expect(sim.world.has(cow, Frightened)).toBe(true); // the shot-at animal itself bolts
     expect(sim.world.has(bystander, Frightened)).toBe(true); // and so does the herd beside it
   });
+
+  it('is byte-identical across two same-seed runs (determinism)', () => {
+    const scatter = (): { hash: string; fled: boolean } => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+      const cow = wildAtNode(sim, 41, 40, COW);
+      wildAtNode(sim, 40, 42, DEER);
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('test map missing');
+      const scare = terrain.nodeAt(40, 40);
+      const before = manhattan(terrain, scare, entityNode(sim.world, terrain, cow));
+      frightenWildlifeNear(sim.world, ctxOf(sim), terrain, scare);
+      for (let i = 0; i < FRIGHT_DURATION_TICKS; i++) sim.step();
+      const after = manhattan(terrain, scare, entityNode(sim.world, terrain, cow));
+      return { hash: sim.hashState(), fled: after > before };
+    };
+    const a = scatter();
+    const b = scatter();
+    expect(a.fled).toBe(true); // the scatter really ran (not a vacuous hash)
+    expect(a.hash).toBe(b.hash);
+  });
 });

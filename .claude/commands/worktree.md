@@ -49,9 +49,13 @@ comment budget. Do not add a bespoke source scanner when types, structure, or an
 can express the boundary.
 
 Run focused tests while working, then the matching gates from `AGENTS.md` and `docs/TESTING.md`.
-Pipeline and real-content gates remain local-only requirements when their scope applies. Run a
-`bench:*` benchmark only when the task's claim is about performance; a task without such a claim
-does not benchmark.
+`npm run check`, `npm run typecheck`, and `npm run build` cost seconds, so run them whole; scope the
+Vitest run to the packages the diff touches **and the packages that depend on them** (a `sim` change
+still runs `packages/app`). Vitest sizes its worker pool to the machine, so several worktrees each
+running the whole suite oversubscribe it many times over - step 9 is where the suite runs whole, on
+merged `main`. Pipeline and real-content gates remain
+local-only requirements when their scope applies. Run a `bench:*` benchmark only when the task's claim
+is about performance; a task without such a claim does not benchmark.
 
 ## 4. Review the diff
 

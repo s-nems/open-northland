@@ -7,8 +7,13 @@ scene when a mechanic needs both state assertions and a human check of its prese
 
 | Consumer | Location | Purpose |
 | --- | --- | --- |
-| Headless | `packages/app/test/scenes.test.ts` | mechanics, invariants, and determinism |
+| Headless | `packages/app/test/scenes/<id>.test.ts` | mechanics and invariants |
 | Browser | `?scene=<id>` | pixels, animation, controls, and sound |
+
+A scene does not re-prove same-seed determinism: every mechanic's own suite under `packages/sim/test/`
+compares two runs of its scenario, with `core/fuzz-determinism.test.ts` and `core/golden-trace.test.ts`
+as the engine-wide tripwires. Nothing checks a scene's own `build()`, so keep pre-tick-zero setup free
+of wall clock, unseeded randomness, and payloads shared between runs.
 
 Both consumers use the same seed, sandbox content, setup, and run length. The browser adds local
 decoded terrain (required: without generated `content/` the entry halts on the missing-content
@@ -31,9 +36,11 @@ jobs, buildings, controls, and sound bindings belong in the sandbox catalog, not
 
 1. Add a focused scene definition.
 2. Register it in `packages/app/src/scenes/index.ts`.
-3. Add its title and summary to both locale catalogs.
-4. Run `npm test -- scenes`.
-5. Open `http://localhost:5173/?scene=<id>` and perform the human checks named by the ticket.
+3. Add `packages/app/test/scenes/<id>.test.ts` calling `sceneAcceptance` - one file per scene, so
+   Vitest spreads the runs over workers. `registry.test.ts` fails until it exists.
+4. Add its title and summary to both locale catalogs.
+5. Run `npm test -- scenes`.
+6. Open `http://localhost:5173/?scene=<id>` and perform the human checks named by the ticket.
 
 Keep instructions out of the game view. Put durable assertions in tests and short review notes in the
 ticket. The normal HUD should remain the thing being tested.
