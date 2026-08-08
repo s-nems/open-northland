@@ -3,17 +3,16 @@ import { WIN_PAD } from '../../chrome.js';
 import { contains } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
 import type { ToolButtonId } from '../layout.js';
+import { clearFills, ROW_H, standardWindowWidth, type WindowLayers } from '../window-family/index.js';
 import { createWindowShell, type ToolWindow } from '../window-shell.js';
-import { clearFills, paintHover, paintWindow, type TabbedListLayers } from './chrome.js';
+import { paintHover, paintWindow } from './chrome.js';
 import {
   chromeAboveList,
   hitTestTabbedList,
   layoutTabbedList,
-  ROW_H,
   type TabbedListItem,
   type TabbedListLayout,
   type TabbedListTab,
-  tabbedListWindowWidth,
 } from './model.js';
 
 /** How many rows one mouse-wheel event scrolls the list. */
@@ -75,7 +74,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     x: ctx.layout.width + WIN_PAD * scale,
     y: ctx.layout.buttons.find((b) => b.id === source.anchor)?.placed.y ?? ctx.layout.strip.y,
   };
-  const windowRight = origin.x + tabbedListWindowWidth(scale);
+  const windowRight = origin.x + standardWindowWidth(scale);
 
   // The tab set is fixed per source, so the chrome above the list is a constant.
   const chromeH = chromeAboveList(source.tabs().length, source.tabColumns);
@@ -95,7 +94,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   shell.container.addChildAt(back, 0); // behind the shell's frame Graphics
   const hoverG = new Graphics();
   shell.container.addChild(hoverG);
-  const layers: TabbedListLayers = {
+  const layers: WindowLayers = {
     ctx,
     container: shell.container,
     back,

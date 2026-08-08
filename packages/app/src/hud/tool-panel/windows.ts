@@ -70,12 +70,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
     menu: { window: menu, perFrame: () => menu.refresh() },
     goods: { window: goods, perFrame: () => goods.refresh() },
-    extras: {
-      window: extras,
-      perFrame: () => {
-        if (extras.isOpen()) extras.place();
-      },
-    },
+    extras: { window: extras, perFrame: () => extras.refresh() },
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
     diplomacy: { window: diplomacy, perFrame: () => diplomacy.refresh() },
   };

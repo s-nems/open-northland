@@ -1,0 +1,25 @@
+export {
+  addRun,
+  centreRun,
+  clearFills,
+  type PlateTier,
+  paintPlate,
+  paintRowCard,
+  paintTitledTabWindow,
+  placeOnCard,
+  ROW_INSET_X,
+  ROW_PX,
+  rowCardRect,
+  TEXT_CAP_H,
+  type TitledTab,
+  type WindowLayers,
+} from './chrome.js';
+export {
+  CLOSE_BOX,
+  HEADLINE_H,
+  ROW_H,
+  standardWindowWidth,
+  TAB_CONTENT_GAP,
+  TAB_H,
+  WINDOW_FAMILY_PAD,
+} from './metrics.js';
