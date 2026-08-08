@@ -1,6 +1,7 @@
 import {
   Anger,
   Building,
+  diplomacyStance,
   Health,
   Owner,
   Position,
@@ -62,6 +63,30 @@ export function isValidTarget(
   return !isManningShelter(world, t);
 }
 
+/**
+ * Whether `t` is a threat the FLEE drive runs from: any valid target of the fleer, or - where the
+ * directed diplomacy pair is hostile the other way only - a live enemy-stance settler in the open.
+ * Fear staying symmetric on the owner axis while engagement is directed is an approximation, so a
+ * pacified player's civilians still run from a one-way aggressor.
+ */
+export function isFleeThreat(
+  world: World,
+  ctx: SystemContext,
+  self: Entity,
+  fleer: SettlerIdentity,
+  t: Entity,
+): boolean {
+  if (isValidTarget(world, ctx, self, fleer, t)) return true;
+  const selfOwner = world.tryGet(self, Owner);
+  const tOwner = world.tryGet(t, Owner);
+  if (selfOwner === undefined || tOwner === undefined || selfOwner.player === tOwner.player) return false;
+  if (diplomacyStance(world, tOwner.player, selfOwner.player) !== 'enemy') return false;
+  if (!world.has(t, Settler) || !world.has(t, Health) || !world.has(t, Position)) return false;
+  if (world.get(t, Health).hitpoints <= 0) return false;
+  if (standsAtPost(world, t) !== null) return false;
+  return !isManningShelter(world, t);
+}
+
 /** Whether `t` is huntable prey a hunter of `hunterJob` may strike - the predation-only target filter an
  *  IGNORE hunter uses, which admits no player-hostility. */
 export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunterJob: number | null): boolean {
@@ -74,12 +99,18 @@ export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunter
 /**
  * Whether the attacker entity `self` (of `attackerTribe`/`attackerJob`) may swing at target `t` (of
  * `targetTribe`) - the composed hostility relation both the ring-search filter and the attack-order check
- * consult, so the two directions of a fight stay consistent.
+ * consult, so autonomous engagement and explicit orders obey the same rule.
  *
- * When both sides carry an {@link Owner} the player axis alone decides, binary and without diplomacy
- * (source basis "Combat hostility axis"). Otherwise the content relations decide: {@link mayAttack} tribe
- * hostility, {@link mayHunt} predation over unowned prey only (claimed livestock is property), and a live
- * {@link Anger} timer that makes a civ-animal fight valid in both directions.
+ * When both sides carry an {@link Owner} the player axis alone decides, through the directed
+ * {@link diplomacyStance} table: the attacker engages only a player it holds an `enemy` stance toward
+ * (source basis "Combat hostility axis": the maps' `diplomacy` rows). A pair no map or command ever set
+ * reads `enemy` - itself an approximation on maps that author only one direction of a pair. `friend`
+ * and `neutral` both refuse to engage, but a landed blow flips the struck player's stance to `enemy`
+ * (`provokeHostility`, observed original behavior), so a one-way war still ends in retaliation.
+ * Otherwise the content
+ * relations decide: {@link mayAttack} tribe hostility, {@link mayHunt} predation over unowned prey only
+ * (claimed livestock is property), and a live {@link Anger} timer that makes a civ-animal fight valid in
+ * both directions.
  *
  * A lapsed anger timer is not reaped here, keeping this a const-time candidate check;
  * {@link hostileAnimalNow} reaps it once per tick on the attacker pass and an expired timer reads
@@ -97,7 +128,8 @@ export function mayTarget(
   const selfOwner = world.tryGet(self, Owner);
   const targetOwner = world.tryGet(t, Owner);
   if (selfOwner !== undefined && targetOwner !== undefined) {
-    return selfOwner.player !== targetOwner.player;
+    if (selfOwner.player === targetOwner.player) return false;
+    return diplomacyStance(world, selfOwner.player, targetOwner.player) === 'enemy';
   }
   if (mayAttack(ctx.content, attackerTribe, targetTribe)) return true; // static tribe hostility
   // a hunter striking huntable prey, and only unowned prey

@@ -10,7 +10,7 @@ import { entityNode, manhattan } from '../../../../../spatial/nodes.js';
 import { hunterShotMisses } from './aim.js';
 import { spawnCarcasses } from './carcass.js';
 import { launchProjectile } from './projectile-launch.js';
-import { provokeAnger } from './reactions.js';
+import { provokeAnger, provokeHostility } from './reactions.js';
 import { collectStagger, type PendingStagger } from './stagger.js';
 
 /**
@@ -126,6 +126,7 @@ export function resolveCombatHit(
   const saved = wasAlive && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
   if (!saved) health.hitpoints = Math.max(0, health.hitpoints - dealt);
   provokeAnger(world, ctx, target);
+  provokeHostility(world, attacker, target);
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);
   if (health.hitpoints <= 0) {
     if (wasAlive) spawnCarcasses(world, ctx, attacker, target);

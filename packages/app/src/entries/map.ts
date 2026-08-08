@@ -148,6 +148,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     },
     aiSeats,
     assistantSeats: [...controlled, ...aiSeats],
+    diplomacy: script?.diplomacy ?? [],
     ...sessionRuleOverrides(params),
     // Only the no-decodable-map fallback takes ownership from the session seat; a real map takes it
     // from map data.

@@ -1,4 +1,12 @@
-import { Building, Health, Owner, ownerOf, Person, Position } from '../../../components/index.js';
+import {
+  Building,
+  diplomacyStance,
+  Health,
+  Owner,
+  ownerOf,
+  Person,
+  Position,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -85,9 +93,13 @@ function nearestReachable(
   return best;
 }
 
-/** Whether `e` belongs to another player and can be struck at all. */
+/** Whether `e` belongs to a player this seat holds an `enemy` stance toward and can be struck at all -
+ *  the same directed hostility `mayTarget` engages on, so a wave never marches on an objective the
+ *  CombatSystem would refuse. */
 function isEnemy(world: World, e: Entity, player: number): boolean {
-  if (ownerOf(world, e) === player) return false;
+  const owner = ownerOf(world, e);
+  if (owner === undefined || owner === player) return false;
+  if (diplomacyStance(world, player, owner) !== 'enemy') return false;
   if (!world.has(e, Position)) return false;
   const health = world.tryGet(e, Health);
   return health !== undefined && health.hitpoints > 0;

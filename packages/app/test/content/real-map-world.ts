@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, MapScript } from '@open-northland/data';
 import type { FOG_MODE, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld } from '../../src/entries/map/world.js';
@@ -42,6 +42,14 @@ export function realMapPath(mapId: string): string {
   return resolve(contentDir(), `maps/${mapId}.json`);
 }
 
+/** The map's `.script.json` sidecar, absent for a map that ships none - the browser's `loadMapScript`
+ *  twin, so the headless world seeds the same diplomacy rows the entry does. */
+function realMapScript(mapId: string): MapScript | null {
+  const path = resolve(contentDir(), `maps/${mapId}.script.json`);
+  if (!existsSync(path)) return null;
+  return MapScript.parse(JSON.parse(readFileSync(path, 'utf8')));
+}
+
 /** Build the world. Throws when the map is absent or resolves no authored placements - a run that
  *  silently started on an empty world would report a clean bill of health it never earned. */
 export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMapWorld> {
@@ -50,6 +58,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   // Named explicitly: a mistyped map id otherwise surfaces as a bare ENOENT from inside vitest.
   if (!existsSync(mapPath)) throw new Error(`no decoded map at ${mapPath}`);
   const map = JSON.parse(readFileSync(mapPath, 'utf8'));
+  const script = realMapScript(options.mapId);
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
   const world = buildMapWorld({
     seed: MAP_SEED,
@@ -62,6 +71,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // Each AI seat's assistant, so a headless run measures an economy that dresses itself like the
     // browser's. The entry also grants to the seat the person controls; a headless run has none.
     assistantSeats: options.aiSeats,
+    diplomacy: script?.diplomacy ?? [],
     fog: options.fog ?? null,
     progression: null,
     needs: null,

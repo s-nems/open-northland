@@ -1,3 +1,4 @@
+import type { DiplomacyState } from '../../components/rules.js';
 import type { Entity } from '../../ecs/world.js';
 
 /** Commands that change deterministic world-wide simulation rules. Each sets its rules singleton in
@@ -35,6 +36,17 @@ export type RulesCommand =
        */
       readonly kind: 'setProfessionProgression';
       readonly enabled: boolean;
+    }
+  | {
+      /**
+       * Set the directed diplomatic stance player `from` holds toward player `to`. Sets the
+       * `DiplomacyRules` singleton (created on first use), so the table hashes and replays like any
+       * other state.
+       */
+      readonly kind: 'setDiplomacy';
+      readonly from: number;
+      readonly to: number;
+      readonly state: DiplomacyState;
     };
 
 /**

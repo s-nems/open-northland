@@ -5,7 +5,9 @@ import {
   type AssistantCounterValues,
   assistantCountersEntity,
   assistantGrantedGoods,
+  type DiplomacyState,
   defaultAssistantCounters,
+  diplomacyStance,
   type FogMode,
   fogMode,
   needsEnabled,
@@ -243,6 +245,12 @@ export class Simulation {
   /** The `FogRules` rule the `setFogMode` command sets; absent = `FOG_MODE.OFF`. */
   fogMode(): FogMode {
     return fogMode(this.world);
+  }
+
+  /** The directed stance `from` holds toward `to` in the `DiplomacyRules` table the `setDiplomacy`
+   *  command sets; a pair never set reads `enemy`. */
+  diplomacyStance(from: number, to: number): DiplomacyState {
+    return diplomacyStance(this.world, from, to);
   }
 
   /**
