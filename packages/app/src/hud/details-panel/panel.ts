@@ -4,8 +4,9 @@ import type { Application } from 'pixi.js';
 import { clientToCanvas, contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { loadDetailsPanelAssets } from './assets.js';
+import { applyPanelClick, type PanelClickActions } from './click-actions.js';
 import { tooltipTextAt } from './hit-test.js';
-import { type EquipSlotRef, ROW_H } from './layout/index.js';
+import { ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
@@ -22,7 +23,7 @@ export type PortraitBox = PortraitInsetFrame;
 /** Bevel inset (design px) so the observation window sits inside the portrait box's frame, not over it. */
 const PORTRAIT_BEVEL_INSET = 3;
 
-export interface UnitPanelOptions extends UnitPanelModelContext {
+export interface UnitPanelOptions extends UnitPanelModelContext, PanelClickActions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   /** The resolved HUD scale, shared with the left tool panel and action ring. May be fractional. */
@@ -30,39 +31,12 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   readonly lang: string;
   /** Client→canvas coordinate mapping, injected so the hud layer stays view-free. */
   readonly backingScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
-  readonly onDemolish: (entityId: number) => void;
-  /** Begin upgrading the selected building into its next level - the Upgrade button (housewindow 110). */
-  readonly onUpgrade: (entityId: number) => void;
-  /** Abort the selected building's running upgrade - the Cancel button (housewindow 112). */
-  readonly onCancelUpgrade: (entityId: number) => void;
-  readonly onDemolishSignpost: (entityId: number) => void;
-  /** Raise or lower the alarm on the selected garrison building - the Obrona window's shield toggle. */
-  readonly onSetDefenceMode: (entityId: number, enabled: boolean) => void;
-  /** Enter "assign a workplace" pick mode for the selected settler; absent → the button is inert. */
-  readonly onAssignWorkplace?: (settlerId: number) => void;
-  /** Take the selected settler off its workplace at once, with no pick mode; absent → the button is
-   *  inert. */
-  readonly onUnassignWorkplace?: (settlerId: number) => void;
-  /** Enter "assign a home" pick mode for the selected settler; absent → the button is inert. */
-  readonly onAssignHome?: (settlerId: number) => void;
-  /** Remove the selected settler's family from its current home at once, with no pick mode; absent →
-   *  the button is inert. */
-  readonly onUnassignHome?: (settlerId: number) => void;
-  /** Open the equip pick menu for one of the selected settler's equipment slots; absent → the buttons
-   *  are inert. */
-  readonly onEquipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
-  /** Order the worn item in `ref` taken off; absent → the button is inert. */
-  readonly onUnequipSlot?: (settlerId: number, ref: EquipSlotRef) => void;
-  readonly onSetGatherGood: (entityId: number, goodType: number | null) => void;
-  /** Replace a craft worker's product selection (the `setCraftGoods` command); `[]` = every product. */
-  readonly onSetCraftGoods: (entityId: number, goods: readonly number[]) => void;
   /** Sprite sheet for the animated worker field; absent → the field stays empty. */
   readonly sheet?: SpriteSheet;
   /** Owner slot → team-colour slot for the worker sprites; absent = identity. */
   readonly playerColourOf?: (player: number) => number;
   /** Select this entity - invoked when the player clicks a worker sprite in the Pracownicy field. */
   readonly onSelectEntity?: (entityId: number) => void;
-  readonly onCenterOnEntity: (entityId: number) => void;
   /** Cursor tooltip naming the hovered stock row, injected structurally so the hud layer never imports
    *  the view-layer element; absent → no stock-row tooltip. */
   readonly tooltip?: {
@@ -143,6 +117,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return contains(view.layout.panel, x, y);
   };
 
+  const selectStockTab = (tab: number): void => {
+    if (tab === activeStockTab) return;
+    activeStockTab = tab;
+    rebuildCurrent();
+  };
+
   const handleMouseDown = (
     clientX: number,
     clientY: number,
@@ -159,61 +139,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
       return true;
     }
     const click = panelClickAt(view, x, y, toggleModifier);
-    if (click === null) return true;
-    switch (click.kind) {
-      case 'centerOnEntity':
-        opts.onCenterOnEntity(click.entityId);
-        break;
-      case 'setGatherGood':
-        opts.onSetGatherGood(click.entityId, click.goodType);
-        break;
-      case 'setCraftGoods':
-        opts.onSetCraftGoods(click.entityId, click.goods);
-        break;
-      case 'equipSlot':
-        opts.onEquipSlot?.(click.entityId, click.ref);
-        break;
-      case 'unequipSlot':
-        opts.onUnequipSlot?.(click.entityId, click.ref);
-        break;
-      case 'stockTab':
-        if (click.tab !== activeStockTab) {
-          activeStockTab = click.tab;
-          rebuildCurrent();
-        }
-        break;
-      case 'upgrade':
-        opts.onUpgrade(click.entityId);
-        break;
-      case 'cancelUpgrade':
-        opts.onCancelUpgrade(click.entityId);
-        break;
-      case 'demolish':
-        opts.onDemolish(click.entityId);
-        break;
-      case 'setDefenceMode':
-        opts.onSetDefenceMode(click.entityId, click.enabled);
-        break;
-      case 'demolishSignpost':
-        opts.onDemolishSignpost(click.entityId);
-        break;
-      case 'assignWorkplace':
-        opts.onAssignWorkplace?.(click.entityId);
-        break;
-      case 'unassignWorkplace':
-        opts.onUnassignWorkplace?.(click.entityId);
-        break;
-      case 'assignHome':
-        opts.onAssignHome?.(click.entityId);
-        break;
-      case 'unassignHome':
-        opts.onUnassignHome?.(click.entityId);
-        break;
-      default: {
-        const unreachable: never = click;
-        throw new Error(`unhandled panel click: ${JSON.stringify(unreachable)}`);
-      }
-    }
+    if (click !== null) applyPanelClick(click, opts, selectStockTab);
     return true;
   };
 
