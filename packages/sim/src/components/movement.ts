@@ -25,7 +25,7 @@ export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint');
 /**
  * A per-entity locomotion pace: how far this entity advances toward its current {@link PathFollow} waypoint
  * each tick, in fixed-point tile units. An entity without one walks at the universal settler pace
- * ({@link MOVE_SPEED_PER_TICK}). `spawnAnimalHerd` stamps it from the `animaltypes.ini` `movespeed` param,
+ * (`MOVE_SPEED_PER_TICK`). `spawnAnimalHerd` stamps it from the `animaltypes.ini` `movespeed` param,
  * where a creature with `movespeed` N walks `ONE / N` tile/tick, so a larger `movespeed` is a slower step.
  *
  * The entity's one pace: there is deliberately no run/sprint gait, and the `animaltypes.ini` `runspeed`
@@ -51,9 +51,9 @@ export const PathFollow = defineComponent<{
 }>('PathFollow');
 
 /**
- * A navigation goal: the destination cell an entity wants to reach (a raw row-major cell id). Kept separate
- * from the transient {@link PathRequest}/{@link PathFollow} so the planner can re-issue a request without
- * forgetting the destination, and removed once the entity arrives.
+ * A navigation goal: the destination cell an entity wants to reach. Kept separate from the transient
+ * {@link PathRequest}/{@link PathFollow} so the planner can re-issue a request without forgetting the
+ * destination, and removed once the entity arrives.
  *
  * One sanctioned outside write: for a collider whose goal node is occupied by a standing unit, routing
  * re-aims `cell` at the nearest free stand-in, so a goal's owner must not assume the exact cell it set
@@ -63,11 +63,10 @@ export const PathFollow = defineComponent<{
 export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal');
 
 /**
- * A pending navigation request: route this entity from cell `start` to cell `goal`. The PathfindingSystem
- * drains these under a per-tick budget and either replaces the entity's {@link PathFollow} and removes the
- * request, or sets `failed` so the planner reacts instead of retrying the same dead query every tick.
- * `start`/`goal` are branded row-major node ids (`y*width + x`); the brand is compile-time only, so the
- * component remains plain-number serializable.
+ * A pending navigation request, drained under a per-tick budget: it either replaces the entity's
+ * {@link PathFollow} and is removed, or sets `failed` so the planner reacts instead of retrying the same
+ * dead query every tick. `start`/`goal` are branded row-major node ids (`y*width + x`); the brand is
+ * compile-time only, so the component stays plain-number serializable.
  */
 export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>('PathRequest');
 
@@ -86,22 +85,19 @@ export interface UnreachableGoal {
 }
 
 /**
- * The goals this settler's routes recently failed to reach - the memo that stops a re-plan from choosing
- * the same unreachable target it just gave up on, which the deterministic nearest-first pick would
- * otherwise return every retry. A bounded FIFO rather than one cell, so a settler ringed by several
- * walled-off targets cannot cycle between them; `systems/settlers/unreachable-goals.ts` owns the pacing.
+ * The goals this settler's routes recently failed to reach, so a re-plan does not choose the same
+ * unreachable target the deterministic nearest-first pick would otherwise return every retry. A bounded
+ * FIFO rather than one cell, so a settler ringed by several walled-off targets cannot cycle between them.
  * Provably sealed goals are the route-region memo's job; this covers what that one cannot prove.
  */
 export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableGoal[] }>('UnreachableGoals');
 
 /**
- * A walker's grind-window state among unit bodies, stamped by the SeparationSystem on a path-follower with
- * colliders in its immediate neighbourhood: blockage is judged by progress, not push direction. `x`/`y`
- * anchor the window at the walker's position when it began and `ticks` counts its length. Movement past a
- * progress floor restarts the window; a window reaching the re-route threshold drops just the path, so the
- * planner flanks the blockers, and `reroutes` tallies that. A walk that re-routes
- * `OBSTRUCTED_MAX_REROUTES` times without arriving stands down entirely, leaving whoever owns the goal to
- * re-decide from where the unit stopped.
+ * A walker's grind-window among unit bodies: blockage is judged by progress, not push direction. `x`/`y`
+ * anchor the window at the walker's position when it began and `ticks` counts its length; movement past a
+ * progress floor restarts it. A window reaching the re-route threshold drops just the path, so the planner
+ * flanks the blockers, and `reroutes` tallies that. A walk that re-routes `OBSTRUCTED_MAX_REROUTES` times
+ * without arriving stands down entirely, leaving whoever owns the goal to re-decide.
  */
 export const Obstructed = defineComponent<{ ticks: number; reroutes: number; x: Fixed; y: Fixed }>(
   'Obstructed',

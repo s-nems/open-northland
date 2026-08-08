@@ -3,7 +3,7 @@ import { defineComponent, type Entity } from '../../ecs/world.js';
 /**
  * A harvestable resource node (a tree, ore vein, berry bush) yielding its `goodType` to the good's harvest
  * atomic (`harvestAtomic`, the good's `atomicForHarvesting`). `remaining` is the units left; the planner's
- * `remaining <= 0` gate skips an emptied node. The node occupies the nav node under its {@link Position}.
+ * `remaining <= 0` gate skips an emptied node. The node occupies the nav node under its `Position`.
  */
 export const Resource = defineComponent<{
   goodType: number;
@@ -97,7 +97,7 @@ export const MineDeposit = defineComponent<{
 export const Stump = defineComponent<{ goodType: number }>('Stump');
 
 /**
- * Marks a bare {@link Stockpile} that is a dropped resource pile. It rides on the plain `Stockpile +
+ * Marks a bare `Stockpile` that is a dropped resource pile. It rides on the plain `Stockpile +
  * Position` shape the ground-pile machinery already handles, and the marker adds the two things a
  * designated delivery flag must not get: a felling collector's collect-trunk drive prefers it, and it is
  * auto-reaped when emptied. `goodType` is for legibility; its presence is what the sim keys on.
@@ -106,15 +106,13 @@ export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop');
 
 /**
  * Names the settler whose harvest made this {@link GroundDrop}. Stamped only for a flag-bound gatherer
- * (one carrying a {@link WorkFlag}), whose collect drive reclaims a drop only when `by` is its own entity,
+ * (one carrying a `WorkFlag`), whose collect drive reclaims a drop only when `by` is its own entity,
  * so a pile it did not make is left in peace. Entity ids are never reused, so a dead owner's id cannot
  * re-alias a live settler.
  */
 export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
 
-/** Names the hunter whose shot left this carcass {@link Resource}; absent on any node not shot into being.
- *  `claimedByAnotherHunter` (conflict/hunting/kill-claim.ts) owns when that claim holds and when it
- *  lapses. */
+/** Names the hunter whose shot left this carcass {@link Resource}; absent on a node not shot into being. */
 export const KilledBy = defineComponent<{ by: Entity }>('KilledBy');
 
 /**

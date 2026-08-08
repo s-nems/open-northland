@@ -54,17 +54,16 @@ export function consumeGoods(world: World, store: Entity, cost: readonly GoodsLi
 
 /**
  * Marks a {@link Building} that is a construction site - a placed foundation that already collides while
- * builders carry material and hammer it up. It rides on top of the plain `Building + Stockpile` shape,
- * whose stockpile is the delivered-material hold, and is removed the instant construction finishes, so a
- * finished building is a plain `Building` again.
+ * builders carry material and hammer it up. It rides on the plain `Building + Stockpile` shape, whose
+ * stockpile is the delivered-material hold, and is removed the instant construction finishes.
  *
  * `labor` is builder-work progress in 0..ONE, distinct from delivered material: the visible
  * `Building.built` is `min(labor, deliveredFraction)`, so a site rises only as fast as both the hammering
  * and the arriving material allow.
  *
- * Source basis: the site-then-build flow and the material cost (`construction`, extracted
- * `LogicConstructionGoods`) are faithful; the builder-driven pace is a named approximation, since the
- * original offers no oracle for construction speed.
+ * The site-then-build flow and the material cost (`construction`, extracted `LogicConstructionGoods`) are
+ * faithful; the builder-driven pace is an approximation, since the original offers no oracle for
+ * construction speed.
  */
 export const UnderConstruction = defineComponent<{ labor: Fixed }>('UnderConstruction');
 
@@ -90,9 +89,8 @@ export const Upgrading = defineComponent<{
 
 /**
  * A placed vehicle hull - a ship put on the map as a movable stockpile rather than a static building. It
- * owns a {@link Stockpile} the way a headquarters does. `vehicleType` cross-references `VehicleType.typeId`
- * (its `stockSlots` hold capacity, `cargoGoods` load-filter, `passengerSlots`) and `tribe` is its owner, the
- * same `(type, tribe)` shape a {@link Building} carries, so a hull hashes and is queried exactly like one.
- * Only an unlocked ship type is ever stamped, so a `Vehicle` always references a ship its tribe may field.
+ * owns a {@link Stockpile} the way a headquarters does, and carries the same `(type, tribe)` shape a
+ * {@link Building} does, so a hull hashes and is queried exactly like one. Only an unlocked ship type is
+ * ever stamped, so a `Vehicle` always references a ship its tribe may field.
  */
 export const Vehicle = defineComponent<{ vehicleType: number; tribe: number }>('Vehicle');
