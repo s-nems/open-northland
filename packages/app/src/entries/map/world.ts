@@ -1,15 +1,30 @@
-import type { MapDiplomacy, TerrainMapFile } from '@open-northland/data';
-import { type Entity, halfCellMapFromCells, type Simulation, type TerrainMap } from '@open-northland/sim';
+import type { ContentSet, MapDiplomacy, TerrainMapFile } from '@open-northland/data';
+import {
+  type Entity,
+  halfCellMapFromCells,
+  restoreSimulation,
+  type SaveGame,
+  type Simulation,
+  type TerrainMap,
+} from '@open-northland/sim';
 import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import {
   mapResourceObjectNames,
+  resolveWorldContent,
   spawnMapBerryBushes,
   spawnMapResources,
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
 import { applySessionRuleOverrides, type SessionRuleOverrides } from '../../game/session-rules.js';
-import { runAuthoredMap, runBareMap, runDemoWorld } from '../../game/world/index.js';
+import {
+  authoredCatalogExtras,
+  demoWorldBase,
+  resolveAuthoredPlacements,
+  runAuthoredMap,
+  runBareMap,
+  runDemoWorld,
+} from '../../game/world/index.js';
 import { grantAssistantDefaults } from '../../view/assistant-grants.js';
 
 /**
@@ -96,6 +111,51 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: seat, enabled: true });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
+}
+
+/** The world-build inputs a restore reuses: identity only, since placements, session rules, AI seats
+ *  and harvestables are already in the saved state. */
+export type RestoreWorldOptions = Pick<MapWorldOptions, 'map' | 'ir' | 'content' | 'demoOwner'>;
+
+export interface RestoredMapWorld {
+  readonly sim: Simulation;
+  readonly kind: MapWorldKind;
+  /** True when the save's conversion revision differs from the loaded content's; presentation-only. */
+  readonly contentRevisionDiffers: boolean;
+}
+
+/**
+ * Resolve the exact terrain and content a fresh {@link buildMapWorld} would and restore the save onto
+ * them, enqueueing nothing. Throws when the save does not fit the resolved world; the app-layer
+ * round-trip tests hold both paths to the same resolution.
+ */
+export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): RestoredMapWorld {
+  const terrain = collisionTerrain(options.map, options.ir);
+  if (terrain === null) {
+    const demo = {
+      ...options.content,
+      ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}),
+    };
+    const base = demoWorldBase(undefined, demo);
+    return { ...restoreSimulation(save, { content: base.content, map: base.terrain }), kind: 'demo' };
+  }
+  const authored = authoredWorldContent(terrain, options);
+  return {
+    ...restoreSimulation(save, {
+      content: authored ?? resolveWorldContent(terrain, options.content),
+      map: terrain,
+    }),
+    kind: authored !== null ? 'authored' : 'bare',
+  };
+}
+
+/** The authored path's content, or null exactly when `runWorld` would fall through to the bare map. */
+function authoredWorldContent(terrain: TerrainMap, options: RestoreWorldOptions): ContentSet | null {
+  const { map, ir } = options;
+  if (map?.entities === undefined || ir === null) return null;
+  const { placements } = resolveAuthoredPlacements(map.entities, ir, terrain);
+  if (placements.length === 0) return null;
+  return resolveWorldContent(terrain, options.content, authoredCatalogExtras(placements, ir));
 }
 
 /** Spawned in the map's placement order after the placement tick, so ids mint deterministically behind

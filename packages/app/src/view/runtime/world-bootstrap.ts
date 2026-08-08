@@ -59,6 +59,15 @@ export function haltOnMissingContent(err: Error): void {
   mountMessage(copy.missingContentTitle, copy.missingTerrainDetail, [navButton(copy.backToMenu, false, '')]);
 }
 
+/** Halt a boot whose staged save failed to restore. The staged bytes are already consumed, so the
+ *  next boot of the same URL starts fresh instead of looping the failure. */
+export function haltOnFailedRestore(err: unknown): void {
+  const copy = messages().common;
+  diag.warn('boot', `staged save restore failed: ${String(err)}`);
+  dismissBootProgress();
+  mountMessage(copy.loadFailedTitle, copy.loadFailedDetail, [navButton(copy.backToMenu, false, '')]);
+}
+
 /** The minimap's ground colours from the terrain set's per-type debug colours. */
 export function terrainColourOption(terrain: TerrainTextureSet): Pick<GameViewDeps, 'terrainColour'> {
   return { terrainColour: (t: number) => terrain.cellFor(t)?.fallbackColour };

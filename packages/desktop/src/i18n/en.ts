@@ -77,10 +77,13 @@ export const en = {
   dialogs: {
     pickGameTitle: 'Select your Cultures - 8th Wonder of the World folder',
     pickModTitle: 'Select the unpacked CulturesNation mod folder',
+    saveGameTitle: 'Save game',
+    loadGameTitle: 'Load a saved game',
+    saveFileFilter: 'Open Northland save',
     leaveGame: 'Leave game',
     stay: 'Stay',
     leaveGameMessage: 'Leave the running game?',
-    leaveGameDetail: 'There is no saving yet - the current session will be lost.',
+    leaveGameDetail: 'Unsaved progress will be lost - you can save from the in-game menu first.',
   },
   menu: {
     game: 'Game',

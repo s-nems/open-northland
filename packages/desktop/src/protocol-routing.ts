@@ -37,7 +37,7 @@ function gamePageUrl(url: string): URL | undefined {
 }
 
 /**
- * Whether a game page has a world in progress, so navigating away loses it (there is no saving yet).
+ * Whether a game page has a world in progress, so navigating away loses any unsaved progress.
  * The menu page is a game URL too and carries params of its own, so a non-empty query proves nothing.
  */
 export function isInGameSession(url: string): boolean {

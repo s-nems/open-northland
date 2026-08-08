@@ -65,3 +65,20 @@ export function bindHarvestableHandover<Sprite>(
     }
   };
 }
+
+/**
+ * Retire every fresh-build harvestable placement's static quad at once: a restored world's nodes are
+ * pool-drawn from the loaded state, and a quad left bound would double-draw or resurrect them.
+ * Approximation: nodes worked before the save leave no fog ghost here, where a continuous session
+ * keeps showing the dimmed quad under stale fog.
+ */
+export function retireStaticHarvestables<Sprite>(
+  surface: StaticDrawSurface<Sprite>,
+  placements: Iterable<number>,
+  spriteByPlacement: ReadonlyMap<number, Sprite>,
+): void {
+  for (const placement of placements) {
+    const sprite = spriteByPlacement.get(placement);
+    if (sprite !== undefined) surface.removeMapObject(sprite);
+  }
+}

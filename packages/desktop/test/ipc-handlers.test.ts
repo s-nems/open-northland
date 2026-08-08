@@ -93,12 +93,15 @@ describe('wireIpc sender guard', () => {
     await expect(probed).resolves.toMatchObject({ path: '/no/such/game/folder' });
   });
 
-  it('still validates arguments behind the guard', () => {
+  it('still validates arguments behind the guard', async () => {
     expect(() => registered.get(IPC_CHANNELS.probeGamePath)?.(APP_FRAME, 42)).toThrow(
       'expected a string argument',
     );
     expect(() => registered.get(IPC_CHANNELS.setLocale)?.(APP_FRAME, 'klingon')).toThrow(
       'expected a supported locale',
+    );
+    await expect(registered.get(IPC_CHANNELS.saveGameFile)?.(APP_FRAME, 42, 'bytes')).rejects.toThrow(
+      'expected a string argument',
     );
   });
 });

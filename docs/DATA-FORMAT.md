@@ -164,6 +164,10 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   as disconnected copies. The same state always serializes byte-identically, and parse plus
   re-serialize round-trips the bytes.
 
+A save records simulation state only. Presentation state - camera, selection, game speed, the
+render's fog ghosts - is not captured, so a loaded game reopens at the entry's default framing.
+Approximation: the original also restores the camera.
+
 Reading is split in two: `parseSaveGame` validates an untrusted document's structure (header
 identity, the exact section order, allocation coherence, pending envelopes), and `restoreSimulation`
 materializes it onto a fresh sim, validating component values as it goes plus everything that needs

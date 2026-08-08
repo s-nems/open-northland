@@ -1,5 +1,6 @@
 import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '../diag/index.js';
 import { messages } from '../i18n/index.js';
+import type { SaveLoadSession } from './runtime/save-load/index.js';
 
 export interface SystemMenu {
   toggle(): void;
@@ -9,6 +10,8 @@ export interface SystemMenu {
 export interface SystemMenuDeps {
   /** Leave the running game and return to the main menu. */
   readonly onQuit: () => void;
+  /** The save and load flows behind the two game buttons. */
+  readonly saveLoad: SaveLoadSession;
 }
 
 const MODAL_PANEL_STYLE = [
@@ -36,8 +39,8 @@ const MODAL_BUTTON_STYLE = [
 ].join(';');
 
 /**
- * The in-game system menu: a centred DOM overlay for returning to the main menu and downloading
- * diagnostics. It does not implement the original's settings and help window.
+ * The in-game system menu: a centred DOM overlay for saving and loading, returning to the main menu
+ * and downloading diagnostics. It does not implement the original's settings and help window.
  */
 export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   const copy = messages().hud;
@@ -65,49 +68,80 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   title.textContent = copy.systemMenu;
   Object.assign(title.style, { margin: '0 0 6px', font: '18px/1.2 ui-serif,Georgia,serif' });
 
-  const quit = document.createElement('button');
-  quit.type = 'button';
-  quit.textContent = copy.returnToMenu;
-  quit.style.cssText = MODAL_BUTTON_STYLE;
-  quit.addEventListener('click', deps.onQuit);
+  const button = (label: string, onClick: () => void): HTMLButtonElement => {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.textContent = label;
+    el.style.cssText = MODAL_BUTTON_STYLE;
+    el.addEventListener('click', onClick);
+    return el;
+  };
+
+  // Save and load outcomes land here; anything else (a cancel, a page reload) leaves it hidden.
+  const status = document.createElement('p');
+  status.setAttribute('role', 'status');
+  Object.assign(status.style, { margin: '0', font: '13px/1.4 ui-serif,Georgia,serif', display: 'none' });
+  const setStatus = (text: string | null): void => {
+    status.textContent = text ?? '';
+    status.style.display = text === null ? 'none' : 'block';
+  };
+
+  // One flow at a time: a second click while a file dialog is open would stack a second dialog.
+  let busy = false;
+  const runFlow = (flow: () => Promise<string | null>): void => {
+    if (busy) return;
+    busy = true;
+    setStatus(null);
+    void flow()
+      .then(setStatus)
+      .finally(() => {
+        busy = false;
+      });
+  };
+
+  const save = button(copy.saveGame, () =>
+    runFlow(async () => {
+      const outcome = await deps.saveLoad.saveGame();
+      if (outcome.kind === 'saved') return copy.gameSaved;
+      return outcome.kind === 'failed' ? copy.saveFailed : null;
+    }),
+  );
+  const load = button(copy.loadGame, () =>
+    runFlow(async () => {
+      const outcome = await deps.saveLoad.loadGame();
+      return outcome.kind === 'rejected' ? copy.loadErrors[outcome.reason] : null;
+    }),
+  );
+
+  const quit = button(copy.returnToMenu, deps.onQuit);
 
   // The same report path the crash banner offers, also reachable without a crash.
-  const diagnostics = document.createElement('button');
-  diagnostics.type = 'button';
-  diagnostics.textContent = copy.downloadDiagnostics;
-  diagnostics.style.cssText = MODAL_BUTTON_STYLE;
-  diagnostics.addEventListener('click', () => downloadDiagnosticsBundle());
+  const diagnostics = button(copy.downloadDiagnostics, () => downloadDiagnosticsBundle());
 
   // Present only while a `?debug=trace` recording is live.
-  let trace: HTMLButtonElement | null = null;
-  if (isTraceRecording()) {
-    trace = document.createElement('button');
-    trace.type = 'button';
-    trace.textContent = copy.downloadTrace;
-    trace.style.cssText = MODAL_BUTTON_STYLE;
-    trace.addEventListener('click', () => downloadTraceFile());
-  }
-
-  const close = document.createElement('button');
-  close.type = 'button';
-  close.textContent = copy.closeMenu;
-  close.style.cssText = MODAL_BUTTON_STYLE;
+  const trace = isTraceRecording() ? button(copy.downloadTrace, () => downloadTraceFile()) : null;
 
   const hide = (): void => {
     backdrop.style.display = 'none';
+    setStatus(null);
+    // Browsers without the file input's `cancel` event leave the load flow pending forever; closing
+    // the menu is the player's way out, so it releases both the forced pause and the busy latch.
+    busy = false;
+    deps.saveLoad.releaseForcedPause();
   };
-  close.addEventListener('click', hide);
+  const close = button(copy.closeMenu, hide);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) hide();
   });
 
-  panel.append(title, quit, diagnostics, ...(trace !== null ? [trace] : []), close);
+  panel.append(title, save, load, quit, diagnostics, ...(trace !== null ? [trace] : []), close, status);
   backdrop.append(panel);
   document.body.append(backdrop);
 
   return {
     toggle(): void {
-      backdrop.style.display = backdrop.style.display === 'none' ? 'grid' : 'none';
+      if (backdrop.style.display === 'none') backdrop.style.display = 'grid';
+      else hide();
     },
     dispose(): void {
       backdrop.remove();

@@ -17,6 +17,8 @@ export const IPC_CHANNELS = {
   pickModFolder: 'desktop:pick-mod-folder',
   modEvent: 'desktop:mod-event',
   setLocale: 'desktop:set-locale',
+  saveGameFile: 'desktop:save-game-file',
+  openGameFile: 'desktop:open-game-file',
 } as const;
 
 /** Channels the main process pushes to the renderer; every other one is invoked. */
@@ -45,6 +47,12 @@ export interface DesktopState {
 export interface GameFolderCandidate {
   readonly path: string;
   readonly probe: GameFolderProbe;
+}
+
+/** A picked save file's display name and full text; never a filesystem path. */
+export interface SaveFileContents {
+  readonly name: string;
+  readonly contents: string;
 }
 
 export type PipelineEvent =
@@ -82,4 +90,10 @@ export interface DesktopApi {
   startGame(): Promise<void>;
   /** Persist the installer language and re-localize the native menu. */
   setLocale(locale: Locale): Promise<void>;
+  // The two file methods mirror the game page's structural `GameFileBridge`
+  // (`packages/app/src/view/runtime/save-load/file-access.ts`).
+  /** Native save dialog for a game save; resolves to the written file's basename, null on cancel. */
+  saveGameFile(suggestedName: string, contents: string): Promise<string | null>;
+  /** Native open dialog for a game save; null on cancel. */
+  openGameFile(): Promise<SaveFileContents | null>;
 }

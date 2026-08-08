@@ -10,7 +10,8 @@ import {
 } from './format.js';
 
 export interface ExportSaveOptions {
-  /** The decoded map id the run loaded, recorded as provenance; omit for scenes and mapless sims. */
+  /** The caller's world identity token (the app uses the decoded map id, or `scene:<id>`), recorded
+   *  so a loader can match the save to the world it boots. Omit for a world with no identity. */
   mapId?: string;
 }
 

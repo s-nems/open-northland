@@ -21,7 +21,7 @@ export {
 } from './ai-player/workforce/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
-export { createResourceNode } from './footprint/resources.js';
+export { createResourceNode, resourceFootprintForGood } from './footprint/resources.js';
 export {
   ADULT_AGE_TICKS,
   CHILD_AGE_TICKS,

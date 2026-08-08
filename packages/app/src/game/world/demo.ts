@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@open-northland/data';
+import type { ContentSet, TerrainMapFile } from '@open-northland/data';
 import { type SceneTerrain, terrainMapToScene } from '@open-northland/render';
 import {
   type CellTerrainMap,
@@ -100,6 +100,21 @@ export interface DemoWorldOptions extends WorldContentOptions {
   readonly owner?: number;
 }
 
+/** Content, terrain and placement cells revert together, so an unusable map yields the same world as
+ *  no map. The restore path resolves the same base without running the placements. */
+export function demoWorldBase(
+  map: TerrainMap | undefined,
+  options: DemoWorldOptions,
+): { content: ContentSet; terrain: TerrainMap; mapCells: Array<{ x: number; y: number }> | null } {
+  const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
+  const usable = map !== undefined && mapCells !== null;
+  return {
+    content: resolveWorldContent(usable ? map : undefined, options),
+    terrain: usable ? map : halfCellMapFromCells(grassCells()),
+    mapCells,
+  };
+}
+
 /**
  * Build the demo simulation and run it `ticks` ticks; the returned sim sits at a tick boundary. With a
  * loaded grid the same six entities land on the real map, and a map with too few walkable cells falls
@@ -111,11 +126,8 @@ export function runDemoWorld(
   map?: TerrainMap,
   options: DemoWorldOptions = {},
 ): Simulation {
-  // Content, terrain and cells revert together, so an unusable map yields the same world as no map.
-  const mapCells = map ? walkableCells(map, sandboxWalkableTypeIds(map), PLACEMENT_CELL_COUNT) : null;
+  const { content, terrain, mapCells } = demoWorldBase(map, options);
   const usable = map !== undefined && mapCells !== null;
-  const content = resolveWorldContent(usable ? map : undefined, options);
-  const terrain = usable ? map : halfCellMapFromCells(grassCells());
   const cells = mapCells ?? STRIP_CELLS;
   const sim = newWorldSim(seed, terrain, content);
 

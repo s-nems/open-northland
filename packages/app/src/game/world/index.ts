@@ -5,4 +5,4 @@ export {
   resolveAuthoredPlacements,
 } from './authored-placements.js';
 export { runAuthoredMap, runBareMap } from './decoded.js';
-export { type DemoWorldOptions, runDemoWorld, terrainSceneFor } from './demo.js';
+export { type DemoWorldOptions, demoWorldBase, runDemoWorld, terrainSceneFor } from './demo.js';

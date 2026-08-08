@@ -21,6 +21,9 @@ const api: DesktopApi = {
   },
   startGame: () => ipcRenderer.invoke(IPC_CHANNELS.startGame),
   setLocale: (locale) => ipcRenderer.invoke(IPC_CHANNELS.setLocale, locale),
+  saveGameFile: (suggestedName, contents) =>
+    ipcRenderer.invoke(IPC_CHANNELS.saveGameFile, suggestedName, contents),
+  openGameFile: () => ipcRenderer.invoke(IPC_CHANNELS.openGameFile),
 };
 
 contextBridge.exposeInMainWorld('desktop', api);
