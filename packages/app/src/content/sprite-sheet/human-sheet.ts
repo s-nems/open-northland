@@ -36,13 +36,8 @@ import {
 import { buildHumanBindings, type GoodRef } from '../settler-gfx/index.js';
 import { loadCharacters } from './characters.js';
 
-/**
- * Assemble the real decoded {@link SpriteSheet} from the loaded atlases and binding reducers - decoded
- * `cr_hum_body_00` + `cr_hum_head_00` pixels (plus the tree and per-building house bobs) on screen so a
- * person can judge palette, transparency, feet anchor and animation fidelity against the original. Loads
- * from the gitignored `content/` over the dev/shot vite server; the committed default degrades to
- * {@link import('./resolve.js').syntheticSpriteSheet} when `content/` is absent.
- */
+// Assemble the real decoded SpriteSheet from the loaded atlases and binding reducers. Loads from the
+// gitignored `content/` over the dev/shot vite server.
 
 /** The decoded human body + head atlases (`test_human_00` palette) served at `/bobs/<name>.*`. */
 const HUMAN_BODY_ATLAS = 'cr_hum_body_00.test_human_00';
@@ -59,11 +54,9 @@ const GUIDEPOST_POST_BOB = 0;
 const GUIDEPOST_BOARD_BOBS = Array.from({ length: 18 }, (_, i) => i + 1);
 
 /**
- * Load the gathering-economy family atlases (the rock/mine/mushroom node `.bmd`s, the `ls_goods` pile
- * skins, the `ls_temp` flag) named by the resolved gathering refs, beside the building families. Each loads
- * best-effort: a {@link MissingAtlasError} just drops that family, and its goods fall back to the yew node
- * or placeholder heap. Returns the loaded layers keyed by served stem plus the set of stems that actually
- * loaded, so a reducer emits a layer only for a family the GPU can draw.
+ * Load the gathering-economy family atlases named by the resolved gathering refs. Each loads best-effort: a
+ * {@link MissingAtlasError} just drops that family, and its goods fall back to the yew node or placeholder
+ * heap. The returned `loaded` set is what lets a reducer emit a layer only for a family the GPU can draw.
  */
 async function loadGatheringFamilies(
   stems: ReadonlySet<string>,
@@ -102,8 +95,7 @@ export function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string
 
 /**
  * Load the real human {@link SpriteSheet}: the body layer as the base sheet, the head layer as an overlay
- * drawn on top at the same bob id, with bindings whose walk/chop ranges come from the decoded
- * `bobSequences`.
+ * drawn on top at the same bob id.
  */
 export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Promise<SpriteSheet> {
   // Settlers draw shadow-less, so the body/head fetches start before the IR await; the tree/house/family
@@ -151,47 +143,36 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
-  // The construction-stage layers (the same records' `GfxBobConstructionLayer` rows), under the same
-  // family rules.
   const constructionRefs = constructionRefsByType(
     ir?.constructionLayers ?? [],
     VIKING_TRIBE,
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
-  // The upgrade-overlay layers (the `upgrade === 1` rows - the next tier's body revealing over the
-  // still-standing old one), under the same family rules.
   const upgradeRefs = upgradeRefsByType(
     ir?.constructionLayers ?? [],
     VIKING_TRIBE,
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
-  // The animated state overlays (the type-4 `GfxOverlay` rows - the mill's rotor over its bladeless body),
-  // under the same family rules. Empty when the IR predates the lane.
+  // Empty when the IR predates the `GfxOverlay` lane.
   const overlayRefs = buildingOverlayRefsByType(
     ir?.buildingOverlays ?? [],
     VIKING_TRIBE,
     DEFAULT_BUILDING_FAMILY,
     BUILDING_FAMILIES,
   );
-  // Gathering economy: resolve each run good's node/pile draw from the pipeline join (matched by id-slug),
-  // load the atlases they reference as families, and build the per-good bindings against exactly the
-  // families that loaded - the same load-then-drop-unloaded contract the building families use. The
-  // default yew node stays the `kindLayers.resource` layer, so it is excluded from the loaded families.
-  // The goods-icon manifest gives every other good its `ls_goods` pile graphic by (frame, palette), so a
-  // dropped brick or loaf draws its own heap instead of the placeholder marker.
+  // Gathering economy: the per-good bindings are built against exactly the families that loaded, the same
+  // load-then-drop-unloaded contract the building families use. The default yew node stays the
+  // `kindLayers.resource` layer, so it is excluded from the loaded families.
   const goodIcons = await loadGoodsIconManifest();
   const gatheringRefs = resolveGatheringRefs(goods, ir, goodIcons);
-  // The felled-tree stump/debris draws from `ls_trees_dead`, loaded alongside the node/pile/flag families.
   const stumpRef = resolveStumpRef(ir);
-  // Forageable berry bushes (fruited + bare states) draw from the `ls_trees` bush atlases.
   const berryBushRefs = resolveBerryBushRefs(ir);
   const stems = gatheringAtlasStems(gatheringRefs);
   if (stumpRef !== undefined) stems.add(stumpRef.stem);
   for (const s of berryBushAtlasStems(berryBushRefs)) stems.add(s);
-  // The signpost families ride the same contract: every per-player bake plus the single-colour fallback
-  // (19 small bobs each).
+  // The signpost families ride the same contract: every per-player bake plus the single-colour fallback.
   stems.add(GUIDEPOST_ATLAS_BAKED);
   for (let p = 0; p < PLAYER_COLOR_COUNT; p++) stems.add(guidepostPlayerAtlas(p));
   const { families: gatheringFamilies, loaded: gatheringLoaded } = await loadGatheringFamilies(
@@ -210,14 +191,10 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const stockpileBinding = buildStockpileBinding(gatheringRefs, gatheringLoaded);
   const stumpBinding = buildStumpBinding(stumpRef, gatheringLoaded);
   const berryBushBinding = buildBerryBushBinding(berryBushRefs, gatheringLoaded);
-  // The freshly-felled trunk a GroundDrop draws (the `landscapeToPickup` stage).
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
   // The building and gathering families merge into one map: their served stems are disjoint (`ls_houses_*`
   // vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
   const families = { ...buildingFamilies, ...gatheringFamilies };
-  // The signpost binding, emitted only when an atlas actually loaded. Each owner's post/boards resolve
-  // into that player's bake via `byPlayer`; the base frames come from player 0's bake, else the
-  // single-colour fallback.
   const guidepostFrames = (layer: string) => ({
     post: { layer, bob: GUIDEPOST_POST_BOB },
     boards: GUIDEPOST_BOARD_BOBS.map((bob) => ({ layer, bob })),
@@ -226,6 +203,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     const stem = guidepostPlayerAtlas(p);
     return gatheringLoaded.has(stem) ? stem : undefined;
   });
+  // The base frames come from player 0's bake, else the single-colour fallback.
   const guidepostBaseLayer =
     guidepostPlayerLayers[0] ??
     (gatheringLoaded.has(GUIDEPOST_ATLAS_BAKED) ? GUIDEPOST_ATLAS_BAKED : undefined);
@@ -260,13 +238,11 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     // The tree and the default building each draw from their own atlas (distinct id spaces), so they bind
     // as per-kind layers rather than sharing the body atlas the settler uses.
     kindLayers: { resource: tree, building: house },
-    // Named families (the multi-.bmd case) - a layer-qualified building/resource/stockpile binding draws
-    // its bob from the matching family atlas here, in its own frame-id space. A building family inherits
-    // the building kind scale below; resource/stockpile families draw native.
+    // Named families (the multi-.bmd case) - a layer-qualified binding draws its bob from the matching
+    // family atlas here, in its own frame-id space. A building family inherits the building kind scale
+    // below; resource/stockpile families draw native.
     families,
-    // The render scale of the building kind; named families inherit it. See BUILDING_SCALE.
     kindScales: { building: BUILDING_SCALE },
-    // Per-job settler looks (woman / soldier family / children via Age) - the sim-state → skin join.
     ...(characters !== undefined ? { characters } : {}),
     // Team-colour LUT: present ⇒ the characters are the indexed atlas and the pool paints each per its
     // player; absent ⇒ the baked characters draw as plain sprites. The armor recolor axis rides along.

@@ -64,9 +64,8 @@ function feetShiftedLayer(layer: SpriteLayer, shift: number | undefined): Sprite
 
 /**
  * Load the per-job {@link SettlerCharacterSet}: every `CHARACTER_SPECS` look whose body atlas and sequences
- * resolve, joined to jobs by the adult/young tables. Bodies load once per roster entry (the six soldier
- * looks share one armoured body atlas); a head that 404s is skipped, and a body that 404s or an
- * unresolvable binding drops that look to the default. Returns `undefined`, degrading the sheet to the
+ * resolve, joined to jobs by the adult/young tables. A head that 404s is skipped, and a body that 404s or
+ * an unresolvable binding drops that look to the default. Returns `undefined`, degrading the sheet to the
  * single-body path, when the IR carries no sequences or the civilian look can't be built.
  */
 export async function loadCharacters(
@@ -77,7 +76,7 @@ export async function loadCharacters(
   if (ir?.bobSequences === undefined || ir.bobSequences.length === 0) return undefined;
 
   const rosterById = new Map(VIKING_CHARACTERS.map((c) => [c.id, c]));
-  // One load per roster body: its body layer (hard requirement per look) + its head layers (soft).
+  // One load per roster body, not per look: the six soldier looks share one armoured body atlas.
   const rosterIds = [...new Set(CHARACTER_SPEC_ENTRIES.map(([, s]) => s.rosterId))];
   const layersByRoster = new Map<string, { body: SpriteLayer; headsByStem: Map<string, SpriteLayer> }>();
   await Promise.all(
@@ -108,10 +107,9 @@ export async function loadCharacters(
   );
 
   // The viking directional attack frame lists (`[gfxanimatomic]` action-81), indexed by swing bobseq name.
-  // Built once; a spec whose seq is absent just has no attack animation.
   const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
-  // The per-direction frame lists for every dir-list action, keyed by atomic id. An action missing here
-  // plays its plain `atomics` strip whole, cycling through the sheet's direction blocks.
+  // An action missing from `actionFrameLists` plays its plain `atomics` strip whole, cycling through the
+  // sheet's direction blocks.
   const actionFrameLists = new Map(
     [
       HARVEST_ATOMIC,
@@ -176,13 +174,11 @@ export async function loadCharacters(
     const heads = (spec.headBmds ?? roster.headBmds)
       .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))
       .filter((l): l is SpriteLayer => l !== undefined);
-    // Goods whose carry cycle ships empty head bobs resolve the head through the base walk instead, else a
-    // stone/grain hauler draws headless. All of a body's heads share one bob layout, so checking the first
-    // head atlas stands for the set.
+    // All of a body's heads share one bob layout, so checking the first head atlas stands for the set.
     const byGood = binding.carrying?.byGood;
     const headAtlas = heads[0]?.atlas;
-    // The head-borrow reference is the plain walk; `moving` is never a FrameListAnim (only the attack swing
-    // is), so exclude that kind to keep the type.
+    // The head-borrow reference is the plain walk; `moving` is never a FrameListAnim, so exclude that kind
+    // to keep the type.
     const moving = binding.moving;
     const walk = typeof moving === 'object' && !('frameLists' in moving) ? moving : undefined;
     let headBinding: SettlerStateBinding | undefined;
@@ -212,9 +208,8 @@ export async function loadCharacters(
     const char = bySpec.get(specId);
     if (char !== undefined) youngByJob[Number(job)] = char;
   }
-  // The equipped-weapon look table: a warrior draws the body of the weapon in its Equipment.weapon slot.
-  // Joined slug → the running content's good typeId, so the key matches whatever
-  // `Equipment.weapon.goodType` the sim actually stamps.
+  // The equipped-weapon look table, joined slug → the running content's good typeId, so the key matches
+  // whatever `Equipment.weapon.goodType` the sim actually stamps.
   const byWeaponGood: Record<number, SettlerCharacter> = {};
   for (const good of goods) {
     const specId = WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG[good.id];
@@ -222,9 +217,7 @@ export async function loadCharacters(
     const char = bySpec.get(specId);
     if (char !== undefined) byWeaponGood[good.typeId] = char;
   }
-  // The disarmed look: a weapon-job whose Equipment.weapon slot is empty draws the bare-hands warrior body,
-  // so the inventory axis wins over the job wherever the component exists (a settler with no Equipment
-  // keeps its armed job look). Keyed by the re-armable jobs only, so an axe soldier - no axe good exists to
+  // The disarmed look, keyed by the re-armable jobs only, so an axe soldier - no axe good exists to
   // re-arm with - never loses its drawn axe this way.
   const unarmedByJob: Record<number, SettlerCharacter> = {};
   const bareWarrior = bySpec.get(UNARMED_WARRIOR_SPEC);
