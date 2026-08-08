@@ -4,7 +4,8 @@ import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
  * The shared one-time GPU options. WebGL preference and antialias-off cut cross-machine pixel variance.
  * `resolution: 1` + `autoDensity: false` keep the backing store in CSS pixels, so one world pixel is one
  * CSS pixel at camera scale 1, so a fixed-size `?shot` capture frames the same world box whatever the
- * machine's devicePixelRatio. {@link createWindowPixiApp} overrides these to render at device resolution.
+ * machine's devicePixelRatio. {@link createWindowPixiApp} overrides these to render at an integer
+ * oversample of the device resolution.
  */
 const APP_OPTIONS = {
   // Pure black, like the original's void beyond the map edge (observed: its off-map area is exactly
@@ -33,14 +34,60 @@ export async function createPixiApp(
   return app;
 }
 
+/** Tolerance for float noise in `devicePixelRatio` (browser zoom yields values like 2.0000004). */
+const DPR_EPSILON = 1e-3;
+
+/**
+ * The renderer resolution for a device-pixel ratio: the smallest integer at or above it, so
+ * nearest-sampled art keeps equal texel runs and the browser finishes with one smooth linear downscale.
+ * The backing store stays within `2×` the physical pixels per axis, since `ceil(dpr) / dpr < 2` for
+ * every `dpr ≥ 1`.
+ */
+export function backingResolutionFor(dpr: number): number {
+  if (!Number.isFinite(dpr) || dpr <= 0) return 1;
+  return Math.max(1, Math.ceil(dpr - DPR_EPSILON));
+}
+
+/**
+ * Re-apply {@link backingResolutionFor} whenever the effective DPR changes (browser zoom, a move to a
+ * differently scaled monitor). The matchMedia query only matches the current DPR, so each fire
+ * re-subscribes at the new value; the resize listener backstops browsers without `resolution` queries,
+ * where zooming still fires a window resize. The listeners live for the page: a window Application is
+ * never destroyed before navigation.
+ */
+function watchBackingResolution(app: Application): void {
+  const apply = (): void => {
+    const next = backingResolutionFor(window.devicePixelRatio || 1);
+    if (next !== app.renderer.resolution) {
+      app.renderer.resize(window.innerWidth, window.innerHeight, next);
+    }
+  };
+  window.addEventListener('resize', apply);
+  if (typeof window.matchMedia !== 'function') return;
+  const subscribe = (): void => {
+    const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    query.addEventListener(
+      'change',
+      () => {
+        apply();
+        subscribe();
+      },
+      { once: true },
+    );
+  };
+  subscribe();
+}
+
 /**
  * Initialise a Pixi {@link Application} whose backing store tracks the window (`resizeTo: window`), so
  * resizing grows or shrinks the visible field instead of stretching the world. Callers must read the
  * live size from `app.screen` per frame, never from a captured constant.
  *
- * Renders at device resolution: `app.screen`, the camera, and every layout stay in CSS px while the
- * backing store holds one texel per device pixel, so screen-space UI rasterizes crisp on HiDPI. The DPR
- * is read once at boot, so a mid-session monitor or zoom change keeps working at the boot density.
+ * Renders at an integer oversample of the device resolution: `app.screen`, the camera, and every layout
+ * stay in CSS px while the backing store holds `backingResolutionFor(DPR)` texels per CSS px, so
+ * screen-space UI rasterizes crisp on HiDPI and fractional OS scaling never lands on uneven texels. The
+ * resolution follows live DPR changes; consumers that bake at a resolution must re-bake when
+ * `app.renderer.resolution` moves.
  */
 export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Application> {
   const app = new Application();
@@ -51,9 +98,10 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
     height: window.innerHeight,
     resizeTo: window,
     ...APP_OPTIONS,
-    resolution: window.devicePixelRatio || 1,
+    resolution: backingResolutionFor(window.devicePixelRatio || 1),
     autoDensity: true, // CSS-size the canvas to the logical size, so client px stay 1:1 with screen px
   });
+  watchBackingResolution(app);
   return app;
 }
 

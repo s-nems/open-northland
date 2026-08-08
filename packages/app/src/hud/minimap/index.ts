@@ -93,7 +93,10 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   container.zIndex = MINIMAP_Z;
   app.stage.addChild(container);
 
-  const frame = await loadMinimapFrame(app.renderer, layout.artScale, app.renderer.resolution);
+  /** The renderer resolution the ground raster and frame were baked at; a DPR change re-bakes both.
+   *  Captured before the await, so a change landing mid-load still differs and triggers the re-bake. */
+  let bakedResolution = app.renderer.resolution;
+  let frame = await loadMinimapFrame(app.renderer, layout.artScale, bakedResolution);
 
   const local = (r: {
     x: number;
@@ -137,12 +140,15 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   // ground-lane colour → typeId debug colour → flat tint.
   const colourOfType = (typeId: number): number => opts.colourOf?.(typeId) ?? flatTileColour(typeId);
   const colourOfCell = cellColourResolver(opts.cellColours, colourOfType);
-  const pxW = Math.max(1, Math.round(layout.map.w * RASTER_OVERSAMPLE * app.renderer.resolution));
-  const pxH = Math.max(1, Math.round(layout.map.h * RASTER_OVERSAMPLE * app.renderer.resolution));
-  const rgba = rasterizeTerrain(terrain, colourOfCell, pxW, pxH);
-  const groundTex = new Texture({
-    source: new BufferImageSource({ resource: rgba, width: pxW, height: pxH, scaleMode: 'linear' }),
-  });
+  const makeGroundTexture = (): Texture => {
+    const pxW = Math.max(1, Math.round(layout.map.w * RASTER_OVERSAMPLE * app.renderer.resolution));
+    const pxH = Math.max(1, Math.round(layout.map.h * RASTER_OVERSAMPLE * app.renderer.resolution));
+    const rgba = rasterizeTerrain(terrain, colourOfCell, pxW, pxH);
+    return new Texture({
+      source: new BufferImageSource({ resource: rgba, width: pxW, height: pxH, scaleMode: 'linear' }),
+    });
+  };
+  let groundTex = makeGroundTexture();
   const ground = new Sprite(groundTex);
   const mapL = local(layout.map);
   ground.position.set(mapL.x, mapL.y);
@@ -208,6 +214,33 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
 
   let lastDotsTick = -1;
   let lastHeight = -1;
+  let disposed = false;
+  /** Monotonic guard: only the newest in-flight frame re-bake may swap the braid in. */
+  let frameEpoch = 0;
+  const rebuildDensity = (): void => {
+    bakedResolution = app.renderer.resolution;
+    const nextTex = makeGroundTexture();
+    ground.texture = nextTex;
+    groundTex.destroy(true);
+    groundTex = nextTex;
+    // A texture swap re-derives the sprite scale from the new texel size, so re-pin the on-screen size.
+    ground.width = mapL.w;
+    ground.height = mapL.h;
+    if (frame === null) return;
+    const epoch = ++frameEpoch;
+    void loadMinimapFrame(app.renderer, layout.artScale, bakedResolution).then((next) => {
+      if (next === null) return;
+      if (disposed || epoch !== frameEpoch || frame === null) {
+        next.dispose();
+        return;
+      }
+      const at = container.getChildIndex(frame.display);
+      frame.dispose();
+      frame = next;
+      next.display.position.set(0, 0);
+      container.addChildAt(next.display, at);
+    });
+  };
   // The view rect the Graphics currently shows (`[x, y, w, h]`; NaN = cleared). Redrawn only on change,
   // since a per-frame clear and stroke re-tessellates and forces the stage's instruction rebuild.
   let lastViewRect: [number, number, number, number] = [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
@@ -239,6 +272,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         container.visible = true;
       }
       container.position.set(layout.panel.x, layout.panel.y);
+      if (app.renderer.resolution !== bakedResolution) rebuildDensity();
       fogMask.draw(fog);
       if (snapshot.tick !== lastDotsTick) {
         lastDotsTick = snapshot.tick;
@@ -266,6 +300,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       }
     },
     dispose: () => {
+      disposed = true;
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);

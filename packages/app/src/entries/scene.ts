@@ -99,7 +99,7 @@ export async function renderSceneMode(
   const cameraCtl = createCameraController(
     canvas,
     cameraFor(buildSpriteScene(sim.snapshot()), scene.initialZoom ?? 1, app.screen.width, app.screen.height),
-    app.renderer.resolution,
+    () => app.renderer.resolution,
   );
 
   await boot.begin('hud');

@@ -1,7 +1,7 @@
 import type { HudLayout, PalettedSprite } from '@open-northland/render';
 import type { Command, PlayerCommand } from '@open-northland/sim';
 import { type Application, Container, Graphics, Texture } from 'pixi.js';
-import { loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
+import { type GuiArt, loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
@@ -128,20 +128,33 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   // The real art path rasterizes the strip and buttons into an off-screen texture at an integer
   // oversample and draws it linear-downscaled to the fractional `uiscale`.
   let supersampled: SupersampledStrip | null = null;
+  /** The renderer resolution the strip was baked at; a live DPR change re-bakes at the new density. */
+  let stripResolution = app.renderer.resolution;
   /** The speed button's outline stamps and glyph; a speed change re-frames all of them. */
   const speedSprites: PalettedSprite[] = [];
 
-  if (art !== null) {
+  const buildStrip = (guiArt: GuiArt): void => {
+    supersampled?.display.destroy();
+    supersampled?.dispose();
+    speedSprites.length = 0;
     // The strip keys its near-black backdrop away, so the world shows past the carved silhouette: a
     // deviation from the original's opaque panel.
     const specs: StripSpriteSpec[] = [];
-    const strip = makeGuiSprite(art, layout.stripGfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
+    const strip = makeGuiSprite(guiArt, layout.stripGfx, {
+      defaultPalette: 'iconsleft',
+      colorKey: 'full',
+    });
     if (strip !== null) specs.push({ spr: strip.sprite, design: TOOL_PANEL_STRIP });
-    const outlined = buildOutlinedButtonSpecs(art, layout.buttons);
+    const outlined = buildOutlinedButtonSpecs(guiArt, layout.buttons);
     specs.push(...outlined.specs);
     speedSprites.push(...outlined.speedSprites);
     supersampled = createSupersampledStrip({ app, bounds: layout.designBounds, scale, sprites: specs });
     stripContainer.addChild(supersampled.display);
+    stripResolution = app.renderer.resolution;
+  };
+
+  if (art !== null) {
+    buildStrip(art);
   } else {
     const g = new Graphics();
     g.rect(layout.strip.x, layout.strip.y, layout.strip.w, layout.strip.h).fill(FALLBACK_STRIP);
@@ -200,7 +213,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     scale,
     stripContainer,
     art,
-    supersampled,
+    strip: () => supersampled,
     speedSprites,
     speedBtnRect: layout.buttons.find((b) => b.id === 'speed')?.placed,
     onSpeedChange: opts.onSpeedChange,
@@ -239,7 +252,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     return held.some((mode) => mode.isActive());
   };
 
-  speedButton.init(); // graphic only: the loop keeps the entry's seeded speed
+  speedButton.syncGlyph(); // graphic only: the loop keeps the entry's seeded speed
 
   const claimsWheel = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
@@ -251,7 +264,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     claimsWheel,
     placementType: () => placement.activeType(),
     update(hudFor): void {
-      // The strip is a static baked sprite, so only the pop-ups and held banners re-place per frame.
+      // The strip is a static baked sprite; it only re-bakes when a DPR change moves the renderer
+      // resolution, so its oversample keeps targeting the live device density.
+      if (art !== null && app.renderer.resolution !== stripResolution) {
+        buildStrip(art);
+        speedButton.syncGlyph();
+      }
       windows.refresh(hudFor);
       for (const mode of held) mode.placeBanner();
     },
