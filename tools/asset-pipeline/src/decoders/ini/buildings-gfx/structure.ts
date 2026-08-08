@@ -4,39 +4,59 @@
  * tribe, per size level) to one flat value per typeId.
  */
 import type { BuildingFootprint, FootprintCell } from '@open-northland/data';
-import { findProps, getInt, type RuleSection, tallyIds } from '../grammar.js';
-import { existingGfxHouseWins, logicTypeByLevel, splitGfxHouseRecords } from './shared.js';
+import { findProps, type RuleSection, tallyIds } from '../grammar.js';
+import { gfxHouseLogicRecords } from './shared.js';
 
 /**
- * Shared skeleton for the per-typeId overlays that collapse to a single flat value: pair each `key` line
- * to its level's `typeId` through the record's own `LogicType <sizeIdx> <typeId>` table, then keep the
- * deterministic winner. `readValue` returns `undefined` to reject a line, which then never mutates the
- * map.
+ * The one value each contested building `typeId` collapses to: the lowest `LogicTribeType` (the
+ * reference-tribe convention) and, within a tribe, the lowest `sizeIdx` (the base build stage), so the
+ * result is independent of file order. `read` runs only for a candidate that outranks the standing
+ * winner, and a rejected candidate leaves that winner in place.
+ */
+class GfxHouseWinners<T> {
+  private readonly byTypeId = new Map<
+    number,
+    { readonly tribeType: number; readonly sizeIdx: number; readonly value: T }
+  >();
+
+  offer(typeId: number, tribeType: number, sizeIdx: number, read: () => T | undefined): void {
+    const standing = this.byTypeId.get(typeId);
+    if (
+      standing !== undefined &&
+      (standing.tribeType < tribeType || (standing.tribeType === tribeType && standing.sizeIdx <= sizeIdx))
+    ) {
+      return;
+    }
+    const value = read();
+    if (value === undefined) return;
+    this.byTypeId.set(typeId, { tribeType, sizeIdx, value });
+  }
+
+  collapse(): Map<number, T> {
+    return new Map([...this.byTypeId].map(([typeId, { value }]) => [typeId, value]));
+  }
+}
+
+/**
+ * Pairs each `key` line to its level's `typeId` through the record's own `LogicType <sizeIdx> <typeId>`
+ * table, for the per-typeId overlays that collapse to a single flat value.
  */
 function collectGfxHouseWinner<T>(
   sections: readonly RuleSection[],
   key: string,
   readValue: (values: readonly string[]) => T | undefined,
 ): Map<number, T> {
-  const winner = new Map<number, { tribeType: number; sizeIdx: number; value: T }>();
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const tribeType = getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-      const typeByLevel = logicTypeByLevel(rec);
-      for (const p of findProps(rec, key)) {
-        const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
-        if (Number.isNaN(sizeIdx)) continue;
-        const typeId = typeByLevel.get(sizeIdx);
-        if (typeId === undefined) continue;
-        if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
-        const value = readValue(p.values);
-        if (value === undefined) continue;
-        winner.set(typeId, { tribeType, sizeIdx, value });
-      }
+  const winners = new GfxHouseWinners<T>();
+  for (const { rec, tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
+    for (const p of findProps(rec, key)) {
+      const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
+      if (Number.isNaN(sizeIdx)) continue;
+      const typeId = typeByLevel.get(sizeIdx);
+      if (typeId === undefined) continue;
+      winners.offer(typeId, tribeType, sizeIdx, () => readValue(p.values));
     }
   }
-  return new Map([...winner].map(([typeId, { value }]) => [typeId, value]));
+  return winners.collapse();
 }
 
 /**
@@ -78,21 +98,15 @@ export function extractHouseHitpoints(sections: readonly RuleSection[]): Map<num
  * the type at `sizeIdx` upgrades into the type at `sizeIdx + 1`.
  */
 export function extractUpgradeTargets(sections: readonly RuleSection[]): Map<number, number> {
-  const winner = new Map<number, { tribeType: number; sizeIdx: number; value: number }>();
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const tribeType = getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-      const typeByLevel = logicTypeByLevel(rec);
-      for (const [sizeIdx, typeId] of typeByLevel) {
-        const target = typeByLevel.get(sizeIdx + 1);
-        if (target === undefined || target === typeId) continue; // top level, or a degenerate self-link
-        if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
-        winner.set(typeId, { tribeType, sizeIdx, value: target });
-      }
+  const winners = new GfxHouseWinners<number>();
+  for (const { tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
+    for (const [sizeIdx, typeId] of typeByLevel) {
+      const target = typeByLevel.get(sizeIdx + 1);
+      if (target === undefined || target === typeId) continue; // top level, or a degenerate self-link
+      winners.offer(typeId, tribeType, sizeIdx, () => target);
     }
   }
-  return new Map([...winner].map(([typeId, { value }]) => [typeId, value]));
+  return winners.collapse();
 }
 
 /**
@@ -123,55 +137,45 @@ function canonicalCells(cells: Iterable<FootprintCell>): FootprintCell[] {
  * Footprints genuinely differ per tribe skin, so the cross-tribe collapse is an approximation.
  */
 export function extractBuildingFootprints(sections: readonly RuleSection[]): Map<number, BuildingFootprint> {
-  const winner = new Map<number, { tribeType: number; sizeIdx: number; footprint: BuildingFootprint }>();
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const tribeType = getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY;
-      const typeByLevel = logicTypeByLevel(rec);
-      if (typeByLevel.size === 0) continue;
+  const winners = new GfxHouseWinners<BuildingFootprint>();
+  for (const { rec, tribeType, typeByLevel } of gfxHouseLogicRecords(sections)) {
+    if (typeByLevel.size === 0) continue;
 
-      const buildZone: FootprintCell[] = [];
-      for (const p of findProps(rec, 'LogicBuildBlockArea')) {
-        const [x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
-        buildZone.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
-      }
-      const blockedByLevel = new Map<number, FootprintCell[]>();
-      for (const p of findProps(rec, 'LogicWalkBlockArea')) {
-        const [sizeIdx, x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
-        if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
-        const cells = blockedByLevel.get(sizeIdx) ?? [];
-        cells.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
-        blockedByLevel.set(sizeIdx, cells);
-      }
-      const doorByLevel = new Map<number, FootprintCell>();
-      for (const p of findProps(rec, 'LogicDoorPoint')) {
-        const [sizeIdx, x, y] = p.values.map((v) => Number.parseInt(v, 10));
-        if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
-        if (x === undefined || y === undefined || Number.isNaN(x) || Number.isNaN(y)) continue;
-        if (!doorByLevel.has(sizeIdx)) doorByLevel.set(sizeIdx, { dx: x, dy: y });
-      }
+    const buildZone: FootprintCell[] = [];
+    for (const p of findProps(rec, 'LogicBuildBlockArea')) {
+      const [x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
+      buildZone.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
+    }
+    const blockedByLevel = new Map<number, FootprintCell[]>();
+    for (const p of findProps(rec, 'LogicWalkBlockArea')) {
+      const [sizeIdx, x, y, run] = p.values.map((v) => Number.parseInt(v, 10));
+      if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
+      const cells = blockedByLevel.get(sizeIdx) ?? [];
+      cells.push(...expandAreaRun(x ?? Number.NaN, y ?? Number.NaN, run ?? Number.NaN));
+      blockedByLevel.set(sizeIdx, cells);
+    }
+    const doorByLevel = new Map<number, FootprintCell>();
+    for (const p of findProps(rec, 'LogicDoorPoint')) {
+      const [sizeIdx, x, y] = p.values.map((v) => Number.parseInt(v, 10));
+      if (sizeIdx === undefined || Number.isNaN(sizeIdx)) continue;
+      if (x === undefined || y === undefined || Number.isNaN(x) || Number.isNaN(y)) continue;
+      if (!doorByLevel.has(sizeIdx)) doorByLevel.set(sizeIdx, { dx: x, dy: y });
+    }
 
-      const familyBody = canonicalCells([...blockedByLevel.values()].flat());
-      const reserved = canonicalCells([...familyBody, ...buildZone]);
-      // An all-empty footprint would look footprinted yet validate every placement, so gate on the
-      // expanded cells rather than on the raw line or level count.
-      if (reserved.length === 0) continue;
+    const familyBody = canonicalCells([...blockedByLevel.values()].flat());
+    const reserved = canonicalCells([...familyBody, ...buildZone]);
+    // An all-empty footprint would look footprinted yet validate every placement, so gate on the
+    // expanded cells rather than on the raw line or level count.
+    if (reserved.length === 0) continue;
 
-      for (const [sizeIdx, typeId] of typeByLevel) {
-        if (existingGfxHouseWins(winner.get(typeId), tribeType, sizeIdx)) continue;
-        winner.set(typeId, {
-          tribeType,
-          sizeIdx,
-          footprint: {
-            blocked: canonicalCells(blockedByLevel.get(sizeIdx) ?? []),
-            familyBody,
-            reserved,
-            door: doorByLevel.get(sizeIdx),
-          },
-        });
-      }
+    for (const [sizeIdx, typeId] of typeByLevel) {
+      winners.offer(typeId, tribeType, sizeIdx, () => ({
+        blocked: canonicalCells(blockedByLevel.get(sizeIdx) ?? []),
+        familyBody,
+        reserved,
+        door: doorByLevel.get(sizeIdx),
+      }));
     }
   }
-  return new Map([...winner].map(([typeId, { footprint }]) => [typeId, footprint]));
+  return winners.collapse();
 }
