@@ -65,8 +65,9 @@ export function setStance(
 /**
  * Order one owned combatant to attack a specific `target`, which may be an enemy unit or an enemy building.
  * The {@link AttackOrder} focus makes the CombatSystem chase and strike regardless of sight radius; the
- * economy leaves an engaged unit alone, but needs still preempt it. Like a move order it is authoritative
- * and cancels the unit's current action, route, and hold.
+ * economy leaves an engaged unit alone, and a need is answered from what it carries or what its post holds
+ * rather than by walking off the order. Like a move order it is authoritative and cancels the unit's current
+ * action, route, and hold.
  *
  * Hostility is not checked here: the CombatSystem re-validates the target each tick and drops an order whose
  * target is or becomes friendly, so a stale order self-corrects deterministically.

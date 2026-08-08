@@ -6,21 +6,26 @@ import {
   Fleeing,
   Frightened,
   Garrison,
+  HuntFocus,
   LivestockVisit,
   PathRequest,
   PlayerOrder,
+  Position,
+  Settler,
   Sheltering,
   Stranded,
   Wedding,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
 import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
+import { answerNeedInPlace } from '../drives/needs.js';
 import { stepOut } from '../indoors.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
 
@@ -42,6 +47,37 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
     world.has(e, Wedding) ||
     world.has(e, Chat)
   );
+}
+
+/**
+ * Whether combat owns `e`'s feet, so a pressing need may only be answered where it stands. A self-committed
+ * hunter is excluded: its chase is an economy errand, and gating it off the food ladder would starve a
+ * working settler. The opposite call is made for flight, where `conflict/flee.ts` lets a collapsing need
+ * stop a fleeing settler even in danger; a fighting unit holds instead, at any level.
+ */
+export function combatOwnsFeet(world: World, e: Entity): boolean {
+  return world.has(e, Engagement) && !world.has(e, HuntFocus);
+}
+
+/** Whether `e` stands on a node's exact centre. A path follower snaps onto each waypoint before advancing
+ *  its index, so a walker is on-lattice for the tick that ends any leg. */
+function onNodeCentre(world: World, e: Entity): boolean {
+  const p = world.get(e, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  const centre = positionOfNode(n.hx, n.hy);
+  return p.x === centre.x && p.y === centre.y;
+}
+
+/**
+ * Answer a combatant's pressing need mid-route, which the drive ladder cannot do because it never runs for a
+ * travelling settler. The walk stops for it, since nothing else pauses a path follower; waiting for the end
+ * of a leg keeps the eater on the lattice. A failed route is left alone so the chase still reads its flag.
+ */
+function feedOnTheMarch(world: World, ctx: SystemContext, e: Entity, routeFailed: boolean): void {
+  if (routeFailed || !combatOwnsFeet(world, e) || !onNodeCentre(world, e)) return;
+  const settler = world.tryGet(e, Settler);
+  if (settler === undefined || !answerNeedInPlace(world, ctx, e, settler)) return;
+  clearNavState(world, e);
 }
 
 /**
@@ -100,6 +136,7 @@ export function releaseStaleIntent(
     noteUnreachableGoal(world, ctx, e, request.goal);
     clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
   } else if (isTravelling(world, e)) {
+    feedOnTheMarch(world, ctx, e, request?.failed === true);
     return false;
   }
   releaseFarmTask(world, e, farmClaims);
