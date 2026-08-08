@@ -4,10 +4,7 @@ import type { PalettedSprite } from '../paletted-sprite/index.js';
 import type { PlayerColourLut } from '../sprite-sheet.js';
 import { type MotionTrack, snapDistanceForKind } from './motion.js';
 
-/**
- * The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame: the union of its
- * visible atlas layers, or its placeholder box, translated to the feet anchor.
- */
+/** The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame. */
 export interface EntityBounds {
   readonly minX: number;
   readonly minY: number;
@@ -30,14 +27,13 @@ interface MutableBounds {
 interface PooledEntityBase {
   readonly container: Container;
   readonly kind: SpriteKind;
-  /** Parallel to {@link PooledEntity.sprites}: whether that layer is a cast shadow this frame. The pixel
-   *  hit test skips them - a shadow must not make its caster clickable. */
+  /** Parallel to {@link PooledEntity.sprites}: whether that layer is a cast shadow this frame. */
   readonly shadowFlags: boolean[];
   placeholder?: Graphics;
   attached: boolean;
   /** The `frameId` this entity was last drawn on; −1 = never drawn. */
   lastSeen: number;
-  /** This entity's world-space sprite AABB, restamped in place each frame it's drawn (no per-frame alloc). */
+  /** This entity's world-space sprite AABB, restamped in place each frame it's drawn. */
   readonly bounds: MutableBounds;
   /** The `frameId` the bounds were last stamped on; `boundsOf` only returns them when it's the current one. */
   boundsFrame: number;
@@ -51,8 +47,7 @@ interface PooledEntityBase {
   readonly motion: MotionTrack;
 }
 
-/** A settler drawing team-coloured {@link PalettedSprite} meshes through its own LUT. The variant is
- *  decided once at creation, which keeps `sprites` homogeneous. */
+/** A settler drawing team-coloured {@link PalettedSprite} meshes through its own LUT. */
 export interface PalettedPooledEntity extends PooledEntityBase {
   readonly paletted: true;
   readonly sprites: PalettedSprite[];

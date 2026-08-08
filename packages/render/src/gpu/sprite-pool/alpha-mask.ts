@@ -9,7 +9,7 @@ import { type DrawableResource, isDrawableResource, readable2dContext } from '..
 /**
  * Minimum alpha (0..255) a texel needs to count as clickable. Half-opacity keeps a decoded
  * `Double8Bit` bob's anti-aliased body edge clickable while dropping its soft shadow skirt and glow.
- * An approximation - the original never alpha-picks.
+ * Approximation: no measurable oracle, since the original never alpha-picks.
  */
 export const SOLID_ALPHA_MIN = 128;
 
@@ -20,7 +20,6 @@ export interface AlphaMask {
   readonly bits: Uint8Array;
 }
 
-/** Pack RGBA pixel data into a mask: a bit is set when `alpha >= SOLID_ALPHA_MIN`. */
 export function buildAlphaMask(
   rgba: Uint8Array | Uint8ClampedArray,
   width: number,
@@ -36,7 +35,7 @@ export function buildAlphaMask(
   return { width, height, bits };
 }
 
-/** Whether the mask's texel `(x, y)` is solid. Out-of-range coordinates are transparent. */
+/** Out-of-range coordinates read as transparent. */
 export function maskSolidAt(mask: AlphaMask, x: number, y: number): boolean {
   if (x < 0 || y < 0 || x >= mask.width || y >= mask.height) return false;
   const i = y * mask.width + x;

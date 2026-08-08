@@ -25,8 +25,7 @@ export function animationClock(item: DrawItem, tick: number): number {
 /**
  * The pose a settler presents this frame, covering two gaps a raw `moving` state leaves: an anchor that
  * has sat still (an unserviced route, a stalled chase) and the one-tick heading gap a re-pathing walker
- * shows. Every other kind and state passes through untouched, so an idle settler keeps the default idle
- * facing.
+ * shows.
  */
 export function walkPose(
   item: DrawItem,

@@ -25,7 +25,6 @@ type BuildingBranch =
  * through with the default building-layer `bobId` for the shared body block to draw.
  */
 export function resolveBuildingLayers(sheet: SpriteSheet, item: DrawItem, tick: number): BuildingBranch {
-  // If no stage resolves, fall through to the body draw.
   const stack = resolveConstructionDraws(sheet.bindings.building, item);
   if (stack !== null && typeof sheet.bindings.building !== 'number') {
     const layers = revealingStageLayers(sheet, stack, item.builtPct);

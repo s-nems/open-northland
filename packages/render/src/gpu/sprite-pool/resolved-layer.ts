@@ -10,11 +10,8 @@ export interface ResolvedLayer {
   readonly scale: number;
   readonly atlasW?: number;
   readonly atlasH?: number;
-  /**
-   * Construction reveal fraction, 0..1 of `builtPct/100`, present only on an under-construction
-   * building's stage stack. With {@link times} the reveal is per-pixel against the baked TimeMask
-   * threshold; without time data the layer falls back to the bottom-up top-crop approximation.
-   */
+  /** Construction reveal fraction, 0..1 of `builtPct/100`, present only on an under-construction
+   *  building's stage stack. */
   readonly reveal?: number;
   /** The atlas's build-progress time sheet, when the loaded layer carries one; enables the per-pixel
    *  reveal. */
@@ -22,11 +19,9 @@ export interface ResolvedLayer {
   /** The construction stage's `[fromPct, toPct]` progress window, mapping eased progress into this
    *  stage's own threshold scale. */
   readonly revealWindow?: readonly [number, number];
-  /**
-   * Excluded from the entity's stamped bounds, which feed the selection ring's size and centre and the
-   * portrait's fit-to-box framing: a building's animated state overlay (the mill's rotor) breathes in
-   * size and offset per frame and must not move the box. It still draws and still pixel-hit-tests.
-   */
+  /** Excluded from the entity's stamped bounds: a building's animated state overlay (the mill's rotor)
+   *  breathes in size and offset per frame and must not move the box. It still draws and still
+   *  pixel-hit-tests. */
   readonly boundsExempt?: boolean;
   /**
    * A cast-shadow layer: always also {@link boundsExempt}, and additionally excluded from the pixel hit

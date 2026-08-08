@@ -16,7 +16,7 @@ export class PortraitSubject {
    *  drops the world backdrop instead of reading as standing on top of the building. */
   private indoor = false;
   /** Sprite-layer children hidden during an indoor portrait's solo render, with their prior visibility.
-   *  Retained across frames: this is a per-frame path. */
+   *  Reused rather than re-allocated, since the solo runs every frame an indoor portrait is open. */
   private readonly solo: StashedVisibility[] = [];
 
   constructor(private readonly spriteLayer: Container) {}

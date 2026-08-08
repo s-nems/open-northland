@@ -23,8 +23,7 @@ export function createLayerDrawBox(): LayerDrawBox {
 /**
  * A reveal layer without per-pixel time data falls back to the bottom-up crop: only its bottom
  * `displayReveal` fraction draws, shifted down so its base stays put. `perPixelReveal` says the caller
- * bound a baked TimeMask instead, which crops nothing. Bounds stamp from the uncropped rect, so a
- * barely-started foundation stays clickable over the finished building's whole plot.
+ * bound a baked TimeMask instead, which crops nothing.
  */
 export function layerDrawBox(
   out: LayerDrawBox,

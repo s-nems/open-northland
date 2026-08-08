@@ -22,8 +22,7 @@ const NO_EXTRAS: readonly ResolvedLayer[] = [];
 
 /**
  * Resolve the ordered atlas layers an entity draws, or `null` to draw the placeholder. Returns layer
- * data, never display objects, so the pool keeps reusing its sprites. A missing or empty frame in a
- * loaded layer returns `null` rather than borrowing a frame from another layer, whose id space differs.
+ * data, never display objects, so the pool keeps reusing its sprites.
  */
 export function resolveLayers(
   sheet: SpriteSheet | undefined,
@@ -125,14 +124,15 @@ function resolveStockpileLayers(sheet: SpriteSheet, item: DrawItem): ResolvedLay
   const binding = sheet.bindings.stockpile;
   if (binding === undefined) return null;
   const draw = resolveStockpileDraw(binding, item);
-  if (draw.layer === undefined) return null; // no family -> placeholder
+  if (draw.layer === undefined) return null;
   return layeredLayersWithShadow(sheet, 'stockpile', draw);
 }
 
 /**
  * A stump (`ls_trees_dead` debris), a freshly-felled trunk on the ground (`landscapeToPickup` LOG) or a
- * wild berry bush (the `ls_trees` bush frames). Like the stockpile these have no shared `kindLayers`
- * layer, so each draws only from a loaded named family, reusing the per-good resource resolver.
+ * wild berry bush (the `ls_trees` bush frames). Like {@link resolveStockpileLayers} these have no shared
+ * `kindLayers` layer, but each resolves through the per-good resource resolver, whose null draw is a
+ * data-pinned invisible level: draw nothing, not the placeholder.
  */
 function resolveDecorLayers(
   sheet: SpriteSheet,
@@ -147,7 +147,7 @@ function resolveDecorLayers(
         : sheet.bindings.trunk;
   if (binding === undefined) return null;
   const draw = resolveResourceDraw(binding, item);
-  if (draw === null) return []; // a data-pinned invisible level - draw nothing, not the placeholder
-  if (draw.layer === undefined) return null; // no family → placeholder
+  if (draw === null) return [];
+  if (draw.layer === undefined) return null;
   return layeredLayersWithShadow(sheet, kind, draw);
 }
