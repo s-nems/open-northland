@@ -70,6 +70,9 @@ export class WorldRenderer {
     this.viewSmoothing = opts?.viewSmoothing === true;
     this.playerColourOf = opts?.playerColourOf;
     this.spriteLayer.sortableChildren = true;
+    // Own Pixi render group: moving sprites re-write zIndex every frame, and that must re-sort and
+    // re-build only this layer's instruction set, not the whole stage's.
+    this.spriteLayer.isRenderGroup = true;
     this.mapObjects = new MapObjectLayer(this.spriteLayer, this.textureCache);
     this.pool = new SpritePool(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
     this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
