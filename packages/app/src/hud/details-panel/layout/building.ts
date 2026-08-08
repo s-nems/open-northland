@@ -56,6 +56,7 @@ export type ButtonAction =
   | 'help'
   | 'toggle-defence'
   | 'assign-workplace'
+  | 'unassign-workplace'
   | 'assign-home'
   | 'unassign-home';
 

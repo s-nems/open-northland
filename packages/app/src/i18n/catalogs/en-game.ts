@@ -50,6 +50,9 @@ export const enGame = {
     assignWorkplace: 'Assign a workplace',
     assignWorkplaceHint:
       'Click, then pick a building: green ones have an open slot for this settler, red ones do not. Left-click assigns, right-click or Esc cancels.',
+    unassignWorkplace: 'Remove work place',
+    unassignWorkplaceHint:
+      'Takes this settler off its workplace and frees the slot. It keeps its trade and whatever it is carrying; a gatherer goes back to a work flag planted where it stands.',
     assignHomeHint:
       'Click, then pick a house: green ones have a free family slot, red ones do not. Left-click moves the whole family in, right-click or Esc cancels.',
     unassignHome: 'Remove from home',

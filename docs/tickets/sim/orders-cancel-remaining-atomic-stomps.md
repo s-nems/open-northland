@@ -6,8 +6,9 @@
 (`deferOrderDuringAtomic` + `DeferredOrder` + `deferredOrderSystem`). The remaining employment and
 work-selection handlers still cancel a `CurrentAtomic` unconditionally, losing a mid-flight swing:
 
-- `assignWorker` (`systems/orders/work/employment.ts`, via `reidleAsJob`) and `assignBuilder` - the
-  employment twins of the gated `setJob`; the mechanism extends by adding their kinds to
+- `assignWorker` (`systems/orders/work/employment.ts`, via `reidleAsJob`), `unassignWorker`, and
+  `assignBuilder` - the employment twins of the gated `setJob`, all three now cancelling through the
+  shared `cancelActionAndRoute`; the mechanism extends by adding their kinds to
   `DeferrableOrderCommand` plus a gate call and a dispatch case.
 - `setGatherGood` (`systems/orders/work/selection.ts`) cancels a harvest-effect atomic mid-swing on a
   gather-good change; a swing-boundary release (the `DeferredOrder` chain-break in `atomicSystem` is
@@ -21,7 +22,8 @@ Attack orders have a separate player-control decision in
 
 ## Scope
 
-- Add `assignWorker`, `assignBuilder`, and `trainSoldier` to the existing deferred-order path.
+- Add `assignWorker`, `unassignWorker`, `assignBuilder`, and `trainSoldier` to the existing
+  deferred-order path.
 - Release `setGatherGood` at the current swing boundary without postponing the selection itself.
 - Remove the AI garrison workaround made redundant by the command gate.
 - Leave `attackUnit` unchanged.

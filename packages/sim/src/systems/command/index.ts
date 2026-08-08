@@ -33,6 +33,7 @@ import {
   setWorkFlag,
   trainSoldier,
   unassignHouse,
+  unassignWorker,
   unequipGood,
 } from '../orders/index.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
@@ -103,6 +104,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'assignWorker':
       assignWorker(world, ctx, command);
+      return;
+    case 'unassignWorker':
+      unassignWorker(world, ctx, command);
       return;
     case 'assignBuilder':
       assignBuilder(world, ctx, command);

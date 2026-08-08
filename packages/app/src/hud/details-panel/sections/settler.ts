@@ -10,6 +10,7 @@ import {
   ROW_H,
   ROW_TEXT_PAD,
   type SettlerLayout,
+  type WorkControlAction,
 } from '../layout/index.js';
 import { HUMANWINDOW, type SettlerPanelModel } from '../model/index.js';
 
@@ -149,31 +150,32 @@ function drawWorkSection(
   for (const choice of layout.craftChoiceHits) {
     drawChoice(choice.rect, choice.goodId, choice.selected || choice.goodType === hoveredGatherGood);
   }
-  chrome.textLeftMiddle(
-    ui('humanwindow', HUMANWINDOW.assignWork, hud.assignWorkplace),
-    layout.assignLabel.x,
-    layout.assignLabel.y + layout.assignLabel.h / 2,
-    model.canAssignWorkplace ? 'white' : 'dimmed',
-  );
-  chrome.roundButton(layout.assignIcon, model.canAssignWorkplace, hoverAction === 'assign-workplace');
-  chrome.glyphHouse(layout.assignIcon, model.canAssignWorkplace);
-  chrome.textLeftMiddle(
-    ui('humanwindow', HUMANWINDOW.assignHome, hud.assignHome),
-    layout.homeLabel.x,
-    layout.homeLabel.y + layout.homeLabel.h / 2,
-    model.canAssignHome ? 'white' : 'dimmed',
-  );
-  chrome.roundButton(layout.homeIcon, model.canAssignHome, hoverAction === 'assign-home');
-  chrome.glyphHouse(layout.homeIcon, model.canAssignHome);
-  // The original has no "usuń z domu" button, so this label is a pinned fallback with no decoded string.
-  chrome.textLeftMiddle(
-    hud.unassignHome,
-    layout.unassignLabel.x,
-    layout.unassignLabel.y + layout.unassignLabel.h / 2,
-    model.canUnassignHome ? 'white' : 'dimmed',
-  );
-  chrome.roundButton(layout.unassignIcon, model.canUnassignHome, hoverAction === 'unassign-home');
-  chrome.glyphHouse(layout.unassignIcon, model.canUnassignHome);
+  for (const { action, button, label } of layout.workControls) {
+    const { enabled, rect } = button;
+    chrome.textLeftMiddle(
+      workControlLabel(action, ui),
+      label.x,
+      label.y + label.h / 2,
+      enabled ? 'white' : 'dimmed',
+    );
+    chrome.roundButton(rect, enabled, hoverAction === action);
+    chrome.glyphHouse(rect, enabled);
+  }
+}
+
+/** The Praca control rows' decoded `humanwindow` labels. */
+function workControlLabel(action: WorkControlAction, ui: UiString): string {
+  const hud = messages().hud;
+  switch (action) {
+    case 'assign-workplace':
+      return ui('humanwindow', HUMANWINDOW.assignWork, hud.assignWorkplace);
+    case 'unassign-workplace':
+      return ui('humanwindow', HUMANWINDOW.removeWork, hud.unassignWorkplace);
+    case 'assign-home':
+      return ui('humanwindow', HUMANWINDOW.assignHome, hud.assignHome);
+    case 'unassign-home':
+      return ui('humanwindow', HUMANWINDOW.removeHome, hud.unassignHome);
+  }
 }
 
 /** Doświadczenie: one left-aligned "label count (+bonus%)" line per trained specialization; an

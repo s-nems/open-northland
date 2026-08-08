@@ -50,6 +50,9 @@ export const plGame = {
     assignWorkplace: 'Przydziel miejsce pracy',
     assignWorkplaceHint:
       'Kliknij, a następnie wskaż budynek: zielone mają wolne miejsce dla tego osadnika, czerwone nie. LPM przydziela, PPM lub Esc anuluje.',
+    unassignWorkplace: 'Usuń miejsce pracy',
+    unassignWorkplaceHint:
+      'Zdejmuje osadnika z miejsca pracy i zwalnia etat. Zachowuje zawód i to, co niesie; zbieracz wraca do chorągiewki postawionej tam, gdzie stoi.',
     assignHomeHint:
       'Kliknij, a następnie wskaż dom: zielone mają wolne miejsce dla tej rodziny, czerwone nie. LPM przydziela całą rodzinę, PPM lub Esc anuluje.',
     unassignHome: 'Usuń z domu',

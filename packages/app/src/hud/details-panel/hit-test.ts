@@ -17,7 +17,7 @@ const panelButtons = (view: PanelView): readonly ButtonHit[] => {
         ? view.layout.buttons
         : [...view.layout.buttons, view.layout.defenceToggle];
     case 'settler':
-      return [view.layout.assignButton, view.layout.homeButton, view.layout.unassignButton];
+      return view.layout.workControls.map((c) => c.button);
     case 'signpost':
       return [view.layout.button];
     case 'empty':
@@ -117,15 +117,22 @@ const buildingHealthValue = (view: PanelView, x: number, y: number): string | nu
   return `${health.label}: ${health.hover}`;
 };
 
-/** The Praca control buttons' tooltips; the round glyph buttons carry no drawn label, so the tooltip is
- *  what names them. */
-const assignButtonHint = (view: PanelView, x: number, y: number): string | null => {
+/** The Praca control buttons' tooltips; the drawn labels name the order, so these spell out what it does. */
+const workControlHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'settler') return null;
-  const { assignButton, homeButton, unassignButton } = view.layout;
-  if (contains(assignButton.rect, x, y)) return messages().hud.assignWorkplaceHint;
-  if (contains(homeButton.rect, x, y)) return messages().hud.assignHomeHint;
-  if (contains(unassignButton.rect, x, y)) return messages().hud.unassignHomeHint;
-  return null;
+  const action = view.layout.workControls.find((c) => contains(c.button.rect, x, y))?.action;
+  if (action === undefined) return null;
+  const hud = messages().hud;
+  switch (action) {
+    case 'assign-workplace':
+      return hud.assignWorkplaceHint;
+    case 'unassign-workplace':
+      return hud.unassignWorkplaceHint;
+    case 'assign-home':
+      return hud.assignHomeHint;
+    case 'unassign-home':
+      return hud.unassignHomeHint;
+  }
 };
 
 /** The alarm toggle's tooltip names what the click will do, so the wording flips with the current mode. */
@@ -229,6 +236,6 @@ export const tooltipTextAt = (
     productionRowHint(view, x, y) ??
     upgradeButtonHint(view, x, y) ??
     defenceToggleHint(view, x, y) ??
-    assignButtonHint(view, x, y)
+    workControlHint(view, x, y)
   );
 };

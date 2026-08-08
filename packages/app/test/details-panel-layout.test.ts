@@ -209,6 +209,48 @@ describe('details panel layout', () => {
     }
   });
 
+  it('stacks the four Praca controls clear of each other and inside the body, at every scale', () => {
+    // A gatherer: its round choice buttons sit between the text rows and the control stack, the case
+    // where the stack starts lowest and is likeliest to run out of body.
+    const model = buildUnitPanelModel(
+      snapshotOf([
+        {
+          id: 1,
+          components: {
+            Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+            WorkFlag: { flag: 2, radius: 24, goodType: GOOD_STONE },
+          },
+        },
+      ]),
+      new Set([1]),
+      sandboxCtx(),
+    );
+    for (const s of SWEEP_UISCALES) {
+      const layout = settlerLayoutOf(model, s);
+      const body = layout.work.body;
+      expect(layout.workControls.map((c) => c.action)).toEqual([
+        'assign-workplace',
+        'unassign-workplace',
+        'assign-home',
+        'unassign-home',
+      ]);
+      let previousBottom = layout.gatherChoiceHits.reduce(
+        (low, hit) => Math.max(low, hit.rect.y + hit.rect.h),
+        0,
+      );
+      for (const { button, label } of layout.workControls) {
+        expect(button.rect.y, `uiscale ${s}`).toBeGreaterThan(previousBottom);
+        expect(label.x).toBeGreaterThanOrEqual(button.rect.x + button.rect.w); // the label never overlaps
+        for (const r of [button.rect, label]) {
+          expect(r.x).toBeGreaterThanOrEqual(body.x);
+          expect(r.x + r.w).toBeLessThanOrEqual(body.x + body.w + 1);
+          expect(r.y + r.h, `uiscale ${s}`).toBeLessThanOrEqual(body.y + body.h + 1);
+        }
+        previousBottom = button.rect.y + button.rect.h;
+      }
+    }
+  });
+
   it('lays the stock grid as MAX_STOCK_ROWS×2 column-major cells inside the body (draw == hit geometry)', () => {
     const body = { x: 10, y: 100, w: 200, h: 132 };
     const slots = stockSlotRects(body, 1);

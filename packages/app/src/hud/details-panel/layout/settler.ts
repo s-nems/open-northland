@@ -1,7 +1,7 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { UnitPanelModel } from '../model/index.js';
-import type { ButtonHit } from './building.js';
+import type { ButtonAction, ButtonHit } from './building.js';
 import {
   EQUIP_ROW_H,
   type EquipActionHit,
@@ -56,6 +56,21 @@ export interface CraftChoiceHit {
   readonly rect: Rect;
 }
 
+/** The Praca body's post-and-home controls. The four labels are decoded (`humanwindow` 28/29/31/32);
+ *  stacking them as rows in the work section is authored, like the rest of the panel's metrics. */
+export type WorkControlAction = Extract<
+  ButtonAction,
+  'assign-workplace' | 'unassign-workplace' | 'assign-home' | 'unassign-home'
+>;
+
+/** One control row: the round glyph button, which is the whole clickable area, and the description
+ *  column right of it - so pointing at the label does nothing. */
+export interface WorkControlRow {
+  readonly action: WorkControlAction;
+  readonly button: ButtonHit;
+  readonly label: Rect;
+}
+
 /** The original's stacked human-window sections: Ogólne, Praca, Doświadczenie and Ekwipunek. */
 export interface SettlerLayout {
   readonly kind: 'settler';
@@ -69,18 +84,7 @@ export interface SettlerLayout {
   readonly work: SectionRect;
   /** The Praca body's two text rows (workplace, product). */
   readonly workRows: readonly Rect[];
-  // Each `*Button` equals its `*Icon` rect: only the round disc is clickable, so pointing at the label
-  // does nothing.
-  readonly assignButton: ButtonHit;
-  readonly assignIcon: Rect;
-  /** The assign row's description column, right of the round button. */
-  readonly assignLabel: Rect;
-  readonly homeButton: ButtonHit;
-  readonly homeIcon: Rect;
-  readonly homeLabel: Rect;
-  readonly unassignButton: ButtonHit;
-  readonly unassignIcon: Rect;
-  readonly unassignLabel: Rect;
+  readonly workControls: readonly WorkControlRow[];
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
   readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
@@ -125,9 +129,15 @@ export function layoutSettler(
   const gatherBlockH = hasGather ? gatherRows * gatherIcon + (gatherRows - 1) * gatherIconGap : 0;
   const gatherTopGap = hasGather ? gatherRowGap : 0;
   const preAssignGap = hasGather ? gatherAssignSep : assignRowGap;
-  // Three stacked control rows close the Praca body: assign-workplace, assign-home, remove-from-home.
-  const workBodyH =
-    WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + 3 * assignIconSize + 2 * assignRowGap;
+  // The stacked control rows close the Praca body, each trade control above its home twin.
+  const controls: readonly { action: WorkControlAction; enabled: boolean }[] = [
+    { action: 'assign-workplace', enabled: model.canAssignWorkplace },
+    { action: 'unassign-workplace', enabled: model.canUnassignWorkplace },
+    { action: 'assign-home', enabled: model.canAssignHome },
+    { action: 'unassign-home', enabled: model.canUnassignHome },
+  ];
+  const controlsH = controls.length * assignIconSize + (controls.length - 1) * assignRowGap;
+  const workBodyH = WORK_ROWS * rowH + gatherTopGap + gatherBlockH + preAssignGap + controlsH;
   // The Doświadczenie body holds the trained specializations plus the dimmed upcoming-unlock rows.
   const expRowCount = model.experience.length + model.upcomingUnlocks.length;
   const expBodyH = expRowCount * rowH;
@@ -190,36 +200,21 @@ export function layoutSettler(
     selected: model.work.selectedCraftGoods.includes(choice.goodType),
     rect: choiceRect(i),
   }));
-  const assignTop = (hasGather ? gatherTop + gatherBlockH : work.body.y + WORK_ROWS * rowH) + preAssignGap;
-  const assignIcon: Rect = {
-    x: work.body.x,
-    y: assignTop,
-    w: assignIconSize,
-    h: assignIconSize,
-  };
-  const assignLabel: Rect = {
-    x: assignIcon.x + assignIconSize + pad,
-    y: assignTop,
-    w: Math.max(0, work.body.x + work.body.w - (assignIcon.x + assignIconSize + pad)),
-    h: assignIconSize,
-  };
-  const assignButton: ButtonHit = {
-    action: 'assign-workplace',
-    enabled: model.canAssignWorkplace,
-    rect: assignIcon,
-  };
-  const homeTop = assignTop + assignIconSize + assignRowGap;
-  const homeIcon: Rect = { x: work.body.x, y: homeTop, w: assignIconSize, h: assignIconSize };
-  const homeLabel: Rect = { x: assignLabel.x, y: homeTop, w: assignLabel.w, h: assignIconSize };
-  const homeButton: ButtonHit = { action: 'assign-home', enabled: model.canAssignHome, rect: homeIcon };
-  const unassignTop = homeTop + assignIconSize + assignRowGap;
-  const unassignIcon: Rect = { x: work.body.x, y: unassignTop, w: assignIconSize, h: assignIconSize };
-  const unassignLabel: Rect = { x: assignLabel.x, y: unassignTop, w: assignLabel.w, h: assignIconSize };
-  const unassignButton: ButtonHit = {
-    action: 'unassign-home',
-    enabled: model.canUnassignHome,
-    rect: unassignIcon,
-  };
+  const controlsTop = (hasGather ? gatherTop + gatherBlockH : work.body.y + WORK_ROWS * rowH) + preAssignGap;
+  const labelX = work.body.x + assignIconSize + pad;
+  const workControls: WorkControlRow[] = controls.map(({ action, enabled }, i) => {
+    const y = controlsTop + i * (assignIconSize + assignRowGap);
+    return {
+      action,
+      button: { action, enabled, rect: { x: work.body.x, y, w: assignIconSize, h: assignIconSize } },
+      label: {
+        x: labelX,
+        y,
+        w: Math.max(0, work.body.x + work.body.w - labelX),
+        h: assignIconSize,
+      },
+    };
+  });
 
   const experience = next(expBodyH);
   const expRows: Rect[] = Array.from({ length: expRowCount }, (_unused, i) => ({
@@ -242,15 +237,7 @@ export function layoutSettler(
     bars,
     work,
     workRows,
-    assignButton,
-    assignIcon,
-    assignLabel,
-    homeButton,
-    homeIcon,
-    homeLabel,
-    unassignButton,
-    unassignIcon,
-    unassignLabel,
+    workControls,
     gatherChoiceHits,
     craftChoiceHits,
     experience,

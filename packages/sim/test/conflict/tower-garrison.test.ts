@@ -249,6 +249,25 @@ describe('the tower garrison - calling the posting off', () => {
     expect(tileOf(sim, soldier)).not.toEqual(tileOf(sim, tower));
   });
 
+  it('an explicit unassignWorker releases him exactly as the walk order does', () => {
+    const sim = simWithTower();
+    const tower = towerAt(sim, 6, 3);
+    const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+    manTheTower(sim, soldier, tower);
+
+    sim.enqueueSetup({ kind: 'unassignWorker', entity: soldier });
+    sim.step();
+
+    expect(sim.world.has(soldier, JobAssignment)).toBe(false);
+    expect(sim.world.has(soldier, Garrison)).toBe(false);
+    expect(sim.world.has(soldier, Resting)).toBe(false);
+    expect(tileOf(sim, soldier)).not.toEqual(tileOf(sim, tower)); // back on the doorstep, not the post
+    expect(sim.world.get(soldier, Settler).jobType).toBe(SOLDIER_JOB); // still a soldier
+
+    run(sim, 400);
+    expect(sim.world.has(soldier, JobAssignment)).toBe(false); // and the post never reclaims him
+  });
+
   it('releases a garrison still on his way to the tower', () => {
     const sim = simWithTower();
     const tower = towerAt(sim, 6, 3);

@@ -43,6 +43,9 @@ export interface UnitPanelOptions extends UnitPanelModelContext {
   readonly onSetDefenceMode: (entityId: number, enabled: boolean) => void;
   /** Enter "assign a workplace" pick mode for the selected settler; absent → the button is inert. */
   readonly onAssignWorkplace?: (settlerId: number) => void;
+  /** Take the selected settler off its workplace at once, with no pick mode; absent → the button is
+   *  inert. */
+  readonly onUnassignWorkplace?: (settlerId: number) => void;
   /** Enter "assign a home" pick mode for the selected settler; absent → the button is inert. */
   readonly onAssignHome?: (settlerId: number) => void;
   /** Remove the selected settler's family from its current home at once, with no pick mode; absent →
@@ -199,6 +202,9 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
         break;
       case 'assignWorkplace':
         opts.onAssignWorkplace?.(click.entityId);
+        break;
+      case 'unassignWorkplace':
+        opts.onUnassignWorkplace?.(click.entityId);
         break;
       case 'assignHome':
         opts.onAssignHome?.(click.entityId);

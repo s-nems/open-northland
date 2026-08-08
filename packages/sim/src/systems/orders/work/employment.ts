@@ -16,10 +16,16 @@ import type { Command } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { applyTradeChange, bindEmployment, openWorkerJobFromList } from '../../economy/jobs/index.js';
+import {
+  applyTradeChange,
+  bindEmployment,
+  openWorkerJobFromList,
+  releaseEmployment,
+} from '../../economy/jobs/index.js';
 import { interactionNode } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
+import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { clearNavState } from '../../spatial/nodes.js';
 import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '../guards.js';
@@ -55,12 +61,7 @@ export function setJob(
  * and set its load down before taking up `jobType`. Shared by the employment orders and the barracks drill.
  */
 export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
-  // setJob vets interruptibility before reaching here; assignWorker still cancels unconditionally, a
-  // remaining member of the uninterruptible-atomic class.
-  world.remove(e, CurrentAtomic);
-  world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
-  world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
-  clearNavState(world, e);
+  cancelActionAndRoute(world, e);
   // The old trade's haul goes down rather than into the new job. Before the trade change, so the arms a
   // disarmed soldier is about to take up are not swept into this drop.
   if (world.has(e, Carrying)) startDrop(world, ctx, e);
@@ -115,6 +116,26 @@ export function assignWorker(
 }
 
 /**
+ * The player's half of {@link releaseEmployment}: take one owned settler off its workplace.
+ *
+ * A garrison is stood down through {@link releaseTowerPost}, so the explicit release and the one a walk
+ * order performs cannot drift apart. The load stays in hand, as with {@link assignBuilder}: the trade is
+ * unchanged, so the settler banks what it carries instead of dumping it in the field.
+ */
+export function unassignWorker(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'unassignWorker' }>,
+): void {
+  const e = command.entity;
+  if (!isTradeAssignable(world, e)) return;
+  if (!world.has(e, JobAssignment)) return; // already unposted
+  releaseTowerPost(world, ctx, e); // steps him off the tower while the binding it reads is still there
+  releaseEmployment(world, ctx, e);
+  cancelActionAndRoute(world, e);
+}
+
+/**
  * Assign one owned builder to a specific construction `site`, the original's "put a builder on a
  * foundation". The {@link SiteAssignment} pin makes the builder drive raise that site over the nearest one
  * until the build finishes. Only the builder trade qualifies, since {@link jobCanBuild} below admits only a
@@ -140,11 +161,18 @@ export function assignBuilder(
   if (settler.jobType === null || !jobCanBuild(ctx.content, settler.jobType)) return;
 
   world.add(e, SiteAssignment, { site, pinned: true });
-  // Still an unconditional cancel, a remaining member of the uninterruptible-atomic class.
-  world.remove(e, CurrentAtomic);
-  world.remove(e, DeferredOrder); // a builder pin executing now supersedes any earlier parked order
   // A builder pinned mid-haul keeps its load, unlike a profession change: the trade is unchanged, so it
   // carries the material onward instead of dumping it in the field.
-  world.remove(e, PlayerOrder);
+  cancelActionAndRoute(world, e);
+}
+
+/** Stop what the settler's current employment had it doing and hand it back to the economy, leaving its
+ *  trade, load and gear alone. */
+function cancelActionAndRoute(world: World, e: Entity): void {
+  // setJob vets interruptibility before reaching here; the employment orders still cancel unconditionally,
+  // a remaining member of the uninterruptible-atomic class.
+  world.remove(e, CurrentAtomic);
+  world.remove(e, DeferredOrder); // an employment change executing now supersedes any earlier parked order
+  world.remove(e, PlayerOrder); // an employment change returns the unit to the economy
   clearNavState(world, e);
 }

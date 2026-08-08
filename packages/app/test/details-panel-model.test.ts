@@ -7,6 +7,7 @@ import {
   JOB_COLLECTOR,
   JOB_HUNTER,
   JOB_SOLDIER,
+  JOB_WOMAN,
 } from '../src/catalog/jobs.js';
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
@@ -502,6 +503,50 @@ describe('selection details panel model', () => {
     const child = buildUnitPanelModel(snapshot, new Set([3]), sandboxCtx());
     if (child.kind !== 'settler') throw new Error('expected a settler model');
     expect(child.canUnassignHome).toBe(false);
+  });
+
+  it('offers remove-work-place only to a posted man (not the unposted, not a child or woman)', () => {
+    const snapshot = snapshotOf([
+      // A posted tradesman: the release has a binding to drop.
+      {
+        id: 1,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          JobAssignment: { workplace: 9 },
+        },
+      },
+      // A trade-ful but unposted settler: nothing to release.
+      { id: 2, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR } } },
+      // The two the sim's trade-assignable gate refuses whatever binding they carry.
+      {
+        id: 3,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_CHILD_MALE, hunger: 0, fatigue: 0, enjoyment: 0, piety: 0 },
+          Age: { ticks: systems.CHILD_AGE_TICKS },
+          JobAssignment: { workplace: 9 },
+        },
+      },
+      {
+        id: 4,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_WOMAN },
+          Female: {},
+          JobAssignment: { workplace: 9 },
+        },
+      },
+    ]);
+
+    const expected = new Map([
+      [1, true],
+      [2, false],
+      [3, false],
+      [4, false],
+    ]);
+    for (const [id, offered] of expected) {
+      const model = buildUnitPanelModel(snapshot, new Set([id]), sandboxCtx());
+      if (model.kind !== 'settler') throw new Error('expected a settler model');
+      expect(model.canUnassignWorkplace, `settler ${id}`).toBe(offered);
+    }
   });
 
   it('bands a bar level into green/orange/red tones at the named thresholds', () => {

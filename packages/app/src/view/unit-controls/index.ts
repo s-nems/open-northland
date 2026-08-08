@@ -74,7 +74,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
     onAssignWorkplace: (id) => pickMode.armWorkplace(id),
     onAssignHome: (id) => pickMode.armHome(id),
-    // No target to choose, so it enqueues directly instead of arming a pick mode like assign-home.
+    // Neither release picks a target, so both enqueue directly instead of arming a pick mode.
+    onUnassignWorkplace: (id) => opts.enqueue({ kind: 'unassignWorker', entity: id as Entity }),
     onUnassignHome: (id) => opts.enqueue({ kind: 'unassignHouse', entity: id as Entity }),
     onSetGatherGood: (id, goodType) =>
       opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
