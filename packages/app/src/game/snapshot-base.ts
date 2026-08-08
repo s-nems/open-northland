@@ -1,27 +1,21 @@
 import type { Fixed, WorldSnapshot } from '@open-northland/sim';
 
-/**
- * Typed read helpers over the frozen {@link WorldSnapshot}, never over live component stores. Every read
- * returns `undefined` for a missing component or field, because a snapshot entity carries only the
- * components it has.
- */
+// Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
+// `undefined` for a missing component or field, because a snapshot entity carries only the components it
+// has.
 
-/** One serialized entity of a snapshot. */
 export type SnapshotEntity = WorldSnapshot['entities'][number];
 
-/** Narrow an unknown component field to a number, else undefined. */
 export function num(v: unknown): number | undefined {
   return typeof v === 'number' ? v : undefined;
 }
 
-/** The owning player of an entity (its `Owner.player`), or undefined for a neutral/unowned entity. */
 export function ownerPlayerOf(e: SnapshotEntity): number | undefined {
   const owner = e.components.Owner as { player?: unknown } | undefined;
   return num(owner?.player);
 }
 
-/** The entity's fixed-point `Position`, or undefined. The snapshot serializes `Fixed` as plain numbers;
- *  this reader is the one place the brand is restored, so consumers never mint it themselves. */
+/** The snapshot serializes `Fixed` as plain numbers; this reader restores the brand. */
 export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefined {
   const pos = e.components.Position as { x?: unknown; y?: unknown } | undefined;
   const x = num(pos?.x);
@@ -29,7 +23,6 @@ export function positionOf(e: SnapshotEntity): { x: Fixed; y: Fixed } | undefine
   return x !== undefined && y !== undefined ? { x: x as Fixed, y: y as Fixed } : undefined;
 }
 
-/** The entity's `Health` pool as plain numbers, or undefined when it carries none. */
 export function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } | undefined {
   const health = e.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
   const hitpoints = num(health?.hitpoints);
@@ -95,8 +88,8 @@ function worldRuleFacts(snapshot: WorldSnapshot): WorldRuleFacts {
   return facts;
 }
 
-/** A settler's `Settler.experience`, which the snapshot serializes as sorted `[spec, points]` pairs.
- *  Empty for a non-settler or a malformed field. */
+/** The snapshot serializes `Settler.experience` as sorted `[spec, points]` pairs. Empty for a non-settler
+ *  or a malformed field. */
 export function settlerExperienceOf(components: Readonly<Record<string, unknown>>): Map<number, number> {
   const points = new Map<number, number>();
   const exp = (components.Settler as { experience?: unknown } | undefined)?.experience;
@@ -135,44 +128,40 @@ export function actorsOf(snapshot: WorldSnapshot): readonly SnapshotEntity[] {
   return actors;
 }
 
-/** The `buildingType` typeId of a building entity, or undefined if it isn't one / carries none. */
 export function buildingTypeOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { buildingType?: unknown } | undefined;
   return num(b?.buildingType);
 }
 
-/** The building's tribe (`Building.tribe`), or undefined if it isn't one / carries none. */
 export function buildingTribeOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { tribe?: unknown } | undefined;
   return num(b?.tribe);
 }
 
-/** The building's construction progress (`Building.built`, fixed-point where `ONE` is finished). */
+/** Fixed-point construction progress, where `ONE` is finished. */
 export function builtFractionOf(e: SnapshotEntity): number | undefined {
   const b = e.components.Building as { built?: unknown } | undefined;
   return num(b?.built);
 }
 
-/** The settler's current trade (`Settler.jobType`), or undefined for a jobless settler (jobType
- *  `null`) or a non-settler. */
+/** Undefined for a jobless settler, whose `jobType` is `null`, as well as for a non-settler. */
 export function settlerJobType(e: SnapshotEntity): number | undefined {
   const s = e.components.Settler as { jobType?: unknown } | undefined;
   return num(s?.jobType);
 }
 
-/** The building a settler is employed at (`JobAssignment.workplace`), or undefined when unbound. */
+/** The building entity a settler is employed at. */
 export function workplaceOf(e: SnapshotEntity): number | undefined {
   const a = e.components.JobAssignment as { workplace?: unknown } | undefined;
   return num(a?.workplace);
 }
 
-/** The drop-off flag entity a gatherer carries (its `WorkFlag.flag`), or undefined for a non-gatherer. */
+/** The drop-off flag entity a gatherer carries. */
 export function workFlagOf(e: SnapshotEntity): number | undefined {
   const wf = e.components.WorkFlag as { flag?: unknown } | undefined;
   return num(wf?.flag);
 }
 
-/** The settler's tribe (`Settler.tribe`), or undefined for a non-settler. */
 export function settlerTribeOf(e: SnapshotEntity): number | undefined {
   const settler = e.components.Settler as { tribe?: unknown } | undefined;
   return num(settler?.tribe);
@@ -203,8 +192,7 @@ export function gathererByFlag(snapshot: WorldSnapshot, player: number | 'any'):
   return out;
 }
 
-/** The defence-mode building a settler has claimed (its `Sheltering.shelter`), or undefined when it is
- *  not running for cover. */
+/** The defence-mode building a settler has claimed, or undefined when it is not running for cover. */
 export function shelterOf(e: SnapshotEntity): number | undefined {
   const claim = e.components.Sheltering as { shelter?: unknown } | undefined;
   return num(claim?.shelter);

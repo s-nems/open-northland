@@ -12,7 +12,6 @@ import {
 
 // Snapshot reads for the marriage, residence and child-order feature.
 
-/** True when the settler is female (carries the sim's `Female` marker). */
 export function isFemale(e: SnapshotEntity): boolean {
   return e.components.Female !== undefined;
 }
@@ -22,7 +21,7 @@ export function isAdult(e: SnapshotEntity): boolean {
   return e.components.Age === undefined;
 }
 
-/** The settler's `Marriage` (spouse id + the couple's growing child), or undefined when unmarried. */
+/** `child` is the couple's growing child, `null` while they have none. */
 export function marriageOf(e: SnapshotEntity): { spouse: number; child: number | null } | undefined {
   const m = e.components.Marriage as { spouse?: unknown; child?: unknown } | undefined;
   const spouse = num(m?.spouse);
@@ -31,7 +30,7 @@ export function marriageOf(e: SnapshotEntity): { spouse: number; child: number |
   return { spouse, child: child ?? null };
 }
 
-/** True while the settler is mid-wedding (walking to / kissing its match). */
+/** True from the walk to the match through the kiss. */
 export function isMarrying(e: SnapshotEntity): boolean {
   return e.components.Wedding !== undefined;
 }
@@ -94,13 +93,12 @@ function scanForPartner(content: ContentSet, snapshot: WorldSnapshot, seeker: Sn
   );
 }
 
-/** The home building the settler lives in (`Residence.home`), or undefined for the homeless. */
 export function residenceHomeOf(e: SnapshotEntity): number | undefined {
   const r = e.components.Residence as { home?: unknown } | undefined;
   return num(r?.home);
 }
 
-/** A woman's standing make-child order ('female' | 'male'), or undefined when none stands. */
+/** A woman's standing make-child order, or undefined when none stands. */
 export function childOrderOf(e: SnapshotEntity): 'female' | 'male' | undefined {
   const o = e.components.ChildOrder as { child?: unknown } | undefined;
   return o?.child === 'female' || o?.child === 'male' ? o.child : undefined;
