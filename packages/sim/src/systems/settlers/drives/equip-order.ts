@@ -124,7 +124,7 @@ function planTakeOff(errand: EquipErrand): boolean {
  * Nothing reachable to fetch ends the errand rather than parking the settler.
  */
 function planFetch(errand: EquipErrand, goodType: number): boolean {
-  const { world, ctx, terrain, entity, settler, order, here, owner, gate, avoid, targets } = errand;
+  const { world, ctx, entity, settler, order, here, owner, gate, avoid, targets } = errand;
   const worn = world.tryGet(entity, Equipment);
   const held = worn === undefined ? null : equipSlotValue(worn, order.group, order.slot);
   // A part-used unit is still replaced: refetching a worn pair is the swap the menu offers.
@@ -139,17 +139,7 @@ function planFetch(errand: EquipErrand, goodType: number): boolean {
     startDrop(world, ctx, entity);
     return true;
   }
-  const src = nearestStoreHolding(
-    targets.stockpileCells,
-    world,
-    ctx,
-    terrain,
-    here,
-    goodType,
-    owner,
-    gate,
-    avoid,
-  );
+  const src = nearestStoreHolding(targets.bands, world, here, goodType, owner, gate, avoid);
   if (src === null) return endErrand(errand);
   const { group, slot } = order;
   atOrWalkTo(errand, src, () =>
@@ -219,18 +209,8 @@ function endErrand(errand: EquipErrand): boolean {
 
 /** The nearest same-side store that can take `goodType`. */
 function stowSink(errand: EquipErrand, goodType: number): Entity | null {
-  const { world, ctx, here, owner, gate, avoid, targets } = errand;
-  return nearestStoreFor(
-    targets.stockpileCells,
-    world,
-    ctx,
-    here,
-    goodType,
-    owner,
-    EXCLUDE_PRODUCERS,
-    gate,
-    avoid,
-  );
+  const { world, here, owner, gate, avoid, targets } = errand;
+  return nearestStoreFor(targets.bands, world, here, goodType, owner, EXCLUDE_PRODUCERS, gate, avoid);
 }
 
 function atOrWalkTo(errand: EquipErrand, target: Entity, act: () => void): void {

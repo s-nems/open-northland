@@ -11,7 +11,6 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js'
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { buildingBlockedCells } from '../../../footprint/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/nodes.js';
 import {
   bankedSlot,
@@ -21,8 +20,9 @@ import {
   mayFetchGoodFrom,
   mergedRecipeOf,
 } from '../../../stores/index.js';
+import type { TargetBands } from '../bands.js';
 import type { YardTargets } from '../candidates.js';
-import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
+import { ACCEPT_ALL } from '../cell-index.js';
 
 /**
  * The nearest store that can stock `goodType`, by Manhattan distance from `here` with the shared
@@ -33,9 +33,8 @@ import { type InteractionCellIndex, QUALIFIES } from '../cell-index.js';
  * and livelock. A workplace consuming the good as an input, or a passive store, is a valid sink.
  */
 export function nearestStoreFor(
-  index: InteractionCellIndex,
+  bands: TargetBands,
   world: World,
-  ctx: SystemContext,
   here: NodeId,
   goodType: number,
   /** The hauler's owning player. It never delivers into another player's store. */
@@ -50,13 +49,9 @@ export function nearestStoreFor(
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
   return (
-    index.nearest(
-      here,
-      (e) => (canStoreGood(world, ctx, e, goodType, excludeProducers) ? QUALIFIES : null),
-      gate,
-      avoid,
-      sameSideAs(world, owner),
-    )?.entity ?? null
+    bands
+      .sinksFor(goodType, excludeProducers)
+      .nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))?.entity ?? null
   );
 }
 
@@ -169,10 +164,8 @@ export function buriedUnderBuilding(
  * a source), a pile buried under a building's walls, and a workshop's own input reserve are excluded.
  */
 export function nearestStoreHolding(
-  index: InteractionCellIndex,
+  bands: TargetBands,
   world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
   here: NodeId,
   goodType: number,
   /** The fetcher's owning player. It never fetches from another player's store. */
@@ -182,15 +175,8 @@ export function nearestStoreHolding(
   /** The fetcher's failed-goal veto. */
   avoid?: (cell: NodeId) => boolean,
 ): Entity | null {
-  const walls = buildingBlockedCells(world, ctx, terrain);
   return (
-    index.nearest(
-      here,
-      (e) => (storeYieldsGood(world, ctx, terrain, walls, e, goodType) ? QUALIFIES : null),
-      gate,
-      avoid,
-      sameSideAs(world, owner),
-    )?.entity ?? null
+    bands.holding(goodType).nearest(here, ACCEPT_ALL, gate, avoid, sameSideAs(world, owner))?.entity ?? null
   );
 }
 

@@ -114,10 +114,8 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
       const n = nodeOfPosition(p.x, p.y);
       const here = terrain.nodeAtClamped(n.hx, n.hy);
       const src = nearestStoreHolding(
-        targets.stockpileCells,
+        targets.bands,
         world,
-        ctx,
-        terrain,
         here,
         spec.goodType,
         owner,
