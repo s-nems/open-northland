@@ -1,6 +1,6 @@
 # Amortize the sprite-creation burst when panning into a populated area
 
-**Area:** render, app · **Focus:** sprite-pool · **Priority:** P3
+**Area:** render, app · **Focus:** sprite-pool · **Priority:** P3 · **Complexity:** medium
 
 Panning across magiczny_las at tick ~23k (rev fb833032) grew the pool 285 -> 1056 entities in 20 s
 and produced a 341.9 ms worst frame with 30 frames over 30 ms, while the static camera in the same

@@ -1,6 +1,6 @@
 # Stop construction progress from rebuilding the work-flag blocked set
 
-**Area:** sim · **Focus:** footprint/placement · **Priority:** P2
+**Area:** sim · **Focus:** footprint/placement · **Priority:** P2 · **Complexity:** medium
 
 `workFlagPlacementBlocks` keeps an incremental refcounted blocked set, but `catchUp` treats any
 `componentValueGeneration(Building)` bump as "captured cells may have changed" and demands a full
