@@ -1,4 +1,10 @@
-import { halfCellMapFromCells, Simulation } from '@open-northland/sim';
+import {
+  halfCellMapFromCells,
+  type RestoredSimulation,
+  restoreSimulation,
+  type SaveGame,
+  Simulation,
+} from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
 import { resolveWorldContent, type WorldContentOptions } from '../game/sandbox/index.js';
 import type { SceneWorld } from './types.js';
@@ -31,6 +37,19 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE_BY_NAME[scene.fog] });
   }
   return sim;
+}
+
+/** Restore a save onto the exact content and terrain {@link createSceneSim} resolves, running none of
+ *  the scene's build or rule setup: the saved state already carries them. */
+export function restoreSceneSim(
+  scene: SceneWorld,
+  save: SaveGame,
+  options: WorldContentOptions = {},
+): RestoredSimulation {
+  return restoreSimulation(save, {
+    content: resolveWorldContent(scene.terrain, options),
+    map: halfCellMapFromCells(scene.terrain),
+  });
 }
 
 /**

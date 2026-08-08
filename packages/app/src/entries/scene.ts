@@ -1,5 +1,6 @@
 import type { TerrainTextureSet } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
+import type { SaveGame, Simulation } from '@open-northland/sim';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
@@ -7,13 +8,15 @@ import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { applySessionRuleOverrides, sessionRuleOverrides } from '../game/session-rules.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
-import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
+import { createSceneSim, getScene, restoreSceneSim, SCENES } from '../scenes/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { startGameView } from '../view/runtime/game-view.js';
+import { takeStagedSave } from '../view/runtime/save-load/index.js';
 import {
   createWorldRenderer,
+  haltOnFailedRestore,
   haltOnMissingContent,
   loadLocalizedRealContent,
   terrainColourOption,
@@ -51,6 +54,16 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   bindDisplayMode(params);
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
+  const worldToken = `scene:${sceneId}`;
+  // Consumed before any world assembly: a staged save that fails from here on halts the boot rather
+  // than silently starting a fresh world.
+  let stagedSave: SaveGame | null;
+  try {
+    stagedSave = await takeStagedSave(worldToken);
+  } catch (err) {
+    haltOnFailedRestore(err);
+    return;
+  }
   // Window-tracking backing store at the stored render scale times the device oversample: resizing
   // changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
@@ -63,21 +76,36 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   // Empty on a bare checkout.
   const footprints = buildingFootprints(ir);
   await boot.begin('world');
-  const sim = createSceneSim(scene, {
+  const worldOptions = {
     goodNames,
     ...(footprints.size > 0 ? { footprints } : {}),
     ...(realContent !== null ? { content: realContent.content } : {}),
-  });
+  };
+  let sim: Simulation;
+  if (stagedSave !== null) {
+    try {
+      const restored = restoreSceneSim(scene, stagedSave, worldOptions);
+      if (restored.contentRevisionDiffers) {
+        diag.warn('boot', 'the save was made on another content revision; presentation may differ');
+      }
+      sim = restored.sim;
+    } catch (err) {
+      haltOnFailedRestore(err);
+      return;
+    }
+  } else {
+    sim = createSceneSim(scene, worldOptions);
+  }
   setDiagGameSession({
     entry: 'scene',
     worldId: sceneId,
-    seed: scene.seed,
+    seed: sim.seed,
     sim,
     hashTrace: hashTraceFor(params),
   });
   // The session rule flags override the scene's own rules: a named divergence from the headless twin,
-  // requested by the human watching it.
-  applySessionRuleOverrides(sim, sessionRuleOverrides(params));
+  // requested by the human watching it. A restored world keeps the saved rules instead.
+  if (stagedSave === null) applySessionRuleOverrides(sim, sessionRuleOverrides(params));
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const sheet = await resolveSpriteSheet(sim.content.goods);
@@ -96,8 +124,8 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
 
   // Framed on the first tick's snapshot: a scene's settler spawns run as tick-1 commands, so the tick-0
   // centroid is empty and `cameraFor` would fall back to the tile origin. The browser view therefore
-  // runs one tick more than the headless twin.
-  sim.step();
+  // runs one tick more than the headless twin. A restored world stands at its saved tick already.
+  if (stagedSave === null) sim.step();
   const snapshot = sim.snapshot();
   const cameraCtl = createCameraController(
     canvas,
@@ -125,6 +153,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     rosterPlayers,
     ...terrainColourOption(terrain),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
+    worldToken,
   });
   await boot.finish();
 }

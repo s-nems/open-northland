@@ -1,4 +1,4 @@
-import type { TerrainObjects } from '@open-northland/data';
+import type { ContentSet, TerrainObjects } from '@open-northland/data';
 import { type Entity, type ResourceNodeSpec, type Simulation, systems } from '@open-northland/sim';
 import type { ContentIr } from '../../content/ir/rows.js';
 import {
@@ -103,6 +103,26 @@ export function spawnMapResources(
     );
   }
   return { spawned, placementByEntity };
+}
+
+/**
+ * The placement ordinals a fresh build turns into sim entities, applying the same skips as
+ * {@link spawnMapResources}. A restored boot retires these placements' static sprites and pool-draws
+ * the loaded nodes, because the static bake only matches a virgin world.
+ */
+export function harvestablePlacementOrdinals(
+  content: ContentSet,
+  objects: TerrainObjects,
+  ir: ContentIr,
+): number[] {
+  const out: number[] = [];
+  for (const spawn of mapResourceSpawns(objects, ir, SPAWNABLE_GOOD_IDS)) {
+    const g = GATHERER_BY_GOOD_ID.get(spawn.goodId);
+    if (g === undefined || systems.resourceFootprintForGood(content, g.good) === null) continue;
+    out.push(spawn.placement);
+  }
+  for (const bush of mapBerryBushSpawns(objects, ir)) out.push(bush.placement);
+  return out;
 }
 
 /**

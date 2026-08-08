@@ -10,7 +10,11 @@ import {
 import type { ContentIr } from '../src/content/ir/rows.js';
 import { harvestGoodByObjectName, mapResourceSpawns } from '../src/content/map-resources.js';
 import { sandboxContent } from '../src/game/sandbox/content/index.js';
-import { authoredDepositUnits, spawnMapResources } from '../src/game/sandbox/map-spawn.js';
+import {
+  authoredDepositUnits,
+  harvestablePlacementOrdinals,
+  spawnMapResources,
+} from '../src/game/sandbox/map-spawn.js';
 
 /**
  * The decoded-map → sim RESOURCE join (plan `gathering-economy.md` step 6): a map's placed trees/ore/stone
@@ -144,6 +148,31 @@ describe('spawnMapResources - end-to-end over real sandbox content', () => {
     // the decor placement @2 spawned nothing), so the map entry can pair it with the static sprite.
     expect([...placementByEntity.values()].sort()).toEqual([0, 1, 3]);
     expect(new Set(placementByEntity.keys())).toEqual(new Set(resources));
+  });
+
+  it('harvestablePlacementOrdinals mirrors the exact placement set the spawn binds', () => {
+    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const objects = {
+      types: ['sandbox tree', 'sandbox rock', 'sandbox decor'],
+      placements: [2, 2, 0, 4, 4, 1, 6, 6, 2, 8, 8, 0],
+    };
+    const ir: ContentIr = {
+      landscapeGfx: [
+        { index: 10, editName: 'sandbox tree', logicType: 4 },
+        { index: 20, editName: 'sandbox rock', logicType: 15, frames: ROCK_FRAMES },
+        { index: 30, editName: 'sandbox decor', logicType: 2 },
+      ],
+      gatheringPipeline: [
+        { goodType: 5, goodId: 'wood', harvest: { landscapeType: 4, gfxIndices: [10] } },
+        { goodType: 3, goodId: 'stone', harvest: { landscapeType: 15, gfxIndices: [20] } },
+      ],
+    };
+
+    // The restored boot retires exactly the placements a fresh build turns into entities; a skip
+    // added to one path and not the other double-draws or vanishes nodes after a load.
+    const ordinals = harvestablePlacementOrdinals(sim.content, objects, ir);
+    const { placementByEntity } = spawnMapResources(sim, objects, ir);
+    expect([...ordinals].sort()).toEqual([...placementByEntity.values()].sort());
   });
 
   it('spawns a below-full authored deposit part-mined, with its full size as the ladder denominator', () => {

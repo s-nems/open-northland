@@ -4,6 +4,7 @@ import {
   makeElevationField,
   type TerrainTextureSet,
 } from '@open-northland/render';
+import type { Entity, SaveGame, Simulation } from '@open-northland/sim';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
 import { loadMapScript, loadTerrainMap } from '../content/map-loader.js';
@@ -22,23 +23,25 @@ import {
   playerTribe,
   readOnlyObserverParam,
 } from '../game/player-session.js';
-import { sandboxGoods } from '../game/sandbox/index.js';
+import { harvestablePlacementOrdinals, sandboxGoods } from '../game/sandbox/index.js';
 import { sessionRuleOverrides } from '../game/session-rules.js';
 import { terrainSceneFor } from '../game/world/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
-import { bindHarvestableHandover } from '../view/harvestable-handover.js';
+import { bindHarvestableHandover, retireStaticHarvestables } from '../view/harvestable-handover.js';
 import { aiSeatsParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
+import { takeStagedSave } from '../view/runtime/save-load/index.js';
 import {
   createWorldRenderer,
+  haltOnFailedRestore,
   haltOnMissingContent,
   loadLocalizedRealContent,
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
 import { readStoredSettings } from '../view/settings-store.js';
-import { buildMapWorld } from './map/world.js';
+import { buildMapWorld, restoreMapWorld } from './map/world.js';
 
 /**
  * The decoded-map viewer entry (`?map=<id>`): draws `content/maps/<id>.json` under the deterministic
@@ -77,9 +80,18 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   bindDisplayMode(params);
   const boot = mountBootProgress(MAP_BOOT_PHASES);
   await boot.begin('graphics');
+  const mapId = params.get('map');
+  // Consumed before any other boot work: a staged save that fails from here on halts the boot rather
+  // than silently starting a fresh world.
+  let stagedSave: SaveGame | null;
+  try {
+    stagedSave = await takeStagedSave(mapId);
+  } catch (err) {
+    haltOnFailedRestore(err);
+    return;
+  }
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
   await boot.begin('map');
-  const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   // A roster-less map keeps the defaults: seat 0, and colour = slot id.
   const script = mapId !== null ? await loadMapScript(mapId) : null;
@@ -138,8 +150,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // only `localPlayer`, so an overseer cannot switch an AI seat's grants back off.
   const controlled = readOnlyObserverParam(params) ? [] : [localPlayer];
   // The render layers read the raw map; the sim runs on the collision resolution of the same map.
-  const { sim, harvestablePlacements } = buildMapWorld({
-    seed: WORLD_SEED,
+  const worldOptions = {
     map: loaded,
     ir,
     content: {
@@ -147,26 +158,55 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       goodNames,
       ...(realContent !== null ? { content: realContent.content } : {}),
     },
-    aiSeats,
-    assistantSeats: [...controlled, ...aiSeats],
-    diplomacy: script?.diplomacy ?? [],
-    ...sessionRuleOverrides(params),
     // Only the no-decodable-map fallback takes ownership from the session seat; a real map takes it
     // from map data.
     demoOwner: localPlayer,
-  });
+  };
+  let sim: Simulation;
+  let harvestablePlacements: readonly (readonly [Entity, number])[] = [];
+  if (stagedSave !== null) {
+    try {
+      const restoredWorld = restoreMapWorld(worldOptions, stagedSave);
+      if (restoredWorld.contentRevisionDiffers) {
+        diag.warn('boot', 'the save was made on another content revision; presentation may differ');
+      }
+      sim = restoredWorld.sim;
+    } catch (err) {
+      haltOnFailedRestore(err);
+      return;
+    }
+  } else {
+    const world = buildMapWorld({
+      ...worldOptions,
+      seed: WORLD_SEED,
+      aiSeats,
+      assistantSeats: [...controlled, ...aiSeats],
+      diplomacy: script?.diplomacy ?? [],
+      ...sessionRuleOverrides(params),
+    });
+    sim = world.sim;
+    harvestablePlacements = world.harvestablePlacements;
+  }
   setDiagGameSession({
     entry: 'map',
     worldId: mapId,
-    seed: WORLD_SEED,
+    seed: sim.seed,
     sim,
     hashTrace: hashTraceFor(params),
   });
 
   // A worked resource leaves the built-once static layer for the sprite pool. Without static sprites
-  // every node is pool-drawn already.
+  // every node is pool-drawn already. A restored world retires every harvestable quad up front
+  // instead: the virgin bake cannot know which nodes the save already worked or felled.
+  if (stagedSave !== null && staticObjects !== undefined && loaded?.objects !== undefined && ir !== null) {
+    retireStaticHarvestables(
+      renderer,
+      harvestablePlacementOrdinals(sim.content, loaded.objects, ir),
+      staticObjects.byPlacement,
+    );
+  }
   const harvestableHandover =
-    staticObjects !== undefined
+    staticObjects !== undefined && stagedSave === null
       ? bindHarvestableHandover(renderer, harvestablePlacements, staticObjects.byPlacement)
       : null;
 
@@ -208,6 +248,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     ...(harvestableHandover !== null ? { onEvents: harvestableHandover } : {}),
+    worldToken: mapId,
   });
   await boot.finish();
 }

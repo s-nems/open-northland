@@ -205,6 +205,9 @@ export const enSurfaces = {
     missingContentTitle: 'Decoded content is unavailable',
     missingTerrainDetail:
       'This world draws the real decoded terrain, and content/ has none to serve. Run the asset pipeline on a game copy you own (npm run pipeline), then reload.',
+    loadFailedTitle: 'Loading the save failed',
+    loadFailedDetail:
+      'The saved game could not be loaded into this world. Start the world normally and try loading it again; if it fails again, the file is damaged.',
     availableScenes: 'Available worlds:',
     unknownScene: 'Unknown world: "{id}"',
     copied: 'copied',

@@ -201,6 +201,9 @@ export const plSurfaces = {
     missingContentTitle: 'Zdekodowana zawartość jest niedostępna',
     missingTerrainDetail:
       'Ten świat rysuje prawdziwy zdekodowany teren, ale content/ jest pusty lub niekompletny. Uruchom pipeline assetów na posiadanej kopii gry (npm run pipeline) i odśwież stronę.',
+    loadFailedTitle: 'Wczytywanie zapisu nie powiodło się',
+    loadFailedDetail:
+      'Nie udało się wczytać zapisanej gry w tym świecie. Uruchom świat normalnie i spróbuj ponownie; jeśli znowu się nie uda, plik jest uszkodzony.',
     availableScenes: 'Dostępne światy:',
     unknownScene: 'Nieznany świat: „{id}”',
     copied: 'skopiowano',

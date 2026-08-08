@@ -51,6 +51,7 @@ import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
 import { createViewReadModels } from './read-models.js';
+import { createSaveLoadSession } from './save-load/index.js';
 
 /** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
 export interface GameViewDeps {
@@ -91,6 +92,9 @@ export interface GameViewDeps {
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /** Sim events from the frame's step(s), delivered before the renderer draws. Skipped on frames that did not step. */
   readonly onEvents?: (events: readonly SimEvent[]) => void;
+  /** The entry's world identity for save headers: the decoded map id, or `scene:<id>`. Omitted, saves
+   *  carry no world token and only load back into another tokenless world. */
+  readonly worldToken?: string | null;
 }
 
 export interface GameSession {
@@ -112,7 +116,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
 
   let loop: RafLoop | null = null;
   let destroyed = false;
-  const systemMenu = createSystemMenu({ onQuit: () => quitToMenu() });
+  const saveLoad = createSaveLoadSession({
+    sim,
+    worldToken: deps.worldToken ?? null,
+    // `control` is assembled below; the flows only read it once a menu button fires.
+    setPaused: (paused) => {
+      control.paused = paused;
+    },
+    isPaused: () => control.paused,
+  });
+  const systemMenu = createSystemMenu({ onQuit: () => quitToMenu(), saveLoad });
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;

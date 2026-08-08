@@ -27,7 +27,7 @@ import { upgradeScene } from './upgrade.js';
 import { warehouseScene } from './warehouse.js';
 import { wildlifeScene } from './wildlife.js';
 
-export { createSceneSim } from './runtime.js';
+export { createSceneSim, restoreSceneSim } from './runtime.js';
 export type { SceneDefinition } from './types.js';
 
 /** The acceptance-scene registry: a listed scene is covered by the headless mechanic test and reachable
