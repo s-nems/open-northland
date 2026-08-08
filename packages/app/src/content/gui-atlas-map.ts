@@ -1,24 +1,22 @@
-// Frame index -> semantic meaning for the HUD sheet `ls_gui_window.bmd` (193 bobs, firstBobId=0, so an
-// original gfx id equals the atlas frame index).
+// Frame index -> semantic meaning for the HUD sheet `ls_gui_window.bmd`.
 //
-// Per-frame `source`: 'manual' is a project-maintained frame/rect/purpose mapping; 'montage' is read by
-// eye off a numbered render of every frame (docs/formats/GRAPHICS.md); 'unknown' is unidentified.
+// Per-frame `source`: 'manual' is a project-maintained frame/rect/purpose mapping; 'montage' is read
+// by eye off the numbered `?icons` render of every frame.
 import type { GuiPaletteName } from './gui-gfx.js';
 
-/** Total bob count of `ls_gui_window.bmd` (decoded from the sheet; firstBobId=0 so ids are 0..192). */
+/** Bob count decoded from `ls_gui_window.bmd`. */
 export const GUI_ATLAS_FRAME_COUNT = 193;
 
-/** What a frame is used for. A coarse category so callers can group frames without knowing each name. */
 export type GuiFrameRole =
   | 'window_chrome' // 9-slice window border pieces (corners, edges)
   | 'window_bg' // large parchment window backgrounds
   | 'window_control' // titlebar / minimize / maximize / close widgets
   | 'panel' // the left tool-panel background strip
   | 'tool_button' // a left-panel main button (buildings, diplomacy, ...)
-  | 'speed_button' // the game-speed button + its state variants
-  | 'message_priority' // the message-priority frame + button states
-  | 'overview_toggle' // the minimap / world-overview toggle button
-  | 'order_icon' // a command/action-order icon (drawn through the 'context' palette)
+  | 'speed_button'
+  | 'message_priority'
+  | 'overview_toggle' // minimap / world-overview toggle
+  | 'order_icon' // a command/action-order icon
   | 'resource_icon'
   | 'bar' // a progress / hit / status bar frame
   | 'note' // a pinned parchment note / scroll
@@ -41,7 +39,7 @@ export interface GuiFrameMeta {
   readonly note?: string;
 }
 
-/** Every frame of the GUI-window sheet: array index === frame index === original gfx id. */
+/** Every frame of the sheet: array index === frame index === original gfx id (firstBobId=0). */
 export const GUI_FRAMES = [
   /* 000 0x00 */ {
     name: 'knot_corner_bl',
@@ -1400,7 +1398,7 @@ export const GUI_FRAMES = [
 
 export type GuiFrameName = (typeof GUI_FRAMES)[number]['name'];
 
-/** Frame indices for the frames HUD code pins by name, so it never hardcodes an index. */
+/** Named indices so HUD call sites do not inline a frame number. */
 export const GUI_FRAME = {
   knot_corner_bl: 0,
   knot_corner_br: 1,
