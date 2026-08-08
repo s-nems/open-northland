@@ -1,9 +1,9 @@
 /** Display order of the bindings table; also the priority order when stored codes collide. */
 export const KEYBINDING_ACTIONS = [
-  'panLeft',
-  'panRight',
   'panUp',
   'panDown',
+  'panLeft',
+  'panRight',
   'pauseToggle',
   'actionRing',
   'attackMove',

@@ -46,7 +46,8 @@ export function createControlsTab(opts: {
     };
     const onKey = (e: KeyboardEvent): void => {
       if (!chip.isConnected) {
-        // The screen was rebuilt under the capture (e.g. restore defaults); release the key untouched.
+        // The screen was rebuilt under the capture without a mousedown or blur (e.g. history
+        // navigation); release the key untouched.
         stop();
         return;
       }
