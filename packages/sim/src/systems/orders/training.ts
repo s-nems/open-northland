@@ -20,9 +20,8 @@ import { clearNavState } from '../spatial/nodes.js';
 import { isTradeAssignable } from './guards.js';
 
 /**
- * Send one owned settler to drill at a barracks: validate and stamp the {@link TrainingOrder} errand for
- * the planner's drill rung to walk out. Authoritative like the employment orders, so the current action,
- * route, player walk, and construction-crew membership are dropped.
+ * Send one owned settler to drill at a barracks - see the command doc. Validates and stamps the
+ * {@link TrainingOrder} errand for the planner's drill rung to walk out.
  *
  * The gate reads the same confinement `assignWorker` applies plus the failed-goal memo the drill rung
  * itself reads, so an order the rung would abandon next tick is refused rather than accepted and dropped.

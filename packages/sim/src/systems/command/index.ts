@@ -43,10 +43,9 @@ import { cancelUpgrade, placeBoat, placeBuilding, upgradeBuilding } from './plac
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
 /**
- * Apply queued external commands in FIFO order, then record each one for deterministic replay. A
- * command whose origin is not entitled to it is skipped but still recorded, so the log replays to the
- * same state. Command variants own their payload validation and treat stale ids as recoverable input so
- * one rejected order cannot abort the tick.
+ * Apply queued external commands in FIFO order, then record each one for deterministic replay. Command
+ * variants own their payload validation and treat stale ids as recoverable input, so one rejected order
+ * cannot abort the tick.
  */
 export const commandSystem: System = (world, ctx) => {
   for (const queued of ctx.commands.drain()) {

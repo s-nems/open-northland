@@ -24,9 +24,8 @@ import { clearNavState } from '../spatial/nodes.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
- * Stamp the job-based default military stance on an owned settler, the one stamp point shared by the spawn
- * and profession-change handlers. The anchor resets to null, since only `setStance(DEFEND)` sets one. The
- * caller guarantees `e` is owned, and Stance stays owned-only.
+ * Stamp the job-based default military stance on an owned settler. The anchor resets to null, since only
+ * `setStance(DEFEND)` sets one. The caller guarantees `e` is owned, and Stance stays owned-only.
  */
 export function stampDefaultStance(
   world: World,
@@ -38,12 +37,11 @@ export function stampDefaultStance(
 }
 
 /**
- * Set one owned unit's military stance, the original's `MILITARY_MODE`. `DEFEND` captures the unit's current
- * tile as the anchor it guards and returns to; every other mode clears the anchor.
+ * Set one owned unit's military stance - see the command doc. `DEFEND` captures the unit's current tile as
+ * the anchor it guards and returns to; every other mode clears the anchor.
  *
  * The CombatSystem re-decides the unit's behavior from the new mode on its next pass, so this handler does
- * not cancel a running swing or an explicit {@link AttackOrder}, which intentionally overrides the stance.
- * The command carries no issuing player yet; the per-player authority check lands with lockstep.
+ * not cancel a running swing or an explicit {@link AttackOrder}.
  */
 export function setStance(
   world: World,
@@ -66,13 +64,12 @@ export function setStance(
 
 /**
  * Order one owned combatant to attack a specific `target`, which may be an enemy unit or an enemy building.
- * The {@link AttackOrder} focus makes the CombatSystem chase and strike regardless of sight radius until the
- * target dies or stops being valid; the economy leaves an engaged unit alone, but needs still preempt it.
- * Like a move order it is authoritative and cancels the unit's current action, route, and hold.
+ * The {@link AttackOrder} focus makes the CombatSystem chase and strike regardless of sight radius; the
+ * economy leaves an engaged unit alone, but needs still preempt it. Like a move order it is authoritative
+ * and cancels the unit's current action, route, and hold.
  *
  * Hostility is not checked here: the CombatSystem re-validates the target each tick and drops an order whose
- * target is or becomes friendly, so a stale order self-corrects deterministically. The command carries no
- * issuing player yet; the per-player authority check lands with lockstep.
+ * target is or becomes friendly, so a stale order self-corrects deterministically.
  */
 export function attackUnit(
   world: World,

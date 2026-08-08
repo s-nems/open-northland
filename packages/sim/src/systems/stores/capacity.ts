@@ -7,8 +7,6 @@ import { exportedGoodForm } from '../readviews/food.js';
 import { vehicleMayCarry } from '../readviews/vehicles.js';
 import { constructionBillOf } from './construction.js';
 
-// Per-good stockpile capacity across the store kinds, plus the ground-heap predicates the economy shares.
-
 /** What a position-less fixture store advertises, so a mapless fixture still accepts deposits. */
 const UNCAPPED_CAPACITY = Number.MAX_SAFE_INTEGER;
 
@@ -87,8 +85,7 @@ export function lowestStockedGood(stock: { amounts: ReadonlyMap<number, number> 
 
 /**
  * Whether `e` is a loose gatherer-yard heap: a bare positioned stockpile that is none of a building store,
- * a boat hull, an uncollected trunk, or a delivery-flag marker. The one shared definition of a settled
- * goods heap resting on the ground.
+ * a boat hull, an uncollected trunk, or a delivery-flag marker.
  */
 export function isYardHeap(world: World, e: Entity): boolean {
   return (

@@ -31,15 +31,15 @@ import { clearNavState } from '../../spatial/nodes.js';
 import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '../guards.js';
 
 /**
- * Change one owned settler's profession: reset it to a fresh idle worker of the new trade
- * ({@link reidleAsJob}) and drop the old workplace binding ({@link JobAssignment}).
+ * Change one owned settler's profession - see the command doc. Resets it to a fresh idle worker of the new
+ * trade ({@link reidleAsJob}) and drops the old workplace binding ({@link JobAssignment}).
  *
  * It leaves the settler unposted and nothing employs it again on its own, so a trade whose work runs
  * through a binding stays inert until the player also posts it somewhere ({@link assignWorker}). Trading
  * and posting are two decisions in this engine.
  *
  * A trade whose `needforjob` XP threshold this settler has not earned is refused: that gate is the tech
- * tree's manual seam, and fighters stay barracks-gated whatever the profession-progression toggle says.
+ * tree's manual seam.
  */
 export function setJob(
   world: World,
@@ -69,11 +69,10 @@ export function reidleAsJob(world: World, ctx: SystemContext, e: Entity, jobType
 }
 
 /**
- * Assign one owned settler to work at a specific `building`, the one way a settler becomes employed:
- * resolve the building's open worker job in the command's `jobPriority` order, re-idle the settler as that
- * job, and bind it to the building. The priority expresses the RTS intent of a tradesman first and a hauler
- * as fallback, so a settler that has not earned the trade's `needforjob` repeats falls through to the
- * hauler slot.
+ * Assign one owned settler to work at a specific `building` - see the command doc. Resolves the building's
+ * open worker job in the command's `jobPriority` order, re-idles the settler as that job, and binds it to
+ * the building. The priority expresses the RTS intent of a tradesman first and a hauler as fallback, so a
+ * settler that has not earned the trade's `needforjob` repeats falls through to the hauler slot.
  */
 export function assignWorker(
   world: World,
@@ -116,11 +115,10 @@ export function assignWorker(
 }
 
 /**
- * The player's half of {@link releaseEmployment}: take one owned settler off its workplace.
+ * The player's half of {@link releaseEmployment} - see the command doc.
  *
  * A garrison is stood down through {@link releaseTowerPost}, so the explicit release and the one a walk
- * order performs cannot drift apart. The load stays in hand, as with {@link assignBuilder}: the trade is
- * unchanged, so the settler banks what it carries instead of dumping it in the field.
+ * order performs cannot drift apart. The load stays in hand, as with {@link assignBuilder}.
  */
 export function unassignWorker(
   world: World,
@@ -137,9 +135,8 @@ export function unassignWorker(
 
 /**
  * Assign one owned builder to a specific construction `site`, the original's "put a builder on a
- * foundation". The {@link SiteAssignment} pin makes the builder drive raise that site over the nearest one
- * until the build finishes. Only the builder trade qualifies, since {@link jobCanBuild} below admits only a
- * settler already holding a builder job, which is also why this order needs no women-take-no-trade gate.
+ * foundation" - see the command doc. {@link jobCanBuild} admits only a settler already holding a builder
+ * job, which is also why this order needs no women-take-no-trade gate.
  *
  * Deliberately no signpost-confinement gate, unlike {@link assignWorker}: a pinned site is how the player
  * extends the network's frontier, and the builder drive treats it as a bound sink so the crew can raise it

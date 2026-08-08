@@ -34,9 +34,9 @@ import { deferOrderDuringAtomic } from './guards.js';
 
 /**
  * Direct player control over owned units. Faithful to *Cultures*, a move order never seizes a unit
- * permanently: it sends the unit somewhere and hands it back to the economy AI the tick it arrives, with no
- * post-arrival stand, and the needs drives can pull the unit away at any time. RTS-style box-select-and-move
- * for civilians is itself a deviation from the original's hand and profession control.
+ * permanently: the economy AI reclaims it the tick it arrives, with no post-arrival stand, and the needs
+ * drives can pull it away at any time. Approximation: RTS-style box-select-and-move for civilians deviates
+ * from the original's hand and profession control.
  */
 
 /**
@@ -45,8 +45,7 @@ import { deferOrderDuringAtomic } from './guards.js';
  * was clicked.
  *
  * Only static blockers and terrain count; re-aiming a goal off a standing unit belongs to the routing
- * surround rule. {@link dynamicBlockOverlay} returns a membership view, so a box-select issuing one order per
- * unit never re-copies the resource overlay.
+ * surround rule.
  */
 function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGraph, clicked: NodeId): NodeId {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
@@ -65,9 +64,6 @@ function clearPlayerOrder(world: World, e: Entity): void {
  * immediately, except a non-interruptible atomic, which parks the order instead
  * ({@link deferOrderDuringAtomic}). A settler carrying a load sets it down where it stands first, and
  * {@link playerOrderSystem} launches the walk the tick the drop finishes.
- *
- * The command carries no issuing player yet, so it does not verify which player owns the unit; the
- * per-player check lands with lockstep.
  */
 export function moveUnit(
   world: World,
@@ -99,15 +95,14 @@ function startPlayerWalk(
 
   const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
   // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the order is
-  // refused and the unit stays put (source basis: observed original guidepost behaviour). Scouts and
-  // fighters are exempt.
+  // refused and the unit stays put (source basis: observed original guidepost behaviour).
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
   if (limit !== null && !limit.allowsNode(goal)) return;
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
   world.remove(e, DeferredOrder); // this order executes now - it supersedes any earlier parked one
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
-  // carries the walker's momentum through the turn. Dropping it made every redirect stop dead.
+  // carries the walker's momentum through the turn.
   world.remove(e, CurrentAtomic);
   world.remove(e, MoveGoal);
   world.remove(e, PathRequest);
@@ -150,7 +145,7 @@ function startPlayerWalk(
  * Retire a move order the moment its walk is done and hand the unit back to the autonomous economy. It runs
  * just before the planner so an arriving unit is re-tasked the same tick.
  *
- * The branch order below is the priority order. Combat is checked above the failed-route and acting rungs
+ * The branches below are a priority ladder: combat is checked above the failed-route and acting rungs
  * because a swing is a {@link CurrentAtomic} and a failed chase route is not the march's. While the order
  * stands, the planner's economy branch skips the unit but its needs drives still run.
  */

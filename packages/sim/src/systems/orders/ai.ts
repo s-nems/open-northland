@@ -13,14 +13,13 @@ import { AI_PUBLISHED_COUNTERS } from '../ai-player/shared.js';
 import { resetAssistantCounters } from './assistant.js';
 
 /**
- * Attach or detach the strategic AI on a seat through the per-player {@link AiPlayer} carrier, created on
- * first enable and destroyed on disable. The flag is an ordinary component, so it hashes and replays.
+ * Attach or detach the strategic AI on a seat through the per-player {@link AiPlayer} carrier. The flag
+ * is an ordinary component, so it hashes and replays.
  *
  * The AI plays through standing world state, so detaching the hand that published it must withdraw it:
  * the assistant counters ({@link AI_PUBLISHED_COUNTERS}) and the alarms its military module raised,
  * which nothing else would ever lower. Disable resets every AI-published kind, and an in-place module
- * update resets the kinds whose publishing gates just broke. Without this a headless seat keeps
- * breeding and drafting on its last standing order, and its civilians stay indoors for good.
+ * update resets the kinds whose publishing gates just broke.
  */
 export function setPlayerAi(world: World, command: Extract<Command, { kind: 'setPlayerAi' }>): void {
   if (!isValidPlayer(command.player)) return;

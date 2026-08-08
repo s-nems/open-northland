@@ -5,13 +5,13 @@ import type { SystemContext } from '../context.js';
 import { shelterCapacityOf } from '../readviews/index.js';
 
 /**
- * Raise or lower the alarm on one owned garrison building. The mode is a plain {@link DefenceMode} marker;
- * everything it causes belongs to the defence system and the shelter drive, keyed on the marker.
+ * Raise or lower the alarm on one owned garrison building - see the command doc. The mode is a plain
+ * {@link DefenceMode} marker; everything it causes belongs to the defence system and the shelter drive,
+ * keyed on the marker.
  *
- * Raising is refused for a type with no garrison (`shelterCapacity 0`) or a site still under construction,
- * a foundation having no inside to hide in. Lowering is never refused for the building's state, or an alarm
- * raised before an upgrade re-opened the site could not be called off and would re-arm silently when the
- * upgrade completed.
+ * A type with no garrison (`shelterCapacity 0`) is refused in both directions. Raising is also refused for
+ * a site still under construction, a foundation having no inside to hide in; lowering is not refused for
+ * the building's state.
  */
 export function setDefenceMode(
   world: World,

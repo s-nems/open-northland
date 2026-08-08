@@ -27,9 +27,9 @@ import { moveUnit } from './movement.js';
 export const BUILD_GUIDE_ATOMIC_ID = 43;
 
 /**
- * Order one owned scout to erect a signpost at (x,y): validate the issuer and the spot, then send the
- * scout there as a normal {@link moveUnit} walk carrying an {@link ErectSignpostOrder}, which
- * {@link signpostOrderSystem} turns into the hammer swing on arrival.
+ * Order one owned scout to erect a signpost at (x,y) - see the command doc. Runs as a normal
+ * {@link moveUnit} walk carrying an {@link ErectSignpostOrder}, which {@link signpostOrderSystem} turns
+ * into the hammer swing on arrival.
  */
 export function placeSignpost(
   world: World,

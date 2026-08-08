@@ -10,9 +10,9 @@ import type { SystemContext } from '../context.js';
 
 /**
  * Kill a unit by draining its {@link Health} pool to 0, so the CleanupSystem reaps it through the real
- * death path instead of a silent destroy. Gated on {@link Settler} because a building under construction
- * also carries a Health pool, and reaping one that way would bypass demolish's worker-unbind seam and emit
- * a `settlerDied` cue for a non-settler.
+ * death path. Gated on {@link Settler} because a building under construction also carries a Health pool,
+ * and reaping one that way would bypass demolish's worker-unbind seam and emit a `settlerDied` cue for a
+ * non-settler.
  */
 export function debugKill(world: World, command: Extract<Command, { kind: 'debugKill' }>): void {
   if (!world.has(command.target, Settler)) return;
@@ -31,8 +31,8 @@ export function debugSetNeeds(world: World, command: Extract<Command, { kind: 'd
   if (command.enjoyment !== undefined) settler.enjoyment = needFixedFromPct(command.enjoyment);
 }
 
-/** A whole-percent need level (`0..100`, clamped) as the `0..ONE` need `Fixed` - a single truncation
- *  (`ONE · pct / 100`) so 0 → sated and 100 → maxed exactly, the debug-needs command's one conversion. */
+/** A whole-percent need level (`0..100`, clamped) as the `0..ONE` need `Fixed`: a single truncation
+ *  (`ONE · pct / 100`), so 0 and 100 land exactly on the endpoints. */
 function needFixedFromPct(pct: number): Fixed {
   const clamped = pct < 0 ? 0 : pct > 100 ? 100 : Math.trunc(pct);
   return fx.mulDiv(ONE, fx.fromInt(clamped), fx.fromInt(100));

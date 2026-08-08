@@ -25,8 +25,8 @@ import { navigationLimitFor } from '../signposts/index.js';
 import { isOrderableSettler } from './guards.js';
 
 /**
- * Match the issuer with the nearest eligible partner and start their wedding; the FamilySystem walks them
- * together and kisses them into a {@link Marriage}. With no eligible partner the order cancels itself.
+ * Match the issuer with the nearest eligible partner and start their wedding - see the command doc. The
+ * FamilySystem walks them together and kisses them into a {@link Marriage}.
  */
 export function marry(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'marry' }>): void {
   const e = command.entity;
@@ -41,8 +41,8 @@ export function marry(world: World, ctx: SystemContext, command: Extract<Command
 }
 
 /**
- * Move the issuer's whole family into `house`. The home type's `homeSize` caps families, not people
- * (`logichomesize` 1..5), so the move needs a free family slot beside the households already living there.
+ * Move the issuer's whole family into `house` - see the command doc. `homeSize` caps families, not people,
+ * so the move needs a free family slot beside the households already living there.
  */
 export function assignHouse(
   world: World,
@@ -76,8 +76,8 @@ export function assignHouse(
 }
 
 /**
- * Drop the issuer's whole family out of its home, freeing the family slot. The inverse of
- * {@link assignHouse}: the same unit that moves in moves out, so a child leaves with its parents.
+ * Drop the issuer's whole family out of its home. The inverse of {@link assignHouse}: the same unit that
+ * moves in moves out, so a child leaves with its parents.
  */
 export function unassignHouse(
   world: World,
@@ -90,10 +90,7 @@ export function unassignHouse(
   for (const member of familyOf(world, e)) world.remove(member, Residence);
 }
 
-/**
- * Stamp, or re-sex, the woman's standing {@link ChildOrder}. The FamilySystem drives its stages and the
- * order persists until the birth.
- */
+/** Stamp, or re-sex, the woman's standing {@link ChildOrder}; the FamilySystem drives its stages. */
 export function makeChild(
   world: World,
   _ctx: SystemContext,
