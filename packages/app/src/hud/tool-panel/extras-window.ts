@@ -1,17 +1,6 @@
 import { Container } from 'pixi.js';
 import { messages } from '../../i18n/index.js';
-import {
-  CLOSE_X_COLOR,
-  drawBevel,
-  drawCloseX,
-  drawPlateOutline,
-  drawTabButton,
-  drawWindowFrame,
-  HEADLINE_FILL,
-  tileBitmap,
-  WIN_PAD,
-  WOOD_FILL,
-} from '../chrome.js';
+import { CLOSE_X_COLOR, drawBevel, WIN_PAD } from '../chrome.js';
 import type { Rect } from '../geometry.js';
 import type { PanelContext } from './context.js';
 import type { AssistantCounterFace, AssistantCounterId, AssistantGrantId } from './extras-menu.js';
@@ -27,20 +16,20 @@ import {
   toggleGrant,
   toggleInfinity,
 } from './extras-menu.js';
+import {
+  addRun,
+  centreRun,
+  clearFills,
+  paintPlate,
+  paintTitledTabWindow,
+  placeOnCard,
+  ROW_PX,
+  rowCardRect,
+  TEXT_CAP_H,
+  type WindowLayers,
+} from './window-family/index.js';
 import { type ClickModifiers, createWindowShell, type ToolWindow } from './window-shell.js';
 
-/** Text sizes (design px) - the build menu's title/tab/row scale. */
-const TITLE_PX = 13;
-const TAB_PX = 11;
-const ROW_PX = 11;
-/** Approx. cap height (design px) of the body text - vertical centring inside a chrome rect. */
-const TEXT_CAP_H = 10;
-/** Left inset (design px) of a row label inside its button-card. */
-const ROW_INSET_X = 8;
-/** Vertical inset (design px) of a row card inside its slot - the gap separating consecutive cards. */
-const CARD_INSET_Y = 2;
-/** Design-px inset of the headline strip inside the window frame (so the frame reads around it). */
-const HEADLINE_INSET = 2;
 /** The −/+ glyph stroke inset inside its stepper plate (design px). */
 const GLYPH_INSET = 4;
 /** The recessed value cell's dark backdrop. */
@@ -87,8 +76,8 @@ export interface ExtrasWindowDeps {
 
 /** The pop-up extras ("chest") window: the assistant/plans tabs and the assistant's controls. */
 export interface ExtrasWindow extends ToolWindow {
-  /** Per-frame while open: re-place the text runs against the live canvas size. */
-  place(): void;
+  /** Per-frame hook: rebuild when the sim's live counter block moved off what the window shows. */
+  refresh(): void;
 }
 
 /** Build the extras-window controller; the whole window is rebuilt on open and on any control click. */
@@ -98,6 +87,13 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const shell = createWindowShell(deps.container);
   const back = new Container();
   shell.container.addChildAt(back, 0); // the tiled bitmap fills, behind the shell's frame Graphics
+  const layers: WindowLayers = {
+    ctx,
+    container: shell.container,
+    back,
+    graphics: shell.graphics,
+    runs: shell.runs,
+  };
   const origin = {
     x: ctx.layout.width + WIN_PAD * scale,
     y: ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y,
@@ -106,55 +102,13 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   let tab: ExtrasTab = 'assistant';
   let state: AssistantState = defaultAssistantState();
   let menuLayout: ExtrasMenuLayout | null = null;
-  /** Screen position per run, same order as `shell.runs` - `place()` replays them. */
-  let runsAt: { x: number; y: number }[] = [];
   /** The live counter block as read at the last local write. While the sim still shows exactly this
    *  block the write has not applied, so the click's echo must hold; any live change clears it. Several
    *  pending writes can briefly show an intermediate value, an accepted transient. */
   let echoBase: AssistantState['counters'] | null = null;
 
-  const clear = (): void => {
-    shell.clear();
-    for (const child of back.removeChildren()) child.destroy();
-    runsAt = [];
-  };
-
-  /** Queue a run with its top-left already resolved (rounded for crisp glyphs). */
-  const addRunAt = (text: string, color: 'white' | 'dimmed', x: number, y: number, px?: number): void => {
-    const run = ctx.makeText(text, color, px);
-    shell.container.addChild(run.container);
-    shell.runs.push(run);
-    runsAt.push({ x: Math.round(x), y: Math.round(y) });
-  };
-
-  /** Queue a run centred in `rect`. */
-  const addRunCentred = (text: string, color: 'white' | 'dimmed', rect: Rect, px?: number): void => {
-    const run = ctx.makeText(text, color, px);
-    shell.container.addChild(run.container);
-    shell.runs.push(run);
-    runsAt.push({
-      x: Math.round(rect.x + Math.max(0, (rect.w - run.width * scale) / 2)),
-      y: Math.round(rect.y + (rect.h - TEXT_CAP_H * scale) / 2),
-    });
-  };
-
-  /** The row's card plate inside its slot. */
-  const cardRect = (slot: Rect): Rect => ({
-    x: slot.x,
-    y: Math.round(slot.y + CARD_INSET_Y * scale),
-    w: slot.w,
-    h: Math.round(slot.h - 2 * CARD_INSET_Y * scale),
-  });
-
-  /** A raised button plate: tiled button bitmap + gold outline (flat tab-button fallback). */
-  const drawPlate = (r: Rect, lit: boolean): void => {
-    const tex = lit ? ctx.bitmaps.buttonHilite : ctx.bitmaps.button;
-    if (tileBitmap(back, tex, r, scale)) drawPlateOutline(shell.graphics, r, scale);
-    else drawTabButton(shell.graphics, r, scale, lit);
-  };
-
   const drawStepper = (r: Rect, glyph: 'minus' | 'plus'): void => {
-    drawPlate(r, false);
+    paintPlate(layers, r, false);
     const inset = Math.max(2, GLYPH_INSET * scale);
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
@@ -173,52 +127,24 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   };
 
   const rebuild = (): void => {
-    clear();
+    shell.clear();
+    clearFills(back);
     menuLayout = layoutExtrasMenu({ originX: origin.x, originY: origin.y, scale, tab, state });
     const layout = menuLayout;
 
-    if (!tileBitmap(back, ctx.bitmaps.bg, layout.window, scale)) {
-      shell.graphics.rect(layout.window.x, layout.window.y, layout.window.w, layout.window.h).fill(WOOD_FILL);
-    }
-    drawWindowFrame(shell.graphics, layout.window, scale);
-
-    const inset = Math.round(HEADLINE_INSET * scale);
-    const band: Rect = {
-      x: layout.titleRect.x + inset,
-      y: layout.titleRect.y + inset,
-      w: layout.titleRect.w - 2 * inset,
-      h: layout.titleRect.h - inset,
-    };
-    if (!tileBitmap(back, ctx.bitmaps.headline, band, scale)) {
-      shell.graphics.rect(band.x, band.y, band.w, band.h).fill(HEADLINE_FILL);
-    }
-    drawCloseX(shell.graphics, layout.closeRect, scale);
-    addRunCentred(
+    paintTitledTabWindow(
+      layers,
+      layout,
+      layout.tabs,
       ctx.uiString('miscwindow', EXTRAS_TITLE_STRING_ID, layout.title),
-      'white',
-      layout.titleRect,
-      TITLE_PX,
     );
 
-    for (const t of layout.tabs) {
-      drawPlate(t.rect, t.selected);
-      if (!t.selected && ctx.bitmaps.button !== undefined) {
-        drawBevel(shell.graphics, t.rect, scale, 'pressed'); // recede the inactive tab
-      }
-      addRunCentred(t.label, t.selected ? 'white' : 'dimmed', t.rect, TAB_PX);
-    }
     for (const c of layout.counters) {
-      const card = cardRect(c.rect);
-      drawPlate(card, false);
-      addRunAt(
-        c.label,
-        'white',
-        card.x + ROW_INSET_X * scale,
-        card.y + (card.h - TEXT_CAP_H * scale) / 2,
-        ROW_PX,
-      );
+      const card = rowCardRect(c.rect, scale);
+      paintPlate(layers, card, false);
+      placeOnCard(layers, addRun(layers, c.label, 'white', ROW_PX), card);
       if (c.infinityRect !== null) {
-        drawPlate(c.infinityRect, c.infinite); // lit while the queue never drains
+        paintPlate(layers, c.infinityRect, c.infinite); // lit while the queue never drains
         drawInfinityGlyph(c.infinityRect);
       }
       drawStepper(c.minusRect, 'minus');
@@ -226,58 +152,49 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       shell.graphics.rect(c.valueRect.x, c.valueRect.y, c.valueRect.w, c.valueRect.h).fill(VALUE_CELL_FILL);
       drawBevel(shell.graphics, c.valueRect, scale, 'pressed');
       if (c.infinite) drawInfinityGlyph(c.valueRect);
-      else addRunCentred(String(c.value), 'white', c.valueRect, ROW_PX);
+      else centreRun(layers, addRun(layers, String(c.value), 'white', ROW_PX), c.valueRect);
     }
     for (const g of layout.grants) {
-      const card = cardRect(g.rect);
-      drawPlate(card, false);
-      addRunAt(
-        g.label,
-        'white',
-        card.x + ROW_INSET_X * scale,
-        card.y + (card.h - TEXT_CAP_H * scale) / 2,
-        ROW_PX,
-      );
-      drawPlate(g.switchRect, g.on);
-      if (!g.on && ctx.bitmaps.button !== undefined)
-        drawBevel(shell.graphics, g.switchRect, scale, 'pressed');
-      addRunCentred(
-        g.on ? messages().hud.extras.on : messages().hud.extras.off,
-        g.on ? 'white' : 'dimmed',
+      const card = rowCardRect(g.rect, scale);
+      paintPlate(layers, card, false);
+      placeOnCard(layers, addRun(layers, g.label, 'white', ROW_PX), card);
+      if (paintPlate(layers, g.switchRect, g.on) === 'tiled' && !g.on) {
+        drawBevel(shell.graphics, g.switchRect, scale, 'pressed'); // recede the OFF switch
+      }
+      centreRun(
+        layers,
+        addRun(
+          layers,
+          g.on ? messages().hud.extras.on : messages().hud.extras.off,
+          g.on ? 'white' : 'dimmed',
+          ROW_PX,
+        ),
         g.switchRect,
-        ROW_PX,
       );
     }
     if (layout.plansPlaceholder !== null) {
       const p = layout.plansPlaceholder;
-      addRunAt(p.label, 'dimmed', p.x, p.y + (layout.scale * TEXT_CAP_H) / 2, ROW_PX);
-    }
-    place();
-  };
-
-  const place = (): void => {
-    if (menuLayout === null) return;
-    // Rebuild only when a live face actually changed.
-    const live = deps.counters.read();
-    if (echoBase === null || !countersEqual(live, echoBase)) {
-      echoBase = null; // the sim moved: whatever we wrote is applied or overtaken, so show live
-      if (!countersEqual(state.counters, live)) {
-        state = { ...state, counters: live };
-        rebuild();
-        return; // rebuild ends by re-running place()
-      }
-    }
-    const { width: rw, height: rh } = ctx.screen();
-    for (let i = 0; i < shell.runs.length; i++) {
-      const at = runsAt[i];
-      if (at !== undefined) shell.runs[i]?.place(at.x, at.y, scale, rw, rh);
+      const run = addRun(layers, p.label, 'dimmed', ROW_PX);
+      const { width: rw, height: rh } = ctx.screen();
+      run.place(Math.round(p.x), Math.round(p.y + (layout.scale * TEXT_CAP_H) / 2), scale, rw, rh);
     }
   };
 
   const close = (): void => {
     shell.setOpen(false);
-    clear();
+    shell.clear();
+    clearFills(back);
     menuLayout = null;
+  };
+
+  /** Push one counter's face to the sim and echo it locally, unless the seam rejected the write. */
+  const commitCounter = (next: AssistantState, id: AssistantCounterId): void => {
+    if (next === state) return;
+    const face = next.counters[id];
+    if (!deps.counters.set(id, face.value, face.infinite)) return;
+    echoBase = deps.counters.read(); // the pre-apply block the echo holds against
+    state = next; // local echo; the command applies next sim tick
+    rebuild();
   };
 
   return {
@@ -305,26 +222,15 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
           tab = hit.tab;
           rebuild();
           break;
-        case 'counter': {
-          const next = adjustCounter(state, hit.id, hit.delta * (mods?.bigStep === true ? CTRL_STEP : 1));
-          const face = next.counters[hit.id];
-          if (next !== state && deps.counters.set(hit.id, face.value, face.infinite)) {
-            echoBase = deps.counters.read(); // the pre-apply block the echo holds against
-            state = next; // local echo; the command applies next sim tick
-            rebuild();
-          }
+        case 'counter':
+          commitCounter(
+            adjustCounter(state, hit.id, hit.delta * (mods?.bigStep === true ? CTRL_STEP : 1)),
+            hit.id,
+          );
           break;
-        }
-        case 'counterInfinity': {
-          const next = toggleInfinity(state, hit.id);
-          const face = next.counters[hit.id];
-          if (next !== state && deps.counters.set(hit.id, face.value, face.infinite)) {
-            echoBase = deps.counters.read();
-            state = next;
-            rebuild();
-          }
+        case 'counterInfinity':
+          commitCounter(toggleInfinity(state, hit.id), hit.id);
           break;
-        }
         case 'grant':
           if (deps.grants.set(hit.id, !state.grants[hit.id])) {
             state = toggleGrant(state, hit.id); // local echo
@@ -340,6 +246,14 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       }
       return true;
     },
-    place,
+    refresh: (): void => {
+      if (!shell.isOpen()) return;
+      const live = deps.counters.read();
+      if (echoBase !== null && countersEqual(live, echoBase)) return; // the write has not applied yet
+      echoBase = null; // the sim moved: whatever we wrote is applied or overtaken, so show live
+      if (countersEqual(state.counters, live)) return;
+      state = { ...state, counters: live };
+      rebuild();
+    },
   };
 }

@@ -2,6 +2,14 @@ import { components } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
+import {
+  CLOSE_BOX,
+  HEADLINE_H,
+  ROW_H,
+  TAB_CONTENT_GAP,
+  TAB_H,
+  WINDOW_FAMILY_PAD,
+} from './window-family/index.js';
 
 /**
  * The extras ("chest") window model: the assistant/plans tabs, the counter and grant controls, their
@@ -101,15 +109,10 @@ export function toggleGrant(state: AssistantState, id: AssistantGrantId): Assist
   return { ...state, grants: { ...state.grants, [id]: !state.grants[id] } };
 }
 
-// Layout in design px, scaled by uiscale, at the building menu's proportions.
+// This window's own layout in design px, over the shared family metrics.
 
-const MENU_PAD = 6;
-const HEADLINE_H = 18;
+/** Fixed tab width: the two tabs sit side by side instead of dividing the content width. */
 const TAB_W = 80;
-const TAB_H = 18;
-const LIST_GAP = 3;
-const ROW_H = 20;
-const MENU_CLOSE = 13;
 /** Wood gap between the counter block and the grant block. */
 const BLOCK_GAP = 8;
 /** Fits the longest grant label ("Przyznaj wszystkim drewniane narzędzia") at the HUD text size. */
@@ -198,11 +201,11 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
   const labels = messages().hud.extras;
 
   const width = MENU_WIDTH * s;
-  const pad = MENU_PAD * s;
+  const pad = WINDOW_FAMILY_PAD * s;
   const headlineH = HEADLINE_H * s;
   const tabH = TAB_H * s;
   const rowH = ROW_H * s;
-  const bodyTop = originY + headlineH + tabH + LIST_GAP * s;
+  const bodyTop = originY + headlineH + tabH + TAB_CONTENT_GAP * s;
   const controlRight = originX + width - pad - CONTROL_INSET_X * s;
 
   const tabs: ExtrasMenuTabRect[] = (
@@ -282,9 +285,9 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
         });
 
   const bodyH = tab === 'assistant' ? (COUNTER_IDS.length + GRANT_IDS.length) * rowH + BLOCK_GAP * s : rowH;
-  const height = headlineH + tabH + LIST_GAP * s + bodyH + pad;
+  const height = headlineH + tabH + TAB_CONTENT_GAP * s + bodyH + pad;
 
-  const closeSize = MENU_CLOSE * s;
+  const closeSize = CLOSE_BOX * s;
   return {
     scale: s,
     window: { x: originX, y: originY, w: width, h: height },

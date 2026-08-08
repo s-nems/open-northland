@@ -1,6 +1,6 @@
 import { type HudLayout, terrainWorldBounds } from '@open-northland/render';
 import type { Command } from '@open-northland/sim';
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { WIN_PAD } from '../src/hud/chrome.js';
 import type { Rect } from '../src/hud/geometry.js';
@@ -885,5 +885,99 @@ describe('extras window controller', () => {
     extras.toggle();
     expect(extras.handleClick(SCREEN.width - 1, SCREEN.height - 1)).toBe(false);
     expect(extras.isOpen()).toBe(true);
+  });
+
+  /** A counter seam whose reads lag its writes, like the sim block that only moves on a later tick. */
+  function laggingCountersSeam(): {
+    seam: ExtrasCountersSeam;
+    live: Record<AssistantCounterId, AssistantCounterFace>;
+  } {
+    const live: Record<AssistantCounterId, AssistantCounterFace> = { ...defaultAssistantState().counters };
+    return { seam: { read: () => ({ ...live }), set: () => true }, live };
+  }
+
+  it('holds the clicked face per frame until the sim block moves, then follows it', () => {
+    const { ctx, made } = stubContext();
+    const { seam, live } = laggingCountersSeam();
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: stubGrantsSeam().seam,
+      counters: seam,
+    });
+    const geo = expectedLayout(ctx);
+    extras.toggle();
+
+    const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });
+    made.length = 0;
+    extras.handleClick(plus.x, plus.y);
+    expect(made).toContain('1'); // the echo, drawn before the command reaches the block
+
+    made.length = 0;
+    extras.refresh();
+    expect(made).toEqual([]); // the block still reads pre-write: hold the echo, rebuild nothing
+
+    live.extraWomen = { value: 4, infinite: false }; // the queue moved under the open window
+    extras.refresh();
+    expect(made).toContain('4');
+
+    made.length = 0;
+    extras.refresh();
+    expect(made).toEqual([]); // nothing moved since: no per-frame glyph rebuild
+  });
+
+  /** How many tiled fills the open window laid down: `back`, the first child of its own container. */
+  function tiledFills(ctx: PanelContext): number {
+    const container = new Container();
+    const extras = createExtrasWindow({
+      ctx,
+      container,
+      grants: stubGrantsSeam().seam,
+      counters: stubCountersSeam().seam,
+    });
+    extras.toggle();
+    const shell = container.children[0];
+    if (!(shell instanceof Container)) throw new Error('the extras window mounts no container');
+    const back = shell.children[0];
+    if (!(back instanceof Container)) throw new Error('the extras window owns no fill layer');
+    return back.children.length;
+  }
+
+  it('tiles its plates from the decoded art, and lays none down without it', () => {
+    const bare = stubContext().ctx;
+    const decoded: PanelContext = {
+      ...bare,
+      bitmaps: {
+        bg: Texture.EMPTY,
+        button: Texture.EMPTY,
+        buttonHilite: Texture.EMPTY,
+        headline: Texture.EMPTY,
+      },
+    };
+
+    expect(tiledFills(bare)).toBe(0); // flat Graphics fallback only
+    expect(tiledFills(decoded)).toBeGreaterThan(0);
+  });
+
+  it('reads nothing per frame while closed', () => {
+    const { ctx, made } = stubContext();
+    let reads = 0;
+    const counting: ExtrasCountersSeam = {
+      read: () => {
+        reads++;
+        return defaultAssistantState().counters;
+      },
+      set: () => true,
+    };
+    const extras = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: stubGrantsSeam().seam,
+      counters: counting,
+    });
+
+    extras.refresh();
+    expect(reads).toBe(0);
+    expect(made).toEqual([]);
   });
 });

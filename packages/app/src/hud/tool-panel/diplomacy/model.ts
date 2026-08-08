@@ -5,11 +5,11 @@ import {
   CLOSE_BOX,
   HEADLINE_H,
   ROW_H,
+  standardWindowWidth,
   TAB_CONTENT_GAP,
   TAB_H,
-  tabbedListWindowWidth,
   WINDOW_FAMILY_PAD,
-} from '../tabbed-list/index.js';
+} from '../window-family/index.js';
 
 /**
  * The diplomacy pop-up model: a titled window with one tab per discovered player over a short stance
@@ -75,7 +75,7 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
   const { originX, originY, players } = opts;
   const px = (v: number): number => Math.round(v * s);
 
-  const width = tabbedListWindowWidth(opts.scale);
+  const width = standardWindowWidth(opts.scale);
   const headlineH = px(HEADLINE_H);
   const tabH = px(TAB_H);
   const lineH = px(ROW_H);

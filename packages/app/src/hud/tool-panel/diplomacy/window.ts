@@ -1,19 +1,22 @@
 import type { DiplomacyState } from '@open-northland/sim';
 import { Container } from 'pixi.js';
-import type { FontColorName } from '../../../content/font-gfx.js';
 import { messages } from '../../../i18n/index.js';
 import { drawPlateOutline, WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 import type { TextRun } from '../../text-run.js';
 import type { PanelContext } from '../context.js';
 import {
+  addRun,
+  clearFills,
   paintRowCard,
   paintTitledTabWindow,
+  placeOnCard,
   ROW_INSET_X,
-  type TabbedListLayers,
+  ROW_PX,
   TEXT_CAP_H,
   type TitledTab,
-} from '../tabbed-list/index.js';
+  type WindowLayers,
+} from '../window-family/index.js';
 import { createWindowShell, type ToolWindow } from '../window-shell.js';
 import {
   type DiplomacyPanelRow,
@@ -23,8 +26,6 @@ import {
   resolveSelectedPlayer,
 } from './model.js';
 
-/** Readout text size (design px). */
-const BODY_PX = 11;
 /** Team-swatch square side (design px) on the identity card. */
 const SWATCH = 9;
 /** Gap (design px) between the swatch and the name beside it. */
@@ -64,7 +65,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
   const shell = createWindowShell(deps.container);
   const back = new Container();
   shell.container.addChildAt(back, 0); // behind the shell's frame Graphics
-  const layers: TabbedListLayers = {
+  const layers: WindowLayers = {
     ctx,
     container: shell.container,
     back,
@@ -85,20 +86,6 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
   /** The authored name, or the numbered fallback an unnamed slot renders as. */
   const playerLabel = (player: number, name: string | undefined): string =>
     name ?? `${ctx.uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`;
-
-  const addRun = (text: string, color: FontColorName, px: number): TextRun => {
-    const run = ctx.makeText(text, color, px);
-    shell.container.addChild(run.container);
-    shell.runs.push(run);
-    return run;
-  };
-
-  /** Place a run on a readout card, `inset` design px from the card's left edge. */
-  const onCard = (run: TextRun, card: Rect, inset: number): void => {
-    const { width: rw, height: rh } = ctx.screen();
-    const y = card.y + (card.h - TEXT_CAP_H * scale) / 2;
-    run.place(Math.round(card.x + inset * scale), Math.round(y), scale, rw, rh);
-  };
 
   /** Place a run flush with the card's right edge, mirroring the left label inset. */
   const onCardRight = (run: TextRun, card: Rect): void => {
@@ -124,8 +111,9 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     };
     shell.graphics.rect(swatch.x, swatch.y, swatch.w, swatch.h).fill(row.colour);
     drawPlateOutline(shell.graphics, swatch, scale);
-    onCard(
-      addRun(playerLabel(row.player, row.name), 'white', BODY_PX),
+    placeOnCard(
+      layers,
+      addRun(layers, playerLabel(row.player, row.name), 'white', ROW_PX),
       idCard,
       ROW_INSET_X + SWATCH + SWATCH_NAME_GAP,
     );
@@ -133,8 +121,8 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     const stanceLine = (line: Rect | undefined, heading: string, state: DiplomacyState): void => {
       if (line === undefined) return;
       const card = paintRowCard(layers, line);
-      onCard(addRun(heading, 'dimmed', BODY_PX), card, ROW_INSET_X);
-      onCardRight(addRun(stanceText(state), state === 'enemy' ? 'red' : 'white', BODY_PX), card);
+      placeOnCard(layers, addRun(layers, heading, 'dimmed', ROW_PX), card);
+      onCardRight(addRun(layers, stanceText(state), state === 'enemy' ? 'red' : 'white', ROW_PX), card);
     };
     stanceLine(
       theirLine,
@@ -150,7 +138,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
 
   const rebuild = (rows: readonly DiplomacyPanelRow[]): void => {
     shell.clear();
-    for (const child of back.removeChildren()) child.destroy();
+    clearFills(back);
     selected = resolveSelectedPlayer(rows, selected);
     key = rebuildKey(rows, selected);
     const built = layoutDiplomacyWindow({
@@ -182,7 +170,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       const line = built.bodyLines[0];
       if (line !== undefined) {
         const card = paintRowCard(layers, line);
-        onCard(addRun(messages().hud.diplomacyNoneMet, 'dimmed', BODY_PX), card, ROW_INSET_X);
+        placeOnCard(layers, addRun(layers, messages().hud.diplomacyNoneMet, 'dimmed', ROW_PX), card);
       }
     }
   };
@@ -190,7 +178,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
   const close = (): void => {
     shell.setOpen(false);
     shell.clear();
-    for (const child of back.removeChildren()) child.destroy();
+    clearFills(back);
     layout = null;
     key = '';
   };
