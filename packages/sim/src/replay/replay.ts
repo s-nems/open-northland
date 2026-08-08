@@ -54,8 +54,7 @@ export function stepReplaying(
 ): void {
   let cursor = 0;
   for (let nextTick = 1; nextTick <= untilTick; nextTick++) {
-    // The log already carries the applied copies of what the sim's own systems emit, so keeping their
-    // live re-emissions pending would double-apply them. The sim holds nothing pending at entry.
+    // See `CommandQueue.discardPending`; the sim holds nothing pending at entry.
     sim.commands.discardPending();
     while (cursor < log.length && (log[cursor] as LoggedCommand).applyTick <= nextTick) {
       sim.enqueue(log[cursor] as LoggedCommand);

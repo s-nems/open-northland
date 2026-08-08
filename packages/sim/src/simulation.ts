@@ -109,8 +109,7 @@ export class Simulation {
     this.commands.enqueue(envelope);
   }
 
-  /** {@link enqueue} under the trusted authored-setup origin: scene assembly, decoded map imports, and
-   *  fixtures, which place neutral entities and use the authored placement options. */
+  /** {@link enqueue} under the trusted `setup` origin: authored pre-run assembly. */
   enqueueSetup(command: Command): void {
     this.commands.enqueue(setupCommand(command));
   }
@@ -254,7 +253,6 @@ export class Simulation {
     return fogViewFor(this.world, this.fog, player);
   }
 
-  /** Run N ticks. */
   run(ticks: number): void {
     for (let i = 0; i < ticks; i++) this.step();
   }

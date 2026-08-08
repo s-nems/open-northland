@@ -55,10 +55,7 @@ const needsInRange: Invariant = (world) => {
   return out;
 };
 
-/**
- * Every incrementally-maintained World cache re-derives to its live value, so a missed invalidation
- * names its cache at the tick it happens instead of surfacing later as a hash divergence.
- */
+/** Every incrementally-maintained World cache re-derives to its live value. */
 const cachesCoherent: Invariant = (world) => world.verifyCaches();
 
 /** Building construction progress and level stay sane. */
@@ -87,8 +84,7 @@ const preyHoldWithinEngagement: Invariant = (world) => {
 /**
  * A {@link Settler} carries {@link Person} exactly when its tribe has no `[animaltype]` record, and a
  * {@link Person} always carries a {@link Settler}, which every `query(Person, …)` sweep reads. The
- * `addPerson`/`addWildlife` constructors keep both true, so a spawn path that hand-rolls the components
- * fails here with the entity named instead of at the first `world.get` downstream.
+ * `addPerson`/`addWildlife` constructors keep both true.
  *
  * The rule keys on the animal record, not the tech graph: a monster tribe has neither, which makes it a
  * person whose tribe declares no trade rather than a third personhood state.

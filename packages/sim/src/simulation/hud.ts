@@ -6,8 +6,7 @@ import type { World } from '../ecs/world.js';
 import type { SystemContext } from '../systems/context.js';
 
 // Tribe-scoped read views. Nothing here may feed a sim decision, so `systems/` must not import this
-// module. They cut across seats, so they answer a different question than the panel, which counts one
-// `Owner.player`; no shipped HUD reads them today.
+// module.
 // The returned Maps iterate in insertion order; a consumer needing a stable display order sorts the keys.
 
 /**
