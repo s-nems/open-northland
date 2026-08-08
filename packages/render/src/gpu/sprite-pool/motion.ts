@@ -6,8 +6,9 @@ import type { SpriteKind } from '../../data/sprites/index.js';
 
 /** Frames in one authored human walk cycle per facing (`mapmoveableanimations/animations.ini`). */
 const WALK_CYCLE_FRAMES = 12;
-/** Authored cadence: the cycle plays in 17 ticks while the body still takes 18 ticks per cell. */
-const WALK_ANIMATION_TICKS_PER_CYCLE = 17;
+/** Tick-locked cadence: one authored frame per sim tick at full cruise. Observation: slower
+ *  cadences read as foot-skating next to the original. */
+const WALK_ANIMATION_TICKS_PER_CYCLE = WALK_CYCLE_FRAMES;
 const WALK_ANIMATION_RATE = WALK_TICKS_PER_CELL / WALK_ANIMATION_TICKS_PER_CYCLE;
 
 /**
@@ -31,9 +32,9 @@ export function snapDistanceForKind(kind: SpriteKind): number {
 const WALK_FRAME_TRAVEL_PX = (2 * TILE_HALF_W) / WALK_CYCLE_FRAMES;
 
 /** Cap on the gait-clock rate in frames per tick. It clears the fastest legit case - a data-paced animal
- *  whose `movespeed` beats the universal 18-ticks-per-cell walk (movespeed 8 reads 2.25×) - while keeping
- *  a mistracked jump below the snap threshold from spinning the legs. */
-const MAX_GAIT_RATE = 2.5;
+ *  whose `movespeed` beats the universal 18-ticks-per-cell walk (the movespeed-6 hare reads 3.0) - while
+ *  keeping a mistracked jump below the snap threshold from spinning the legs. */
+const MAX_GAIT_RATE = 3.5;
 
 /** Ticks a `moving`-state track must sit still before the pool presents the idle pose instead of a frozen
  *  mid-stride walk frame. Four ticks (⅓ s) clears the slowest legit walk (the brake floor still covers
@@ -59,7 +60,7 @@ export interface MotionTrack {
   /**
    * The walk-cycle clock in tick units, advanced per sim tick by the fraction of a full gait the anchor
    * actually covered ({@link WALK_FRAME_TRAVEL_PX}), so the drawn frame (`floor(gaitPhase)`) tracks
-   * ground covered rather than wall ticks. Full cruise advances 12/17 of a frame per tick.
+   * ground covered rather than wall ticks. Full cruise advances one frame per tick.
    */
   gaitPhase: number;
   /** Consecutive ticks the anchor moved at most the stall epsilon. Reset by real travel and by snaps -
