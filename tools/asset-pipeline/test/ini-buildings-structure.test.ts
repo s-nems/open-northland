@@ -138,6 +138,25 @@ logichitpoints 1 x
     );
     expect(hp.size).toBe(0);
   });
+
+  it('keeps a standing winner when the better-ranked record rejects its own line', () => {
+    // Tribe 1 outranks tribe 4 for typeId 60, but its HP line is malformed. Rejecting a candidate
+    // must not evict the value tribe 4 already won, which would leave the typeId with no HP at all.
+    const hp = extractHouseHitpoints(
+      parseIniSections(`[GfxHouse]
+EditName "saracen tower"
+LogicTribeType 4
+LogicType 0 60
+logichitpoints 0 41000
+[GfxHouse]
+EditName "viking tower"
+LogicTribeType 1
+LogicType 0 60
+logichitpoints 0 x
+`),
+    );
+    expect(hp.get(60)).toBe(41000);
+  });
 });
 
 describe('extractUpgradeTargets', () => {

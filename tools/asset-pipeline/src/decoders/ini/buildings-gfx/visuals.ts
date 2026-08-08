@@ -17,7 +17,7 @@ import {
   type RuleSection,
   type SourceRef,
 } from '../grammar.js';
-import { forEachGfxHouseRecord, splitGfxHouseRecords } from './shared.js';
+import { gfxHouseGraphicsRecords, gfxHouseRecords } from './shared.js';
 
 /**
  * Extracts the construction-stage layers, `GfxBobConstructionLayer <sizeIdx> <upgrade> <bobId>
@@ -28,8 +28,8 @@ export function extractConstructionLayers(
   src: SourceRef,
 ): BuildingConstructionLayer[] {
   const layers: BuildingConstructionLayer[] = [];
-  forEachGfxHouseRecord(sections, (rec, record) => {
-    const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
+  for (const record of gfxHouseGraphicsRecords(sections)) {
+    const { rec, tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
     // Source file order per level, which is the draw stacking order.
     const stackByLevel = new Map<number, number>();
     for (const p of findProps(rec, 'GfxBobConstructionLayer')) {
@@ -71,7 +71,7 @@ export function extractConstructionLayers(
         );
       }
     }
-  });
+  }
   return layers;
 }
 
@@ -86,8 +86,8 @@ const OVERLAY_HEADER_FIELDS = 6;
  */
 export function extractBuildingOverlays(sections: readonly RuleSection[], src: SourceRef): BuildingOverlay[] {
   const overlays: BuildingOverlay[] = [];
-  forEachGfxHouseRecord(sections, (rec, record) => {
-    const { tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
+  for (const record of gfxHouseGraphicsRecords(sections)) {
+    const { rec, tribeId, normalizedBmd, palettes, editName, typeByLevel } = record;
     for (const p of findProps(rec, 'GfxOverlay')) {
       const ints = p.values.map((v) => Number.parseInt(v, 10));
       const [level, overlayType, state, x, y, step] = ints;
@@ -125,7 +125,7 @@ export function extractBuildingOverlays(sections: readonly RuleSection[], src: S
         );
       }
     }
-  });
+  }
   return overlays;
 }
 
@@ -160,8 +160,8 @@ function extractHousePoints(
   key: string,
 ): BuildingFlagPoint[] {
   const points: BuildingFlagPoint[] = [];
-  forEachGfxHouseRecord(sections, (rec, record) => {
-    const { tribeId, editName, typeByLevel } = record;
+  for (const record of gfxHouseGraphicsRecords(sections)) {
+    const { rec, tribeId, editName, typeByLevel } = record;
     const byLevel = new Map<number, { x: number; y: number }>();
     for (const p of findProps(rec, key)) {
       const [level, x, y] = p.values.map((v) => Number.parseInt(v, 10));
@@ -184,7 +184,7 @@ function extractHousePoints(
         }),
       );
     }
-  });
+  }
   return points;
 }
 
@@ -196,13 +196,10 @@ function extractHousePoints(
  */
 export function extractBuildingGraphics(sections: readonly RuleSection[]): NamedBmdPaletteBinding[] {
   const bindings: NamedBmdPaletteBinding[] = [];
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const editName = getStr(rec, 'EditName');
-      for (const binding of readBmdPaletteBindings(rec, 'GfxBobLibs', 'GfxPalette', true)) {
-        bindings.push({ ...binding, editName });
-      }
+  for (const rec of gfxHouseRecords(sections)) {
+    const editName = getStr(rec, 'EditName');
+    for (const binding of readBmdPaletteBindings(rec, 'GfxBobLibs', 'GfxPalette', true)) {
+      bindings.push({ ...binding, editName });
     }
   }
   return bindings;
@@ -220,8 +217,8 @@ export function extractBuildingGraphics(sections: readonly RuleSection[]): Named
 export function extractBuildingBobs(sections: readonly RuleSection[], src: SourceRef): BuildingBob[] {
   const bobs: BuildingBob[] = [];
   const seen = new Set<string>();
-  forEachGfxHouseRecord(sections, (rec, record) => {
-    const { tribeId, normalizedBmd, normalizedShadowBmd, palettes, editName, typeByLevel } = record;
+  for (const record of gfxHouseGraphicsRecords(sections)) {
+    const { rec, tribeId, normalizedBmd, normalizedShadowBmd, palettes, editName, typeByLevel } = record;
     const bobByLevel = new Map<number, number>();
     for (const p of findProps(rec, 'GfxBobId')) {
       const level = Number.parseInt(p.values[0] ?? '', 10);
@@ -252,6 +249,6 @@ export function extractBuildingBobs(sections: readonly RuleSection[], src: Sourc
         );
       }
     }
-  });
+  }
   return bobs;
 }

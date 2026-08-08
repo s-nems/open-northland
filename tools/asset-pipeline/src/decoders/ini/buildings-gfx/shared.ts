@@ -13,7 +13,7 @@ import {
  * The `LogicType <sizeIdx> <typeId>` table of one `[GfxHouse]` record: the size-level → building-typeId
  * join every per-level line is paired against.
  */
-export function logicTypeByLevel(sec: RuleSection): Map<number, number> {
+function logicTypeByLevel(sec: RuleSection): Map<number, number> {
   const typeByLevel = new Map<number, number>();
   for (const p of findProps(sec, 'LogicType')) {
     const sizeIdx = Number.parseInt(p.values[0] ?? '', 10);
@@ -27,10 +27,9 @@ export function logicTypeByLevel(sec: RuleSection): Map<number, number> {
 /**
  * Splits one `[GfxHouse]` section into its constituent house records. The mod packs several houses under
  * a single bracket, each sub-house delimited only by a fresh `EditName` line, and `parseIniSections`
- * opens a section only on a `[...]` header. Props before the first `EditName` are ignored. Every
- * `[GfxHouse]` extractor walks these records, never the raw section.
+ * opens a section only on a `[...]` header. Props before the first `EditName` are ignored.
  */
-export function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
+function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
   const records: RuleSection[] = [];
   let props: RuleProp[] | undefined;
   for (const p of sec.props) {
@@ -44,25 +43,35 @@ export function splitGfxHouseRecords(sec: RuleSection): RuleSection[] {
   return records;
 }
 
-/**
- * Whether an already-recorded winner outranks a new `(tribeType, sizeIdx)` candidate, so the candidate
- * is skipped. The per-typeId overlays collapse to the lowest `LogicTribeType` (the reference-tribe
- * convention) and, within a tribe, the lowest `sizeIdx` (the base build stage), independent of file
- * order.
- */
-export function existingGfxHouseWins(
-  existing: { tribeType: number; sizeIdx: number } | undefined,
-  tribeType: number,
-  sizeIdx: number,
-): boolean {
-  return (
-    existing !== undefined &&
-    (existing.tribeType < tribeType || (existing.tribeType === tribeType && existing.sizeIdx <= sizeIdx))
-  );
+/** Every house record of every `[GfxHouse]` section, in file order: the one traversal each extractor walks. */
+export function* gfxHouseRecords(sections: readonly RuleSection[]): Generator<RuleSection> {
+  for (const sec of sections) {
+    if (sec.name !== 'GfxHouse') continue;
+    yield* splitGfxHouseRecords(sec);
+  }
+}
+
+/** The rank and join preamble the per-typeId overlays read off one house record. */
+export interface GfxHouseLogicRecord {
+  readonly rec: RuleSection;
+  /** `LogicTribeType`; a record without one takes `Infinity` so it ranks behind every named tribe. */
+  readonly tribeType: number;
+  readonly typeByLevel: Map<number, number>;
+}
+
+export function* gfxHouseLogicRecords(sections: readonly RuleSection[]): Generator<GfxHouseLogicRecord> {
+  for (const rec of gfxHouseRecords(sections)) {
+    yield {
+      rec,
+      tribeType: getInt(rec, 'LogicTribeType') ?? Number.POSITIVE_INFINITY,
+      typeByLevel: logicTypeByLevel(rec),
+    };
+  }
 }
 
 /** The body+palette preamble every per-level `[GfxHouse]` graphics extractor shares. */
 export interface GfxHouseGraphicsRecord {
+  readonly rec: RuleSection;
   /** The owning tribe (`LogicTribeType`). */
   readonly tribeId: number;
   /** The body bob set (`GfxBobLibs[0]`), path-normalized. */
@@ -81,7 +90,7 @@ export interface GfxHouseGraphicsRecord {
  * Reads the shared preamble off one house record. Returns `undefined` when the record lacks a tribe, a
  * body bob, or any palette, the common skip guard so one malformed record never aborts the offline batch.
  */
-export function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRecord | undefined {
+function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRecord | undefined {
   const tribeId = getInt(rec, 'LogicTribeType');
   if (tribeId === undefined) return undefined;
   const libs = findProp(rec, 'GfxBobLibs');
@@ -90,6 +99,7 @@ export function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRe
   const palettes = (findProp(rec, 'GfxPalette')?.values ?? []).filter((v) => v.trim() !== '');
   if (palettes.length === 0) return undefined;
   return {
+    rec,
     tribeId,
     normalizedBmd: normalizeAssetPath(bmd),
     normalizedShadowBmd: normalizeOptionalPath(libs?.values[1]),
@@ -99,20 +109,12 @@ export function readGfxHouseGraphicsRecord(rec: RuleSection): GfxHouseGraphicsRe
   };
 }
 
-/**
- * Visits each well-formed `[GfxHouse]` graphics record, skipping those whose preamble fails to resolve.
- * `rec` is the raw section for reading per-level property lines; `record` is the resolved preamble.
- */
-export function forEachGfxHouseRecord(
+/** Every `[GfxHouse]` record whose graphics preamble resolves; the rest are skipped. */
+export function* gfxHouseGraphicsRecords(
   sections: readonly RuleSection[],
-  visit: (rec: RuleSection, record: GfxHouseGraphicsRecord) => void,
-): void {
-  for (const sec of sections) {
-    if (sec.name !== 'GfxHouse') continue;
-    for (const rec of splitGfxHouseRecords(sec)) {
-      const record = readGfxHouseGraphicsRecord(rec);
-      if (record === undefined) continue;
-      visit(rec, record);
-    }
+): Generator<GfxHouseGraphicsRecord> {
+  for (const rec of gfxHouseRecords(sections)) {
+    const record = readGfxHouseGraphicsRecord(rec);
+    if (record !== undefined) yield record;
   }
 }
