@@ -38,8 +38,17 @@ describe('the IR version gate', () => {
   });
 
   it('keeps a pipeline-stamped contentRevision', () => {
-    const raw = contentSet(IR_VERSION);
-    (raw.manifest as Record<string, unknown>).contentRevision = 7;
+    const raw = {
+      manifest: {
+        version: IR_VERSION,
+        contentRevision: 7,
+        generatedFrom: { game: 'synthetic-test-fixture' },
+        locale: 'eng',
+      },
+      goods: [],
+      jobs: [],
+      buildings: [],
+    };
     expect(parseContentSet(raw).manifest.contentRevision).toBe(7);
   });
 });

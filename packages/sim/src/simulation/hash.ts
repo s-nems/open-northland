@@ -1,3 +1,4 @@
+import { FNV_OFFSET_BASIS, fnvHex, fnvMixWord } from '@open-northland/data';
 import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
 import type { World } from '../ecs/world.js';
 import type { FogState } from '../systems/vision/index.js';
@@ -12,10 +13,9 @@ export function hashSimState(
   rngState: number,
   fog: FogState | undefined,
 ): string {
-  let h = 2166136261 >>> 0; // FNV-1a
+  let h = FNV_OFFSET_BASIS;
   const mix = (n: number): void => {
-    h ^= n | 0;
-    h = Math.imul(h, 16777619) >>> 0;
+    h = fnvMixWord(h, n);
   };
   // Length first, so a different split of the same characters stays distinct. charCodeAt covers both
   // halves of a surrogate pair.
@@ -66,5 +66,5 @@ export function hashSimState(
   }
   // Fog masks are simulated state living outside the components, so they mix their own canonical bytes.
   fog?.hashInto(mix);
-  return h.toString(16).padStart(8, '0');
+  return fnvHex(h);
 }
