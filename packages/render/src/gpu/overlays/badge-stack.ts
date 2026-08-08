@@ -11,9 +11,9 @@ import {
 } from './sign-gfx.js';
 
 /**
- * The drawn half of the door-badge marker: one building's sign chain, in two shapes of the same
- * bottom-to-top row list - the decoded `ls_temp` signs, and the placeholder squares a checkout without
- * `content/` gets. Both grow upward from the chain's own anchor (the planted base row sits at y 0).
+ * The drawn half of the door-badge marker: one building's sign chain, as the decoded `ls_temp` signs or
+ * as the placeholder squares a checkout without `content/` gets. Both grow upward from the chain's own
+ * anchor (the planted base row sits at y 0).
  */
 
 /** px the placeholder stack's base sits below its anchor node. */

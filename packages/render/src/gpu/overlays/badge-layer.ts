@@ -19,17 +19,18 @@ export type { DoorBadgeRole, DoorBadgeRow, HouseholdKind } from './sign-gfx.js';
 /**
  * The door-badge layer - a stacked marker at each staffed building's sign post showing who works there
  * (one sign per settler) and, for a home, its resident families. The app's `computeDoorBadges` resolves
- * each building's anchor and its bottom-to-top rows from the read-only snapshot; this layer draws them.
- * Stacks live in the depth-sorted sprite layer keyed just above the owning building's depth rather than
- * the post's own planted spot, so a marker never swallows the unit the player is watching, at the cost
- * of a band between house anchor and post where a settler draws in front of a post he stands behind.
- * How the original sorts its sign records against units is not established (approximation).
+ * each building's anchor and rows; this layer draws them.
+ *
+ * Stacks key just above the owning building's depth rather than the post's own planted spot, so a marker
+ * never swallows the unit the player is watching, at the cost of a band between house anchor and post
+ * where a settler draws in front of a post he stands behind. Approximation: how the original sorts its
+ * sign records against units is not established.
  */
 
 /** One building's badge data: its stack anchor (snapshot `Position` fixed-point units + an optional
  *  screen-px offset) and the bottom-to-top sign rows bound to it. */
 export interface DoorBadge {
-  /** The building entity id - the retained-pool key (ids are monotonic, a stable key). */
+  /** The building entity id - the retained-pool key. */
   readonly id: number;
   /** The owning building's position in fixed-point `Position` units - the depth key, so the stack sorts
    *  with its house wherever the post stands. */
@@ -46,9 +47,9 @@ export interface DoorBadge {
   /** True while the resident couple makes love here - draws the hearts over the house. */
   readonly hearts?: boolean;
   /** The garrison this building's roof flies a flag for - the men posted to it, not the ones currently up
-   *  there, so the flag does not drop a star every time one climbs down for a meal. Its soldiers are
-   *  deliberately absent from `rows`: the flag stands for the whole post, one star per man, at its own
-   *  screen-px offset from the projected anchor (the mast point, +y down). */
+   *  there, so the flag does not drop a star every time one climbs down for a meal. Its soldiers stay out
+   *  of `rows`: the flag stands for the whole post, one star per man, at its own screen-px offset from
+   *  the projected anchor (the mast point, +y down). */
   readonly garrison?: {
     readonly stars: number;
     readonly dx: number;
@@ -68,8 +69,8 @@ interface BadgeStack {
   /** Stars flown this build (0 = no garrison) - part of the key, so a man joining or leaving the post
    *  swaps the flag. */
   readonly stars: number;
-  /** The player recolour the stack was built with, 0 when drawing the player-agnostic placeholder
-   *  squares, so an owner change never rebuilds a visually identical square stack. */
+  /** The player recolour the stack was built with, 0 for the player-agnostic placeholder squares, so an
+   *  owner change never rebuilds a visually identical square stack. */
   readonly player: number;
   /** px added below the anchor when positioning (the placeholder squares sit slightly lower). */
   readonly baseDrop: number;
@@ -84,7 +85,8 @@ function rowsKey(badge: DoorBadge): string {
 }
 
 export class BadgeLayer {
-  /** One persistent badge-stack per building id; rebuilt only when its rows change, else repositioned. */
+  /** One persistent badge-stack per building id; rebuilt when its rows, hearts, stars or colour change,
+   *  else repositioned. */
   private readonly stacks = new Map<number, BadgeStack>();
   /** Reused scratch of ids drawn this frame, to avoid a per-frame allocation. */
   private readonly drawn = new Set<number>();
@@ -103,7 +105,7 @@ export class BadgeLayer {
   }
 
   /** Provide (or clear) the decoded `ls_temp` sign art. Every live stack is retired so the next draw
-   *  rebuilds against the new art basis, which is why it stays out of the per-stack rebuild key. */
+   *  rebuilds against it, which is why the art stays out of the per-stack rebuild key. */
   setGfx(gfx: SignGfx | undefined): void {
     this.gfx = gfx;
     for (const s of this.stacks.values()) destroyStack(s);
@@ -113,8 +115,8 @@ export class BadgeLayer {
   /**
    * Reconcile the badge stacks to `badges`, retiring stacks for buildings no longer in the list. A
    * building outside `viewport` keeps its pooled stack but is detached and neither repositioned nor
-   * rebuilt, so cost tracks the screen and not the map's building count. `clock` is the render clock the
-   * on-screen garrison flags wave on.
+   * rebuilt, so cost tracks the screen and not the map's building count. `clock` is the render clock in
+   * sim ticks, which the on-screen garrison flags wave on.
    */
   draw(badges: readonly DoorBadge[], elevation?: ElevationField, viewport?: Viewport, clock = 0): void {
     this.drawn.clear();
@@ -127,7 +129,7 @@ export class BadgeLayer {
       let stack = this.stacks.get(badge.id);
       // Off-screen: retain the pooled stack so it isn't retired, but skip the reposition/rebuild and drop
       // it out of the sprite layer, whose depth sort runs over its children every frame. An id whose stack
-      // doesn't exist yet is deliberately not marked drawn (see {@link retainOffscreen}).
+      // doesn't exist yet stays unmarked (see {@link retainOffscreen}).
       if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
         retainOffscreen(stack?.node, badge.id, this.drawn);
         stack?.node.removeFromParent();
@@ -172,7 +174,7 @@ export class BadgeLayer {
       }
       this.drawn.add(badge.id);
     }
-    // Retire stacks not drawn this frame (building demolished, unstaffed, or left the snapshot).
+    // A stack goes undrawn when its building was demolished, unstaffed, or left the snapshot.
     retireUndrawn(this.stacks, this.drawn, destroyStack);
   }
 
@@ -205,7 +207,6 @@ export class BadgeLayer {
   }
 }
 
-/** Retire both of a building's marks - the chain and, when it flies one, the flag. */
 function destroyStack(stack: BadgeStack | undefined): void {
   stack?.node.destroy({ children: true });
   stack?.flag?.destroy({ children: true });

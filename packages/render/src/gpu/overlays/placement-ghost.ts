@@ -9,9 +9,8 @@ import { mintLayerSprite } from './layer-sprite.js';
 
 /**
  * The build-placement cursor ghost - the held building's own sprite, translucent, snapped to the hovered
- * half-cell node, the anchor grid buildings actually place on. The app decides where it hovers and
- * whether it shows at all (the original's house icon vanishes over ground the placement probe rejects);
- * this layer only projects that decision.
+ * half-cell node, the anchor grid buildings place on. The app decides where it hovers and whether it
+ * shows at all (the original's house icon vanishes over ground the placement probe rejects).
  */
 
 /** The hovered placement, with `col`/`row` as half-cell coordinates on the `2W×2H` lattice. */
