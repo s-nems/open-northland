@@ -30,8 +30,7 @@ export function directionalAnimFromSeq(
 /**
  * A named ×8 `[bobseq]` row as a {@link DirectionalAnim}, or `undefined` when the row is missing, empty, or
  * not a clean ×8 strip, so a malformed IR can never become a bogus frame range. When `walkLists` carries
- * the sequence's `gfxwalkframelist` lists, their authored cut wins over the whole-block reading: some
- * cycles play fewer frames than the block holds (the baby crawl plays 12 of each 13-frame block). Pure.
+ * the sequence's `gfxwalkframelist` lists, their authored cut wins over the whole-block reading. Pure.
  */
 export function eightDirAnim(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -52,8 +51,9 @@ export function eightDirAnim(
 /**
  * Reduce a walk row's per-`<dir>` frame lists to a {@link DirectionalAnim} cutting {@link
  * DirectionalAnim.frames} frames out of each block. Valid only when every facing's list is the same
- * contiguous run `facing*stride .. facing*stride + frames - 1` - true of every extracted walk list;
- * anything else returns `undefined` and the caller keeps the whole-block reading. Pure.
+ * contiguous run `facing*stride .. facing*stride + frames - 1` - true of every viking human list.
+ * Anything else (a few animal gaits mix run lengths across directions) returns `undefined` and the
+ * caller keeps the whole-block reading, an approximation that plays block frames the list skips. Pure.
  */
 function blockAnimFromLists(
   row: BobSeqRow,

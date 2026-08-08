@@ -38,8 +38,7 @@ export interface GfxWalkAtomicRow {
   readonly goodType: number;
   readonly bodySeq: string;
   readonly headSeq?: string;
-  /** Per-facing `gfxwalkframelist` lists of local frame indices into the `bodySeq` pool - contiguous
-   *  runs that may play fewer frames than the pool's block stride holds. */
+  /** Per-facing `gfxwalkframelist` lists of local frame indices into the `bodySeq` pool. */
   readonly dirFrames?: readonly (readonly number[])[];
   /** `logicwalkspeed` - the gait's authored speed rating; no consumer yet. */
   readonly walkSpeed?: number;

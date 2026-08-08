@@ -136,13 +136,12 @@ const WAIT_ACTIONS = new Set([2, 3, 4, 5, 6, 7]);
  */
 export function gfxWaitProgramsBySeq(ir: ContentIr | null, tribe: number): Map<string, GfxAtomicProgram> {
   const bySeq = new Map<string, GfxAtomicProgram>();
+  const upgradesToBaseWait = (held: GfxAtomicProgram | undefined, mode: number | undefined): boolean =>
+    held === undefined || (held.mode !== GFX_ANIM_MODE_LOOP && mode === GFX_ANIM_MODE_LOOP);
   for (const row of ir?.gfxAtomics ?? []) {
     if (row.tribe !== tribe || !WAIT_ACTIONS.has(row.action)) continue;
     if (row.dirFrames.every((list) => list.length === 0)) continue;
-    const existing = bySeq.get(row.bodySeq);
-    if (existing !== undefined && (existing.mode === GFX_ANIM_MODE_LOOP || row.mode !== GFX_ANIM_MODE_LOOP)) {
-      continue;
-    }
+    if (!upgradesToBaseWait(bySeq.get(row.bodySeq), row.mode)) continue;
     bySeq.set(row.bodySeq, {
       dirFrames: row.dirFrames,
       ...(row.mode !== undefined ? { mode: row.mode } : {}),
@@ -151,11 +150,7 @@ export function gfxWaitProgramsBySeq(ir: ContentIr | null, tribe: number): Map<s
   return bySeq;
 }
 
-/**
- * One tribe's `gfxwalkframelist` per-`<dir>` lists, indexed by walk bobseq name (first record wins).
- * A walk list is a contiguous run per direction that may end short of the pool's block stride (the
- * baby crawl plays 12 of each 13-frame block), which the bare `[bobseq]` range cannot encode.
- */
+/** One tribe's `gfxwalkframelist` per-`<dir>` lists, indexed by walk bobseq name (first record wins). */
 export function gfxWalkFrameLists(
   ir: ContentIr | null,
   tribe: number,

@@ -251,8 +251,7 @@ export const CHARACTER_SPECS = {
   baby: {
     rosterId: 'baby',
     logicJob: JOB_BABY_MALE,
-    // The crawl is the baby's locomotion: 104 frames in ×8 13-frame blocks, of which the authored
-    // `gfxwalkframelist` plays 12 per direction.
+    // The crawl is the baby's locomotion; its authored walk lists cut the cycle short of the block.
     walkSeq: 'human_child_baby_generic_crouch',
     waitSeq: 'human_child_baby_generic_wait',
     // The baby lib's authored hotspots float its sprite bottom 4..10 px above the anchor (every other body
@@ -324,11 +323,12 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_man_Warrior_Shortbow_walk',
     waitSeq: 'human_man_Warrior_Shortbow_wait',
     attack: 'human_man_Warrior_Shortbow_attack',
-    // The shortbow body authors eat/sleep strips but no `[gfxanimatomic]` program, so both play the
-    // facing-locked strip fallback.
+    // The archer's `[gfxanimatomic]` meal/nap (job 40) binds the bare-hands body's clips - the bow
+    // disappears while he eats - and only those carry programs; the `Shortbow_eat/_sleep` strips are
+    // unreferenced by the source.
     atomics: {
-      [EAT_ATOMIC]: { seq: 'human_man_Warrior_Shortbow_eat' },
-      [SLEEP_ATOMIC]: { seq: 'human_man_Warrior_Shortbow_sleep' },
+      [EAT_ATOMIC]: { seq: 'human_man_warrior_empty_eat' },
+      [SLEEP_ATOMIC]: { seq: 'human_man_warrior_empty_sleep' },
     },
     engaged: {
       moving: 'human_man_Warrior_Shortbow_walk_agressive',
