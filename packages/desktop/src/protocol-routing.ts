@@ -23,7 +23,7 @@ export function routePathOf(host: string, rawPathname: string): string | undefin
   return `/${host}${rawPathname}`;
 }
 
-/** The queries `packages/app/src/main.ts` routes to a playable world rather than to the main menu. */
+/** The queries `packages/app/src/routes.ts` sends to a playable world rather than to the main menu. */
 const SESSION_PARAMS = ['map', 'scene'] as const;
 
 function gamePageUrl(url: string): URL | undefined {

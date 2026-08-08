@@ -36,11 +36,8 @@ export const SCENE_BOOT_PHASES = [
   'hud',
 ] as const satisfies readonly BootPhase[];
 
-export async function renderSceneMode(
-  canvas: HTMLCanvasElement,
-  sceneId: string,
-  params: URLSearchParams,
-): Promise<void> {
+export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  const sceneId = params.get('scene') ?? '';
   const scene = getScene(sceneId);
   if (scene === undefined) {
     mountUnknownSceneOverlay(

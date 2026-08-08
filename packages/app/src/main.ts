@@ -1,13 +1,6 @@
 import { installCrashCapture, logBootHeader } from './diag/index.js';
-import { renderAnimationGallery } from './entries/anim.js';
-import { renderBackdrop } from './entries/backdrop.js';
-import { renderIconGallery } from './entries/icons.js';
-import { renderMainMenu } from './entries/main-menu/index.js';
-import { renderMap } from './entries/map.js';
-import { renderSceneMode } from './entries/scene.js';
-import { renderShot } from './entries/shot.js';
-import { renderSoundGallery } from './entries/sound.js';
 import { localeParam, setActiveLocale } from './i18n/index.js';
+import { routeFor } from './routes.js';
 import { dismissBootProgress } from './view/boot-progress.js';
 
 /**
@@ -22,19 +15,8 @@ async function main(): Promise<void> {
   installCrashCapture();
   const params = new URLSearchParams(window.location.search);
   setActiveLocale(localeParam(params));
-  return route(canvas, params);
-}
-
-async function route(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
-  if (params.has('shot')) return renderShot(canvas);
-  if (params.has('backdrop')) return renderBackdrop(canvas, params);
-  const sceneId = params.get('scene');
-  if (sceneId !== null) return renderSceneMode(canvas, sceneId, params);
-  if (params.has('anim')) return renderAnimationGallery(canvas, params);
-  if (params.has('icons')) return renderIconGallery(canvas, params);
-  if (params.has('sounds')) return renderSoundGallery(canvas, params);
-  if (params.has('map')) return renderMap(canvas, params);
-  return renderMainMenu(canvas, params);
+  const run = await routeFor(params).load();
+  return run(canvas, params);
 }
 
 // A boot that throws never reaches its own `finish()`, so the progress card would sit there for good,

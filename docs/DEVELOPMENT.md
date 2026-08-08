@@ -9,7 +9,7 @@ and the test strategy in [`TESTING.md`](TESTING.md).
 npm ci                  # install the locked dependency set
 npm run dev             # browser development server
 npm run desktop         # Electron development build
-npm run build           # typecheck and build the browser app
+npm run build           # typecheck and build the browser app, then report per-mode JS size
 npm test                # normal Vitest suite
 npm test -- scenario    # tests matching a name
 npm run test:watch      # watch mode
@@ -127,6 +127,7 @@ content, never repository files; re-run the command after `npm run pipeline`.
 | does one axis (settlers, fighters) drive a system's cost? | `npm run bench:sim` |
 | did my change make it slower? | `npm run bench:compare` |
 | what does a live session spend a frame on, sim or render? | `?debug=profile` and `window.__opennorthland.perf()` |
+| how much JavaScript does a URL mode download and parse before it starts? | the table `npm run build` prints |
 
 Every report judges the machine that produced it. Numbers under an untrustworthy banner are void
 rather than weak: re-run on an idle box instead of reading them.
