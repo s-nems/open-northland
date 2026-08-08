@@ -15,10 +15,7 @@ import { createPanelStage, WORKER_OVERLAY_Z } from './stage.js';
 import { ALL_STOCK_TAB } from './stock-tabs.js';
 import { WorkerSpriteOverlay } from './worker-sprites.js';
 
-/**
- * The bottom-right selection details panel, drawn as Pixi HUD from the extracted original art. This
- * module owns the selection, hover and stock-tab state the model, layout and stage read.
- */
+/** Owns the selection, hover and stock-tab state the model, layout and stage read. */
 
 /** The panel preview rect, in on-screen px, plus the entity the live observation window centres on. */
 export type PortraitBox = PortraitInsetFrame;
@@ -94,8 +91,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const scale = Math.max(MIN_UI_SCALE, opts.uiscale ?? 1);
   const assets = await loadDetailsPanelAssets(opts.lang);
   const stage = createPanelStage({ app, assets, scale });
-  // Drawn over the baked panel's Pracownicy field so the workers advance every frame while the panel
-  // itself re-bakes at most 4 Hz.
+  // Drawn over the baked panel's Pracownicy field so the workers advance every sim tick, while the
+  // panel's own value-driven re-bakes stay throttled to 4 Hz.
   const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, WORKER_OVERLAY_Z, opts.playerColourOf);
 
   const ctx: UnitPanelModelContext = opts;
@@ -110,7 +107,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let view: PanelView = EMPTY_PANEL_VIEW;
   let hover: PanelHover = NO_PANEL_HOVER;
   /** The last known cursor position over the canvas (client coords), or null after it left, so a rebuild
-   *  can refresh a still cursor's tooltip with live values instead of the value it hovered at press. */
+   *  can refresh a still cursor's tooltip with live values. */
   let lastPointer: { clientX: number; clientY: number } | null = null;
   /** The selected stock tab; every new selection reopens on "Wszystkie". */
   let activeStockTab = ALL_STOCK_TAB;
@@ -220,8 +217,8 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     return true;
   };
 
-  /** Recompute the cursor tooltip. Called on mousemove and after each rebuild, so a held cursor's value
-   *  tracks the model at the rebuild cadence rather than per frame. */
+  /** Recompute the cursor tooltip, so a still cursor's value tracks the rebuild cadence, not the frame
+   *  rate. */
   const updateTooltip = (clientX: number, clientY: number): void => {
     if (opts.tooltip === undefined) return;
     const { x, y } = toCanvas(clientX, clientY);

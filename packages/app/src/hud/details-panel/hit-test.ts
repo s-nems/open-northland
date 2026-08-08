@@ -48,10 +48,9 @@ export const hitCraftChoice = (view: PanelView, x: number, y: number): number | 
 };
 
 /**
- * The next selection after a craft-choice click, given the worker's craftable `products` and its current
- * `selected` set. A plain click replaces the selection with the clicked product; a Ctrl/Cmd click toggles
- * it in the multi-set. Both toggle edges normalize to the `[]` all-mode, so the sim drops the component:
- * every product selected, and the last product toggled off.
+ * The next selection after a craft-choice click. A plain click replaces the selection with the clicked
+ * product; `toggle` (Ctrl/Cmd) flips it in the multi-set. Selecting every product or none normalizes to
+ * the `[]` all-mode, so the sim drops the component.
  */
 export const nextCraftGoods = (
   products: readonly number[],
@@ -79,8 +78,7 @@ export const hitPortrait = (view: PanelView, x: number, y: number): number | nul
   return contains(view.layout.preview, x, y) ? view.model.entityId : null;
 };
 
-/** The good name under a canvas point in the stock grid, or null. Probes the same slot rects the rows
- *  draw into and applies the same visible-row split, so a hovered slot names exactly the drawn good. */
+/** The good name under a canvas point in the stock grid, or null. */
 const hitStockGood = (
   view: PanelView,
   x: number,
@@ -212,8 +210,8 @@ const productionRowHint = (view: PanelView, x: number, y: number): string | null
 };
 
 /**
- * The tooltip text for a canvas point inside a non-empty panel, or null. The probes are
- * layout-kind-exclusive, so at most one hits; their order is the resolution precedence.
+ * The tooltip text for a canvas point inside a non-empty panel, or null. Each probe answers for one
+ * layout kind; where two could match a point, the order below is the resolution precedence.
  */
 export const tooltipTextAt = (
   view: PanelView,

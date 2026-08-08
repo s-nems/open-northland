@@ -3,12 +3,11 @@ import type { Rect } from '../geometry.js';
 import { type BarTone, barTone } from './model/index.js';
 
 /**
- * The details panel's recessed-groove gauge and its colour ramp. All shading strengths are
- * approximations eyeballed against the parchment panel, not sampled from the original.
+ * The details panel's recessed-groove gauge and its colour ramp. Approximation: every shading strength is
+ * eyeballed against the parchment panel, not sampled from the original.
  */
 
-/** Flat fallback fills without `content/`, banded by {@link barTone}; with it, the fill colour comes
- *  from the decoded `bar_hitpoints` level ramp instead. */
+/** Flat fallback fills without `content/`, banded by {@link barTone}. */
 const BAR_TONE_FILL: Readonly<Record<BarTone, number>> = {
   ok: 0x4f9e3c,
   warn: 0xd08a2e,
@@ -54,8 +53,8 @@ function mixColor(from: number, to: number, t: number): number {
 }
 
 /**
- * The shared bar track+fill draw. Graphics rather than the `bar_disabled` art, which cannot be tinted
- * per-sprite; the fill gradient is 1-px strips so no gradient texture leaks across panel rebuilds.
+ * Graphics rather than the `bar_disabled` art, which cannot be tinted per-sprite; the fill gradient is
+ * 1-px strips so no gradient texture leaks across panel rebuilds.
  */
 export function drawGauge(
   g: Graphics,
@@ -87,9 +86,9 @@ export function drawGauge(
     const y1 = fill.y + (fill.h * (i + 1)) / steps;
     g.rect(fill.x, y0, fill.w, y1 - y0 + 0.5).fill(color);
   }
+  g.rect(fill.x, fill.y, fill.w, line).fill({ color: 0xffffff, alpha: GAUGE_SPECULAR_ALPHA });
   // A fill reaching the track wall has no leading edge; a lip there would stack a second dark column
   // on the outline and the gauge would read short of full.
-  g.rect(fill.x, fill.y, fill.w, line).fill({ color: 0xffffff, alpha: GAUGE_SPECULAR_ALPHA });
   if (fillW > line * 2 && fillW < innerW) {
     g.rect(fill.x + fill.w - line, fill.y, line, fill.h).fill({
       color: mixColor(base, 0x000000, GAUGE_LIP_DARKEN),

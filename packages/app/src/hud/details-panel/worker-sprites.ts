@@ -21,9 +21,8 @@ import { fieldWorkers, groupedWorkers } from './worker-selection.js';
 
 /**
  * The animated worker sprites drawn in the details panel's "Pracownicy" field: the settlers the selected
- * building holds, drawn as on the map but with no terrain behind them. A live overlay one z above the
- * baked panel rather than part of the bake, because an animation must advance every frame. Without a
- * loaded {@link SpriteSheet} it draws nothing and the panel still works.
+ * building holds, drawn as on the map but with no terrain behind them. Without a loaded
+ * {@link SpriteSheet} it draws nothing and the panel still works.
  */
 
 /** A worker who has stepped inside the building stands frozen on this animation tick; 0 holds the idle
@@ -70,10 +69,10 @@ export class WorkerSpriteOverlay {
 
   /**
    * Redraw the workers of `buildingId` into `field` (screen px); a null building or field, or no sprite
-   * sheet, clears the overlay. The animation clock is `snapshot.tick`. `opts.siteCrew` selects the live
-   * build crew instead of the bound workers, and `opts.groups` (one id list per family) replaces the
-   * bound-worker scan. An empty grouping is not an override: a home still going up houses nobody yet,
-   * and blanking its field would hide the crew raising it.
+   * sheet, clears the overlay. `opts.siteCrew` selects the live build crew instead of the bound workers,
+   * and `opts.groups` (one id list per family) replaces the bound-worker scan. An empty grouping is not
+   * an override: a home still going up houses nobody yet, and blanking its field would hide the crew
+   * raising it.
    */
   update(
     snapshot: WorldSnapshot,
@@ -100,9 +99,6 @@ export class WorkerSpriteOverlay {
     // Per-slot extra left gap, in slot widths; only a family-grouped field inserts one.
     const gapBefore = grouped?.gaps;
 
-    // One scene build against the whole snapshot: `onlyRefs` narrows the emit to the field's own settlers
-    // without starving the builder's whole-snapshot pre-scans, which decide indoor state and
-    // target-derived facing. `keepIndoorSettlers` adds the workers the map suppresses, each tagged `frozen`.
     const scene = buildSpriteScene(snapshot, {
       playerColourOf: this.playerColourOf,
       keepIndoorSettlers: true,

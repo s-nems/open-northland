@@ -41,7 +41,6 @@ export interface PanelBakeOptions {
   readonly ss: number;
 }
 
-/** Draw order over the off-screen root: fills, graphics, frames, glyphs. */
 function makeLayers(into: Container): PanelLayers {
   const g = new Graphics();
   const back = new Container();
@@ -78,6 +77,5 @@ export function bakePanel(opts: PanelBakeOptions): SupersampledTexture {
       throw new Error(`unhandled panel view: ${JSON.stringify(unreachable)}`);
     }
   }
-  // Mixed source (Pixi-native fills/preview + flipY PalettedSprites), so it bakes upright.
   return baker.bake(offscreen, texW, texH, scale / ss);
 }

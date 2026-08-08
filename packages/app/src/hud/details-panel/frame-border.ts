@@ -76,8 +76,6 @@ export function createFrameBorderKit(deps: FrameBorderDeps): { frameBorder: (r: 
     }
   };
 
-  /** The rope-and-knot window border; corner placement and strip orientation are montage-calibrated
-   *  approximations. */
   const frameBorder = (r: Rect): void => {
     const e = Math.max(1, Math.round(FRAME_EDGE * scale));
     const ct = Math.round(CORNER_TOP * scale);

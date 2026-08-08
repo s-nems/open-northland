@@ -13,9 +13,7 @@ import { createTextKit, type TextKit } from './text.js';
 
 /**
  * The details panel's original-art drawing kit, created per rebuild over that rebuild's layer containers.
- * Every piece degrades to a flat parchment Graphics look when `content/` is absent. Bitmap `Texture`s
- * arrive pre-minted from `assets.ts`: minting them per rebuild would leak resize listeners on the shared
- * source.
+ * Every piece degrades to a flat parchment Graphics look when `content/` is absent.
  */
 
 /** The selected-row underline colour, sampled off the original's 1024×768 screenshots (avg #d8fb55). */
@@ -32,7 +30,8 @@ const SLOT_FILL = 0x4a2b1d;
 const ROUND_BUTTON_FILL = 0x4a2b1d;
 const ROUND_BUTTON_ACTIVE_FILL = 0x6b4426;
 
-/** Draw order inside the panel: flat fills, bitmap fills, frame sprites/icons, then text. */
+/** The panel's draw layers, back to front: `back` bitmap fills, `g` flat fills and glyph shapes,
+ *  `front` sprites and icons, `text`. */
 export interface PanelLayers {
   readonly g: Graphics;
   readonly back: Container;
@@ -69,9 +68,9 @@ export interface Chrome extends TextKit, GlyphKit {
    *  tab's representative good icon onto it. */
   tabButton(r: Rect, active: boolean): void;
   /** A progress/need bar. `'progress'` is the neutral production look; `'gauge'` takes its fill colour
-   *  from the decoded `bar_hitpoints` ramp at the current level (red when empty → green when full). */
+   *  from the decoded `bar_hitpoints` ramp at the current level. */
   bar(r: Rect, pct: number, style?: 'progress' | 'gauge'): void;
-  /** A stock amount's recessed numeric field: a subtle dark inset on the wood (not the grey bar frame). */
+  /** A stock amount's recessed numeric field: a subtle dark inset on the wood. */
   stockField(r: Rect): void;
   /** The selected building's own world bob, fitted into `r`; false when no preview art is bound. */
   buildingPreview(typeId: number, r: Rect): boolean;
@@ -138,7 +137,6 @@ export function createChrome(
     made.sprite.place(x, y, drawScale, w, h);
   };
 
-  // A good with no `ls_goods` art falls back to the generic icon, like the in-world dropped pile.
   const goodIcon = (goodId: string, r: Rect): void =>
     placeGoodIcon(assets.goods?.icon(goodId) ?? GENERIC_GOOD_ICON, r);
 
@@ -224,7 +222,7 @@ export function createChrome(
       // Approximation: the original has no disabled house buttons to copy the darkening from.
       g.rect(r.x, r.y, r.w, r.h).fill({ color: 0x000000, alpha: 0.22 });
     }
-    // Button labels use the same letterspaced caps face as the section titles (1024×768 screenshots).
+    // Button labels take the section-title size: the original draws both in one face (1024×768 screenshots).
     textCentered(label, r, hit.enabled ? 'white' : 'dimmed', 'title');
     if (hovered && hit.enabled && !onBitmap) {
       g.rect(r.x, r.y, r.w, r.h).fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
