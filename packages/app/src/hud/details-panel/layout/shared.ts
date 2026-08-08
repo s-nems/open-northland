@@ -1,13 +1,10 @@
 import { WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
 
-/**
- * The panel-wide metrics and section/panel rect builders every kind's layout is measured from, so the
- * height a section reserves and the rows it draws cannot drift apart. Metrics are design px, multiplied
- * by uiscale at build time; each is an approximation measured from native 1024×768 original screenshots.
- */
+// The panel-wide metrics and section/panel rect builders every kind's layout is measured from, so the
+// height a section reserves and the rows it draws cannot drift apart. Metrics are design px, multiplied
+// by uiscale at build time; each is an approximation measured from native 1024×768 original screenshots.
 
-/** Panel width measured off the 1024×768 original (≈322 px). */
 export const PANEL_W = 322;
 /** Gap between the panel and the screen's right/bottom edge. */
 const PANEL_MARGIN = 6;

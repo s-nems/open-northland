@@ -1,10 +1,8 @@
 import type { Rect } from '../../geometry.js';
 import type { EquipGroup, EquipRow } from '../model/index.js';
 
-/**
- * The Ekwipunek section's geometry: one labeled row per equipment group, each a label column and a line
- * of slot cells, plus the flat list of per-slot action buttons a click hit-tests against.
- */
+// The Ekwipunek section's geometry, plus the flat list of per-slot action buttons a click hit-tests
+// against.
 
 /** One labeled equipment row (Buty/Narzędzia/…): a label column + a row of slot sockets. */
 export const EQUIP_ROW_H = 24;
@@ -22,8 +20,7 @@ const EQUIP_BTN_INSET = 4;
 /** Gap between a slot's equip/swap button and its take-off cross. */
 const EQUIP_ACTION_GAP = 2;
 
-/** One labeled equipment row's geometry: its label column plus the slot sockets to its right, which may
- *  span several lines. */
+/** One row's slots may span several {@link EQUIP_ROW_H} lines. */
 export interface EquipRowRect {
   readonly label: Rect;
   readonly slots: readonly Rect[];

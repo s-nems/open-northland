@@ -70,7 +70,6 @@ export interface BuildingLayout {
   readonly panel: Rect;
   readonly general: SectionRect;
   readonly preview: Rect;
-  /** The building-name line at the top of the right column. */
   readonly name: Rect;
   /** Laid out for every building; `model.health` alone decides whether anything is drawn there. */
   readonly health: Rect;
@@ -94,11 +93,7 @@ export interface BuildingLayout {
   readonly stockCompact: boolean;
   /** Rows per column the stock body reserves ({@link MAX_STOCK_ROWS}, or the compact fitted count). */
   readonly stockRows: number;
-  /**
-   * The category-tab plate rects at the top of the stock body. Carried in the layout so the drawn plate
-   * equals its clickable rect by construction, never two independent roundings at different scales.
-   * Empty for a compact or absent stock body.
-   */
+  /** The category-tab plate rects at the top of the stock body; empty for a compact or absent one. */
   readonly stockTabHits: readonly Rect[];
   /** Always present: the bound workers for a finished building, the live crew for a construction site. */
   readonly workers: SectionRect;
@@ -106,9 +101,8 @@ export interface BuildingLayout {
 
 /**
  * The stock body's cell rects (icon + amount plate together), column-major: the left column top→bottom,
- * then the right. Both the drawn rows and the hover hit-test use this one geometry, so a hovered slot is
- * a drawn slot by construction. `s` is the caller's scale (the draw oversample or the hit scale), so the
- * same fixed metrics resolve into either space.
+ * then the right. `s` is the caller's scale (the draw oversample or the hit scale), so the same fixed
+ * metrics resolve into either space.
  */
 export function stockSlotRects(body: Rect, s: number, rowsPerColumn: number = MAX_STOCK_ROWS): Rect[] {
   const colGap = Math.round(STOCK_COL_GAP * s);
@@ -172,7 +166,6 @@ export function layoutBuilding(
   const w = Math.round(PANEL_W * s);
   const gap = Math.round(SECTION_GAP * s);
 
-  // Measure each section, then stack them bottom-anchored.
   const pad = Math.round(WIN_PAD * s);
   const buttonH = Math.round(BUTTON_H * s);
   const buttonGap = Math.round(BUTTON_GAP * s);

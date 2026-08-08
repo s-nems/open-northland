@@ -47,8 +47,7 @@ export interface GatherChoiceHit {
   readonly rect: Rect;
 }
 
-/** A craft operator's product toggle: the multi-select twin of {@link GatherChoiceHit}, sharing the same
- *  round-button grid, and a settler shows one block or the other, never both. */
+/** A craft operator's product toggle: the multi-select twin of {@link GatherChoiceHit}. */
 export interface CraftChoiceHit {
   readonly goodType: number;
   readonly label: string;
@@ -63,32 +62,26 @@ export interface SettlerLayout {
   readonly panel: Rect;
   readonly general: SectionRect;
   readonly preview: Rect;
-  /** The profession (name) line, right of the portrait. */
   readonly name: Rect;
-  /** The owner/tribe/stance meta line under the name. */
   readonly meta: Rect;
   /** One rect per `model.bars` entry (same order). */
   readonly bars: readonly Rect[];
   readonly work: SectionRect;
   /** The Praca body's two text rows (workplace, product). */
   readonly workRows: readonly Rect[];
-  /** Equals {@link assignIcon}: only the round disc is clickable, so pointing at the label does nothing. */
+  // Each `*Button` equals its `*Icon` rect: only the round disc is clickable, so pointing at the label
+  // does nothing.
   readonly assignButton: ButtonHit;
   readonly assignIcon: Rect;
   /** The assign row's description column, right of the round button. */
   readonly assignLabel: Rect;
-  /** Equals {@link homeIcon}. */
   readonly homeButton: ButtonHit;
   readonly homeIcon: Rect;
-  /** The assign-home row's description column. */
   readonly homeLabel: Rect;
-  /** Equals {@link unassignIcon}. */
   readonly unassignButton: ButtonHit;
   readonly unassignIcon: Rect;
-  /** The remove-from-home row's description column. */
   readonly unassignLabel: Rect;
   readonly gatherChoiceHits: readonly GatherChoiceHit[];
-  /** The craft product toggles, exclusive with {@link gatherChoiceHits}: they share one grid slot. */
   readonly craftChoiceHits: readonly CraftChoiceHit[];
   readonly experience: SectionRect;
   /** One row per `model.experience` entry; empty when untrained. */
@@ -108,8 +101,8 @@ export function layoutSettler(
   const w = Math.round(PANEL_W * s);
   const gap = Math.round(SECTION_GAP * s);
 
-  // Stacked sections, bottom-anchored like the building panel. Each body reserves a fixed height, since
-  // the original's human window does not fit to content; the equipment body scales with its row count.
+  // Each body reserves a fixed height, since the original's human window does not fit to content; the
+  // equipment body scales with its row count.
   const pad = Math.round(WIN_PAD * s);
   const rowH = Math.round(ROW_H * s);
   const barRowH = Math.round(BAR_ROW_H * s);
@@ -125,7 +118,7 @@ export function layoutSettler(
   // rects exist to size the wrapped round-button block.
   const bodyW = sectionAt(0, 0, w, 0, s).body.w;
   const gatherPerRow = Math.max(1, Math.floor((bodyW + gatherIconGap) / (gatherIcon + gatherIconGap)));
-  // Gather and craft choices never coexist, so the one non-empty list sizes the shared button block.
+  // Gather and craft choices never coexist; the one non-empty list sizes the block they share.
   const choiceCount = model.work.gatherChoices.length + model.work.craftChoices.length;
   const gatherRows = choiceCount > 0 ? Math.ceil(choiceCount / gatherPerRow) : 0;
   const hasGather = gatherRows > 0;
@@ -180,7 +173,6 @@ export function layoutSettler(
     w: work.body.w,
     h: rowH,
   }));
-  // Gather and craft choices share this grid, whichever list the model filled.
   const gatherTop = work.body.y + WORK_ROWS * rowH + gatherTopGap;
   const choiceRect = (i: number): Rect => ({
     x: work.body.x + (i % gatherPerRow) * (gatherIcon + gatherIconGap),
