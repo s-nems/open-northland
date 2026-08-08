@@ -3,7 +3,14 @@ import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import { closer, forEachRingOffset, manhattan, nodeKey } from '../footprint/geometry.js';
+import {
+  closer,
+  manhattan,
+  nodeKey,
+  ringOffsetCount,
+  ringOffsetDx,
+  ringOffsetDy,
+} from '../footprint/geometry.js';
 
 /**
  * Ascending entity-id order: the same canonical order `World.canonicalEntities` uses, so a distance or
@@ -97,8 +104,8 @@ export class NodeBuckets {
    * The winner matches a canonical full scan (min distance, then min entity id) because each ring is
    * finished before choosing and buckets are ascending-id, so node-iteration order cannot decide it.
    *
-   * `accept` may re-enter this method: all ring state is call-local, so do not hoist `best` or `visit`
-   * onto the instance.
+   * `accept` may re-enter this method: all ring state is call-local, so do not hoist `best` onto the
+   * instance.
    */
   nearest(
     fromX: number,
@@ -107,13 +114,12 @@ export class NodeBuckets {
     maxDist: number,
     accept: (e: Entity) => boolean,
   ): { entity: Entity; distance: number } | null {
-    let best: Entity | null = null;
-    const visit = (dx: number, dy: number): void => {
-      best = this.pickMinId(fromX + dx, fromY + dy, accept, best);
-    };
     for (let d = minDist; d <= maxDist; d++) {
-      best = null;
-      forEachRingOffset(d, visit);
+      let best: Entity | null = null;
+      const offsets = ringOffsetCount(d);
+      for (let i = 0; i < offsets; i++) {
+        best = this.pickMinId(fromX + ringOffsetDx(d, i), fromY + ringOffsetDy(d, i), accept, best);
+      }
       if (best !== null) return { entity: best, distance: d };
     }
     return null;
@@ -136,16 +142,22 @@ export class NodeBuckets {
     const found: { entity: Entity; distance: number }[] = [];
     const taken = new Set<Entity>();
     let lastRing = maxDist;
+    // Refilled per ring and drained into `found` before the next one, so one buffer serves the whole walk.
+    const ring: Entity[] = [];
     for (let d = minDist; d <= lastRing && found.length < limit; d++) {
-      const ring: Entity[] = [];
-      forEachRingOffset(d, (dx, dy) => {
-        for (const e of this.at(fromX + dx, fromY + dy)) {
+      ring.length = 0;
+      const offsets = ringOffsetCount(d);
+      for (let i = 0; i < offsets; i++) {
+        const bucket = this.at(fromX + ringOffsetDx(d, i), fromY + ringOffsetDy(d, i));
+        for (let b = 0; b < bucket.length; b++) {
+          const e = bucket[b];
+          if (e === undefined) continue; // b < length, so only for the type
           if (!taken.has(e) && accept(e)) {
             taken.add(e);
             ring.push(e);
           }
         }
-      });
+      }
       ring.sort((a, b) => a - b);
       for (const entity of ring) found.push({ entity, distance: d });
       if (found.length > 0) lastRing = Math.min(lastRing, d + NEAREST_FEW_TAIL_RINGS);
@@ -160,7 +172,10 @@ export class NodeBuckets {
     accept: (e: Entity) => boolean,
     best: Entity | null,
   ): Entity | null {
-    for (const e of this.at(x, y)) {
+    const bucket = this.at(x, y);
+    for (let i = 0; i < bucket.length; i++) {
+      const e = bucket[i];
+      if (e === undefined) continue; // i < length, so only for the type
       if (!accept(e)) continue;
       // Ascending-id bucket: the first accepted entity is already this node's smallest.
       return best === null || e < best ? e : best;
@@ -187,7 +202,7 @@ export function entityNode(world: World, terrain: TerrainGraph, e: Entity): Node
   return terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
 }
 
-export { closer, forEachRingOffset, manhattan };
+export { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy };
 
 /**
  * The 8 compass step offsets (E, W, S, N, then the diagonals). Callers index this array to make a

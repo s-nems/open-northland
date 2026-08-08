@@ -12,7 +12,7 @@ import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { buildingBlockedCells } from '../../../footprint/index.js';
-import { forEachRingOffset } from '../../../spatial/nodes.js';
+import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/nodes.js';
 import {
   bankedSlot,
   buildingProduces,
@@ -129,18 +129,17 @@ export function nearestFreeYardNode(
   const { x: cx, y: cy } = terrain.coordsOf(flagNode);
   const afterRank = after === undefined ? null : terrain.coordsOf(after);
   const afterRadius = afterRank === null ? -1 : Math.abs(afterRank.x - cx) + Math.abs(afterRank.y - cy);
-  let best: NodeId | null = null;
-  let ring = 0;
-  const visit = (dx: number, dy: number): void => {
-    if (!terrain.inBounds(cx + dx, cy + dy)) return;
-    const node = terrain.nodeAt(cx + dx, cy + dy);
-    if (ring < afterRadius || (ring === afterRadius && after !== undefined && node <= after)) return;
-    if (usable(node) && (best === null || node < best)) best = node;
-  };
   for (let r = 0; r <= GOODS_YARD_MAX_RADIUS; r++) {
-    best = null;
-    ring = r;
-    forEachRingOffset(r, visit);
+    let best: NodeId | null = null;
+    const offsets = ringOffsetCount(r);
+    for (let i = 0; i < offsets; i++) {
+      const x = cx + ringOffsetDx(r, i);
+      const y = cy + ringOffsetDy(r, i);
+      if (!terrain.inBounds(x, y)) continue;
+      const node = terrain.nodeAt(x, y);
+      if (r < afterRadius || (r === afterRadius && after !== undefined && node <= after)) continue;
+      if (usable(node) && (best === null || node < best)) best = node;
+    }
     if (best !== null) return best;
   }
   return usable(here) ? here : null;

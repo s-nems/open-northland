@@ -3,7 +3,7 @@ import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
-import { closer, forEachRingOffset, manhattan } from '../../spatial/nodes.js';
+import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../spatial/nodes.js';
 import { interactionCell } from './workplaces.js';
 
 /**
@@ -154,15 +154,14 @@ export class InteractionCellIndex {
     }
     const maxRadius = Math.min(NEAREST_RING_MAX_RADIUS, reach);
     const exhaustive = reach <= NEAREST_RING_MAX_RADIUS;
-    let best: NearestByCell<P> | null = null;
-    let ringDist = 0;
-    const visit = (dx: number, dy: number): void => {
-      best = this.pickInRing(hx + dx, hy + dy, ringDist, accept, gate, veto, onSide, best);
-    };
     for (let d = 0; d <= maxRadius; d++) {
-      best = null;
-      ringDist = d;
-      forEachRingOffset(d, visit);
+      let best: NearestByCell<P> | null = null;
+      const offsets = ringOffsetCount(d);
+      for (let i = 0; i < offsets; i++) {
+        const x = hx + ringOffsetDx(d, i);
+        const y = hy + ringOffsetDy(d, i);
+        best = this.pickInRing(x, y, d, accept, gate, veto, onSide, best);
+      }
       if (best !== null) return { best, exhaustive };
     }
     return { best: null, exhaustive };
@@ -185,7 +184,9 @@ export class InteractionCellIndex {
     if (best !== null && bucket.cell >= best.cell) return best; // can't beat a lower cell at the same distance
     if (gate !== undefined && !gate.allowsNode(bucket.cell)) return best; // the whole cell is out of bounds
     if (veto?.(bucket.cell) === true) return best; // a goal this seeker cannot reach
-    for (const e of bucket.entities) {
+    for (let i = 0; i < bucket.entities.length; i++) {
+      const e = bucket.entities[i];
+      if (e === undefined) continue; // i < length, so only for the type
       if (onSide !== undefined && !onSide(e)) continue; // another player's candidate
       const hit = accept(e);
       if (hit !== null) return { entity: e, cell: bucket.cell, distance, payload: hit.payload };

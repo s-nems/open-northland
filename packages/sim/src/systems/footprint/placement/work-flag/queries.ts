@@ -2,7 +2,7 @@ import { DeliveryFlag } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { closer, forEachRingOffset } from '../../geometry.js';
+import { closer, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../geometry.js';
 import { placementBlockerVersion } from '../blockers.js';
 import { workFlagMoveCount } from './flag-moves.js';
 import { workFlagPlacementBlocks } from './incremental-blocks.js';
@@ -61,14 +61,15 @@ export function nearestWorkFlagPlacement(
   // `(distance, node-id)` winner the reference scan below picks.
   for (let r = 0; r <= (withinRadius ?? PLACEMENT_RING_MAX_RADIUS); r++) {
     let ringBest: NodeId | null = null;
-    forEachRingOffset(r, (dx, dy) => {
-      const x = origin.x + dx;
-      const y = origin.y + dy;
-      if (!terrain.inBounds(x, y)) return;
+    const offsets = ringOffsetCount(r);
+    for (let i = 0; i < offsets; i++) {
+      const x = origin.x + ringOffsetDx(r, i);
+      const y = origin.y + ringOffsetDy(r, i);
+      if (!terrain.inBounds(x, y)) continue;
       const node = terrain.nodeAt(x, y);
-      if (!legal(node)) return;
+      if (!legal(node)) continue;
       if (ringBest === null || node < ringBest) ringBest = node;
-    });
+    }
     if (ringBest !== null) return ringBest;
   }
   if (withinRadius !== undefined) return null; // a bounded caller wants "nothing near", not a far spot

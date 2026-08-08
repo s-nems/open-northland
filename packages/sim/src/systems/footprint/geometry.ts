@@ -35,27 +35,29 @@ export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
   return Math.abs(ca.x - cb.x) + Math.abs(ca.y - cb.y);
 }
 
-/**
- * Visit every offset at Manhattan distance exactly `radius`: for each `dy` in `[-radius, radius]` the one
- * or two columns `dx = ±(radius − |dy|)` tracing the diamond; radius 0 visits `(0, 0)` alone. No bounds
- * check and no pick - each caller keeps its own. Offsets come ascending `(dy, dx)`, ascending node id on
- * the row-major grid, but every current pick is order-independent (a min-id or a sort), so that order is
- * pinned for reading, not load-bearing.
- */
-export function forEachRingOffset(radius: number, visit: (dx: number, dy: number) => void): void {
-  if (radius === 0) {
-    visit(0, 0); // special-cased so `dy` is never the `-0` that `-radius` would mint
-    return;
-  }
-  for (let dy = -radius; dy <= radius; dy++) {
-    const dxMag = radius - Math.abs(dy);
-    if (dxMag === 0) {
-      visit(0, dy);
-    } else {
-      visit(-dxMag, dy);
-      visit(dxMag, dy);
-    }
-  }
+// The offsets at Manhattan distance exactly `radius`: for each `dy` in `[-radius, radius]` the one or two
+// columns `dx = ±(radius − |dy|)` tracing the diamond; radius 0 is `(0, 0)` alone. No bounds check and no
+// pick - each caller keeps its own. Addressed by index rather than handed to a callback because every ring
+// search accumulates a winner across the ring, and a callback would heap-allocate a closure per call to
+// capture it. Offsets come ascending `(dy, dx)`, ascending node id on the row-major grid, but every current
+// pick is order-independent (a min-id or a sort), so that order is pinned for reading, not load-bearing.
+// The single-column rows take the two end indices, which is what leaves every pair starting at an odd `i`.
+
+export function ringOffsetCount(radius: number): number {
+  return radius === 0 ? 1 : 4 * radius;
+}
+
+export function ringOffsetDy(radius: number, i: number): number {
+  if (radius === 0) return 0; // special-cased so `dy` is never the `-0` that `-radius` would mint
+  if (i === 0) return -radius;
+  if (i === ringOffsetCount(radius) - 1) return radius;
+  return 1 - radius + ((i - 1) >> 1);
+}
+
+export function ringOffsetDx(radius: number, i: number): number {
+  const dxMag = radius - Math.abs(ringOffsetDy(radius, i));
+  if (dxMag === 0) return 0; // a plain 0, never the `-0` a bare `-dxMag` would mint
+  return (i & 1) === 0 ? dxMag : -dxMag;
 }
 
 /** The footprint of a building type, or undefined when the type is unknown or carries none. Keyed by
