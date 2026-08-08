@@ -11,9 +11,9 @@ export function isValidPlayer(player: number): boolean {
 }
 
 /**
- * Which player owns and controls this entity, orthogonal to the `tribe` field those components carry:
- * `tribe` decides look, rules and tech, and two players can both field vikings, so `tribe` alone cannot
- * tell them apart. An entity carrying no `Owner` is neutral.
+ * Which player owns and controls this entity, orthogonal to the `tribe` a settler, building or vehicle
+ * carries: `tribe` decides look, rules and tech, and two players can both field vikings, so `tribe` alone
+ * cannot tell them apart. An entity carrying no `Owner` is neutral.
  */
 export const Owner = defineComponent<{ player: number }>('Owner');
 

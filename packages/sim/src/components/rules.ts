@@ -57,8 +57,7 @@ export function isFogMode(mode: number): mode is FogMode {
 /**
  * The fog-of-war rules singleton - the {@link FOG_MODE} the VisionSystem runs under, kept apart from
  * {@link WorldRules} so a command stream that never touches fog leaves that value shape untouched. The
- * masks the mode drives live outside the ECS, in `Simulation.fog`; `hashState` still mixes their raw bytes
- * in after the components.
+ * masks the mode drives live outside the ECS, in `Simulation.fog`, which `hashState` mixes in too.
  */
 export const FogRules = defineComponent<{ mode: FogMode }>('FogRules');
 
