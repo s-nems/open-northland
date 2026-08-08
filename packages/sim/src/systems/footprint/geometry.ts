@@ -9,8 +9,8 @@ import { contentIndex } from '../../core/content-index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 
 // The footprint GEOMETRY primitives - node keys, node distance, footprint-cell translation and the
-// nearest-cell picks. The leaf of systems/: the node-metric helpers live here rather than in spatial/
-// because that module already imports from this one, and reach other systems re-exported through it.
+// nearest-cell picks. The leaf of systems/: it imports no sibling system module, which is why the shared
+// node-metric helpers live here and reach the rest of systems/ re-exported through spatial/nodes.ts.
 
 /** Injective per-node key for a spatial set/bucket (integer node `x`,`y`). A string so a consumer with no
  *  terrain handle (hence no map width) can still key by node, and so a negative or off-map coordinate can

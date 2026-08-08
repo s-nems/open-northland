@@ -5,10 +5,10 @@ import { createSpatialMemo } from '../spatial/memo.js';
 
 // The per-world "standing resource node at a half-cell tile" index, a spatial-memo rider maintained
 // incrementally against the Resource store's generation. `resourceAtTile` (the ground-drop → deposit
-// work-cell join) runs per pile candidate per gatherer scan, where the linear reference is a full query
-// over every resource on the map - tens of thousands on a decoded map - per call. Correctness rests on
-// Resource rows being spatially immutable: a node's Position is set at spawn and never moves, so only
-// Resource add/remove/destroy, all journaled generation bumps, can change the index.
+// work-cell join) runs per pile candidate per gatherer scan, so the index stands in for the linear
+// reference: a full query over every resource on the map - tens of thousands - per call. Correctness
+// rests on Resource rows being spatially immutable: a node's Position is set at spawn and never moves, so
+// only Resource add/remove/destroy, all journaled generation bumps, can change the index.
 
 /** tile key ({@link tileKey}) → goodType → ascending-id standing resources on that tile. Each list keeps
  *  every co-tile resource (not just the winner) so an incremental removal surfaces the runner-up. */

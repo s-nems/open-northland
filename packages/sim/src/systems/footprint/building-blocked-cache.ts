@@ -78,8 +78,8 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  *
  * Derived state, never hashed. Memoized per world on the Building store's membership and value
  * generations, so a burst of callers between two building mutations shares one build. The returned set is
- * the SHARED cached copy: membership reads only. A set union with no pick, so store-iteration order cannot
- * change it.
+ * the SHARED cached copy: membership reads only. A set union and a door subtraction, neither with a pick,
+ * so store-iteration order cannot change it.
  */
 export function buildingBlockedCells(
   world: World,

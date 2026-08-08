@@ -228,9 +228,9 @@ export function resourceWorkCell(
 /**
  * The interaction cell for a plain positioned target. A loose ground drop under a still-standing resource
  * is collected from that resource's work cell, which keeps mined goods on the intended cadence: one chip
- * drops one ore or clay at the deposit, then the collector picks it up before starting another chip. Low
- * non-blocking deposits (clay) need that rule explicitly so they are not mined dry before the first
- * pickup; a blocking deposit gets the adjacent stance anyway because its anchor is unwalkable.
+ * drops one ore or clay at the deposit, then the collector picks it up before starting another chip.
+ * Blocking deposits get the adjacent stance because their anchor is unwalkable; low non-blocking deposits
+ * (clay) still use the same work-cell rule so they are not mined dry before the first pickup.
  */
 export function positionedInteractionCell(
   world: World,
