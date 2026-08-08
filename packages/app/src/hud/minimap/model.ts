@@ -6,6 +6,7 @@ import {
 } from '@open-northland/render';
 import { FOG_STATE } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
+import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
  * The pure half of the minimap window: the bottom-left layout inside the braided frame, the
@@ -53,7 +54,7 @@ export interface MinimapLayout {
  * matters, and it is recomputed per frame rather than through a resize listener.
  */
 export function minimapLayout(bounds: WorldBounds, screenH: number, uiscale: number): MinimapLayout {
-  const artScale = MINIMAP_ART_SCALE * Math.max(1, uiscale);
+  const artScale = MINIMAP_ART_SCALE * Math.max(MIN_UI_SCALE, uiscale);
   const panel: Rect = {
     x: 0,
     y: screenH - FRAME_NATIVE.h * artScale,

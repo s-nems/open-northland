@@ -11,7 +11,7 @@ export type MenuMode = 'closed' | 'menu' | 'jobs';
 export interface SettlerActionsOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** UI scale from `?uiscale=`, multiplied into the menu geometry. May be fractional. */
+  /** The resolved HUD scale, multiplied into the menu geometry. May be fractional. */
   readonly uiscale: number;
   /** The caller memoizes the result per frame, so the open ring may ask every frame. */
   readonly selectionCentre: (snapshot: WorldSnapshot) => SelectionCentre | null;

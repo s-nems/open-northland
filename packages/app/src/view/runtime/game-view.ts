@@ -21,7 +21,8 @@ import { pickerEntries } from '../../catalog/professions.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
-import { buildToolPanelLayout, DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
+import { buildToolPanelLayout } from '../../hud/tool-panel/layout.js';
+import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
@@ -37,6 +38,7 @@ import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { createFogGates } from '../projections/index.js';
+import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls } from '../unit-controls/index.js';
@@ -117,8 +119,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     window.location.search = menuSearch();
   };
 
-  // Fractional values are allowed; the consumers clamp to >= 1.
-  const uiscale = floatParam(params, 'uiscale', DEFAULT_UI_SCALE);
+  // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; otherwise the scale follows
+  // the canvas height at launch times the stored interface-scale factor. Fractional values are allowed.
+  const uiscale = floatParam(
+    params,
+    'uiscale',
+    uiScaleFor(app.screen.height, readStoredSettings().uiScaleFactor),
+  );
 
   const lang = currentLocale();
   // `?speed=` seeds the wall-clock multiplier; the tool panel's speed button then drives it live.

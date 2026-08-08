@@ -1,12 +1,13 @@
 import { contains, type Rect } from '../geometry.js';
+import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
  * The left in-game tool panel's geometry, pinned to the original.
  *
  * Every rect below maps into the original's 640×480–1024×768 design space, provisional until checked
- * against the running original. The strip anchors top-left and scales by `uiscale`, clamped ≥1 and
- * fractional-allowed. `gfx` is the original engine gfx id, which for `ls_gui_window` equals the atlas
- * frame id (firstBobId=0).
+ * against the running original. The strip anchors top-left and scales by `uiscale`, floored at
+ * `MIN_UI_SCALE` and fractional-allowed. `gfx` is the original engine gfx id, which for
+ * `ls_gui_window` equals the atlas frame id (firstBobId=0).
  */
 
 /** The tool buttons, identified by the checked-in atlas-map semantic name (`content/gui-atlas-map.ts`). */
@@ -69,7 +70,7 @@ export interface PlacedButton extends ToolButtonSpec {
 }
 
 export interface ToolPanelLayout {
-  /** The scale actually applied: clamped ≥1, may be fractional. */
+  /** The scale actually applied: floored at `MIN_UI_SCALE`, may be fractional. */
   readonly scale: number;
   readonly stripGfx: number;
   readonly strip: PlacedRect;
@@ -80,13 +81,6 @@ export interface ToolPanelLayout {
   /** The strip and buttons' bounding box in design space; it sizes the off-screen supersample texture. */
   readonly designBounds: DesignRect;
 }
-
-/**
- * The default UI scale. The pinned strip is 433 design px tall, so at 1× it already fills roughly half a
- * modern window; 1.4× is an approximation chosen for readability at a typical window size. `?uiscale=`
- * overrides it and fractional values are allowed.
- */
-export const DEFAULT_UI_SCALE = 1.4;
 
 function scaleRect(r: DesignRect, s: number): PlacedRect {
   return { x: r.x * s, y: r.y * s, w: r.w * s, h: r.h * s };
@@ -108,8 +102,8 @@ function unionDesign(rects: readonly DesignRect[]): DesignRect {
 }
 
 /** Resolve the pinned design-space geometry to screen px at `uiscale`, anchored top-left. */
-export function buildToolPanelLayout(uiscale: number = DEFAULT_UI_SCALE): ToolPanelLayout {
-  const scale = Math.max(1, uiscale);
+export function buildToolPanelLayout(uiscale: number): ToolPanelLayout {
+  const scale = Math.max(MIN_UI_SCALE, uiscale);
   const strip = scaleRect(TOOL_PANEL_STRIP, scale);
   const buttons = TOOL_BUTTONS.map((spec) => ({ ...spec, placed: scaleRect(spec.rect, scale) }));
   return {

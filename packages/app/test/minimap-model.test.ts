@@ -18,6 +18,7 @@ import {
   viewportRectOnMinimap,
   worldToMinimap,
 } from '../src/hud/minimap/model.js';
+import { MIN_UI_SCALE } from '../src/hud/ui-scale.js';
 import { cameraCenteredOnWorld } from '../src/view/camera/index.js';
 
 const UISCALE = 1.4;
@@ -44,11 +45,12 @@ describe('minimapLayout', () => {
     expect(layout.map.y).toBeGreaterThanOrEqual(layout.inner.y);
   });
 
-  it('scales the whole window with the UI scale and clamps it at 1', () => {
+  it('scales the whole window with the UI scale and floors a too-small one', () => {
     const one = minimapLayout(bounds, 800, 1);
+    const floored = minimapLayout(bounds, 800, MIN_UI_SCALE);
     const half = minimapLayout(bounds, 800, 0.5);
     const two = minimapLayout(bounds, 800, 2);
-    expect(half.panel.w).toBe(one.panel.w);
+    expect(half.panel.w).toBe(floored.panel.w);
     expect(two.panel.w).toBeCloseTo(one.panel.w * 2);
   });
 

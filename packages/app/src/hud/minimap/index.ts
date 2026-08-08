@@ -59,7 +59,7 @@ export interface MinimapOptions {
   readonly colourOf?: ((typeId: number) => number | undefined) | undefined;
   /** Owner slot → team-colour slot for the unit/building dots; absent means identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
-  /** The HUD scale (`?uiscale=`, clamped ≥1). */
+  /** The resolved HUD scale; the layout floors it at `MIN_UI_SCALE`. */
   readonly uiscale: number;
   /** The live camera (for the view rectangle). */
   readonly camera: () => Camera;

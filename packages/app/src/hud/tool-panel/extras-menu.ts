@@ -1,6 +1,7 @@
 import { components } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
+import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
  * The extras ("chest") window model: the assistant/plans tabs, the counter and grant controls, their
@@ -200,7 +201,7 @@ const GRANT_IDS: readonly AssistantGrantId[] = ['giveBoots', 'giveWoodenTools', 
  */
 export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayout {
   // Kept fractional, like the text runs, so a long grant label cannot overrun its switch.
-  const s = Math.max(1, opts.scale);
+  const s = Math.max(MIN_UI_SCALE, opts.scale);
   const { originX, originY, tab, state } = opts;
   const labels = messages().hud.extras;
 

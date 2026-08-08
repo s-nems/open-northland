@@ -3,8 +3,9 @@
  * navigation, so no entry re-declares its own parser.
  */
 
-/** The player-facing settings that survive a menu/game switch; every other param is dropped. */
-export const CARRIED_PARAMS = ['lang', 'uiscale', 'speed', 'fog', 'progression', 'sound', 'debug'] as const;
+/** The player-facing settings that survive a menu/game switch; every other param is dropped. The
+ *  `?uiscale` diagnostic pin is deliberately not carried: sticky, it would mask the scale setting. */
+export const CARRIED_PARAMS = ['lang', 'speed', 'fog', 'progression', 'sound', 'debug'] as const;
 export type CarriedParam = (typeof CARRIED_PARAMS)[number];
 
 export function carriedParams(current = new URLSearchParams(window.location.search)): URLSearchParams {

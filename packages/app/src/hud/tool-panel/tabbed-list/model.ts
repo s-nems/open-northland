@@ -1,4 +1,5 @@
 import { contains, type Rect } from '../../geometry.js';
+import { MIN_UI_SCALE } from '../../ui-scale.js';
 
 /**
  * The tabbed-list window model: a titled parchment window with a tab grid over a scrollable,
@@ -40,7 +41,7 @@ export function chromeAboveList(tabCount: number, tabColumns: number): number {
 /** The screen-px width of every tabbed-list window, fixed per scale so a controller knows its x-span
  *  before it has a layout. */
 export function tabbedListWindowWidth(scale: number): number {
-  return Math.round(WINDOW_W * Math.max(1, scale));
+  return Math.round(WINDOW_W * Math.max(MIN_UI_SCALE, scale));
 }
 
 /** A listed item: the window needs only its label, and the caller keys everything else. */
@@ -120,7 +121,7 @@ export function layoutTabbedList<Id, Item>(
 ): TabbedListLayout<Id, Item> {
   // Kept fractional like every other HUD surface: a window that snapped to an integer here would draw
   // at a visibly different size beside the strip. The original's own scaling rule is undecoded.
-  const s = Math.max(1, opts.scale);
+  const s = Math.max(MIN_UI_SCALE, opts.scale);
   const { originX, originY, selected, items, tabColumns } = opts;
   const px = (v: number): number => Math.round(v * s);
   const total = items.length;

@@ -5,22 +5,23 @@ import { progressionOverride } from '../src/game/progression.js';
 
 describe('targetSearch', () => {
   it('carries only player-facing game settings into the selected entry', () => {
+    // `uiscale=1.75` is dropped with the other diagnostics: the pin must not outlive its entry.
     const current = new URLSearchParams(
       'lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&debug=geometry&zoom=2&sound=off&atlas=none&terrain=off&objects=off&nosuchparam=1',
     );
 
     expect(targetSearch('?map=blekiny_nurt', current)).toBe(
-      '?lang=eng&uiscale=1.75&speed=6&fog=recon&progression=off&sound=off&debug=geometry&map=blekiny_nurt',
+      '?lang=eng&speed=6&fog=recon&progression=off&sound=off&debug=geometry&map=blekiny_nurt',
     );
   });
 
   it('never carries a stale fog or progression choice into a scene', () => {
     // A quit-to-menu carries the last game's fog/progression; a scene's authored fixture owns both.
-    const current = new URLSearchParams('lang=pol&fog=reveal&progression=off&uiscale=1.75');
-    expect(targetSearch('?scene=goods-catalog', current)).toBe('?lang=pol&uiscale=1.75&scene=goods-catalog');
+    const current = new URLSearchParams('lang=pol&fog=reveal&progression=off&speed=2');
+    expect(targetSearch('?scene=goods-catalog', current)).toBe('?lang=pol&speed=2&scene=goods-catalog');
     // An explicit fog in the entry itself still wins (hand-typed URLs bypass the menu).
     expect(targetSearch('?scene=goods-catalog&fog=off', current)).toBe(
-      '?lang=pol&uiscale=1.75&scene=goods-catalog&fog=off',
+      '?lang=pol&speed=2&scene=goods-catalog&fog=off',
     );
   });
 
