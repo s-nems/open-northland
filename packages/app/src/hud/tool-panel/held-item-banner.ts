@@ -3,7 +3,7 @@ import { drawWindowPanel, WIN_PAD, WIN_TITLE_H } from '../chrome.js';
 import type { TextRun } from '../text-run.js';
 import type { PanelContext } from './context.js';
 
-/** Banner width in design px, sized to fit the held-item hint in font10. */
+/** Banner width in design px, sized to fit the held-item hint at the HUD text size. */
 const BANNER_WIDTH = 260;
 /** Banner top offset + text inset (design px). */
 const BANNER_OFFSET_Y = 2;

@@ -58,10 +58,8 @@ const countersEqual = (
   b: Readonly<Record<AssistantCounterId, AssistantCounterFace>>,
 ): boolean => COUNTER_IDS.every((id) => !faceDiffers(a[id], b[id]));
 
-/**
- * The grant switches' sim seam: the faces mirror the sim's per-player grant list and a click writes one
- * `setAssistantGrant` command per mapped good.
- */
+/** The grant switches' sim seam, read on open: a click writes one `setAssistantGrant` command per
+ *  mapped good. */
 export interface ExtrasGrantsSeam {
   /** The live per-switch state; a switch is ON when every good it flips is granted. */
   read(): Readonly<Record<AssistantGrantId, boolean>>;
@@ -70,8 +68,8 @@ export interface ExtrasGrantsSeam {
 }
 
 /**
- * The counters' sim seam: the faces mirror the sim's per-player counter block, which drains as the queue
- * produces, so the window re-reads it every frame.
+ * The counters' sim seam: the sim's per-player counter block drains as the queue produces, so the window
+ * re-reads it every frame.
  */
 export interface ExtrasCountersSeam {
   read(): Readonly<Record<AssistantCounterId, AssistantCounterFace>>;
@@ -93,18 +91,13 @@ export interface ExtrasWindow extends ToolWindow {
   place(): void;
 }
 
-/**
- * Build the extras-window controller: the whole window is rebuilt on open and on any control click.
- * Both control blocks live in the sim, with grants read on open and counters re-read every frame, each
- * written through its seam on click with a local echo while the command applies next tick.
- */
+/** Build the extras-window controller; the whole window is rebuilt on open and on any control click. */
 export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   const { ctx } = deps;
   const { scale } = ctx;
   const shell = createWindowShell(deps.container);
   const back = new Container();
   shell.container.addChildAt(back, 0); // the tiled bitmap fills, behind the shell's frame Graphics
-  // Right of the strip, dropping from the extras button, which clears the top-left debug overlay.
   const origin = {
     x: ctx.layout.width + WIN_PAD * scale,
     y: ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y,
@@ -116,8 +109,8 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   /** Screen position per run, same order as `shell.runs` - `place()` replays them. */
   let runsAt: { x: number; y: number }[] = [];
   /** The live counter block as read at the last local write. While the sim still shows exactly this
-   *  block the write has not applied, so the click's echo must hold; any live change clears it. With
-   *  several writes pending the face may briefly show an intermediate value, an accepted transient. */
+   *  block the write has not applied, so the click's echo must hold; any live change clears it. Several
+   *  pending writes can briefly show an intermediate value, an accepted transient. */
   let echoBase: AssistantState['counters'] | null = null;
 
   const clear = (): void => {
@@ -134,7 +127,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     runsAt.push({ x: Math.round(x), y: Math.round(y) });
   };
 
-  /** Queue a run centred in `rect` (native-px width scaled for screen px, cap height for the y). */
+  /** Queue a run centred in `rect`. */
   const addRunCentred = (text: string, color: 'white' | 'dimmed', rect: Rect, px?: number): void => {
     const run = ctx.makeText(text, color, px);
     shell.container.addChild(run.container);
@@ -145,7 +138,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     });
   };
 
-  /** The row's card plate inside its slot - inset vertically so consecutive cards read as separate. */
+  /** The row's card plate inside its slot. */
   const cardRect = (slot: Rect): Rect => ({
     x: slot.x,
     y: Math.round(slot.y + CARD_INSET_Y * scale),
@@ -170,7 +163,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     shell.graphics.stroke({ color: CLOSE_X_COLOR, width: Math.max(1, scale) });
   };
 
-  /** The lemniscate as two stroked circles - drawn, not text: the decoded bitmap font has no '∞'. */
+  /** The lemniscate as two stroked circles - drawn, not text: the HUD font subsets carry no '∞'. */
   const drawInfinityGlyph = (r: Rect): void => {
     const radius = Math.max(2, r.h / 5);
     const cx = r.x + r.w / 2;
@@ -184,13 +177,11 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     menuLayout = layoutExtrasMenu({ originX: origin.x, originY: origin.y, scale, tab, state });
     const layout = menuLayout;
 
-    // Window body: tiled wood, framed in gilt (flat warm fill when the bitmap is absent).
     if (!tileBitmap(back, ctx.bitmaps.bg, layout.window, scale)) {
       shell.graphics.rect(layout.window.x, layout.window.y, layout.window.w, layout.window.h).fill(WOOD_FILL);
     }
     drawWindowFrame(shell.graphics, layout.window, scale);
 
-    // Headline band: tiled rust (flat fill fallback), inset so the frame reads around it.
     const inset = Math.round(HEADLINE_INSET * scale);
     const band: Rect = {
       x: layout.titleRect.x + inset,
@@ -266,8 +257,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
 
   const place = (): void => {
     if (menuLayout === null) return;
-    // The sim drains counters as the queues produce; mirror that without waiting for a reopen, and
-    // rebuild only when a face actually changed.
+    // Rebuild only when a live face actually changed.
     const live = deps.counters.read();
     if (echoBase === null || !countersEqual(live, echoBase)) {
       echoBase = null; // the sim moved: whatever we wrote is applied or overtaken, so show live
@@ -337,7 +327,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
         }
         case 'grant':
           if (deps.grants.set(hit.id, !state.grants[hit.id])) {
-            state = toggleGrant(state, hit.id); // local echo; the command applies next sim tick
+            state = toggleGrant(state, hit.id); // local echo
             rebuild();
           }
           break;

@@ -3,13 +3,12 @@ import { MIN_UI_SCALE } from '../../ui-scale.js';
 
 /**
  * The tabbed-list window model: a titled parchment window with a tab grid over a scrollable,
- * row-quantized list, resolved from a screen origin and scale. The build menu and the goods drop palette
- * are this window with a different tab source and row projector.
+ * row-quantized list, resolved from a screen origin and scale.
  */
 
-// Metrics in design px, scaled by uiscale. Approximations: the original's window metrics are not
-// decoded, so these are the build menu's proportions adopted as the shared set, and only the label
-// widths they must clear are measured.
+// Metrics in design px, scaled by uiscale. Approximation: the original's window metrics are not decoded,
+// so these are the build menu's proportions adopted as the shared set, and only the label widths they
+// must clear are measured.
 
 const PAD = 6;
 /** The rust title band across the top of the window. */
@@ -24,13 +23,14 @@ const CLOSE = 13;
 const SCROLLBAR_W = 8;
 /** Minimum scrollbar-thumb length so a long list's thumb stays grabbable. */
 const THUMB_MIN = 12;
-/** The width seed, not a laid-out size: the column the widest tab label must clear ("Wszystko" = 55
- *  native px in font10) plus padding. Actual tabs are `contentWidth / tabColumns` wide. */
+/** The width seed, not a laid-out size: the column the widest tab label must clear, measured as 55 px
+ *  for "Wszystko" in the original's font10 face, plus padding. Actual tabs are `contentWidth /
+ *  tabColumns` wide. */
 const TAB_COLUMN_W = 62;
 /** How many seed columns the window holds - the build menu's five categories, its widest tab grid. */
 const WIDTH_COLUMNS = 5;
-/** Every tabbed-list window is this wide whatever its own tab count (the grid divides the content
- *  width), so the pop-ups read as one window wherever they open. */
+/** Every tabbed-list window is this wide whatever its own tab count, so the pop-ups read as one window
+ *  wherever they open. */
 const WINDOW_W = WIDTH_COLUMNS * TAB_COLUMN_W + 2 * PAD;
 
 /** Design-px chrome above the list for a `tabCount`-tab grid `tabColumns` wide. */
@@ -44,7 +44,7 @@ export function tabbedListWindowWidth(scale: number): number {
   return Math.round(WINDOW_W * Math.max(MIN_UI_SCALE, scale));
 }
 
-/** A listed item: the window needs only its label, and the caller keys everything else. */
+/** A listed item: the window needs only its label. */
 export interface TabbedListItem {
   readonly label: string;
 }
@@ -119,8 +119,8 @@ export interface TabbedListLayoutOptions<Id, Item> {
 export function layoutTabbedList<Id, Item>(
   opts: TabbedListLayoutOptions<Id, Item>,
 ): TabbedListLayout<Id, Item> {
-  // Kept fractional like every other HUD surface: a window that snapped to an integer here would draw
-  // at a visibly different size beside the strip. The original's own scaling rule is undecoded.
+  // Kept fractional like every other HUD surface; snapping to an integer here would draw the window at a
+  // visibly different size beside the strip. The original's own scaling rule is undecoded.
   const s = Math.max(MIN_UI_SCALE, opts.scale);
   const { originX, originY, selected, items, tabColumns } = opts;
   const px = (v: number): number => Math.round(v * s);

@@ -21,8 +21,7 @@ export interface ToolWindow {
 }
 
 /**
- * The open/close plumbing shared by every tool-panel pop-up: an open flag, the text runs, and one
- * `Graphics` buffer inside a container of the window's own. Each window keeps its own layout, rebuild,
+ * The open/close plumbing shared by every tool-panel pop-up. Each window keeps its own layout, rebuild,
  * hit-test, and any extra draw layers it parents inside `container`.
  */
 export interface WindowShell {

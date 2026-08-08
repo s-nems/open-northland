@@ -21,21 +21,14 @@ import { buildOutlinedButtonSpecs } from './strip-outline.js';
 import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip } from './strip-texture.js';
 import { createToolWindows } from './windows.js';
 
-/**
- * The left in-game tool panel: the retained screen-space HUD that draws the original toolbar strip, the
- * tool buttons, the game-speed button, and the pop-up windows, and claims the clicks landing on it so they
- * never fall through to world picking. Without decoded GUI art it degrades to flat `Graphics` blocks at
- * the same pinned geometry, staying visible and fully interactive.
- */
-
 export interface ToolPanelOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   /** The resolved HUD scale; the pinned internal geometry is multiplied by this. May be fractional. */
   readonly uiscale: number;
-  /** The buildings the menu lists (typeId + label + kind) - e.g. derived from the viking catalog. */
+  /** The buildings the build menu lists. */
   readonly buildings: readonly MenuBuildingEntry[];
-  /** The goods the drop palette lists (goodType + id + label) - the whole content catalog. */
+  /** The goods the drop palette lists. */
   readonly goods: readonly MenuGoodEntry[];
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
@@ -43,10 +36,10 @@ export interface ToolPanelOptions {
   readonly tribe: number;
   /** The player slot a placed building is owned by. */
   readonly owner: number;
-  /** Submit a command into the sim (the one-way seam) - the building menu's `placeBuilding`. */
+  /** Submit a seat command into the sim. */
   readonly enqueue: (command: PlayerCommand) => void;
   /** The goods palette's seam. Dropping a loose pile materializes goods from nothing, so it is a
-   *  trusted world edit the shipped HUD hands every seat, not an order a seat is entitled to issue. */
+   *  trusted world edit the HUD hands every seat, not an order a seat is entitled to issue. */
   readonly enqueueAdmin: (command: Command) => void;
   /** The chest window's grant-switch seam (reads the sim's assistant grants, toggles one). */
   readonly grants: ExtrasGrantsSeam;
@@ -54,41 +47,34 @@ export interface ToolPanelOptions {
   readonly counters: ExtrasCountersSeam;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
-  /** The sim's live placement rule (`Simulation.placementProbe`); gates the placement click so one on
-   *  rejecting ground is inert instead of enqueueing a command the sim would drop. */
+  /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
-  /** Apply a game-speed change to the app loop; a pause toggle must not overwrite the loop's
-   *  wall-clock multiplier. */
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** Client (CSS px) → Pixi screen px mapper, shared with the unit controls. */
   readonly screenScale: (canvas: HTMLCanvasElement) => { sx: number; sy: number; rect: DOMRect };
-  /** True when a higher HUD overlay covers this client point. The panel yields the left click there so
-   *  hit priority follows draw order and a press on the visible overlay never reaches a covered button
-   *  or an active placement. Right-click (cancel placement) is deliberately not deferred. */
+  /** True when a higher HUD overlay covers this client point; the panel yields the left click there so
+   *  hit priority follows draw order. Right-click (cancel placement) is deliberately not deferred. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
   /** That same overlay's box, which the pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
-  /** Open the in-game system menu; the panel invokes the callback and never owns the session itself. */
   readonly onSystemMenu?: () => void;
 }
 
 export interface ToolPanelController {
   /** True when a client point should be claimed by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
-  /** True when a client point is over an open pop-up window: the surface that owns the wheel and that
-   *  edge scrolling yields to. Excludes the strip and active placement, unlike `claimsPointer`. */
+  /** True when a client point is over an open pop-up window, which owns the wheel; unlike
+   *  `claimsPointer` this excludes the strip and active placement. */
   claimsWheel(clientX: number, clientY: number): boolean;
   /** The building typeId currently being placed, or null when not in build mode. */
   placementType(): number | null;
-  /**
-   * Per-frame hook. The HUD layout arrives as an accessor, not a value, so a closed window never runs
-   * its `buildHud` scan.
-   */
+  /** Per-frame hook; the HUD layout arrives as an accessor so a closed window never runs its
+   *  `buildHud` scan. */
   update(hudFor: () => HudLayout): void;
   dispose(): void;
 }
 
-/** Fallback strip / button block colours (only used when the decoded GUI art is absent). */
+/** Strip and button block colours drawn when the decoded GUI art is absent. */
 const FALLBACK_STRIP = 0x1c1810;
 const FALLBACK_BUTTON = 0x4a3f28;
 const FALLBACK_BUTTON_BORDER = 0x8a744a;
@@ -125,20 +111,17 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const bannerContainer = new Container();
   root.addChild(stripContainer, windowContainer, hoverContainer, bannerContainer);
 
-  // The real art path rasterizes the strip and buttons into an off-screen texture at an integer
-  // oversample and draws it linear-downscaled to the fractional `uiscale`.
   let supersampled: SupersampledStrip | null = null;
   /** The renderer resolution the strip was baked at; a live DPR change re-bakes at the new density. */
   let stripResolution = app.renderer.resolution;
-  /** The speed button's outline stamps and glyph; a speed change re-frames all of them. */
   const speedSprites: PalettedSprite[] = [];
 
   const buildStrip = (guiArt: GuiArt): void => {
     supersampled?.display.destroy();
     supersampled?.dispose();
     speedSprites.length = 0;
-    // The strip keys its near-black backdrop away, so the world shows past the carved silhouette: a
-    // deviation from the original's opaque panel.
+    // Deviation from the original's opaque panel: the strip keys its near-black backdrop away, so the
+    // world shows past the carved silhouette.
     const specs: StripSpriteSpec[] = [];
     const strip = makeGuiSprite(guiArt, layout.stripGfx, {
       defaultPalette: 'iconsleft',
@@ -193,7 +176,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     enqueue: opts.enqueueAdmin,
     screenToTile: opts.screenToTile,
   });
-  /** The modes that claim the canvas until the player commits or cancels them. */
   const held: readonly HeldMode[] = [placement, goodsDrop];
 
   const windows = createToolWindows({
@@ -252,7 +234,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     return held.some((mode) => mode.isActive());
   };
 
-  speedButton.syncGlyph(); // graphic only: the loop keeps the entry's seeded speed
+  speedButton.syncGlyph();
 
   const claimsWheel = (clientX: number, clientY: number): boolean => {
     const { x, y } = toCanvas(clientX, clientY);
@@ -264,8 +246,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     claimsWheel,
     placementType: () => placement.activeType(),
     update(hudFor): void {
-      // The strip is a static baked sprite; it only re-bakes when a DPR change moves the renderer
-      // resolution, so its oversample keeps targeting the live device density.
       if (art !== null && app.renderer.resolution !== stripResolution) {
         buildStrip(art);
         speedButton.syncGlyph();

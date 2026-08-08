@@ -57,7 +57,7 @@ export function clearFills(back: Container): void {
   for (const child of back.removeChildren()) child.destroy();
 }
 
-/** Paint the window and queue its text runs in the order {@link placeRuns} replays. */
+/** Paint the window and queue its text runs in the order `placeRuns` replays. */
 export function paintWindow<Id, Item extends TabbedListItem>(
   layers: TabbedListLayers,
   layout: TabbedListLayout<Id, Item>,

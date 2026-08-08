@@ -1,9 +1,8 @@
 // The game-speed button state machine, pinned to the original's speed button. Each visible state maps to
-// an app-side tick multiplier, since the sim tick stays fixed at `TICKS_PER_SECOND`. Exact cycling
-// behavior is unconfirmed against the running original.
+// an app-side tick multiplier, since the sim tick stays fixed at `TICKS_PER_SECOND`.
 //
-// The control model is a named deviation: a click cycles only the running speeds, never into pause, and
-// pause is a separate toggle.
+// Approximation: a click cycles only the running speeds, never into pause, and pause is a separate
+// toggle. Exact cycling behavior is unconfirmed against the running original.
 
 export type GameSpeedState = 'normal' | 'fast' | 'faster' | 'paused';
 
@@ -69,10 +68,8 @@ export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedContro
  */
 export type GameSpeedChangeCause = 'cycle' | 'pause-toggle';
 
-/**
- * The cause a speed-button click reports, from the pre-click control: a click while paused is an
- * un-pause, so it carries `'pause-toggle'` and both resume gestures behave alike.
- */
+/** The cause a click reports, from the pre-click control: a click while paused is an un-pause, so both
+ *  resume gestures behave alike. */
 export function gameSpeedClickCause(control: GameSpeedControl): GameSpeedChangeCause {
   return control.paused ? 'pause-toggle' : 'cycle';
 }
