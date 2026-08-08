@@ -40,10 +40,8 @@ export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind
 
 /**
  * The hitpoint pool a settler carries before its tribe's adult pool applies: every baby and child, and an
- * adult whose tribe declares no pool. Authored: every human carries a {@link Health} pool, so the panel can
- * show it, a soldier can strike a civilian, and starvation can drain one. Approximation: a human's hitpoints
- * are below the readable `.ini`, and 300 is the sandbox scale the combat scenes and admin palette use. The
- * child-to-adult ratio this implies is uncalibrated.
+ * adult whose tribe declares no pool. An authored fallback scale; the child-to-adult ratio it implies is
+ * uncalibrated.
  */
 export const DEFAULT_SETTLER_HITPOINTS = 300;
 
@@ -101,22 +99,17 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   const adultPool = tribeHitpoints > 0 ? tribeHitpoints : DEFAULT_SETTLER_HITPOINTS;
   const hitpoints = override ?? (young ? DEFAULT_SETTLER_HITPOINTS : adultPool);
   world.add(e, Health, { hitpoints, max: hitpoints });
-  // An incoming hit selects this tier's `weaponDamageVsMaterial` column instead of the unarmored class 0.
   if (spec.armorClass !== undefined && spec.armorClass > 0) {
     world.add(e, Armor, { armorClass: spec.armorClass });
   }
-  // The CombatSystem resolves this settler's attack through the named weapon rather than the default
-  // `(tribe, jobType)` first-match.
   if (spec.weaponTypeId !== undefined && spec.weaponTypeId > 0) {
     world.add(e, Weapon, { weaponTypeId: spec.weaponTypeId });
   }
-  // The player-facing inventory, independent of the combat `Weapon`/`Armor` above. `!= null` because a
-  // command is the replay wire format, where an explicit `null` also means "no equipment".
+  // Loose `!= null` because a command is the replay wire format, where an explicit `null` also means
+  // "no equipment".
   if (spec.equipment != null) {
     world.add(e, Equipment, equipmentFromCommand(spec.equipment));
   }
-  // `perTick = ONE/moveSpeed` in ticks per tile, so a larger `moveSpeed` walks slower. Absent walks at
-  // MOVE_SPEED_PER_TICK.
   if (spec.moveSpeed !== undefined && spec.moveSpeed > 0) {
     world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)) });
   }

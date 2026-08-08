@@ -97,7 +97,7 @@ export function drainPathRequests(
       }
     }
     if (path === null) {
-      world.mut(e, PathRequest).failed = true; // signal the planner; keep the request so it isn't silently re-issued
+      world.mut(e, PathRequest).failed = true;
       // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on
       // a cell centre rather than freezing mid-leg.
       continue;
@@ -159,10 +159,7 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Ar
   return waypoints;
 }
 
-/**
- * Run A* for a request. A request is boundary input, so a node id outside the graph reads as no route
- * rather than throwing inside the heuristic.
- */
+/** Run A* for a request; an off-grid `start` or `goal` reads as no route. */
 function resolvePath(
   terrain: TerrainGraph,
   start: number,

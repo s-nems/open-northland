@@ -29,7 +29,7 @@ const HERD_COUNT_CAP = 100;
  * {@link HerdMember} leader. A tribe with no `animaltypes` record is bad input.
  *
  * Source basis: group size, HP pool, birth-point range, leader presence, and `movespeed` are the verbatim
- * extracted `animaltypes.ini` params. `runspeed` is deliberately not consumed, since no run gait exists.
+ * extracted `animaltypes.ini` params.
  *
  * Approximations: the scatter pattern, pushing a member off blocked ground, spawning adult at
  * `jobType: null` with no weapon binding, the one-shot placement with no respawn or territory upkeep, and
@@ -52,7 +52,6 @@ export function spawnAnimalHerd(
   // Approximation: no swarm-effect layer exists yet.
   if (hitpoints <= 0) return;
 
-  // `movespeed` N walks ONE/N tile per tick; a record omitting it walks at the universal settler default.
   const locomotion = locomotionOf(ctx.content, command.tribe);
   const walkSpeed = locomotion?.walkSpeed ?? 0;
   const movePace = walkSpeed > 0 ? fx.div(ONE, fx.fromInt(walkSpeed)) : null;
