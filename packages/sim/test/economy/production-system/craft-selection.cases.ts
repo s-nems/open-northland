@@ -136,7 +136,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     // veteran path is every other case in this file.
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f, smith } = forge(sim, 4);
-    sim.world.get(smith, Settler).experience.delete(WOOD_TRACK); // back to unearned
+    sim.world.mut(smith, Settler).experience.delete(WOOD_TRACK); // back to unearned
     runCycles(sim, 4);
     const stock = sim.world.get(f, Stockpile).amounts;
     expect(stock.get(PLANK) ?? 0).toBe(0); // locked - the rotation skips it
@@ -146,7 +146,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
   it('a pick naming only unearned goods degrades to the earned products, not a stall', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { forge: f, smith } = forge(sim, 4);
-    sim.world.get(smith, Settler).experience.delete(WOOD_TRACK); // plank unearned again
+    sim.world.mut(smith, Settler).experience.delete(WOOD_TRACK); // plank unearned again
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [PLANK] });
     runCycles(sim, 2);
     const stock = sim.world.get(f, Stockpile).amounts;
@@ -159,7 +159,7 @@ describe('productionSystem - per-product recipes and the craft selection', () =>
     const { forge: f, smith } = forge(sim, 4);
     // Pin the rotation to start at FOOD, then fill the food slot so only plank can start.
     setCraftGoods(sim.world, ctxOf(sim), { kind: 'setCraftGoods', entity: smith, goods: [FOOD, PLANK] });
-    sim.world.get(f, Stockpile).amounts.set(FOOD, 20); // food slot at capacity - food can't start
+    sim.world.mut(f, Stockpile).amounts.set(FOOD, 20); // food slot at capacity - food can't start
     runCycles(sim, 2);
     expect(sim.world.get(f, Stockpile).amounts.get(PLANK)).toBe(2); // plank kept flowing
   });

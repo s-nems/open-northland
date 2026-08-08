@@ -16,7 +16,7 @@ export const OBSTRUCTED_PROGRESS_FLOOR: Fixed = fx.div(MOVE_SPEED_PER_TICK, fx.f
 
 /** End the current grind window while preserving a non-zero reroute tally for this walk. */
 export function clearGrind(world: World, entity: Entity): void {
-  const obstruction = world.tryGet(entity, Obstructed);
+  const obstruction = world.tryMut(entity, Obstructed);
   if (obstruction === undefined) return;
   if (obstruction.reroutes === 0) {
     world.remove(entity, Obstructed);
@@ -51,7 +51,7 @@ export function updateObstruction(
 
   const position = world.get(entity, Position);
   const obstruction =
-    world.tryGet(entity, Obstructed) ??
+    world.tryMut(entity, Obstructed) ??
     world.add(entity, Obstructed, {
       ticks: 0,
       reroutes: 0,

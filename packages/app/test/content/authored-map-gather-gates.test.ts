@@ -83,7 +83,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans - gathering XP gates', 
     if (trackId === undefined) return;
     const track = merge.content.jobExperience.find((t) => t.typeId === trackId);
     sim.world
-      .get(collector, Settler)
+      .mut(collector, Settler)
       .experience.set(trackId, systems.rawXpForRepeats(track, ironNeed.amount));
 
     sim.run(2500);

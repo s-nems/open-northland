@@ -85,9 +85,7 @@ export function driveOrder(
   if (love !== undefined && love.wife === woman) {
     claimDuty(world, woman, pass);
     claimDuty(world, husband, pass);
-    world.write(home, MakingLove, (l) => {
-      l.elapsed += 1;
-    });
+    world.mut(home, MakingLove).elapsed += 1;
     if (love.elapsed >= love.duration) {
       birth(world, ctx, woman, husband, home, world.get(woman, ChildOrder).child);
     }

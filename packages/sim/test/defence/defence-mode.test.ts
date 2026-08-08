@@ -545,11 +545,10 @@ describe('defence mode', () => {
 
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
-    sim.world.write(farmer, Settler, (s) => {
-      s.hunger = ONE;
-      s.fatigue = ONE;
-      s.piety = ONE;
-    });
+    const s = sim.world.mut(farmer, Settler);
+    s.hunger = ONE;
+    s.fatigue = ONE;
+    s.piety = ONE;
 
     for (let i = 0; i < 200; i++) sim.step();
 
@@ -564,9 +563,7 @@ describe('defence mode', () => {
     sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     sim.world.add(farmer, Carrying, { goodType: RATION, amount: 1 });
-    sim.world.write(farmer, Settler, (s) => {
-      s.hunger = ONE;
-    });
+    sim.world.mut(farmer, Settler).hunger = ONE;
 
     // Eating takes it nowhere, so it is an answer a settler under cover may give - the alarm only bars
     // the walk to a larder.

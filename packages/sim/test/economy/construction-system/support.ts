@@ -206,7 +206,7 @@ export function placeSite(sim: Simulation, buildingType: number, stock: Record<n
 /** Fully hammer a site - the by-hand stand-in for the build swings a real builder runs, so a unit test
  *  can isolate the ConstructionSystem's completion logic from the planner. */
 export function fullyHammer(sim: Simulation, site: Entity): void {
-  sim.world.get(site, UnderConstruction).labor = ONE;
+  sim.world.mut(site, UnderConstruction).labor = ONE;
 }
 
 export function finishedEvents(sim: Simulation): readonly SimEvent[] {

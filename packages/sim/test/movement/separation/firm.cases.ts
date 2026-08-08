@@ -159,7 +159,7 @@ describe('unit body collision - firm routing and resolution', () => {
       map: halfCellMapFromCells({ width: 12, height: 6, typeIds: ids }),
     });
     const post = settlerAt(s, 10, 2, SOLDIER, P1);
-    const postPos = s.world.get(post, Position);
+    const postPos = s.world.mut(post, Position);
     postPos.y = fx.div(fx.fromInt(6), fx.fromInt(5)); // 1.2 rows: south of the runner's line, radius overlapping it
     const runner = settlerAt(s, 4, 2, SOLDIER, P0);
     walkStraightTo(s, runner, 16, 2);

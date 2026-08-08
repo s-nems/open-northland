@@ -183,7 +183,7 @@ describe('healing draught - the death-save', () => {
   it('the starvation bite that would finish a bearer is saved too', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const settler = woundedBearer(sim, 1, [fresh(POTION_HEAL)]);
-    sim.world.get(settler, Settler).hunger = ONE; // starving, and the bite (max/240 >= 1) is lethal
+    sim.world.mut(settler, Settler).hunger = ONE; // starving, and the bite (max/240 >= 1) is lethal
     needsSystem(sim.world, ctxOf(sim)); // tick 0 is a starvation beat
     expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX / 2);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
@@ -192,7 +192,7 @@ describe('healing draught - the death-save', () => {
   it('never revives an already-dead bearer (the combat twin guards the same way)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const settler = woundedBearer(sim, 0, [fresh(POTION_HEAL)]); // killed this tick, awaiting cleanup
-    sim.world.get(settler, Settler).hunger = ONE;
+    sim.world.mut(settler, Settler).hunger = ONE;
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(settler, Health).hitpoints).toBe(0); // stays dead, and the bottle is untouched
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual(fresh(POTION_HEAL));

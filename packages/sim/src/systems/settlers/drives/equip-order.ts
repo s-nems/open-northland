@@ -71,7 +71,7 @@ export function planEquipOrder(
   limit: NavigationLimit | null,
   targets: TargetCandidates,
 ): boolean {
-  const order = world.tryGet(e, EquipOrder);
+  const order = world.tryMut(e, EquipOrder);
   if (order === undefined) return false;
   const errand: EquipErrand = {
     world,

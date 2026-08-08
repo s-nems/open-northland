@@ -105,7 +105,7 @@ describe('work-credit wiring - an experienced gatherer fells in fewer swings, no
   const swingOnce = (xp: number) => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const e = settlerAt(sim, { jobType: WOODCUTTER, position: { x: fx.fromInt(1), y: fx.fromInt(0) } });
-    if (xp > 0) sim.world.get(e, Settler).experience.set(WOOD_TRACK, xp);
+    if (xp > 0) sim.world.mut(e, Settler).experience.set(WOOD_TRACK, xp);
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
@@ -138,7 +138,7 @@ describe('work-credit wiring - an experienced gatherer fells in fewer swings, no
     expect(sim.world.get(tree, Felling).chopsLeft).toBe(2);
     expect(sim.world.get(settler, CurrentAtomic).workCredit).toBeDefined();
     const rearm = () => {
-      const atomic = sim.world.get(settler, CurrentAtomic);
+      const atomic = sim.world.mut(settler, CurrentAtomic);
       atomic.elapsed = 0;
       atomic.duration = 1;
       delete atomic.restTail; // strip any breather - this drives raw swings only
@@ -155,7 +155,7 @@ describe('operatorProductionBonus - the transport trade never boosts output', ()
   it('a carrier operator with heavy delivery XP still reads ZERO (its XP is display-only)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const carrier = settlerAt(sim, { jobType: CARRIER });
-    sim.world.get(carrier, Settler).experience.set(CARRIER_TRACK, 100_000);
+    sim.world.mut(carrier, Settler).experience.set(CARRIER_TRACK, 100_000);
     expect(operatorProductionBonus(sim.world, ctxOf(sim), carrier)).toBe(ZERO);
   });
 });

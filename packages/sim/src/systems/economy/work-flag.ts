@@ -61,10 +61,9 @@ export function bindFreshFlag(
   world.add(flag, DeliveryFlag, {});
   const radius = workFlagRadiusFor(ctx, world.tryGet(e, Settler)?.jobType ?? null);
   if (world.has(e, WorkFlag)) {
-    world.write(e, WorkFlag, (wf) => {
-      wf.flag = flag;
-      wf.radius = radius;
-    });
+    const wf = world.mut(e, WorkFlag);
+    wf.flag = flag;
+    wf.radius = radius;
   } else world.add(e, WorkFlag, { flag, radius });
 }
 
@@ -81,10 +80,9 @@ export function relocateWorkFlag(
   pos: { x: Fixed; y: Fixed },
   gatherer?: Entity,
 ): void {
-  world.write(flag, Position, (p) => {
-    p.x = pos.x;
-    p.y = pos.y;
-  });
+  const p = world.mut(flag, Position);
+  p.x = pos.x;
+  p.y = pos.y;
   noteWorkFlagMove(world); // the flag-block overlay keys on its own counter, not a component generation
   // Each match mutates only its own state, so the scan's store order is permitted.
   for (const e of gatherer !== undefined ? [gatherer] : world.query(WorkFlag)) {
@@ -156,12 +154,11 @@ export function syncWorkFlagToJob(world: World, ctx: SystemContext, e: Entity, j
     const live = liveWorkFlag(world, e);
     if (live !== undefined) {
       // Keep the flag, re-fitting the binding to the new trade.
-      world.write(e, WorkFlag, (binding) => {
-        binding.radius = workFlagRadiusFor(ctx, jobType);
-        if (binding.goodType !== undefined && !jobCanHarvestGood(ctx, jobType, binding.goodType)) {
-          delete binding.goodType;
-        }
-      });
+      const binding = world.mut(e, WorkFlag);
+      binding.radius = workFlagRadiusFor(ctx, jobType);
+      if (binding.goodType !== undefined && !jobCanHarvestGood(ctx, jobType, binding.goodType)) {
+        delete binding.goodType;
+      }
       return;
     }
     plantWorkFlagAtFeet(world, ctx, e);

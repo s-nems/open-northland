@@ -17,15 +17,13 @@ export function drinkDraught(world: World, ctx: SystemContext, settler: Entity, 
   if (held === null || held.degreeOfUse >= ONE) return;
   const { hunger, fatigue, healthMaxPct } = draughtRestores(ctx, held.goodType);
   if ((hunger !== undefined || fatigue !== undefined) && world.has(settler, Settler)) {
-    world.write(settler, Settler, (s) => {
-      if (hunger !== undefined) s.hunger = relieveNeed(s.hunger, hunger);
-      if (fatigue !== undefined) s.fatigue = relieveNeed(s.fatigue, fatigue);
-    });
+    const s = world.mut(settler, Settler);
+    if (hunger !== undefined) s.hunger = relieveNeed(s.hunger, hunger);
+    if (fatigue !== undefined) s.fatigue = relieveNeed(s.fatigue, fatigue);
   }
   if (healthMaxPct !== undefined && world.has(settler, Health)) {
-    world.write(settler, Health, (h) => {
-      h.hitpoints = Math.min(h.max, h.hitpoints + Math.trunc((h.max * healthMaxPct) / 100));
-    });
+    const h = world.mut(settler, Health);
+    h.hitpoints = Math.min(h.max, h.hitpoints + Math.trunc((h.max * healthMaxPct) / 100));
   }
   applyEquipWear(world, settler, 'misc', slot, wearStepOf(ctx, held.goodType));
 }

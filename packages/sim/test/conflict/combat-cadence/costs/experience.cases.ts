@@ -110,7 +110,7 @@ describe('combatSystem - fight experience raises the issued swing damage', () =>
     const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
     const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
     if (spearHits > 0) {
-      sim.world.get(attacker, Settler).experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, spearHits);
+      sim.world.mut(attacker, Settler).experience.set(FIGHT_EXPERIENCE_TYPE.SPEAR, spearHits);
     }
     fighterAt(sim, 1, 0, OTHER, null); // an adjacent unarmored enemy - the drive swings this tick
     combatSystem(sim.world, ctxOf(sim));

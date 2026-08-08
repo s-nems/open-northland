@@ -146,9 +146,7 @@ export function applySow(
 export function applyWater(world: World, crop: Entity): void {
   const c = world.tryGet(crop, Crop);
   if (c === undefined || c.watered || c.stage >= c.stages) return;
-  world.write(crop, Crop, (v) => {
-    v.watered = true;
-  });
+  world.mut(crop, Crop).watered = true;
 }
 
 /**
@@ -193,20 +191,17 @@ export const cropGrowthSystem: System = (world) => {
     if (crop.stage >= crop.stages) continue; // ripe - waiting for the scythe
     if (!crop.watered) continue;
     let ripened = false;
-    world.write(e, Crop, (c) => {
-      c.growth += 1;
-      if (c.growth >= c.ticksPerStage) {
-        c.growth -= c.ticksPerStage;
-        c.stage += 1;
-        c.watered = false;
-        ripened = c.stage >= c.stages;
-        if (ripened) c.growth = 0; // frozen so the display is stable
-      }
-    });
+    const c = world.mut(e, Crop);
+    c.growth += 1;
+    if (c.growth >= c.ticksPerStage) {
+      c.growth -= c.ticksPerStage;
+      c.stage += 1;
+      c.watered = false;
+      ripened = c.stage >= c.stages;
+      if (ripened) c.growth = 0; // frozen so the display is stable
+    }
     if (ripened && world.has(e, Resource)) {
-      world.write(e, Resource, (r) => {
-        r.remaining = crop.yieldUnits;
-      });
+      world.mut(e, Resource).remaining = crop.yieldUnits;
     }
   }
 };

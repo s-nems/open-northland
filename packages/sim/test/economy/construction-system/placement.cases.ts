@@ -26,7 +26,7 @@ describe('placeBuilding underConstruction (CommandSystem)', () => {
 
     // Stock the site (the carrier-delivery, done by hand here) and hammer it (the builder work, likewise),
     // then step: the constructionSystem finishes it. Material alone is not enough - labor is required.
-    const stock = sim.world.get(e, Stockpile).amounts;
+    const stock = sim.world.mut(e, Stockpile).amounts;
     stock.set(STONE, 2);
     stock.set(WOOD, 1);
     sim.step();

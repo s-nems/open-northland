@@ -6,8 +6,8 @@ interface AliveTribeJobsCache {
    *  derivation below walks `Person`, which `addPerson` keeps in lockstep with `Settler`. */
   membershipGeneration: number;
   /** Settler value generation: a trade is written in place, invisible to the membership generation above.
-   *  Any `World.write` to Settler bumps it, so this stays a cache only while the per-tick Settler writers
-   *  keep writing raw rather than through the seam. */
+   *  Any `World.mut` to Settler bumps it - including the per-tick needs rises - so under a running needs
+   *  system this table rebuilds once per tick and amortizes only the within-tick consult burst. */
   valueGeneration: number;
   readonly jobsByTribe: ReadonlyMap<number, ReadonlySet<number>>;
 }

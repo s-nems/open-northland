@@ -43,8 +43,8 @@ export function birth(
   sex: 'female' | 'male',
 ): void {
   const baby = spawnNewborn(world, ctx.content, mother, home, sex);
-  world.get(mother, Marriage).child = baby;
-  world.get(father, Marriage).child = baby;
+  world.mut(mother, Marriage).child = baby;
+  world.mut(father, Marriage).child = baby;
   // A counter-funded order pays its assistant counter the moment the child exists.
   if (world.has(mother, AssistantChildOrder)) {
     consumeAssistantCounter(world, ownerOf(world, mother), sex === 'female' ? 'extraWomen' : 'extraMen');

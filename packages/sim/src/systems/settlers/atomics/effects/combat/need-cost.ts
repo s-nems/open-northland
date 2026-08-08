@@ -18,7 +18,7 @@ const NEED_EVENT_RESERVE = 10000;
  */
 export function paySwingNeedCost(world: World, ctx: SystemContext, attacker: Entity, atomicId: number): void {
   if (!needsEnabled(world)) return;
-  const s = world.tryGet(attacker, Settler);
+  const s = world.tryMut(attacker, Settler);
   if (s === undefined) return;
   const animation = atomicAnimationName(ctx.content, s, atomicId);
   if (animation === undefined) return;

@@ -97,10 +97,9 @@ export function setGatherGood(
   if (goodType !== null && !jobCanHarvestGood(ctx, settler.jobType, goodType)) return;
   const flag = liveWorkFlag(world, e);
   if (flag !== undefined) {
-    world.write(e, WorkFlag, (binding) => {
-      if (goodType === null) delete binding.goodType;
-      else binding.goodType = goodType;
-    });
+    const binding = world.mut(e, WorkFlag);
+    if (goodType === null) delete binding.goodType;
+    else binding.goodType = goodType;
   } else {
     // An employed gatherer forages only for its workplace, so the pick must be a good that workplace
     // stockpiles, judged by the same test the gatherer drive filters on.
@@ -114,9 +113,7 @@ export function setGatherGood(
       if (!world.has(e, GatherSelection)) {
         world.add(e, GatherSelection, { goodType });
       } else {
-        world.write(e, GatherSelection, (selection) => {
-          selection.goodType = goodType;
-        });
+        world.mut(e, GatherSelection).goodType = goodType;
       }
     }
   }
@@ -154,9 +151,8 @@ export function setCraftGoods(
   if (!world.has(e, CraftSelection)) {
     world.add(e, CraftSelection, { goods, cursor: 0 });
   } else {
-    world.write(e, CraftSelection, (selection) => {
-      selection.goods = goods;
-      selection.cursor = 0;
-    });
+    const selection = world.mut(e, CraftSelection);
+    selection.goods = goods;
+    selection.cursor = 0;
   }
 }

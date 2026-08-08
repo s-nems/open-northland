@@ -11,7 +11,7 @@ import {
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import {
@@ -64,7 +64,7 @@ function advanceSite(
   world: World,
   ctx: SystemContext,
   e: Entity,
-  building: BuildingState,
+  building: DeepReadonly<BuildingState>,
   cost: ReadonlyArray<{ goodType: number; amount: number }>,
 ): void {
   const labor = world.get(e, UnderConstruction).labor;
@@ -78,10 +78,12 @@ function advanceSite(
 
   const delivered = deliveredConstructionFraction(world, ctx, e);
   const before = building.built;
-  building.built = labor < delivered ? labor : delivered;
+  const next = labor < delivered ? labor : delivered;
+  if (next === before) return; // mut only on a real move, or every idle site would churn version keys
+  world.mut(e, Building).built = next;
   // An upgrade site keeps the standing building's Health; ramping by `built` would drop a whole house to
   // 1 HP (approximation - the original's upgrade HP behavior is unobserved).
-  if (!world.has(e, Upgrading)) rampHealth(world, e, before, building.built);
+  if (!world.has(e, Upgrading)) rampHealth(world, e, before, next);
 }
 
 /**
@@ -89,7 +91,12 @@ function advanceSite(
  * its stashed pre-upgrade inventory back into the stockpile, so the build hold's surplus and the old
  * inventory coexist rather than replace one another.
  */
-function finishSite(world: World, ctx: SystemContext, e: Entity, building: BuildingState): void {
+function finishSite(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  building: DeepReadonly<BuildingState>,
+): void {
   const upgrading = world.tryGet(e, Upgrading);
   let adoptedTier = false;
   if (upgrading !== undefined) {
@@ -99,13 +106,12 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
     // content: the site then finishes as its old tier, reported as a plain finish.
     if (target !== undefined) {
       adoptedTier = true;
-      // The type swap changes every buildingType-derived answer, so it goes through the write seam and
+      // The type swap changes every buildingType-derived answer, so it goes through the mut seam and
       // version-keyed caches re-scan.
-      world.write(e, Building, (b) => {
-        b.buildingType = target.typeId;
-        b.level += 1;
-      });
-      const health = world.tryGet(e, Health);
+      const b = world.mut(e, Building);
+      b.buildingType = target.typeId;
+      b.level += 1;
+      const health = world.tryMut(e, Health);
       if (health !== undefined && target.hitpoints !== undefined) health.max = target.hitpoints;
     }
     // Restore the stashed pre-upgrade inventory into the post-build stockpile, in canonical good order.
@@ -115,7 +121,7 @@ function finishSite(world: World, ctx: SystemContext, e: Entity, building: Build
     }
     world.remove(e, Upgrading);
   }
-  building.built = ONE;
+  world.mut(e, Building).built = ONE;
   world.remove(e, UnderConstruction);
   fillHealth(world, e);
   // Settlers, piles and decor can occupy the plot during a build, and an upgraded tier's reserved zone
@@ -146,7 +152,7 @@ export function forceFinishConstruction(world: World, ctx: SystemContext, site: 
 /** Ramp a site's {@link Health} for a rise from `before` to `after`: the pool gains what the ceiling
  *  gained, clamped to it, so a build that shrank never leaves the pool above the ceiling. */
 function rampHealth(world: World, e: Entity, before: Fixed, after: Fixed): void {
-  const health = world.tryGet(e, Health);
+  const health = world.tryMut(e, Health);
   if (health === undefined) return;
   const ceiling = poolCeiling(after, health.max);
   const gained = Math.max(0, ceiling - poolCeiling(before, health.max));
@@ -161,7 +167,7 @@ function poolCeiling(builtFraction: Fixed, max: number): number {
 }
 
 function fillHealth(world: World, e: Entity): void {
-  const health = world.tryGet(e, Health);
+  const health = world.tryMut(e, Health);
   if (health !== undefined) health.hitpoints = health.max;
 }
 
@@ -183,7 +189,7 @@ const STRIKES_PER_UNIT = 26;
  * (empty-cost) type has nothing to install, so a single swing completes it.
  */
 export function advanceConstructionLabor(world: World, ctx: SystemContext, site: Entity): void {
-  const uc = world.tryGet(site, UnderConstruction);
+  const uc = world.tryMut(site, UnderConstruction);
   if (uc === undefined) return;
   const totalStrikes = constructionTotalUnits(world, ctx, site) * STRIKES_PER_UNIT;
   // At least 1 ULP per strike so a huge-cost building still finishes: `trunc(ONE / totalStrikes)` floors

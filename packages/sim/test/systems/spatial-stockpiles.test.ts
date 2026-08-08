@@ -107,7 +107,9 @@ describe('stockpilesAtNode (the per-drop tile lookup index)', () => {
     const heap = heapAt(sim, 6, 6, WOOD, 1);
     expect(stockpilesAtNode(sim.world, 6, 6)).toEqual([heap]); // build the index at the old node
     const moved = positionOfNode(20, 20);
-    const p = sim.world.get(heap, Position); // an in-place write bumps no generation - exactly the silent case
+    // Logged or not, an in-place move is invisible to the membership generation the index keys on -
+    // exactly the silent case the verifier exists to catch.
+    const p = sim.world.mut(heap, Position);
     p.x = moved.x;
     p.y = moved.y;
     expect(sim.world.verifyCaches()).toEqual([

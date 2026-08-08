@@ -27,7 +27,7 @@ const { BerryBush, Settler } = components;
 /** With no gatherable resource on the map, an authored-hungry collector forages and then idles. */
 function spawnHungryForager(sim: Simulation, x: number, y: number): void {
   const e = spawnSettlerDirect(sim, JOB_COLLECTOR, x, y);
-  sim.world.get(e, Settler).hunger = HUNGRY;
+  sim.world.mut(e, Settler).hunger = HUNGRY;
 }
 
 function build(sim: Simulation): void {
@@ -37,7 +37,7 @@ function build(sim: Simulation): void {
     spawnHungryForager(sim, bx, ROW_Y - 1);
   }
   const bare = placeSandboxBerryBush(sim, LONE_BARE_BUSH.x, LONE_BARE_BUSH.y);
-  const b = sim.world.get(bare, BerryBush);
+  const b = sim.world.mut(bare, BerryBush);
   b.stage = 'bare';
   b.nextStageAtTick = LONE_BARE_BUSH.bloomAtTick;
 }

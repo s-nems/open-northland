@@ -91,7 +91,7 @@ function isMaleStage(jobType: number | null): boolean {
 export const growthSystem: System = (world, ctx) => {
   const graduated: Entity[] = [];
   for (const e of world.query(Age, Person)) {
-    const age = world.get(e, Age);
+    const age = world.mut(e, Age);
     const settler = world.get(e, Settler);
     age.ticks += 1;
     if (age.ticks >= ADULT_AGE_TICKS) {
@@ -125,10 +125,9 @@ function applyAdultHitpoints(world: World, ctx: ContentContext, e: Entity): void
   // `max > 0` keeps the fraction below a real division.
   if (health.hitpoints <= 0 || health.max <= 0) return;
   const scaled = Math.max(1, Math.trunc((health.hitpoints * pool) / health.max));
-  world.write(e, Health, (h) => {
-    h.hitpoints = scaled;
-    h.max = pool;
-  });
+  const h = world.mut(e, Health);
+  h.hitpoints = scaled;
+  h.max = pool;
 }
 
 /**

@@ -48,7 +48,7 @@ function rangedHunterContent(): ContentSet {
 
 /** Count misses over `ROLL_TICKS` consecutive ticks for a hunter carrying `xp` on its general track. */
 function missesOf(sim: Simulation, shooter: Entity, xp: number): number {
-  sim.world.get(shooter, Settler).experience.set(HUNTER_GENERAL_TRACK, xp);
+  sim.world.mut(shooter, Settler).experience.set(HUNTER_GENERAL_TRACK, xp);
   const ctx = ctxOf(sim);
   let misses = 0;
   for (let tick = 0; tick < ROLL_TICKS; tick++) {

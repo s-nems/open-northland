@@ -98,7 +98,7 @@ export function resolveCombatHit(
   pendingStaggers: PendingStagger[],
   source: 'melee' | 'projectile',
 ): void {
-  const health = world.tryGet(target, Health);
+  const health = world.tryMut(target, Health);
   if (health === undefined) return; // gone or a non-combatant: the blow struck nothing
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`. A connect
   // fully absorbed by armor still cues, since the blade touched.

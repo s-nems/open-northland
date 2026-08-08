@@ -144,7 +144,7 @@ describe('eatDrive - the planner choosing to eat', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = settlerAt(sim, 2, 0, HUNGRY);
     const warehouse = storeAt(sim, 2, 0); // same cell, loaves only
-    sim.world.get(warehouse, Stockpile).amounts.set(BREAD, 4);
+    sim.world.mut(warehouse, Stockpile).amounts.set(BREAD, 4);
 
     plannerSystem(sim.world, ctxOf(sim));
 

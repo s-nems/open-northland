@@ -45,7 +45,7 @@ import {
 /** Re-open `b` as an upgrade site exactly like the `upgradeBuilding` command: built drops to 0, the
  *  construction + upgrade markers ride beside the Building, the live stockpile is the (empty) hold. */
 function startUpgrade(sim: Simulation, b: Entity): void {
-  sim.world.get(b, Building).built = fx.fromInt(0);
+  sim.world.mut(b, Building).built = fx.fromInt(0);
   sim.world.add(b, UnderConstruction, { labor: fx.fromInt(0) });
   sim.world.add(b, Upgrading, { savedStock: new Map(), seeded: new Map() });
 }

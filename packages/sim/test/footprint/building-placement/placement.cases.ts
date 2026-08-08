@@ -240,7 +240,9 @@ describe('placementBlockerVersion - the shared memo key that decouples the block
     canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5); // stamps the memo
     expect(sim.world.verifyCaches()).toEqual([]);
 
-    sim.world.get(tree, Position).x = positionOfNode(9, 9).x; // raw store write - no generation bump
+    // Logged or not, an in-place move is invisible to the version key the grid memoizes on - the
+    // verifier is what catches a mover violating the anchored-Position invariant.
+    sim.world.mut(tree, Position).x = positionOfNode(9, 9).x;
     expect(sim.world.verifyCaches().join('\n')).toContain('placementBlockerGrid');
   });
 });

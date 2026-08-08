@@ -127,7 +127,7 @@ function startPlayerWalk(
   releaseTowerPost(world, ctx, e);
   // A move order relocates a DEFEND unit's post, or the arrived-hold combat pass would march the guard back
   // to its old anchor the moment it found no enemy there.
-  const stance = world.tryGet(e, Stance);
+  const stance = world.tryMut(e, Stance);
   if (stance !== undefined && stance.mode === MILITARY_MODE.DEFEND) stance.anchorCell = goal;
 
   // An attack-move walk carries its destination on the order itself: a fight overwrites the MoveGoal with
@@ -168,9 +168,8 @@ export const playerOrderSystem: System = (world, ctx) => {
     }
     if (march !== undefined && world.has(e, Engagement)) {
       // The fight has the unit; the march waits it out and resumes below when combat lets go.
-      world.write(e, PlayerOrder, (o) => {
-        if (o.attackMove !== undefined) o.attackMove.resume = true;
-      });
+      const o = world.mut(e, PlayerOrder);
+      if (o.attackMove !== undefined) o.attackMove.resume = true;
       continue;
     }
     if (world.tryGet(e, PathRequest)?.failed) {
@@ -186,9 +185,8 @@ export const playerOrderSystem: System = (world, ctx) => {
       continue; // still walking the order out
     }
     if (march?.resume === true) {
-      world.write(e, PlayerOrder, (o) => {
-        if (o.attackMove !== undefined) o.attackMove.resume = false;
-      });
+      const o = world.mut(e, PlayerOrder);
+      if (o.attackMove !== undefined) o.attackMove.resume = false;
       world.add(e, MoveGoal, { cell: march.goal }); // the fight is over - walk on to the ordered spot
       continue;
     }

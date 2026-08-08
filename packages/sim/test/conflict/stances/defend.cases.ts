@@ -30,7 +30,7 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
   it('ignores an enemy OUTSIDE the defend radius (holds its post)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(30, 1) });
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
-    sim.world.get(guard, Stance).anchorCell = cell(sim, 10, 0);
+    sim.world.mut(guard, Stance).anchorCell = cell(sim, 10, 0);
     // 1 node outside the radius: the anchor is node (20, 0), the enemy DEFEND_RADIUS_NODES+1 nodes east.
     combatantAtNode(sim, 20 + DEFEND_RADIUS_NODES + 1, 0, P1, MILITARY_MODE.IGNORE);
 
@@ -44,7 +44,7 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(30, 1) });
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND);
     const anchor = cell(sim, 10, 0);
-    sim.world.get(guard, Stance).anchorCell = anchor;
+    sim.world.mut(guard, Stance).anchorCell = anchor;
     // An enemy 6 nodes out: inside the radius (8), beyond reach (2) → chase, but leashed.
     const enemy = combatant(sim, 13, 0, P1, MILITARY_MODE.IGNORE);
 
@@ -62,7 +62,7 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(40, 1) });
     const guard = combatant(sim, 10, 0, P0, MILITARY_MODE.DEFEND, { hitpoints: 100000 });
     const anchorX = 10;
-    sim.world.get(guard, Stance).anchorCell = cell(sim, anchorX, 0);
+    sim.world.mut(guard, Stance).anchorCell = cell(sim, anchorX, 0);
     // A tough enemy that marches in (ATTACK) - it reaches the defend radius during the run, so the guard
     // engages and chases; both are far too tough to die, so the fight lasts the whole run.
     combatant(sim, 16, 0, P1, MILITARY_MODE.ATTACK, { hitpoints: 100000 });

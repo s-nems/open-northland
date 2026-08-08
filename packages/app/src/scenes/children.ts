@@ -32,7 +32,7 @@ function spawnYoung(
 ): Entity {
   const e = spawnSettlerDirect(sim, jobType, x, y);
   sim.world.add(e, Age, { ticks: ageTicks });
-  sim.world.get(e, Settler).hunger = hunger;
+  sim.world.mut(e, Settler).hunger = hunger;
   return e;
 }
 

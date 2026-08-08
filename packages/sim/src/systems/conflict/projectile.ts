@@ -127,16 +127,14 @@ function freezeAim(world: World, p: Entity, target: Entity): { x: Fixed; y: Fixe
     return null;
   }
   const aim = { x: last.x, y: last.y };
-  world.write(p, Projectile, (v) => {
-    v.missAim = aim;
-  });
+  world.mut(p, Projectile).missAim = aim;
   return aim;
 }
 
 /** Step projectile `p` one tick straight toward `(ax, ay)`; true when this tick's step reaches it. The
  *  in-flight unit-vector division is safe: `dist > step > 0` on the stepping branch. */
 function flightStep(world: World, p: Entity, ax: Fixed, ay: Fixed, speed: number): boolean {
-  const pos = world.get(p, Position);
+  const pos = world.mut(p, Position);
   const dx = fx.sub(ax, pos.x);
   const dy = fx.sub(ay, pos.y);
   const dist = fx.isqrt(fx.add(fx.mul(dx, dx), fx.mul(dy, dy)));

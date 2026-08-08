@@ -151,8 +151,8 @@ export class Simulation {
    *
    * Memoized while the tick and {@link World.mutationVersion} hold, since the frame loop snapshots every
    * RAF while the fixed timestep may not have stepped. Keyed on that monotonic counter rather than the
-   * touched log, which an external `takeSnapshot` drains. A store write bypassing `World.write` between
-   * two same-tick snapshots is the one blind spot.
+   * touched log, which an external `takeSnapshot` drains. A write that defeats the read-only view to
+   * bypass `World.mut` between two same-tick snapshots is the one blind spot.
    */
   snapshot(): WorldSnapshot {
     const memo = this.snapshotMemo;

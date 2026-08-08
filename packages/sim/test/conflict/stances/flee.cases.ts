@@ -56,7 +56,7 @@ describe('FLEE - civilians run from danger', () => {
     combatant(sim, 25, 0, P1, MILITARY_MODE.IGNORE); // a lasting threat in sight
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // fleeing at first
-    sim.world.get(civ, Settler).hunger = ONE; // pin hunger at ONE (collapse)
+    sim.world.mut(civ, Settler).hunger = ONE; // pin hunger at ONE (collapse)
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // yielded to the need despite the threat
   });
@@ -69,7 +69,7 @@ describe('FLEE - civilians run from danger', () => {
     sim.world.destroy(threat); // threat gone → the cool-down begins
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(true); // still cooling down (no collapse yet)
-    sim.world.get(civ, Settler).hunger = ONE; // collapse mid-cool-down
+    sim.world.mut(civ, Settler).hunger = ONE; // collapse mid-cool-down
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(civ, Fleeing)).toBe(false); // shed at once, not after FLEE_COOLDOWN_TICKS
   });

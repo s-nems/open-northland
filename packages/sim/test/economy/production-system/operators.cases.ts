@@ -58,13 +58,13 @@ describe('productionSystem - worker-presence gate', () => {
     const elapsedAtPause = sim.world.get(mill, Production).cycles[0]?.elapsed; // 4 (tick 1 starts, 2..5 advance)
 
     // Worker walks away - move it off the mill's tile. The cycle must freeze (no advance).
-    sim.world.get(worker, Position).x = fx.fromInt(3);
+    sim.world.mut(worker, Position).x = fx.fromInt(3);
     for (let t = 0; t < CYCLE_TICKS * 2; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Production).cycles[0]?.elapsed).toBe(elapsedAtPause); // held, not advanced
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // produced nothing while idle
 
     // Worker returns - the held cycle resumes and completes.
-    sim.world.get(worker, Position).x = fx.fromInt(0);
+    sim.world.mut(worker, Position).x = fx.fromInt(0);
     for (let t = 0; t < CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // resumed and finished
   });
@@ -108,7 +108,7 @@ describe('productionSystem - parallel operators (the twin mill)', () => {
     productionSystem(sim.world, ctxOf(sim)); // both advance once
     // One operator walks away - batches are anonymous (no owning worker), so with one operator left
     // only the OLDEST batch keeps grinding; the youngest holds its elapsed until a worker frees up.
-    sim.world.get(second, Position).x = fx.fromInt(3);
+    sim.world.mut(second, Position).x = fx.fromInt(3);
     productionSystem(sim.world, ctxOf(sim));
     const cycles = sim.world.get(mill, Production).cycles;
     expect(cycles[0]?.elapsed).toBe(2);

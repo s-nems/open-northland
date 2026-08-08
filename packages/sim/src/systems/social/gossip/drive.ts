@@ -171,10 +171,10 @@ function drivePair(
   a: Entity,
   b: Entity,
 ): void {
-  const ca = world.get(a, Chat);
-  const cb = world.get(b, Chat);
-  const sa = world.tryGet(a, Settler);
-  const sb = world.tryGet(b, Settler);
+  const ca = world.mut(a, Chat);
+  const cb = world.mut(b, Chat);
+  const sa = world.tryMut(a, Settler);
+  const sb = world.tryMut(b, Settler);
   if (sa === undefined || sb === undefined) {
     endChat(world, ctx.tick, a);
     return;

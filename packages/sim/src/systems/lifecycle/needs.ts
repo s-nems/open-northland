@@ -68,7 +68,7 @@ export const PIETY_PER_MILITARY_CYCLE: Fixed = fx.div(ONE, fx.fromInt(10));
 export function chargeMilitaryPiety(world: World, settler: Entity): void {
   if (!needsEnabled(world)) return;
   if (!world.has(settler, Settler)) return;
-  const s = world.get(settler, Settler);
+  const s = world.mut(settler, Settler);
   const risen = fx.add(s.piety, PIETY_PER_MILITARY_CYCLE);
   s.piety = risen > ONE ? ONE : risen;
 }
@@ -104,9 +104,10 @@ export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
   const starvationBeat = ctx.tick % STARVATION_DAMAGE_INTERVAL_TICKS === 0;
   for (const e of world.query(Person)) {
-    const settler = world.get(e, Settler);
-    if (declaresNoTrades(ctx.content, settler.tribe)) continue;
-    if (world.has(e, Age) && isBaby(settler.jobType)) continue;
+    const view = world.get(e, Settler);
+    if (declaresNoTrades(ctx.content, view.tribe)) continue;
+    if (world.has(e, Age) && isBaby(view.jobType)) continue;
+    const settler = world.mut(e, Settler);
     const risenHunger = fx.add(settler.hunger, HUNGER_RISE_PER_TICK);
     settler.hunger = risenHunger > ONE ? ONE : risenHunger;
     const risenFatigue = fx.add(settler.fatigue, FATIGUE_RISE_PER_TICK);
@@ -117,7 +118,7 @@ export const needsSystem: System = (world, ctx) => {
     }
     // The 0-HP reap is CleanupSystem's.
     if (starvationBeat && settler.hunger === ONE && settler.jobType !== null && world.has(e, Health)) {
-      const health = world.get(e, Health);
+      const health = world.mut(e, Health);
       const bite = Math.max(1, Math.trunc(health.max / STARVATION_BITES_TO_DIE));
       // The healing draught's death-save may answer a lethal bite; a settler already at 0 and awaiting
       // cleanup is not revived.

@@ -9,6 +9,9 @@ kept local so iteration, ownership, and mutation rules remain explicit.
 - A component is plain data attached to an entity. Components have no methods.
 - A system is a function that updates the world once per tick.
 - A `World` owns its entities, component stores, and mutation version.
+- `World.get`/`tryGet` return read-only views. An in-place mutation acquires the value through
+  `World.mut`/`tryMut`, which records the entity in the touched log and bumps the component's value
+  generation - the channels snapshot clone caching and derived caches invalidate from.
 - `Simulation` owns the world, seeded RNG, content, command queue, events, and system schedule.
 
 Many simulations can exist in one process. Creating a new `Simulation` or `World` is a complete

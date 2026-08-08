@@ -105,7 +105,7 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     // Past the midpoint between nodes (5,0) and (6,0) - the nearest node is (6,0) AHEAD (cell (3,0)'s
     // anchor), truncation says (5,0) behind. Routing from behind made a redirected walker visibly
     // backtrack through that node.
-    sim.world.get(e, Position).x = fx.fromFloat(2.8);
+    sim.world.mut(e, Position).x = fx.fromFloat(2.8);
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, PathRequest).start).toBe(anchorCell(sim, 3, 0));
   });
@@ -127,8 +127,8 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     const e = travellerAt(sim, 0, 0, sim.terrain?.nodeAt(0, 0) as number);
     // Part-way along the diagonal leg (1,0) -> (2,2): world (0.85, 0.7) - nearest bracket node is
     // the water flank (2,1); the walkable (2,2) must win instead.
-    sim.world.get(e, Position).x = fx.fromFloat(0.5);
-    sim.world.get(e, Position).y = fx.fromFloat(0.7);
+    sim.world.mut(e, Position).x = fx.fromFloat(0.5);
+    sim.world.mut(e, Position).y = fx.fromFloat(0.7);
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, PathRequest).start).toBe(sim.terrain?.nodeAt(2, 2) as number);
     expect(sim.world.get(e, PathRequest).failed).toBe(false);
@@ -138,7 +138,7 @@ describe('plannerSystem - navigation planner: MoveGoal -> PathRequest', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
     const goal = anchorCell(sim, 2, 0);
     const e = travellerAt(sim, 0, 0, goal);
-    sim.world.get(e, Position).x = fx.fromFloat(2.2); // in the goal cell, but off its centre
+    sim.world.mut(e, Position).x = fx.fromFloat(2.2); // in the goal cell, but off its centre
     sim.step(); // plan (single-cell route) + resolve + walk toward the centre
     expect(sim.world.has(e, MoveGoal)).toBe(true); // not yet satisfied - still centring
     for (let t = 0; t < 20 && sim.world.has(e, MoveGoal); t++) sim.step();

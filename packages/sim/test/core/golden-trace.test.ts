@@ -126,6 +126,9 @@ function runSlice(seed: number, ticks: number): GoldenRun {
       if (ev.kind === 'atomicCompleted') trace.push(`${sim.tick}:${ev.entity}:${ev.atomicId}`);
       else if (ev.kind === 'goodProduced') produced += ev.amount;
     }
+    // A per-tick snapshot populates the clone cache, arming the cachesCoherent invariant's stale-clone
+    // verifier against any system write that bypassed the tracked seam. A pure read: hashes unaffected.
+    sim.snapshot();
     if (invariantViolations.length === 0) {
       const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
       if (v.length > 0) invariantViolations.push(`tick ${sim.tick}: ${v.join('; ')}`);

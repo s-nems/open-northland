@@ -35,10 +35,9 @@ export function consumeFood(world: World, settler: Entity, from: Entity | null, 
 export function forageBerry(world: World, ctx: SystemContext, bush: Entity): void {
   const b = world.tryGet(bush, BerryBush);
   if (b === undefined || b.stage !== 'ripe') return;
-  world.write(bush, BerryBush, (v) => {
-    v.stage = 'bare';
-    v.nextStageAtTick = ctx.tick + BERRY_STAGE_TICKS;
-  });
+  const v = world.mut(bush, BerryBush);
+  v.stage = 'bare';
+  v.nextStageAtTick = ctx.tick + BERRY_STAGE_TICKS;
   const pos = world.get(bush, Position);
   ctx.events.emit({ kind: 'berryForaged', bush, at: eventAt(pos.x, pos.y) });
 }

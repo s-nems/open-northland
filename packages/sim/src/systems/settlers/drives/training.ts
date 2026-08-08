@@ -92,9 +92,7 @@ export function drillDoorOpen(
 export function serveDrillRepetition(world: World, e: Entity, ticks: number): void {
   const order = world.tryGet(e, TrainingOrder);
   if (order === undefined) return;
-  world.write(e, TrainingOrder, (o) => {
-    o.drillTicksLeft -= Math.max(1, ticks);
-  });
+  world.mut(e, TrainingOrder).drillTicksLeft -= Math.max(1, ticks);
 }
 
 /** Drop the errand and the inside-the-house marker, releasing the settler to the economy (`false`). */

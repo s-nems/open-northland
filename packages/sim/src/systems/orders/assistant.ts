@@ -36,14 +36,14 @@ export function setAssistantGrant(
     const goods = current.filter((g) => g !== command.goodType);
     if (carrier === null) return;
     if (goods.length === 0) world.destroy(carrier);
-    else world.get(carrier, AssistantGrants).goods = goods;
+    else world.mut(carrier, AssistantGrants).goods = goods;
     return;
   }
   const goods = [...current, command.goodType].sort((a, b) => a - b);
   if (carrier === null) {
     world.add(world.create(), AssistantGrants, { player: command.player, goods });
   } else {
-    world.get(carrier, AssistantGrants).goods = goods;
+    world.mut(carrier, AssistantGrants).goods = goods;
   }
 }
 
@@ -71,7 +71,7 @@ export function setAssistantCounter(
     world.add(world.create(), AssistantCounters, { player: command.player, counters });
     return;
   }
-  const block = world.get(carrier, AssistantCounters);
+  const block = world.mut(carrier, AssistantCounters);
   block.counters[command.counter] = { value, infinite };
   if (assistantCountersAtDefault(block.counters)) world.destroy(carrier);
 }
@@ -88,7 +88,7 @@ export function resetAssistantCounters(
 ): void {
   const carrier = assistantCountersEntity(world, player);
   if (carrier === null) return;
-  const block = world.get(carrier, AssistantCounters);
+  const block = world.mut(carrier, AssistantCounters);
   for (const kind of kinds) block.counters[kind] = { value: 0, infinite: false };
   if (assistantCountersAtDefault(block.counters)) world.destroy(carrier);
 }

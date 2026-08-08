@@ -37,7 +37,7 @@ describe('productionSystem grants the operator profession XP per completed batch
 describe('productionSystem accrues the experience bonus as fractional output', () => {
   /** Seed the worker with `repeats` completed batches' worth of raw XP on the carpenter track. */
   function seedRepeats(sim: Simulation, worker: Entity, repeats: number): void {
-    sim.world.get(worker, Settler).experience.set(CARPENTER_GENERAL_TRACK, repeats * CARPENTER_XP_PER_BATCH);
+    sim.world.mut(worker, Settler).experience.set(CARPENTER_GENERAL_TRACK, repeats * CARPENTER_XP_PER_BATCH);
   }
 
   it('a mid-experience carpenter banks its bonus fraction toward the next whole plank', () => {

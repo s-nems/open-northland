@@ -74,7 +74,7 @@ describe('constructionSystem', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent() });
     const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 }); // fully stocked (delivered = ONE)
     sim.world.add(e, Health, { hitpoints: 1, max: HOUSE_MAX_HP });
-    sim.world.get(e, UnderConstruction).labor = fx.div(ONE, fx.fromInt(2)); // hammered halfway
+    sim.world.mut(e, UnderConstruction).labor = fx.div(ONE, fx.fromInt(2)); // hammered halfway
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).built).toBe(fx.div(ONE, fx.fromInt(2))); // min(0.5, ONE)
     expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP / 2); // 50 of 100 - ramped with built
@@ -90,12 +90,12 @@ describe('constructionSystem', () => {
     const e = placeSite(sim, HOUSE, { [STONE]: 2, [WOOD]: 1 }); // fully stocked - only labor gates the rise
     sim.world.add(e, Health, { hitpoints: 1, max: HOUSE_MAX_HP });
     const ctx = ctxOf(sim);
-    sim.world.get(e, UnderConstruction).labor = fx.div(ONE, fx.fromInt(2)); // hammered halfway
+    sim.world.mut(e, UnderConstruction).labor = fx.div(ONE, fx.fromInt(2)); // hammered halfway
     constructionSystem(sim.world, ctx);
     expect(sim.world.get(e, Health).hitpoints).toBe(HOUSE_MAX_HP / 2);
 
-    sim.world.get(e, Health).hitpoints -= 30; // a besieger's blow lands: 20 of the standing 50 left
-    sim.world.get(e, UnderConstruction).labor = fx.div(fx.fromInt(3), fx.fromInt(4)); // hammered on to 75%
+    sim.world.mut(e, Health).hitpoints -= 30; // a besieger's blow lands: 20 of the standing 50 left
+    sim.world.mut(e, UnderConstruction).labor = fx.div(fx.fromInt(3), fx.fromInt(4)); // hammered on to 75%
     constructionSystem(sim.world, ctx);
 
     // The pool gains the 25 hitpoints the rise from 50% to 75% added and keeps the 30 the blow took -
@@ -127,7 +127,7 @@ describe('constructionSystem', () => {
     for (let i = 0; i < 40; i++) advanceConstructionLabor(sim.world, ctx, e);
     expect(sim.world.get(e, UnderConstruction).labor).toBe(delivered);
     // More material lands: the cap rises but labor doesn't - built holds until the next swing.
-    sim.world.get(e, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(e, Stockpile).amounts.set(STONE, 2);
     constructionSystem(sim.world, ctx);
     expect(sim.world.get(e, Building).built).toBe(delivered);
   });

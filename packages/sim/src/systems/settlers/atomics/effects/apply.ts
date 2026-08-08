@@ -75,7 +75,7 @@ export function applyEffect(
       drinkDraught(world, ctx, settler, effect.slot);
       return;
     case 'sleep': {
-      const s = world.tryGet(settler, Settler);
+      const s = world.tryMut(settler, Settler);
       if (s !== undefined) s.fatigue = relieveNeed(s.fatigue, SLEEP_FATIGUE_RESTORE);
       return;
     }
@@ -129,12 +129,12 @@ export function applyEffect(
 
 /** Credit one meal to the eater's hunger bar; `eat` and `forage` feed identically. */
 function relieveHunger(world: World, settler: Entity): void {
-  const s = world.tryGet(settler, Settler);
+  const s = world.tryMut(settler, Settler);
   if (s !== undefined) s.hunger = relieveNeed(s.hunger, EAT_HUNGER_RESTORE);
 }
 
 /** Zero a need the satisfying act clears outright, unlike the partial refill `eat` and `sleep` give. */
 function clearNeed(world: World, settler: Entity, need: 'piety' | 'enjoyment'): void {
-  const s = world.tryGet(settler, Settler);
+  const s = world.tryMut(settler, Settler);
   if (s !== undefined) s[need] = fx.fromInt(0);
 }

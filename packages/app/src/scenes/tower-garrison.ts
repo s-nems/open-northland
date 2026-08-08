@@ -57,7 +57,7 @@ function build(sim: Simulation): void {
   const tower = placeBuiltSandboxBuilding(sim, BUILDING_WATCHTOWER, TOWER.x, TOWER.y);
   // By slug: the sandbox catalog carries the food goods at +100, so naming an id would stock a shelf
   // real content's tower does not have.
-  sim.world.get(tower, components.Stockpile).amounts.set(goodBySlug(sim, FOOD_GOOD), TOWER_RATIONS);
+  sim.world.mut(tower, components.Stockpile).amounts.set(goodBySlug(sim, FOOD_GOOD), TOWER_RATIONS);
   // A settler of a bow class resolves that bow by (tribe, job), so the trade alone arms him.
   for (const start of SHORT_BOW_STARTS) man(sim, tower, JOB_ARCHER, start);
   for (const start of LONG_BOW_STARTS) man(sim, tower, JOB_ARCHER_LONG, start);

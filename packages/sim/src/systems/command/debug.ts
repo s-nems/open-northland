@@ -16,14 +16,14 @@ import type { SystemContext } from '../context.js';
  */
 export function debugKill(world: World, command: Extract<Command, { kind: 'debugKill' }>): void {
   if (!world.has(command.target, Settler)) return;
-  const health = world.tryGet(command.target, Health);
+  const health = world.tryMut(command.target, Health);
   if (health !== undefined) health.hitpoints = 0;
 }
 
 /** Set the needs the panel names to whole-percent levels (0 sated … 100 maxed). A non-settler target is a
  *  no-op. */
 export function debugSetNeeds(world: World, command: Extract<Command, { kind: 'debugSetNeeds' }>): void {
-  const settler = world.tryGet(command.target, Settler);
+  const settler = world.tryMut(command.target, Settler);
   if (settler === undefined) return;
   if (command.hunger !== undefined) settler.hunger = needFixedFromPct(command.hunger);
   if (command.fatigue !== undefined) settler.fatigue = needFixedFromPct(command.fatigue);
@@ -49,6 +49,6 @@ export function debugFillStockpile(
   if (building === undefined || !world.has(command.target, Stockpile)) return;
   const type = contentIndex(ctx.content).commandBuildings.get(building.buildingType);
   if (type === undefined) return;
-  const stock = world.get(command.target, Stockpile).amounts;
+  const stock = world.mut(command.target, Stockpile).amounts;
   for (const slot of type.stock) stock.set(slot.goodType, slot.capacity);
 }

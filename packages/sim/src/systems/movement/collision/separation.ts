@@ -105,14 +105,16 @@ export const separationSystem: System = (world, ctx) => {
     if (!ghost) cand = resolveAgainstPosts(e, cand, nearPosts, world);
 
     // Drop the offending axis, then the whole displacement: the walker's own path point always stands.
+    // Mut only on a landed displacement, so a crowd standing in equilibrium does not churn the touched log.
     if (cand.x !== p.x || cand.y !== p.y) {
       if (gates.allowsLanding(cand.x, cand.y)) {
-        p.x = cand.x;
-        p.y = cand.y;
+        const moved = world.mut(e, Position);
+        moved.x = cand.x;
+        moved.y = cand.y;
       } else if (gates.allowsLanding(cand.x, p.y)) {
-        p.x = cand.x;
+        world.mut(e, Position).x = cand.x;
       } else if (gates.allowsLanding(p.x, cand.y)) {
-        p.y = cand.y;
+        world.mut(e, Position).y = cand.y;
       }
     }
 

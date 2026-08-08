@@ -115,7 +115,7 @@ export function setFoodReserve(world: World, house: Entity, amount: number): voi
     world.remove(house, FoodReserve);
     return;
   }
-  const existing = world.tryGet(house, FoodReserve);
+  const existing = world.tryMut(house, FoodReserve);
   if (existing === undefined) world.add(house, FoodReserve, { amount });
   else existing.amount = amount;
 }

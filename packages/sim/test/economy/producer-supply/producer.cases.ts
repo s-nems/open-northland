@@ -233,7 +233,7 @@ describe('producer self-service - fetching a missing recipe input', () => {
     buildingAt(sim, HEADQUARTERS, 2, 0, [[WOOD, 5]]);
     pileAt(sim, 5, 0, [[WHEAT, 5]]);
     const baker = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.get(baker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(baker, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -436,7 +436,7 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
     settlerAt(sim, 5, 0, WOODCUTTER); // alive → PLANK is tech-unlocked, so the plank recipe really can start
     const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     sim.world.add(smith, CraftSelection, { goods: [FOOD_SIMPLE], cursor: 0 });
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -451,7 +451,7 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     buildingAt(sim, HEADQUARTERS, 3, 0, [[WHEAT, 5]]);
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, shop);
-    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -505,7 +505,7 @@ describe('producer work seats - one stay-inside seat per batch', () => {
     buildingAt(sim, HEADQUARTERS, 3, 0);
     settlerAt(sim, 5, 0, WOODCUTTER);
     const smith = settlerAt(sim, 0, 0, CARPENTER, mill);
-    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -641,7 +641,7 @@ describe('producer unblocks its own full output slot', () => {
     const hq = buildingAt(sim, HEADQUARTERS, 3, 0);
     const smith = settlerAt(sim, 1, 0, CARPENTER, mill);
     // The fixture's `needforgood PLANK` gate, earned up front - this case is about the shelf loop.
-    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     settlerAt(sim, 4, 0, WOODCUTTER); // unlocks PLANK; no tree, so it never competes for the wood
 
     let produced = 0;
@@ -725,7 +725,7 @@ describe('producer self-service - end to end', () => {
     const hq = buildingAt(sim, HEADQUARTERS, 3, 0, [[WOOD, 2]]);
     const smith = settlerAt(sim, 1, 0, CARPENTER, mill); // the smith, on its mill
     // The fixture's `needforgood PLANK` gate, earned up front - this case is about self-supply.
-    sim.world.get(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
+    sim.world.mut(smith, Settler).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
     settlerAt(sim, 4, 0, WOODCUTTER); // alive → unlocks PLANK; no tree → idles, never touches the wood
 
     let produced = 0;

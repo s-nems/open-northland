@@ -99,10 +99,11 @@ describe('porter dormancy', () => {
     idlePasses(sim); // undeliverable everywhere - the porter goes dormant
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
 
-    // The elision is real: a bare Map write (bypassing setStockAmount, the seam every system stock
-    // write goes through) is invisible to the dormant porter - and the coherence verifier catches
-    // exactly this incoherence, so a future unlogged write cannot slip past invariant-checked runs.
-    sim.world.get(hq, Stockpile).amounts.set(PLANK, 0);
+    // The elision is real: a bare Map write defeating the readonly view (bypassing World.mut, which
+    // every system stock write reaches through setStockAmount) is invisible to the dormant porter -
+    // and the coherence verifier catches exactly this incoherence, so a future unlogged write cannot
+    // slip past invariant-checked runs.
+    (sim.world.get(hq, Stockpile).amounts as Map<number, number>).set(PLANK, 0);
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(false);
     expect(sim.world.verifyCaches().some((m) => m.includes('porter'))).toBe(true);
@@ -141,9 +142,7 @@ describe('porter dormancy', () => {
     groundPileAt(sim, 3, 0, 2);
     // A pile appearing and the porter moving in the same window must not mask each other: shift the
     // porter (node change), then plan - the entry mismatches on both fields and the scan re-runs.
-    sim.world.write(porter, Position, (p) => {
-      p.x = fx.fromInt(1);
-    });
+    sim.world.mut(porter, Position).x = fx.fromInt(1);
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(porter, MoveGoal)).toBe(true);
   });

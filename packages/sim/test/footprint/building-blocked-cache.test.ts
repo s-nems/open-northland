@@ -60,16 +60,15 @@ describe('buildingBlockedCells memo', () => {
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
-  it('the verifier flags an in-place Building write that bypassed the write seam', () => {
+  it('the verifier flags an in-place Building write that bypassed the tracked seam', () => {
     const { sim, home } = twoTierHome();
     buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
-    sim.world.get(home, Building).buildingType = HOME_L; // raw store write - no value-generation bump
+    // Defeating the readonly view is the bug the verifier exists to catch: no value-generation bump.
+    (sim.world.get(home, Building) as { buildingType: number }).buildingType = HOME_L;
     expect(sim.world.verifyCaches().join('\n')).toContain('buildingBlockedCells');
 
     // The same write through the seam - logged, so the next read rebuilds.
-    sim.world.write(home, Building, (b) => {
-      b.buildingType = HOME_L;
-    });
+    sim.world.mut(home, Building).buildingType = HOME_L;
     buildingBlockedCells(sim.world, ctxOf(sim), terrainOf(sim));
     expect(sim.world.verifyCaches()).toEqual([]);
   });

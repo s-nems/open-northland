@@ -170,8 +170,8 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
   it('only ONE builder fetches the last missing unit - the supply-run reservation stops the duplicate', () => {
     const sim = new Simulation({ seed: 5, content: constructionContent(), map: grassMap(8, 1) });
     const site = siteAt(sim, HOUSE, 4, 0); // cost 2 stone + 1 wood…
-    sim.world.get(site, Stockpile).amounts.set(STONE, 1);
-    sim.world.get(site, Stockpile).amounts.set(WOOD, 1); // …with only 1 stone still missing
+    sim.world.mut(site, Stockpile).amounts.set(STONE, 1);
+    sim.world.mut(site, Stockpile).amounts.set(WOOD, 1); // …with only 1 stone still missing
     const warehouse = sim.world.create();
     sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
@@ -242,7 +242,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     // "4 build, 1 goes for the last resource").
     const sim = new Simulation({ seed: 21, content: constructionContent(), map: grassMap(12, 3) });
     const site = siteAt(sim, HOUSE, 6, 1); // cost 2 stone + 1 wood
-    sim.world.get(site, Stockpile).amounts.set(STONE, 2); // stone fully on hand → hammerable, wood missing
+    sim.world.mut(site, Stockpile).amounts.set(STONE, 2); // stone fully on hand → hammerable, wood missing
     const warehouse = sim.world.create();
     sim.world.add(warehouse, Position, { x: fx.fromInt(0), y: fx.fromInt(1) });
     sim.world.add(warehouse, Building, { buildingType: HEADQUARTERS, tribe: VIKING, built: ONE, level: 0 });
@@ -288,7 +288,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     sim.world.add(free, Stockpile, { amounts: new Map<number, number>([[STONE, 1]]) });
     const builder = builderAt(sim, 0, 0);
     const at = positionOfNode(6, 4);
-    const pos = sim.world.get(builder, Position);
+    const pos = sim.world.mut(builder, Position);
     pos.x = at.x;
     pos.y = at.y;
 
@@ -343,7 +343,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     const near = siteAt(sim, WORKSHOP, 2, 1);
     const far = siteAt(sim, WORKSHOP, 8, 1);
     for (const site of [near, far]) {
-      sim.world.get(site, Stockpile).amounts.set(STONE, 2); // both hammer-ready: distance is the only tiebreak
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2); // both hammer-ready: distance is the only tiebreak
     }
     const builder = builderAt(sim, 1, 1);
     sim.world.add(builder, Owner, { player: 0 });
@@ -366,8 +366,8 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     const near = siteAt(sim, HOUSE, 2, 1);
     const far = siteAt(sim, HOUSE, 8, 1);
     for (const site of [near, far]) {
-      sim.world.get(site, Stockpile).amounts.set(STONE, 2);
-      sim.world.get(site, Stockpile).amounts.set(WOOD, 1);
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
     }
     const builder = builderAt(sim, 1, 2);
     const carrier = loadedCarrierAt(sim, 0, 2, WOOD, 1); // hauls, but its job can't run the build atomic
@@ -467,8 +467,8 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     sim.world.add(mine, Owner, { player: 0 });
     sim.world.add(enemy, Owner, { player: 1 });
     for (const site of [mine, enemy]) {
-      sim.world.get(site, Stockpile).amounts.set(STONE, 2);
-      sim.world.get(site, Stockpile).amounts.set(WOOD, 1);
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
     }
     // My builder sits NEARER the enemy site (x=5 vs the enemy at 6, mine at 2) - proximity alone would
     // pull an ownership-blind builder onto the enemy foundation.

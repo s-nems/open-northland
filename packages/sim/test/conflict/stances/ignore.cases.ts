@@ -40,7 +40,7 @@ describe('IGNORE - never auto-engage, but an explicit order still fights', () =>
     const focus = combatant(sim, 1, 0, P1, MILITARY_MODE.IGNORE); // the ordered target (2 nodes away)
     combatantAtNode(sim, 1, 0, P1, MILITARY_MODE.IGNORE); // a bystander enemy 1 node away, in reach, the scout must NOT hit
     attackUnit(sim.world, ctxOf(sim), { kind: 'attackUnit', entity: scout, target: focus });
-    sim.world.get(focus, Health).hitpoints = 0; // the ordered target dies
+    sim.world.mut(focus, Health).hitpoints = 0; // the ordered target dies
 
     combatSystem(sim.world, ctxOf(sim));
     // The stale order is dropped and the IGNORE stance re-decides THIS tick - no swing at the bystander.

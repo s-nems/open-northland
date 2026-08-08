@@ -1,4 +1,4 @@
-import { Carrying, Female, ownerOf, Position, type SettlerState, Stance } from '../../../components/index.js';
+import { Carrying, Female, ownerOf, Position, type SettlerView, Stance } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
@@ -42,7 +42,7 @@ import { planTraining } from './training.js';
  * since the data binds child eat and sleep clips (`setatomic 3/4` on `..._child_*_eat_slot_food` and
  * `..._sleep`); a baby has no eat clip bound, so only the stroll runs for it.
  */
-export function planChild(pass: PlannerPass, e: Entity, settler: SettlerState): void {
+export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): void {
   const { world, ctx, terrain } = pass;
   // A child runs for cover like anyone else but never mans the walls (`defence/manning.ts`). The
   // shelter and needs rungs share this position and limit read, so it stays behind their gate.
@@ -62,7 +62,7 @@ export function planChild(pass: PlannerPass, e: Entity, settler: SettlerState): 
 }
 
 /** Plan one idle adult. `jobType` is the caller's non-null narrowing of `settler.jobType`. */
-export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, jobType: number): void {
+export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jobType: number): void {
   const { world, ctx, terrain } = pass;
   const p = world.get(e, Position);
   const hereNode = nodeOfPosition(p.x, p.y);
@@ -141,7 +141,7 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerState, j
 function planEconomy(
   plan: PlannerContext,
   pass: PlannerPass,
-  settler: SettlerState,
+  settler: SettlerView,
   load: { goodType: number; amount: number } | undefined,
   hx: number,
   hy: number,

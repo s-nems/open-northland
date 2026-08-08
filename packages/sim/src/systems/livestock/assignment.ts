@@ -90,9 +90,7 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
       const stay = world.tryGet(e, StayPoint);
       if (stay === undefined) world.add(e, StayPoint, { cell });
       else if (stay.cell !== cell) {
-        world.write(e, StayPoint, (s) => {
-          s.cell = cell;
-        });
+        world.mut(e, StayPoint).cell = cell;
       }
       // Re-issued each period until it arrives, and never on top of a running atomic or in-flight walk.
       if (world.has(e, CurrentAtomic) || isTravelling(world, e)) return;

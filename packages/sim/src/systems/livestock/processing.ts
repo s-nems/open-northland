@@ -78,9 +78,8 @@ export function releaseLivestockVisit(world: World, building: Entity, tribe: num
   const visitor = canonicalAdmittedVisitor(world, building, tribe);
   if (visitor === null) return;
   if (world.has(visitor, Health)) {
-    world.write(visitor, Health, (h) => {
-      h.hitpoints -= visitLifeCost(h);
-    });
+    const h = world.mut(visitor, Health);
+    h.hitpoints -= visitLifeCost(h);
   }
   world.remove(visitor, LivestockVisit);
   stepOut(world, visitor);

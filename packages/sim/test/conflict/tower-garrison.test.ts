@@ -306,7 +306,7 @@ describe('the tower garrison - calling the posting off', () => {
     sim.world.add(tower, Stockpile, { amounts: new Map([[FOOD_GOOD, 5]]) });
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
-    sim.world.get(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, Settler).hunger = STARVING;
     for (let i = 0; i < WALK_TICKS && !sim.world.has(soldier, CurrentAtomic); i++) sim.step();
     expect(sim.world.has(soldier, CurrentAtomic)).toBe(true); // eating at his post
 
@@ -373,7 +373,7 @@ describe('the tower garrison - shooting from cover', () => {
   /** A standing enemy that soaks the shots without dying or shooting back. */
   function standingTarget(sim: Simulation, x: number): Entity {
     const e = settlerAt(sim, SOLDIER_JOB, x, ROW, ENEMY, TOUGH);
-    sim.world.get(e, Stance).mode = MILITARY_MODE.IGNORE;
+    sim.world.mut(e, Stance).mode = MILITARY_MODE.IGNORE;
     return e;
   }
 
@@ -418,7 +418,7 @@ describe('the tower garrison - shooting from cover', () => {
       const tower = towerAt(sim, TOWER_X, ROW);
       const garrison = settlerAt(sim, SOLDIER_JOB, 2, ROW);
       manTheTower(sim, garrison, tower);
-      sim.world.get(garrison, Stance).mode = mode;
+      sim.world.mut(garrison, Stance).mode = mode;
       const post = tileOf(sim, garrison);
       const shotAt = standingTarget(sim, ENEMY_X);
 
@@ -456,7 +456,7 @@ describe('the tower garrison - its needs', () => {
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
     const post = tileOf(sim, soldier);
-    sim.world.get(soldier, Settler).fatigue = EXHAUSTED;
+    sim.world.mut(soldier, Settler).fatigue = EXHAUSTED;
 
     run(sim, 10);
 
@@ -471,7 +471,7 @@ describe('the tower garrison - its needs', () => {
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
     const post = tileOf(sim, soldier);
-    sim.world.get(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, Settler).hunger = STARVING;
 
     run(sim, 60);
 
@@ -487,7 +487,7 @@ describe('the tower garrison - its needs', () => {
     larderAt(sim, 18, 3);
     const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
     manTheTower(sim, soldier, tower);
-    sim.world.get(soldier, Settler).hunger = STARVING;
+    sim.world.mut(soldier, Settler).hunger = STARVING;
 
     run(sim, 30);
     expect(sim.world.has(soldier, Garrison)).toBe(false); // off the wall, walking to the larder

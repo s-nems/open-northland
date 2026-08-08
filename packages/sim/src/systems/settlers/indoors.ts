@@ -46,7 +46,7 @@ export function stepOut(world: World, e: Entity): void {
  */
 export function takePost(world: World, e: Entity, building: Entity): void {
   const at = world.tryGet(building, Position);
-  const from = world.tryGet(e, Position);
+  const from = world.tryMut(e, Position);
   if (at === undefined || from === undefined) return;
   world.add(e, Garrison, { post: building, returnTo: { x: from.x, y: from.y } });
   from.x = at.x;
@@ -61,7 +61,7 @@ export function takePost(world: World, e: Entity, building: Entity): void {
 function standDownFromPost(world: World, e: Entity): void {
   const held = world.tryGet(e, Garrison);
   if (held === undefined) return;
-  const pos = world.tryGet(e, Position);
+  const pos = world.tryMut(e, Position);
   const at = world.tryGet(held.post, Position);
   if (pos !== undefined && at !== undefined && pos.x === at.x && pos.y === at.y) {
     pos.x = held.returnTo.x;

@@ -99,9 +99,8 @@ function shedSlotGood(
   const equipment = world.tryGet(e, Equipment);
   const worn = equipment?.[group];
   if (equipment === undefined || worn == null) return;
-  world.write(e, Equipment, (eq) => {
-    eq[group] = null;
-  });
+  const eq = world.mut(e, Equipment);
+  eq[group] = null;
   if (isUsed(worn)) return;
   const held = world.tryGet(e, Carrying);
   if (into === 'hands' && (held === undefined || held.goodType === worn.goodType)) {

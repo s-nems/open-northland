@@ -51,7 +51,7 @@ export function takeUpWeaponGood(world: World, ctx: SystemContext, e: Entity, go
     world.remove(e, JobAssignment); // the old post is not this class's, as on any profession change
     applyTradeChange(world, ctx, e, weapon.jobType);
   }
-  if (world.has(e, Weapon)) world.get(e, Weapon).weaponTypeId = weapon.typeId;
+  if (world.has(e, Weapon)) world.mut(e, Weapon).weaponTypeId = weapon.typeId;
   else world.add(e, Weapon, { weaponTypeId: weapon.typeId });
   settleArmingBooking(world, e, weapon.mainType);
 }
@@ -75,7 +75,7 @@ export function layDownWeaponGood(world: World, ctx: SystemContext, e: Entity): 
 /** Pay (or release) the assistant's arming booking for the weapon class that actually landed -
  *  `mainType` undefined means "not a class weapon at all", which releases like any mismatch. */
 function settleArmingBooking(world: World, e: Entity, mainType: number | undefined): void {
-  const booking = world.tryGet(e, AssistantRecruit);
+  const booking = world.tryMut(e, AssistantRecruit);
   if (booking === undefined || booking.armed || booking.intent === 'trainSoldiers') return;
   if (mainType !== undefined && INTENT_WEAPON_CLASS[booking.intent] === mainType) {
     consumeAssistantCounter(world, ownerOf(world, e), booking.intent);

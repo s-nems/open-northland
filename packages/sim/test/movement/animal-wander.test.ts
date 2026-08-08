@@ -103,7 +103,7 @@ describe('animalWanderSystem: the grazing drive', () => {
       expect(manhattan(terrain, goal.cell, anchorCell)).toBeLessThanOrEqual(STAY_RANGE);
       // Teleport onto the goal and clear it, standing in for the walk the movement systems would run.
       const c = terrain.coordsOf(goal.cell);
-      const p = sim.world.get(bear, Position);
+      const p = sim.world.mut(bear, Position);
       const centre = positionOfNode(c.x, c.y);
       p.x = centre.x;
       p.y = centre.y;
@@ -131,7 +131,7 @@ describe('animalWanderSystem: the grazing drive', () => {
       goals++;
       expect(manhattan(terrain, goal.cell, anchorCell)).toBeLessThanOrEqual(LIVESTOCK_GRAZE_LEASH_NODES);
       const c = terrain.coordsOf(goal.cell);
-      const p = sim.world.get(claimed, Position);
+      const p = sim.world.mut(claimed, Position);
       const centre = positionOfNode(c.x, c.y);
       p.x = centre.x;
       p.y = centre.y;
@@ -192,7 +192,7 @@ describe('animalWanderSystem: the grazing drive', () => {
       if (goal === undefined) continue;
       expect(manhattan(terrain, goal.cell, postNode)).toBeGreaterThanOrEqual(ANIMAL_SPACING_NODES);
       const c = terrain.coordsOf(goal.cell);
-      const p = sim.world.get(bear, Position);
+      const p = sim.world.mut(bear, Position);
       const centre = positionOfNode(c.x, c.y);
       p.x = centre.x;
       p.y = centre.y;

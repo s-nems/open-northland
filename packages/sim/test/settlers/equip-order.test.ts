@@ -536,7 +536,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     const e = ownedSettler(sim, 3, 2);
     setSettlerJob(sim.world, e, FIGHTER_JOB);
     wear(sim, e, { weapon: SWORD });
-    const eq = sim.world.get(e, Equipment);
+    const eq = sim.world.mut(e, Equipment);
     eq.armor = { goodType: FUR_BOOTS, degreeOfUse: fx.fromInt(0) }; // any good stands in for armour here
 
     sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
@@ -591,7 +591,7 @@ describe('errand interactions with combat and player orders', () => {
     const anchor = terrainNodeAt(sim, home.x, home.y);
     // A guard whose fight just ended: DEFEND anchored at its post + the Engagement the combat pass
     // must drop in returnToAnchor even while the errand lives (the deadlock regression).
-    sim.world.get(guard, Stance).anchorCell = anchor;
+    sim.world.mut(guard, Stance).anchorCell = anchor;
     sim.world.add(guard, Engagement, { repathAt: 0 });
     pileAt(sim, 10, 2, SHOES, 1);
 

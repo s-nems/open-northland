@@ -319,7 +319,7 @@ describe('workforce module - refilling the posts a loss emptied', () => {
     expect(baker).toBeDefined();
     if (baker === undefined) return;
 
-    sim.world.get(baker, Health).hitpoints = 0;
+    sim.world.mut(baker, Health).hitpoints = 0;
     sim.step(); // cleanupSystem reaps him, leaving the baker slot empty
     // Minimum staffing runs ahead of the builder reserve, so the vacancy outranks every other claim
     // on the civilian pool.

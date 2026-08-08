@@ -201,7 +201,7 @@ describe('mining - a trained swing advances multiple strikes (the work-credit pa
     const sim = new Simulation({ seed: 1, content: testContent() });
     const master = makeMiner(sim, 0, 0);
     setSettlerJob(sim.world, master, WOODCUTTER);
-    sim.world.get(master, Settler).experience.set(1, WOOD_MASTERY_XP); // fixture wood track typeId 1
+    sim.world.mut(master, Settler).experience.set(1, WOOD_MASTERY_XP); // fixture wood track typeId 1
     const node = sim.world.create();
     sim.world.add(node, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(node, Resource, { goodType: WOOD, remaining: units, harvestAtomic: HARVEST_STONE });

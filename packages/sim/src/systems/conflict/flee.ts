@@ -99,8 +99,12 @@ export function fleeDrive(
 
   if (threat === null) {
     if (fleeing === undefined) return; // never in danger - the economy owns this unit
-    if (fleeing.calmUntil === null) fleeing.calmUntil = ctx.tick + FLEE_COOLDOWN_TICKS;
-    if (ctx.tick >= fleeing.calmUntil) {
+    let calmUntil = fleeing.calmUntil;
+    if (calmUntil === null) {
+      calmUntil = ctx.tick + FLEE_COOLDOWN_TICKS;
+      world.mut(e, Fleeing).calmUntil = calmUntil;
+    }
+    if (ctx.tick >= calmUntil) {
       world.remove(e, Fleeing); // safe long enough - return to work
       clearNavState(world, e);
     }

@@ -62,12 +62,13 @@ export function grantWorkExperience(
   if (s === undefined || s.jobType === null) return;
   const track = trackFor(ctx, s.jobType, goodType);
   if (track === undefined) return;
-  accrueExperience(s, track.typeId, track.experienceFactor * units);
+  accrueExperience(world, settler, track.typeId, track.experienceFactor * units);
 }
 
-function accrueExperience(s: { experience: Map<number, number> }, trackId: number, amount: number): void {
+function accrueExperience(world: World, settler: Entity, trackId: number, amount: number): void {
   if (amount <= 0) return; // a zero-rate track must not plant a hash-visible bucket with no meaning
-  s.experience.set(trackId, (s.experience.get(trackId) ?? 0) + amount);
+  const experience = world.mut(settler, Settler).experience;
+  experience.set(trackId, (experience.get(trackId) ?? 0) + amount);
 }
 
 /** A job's general (no-good) experience track, or `undefined` when the job trains none; unlike
@@ -95,7 +96,7 @@ export function grantProductionExperience(
     if (isCarrierJob(ctx, s.jobType)) continue;
     const track = generalTrackFor(ctx, s.jobType);
     if (track === undefined) continue;
-    accrueExperience(s, track.typeId, track.experienceFactor);
+    accrueExperience(world, op, track.typeId, track.experienceFactor);
   }
 }
 
@@ -110,7 +111,7 @@ export function grantCarryExperience(world: World, ctx: SystemContext, settler: 
   if (s === undefined || s.jobType === null || !isCarrierJob(ctx, s.jobType)) return;
   const track = generalTrackFor(ctx, s.jobType);
   if (track === undefined) return;
-  accrueExperience(s, track.typeId, track.experienceFactor);
+  accrueExperience(world, settler, track.typeId, track.experienceFactor);
 }
 
 /**
@@ -126,7 +127,7 @@ export const SCOUT_EXPERIENCE_TYPE = 100;
 export function grantScoutExperience(world: World, content: ContentSet, settler: Entity): void {
   const s = world.tryGet(settler, Settler);
   if (s === undefined || !isScoutJob(content, s.jobType)) return;
-  accrueExperience(s, SCOUT_EXPERIENCE_TYPE, 1);
+  accrueExperience(world, settler, SCOUT_EXPERIENCE_TYPE, 1);
 }
 
 /**
@@ -204,7 +205,7 @@ export function grantFightExperience(
   if (declaresNoTrades(ctx.content, s.tribe)) return;
   const bucket = fightExperienceTypeFor(weaponMainType);
   const rate = fightExperienceRate(ctx);
-  if (bucket !== undefined && rate > 0) accrueExperience(s, bucket, rate);
+  if (bucket !== undefined && rate > 0) accrueExperience(world, attacker, bucket, rate);
   const generalTrackId = isSoldierJob(ctx.content, s.jobType)
     ? SOLDIER_GENERAL_EXPERIENCE_TYPE
     : isHeroJob(ctx.content, s.jobType)
@@ -212,7 +213,7 @@ export function grantFightExperience(
       : undefined;
   if (generalTrackId === undefined) return;
   const general = contentIndex(ctx.content).jobExperience.get(generalTrackId);
-  if (general !== undefined) accrueExperience(s, generalTrackId, general.experienceFactor);
+  if (general !== undefined) accrueExperience(world, attacker, generalTrackId, general.experienceFactor);
 }
 
 /** The per-swing fight-XP rate: the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} track's `experienceFactor`

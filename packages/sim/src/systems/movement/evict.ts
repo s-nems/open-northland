@@ -66,7 +66,7 @@ export function evictSettlersFromFootprint(world: World, ctx: SystemContext, bui
     claimed.add(free);
     const c = terrain.coordsOf(free);
     const centre = positionOfNode(c.x, c.y);
-    const pos = world.get(e, Position);
+    const pos = world.mut(e, Position);
     pos.x = centre.x;
     pos.y = centre.y;
   }
@@ -88,7 +88,7 @@ export function evictSettlerFromBlockedSpawn(
 ): void {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless sim: no cells to stand on
-  const p = world.tryGet(settler, Position);
+  const p = world.tryMut(settler, Position);
   if (p === undefined) return;
   const n = nodeOfPosition(p.x, p.y);
   // An off-map spawn stays put: clamping would judge standability from a border node it is not on.

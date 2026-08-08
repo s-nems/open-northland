@@ -78,8 +78,8 @@ function drivePair(
     cancelWedding(world, a);
     return;
   }
-  const wa = world.get(a, Wedding);
-  const wb = world.get(b, Wedding);
+  const wa = world.mut(a, Wedding);
+  const wb = world.mut(b, Wedding);
   const busyA = world.has(a, CurrentAtomic);
   const busyB = world.has(b, CurrentAtomic);
   if (wa.kissing) {

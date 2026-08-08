@@ -399,8 +399,8 @@ describe('footprint displacement - settlers never end up standing inside walls',
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
     sim.step(); // opens the upgrade site (the small body doesn't reach (6,5) - the settler stays)
     // Deliver the difference and hammer the site out by hand; the finish adopts the larger tier.
-    sim.world.get(home, Stockpile).amounts.set(STONE, 1);
-    sim.world.get(home, UnderConstruction).labor = ONE;
+    sim.world.mut(home, Stockpile).amounts.set(STONE, 1);
+    sim.world.mut(home, UnderConstruction).labor = ONE;
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(home, Building).buildingType).toBe(HOME_L); // upgraded
     expect(nodeOf(sim, beside)).not.toEqual({ x: 6, y: 5 }); // and the settler stepped aside
@@ -486,8 +486,8 @@ describe('footprint displacement - a finish that seals a nook beside the body di
     }
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
     sim.step();
-    sim.world.get(home, Stockpile).amounts.set(STONE, 1);
-    sim.world.get(home, UnderConstruction).labor = ONE;
+    sim.world.mut(home, Stockpile).amounts.set(STONE, 1);
+    sim.world.mut(home, UnderConstruction).labor = ONE;
     return sim;
   }
 

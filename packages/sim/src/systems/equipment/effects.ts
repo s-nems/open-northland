@@ -74,9 +74,8 @@ export function tryDeathSaveDraught(world: World, ctx: SystemContext, e: Entity)
     if (held === null) continue;
     const pct = liveEquipOf(ctx, held)?.restorePct?.healthMax;
     if (pct === undefined) continue;
-    world.write(e, Health, (h) => {
-      h.hitpoints = Math.max(1, Math.trunc((h.max * pct) / 100));
-    });
+    const h = world.mut(e, Health);
+    h.hitpoints = Math.max(1, Math.trunc((h.max * pct) / 100));
     applyEquipWear(world, e, 'misc', slot, wearStepOf(ctx, held.goodType));
     return true;
   }

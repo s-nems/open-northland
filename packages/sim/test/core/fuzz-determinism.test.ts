@@ -687,6 +687,9 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     }
     if (gen.int(COMMAND_EVERY) === 0) sim.enqueueSetup(nextCommand(gen));
     sim.step();
+    // A per-tick snapshot populates the clone cache, arming the cachesCoherent invariant's stale-clone
+    // verifier against any system write that bypassed the tracked seam. A pure read: hashes unaffected.
+    sim.snapshot();
     if (violations.length === 0) {
       const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);
       if (v.length > 0) violations.push(`tick ${sim.tick}: ${v.join('; ')}`);
@@ -698,9 +701,14 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
   return { finalHash: sim.hashState(), checkpoints, violations, sheltered, log: [...sim.commands.log] };
 }
 
+/** The per-tick snapshot+verifier pass makes a fuzz run integration-priced; headroom for a loaded box. */
+const FUZZ_TIMEOUT_MS = 60_000;
+
 describe('fuzz: randomized command streams stay deterministic, replayable, and invariant-clean', () => {
   for (const seed of FUZZ_SEEDS) {
-    it(`seed ${seed}: two live runs are byte-identical and invariant-clean`, () => {
+    it(`seed ${seed}: two live runs are byte-identical and invariant-clean`, {
+      timeout: FUZZ_TIMEOUT_MS,
+    }, () => {
       const a = runFuzz(seed, TICKS);
       const b = runFuzz(seed, TICKS);
       expect(a.sheltered).toBe(true); // the stream really reached defence mode, not just its skip paths
@@ -711,7 +719,9 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       expect(b.finalHash).toBe(a.finalHash);
     });
 
-    it(`seed ${seed}: replaying the recorded log reproduces the final state`, () => {
+    it(`seed ${seed}: replaying the recorded log reproduces the final state`, {
+      timeout: FUZZ_TIMEOUT_MS,
+    }, () => {
       const live = runFuzz(seed, TICKS);
       expect(live.log.length).toBeGreaterThan(0); // the stream actually exercised the command seam
       const replayed = replay({

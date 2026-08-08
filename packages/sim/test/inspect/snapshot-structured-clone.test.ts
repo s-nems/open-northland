@@ -5,14 +5,13 @@ import { testContent } from '../fixtures/content.js';
 import { grassNodeMap as grassMap } from '../fixtures/terrain.js';
 
 /**
- * Pins the snapshot's **"transferable for free"** claim (see `snapshot.ts` docstring; the
- * "run the sim in a Web Worker" Cross-cutting DX item). The plan requires the snapshot to be a
- * plain transferable structure so moving `step()` off the main thread is free, **not** a
- * serialization retrofit. The actual `postMessage` boundary serializes via the structured clone
- * algorithm, so the load-bearing test is: a REAL `step()`-driven snapshot survives `structuredClone`
- * (it would throw on a function / class instance / live `Map`), comes back deep-equal (no data lost
- * crossing the thread), and the copy is a genuine deep copy (a worker owns its own, can't alias the
- * sim's live state). This is the self-verifiable headless half - the Worker wiring itself is app-side.
+ * Pins the snapshot's structured-cloneable claim (see `snapshot.ts` docstring; the "run the sim in a
+ * Web Worker" Cross-cutting DX item). A `postMessage` boundary serializes via the structured clone
+ * algorithm - a copy, not a zero-copy transfer - so the load-bearing test is: a REAL `step()`-driven
+ * snapshot survives `structuredClone` (it would throw on a function / class instance / live `Map`),
+ * comes back deep-equal (no data lost crossing the thread), and the copy is a genuine deep copy (a
+ * worker owns its own, can't alias the sim's live state). This is the self-verifiable headless half -
+ * the Worker wiring itself is app-side.
  */
 
 const HEADQUARTERS = 1;
@@ -37,7 +36,7 @@ function realRunSnapshot(): WorldSnapshot {
   return sim.snapshot();
 }
 
-describe('snapshot is transferable (Web-Worker boundary)', () => {
+describe('snapshot is structured-cloneable (Web-Worker boundary)', () => {
   it('survives structuredClone - no functions / class instances / live Maps', () => {
     const snap = realRunSnapshot();
     // It must have real content, or the clone proves nothing.

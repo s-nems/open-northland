@@ -24,7 +24,7 @@ export const atomicSystem: System = (world, ctx) => {
   // completion stays the only membership change, which Map iteration tolerates.
   const pendingStaggers: PendingStagger[] = [];
   for (const e of world.query(CurrentAtomic)) {
-    const atomic = world.get(e, CurrentAtomic);
+    const atomic = world.mut(e, CurrentAtomic);
     const duration = Math.max(1, atomic.duration);
     atomic.elapsed += 1;
     atomic.progress = fx.div(fx.fromInt(Math.min(atomic.elapsed, duration)), fx.fromInt(duration));
