@@ -1,8 +1,9 @@
+import type { ContentSet } from '@open-northland/data';
 import { Building, Position } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { MapContext, SystemContext } from '../context.js';
 import { buildingFootprintOf, nearestCell, translatedCells } from '../footprint/geometry.js';
 import { interactionNode } from '../footprint/index.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -10,39 +11,101 @@ import { entityNode } from '../spatial/nodes.js';
 // The nodes combat measures a target's distance to, and paths a chaser toward, so the ring-search index, the
 // chase drive and the mid-swing whiff check all resolve a building target's approach the same way.
 
-/** A per-tick memo of a building's wall nodes - a building never moves within a tick, so the combat loop
- *  computes each once and shares the result. */
-export type BuildingBodyNodeCache = Map<Entity, readonly NodeId[]>;
+/** Shared and frozen so a body-less lookup allocates nothing. */
+const NO_BODY: readonly NodeId[] = Object.freeze([]);
+
+interface BuildingBodyCache {
+  /** Building MEMBERSHIP generation - a placement or destruction. */
+  readonly membershipGeneration: number;
+  /** Building VALUE generation - a home tier upgrade swaps `buildingType` in place through
+   *  {@link World.write}, moving the footprint with no membership change. */
+  readonly valueGeneration: number;
+  readonly content: ContentSet;
+  readonly terrain: TerrainGraph;
+  readonly bodies: Map<Entity, readonly NodeId[]>;
+}
+
+const bodyCache = new WeakMap<World, BuildingBodyCache>();
 
 /**
  * The half-cell wall nodes a building presents to attackers - its footprint `blocked` cells translated to the
  * placed anchor. A warrior measures reach to, and swings at, the nearest of these, so a building is besieged
  * from every face rather than only its door. Falls back to the door node, then the anchor, for a
  * footprint-less building.
+ *
+ * Derived per world and held across ticks, keyed on the two Building store generations: a building never
+ * moves, so nothing else the derivation reads can change under a live key. Never hashed; the registered
+ * verifier re-derives every held body, so a change that reaches neither generation surfaces at the tick it
+ * happens.
  */
 export function buildingBodyNodes(
   world: World,
-  ctx: SystemContext,
+  ctx: MapContext,
   terrain: TerrainGraph,
   building: Entity,
-  cache?: BuildingBodyNodeCache,
 ): readonly NodeId[] {
-  const cached = cache?.get(building);
-  if (cached !== undefined) return cached;
+  const bodies = liveBodies(world, ctx, terrain);
+  const held = bodies.get(building);
+  if (held !== undefined) return held;
   const nodes = computeBuildingBodyNodes(world, ctx, terrain, building);
-  cache?.set(building, nodes);
+  // A Building whose Position is not yet added resolves to no body and bumps no generation on the later
+  // add, so holding its empty result would pin it for the rest of the generation window.
+  if (nodes.length === 0) return NO_BODY;
+  bodies.set(building, nodes);
   return nodes;
+}
+
+/** The world's body map at the current Building generations, minting a fresh empty one when either moved. */
+function liveBodies(world: World, ctx: MapContext, terrain: TerrainGraph): Map<Entity, readonly NodeId[]> {
+  const membershipGeneration = world.componentGeneration(Building);
+  const valueGeneration = world.componentValueGeneration(Building);
+  const cached = bodyCache.get(world);
+  if (
+    cached !== undefined &&
+    cached.terrain === terrain &&
+    cached.content === ctx.content &&
+    cached.membershipGeneration === membershipGeneration &&
+    cached.valueGeneration === valueGeneration
+  ) {
+    return cached.bodies;
+  }
+  const bodies = new Map<Entity, readonly NodeId[]>();
+  const content = ctx.content;
+  bodyCache.set(world, { membershipGeneration, valueGeneration, content, terrain, bodies });
+  world.registerCacheVerifier('combatBuildingBodies', () => verifyBodyCache(world, content, terrain));
+  return bodies;
+}
+
+function verifyBodyCache(world: World, content: ContentSet, terrain: TerrainGraph): string[] {
+  const cached = bodyCache.get(world);
+  if (cached === undefined || cached.terrain !== terrain || cached.content !== content) return [];
+  if (
+    cached.membershipGeneration !== world.componentGeneration(Building) ||
+    cached.valueGeneration !== world.componentValueGeneration(Building)
+  ) {
+    return []; // stale key - the next read mints a fresh map, nothing can consume the held bodies
+  }
+  const ctx: MapContext = { content, terrain };
+  for (const [e, held] of cached.bodies) {
+    const fresh = computeBuildingBodyNodes(world, ctx, terrain, e);
+    if (held.length !== fresh.length || fresh.some((n, i) => held[i] !== n)) {
+      return [
+        `combatBuildingBodies holds a stale body for building ${e} - a footprint changed without a Building store generation bump`,
+      ];
+    }
+  }
+  return [];
 }
 
 function computeBuildingBodyNodes(
   world: World,
-  ctx: SystemContext,
+  ctx: MapContext,
   terrain: TerrainGraph,
   building: Entity,
 ): readonly NodeId[] {
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
-  if (b === undefined || p === undefined) return [];
+  if (b === undefined || p === undefined) return NO_BODY;
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const body = translatedCells(
     terrain,
@@ -51,7 +114,9 @@ function computeBuildingBodyNodes(
     hy,
   );
   if (body.length > 0) return body;
-  const door = interactionNode(world, ctx, building);
+  // `terrain`, not `ctx.terrain`: the door's in-bounds fallback must read the same graph the cache is
+  // keyed on and the cells above are translated against.
+  const door = interactionNode(world, { content: ctx.content, terrain }, building);
   return door === null ? [entityNode(world, terrain, building)] : [terrain.nodeAtClamped(door.x, door.y)];
 }
 
@@ -67,10 +132,9 @@ export function combatTargetNode(
   terrain: TerrainGraph,
   from: NodeId,
   target: Entity,
-  cache?: BuildingBodyNodeCache,
 ): NodeId {
   if (world.has(target, Building)) {
-    const nearest = nearestCell(terrain, buildingBodyNodes(world, ctx, terrain, target, cache), from);
+    const nearest = nearestCell(terrain, buildingBodyNodes(world, ctx, terrain, target), from);
     if (nearest !== null) return nearest;
   }
   return entityNode(world, terrain, target);

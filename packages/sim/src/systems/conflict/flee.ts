@@ -17,11 +17,10 @@ import {
   clearNavState,
   entityNode,
   isTravelling,
-  type NodeBuckets,
   redirectRoute,
 } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
-import type { HostilePresence } from './presence.js';
+import type { CombatIndex } from './combat-index.js';
 import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // The FLEE drive - the civilian raid reaction: path away from the nearest threat at the unit's normal pace
@@ -65,8 +64,7 @@ export function fleeDrive(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: NodeBuckets,
-  presence: HostilePresence,
+  index: CombatIndex,
   e: Entity,
   attacker: SettlerIdentity,
 ): void {
@@ -94,7 +92,7 @@ export function fleeDrive(
   const threat =
     viewer !== undefined &&
     !isHunterJob(ctx.content, attacker.jobType) &&
-    !presence.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
+    !index.othersWithin(viewer.player, x, y, SIGHT_RADIUS_NODES)
       ? null
       : index.nearest(x, y, 0, SIGHT_RADIUS_NODES, accept);
   const fleeing = world.tryGet(e, Fleeing);

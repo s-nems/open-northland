@@ -4,7 +4,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isLastResortPrey } from '../../readviews/index.js';
-import { entityNode, manhattan, type NodeBuckets } from '../../spatial/nodes.js';
+import { entityNode, manhattan } from '../../spatial/nodes.js';
+import type { CombatIndex } from '../combat-index.js';
 import type { EngageSpec } from '../engagement.js';
 import { isHuntTarget } from '../targeting.js';
 import { HUNT_CHASE_SLACK_NODES, HUNT_LAST_RESORT_SCAN_FACTOR, huntingGround } from './ground.js';
@@ -36,7 +37,7 @@ export function hunterEngageSpec(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: NodeBuckets,
+  index: CombatIndex,
   e: Entity,
   jobType: number | null,
   seesTarget: (t: Entity) => boolean,
@@ -122,7 +123,7 @@ export function hunterEngageSpec(
  */
 function lastResortGate(
   terrain: TerrainGraph,
-  index: NodeBuckets,
+  index: CombatIndex,
   at: NodeId,
   radius: number,
   reachablePrey: (t: Entity) => boolean,

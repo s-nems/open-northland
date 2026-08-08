@@ -130,6 +130,29 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
   });
 
+  it('sees game the wider probe reaches but the acquisition band never did', () => {
+    // The probe runs from inside the acquisition search's own `accept`, so it re-enters the ring search
+    // with a wider radius. Placed so the deer sits in a coarse index cell (32 nodes wide) the outer
+    // search never touches: the nested walk has to reach it on its own.
+    const RADIUS = 20;
+    const HUNTER_NODE = 30;
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, HUNTER_NODE, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, HUNTER_NODE, 40, RADIUS);
+    const cow = fighterAtNode(sim, HUNTER_NODE + 3, 40, COW, null); // the only prey IN the ground
+    const deer = fighterAtNode(sim, HUNTER_NODE + RADIUS + 16, 40, DEER, null); // past the ground, in the probe
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // real game around - the herd is safe
+    expect(sim.world.has(hunter, HuntRest)).toBe(true);
+
+    moveToNode(sim, deer, HUNTER_NODE + RADIUS * HUNT_LAST_RESORT_SCAN_FACTOR + 6, 40);
+    combatSystem(sim.world, { ...ctxOf(sim), tick: HUNT_SEARCH_REST_TICKS });
+
+    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: cow });
+  });
+
   it("counts a COLLEAGUE's committed animal as game around - one hunter's hold spares the herd", () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
     const first = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });

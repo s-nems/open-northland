@@ -10,11 +10,12 @@ import {
   type MilitaryMode,
   stanceMode,
 } from '../readviews/index.js';
-import { entityNode, manhattan, type NodeBuckets } from '../spatial/nodes.js';
+import { entityNode, manhattan } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
+import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
-import { type BuildingBodyNodeCache, combatTargetNode } from './target-node.js';
+import { combatTargetNode } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // Re-exported so the combat modules keep one import site for the stance ladder.
@@ -64,7 +65,7 @@ export function engageSpec(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: NodeBuckets,
+  index: CombatIndex,
   e: Entity,
   stance: CombatantStance,
   attacker: SettlerIdentity,
@@ -165,10 +166,10 @@ export interface EngageSpec {
   readonly minDist: number;
   /** Far reach - how far the unit spots a target to swing at / advance on. */
   readonly searchRadius: number;
-  /** The seeker's player for the coarse presence early-out; null when the seeker must never skip the
-   *  search - an unowned one, or a hunter in any stance. */
+  /** The seeker's player for the {@link CombatIndex.othersWithin} early-out; null when the seeker must
+   *  never skip the search - an unowned one, or a hunter in any stance. */
   readonly player: number | null;
-  /** A hostile wild animal seeking - gates on the presence grid's civilian count instead. */
+  /** A hostile wild animal seeking - gates on {@link CombatIndex.civsWithin} instead. */
   readonly animalSeeker?: boolean;
   /** This seeker's place in the firing line it shares a node with: `seat` is its offset into the nearest
    *  {@link GARRISON_SPREAD_TARGETS}, and `group` identifies the occupants whose search it is the same as.
@@ -210,13 +211,13 @@ export function resolveTarget(
   attacker: SettlerIdentity,
   spec: EngageSpec,
 ): { target: Entity; dist: number } | null {
-  const { bodyNodes, index, presence } = pass;
+  const { index } = pass;
   if (world.has(self, AttackOrder)) {
     const focus = world.get(self, AttackOrder).target;
     // An ordered target is chased regardless of sight, so measure its real distance, uncapped by the ring
     // search's band. A building is measured at its nearest wall cell, the same node the chase walks to.
     if (isValidTarget(world, ctx, self, attacker, focus)) {
-      return focusedOn(world, ctx, terrain, here, focus, bodyNodes);
+      return focusedOn(world, ctx, terrain, here, focus);
     }
     world.remove(self, AttackOrder); // target gone / no longer hostile - abandon the order, auto-engage
   }
@@ -230,13 +231,13 @@ export function resolveTarget(
       ? index.nearest(x, y, spec.minDist, spec.searchRadius, (t) => !spec.lowPriority(t) && spec.accept(t))
       : null;
     if (preempt !== null) return { target: preempt.entity, dist: preempt.distance };
-    return focusedOn(world, ctx, terrain, here, locked, bodyNodes);
+    return focusedOn(world, ctx, terrain, here, locked);
   }
   // Idle early-out (perf-only): when the coarse presence grid proves no not-mine combatant or building can
   // be in the search band, both ring searches would return null.
-  if (spec.player !== null && !presence.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
+  if (spec.player !== null && !index.othersWithin(spec.player, x, y, spec.searchRadius)) return null;
   // The animal seeker's twin: no civ in the band proves both empty.
-  if (spec.animalSeeker === true && !presence.civsWithin(x, y, spec.searchRadius)) return null;
+  if (spec.animalSeeker === true && !index.civsWithin(x, y, spec.searchRadius)) return null;
   // A nearer tier-2 target never preempts a tier-1 target in sight.
   const primary = pickInBand(pass, spec, x, y, 'primary');
   if (primary !== null) return primary;
@@ -283,10 +284,9 @@ function focusedOn(
   terrain: TerrainGraph,
   here: NodeId,
   target: Entity,
-  bodyNodes: BuildingBodyNodeCache | undefined,
 ): { target: Entity; dist: number } {
   return {
     target,
-    dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, target, bodyNodes)),
+    dist: manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, target)),
   };
 }
