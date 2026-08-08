@@ -1,3 +1,5 @@
+import type { FpsLimit } from '../settings-store.js';
+
 export interface RafLoop {
   /** Halt the chain; a second call is a no-op. */
   stop(): void;
@@ -10,18 +12,20 @@ const EARLY_FRAME_TOLERANCE_MS = 4;
 /**
  * Wall-clock gate for a drawn-frame cap: `null` admits every animation frame (the display's own
  * rate). Due times advance along the cap's own grid rather than from each admitted timestamp, so
- * the admitted rate averages the cap even when the display rate is not a multiple of it; a frame
- * arriving more than a whole interval past due is a stall and re-anchors the grid instead of
- * letting the backlog burst through.
+ * the admitted rate averages the cap even when the display rate is not a multiple of it.
  */
-export function createFrameLimiter(fpsLimit: number | null): (nowMs: number) => boolean {
+export function createFrameLimiter(fpsLimit: FpsLimit): (nowMs: number) => boolean {
   if (fpsLimit === null) return () => true;
   const intervalMs = 1000 / fpsLimit;
   let nextDueMs: number | null = null;
   return (nowMs) => {
     if (nextDueMs !== null && nowMs < nextDueMs - EARLY_FRAME_TOLERANCE_MS) return false;
-    nextDueMs =
-      nextDueMs === null || nowMs - nextDueMs > intervalMs ? nowMs + intervalMs : nextDueMs + intervalMs;
+    if (nextDueMs === null || nowMs - nextDueMs > intervalMs) {
+      // A whole interval past due is a stall: re-anchor the grid instead of bursting the backlog.
+      nextDueMs = nowMs + intervalMs;
+    } else {
+      nextDueMs += intervalMs;
+    }
     return true;
   };
 }
@@ -32,7 +36,7 @@ export function createFrameLimiter(fpsLimit: number | null): (nowMs: number) => 
  * chain reschedules itself, so {@link RafLoop.stop} is the only thing that ends it: a session that
  * never stops leaves a second loop stepping the same stage.
  */
-export function startRafLoop(frame: (nowMs: number) => void, fpsLimit: number | null = null): RafLoop {
+export function startRafLoop(frame: (nowMs: number) => void, fpsLimit: FpsLimit = null): RafLoop {
   const admits = createFrameLimiter(fpsLimit);
   let running = true;
   let rafId = requestAnimationFrame(function tick(nowMs) {

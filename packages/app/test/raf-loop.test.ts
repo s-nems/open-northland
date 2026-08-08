@@ -157,6 +157,11 @@ describe('createFrameLimiter', () => {
     expect(frames.length).toBeLessThanOrEqual(61);
   });
 
+  it('admits every frame on a display slower than the cap', () => {
+    const limiter = createFrameLimiter(30);
+    expect(admitted(limiter, 1000 / 24, 24)).toHaveLength(24);
+  });
+
   it('resumes paced after a stall instead of bursting to catch up', () => {
     const limiter = createFrameLimiter(30);
     expect(limiter(0)).toBe(true);

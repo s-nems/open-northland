@@ -98,12 +98,10 @@ export interface WindowPixiAppOptions {
  * resizing grows or shrinks the visible field instead of stretching the world. Callers must read the
  * live size from `app.screen` per frame, never from a captured constant.
  *
- * Renders at an oversample of the device resolution: `app.screen`, the camera, and every layout stay
- * in CSS px while the backing store holds `windowResolutionFor(DPR, scale)` texels per CSS px, so at
- * scale 1 screen-space UI rasterizes crisp on HiDPI and fractional OS scaling never lands on uneven
- * texels; a non-1 `resolutionScale` deliberately trades that for fill-rate or supersampling. The
- * resolution follows live DPR changes; consumers that bake at a resolution must re-bake when
- * `app.renderer.resolution` moves.
+ * Renders at {@link windowResolutionFor} texels per CSS px: `app.screen`, the camera, and every
+ * layout stay in CSS px, so at scale 1 screen-space UI rasterizes crisp on HiDPI and fractional OS
+ * scaling never lands on uneven texels. The resolution follows live DPR changes; consumers that bake
+ * at a resolution must re-bake when `app.renderer.resolution` moves.
  */
 export async function createWindowPixiApp(
   canvas: HTMLCanvasElement,

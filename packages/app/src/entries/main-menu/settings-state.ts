@@ -3,8 +3,8 @@ import { type MenuSettings, persistSettings, readStoredSettings } from '../../vi
 
 /**
  * The menu's settings session: the persisted store plus URL overrides. `lang` and `sound` are
- * projected onto the carried URL params so a launched game receives them; the HUD scale factor is
- * read from the store directly and never enters the URL.
+ * projected onto the carried URL params so a launched game receives them; the HUD scale factor and
+ * the graphics settings are read from the store directly and never enter the URL.
  */
 
 export type SettingsTab = 'graphics' | 'audio' | 'gameplay' | 'controls';
@@ -113,7 +113,8 @@ export function adoptSettings(
 /**
  * Menu-boot bridge between the store and the URL: layers the stored settings under the explicit URL
  * params, without persisting URL overrides. Only the menu runs this; direct `?map=` and `?scene=`
- * entries read the URL alone. Mutates `params` in place.
+ * entries take the carried params from the URL as-is and read store-only settings straight from the
+ * store. Mutates `params` in place.
  */
 export function adoptStoredSettings(params: URLSearchParams): void {
   const { session, adopted } = adoptSettings(persistedSettings(), params);
