@@ -15,8 +15,6 @@ import { entityOwner, entityTile, type TilePoint } from './snapshot.js';
 export const JINGLE_GAIN = 0.9;
 /** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. */
 export const SFX_GAIN = 0.8;
-/** Base gain of a `chatVoice` settler line (below SFX so conversation sits under the action, not over it). */
-export const CHAT_VOICE_GAIN = 0.7;
 
 /**
  * The entity that names a spatial event's emitter, or `undefined` when it names none. Only asked of an
@@ -31,21 +29,23 @@ function eventEntity(ev: SimEvent): number | undefined {
 /**
  * A stable per-emitter key so the engine can debounce a burst of identical events. A positioned event keys
  * on its node, so two emitters at one spot collapse and two spots stay distinct; everything else keys on its
- * emitter entity. This keys `settlerDied` (a jingle carrying an optional `at`) by death node rather than by
- * the reaped entity - deliberate: the debounce should dedup "deaths here", and the reaped id is never
- * repeated anyway, so an entity key could never collapse a simultaneous pile-up.
+ * emitter entity. An `atomicSound` adds its `soundType`, since one clip can author two distinct sounds a
+ * few ticks apart (a bow's draw and its arrow) and those must not debounce each other. This keys
+ * `settlerDied` (a jingle carrying an optional `at`) by death node rather than by the reaped entity -
+ * deliberate: the debounce should dedup "deaths here", and the reaped id is never repeated anyway, so an
+ * entity key could never collapse a simultaneous pile-up.
  */
 function eventKey(ev: SimEvent): string {
   const node = eventNode(ev);
   if (node !== null) return `${ev.kind}:${node.hx},${node.hy}`;
-  return `${ev.kind}:${eventEntity(ev) ?? '?'}`;
+  const emitter = eventEntity(ev) ?? '?';
+  if (ev.kind === 'atomicSound') return `${ev.kind}:${ev.soundType}:${emitter}`;
+  return `${ev.kind}:${emitter}`;
 }
 
-/** Which sound a given event triggers, per the bindings (atomic events key on their numeric id, a melee
- *  `combatHit` on its weapon class with the generic-melee `byEvent` fallback). */
+/** Which sound a given event triggers, per the bindings (a melee `combatHit` keys on its weapon class with
+ *  the generic-melee `byEvent` fallback). */
 function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | undefined {
-  if (ev.kind === 'atomicCompleted') return bindings.byAtomic.get(ev.atomicId);
-  if (ev.kind === 'atomicSound') return bindings.byAtomicSound.get(ev.atomicId);
   if (ev.kind === 'combatHit' && ev.weaponMainType !== undefined) {
     const byWeapon = bindings.byCombatWeapon?.get(ev.weaponMainType);
     if (byWeapon !== undefined) return byWeapon;
@@ -75,13 +75,14 @@ interface PendingBase {
 }
 
 /**
- * A resolved positioned event waiting for its location. An `sfx` attenuates and pans; a `voice`
- * additionally hides behind the viewer's fog; a `stinger` (screen-gated jingle) rings at full
- * {@link JINGLE_GAIN}, centred - the viewport cull decides its audibility only.
+ * A resolved positioned event waiting for its location. An `sfx` attenuates and pans; a `cue` (an
+ * animation's authored sound, always a settler's own body) additionally hides behind the viewer's fog; a
+ * `stinger` (screen-gated jingle) rings at full {@link JINGLE_GAIN}, centred - the viewport cull decides
+ * its audibility only.
  */
 type Pending =
   | (PendingBase & { readonly kind: 'sfx' })
-  | (PendingBase & { readonly kind: 'voice' })
+  | (PendingBase & { readonly kind: 'cue' })
   | (PendingBase & {
       readonly kind: 'stinger';
       /** The entity whose snapshot `Owner` must equal the local player, or null when the event's own
@@ -125,14 +126,15 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
   const pending: Pending[] = [];
   const neededIds = new Set<number>();
   for (const ev of events) {
-    // A chat voice names its sound by the animation event's own `logicSoundType` id (data, not a
-    // binding - the clip already picked the sex-correct group), so it resolves before the binding map.
-    if (ev.kind === 'chatVoice') {
+    // An authored cue names its sound by the animation event's own `logicSoundType` id (data, not a
+    // binding - the clip already picked the axe, the hammer, the sex-correct voice), so it resolves
+    // outside the binding map. An id the bank does not carry is silent.
+    if (ev.kind === 'atomicSound') {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
       const id = eventEntity(ev);
       if (files !== undefined && files.length > 0 && id !== undefined) {
         neededIds.add(id);
-        pending.push({ kind: 'voice', ev, files, node: null, entity: id });
+        pending.push({ kind: 'cue', ev, files, node: null, entity: id });
       }
       continue;
     }
@@ -180,15 +182,14 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     } else if (p.entity !== undefined) {
       const tile = facts?.tiles.get(p.entity) ?? null;
       if (tile === null) continue; // position-less emitter → silent
-      if (p.kind === 'voice' && visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
+      if (p.kind === 'cue' && visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
       spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
     }
     if (spatial === null) continue; // off screen → silent
     if (p.kind === 'stinger') {
       shots.push({ files: p.files, gain: JINGLE_GAIN, pan: 0, key: eventKey(p.ev) });
     } else {
-      const base = p.kind === 'voice' ? CHAT_VOICE_GAIN : SFX_GAIN;
-      shots.push({ files: p.files, gain: spatial.gain * base, pan: spatial.pan, key: eventKey(p.ev) });
+      shots.push({ files: p.files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key: eventKey(p.ev) });
     }
   }
   return shots;

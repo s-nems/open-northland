@@ -5,8 +5,8 @@ import type { SystemContext } from '../../context.js';
 import { builtHomeType } from '../../family/households.js';
 import {
   atomicAnimationByName,
+  atomicClipName,
   atomicDurationForName,
-  needAtomicAnimationName,
   needAtomicDuration,
 } from '../../readviews/animations.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -78,7 +78,7 @@ export function isSleepingAtHome(world: World, e: Entity): boolean {
 /** How long one sleep indoors takes: the settler's `<clip>_home` length, or its outdoor sleep length when
  *  its body has no home clip. */
 function homeSleepDuration(ctx: SystemContext, settler: SettlerIdentity): number {
-  const outdoor = needAtomicAnimationName(ctx.content, settler, SLEEP_ATOMIC_ID);
+  const outdoor = atomicClipName(ctx.content, settler, SLEEP_ATOMIC_ID);
   if (outdoor === undefined) return needAtomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID);
   const atHome = `${outdoor}${HOME_SLEEP_SUFFIX}`;
   // Resolve the home name explicitly: a body with no home clip must sleep at its own outdoor pace, not at

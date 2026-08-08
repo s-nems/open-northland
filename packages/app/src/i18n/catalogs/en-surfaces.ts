@@ -307,10 +307,11 @@ export const enSurfaces = {
   soundGallery: {
     title: 'Sound studio',
     intro:
-      'Play any recording to verify its role. Action rows show when a clip fires; voice rows group chatter by age and sex.',
+      'Play any recording to verify its role. Action rows show when a clip fires; action sounds are the groups a settler animation names by id; voice rows group chatter by age and sex.',
     missingTitle: 'No decoded sounds found',
     missingDetail: 'Run the asset pipeline on a game copy you own to create the local sound bank.',
     actions: 'Actions and sound bindings',
+    cues: 'Action sounds (named by the animation data)',
     voices: 'Settler voices',
     jingles: 'Life-event jingles',
     ambient: 'Terrain ambience',
@@ -319,7 +320,6 @@ export const enSurfaces = {
     screenGatedJingle: 'jingle, on-screen only',
     children: 'Children',
     actionsCatalog: {
-      chop: { label: 'Chop tree', trigger: 'each axe strike on a tree' },
       buildingPlaced: { label: 'Place building', trigger: 'when a player places a new building' },
       boatPlaced: { label: 'Launch boat', trigger: 'when a boat is created' },
       goodProduced: { label: 'Produce good', trigger: 'when a workshop completes a good' },

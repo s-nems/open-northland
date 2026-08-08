@@ -61,11 +61,12 @@ export function atomicDuration(content: ContentSet, settler: SettlerIdentity, at
  * civilian look draws through `logicJob: 6`).
  */
 export function needAtomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
-  return atomicDurationForName(content, needAtomicAnimationName(content, settler, atomicId));
+  return atomicDurationForName(content, atomicClipName(content, settler, atomicId));
 }
 
-/** The animation name behind {@link needAtomicDuration}, including its civilist fallback. */
-export function needAtomicAnimationName(
+/** The clip a settler actually plays for `atomicId`: its own trade's `setatomic` binding, falling back to
+ *  the tribe's civilist body (the original's `baseatomics 6` inheritance). */
+export function atomicClipName(
   content: ContentSet,
   settler: SettlerIdentity,
   atomicId: number,
@@ -141,6 +142,12 @@ export function atomicEventChannelDelta(content: ContentSet, name: string, chann
  */
 export function atomicHasExtendedEvents(content: ContentSet, name: string): boolean {
   return atomicAnimationByName(content, name)?.events.some((e) => e.extended) ?? false;
+}
+
+/** An authored event frame clamped into the `[1, duration]` ticks an atomic actually runs, so a frame the
+ *  data puts past the animation length still fires exactly once, on the last tick. */
+export function atomicEventTick(frame: number, duration: number): number {
+  return Math.min(Math.max(1, frame), duration);
 }
 
 /** The frame (`at`) of the named animation's first `event`/`eventx` of `eventType`, or `undefined` when it

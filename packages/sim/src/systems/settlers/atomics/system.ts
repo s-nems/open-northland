@@ -1,6 +1,7 @@
 import { CurrentAtomic, DeferredOrder } from '../../../components/index.js';
 import { fx } from '../../../core/fixed.js';
 import type { System } from '../../context.js';
+import { atomicEventTick } from '../../readviews/animations.js';
 import { applyEffect } from './effects/apply.js';
 import {
   applyPendingStaggers,
@@ -9,7 +10,7 @@ import {
   resolveAttackHit,
 } from './effects/combat/index.js';
 import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
-import { atomicSoundFrame } from './sound-cue.js';
+import { emitAtomicSoundCues } from './sound-cue.js';
 
 /** Advance every running `CurrentAtomic` and apply its effect on completion. */
 export const atomicSystem: System = (world, ctx) => {
@@ -25,17 +26,11 @@ export const atomicSystem: System = (world, ctx) => {
     // An attack lands mid-animation at its `hitAt` frame, the follow-through then playing out to
     // `duration`. `elapsed` equals the clamped frame exactly once, so one swing lands one blow.
     if (atomic.effect.kind === 'attack') {
-      const hitFrame = eventFrameWithin(atomic.effect.hitAt ?? duration, duration);
+      const hitFrame = atomicEventTick(atomic.effect.hitAt ?? duration, duration);
       if (atomic.elapsed === hitFrame) resolveAttackHit(world, ctx, e, atomic.effect, pendingStaggers);
     }
 
-    // Only `construct` carries a mid-animation sound cue; every other atomic sounds at completion.
-    if (atomic.effect.kind === 'construct') {
-      const soundFrame = atomicSoundFrame(world, ctx, e, atomic.atomicId);
-      if (soundFrame !== undefined && atomic.elapsed === eventFrameWithin(soundFrame, duration)) {
-        ctx.events.emit({ kind: 'atomicSound', entity: e, atomicId: atomic.atomicId });
-      }
-    }
+    emitAtomicSoundCues(world, ctx, e, atomic.atomicId, atomic.elapsed, duration);
 
     if (atomic.elapsed < duration) continue;
 
@@ -77,9 +72,3 @@ export const atomicSystem: System = (world, ctx) => {
 
   applyPendingStaggers(world, pendingStaggers);
 };
-
-/** Clamp an animation's event frame into the `[1, duration]` ticks the atomic actually runs, so a cue the
- *  data puts past the animation length still fires exactly once, on the last tick. */
-function eventFrameWithin(frame: number, duration: number): number {
-  return Math.min(Math.max(1, frame), duration);
-}

@@ -18,8 +18,8 @@ export interface SoundFrameInput {
   /** The local player slot - gates the life-event jingles to this player's own entities; omit → they
    *  never ring. */
   readonly localPlayer?: number;
-  /** The viewer's fog-of-war visibility at a fractional tile - gates the settler chat voices (a
-   *  settler hidden by the fog must not natter from empty black). Omit → no fog, every chat is audible. */
+  /** The viewer's fog-of-war visibility at a fractional tile - gates the settler animation cues (a
+   *  settler hidden by the fog must not natter or hammer out of empty black). Omit → no fog. */
   readonly visibleTile?: (col: number, row: number) => boolean;
 }
 
@@ -29,9 +29,10 @@ export interface SoundDriverOptions extends AudioEngineOptions {}
 /**
  * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in its
  * own unit and this class only composes them - the pure decisions (which events sound, which beds loop)
- * in {@link directAudio}, and the Web Audio playback in the {@link WebAudioEngine}. Settler voices ride
- * the same event path: the sim's `chatVoice` cue (a chat clip's authored voice frame) is just another
- * spatialised one-shot, so voices come only from settlers actually talking on screen.
+ * in {@link directAudio}, and the Web Audio playback in the {@link WebAudioEngine}. Settler action sounds
+ * and voices ride one event path: the sim's `atomicSound` cue (an animation's authored sound frame) is
+ * just another spatialised one-shot, so they come only from settlers actually working or talking on
+ * screen.
  */
 export class SoundDriver {
   private readonly engine: WebAudioEngine;

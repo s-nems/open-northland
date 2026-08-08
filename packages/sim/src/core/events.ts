@@ -72,21 +72,13 @@ export type SimEvent =
   | { readonly kind: 'atomicCompleted'; readonly entity: Entity; readonly atomicId: number }
   | {
       /**
-       * An atomic reached its authored mid-animation sound frame
-       * (`ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`), which lands on the visual strike rather than at
-       * the swing end. Fires only for an atomic whose animation carries the cue.
+       * A running atomic crossed an authored sound frame of its animation (`event <frame> 34 <id>` in
+       * `atomicanimations.ini`, `ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX`), which lands on the visual
+       * strike rather than at the swing end. `soundType` is that event's value: the sound bank's
+       * `logicSoundType` id of the group to play (`soundfx.cif` "Hammer Wood" 1, "SocialTalk Male" 61).
+       * A clip authoring no such frame is silent.
        */
       readonly kind: 'atomicSound';
-      readonly entity: Entity;
-      readonly atomicId: number;
-    }
-  | {
-      /**
-       * A chat half's talk/listen clip crossed its authored sound frame (`event <frame> 34 <id>` in
-       * `atomicanimations.ini`). `soundType` is that event's value: the sound bank's `logicSoundType` id
-       * of the voice group (`soundfx.cif` "SocialTalk Male" 61 / "SocialTalk Female" 62).
-       */
-      readonly kind: 'chatVoice';
       readonly entity: Entity;
       readonly soundType: number;
     }

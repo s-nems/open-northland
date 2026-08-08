@@ -305,10 +305,12 @@ export const plSurfaces = {
   },
   soundGallery: {
     title: 'Studio dźwięku',
-    intro: 'Odtwórz dowolne nagranie. Akcje opisują moment użycia, a głosy grupują gwar według wieku i płci.',
+    intro:
+      'Odtwórz dowolne nagranie. Akcje opisują moment użycia, dźwięki pracy to grupy wskazywane po id przez animację osadnika, a głosy grupują gwar według wieku i płci.',
     missingTitle: 'Nie znaleziono zdekodowanych dźwięków',
     missingDetail: 'Uruchom pipeline assetów na posiadanej kopii gry, aby utworzyć lokalny bank dźwięków.',
     actions: 'Akcje i przypisane dźwięki',
+    cues: 'Dźwięki pracy (wskazane przez dane animacji)',
     voices: 'Głosy osadników',
     jingles: 'Dżingle wydarzeń',
     ambient: 'Odgłosy terenu',
@@ -317,7 +319,6 @@ export const plSurfaces = {
     screenGatedJingle: 'dżingiel, tylko na ekranie',
     children: 'Dzieci',
     actionsCatalog: {
-      chop: { label: 'Rąbanie drzewa', trigger: 'każde uderzenie siekierą w drzewo' },
       buildingPlaced: { label: 'Postawienie budynku', trigger: 'gdy gracz stawia nowy budynek' },
       boatPlaced: { label: 'Zwodowanie łodzi', trigger: 'gdy powstaje łódź' },
       goodProduced: { label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
