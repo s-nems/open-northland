@@ -21,7 +21,8 @@ const PLAYER_RAMP_LENGTH = 16;
  * Everything else (skin, hair, metal, tools) is the shared base and identical across players.
  *
  * Patch 15 (240–255) is excluded because the carried-good colours live there (`good_Wood`/`good_clay`
- * set patch 14 + patch 15); only the separate `woman_NN` recipe touches that band.
+ * set patch 14 + patch 15); the `player_NN` recipes remap patches 10 and 5 only, and the women's ramp
+ * is the separate `woman_NN` recipe on patch 15.
  */
 export const PLAYER_COLOR_BANDS: readonly (readonly [number, number])[] = [
   [80, 95],
