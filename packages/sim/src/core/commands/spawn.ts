@@ -67,6 +67,14 @@ export type SpawnCommand =
        *  map's `setproducedgood`). Omit to gather every good the trade may harvest. Ignored for a
        *  non-gathering trade, or a good that trade cannot harvest. */
       readonly gatherGood?: number;
+      /** The half-cell anchor of the home this settler moves into as it spawns (a decoded map's
+       *  `attachtohouse`), admitted on the same terms as an `assignHouse` order minus its signpost area
+       *  gate. Omit for a settler its map leaves homeless. */
+      readonly home?: { readonly x: number; readonly y: number };
+      /** The half-cell anchor of the workplace this settler is posted to as it spawns (a decoded map's
+       *  `attachtohouse`). Only its own trade's slot is taken, so a full or unrelated building leaves it
+       *  unposted rather than demoting it to a hauler. */
+      readonly workplace?: { readonly x: number; readonly y: number };
     }
   | {
       /**

@@ -40,6 +40,17 @@ export const TerrainEntities = z.strictObject({
         /** A gatherer's authored resource pick, the `setproducedgood` in this settler's `sethuman`
          *  block (goodtype name verbatim). Absent = gather every good the trade may harvest. */
         producedGood: z.string().optional(),
+        /** The buildings this settler is authored into (`attachtohouse`), each naming a `sethouse` anchor
+         *  half-cell. `slot` is the source's own column, kept verbatim and read by nothing. */
+        attach: z
+          .array(
+            z.strictObject({
+              hx: z.number().int().nonnegative(),
+              hy: z.number().int().nonnegative(),
+              slot: z.number().int().nonnegative(),
+            }),
+          )
+          .optional(),
       }),
     )
     .default([]),

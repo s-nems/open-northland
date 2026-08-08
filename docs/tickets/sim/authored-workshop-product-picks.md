@@ -1,13 +1,18 @@
 # Apply authored `setproducedgood` picks to workshop craft selections
 
 **Area:** sim, app · **Priority:** P3
-**Blocked by:** [authored house attachments](../pipeline/map-attachtohouse-import.md)
 
 `setproducedgood` is the original's per-human **produced good**, not only a gatherer's resource pick, and
 it is authored for workshop trades too. The import chain now lands it on `WorkFlag.goodType`
 (`stampGatherGood`, `packages/sim/src/systems/spawn/settlers.ts`), which covers 573 of the
 decoded corpus's 819 picks. The remainder is dropped and the drop is named in that function's doc. This
 ticket is the follow-up for the part that is a real gap.
+
+The blocker is gone: `attachtohouse` now imports, so an authored workshop settler reaches a bound
+`JobAssignment` as it spawns. That import costs almost nothing here: 67 of the 174 attached humans also
+carry a `setproducedgood`, but only 16 are in a trade whose `allowedAtomics` cover the pick's harvest
+atomic at all, and 13 of those 16 are farmers, who are farm-bound rather than flag gatherers. So at most
+three collectors lose a flag their pick used to narrow, not the whole overlap. Re-measure before acting.
 
 Measured breakdown of the 246 that do not land (re-measure before acting - counts drift with content):
 
@@ -26,10 +31,9 @@ Measured breakdown of the 246 that do not land (re-measure before acting - count
 
 - `setCraftGoods` (`packages/sim/src/systems/orders/work/selection.ts`) already models a per-settler product
   selection as `CraftSelection` - the natural home for `baker` → `bread`.
-- `setCraftGoods` requires a bound workplace (`JobAssignment`), which an imported settler only gets
-  once `attachtohouse` imports. Both
-  verbs sit in the same `sethuman` block, and employment changes REMOVE the selection - so attach first,
-  pick second, or the pick is wiped.
+- `setCraftGoods` requires a bound workplace (`JobAssignment`), which an imported settler now gets from
+  its `attachtohouse`. Employment REMOVES the selection (`bindEmployment`), so the pick has to be applied
+  after the attachment; `spawnSettler` already runs them in that order.
 - Keep the `spawnSettler` seam honest: either a second field or one product-neutral field that routes to
   the flag or the craft selection by what the trade is. Do not silently widen `gatherGood`.
 

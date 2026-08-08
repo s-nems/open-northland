@@ -35,16 +35,13 @@ export function runAuthoredMap(
   options: WorldContentOptions = {},
   diplomacy: readonly MapDiplomacy[] = [],
 ): Simulation | null {
-  const { placements, skipped, droppedGoods, droppedPicks, skippedAnimals } = resolveAuthoredPlacements(
-    entities,
-    rows,
-    map,
-  );
+  const { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals } =
+    resolveAuthoredPlacements(entities, rows, map);
   if (placements.length === 0) return null;
-  if (skipped > 0 || droppedGoods > 0 || droppedPicks > 0 || skippedAnimals > 0) {
+  if (skipped > 0 || droppedGoods > 0 || droppedPicks > 0 || droppedAttachments > 0 || skippedAnimals > 0) {
     diag.warn(
       'content',
-      `runAuthoredMap: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds and ${skippedAnimals} unplaceable animals (unresolvable species or decorative swarms), dropped ${droppedGoods} unresolvable authored building goods and ${droppedPicks} unresolvable produced-good picks`,
+      `runAuthoredMap: placed ${placements.length}, skipped ${skipped} unresolvable/out-of-bounds and ${skippedAnimals} unplaceable animals (unresolvable species or decorative swarms), dropped ${droppedGoods} unresolvable authored building goods, ${droppedPicks} unresolvable produced-good picks and ${droppedAttachments} house attachments naming no placed building`,
     );
   }
 

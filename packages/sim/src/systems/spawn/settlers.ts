@@ -30,13 +30,15 @@ import { rollInitialNeed } from '../lifecycle/needs.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { stampDefaultStance } from '../orders/index.js';
 import { isAnimalTribe, settlerHitpoints } from '../readviews/index.js';
+import { attachAuthoredBuildings } from './attach.js';
 
 /**
  * The data of a settler to create: the `spawnSettler` command payload minus its `kind`, so a scene's direct
  * pre-tick-0 placement and the runtime command share one entity-assembly path. `x`/`y` are half-cell node
- * coords, like every sim command.
+ * coords, like every sim command. The authored attachment anchors are absent because binding a settler to
+ * a standing building is the runtime seam's work, not entity assembly.
  */
-export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind'>;
+export type SettlerSpec = Omit<Extract<Command, { kind: 'spawnSettler' }>, 'kind' | 'home' | 'workplace'>;
 
 /**
  * The hitpoint pool a settler carries before its tribe's adult pool applies: every baby and child, and an
@@ -133,6 +135,9 @@ export function spawnSettler(
   // A commanded spawn takes its (x,y) on trust and authored maps routinely name a cell inside a house body,
   // so the eviction must run before anything reads the position, including the work flag planted below.
   evictSettlerFromBlockedSpawn(world, ctx, e);
+  // Before the flag: a settler its map posts to a workplace is not a flag gatherer, and planting one first
+  // would only destroy it again.
+  attachAuthoredBuildings(world, ctx, e, command);
   // A gatherer is bound to a work flag planted at its feet the moment it is born, so it searches its flag's
   // radius rather than the whole map. A non-gathering trade gets no flag. Authored rule approximating the
   // original's observed collector-flag work area.
@@ -146,9 +151,9 @@ export function spawnSettler(
  * `setproducedgood`), so an imported wood collector does not start on the gather-everything default. Bad
  * input leaves that default: no pick, a trade with no flag, or a good the trade cannot harvest.
  *
- * Approximation: only a flag-harvestable pick lands, 573 of the decoded corpus's 819. The picks that drop
- * have no home in this model and no behavior to change - a workshop product carries no work flag, a farmer
- * is bound to its farm by the farming rule, and a `hunter` → `prey` names a resource rather than a good.
+ * Approximation: only a flag-harvestable pick on an unposted settler lands. A settler its map also posts
+ * to a workplace has no flag left to narrow by the time this runs, and a workshop product, a farm-bound
+ * farmer's crop and a `hunter` → `prey` never had one.
  */
 function stampGatherGood(
   world: World,

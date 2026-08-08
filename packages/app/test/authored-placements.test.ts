@@ -124,4 +124,87 @@ describe('resolveAuthoredPlacements', () => {
     expect(droppedGoods).toBe(0);
     expect(skipped).toBe(0);
   });
+
+  it('routes each attachtohouse by the kind of the building on its anchor, not by its slot', () => {
+    const rows: AuthoredJoinRows = {
+      ...AUTHORED_ROWS,
+      buildings: [
+        { typeId: 30, id: 'barracks', kind: 'workplace' },
+        { typeId: 31, id: 'home', kind: 'home' },
+      ],
+    };
+    const entities = {
+      buildings: [
+        { name: 'viking barracks', level: 0, player: 0, hx: 8, hy: 4 }, // workplace kind
+        { name: 'viking barracks', level: 1, player: 0, hx: 2, hy: 2 }, // home kind
+      ],
+      humans: [
+        // The corpus pair: slot 1 names the home, slot 2 the workplace.
+        {
+          tribe: 'viking',
+          role: 'builder',
+          player: 0,
+          hx: 3,
+          hy: 5,
+          attach: [
+            { hx: 2, hy: 2, slot: 1 },
+            { hx: 8, hy: 4, slot: 2 },
+          ],
+        },
+        // One mod map authors slot 2 for a home too, and two rows carry a stray slot; the target decides.
+        { tribe: 'viking', role: 'builder', player: 0, hx: 4, hy: 5, attach: [{ hx: 2, hy: 2, slot: 2 }] },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 5, hy: 5, attach: [{ hx: 8, hy: 4, slot: 32 }] },
+      ],
+      animals: [],
+    };
+    const { placements, droppedAttachments } = resolveAuthoredPlacements(entities, rows, authoredMap());
+    expect(placements.filter((p) => p.kind === 'human')).toEqual([
+      {
+        kind: 'human',
+        jobType: 7,
+        tribe: 1,
+        x: 3,
+        y: 5,
+        owner: 0,
+        home: { x: 2, y: 2 },
+        workplace: { x: 8, y: 4 },
+      },
+      { kind: 'human', jobType: 7, tribe: 1, x: 4, y: 5, owner: 0, home: { x: 2, y: 2 } },
+      { kind: 'human', jobType: 7, tribe: 1, x: 5, y: 5, owner: 0, workplace: { x: 8, y: 4 } },
+    ]);
+    expect(droppedAttachments).toBe(0);
+    // Every building precedes every human, which is what lets an attachment find a standing building as
+    // its settler spawns. Reordering the resolver's loops would leave the whole corpus unattached.
+    const kinds = placements.map((p) => p.kind);
+    expect(kinds.lastIndexOf('building')).toBeLessThan(kinds.indexOf('human'));
+  });
+
+  it('drops an attachment whose anchor carries no placed building', () => {
+    const entities = {
+      // Unresolvable name → skipped, so nothing stands on (2,2) for the attachment to find.
+      buildings: [{ name: 'unknown house', level: 0, player: 0, hx: 2, hy: 2 }],
+      humans: [
+        {
+          tribe: 'viking',
+          role: 'builder',
+          player: 0,
+          hx: 3,
+          hy: 5,
+          attach: [
+            { hx: 2, hy: 2, slot: 1 }, // the skipped building
+            { hx: 7, hy: 7, slot: 2 }, // bare ground
+          ],
+        },
+      ],
+      animals: [],
+    };
+    const { placements, droppedAttachments } = resolveAuthoredPlacements(
+      entities,
+      AUTHORED_ROWS,
+      authoredMap(),
+    );
+    // The settler still spawns; only its attachments are lost.
+    expect(placements).toEqual([{ kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0 }]);
+    expect(droppedAttachments).toBe(2);
+  });
 });

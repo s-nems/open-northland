@@ -133,23 +133,87 @@ describe('extractStaticObjects', () => {
     });
   });
 
-  // The real `setproducedgood` shapes (source basis: the unpacked `staticobjects.inc` corpus) - the verb
-  // directly after its `sethuman`, and separated from it by the in-block modifiers the decoder drops.
-  it('attaches setproducedgood to its sethuman, across intervening in-block modifiers', () => {
+  // The real in-block shapes (source basis: the unpacked `staticobjects.inc` corpus) - a modifier directly
+  // after its `sethuman`, and one separated from it by a modifier the decoder still drops.
+  it('attaches setproducedgood and attachtohouse to their sethuman, across intervening modifiers', () => {
     const lines: CifLine[] = [
       { level: 1, text: 'StaticObjects' },
       { level: 2, text: 'sethuman 2 "byzantine" "collector" 220 206 0 0' },
       { level: 2, text: 'setproducedgood "wood"' },
       { level: 2, text: 'sethuman 0 "saracen" "fisher" 359 366 0 0' },
-      { level: 2, text: 'setexpierence 4 13' },
+      { level: 2, text: 'setexpierence 4 13' }, // uncaptured, and does not end the block
       { level: 2, text: 'attachtohouse 359 358 2' },
       { level: 2, text: 'setproducedgood "fish"' },
       { level: 2, text: 'sethuman 1 "viking" "collector" 12 14 0 0' }, // no pick - gathers everything
     ];
     expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
       { tribe: 'byzantine', role: 'collector', player: 2, hx: 220, hy: 206, producedGood: 'wood' },
-      { tribe: 'saracen', role: 'fisher', player: 0, hx: 359, hy: 366, producedGood: 'fish' },
+      {
+        tribe: 'saracen',
+        role: 'fisher',
+        player: 0,
+        hx: 359,
+        hy: 366,
+        producedGood: 'fish',
+        attach: [{ hx: 359, hy: 358, slot: 2 }],
+      },
       { tribe: 'viking', role: 'collector', player: 1, hx: 12, hy: 14 },
+    ]);
+  });
+
+  // 14 corpus humans carry two rows in one block, always slot 1 then slot 2.
+  it('keeps both attachtohouse rows of one human, in source order', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 0 "frank" "joiner" 1493 291 0 0' },
+      { level: 2, text: 'attachtohouse 1490 280 1' },
+      { level: 2, text: 'attachtohouse 1514 280 2' },
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      {
+        tribe: 'frank',
+        role: 'joiner',
+        player: 0,
+        hx: 1493,
+        hy: 291,
+        attach: [
+          { hx: 1490, hy: 280, slot: 1 },
+          { hx: 1514, hy: 280, slot: 2 },
+        ],
+      },
+    ]);
+  });
+
+  it('drops an attachtohouse with no human, a short one, and one across a placement verb', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'attachtohouse 10 12 1' }, // before any human - nothing to attach to
+      { level: 2, text: 'sethuman 0 "viking" "smith" 10 12 0 0' },
+      { level: 2, text: 'attachtohouse 20 22' }, // no slot column - malformed
+      { level: 2, text: 'setanimal 6 "deer" "adult" 50 60 0 0' }, // a new placement ends the block
+      { level: 2, text: 'attachtohouse 30 32 2' }, // its human is out of scope - dropped
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      { tribe: 'viking', role: 'smith', player: 0, hx: 10, hy: 12 },
+    ]);
+  });
+
+  // The corpus authors two stray slots (one 0, one 32) beside the 1/2 pair.
+  it('keeps an unknown attachtohouse slot verbatim', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 4 "viking" "smith" 344 382 0 0' },
+      { level: 2, text: 'attachtohouse 339 382 32' },
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      {
+        tribe: 'viking',
+        role: 'smith',
+        player: 4,
+        hx: 344,
+        hy: 382,
+        attach: [{ hx: 339, hy: 382, slot: 32 }],
+      },
     ]);
   });
 

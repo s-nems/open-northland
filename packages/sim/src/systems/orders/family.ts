@@ -1,23 +1,14 @@
-import {
-  AssistantChildOrder,
-  Building,
-  ChildOrder,
-  Female,
-  Marriage,
-  Residence,
-  Settler,
-} from '../../components/index.js';
+import { AssistantChildOrder, ChildOrder, Female, Marriage, Residence } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import {
-  builtHomeType,
-  familiesOf,
   familyOf,
   findPartnerFor,
   isAdultSettler,
   isMinor,
   mayMarry,
+  moveFamilyInto,
   startWedding,
 } from '../family/index.js';
 import { interactionNode } from '../footprint/index.js';
@@ -52,9 +43,6 @@ export function assignHouse(
   const e = command.entity;
   if (!isOrderableSettler(world, e) || !isAdultSettler(world, e)) return;
   const house = command.house;
-  const type = builtHomeType(world, ctx, house);
-  if (type === undefined) return;
-  if (world.get(house, Building).tribe !== world.get(e, Settler).tribe) return;
   // Signpost confinement: a home beyond the issuer's allowed area is refused like an out-of-area move
   // order, so the player extends the network first and houses the far family after.
   const terrain = ctx.terrain;
@@ -65,14 +53,7 @@ export function assignHouse(
       if (inode !== null && !limit.allowsNode(terrain.nodeAtClamped(inode.x, inode.y))) return;
     }
   }
-  const family = familyOf(world, e);
-  const members = new Set(family);
-  // The mover's own household is excluded, so a re-assign into the same home costs no extra slot.
-  const others = familiesOf(world, house).filter((fam) => !fam.some((m) => members.has(m))).length;
-  if (others + 1 > type.homeSize) return; // no free family slot
-  for (const member of family) {
-    world.add(member, Residence, { home: house }); // add overwrites - a move drops the old home
-  }
+  moveFamilyInto(world, ctx, e, house);
 }
 
 /**
