@@ -12,9 +12,13 @@ running sim only through commands, so restore constructs a fresh sim before tick
 
 - `parseSaveGame` validation with at-prefixed path errors following the `parseCommandEnvelope`
   pattern (`packages/sim/src/core/commands/parse.ts`); sim stays free of a validator dependency.
-  Reject with a path-specific message: unknown or future `formatVersion`, content identity mismatch,
+  Reject with a path-specific message: unknown or future `formatVersion`, an `irVersion` mismatch,
   map fingerprint mismatch, duplicate or unknown sections, unknown component identifiers, malformed
   values, and invalid pending envelopes (reusing `parseCommandEnvelope`).
+- A `contentRevision` difference is reported to the caller, never a rejection: the revision also
+  bumps for presentation-only decoder fixes, so a hard reject would invalidate every save on a
+  cosmetic bump. This matches the desktop shell, which classifies a revision mismatch as playable
+  `stale-revision` (`packages/desktop/src/content-state.ts`).
 - `restoreSimulation(save, {content, map})` builds a fresh sim: terrain rebuilt from content plus
   map; stores repopulated in saved insertion order; components registered in saved order; alive set
   and `nextId` restored verbatim; RNG `setState`; fog masks, `activeMode`, and `lastRebuildTick`
@@ -37,6 +41,7 @@ running sim only through commands, so restore constructs a fresh sim before tick
 - Re-exporting a restored sim is byte-identical to the original save.
 - Insertion-order preservation: a scenario where remove and re-add moved an entity to the end of a
   store must restore that order; an ascending-id rebuild must fail this test.
-- Rejection cases: future version, wrong content revision, wrong map fingerprint, duplicated
-  section, unknown component id, malformed envelope; each error names the failing path.
+- Rejection cases: future version, wrong `irVersion`, wrong map fingerprint, duplicated section,
+  unknown component id, malformed envelope; each error names the failing path. A differing
+  `contentRevision` loads and surfaces the difference.
 - `npm test`, `npm run check`, `npm run build`.
