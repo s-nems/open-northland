@@ -19,12 +19,11 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 // homeless keep the open-ground rule.
 //
 // Source basis: each tribe authors one at-home sleep clip, the civilist's - `viking_civilist_sleep_home`
-// (length 50) against the outdoor `viking_civilist_sleep` (length 237), and the same single pair in the
-// other four tribes. Both pulse the rest channel twice at `+4000` (`event <at> 1 +4000`), so for that body
-// a bed indoors buys the same rest in a fifth of the time. The other six outdoor clips have no twin and
-// sleep indoors at their outdoor pace. The approximation is the trigger, not the clip: no `setatomic` binds
-// the home clip, so this rung fires it whenever the settler is housed, with no distance or time-of-day
-// gate.
+// (length 50) against the outdoor `viking_civilist_sleep` (length 237). Both pulse the rest channel twice
+// at `+4000` (`event <at> 1 +4000`), so for that body a bed indoors buys the same rest in a fifth of the
+// time; the other six outdoor clips have no twin and sleep indoors at their outdoor pace. The
+// approximation is the trigger, not the clip: this rung fires whenever the settler is housed, with no
+// distance or time-of-day gate.
 //
 // The render knows only SLEEP_ATOMIC and would play the outdoor list against this 50-tick atomic; that is
 // invisible only because `Resting` hides the sleeper.

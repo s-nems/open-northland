@@ -97,7 +97,6 @@ export function planWorkshopSupplier(plan: PlannerContext, workplace: Entity, sp
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe === undefined) return;
 
-  // The carrier tops input slots toward capacity before hauling any output out.
   const restockToCapacity = true;
   const source = nearestMissingInputSource(
     targets.stockpileCells,

@@ -8,10 +8,8 @@ import type { PlannerSpacing } from '../planner/spacing.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 
 // Where a tired settler beds down. Settlers step off the workplace doorstep into open ground and lie down
-// there (observed original), so sleeping is a walk-then-act rung rather than an in-place atomic. "Open
-// ground" is read off the walk-block overlay: a node clear of buildings and resources whose neighbours are
-// clear too, so a sleeper never ends up in a doorway or pressed against a tree. Approximation: the
-// original's own bedding-down rule is not in the readable data.
+// there (observed original), so sleeping is a walk-then-act rung rather than an in-place atomic.
+// Approximation: the original's own bedding-down rule is not in the readable data.
 //
 // Not gated on Owner, unlike the sibling spacing drives: where a settler sleeps is a needs mechanic, not
 // spacing. Unowned settlers are absent from the occupancy buckets, so they avoid owned sleepers without
@@ -53,15 +51,15 @@ export function restingCell(
   return bed;
 }
 
-/** Whether `node` and every walkable neighbour are clear of building and resource footprints. */
+/** Whether `node` and every walkable neighbour are clear of building and resource footprints, so a sleeper
+ *  never ends up in a doorway or pressed against a tree. */
 function isOpenGround(terrain: TerrainGraph, node: NodeId, blocked: BlockOverlay): boolean {
   if (!terrain.isWalkable(node) || blocked.has(node)) return false;
   for (const n of terrain.walkableNeighbours(node)) if (blocked.has(n)) return false;
   return true;
 }
 
-/** Whether `node` holds no stationary owned settler other than `e`; unowned fixtures are absent from the
- *  occupancy buckets, so they only ever avoid owned sleepers. */
+/** Whether `node` holds no stationary owned settler other than `e`. */
 function nodeIsFreeFor(terrain: TerrainGraph, node: NodeId, e: Entity, spacing: PlannerSpacing): boolean {
   const { x, y } = terrain.coordsOf(node);
   const bucket = spacing.occupancy.at(x, y);

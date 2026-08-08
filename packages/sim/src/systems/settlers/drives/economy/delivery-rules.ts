@@ -42,8 +42,8 @@ export type DeliveryVerdict = Entity | 'no-sink' | null;
 
 /**
  * One rung of the delivery ladder. A `bound` rule routes to a target the settler is already tied to and
- * never receives the {@link DeliverySearchArea}: home is reachable by definition. A `searched` rule scans
- * for a sink and must therefore respect the confinement.
+ * never receives a search area: home is reachable by definition. A `searched` rule scans for a sink and
+ * must therefore respect the confinement.
  */
 export type DeliveryRule =
   | { readonly kind: 'bound'; readonly resolve: (plan: PlannerContext, goodType: number) => DeliveryVerdict }
@@ -89,14 +89,14 @@ function toConsumingWorkplace(plan: PlannerContext, goodType: number): DeliveryV
   if (workplace === null) return null;
   const recipe = mergedRecipeOf(world, ctx, workplace);
   if (recipe?.inputs.some((i) => i.goodType === goodType) !== true) return null;
-  // An input must land as itself: a workshop that would shelve it converted ({@link bankedSlot}) feeds its
-  // own recipe nothing, so the load falls through to a real sink.
+  // An input must land as itself: a workshop that would shelve it converted feeds its own recipe nothing,
+  // so the load falls through to a real sink.
   if (bankedSlot(world, ctx, workplace, goodType).goodType !== goodType) return null;
   return hasRoom(world, ctx, workplace, goodType) ? workplace : null;
 }
 
-/** A flag-bound gatherer banks its harvest at its own flag. The flag carries no {@link Stockpile} - the
- *  load spreads onto loose ground heaps around it, each pinned to its tile - so there is no capacity gate. */
+/** A flag-bound gatherer banks its harvest at its own flag. The flag carries no `Stockpile` - the load
+ *  spreads onto loose ground heaps around it, each pinned to its tile - so there is no capacity gate. */
 function toOwnDeliveryFlag(plan: PlannerContext): DeliveryVerdict {
   const { world, entity } = plan;
   const flag = world.tryGet(entity, WorkFlag)?.flag;
@@ -107,7 +107,7 @@ function toOwnDeliveryFlag(plan: PlannerContext): DeliveryVerdict {
 /**
  * A farm's carrier clears the farm's own crop to storage, every producer of the good excluded so the load
  * reaches a warehouse and never another farm. Owns the outcome: with no storage in reach the crop stays put,
- * because falling through to {@link toBoundStorage} would bank it straight back into the farm it just left.
+ * because falling through to `toBoundStorage` would bank it straight back into the farm it just left.
  *
  * Keyed on the good's `farming` block rather than on recipe absence: the asset pipeline synthesizes a recipe
  * for every producing building, so a recipe test would turn this rung off under extracted content.
@@ -141,9 +141,9 @@ function toBoundStorage(plan: PlannerContext, goodType: number): DeliveryVerdict
   return isStorageSink(world, ctx, home) && hasRoom(world, ctx, home, goodType) ? home : null;
 }
 
-/** The settler's own site: a builder's crew pin ({@link SiteAssignment}), or the unfinished workplace a
- *  worker is posted to. Bound, so it stays unconfined: the player's pin may point beyond the signpost area
- *  and a confined delivery would shuttle the material back to its source forever. */
+/** The settler's own site: a builder's crew pin, or the unfinished workplace a worker is posted to. Bound,
+ *  so it stays unconfined: the player's pin may point beyond the signpost area and a confined delivery
+ *  would shuttle the material back to its source forever. */
 function toOwnCrewSite(plan: PlannerContext, goodType: number): DeliveryVerdict {
   const { world, ctx, entity, tribe, owner, inbound } = plan;
   const crew = world.tryGet(entity, SiteAssignment)?.site ?? boundWorkplace(plan);
@@ -175,9 +175,9 @@ function toNeedingConstructionSite(
 /**
  * A carrier posted at an input-less utility (the well, the hive) feeds that utility's output to a nearby
  * built recipe consumer before central storage, banking only the surplus later (authored). A site still
- * under construction is skipped: it needs delivered build material, not a recipe input.
+ * under construction is skipped: it needs delivered build material, not a recipe input. No land-as-itself
+ * guard is needed here, since `carriedGoodForm` already converted any dish this carrier holds.
  */
-// No land-as-itself guard needed: `carriedGoodForm` already converted any dish this carrier holds.
 function toNearbyRecipeConsumer(
   plan: PlannerContext,
   goodType: number,

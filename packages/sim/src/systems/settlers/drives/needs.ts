@@ -34,9 +34,9 @@ export const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
 
 /**
  * Hunger at or above which the HUD floats the hunger bubble. The gap above the eat trigger means a settler
- * that can feed itself eats long before the icon shows, so the bubble reports a famine in the settlement
- * rather than one settler being due a meal. Source basis: observation of the original, where the icon
- * appears when settlers have trouble finding food; the fraction itself is an approximation.
+ * that can feed itself eats long before the icon shows, so the bubble reports a famine rather than one
+ * settler being due a meal. Source basis: observation of the original, where the icon appears when
+ * settlers have trouble finding food; the fraction itself is an approximation.
  */
 export const HUNGER_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
 
@@ -48,16 +48,15 @@ export const HUNGER_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(
 export const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
 /**
- * Fatigue at or above which the HUD floats the sleepy bubble. Rest needs the gap even more than hunger
- * does: settlers cross the ¾ sleep trigger often enough that keying the icon on it would leave a large
- * share of the map permanently bubbling. Past this, the settler has been unable to bed down at all.
+ * Fatigue at or above which the HUD floats the sleepy bubble. Settlers cross the ¾ sleep trigger often
+ * enough that keying the icon on it would leave a large share of the map permanently bubbling; past this,
+ * the settler has been unable to bed down at all.
  */
 export const FATIGUE_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
 
 /**
- * Piety at or above which a settler stops working to pray, at ¾ of a full bar. Piety rises only when a
- * smith forges a weapon or armor good, so in practice only smiths reach it; other trades keep their seeded
- * starting piety and never pray. Approximation on the same basis as the eat and sleep triggers.
+ * Piety at or above which a settler stops working to pray, at ¾ of a full bar. Only a smith's piety rises,
+ * so in practice only smiths reach it. Approximation on the same basis as the eat and sleep triggers.
  */
 const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
 
@@ -131,7 +130,7 @@ export function planNeeds(
   here: NodeId,
   load: { goodType: number; amount: number } | undefined,
   targets: TargetCandidates,
-  /** The settler's signpost confinement, or null when unlimited; a need is only sought inside it. */
+  /** The settler's signpost confinement; a need is only sought inside it. */
   limit: NavigationLimit | null,
   /** The planner-tick occupancy state the sleep rung picks a resting spot out of. */
   spacing: PlannerSpacing,
@@ -174,10 +173,7 @@ export function planNeeds(
       return true;
     }
     if (sleepAtPost(world, ctx, e, settler)) return true;
-    // A settler with a house goes home: the data gives that its own clip, worth the same rest in a fifth
-    // of the time.
     if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
-    // Otherwise bed down in the open, stepping off a workplace doorstep first.
     atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
       startAtomic(
         world,

@@ -14,7 +14,7 @@ import type { PlannerSpacing } from '../planner/spacing.js';
  * sent to the nearest free node. The lowest-id occupant keeps the tile, and a unit boxed in stays.
  *
  * Transit is never blocked; only a unit that has arrived with nothing to do relocates. Returns true when it
- * sent the unit stepping aside, so a stacked crowd spreads out before striking up conversations.
+ * sent the unit stepping aside.
  */
 export function deStackIdle(
   world: World,
