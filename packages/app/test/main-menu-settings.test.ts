@@ -3,7 +3,13 @@ import { adoptSettings, carriedSettingParams } from '../src/entries/main-menu/se
 import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN } from '../src/hud/ui-scale.js';
 import type { MenuSettings } from '../src/view/settings-store.js';
-import { defaultSettings, parseStoredSettings, persistSettings } from '../src/view/settings-store.js';
+import {
+  defaultSettings,
+  parseStoredSettings,
+  persistSettings,
+  RENDER_SCALE_MAX,
+  RENDER_SCALE_MIN,
+} from '../src/view/settings-store.js';
 
 // The default language, and so the param the URL elides, comes from the browser rather than a constant.
 beforeEach(() => vi.stubGlobal('navigator', { languages: ['pl-PL'] }));
@@ -20,7 +26,10 @@ describe('parseStoredSettings', () => {
   it('round-trips a full settings object', () => {
     const settings = {
       displayMode: 'fullscreen',
+      renderScale: 0.75,
       uiScaleFactor: 1.25,
+      postFxEnabled: false,
+      fpsLimit: 30,
       soundEnabled: false,
       language: 'eng',
       keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
@@ -29,10 +38,15 @@ describe('parseStoredSettings', () => {
   });
 
   it('falls back per field, not per blob', () => {
-    const parsed = parseStoredSettings('{"language":"eng","uiScaleFactor":"big","displayMode":"borderless"}');
+    const parsed = parseStoredSettings(
+      '{"language":"eng","uiScaleFactor":"big","displayMode":"borderless","renderScale":"max","postFxEnabled":1,"fpsLimit":45}',
+    );
     expect(parsed.language).toBe('eng');
     expect(parsed.uiScaleFactor).toBe(defaultSettings().uiScaleFactor);
     expect(parsed.displayMode).toBe('window');
+    expect(parsed.renderScale).toBe(defaultSettings().renderScale);
+    expect(parsed.postFxEnabled).toBe(defaultSettings().postFxEnabled);
+    expect(parsed.fpsLimit).toBeNull();
     expect(parsed.soundEnabled).toBe(defaultSettings().soundEnabled);
     expect(parsed.keyBindings).toEqual(DEFAULT_KEY_BINDINGS);
   });
@@ -40,6 +54,8 @@ describe('parseStoredSettings', () => {
   it('clamps an out-of-range stored factor instead of dropping it', () => {
     expect(parseStoredSettings('{"uiScaleFactor":9}').uiScaleFactor).toBe(UI_SCALE_FACTOR_MAX);
     expect(parseStoredSettings('{"uiScaleFactor":0.1}').uiScaleFactor).toBe(UI_SCALE_FACTOR_MIN);
+    expect(parseStoredSettings('{"renderScale":9}').renderScale).toBe(RENDER_SCALE_MAX);
+    expect(parseStoredSettings('{"renderScale":0.1}').renderScale).toBe(RENDER_SCALE_MIN);
   });
 
   it('ignores the pre-relative absolute `uiScale` field', () => {
@@ -104,9 +120,12 @@ describe('adoptSettings', () => {
     expect(adopted).toEqual([{ param: 'sound', value: 'off' }]);
   });
 
-  it('never puts the HUD scale factor into the URL', () => {
+  it('never puts the HUD scale factor or the graphics settings into the URL', () => {
     const params = new URLSearchParams('');
-    adoptSettings({ ...defaultSettings(), uiScaleFactor: 1.25 }, params);
+    adoptSettings(
+      { ...defaultSettings(), uiScaleFactor: 1.25, renderScale: 0.5, postFxEnabled: false, fpsLimit: 30 },
+      params,
+    );
     expect([...params.keys()]).toEqual([]);
   });
 });
@@ -116,11 +135,14 @@ describe('carriedSettingParams', () => {
     expect(carriedSettingParams(defaultSettings()).every((row) => row.value === null)).toBe(true);
   });
 
-  it('projects non-default values onto lang/sound and keeps the scale factor out', () => {
+  it('projects non-default values onto lang/sound and keeps store-only settings out', () => {
     const rows = carriedSettingParams({
       ...defaultSettings(),
       language: 'eng',
       uiScaleFactor: 1.25,
+      renderScale: 2,
+      postFxEnabled: false,
+      fpsLimit: 60,
       soundEnabled: false,
     });
     expect(rows).toEqual([

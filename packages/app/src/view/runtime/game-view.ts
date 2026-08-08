@@ -119,13 +119,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     window.location.search = menuSearch();
   };
 
+  const storedSettings = readStoredSettings();
   // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; otherwise the scale follows
   // the canvas height at launch times the stored interface-scale factor. Fractional values are allowed.
-  const uiscale = floatParam(
-    params,
-    'uiscale',
-    uiScaleFor(app.screen.height, readStoredSettings().uiScaleFactor),
-  );
+  const uiscale = floatParam(params, 'uiscale', uiScaleFor(app.screen.height, storedSettings.uiScaleFactor));
 
   const lang = currentLocale();
   const keyBindings = readStoredSettings().keyBindings;
@@ -323,6 +320,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // This mount owns construction; the loop owns the pinned per-frame order.
   loop = startFrameLoop({
     deps,
+    fpsLimit: storedSettings.fpsLimit,
     control,
     timestep,
     frameStats,

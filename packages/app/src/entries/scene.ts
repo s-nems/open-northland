@@ -52,7 +52,7 @@ export async function renderSceneMode(
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
   // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
-  const app = await createWindowPixiApp(canvas);
+  const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
   const terrainGrid = terrainMapToScene(scene.terrain);
   await boot.begin('content');
   // Served real content makes the browser scene collide and place exactly like the live map view. The

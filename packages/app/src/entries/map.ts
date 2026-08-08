@@ -73,7 +73,7 @@ function centerTile(raw: string | null, width: number, height: number): Camera |
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const boot = mountBootProgress(MAP_BOOT_PHASES);
   await boot.begin('graphics');
-  const app = await createWindowPixiApp(canvas);
+  const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
   await boot.begin('map');
   const mapId = params.get('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;

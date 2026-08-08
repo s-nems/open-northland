@@ -1,13 +1,20 @@
 import { DEFAULT_MASTER_GAIN } from '@open-northland/audio';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
-import { defaultSettings, type MenuSettings } from '../../view/settings-store.js';
+import {
+  defaultSettings,
+  type FpsLimit,
+  type MenuSettings,
+  RENDER_SCALE_MAX,
+  RENDER_SCALE_MIN,
+} from '../../view/settings-store.js';
 import { type SegHandle, segControl, togglePill } from './controls.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import { createControlsTab } from './settings-controls.js';
 import {
   menuSettings,
+  RENDER_SCALE_STEP,
   SETTINGS_TABS,
   type SettingsMemory,
   type SettingsTab,
@@ -16,6 +23,14 @@ import {
 } from './settings-state.js';
 
 type DisplayMode = MenuSettings['displayMode'];
+
+/** Seg-control ids for the drawn-frame cap; `screen` is the display's own refresh rate. */
+type FpsChoice = 'fps30' | 'fps60' | 'screen';
+
+const fpsChoiceOf = (limit: FpsLimit): FpsChoice =>
+  limit === 30 ? 'fps30' : limit === 60 ? 'fps60' : 'screen';
+const fpsLimitOf = (choice: FpsChoice): FpsLimit =>
+  choice === 'fps30' ? 30 : choice === 'fps60' ? 60 : null;
 
 /** In-menu language choices, in display order. */
 const LANGUAGE_CHOICES: readonly Locale[] = ['pol', 'eng'];
@@ -139,8 +154,8 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
   }
 
   // Fullscreen also leaves via Esc, and a resize can arrive from the OS, both outside any control of
-  // ours; either changes the height behind the display segment, the resolution chip and the
-  // effective-scale readout, so both viewport events rebuild the panel.
+  // ours; either changes the height behind the display segment and the effective-scale readout, so
+  // both viewport events rebuild the panel.
   let displaySeg: SegHandle<DisplayMode> | null = null;
   const liveDisplayMode = (): DisplayMode => (document.fullscreenElement !== null ? 'fullscreen' : 'window');
   const onViewportChange = (): void => {
@@ -177,10 +192,24 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
         }
       },
     );
-    // Placeholder for the resolution control: the canvas follows the window, so show the live size.
-    const resolutionChip = document.createElement('span');
-    resolutionChip.className = 'main-menu__settings-chip';
-    resolutionChip.textContent = `${window.innerWidth} × ${window.innerHeight}`;
+    const renderScale = sliderControl(text.renderScale, {
+      min: RENDER_SCALE_MIN,
+      max: RENDER_SCALE_MAX,
+      step: RENDER_SCALE_STEP,
+      value: settings.renderScale,
+      onCommit: (value) => updateSettings({ renderScale: value }),
+    });
+    const fpsSeg = segControl<FpsChoice>(
+      [
+        { id: 'fps30', label: '30 FPS' },
+        { id: 'fps60', label: '60 FPS' },
+        { id: 'screen', label: text.fpsLimitScreen },
+      ],
+      fpsChoiceOf(settings.fpsLimit),
+      (choice) => updateSettings({ fpsLimit: fpsLimitOf(choice) }),
+    );
+    const postFx = togglePill(settings.postFxEnabled, (on) => updateSettings({ postFxEnabled: on }));
+    postFx.setAttribute('aria-label', text.postFx);
     // 100% is the viewport-derived base; the label also shows the effective in-game multiplier, which
     // exposes the `MIN_UI_SCALE` floor - on very short windows the lowest factor steps collapse to it.
     const uiScale = sliderControl(text.uiScale, {
@@ -193,7 +222,9 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     });
     return [
       settingRow(text.displayMode, displaySeg.root),
-      settingRow(text.resolution, resolutionChip, soon),
+      settingRow(text.renderScale, renderScale),
+      settingRow(text.fpsLimit, fpsSeg.root),
+      settingRow(text.postFx, postFx),
       settingRow(text.uiScale, uiScale),
     ];
   };

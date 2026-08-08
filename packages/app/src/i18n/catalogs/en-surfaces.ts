@@ -124,7 +124,11 @@ export const enSurfaces = {
       displayMode: 'Display mode',
       displayFullscreen: 'Fullscreen',
       displayWindow: 'Window',
-      resolution: 'Resolution',
+      renderScale: 'Render scale',
+      fpsLimit: 'Frame rate limit',
+      // The display's own refresh rate, next to the fixed 30/60 FPS caps.
+      fpsLimitScreen: 'Display',
+      postFx: 'Post-processing',
       uiScale: 'In-game interface scale',
       soundEnabled: 'In-game sound',
       masterVolume: 'Master volume',

@@ -49,15 +49,25 @@ export function backingResolutionFor(dpr: number): number {
 }
 
 /**
+ * The window renderer resolution: the DPR-derived integer oversample times the caller's scale.
+ * A scale below 1 trades crispness for fill-rate (the browser upscales the smaller backing store);
+ * above 1 supersamples. A degenerate scale falls back to 1.
+ */
+export function windowResolutionFor(dpr: number, resolutionScale: number): number {
+  const scale = Number.isFinite(resolutionScale) && resolutionScale > 0 ? resolutionScale : 1;
+  return backingResolutionFor(dpr) * scale;
+}
+
+/**
  * Re-apply {@link backingResolutionFor} whenever the effective DPR changes (browser zoom, a move to a
  * differently scaled monitor). The matchMedia query only matches the current DPR, so each fire
  * re-subscribes at the new value; the resize listener backstops browsers without `resolution` queries,
  * where zooming still fires a window resize. The listeners live for the page: a window Application is
  * never destroyed before navigation.
  */
-function watchBackingResolution(app: Application): void {
+function watchBackingResolution(app: Application, resolutionScale: number): void {
   const apply = (): void => {
-    const next = backingResolutionFor(window.devicePixelRatio || 1);
+    const next = windowResolutionFor(window.devicePixelRatio || 1, resolutionScale);
     if (next !== app.renderer.resolution) {
       app.renderer.resize(window.innerWidth, window.innerHeight, next);
     }
@@ -78,18 +88,28 @@ function watchBackingResolution(app: Application): void {
   subscribe();
 }
 
+export interface WindowPixiAppOptions {
+  /** Multiplier over the DPR-derived backing resolution; see {@link windowResolutionFor}. */
+  readonly resolutionScale?: number;
+}
+
 /**
  * Initialise a Pixi {@link Application} whose backing store tracks the window (`resizeTo: window`), so
  * resizing grows or shrinks the visible field instead of stretching the world. Callers must read the
  * live size from `app.screen` per frame, never from a captured constant.
  *
- * Renders at an integer oversample of the device resolution: `app.screen`, the camera, and every layout
- * stay in CSS px while the backing store holds `backingResolutionFor(DPR)` texels per CSS px, so
- * screen-space UI rasterizes crisp on HiDPI and fractional OS scaling never lands on uneven texels. The
+ * Renders at an oversample of the device resolution: `app.screen`, the camera, and every layout stay
+ * in CSS px while the backing store holds `windowResolutionFor(DPR, scale)` texels per CSS px, so at
+ * scale 1 screen-space UI rasterizes crisp on HiDPI and fractional OS scaling never lands on uneven
+ * texels; a non-1 `resolutionScale` deliberately trades that for fill-rate or supersampling. The
  * resolution follows live DPR changes; consumers that bake at a resolution must re-bake when
  * `app.renderer.resolution` moves.
  */
-export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Application> {
+export async function createWindowPixiApp(
+  canvas: HTMLCanvasElement,
+  options?: WindowPixiAppOptions,
+): Promise<Application> {
+  const resolutionScale = options?.resolutionScale ?? 1;
   const app = new Application();
   await app.init({
     canvas,
@@ -98,10 +118,10 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
     height: window.innerHeight,
     resizeTo: window,
     ...APP_OPTIONS,
-    resolution: backingResolutionFor(window.devicePixelRatio || 1),
+    resolution: windowResolutionFor(window.devicePixelRatio || 1, resolutionScale),
     autoDensity: true, // CSS-size the canvas to the logical size, so client px stay 1:1 with screen px
   });
-  watchBackingResolution(app);
+  watchBackingResolution(app, resolutionScale);
   return app;
 }
 
