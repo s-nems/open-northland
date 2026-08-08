@@ -128,6 +128,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   );
 
   const lang = currentLocale();
+  const keyBindings = readStoredSettings().keyBindings;
   // `?speed=` seeds the wall-clock multiplier; the tool panel's speed button then drives it live.
   const control = { paused: false, speed: floatParam(params, 'speed', 1) };
   // Owned here rather than by the loop, so the dropped-tick tally spans the whole session.
@@ -177,6 +178,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     buildings: menuEntriesFromContent(sim.content, lang),
     goods: menuGoodsFromContent(sim.content),
     lang,
+    bindings: keyBindings,
     tribe: PRIMARY_TRIBE,
     owner: localPlayer,
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
@@ -234,6 +236,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     humanPlayer: localPlayer,
     observer: deps.observer === true,
     lang,
+    bindings: keyBindings,
     professions: pickerEntries(),
     content: sim.content,
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),

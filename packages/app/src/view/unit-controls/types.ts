@@ -12,6 +12,7 @@ import type { EquipPickEntry, PlayerCommand, WorldSnapshot } from '@open-northla
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
+import type { KeyBindings } from '../../hud/keybindings.js';
 
 export interface UnitControlsOptions {
   readonly app: Application;
@@ -26,6 +27,7 @@ export interface UnitControlsOptions {
    *  enemy. Default false. */
   readonly observer?: boolean;
   readonly lang: string;
+  readonly bindings: KeyBindings;
   readonly professions: readonly PickerEntry[];
   readonly content: ContentSet;
   readonly sheet?: SpriteSheet;

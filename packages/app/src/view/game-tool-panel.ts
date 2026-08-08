@@ -4,6 +4,7 @@ import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { Rect } from '../hud/geometry.js';
+import type { KeyBindings } from '../hud/keybindings.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
@@ -44,6 +45,7 @@ export interface GameToolPanelDeps {
   readonly counters: ExtrasCountersSeam;
   /** UI string language (`pol`/`eng`); defaults to the active locale. */
   readonly lang?: string;
+  readonly bindings: KeyBindings;
   readonly onSpeed: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
   /** A higher overlay's claim: the panel yields left clicks it covers, so hit priority follows draw order. */
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
@@ -129,6 +131,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     buildings: deps.buildings,
     goods: deps.goods,
     lang: deps.lang ?? currentLocale(),
+    bindings: deps.bindings,
     tribe: deps.tribe,
     owner: deps.owner,
     enqueue: deps.enqueue,

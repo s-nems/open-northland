@@ -1,5 +1,7 @@
+import type { KeyBindings, KeybindingAction } from './keybindings.js';
+
 /** True when a keydown originated in a text-entry element - a game hotkey must not fire while typing. */
-const isTypingTarget = (target: EventTarget | null): boolean =>
+export const isTypingTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLInputElement ||
   target instanceof HTMLTextAreaElement ||
   (target instanceof HTMLElement && target.isContentEditable);
@@ -10,4 +12,10 @@ const isTypingTarget = (target: EventTarget | null): boolean =>
  */
 export function isPlainHotkey(e: KeyboardEvent, code: string): boolean {
   return e.code === code && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target);
+}
+
+/** {@link isPlainHotkey} against the action's current binding; an unbound action never fires. */
+export function isActionHotkey(e: KeyboardEvent, bindings: KeyBindings, action: KeybindingAction): boolean {
+  const code = bindings[action];
+  return code !== null && isPlainHotkey(e, code);
 }

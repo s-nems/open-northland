@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { adoptSettings, carriedSettingParams } from '../src/entries/main-menu/settings-state.js';
+import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN } from '../src/hud/ui-scale.js';
 import type { MenuSettings } from '../src/view/settings-store.js';
 import { defaultSettings, parseStoredSettings, persistSettings } from '../src/view/settings-store.js';
@@ -22,6 +23,7 @@ describe('parseStoredSettings', () => {
       uiScaleFactor: 1.25,
       soundEnabled: false,
       language: 'eng',
+      keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
     } as const;
     expect(parseStoredSettings(JSON.stringify(settings))).toEqual(settings);
   });
@@ -32,6 +34,7 @@ describe('parseStoredSettings', () => {
     expect(parsed.uiScaleFactor).toBe(defaultSettings().uiScaleFactor);
     expect(parsed.displayMode).toBe('window');
     expect(parsed.soundEnabled).toBe(defaultSettings().soundEnabled);
+    expect(parsed.keyBindings).toEqual(DEFAULT_KEY_BINDINGS);
   });
 
   it('clamps an out-of-range stored factor instead of dropping it', () => {

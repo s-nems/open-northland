@@ -20,6 +20,7 @@ import { formatMessage, messages } from '../i18n/index.js';
 import { createCameraController, MIN_ZOOM } from '../view/camera/index.js';
 import { mountMessage } from '../view/overlay.js';
 import { floatParam, intParam } from '../view/params.js';
+import { readStoredSettings } from '../view/settings-store.js';
 import {
   buildAnimCells,
   buildColorCells,
@@ -177,6 +178,7 @@ async function startGallery(
     canvas,
     { offsetX: GRID_MARGIN, offsetY: GRID_MARGIN, scale: zoom },
     () => app.renderer.resolution,
+    readStoredSettings().keyBindings,
   );
 
   // The direction buttons drive `setDirection` live; the character and view buttons navigate, so the

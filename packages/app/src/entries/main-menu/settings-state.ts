@@ -11,7 +11,7 @@ export type SettingsTab = 'graphics' | 'audio' | 'gameplay' | 'controls';
 
 export interface SettingsTabItem {
   readonly id: SettingsTab;
-  /** `comingSoon` renders a badge and takes no input (no keybinding UI exists yet). */
+  /** `comingSoon` renders a badge and takes no input. */
   readonly kind: 'open' | 'comingSoon';
 }
 
@@ -19,7 +19,7 @@ export const SETTINGS_TABS: readonly SettingsTabItem[] = [
   { id: 'graphics', kind: 'open' },
   { id: 'audio', kind: 'open' },
   { id: 'gameplay', kind: 'open' },
-  { id: 'controls', kind: 'comingSoon' },
+  { id: 'controls', kind: 'open' },
 ];
 
 /** Active settings tab; outlives the screen so a language re-render returns to the same tab. */

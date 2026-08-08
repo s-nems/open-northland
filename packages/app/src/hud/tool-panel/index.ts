@@ -5,6 +5,7 @@ import { type GuiArt, loadGuiArt, makeGuiSprite } from '../../content/gui-art.js
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
+import type { KeyBindings } from '../keybindings.js';
 import { makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
@@ -32,6 +33,8 @@ export interface ToolPanelOptions {
   readonly goods: readonly MenuGoodEntry[];
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
+  /** Resolved player key bindings; the input layer reads the pause key from it. */
+  readonly bindings: KeyBindings;
   /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player slot a placed building is owned by. */
@@ -222,6 +225,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     toCanvas,
     windows,
     held,
+    bindings: opts.bindings,
     activateButton,
     togglePause: () => speedButton.togglePause(),
     ...(opts.deferToOverlay !== undefined ? { deferToOverlay: opts.deferToOverlay } : {}),

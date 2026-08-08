@@ -2,7 +2,7 @@ import type { DoorBadge } from '@open-northland/render';
 import { type Entity, systems } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
-import { isPlainHotkey } from '../../hud/hotkeys.js';
+import { isActionHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
 import { pickDoorBadgeRow, pickGarrisonFlag, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
 import { entityAnchor, memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
@@ -260,10 +260,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.code === 'Space') {
-      e.preventDefault(); // Space would otherwise scroll the page
-      actions.toggle(); // the info card is always-on; Space toggles only the action ring
-    } else if (isPlainHotkey(e, 'KeyA')) {
+    if (isActionHotkey(e, opts.bindings, 'actionRing')) {
+      e.preventDefault(); // Space (the default binding) would otherwise scroll the page
+      actions.toggle(); // the info card is always-on; the hotkey toggles only the action ring
+    } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
       armAttackMove();
     } else if (e.code === 'Escape') {
       if (pickMode.isArmed())

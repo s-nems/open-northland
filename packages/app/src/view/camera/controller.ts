@@ -1,4 +1,6 @@
 import type { Camera } from '@open-northland/render';
+import { isTypingTarget } from '../../hud/hotkeys.js';
+import type { KeyBindings } from '../../hud/keybindings.js';
 import {
   type CameraTuning,
   DEFAULT_CAMERA_TUNING,
@@ -17,10 +19,11 @@ import { clientToScreen, screenScale } from './screen-scale.js';
 
 /** Per-wheel-notch zoom factor (one notch in multiplies, one out divides). */
 const WHEEL_ZOOM_STEP = 1.1;
-/** The arrow keys the controller pans on (so it ignores every other key). */
-const ARROW_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 /** Max wall-clock ms one held-key pan step integrates - a backgrounded tab resumes smoothly, not with a lurch. */
 const MAX_PAN_STEP_MS = 100;
+
+type PanAction = 'panLeft' | 'panRight' | 'panUp' | 'panDown';
+const PAN_ACTIONS: readonly PanAction[] = ['panLeft', 'panRight', 'panUp', 'panDown'];
 
 export interface CameraController {
   camera(): Camera;
@@ -47,10 +50,16 @@ export function createCameraController(
   canvas: HTMLCanvasElement,
   initial: Camera,
   resolution: () => number,
+  bindings: KeyBindings,
 ): CameraController {
   let cam: Camera = initial;
   const tuning: CameraTuning = DEFAULT_CAMERA_TUNING;
-  const held = new Set<string>();
+  const panActionByCode = new Map<string, PanAction>();
+  for (const action of PAN_ACTIONS) {
+    const code = bindings[action];
+    if (code !== null) panActionByCode.set(code, action);
+  }
+  const held = new Set<PanAction>();
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
@@ -101,12 +110,14 @@ export function createCameraController(
     zoomAnchorY = y;
   };
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (!ARROW_KEYS.has(e.key)) return;
-    held.add(e.key);
-    e.preventDefault(); // arrows would otherwise scroll the page
+    const action = panActionByCode.get(e.code);
+    if (action === undefined || isTypingTarget(e.target)) return;
+    held.add(action);
+    e.preventDefault(); // arrow keys (the default bindings) would otherwise scroll the page
   };
   const onKeyUp = (e: KeyboardEvent): void => {
-    held.delete(e.key);
+    const action = panActionByCode.get(e.code);
+    if (action !== undefined) held.delete(action);
   };
   // Losing focus mid-gesture drops the keyup or mouseup, which would leave a key stuck in `held` or
   // `dragging` stuck true.
@@ -148,10 +159,10 @@ export function createCameraController(
       // looking right slides the world left and shrinks the offset.
       let desiredX = 0;
       let desiredY = 0;
-      if (held.has('ArrowLeft')) desiredX += tuning.arrowPanSpeed;
-      if (held.has('ArrowRight')) desiredX -= tuning.arrowPanSpeed;
-      if (held.has('ArrowUp')) desiredY += tuning.arrowPanSpeed;
-      if (held.has('ArrowDown')) desiredY -= tuning.arrowPanSpeed;
+      if (held.has('panLeft')) desiredX += tuning.arrowPanSpeed;
+      if (held.has('panRight')) desiredX -= tuning.arrowPanSpeed;
+      if (held.has('panUp')) desiredY += tuning.arrowPanSpeed;
+      if (held.has('panDown')) desiredY -= tuning.arrowPanSpeed;
       // Edge scroll is suppressed mid middle-drag, while the window is unfocused, and wherever a HUD
       // surface claims the point. A left-drag marquee is deliberately not suppressed, so dragging a
       // selection box into the margin pans under it.
