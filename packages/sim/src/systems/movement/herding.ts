@@ -16,7 +16,8 @@ import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { herdParams } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { canonicalById, entityNode, isTravelling } from '../spatial/nodes.js';
+import { canonicalById, entityNode } from '../spatial/nodes.js';
+import { isTravelling } from './nav-state.js';
 import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
 
 /**

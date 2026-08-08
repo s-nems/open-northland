@@ -7,7 +7,8 @@ import { ringSearch, STAND_SEARCH_CAP } from '../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingDoorNodes, dynamicBlockOverlay, walkBlockedBodyOf } from '../footprint/index.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../spatial/nodes.js';
+import { canonicalById, NodeBuckets } from '../spatial/nodes.js';
+import { isTravelling } from './nav-state.js';
 
 /**
  * Move every settler standing inside `building`'s walk-blocked footprint, and every one the stamp just

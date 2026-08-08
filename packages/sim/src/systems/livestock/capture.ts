@@ -11,9 +11,10 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System } from '../context.js';
+import { clearNavState } from '../movement/nav-state.js';
 import { isScoutJob } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { clearNavState, entityNode } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 
 /** Node-Manhattan contact distance at which a scout claims an animal. Approximated: the original's scout
  *  claims by walking into the creature, but no radius is readable. */

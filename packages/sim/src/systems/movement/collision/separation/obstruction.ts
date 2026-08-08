@@ -2,7 +2,7 @@ import { Obstructed, PathFollow, Position } from '../../../../components/index.j
 import { type Fixed, fx } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { worldDistance } from '../../../../nav/world-metric.js';
-import { clearNavState } from '../../../spatial/nodes.js';
+import { clearNavState } from '../../nav-state.js';
 import { MOVE_SPEED_PER_TICK } from '../../system.js';
 
 /** Consecutive low-progress ticks before a walker drops its path and asks the planner to reroute. */

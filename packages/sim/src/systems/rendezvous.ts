@@ -1,8 +1,9 @@
 import { MoveGoal, PathRequest } from '../components/index.js';
 import type { Component, DeepReadonly, Entity, World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
+import { clearNavState, isTravelling } from './movement/nav-state.js';
 import { startAtomic } from './settlers/atomics/start.js';
-import { canonicalById, clearNavState, isTravelling } from './spatial/nodes.js';
+import { canonicalById } from './spatial/nodes.js';
 
 // The shared skeleton for "two settlers meet and perform a mirrored ritual": each half carries the ritual
 // as a mirrored component, and the domain-specific bodies stay in their own systems.

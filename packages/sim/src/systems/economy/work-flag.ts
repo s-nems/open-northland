@@ -18,8 +18,9 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { buildingFlagBody, translatedCells } from '../footprint/geometry.js';
 import { nearestWorkFlagPlacement, noteWorkFlagMove } from '../footprint/index.js';
+import { clearNavState } from '../movement/nav-state.js';
 import { isHunterJob } from '../readviews/index.js';
-import { canonicalById, clearNavState, entityNode } from '../spatial/nodes.js';
+import { canonicalById, entityNode } from '../spatial/nodes.js';
 
 // The gatherer work-flag lifecycle. Minting and removal go through `bindFreshFlag` and `removeWorkFlag`, so
 // a `DeliveryFlag` exists exactly while a live gatherer references it. Authored: auto-planting a flag the

@@ -20,6 +20,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { isTravelling } from '../../movement/nav-state.js';
 import { isFood } from '../../readviews/index.js';
 import { startDrop } from '../../settlers/atomics/start.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
@@ -27,7 +28,6 @@ import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors
 import { interactionCell } from '../../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { isTravelling } from '../../spatial/nodes.js';
 import { isOnMission } from '../eligibility.js';
 import { deliverHome, fetchFrom } from '../food-haul.js';
 import type { ExternalFoodIndex } from '../food-search.js';

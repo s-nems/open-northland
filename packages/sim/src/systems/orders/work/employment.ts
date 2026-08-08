@@ -23,11 +23,11 @@ import {
   releaseEmployment,
 } from '../../economy/jobs/index.js';
 import { interactionNode } from '../../footprint/index.js';
+import { clearNavState } from '../../movement/nav-state.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { clearNavState } from '../../spatial/nodes.js';
 import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '../guards.js';
 
 /**

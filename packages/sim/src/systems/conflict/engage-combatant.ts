@@ -22,6 +22,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { drawsHouseBow, mannedShelter } from '../defence/index.js';
 import { isStanding } from '../movement/collision/index.js';
+import { clearNavState, isTravelling } from '../movement/nav-state.js';
 import { withFightDamageBonus } from '../progression/index.js';
 import {
   houseBow,
@@ -31,7 +32,7 @@ import {
   type MilitaryMode,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import { clearNavState, entityNode, isTravelling } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';

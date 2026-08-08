@@ -12,11 +12,11 @@ import {
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { clearNavState } from '../movement/nav-state.js';
 import { isBarracks } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { clearNavState } from '../spatial/nodes.js';
 import { isTradeAssignable } from './guards.js';
 
 /**

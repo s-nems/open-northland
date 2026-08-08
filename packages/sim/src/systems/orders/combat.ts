@@ -19,8 +19,8 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { clearNavState } from '../movement/nav-state.js';
 import { defaultStanceForJob, isMilitaryMode, MILITARY_MODE } from '../readviews/index.js';
-import { clearNavState } from '../spatial/nodes.js';
 import { isOrderableSettler } from './guards.js';
 
 /**

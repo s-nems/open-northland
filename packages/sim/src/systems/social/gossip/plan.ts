@@ -21,9 +21,10 @@ import { type Fixed, fx } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
+import { isTravelling } from '../../movement/nav-state.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives/needs.js';
-import { canonicalById, isTravelling, NodeBuckets } from '../../spatial/nodes.js';
+import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
 
 /** Company deficit at or above which a working settler leaves its work to find a chat partner, ¾ of a full
  *  bar, mirroring the eat/sleep/pray triggers in `drives/needs.ts` on the same approximation basis. */

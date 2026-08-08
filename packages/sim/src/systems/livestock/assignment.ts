@@ -15,9 +15,10 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { seatBaseOf } from '../ai-player/base.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
+import { isTravelling } from '../movement/nav-state.js';
 import { isLivestockWorkplaceType, stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
-import { canonicalById, entityNode, isTravelling } from '../spatial/nodes.js';
+import { canonicalById, entityNode } from '../spatial/nodes.js';
 
 /** Re-anchoring cadence (ticks): a slow sweep, so claims, new farms, and demolitions converge within a
  *  period. Approximated; the original's herding cadence is not readable. */

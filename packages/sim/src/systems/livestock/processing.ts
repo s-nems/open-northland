@@ -13,9 +13,10 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
+import { clearNavState, isTravelling } from '../movement/nav-state.js';
 import { livestockTribeFedBy } from '../readviews/index.js';
 import { isInside, stepIn, stepOut } from '../settlers/indoors.js';
-import { clearNavState, entityNode, isTravelling } from '../spatial/nodes.js';
+import { entityNode } from '../spatial/nodes.js';
 import { visitLifeCost } from './processing/life-cost.js';
 import {
   arrivedVisitorCount,
