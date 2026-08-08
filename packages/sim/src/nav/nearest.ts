@@ -4,8 +4,8 @@ import type { NodeId, TerrainGraph } from './terrain/index.js';
 
 /**
  * How many nodes {@link nearestUnblockedNode} visits around a blocked anchor before giving up.
- * Approximation: a search-cost guard sized to ring several bodies deep around a crowded target, or to
- * step a click that landed on a footprint out to its walkable edge.
+ * Authored: a search-cost guard sized to ring several bodies deep around a crowded target, or to step a
+ * click that landed on a footprint out to its walkable edge.
  */
 export const NEAREST_NODE_SEARCH_CAP = 64;
 

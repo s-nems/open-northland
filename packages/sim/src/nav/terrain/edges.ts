@@ -17,7 +17,7 @@ import { TerrainLattice } from './lattice.js';
 import type { NodeId } from './node-id.js';
 import { type Step, StepBuffer } from './step-buffer.js';
 
-/** Canonical orthogonal neighbour offsets, the fixed traversal order for determinism. */
+/** The 4-connected orthogonal neighbour offsets, in canonical order. */
 const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, -1], // N
   [1, 0], // E
@@ -25,14 +25,13 @@ const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [-1, 0], // W
 ] as const;
 
-/** The two E/W half-column edges (34 px), canonical E then W. */
+/** The two E/W half-column edges (34 px). */
 const COLUMN_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [1, 0], // E
   [-1, 0], // W
 ] as const;
 
-/** The four 51 px diagonal lattice edges, in the canonical screen-heading order A* expansion depends
- *  on. */
+/** The four 51 px diagonal lattice edges, in screen-heading order. */
 const DIAGONAL_STEP_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [1, -2], // NE
   [1, 2], // SE

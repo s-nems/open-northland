@@ -4,8 +4,8 @@ import type { NodeId } from './terrain/index.js';
  * The world-metric node-lattice geometry shared by every circle-shaped area rule. A half-cell node step
  * is 34 px E/W and 19 px N/S of the measured 68x38 projection pitch, and a radius of R nodes means R*34
  * px, so circles read circular on screen. Approximation: the per-row stagger's half-node wobble is
- * ignored, as vision ignores it, leaving a half-cell fringe on an area edge. Exact integer arithmetic,
- * because the circle rules feed game state.
+ * ignored, leaving a half-cell fringe on an area edge. Exact integer arithmetic, because the circle
+ * rules feed game state.
  */
 
 /** One node's E/W pitch in native px, the radius unit. The integer-px form of `HALF_COLUMN`. */

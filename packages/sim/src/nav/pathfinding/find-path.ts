@@ -1,14 +1,10 @@
 /**
- * A* pathfinding over the terrain half-cell adjacency graph.
- *
- * Each edge costs its real world length (half-column 1/2, diagonal about 3/4, half-row about 0.28) and the
- * heuristic is the admissible {@link latticeDistanceTo}, so a route minimises true on-screen distance and
- * reads straight under the staggered raster. All costs are {@link Fixed}; no float enters the search.
+ * A* pathfinding over the terrain half-cell adjacency graph. Each edge costs its real world length and
+ * the heuristic is the admissible {@link latticeDistanceTo}, so a route minimises true on-screen distance
+ * and reads straight under the staggered raster. All costs are fixed-point; no float enters the search.
  *
  * Ties break on a history-independent total order, so two clients in lockstep pick byte-identical paths.
- * The line-deviation key only separates routes that already tie on cost, so optimality is untouched: the
- * lattice offers many equal-cost weaves to one node, and the id tie-break alone picks one that drifts
- * sideways before correcting.
+ * The line-deviation key only separates routes that already tie on cost, so optimality is untouched.
  *
  * Working storage is reused per graph, so a query allocates records only for the nodes it discovers.
  */
@@ -38,16 +34,16 @@ export interface SearchStats {
 /**
  * The settle cap of the goal-side pocket probe. A reverse search exhausts a pocket the overlay sealed the
  * goal into at the pocket's own size, and edges are symmetric, so "the goal's region excludes the start"
- * is exactly "no route". Approximation: sized above a melee ring's free band and far under a map flood, so
- * an open goal instead beelines to the start or hands over to the full search at this cap.
+ * is exactly "no route". Authored: sized above a melee ring's free band and far under a map flood, so an
+ * open goal instead beelines to the start or hands over to the full search at this cap.
  */
 export const POCKET_PROBE_MAX_EXPLORED = 128;
 
 /**
  * The forward search's settle guard under a walk-block overlay. Past this many settles with no verdict,
  * {@link findPath} suspects a pocket that outgrew {@link POCKET_PROBE_MAX_EXPLORED} and runs the goal-side
- * exhaust rather than flooding the walker's whole region. Observation: a goal sealed inside a 494-node
- * pocket cost about 123k settles to refute forward, against pocket size in reverse. A pure performance
+ * exhaust rather than flooding the walker's whole region. Observation: refuting a sealed goal forward
+ * costs orders of magnitude more settles than exhausting the pocket in reverse. Authored: a performance
  * knob sized above routine long routes; the answer never changes.
  */
 export const FLOOD_GUARD_MAX_EXPLORED = 4096;
@@ -83,14 +79,14 @@ export function findPath(
   // `blocked` only removes edges, so endpoints in different static components are provably unreachable.
   // Sharing a component proves nothing, since the overlay may still wall the goal off.
   if (graph.componentOf(start) !== graph.componentOf(goal)) return null;
-  // The reverse probe re-admits a blocked start as its target: forward, the walker may leave that node but
-  // never re-enter it, which in reverse is exactly "enterable as the final step only", so both directions
-  // see the same edge set and the probe's "unreachable" stays exact.
   if (blocked === undefined || blocked.size === 0) {
     // Without an overlay a shared static component means reachable, so the search can never flood.
     const result = runSearch(graph, start, goal, blocked, stats, Number.POSITIVE_INFINITY);
     return typeof result === 'string' ? null : result;
   }
+  // The reverse probe re-admits a blocked start as its target: forward, the walker may leave that node but
+  // never re-enter it, which in reverse is exactly "enterable as the final step only", so both directions
+  // see the same edge set and the probe's "unreachable" stays exact.
   const probeBlocked: BlockOverlay = blocked.has(start)
     ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
     : blocked;
@@ -145,7 +141,6 @@ function runSearch(
   const deviation = (node: NodeId): number =>
     Math.abs((graph.xOf(node) - startX) * lineHY - (graph.yOf(node) - startY) * lineHX);
 
-  // At the start node g is 0, so f === h; compute the heuristic once.
   const startH = latticeDistanceTo(graph, goalX, goalY, start);
   const startRec: NodeRecord = {
     node: start,
@@ -179,7 +174,6 @@ function runSearch(
       siftDown(heap, 0, betterRecord);
     }
 
-    // Lattice steps carry their own cost and already exclude blocked and unwalkable nodes.
     graph.stepsInto(current.node, blocked, steps);
     for (let i = 0; i < steps.length; i++) {
       const { node: next, cost } = steps.at(i);
@@ -220,7 +214,6 @@ function reconstruct(recordAt: (node: NodeId) => NodeRecord | undefined, goalRec
   while (node !== null) {
     path.push(node);
     const rec = recordAt(node);
-    // The chain only ever names discovered nodes, so a miss is a search bug, not a boundary case.
     if (rec === undefined) throw new Error(`path reconstruction hit an undiscovered node ${node}`);
     node = rec.cameFrom;
   }

@@ -64,9 +64,9 @@ export function halfCellMapFromCells(map: CellTerrainMap): TerrainMap {
 }
 
 /**
- * Build the half-cell adjacency graph from the content's {@link LandscapeType} table and a
- * half-cell terrain map. The per-type props are resolved once here so per-node lookups during a
- * tick are pure array reads.
+ * Build the half-cell adjacency graph from the content's {@link LandscapeType} table and a half-cell
+ * terrain map. The per-type props are resolved once here, so a per-node lookup during a tick is one map
+ * hit instead of a scan of the content table.
  */
 export function buildTerrainGraph(content: ContentSet, map: TerrainMap): TerrainGraph {
   const props = new Map<number, LandscapeProps>();

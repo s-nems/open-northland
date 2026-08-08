@@ -2,8 +2,8 @@ import type { NodeId, TerrainGraph } from './terrain/index.js';
 
 /**
  * Max nodes a stand-or-landing ring search visits before giving up, so a boxed-in settler or pile stays
- * put rather than searching the whole world. Approximation: a search-cost guard covering roughly one
- * screen radius at the half-cell lattice's density, not a data-pinned value.
+ * put rather than searching the whole world. Authored: a search-cost guard covering roughly one screen
+ * radius at the half-cell lattice's density, not a data-pinned value.
  */
 export const STAND_SEARCH_CAP = 192;
 

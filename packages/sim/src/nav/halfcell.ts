@@ -1,12 +1,8 @@
 /**
  * The single seam between fixed-point positions (fractional visual-tile coordinates, stagger applied by
- * the projection) and the navigation lattice's integer half-cell nodes. Source basis: the decoded map
- * lanes `lmlt`, `emla`, `lmlv` and `map.cif` StaticObjects all address the original's `2W x 2H` grid.
- *
- * The half-cell grid is rectangular in world space: node `(hx, hy)` sits at world `(hx/2 column,
- * hy/2 row)` and carries no stagger of its own. The visual stagger comes from which nodes the cell
- * centres occupy, cell `(c, r)` sitting at node `(2c + (r&1), 2r)`. Every integer grid coordinate inside
- * the sim is a half-cell coordinate. Pure fixed-point, and quarters of ONE are exact.
+ * the projection) and the navigation lattice's integer half-cell nodes. The lattice is rectangular in
+ * world space and carries no stagger of its own. Every integer grid coordinate inside the sim is a
+ * half-cell coordinate.
  */
 import { type Fixed, fx } from '../core/fixed.js';
 import { staggerShift, worldX } from './world-metric.js';
@@ -28,13 +24,12 @@ export function nodeOfPosition(x: Fixed, y: Fixed): HalfCellNode {
   return { hx: nodeHxOfPosition(x, y), hy: nodeHyOfPosition(y) };
 }
 
-/** {@link nodeOfPosition}'s `hx` alone, for per-tick loops where minting a node object per call is
- *  measured churn. */
+/** {@link nodeOfPosition}'s `hx` alone, so a per-tick loop allocates no node object per call. */
 export function nodeHxOfPosition(x: Fixed, y: Fixed): number {
   return fx.toInt(fx.mul(worldX(x, y), TWO));
 }
 
-/** {@link nodeOfPosition}'s `hy` alone. It depends only on the row. */
+/** {@link nodeOfPosition}'s `hy` alone. */
 export function nodeHyOfPosition(y: Fixed): number {
   return fx.toInt(fx.mul(y, TWO));
 }

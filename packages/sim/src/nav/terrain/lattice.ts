@@ -3,11 +3,10 @@
  * basis: the decoded map object lanes `lmlt`, `emla`, `lmlv`, `map.cif` StaticObjects placements, and
  * `LogicWalkBlockArea`/`LogicBuildBlockArea` footprint offsets all address `2W x 2H`; the half-cell
  * anchoring is the best-aligned reading of the `lmlt` blocking lane, measured in docs/formats/MAPDAT.md.
- * Each node carries a landscape `typeId` resolving to walkability and a fixed-point walk cost.
  *
  * Node `(hx, hy)` sits at world `(hx/2 column, hy/2 row)`, a 34 px by 19 px pitch under the measured
  * 68x38 px projection, and cell `(c, r)` is node `(2c + (r&1), 2r)`, so the staggered raster becomes a
- * rectangular lattice with one parity-independent neighbour table. Nodes are addressed by row-major id.
+ * rectangular lattice with one parity-independent neighbour table.
  */
 import type { Fixed } from '../../core/fixed.js';
 
@@ -40,12 +39,10 @@ export abstract class TerrainLattice {
     this.props = props;
   }
 
-  /** Total node count. */
   get nodeCount(): number {
     return this.width * this.height;
   }
 
-  /** True if (x, y) is inside the grid. */
   inBounds(x: number, y: number): boolean {
     return x >= 0 && y >= 0 && x < this.width && y < this.height;
   }
@@ -62,18 +59,15 @@ export abstract class TerrainLattice {
     return this.idAt(x, y);
   }
 
-  /** The x coordinate of a node id. */
   xOf(node: NodeId): number {
     return node % this.width;
   }
 
-  /** The y coordinate of a node id. */
   yOf(node: NodeId): number {
     return Math.floor(node / this.width);
   }
 
-  /** The (x, y) coordinates of a node id. A per-node hot path uses {@link xOf} and {@link yOf} to
-   *  avoid the object. */
+  /** A per-node hot path uses {@link xOf} and {@link yOf} instead, avoiding the object. */
   coordsOf(node: NodeId): { x: number; y: number } {
     return { x: this.xOf(node), y: this.yOf(node) };
   }
@@ -109,20 +103,17 @@ export abstract class TerrainLattice {
     return this.propsOf(node).walkable;
   }
 
-  /** True if a building's reserved zone may cover this node, from the landscape row's `buildable` flag.
-   *  A real map's object margin is walkable but not buildable. Placement only; navigation reads
+  /** Whether a building's reserved zone may cover this node. Placement only; navigation reads
    *  {@link isWalkable}. */
   isBuildable(node: NodeId): boolean {
     return this.propsOf(node).buildable;
   }
 
-  /** True if crops may be sown on this node, from the landscape row's `plantable` flag, which follows
-   *  the original's `biocanplanton` ground class. Farming only. */
+  /** Whether crops may be sown on this node. Farming only. */
   isPlantable(node: NodeId): boolean {
     return this.propsOf(node).plantable;
   }
 
-  /** Fixed-point cost to step onto this node. */
   walkCost(node: NodeId): Fixed {
     return this.propsOf(node).walkCost;
   }
