@@ -15,12 +15,6 @@ import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rendezvous.js';
 
-/**
- * The wedding half of the FamilySystem: each {@link Wedding} pair walks together, kisses, and becomes
- * spouses for life, announced with `settlersMarried` (the original's `DM_MUSIC_TYPE_JINGLE_MARRIAGE`
- * moment). A wedding whose partner died or whose walk failed is cancelled on both sides.
- */
-
 /** The paired kiss atomic ids - `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
  *  `tribetypes.ini` (`setatomic 5 20 "..._woman_kiss"` / `setatomic 6 21 "..._civilist_kissed"`). */
 export const KISS_ATOMIC_ID = 20;

@@ -28,11 +28,6 @@ import { ATOMIC_EVENT_CHANNEL, atomicAnimationByName } from '../../readviews/ind
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
 import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives/needs.js';
 
-/**
- * The gossip drive half: {@link gossipSystem} advances every standing {@link Chat} pair one tick.
- * `index.ts` carries the mechanic's source basis.
- */
-
 /** The paired talk/listen atomic ids - `logicdefines.inc` `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_TALK = 14` /
  *  `LISTEN = 15`, bound per tribe in `tribetypes.ini` (`setatomic 5/6 14 "..._talk"`, `... 15 "..._listen"`). */
 export const TALK_ATOMIC_ID = 14;

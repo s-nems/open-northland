@@ -2,8 +2,7 @@ import { Female, Marriage, Residence } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { raisingChild } from './eligibility.js';
 
-// The widowing rule, driven by its three events: a spouse's death, the couple's child growing up, and
-// that child dying. Never called from a whole-world per-tick scan.
+// The widowing rule: event-driven, never called from a whole-world per-tick scan.
 
 /**
  * Dissolve `survivor`'s marriage once the spouse is dead and no growing child remains, and evict a male

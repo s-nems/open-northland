@@ -6,11 +6,6 @@ import type { World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
 import type { FogState } from './vision/index.js';
 
-/**
- * A System is a pure function over the world for one tick. Systems run in a fixed registered
- * order (see SYSTEM_ORDER in schedule.ts and docs/ECS.md). They may read/write components and use
- * ctx.rng, but must not touch wall-clock, Math.random, the DOM, or I/O.
- */
 export interface SystemContext {
   readonly content: ContentSet;
   readonly rng: Rng;
@@ -35,6 +30,11 @@ export interface SystemContext {
   readonly fog?: FogState;
 }
 
+/**
+ * One tick of pure behavior over the world, run in the fixed order of `SYSTEM_ORDER` (schedule.ts,
+ * docs/ECS.md). May read and write components and use `ctx.rng`, but must not touch wall-clock,
+ * `Math.random`, the DOM, or I/O.
+ */
 export type System = (world: World, ctx: SystemContext) => void;
 
 /** The slice of a {@link SystemContext} a pure content lookup reads. A helper taking this is callable

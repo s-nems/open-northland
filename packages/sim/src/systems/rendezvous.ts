@@ -4,9 +4,8 @@ import type { TerrainGraph } from '../nav/terrain/index.js';
 import { startAtomic } from './settlers/atomics/start.js';
 import { canonicalById, clearNavState, isTravelling } from './spatial/nodes.js';
 
-// The shared skeleton for "two settlers meet and perform a mirrored ritual", used by the wedding pass
-// (family/weddings.ts) and the gossip pass (social/gossip/drive.ts). Each half carries the ritual as a
-// mirrored component; the domain-specific bodies (marriage vs chat rounds) stay in their own systems.
+// The shared skeleton for "two settlers meet and perform a mirrored ritual": each half carries the ritual
+// as a mirrored component, and the domain-specific bodies stay in their own systems.
 
 /**
  * Drive every live mirrored pair of `component` once this tick, in canonical (ascending-id) order. A half
