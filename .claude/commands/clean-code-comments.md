@@ -17,7 +17,7 @@ Resolve `sim`, `render`, and `app` to their packages, and `pipeline` to `tools/a
 2. Check `git status`; preserve existing work and skip files whose unrelated edits cannot be isolated.
 3. Build the candidate queue with deterministic searches, in priority order:
    1. banned history and attribution:
-      `git grep -ilE '(//|\*).*(20[0-9]{2}-[0-9]{2}|user (decision|feedback|rule|request|order|recollection|observation)|as requested|revised)' -- 'packages/*/src' 'tools/*/src'`;
+      `git grep -ilE '(//|\*).*(20[0-9]{2}-[0-9]{2}|user (decision|feedback|rule|request|order|recollection|observation)|as requested|revised)' -- 'packages/**/src/**' 'tools/**/src/**'`;
    2. the scope's most comment-heavy files: highest comment-to-code ratio, longest comment blocks,
       densest `{@link}` chains.
 4. Read the selected file beside its implementation, types, and relevant tests or callers. Do not
