@@ -8,16 +8,15 @@ import type {
   TrianglePatternType,
 } from '@open-northland/data';
 
-/** One decoded `[bobseq]` sequence as it ships in `content/ir.json`'s `bobSequences`. */
+/** One decoded `[bobseq]` sequence: a named frame range in its imagelib's bob pool. */
 export interface BobSeqRow {
   readonly name: string;
   readonly start: number;
   readonly length: number;
 }
 
-/** One `[gfxanimatomic]` row as it ships in `content/ir.json`'s `gfxAtomics` - an atomic action's
- *  directional body-animation layout: `(tribe, job, action)` → the `bodySeq` bobseq plus the per-facing
- *  {@link dirFrames} frame-index lists a bare bobseq range cannot encode. */
+/** One `[gfxanimatomic]` row - an atomic action's directional body animation: `(tribe, job, action)` →
+ *  the `bodySeq` bobseq plus the per-facing frame lists a bare bobseq range cannot encode. */
 export interface GfxAnimAtomicRow {
   readonly tribe: number;
   readonly job: number;
@@ -30,8 +29,8 @@ export interface GfxAnimAtomicRow {
   readonly mode?: number;
 }
 
-/** One `[gfxwalkatomic]` row as it ships in `content/ir.json`'s `gfxWalkAtomics` - the original's
- *  loaded-gait table: `(tribe, job, goodType)` → the `bodySeq` bobseq a hauler plays carrying that good. */
+/** One `[gfxwalkatomic]` row - the loaded-gait table: `(tribe, job, goodType)` → the `bodySeq` bobseq a
+ *  hauler plays carrying that good. */
 export interface GfxWalkAtomicRow {
   readonly tribe: number;
   readonly job: number;
@@ -40,17 +39,17 @@ export interface GfxWalkAtomicRow {
   readonly headSeq?: string;
   /** Per-facing `gfxwalkframelist` lists of local frame indices into the `bodySeq` pool. */
   readonly dirFrames?: readonly (readonly number[])[];
-  /** `logicwalkspeed` - the gait's authored speed rating; no consumer yet. */
+  /** `logicwalkspeed` - the gait's authored speed rating. */
   readonly walkSpeed?: number;
 }
 
-/** One good as it ships in `content/ir.json`'s `goods` - only the id join the graphics lanes need. */
+/** One good, narrowed to the typeId→slug join the graphics lanes need. */
 export interface IrGoodRow {
   readonly typeId: number;
   readonly id: string;
 }
 
-/** One `[GfxHouse]` `LogicType`→`GfxBobId` row as it ships in `content/ir.json`'s `buildingBobs`. */
+/** One `[GfxHouse]` `LogicType`→`GfxBobId` row. */
 export interface BuildingBobRow {
   readonly tribeId: number;
   readonly typeId: number;
@@ -63,7 +62,7 @@ export interface BuildingBobRow {
   readonly editName?: string;
 }
 
-/** One `[GfxHouse]` `GfxBobConstructionLayer` row as it ships in `content/ir.json`'s `constructionLayers`. */
+/** One `[GfxHouse]` `GfxBobConstructionLayer` row. */
 export interface ConstructionLayerRow {
   readonly tribeId: number;
   readonly typeId: number;
@@ -78,9 +77,8 @@ export interface ConstructionLayerRow {
   readonly editName?: string;
 }
 
-/** One `[GfxHouse]` type-4 `GfxOverlay` row as it ships in `content/ir.json`'s `buildingOverlays` -
- *  a finished building's animated state overlay (the mill rotor): `state` 0 = the idle still frame,
- *  `state` 1 = the working spin-cycle frames. */
+/** One `[GfxHouse]` type-4 `GfxOverlay` row - a finished building's animated state overlay (the mill
+ *  rotor, the mason hut's work): `state` 0 = the idle still frame, `state` 1 = the working frames. */
 export interface BuildingOverlayRow {
   readonly tribeId: number;
   readonly typeId: number;
@@ -95,9 +93,8 @@ export interface BuildingOverlayRow {
   readonly editName?: string;
 }
 
-/** One `[GfxHouse]` `GfxFlagPoint` row as it ships in `content/ir.json`'s `buildingFlagPoints` - where
- *  the original plants the building's sign chain, in screen px from the building bob's draw anchor
- *  (+y down). */
+/** One `[GfxHouse]` `GfxFlagPoint` row - where the original plants the building's sign chain.
+ *  Approximation: `x`/`y` read as screen px from the building bob's draw anchor, +y down. */
 export interface BuildingFlagPointRow {
   readonly tribeId: number;
   readonly typeId: number;
@@ -107,26 +104,24 @@ export interface BuildingFlagPointRow {
   readonly editName?: string;
 }
 
-/** One `[GfxLandscape]` state's frame list as it ships in `content/ir.json`'s `landscapeGfx[].frames`. */
+/** One `[GfxLandscape]` state's frame list. */
 export interface LandscapeGfxFramesRow {
   readonly state: number;
   readonly bobIds: readonly number[];
 }
 
-/** One `[GfxLandscape]` record as it ships in `content/ir.json`'s `landscapeGfx` - the placed decor/resource
- *  object's atlas binding, keyed to a `[landscapetype]` by {@link logicType} (the gathering-pipeline join)
- *  and to a map placement by `editName` (the map-object join). */
+/** One `[GfxLandscape]` record - a placed decor/resource object's atlas binding, joined to a
+ *  `[landscapetype]` by `logicType` and to a map placement by `editName`. */
 export interface LandscapeGfxRow {
   readonly index: number;
   readonly editName?: string;
-  /** `EditGroups`, the editor palette folders the record sits in (`ir/joins.ts` `BRIDGE_EDIT_GROUP`). */
+  /** `EditGroups` - the editor palette folders the record sits in. */
   readonly editGroups?: readonly string[];
   readonly logicType: number;
   /** `LogicMaximumValency` - the record's harvest capacity in units, which sizes a spawned mineral
-   *  deposit. Not the authored {@link frames} count. */
+   *  deposit. Not the authored `frames` count. */
   readonly maxValency?: number;
   readonly bmd?: string;
-  /** The shadow bob set (`GfxBobLibs` second value) - its silhouettes parallel the body's bob ids. */
   readonly shadowBmd?: string;
   readonly paletteName?: string;
   readonly frames?: readonly LandscapeGfxFramesRow[];
@@ -136,7 +131,7 @@ export interface LandscapeGfxRow {
   readonly loopAnimation?: boolean;
   /** Repeated `LogicWalkBlockArea` lines - a non-empty footprint marks a depth-sorted (non-decor) object. */
   readonly walkBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
-  /** Repeated `LogicBuildBlockArea` lines - the object's build-exclusion ring (the collision mask reads it). */
+  /** Repeated `LogicBuildBlockArea` lines - the object's build-exclusion ring. */
   readonly buildBlockAreas?: readonly Readonly<LandscapeBlockArea>[];
 }
 
@@ -146,8 +141,7 @@ export interface GatheringStageRow {
   readonly gfxIndices: readonly number[];
 }
 
-/** One good's resolved gathering pipeline as it ships in `content/ir.json`'s `gatheringPipeline` - the
- *  good→landscape→gfx join (`buildGatheringPipeline`) the render binds per good, keyed by {@link goodId}. */
+/** One good's resolved good→landscape→gfx join (`buildGatheringPipeline`), keyed by `goodId`. */
 export interface GatheringPipelineRow {
   readonly goodType: number;
   readonly goodId: string;
@@ -158,7 +152,7 @@ export interface GatheringPipelineRow {
   readonly store?: GatheringStageRow;
 }
 
-/** One `[landscapetype]` row as it ships in `content/ir.json`'s `landscape` - typeId + logic name. */
+/** One `[landscapetype]` row, narrowed to its typeId and logic name. */
 export interface LandscapeTypeRow {
   readonly typeId?: number;
   readonly name?: string;
@@ -178,24 +172,25 @@ export interface ContentIr {
   readonly constructionLayers?: readonly ConstructionLayerRow[];
   readonly buildingOverlays?: readonly BuildingOverlayRow[];
   readonly buildingFlagPoints?: readonly BuildingFlagPointRow[];
-  /** `gfxsoldierflagpoint` - the mast a manned post flies its garrison flag from. Same row shape as
-   *  {@link buildingFlagPoints}; only the tower records carry one. */
+  /** `gfxsoldierflagpoint` - the mast a manned post flies its garrison flag from; observed only on the
+   *  tower records. */
   readonly buildingSoldierFlagPoints?: readonly BuildingFlagPointRow[];
   readonly gatheringPipeline?: readonly GatheringPipelineRow[];
   readonly landscapeGfx?: readonly LandscapeGfxRow[];
-  /** The `[landscapetype]` logic table - the {@link LandscapeGfxRow.logicType} join key. */
+  /** The `[landscapetype]` logic table - `LandscapeGfxRow.logicType` joins onto it. */
   readonly landscape?: readonly LandscapeTypeRow[];
-  /** The approximated per-typeId ground binding (`buildTerrainPatterns`) the terrain renderer reads. */
+  /** The approximated per-typeId ground binding (`buildTerrainPatterns`). */
   readonly terrainPatterns?: readonly TerrainPattern[];
-  /** The full 927-record `[GfxPattern]` table - the 1:1 per-triangle ground join for decoded maps. */
+  /** The full `[GfxPattern]` table (927 records in the shipped content) - the 1:1 per-triangle ground
+   *  join for decoded maps. */
   readonly gfxPatterns?: readonly GfxPattern[];
   /** The `[transition]` ground-overlay table - a decoded map's `transitions.types` names join onto it. */
   readonly gfxPatternTransitions?: readonly GfxPatternTransition[];
   /** The per-logicType ground classes (`trianglepatterntypes.cif`) - the walk/build flags the map-collision
    *  join classes real ground by. */
   readonly trianglePatternTypes?: readonly TrianglePatternType[];
-  /** Type-table views the authored-entity joins read, plus the extracted ground `footprint`: collision
-   *  body, build-exclusion zone, and door. */
+  /** The building type rows, with the extracted ground `footprint`: collision body, build-exclusion zone,
+   *  and door. */
   readonly buildings?: readonly {
     typeId?: number;
     id?: string;
@@ -205,13 +200,12 @@ export interface ContentIr {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`). */
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
-  /** The `animaltypes.ini` records, read for tribe membership (`tribeType`) and for whether the record is a
-   *  living creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns. Behaviour fields
-   *  stay sim-side. */
+  /** The `animaltypes.ini` records, narrowed to tribe membership and to whether the record is a living
+   *  creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns; behaviour fields stay
+   *  sim-side. */
   readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
   /** The `armortypes.ini` records - the worn-good → recolor-tier join. */
   readonly armor?: readonly { typeId?: number; goodType?: number }[];
-  /** The decoded sound bank (`@open-northland/audio` builds its index from it). */
   readonly sounds?: SoundBank;
 }
 
