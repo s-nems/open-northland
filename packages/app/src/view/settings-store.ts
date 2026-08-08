@@ -4,7 +4,8 @@ import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
 
 /**
  * The player settings persisted in localStorage. The menu edits them; a launching game reads the
- * session-shaping ones (the HUD scale factor) directly from here rather than through URL params.
+ * session-shaping ones (the HUD scale factor and the graphics settings) directly from here rather
+ * than through URL params.
  */
 
 /** Drawn-frame cap in frames per second; `null` follows the display's own refresh rate. */
@@ -12,19 +13,18 @@ export type FpsLimit = 30 | 60 | null;
 
 export const RENDER_SCALE_MIN = 0.5;
 export const RENDER_SCALE_MAX = 2;
-export const DEFAULT_RENDER_SCALE = 1;
+const DEFAULT_RENDER_SCALE = 1;
 
 export interface MenuSettings {
   /** Fullscreen preference. Browsers grant fullscreen only on a user gesture, so the screen shows
    *  the live state; the stored value is for shells that can apply it at boot (desktop). */
   readonly displayMode: 'fullscreen' | 'window';
-  /** Multiplier over the DPR-derived backing resolution: below 1 renders fewer texels per CSS px
-   *  (the browser upscales), above 1 supersamples. 1 keeps the plain integer oversample. */
+  /** Backing-resolution multiplier for the game canvas; 1 keeps the plain device oversample. */
   readonly renderScale: number;
   /** Relative factor over the viewport-derived HUD base scale; the menu's own scale is
    *  viewport-derived too. */
   readonly uiScaleFactor: number;
-  /** The world post pass (warm-graded vignette); `?postfx` overrides it for one session. */
+  /** The world post pass: a warm-graded vignette over the world, under the HUD. */
   readonly postFxEnabled: boolean;
   readonly fpsLimit: FpsLimit;
   /** Mirrors the `?sound` param: `false` starts the game without an audio driver. */

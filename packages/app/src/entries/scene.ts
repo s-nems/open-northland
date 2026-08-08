@@ -51,7 +51,8 @@ export async function renderSceneMode(
   diag.info('boot', 'game start', { entry: 'scene', sceneId, seed: scene.seed });
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
-  // Window-tracking, device-resolution backing store: resizing changes the visible field, never the scale.
+  // Window-tracking backing store at the stored render scale times the device oversample: resizing
+  // changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
   const terrainGrid = terrainMapToScene(scene.terrain);
   await boot.begin('content');

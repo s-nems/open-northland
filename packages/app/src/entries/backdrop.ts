@@ -41,6 +41,7 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
   if (ir === null) throw new Error('backdrop: ir.json unavailable (content/ missing?)');
   const terrain: TerrainTextureSet = await loadRealTerrain(ir);
 
+  // Deliberately no stored render scale: a capture's pixel output must not vary with machine settings.
   const app = await createWindowPixiApp(canvas);
   const renderer = createWorldRenderer(
     app,

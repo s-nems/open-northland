@@ -40,9 +40,10 @@ import { buildMapWorld } from './map/world.js';
 
 /**
  * The decoded-map viewer entry (`?map=<id>`): draws `content/maps/<id>.json` under the deterministic
- * sim. The backing store tracks the window at device resolution while `app.screen` stays in CSS px, so
- * resizing changes the visible field, never the scale. An unknown or undecodable map id falls back to
- * the synthetic grass strip; a checkout without served `content/` halts at the terrain step.
+ * sim. The backing store tracks the window at the stored render scale times the device oversample
+ * while `app.screen` stays in CSS px, so resizing changes the visible field, never the scale. An
+ * unknown or undecodable map id falls back to the synthetic grass strip; a checkout without served
+ * `content/` halts at the terrain step.
  */
 
 const WORLD_SEED = 7;
