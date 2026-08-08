@@ -1,9 +1,9 @@
 import { defineComponent, type Entity } from '../../ecs/world.js';
 
 /**
- * A harvestable resource node (a tree, ore vein, berry bush) yielding its `goodType` to the good's harvest
- * atomic (`harvestAtomic`, the good's `atomicForHarvesting`). `remaining` is the units left; the planner's
- * `remaining <= 0` gate skips an emptied node. The node occupies the nav node under its `Position`.
+ * A harvestable resource node (a tree, ore vein, berry bush) yielding its `goodType` to `harvestAtomic`
+ * (the good's `atomicForHarvesting`). `remaining` is the units left, and the `remaining <= 0` gate skips an
+ * emptied node. The node occupies the nav node under its `Position`.
  */
 export const Resource = defineComponent<{
   goodType: number;
@@ -20,9 +20,9 @@ export const Resource = defineComponent<{
 
 /**
  * The still-buried yields of a multi-good {@link Resource} node, in extraction order: when the current good
- * drains, the deplete seam re-arms the node as the head layer instead of removing it. Built interleaved for
- * a carcass, whose two stages alternate per pluck (`landscapetypes.ini` 79 `cadaver_leather` / 80
- * `cadaver_meat`). Which stage a fresh kill opens with is not readable; meat-first is an approximation.
+ * drains, the node is re-armed as the head layer instead of removed. Built interleaved for a carcass, whose
+ * two stages alternate per pluck (`landscapetypes.ini` 79 `cadaver_leather` / 80 `cadaver_meat`). Which
+ * stage a fresh kill opens with is not readable; meat-first is an approximation.
  */
 export interface ResourceLayer {
   goodType: number;
@@ -45,16 +45,13 @@ export interface ResourceFootprintCell {
  * the dynamic pathfinding overlay, `build` cells reserve the no-building ring, and `work` cells are where a
  * collector stands. A node that blocks nothing says so with empty `walk`/`build`: an absent component means
  * "no declaration", and the placement rule then assumes a body.
- *
- * The original footprint rows are valency-state keyed; the resolver stamps the highest state, so collision
- * is static until the node is removed.
  */
 export interface ResourceFootprintData {
   readonly walk: readonly ResourceFootprintCell[];
   readonly build: readonly ResourceFootprintCell[];
   readonly work: readonly ResourceFootprintCell[];
-  /** Source `[GfxLandscape].index`, kept for provenance. Absent on a footprint the sim declares itself,
-   *  which stands for no landscape record. Never read by a decision. */
+  /** Source `[GfxLandscape].index`, absent on a footprint the sim declares itself rather than reading from
+   *  a landscape record. Never read by a decision. */
   readonly sourceGfxIndex?: number;
 }
 
@@ -73,14 +70,13 @@ export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
  * `mine -> ore -> pile` pipeline (a mined good has a distinct `landscapeToPickup` "ore" stage, unlike a
  * mushroom whose harvest is its pickup). Each chipped unit drains one off `Resource.remaining` and drops at
  * the node's cell as a {@link GroundDrop} ore pile; the node is removed when `remaining` hits 0.
- *
- * `initial` is the deposit's full size - the denominator for the render's shrink-by-level pick - and stays
- * the full size for a node placed already part-mined, so both spawn paths share one ladder. `levels` is that
- * visual state count, per node: the `[GfxLandscape]` record's own for a map placement, the good's uniform
- * fallback otherwise.
  */
 export const MineDeposit = defineComponent<{
+  /** The deposit's full size - the denominator for the render's shrink-by-level pick. Stays the full size
+   *  for a node placed already part-mined, so both spawn paths share one ladder. */
   initial: number;
+  /** The visual state count this node shrinks through: the `[GfxLandscape]` record's own for a map
+   *  placement, the good's uniform fallback otherwise. */
   levels: number;
   /** Work cycles per chipped unit (>= 1); a node stamped without it behaves as 1. Observed calibration: the
    *  readable data carries only the single-swing cycle length (`atomicanimations.ini`). */
@@ -97,18 +93,17 @@ export const MineDeposit = defineComponent<{
 export const Stump = defineComponent<{ goodType: number }>('Stump');
 
 /**
- * Marks a bare `Stockpile` that is a dropped resource pile. It rides on the plain `Stockpile +
- * Position` shape the ground-pile machinery already handles, and the marker adds the two things a
- * designated delivery flag must not get: a felling collector's collect-trunk drive prefers it, and it is
- * auto-reaped when emptied. `goodType` is for legibility; its presence is what the sim keys on.
+ * Marks a bare `Stockpile` that is a dropped resource pile, riding on the plain `Stockpile + Position`
+ * shape the ground-pile machinery already handles. The marker is what a felling collector's collect-trunk
+ * drive scans for, and what keeps the pile out of the yard-heap set, so it is neither a delivery sink nor a
+ * heap another drop stacks onto. `goodType` is for legibility; its presence is what the sim keys on.
  */
 export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop');
 
 /**
- * Names the settler whose harvest made this {@link GroundDrop}. Stamped only for a flag-bound gatherer
- * (one carrying a `WorkFlag`), whose collect drive reclaims a drop only when `by` is its own entity,
- * so a pile it did not make is left in peace. Entity ids are never reused, so a dead owner's id cannot
- * re-alias a live settler.
+ * Names the settler whose harvest made this {@link GroundDrop}, stamped only for a flag-bound gatherer (one
+ * carrying a `WorkFlag`). Its collect drive reclaims a drop only when `by` is its own entity. Entity ids are
+ * never reused, so a dead owner's id cannot re-alias a live settler.
  */
 export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
 
@@ -123,18 +118,14 @@ export const KilledBy = defineComponent<{ by: Entity }>('KilledBy');
  * Source basis: the `landscapetypes.ini` bush cycle - `bush with fruits` (11) on the PICK trigger
  * (`transition 3 <bush naked> 2 0 18`) yields good 18 `fruit` and becomes `bush naked` (9), which regrows
  * `naked -> flowering (10) -> with fruits (11)` on the periodic GROWTH trigger (`transition 7 ...`). The
- * single `transition 3` means a bush holds exactly one serving.
- *
- * Named divergence: good 18 has no extracted `gatheringPipeline`, so the pick feeds the eater directly
- * instead of producing a good. Approximation: the regrow duration (the trigger-7 period is not decoded),
- * split into two equal steps, so `flowering` lands at exactly half.
- *
- * `nextStageAtTick` is an absolute tick, not a countdown, so the snapshot scenery cache re-clones a bush
- * only at its transitions; unused (0) while `ripe`. `gfxIndex` is the render-variant tag.
+ * single `transition 3` means a bush holds exactly one serving. Named divergence: good 18 has no extracted
+ * `gatheringPipeline`, so the pick feeds the eater directly instead of producing a good.
  */
 export type BerryBushStage = 'bare' | 'flowering' | 'ripe';
 export const BerryBush = defineComponent<{
   stage: BerryBushStage;
+  /** Absolute tick of the next stage change, not a countdown; unused (0) while `ripe`. */
   nextStageAtTick: number;
+  /** Opaque render-variant tag. */
   gfxIndex?: number;
 }>('BerryBush');
