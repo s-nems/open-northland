@@ -8,12 +8,10 @@ import {
 import type { Command } from './index.js';
 
 /**
- * Validate an envelope decoded from untrusted JSON (an imported replay or a diagnostics bundle). The
- * envelope's own contract is checked here - version, origin, seat id, and whether that origin may issue
- * the command kind at all - and the returned value still references the caller's payload, which
- * `CommandQueue.enqueue` copies. Payload fields are unchecked: the handlers treat a stale id or an
- * unknown type as a recoverable no-op, and the world-aware authority gate re-checks ownership when the
- * command applies, but a field of the wrong primitive type reaches its handler as written.
+ * Validate an envelope decoded from untrusted JSON (an imported replay or a diagnostics bundle): its
+ * version, origin, seat id, and whether that origin may issue the command kind at all. Payload fields
+ * are unchecked, so a field of the wrong primitive type reaches its handler as written; the returned
+ * value still references the caller's payload, which `CommandQueue.enqueue` copies.
  */
 export function parseCommandEnvelope(value: unknown, at = 'envelope'): CommandEnvelope {
   const raw = asRecord(value, at);
@@ -49,8 +47,8 @@ export function parseCommandEnvelope(value: unknown, at = 'envelope'): CommandEn
 
 /**
  * Validate a whole imported command log. Each entry is an envelope plus its `(applyTick, sequence)`
- * position, which must stay strictly ascending: a reordered log would apply commands on ticks they
- * never ran on and reconstruct a state the session never had.
+ * position, which must stay strictly ascending: a reordered log would reconstruct a state the session
+ * never had.
  */
 export function parseCommandLog(value: unknown): readonly LoggedCommand[] {
   if (!Array.isArray(value)) throw new Error(`command log: expected an array, got ${typeName(value)}`);

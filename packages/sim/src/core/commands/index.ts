@@ -19,13 +19,11 @@ export type { PlaceBuildingCommand } from './placement.js';
 export type { SettlerEquipment, SettlerEquipmentSlot } from './spawn.js';
 
 /**
- * Commands are the serializable external inputs applied by CommandSystem. Systems perform the internal
- * world updates. Commands remain serializable for replay diagnostics and possible future lockstep input.
- * A caller submits one inside a {@link CommandEnvelope}, which names the authority it acts under.
+ * The serializable external inputs CommandSystem applies; a caller submits one inside a
+ * {@link CommandEnvelope}, which names the authority it acts under.
  *
  * Every `(x, y)` payload is a half-cell node address on the `2W×2H` navigation lattice
- * (`nav/halfcell.ts`), the original's logic grid and the same space `map.cif` placements and footprint
- * offsets use. The handlers mint fractional tile Positions from it via `positionOfNode`.
+ * (`nav/halfcell.ts`), the original's logic grid and the space `map.cif` placements use.
  */
 export type Command =
   | PlacementCommand
