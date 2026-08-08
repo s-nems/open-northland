@@ -32,8 +32,13 @@ applied by scripts/build-dmrender.sh before building. What it changes and why:
   delay and pitch depth are converted instead of dropped. Filter cutoff appears in the banks
   only as the "no filter" sentinel and stays ignored.
 - DlsPlayer: no forced 100 ms attack on every region (unauthored attacks are instant), region
-  WSMP attenuation feeds kInitialAttenuation (boosts clamp to full level), MIDI velocity divides
-  by 127 rather than 255, and amplitude-to-decibel conversion uses 20*log10.
+  WSMP attenuation feeds kInitialAttenuation (boosts clamp to full level), and amplitude-to-decibel
+  conversion uses 20*log10.
+- DlsPlayer volume curves: note velocity and CC7/CC11 land on the DLS curve (attenuation
+  40*log10(127/value)) by passing the squared fraction through the synth's linear-amplitude
+  gain; the band's already-squared bVolume then hits the same curve. The old code halved
+  velocity (/255) and mixed compensating exponents, which buried high-velocity melody parts
+  under full-volume accompaniment.
 - dmrender: renderBlock counts interleaved samples, so size the buffer by channels and write
   length/channels wav frames; stereo renders wrote half music, half out-of-bounds reads. The
   buffer is zero-initialised so silent stretches are silence, not heap garbage.
@@ -65,7 +70,7 @@ index 7cc48e3..114f2d5 100644
  
      const std::uint8_t *data = c.getData().data();
 diff --git i/src/DlsPlayer.cpp w/src/DlsPlayer.cpp
-index 65d57a5..d0792e7 100644
+index 65d57a5..776dcde 100644
 --- i/src/DlsPlayer.cpp
 +++ w/src/DlsPlayer.cpp
 @@ -21,38 +21,103 @@ static std::int16_t secondsToWordTimecents(double secs) {
@@ -230,16 +235,29 @@ index 65d57a5..d0792e7 100644
  }
  
  an original routine(std::uint8_t bankLo, std::uint8_t bankHi, std::uint8_t patch,
-@@ -227,7 +297,8 @@ std::uint32_t an original routine(std::int16_t *buffer, std::uint32_t count,
+@@ -227,7 +297,10 @@ std::uint32_t an original routine(std::int16_t *buffer, std::uint32_t count,
  
  /// Instructs the synthesizer to start playing a note
  void an original routine(std::uint8_t note, std::uint8_t velocity) {
 -    m_soundfont->noteOn(m_preset, note, velocity / 255.0f);
-+    // MIDI velocity range is 0-127.
-+    m_soundfont->noteOn(m_preset, note, velocity > 127 ? 1.0f : velocity / 127.0f);
++    // DLS velocity curve: attenuation 40*log10(127/vel). The synth applies the passed value as
++    // linear amplitude (20*log10), so the squared fraction lands on the spec curve.
++    float fraction = velocity > 127 ? 1.0f : velocity / 127.0f;
++    m_soundfont->noteOn(m_preset, note, fraction * fraction);
  }
  
  /// Instructs the synthesizer to stop playing a note
+@@ -248,8 +321,9 @@ void an original routine(std::uint8_t note, std::uint8_t val) {}
+ /// Sends a "control change" message
+ void an original routine(an original routine control, float val) {
+     if (control == an original routine || control == an original routine) {
++        // Same DLS curve as note velocity: squared value through the linear-amplitude gain.
+         m_volume = val;
+-        m_soundfont->setPresetGain(m_preset, gainToDecibels(m_volume * m_volume * m_volume * m_volume));
++        m_soundfont->setPresetGain(m_preset, gainToDecibels(m_volume * m_volume));
+     }
+ }
+ 
 diff --git i/src/Forms/Tracks.cpp w/src/Forms/Tracks.cpp
 index cbcfd11..f58a056 100644
 --- i/src/Forms/Tracks.cpp
