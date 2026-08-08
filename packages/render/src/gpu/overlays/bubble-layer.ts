@@ -1,10 +1,8 @@
 import { Container, Sprite, type TextureSource } from 'pixi.js';
-import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
+import type { Viewport } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import type { ElevationField } from '../../data/terrain/index.js';
-import type { DrawnGeometry } from '../sprite-pool/index.js';
 import type { TextureCache } from '../texture-cache.js';
-import { feetAnchor } from './feet-anchor.js';
+import { type MarkAnchorFrame, type MarkedEntity, markAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
@@ -18,12 +16,7 @@ import { retireUndrawn } from './retained-pool.js';
 /** Which standing state a bubble marks: a make-child order, a wedding walk, or a pressing need. */
 export type SettlerBubbleKind = 'child' | 'partner' | 'hungry' | 'sleepy';
 
-/** One settler's bubble: the entity id (the retained-pool key) and the snapshot `Position` in
- *  fixed-point units, which the layer culls on and falls back to. */
-export interface SettlerBubble {
-  readonly id: number;
-  readonly x: number;
-  readonly y: number;
+export interface SettlerBubble extends MarkedEntity {
   readonly kind: SettlerBubbleKind;
 }
 
@@ -39,12 +32,8 @@ interface BubbleGfx extends SettlerBubbleGfx {
   readonly textures: TextureCache;
 }
 
-export interface SettlerBubbleFrame {
+export interface SettlerBubbleFrame extends MarkAnchorFrame {
   readonly bubbles: readonly SettlerBubble[];
-  /** The pool's drawn sprites - the head is the sprite box's top edge. */
-  readonly drawn?: DrawnGeometry;
-  /** The terrain height field - lifts the raw-projection fallback onto sloped ground. */
-  readonly elevation?: ElevationField;
 }
 
 /** World-px the bubble's tip floats above the settler's head (the sprite-bounds top, or the feet estimate). */
@@ -83,15 +72,9 @@ export class SettlerBubbleLayer {
     const gfx = this.gfx;
     if (gfx !== undefined) {
       for (const bubble of frame.bubbles) {
-        // Cull on the raw projection before any head estimate, so an off-screen settler pays no pool
-        // lookup or terrain lift. The viewport's sprite-cull margin covers the raw-vs-lerped anchor gap
-        // and the feet-to-head offset.
-        const tileX = bubble.x / ONE;
-        const tileY = bubble.y / ONE;
-        const feet = tileToScreen(tileX, tileY);
-        if (viewport !== undefined && !isVisible(viewport, feet.x, feet.y)) continue;
+        const head = markAnchor(frame, bubble, HEAD_ABOVE_FEET, viewport);
+        if (head === undefined) continue;
 
-        const head = this.headOf(frame, bubble);
         let entry = this.bubbles.get(bubble.id);
         if (entry === undefined || entry.kind !== bubble.kind) {
           entry?.node.destroy({ children: true });
@@ -106,15 +89,6 @@ export class SettlerBubbleLayer {
     }
     // Retire bubbles not drawn this frame (order done, wedding over, settler gone or scrolled off-screen).
     retireUndrawn(this.bubbles, this.seen, (entry) => entry.node.destroy({ children: true }));
-  }
-
-  /** The point the bubble's tip sits over: the pool's lerped sprite-bounds top-centre, else the feet
-   *  anchor raised by the head estimate. */
-  private headOf(frame: SettlerBubbleFrame, bubble: SettlerBubble): { x: number; y: number } {
-    const bounds = frame.drawn?.boundsOf(bubble.id);
-    if (bounds !== undefined) return { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY };
-    const feet = feetAnchor(frame.drawn, bubble.id, bubble, frame.elevation);
-    return { x: feet.x, y: feet.y - HEAD_ABOVE_FEET };
   }
 
   destroy(): void {
