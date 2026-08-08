@@ -39,6 +39,7 @@ export {
   parseIniSections,
 } from './ini/grammar.js';
 export { makeSource, normalizeAssetPath, type SourceRef } from './ini/ir-fields.js';
+export { extractMusicType } from './ini/map-music.js';
 export { extractMapScript } from './ini/map-script.js';
 export type { MapStaticObjects } from './ini/maps.js';
 export {
