@@ -8,19 +8,15 @@ import type { AtlasFrame, SettlerStateBinding, SpriteAtlas, SpriteBindings } fro
  * through the same `SpriteSheet` shape a real atlas does.
  */
 
-/**
- * The synthetic atlas sheet dimensions in pixels. Two rows tall so the settler's three per-state frames
- * and the building/resource frames fit without overlap: the tallest top-row frame, the 40px building,
- * reaches y=41, and the bottom row starts at y=42.
- */
+/** Sheet dimensions in pixels, two rows tall so the settler's per-state frames and the
+ *  building/resource frames fit without overlap. */
 export const SYNTHETIC_ATLAS_WIDTH = 64;
 export const SYNTHETIC_ATLAS_HEIGHT = 96;
 
 /**
  * The bob ids the synthetic bindings reference. Arbitrary small integers - a synthetic atlas has no
- * `.bmd` `firstBobId`, so these only have to agree between {@link syntheticAtlasFrames} and
- * {@link SYNTHETIC_BINDINGS}. The settler gets one bob per sprite state so the per-state binding path
- * is exercised.
+ * `.bmd` `firstBobId`, so these only have to agree between the frame table and the bindings. The settler
+ * gets one bob per sprite state so the per-state binding path is exercised.
  */
 const SETTLER_IDLE_BOB = 1;
 const BUILDING_BOB = 2;

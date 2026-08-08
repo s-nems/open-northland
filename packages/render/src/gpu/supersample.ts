@@ -5,12 +5,10 @@ import { clamp } from '../data/math.js';
  * Off-screen supersampling for the screen-space `PalettedSprite` HUD meshes. Palette indices cannot be
  * linearly filtered, so nearest-sampled GUI art drawn straight at a fractional UI scale doubles texel
  * columns unevenly; rasterizing at an integer oversample and linear-downscaling that resolved-RGBA
- * texture is smooth instead.
- *
- * A WebGL render texture (the backend the app forces) is stored bottom-up while a `PalettedSprite`
- * hand-rolls its screen→clip projection for the on-screen Y convention, so a baked source lands
- * upside-down unless one side corrects it.
+ * texture is smooth instead. A baked source lands upside-down unless one side corrects it, so each bake
+ * entry point states its flip.
  */
+
 /**
  * The integer oversample for a supersampled bake. `floor(2×)` the device px per design px pins the
  * downscale ratio into (1, 2]: a ratio near 1 leaves nearest-hard palette edges, above 2 undersamples the
@@ -24,18 +22,14 @@ export function oversampleFor(scale: number, resolution: number, floor: number, 
 }
 
 export interface SupersampledTexture {
-  /** The baked, linear-downscaled display sprite; the bake entry point fixes its flip and anchor. */
   readonly display: Sprite;
   /** Re-rasterize `source` into the texture (call after a mesh in it changes frame). */
   redraw(): void;
   dispose(): void;
 }
 
-/**
- * Rasterize `source` - a detached container already placed at an integer oversample into a `texW × texH`
- * box - into an off-screen texture and return it as one `Sprite` linear-downscaled by `invScale`
- * (= displayScale ÷ oversample). Owns the texture and `source` lifetime via `dispose`.
- */
+/** `source` is a detached container already placed at an integer oversample into the `texW × texH` box;
+ *  `invScale` is displayScale ÷ oversample. Owns the texture and `source` lifetime via `dispose`. */
 function bake(
   renderer: Renderer,
   source: Container,
@@ -89,8 +83,6 @@ export function bakeToSprite(
 
 /** A {@link bakeToSprite} twin that reuses one render target across bakes. */
 export interface ReusableBaker {
-  /** Bake `source` like {@link bakeToSprite}; the returned handle's dispose frees the source but never
-   *  the shared target, which stays with the baker. */
   bake(source: Container, texW: number, texH: number, invScale: number): SupersampledTexture;
   /** Free the shared render target (call once, after every outstanding bake is disposed). */
   dispose(): void;

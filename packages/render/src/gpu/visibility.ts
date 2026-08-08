@@ -1,14 +1,11 @@
-/** One child's visibility remembered across a temporary hide, so the restore puts back exactly what the
- *  hide changed rather than making everything visible. */
 export interface StashedVisibility {
   readonly child: { visible: boolean };
   readonly wasVisible: boolean;
 }
 
 /**
- * Hide every child but `except`, recording each hidden child's prior visibility for {@link restoreStash}.
- * `into` lets a per-frame caller reuse a retained array; it is cleared up front, so a skipped restore
- * cannot corrupt the next stash.
+ * Hide every child but `except`. `into` lets a per-frame caller reuse a retained array; it is cleared up
+ * front, so a skipped restore cannot corrupt the next stash.
  */
 export function stashHidden(
   children: readonly { visible: boolean }[],

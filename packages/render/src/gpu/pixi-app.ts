@@ -3,7 +3,7 @@ import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
 /**
  * The shared one-time GPU options. WebGL preference and antialias-off cut cross-machine pixel variance.
  * `resolution: 1` + `autoDensity: false` keep the backing store in CSS pixels, so one world pixel is one
- * CSS pixel at camera scale 1 - the fixed-size `?shot` capture's PNG bytes must not vary with the
+ * CSS pixel at camera scale 1, so a fixed-size `?shot` capture frames the same world box whatever the
  * machine's devicePixelRatio. {@link createWindowPixiApp} overrides these to render at device resolution.
  */
 const APP_OPTIONS = {
@@ -15,15 +15,13 @@ const APP_OPTIONS = {
   preference: 'webgl',
   autoDensity: false,
   resolution: 1,
-  // Every consumer drives its own RAF loop and calls `app.render()` with the camera already applied.
   // Left on, the shared ticker would render the stage before the first frame sets the camera transform.
   autoStart: false,
 } as const;
 
 /**
- * Initialise a Pixi {@link Application} on an existing canvas at a fixed backing-store size: the `?shot`
- * PNG must be byte-reproducible, so its dimensions can never track a window. Interactive entries want
- * {@link createWindowPixiApp}.
+ * Initialise a Pixi {@link Application} on an existing canvas at a fixed backing-store size, whose
+ * dimensions can never track a window. Interactive entries want {@link createWindowPixiApp}.
  */
 export async function createPixiApp(
   canvas: HTMLCanvasElement,
@@ -61,8 +59,7 @@ export async function createWindowPixiApp(canvas: HTMLCanvasElement): Promise<Ap
 
 /**
  * Load a decoded atlas PNG as a Pixi {@link TextureSource}. The default `nearest` keeps pixel-art bobs
- * crisp; ground texture pages pass `linear` because the original samples its terrain pages bilinearly, so
- * nearest filtering melts their transition masks into seams.
+ * crisp; ground texture pages pass `linear`.
  *
  * `alpha: 'straight'` is required for palette-indexed sheets (`<stem>.indexed`): their red channel is a
  * palette index, not colour, so Pixi's default premultiply-on-upload would scale the index by the frame's

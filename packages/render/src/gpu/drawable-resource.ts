@@ -1,7 +1,6 @@
 /** The image kinds a Pixi `TextureSource.resource` can be that a 2d canvas can draw for pixel readback. */
 export type DrawableResource = Exclude<CanvasImageSource, SVGImageElement | VideoFrame>;
 
-/** Whether `resource` can be drawn onto a 2d canvas to read its pixels. */
 export function isDrawableResource(resource: unknown): resource is DrawableResource {
   return (
     (typeof ImageBitmap !== 'undefined' && resource instanceof ImageBitmap) ||

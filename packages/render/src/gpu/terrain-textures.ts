@@ -2,15 +2,14 @@ import type { TextureSource } from 'pixi.js';
 import type { CellTexture } from '../data/terrain/index.js';
 
 /**
- * The loaded textured-terrain inputs. Optional to the renderer: when present, each cell's two mesh
- * triangles sample their page; a triangle whose typeId has no {@link CellTexture}, or whose page failed
- * to load, falls back to a flat-colour triangle. When absent, every cell draws the flat tint - the
- * reproducible default the committed shot depends on.
+ * The loaded textured-terrain inputs. Optional to the renderer: a triangle whose typeId has no
+ * {@link CellTexture}, or whose page failed to load, falls back to a flat-colour triangle.
  */
 export interface TerrainTextureSet {
-  /** Decoded `text_NNN` ground pages as GPU sources, keyed by {@link CellTexture.pageKey}. */
+  /** Decoded ground and composed transition pages as GPU sources, keyed by their pattern's `pageKey`. */
   readonly pages: ReadonlyMap<string, TextureSource>;
-  /** The approximated per-landscape-typeId ground binding, or `undefined` when a typeId has no representative. */
+  /** The approximated per-landscape-typeId ground binding, or `undefined` when a typeId has no
+   *  representative. */
   cellFor(typeId: number): CellTexture | undefined;
   /**
    * The 1:1 per-triangle pattern by `EditName`, the join a decoded map's `ground.patterns` names resolve
@@ -32,9 +31,8 @@ export interface GroundPattern {
 }
 
 /**
- * One resolved ground-transition overlay: its composed RGBA page (the pipeline's `<stem>.masked.png`,
- * RGB texture + alpha mask) plus the six pair variants' 6-int UV pixel tuples per triangle. A map lane's
- * `value % 6` picks the pair.
+ * One resolved ground-transition overlay: its composed RGBA page plus the six pair variants' 6-int UV
+ * pixel tuples per triangle.
  */
 export interface TransitionPattern {
   readonly pageKey: string;
