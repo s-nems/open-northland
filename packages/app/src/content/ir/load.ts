@@ -50,7 +50,7 @@ async function fetchLayerBody(stem: string): Promise<SpriteLayer> {
 }
 
 /**
- * {@link fetchLayerBody} memoized per stem. Handing out the same instance is safe: `atlas.frames` is a
+ * `fetchLayerBody` memoized per stem. Handing out the same instance is safe: `atlas.frames` is a
  * `ReadonlyMap`, nothing writes `times.values` once it is filled, and no consumer destroys an atlas page's
  * `TextureSource`.
  */
@@ -98,8 +98,8 @@ async function loadBuildTimeSheet(url: string): Promise<BuildTimeSheet | undefin
 }
 
 /**
- * The player-colour LUT texture (`/bobs/player-lut.png`, a `256 × colours` sheet) the paletted character
- * atlases are read through; `undefined` when the pipeline hasn't produced it.
+ * The player-colour LUT texture (`/bobs/player-lut.png`, a `256 × (colours × armor tiers)` sheet) the
+ * paletted character atlases are read through; `undefined` when the pipeline hasn't produced it.
  */
 export function loadPlayerLut(): Promise<TextureSource | undefined> {
   return loadTextureIfPresent('/bobs/player-lut.png');
@@ -121,8 +121,8 @@ export function loadIrRaw(): Promise<unknown> {
 }
 
 /**
- * The graphics/atlas view of the served IR, cast at the I/O boundary per {@link ContentIr}. `null` when the
- * document is absent; each consumer then falls back per-lane.
+ * The graphics/atlas view of the served IR, cast at the I/O boundary. `null` when the document is absent;
+ * each consumer then falls back per-lane.
  */
 export async function loadIr(): Promise<ContentIr | null> {
   const raw = await loadIrRaw();
@@ -130,8 +130,8 @@ export async function loadIr(): Promise<ContentIr | null> {
 }
 
 /**
- * Every `[bobseq]` of one body bob set (default {@link BODY_IMAGELIB}) from the served `content/ir.json`,
- * in file order - the frame ranges only, not the atlas image. Returns `[]` when the IR is absent.
+ * Every `[bobseq]` of one body bob set, in file order - the frame ranges only, not the atlas image.
+ * Returns `[]` when the IR is absent.
  */
 export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<BobSeqRow[]> {
   const ir = await loadIr();
@@ -142,8 +142,7 @@ export async function loadBodyClips(imagelib: string = BODY_IMAGELIB): Promise<B
 /**
  * A gallery character's layers: one body atlas plus N head atlases, given already-resolved served stems
  * (`<bmd-stem>.<palette>`, e.g. `cr_hum_body_05.test_human_00`). An absent body throws
- * {@link MissingAtlasError}; a missing head degrades to `undefined` in its `heads` slot, which keeps stem
- * order.
+ * `MissingAtlasError`; a missing head degrades to `undefined` in its `heads` slot, which keeps stem order.
  */
 export async function loadGalleryLayers(
   bodyStem: string,

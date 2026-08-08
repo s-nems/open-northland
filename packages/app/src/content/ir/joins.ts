@@ -4,8 +4,7 @@ import { diag } from '../../diag/index.js';
 import type { BobSeqRow, ContentIr, LandscapeGfxRow } from './rows.js';
 
 /** The served `/bobs/` atlas stem (`<bmd-basename-minus-.bmd>.<palette>`, the pipeline's naming) for a
- *  landscape gfx / building bob record, or `undefined` when it names no body bob or palette. The one home
- *  for the `.bmd`→stem convention. */
+ *  landscape gfx / building bob record, or `undefined` when it names no body bob or palette. */
 export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteName'>): string | undefined {
   const bmd = record.bmd;
   if (bmd === undefined || bmd.trim() === '') return undefined;
@@ -20,8 +19,8 @@ export function servedAtlasStem(record: Pick<LandscapeGfxRow, 'bmd' | 'paletteNa
 export const BRIDGE_EDIT_GROUP = 'misc_bridges';
 const BRIDGE_GROUP_KEY = BRIDGE_EDIT_GROUP.toLowerCase();
 
-/** Whether a landscape record is one of the original's bridges ({@link BRIDGE_EDIT_GROUP}). Matched
- *  case-insensitively: the lane ships mixed-case group names (`xMissionCD_ice wall`, `stones Water`). */
+/** Whether a landscape record is one of the original's bridges. Matched case-insensitively: the lane
+ *  ships mixed-case group names (`xMissionCD_ice wall`, `stones Water`). */
 function isBridgeRecord(record: { readonly editGroups?: readonly string[] | undefined }): boolean {
   return record.editGroups?.some((g) => g.toLowerCase() === BRIDGE_GROUP_KEY) === true;
 }
@@ -55,8 +54,8 @@ export function servedShadowStem(shadowBmd: string | undefined): string | undefi
 
 /**
  * The extracted building ground footprints from the served IR, by typeId. Empty when the IR is absent or
- * carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS} applied here, the one
- * seam extracted footprints pass through.
+ * carries no footprints. Door cells get the committed per-building `DOOR_SHIFTS` applied here, the one
+ * seam that applies them.
  */
 export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
   const out = new Map<number, BuildingFootprint>();
@@ -86,7 +85,7 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
   return byName;
 }
 
-/** `gfxanimmode 1` - the record is a body's looping base wait rather than a one-shot motion. */
+/** The `gfxanimmode` value marking a body's looping base wait. */
 export const GFX_ANIM_MODE_LOOP = 1;
 
 /** One `[gfxanimatomic]` record's playable payload: the per-`<dir>` frame lists plus its `gfxanimmode`. */
@@ -96,11 +95,10 @@ export interface GfxAtomicProgram {
 }
 
 /**
- * Every `[gfxanimatomic]` program of one tribe, indexed by action then body bobseq name. First record
- * wins per `(action, seq)` (a job/action may list several variant seqs; the caller names the one it
- * wants). Filtering by `tribe` matters: the same body bobseq name recurs across the human tribes with
- * different frame lists, so the wrong tribe yields a plausible-but-wrong animation. `tribe` is the
- * `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_*`; viking 1).
+ * Every `[gfxanimatomic]` program of one tribe, indexed by action then body bobseq name; first record
+ * wins per `(action, seq)`. Filtering by `tribe` matters: the same body bobseq name recurs across the
+ * human tribes with different frame lists, so the wrong tribe yields a plausible-but-wrong animation.
+ * `tribe` is the `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_*`; viking 1).
  */
 export function gfxAtomicProgramsByAction(
   ir: ContentIr | null,
@@ -129,10 +127,9 @@ export function gfxAtomicProgramsByAction(
 const WAIT_ACTIONS = new Set([2, 3, 4, 5, 6, 7]);
 
 /**
- * One tribe's standing-wait program per wait bobseq name. A body authors several wait programs (the
- * one-shot fidgets on actions 2..6 and, usually last, the `gfxanimmode 1` looping base wait); the
- * mode-1 program wins, since that is the one the original loops between fidgets. A body with no mode-1
- * record keeps its first program, which a consumer loops as a named approximation.
+ * One tribe's standing-wait program per wait bobseq name. A body authors several wait programs, and the
+ * `gfxanimmode 1` one wins because that is the one the original loops between fidgets. A body with no
+ * mode-1 record keeps its first program, which a consumer loops as a named approximation.
  */
 export function gfxWaitProgramsBySeq(ir: ContentIr | null, tribe: number): Map<string, GfxAtomicProgram> {
   const bySeq = new Map<string, GfxAtomicProgram>();
@@ -169,8 +166,8 @@ const UNLOADED_GOOD_TYPE = 0;
 /**
  * The `[gfxwalkatomic]` loaded-gait table for one `(tribe, job)`, as good id-slug → body bobseq name (honey
  * → `human_man_generic_walk_potion`). Keyed by slug, not the source's `logicgoodtype`, because the running
- * content set's `typeId`s are content-relative while slugs are stable. A good with no record for this job is
- * absent from the map, which is the source's answer: that job shows no load for it.
+ * content set's `typeId`s are content-relative while slugs are stable. A good with no record for this job
+ * stays out of the map - the source's answer that the job shows no load for it.
  */
 export function carryWalkSeqs(ir: ContentIr | null, tribe: number, job: number): Map<string, string> {
   const slugByType = new Map((ir?.goods ?? []).map((g) => [g.typeId, g.id]));
