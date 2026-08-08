@@ -5,7 +5,7 @@ import { overallFraction } from '../src/progress-model.js';
 describe('overallFraction', () => {
   it('is 0 at the first stage start and 1 only when the last stage completes', () => {
     expect(overallFraction({ stage: 'unpack', done: 0, total: undefined })).toBe(0);
-    expect(overallFraction({ stage: 'maps', done: 121, total: 121 })).toBe(1);
+    expect(overallFraction({ stage: 'music', done: 64, total: 64 })).toBe(1);
   });
 
   it('advances monotonically across stages in pipeline order', () => {
