@@ -1,4 +1,5 @@
 import {
+  setDiplomacyStance,
   setFogMode,
   setNeedsEnabled,
   setProfessionProgression,
@@ -163,6 +164,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setFogMode':
       setFogMode(world, command.mode);
+      return;
+    case 'setDiplomacy':
+      setDiplomacyStance(world, command.from, command.to, command.state);
       return;
     case 'setPlayerAi':
       setPlayerAi(world, command);

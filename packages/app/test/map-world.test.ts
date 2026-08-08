@@ -110,4 +110,28 @@ describe('buildMapWorld', () => {
     expect(sim.professionProgressionEnabled()).toBe(true);
     expect(sim.assistantGrants(0)).toEqual([]);
   });
+
+  it("seeds the sim's diplomacy table from the script rows before the placement tick", () => {
+    const { sim } = afterSetupTick({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      diplomacy: [
+        { from: 0, to: 1, state: 'friend' },
+        { from: 1, to: 0, state: 'neutral' },
+      ],
+    });
+    expect(sim.diplomacyStance(0, 1)).toBe('friend');
+    expect(sim.diplomacyStance(1, 0)).toBe('neutral');
+    expect(sim.diplomacyStance(0, 2)).toBe('enemy'); // an unauthored pair keeps the hostile default
+  });
+
+  it('keeps every pair hostile when the map ships no diplomacy rows', () => {
+    const { sim } = afterSetupTick({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+    });
+    expect(sim.diplomacyStance(0, 1)).toBe('enemy');
+  });
 });

@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@open-northland/data';
+import type { MapDiplomacy, TerrainMapFile } from '@open-northland/data';
 import type { Simulation, TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { resolveWorldContent, type WorldContentOptions } from '../sandbox/index.js';
@@ -11,8 +11,13 @@ import { enqueuePlacements, newWorldSim } from './build.js';
  * `StaticObjects`. Its own trees, ore and stone still spawn as harvestable nodes afterwards; this
  * exists so a plain imported map does not get the demo cluster dropped onto its first walkable cells.
  */
-export function runBareMap(seed: number, map: TerrainMap, options: WorldContentOptions = {}): Simulation {
-  return newWorldSim(seed, map, resolveWorldContent(map, options));
+export function runBareMap(
+  seed: number,
+  map: TerrainMap,
+  options: WorldContentOptions = {},
+  diplomacy: readonly MapDiplomacy[] = [],
+): Simulation {
+  return newWorldSim(seed, map, resolveWorldContent(map, options), diplomacy);
 }
 
 /**
@@ -28,6 +33,7 @@ export function runAuthoredMap(
   entities: NonNullable<TerrainMapFile['entities']>,
   rows: AuthoredJoinRows,
   options: WorldContentOptions = {},
+  diplomacy: readonly MapDiplomacy[] = [],
 ): Simulation | null {
   const { placements, skipped, droppedGoods, droppedPicks, skippedAnimals } = resolveAuthoredPlacements(
     entities,
@@ -43,7 +49,7 @@ export function runAuthoredMap(
   }
 
   const content = resolveWorldContent(map, options, authoredCatalogExtras(placements, rows));
-  const sim = newWorldSim(seed, map, content);
+  const sim = newWorldSim(seed, map, content, diplomacy);
   enqueuePlacements(sim, placements);
   sim.run(ticks);
   return sim;

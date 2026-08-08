@@ -1,4 +1,5 @@
 import { type Component, defineComponent, type Entity, type World } from '../ecs/world.js';
+import { isValidPlayer, MAX_PLAYERS } from './ownership.js';
 
 /** The lowest-id carrier of a world-scope singleton `component`, or null when none exists. Ascending id
  *  wins, so hashed state stays deterministic should a command handler ever leave more than one carrier. */
@@ -122,4 +123,52 @@ export function setProfessionProgression(world: World, enabled: boolean): void {
   const rules = progressionRulesEntity(world);
   if (rules === null) world.add(world.create(), ProgressionRules, { professionProgressionEnabled: enabled });
   else world.mut(rules, ProgressionRules).professionProgressionEnabled = enabled;
+}
+
+/** A directed player-to-player stance, the values map `diplomacy <from> <to> <state>` rows author. */
+export type DiplomacyState = 'friend' | 'neutral' | 'enemy';
+
+/** The `setDiplomacy` validity gate: an unknown state string is a recoverable bad input, skipped. */
+export function isDiplomacyState(state: string): state is DiplomacyState {
+  return state === 'friend' || state === 'neutral' || state === 'enemy';
+}
+
+/**
+ * The diplomacy rules singleton - the directed stance table combat hostility consults when both sides
+ * are player-owned. A pair never set reads `enemy`, so an absent singleton keeps the everyone-hostile
+ * default and a command stream that never sets a stance leaves the hash untouched.
+ */
+export const DiplomacyRules = defineComponent<{
+  /** Stances keyed `from * MAX_PLAYERS + to` - directed, so the two directions of a pair can differ. */
+  stances: Map<number, DiplomacyState>;
+}>('DiplomacyRules');
+
+function stanceKey(from: number, to: number): number {
+  return from * MAX_PLAYERS + to;
+}
+
+/** The diplomacy-rules singleton's entity, or null when no stance was ever set. */
+export function diplomacyRulesEntity(world: World): Entity | null {
+  return singletonCarrier(world, DiplomacyRules);
+}
+
+/** The directed stance `from` holds toward `to`, defaulting to `enemy` when never set. An invalid
+ *  slot also reads `enemy` - the key arithmetic is injective over valid slots only. */
+export function diplomacyStance(world: World, from: number, to: number): DiplomacyState {
+  if (!isValidPlayer(from) || !isValidPlayer(to)) return 'enemy';
+  const e = diplomacyRulesEntity(world);
+  if (e === null) return 'enemy';
+  return world.get(e, DiplomacyRules).stances.get(stanceKey(from, to)) ?? 'enemy';
+}
+
+/** Create the {@link DiplomacyRules} singleton on first use and mutate it thereafter. An invalid player
+ *  slot or unknown state is skipped. */
+export function setDiplomacyStance(world: World, from: number, to: number, state: string): void {
+  if (!isValidPlayer(from) || !isValidPlayer(to) || !isDiplomacyState(state)) return;
+  const rules = diplomacyRulesEntity(world);
+  if (rules === null) {
+    world.add(world.create(), DiplomacyRules, { stances: new Map([[stanceKey(from, to), state]]) });
+  } else {
+    world.mut(rules, DiplomacyRules).stances.set(stanceKey(from, to), state);
+  }
 }

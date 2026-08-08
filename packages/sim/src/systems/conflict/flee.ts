@@ -21,7 +21,7 @@ import {
 } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatIndex } from './combat-index.js';
-import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
+import { isFleeThreat, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // The FLEE drive - the civilian raid reaction: path away from the nearest threat at the unit's normal pace
 // (no run gait exists), wind a cool-down down once clear, and yield to a collapsing need.
@@ -84,7 +84,7 @@ export function fleeDrive(
   // a watchtower spotting the raider warns a civilian whose own sight does not reach it.
   const viewer = world.tryGet(e, Owner);
   const accept = (t: Entity): boolean =>
-    isValidTarget(world, ctx, e, attacker, t) &&
+    isFleeThreat(world, ctx, e, attacker, t) &&
     (viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t));
   // Near bound 0, not the weapon-reach floor of 1: fear has no dead zone, so a fleeing unit reacts to a
   // hostile on its very tile too. The coarse presence early-out (perf-only) spares every calm civilian its

@@ -85,6 +85,7 @@ export const COMMAND_ISSUER: {
   setAssistantGrant: 'seat',
   setCraftGoods: 'seat',
   setDefenceMode: 'seat',
+  setDiplomacy: 'trusted',
   setFogMode: 'trusted',
   setGatherGood: 'seat',
   setJob: 'seat',

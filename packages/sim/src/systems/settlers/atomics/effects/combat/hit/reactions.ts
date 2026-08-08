@@ -1,4 +1,10 @@
-import { Anger, Settler } from '../../../../../../components/index.js';
+import {
+  Anger,
+  diplomacyStance,
+  Owner,
+  setDiplomacyStance,
+  Settler,
+} from '../../../../../../components/index.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../../context.js';
 import { angryGameTimeOf, isAggressiveAnimal, isProvokableAnimal } from '../../../../../readviews/index.js';
@@ -21,4 +27,20 @@ export function provokeAnger(world: World, ctx: SystemContext, target: Entity): 
   const anger = world.tryMut(target, Anger);
   if (anger === undefined) world.add(target, Anger, { until });
   else anger.until = until;
+}
+
+/**
+ * Turn a struck player against its aggressor: the victim's directed stance flips to `enemy` on a landed
+ * blow, so a one-way authored pair ends in retaliation through the same table engagement reads. The
+ * player-axis twin of {@link provokeAnger}, and permanent where anger lapses (source basis: observed
+ * original behavior). The already-`enemy` guard keeps a default-hostile world from ever growing the
+ * `DiplomacyRules` singleton, so pre-diplomacy hashes stay put.
+ */
+export function provokeHostility(world: World, attacker: Entity, target: Entity): void {
+  const attackerOwner = world.tryGet(attacker, Owner);
+  const targetOwner = world.tryGet(target, Owner);
+  if (attackerOwner === undefined || targetOwner === undefined) return;
+  if (attackerOwner.player === targetOwner.player) return;
+  if (diplomacyStance(world, targetOwner.player, attackerOwner.player) === 'enemy') return;
+  setDiplomacyStance(world, targetOwner.player, attackerOwner.player, 'enemy');
 }

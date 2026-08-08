@@ -1,14 +1,24 @@
-import type { ContentSet } from '@open-northland/data';
+import type { ContentSet, MapDiplomacy } from '@open-northland/data';
 import { Simulation, type TerrainMap } from '@open-northland/sim';
 import { weaponEquipmentFor } from '../sandbox/index.js';
 import type { AuthoredPlacement } from './authored-placements.js';
 
 /** Every playable world runs with signpost confinement on, so a civilian acts only within its local
  *  circle and its player's reachable network. Each builder enqueues it rather than the sim defaulting
- *  to it, which keeps pre-signpost goldens byte-identical. */
-export function newWorldSim(seed: number, map: TerrainMap, content: ContentSet): Simulation {
+ *  to it, which keeps pre-signpost goldens byte-identical. Authored diplomacy rows are enqueued here
+ *  too - before the first tick, so no targeting pass ever runs on the everyone-hostile default - and a
+ *  map without rows enqueues none, keeping its command stream byte-identical. */
+export function newWorldSim(
+  seed: number,
+  map: TerrainMap,
+  content: ContentSet,
+  diplomacy: readonly MapDiplomacy[] = [],
+): Simulation {
   const sim = new Simulation({ seed, content, map });
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+  for (const row of diplomacy) {
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: row.from, to: row.to, state: row.state });
+  }
   return sim;
 }
 

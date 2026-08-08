@@ -8,6 +8,7 @@ import {
   Health,
   MoveGoal,
   Owner,
+  setDiplomacyStance,
   Settler,
   Stance,
   TrainingOrder,
@@ -539,6 +540,20 @@ describe('military module - the objective', () => {
     place(sim, HQ_TYPE, FOE_HQ, FOE); // the far bank
 
     expect(targetOf(sim)).toBeNull();
+  });
+
+  it('never marches on an ally: a non-enemy stance strips the seat of objectives', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    place(sim, HQ_TYPE, FOE_HQ, FOE);
+    setDiplomacyStance(sim.world, SEAT, FOE, 'friend');
+
+    expect(targetOf(sim)).toBeNull();
+
+    // Back at war, the same seat is a war aim again - the objective obeys the same directed stance
+    // the CombatSystem engages on, so a wave never marches on an order the fight would refuse.
+    setDiplomacyStance(sim.world, SEAT, FOE, 'enemy');
+    expect(targetOf(sim)).toBe(buildingOfType(sim, HQ_TYPE, FOE));
   });
 
   it('marches on the enemy seat over a closer tower and an even closer barn', () => {

@@ -1,4 +1,4 @@
-import type { TerrainMapFile } from '@open-northland/data';
+import type { MapDiplomacy, TerrainMapFile } from '@open-northland/data';
 import { type Entity, halfCellMapFromCells, type Simulation, type TerrainMap } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
@@ -30,6 +30,8 @@ export interface MapWorldOptions extends SessionRuleOverrides {
   readonly aiSeats: readonly number[];
   /** Seats whose chest-window assistant grants start on. */
   readonly assistantSeats: readonly number[];
+  /** The map script's authored `diplomacy` rows; omitted or empty keeps every player pair hostile. */
+  readonly diplomacy?: readonly MapDiplomacy[];
   /** Owner of the demo strip's entities, reached only when no map decodes; omitted leaves them neutral. */
   readonly demoOwner?: number;
   /** True as the entry runs it. The headless harness turns bushes off for scenarios that ignore food. */
@@ -72,11 +74,20 @@ function runWorld(
     const demo = { ...content, ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}) };
     return { sim: runDemoWorld(seed, PLACEMENT_DRAIN_TICKS, undefined, demo), kind: 'demo' };
   }
+  const diplomacy = options.diplomacy ?? [];
   if (map?.entities !== undefined && ir !== null) {
-    const authored = runAuthoredMap(seed, PLACEMENT_DRAIN_TICKS, terrain, map.entities, ir, content);
+    const authored = runAuthoredMap(
+      seed,
+      PLACEMENT_DRAIN_TICKS,
+      terrain,
+      map.entities,
+      ir,
+      content,
+      diplomacy,
+    );
     if (authored !== null) return { sim: authored, kind: 'authored' };
   }
-  return { sim: runBareMap(seed, terrain, content), kind: 'bare' };
+  return { sim: runBareMap(seed, terrain, content, diplomacy), kind: 'bare' };
 }
 
 function applySessionRules(sim: Simulation, options: MapWorldOptions): void {

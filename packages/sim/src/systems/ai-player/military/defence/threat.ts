@@ -1,6 +1,7 @@
 import {
   Building,
   DefenceMode,
+  diplomacyStance,
   Health,
   Owner,
   Person,
@@ -71,7 +72,11 @@ export function seatRaiders(
 ): Raider[] {
   const raiders: Raider[] = [];
   for (const e of canonicalById(world.query(Person, Owner))) {
-    if (world.get(e, Owner).player === player) continue;
+    const owner = world.get(e, Owner).player;
+    if (owner === player) continue;
+    // A fighter is a raid only if his player would engage this seat: an allied army walking past must
+    // not hold the town in alarm.
+    if (diplomacyStance(world, owner, player) !== 'enemy') continue;
     if (!world.has(e, Position)) continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
