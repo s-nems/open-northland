@@ -86,7 +86,6 @@ export function createModPanel(onModRoot: (root: string) => void): ModPanelView 
     },
     applyLabels(): void {
       const copy = messages().setup.mod;
-      // Trusted developer markup; never interpolates user input.
       el('mod-required-note').innerHTML = copy.requiredHtml;
       el('mod-download').textContent = copy.download;
       el('mod-pick').textContent = copy.haveIt;

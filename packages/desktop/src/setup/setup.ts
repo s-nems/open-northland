@@ -49,7 +49,6 @@ async function applyLocale(locale: Locale): Promise<void> {
 function renderAll(): void {
   const t = messages().setup;
   document.title = t.title;
-  // The `*Html` entries are trusted developer markup, never user input.
   el('intro').innerHTML = t.introHtml;
   el('cancel').textContent = t.cancel;
   el('done-ok').textContent = t.installed;

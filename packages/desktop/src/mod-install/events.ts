@@ -1,8 +1,8 @@
 import type { ModEvent } from '../ipc.js';
 
 /**
- * Installer events the renderer's progress throttle must not drop: a lost last tick leaves that
- * phase's bar parked short of full.
+ * Installer events the progress throttle must not drop: a lost last tick leaves that phase's bar
+ * parked short of full.
  */
 export function isFinalModEvent(event: ModEvent): boolean {
   switch (event.kind) {
