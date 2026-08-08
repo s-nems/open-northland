@@ -43,9 +43,8 @@ export const Settler = defineComponent<{
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
 /**
- * Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. It exists
- * to be a query key: `World.query` has no exclusion, so a human-only system says `query(Person, …)` and
- * no creature can reach it. Stamped by {@link addPerson}, never removed.
+ * Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. A query key:
+ * `World.query` has no exclusion, so a human-only system says `query(Person, …)`. Never removed.
  */
 export const Person = defineComponent<{ readonly person: true }>('Person');
 
@@ -91,10 +90,10 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
 }
 
 /**
- * The atomic micro-action a settler is currently executing. The planner sets it; the AtomicSystem applies
- * the {@link AtomicEffect} on completion and removes the component, so an entity carrying none is ready
- * for its next atomic. Timing runs off the integer `elapsed`, never an accumulated fixed-point step:
- * `ONE / duration` truncates, so a summed fraction would never reach ONE and the atomic would hang.
+ * The atomic micro-action a settler is currently executing; its {@link AtomicEffect} applies on completion
+ * and the component is removed, so an entity carrying none is ready for its next atomic. Timing runs off
+ * the integer `elapsed`, never an accumulated fixed-point step: `ONE / duration` truncates, so a summed
+ * fraction would never reach ONE and the atomic would hang.
  */
 export const CurrentAtomic = defineComponent<{
   /** Join key onto a tribe's `setatomic` animation. */
@@ -139,7 +138,7 @@ export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>
 export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
 
 /**
- * The specific {@link Building} a settler is employed at, so two same-type workplaces staff independently.
+ * The specific `Building` a settler is employed at, so two same-type workplaces staff independently.
  * Only the `assignWorker` order stamps it; nothing else employs a settler.
  */
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
@@ -153,11 +152,9 @@ export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
  * A player move order in flight on a settler. While present the planner's economy branch and the combat
- * auto-drives leave the unit alone, but its needs drives still fire; `playerOrderSystem` removes it on
- * arrival, on route failure, or when a need takes over.
- *
- * `pendingGoal` parks the destination while a settler that was carrying a load runs its drop atomic.
- * `attackMove` marks the aggressive flavour ({@link AttackMoveMarch}).
+ * auto-drives leave the unit alone, but its needs drives still fire; it is removed on arrival, on route
+ * failure, or when a need takes over. `pendingGoal` parks the destination while a settler that was
+ * carrying a load runs its drop atomic.
  */
 export const PlayerOrder = defineComponent<{
   pendingGoal?: NodeId;
@@ -170,7 +167,7 @@ export const PlayerOrder = defineComponent<{
  * whatever its own stance says. Approximation: the original's en-route behaviour is unobserved, and its
  * vocabulary scopes the modes to soldiers (`misclogic/38-40`), so here an ordered civilian fights too.
  *
- * `goal` outlives a fight overwriting the {@link MoveGoal} with chase destinations; `resume` re-issues it
+ * `goal` outlives a fight overwriting the `MoveGoal` with chase destinations; `resume` re-issues it
  * exactly once when the unit next falls idle, since a re-aimed goal makes an arrival test unusable;
  * `blockedUntil` rests the aggression through a tick whose chase could not route.
  */
@@ -180,7 +177,7 @@ export interface AttackMoveMarch {
   blockedUntil: number;
 }
 
-/** The order kinds a running non-interruptible atomic parks instead of cancelling (see {@link DeferredOrder}). */
+/** The order kinds a running non-interruptible atomic parks instead of cancelling. */
 export type DeferrableOrderCommand = Extract<
   Command,
   { kind: 'moveUnit' | 'attackMoveUnit' | 'setJob' | 'placeSignpost' }
