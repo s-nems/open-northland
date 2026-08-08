@@ -4,7 +4,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { MILITARY_MODE } from '../../readviews/index.js';
-import { entityNode, manhattan } from '../../spatial/nodes.js';
+import { manhattan } from '../../spatial/metric.js';
+import { entityNode } from '../../spatial/nodes.js';
 import type { WeaponMix } from './census.js';
 import { spokenFor } from './errand.js';
 

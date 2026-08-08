@@ -4,7 +4,7 @@ import type { Entity } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
-import { manhattan } from '../../spatial/nodes.js';
+import { manhattan } from '../../spatial/metric.js';
 import { resourceHarvestAtomics, resourcesNearNode } from '../../spatial/resources.js';
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';

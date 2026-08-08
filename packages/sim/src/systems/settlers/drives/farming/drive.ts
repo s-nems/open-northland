@@ -20,7 +20,7 @@ import {
   workSpeedBonus,
 } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
-import { closer, manhattan } from '../../../spatial/nodes.js';
+import { closer, manhattan } from '../../../spatial/metric.js';
 import { buildingWorkerJobs } from '../../../stores/index.js';
 import { atOrWalk, startAtomic, startPickup } from '../../atomics/start.js';
 import { enterBuilding } from '../../indoors.js';

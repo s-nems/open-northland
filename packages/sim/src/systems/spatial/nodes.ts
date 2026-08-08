@@ -3,14 +3,7 @@ import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import {
-  closer,
-  manhattan,
-  nodeKey,
-  ringOffsetCount,
-  ringOffsetDx,
-  ringOffsetDy,
-} from '../footprint/geometry.js';
+import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from './metric.js';
 
 /**
  * Ascending entity-id order: the same canonical order `World.canonicalEntities` uses, so a distance or
@@ -23,8 +16,6 @@ export function canonicalById(entities: Iterable<Entity>): Entity[] {
 
 /** Shared and frozen so an unoccupied-node lookup allocates nothing. */
 const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
-
-export { nodeKey };
 
 /**
  * How many rings past the first hit {@link NodeBuckets.nearestFew} keeps walking. Without it a band holding
@@ -201,8 +192,6 @@ export function entityNode(world: World, terrain: TerrainGraph, e: Entity): Node
   const p = world.get(e, Position);
   return terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
 }
-
-export { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy };
 
 /**
  * The 8 compass step offsets (E, W, S, N, then the diagonals). Callers index this array to make a

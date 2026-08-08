@@ -30,7 +30,8 @@ import {
 import type { SystemContext } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
-import { entityNode, manhattan } from '../../src/systems/spatial/nodes.js';
+import { manhattan } from '../../src/systems/spatial/metric.js';
+import { entityNode } from '../../src/systems/spatial/nodes.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 

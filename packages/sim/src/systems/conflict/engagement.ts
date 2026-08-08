@@ -10,7 +10,8 @@ import {
   type MilitaryMode,
   stanceMode,
 } from '../readviews/index.js';
-import { entityNode, manhattan } from '../spatial/nodes.js';
+import { manhattan } from '../spatial/metric.js';
+import { entityNode } from '../spatial/nodes.js';
 import { playerSeesEntity } from '../vision/index.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';

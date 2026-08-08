@@ -12,7 +12,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import type { Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
-import { manhattan } from '../../src/systems/spatial/nodes.js';
+import { manhattan } from '../../src/systems/spatial/metric.js';
 import { MAX_GROUND_STACK } from '../../src/systems/stores/index.js';
 import { HUT, HUT_FOOTPRINT, mappedSim, terrainOf, VIKING } from '../footprint/building-placement/support.js';
 

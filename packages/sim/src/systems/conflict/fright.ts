@@ -11,14 +11,8 @@ import type { World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { isAggressiveAnimal } from '../readviews/index.js';
-import {
-  canonicalById,
-  clearNavState,
-  entityNode,
-  isTravelling,
-  manhattan,
-  redirectRoute,
-} from '../spatial/nodes.js';
+import { manhattan } from '../spatial/metric.js';
+import { canonicalById, clearNavState, entityNode, isTravelling, redirectRoute } from '../spatial/nodes.js';
 import { fleeDestination } from './flee.js';
 
 // The wildlife fright reaction: a loosed shot scatters the passive animals around its mark, so a herd does

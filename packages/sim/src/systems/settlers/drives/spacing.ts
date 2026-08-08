@@ -2,7 +2,7 @@ import { MoveGoal, Owner } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { ringSearch, STAND_SEARCH_CAP } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { nearestCell } from '../../footprint/geometry.js';
+import { nearestCell } from '../../spatial/metric.js';
 import type { PlannerSpacing } from '../planner/spacing.js';
 
 // The spacing drives, the two consumers of the planner-tick occupancy state: idle units step off a shared

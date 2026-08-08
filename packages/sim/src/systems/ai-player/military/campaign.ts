@@ -12,7 +12,8 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { type BuildingCombatClass, buildingCombatClass } from '../../readviews/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
-import { canonicalById, entityNode, manhattan } from '../../spatial/nodes.js';
+import { manhattan } from '../../spatial/metric.js';
+import { canonicalById, entityNode } from '../../spatial/nodes.js';
 
 /** The objective tiers, best first. The building order is the CombatSystem's own siege priority
  *  ({@link buildingCombatClass}), so a wave marches on what a warrior in the field would pick. */

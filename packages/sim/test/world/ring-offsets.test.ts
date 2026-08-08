@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../src/systems/index.js';
 
-/** The shared Manhattan-ring offsets (footprint/geometry.ts): exactly the ring, each offset once, in the
- *  pinned ascending `(dy, dx)` order - ascending node id on the row-major grid. */
+/** The shared Manhattan-ring offsets: exactly the ring, each offset once, in the pinned ascending
+ *  `(dy, dx)` order - ascending node id on the row-major grid. */
 describe('ring offsets', () => {
   it('radius 0 is the single origin offset', () => {
     expect(walk(0)).toEqual([[0, 0]]);

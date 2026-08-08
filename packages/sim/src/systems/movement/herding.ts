@@ -15,7 +15,8 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { herdParams } from '../readviews/index.js';
-import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
+import { manhattan } from '../spatial/metric.js';
+import { canonicalById, entityNode, isTravelling } from '../spatial/nodes.js';
 import { ANIMAL_SPACING_NODES, nearHeld } from './spacing.js';
 
 /**

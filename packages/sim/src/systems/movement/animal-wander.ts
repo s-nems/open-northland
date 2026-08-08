@@ -21,7 +21,8 @@ import type { System } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { grazeLeashOf } from '../livestock/assignment.js';
 import { stayPointRangeOf } from '../readviews/index.js';
-import { canonicalById, entityNode, isTravelling, manhattan } from '../spatial/nodes.js';
+import { manhattan } from '../spatial/metric.js';
+import { canonicalById, entityNode, isTravelling } from '../spatial/nodes.js';
 import { nearHeld, SPACING_PROBES } from './spacing.js';
 
 /** Mean ticks between grazing steps: each idle tick rolls 1-in-N. Approximated (the original's roam
