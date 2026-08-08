@@ -1,5 +1,6 @@
 import { diag } from '../diag/log.js';
 import { messages } from '../i18n/index.js';
+import { lastShownStill, stillUrl } from './backdrop-stills.js';
 import { BRAND_BACKDROP } from './brand-art.js';
 
 /**
@@ -68,6 +69,11 @@ function nextPaint(): Promise<void> {
   });
 }
 
+/** The still the menu was showing as a CSS `<bg-image>`, or `none` before any menu visit. */
+export function bootStillImage(remembered: string | null): string {
+  return remembered === null ? 'none' : `url("${stillUrl(remembered)}")`;
+}
+
 function node(className: string, ...children: readonly HTMLElement[]): HTMLDivElement {
   const div = document.createElement('div');
   div.className = className;
@@ -82,6 +88,7 @@ export function mountBootProgress(phases: readonly BootPhase[]): BootProgress {
   const label = node('boot-card__label');
   const root = node('boot-card', node('boot-card__frame', node('boot-card__track', bar)), label);
   root.style.setProperty('--boot-backdrop', `url("${BRAND_BACKDROP}")`);
+  root.style.setProperty('--boot-still', bootStillImage(lastShownStill()));
   // The card says what is happening, which a screen reader must hear too.
   root.setAttribute('role', 'status');
   label.setAttribute('aria-live', 'polite');

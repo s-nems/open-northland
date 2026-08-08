@@ -1,26 +1,46 @@
-import { withBaseUrl } from '../../base-url.js';
 import { fetchJsonOrNull } from '../../content/net.js';
 import { diag } from '../../diag/index.js';
+import {
+  cachedPool,
+  lastShownStill,
+  parseStillList,
+  rememberPool,
+  rememberStill,
+  stillUrl,
+} from '../../view/backdrop-stills.js';
+import { BRAND_BACKDROP } from '../../view/brand-art.js';
 
 /**
- * The rotating menu backdrop, the bottom layer of the menu's background stack: stills captured
- * from decoded maps by `npm run menu-backdrops`, shown in a shuffled order with a slow crossfade.
- * Never throws: without `content/backdrops/` the static brand art stands.
+ * The menu's settlement backdrop: stills captured from decoded maps by `npm run menu-backdrops`, shown
+ * on the scene layer with crossfading layers above it. Never throws: without `content/backdrops/` the
+ * static brand art stands.
  */
 
 /** How long one still stays before the next crossfades in; menu.css sizes the matching push-in. */
 const DWELL_MS = 14_000;
 
-/** An array of file names; any other payload reads as absent. */
-export function parseBackdropsIndex(payload: unknown): string[] | null {
-  if (!Array.isArray(payload)) return null;
-  const files = payload.filter((entry): entry is string => typeof entry === 'string');
-  return files.length === payload.length ? files : null;
+/** A still drawn at random from `pool`, never `avoid` while the pool holds anything else. */
+export function randomStill(
+  pool: readonly string[],
+  avoid: string | null,
+  random: () => number,
+): string | null {
+  const others = pool.filter((file) => file !== avoid);
+  const choices = others.length > 0 ? others : pool;
+  return choices[Math.floor(random() * choices.length)] ?? null;
 }
 
-/** Fisher-Yates order over `count` indices; `random` injected so tests can pin the order. */
-export function shuffledOrder(count: number, random: () => number): number[] {
-  const order = Array.from({ length: count }, (_, index) => index);
+/**
+ * A Fisher-Yates order over `files` that leads with `first` while the pool still has it, so the still
+ * already on the scene layer is not replaced the moment the menu opens. `random` is injected so tests
+ * can pin the order.
+ */
+export function rotationOrder(
+  files: readonly string[],
+  first: string | null,
+  random: () => number,
+): readonly string[] {
+  const order = [...files];
   for (let i = order.length - 1; i > 0; i -= 1) {
     const j = Math.floor(random() * (i + 1));
     const a = order[i];
@@ -30,40 +50,70 @@ export function shuffledOrder(count: number, random: () => number): number[] {
       order[j] = a;
     }
   }
-  return order;
+  const at = first === null ? -1 : order.indexOf(first);
+  return at > 0 ? [...order.slice(at), ...order.slice(0, at)] : order;
 }
 
 /**
- * Resolves once the first still is up or the degrade path has logged. The rotation timer then runs
- * for the page's lifetime: every way out of the menu is a URL navigation, which is the teardown.
+ * Resolves once the rotation is running or the degrade path has logged. The timer then runs for the
+ * page's lifetime: every way out of the menu is a URL navigation, which is the teardown.
  */
 export async function startBackdropRotation(host: HTMLElement): Promise<void> {
   try {
-    if (await boot(host)) return;
+    const opening = await paintOpening(host);
+    if (await boot(host, opening)) return;
     diag.warn('content', 'menu backdrops unavailable, static backdrop stands');
   } catch (err) {
     diag.warn('content', `menu backdrops failed, static backdrop stands: ${String(err)}`);
   }
 }
 
+/**
+ * Names the still the menu opens on before its first frame, drawn from the pool a previous visit
+ * cached: with that still in the browser's cache the menu shows a settlement immediately instead of
+ * swapping into one. Null leaves the static art up, and means the cache was empty or named a still
+ * this capture no longer has.
+ */
+async function paintOpening(host: HTMLElement): Promise<string | null> {
+  const opening = randomStill(cachedPool(), lastShownStill(), Math.random);
+  if (opening === null) {
+    setSceneArt(host, BRAND_BACKDROP);
+    return null;
+  }
+  const url = stillUrl(opening);
+  setSceneArt(host, url);
+  if (await preload(url)) {
+    rememberStill(opening);
+    return opening;
+  }
+  // Drop the pool that named it, so the next launch does not open on flat colour too.
+  rememberPool([]);
+  setSceneArt(host, BRAND_BACKDROP);
+  return null;
+}
+
+function setSceneArt(host: HTMLElement, url: string): void {
+  host.style.setProperty('--menu-scene-art', `url("${url}")`);
+}
+
 /** False leaves the static art standing. */
-async function boot(host: HTMLElement): Promise<boolean> {
-  const files = parseBackdropsIndex(await fetchJsonOrNull<unknown>('/backdrops-index'));
-  if (files === null || files.length === 0) return false;
+async function boot(host: HTMLElement, opening: string | null): Promise<boolean> {
+  const files = parseStillList(await fetchJsonOrNull<unknown>('/backdrops-index'));
+  // An unreachable route says nothing about the pool; an empty one clears the cached copy.
+  if (files === null) return false;
+  rememberPool(files);
+  if (files.length === 0) return false;
 
-  const order = shuffledOrder(files.length, Math.random);
-  const urlAt = (position: number): string => {
-    const file = files[order[position % order.length] ?? 0] ?? '';
-    return withBaseUrl(`/backdrops/${encodeURIComponent(file)}`);
-  };
+  const order = rotationOrder(files, opening, Math.random);
+  const fileAt = (position: number): string => order[position % order.length] ?? '';
 
-  // Walk the shuffled order until one still actually loads: a stale index entry or a half-written
-  // capture must not blank the menu.
+  // Walk the order until one still actually loads: a stale index entry or a half-written capture
+  // must not blank the menu.
   let front = makeLayer(host);
   let back = makeLayer(host);
   let position = 0;
   for (; position < order.length; position += 1) {
-    if (await showOn(front, urlAt(position))) break;
+    if (await showOn(front, fileAt(position))) break;
   }
   if (position === order.length) return false;
 
@@ -73,7 +123,7 @@ async function boot(host: HTMLElement): Promise<boolean> {
 
   const advance = async (): Promise<void> => {
     position += 1;
-    if (await showOn(back, urlAt(position))) {
+    if (await showOn(back, fileAt(position))) {
       front.classList.remove('is-visible');
       [front, back] = [back, front];
     }
@@ -90,9 +140,11 @@ function makeLayer(host: HTMLElement): HTMLDivElement {
   return layer;
 }
 
-/** Preloads `url` before showing it; false when the load failed. */
-async function showOn(layer: HTMLDivElement, url: string): Promise<boolean> {
+/** Preloads the still, records it as the one on screen, and shows it; false when the load failed. */
+async function showOn(layer: HTMLDivElement, file: string): Promise<boolean> {
+  const url = stillUrl(file);
   if (!(await preload(url))) return false;
+  rememberStill(file);
   // Drop the previous push-in while the layer is hidden, reflow, then restart it with the new still.
   layer.classList.remove('is-visible', 'is-zooming');
   layer.style.backgroundImage = `url("${url}")`;

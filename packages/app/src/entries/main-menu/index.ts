@@ -1,5 +1,4 @@
 import { messages } from '../../i18n/index.js';
-import { BRAND_BACKDROP } from '../../view/brand-art.js';
 import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
 import { lobbyScreen } from './lobby/index.js';
@@ -88,8 +87,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   adoptStoredSettings(params);
   const root = document.createElement('main');
   root.className = 'main-menu';
-  root.style.setProperty('--menu-scene-art', `url("${BRAND_BACKDROP}")`);
-  // The scene layer hosts the static art and the rotating stills above it. The menu draws no GL, so
+  // The scene layer hosts the opening still and the rotating ones above it. The menu draws no GL, so
   // the shared canvas stays hidden.
   const sceneLayer = document.createElement('div');
   sceneLayer.className = 'main-menu__scene';
