@@ -150,7 +150,16 @@ export async function renderMusicStage(
       const wavPath = join(workDir, `${stem}.wav`);
       await execFileAsync(
         dmrender,
-        ['-l', String(Math.ceil(totalS) + RENDER_TAIL_S), '-s', String(SAMPLE_RATE), '-c', String(CHANNELS), segment, wavPath],
+        [
+          '-l',
+          String(Math.ceil(totalS) + RENDER_TAIL_S),
+          '-s',
+          String(SAMPLE_RATE),
+          '-c',
+          String(CHANNELS),
+          segment,
+          wavPath,
+        ],
         { cwd: workDir, timeout: RENDER_TIMEOUT_MS, maxBuffer: 1 << 20 },
       );
       const wav = decodePcm16Wav(await readFile(wavPath));

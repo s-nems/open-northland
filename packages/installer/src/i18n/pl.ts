@@ -56,6 +56,7 @@ export const pl = {
       ir: 'Wyodrębnianie reguł gry',
       transitions: 'Składanie przejść terenu',
       maps: 'Dekodowanie map',
+      music: 'Renderowanie ścieżki dźwiękowej',
     },
     mod: {
       requiredUpstreamHtml:

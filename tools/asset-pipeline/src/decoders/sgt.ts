@@ -43,7 +43,12 @@ function findChunks(bytes: Uint8Array, id: string): Uint8Array[] {
   const walk = (start: number, end: number): void => {
     let off = start;
     while (off + RIFF_HEADER_BYTES <= end) {
-      const chunkId = String.fromCharCode(bytes[off] ?? 0, bytes[off + 1] ?? 0, bytes[off + 2] ?? 0, bytes[off + 3] ?? 0);
+      const chunkId = String.fromCharCode(
+        bytes[off] ?? 0,
+        bytes[off + 1] ?? 0,
+        bytes[off + 2] ?? 0,
+        bytes[off + 3] ?? 0,
+      );
       const size = view.getUint32(off + 4, true);
       const body = off + RIFF_HEADER_BYTES;
       if (body + size > end) break; // truncated container: stop at the last complete chunk

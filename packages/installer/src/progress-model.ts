@@ -20,6 +20,7 @@ const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   ir: 2,
   transitions: 1,
   maps: 3,
+  music: 195,
 };
 
 /** Item counts for the stages that walk as they go without an up-front total. */

@@ -1,23 +1,28 @@
 # Music: mood variants, attack music, menu theme
 
+**Area:** audio · **Priority:** P2
+
 The first music pass plays one track per map: `musicType` from the meta sidecar resolved through
 `DEFAULT_MUSIC_STEMS` to the Neutral/Standard variant, looping forever. The other 36 rendered
-variants are unused, and the menu is silent.
+variants sit unused in `content/music/`, and the main menu is silent. The seam is ready: the
+manifest carries every variant's loop point and `WebAudioEngine.setMusic` crossfades on any track
+change.
 
-Remaining work, in original terms:
+## Scope
 
-- `Theme_*` maps (types 2-5) switch between `Friendly`/`Neutral`/`Hostile` with the local player's
+- `Theme_*` maps (types 2-5): switch `Friendly`/`Neutral`/`Hostile` with the local player's
   diplomatic state. Blocked on the diplomacy branch landing on `main`.
-- `Mission_*` maps switch between `Standard`/`Wealthy`/`Danger`. The original's trigger thresholds
-  live only in `the original` and are unknown; any prosperity/threat heuristic is an approximation and
-  must be named as one.
-- `Attack_<tribe>` (types 6-9) plays during combat. Selection basis (whose tribe, which fights)
-  needs evidence before implementing.
-- The main menu plays type 2 (`Theme_Viking_*`) - `StartTrack(2)` hardcoded in `the original`. Needs a
+- `Mission_*` maps: switch `Standard`/`Wealthy`/`Danger`. The original's trigger thresholds live
+  only in `the original`; any prosperity/threat heuristic is an approximation and must be named as one.
+- `Attack_<tribe>` (types 6-9): play during combat. Establish the selection basis (whose tribe,
+  which fight) from evidence before implementing.
+- Main menu: play type 2 (`Theme_Viking_*`) - `StartTrack(2)` hardcoded in `the original`. Needs a
   music-capable driver in the menu entry, which today has no audio at all.
+- Put the mood decision in the pure audio director (per-frame, from snapshot state), not in app
+  control flow.
 
-The seam is ready: all 64 variants are rendered into `content/music/`, the manifest carries their
-loop points, and `WebAudioEngine.setMusic` crossfades on any track change. The mood decision should
-live in the pure audio director (per-frame, from snapshot state), not in app control flow.
+## Verify
 
-Verification: acceptance scene or headless check per mood transition, plus a human listening pass.
+- Director tests per mood transition (diplomacy flip, mission mood flip, combat start/end).
+- Headless check that the expected track file is requested after each transition.
+- Human listening pass: transitions crossfade without pops and pick the right variant.
