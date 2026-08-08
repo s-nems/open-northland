@@ -5,9 +5,6 @@ import type { Fixed } from './fixed.js';
 /**
  * One-shot things that happened during a tick, exposed read-only on the snapshot for render and audio.
  * Never delivered by callback: a callback could mutate sim state and break determinism.
- *
- * Every positioned event's `at` is a {@link HalfCellNode}, the same space command payloads use; ask
- * {@link eventNode} whether an event carries one.
  */
 export type SimEvent =
   | {
@@ -44,9 +41,8 @@ export type SimEvent =
     }
   | {
       /**
-       * A combatant was reaped this tick. `player` is the dead unit's owner slot and `at` its last
-       * position, both read before the destroy because the entity is gone by the snapshot; `player` is
-       * `null` for an unowned death (wildlife, a neutral).
+       * A combatant was reaped this tick. `player` and `at` are read before the destroy, since the entity
+       * is gone by the snapshot; `player` is `null` for an unowned death such as wildlife.
        */
       readonly kind: 'settlerDied';
       readonly entity: Entity;
@@ -61,9 +57,8 @@ export type SimEvent =
   | {
       /**
        * A building came down this tick, razed in combat or demolished by its owner; both paths share the
-       * one cue. `player` is its owner slot (`null` for an unowned structure), `at` its node and
-       * `buildingType` its content type, all read before the destroy so a consumer can still resolve the
-       * collapse sprite after the entity leaves the snapshot.
+       * one cue. `player` (`null` for an unowned structure), `at`, and `buildingType` are read before the
+       * destroy, since the entity is gone by the snapshot.
        */
       readonly kind: 'buildingDestroyed';
       readonly entity: Entity;
@@ -140,7 +135,7 @@ export type SimEvent =
   | {
       /**
        * A ranged weapon loosed a projectile at `target` from `at` (`munitionType`: 1 arrow / 2 rock).
-       * `projectile` is the entity now in flight, which render draws from the snapshot.
+       * `projectile` is the entity now in flight.
        */
       readonly kind: 'projectileLaunched';
       readonly projectile: Entity;
@@ -189,8 +184,7 @@ export type SimEvent =
   | {
       /**
        * One unit was chipped off a still-standing mine deposit; the node survives, and removal of its
-       * last unit emits `resourceDepleted` instead. Fires the first time a virgin node is worked, so a
-       * consumer can hand it from a retained static decor layer to a live sprite.
+       * last unit emits `resourceDepleted` instead. Fires on the first working of a virgin node too.
        */
       readonly kind: 'resourceMined';
       readonly node: Entity;
@@ -200,8 +194,7 @@ export type SimEvent =
   | {
       /**
        * A berry bush's last ripe fruit was eaten this tick, so it flips ripe to bare and starts
-       * regrowing. Fires the first time a virgin bush is worked, so a consumer can hand it from a
-       * retained static decor layer to a live sprite that tracks its growth stage.
+       * regrowing. Fires on the first working of a virgin bush too.
        */
       readonly kind: 'berryForaged';
       readonly bush: Entity;
@@ -210,8 +203,7 @@ export type SimEvent =
   | {
       /**
        * A wild berry bush was razed this tick because a building was placed over it. Unlike
-       * `berryForaged` the bush entity is gone by the snapshot, so a snapshot-diff cull has nothing left
-       * to reap its retained static-decor quad against.
+       * `berryForaged` the bush entity is gone by the snapshot.
        */
       readonly kind: 'berryBushRazed';
       readonly bush: Entity;
@@ -233,7 +225,7 @@ export function eventNode(ev: SimEvent): HalfCellNode | null {
   return 'at' in ev && ev.at !== undefined ? ev.at : null;
 }
 
-/** A simple deterministic per-tick event buffer. Cleared each tick, read-only via `current`. */
+/** A deterministic per-tick event buffer, cleared at tick start. */
 export class EventBuffer {
   private events: SimEvent[] = [];
 
@@ -241,12 +233,10 @@ export class EventBuffer {
     this.events.push(e);
   }
 
-  /** Read the current tick's events (do not mutate). */
   current(): readonly SimEvent[] {
     return this.events;
   }
 
-  /** Clear at tick start. */
   clear(): void {
     this.events = [];
   }
