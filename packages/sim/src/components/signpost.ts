@@ -3,32 +3,25 @@ import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * A standing signpost (the original's guidepost, `ls_guidepost.bmd`) - the scout-erected navigation marker.
- * It stands on one half-cell node, never moves, blocks building placement on its cell but never movement,
- * and anchors two circles:
- *
- *  - `navRadius` - the navigation work-area circle. While signpost navigation is on, a civilian settler may
- *    only work within the union of its local radius and the circles of a connected signpost group it can
- *    reach. Overlapping circles of one player's signposts form a group.
- *  - `spacingRadius` - no second same-player signpost may be erected inside it.
- *
- * Radii are integer node-distances on the world metric, carried as data per signpost rather than read from
- * a constant at query time.
+ * It stands on one half-cell node, never moves, and blocks building placement on its cell but never
+ * movement. `navRadius` is the work-area circle it adds to the navigation limit of a settler that reaches
+ * its group; `spacingRadius` is the circle no second same-player signpost may be erected inside. Both are
+ * integer node-distances on the world metric, carried per signpost rather than read from a constant.
  */
 export const Signpost = defineComponent<{ navRadius: number; spacingRadius: number }>('Signpost');
 
 /**
- * The scout's pending "erect a signpost here" order - the `placeSignpost` command's en-route marker.
- * The scout walks to `goal` under a normal `PlayerOrder`; the SignpostOrderSystem starts the one-shot
- * build-guide hammer atomic on arrival and the signpost spawns when it completes (`erectSignpost`
- * effect). Dropped when the walk fails, a need interrupts it, or the spot became illegal meanwhile.
+ * The scout's pending "erect a signpost here" order - the `placeSignpost` command's en-route marker. The
+ * scout walks to `goal` under a normal `PlayerOrder`, then the build-guide hammer atomic's `erectSignpost`
+ * effect spawns the post. Dropped when the walk fails, a need interrupts it, or the spot became illegal
+ * meanwhile.
  */
 export const ErectSignpostOrder = defineComponent<{ goal: NodeId }>('ErectSignpostOrder');
 
 /**
- * The signpost circle radii, in half-cell nodes on the world metric (one node = 34 px E/W). Named
- * approximations, not source-pinned values: the original's guidepost ranges live only in the game
- * executables - no plaintext or `.cif` data carries them, `landscapes.cif` and `logicdefines.inc` checked -
- * so these are tunable, calibrated against the running original by eye.
+ * The signpost circle radii, in half-cell nodes on the world metric (one node = 34 px E/W).
+ * Approximations: no plaintext or `.cif` data carries the original's guidepost ranges (`landscapes.cif`
+ * and `logicdefines.inc` checked), so these are tunable, calibrated against the running original by eye.
  */
 export const SIGNPOST_NAV_RADIUS_NODES = 24;
 export const SIGNPOST_SPACING_RADIUS_NODES = 18;

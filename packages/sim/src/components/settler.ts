@@ -4,19 +4,13 @@ import { type Fixed, fx } from '../core/fixed.js';
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
-/**
- * The `(tribe, job)` pair that keys a settler's content lookups. A structural subset of {@link Settler},
- * so a `Settler` value assigns straight to it.
- */
+/** The `(tribe, job)` pair that keys a settler's content lookups. */
 export interface SettlerIdentity {
   readonly tribe: number;
   readonly jobType: number | null;
 }
 
-/**
- * An autonomous individual. `jobType` constrains which atomics it may run (`jobtypes.allowatomic`), and
- * `experience` keyed by specialization gates progression.
- */
+/** An autonomous individual; `jobType` constrains which atomics it may run (`jobtypes.allowatomic`). */
 export const Settler = defineComponent<{
   readonly tribe: number;
   /** Written only through {@link setSettlerJob}. */
@@ -39,16 +33,12 @@ export const Settler = defineComponent<{
   experience: Map<number, number>;
 }>('Settler');
 
-/** The {@link Settler} component value, as the constructors below take it. */
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
-/**
- * Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. A query key:
- * `World.query` has no exclusion, so a human-only system says `query(Person, …)`. Never removed.
- */
+/** Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. Never
+ *  removed, so `query(Person, …)` is a human-only system's filter. */
 export const Person = defineComponent<{ readonly person: true }>('Person');
 
-/** The marker carries no per-entity data, so every person shares this one frozen value. */
 const PERSON = Object.freeze({ person: true } as const);
 
 /** Add a person: a {@link Settler} carrying the {@link Person} marker. The only path that mints one. */
@@ -57,8 +47,7 @@ export function addPerson(world: World, entity: Entity, state: SettlerState): vo
   world.add(entity, Person, PERSON);
 }
 
-/** Add a creature of an animal `tribe`: a {@link Settler} with no {@link Person} and no trade, its need
- *  bars and experience left at zero. */
+/** Add a creature of an animal `tribe`: a {@link Settler} with no {@link Person} and no trade. */
 export function addWildlife(world: World, entity: Entity, tribe: number): void {
   world.add(entity, Settler, {
     tribe,
@@ -71,12 +60,10 @@ export function addWildlife(world: World, entity: Entity, tribe: number): void {
   });
 }
 
-/** Whether `entity` is a creature rather than a person - a {@link Settler} with no {@link Person}. */
 export function isWildlife(world: World, entity: Entity): boolean {
   return world.has(entity, Settler) && !world.has(entity, Person);
 }
 
-/** The write view of {@link Settler}'s otherwise-`readonly` trade, held only by {@link setSettlerJob}. */
 type SettlerTradeWrite = { jobType: number | null };
 
 /**
@@ -91,9 +78,8 @@ export function setSettlerJob(world: World, entity: Entity, jobType: number | nu
 
 /**
  * The atomic micro-action a settler is currently executing; its {@link AtomicEffect} applies on completion
- * and the component is removed, so an entity carrying none is ready for its next atomic. Timing runs off
- * the integer `elapsed`, never an accumulated fixed-point step: `ONE / duration` truncates, so a summed
- * fraction would never reach ONE and the atomic would hang.
+ * and the component is removed, so an entity carrying none is ready for its next. Timing runs off the
+ * integer `elapsed`: `ONE / duration` truncates, so a summed fixed-point step would never reach ONE.
  */
 export const CurrentAtomic = defineComponent<{
   /** Join key onto a tribe's `setatomic` animation. */
@@ -119,21 +105,20 @@ export const CurrentAtomic = defineComponent<{
 /** Goods a settler is physically hauling; goods never teleport to a global bank. */
 export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
 
-/** The most units a settler picks up in one lift. Observation: a person carries a single good unit at a
- *  time, so hauling more takes more trips. */
+/** The most units a settler picks up in one lift. Observation: a person carries one good unit at a time. */
 export const CARRY_CAPACITY = 1;
 
 /**
  * A builder's construction-site crew membership, re-stamped whenever the builder drive engages the site, so
- * it survives waiting for material, a player detour, or a meal. `pinned` marks a player-made assignment
- * (the `assignBuilder` order), which wins over the nearest-site pick while that site still stands.
+ * it survives a wait for material, a detour, or a meal. `pinned` marks the `assignBuilder` order's site,
+ * which wins over the nearest-site pick while that site still stands.
  */
 export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>('SiteAssignment');
 
 /**
- * A settler's live construction-supply errand. Cleared at the top of its own next planning pass and
- * re-stamped while the errand lasts. Later-planned settlers subtract these from a site's outstanding need,
- * so two builders don't race for the same last unit and a crew spreads over different materials.
+ * A settler's live construction-supply errand, cleared and re-stamped at the top of its own next planning
+ * pass. Settlers planned later subtract these from a site's outstanding need, so two builders don't race
+ * for the same last unit.
  */
 export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
 
@@ -144,17 +129,16 @@ export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amoun
 export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
 
 /**
- * A settler's age in whole ticks while it is still a non-working life stage. Only a settler born young
- * carries one; the GrowthSystem promotes the age-class `jobType` at each stage boundary and removes the
- * component at adult-eligibility, so an adult never carries an `Age`.
+ * A settler's age in whole ticks while it is still a non-working life stage. The GrowthSystem promotes the
+ * age-class `jobType` at each stage boundary and removes the component at adult-eligibility, so an adult
+ * carries none.
  */
 export const Age = defineComponent<{ ticks: number }>('Age');
 
 /**
- * A player move order in flight on a settler. While present the planner's economy branch and the combat
- * auto-drives leave the unit alone, but its needs drives still fire; it is removed on arrival, on route
- * failure, or when a need takes over. `pendingGoal` parks the destination while a settler that was
- * carrying a load runs its drop atomic.
+ * A player move order in flight on a settler: the planner's economy branch and the combat auto-drives leave
+ * it alone while its needs drives still fire. Removed on arrival, on route failure, or when a need takes
+ * over. `pendingGoal` parks the destination while a settler carrying a load runs its drop atomic.
  */
 export const PlayerOrder = defineComponent<{
   pendingGoal?: NodeId;
@@ -163,13 +147,13 @@ export const PlayerOrder = defineComponent<{
 
 /**
  * The march an attack-move order walks out - the original's "Attack Position" (`misclogic/48`). Unlike a
- * plain move order it does not suppress the combat auto-drives: the unit walks under `MILITARY_MODE.ATTACK`
+ * plain move order it leaves the combat auto-drives running: the unit walks under `MILITARY_MODE.ATTACK`
  * whatever its own stance says. Approximation: the original's en-route behaviour is unobserved, and its
  * vocabulary scopes the modes to soldiers (`misclogic/38-40`), so here an ordered civilian fights too.
  *
- * `goal` outlives a fight overwriting the `MoveGoal` with chase destinations; `resume` re-issues it
- * exactly once when the unit next falls idle, since a re-aimed goal makes an arrival test unusable;
- * `blockedUntil` rests the aggression through a tick whose chase could not route.
+ * `goal` outlives a fight overwriting the `MoveGoal` with chase destinations; `resume` re-issues it exactly
+ * once when the unit next falls idle, since a re-aimed goal makes an arrival test unusable; `blockedUntil`
+ * rests the aggression through a tick whose chase could not route.
  */
 export interface AttackMoveMarch {
   readonly goal: NodeId;
