@@ -139,9 +139,7 @@ describe('employed gatherer - the workplace store filter', () => {
   it('accepts a pick at a workplace that is still a construction site', () => {
     const sim = sceneSim();
     const site = placeBuilding(sim, WAREHOUSE, 1, 1);
-    sim.world.write(site, Building, (b) => {
-      b.built = fx.fromInt(0);
-    });
+    sim.world.mut(site, Building).built = fx.fromInt(0);
     const worker = employedCollector(sim, 8, 1, site);
     // The premise: a site advertises only its outstanding materials, and this fixture warehouse bills
     // none - so a capacity-based gate refuses wood here and the test would pass vacuously without it.

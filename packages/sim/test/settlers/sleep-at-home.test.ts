@@ -115,7 +115,7 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     const sim = simWithHomes();
     const settler = tiredAt(sim, 3, 2);
     const site = homeAt(sim, 3, 2);
-    sim.world.get(site, Building).built = fx.div(ONE, fx.fromInt(2)); // half-raised - no roof yet
+    sim.world.mut(site, Building).built = fx.div(ONE, fx.fromInt(2)); // half-raised - no roof yet
     sim.world.add(settler, Residence, { home: site });
 
     plannerSystem(sim.world, ctxOf(sim));

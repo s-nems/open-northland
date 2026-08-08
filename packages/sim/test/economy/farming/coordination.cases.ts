@@ -146,7 +146,7 @@ describe('store-full pause and overflow', () => {
    *  gate is the only thing left to decide. */
   function fullFarmWorld(sim: Simulation): { farm: Entity; farmer: Entity } {
     const farm = farmAt(sim, 4, 4);
-    sim.world.get(farm, Stockpile).amounts.set(WHEAT, FARM_WHEAT_CAP);
+    sim.world.mut(farm, Stockpile).amounts.set(WHEAT, FARM_WHEAT_CAP);
     fieldAt(sim, farm, 4, 4, { stage: STAGES });
     fieldAt(sim, farm, 3, 3, { stage: STAGES });
     fieldAt(sim, farm, 5, 3, { stage: STAGES });
@@ -182,7 +182,7 @@ describe('store-full pause and overflow', () => {
     expect(sim.world.get(farmer, Carrying).amount).toBe(1); // the load stays in hand
 
     // Room frees (the player spends a unit) → the very next plan walks back out and deposits.
-    sim.world.get(farm, Stockpile).amounts.set(WHEAT, FARM_WHEAT_CAP - 1);
+    sim.world.mut(farm, Stockpile).amounts.set(WHEAT, FARM_WHEAT_CAP - 1);
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(farmer, components.Resting)).toBe(false);
     expect(sim.world.get(farmer, components.CurrentAtomic).effect).toEqual({ kind: 'pileup', store: farm });

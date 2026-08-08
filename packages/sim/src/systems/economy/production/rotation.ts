@@ -69,9 +69,7 @@ export function startCycleFor(
     if (!canStartCycle(world, ctx, building, recipe)) continue;
     beginCycle(world, ctx, building, recipe, good);
     if (selection === undefined) world.add(operator, CraftSelection, { goods: [], cursor: 0 });
-    world.write(operator, CraftSelection, (s) => {
-      s.cursor = (cursor + i + 1) % pool.length;
-    });
+    world.mut(operator, CraftSelection).cursor = (cursor + i + 1) % pool.length;
     return;
   }
 }

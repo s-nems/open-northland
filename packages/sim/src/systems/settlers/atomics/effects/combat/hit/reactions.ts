@@ -18,7 +18,7 @@ export function provokeAnger(world: World, ctx: SystemContext, target: Entity): 
   const duration = angryGameTimeOf(ctx.content, settler.tribe);
   if (duration <= 0) return; // no readable duration - no lasting anger
   const until = ctx.tick + duration;
-  const anger = world.tryGet(target, Anger);
+  const anger = world.tryMut(target, Anger);
   if (anger === undefined) world.add(target, Anger, { until });
   else anger.until = until;
 }

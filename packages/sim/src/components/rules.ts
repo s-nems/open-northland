@@ -30,7 +30,7 @@ export function needsEnabled(world: World): boolean {
 export function setNeedsEnabled(world: World, enabled: boolean): void {
   const rules = worldRulesEntity(world);
   if (rules === null) world.add(world.create(), WorldRules, { needsEnabled: enabled });
-  else world.get(rules, WorldRules).needsEnabled = enabled;
+  else world.mut(rules, WorldRules).needsEnabled = enabled;
 }
 
 /**
@@ -74,7 +74,7 @@ export function setFogMode(world: World, mode: number): void {
   if (!isFogMode(mode)) return;
   const rules = fogRulesEntity(world);
   if (rules === null) world.add(world.create(), FogRules, { mode });
-  else world.get(rules, FogRules).mode = mode;
+  else world.mut(rules, FogRules).mode = mode;
 }
 
 /**
@@ -96,7 +96,7 @@ export function signpostNavigationEnabled(world: World): boolean {
 export function setSignpostNavigation(world: World, enabled: boolean): void {
   const rules = signpostRulesEntity(world);
   if (rules === null) world.add(world.create(), SignpostRules, { navigationEnabled: enabled });
-  else world.get(rules, SignpostRules).navigationEnabled = enabled;
+  else world.mut(rules, SignpostRules).navigationEnabled = enabled;
 }
 
 /**
@@ -121,5 +121,5 @@ export function professionProgressionEnabled(world: World): boolean {
 export function setProfessionProgression(world: World, enabled: boolean): void {
   const rules = progressionRulesEntity(world);
   if (rules === null) world.add(world.create(), ProgressionRules, { professionProgressionEnabled: enabled });
-  else world.get(rules, ProgressionRules).professionProgressionEnabled = enabled;
+  else world.mut(rules, ProgressionRules).professionProgressionEnabled = enabled;
 }

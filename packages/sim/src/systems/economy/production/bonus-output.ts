@@ -54,7 +54,7 @@ export function accrueBonusOutput(
 /** Accumulate `extra` bonus output of `goodType` on the workplace's remainder map. */
 function creditBonus(world: World, building: Entity, goodType: number, extra: Fixed): void {
   const bonus =
-    world.tryGet(building, ProductionBonus) ??
+    world.tryMut(building, ProductionBonus) ??
     world.add(building, ProductionBonus, { remainders: new Map() });
   bonus.remainders.set(goodType, fx.add(bonus.remainders.get(goodType) ?? ZERO, extra));
 }
@@ -80,7 +80,7 @@ function flushWholeUnits(
   building: Entity,
   recipes: ReadonlyMap<number, Recipe> | undefined,
 ): void {
-  const bonus = world.tryGet(building, ProductionBonus);
+  const bonus = world.tryMut(building, ProductionBonus);
   if (bonus === undefined) return;
   const stock = world.get(building, Stockpile).amounts;
   for (const [goodType, held] of bonus.remainders) {

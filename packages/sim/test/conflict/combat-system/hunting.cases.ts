@@ -57,11 +57,10 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
 
   /** Teleport `e` onto half-cell node (hx, hy) - a prey animal bolting, without running the mover. */
   function moveToNode(sim: Simulation, e: Entity, hx: number, hy: number): void {
-    sim.world.write(e, Position, (p) => {
-      const at = positionOfNode(hx, hy);
-      p.x = at.x;
-      p.y = at.y;
-    });
+    const p = sim.world.mut(e, Position);
+    const at = positionOfNode(hx, hy);
+    p.x = at.x;
+    p.y = at.y;
   }
 
   /** Stand a hunter that has just loosed a shot back up: the draw atomic has played out, so it is free
@@ -227,11 +226,10 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     expect(sim.world.has(hunter, HuntRest)).toBe(true); // the empty search stamped the breather
 
     // The cow steps INTO the ground mid-breather: still resting, the search is skipped.
-    sim.world.write(cow, Position, (p) => {
-      const inGround = positionOfNode(43, 40);
-      p.x = inGround.x;
-      p.y = inGround.y;
-    });
+    const p = sim.world.mut(cow, Position);
+    const inGround = positionOfNode(43, 40);
+    p.x = inGround.x;
+    p.y = inGround.y;
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false);
 
@@ -313,9 +311,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     expect(sim.world.get(hunter, HuntFocus).target).toBe(felled);
 
     drawFinished(sim, hunter);
-    sim.world.write(felled, Health, (h) => {
-      h.hitpoints = 0;
-    });
+    sim.world.mut(felled, Health).hitpoints = 0;
     const next = fighterAtNode(sim, 43, 40, DEER, null);
 
     combatSystem(sim.world, { ...ctxOf(sim), tick: 1 });
@@ -357,9 +353,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
       // The player re-tasks the hunter. Nothing but the hunting branch can reap the hold, so a stance
       // that no longer runs it must shed the hold itself or a dead animal id rides the state hash on.
       drawFinished(sim, hunter);
-      sim.world.write(hunter, Stance, (s) => {
-        s.mode = mode;
-      });
+      sim.world.mut(hunter, Stance).mode = mode;
       combatSystem(sim.world, { ...ctxOf(sim), tick: 1 });
 
       expect(sim.world.has(hunter, HuntFocus), `mode ${mode}`).toBe(false);

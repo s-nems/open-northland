@@ -46,7 +46,7 @@ function gossiper(sim: Simulation, x: number, y: number, enjoyment: Fixed): Enti
  *  (partner searches start at ring 1, so a pair never forms on a single shared node). */
 function gossiperBeside(sim: Simulation, x: number, y: number, enjoyment: Fixed): Entity {
   const e = gossiper(sim, x, y, enjoyment);
-  sim.world.get(e, Position).x = fx.add(fx.fromInt(x), fx.div(ONE, fx.fromInt(2)));
+  sim.world.mut(e, Position).x = fx.add(fx.fromInt(x), fx.div(ONE, fx.fromInt(2)));
   return e;
 }
 
@@ -282,7 +282,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     plannerSystem(sim.world, ctxOf(sim));
     gossipSystem(sim.world, ctxOf(sim)); // the round starts
 
-    sim.world.get(b, Settler).hunger = justAbove(NEED_THRESHOLD);
+    sim.world.mut(b, Settler).hunger = justAbove(NEED_THRESHOLD);
     gossipSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, Chat)).toBe(false);

@@ -200,9 +200,7 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     beginCycle(sim.world, ctx, farm, feed, COW_GOOD);
     // Its HP moved since admission (a fight): the release drain must stop at the floor, not cross it.
     const floor = Math.floor(COW_HP / LIVESTOCK_MIN_LIFE_DIVISOR);
-    sim.world.write(cow, Health, (h) => {
-      h.hitpoints = floor + 100;
-    });
+    sim.world.mut(cow, Health).hitpoints = floor + 100;
 
     const cycle = { elapsed: FEED_TICKS, duration: FEED_TICKS, goodType: COW_GOOD };
     depositCycleOutput(sim.world, ctx, farm, cycle, recipes);
@@ -240,7 +238,7 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     expect(sim.world.has(next, LivestockVisit)).toBe(false);
 
     // Token converted: the backlog is drained and the successor is called.
-    sim.world.get(farm, Stockpile).amounts.set(COW_GOOD, 0);
+    sim.world.mut(farm, Stockpile).amounts.set(COW_GOOD, 0);
     livestockVisitSystem(sim.world, ctx);
     expect(sim.world.tryGet(next, LivestockVisit)?.at).toBe(farm);
     expect(sim.world.get(next, Health).hitpoints).toBe(COW_HP);
@@ -302,7 +300,7 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     const sim = livestockSim();
     const { farm, ctx } = stockedFarm(sim);
     const walking = cowAt(sim, 14, 10); // summoned below, still four nodes from the door
-    sim.world.get(farm, Stockpile).amounts.set(COW_GOOD, 1); // a token the rotation could convert
+    sim.world.mut(farm, Stockpile).amounts.set(COW_GOOD, 1); // a token the rotation could convert
     sim.world.add(walking, LivestockVisit, { at: farm });
 
     productionSystem(sim.world, ctx);
@@ -310,7 +308,7 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     expect(sim.world.has(farm, Production)).toBe(false);
 
     // The animal reaches the door: the very next pass starts ITS feed, not the token conversion.
-    const at = sim.world.get(walking, Position);
+    const at = sim.world.mut(walking, Position);
     const door = positionOfNode(10, 10);
     at.x = door.x;
     at.y = door.y;
@@ -324,7 +322,7 @@ describe('livestock processing - the visit: summon, arrive, enter with the batch
     const { farm, ctx } = stockedFarm(sim);
     const walking = cowAt(sim, 14, 10);
     sim.world.add(walking, LivestockVisit, { at: farm });
-    const stock = sim.world.get(farm, Stockpile).amounts;
+    const stock = sim.world.mut(farm, Stockpile).amounts;
     stock.set(COW_GOOD, 1); // a token the rotation can convert
     stock.set(WATER, 0); // the feed's inputs are gone mid-walk
     stock.set(WHEAT, 0);

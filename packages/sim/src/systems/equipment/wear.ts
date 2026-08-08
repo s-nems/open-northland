@@ -34,13 +34,11 @@ export function applyEquipWear(
   const worn = equipSlotValue(eq, group, slot);
   if (worn === null || worn.degreeOfUse >= ONE) return;
   const used = fx.add(worn.degreeOfUse, step);
-  world.write(entity, Equipment, (equipment) =>
-    writeEquipSlot(
-      equipment,
-      group,
-      slot,
-      used >= ONE ? null : { goodType: worn.goodType, degreeOfUse: used },
-    ),
+  writeEquipSlot(
+    world.mut(entity, Equipment),
+    group,
+    slot,
+    used >= ONE ? null : { goodType: worn.goodType, degreeOfUse: used },
   );
 }
 

@@ -50,7 +50,7 @@ export function frightenWildlifeNear(
     if (world.has(e, Anger)) continue;
     if (world.has(e, Resting)) continue; // indoors (a farm's feed batch owns it): walls, not open ground
     if (manhattan(terrain, atNode, entityNode(world, terrain, e)) > FRIGHT_RADIUS_NODES) continue;
-    const fright = world.tryGet(e, Frightened);
+    const fright = world.tryMut(e, Frightened);
     if (fright !== undefined) {
       fright.until = ctx.tick + FRIGHT_DURATION_TICKS;
       fright.from = atNode;
@@ -72,7 +72,7 @@ export const animalFrightSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
   if (terrain === undefined) return; // mapless fixture world - nowhere to run
   for (const e of canonicalById(world.query(Frightened, Settler, Position))) {
-    const f = world.get(e, Frightened);
+    const f = world.mut(e, Frightened);
     if (ctx.tick >= f.until || world.has(e, Anger)) {
       world.remove(e, Frightened);
       clearNavState(world, e);

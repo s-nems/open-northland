@@ -16,6 +16,10 @@
 
 External callers mutate a running simulation only through serializable commands. Systems mutate the
 world during `step()`. Authored scenes and fixtures may assemble pre-tick-zero state directly.
+Every in-place component mutation acquires the value through `World.mut`/`tryMut`; `get`/`tryGet`
+return read-only views, and defeating them with a cast breaks snapshot and derived-cache
+invalidation. In a hot loop, read first and acquire `mut` only when a field actually changes, so
+version keys do not churn on idle entities.
 
 Snapshots are detached plain-data read views. Do not expose live component objects through a read
 seam or read presentation state back into sim logic.

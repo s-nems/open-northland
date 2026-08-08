@@ -40,10 +40,9 @@ function paradeSoldier(
     armor: armorSlug === null ? null : { goodType: goodBySlug(sim, armorSlug), degreeOfUse: fx.fromInt(0) },
     misc: new Array(MISC_EQUIP_SLOTS).fill(null),
   });
-  sim.world.write(e, Stance, (stance) => {
-    stance.mode = systems.MILITARY_MODE.IGNORE;
-    stance.anchorCell = null;
-  });
+  const stance = sim.world.mut(e, Stance);
+  stance.mode = systems.MILITARY_MODE.IGNORE;
+  stance.anchorCell = null;
   return e;
 }
 

@@ -75,15 +75,14 @@ export const berryGrowthSystem: System = (world, ctx) => {
     const bush = world.get(e, BerryBush);
     if (bush.stage === 'ripe') continue;
     if (ctx.tick < bush.nextStageAtTick) continue;
-    world.write(e, BerryBush, (b) => {
-      if (b.stage === 'bare') {
-        b.stage = 'flowering';
-        b.nextStageAtTick += BERRY_STAGE_TICKS; // one more step to fruit, anchored on schedule
-      } else {
-        b.stage = 'ripe';
-        b.nextStageAtTick = 0; // unused while ripe
-      }
-    });
+    const b = world.mut(e, BerryBush);
+    if (b.stage === 'bare') {
+      b.stage = 'flowering';
+      b.nextStageAtTick += BERRY_STAGE_TICKS; // one more step to fruit, anchored on schedule
+    } else {
+      b.stage = 'ripe';
+      b.nextStageAtTick = 0; // unused while ripe
+    }
   }
 };
 

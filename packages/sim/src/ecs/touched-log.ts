@@ -29,6 +29,12 @@ export class TouchedLog {
     this.entities.add(entity);
   }
 
+  /** Whether `entity` has a recorded mutation the next {@link drain} will deliver. After an overflow every
+   *  entity counts as pending, since the individual names were lost. */
+  pending(entity: Entity): boolean {
+    return this.overflowed || this.entities.has(entity);
+  }
+
   /**
    * Hands every logged entity to `consume` and clears the log. Returns `true` when the log overflowed since
    * the last drain: those individual evictions were lost, so the consumer must discard its entire cache.

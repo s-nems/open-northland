@@ -76,7 +76,7 @@ function measure(farmers: number): Measured {
   const drainStores = (): void => {
     for (const e of sim.world.query(Stockpile)) {
       if (!sim.world.has(e, Building)) continue;
-      const store = sim.world.get(e, Stockpile);
+      const store = sim.world.mut(e, Stockpile);
       grain += store.amounts.get(GOOD_WHEAT) ?? 0;
       store.amounts.delete(GOOD_WHEAT);
     }

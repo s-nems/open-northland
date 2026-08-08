@@ -90,9 +90,9 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(0); // a site shelters no one
 
     // Deliver the outstanding stone (the seeded one covers half of L1's 2) and hammer the site out.
-    const hold = sim.world.get(e, Stockpile).amounts;
+    const hold = sim.world.mut(e, Stockpile).amounts;
     hold.set(STONE, (hold.get(STONE) ?? 0) + 1);
-    sim.world.get(e, UnderConstruction).labor = ONE;
+    sim.world.mut(e, UnderConstruction).labor = ONE;
     constructionSystem(sim.world, ctxOf(sim));
 
     const b = sim.world.get(e, Building);
@@ -114,7 +114,7 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 2 });
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
     sim.step();
-    sim.world.get(e, UnderConstruction).labor = ONE;
+    sim.world.mut(e, UnderConstruction).labor = ONE;
     constructionSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(e, Building).buildingType).toBe(HOME_L1);
@@ -130,8 +130,8 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
     sim.step();
     expect(sim.world.get(resident, Residence).home).toBe(e); // kept while the site rises
-    sim.world.get(e, Stockpile).amounts.set(STONE, 2);
-    sim.world.get(e, UnderConstruction).labor = ONE;
+    sim.world.mut(e, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(e, UnderConstruction).labor = ONE;
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(resident, Residence).home).toBe(e); // and after completion
   });
@@ -166,8 +166,8 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     const e = placeBuiltHome(sim, HOME_L0, 0);
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
     sim.step();
-    sim.world.get(e, Stockpile).amounts.set(STONE, 2);
-    sim.world.get(e, UnderConstruction).labor = ONE;
+    sim.world.mut(e, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(e, UnderConstruction).labor = ONE;
     constructionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Building).buildingType).toBe(HOME_L1);
     expect(sim.world.has(e, UnderConstruction)).toBe(false); // finished - not rolling into L2 by itself
@@ -180,7 +180,7 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
     const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 1, [WOOD]: 1 });
     sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
     sim.step();
-    const hold = sim.world.get(e, Stockpile).amounts;
+    const hold = sim.world.mut(e, Stockpile).amounts;
     hold.set(STONE, (hold.get(STONE) ?? 0) + 1); // a partial delivery on top of the seeded stone
     sim.enqueueSetup({ kind: 'cancelUpgrade', building: e });
     sim.step();
@@ -223,8 +223,8 @@ describe('constructionSystem - manual upgrade lifecycle', () => {
       const e = placeBuiltHome(sim, HOME_L0, 0, { [STONE]: 1 });
       sim.enqueueSetup({ kind: 'upgradeBuilding', building: e });
       sim.step();
-      sim.world.get(e, Stockpile).amounts.set(STONE, 2);
-      sim.world.get(e, UnderConstruction).labor = ONE;
+      sim.world.mut(e, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(e, UnderConstruction).labor = ONE;
       constructionSystem(sim.world, ctxOf(sim));
       return sim.hashState();
     };

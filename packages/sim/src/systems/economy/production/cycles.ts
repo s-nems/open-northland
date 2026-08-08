@@ -140,7 +140,7 @@ export function beginCycle(
   if (!admitLivestockForCycle(world, ctx, building, recipe)) return;
   consumeGoods(world, building, recipe.inputs);
   const cycle: ProductionCycle = { elapsed: 0, duration: Math.max(1, recipe.ticks), goodType };
-  const prod = world.tryGet(building, Production);
+  const prod = world.tryMut(building, Production);
   if (prod === undefined) world.add(building, Production, { cycles: [cycle] });
   else prod.cycles.push(cycle);
 }

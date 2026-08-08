@@ -113,7 +113,7 @@ describe('planFarmer - the drive ladder', () => {
       const farm = farmAt(sim, 4, 4);
       fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot - reaps on the spot
       const farmer = farmerAt(sim, 4, 4, farm);
-      if (xp > 0) sim.world.get(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, xp);
+      if (xp > 0) sim.world.mut(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, xp);
       plannerSystem(sim.world, ctxOf(sim));
       return sim.world.get(farmer, components.CurrentAtomic).duration;
     };
@@ -247,7 +247,7 @@ describe('planFarmer - the drive ladder', () => {
     expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
 
     // A field turns thirsty → the very next plan leaves the house for the can.
-    sim.world.get(fields[0] as Entity, Crop).watered = false;
+    sim.world.mut(fields[0] as Entity, Crop).watered = false;
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(farmer, components.Resting)).toBe(false);
     const atomic = sim.world.tryGet(farmer, components.CurrentAtomic);

@@ -253,9 +253,7 @@ describe('projectiles - expiry + dead zone', () => {
 
     // The mark drops (0 hitpoints) with the arrow still well short of it, the way it does when an earlier
     // shot of the same volley kills the man everyone is loosing at.
-    sim.world.write(target, Health, (h) => {
-      h.hitpoints = 0;
-    });
+    sim.world.mut(target, Health).hitpoints = 0;
     sim.step();
 
     // The shot stayed in the air, re-frozen onto the spot the mark fell on.
@@ -283,12 +281,8 @@ describe('projectiles - expiry + dead zone', () => {
     // Put the shot back at the bow for the NEXT tick and drop the mark on that same tick - the exact
     // overlap a real volley makes, where one arrow lands the kill in the same pass another is loosed in.
     // The cleanupSystem reaps the corpse at the end of that tick, so the aim has to be taken during it.
-    sim.world.write(shot, Projectile, (v) => {
-      v.launchTick = sim.tick + 1;
-    });
-    sim.world.write(target, Health, (h) => {
-      h.hitpoints = 0;
-    });
+    sim.world.mut(shot, Projectile).launchTick = sim.tick + 1;
+    sim.world.mut(target, Health).hitpoints = 0;
     sim.step();
 
     expect(sim.world.isAlive(target)).toBe(false); // reaped, so no position is readable any more

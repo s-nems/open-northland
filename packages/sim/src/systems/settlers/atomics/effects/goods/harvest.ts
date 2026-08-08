@@ -53,9 +53,7 @@ export function harvestFromNode(
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
     const chopsLeft = Math.max(0, felling.chopsLeft - swings);
-    world.write(node, Felling, (f) => {
-      f.chopsLeft = chopsLeft;
-    });
+    world.mut(node, Felling).chopsLeft = chopsLeft;
     if (chopsLeft > 0) return 0;
     fellNode(world, ctx, settler, node, res.goodType, res.remaining);
     return res.remaining;
@@ -71,9 +69,7 @@ export function harvestFromNode(
     if (strikesPerUnit > 1) {
       const advanced = (deposit.strikes ?? 0) + swings;
       const freed = Math.floor(advanced / strikesPerUnit);
-      world.write(node, MineDeposit, (d) => {
-        d.strikes = advanced % strikesPerUnit;
-      });
+      world.mut(node, MineDeposit).strikes = advanced % strikesPerUnit;
       if (freed === 0) return 0;
       took = Math.min(freed * HARVEST_YIELD, res.remaining);
     } else {
@@ -87,24 +83,19 @@ export function harvestFromNode(
     if (repeats > 1) {
       const advanced = (res.strikes ?? 0) + swings;
       if (advanced < repeats) {
-        world.write(node, Resource, (r) => {
-          r.strikes = advanced;
-        });
+        world.mut(node, Resource).strikes = advanced;
         return 0;
       }
       const rest = advanced % repeats; // a multi-unit stroke's overshoot carries into the next unit
-      world.write(node, Resource, (r) => {
-        if (rest === 0) delete r.strikes;
-        else r.strikes = rest;
-      });
+      const r = world.mut(node, Resource);
+      if (rest === 0) delete r.strikes;
+      else r.strikes = rest;
     }
     addCarry(world, settler, goodType, took);
   }
   // Decrement only after the unit is dropped or carried, so a rejecting `addCarry` cannot lose it.
   const remaining = res.remaining - took;
-  world.write(node, Resource, (r) => {
-    r.remaining = remaining;
-  });
+  world.mut(node, Resource).remaining = remaining;
   if (remaining <= 0) {
     depleteNode(world, ctx, node, res.goodType);
   } else if (world.has(node, MineDeposit)) {
@@ -198,16 +189,15 @@ function depleteNode(world: World, ctx: SystemContext, node: Entity, goodType: n
   const layer = buried?.layers[0];
   if (buried !== undefined && layer !== undefined) {
     unstampResourceFootprint(world, node);
-    world.write(node, Resource, (r) => {
-      r.goodType = layer.goodType;
-      r.remaining = layer.amount;
-      r.harvestAtomic = layer.harvestAtomic;
-      if (layer.gfxIndex !== undefined) r.gfxIndex = layer.gfxIndex;
-      else delete r.gfxIndex;
-      delete r.strikes;
-    });
+    const r = world.mut(node, Resource);
+    r.goodType = layer.goodType;
+    r.remaining = layer.amount;
+    r.harvestAtomic = layer.harvestAtomic;
+    if (layer.gfxIndex !== undefined) r.gfxIndex = layer.gfxIndex;
+    else delete r.gfxIndex;
+    delete r.strikes;
     if (buried.layers.length === 1) world.remove(node, ResourceLayers);
-    else world.write(node, ResourceLayers, (l) => l.layers.shift());
+    else world.mut(node, ResourceLayers).layers.shift();
     stampResourceFootprintOrFallback(world, ctx.content, node, layer.goodType);
     return;
   }

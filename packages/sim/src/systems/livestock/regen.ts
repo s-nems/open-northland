@@ -21,8 +21,6 @@ export const livestockRegenSystem: System = (world, ctx) => {
   for (const e of world.query(Livestock, Owner, Health)) {
     const h = world.get(e, Health);
     if (h.hitpoints <= 0 || h.hitpoints >= h.max) continue;
-    world.write(e, Health, (v) => {
-      v.hitpoints = Math.min(v.max, v.hitpoints + LIVESTOCK_REGEN_HP);
-    });
+    world.mut(e, Health).hitpoints = Math.min(h.max, h.hitpoints + LIVESTOCK_REGEN_HP);
   }
 };

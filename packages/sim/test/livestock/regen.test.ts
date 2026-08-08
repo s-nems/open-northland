@@ -19,9 +19,7 @@ describe('livestock regen - claimed animals heal back the processing drain', () 
     livestockRegenSystem(sim.world, ctxOf(sim)); // tick 0 - a pulse tick
     expect(sim.world.get(cow, Health).hitpoints).toBe(COW_HP / 2 + LIVESTOCK_REGEN_HP);
 
-    sim.world.write(cow, Health, (h) => {
-      h.hitpoints = COW_HP;
-    });
+    sim.world.mut(cow, Health).hitpoints = COW_HP;
     livestockRegenSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(cow, Health).hitpoints).toBe(COW_HP);
   });

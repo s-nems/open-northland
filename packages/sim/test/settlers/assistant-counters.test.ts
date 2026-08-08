@@ -508,7 +508,7 @@ describe('the training queue', () => {
     // Somebody else takes the sword he was sent for while he is still walking. The store search re-picks
     // a source every planner tick, so a confinement applied only at dispatch would now hand him the pile
     // past the end of the network - the half-map errand this whole rule exists to stop.
-    sim.world.get(inNetwork, Stockpile).amounts.set(SWORD_LONG_GOOD, 0);
+    sim.world.mut(inNetwork, Stockpile).amounts.set(SWORD_LONG_GOOD, 0);
     run(sim, 4000);
     expect(sim.world.get(recruit, Settler).jobType).toBe(SOLDIER);
     expect(sim.world.get(outside, Stockpile).amounts.get(SWORD_LONG_GOOD)).toBe(1);
@@ -583,7 +583,7 @@ function coupleSim(couples: number): { sim: Simulation; wives: Entity[] } {
     sim.world.add(husband, Marriage, { spouse: wife, child: null });
     sim.world.add(wife, Residence, { home });
     sim.world.add(husband, Residence, { home });
-    sim.world.get(home, Stockpile).amounts.set(FOOD, 3);
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, 3);
     wives.push(wife);
   }
   return { sim, wives };

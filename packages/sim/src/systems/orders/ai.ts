@@ -44,7 +44,7 @@ export function setPlayerAi(world: World, command: Extract<Command, { kind: 'set
     }
   }
   if (previous.military && !modules.military) standDownAlarms(world, command.player);
-  world.get(carrier, AiPlayer).modules = modules;
+  world.mut(carrier, AiPlayer).modules = modules;
 }
 
 /** Lower every alarm the seat is standing on, a hand-raised one included: the seat that would have called

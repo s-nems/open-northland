@@ -38,7 +38,7 @@ function ensureEquipment(world: World, settler: Entity) {
 
 /** Advance the settler's live equip errand to `stage` (a raced/cancelled order is simply absent). */
 function advanceOrder(world: World, settler: Entity, stage: 'stow' | 'return'): void {
-  const order = world.tryGet(settler, EquipOrder);
+  const order = world.tryMut(settler, EquipOrder);
   if (order !== undefined) order.stage = stage;
 }
 
@@ -65,9 +65,7 @@ export function equipFromStore(
   setStockAmount(world, from, goodType, have - 1);
   reapEmptyLoosePile(world, from);
   const previous = equipSlotValue(ensureEquipment(world, settler), group, slot);
-  world.write(settler, Equipment, (eq) =>
-    writeEquipSlot(eq, group, slot, { goodType, degreeOfUse: fx.fromInt(0) }),
-  );
+  writeEquipSlot(world.mut(settler, Equipment), group, slot, { goodType, degreeOfUse: fx.fromInt(0) });
   if (group === 'weapon') takeUpWeaponGood(world, ctx, settler, goodType);
   const stows = previous !== null && !isUsed(previous);
   if (stows) addCarry(world, settler, previous.goodType, 1);
@@ -90,7 +88,7 @@ export function unequipWornGood(
   const eq = world.tryGet(settler, Equipment);
   const previous = eq === undefined ? null : equipSlotValue(eq, group, slot);
   if (eq === undefined || previous === null) return;
-  world.write(settler, Equipment, (v) => writeEquipSlot(v, group, slot, null));
+  writeEquipSlot(world.mut(settler, Equipment), group, slot, null);
   if (group === 'weapon') layDownWeaponGood(world, ctx, settler); // an armed class never stays weaponless
   if (isUsed(previous)) {
     advanceOrder(world, settler, 'return');

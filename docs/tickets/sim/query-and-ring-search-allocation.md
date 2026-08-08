@@ -7,7 +7,7 @@ sampling (both `includeObjectsCollectedBy*GC` flags on, without them the rate re
 the magiczny_las 6-AI session at speed 3, tick ~28k, rev 38de1846, measures ~9.6 GB allocated over
 30 s, ~320 MB/s. Top attributed sources: iterator result objects under `World.query` (`next` is 20.8%
 of sampled bytes), scratch in `nodes.nearest` and `forEachIndexNode` (21.4% combined), and snapshot
-cloning (owned by [the snapshot ticket](snapshot-per-frame-clone-cost.md)). GC self time is only
+cloning (since bounded by the touched-log clone cache: clones follow the touched set). GC self time is only
 ~2.2% of CPU, but worst frames reach 34-58 ms against a 28 ms mean, and the collection cadence rides
 this churn.
 

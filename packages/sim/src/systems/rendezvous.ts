@@ -1,5 +1,5 @@
 import { MoveGoal, PathRequest } from '../components/index.js';
-import type { Component, Entity, World } from '../ecs/world.js';
+import type { Component, DeepReadonly, Entity, World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
 import { startAtomic } from './settlers/atomics/start.js';
 import { canonicalById, clearNavState, isTravelling } from './spatial/nodes.js';
@@ -16,7 +16,7 @@ import { canonicalById, clearNavState, isTravelling } from './spatial/nodes.js';
 export function driveMirroredPairs<R extends { partner: Entity }>(
   world: World,
   component: Component<R>,
-  drives: (self: Entity, partner: Entity, record: R) => boolean,
+  drives: (self: Entity, partner: Entity, record: DeepReadonly<R>) => boolean,
   onOrphaned: (self: Entity) => void,
   drivePair: (a: Entity, b: Entity) => void,
 ): void {

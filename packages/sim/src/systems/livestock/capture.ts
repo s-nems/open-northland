@@ -77,8 +77,6 @@ function promoteWildLeader(world: World, claimed: Entity): void {
   const leader = successor;
   for (const f of world.query(HerdMember)) {
     if (world.get(f, HerdMember).leader !== claimed) continue;
-    world.write(f, HerdMember, (m) => {
-      m.leader = leader;
-    });
+    world.mut(f, HerdMember).leader = leader;
   }
 }

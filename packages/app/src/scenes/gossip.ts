@@ -52,7 +52,7 @@ function spawnActor(
   needs: { hunger?: Fixed; fatigue?: Fixed; enjoyment?: Fixed },
 ): Entity {
   const e = spawnSettlerDirect(sim, jobType, x, y);
-  const s = sim.world.get(e, Settler);
+  const s = sim.world.mut(e, Settler);
   s.hunger = needs.hunger ?? fx.fromInt(0);
   s.fatigue = needs.fatigue ?? fx.fromInt(0);
   s.piety = fx.fromInt(0);

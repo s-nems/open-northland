@@ -1,4 +1,3 @@
-import { BerryBush, Resource, Stump } from '../components/economy/index.js';
 import type { SimEvent } from '../core/events.js';
 import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
 import type { Entity, World } from '../ecs/world.js';
@@ -6,7 +5,8 @@ import type { Entity, World } from '../ecs/world.js';
 /**
  * The detached view render and audio read instead of the live component stores, taken after a `step()`
  * completes. Every value is plain data with no class instances or live `Map`s, so a consumer can never
- * reach the live store and the whole structure is transferable to another thread. Not a save format.
+ * reach the live store and the whole structure survives the structured clone algorithm at a worker
+ * boundary. Not a save format.
  */
 export interface WorldSnapshot {
   readonly tick: number;
@@ -23,20 +23,21 @@ export interface EntitySnapshot {
 }
 
 /**
- * Per-world cache of cloned scenery snapshots, so standing forests cost O(changed) per snapshot instead of
- * O(map). An entry is reused until the World's touched-entity log names its entity, which requires every
- * mutation of a cached entity to go through `World.write` or an add/remove/destroy. A registered cache
- * verifier re-clones and compares, so a mutation that bypasses that seam fails invariant-checked runs.
+ * Per-world cache of cloned entity snapshots, so a snapshot costs O(touched since the last one) instead
+ * of O(alive). An entry is reused until the World's touched-entity log names its entity, which is what
+ * requires every observable mutation to go through `World.mut` or an add/remove/destroy. A registered
+ * cache verifier re-clones and compares, so a mutation that bypasses that seam fails invariant-checked
+ * runs.
  */
-const sceneryClones = new WeakMap<World, Map<Entity, EntitySnapshot>>();
+const cloneCaches = new WeakMap<World, Map<Entity, EntitySnapshot>>();
 
-function sceneryCloneCache(world: World): Map<Entity, EntitySnapshot> {
-  let cache = sceneryClones.get(world);
+function cloneCacheFor(world: World): Map<Entity, EntitySnapshot> {
+  let cache = cloneCaches.get(world);
   if (cache === undefined) {
     const created = new Map<Entity, EntitySnapshot>();
     cache = created;
-    sceneryClones.set(world, created);
-    world.registerCacheVerifier('snapshotSceneryClones', () => verifySceneryClones(world, created));
+    cloneCaches.set(world, created);
+    world.registerCacheVerifier('snapshotClones', () => verifyClones(world, created));
   }
   return cache;
 }
@@ -49,13 +50,14 @@ function cloneEntity(world: World, id: Entity): EntitySnapshot {
   return { id: id as number, components };
 }
 
-function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnapshot>): string[] {
+function verifyClones(world: World, cache: ReadonlyMap<Entity, EntitySnapshot>): string[] {
   const out: string[] = [];
   for (const [id, cached] of cache) {
     if (!world.isAlive(id)) continue; // evicted lazily on the next drain - absence is not incoherence
+    if (world.mutationPending(id)) continue; // logged for eviction - scheduled staleness, not a bypass
     const fresh = cloneEntity(world, id);
     if (JSON.stringify(fresh.components) !== JSON.stringify(cached.components)) {
-      out.push(`snapshot scenery clone of entity ${id} is stale - an in-place mutation bypassed World.write`);
+      out.push(`snapshot clone of entity ${id} is stale - an in-place mutation bypassed World.mut`);
     }
   }
   return out;
@@ -64,25 +66,21 @@ function verifySceneryClones(world: World, cache: ReadonlyMap<Entity, EntitySnap
 /**
  * Capture a detached snapshot of the world and the tick's events at a tick boundary. Entities are
  * emitted in canonical ascending-id order and `Map` values become sorted `[key, value]` arrays, the same
- * canonical ordering `hashState` uses. Unchanged scenery entities reuse their cached clone object.
+ * canonical ordering `hashState` uses. An entity untouched since the previous snapshot reuses its cached
+ * clone object.
  */
 export function takeSnapshot(world: World, tick: number, events: readonly SimEvent[]): WorldSnapshot {
-  const cache = sceneryCloneCache(world);
+  const cache = cloneCacheFor(world);
   // An overflowed log (a long snapshot-less run) lost its individual evictions - drop everything.
   if (world.drainTouched((e) => cache.delete(e))) cache.clear();
   const entities: EntitySnapshot[] = [];
   for (const id of world.canonicalEntities()) {
-    const cached = cache.get(id);
-    if (cached !== undefined) {
-      entities.push(cached);
-      continue;
-    }
-    const snap = cloneEntity(world, id);
-    entities.push(snap);
-    // Cacheable scenery: these change only at logged moments, unlike a settler whose Position moves every tick.
-    if (world.has(id, Resource) || world.has(id, Stump) || world.has(id, BerryBush)) {
+    let snap = cache.get(id);
+    if (snap === undefined) {
+      snap = cloneEntity(world, id);
       cache.set(id, snap);
     }
+    entities.push(snap);
   }
   // SimEvents carry no Map fields, so PlainOf<SimEvent> is structurally a SimEvent and this cast holds.
   // Adding one would lower it to a [k, v] array and break the cast.

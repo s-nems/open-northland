@@ -45,7 +45,7 @@ describe('equipment wear', () => {
   it('accrues wear on a direct slot and breaks the item at ONE', () => {
     const { sim, e } = simWithWearer();
     const ctx = ctxOf(sim);
-    const eq = sim.world.get(e, Equipment);
+    const eq = sim.world.mut(e, Equipment);
     eq.boots = { goodType: SHOES, degreeOfUse: fx.fromInt(0) };
     const step = wearStepOf(ctx, SHOES);
     applyEquipWear(sim.world, e, 'boots', 0, step);
@@ -58,7 +58,7 @@ describe('equipment wear', () => {
   it('replaces the misc array on wear and clears only the addressed slot at breakage', () => {
     const { sim, e } = simWithWearer();
     const ctx = ctxOf(sim);
-    const eq = sim.world.get(e, Equipment);
+    const eq = sim.world.mut(e, Equipment);
     eq.misc = [
       { goodType: MEAD, degreeOfUse: fx.div(ONE, fx.fromInt(2)) }, // one sip left
       { goodType: MEAD, degreeOfUse: fx.fromInt(0) },
@@ -75,7 +75,7 @@ describe('equipment wear', () => {
   it('no-ops on an empty slot, a ZERO step, and an already-spent unit', () => {
     const { sim, e } = simWithWearer();
     const ctx = ctxOf(sim);
-    const eq = sim.world.get(e, Equipment);
+    const eq = sim.world.mut(e, Equipment);
     applyEquipWear(sim.world, e, 'boots', 0, wearStepOf(ctx, SHOES)); // empty slot
     expect(eq.boots).toBeNull();
     eq.boots = { goodType: SWORD, degreeOfUse: fx.fromInt(0) };

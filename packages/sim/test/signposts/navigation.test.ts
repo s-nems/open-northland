@@ -136,7 +136,7 @@ describe('navigationLimitFor, the per-settler memo', () => {
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBe(first);
 
     // One tile east is a new half-cell node, so the local circle recentres.
-    sim.world.get(u, Position).x = fx.fromInt(3);
+    sim.world.mut(u, Position).x = fx.fromInt(3);
     const moved = navigationLimitFor(sim.world, sim.content, terrain, u);
     expect(moved).not.toBe(first);
     // The shifted rim: two nodes past the OLD east rim is out for the old gate, in for the new one.
@@ -145,7 +145,8 @@ describe('navigationLimitFor, the per-settler memo', () => {
     expect(moved?.allowsNode(pastOldRim)).toBe(true);
 
     // A trade change to a fighter lifts the confinement: jobType is part of the memo key.
-    addPerson(sim.world, u, { ...sim.world.get(u, Settler), jobType: SOLDIER });
+    const uState = sim.world.get(u, Settler);
+    addPerson(sim.world, u, { ...uState, experience: new Map(uState.experience), jobType: SOLDIER });
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBeNull();
   });
 

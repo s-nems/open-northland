@@ -1,7 +1,7 @@
 import type { AtomicEffect } from '../core/atomic-effect.js';
 import type { Command } from '../core/commands/index.js';
 import { type Fixed, fx } from '../core/fixed.js';
-import { defineComponent, type Entity, type World } from '../ecs/world.js';
+import { type DeepReadonly, defineComponent, type Entity, type World } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /** The `(tribe, job)` pair that keys a settler's content lookups. */
@@ -34,6 +34,9 @@ export const Settler = defineComponent<{
 }>('Settler');
 
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;
+
+/** The read-only {@link Settler} view `World.get` hands a planner or drive. */
+export type SettlerView = DeepReadonly<SettlerState>;
 
 /** Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. Never
  *  removed, so `query(Person, …)` is a human-only system's filter. */
@@ -71,9 +74,8 @@ type SettlerTradeWrite = { jobType: number | null };
  * membership generation, so it bumps the value generation the alive-jobs table is keyed on.
  */
 export function setSettlerJob(world: World, entity: Entity, jobType: number | null): void {
-  world.write(entity, Settler, (s) => {
-    (s as SettlerTradeWrite).jobType = jobType;
-  });
+  const s = world.mut(entity, Settler);
+  (s as SettlerTradeWrite).jobType = jobType;
 }
 
 /**

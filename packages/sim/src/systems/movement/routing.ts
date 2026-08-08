@@ -90,14 +90,14 @@ export function drainPathRequests(
             claimedStandIns.add(standIn);
             // Keep the intent in step with the delivered route, or the planner would re-route back
             // at the occupied original every tick.
-            const goalIntent = world.tryGet(e, MoveGoal);
+            const goalIntent = world.tryMut(e, MoveGoal);
             if (goalIntent !== undefined) goalIntent.cell = standIn;
           }
         }
       }
     }
     if (path === null) {
-      req.failed = true; // signal the planner; keep the request so it isn't silently re-issued
+      world.mut(e, PathRequest).failed = true; // signal the planner; keep the request so it isn't silently re-issued
       // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on
       // a cell centre rather than freezing mid-leg.
       continue;

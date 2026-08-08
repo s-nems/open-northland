@@ -32,14 +32,14 @@ describe('productionSystem - gating', () => {
       [WOOD, 5],
       [PLANK, 0],
     ]);
-    sim.world.get(mill, Building).built = fx.fromInt(0); // demote to under-construction
+    sim.world.mut(mill, Building).built = fx.fromInt(0); // demote to under-construction
     for (let t = 0; t < CYCLE_TICKS + 2; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false); // never started - site doesn't produce
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(5); // input untouched (not raided)
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK) ?? 0).toBe(0); // nothing produced
 
     // Once built, the very next tick the same workplace starts consuming/producing as usual.
-    sim.world.get(mill, Building).built = ONE;
+    sim.world.mut(mill, Building).built = ONE;
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // produced once built
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(3); // two cycles' worth consumed
@@ -69,7 +69,7 @@ describe('productionSystem - gating', () => {
     productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(mill, Production)).toBe(false);
     // Make room (e.g. a carrier hauled a plank away), then a cycle can start.
-    sim.world.get(mill, Stockpile).amounts.set(PLANK, 19);
+    sim.world.mut(mill, Stockpile).amounts.set(PLANK, 19);
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(20); // produced exactly to the cap
     expect(sim.world.get(mill, Stockpile).amounts.get(WOOD)).toBe(4); // one input consumed

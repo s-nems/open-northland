@@ -14,9 +14,9 @@ interface BuildingBlockedCache {
   /** Building MEMBERSHIP generation (add/remove/destroy) the cells were derived at. */
   membershipGeneration: number;
   /** Building VALUE generation: the in-place `buildingType` swap of a home tier upgrade changes the cell
-   *  set with no membership bump, so the {@link World.write} value bump must key this cache too. The only
-   *  other in-place Building write, `built` progress, never moves the cells (the walk-block applies from
-   *  the placement tick), so it stays a raw write outside the seam. */
+   *  set with no membership bump, so the {@link World.mut} value bump must key this cache too. `built`
+   *  progress also moves it without changing any cell, so an actively hammered site costs a rebuild per
+   *  advance; the derived cells stay correct either way. */
   valueGeneration: number;
   readonly content: ContentSet;
   readonly terrain: TerrainGraph;
@@ -64,7 +64,7 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
   const fresh = deriveBuildingBlockedCells(world, content, terrain);
   if (sameCells(cached.cells, fresh)) return [];
   return [
-    `buildingBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - a Building changed in place outside World.write`,
+    `buildingBlockedCells cache holds ${cached.cells.size} cells but re-derived ${fresh.size} - a Building changed in place outside World.mut`,
   ];
 }
 

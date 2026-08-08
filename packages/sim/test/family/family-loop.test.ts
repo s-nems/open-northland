@@ -355,7 +355,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(man(), Residence).home).toBe(home()); // the carve-out holds while raising
 
     // Age the child to the eve of adulthood; the next step runs the real graduation path.
-    sim.world.get(child, Age).ticks = ADULT_AGE_TICKS - 1;
+    sim.world.mut(child, Age).ticks = ADULT_AGE_TICKS - 1;
     sim.step();
     expect(sim.world.has(child, Age)).toBe(false); // grown - the carve-out expired
     // The widowed father is released: the stale union dissolves, he vacates, and the slot is free.
@@ -397,7 +397,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'debugKill', target: man() });
     runUntil(sim, () => !sim.world.isAlive(man()), 5, 'death');
 
-    sim.world.get(child, Age).ticks = ADULT_AGE_TICKS - 1;
+    sim.world.mut(child, Age).ticks = ADULT_AGE_TICKS - 1;
     sim.step();
     // Same expiry, opposite sex: the stale union dissolves (she may remarry) but homes anchor on
     // women, so the widow keeps her slot and refills it by remarrying.
@@ -414,7 +414,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.step();
     const stranger = [...sim.world.query(Settler)][0] as Entity;
     const home = homeOf(sim);
-    sim.world.get(home, Stockpile).amounts.set(FOOD, 2);
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, 2);
     // Starve the stranger: hungry beside a stocked home he does NOT live in - he never eats from it.
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: stranger, hunger: 100 });
     for (let i = 0; i < 60; i++) sim.step();
@@ -449,8 +449,8 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.world.add(man, Marriage, { spouse: woman, child: null });
     sim.enqueueSetup({ kind: 'assignHouse', entity: woman, house: home });
     sim.step();
-    sim.world.get(warehouse, Stockpile).amounts.set(FOOD, 50);
-    sim.world.get(home, Stockpile).amounts.set(FOOD, 3); // the child fund, already stocked and reserved
+    sim.world.mut(warehouse, Stockpile).amounts.set(FOOD, 50);
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, 3); // the child fund, already stocked and reserved
     // Send her into the wait already hungry: without feeding first she loops home↔store and starves.
     sim.enqueueSetup({ kind: 'debugSetNeeds', target: woman, hunger: 80 });
     sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
@@ -587,11 +587,11 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     sim.enqueueSetup({ kind: 'makeChild', entity: wifeB, child: 'male' });
     sim.step();
     // The larder holds one full child fund: the couples must conceive one AFTER the other.
-    sim.world.get(home, Stockpile).amounts.set(FOOD, 3);
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, 3);
     runUntil(sim, () => sim.world.get(wifeA, Marriage).child !== null, 4000, 'first birth');
     expect(sim.world.get(wifeB, Marriage).child).toBeNull(); // one fund, one session - B still waits
     // Restock: the second couple's turn.
-    sim.world.get(home, Stockpile).amounts.set(FOOD, 3);
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, 3);
     runUntil(sim, () => sim.world.get(wifeB, Marriage).child !== null, 4000, 'second birth');
     expect(sim.world.get(wifeA, Marriage).child).not.toBeNull();
     expect(sim.world.get(wifeB, Marriage).child).not.toBeNull();

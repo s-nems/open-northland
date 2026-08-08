@@ -10,7 +10,7 @@ import { spillOverRings, stackOntoTile } from './piles.js';
  * the held one. That can only be a planner bug, so it throws rather than break goods conservation.
  */
 export function addCarry(world: World, settler: Entity, goodType: number, amount: number): void {
-  const held = world.tryGet(settler, Carrying);
+  const held = world.tryMut(settler, Carrying);
   if (held !== undefined) {
     if (held.goodType !== goodType) {
       throw new Error(

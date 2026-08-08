@@ -48,7 +48,12 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
 
     // Re-`add` is the only way a settler's tribe can change, so the memo leans on it bumping the
     // membership generation even though the entity was already in the store.
-    addPerson(sim.world, cutter, { ...sim.world.get(cutter, Settler), tribe: OTHER_TRIBE });
+    const cutterState = sim.world.get(cutter, Settler);
+    addPerson(sim.world, cutter, {
+      ...cutterState,
+      experience: new Map(cutterState.experience),
+      tribe: OTHER_TRIBE,
+    });
     expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });

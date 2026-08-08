@@ -38,10 +38,9 @@ const { Building, Health, LivestockVisit, Owner, Position, Resting, Settler, Sta
 
 function build(sim: Simulation): void {
   const farm = placeBuiltSandboxBuilding(sim, BUILDING_ANIMAL_FARM, FARM.x, FARM.y, HUMAN_PLAYER);
-  sim.world.write(farm, Stockpile, (s) => {
-    s.amounts.set(goodBySlug(sim, 'water'), STARTER_WATER);
-    s.amounts.set(goodBySlug(sim, 'wheat'), STARTER_WHEAT);
-  });
+  const s = sim.world.mut(farm, Stockpile);
+  s.amounts.set(goodBySlug(sim, 'water'), STARTER_WATER);
+  s.amounts.set(goodBySlug(sim, 'wheat'), STARTER_WHEAT);
   spawnWorkersAtDoor(sim, farm, BREEDERS);
   spawnSandboxSettler(sim, JOB_HUNTER, HUNTER.x, HUNTER.y, HUMAN_PLAYER);
 

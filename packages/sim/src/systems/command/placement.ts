@@ -134,7 +134,7 @@ export function upgradeBuilding(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'upgradeBuilding' }>,
 ): void {
-  const building = world.tryGet(command.building, Building);
+  const building = world.tryMut(command.building, Building);
   if (building === undefined || building.built < ONE) return;
   if (world.has(command.building, UnderConstruction)) return;
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
@@ -142,7 +142,7 @@ export function upgradeBuilding(
   if (target === undefined) return; // top level, unchained, or malformed content
   if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // gate disabled feature-wide
 
-  const stock = world.tryGet(command.building, Stockpile);
+  const stock = world.tryMut(command.building, Stockpile);
   if (stock === undefined) return; // no build hold, so the site could never advance
   // Seed the hold with bill goods already in the inventory, stash the rest.
   const hold = new Map<number, number>();
@@ -159,9 +159,7 @@ export function upgradeBuilding(
     else stock.amounts.delete(line.goodType);
   }
   world.add(command.building, Upgrading, { savedStock: stock.amounts, seeded });
-  world.write(command.building, Stockpile, (s) => {
-    s.amounts = hold;
-  });
+  world.mut(command.building, Stockpile).amounts = hold;
   building.built = fx.fromInt(0);
   world.add(command.building, UnderConstruction, { labor: fx.fromInt(0) });
   // The panel hides the defence window for a site, so an alarm left standing could be neither seen nor
@@ -177,8 +175,8 @@ export function upgradeBuilding(
  * one's mind. Type, level, Health, and every binding never changed, so nothing else needs restoring.
  */
 export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'cancelUpgrade' }>): void {
-  const building = world.tryGet(command.building, Building);
-  const upgrading = world.tryGet(command.building, Upgrading);
+  const building = world.tryMut(command.building, Building);
+  const upgrading = world.tryMut(command.building, Upgrading);
   if (building === undefined || upgrading === undefined) return;
   const stock = world.tryGet(command.building, Stockpile);
   if (stock !== undefined) {
@@ -189,9 +187,7 @@ export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'c
       if (back > 0) upgrading.savedStock.set(goodType, (upgrading.savedStock.get(goodType) ?? 0) + back);
     }
     // The stash Map is exclusively the marker's; with the marker removed below, handing it back whole is safe.
-    world.write(command.building, Stockpile, (s) => {
-      s.amounts = upgrading.savedStock;
-    });
+    world.mut(command.building, Stockpile).amounts = upgrading.savedStock;
   }
   building.built = ONE;
   world.remove(command.building, UnderConstruction);

@@ -22,7 +22,7 @@ describe('productionSystem - forging a military good charges the smith piety', (
     const sim = new Simulation({ seed: 1, content: contentWithMilitaryPlank() });
     const { worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('sawmill worker missing');
-    sim.world.get(worker, Settler).piety = fx.fromInt(0);
+    sim.world.mut(worker, Settler).piety = fx.fromInt(0);
 
     // One full cycle to completion (CYCLE_TICKS-th advance deposits the output on tick CYCLE_TICKS+1).
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
@@ -33,7 +33,7 @@ describe('productionSystem - forging a military good charges the smith piety', (
     const sim = new Simulation({ seed: 1, content: testContent() });
     const { worker } = sawmill(sim, [[WOOD, 1]]);
     if (worker === null) throw new Error('sawmill worker missing');
-    sim.world.get(worker, Settler).piety = fx.fromInt(0);
+    sim.world.mut(worker, Settler).piety = fx.fromInt(0);
 
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(worker, Settler).piety).toBe(fx.fromInt(0));
@@ -43,7 +43,7 @@ describe('productionSystem - forging a military good charges the smith piety', (
     const sim = new Simulation({ seed: 1, content: contentWithMilitaryPlank() });
     const { worker } = sawmill(sim, [[WOOD, 40]]); // 40 cycles × 10% would overflow without the clamp
     if (worker === null) throw new Error('sawmill worker missing');
-    sim.world.get(worker, Settler).piety = fx.fromInt(0);
+    sim.world.mut(worker, Settler).piety = fx.fromInt(0);
 
     for (let t = 0; t < CYCLE_TICKS * 40 + 5; t++) productionSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(worker, Settler).piety).toBe(ONE);

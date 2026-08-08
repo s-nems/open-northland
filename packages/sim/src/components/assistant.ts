@@ -124,7 +124,7 @@ export function consumeAssistantCounter(
   const block = world.get(carrier, AssistantCounters);
   const counter = block.counters[kind];
   if (counter.infinite || counter.value <= 0) return;
-  counter.value -= 1;
+  world.mut(carrier, AssistantCounters).counters[kind].value -= 1;
   if (assistantCountersAtDefault(block.counters)) world.destroy(carrier);
 }
 

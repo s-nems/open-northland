@@ -176,7 +176,7 @@ describe('needsSystem - fatigue rises over time', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
     // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
-    sim.world.get(e, Settler).fatigue = fx.sub(ONE, fx.div(FATIGUE_RISE_PER_TICK, fx.fromInt(2)));
+    sim.world.mut(e, Settler).fatigue = fx.sub(ONE, fx.div(FATIGUE_RISE_PER_TICK, fx.fromInt(2)));
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Settler).fatigue).toBe(ONE);
@@ -208,7 +208,7 @@ describe('needsSystem - piety no longer rises over time', () => {
 
     // A non-zero starting piety is also held, not decayed toward the ceiling.
     const held = fx.div(ONE, fx.fromInt(3));
-    sim.world.get(e, Settler).piety = held;
+    sim.world.mut(e, Settler).piety = held;
     for (let i = 0; i < 50; i++) needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Settler).piety).toBe(held);
   });
@@ -256,7 +256,7 @@ describe('needsSystem - enjoyment (company) rises for civilians, frozen for figh
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = settlerWithHunger(sim, fx.fromInt(0));
     // Start one half-step below the ceiling: the next rise would overshoot ONE and must clamp.
-    sim.world.get(e, Settler).enjoyment = fx.sub(ONE, fx.div(ENJOYMENT_RISE_PER_TICK, fx.fromInt(2)));
+    sim.world.mut(e, Settler).enjoyment = fx.sub(ONE, fx.div(ENJOYMENT_RISE_PER_TICK, fx.fromInt(2)));
 
     needsSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Settler).enjoyment).toBe(ONE);

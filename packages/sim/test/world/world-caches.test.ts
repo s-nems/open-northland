@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity } from '../../src/ecs/world.js';
-import { World } from '../../src/ecs/world.js';
+import { defineComponent, World } from '../../src/ecs/world.js';
 
 /**
  * The World cache-coherence guard: incremental caches are the classic lockstep-desync source, so
@@ -36,6 +36,28 @@ describe('World cache coherence', () => {
     w.canonicalEntities();
     w.destroy(c);
     expect(w.verifyCaches()).toEqual([]);
+  });
+
+  it('forEachComponent walks registration order regardless of per-entity add order', () => {
+    const w = new World();
+    const A = defineComponent<{ n: number }>('A');
+    const B = defineComponent<{ n: number }>('B');
+    const first = w.create();
+    w.add(first, A, { n: 1 }); // registers A before B
+    w.add(first, B, { n: 2 });
+    const second = w.create();
+    w.add(second, B, { n: 3 }); // reversed add order on this entity
+    w.add(second, A, { n: 4 });
+    // Registration order is the canonical component order `hashState` and snapshots depend on, so an
+    // entity's own add order must not leak into the walk.
+    const names: string[] = [];
+    w.forEachComponent(second, (name) => names.push(name));
+    expect(names).toEqual(['A', 'B']);
+    expect(w.verifyCaches()).toEqual([]);
+    w.remove(second, B);
+    w.destroy(first);
+    expect(w.verifyCaches()).toEqual([]);
+    expect(w.componentEntries(second).map(([name]) => name)).toEqual(['A']);
   });
 
   it('verifyCaches reports a stale memo (a simulated missed invalidation)', () => {

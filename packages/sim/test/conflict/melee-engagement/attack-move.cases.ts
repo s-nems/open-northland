@@ -66,7 +66,7 @@ describe('attackMoveUnit - a march that fights everything on the way', () => {
     sim.run(2); // engaged: combat owns the unit and the march waits the fight out
     expect(sim.world.has(a, Engagement)).toBe(true);
 
-    sim.world.get(enemy, Health).hitpoints = 0; // the enemy falls (cleanupSystem reaps it)
+    sim.world.mut(enemy, Health).hitpoints = 0; // the enemy falls (cleanupSystem reaps it)
     sim.run(3);
 
     expect(sim.world.has(a, PlayerOrder)).toBe(true); // the order outlived the fight

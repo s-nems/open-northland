@@ -185,7 +185,7 @@ describe('a move order relocates a DEFEND post', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const a = fighterAt(sim, 2, 0, P0, MILITARY_MODE.DEFEND);
     const oldAnchor = sim.terrain?.nodeAtClamped(cellAnchorNode(2, 0).hx, cellAnchorNode(2, 0).hy);
-    const stance = sim.world.get(a, Stance);
+    const stance = sim.world.mut(a, Stance);
     stance.anchorCell = oldAnchor ?? null; // guarding its spawn spot
 
     const spot = cellAnchorNode(9, 0);

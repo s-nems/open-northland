@@ -213,8 +213,8 @@ const FOUNDATION_HP = 1;
  *  ConstructionSystem reads, so the build ramp actually visits it. */
 function siteAt(sim: Simulation, x: number, y: number, buildingType: number, owner: number): Entity {
   const e = buildingAt(sim, x, y, buildingType, owner);
-  sim.world.get(e, Health).hitpoints = FOUNDATION_HP;
-  sim.world.get(e, Building).built = fx.fromInt(0);
+  sim.world.mut(e, Health).hitpoints = FOUNDATION_HP;
+  sim.world.mut(e, Building).built = fx.fromInt(0);
   sim.world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
   sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
   return e;
@@ -575,9 +575,7 @@ describe('a held building body follows its footprint', () => {
     const building = buildingAt(sim, 3, 3, HOME, P2); // footprint-less: the door/anchor fallback
 
     const asHome = buildingBodyNodes(sim.world, ctx, terrain, building);
-    sim.world.write(building, Building, (b) => {
-      b.buildingType = FORT;
-    });
+    sim.world.mut(building, Building).buildingType = FORT;
     const asFort = buildingBodyNodes(sim.world, ctx, terrain, building);
 
     expect(asHome).toHaveLength(1);

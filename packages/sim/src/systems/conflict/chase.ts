@@ -90,9 +90,8 @@ export function chase(
       world.remove(e, AttackOrder);
       world.remove(e, Engagement);
       if (marching) {
-        world.write(e, PlayerOrder, (order) => {
-          if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
-        });
+        const order = world.mut(e, PlayerOrder);
+        if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
       }
       return;
     }

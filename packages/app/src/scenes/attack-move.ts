@@ -43,10 +43,9 @@ function build(sim: Simulation): void {
 
 /** IGNORE lets a unit defend itself but never auto-acquire. */
 function standDown(sim: Simulation, e: Entity): void {
-  sim.world.write(e, Stance, (stance) => {
-    stance.mode = systems.MILITARY_MODE.IGNORE;
-    stance.anchorCell = null;
-  });
+  const stance = sim.world.mut(e, Stance);
+  stance.mode = systems.MILITARY_MODE.IGNORE;
+  stance.anchorCell = null;
 }
 
 function blueArrived(sim: Simulation): number {

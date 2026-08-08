@@ -79,9 +79,7 @@ function run(sim: Simulation, n: number): void {
 
 /** Drop a settler to `hitpoints` - what a sword blow or a starvation bite leaves behind. */
 function wound(sim: Simulation, e: Entity, hitpoints: number): void {
-  sim.world.write(e, Health, (h) => {
-    h.hitpoints = hitpoints;
-  });
+  sim.world.mut(e, Health).hitpoints = hitpoints;
 }
 
 describe('GrowthSystem - non-working settlers mature into workers', () => {

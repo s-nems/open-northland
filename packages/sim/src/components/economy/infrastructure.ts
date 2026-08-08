@@ -17,7 +17,7 @@ export const Building = defineComponent<{
 export const Stockpile = defineComponent<{ amounts: Map<number, number> }>('Stockpile');
 
 /** Canonical ascending-goodType view of a stockpile - the only order a game decision may read. */
-export function stockpileEntries(s: { amounts: Map<number, number> }): Array<[number, number]> {
+export function stockpileEntries(s: { amounts: ReadonlyMap<number, number> }): Array<[number, number]> {
   return [...s.amounts.entries()].sort((a, b) => a[0] - b[0]);
 }
 
@@ -27,7 +27,10 @@ export type GoodsLine = { readonly goodType: number; readonly amount: number };
 
 /** Whether `amounts` holds every line of `cost` in full: a missing good counts as 0, and an absent
  *  stockpile holds nothing. The gate to check before consuming a cost. */
-export function holdsAll(amounts: Map<number, number> | undefined, cost: readonly GoodsLine[]): boolean {
+export function holdsAll(
+  amounts: ReadonlyMap<number, number> | undefined,
+  cost: readonly GoodsLine[],
+): boolean {
   for (const line of cost) {
     if ((amounts?.get(line.goodType) ?? 0) < line.amount) return false;
   }
@@ -40,7 +43,7 @@ export function holdsAll(amounts: Map<number, number> | undefined, cost: readonl
  * creation-time writes before `world.add` may stay raw, since the add itself logs those.
  */
 export function setStockAmount(world: World, store: Entity, goodType: number, amount: number): void {
-  world.write(store, Stockpile, (s) => s.amounts.set(goodType, amount));
+  world.mut(store, Stockpile).amounts.set(goodType, amount);
 }
 
 /** Subtract every line of `cost` from `store`'s stockpile in place. The caller must have verified

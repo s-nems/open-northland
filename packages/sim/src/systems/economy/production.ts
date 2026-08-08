@@ -50,7 +50,7 @@ export const productionSystem: System = (world, ctx) => {
     const staffing = presentOperators(world, ctx, e, operatorIndex());
     const operators = operatorCountOf(staffing);
     if (operators <= 0) continue;
-    const prod = world.get(e, Production);
+    const prod = world.mut(e, Production);
     const advanced = Math.min(operators, prod.cycles.length);
     for (const cycle of prod.cycles.slice(0, advanced)) cycle.elapsed += 1;
 

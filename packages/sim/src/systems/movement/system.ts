@@ -52,7 +52,7 @@ export const movementSystem: System = (world, ctx) => {
 
   for (const e of world.query(Position, PathFollow)) {
     pathHandled.add(e);
-    const pf = world.get(e, PathFollow);
+    const pf = world.mut(e, PathFollow);
     const target = pf.waypoints[pf.index];
     if (target === undefined) {
       world.remove(e, PathFollow);
@@ -68,7 +68,7 @@ export const movementSystem: System = (world, ctx) => {
     // walker's arithmetic byte-identical.
     const bootBonus = bootsSpeedBonus(world, ctx, e);
     const gait = bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored;
-    const p = world.get(e, Position);
+    const p = world.mut(e, Position);
 
     // The tick's target speed: the cruise gait, capped on the last leg so the approach eases out.
     let targetSpeed = gait;
@@ -113,7 +113,7 @@ export const movementSystem: System = (world, ctx) => {
 
   for (const e of world.query(Position, Velocity)) {
     if (pathHandled.has(e)) continue;
-    const p = world.get(e, Position);
+    const p = world.mut(e, Position);
     const v = world.get(e, Velocity);
     p.x = fx.add(p.x, v.x);
     p.y = fx.add(p.y, v.y);

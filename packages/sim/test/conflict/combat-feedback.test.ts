@@ -115,7 +115,7 @@ describe('combatSwing - the swing swoosh at the strike frame', () => {
       targetEntity: target,
       targetTile: null,
     });
-    sim.world.get(target, Position).x = fx.fromInt(10); // backs out of reach before the blow lands
+    sim.world.mut(target, Position).x = fx.fromInt(10); // backs out of reach before the blow lands
 
     sim.step();
 
@@ -145,7 +145,7 @@ describe('melee whiff - the target stepped out of reach', () => {
       targetTile: null,
     });
     // Where the target is when the blow lands: it may have backed away during the swing.
-    sim.world.get(target, Position).x = fx.fromInt(targetTileAtHit);
+    sim.world.mut(target, Position).x = fx.fromInt(targetTileAtHit);
     sim.step();
     return { sim, target };
   }
