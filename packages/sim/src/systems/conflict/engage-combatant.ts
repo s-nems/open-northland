@@ -37,9 +37,9 @@ import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
 import { HUNT_SEARCH_REST_TICKS, holdPrey } from './hunting/index.js';
-import type { MeleeSlots } from './melee-slots.js';
+import type { CombatPass } from './pass.js';
 import type { HostilePresence } from './presence.js';
-import { type BuildingBodyNodeCache, buildingBodyNodes, combatTargetNode } from './target-node.js';
+import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
@@ -59,13 +59,10 @@ export function engageCombatant(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: NodeBuckets,
-  presence: HostilePresence,
-  slots: MeleeSlots,
-  bodyNodes: BuildingBodyNodeCache,
-  seats: ReadonlyMap<Entity, number>,
+  pass: CombatPass,
   e: Entity,
 ): void {
+  const { bodyNodes, index, presence, seats, slots } = pass;
   const attacker = world.get(e, Settler);
   const posted = attacker.jobType === null ? null : towerPostFor(world, ctx, e, attacker.jobType);
   const manning = posted !== null && standsAtPost(world, e) === posted;
@@ -138,7 +135,7 @@ export function engageCombatant(
   // the band it shoots into is the band its arrow leaves from.
   const here = entityNode(world, terrain, stance.shelter?.building ?? e);
   const spec = engageSpec(world, ctx, terrain, index, e, stance, attacker, weapon);
-  const found = resolveTarget(world, ctx, terrain, index, presence, e, here, attacker, spec, bodyNodes);
+  const found = resolveTarget(world, ctx, terrain, pass, e, here, attacker, spec);
   if (found === null) {
     // Not under a DEFEND post: there the band is small, and a rest would also skip the walk-back retry
     // below for its duration.

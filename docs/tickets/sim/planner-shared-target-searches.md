@@ -25,8 +25,8 @@ profile now names the planner-owned terms directly.
   store's mutation version - do not cache a single winner across mutations.
 - Decisions stay identical: goldens byte-identical. If sharing would change a winner somewhere, name
   the site and stop rather than silently reordering.
-- Related but a different term: [garrison ring search](garrison-ring-search-cost.md) covers the
-  combat-side duplicated searches.
+- The combat-side duplicated searches are a different term and already shared per garrison
+  (`conflict/engagement.ts`); this ticket is the planner's own.
 
 ## Verify
 

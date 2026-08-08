@@ -24,8 +24,8 @@ profile at tick ~28k (21.8% share). In a 45 s V8 profile, `forEachIndexNode` inv
 - The same rebuild-per-tick pattern exists in `separationSystem`'s `collectColliders` (7.7x growth to
   ~5% share in the same bench) and the livestock summon pass; extend the mechanism to them if it
   generalizes, otherwise leave them untouched and keep this ticket bounded to combat.
-- Related but a different term: [garrison ring search](garrison-ring-search-cost.md) covers duplicated
-  per-seat searches inside the pass this ticket feeds.
+- The duplicated per-seat searches inside the pass this ticket feeds are a different term and already
+  shared per garrison; this one is the index build itself.
 
 ## Verify
 

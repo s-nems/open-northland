@@ -7,6 +7,7 @@ import { canonicalById, entityNode, NodeBuckets } from '../spatial/nodes.js';
 import { attackableBuildings, combatPossible } from './dormancy.js';
 import { engageCombatant } from './engage-combatant.js';
 import { MeleeSlots } from './melee-slots.js';
+import type { CombatPass } from './pass.js';
 import { HostilePresence } from './presence.js';
 import { type BuildingBodyNodeCache, buildingBodyNodes } from './target-node.js';
 
@@ -68,9 +69,13 @@ export const combatSystem: System = (world, ctx) => {
   // whole wall ring for nodes it has already been handed.
   const index = new NodeBuckets(world, targets, undefined, nodesOf, presence.addNode);
 
-  const slots = new MeleeSlots(world, ctx, terrain);
-  const seats = garrisonSeats(world);
-  for (const e of combatants) {
-    engageCombatant(world, ctx, terrain, index, presence, slots, bodyNodes, seats, e);
-  }
+  const pass: CombatPass = {
+    index,
+    presence,
+    slots: new MeleeSlots(world, ctx, terrain),
+    bodyNodes,
+    seats: garrisonSeats(world),
+    bands: new Map(),
+  };
+  for (const e of combatants) engageCombatant(world, ctx, terrain, pass, e);
 };
