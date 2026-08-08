@@ -75,9 +75,8 @@ function stampEquipOrder(
 }
 
 /**
- * Order one owned adult settler to put `goodType` on in slot (`group`, `slot`). The slot address must
- * exist and the good's content `equip.category` must match `group`, since a good with no `equip` class is
- * not wearable. Whether any source actually holds the good is the errand's problem, not the command's.
+ * Order one owned adult settler to put `goodType` on in slot (`group`, `slot`) - see the command doc. The
+ * slot address must exist, and a good with no `equip` class is not wearable.
  */
 export function equipGood(
   world: World,

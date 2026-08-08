@@ -26,24 +26,22 @@ import { workplaceStocksGood, workplaceStoredGoods } from '../../stores/index.js
 import { isOrderableSettler } from '../guards.js';
 
 /**
- * How far {@link setWorkFlag} snaps a click that landed on a blocked node, in half-cell nodes. Sized to
- * clear the body under the cursor while keeping the flag where the player pointed; past this the click
- * counts as "not workable ground" rather than silently relocating the gatherer's yard. Approximation: the
- * original's click tolerance is not decoded, and 3 tiles sits well inside the default work-flag radius.
+ * How far {@link setWorkFlag} snaps a click that landed on a blocked node, in half-cell nodes. Past this
+ * the click counts as "not workable ground" rather than silently relocating the gatherer's yard.
+ * Approximation: the original's click tolerance is not decoded, and 3 tiles sits well inside the default
+ * work-flag radius.
  */
 const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
 /**
- * Place or move one owned gatherer's work flag to node (x,y), the player's "work here" order. An existing
- * flag is relocated and only the marker moves, because a flag stores nothing and the goods already dropped
- * stay pinned to their tiles. Otherwise a fresh flag is minted there and bound with the trade's radius, and
- * from then on the gatherer harvests only within it.
+ * Place or move one owned gatherer's work flag to node (x,y) - see the command doc. An existing flag is
+ * relocated and only the marker moves, because a flag stores nothing and the goods already dropped stay
+ * pinned to their tiles; otherwise a fresh flag is minted there and bound with the trade's radius.
  *
  * The clicked node snaps to the nearest legal one within {@link WORK_FLAG_SNAP_MAX_RADIUS}, so "work this
  * iron mine" lands on the ore itself. The snap carries the settler's signpost confinement, so the flag can
  * only land on ground that settler may work. Only a gatherer carries a work flag, so the order on any other
- * trade is a no-op rather than a stray flag. It carries no issuing player yet; the per-player authority
- * check lands with lockstep.
+ * trade is a no-op rather than a stray flag.
  */
 export function setWorkFlag(
   world: World,
@@ -81,9 +79,8 @@ export function setWorkFlag(
 
 /** Set a gatherer's resource filter. Flag-bound: {@link WorkFlag.goodType} (`null` = every map good
  * its job may harvest). Flag-less but employed at a stocking building: {@link GatherSelection}, valid
- * only for a good the workplace stores (`null` = every stored good). Invalid goods, non-gatherers and
- * unemployed flag-less settlers are ignored; changing the filter abandons a stale harvest route
- * immediately. */
+ * only for a good the workplace stores (`null` = every stored good). Changing the filter abandons a stale
+ * harvest route immediately. */
 export function setGatherGood(
   world: World,
   ctx: SystemContext,
@@ -123,11 +120,9 @@ export function setGatherGood(
 }
 
 /**
- * Set a craft worker's product selection: which of its bound workplace's products it crafts, alternating
- * when several are chosen. The selection is stored ascending and deduped, so the rotation order is by
- * goodType rather than click order. Goods the workplace's recipes don't make are dropped, and an empty
- * selection restores the all-products default. A batch already grinding keeps its product, so the choice
- * applies from the next cycle start.
+ * Set a craft worker's product selection - see the command doc. The selection is stored ascending and
+ * deduped, so the rotation order is by goodType rather than click order. A batch already grinding keeps its
+ * product, so the choice applies from the next cycle start.
  */
 export function setCraftGoods(
   world: World,

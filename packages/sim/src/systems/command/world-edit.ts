@@ -27,8 +27,7 @@ export function placeResource(
 }
 
 /** Drop a loose good pile, stacking onto an existing pile of the same good on the tile (capped at
- *  `MAX_GROUND_STACK`) so repeated one-unit clicks pile up rather than littering entities. An
- *  `amount <= 0` or a good absent from the catalog is bad input - an id-neutral skip. */
+ *  `MAX_GROUND_STACK`) so repeated one-unit clicks pile up rather than littering entities. */
 export function dropGood(
   world: World,
   ctx: SystemContext,

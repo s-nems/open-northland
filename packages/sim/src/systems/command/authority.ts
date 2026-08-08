@@ -10,8 +10,7 @@ import type { Entity, World } from '../../ecs/world.js';
 
 /**
  * Whether the envelope's origin is entitled to the command it carries. A rejected command still lands
- * in the replay log, so the same log replays to the same state; the reason channel belongs to the
- * dependent admission-outcomes work, not here.
+ * in the replay log, so the same log replays to the same state.
  */
 export function isAuthorized(world: World, envelope: CommandEnvelope): boolean {
   if (!ownerFieldsValid(envelope.command)) return false;
@@ -47,10 +46,9 @@ function hasAuthoredOptions(command: PlaceBuildingCommand): boolean {
 }
 
 /**
- * The world asset a seat command acts on besides its own unit: a workplace, a build site, a home, a
- * garrison, or a signpost. A neutral one is fair game to any seat, matching the economy's `sameSide`
- * pairing, which on a map with unowned scenery also lets any seat raze it. `attackUnit.target` is
- * deliberately not one of these - an attack names someone else's unit.
+ * The world asset a seat command acts on besides its own unit. A neutral one is fair game to any seat,
+ * matching the economy's `sameSide` pairing, which on a map with unowned scenery also lets any seat raze
+ * it. `attackUnit.target` is deliberately not one of these - an attack names someone else's unit.
  */
 function assetTargetOf(command: PlayerCommand): Entity | undefined {
   if ('building' in command) return command.building;

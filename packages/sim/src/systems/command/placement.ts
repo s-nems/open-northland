@@ -51,18 +51,12 @@ export function placeBuilding(
   command: Extract<Command, { kind: 'placeBuilding' }>,
 ): void {
   const type = contentIndex(ctx.content).commandBuildings.get(command.buildingType);
-  if (type === undefined) return; // unknown building type - skip (recoverable bad input)
+  if (type === undefined) return;
 
-  // `force` (map-authored imports and pinned fixtures) skips both gates below: the original loads a decoded
-  // map's houses verbatim, never re-validating authored state against the interactive placement rule (source
-  // basis: observed original behavior). A gated-out placement is recoverable bad input, still logged for replay.
   if (command.force !== true) {
-    // Tech-unlock gate: `jobEnablesHouse` may lock a house until a settler of an enabling job exists in the
-    // tribe. Currently a no-op because {@link buildingEnabled} is disabled feature-wide.
     if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
 
-    // Ground-collision gate, the original's free placement rule. A mapless sim or a footprint-less type
-    // (synthetic content) validates trivially.
+    // Ground-collision gate, the original's free placement rule; a mapless sim validates trivially.
     if (
       ctx.terrain !== undefined &&
       !canPlaceBuilding(world, ctx, ctx.terrain, command.buildingType, command.x, command.y)
@@ -74,14 +68,12 @@ export function placeBuilding(
   const e = world.create();
   // The anchor is a half-cell node; its Position is the node's fractional tile coords.
   world.add(e, Position, positionOfNode(command.x, command.y));
-  // A site starts at built=0 with an empty hold and accumulates delivered materials until the
-  // ConstructionSystem advances it to ONE; a finished placement is seeded from the type's stock `initial`s.
   const built = command.underConstruction ? fx.fromInt(0) : ONE;
   world.add(e, Building, { buildingType: command.buildingType, tribe: command.tribe, built, level: 0 });
   const amounts = new Map<number, number>();
   if (command.underConstruction) {
     // The ConstructionSystem ramps Health up as the site rises; it starts at 1 so a foundation is never a
-    // 0-HP corpse the CleanupSystem reaps. A type with no extracted `hitpoints` builds without a life pool.
+    // 0-HP corpse the CleanupSystem reaps.
     world.add(e, UnderConstruction, { labor: fx.fromInt(0) });
     if (type.hitpoints !== undefined) world.add(e, Health, { hitpoints: 1, max: type.hitpoints });
   } else if (command.fillStock) {
@@ -92,9 +84,9 @@ export function placeBuilding(
     }
   }
   if (!command.underConstruction) {
-    // Authored starting stock (a decoded map's `addgoods`) adds on top of the seeding above, unclamped
-    // (Walhalla authors 1000 iron into a 45-capacity barn) and not limited to the type's declared slots.
-    // Approximation: additive-vs-replace is unobserved in the original, and the verb is "add goods".
+    // Authored starting stock is unclamped and not limited to the type's declared slots (Walhalla authors
+    // 1000 iron into a 45-capacity barn). Approximation: additive-vs-replace is unobserved in the
+    // original, and the verb is "add goods".
     for (const g of command.initialGoods ?? []) {
       if (g.amount > 0) amounts.set(g.good, (amounts.get(g.good) ?? 0) + g.amount);
     }
@@ -120,9 +112,9 @@ export function placeBuilding(
 }
 
 /**
- * Begin upgrading a built building into its type's `upgradeTarget` level. The building re-opens as a
- * construction site: its inventory is stashed on the {@link Upgrading} marker and the emptied
- * {@link Stockpile} becomes the site's build hold, seeded with the bill goods the building already holds.
+ * Begin upgrading a built building into its type's `upgradeTarget` level - see the command doc. The
+ * inventory is stashed on the {@link Upgrading} marker and the emptied {@link Stockpile} becomes the
+ * site's build hold, seeded with the bill goods the building already holds.
  *
  * {@link JobAssignment}s and residences deliberately survive: the occupants leave the building but keep
  * their bindings and return when the upgrade completes (source basis: observed original behavior). An
@@ -140,11 +132,10 @@ export function upgradeBuilding(
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
   const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
   if (target === undefined) return; // top level, unchained, or malformed content
-  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return; // gate disabled feature-wide
+  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return;
 
   const stock = world.tryMut(command.building, Stockpile);
   if (stock === undefined) return; // no build hold, so the site could never advance
-  // Seed the hold with bill goods already in the inventory, stash the rest.
   const hold = new Map<number, number>();
   const seeded = new Map<number, number>();
   for (const line of target.construction) {
@@ -169,10 +160,9 @@ export function upgradeBuilding(
 }
 
 /**
- * Abort an in-flight upgrade, {@link upgradeBuilding}'s inverse short of the materials: the stashed
- * inventory returns to the {@link Stockpile} together with the building's own bill goods that seeded the
- * hold, and whatever else the hold had accumulated is lost. Authored: the loss is the price of changing
- * one's mind. Type, level, Health, and every binding never changed, so nothing else needs restoring.
+ * Abort an in-flight upgrade - see the command doc. The building's own bill goods that seeded the hold
+ * return to the {@link Stockpile} with the stash, and whatever else the hold had accumulated is lost.
+ * Type, level, Health, and every binding never changed, so nothing else needs restoring.
  */
 export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'cancelUpgrade' }>): void {
   const building = world.tryMut(command.building, Building);
@@ -180,8 +170,7 @@ export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'c
   if (building === undefined || upgrading === undefined) return;
   const stock = world.tryGet(command.building, Stockpile);
   if (stock !== undefined) {
-    // Return the seeded own-inventory goods still in the hold to the stash before it comes back; the min
-    // defends the invariant that nothing withdraws from a site mid-upgrade.
+    // The min defends the invariant that nothing withdraws from a site mid-upgrade.
     for (const [goodType, amount] of stockpileEntries({ amounts: upgrading.seeded })) {
       const back = Math.min(stock.amounts.get(goodType) ?? 0, amount);
       if (back > 0) upgrading.savedStock.set(goodType, (upgrading.savedStock.get(goodType) ?? 0) + back);
@@ -195,14 +184,9 @@ export function cancelUpgrade(world: World, command: Extract<Command, { kind: 'c
 }
 
 /**
- * Place a boat hull - the boat analogue of {@link placeBuilding}: a {@link Vehicle} at (x,y) carrying an
- * empty {@link Stockpile}, since a ship is a movable stockpile whose capacity is the ship type's
- * `stockSlots`. A cart, a catapult, an unknown id, or a ship behind an unmet tech edge is recoverable bad
- * input.
- *
- * Source basis: the extracted vehicle IR, where the ship/cart split is the `passengerslots` param and the
- * unlock is the `jobEnablesVehicle` edge. The hull is a static placed store here; movement, embark and
- * disembark, and the cargo-load filter are deferred.
+ * Place a boat hull - see the command doc. Source basis: the extracted vehicle IR, where the ship/cart
+ * split is the `passengerslots` param and the unlock is the `jobEnablesVehicle` edge. The hull is a
+ * static placed store here; movement, embark and disembark, and the cargo-load filter are deferred.
  */
 export function placeBoat(
   world: World,
@@ -216,7 +200,6 @@ export function placeBoat(
   world.add(e, Position, positionOfNode(command.x, command.y));
   world.add(e, Vehicle, { vehicleType: command.vehicleType, tribe: command.tribe });
   stampOwner(world, e, command.owner);
-  // A hull arrives empty; it is filled by hauling cargo to it, never pre-seeded.
   world.add(e, Stockpile, { amounts: new Map<number, number>() });
   ctx.events.emit({ kind: 'boatPlaced', entity: e, at: { hx: command.x, hy: command.y } });
 }

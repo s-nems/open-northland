@@ -6,9 +6,6 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { type InboundSupplyTally, inboundSupplyOf } from './supply-tally.js';
 
-// Construction-material accounting: what a site's `construction` cost demands, how much is delivered,
-// and the next good a builder must fetch.
-
 /**
  * The next level in `type`'s upgrade chain, or undefined for a top-level or unchained type. Source basis:
  * extracted - the `[GfxHouse]` record's `LogicType` table gives the typeId at the next `sizeIdx`; the
@@ -37,8 +34,6 @@ export function constructionBillOf(world: World, ctx: SystemContext, site: Entit
 
 const EMPTY_CONSTRUCTION: readonly GoodsLine[] = [];
 
-/** Total material units a site's construction cost sums to, the denominator the delivered fraction and the
- *  per-swing labor quantum divide against. */
 export function constructionTotalUnits(world: World, ctx: SystemContext, site: Entity): number {
   let units = 0;
   for (const line of constructionBillOf(world, ctx, site)) units += line.amount;
