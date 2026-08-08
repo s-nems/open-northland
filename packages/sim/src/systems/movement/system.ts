@@ -20,12 +20,8 @@ export const WALK_TICKS_PER_CELL = 18;
  */
 export const MOVE_SPEED_PER_TICK: Fixed = fx.divCeil(ONE, fx.fromInt(WALK_TICKS_PER_CELL));
 
-/*
- * Movement inertia is a named approximation: the original moves a unit at a constant ticks-per-step pace,
- * with no observed acceleration and no acceleration parameter in readable data.
- */
-
-/** Ticks from rest to full gait, and the recovery rate after a corner sheds speed. */
+/** Ticks from rest to full gait, and the recovery rate after a corner sheds speed. Authored: no
+ *  acceleration parameter is readable in the source data. */
 export const ACCEL_TICKS = 3;
 
 /** The final-approach brake horizon: a path's last leg caps target speed at `remaining / this`. */
@@ -40,10 +36,6 @@ export const ARRIVAL_SPEED_DIV = 2;
 /**
  * Advances entity positions one tick. A {@link PathFollow} takes precedence over any {@link Velocity}, and
  * dropping it at the last waypoint is what the planner reads as arrived.
- *
- * An E/W leg's step is bit-exact `speed`; every other heading paces by the staggered lattice's world metric,
- * so every heading covers the same on-screen distance per tick. Approximation: no run gait is modeled, since
- * no human run speed is readable and the animal `runspeed` is deliberately unconsumed.
  */
 export const movementSystem: System = (world, ctx) => {
   // A path can complete within this pass, so the velocity pass below cannot re-derive membership from

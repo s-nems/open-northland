@@ -3,10 +3,9 @@ import { ROW_STEP, worldDistance, worldX } from '../../nav/world-metric.js';
 
 /**
  * Advance `p` straight toward `target` by at most `speed`, snapping onto `target` and returning `true` once
- * within one step. Step length is measured in the staggered lattice's world metric, where a row step is half
- * a column sideways plus 19/34 down, so a walk covers the same on-screen distance per tick in every
- * direction; measuring in raw grid units instead reads a north-south walk about 25% slower than an
- * east-west one.
+ * within one step. Step length is measured in the staggered lattice's world metric, so a walk covers the
+ * same on-screen distance per tick in every direction; measuring in raw grid units instead reads a
+ * north-south walk about 25% slower than an east-west one.
  *
  * On an E/W leg both endpoints share a row, the stagger cancels, and the fused `mulDiv` advance is bit-exact
  * `speed`. Every other heading truncates once, and the ulp that shaves is absorbed by the arrival snap.

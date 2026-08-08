@@ -4,11 +4,11 @@ import { createSpatialMemo } from './memo.js';
 import { NodeBuckets, nodeKey } from './nodes.js';
 
 /**
- * The per-world region spatial index shared by the resource and berry-bush indexes, so a radius-bounded
- * scan reads only the standing entities near a point. Maintained incrementally against the indexed
- * component's store generation, which holds because a standing entity never moves or loses its Position
- * without dying. `near` answers are provable supersets that the caller's own canonical filter and rank
- * loop re-checks, so no winner can differ from a full scan.
+ * The per-world region spatial index behind the standing-entity indexes, so a radius-bounded scan reads
+ * only the entities near a point. Maintained incrementally against the indexed component's store
+ * generation, which holds because a standing entity never moves or loses its Position without dying.
+ * `near` answers are provable supersets that the caller's own canonical filter and rank loop re-checks,
+ * so no winner can differ from a full scan.
  */
 
 /** Region edge in half-cell nodes. Approximation: sized so a flag or forage radius touches a handful of
