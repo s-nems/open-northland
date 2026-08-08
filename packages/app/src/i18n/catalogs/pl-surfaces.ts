@@ -124,10 +124,16 @@ export const plSurfaces = {
       displayFullscreen: 'Pełny ekran',
       displayWindow: 'Okno',
       renderScale: 'Skala renderowania',
+      renderScaleTip:
+        'Rozdzielczość, w której rysowany jest świat gry: niższa daje płynność na słabszym sprzęcie, wyższa ostrzejszy obraz.',
       fpsLimit: 'Limit klatek na sekundę',
+      fpsLimitTip:
+        'Ogranicza liczbę rysowanych klatek: mniejsze zużycie energii i cichszy wentylator. Działa w grze, nie w menu.',
       fpsLimitScreen: 'Ekran',
       postFx: 'Postprocessing',
+      postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
       uiScale: 'Skala interfejsu w grze',
+      uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
       soundEnabled: 'Dźwięk w grze',
       masterVolume: 'Głośność ogólna',
       musicVolume: 'Głośność muzyki',

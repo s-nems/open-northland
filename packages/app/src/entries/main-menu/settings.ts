@@ -81,17 +81,21 @@ function sliderControl(label: string, spec: SliderSpec): HTMLDivElement {
   return wrap;
 }
 
-function settingRow(
-  label: string,
-  control: HTMLElement,
-  soon?: { badge: string; tip: string },
-): HTMLDivElement {
+interface SettingRowOptions {
+  /** Hover tooltip for a live row; a `soon` row shows the coming-soon tip instead. */
+  readonly tip?: string;
+  readonly soon?: { badge: string; tip: string };
+}
+
+function settingRow(label: string, control: HTMLElement, options?: SettingRowOptions): HTMLDivElement {
   const row = document.createElement('div');
   row.className = 'main-menu__settings-row';
   const name = document.createElement('span');
   name.className = 'main-menu__settings-label';
   name.textContent = label;
   row.append(name, control);
+  if (options?.tip !== undefined) row.title = options.tip;
+  const soon = options?.soon;
   if (soon !== undefined) {
     row.classList.add('is-coming-soon');
     row.title = soon.tip;
@@ -192,6 +196,16 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
         }
       },
     );
+    // 100% is the viewport-derived base; the label also shows the effective in-game multiplier, which
+    // exposes the `MIN_UI_SCALE` floor - on very short windows the lowest factor steps collapse to it.
+    const uiScale = sliderControl(text.uiScale, {
+      min: UI_SCALE_FACTOR_MIN,
+      max: UI_SCALE_FACTOR_MAX,
+      step: UI_SCALE_FACTOR_STEP,
+      value: settings.uiScaleFactor,
+      onCommit: (value) => updateSettings({ uiScaleFactor: value }),
+      format: (value) => `${Math.round(value * 100)}% (×${uiScaleFor(window.innerHeight, value).toFixed(2)})`,
+    });
     const renderScale = sliderControl(text.renderScale, {
       min: RENDER_SCALE_MIN,
       max: RENDER_SCALE_MAX,
@@ -206,26 +220,20 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
         { id: 'screen', label: text.fpsLimitScreen },
       ],
       fpsChoiceOf(settings.fpsLimit),
-      (choice) => updateSettings({ fpsLimit: fpsLimitOf(choice) }),
+      (choice) => {
+        updateSettings({ fpsLimit: fpsLimitOf(choice) });
+        fpsSeg.setActive(choice);
+      },
     );
     const postFx = togglePill(settings.postFxEnabled, (on) => updateSettings({ postFxEnabled: on }));
     postFx.setAttribute('aria-label', text.postFx);
-    // 100% is the viewport-derived base; the label also shows the effective in-game multiplier, which
-    // exposes the `MIN_UI_SCALE` floor - on very short windows the lowest factor steps collapse to it.
-    const uiScale = sliderControl(text.uiScale, {
-      min: UI_SCALE_FACTOR_MIN,
-      max: UI_SCALE_FACTOR_MAX,
-      step: UI_SCALE_FACTOR_STEP,
-      value: settings.uiScaleFactor,
-      onCommit: (value) => updateSettings({ uiScaleFactor: value }),
-      format: (value) => `${Math.round(value * 100)}% (×${uiScaleFor(window.innerHeight, value).toFixed(2)})`,
-    });
+    // The interface scale sits right under the display mode as the most-adjusted control.
     return [
       settingRow(text.displayMode, displaySeg.root),
-      settingRow(text.renderScale, renderScale),
-      settingRow(text.fpsLimit, fpsSeg.root),
-      settingRow(text.postFx, postFx),
-      settingRow(text.uiScale, uiScale),
+      settingRow(text.uiScale, uiScale, { tip: text.uiScaleTip }),
+      settingRow(text.renderScale, renderScale, { tip: text.renderScaleTip }),
+      settingRow(text.fpsLimit, fpsSeg.root, { tip: text.fpsLimitTip }),
+      settingRow(text.postFx, postFx, { tip: text.postFxTip }),
     ];
   };
 
@@ -241,9 +249,9 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
       });
     return [
       settingRow(text.soundEnabled, sound),
-      settingRow(text.masterVolume, volume(text.masterVolume), soon),
-      settingRow(text.musicVolume, volume(text.musicVolume), soon),
-      settingRow(text.sfxVolume, volume(text.sfxVolume), soon),
+      settingRow(text.masterVolume, volume(text.masterVolume), { soon }),
+      settingRow(text.musicVolume, volume(text.musicVolume), { soon }),
+      settingRow(text.sfxVolume, volume(text.sfxVolume), { soon }),
     ];
   };
 
@@ -266,8 +274,8 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     const edgeScroll = togglePill(true, () => undefined);
     return [
       settingRow(text.language, language.root),
-      settingRow(text.scrollSpeed, scrollSpeed, soon),
-      settingRow(text.edgeScroll, edgeScroll, soon),
+      settingRow(text.scrollSpeed, scrollSpeed, { soon }),
+      settingRow(text.edgeScroll, edgeScroll, { soon }),
     ];
   };
 
