@@ -91,10 +91,17 @@ export function defaultBindings(opts?: {
     byEvent: {
       buildingPlaced: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
       boatPlaced: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
-      buildingFinished: { kind: 'jingle', musicType: JINGLE_HOUSE_BUILT },
-      settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH },
-      settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true },
-      // The bells ring for the player who raised the alarm, not for whoever else is on the map.
+      // Life-event stingers ring only for the local player's own events and only from the visible
+      // screen. The defence alarm stays map-wide: it acknowledges the player's own raise-alarm
+      // command, wherever the garrison building sits.
+      buildingFinished: {
+        kind: 'jingle',
+        musicType: JINGLE_HOUSE_BUILT,
+        localPlayerOnly: true,
+        screenGated: true,
+      },
+      settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH, localPlayerOnly: true, screenGated: true },
+      settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true, screenGated: true },
       defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
       combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },

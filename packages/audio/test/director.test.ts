@@ -14,9 +14,10 @@ import {
 } from '../src/index.js';
 
 /**
- * The pure director: sim events + snapshot + camera → the sounds that should be audible. Jingles fire
- * non-spatially; action SFX are viewport-culled + positioned; unbound events are ignored; on-screen
- * terrain drives ambient loops. All headless - no AudioContext.
+ * The pure director: sim events + snapshot + camera → the sounds that should be audible. Action SFX are
+ * viewport-culled + positioned; life-event jingles are screen-gated to their event's position (the
+ * defence alarm stays map-wide); unbound events are ignored; on-screen terrain drives ambient loops.
+ * All headless - no AudioContext.
  */
 const bank: SoundBank = {
   staticGroups: [
@@ -47,6 +48,7 @@ const bank: SoundBank = {
     { name: '', musicType: 26, sfx: [{ file: 'jingles/jingles_housebuilt.wav', params: [] }] },
     { name: '', musicType: 23, sfx: [{ file: 'jingles/jingles_birth.wav', params: [] }] },
     { name: '', musicType: 25, sfx: [{ file: 'jingles/jingles_death.wav', params: [] }] },
+    { name: '', musicType: 24, sfx: [{ file: 'jingles/jingles_civildefense.wav', params: [] }] },
   ],
 };
 const gfxPatterns = [{ id: 5, editGroups: ['meadow green'] }] as unknown as GfxPattern[];
@@ -69,14 +71,16 @@ const camera: Camera = {
   scale: 1,
 };
 
-/** A snapshot with a settler (id 3) and a building (id 7), both at tile (5,5). */
+/** A snapshot at tile (5,5): a settler (id 3) and a building (id 7), both owned by player 0, plus an
+ *  unowned wild animal (id 9). */
 function snapshotAt(events: readonly SimEvent[] = []): WorldSnapshot {
   const at = { x: 5 * ONE, y: 5 * ONE };
   return {
     tick: 1,
     entities: [
-      { id: 3, components: { Position: at, Settler: {} } },
-      { id: 7, components: { Position: at, Building: { buildingType: 2 } } },
+      { id: 3, components: { Position: at, Settler: {}, Owner: { player: 0 } } },
+      { id: 7, components: { Position: at, Building: { buildingType: 2 }, Owner: { player: 0 } } },
+      { id: 9, components: { Position: at, Settler: {} } },
     ],
     events,
   };
@@ -117,8 +121,8 @@ describe('directAudio one-shots', () => {
     expect(shot?.key).toBe('buildingPlaced:11,10');
   });
 
-  it('fires a non-spatial jingle for a building finishing', () => {
-    const frame = direct([{ kind: 'buildingFinished', entity: entity(7) }]);
+  it("rings the house-built jingle for the local player's own on-screen building", () => {
+    const frame = direct([{ kind: 'buildingFinished', entity: entity(7) }], { localPlayer: 0 });
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['jingles/jingles_housebuilt.wav']);
     expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
@@ -271,6 +275,96 @@ describe('directAudio death stinger owner filter', () => {
       localPlayer: LOCAL,
     });
     expect(unlocated.oneShots[0]?.key).toBe('settlerDied:3');
+  });
+});
+
+describe('directAudio screen-gated jingles', () => {
+  const LOCAL = 0;
+  const ENEMY = 1;
+
+  /** `buildingFinished` for the local player's building (id 7) placed at tile `(col, row)`. */
+  function directBuildingFinishedAt(col: number, row: number, localPlayer?: number) {
+    const events: readonly SimEvent[] = [{ kind: 'buildingFinished', entity: entity(7) }];
+    return directAudio({
+      events,
+      snapshot: {
+        tick: 1,
+        entities: [
+          {
+            id: 7,
+            components: {
+              Position: { x: col * ONE, y: row * ONE },
+              Building: { buildingType: 2 },
+              Owner: { player: LOCAL },
+            },
+          },
+        ],
+        events,
+      },
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings,
+      ...(localPlayer !== undefined ? { localPlayer } : {}),
+    });
+  }
+
+  it('silences the house-built jingle when the building is off screen', () => {
+    expect(directBuildingFinishedAt(100, 100, LOCAL).oneShots).toHaveLength(0);
+  });
+
+  it('keeps full stinger gain and centre for an on-screen but off-centre building', () => {
+    // Tile (8,5) projects right of centre, where a positioned SFX would attenuate and pan - the
+    // screen gate decides audibility only, so the jingle keeps its stinger character.
+    const frame = directBuildingFinishedAt(8, 5, LOCAL);
+    expect(frame.oneShots).toHaveLength(1);
+    expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
+    expect(frame.oneShots[0]?.pan).toBe(0);
+  });
+
+  it("silences the jingle for another player's building and when no local player is set", () => {
+    const enemyView = direct([{ kind: 'buildingFinished', entity: entity(7) }], { localPlayer: ENEMY });
+    expect(enemyView.oneShots).toHaveLength(0);
+    expect(direct([{ kind: 'buildingFinished', entity: entity(7) }]).oneShots).toHaveLength(0);
+  });
+
+  it('rings the birth jingle for an own on-screen newborn but not for an unowned animal', () => {
+    const born = direct([{ kind: 'settlerBorn', entity: entity(3) }], { localPlayer: LOCAL });
+    expect(born.oneShots).toHaveLength(1);
+    expect(born.oneShots[0]?.files).toEqual(['jingles/jingles_birth.wav']);
+    const wild = direct([{ kind: 'settlerBorn', entity: entity(9) }], { localPlayer: LOCAL });
+    expect(wild.oneShots).toHaveLength(0);
+  });
+
+  it('silences a death at an off-screen node and an unlocatable reaped death', () => {
+    const far = direct(
+      [{ kind: 'settlerDied', entity: entity(3), cause: 'damage', player: LOCAL, at: { hx: 200, hy: 200 } }],
+      { localPlayer: LOCAL },
+    );
+    expect(far.oneShots).toHaveLength(0);
+    // Entity 99 is absent from the snapshot (the sim reaps before snapshotting) and no `at` came along.
+    const gone = direct([{ kind: 'settlerDied', entity: entity(99), cause: 'damage', player: LOCAL }], {
+      localPlayer: LOCAL,
+    });
+    expect(gone.oneShots).toHaveLength(0);
+  });
+
+  it('keeps the defence alarm ringing map-wide, off screen included', () => {
+    const events: readonly SimEvent[] = [{ kind: 'defenceAlarmRaised', entity: entity(7), player: LOCAL }];
+    const frame = directAudio({
+      events,
+      snapshot: { tick: 1, entities: [], events },
+      camera: { offsetX: 100_000, offsetY: 0, scale: 1 },
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings,
+      localPlayer: LOCAL,
+    });
+    expect(frame.oneShots).toHaveLength(1);
+    expect(frame.oneShots[0]?.files).toEqual(['jingles/jingles_civildefense.wav']);
+    expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
   });
 });
 

@@ -2,15 +2,16 @@ import { eventNode, type HalfCellNode, type SimEvent, type WorldSnapshot } from 
 import { groupFiles } from '../bank.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
-import { entityTile, type TilePoint } from './snapshot.js';
+import { entityOwner, entityTile, type TilePoint } from './snapshot.js';
 
 /**
- * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the spatial
- * ones (an explicit `at` half-cell node or the emitter entity's snapshot position), viewport-cull and
- * spatialise them, and pass jingles through non-spatially.
+ * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the
+ * positioned ones (an explicit `at` half-cell node or the emitter entity's snapshot position),
+ * viewport-cull and spatialise them. A jingle passes through non-spatially unless `screenGated`
+ * anchors it to its event's position.
  */
 
-/** Base gain of a non-spatial life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
+/** Base gain of a life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
 export const JINGLE_GAIN = 0.9;
 /** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. */
 export const SFX_GAIN = 0.8;
@@ -53,9 +54,9 @@ function resolveBinding(ev: SimEvent, bindings: SoundBindings): EventSound | und
 }
 
 /**
- * Whether a {@link EventSound.localPlayerOnly} jingle should ring for `ev` - true only when the event's
- * owner `player` equals `localPlayer`. An event carrying no `player`, or no configured `localPlayer`, is
- * treated as not-ours (silent) - the safe default for a notification sound.
+ * Whether a {@link EventSound.localPlayerOnly} jingle should ring for `ev` by its `player` field - true
+ * only when that owner equals `localPlayer`. An event carrying no `player`, a `null` owner, or no
+ * configured `localPlayer` is treated as not-ours (silent) - the safe default for a notification sound.
  */
 function firesForLocalPlayer(ev: SimEvent, localPlayer: number | undefined): boolean {
   if (localPlayer === undefined) return false;
@@ -63,8 +64,7 @@ function firesForLocalPlayer(ev: SimEvent, localPlayer: number | undefined): boo
   return player === localPlayer;
 }
 
-/** A resolved spatial event waiting for its position: the bound files plus where the sound comes from. */
-interface PendingSpatial {
+interface PendingBase {
   readonly ev: SimEvent;
   readonly files: readonly string[];
   /** The explicit `at` half-cell node, or null when the position must come from `entity`'s
@@ -72,36 +72,57 @@ interface PendingSpatial {
    *  mappings - see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
   readonly node: HalfCellNode | null;
   readonly entity: number | undefined;
-  /** Pre-attenuation gain: {@link SFX_GAIN} for action SFX, {@link CHAT_VOICE_GAIN} for a voice line. */
-  readonly baseGain: number;
-  /** Whether the viewer's fog gates this sound (a voice from fogged ground stays silent - action SFX
-   *  keep their existing fog-agnostic behaviour). */
-  readonly fogGated: boolean;
 }
 
 /**
- * The positions of exactly the `needed` entities, in one snapshot pass that allocates only for them
- * (never an all-entities table - battle-scale frames carry a handful of emitters among thousands of
- * entities) and stops as soon as every needed id is found.
+ * A resolved positioned event waiting for its location. An `sfx` attenuates and pans; a `voice`
+ * additionally hides behind the viewer's fog; a `stinger` (screen-gated jingle) rings at full
+ * {@link JINGLE_GAIN}, centred - the viewport cull decides its audibility only.
  */
-function positionsFor(snapshot: WorldSnapshot, needed: ReadonlySet<number>): Map<number, TilePoint> {
-  const out = new Map<number, TilePoint>();
+type Pending =
+  | (PendingBase & { readonly kind: 'sfx' })
+  | (PendingBase & { readonly kind: 'voice' })
+  | (PendingBase & {
+      readonly kind: 'stinger';
+      /** The entity whose snapshot `Owner` must equal the local player, or null when the event's own
+       *  `player` field already decided ownership. */
+      readonly ownerEntity: number | null;
+    });
+
+interface EmitterFacts {
+  readonly tiles: ReadonlyMap<number, TilePoint>;
+  readonly owners: ReadonlyMap<number, number>;
+}
+
+/**
+ * The positions and owners of exactly the `needed` entities, in one snapshot pass that allocates only
+ * for them (never an all-entities table - battle-scale frames carry a handful of emitters among
+ * thousands of entities) and stops as soon as every needed id is found.
+ */
+function emitterFacts(snapshot: WorldSnapshot, needed: ReadonlySet<number>): EmitterFacts {
+  const tiles = new Map<number, TilePoint>();
+  const owners = new Map<number, number>();
+  let remaining = needed.size;
   for (const e of snapshot.entities) {
     if (!needed.has(e.id)) continue;
     const tile = entityTile(e.components);
-    if (tile !== null) out.set(e.id, tile);
-    if (out.size === needed.size) break;
+    if (tile !== null) tiles.set(e.id, tile);
+    const owner = entityOwner(e.components);
+    if (owner !== undefined) owners.set(e.id, owner);
+    remaining -= 1;
+    if (remaining === 0) break;
   }
-  return out;
+  return { tiles, owners };
 }
 
-/** The one-shots to fire for this frame's events (jingles non-spatial; action SFX viewport-culled). */
+/** The one-shots to fire for this frame's events (action SFX and screen-gated jingles viewport-culled;
+ *  map-wide jingles pass through non-spatially). */
 export function eventOneShots(input: DirectorInput): OneShot[] {
   const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer, visibleTile } = input;
   const shots: OneShot[] = [];
   if (events.length === 0) return shots; // the common frame - no events, no snapshot work at all
   // Pass 1: resolve bindings, emit jingles, and collect the entity ids the spatial events need.
-  const pending: PendingSpatial[] = [];
+  const pending: Pending[] = [];
   const neededIds = new Set<number>();
   for (const ev of events) {
     // A chat voice names its sound by the animation event's own `logicSoundType` id (data, not a
@@ -111,46 +132,64 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const id = eventEntity(ev);
       if (files !== undefined && files.length > 0 && id !== undefined) {
         neededIds.add(id);
-        pending.push({ ev, files, node: null, entity: id, baseGain: CHAT_VOICE_GAIN, fogGated: true });
+        pending.push({ kind: 'voice', ev, files, node: null, entity: id });
       }
       continue;
     }
     const sound = resolveBinding(ev, bindings);
     if (sound === undefined) continue;
     if (sound.kind === 'jingle') {
-      if (sound.localPlayerOnly && !firesForLocalPlayer(ev, localPlayer)) continue;
       const files = index.jinglesByMusicType.get(sound.musicType);
-      if (files && files.length > 0) {
+      if (files === undefined || files.length === 0) continue;
+      if (sound.localPlayerOnly && 'player' in ev && !firesForLocalPlayer(ev, localPlayer)) continue;
+      if (sound.screenGated !== true) {
+        if (sound.localPlayerOnly && !('player' in ev)) continue; // no owner path for a map-wide jingle
         shots.push({ files, gain: JINGLE_GAIN, pan: 0, key: eventKey(ev) });
+        continue;
       }
+      const node = eventNode(ev);
+      const id = eventEntity(ev);
+      let ownerEntity: number | null = null;
+      if (sound.localPlayerOnly && !('player' in ev)) {
+        if (id === undefined || localPlayer === undefined) continue; // owner unresolvable → silent
+        ownerEntity = id;
+      }
+      if (node === null && id === undefined) continue; // nowhere to anchor → silent under the gate
+      if (id !== undefined && (node === null || ownerEntity !== null)) neededIds.add(id);
+      pending.push({ kind: 'stinger', ev, files, node, entity: id, ownerEntity });
       continue;
     }
     const files = groupFiles(index, sound.group);
     if (files === undefined) continue;
     const node = eventNode(ev);
-    if (node !== null) {
-      pending.push({ ev, files, node, entity: undefined, baseGain: SFX_GAIN, fogGated: false });
-    } else {
-      const id = eventEntity(ev);
-      if (id === undefined) continue;
-      neededIds.add(id);
-      pending.push({ ev, files, node: null, entity: id, baseGain: SFX_GAIN, fogGated: false });
-    }
+    const id = node === null ? eventEntity(ev) : undefined;
+    if (node === null && id === undefined) continue;
+    if (id !== undefined) neededIds.add(id);
+    pending.push({ kind: 'sfx', ev, files, node, entity: id });
   }
-  // Pass 2: locate + spatialise the pending spatial events (off-screen or position-less → silent).
-  const positions = neededIds.size > 0 ? positionsFor(snapshot, neededIds) : null;
+  // Pass 2: locate + spatialise the pending positioned events (off-screen or position-less → silent).
+  const facts = neededIds.size > 0 ? emitterFacts(snapshot, neededIds) : null;
   for (const p of pending) {
+    if (p.kind === 'stinger' && p.ownerEntity !== null) {
+      const owner = facts?.owners.get(p.ownerEntity);
+      if (owner === undefined || owner !== localPlayer) continue;
+    }
     let spatial: Spatial | null = null;
     if (p.node !== null) {
       spatial = computeSpatialAtNode(p.node.hx, p.node.hy, camera, canvasW, canvasH);
     } else if (p.entity !== undefined) {
-      const tile = positions?.get(p.entity) ?? null;
+      const tile = facts?.tiles.get(p.entity) ?? null;
       if (tile === null) continue; // position-less emitter → silent
-      if (p.fogGated && visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
+      if (p.kind === 'voice' && visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
       spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
     }
     if (spatial === null) continue; // off screen → silent
-    shots.push({ files: p.files, gain: spatial.gain * p.baseGain, pan: spatial.pan, key: eventKey(p.ev) });
+    if (p.kind === 'stinger') {
+      shots.push({ files: p.files, gain: JINGLE_GAIN, pan: 0, key: eventKey(p.ev) });
+    } else {
+      const base = p.kind === 'voice' ? CHAT_VOICE_GAIN : SFX_GAIN;
+      shots.push({ files: p.files, gain: spatial.gain * base, pan: spatial.pan, key: eventKey(p.ev) });
+    }
   }
   return shots;
 }

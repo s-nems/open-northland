@@ -16,3 +16,10 @@ export function entityTile(components: Readonly<Record<string, unknown>>): TileP
   if (p === undefined || typeof p.x !== 'number' || typeof p.y !== 'number') return null;
   return { col: p.x / ONE, row: p.y / ONE };
 }
+
+/** The owning player from the entity's plain-snapshot `Owner` component, or undefined for a neutral
+ *  entity. */
+export function entityOwner(components: Readonly<Record<string, unknown>>): number | undefined {
+  const o = components.Owner as { player?: unknown } | undefined;
+  return typeof o?.player === 'number' ? o.player : undefined;
+}

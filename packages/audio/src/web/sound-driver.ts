@@ -15,7 +15,8 @@ export interface SoundFrameInput {
   readonly canvasH: number;
   /** The landscape grid, for the ambient layer; omit to skip ambient. */
   readonly terrain?: AudioTerrain;
-  /** The local player slot - gates the death stinger to this player's own units; omit → it never rings. */
+  /** The local player slot - gates the life-event jingles to this player's own entities; omit → they
+   *  never ring. */
   readonly localPlayer?: number;
   /** The viewer's fog-of-war visibility at a fractional tile - gates the settler chat voices (a
    *  settler hidden by the fog must not natter from empty black). Omit → no fog, every chat is audible. */

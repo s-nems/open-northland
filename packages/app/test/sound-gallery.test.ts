@@ -54,9 +54,10 @@ describe('buildSoundGalleryModel', () => {
     expect(chop?.clips).toEqual(['static/axe01.wav', 'static/axe02.wav', 'static/axe03.wav']);
   });
 
-  it('binds a finished building to the house-built jingle (non-spatial)', () => {
+  it('binds a finished building to the house-built jingle, marked screen-gated', () => {
     const finished = model.actions.find((a) => a.label === 'Ukończenie budowy');
     expect(finished?.kind).toBe('jingle');
+    expect(finished?.screenGated).toBe(true);
     expect(finished?.sound).toBe('House Built');
     expect(finished?.clips).toEqual(['jingles/jingles_housebuilt.wav']);
   });

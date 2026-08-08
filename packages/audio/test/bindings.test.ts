@@ -44,16 +44,17 @@ describe('defaultBindings', () => {
     expect(b.byEvent.goodProduced).toEqual({ kind: 'spatial', group: 'Carpenter Saw' });
   });
 
-  it('marks only the death jingle local-player-only (a birth rings for everyone)', () => {
+  it('marks every life-event jingle own-player-only and screen-gated', () => {
     const b = defaultBindings();
-    const death = b.byEvent.settlerDied;
-    expect(death?.kind).toBe('jingle');
-    expect(death?.kind === 'jingle' && death.localPlayerOnly).toBe(true);
-    const born = b.byEvent.settlerBorn;
-    expect(born?.kind === 'jingle' && born.localPlayerOnly).toBeFalsy();
+    for (const kind of ['buildingFinished', 'settlerBorn', 'settlerDied'] as const) {
+      const jingle = b.byEvent[kind];
+      expect(jingle?.kind).toBe('jingle');
+      expect(jingle?.kind === 'jingle' && jingle.localPlayerOnly).toBe(true);
+      expect(jingle?.kind === 'jingle' && jingle.screenGated).toBe(true);
+    }
   });
 
-  it('rings the civil-defence bells for the player who raised the alarm, and only for them', () => {
+  it('rings the civil-defence bells map-wide, only for the player who raised the alarm', () => {
     const alarm = defaultBindings().byEvent.defenceAlarmRaised;
     expect(alarm).toEqual({ kind: 'jingle', musicType: 24, localPlayerOnly: true });
   });
