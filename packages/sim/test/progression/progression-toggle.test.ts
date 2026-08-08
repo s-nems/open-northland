@@ -3,7 +3,7 @@ import {
   addPerson,
   Owner,
   Position,
-  progressionRulesEntity,
+  ProgressionRules,
   Settler,
   setProfessionProgression,
 } from '../../src/components/index.js';
@@ -21,7 +21,7 @@ describe('setProfessionProgression - the rules command and its default', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     sim.run(5);
     expect(sim.professionProgressionEnabled()).toBe(true);
-    expect(progressionRulesEntity(sim.world)).toBeNull(); // absent = default, not a stored `true`
+    expect(sim.world.lowestEntityWith(ProgressionRules)).toBeNull(); // absent = default, not a stored `true`
   });
 
   it('flips the probe through the command seam and back', () => {
@@ -32,7 +32,7 @@ describe('setProfessionProgression - the rules command and its default', () => {
     sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: true });
     sim.step();
     expect(sim.professionProgressionEnabled()).toBe(true);
-    expect(progressionRulesEntity(sim.world)).not.toBeNull(); // re-enabling keeps the singleton
+    expect(sim.world.lowestEntityWith(ProgressionRules)).not.toBeNull(); // re-enabling keeps the singleton
   });
 
   it('replays deterministically: same seed and commands produce the same state hash', () => {

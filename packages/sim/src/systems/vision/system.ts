@@ -4,10 +4,9 @@ import {
   FOG_MODE,
   fogMode,
   isValidPlayer,
+  metContactBits,
   Owner,
-  PlayerContacts,
   Position,
-  playerContactsEntity,
   recordContact,
   Settler,
   Signpost,
@@ -101,11 +100,9 @@ export const visionSystem: System = (world, ctx) => {
   // viewer now sees. Any owned entity counts, eye or not - it is drawn on the viewer's screen either
   // way. The met bits are hoisted out of the loop so a saturated world pays per-pair integer tests
   // only; the list is re-read because a stamp may have allocated a player's first mask.
-  const contactsEntity = playerContactsEntity(world);
-  const contacts = contactsEntity === null ? null : world.get(contactsEntity, PlayerContacts).met;
   const viewerBits = fog.playersWithMasks().map((viewer) => ({
     viewer,
-    bits: contacts?.get(viewer) ?? 0,
+    bits: metContactBits(world, viewer),
   }));
   for (const e of world.query(Owner, Position)) {
     const owner = world.get(e, Owner).player;

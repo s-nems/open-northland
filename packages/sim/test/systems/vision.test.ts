@@ -9,8 +9,8 @@ import {
   fogMode,
   Health,
   Owner,
+  PlayerContacts,
   Position,
-  playerContactsEntity,
   Settler,
   Stance,
 } from '../../src/components/index.js';
@@ -223,7 +223,7 @@ describe('first contact - the vision-driven discovery of other players', () => {
     sim.run(VISION_CADENCE_TICKS + 1);
     expect(sim.hasMetPlayer(P0, P1)).toBe(true);
     expect(sim.hasMetPlayer(P1, P0)).toBe(true);
-    expect(playerContactsEntity(sim.world)).toBeNull(); // pre-contact hashes stay put
+    expect(sim.world.lowestEntityWith(PlayerContacts)).toBeNull(); // pre-contact hashes stay put
   });
 
   it('records a DIRECTED contact: the scout meets the civilian, not the other way round', () => {
@@ -259,7 +259,7 @@ describe('first contact - the vision-driven discovery of other players', () => {
     unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
     unit(sim, SCOUT_AT.x + 1, SCOUT_AT.y, 99); // in plain sight, but not a valid player
     sim.run(1);
-    expect(playerContactsEntity(sim.world)).toBeNull();
+    expect(sim.world.lowestEntityWith(PlayerContacts)).toBeNull();
   });
 
   it('is deterministic: two same-seed runs with fog and contacts reach the same state hash', () => {
