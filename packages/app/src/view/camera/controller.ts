@@ -111,7 +111,9 @@ export function createCameraController(
   };
   const onKeyDown = (e: KeyboardEvent): void => {
     const action = panActionByCode.get(e.code);
-    if (action === undefined || isTypingTarget(e.target)) return;
+    // Modifier combos stay with the browser: a pan key rebound to a letter must not hijack shortcuts
+    // like Cmd+A, and macOS swallows the keyup of a key released while Meta is held.
+    if (action === undefined || e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
     held.add(action);
     e.preventDefault(); // arrow keys (the default bindings) would otherwise scroll the page
   };

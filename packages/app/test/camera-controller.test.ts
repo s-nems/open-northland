@@ -144,12 +144,12 @@ describe('createCameraController pan bindings', () => {
   });
 
   it('follows a rebound pan key and ignores the freed default arrow', () => {
-    const { ctl, press, release } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: 'KeyA' });
+    const { ctl, press, release } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: 'KeyJ' });
     press('ArrowLeft');
     expect(panStep(ctl)).toBe(0);
-    press('KeyA');
+    press('KeyJ');
     expect(panStep(ctl)).toBeGreaterThan(0);
-    release('KeyA');
+    release('KeyJ');
     ctl.dispose();
   });
 
