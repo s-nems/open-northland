@@ -23,7 +23,7 @@ describe('CommandSystem - spawning', () => {
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 1, y: 2, tribe: VIKING });
     sim.step();
     // The default (omitted hitpoints) path now stamps the shared default pool: EVERY settler carries
-    // Health (user decision 2026-07-11 - the panel shows it, combat can strike it, starvation drains it).
+    // Health (the panel shows it, combat can strike it, starvation drains it).
     const health = sim.world.get(nthEntity(sim, 0), Health);
     expect(health.hitpoints).toBe(DEFAULT_SETTLER_HITPOINTS);
     expect(health.max).toBe(DEFAULT_SETTLER_HITPOINTS);

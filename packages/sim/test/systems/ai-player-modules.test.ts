@@ -1208,5 +1208,12 @@ describe('the full strategic registry - determinism and replay', () => {
       untilTick: TICKS,
     });
     expect(replayed.hashState()).toBe(a.hashState());
+    // The seat's live re-emissions are discarded during reconstruction and so take no sequence: the
+    // replayed log is numbered exactly like the run it rebuilds, and a bug report's entry index means
+    // the same thing in both.
+    const order = (sim: Simulation): Array<readonly [number, number, string]> =>
+      sim.commands.log.map((e) => [e.applyTick, e.sequence, e.origin] as const);
+    expect(order(replayed)).toEqual(order(a));
+    expect(order(a).some(([, , origin]) => origin === 'ai')).toBe(true);
   });
 });

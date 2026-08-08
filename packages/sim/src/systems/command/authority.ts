@@ -1,6 +1,10 @@
 import { isValidPlayer, ownerOf, ownersCompatible } from '../../components/ownership.js';
-import type { QueuedCommand } from '../../core/command-queue.js';
-import type { Command, PlaceBuildingCommand, PlayerCommand } from '../../core/commands/index.js';
+import type {
+  Command,
+  CommandEnvelope,
+  PlaceBuildingCommand,
+  PlayerCommand,
+} from '../../core/commands/index.js';
 import { COMMAND_ISSUER } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 
@@ -9,10 +13,10 @@ import type { Entity, World } from '../../ecs/world.js';
  * in the replay log, so the same log replays to the same state; the reason channel belongs to the
  * dependent admission-outcomes work, not here.
  */
-export function isAuthorized(world: World, queued: QueuedCommand): boolean {
-  if (!ownerFieldsValid(queued.command)) return false;
-  if (queued.origin === 'setup' || queued.origin === 'admin') return true;
-  return seatMayIssue(world, queued.player, queued.command);
+export function isAuthorized(world: World, envelope: CommandEnvelope): boolean {
+  if (!ownerFieldsValid(envelope.command)) return false;
+  if (envelope.origin === 'setup' || envelope.origin === 'admin') return true;
+  return seatMayIssue(world, envelope.player, envelope.command);
 }
 
 /** An entity is created with the owner the payload names, so an out-of-range slot must not reach the
@@ -45,7 +49,8 @@ function hasAuthoredOptions(command: PlaceBuildingCommand): boolean {
 /**
  * The world asset a seat command acts on besides its own unit: a workplace, a build site, a home, a
  * garrison, or a signpost. A neutral one is fair game to any seat, matching the economy's `sameSide`
- * pairing. `attackUnit.target` is deliberately not one of these - an attack names someone else's unit.
+ * pairing, which on a map with unowned scenery also lets any seat raze it. `attackUnit.target` is
+ * deliberately not one of these - an attack names someone else's unit.
  */
 function assetTargetOf(command: PlayerCommand): Entity | undefined {
   if ('building' in command) return command.building;
