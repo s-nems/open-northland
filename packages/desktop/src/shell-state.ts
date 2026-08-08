@@ -22,8 +22,8 @@ export interface ShellPaths {
 
 export interface ShellState {
   /**
-   * The mod root the conversion uses, derived here and never taken from the renderer so no renderer
-   * string reaches the filesystem.
+   * The mod root the conversion uses when the game folder has none; derived here rather than taken
+   * from the renderer, so a tampered renderer cannot choose it.
    */
   availableModRoot(): Promise<string | undefined>;
   contentStatus(): Promise<ContentStatus>;
