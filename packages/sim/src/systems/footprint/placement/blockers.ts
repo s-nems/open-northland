@@ -25,9 +25,9 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY (its walls may not
  *    sit in a resource's build margin); still valid open ground for a work flag.
  *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
- *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing - see
- *    {@link import('./building.js') canPlaceAnchor}); still open ground for a work flag. Kept distinct
- *    from OBSTACLE (which also blocks a flag) and from EXCLUSION (which rejects a body, not a zone).
+ *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing `canPlaceAnchor` names as
+ *    an approximation); still open ground for a work flag. Kept distinct from OBSTACLE (which also blocks
+ *    a flag) and from EXCLUSION (which rejects a body, not a zone).
  *  - **RESOURCE_ANCHOR** - a footprinted resource's own cell, which its walk body need not cover. Blocks a
  *    work flag only; a footprint-less resource contributes OBSTACLE instead (the pre-footprint same-tile
  *    rule), which already covers its anchor for both rules.
@@ -51,12 +51,11 @@ export { type BlockerChannel, BUILDING_ZONE, EXCLUSION, MARKER, OBSTACLE, RESOUR
  *  ignores the channel must not pay for the delivery-flag store walk. */
 export type MarkerScan = 'with-markers' | 'without-markers';
 
-/** A blocker-cell consumer - see {@link eachBlockerCell} for the channel contract. */
 export type BlockerVisit = (x: number, y: number, channel: BlockerChannel) => void;
 
 /** One standing resource's (cell, channel) contributions - the per-entity slice of
- *  {@link eachBlockerCell}, shared with the incremental work-flag memo so the two cannot drift.
- *  A Position-less entity contributes nothing (the query-driven walk never sees it). */
+ *  {@link eachBlockerCell}, shared with the incremental work-flag memo so the two cannot drift. A
+ *  Position-less entity contributes nothing, which a replayed journal entry can reach. */
 export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
   const p = world.tryGet(e, Position);
   if (p === undefined) return;
@@ -127,26 +126,19 @@ export function eachBlockerCell(
 }
 
 /**
- * A per-world version of the placement-blocker INPUTS - the component stores {@link eachBlockerCell} reads
- * for every channel but {@link MARKER}: whether each `Building`, `Resource`, `ResourceFootprint` and
- * `Signpost` exists, plus the `Building` VALUE generation - the scan reads `buildingType`, and the home
- * tier upgrade swaps it in place through `World.write`, invisible to every membership generation. (Today
- * that swap cannot change the cells - `familyBody`/`reserved` are level-chain unions, schema.ts - so the
- * value term only buys a rebuild per upgrade; it is here so a future per-level footprint cannot silently
- * serve a stale set.) Membership generations bump only on add/remove
- * ({@link World.componentGeneration}), so this moves precisely when those cells can change - NOT every
- * tick - and the building overlay reuses its last result until it does. The work-flag rule adds the
- * `DeliveryFlag` generation on top ({@link workFlagBlockerVersion}). Exactness rests on two standing
- * invariants (both hold today):
- *   - buildings and resources never MOVE once placed (only settlers/vehicles/projectiles mutate Position),
- *     so a stored entity's cells are fixed;
- *   - a `ResourceFootprint` stamp/unstamp is always bundled in the same step with the `Resource` add/destroy
- *     that also moves this version - folding its generation in is belt-and-suspenders for any future path
- *     that decouples them. Completeness is load-bearing: the signpost placement probe memoizes on this
- *     version (via `workFlagBlockerVersion`), so a missed input would be a decision on a stale set, not
- *     just an overlay wash.
- * A string (not a packed number) so the monotonic counters compose with no overflow/aliasing reasoning.
- * Read-only + deterministic (a pure function of the mutation history); never hashed, never a sim decision.
+ * A per-world version of the placement-blocker inputs: the `Building`, `Resource`, `ResourceFootprint` and
+ * `Signpost` membership generations, plus the `Building` VALUE generation, since the home tier upgrade
+ * swaps `buildingType` in place invisibly to membership. That swap cannot change the cells today
+ * (`familyBody` and `reserved` are level-chain unions), so the value term only guards a future per-level
+ * footprint. It moves when those cells can change rather than every tick; the work-flag rule adds the
+ * `DeliveryFlag` generation on top.
+ *
+ * Exactness rests on buildings and resources never MOVING once placed, so a stored entity's cells are
+ * fixed. `ResourceFootprint` is stamped and unstamped in the same step as its `Resource` add/destroy, so
+ * its own generation term covers a future path that decouples them. Completeness is load-bearing: the
+ * signpost placement probe memoizes on this through the work-flag version, so a missed input would be a
+ * decision on a stale set, not just an overlay wash. A string, so the monotonic counters compose with no
+ * overflow reasoning; never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
   return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;

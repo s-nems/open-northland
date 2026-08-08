@@ -25,25 +25,20 @@ interface PlacementGrid {
 /**
  * Whether `footprint` may be placed with its anchor at integer tile `(x, y)` against the stamped
  * {@link PlacementGrid}, the original's free placement rule: no grid fields, just collision plus a minimum
- * distance from blocking terrain and other houses, both encoded by the extracted footprint. Valid iff:
- *
- *  1. every cell of the `reserved` zone, the max-level body plus the source's margin ring, is on the map and
- *     on buildable terrain, clear of resource walk-block bodies, and clear of every existing building's
- *     walls and reserved zone, so two buildings' reserved rings never overlap;
- *  2. the new building's `familyBody`, the largest body its level chain reaches, stays out of every resource
- *     build-zone, so placing level 0 already reserves the top level's space.
+ * distance from blocking terrain and other houses, both encoded by the extracted footprint.
  *
  * source-basis: the footprint cells and the body/zone split are the extracted
- * `LogicWalkBlockArea`/`LogicBuildBlockArea` data. The zone-vs-zone reading is a named approximation with no
- * oracle: holding the reserved rings disjoint matches observed settlement density, while letting them
+ * `LogicWalkBlockArea`/`LogicBuildBlockArea` data. The zone-vs-zone reading is a named approximation with
+ * no oracle: holding the reserved rings disjoint matches observed settlement density, while letting them
  * overlap packs about twice as densely.
  */
 function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: number, y: number): boolean {
   const { terrain, obstacle, exclusion } = grid;
   const w = terrain.width;
   const h = terrain.height;
-  // 1. Reserved zone: on the map, on buildable ground, clear of reserved-zone blockers (OBSTACLE nodes
-  //    and other buildings' reserved zones - both stamped into the obstacle mask).
+  // 1. Reserved zone - the max-level body plus the source's margin ring: on the map, on buildable ground,
+  //    clear of reserved-zone blockers (OBSTACLE nodes and other buildings' reserved zones, both stamped
+  //    into the obstacle mask), so two buildings' reserved rings never overlap.
   for (const c of footprint.reserved) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
@@ -51,7 +46,8 @@ function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
     if (obstacle[cy * w + cx] === 1) return false; // a resource body, a wall, or another reserved zone
   }
-  // 2. Family body: clear of resource EXCLUSION zones. familyBody ⊆ reserved, so every cell here is already
+  // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones, so placing
+  //    level 0 already reserves the top level's space. familyBody ⊆ reserved, so every cell here is already
   //    proven in-bounds by loop 1 - the guard only shields a hand-authored footprint that breaks that.
   for (const c of footprint.familyBody) {
     const cx = x + footprintCellDx(y, c);
@@ -76,11 +72,10 @@ function stampBlockerGrid(world: World, content: ContentSet, grid: PlacementGrid
 
 /**
  * Per-world memo of the placement grid, keyed by the {@link placementBlockerVersion} it was stamped at.
- * Without it every consumer re-scans every Resource and Building on the map: the overlay once per frame, the
- * `placeBuilding` command gate once per probed anchor. Keying on the blocker version rather than the tick
- * lets an unchanged world reuse the grid across ticks, and a direct `world.add` or `remove` invalidates it
- * the moment it bumps a generation. The mask arrays are reused across rebuilds of the same world and
- * terrain, so a rebuild clears and re-stamps instead of churning a map-sized allocation.
+ * Without it every consumer re-scans every Resource and Building on the map. Keying on the blocker version
+ * rather than the tick lets an unchanged world reuse the grid across ticks, and a direct `world.add` or
+ * `remove` invalidates it the moment it bumps a generation. The mask arrays are reused across rebuilds of
+ * the same world and terrain, so a rebuild clears and re-stamps instead of churning a map-sized allocation.
  */
 interface GridMemo {
   version: string;
@@ -159,9 +154,9 @@ export function canPlaceBuilding(
   return canPlaceAnchor(memoizedPlacementGrid(world, ctx.content, terrain), footprint, x, y);
 }
 
-/** A ready-to-query buildability test for one building type, with its footprint resolved once. */
+/** A ready-to-query buildability test for one building type, with its footprint resolved once. `canPlace`
+ *  takes an anchor at integer tile coordinates. */
 export interface PlacementProbe {
-  /** Whether a building of the probed type may be placed with its anchor at integer tile `(x, y)`. */
   canPlace(x: number, y: number): boolean;
 }
 
