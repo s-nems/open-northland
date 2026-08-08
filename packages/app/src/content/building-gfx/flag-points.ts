@@ -11,9 +11,8 @@ export interface FlagPoint {
 /**
  * The per-typeId sign-post anchor from the IR's `buildingFlagPoints` lane, restricted to the tribe skin
  * the render draws ({@link VIKING_TRIBE}): the point is a per-skin pixel offset, so another tribe's value
- * would misplace the chain. Variant rows sharing one typeId resolve like the bob binding - the
- * {@link CANONICAL_EDIT_NAME} row when named, else highest level, then the lowest offset. A typeId with no
- * row keeps the caller's derived fallback anchor.
+ * would misplace the chain. Variant rows sharing one typeId resolve through {@link pickFlagPointRow}. A
+ * typeId with no row keeps the caller's derived fallback anchor.
  */
 export function flagPointByType(ir: ContentIr | null): ReadonlyMap<number, FlagPoint> {
   return pointsByType(ir?.buildingFlagPoints);
@@ -38,10 +37,10 @@ function pointsByType(rows: readonly BuildingFlagPointRow[] | undefined): Readon
   return out;
 }
 
-/** Mirrors `pickCanonicalBuildingRow`'s name+level policy with a value tiebreak instead of bobId (a
- *  flag-point row has none). Accepted divergence: a multi-variant typeId without a canonical name may take
- *  its point from a different variant record than the drawn bob; in the viking data every such collision
- *  is value-identical. */
+/** The {@link CANONICAL_EDIT_NAME} row when named, else highest level, then the lowest offset - mirroring
+ *  `pickCanonicalBuildingRow`'s policy with a value tiebreak instead of bobId (a flag-point row has none).
+ *  Accepted divergence: a multi-variant typeId without a canonical name may take its point from a different
+ *  variant record than the drawn bob; in the viking data every such collision is value-identical. */
 function pickFlagPointRow(
   typeId: number,
   rows: readonly BuildingFlagPointRow[],
