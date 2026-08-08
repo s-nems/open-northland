@@ -143,8 +143,8 @@ export async function convertPlayerColorLut(
 
 /**
  * Bakes one guidepost atlas per player (`ls_guidepost.player_NN.{png,atlas.json}`), decoded through
- * that player's full palette. Baked rather than indexed plus LUT because the guidepost's graded edge
- * alpha (a quarter of its visible pixels, observed) survives only the RGB bake.
+ * that player's full source palette. Baked rather than indexed plus LUT because the LUT rows carry
+ * composed human palettes, which differ from it at every index the guidepost draws.
  */
 export async function convertGuidepostPlayerAtlases(outDir: string, tree: SourceAssetIndex): Promise<number> {
   const source = tree.get(normalizeAssetPath(GUIDEPOST_BMD));
