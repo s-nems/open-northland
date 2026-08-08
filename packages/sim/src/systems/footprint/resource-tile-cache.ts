@@ -5,12 +5,10 @@ import { createSpatialMemo } from '../spatial/memo.js';
 
 // The per-world "standing resource node at a half-cell tile" index, a spatial-memo rider maintained
 // incrementally against the Resource store's generation. `resourceAtTile` (the ground-drop → deposit
-// work-cell join) is called per pile candidate per gatherer scan, and the linear reference - a full
-// query over every resource on the map (tens of thousands on a decoded map) per call - collapsed a
-// running colony to seconds per tick the moment loose ore piles appeared. Correctness rests on Resource
-// rows being spatially immutable: a node's Position is set at spawn and never moves, so only Resource
-// add/remove/destroy (all journaled generation bumps) can change the index; the registered verifier
-// re-derives it under `verifyCaches()` like every incrementally-maintained cache.
+// work-cell join) runs per pile candidate per gatherer scan, where the linear reference is a full query
+// over every resource on the map - tens of thousands on a decoded map - per call. Correctness rests on
+// Resource rows being spatially immutable: a node's Position is set at spawn and never moves, so only
+// Resource add/remove/destroy, all journaled generation bumps, can change the index.
 
 /** tile key ({@link tileKey}) → goodType → ascending-id standing resources on that tile. Each list keeps
  *  every co-tile resource (not just the winner) so an incremental removal surfaces the runner-up. */
@@ -76,9 +74,9 @@ function sameIndex(a: ResourceTileMap, b: ResourceTileMap): boolean {
 }
 
 /**
- * The lowest-id standing resource of `goodType` whose node is exactly `(x, y)` (half-cell coords), or
- * null - byte-identical to the linear reference scan over `query(Resource, Position)`, served O(1)
- * from the memoized index (each tile list is ascending-id, so the head is the canonical winner).
+ * The lowest-id standing resource of `goodType` whose node is exactly `(x, y)` (half-cell coords), or null
+ * - byte-identical to the linear reference scan over `query(Resource, Position)`, served O(1) from the
+ * memoized index whose tile lists are ascending-id.
  */
 export function resourceAtTile(world: World, x: number, y: number, goodType: number): Entity | null {
   return memo.read(world).get(tileKey(x, y))?.get(goodType)?.[0] ?? null;

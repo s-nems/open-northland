@@ -82,7 +82,7 @@ export function stampResourceFootprint(
 
 /**
  * The stand-in footprint for a node whose good resolves no landscape record: the synthetic fixtures, the
- * sandbox catalog, and real goods with no `[GfxLandscape]` stage such as wool. It is non-blocking, and the
+ * sandbox catalog, and real goods with no `[GfxLandscape]` stage such as wool. Non-blocking, and the
  * `work` entry naming the node's own anchor is an invention, since a real record's work area is the
  * neighbour ring. Declaring a footprint at all also moves the node from the placement rule's OBSTACLE
  * channel to RESOURCE_ANCHOR, which admits a building over the node but refuses a work flag on it.
@@ -113,12 +113,8 @@ export function unstampResourceFootprint(world: World, resource: Entity): void {
   syncResourceBlockedCacheGeneration(world);
 }
 
-/**
- * The caller-resolved shape of a resource node to place: its good, half-cell node, starting yield and
- * harvest atomic, plus which harvest lifecycle it runs (a felled tree, a mined deposit, or neither). The
- * felling and deposit balance constants live in the app catalog, so the caller resolves them and hands the
- * sim a ready spec.
- */
+/** The caller-resolved shape of a resource node to place. The felling and deposit balance constants live
+ *  in the app catalog, so the caller resolves them and hands the sim a ready spec. */
 export interface ResourceNodeSpec {
   readonly good: number;
   /** The node's half-cell lattice coords, like every sim command, mapped to a visual-tile Position. */
@@ -126,12 +122,9 @@ export interface ResourceNodeSpec {
   readonly y: number;
   readonly remaining: number;
   readonly harvestAtomic: number;
-  /**
-   * Opaque render-variant tag: the app's decoded-map species record index, stored verbatim and carried out
-   * through the snapshot so the render draws the exact original object. The sim never interprets it, since
-   * footprint and collision come from the good's own record in the sim's content set, whose numbering is
-   * unrelated. Omitted for an admin or scene spawn, where the per-good representative draws.
-   */
+  /** Opaque render-variant tag: the app's decoded-map species record index, stored verbatim. The sim never
+   *  interprets it - footprint and collision come from the good's own record in the sim's content set,
+   *  whose numbering is unrelated. Omitted for an admin or scene spawn. */
   readonly gfxIndex?: number;
   /** A felled node such as a tree: its chops-to-fell counter. Mutually exclusive with `deposit`. */
   readonly felling?: { readonly chopsLeft: number };
@@ -146,18 +139,16 @@ export interface ResourceNodeSpec {
 }
 
 /**
- * Assemble a standing resource node from a resolved {@link ResourceNodeSpec}. Every placed node is built
- * here, so a hand-placed tree and a command-placed tree are byte-identical entities.
- *
- * Returns `null` without creating anything when `good` has no resource footprint record. The footprint is
- * resolved before `create()` so the rejection burns no entity id: a create-then-destroy would make the id
- * sequence depend on how many rejected commands were issued.
+ * Assemble a standing resource node from a resolved {@link ResourceNodeSpec} - the one construction path,
+ * so a hand-placed tree and a command-placed tree are byte-identical entities. Null without creating
+ * anything when `good` has no resource footprint record; the footprint is resolved before `create()` so
+ * the rejection burns no entity id, which would otherwise make the id sequence depend on how many
+ * rejected commands were issued.
  */
 export function createResourceNode(world: World, content: ContentSet, spec: ResourceNodeSpec): Entity | null {
   // The stamp below re-resolves this same memoized record, so it cannot fail after the create.
   if (resourceFootprintForGood(content, spec.good) === null) return null;
   const e = world.create();
-  // `spec.x` and `spec.y` are half-cell node coords; the Position is the node's visual-tile coord.
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Resource, {
     goodType: spec.good,
@@ -171,7 +162,6 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     world.add(e, MineDeposit, {
       initial: spec.deposit.initial ?? spec.remaining,
       levels: spec.deposit.levels,
-      // Stamp the strike calibration only when the caller provides one; an unstamped node stays 1-strike.
       ...(spec.deposit.strikesPerUnit !== undefined
         ? { strikesPerUnit: spec.deposit.strikesPerUnit, strikes: 0 }
         : {}),

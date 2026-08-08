@@ -7,8 +7,7 @@ import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, sameCells, translatedCells } from './geometry.js';
 
 // The memoized per-world cache of cells standing buildings make unwalkable, plus its coherence verifier -
-// the building twin of ./resource-blocked-cache.ts. A call burst shares one build instead of re-scanning
-// the Building store per call.
+// the building twin of ./resource-blocked-cache.ts.
 
 interface BuildingBlockedCache {
   /** Building MEMBERSHIP generation (add/remove/destroy) the cells were derived at. */
@@ -28,9 +27,8 @@ const buildingBlockedCache = new WeakMap<World, BuildingBlockedCache>();
 /** One full derivation - the rebuild and the verifier's reference run through this single path. */
 function deriveBuildingBlockedCells(world: World, content: ContentSet, terrain: TerrainGraph): Set<NodeId> {
   const blocked = new Set<NodeId>();
-  // Door cells collected separately and removed at the end: two buildings can overlap only via the
-  // door-in-reserved margin, and a door must stay passable regardless of which building contributed
-  // the wall cell (union first, subtract after - order-independent either way).
+  // Doors are subtracted after the union, so a door stays passable even when another building's wall cell
+  // covers it - the only overlap possible, via the door-in-reserved margin.
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
     const b = world.get(e, Building);
@@ -75,14 +73,12 @@ function verifyBuildingBlockedCache(world: World, content: ContentSet, terrain: 
  *
  * A building's own DOOR cell is always left walkable, even where the source lists it inside the walk-block:
  * `work_pottery_02`'s `LogicDoorPoint` sits inside its `LogicWalkBlockArea`, because a wall's door IS its
- * passable gate. Without the carve-out the walk-to-door goal is a blocked cell, `findPath` fails, the
- * request is never re-issued, and the settler wedges permanently. The extractor keeps the source cells
- * verbatim; the consumer applies the gate semantics.
+ * passable gate. Without the carve-out the walk-to-door goal is a blocked cell, `findPath` fails, and the
+ * settler wedges. The extractor keeps the source cells verbatim; the consumer applies the gate semantics.
  *
- * Derived state, never hashed and never stored on an entity. Memoized per world on the Building store's
- * membership and value generations, so a burst of callers between two building mutations shares one
- * O(buildings x footprint cells) build. The returned set is the SHARED cached copy: membership reads only,
- * and a caller that must mutate copies first. A set union with no pick, so store-iteration order cannot
+ * Derived state, never hashed. Memoized per world on the Building store's membership and value
+ * generations, so a burst of callers between two building mutations shares one build. The returned set is
+ * the SHARED cached copy: membership reads only. A set union with no pick, so store-iteration order cannot
  * change it.
  */
 export function buildingBlockedCells(

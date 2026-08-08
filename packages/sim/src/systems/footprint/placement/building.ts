@@ -37,18 +37,18 @@ function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
   const w = terrain.width;
   const h = terrain.height;
   // 1. Reserved zone - the max-level body plus the source's margin ring: on the map, on buildable ground,
-  //    clear of reserved-zone blockers (OBSTACLE nodes and other buildings' reserved zones, both stamped
-  //    into the obstacle mask), so two buildings' reserved rings never overlap.
+  //    clear of reserved-zone blockers (OBSTACLE nodes and other buildings' reserved zones, both in the
+  //    obstacle mask), so two buildings' reserved rings never overlap.
   for (const c of footprint.reserved) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
-    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false; // zone off the map edge
+    if (cx < 0 || cy < 0 || cx >= w || cy >= h) return false;
     if (!terrain.isBuildable(terrain.nodeAt(cx, cy))) return false; // blocking terrain too close
     if (obstacle[cy * w + cx] === 1) return false; // a resource body, a wall, or another reserved zone
   }
   // 2. Family body, the largest body the level chain reaches: clear of resource EXCLUSION zones, so placing
-  //    level 0 already reserves the top level's space. familyBody ⊆ reserved, so every cell here is already
-  //    proven in-bounds by loop 1 - the guard only shields a hand-authored footprint that breaks that.
+  //    level 0 already reserves the top level's space. familyBody ⊆ reserved, so loop 1 already proved
+  //    every cell in-bounds; the guard only shields a hand-authored footprint that breaks that.
   for (const c of footprint.familyBody) {
     const cx = x + footprintCellDx(y, c);
     const cy = y + c.dy;
@@ -65,7 +65,6 @@ function stampBlockerGrid(world: World, content: ContentSet, grid: PlacementGrid
   eachBlockerCell(world, content, (x, y, channel) => {
     if (channel !== OBSTACLE && channel !== EXCLUSION && channel !== BUILDING_ZONE) return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never queried (see PlacementGrid)
-    // OBSTACLE and BUILDING_ZONE both reject a reserved zone → the obstacle mask; EXCLUSION rejects a body.
     (channel === EXCLUSION ? grid.exclusion : grid.obstacle)[y * w + x] = 1;
   });
 }
@@ -125,7 +124,6 @@ function memoizedPlacementGrid(world: World, content: ContentSet, terrain: Terra
   ) {
     return cached.grid;
   }
-  // Reuse the last grid's arrays when it was sized for this same terrain.
   const reuse = cached?.grid.terrain === terrain ? cached : undefined;
   const grid = reuse?.grid ?? emptyGrid(terrain);
   grid.obstacle.fill(0);
@@ -150,7 +148,7 @@ export function canPlaceBuilding(
   y: number,
 ): boolean {
   const footprint = buildingFootprintOf(ctx.content, buildingType);
-  if (footprint === undefined) return true; // no collision model - places freely (synthetic content)
+  if (footprint === undefined) return true;
   return canPlaceAnchor(memoizedPlacementGrid(world, ctx.content, terrain), footprint, x, y);
 }
 
@@ -161,12 +159,11 @@ export interface PlacementProbe {
 }
 
 /**
- * Build a {@link PlacementProbe} for `buildingType`, resolving its footprint once so a caller can probe a
+ * A {@link PlacementProbe} for `buildingType` with its footprint resolved once, so a caller can probe a
  * whole band against the same rule the `placeBuilding` command gates on without re-resolving content per
- * cell. A footprint-less type always reports placeable, matching its command-time behavior.
- *
- * The probe reads the memo's shared mask arrays, which are re-stamped in place on the next blocker change,
- * so drain a probe's band before the world can change again.
+ * cell. A footprint-less type always reports placeable, matching its command-time behavior. The probe
+ * reads the memo's shared mask arrays, which are re-stamped in place on the next blocker change, so drain
+ * a probe's band before the world can change again.
  */
 export function placementProbe(
   world: World,

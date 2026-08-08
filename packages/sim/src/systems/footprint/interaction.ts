@@ -29,14 +29,13 @@ import { resourceAtTile } from './resource-tile-cache.js';
 export type InteractionNode = { readonly x: number; readonly y: number };
 
 /**
- * The integer HALF-CELL NODE a settler must stand on to INTERACT with a building - its door node
- * (`anchor + footprint.door`, both half-cell offsets) when the type has one, else the anchor node itself,
- * which synthetic content keeps. The single seam every walk-to-the-building and at-the-building consumer
- * resolves through, so the walk goal and the presence test cannot disagree: with the walls blocking, the
- * anchor node is typically unreachable and the door is where the original's settlers enter. A door node
- * off the map falls back to the anchor node so every consumer stays consistent; only hand-authored content
- * reaches that, since the placement rule forces the whole reserved zone, door included, in-bounds. Returns
- * null for an entity without a Building or Position.
+ * The integer HALF-CELL NODE a settler must stand on to INTERACT with a building: its door node
+ * (`anchor + footprint.door`, both half-cell offsets) when the type has one, else the anchor node, which
+ * synthetic content keeps. The single seam every walk-to-the-building and at-the-building consumer
+ * resolves through, so the walk goal and the presence test cannot disagree - with the walls blocking, the
+ * anchor is typically unreachable and the door is where the original's settlers enter. An off-map door
+ * falls back to the anchor node; only hand-authored content reaches that, since the placement rule forces
+ * the whole reserved zone, door included, in-bounds. Null for an entity without a Building or Position.
  */
 export function interactionNode(world: World, ctx: MapContext, building: Entity): InteractionNode | null {
   const b = world.tryGet(building, Building);
@@ -50,9 +49,8 @@ export function interactionNode(world: World, ctx: MapContext, building: Entity)
   return at;
 }
 
-/** {@link interactionNode} as a terrain {@link NodeId} - for the consumers that measure node distance
- *  to the door or leash an animal onto it. Null for an unpositioned building or an off-map node (the
- *  in-bounds fallback covers a terrain passed via `ctx`; this guards a caller's own graph). */
+/** {@link interactionNode} as a terrain {@link NodeId}. Null for an unpositioned building or an off-map
+ *  node - the in-bounds fallback covers a terrain passed via `ctx`; this guards a caller's own graph. */
 export function interactionNodeId(
   world: World,
   ctx: SystemContext,
@@ -65,9 +63,9 @@ export function interactionNodeId(
 }
 
 /**
- * Walkable, dynamically unblocked nodes immediately outside a construction site's current body. Until
- * `LogicConstructionWorkArea` is extracted, the footprint perimeter is the named approximation: it lets
- * settlers approach any free side instead of treating the finished building's door as the build position.
+ * Walkable, dynamically unblocked nodes immediately outside a construction site's current body.
+ * Approximation until `LogicConstructionWorkArea` is extracted: the footprint perimeter, so settlers
+ * approach any free side instead of queueing at the finished building's door.
  */
 export function constructionWorkCells(
   world: World,
@@ -103,9 +101,9 @@ export function constructionWorkCells(
 const MAX_EXTERIOR_SCAN_CELLS_PER_BODY_CELL = 8;
 
 /**
- * Walkable cells connected to the outside of a body's one-node bounding margin. The bounded flood
- * excludes enclosed footprint holes without scanning the map; dynamic blocks also cannot turn a sealed
- * pocket into a work slot. A footprint outside the extracted shape budget yields no approximate slots.
+ * Walkable cells connected to the outside of a body's one-node bounding margin. The bounded flood excludes
+ * enclosed footprint holes without scanning the map, and a dynamic block cannot turn a sealed pocket into
+ * a work slot. A footprint outside the scan budget yields no slots at all.
  */
 function exteriorCellsAroundBody(
   terrain: TerrainGraph,
@@ -182,15 +180,15 @@ function stockedGoodAt(world: World, entity: Entity): number | null {
 
 /**
  * Every cell {@link resourceWorkCell} could pick as this resource's work stance, over ALL possible `from`
- * positions - the pool, with the nearest-pick left to the caller. A walkable deposit whose work area
- * includes its own anchor node is worked standing ON the deposit, as observed of the original's clay
- * digger. That anchor-listing comes from the sandbox's invented work areas, NOT the real clay records:
- * those list the anchor only in their partial states, and the sim collapses `workAreas` to the FULL state
- * (`fullStateBlockAreaCells`), whose rows exclude `(0,0)`, so real records feeding this would silently
- * revert the digger to an adjacent stance. A blocking node's anchor never survives the walkable filter, so
- * trees, stones and ore keep the adjacent stance, while a resource whose only legal work cell is its
- * anchor stays workable through the same anchor-first rule. Never empty: the last fallback is the bare
- * anchor.
+ * positions - the pool, with the nearest pick left to the caller. Never empty: the last fallback is the
+ * bare anchor.
+ *
+ * A walkable deposit whose work area lists its own anchor is worked standing ON the deposit, as observed
+ * of the original's clay digger. That anchor listing comes from the sandbox's invented work areas, NOT the
+ * real clay records: those list the anchor only in their partial states, and the sim collapses `workAreas`
+ * to the FULL state (`fullStateBlockAreaCells`), whose rows exclude `(0,0)`, so real records feeding this
+ * would silently revert the digger to an adjacent stance. A blocking node's anchor never survives the
+ * walkable filter, so trees, stones and ore keep the adjacent stance.
  */
 export function resourceStanceCells(
   world: World,
@@ -207,15 +205,14 @@ export function resourceStanceCells(
   const work = translatedCells(terrain, footprint.work, ax, ay).filter(
     (cell) => terrain.isWalkable(cell) && !blocked.has(cell),
   );
-  if (work.includes(anchor)) return [anchor]; // stand ON a walkable deposit that lists its own anchor
+  if (work.includes(anchor)) return [anchor];
   if (work.length > 0) return work;
   const fallback = terrain.walkableNeighbours(anchor).filter((cell) => !blocked.has(cell));
   return fallback.length > 0 ? fallback : [anchor];
 }
 
-/** The cell a collector should stand on to work a resource: the {@link resourceStanceCells} pool
- *  member nearest `from` (node-id tie-break; the pool is never empty, so the anchor fallback is
- *  unreachable in practice). */
+/** The cell a collector stands on to work a resource: the {@link resourceStanceCells} pool member nearest
+ *  `from`, node-id tie-break. The pool is never empty, so the anchor fallback is unreachable in practice. */
 export function resourceWorkCell(
   world: World,
   terrain: TerrainGraph,
@@ -229,11 +226,11 @@ export function resourceWorkCell(
 }
 
 /**
- * The interaction cell for a plain positioned target. If a loose ground drop lies under a still-standing
- * resource, collect it from that resource's work cell. That makes mined goods follow the intended cadence:
- * one chip drops one ore/clay at the deposit, then the collector picks it up before starting another chip.
- * Blocking deposits get the adjacent stance because their anchor is unwalkable; low non-blocking deposits
- * (clay) still use the same work-cell rule so they do not get mined dry before the first pickup.
+ * The interaction cell for a plain positioned target. A loose ground drop under a still-standing resource
+ * is collected from that resource's work cell, which keeps mined goods on the intended cadence: one chip
+ * drops one ore or clay at the deposit, then the collector picks it up before starting another chip. Low
+ * non-blocking deposits (clay) need that rule explicitly so they are not mined dry before the first
+ * pickup; a blocking deposit gets the adjacent stance anyway because its anchor is unwalkable.
  */
 export function positionedInteractionCell(
   world: World,
