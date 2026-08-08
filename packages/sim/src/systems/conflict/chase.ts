@@ -62,6 +62,8 @@ export function breakOff(world: World, e: Entity, here: NodeId, defend: DefendPo
  * swing check catches it the instant it steps into reach. A dead route is dropped so it re-issues, and an
  * ordered unit whose route cannot resolve gives the order up. A building target's wall list lets a chaser
  * whose nearest face is fully manned encircle to a free slot on another face.
+ *
+ * Returns whether it gave the target up this tick.
  */
 export function chase(
   world: World,
@@ -74,7 +76,7 @@ export function chase(
   weapon: WeaponBand,
   stance: CombatantStance,
   defend: DefendPost,
-): void {
+): boolean {
   const engagement = world.add(e, Engagement, {
     repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick, // repath now on first engagement
   });
@@ -93,12 +95,12 @@ export function chase(
         const order = world.mut(e, PlayerOrder);
         if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
       }
-      return;
+      return true;
     }
   }
 
   const travelling = isTravelling(world, e);
-  if (travelling && ctx.tick < engagement.repathAt) return; // still closing on a live route - don't re-path
+  if (travelling && ctx.tick < engagement.repathAt) return false; // still closing on a live route - don't re-path
 
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
   // Only a cell in the chaser's own static walk component can be walked to, so the far bank is never asked
@@ -122,19 +124,19 @@ export function chase(
     // re-ask at the chase cadence, which admits the unit the moment a front-liner falls or steps off.
     clearNavState(world, e);
     engagement.repathAt = ctx.tick + REPATH_CADENCE;
-    return;
+    return false;
   }
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand
   // on. Only the walk is refused - the reach check ran before the chase, so an archer still shoots across
   // water. Giving up here is an approximation (source basis "Combat chase").
   if (!commanded && !onOurBank(dest)) {
     breakOff(world, e, here, defend);
-    return;
+    return true;
   }
   // Anchor leash: a target hittable only by stepping past `leash` from the anchor is left alone.
   if (defend !== null && manhattan(terrain, defend.anchorCell, dest) > defend.leash) {
     breakOff(world, e, here, defend);
-    return;
+    return true;
   }
   if (dest === here && !travelling) {
     // Standing on its own best approach cell yet out of range: the target cannot be closed on, so give up
@@ -142,11 +144,12 @@ export function chase(
     // relocates it, so it never stays stuck. A travelling unit falls through instead, finishes its step and
     // swings next pass.
     disengage(world, e);
-    return;
+    return true;
   }
   redirectRoute(world, e, dest); // keep the live route - dropping it reset the gait (chase stutter)
   slots.claim(dest);
   engagement.repathAt = ctx.tick + REPATH_CADENCE;
+  return false;
 }
 
 /** The cell a chaser should walk to in order to bring `target` into its weapon band: the {@link

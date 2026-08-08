@@ -136,8 +136,8 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
   });
 
   it('releases an enemy it cannot reach and goes back to work', () => {
-    // The stance twin of the attack-move case: an enemy well inside sight but across an unswimmable
-    // column, so every chase route fails.
+    // The stance twin of the attack-move case: an enemy well inside sight but across an unswimmable column,
+    // so no cell an axe could strike it from is one this fighter can stand on.
     const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
     fighterAt(sim, 2, 2, VIKING, WOODCUTTER, { owner: P0 });
     fighterAt(sim, 9, 2, VIKING, WOODCUTTER, { owner: P1 }); // 14 nodes off, inside SIGHT_RADIUS_NODES
@@ -175,8 +175,8 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
   });
 
   it('still shoots across the water it cannot walk across', () => {
-    // The release refuses the WALK, never the swing: a bow reaches over the column (4 nodes, inside its
-    // [3, 17] band) and the reach check runs before the chase, so the far bank is still a target.
+    // Unreachability refuses the WALK, never the swing: a bow reaches over the column (4 nodes, inside its
+    // [3, 17] band), so the archer's own cell is a firing cell and the far bank is still a target.
     const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 5, 6) });
     const a = fighterAt(sim, 5, 2, VIKING, HUNTER, { owner: P0 });
     const enemy = fighterAt(sim, 7, 2, VIKING, WOODCUTTER, { owner: P1 });
@@ -184,6 +184,21 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
     combatSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(a, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: enemy });
+  });
+
+  it('falls through to a reachable enemy farther out instead of re-picking the near one across water', () => {
+    // The near enemy's whole axe band lies on the far bank, so it is no candidate at all and the
+    // nearest-first search reaches the one this fighter can close on.
+    const sim = new Simulation({ seed: 1, content: testContent(), map: splitMap(14, 12, 6) });
+    const a = fighterAt(sim, 5, 2, VIKING, WOODCUTTER, { owner: P0 }); // node (10, 4), hugging the water
+    fighterAt(sim, 7, 2, VIKING, WOODCUTTER, { owner: P1 }); // node (14, 4) - 4 nodes off, over the column
+    fighterAt(sim, 5, 5, VIKING, WOODCUTTER, { owner: P1 }); // node (11, 10) - 7 nodes off, same bank
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(a, Engagement)).toBe(true);
+    // It walks to a contact cell of the SAME-BANK enemy, 2 nodes short of its node (11, 10).
+    expect(sim.terrain?.coordsOf(sim.world.get(a, MoveGoal).cell)).toEqual({ x: 11, y: 8 });
   });
 
   it('still chases an enemy on its own bank - the release is unreachable-only', () => {

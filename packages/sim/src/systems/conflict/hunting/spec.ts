@@ -14,12 +14,6 @@ import { huntingGroundHoldsCarcass } from './kill-claim.js';
 // The prey-acquisition policy an owned IGNORE hunter engages under.
 
 /**
- * How long (ticks) a hunter's prey acquisition rests after a search that found nothing. Pure pacing, no
- * source basis.
- */
-export const HUNT_SEARCH_REST_TICKS = 10;
-
-/**
  * The hunter's target-acquisition spec, and the owner of the one-kill-at-a-time rule (authored): while the
  * ground holds a harvestable carcass the hunter takes no new target. It accepts only huntable prey inside
  * its hunting ground, which anchors the chase leash but is never held - an idle hunter belongs to its
@@ -39,12 +33,12 @@ export function hunterEngageSpec(
   terrain: TerrainGraph,
   index: CombatIndex,
   e: Entity,
+  hereNode: NodeId,
   jobType: number | null,
   seesTarget: (t: Entity) => boolean,
   minDist: number,
   sight: number,
 ): EngageSpec {
-  const hereNode = entityNode(world, terrain, e);
   const hunterComponent = terrain.componentOf(hereNode);
   // Lazily resolved on the first candidate: a hunter that never reaches one pays nothing for the set.
   let colleagueHolds: ReadonlySet<Entity> | null = null;
@@ -52,8 +46,9 @@ export function hunterEngageSpec(
     colleagueHolds ??= preyHeldByOthers(world, e);
     return colleagueHolds.has(t);
   };
-  // An animal across a static terrain seam is not this hunter's game: taking it would hold the unit in a
-  // chase re-issuing a route that can never resolve.
+  // An animal across a static terrain seam is not this hunter's game, and deliberately with none of the
+  // in-reach tolerance the general acquisition gate allows a soldier: a hunter wants the meat, and a kill it
+  // cannot walk to is a carcass no hunter may ever bank.
   const reachablePrey = (t: Entity): boolean =>
     isHuntTarget(world, ctx, t, jobType) &&
     terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent;

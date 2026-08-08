@@ -15,7 +15,7 @@ import { playerSeesEntity } from '../vision/index.js';
 import type { CombatIndex } from './combat-index.js';
 import { hunterEngageSpec } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
-import { combatTargetNode } from './target-node.js';
+import { combatTargetNode, reachableTargetGate } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
 
 // Re-exported so the combat modules keep one import site for the stance ladder.
@@ -67,6 +67,7 @@ export function engageSpec(
   terrain: TerrainGraph,
   index: CombatIndex,
   e: Entity,
+  here: NodeId,
   stance: CombatantStance,
   attacker: SettlerIdentity,
   weapon: { minRange: number; maxRange: number },
@@ -78,7 +79,10 @@ export function engageSpec(
   const viewer = owned ? world.tryGet(e, Owner) : undefined;
   const seesTarget = (t: Entity): boolean =>
     viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);
-  const generalAccept = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && seesTarget(t);
+  // Probed last, behind the cheap hostility and fog reads: it can walk a candidate's whole reach band.
+  const reachable = reachableTargetGate(world, ctx, terrain, here, weapon);
+  const generalAccept = (t: Entity): boolean =>
+    isValidTarget(world, ctx, e, attacker, t) && seesTarget(t) && reachable(t);
   // The default deprioritized tier: plain buildings fall behind units and high-value structures.
   const lowPriorityBuildings = (t: Entity): boolean => isLowPriorityBuildingTarget(world, ctx, t);
   const minDist = weapon.minRange;
@@ -109,9 +113,11 @@ export function engageSpec(
   }
 
   if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
-    const anchor = defendAnchor(world, terrain, e);
+    const anchor = defendAnchor(world, e, here);
+    // The radius clause leads: it is a subtraction, while `generalAccept` ends in a walk of the candidate's
+    // reach band.
     const accept = (t: Entity): boolean =>
-      generalAccept(t) && manhattan(terrain, anchor, entityNode(world, terrain, t)) <= DEFEND_RADIUS_NODES;
+      manhattan(terrain, anchor, entityNode(world, terrain, t)) <= DEFEND_RADIUS_NODES && generalAccept(t);
     return {
       accept,
       minDist,
@@ -129,7 +135,18 @@ export function engageSpec(
     stance.mode === MILITARY_MODE.IGNORE &&
     isHunterJob(ctx.content, attacker.jobType)
   ) {
-    return hunterEngageSpec(world, ctx, terrain, index, e, attacker.jobType, seesTarget, minDist, sight);
+    return hunterEngageSpec(
+      world,
+      ctx,
+      terrain,
+      index,
+      e,
+      here,
+      attacker.jobType,
+      seesTarget,
+      minDist,
+      sight,
+    );
   }
 
   // An unowned hostile animal advances like a soldier within its shorter ambush radius; any other unowned
@@ -188,11 +205,10 @@ export interface EngageSpec {
   readonly defend: { readonly anchorCell: NodeId; readonly leash: number; readonly hold: boolean } | null;
 }
 
-/** The DEFEND anchor cell - the {@link Stance}'s captured `anchorCell`, falling back to the unit's own
- *  cell when it carries none. */
-function defendAnchor(world: World, terrain: TerrainGraph, e: Entity): NodeId {
-  const anchor = world.tryGet(e, Stance)?.anchorCell;
-  return anchor ?? entityNode(world, terrain, e);
+/** The DEFEND anchor cell - the {@link Stance}'s captured `anchorCell`, falling back to `here` when it
+ *  carries none. */
+function defendAnchor(world: World, e: Entity, here: NodeId): NodeId {
+  return world.tryGet(e, Stance)?.anchorCell ?? here;
 }
 
 /**
