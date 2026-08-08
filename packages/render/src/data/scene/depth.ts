@@ -4,8 +4,7 @@ import type { DrawKind } from './draw-item.js';
 /**
  * Same-feet-anchor paint priority per drawable kind - a higher value draws in front when two sprites
  * resolve to nearly the same depth. Both {@link spriteDepth} and {@link screenDepth} scale this one
- * table, so the oracle's list order and the live painter's `zIndex` cannot drift. Each composed key
- * scales it by its own sub-cell epsilon, so it only breaks ties at a shared anchor and never reorders
+ * table by their own sub-cell epsilon, so it only breaks ties at a shared anchor and never reorders
  * sprites a genuine row apart. `tile` is 0; tiles carry their own sub-zero depth band.
  */
 const SPRITE_PAINT_ORDER: Readonly<Record<DrawKind, number>> = {

@@ -91,9 +91,9 @@ export function terrainMapToScene(map: {
  * The headless oracle for the projection and depth ordering the live renderer must match: a pure
  * function of the snapshot and grid, so the screenshot harness gets a reproducible frame.
  *
- * Known divergence: the renderer's painter key is the feet-anchor screen y (∝ row under the staggered
- * raster, so static map objects interleave correctly), while this oracle's sprite key is row-major
- * `(tileY, tileX)`. The two orders differ for items more than a row apart on one screen band.
+ * Known divergence: the renderer's painter key is the feet-anchor screen y, while this oracle's sprite
+ * key is row-major `(tileY, tileX)`. The two orders differ for items more than a row apart on one
+ * screen band.
  */
 export function buildScene(
   snapshot: WorldSnapshot,
@@ -101,7 +101,6 @@ export function buildScene(
   elevation?: ElevationField,
 ): DrawItem[] {
   const tiles: DrawItem[] = [];
-  // One tile per cell, row-major, which is back-to-front in iso space.
   for (let cell = 0; cell < terrain.typeIds.length; cell++) {
     const typeId = terrain.typeIds[cell];
     if (typeId === undefined) continue; // unreachable (cell < length) - satisfies noUncheckedIndexedAccess
