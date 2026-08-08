@@ -133,9 +133,9 @@ export function eachBlockerCell(
  *
  * Exactness rests on buildings and resources never MOVING once placed, so a stored entity's cells are
  * fixed; `ResourceFootprint` is stamped and unstamped in the same step as its `Resource` add/destroy, so
- * its own term covers a future path that decouples them. Completeness is load-bearing, since a memo keyed
- * on this decides rather than merely washing an overlay. A string, so the monotonic counters compose with
- * no overflow reasoning; never hashed, never a sim decision.
+ * its own term covers a future path that decouples them. Completeness is load-bearing: a memo keyed on
+ * this gates a placement, so a missed input is a decision on a stale set. A string, so the monotonic
+ * counters compose with no overflow reasoning; never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
   return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;

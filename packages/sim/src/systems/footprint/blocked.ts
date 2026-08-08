@@ -14,7 +14,7 @@ import { resourceBlockedCells } from './resource-blocked-cache.js';
 // not span a stamp or unstamp.
 
 /** Every standing building's door node - the passable gates {@link buildingBlockedCells} carves out of the
- *  walk-block, which displacement passes exempt the same way. */
+ *  walk-block. */
 export function buildingDoorNodes(world: World, ctx: SystemContext, terrain: TerrainGraph): Set<NodeId> {
   const doors = new Set<NodeId>();
   for (const e of world.query(Building, Position)) {
@@ -34,9 +34,8 @@ export interface ConstructionPlot {
   readonly cells: readonly { readonly col: number; readonly row: number }[];
 }
 
-/** The ground plots of every under-construction building: its footprint body cells on the map, so the
- *  render marks the cells the finished building will stand on, or the bare anchor cell for a
- *  footprint-less type. */
+/** The ground plots of every under-construction building: its footprint body cells translated onto world
+ *  half-cell nodes, unfiltered by the grid bounds, or the bare anchor cell for a footprint-less type. */
 export function constructionSitePlots(world: World, content: ContentSet): ConstructionPlot[] {
   const plots: ConstructionPlot[] = [];
   for (const e of world.query(UnderConstruction, Building, Position)) {
