@@ -7,8 +7,7 @@ import { isCarrierJob } from '../stores/index.js';
 import { fightExperienceTypeFor, generalTrackFor, SCOUT_EXPERIENCE_TYPE, trackFor } from './experience.js';
 
 /**
- * The shared experience curve: how much better an experienced settler is at its specialization. It maps
- * completed-work repeats, not raw XP, to a bonus fraction:
+ * The shared experience curve, mapping completed-work repeats rather than raw XP to a bonus fraction:
  *
  *   bonus(n) = n / (n + K * (1 - n/N)),  K = 4.9,  N = 100
  *
@@ -48,12 +47,11 @@ export function experienceRepeats(xp: number, track: HumanJobExperienceType): nu
 }
 
 /**
- * The repeats a settler's XP contributes toward one `needfor*` requirement, summed over its `expTypes`.
- * A track-less expType accrues at rate 1, so its raw XP is already the repeat count; a good-specific
- * track counts its own repeats, keeping factors spanning 1..250 commensurable; a job-general track counts
- * every track its job owns, because work accrues only the matched track while gates key on the trade's
- * overall practice. Each track counts at most once. Approximated: the original's threshold arithmetic is
- * not readable.
+ * The repeats a settler's XP contributes toward one `needfor*` requirement, summed over its `expTypes`,
+ * each track counted at most once. A track-less expType accrues at rate 1, so its raw XP is already the
+ * repeat count; a good-specific track counts its own repeats; a job-general track counts every track its
+ * job owns, because work accrues only the matched track while gates key on the trade's overall practice.
+ * Approximated: the original's threshold arithmetic is not readable.
  */
 export function requirementRepeats(
   tracks: readonly HumanJobExperienceType[],
@@ -145,9 +143,9 @@ export function scaledWorkRepeats(repeats: number, bonus: Fixed): number {
 }
 
 /**
- * Hits at which a weapon class's damage bonus tops out. Combat XP lands per successful hit, far faster
- * than production batches, so combat mastery sits 5x deeper than {@link EXPERIENCE_MASTERY_REPEATS}
- * (approximation).
+ * Hits at which a weapon class's damage bonus tops out. Authored: combat XP lands per successful hit, far
+ * faster than production batches, so combat mastery sits 5x deeper than
+ * {@link EXPERIENCE_MASTERY_REPEATS}.
  */
 export const FIGHT_MASTERY_HITS = 500;
 const HITS_PER_FIGHT_REPEAT = FIGHT_MASTERY_HITS / EXPERIENCE_MASTERY_REPEATS;

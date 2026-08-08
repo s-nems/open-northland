@@ -8,13 +8,11 @@ import { declaresNoTrades, isHeroJob, isScoutJob, isSoldierJob } from '../readvi
 import { isCarrierJob, type WorkplaceOperators } from '../stores/index.js';
 
 /**
- * XP accrual: a settler gets better at the specialization it works. Experience is granted within a narrow
- * `(job, good)` pairing (`humanjobexperiencetypes`, e.g. "collector wood" = job 8 + good 5), not just per
- * job, so repeating the same work on the same good is what makes an expert.
+ * Experience accrues within a narrow `(job, good)` pairing (`humanjobexperiencetypes`, e.g. "collector
+ * wood" = job 8 + good 5), not per job alone, as a whole-number counter on the original's integer scale.
  *
- * Helpers called from the atomic executor rather than a per-tick `System`: XP accrues the instant a work
- * atomic completes, and sim events are render-only, so the grant lives where the completion is known. XP
- * is a whole-number counter on the original's integer scale.
+ * Grant helpers rather than a `System` of their own: the caller grants where a completion is already
+ * known.
  */
 
 /**
@@ -50,9 +48,7 @@ export function workRepeatsFor(ctx: SystemContext, jobType: number | null, goodT
 /**
  * Grant a settler XP for `units` of `goodType` its completed work atomic actually extracted, adding the
  * matched track's `experienceFactor` (the original's per-track accrual rate, 1..250 in the base data) per
- * unit. Authored: XP counts resource units gathered, never swings, so a felled trunk trains its whole
- * yield at once, and work trains only the matched track, so digging stone never advances the clay
- * specialization.
+ * unit. Authored: XP counts resource units gathered rather than swings, and only on the matched track.
  */
 export function grantWorkExperience(
   world: World,
@@ -83,9 +79,8 @@ export function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobEx
 /**
  * Grant production XP for a workplace's completed batches: one batch trains one present operator, in
  * canonical order and never more than are on station, on its job-general track. Authored: a trade trains
- * its profession whatever it crafted, and carrier operators are excluded because a carrier-run utility
- * trains only on deliveries. Per-completed-batch is the deterministic reading of the original's undecoded
- * accrual trigger (approximation).
+ * its profession whatever it crafted, and a carrier operator trains only on deliveries. Approximation:
+ * per-completed-batch is the deterministic reading of the original's undecoded accrual trigger.
  */
 export function grantProductionExperience(
   world: World,
@@ -107,8 +102,8 @@ export function grantProductionExperience(
 /**
  * Grant a settler carry XP for one delivery that landed in a store, accruing the `carrier general`
  * track's `experienceFactor`. Authored: everyone hauls sometimes, but only the transport trade trains on
- * it, and a blocked deposit or flag drop trains nothing. Per-landed-delivery is the same deterministic
- * reading of the original's undecoded trigger as the batch grant above.
+ * it, and a blocked deposit or flag drop trains nothing. Per-landed-delivery is the same approximated
+ * trigger as {@link grantProductionExperience}.
  */
 export function grantCarryExperience(world: World, ctx: SystemContext, settler: Entity): void {
   const s = world.tryGet(settler, Settler);
@@ -136,9 +131,9 @@ export function grantScoutExperience(world: World, content: ContentSet, settler:
 
 /**
  * The TRAINING bucket every `trainfor*` requirement row reads (source basis: each tribe's
- * `trainforjob`/`trainforgood` rows name expType 77 and nothing else does). Nothing accrues it: a
- * barracks drill banks no experience stat, it flips the trade directly at the drill's end, so the rows
- * naming this bucket act as an always-closed gate on every other door into a fighter trade.
+ * `trainforjob`/`trainforgood` rows name expType 77 and nothing else does). Nothing accrues it - the
+ * barracks drill flips the trade directly at its end - so the rows naming this bucket act as an
+ * always-closed gate on every other door into a fighter trade.
  */
 export const TRAINING_EXPERIENCE_TYPE = 77;
 
@@ -190,7 +185,7 @@ export function fightExperienceTypeFor(weaponMainType: number): number | undefin
  * Grant an attacker fight XP for a damaging swing: the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} rate into
  * the swinging weapon's class bucket, plus the attacker's own role track (soldier 69, hero 70), which the
  * `needforjob` gates read. The role grant stays independent of the bucket, so a saber fighter with no
- * weapon bucket still feeds its class gates. Wildlife never levels: a wolf's bite stays flat.
+ * weapon bucket still feeds its class gates. Wildlife never levels.
  *
  * Approximated: the accrual trigger has no readable oracle - the original may accrue per swing or per
  * kill, and per-damaging-swing is the deterministic reading.
@@ -215,7 +210,7 @@ export function grantFightExperience(
     : isHeroJob(ctx.content, s.jobType)
       ? HERO_GENERAL_EXPERIENCE_TYPE
       : undefined;
-  if (generalTrackId === undefined) return; // a civilian swing trains only the weapon bucket
+  if (generalTrackId === undefined) return;
   const general = contentIndex(ctx.content).jobExperience.get(generalTrackId);
   if (general !== undefined) accrueExperience(s, generalTrackId, general.experienceFactor);
 }
