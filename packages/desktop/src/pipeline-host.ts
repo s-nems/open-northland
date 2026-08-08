@@ -10,7 +10,6 @@ import type { PipelineEvent } from './ipc.js';
  */
 export class PipelineHost {
   private child: Electron.UtilityProcess | undefined;
-  /** Marks the live run finished so a deliberate `stop()` emits no trailing error event. */
   private silence: (() => void) | undefined;
 
   constructor(private readonly childScript: string) {}

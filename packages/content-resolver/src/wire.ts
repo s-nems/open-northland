@@ -35,7 +35,8 @@ export interface MapsIndexEntry {
   readonly players?: readonly MapsIndexPlayerSlot[];
   /** `[multiplayer]` `playerfixcolors` - the map locks its authored team colours. */
   readonly fixedColors?: boolean;
-  /** The script sidecar ships a `[multiplayer]` lobby table. Emitted only when true. */
+  /** The script sidecar ships a `[multiplayer]` lobby table and a readable roster. Emitted only when
+   *  true. */
   readonly multiplayer?: boolean;
 }
 
