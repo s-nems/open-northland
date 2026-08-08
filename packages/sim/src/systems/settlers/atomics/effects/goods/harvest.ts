@@ -18,6 +18,8 @@ import { workRepeatsFor } from '../../../../progression/index.js';
 import { addCarry } from './carry.js';
 import { dropGroundPile } from './piles.js';
 
+// Every mutation here conserves goods: what leaves a node is exactly what it drains.
+
 /**
  * Units one completed `harvest` atomic yields. Approximation: a real per-good yield is not modeled yet.
  */

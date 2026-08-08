@@ -15,8 +15,7 @@ export const HARVEST_SWINGS_PER_REST = 2;
 /**
  * Whether the swing that just resolved left its multi-swing job in progress. The executor then chains the
  * next swing directly, because the one-tick planner gap between swings draws a flick of the idle pose
- * mid-work. The swing that fells, chips a unit loose, plucks, or depletes instead releases the settler for
- * the pickup trip.
+ * mid-work.
  */
 export function continuesHarvest(world: World, node: Entity): boolean {
   const res = world.tryGet(node, Resource);

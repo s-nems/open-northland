@@ -14,14 +14,11 @@ import { applyTradeChange } from '../../../../economy/jobs/index.js';
 import { baseSoldierJobType, isSoldierJob, WEAPON_MAIN_TYPE } from '../../../../readviews/index.js';
 
 /**
- * The equip drive's good-to-class join: a soldier that puts a weapon good on takes up that weapon's class
- * (`weapons.ini` `goodtype` and `jobtype`, no hardcoded table) and falls back to the unarmed base class
- * when it takes the weapon off. The job flip and the combat `Weapon` travel together, so an armed class
- * never exists without its arms.
- *
- * Only the soldier band transforms: a hero keeps its class, and a civilian or scout wearing a weapon good
- * just carries it. Authored: within the band there is no schooling gate, since the barracks unlocks the
- * profession rather than the weapon.
+ * The equip drive's good-to-class join, read from `weapons.ini` `goodtype` and `jobtype` rather than a
+ * hardcoded table. The job flip and the combat `Weapon` travel together, so an armed class never exists
+ * without its arms. Only the soldier band transforms: a hero keeps its class, and a civilian or scout
+ * wearing a weapon good just carries it. Authored: within the band there is no schooling gate, since the
+ * barracks unlocks the profession rather than the weapon.
  */
 
 /** Which weapon class (`maintype`) each arming intent asks for - the assistant's three class rows. */

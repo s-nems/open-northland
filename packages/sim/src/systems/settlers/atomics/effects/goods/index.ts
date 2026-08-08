@@ -1,5 +1,4 @@
-// The goods effects of the atomic executor; every mutation conserves goods. Import this barrel, not the
-// leaves.
+// The goods effects of the atomic executor. Import this barrel, not the leaves.
 
 export { addCarry, dropCarriedLoad, dropCarryAtOwnTile } from './carry.js';
 export { consumeFood, forageBerry } from './consume.js';
