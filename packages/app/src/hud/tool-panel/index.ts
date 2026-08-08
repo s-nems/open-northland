@@ -39,7 +39,7 @@ export interface ToolPanelOptions {
   readonly goods: readonly MenuGoodEntry[];
   /** Language for the decoded UI strings (`pol`/`eng`); falls back to the pinned Polish labels when absent. */
   readonly lang: string;
-  /** The tribe whose read-view stats the statistics window shows. */
+  /** The tribe a placed building is stamped with. */
   readonly tribe: number;
   /** The player slot a placed building is owned by. */
   readonly owner: number;

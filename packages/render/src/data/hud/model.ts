@@ -1,11 +1,9 @@
 import { IDLE_JOB as SIM_IDLE_JOB, type WorldSnapshot } from '@open-northland/sim';
-import { readStockpileAmounts } from '../snapshot/index.js';
+import { readNumField, readStockpileAmounts } from '../snapshot/index.js';
 
 /**
- * Turns a {@link WorldSnapshot} into a flat {@link HudModel}. The aggregates of the sim's own read
- * views are re-derived from the read-only snapshot rather than called, because `render` must never
- * read the live component stores. The snapshot is taken at a tick boundary and counts and sums are
- * order-independent, so the values match those views by construction.
+ * Turns a {@link WorldSnapshot} into a flat {@link HudModel}. Aggregates are re-derived from the
+ * read-only snapshot rather than read off the live component stores, which `render` may never touch.
  */
 
 /** The sim's idle sentinel, re-exported so a HUD consumer can name it without importing sim. */
@@ -25,63 +23,49 @@ export interface StockCount {
 
 export interface HudModel {
   readonly tick: number;
-  readonly tribe: number;
-  /** Every living person of the tribe, working or not, baby or adult; its wildlife is not counted. */
+  /** The `Owner.player` slot every figure below is counted for. */
+  readonly player: number;
+  /** Every living person the player owns, working or not, baby or adult; wildlife is not counted. */
   readonly population: number;
   /** Per-job head-counts, ascending by `jobType`. */
   readonly jobs: readonly JobCount[];
-  /** Per-good totals across the tribe's stores, ascending by `goodType`; zero entries omitted. */
+  /** Per-good totals across the player's stores, ascending by `goodType`; zero entries omitted. */
   readonly stocks: readonly StockCount[];
 }
 
-/** The plain-cloned `Settler` component as it appears in a snapshot. */
-interface SettlerValue {
-  tribe?: unknown;
-  jobType?: unknown;
-}
-
-/** The plain-cloned `Building` component as it appears in a snapshot. */
-interface BuildingValue {
-  tribe?: unknown;
-}
-
-/** A person's `Settler` component, or null when the entity is not one: the `Person` marker is the sim's
- *  own query key, so wildlife and a claimed animal are left out here the same way. */
-function personOf(components: Readonly<Record<string, unknown>>): SettlerValue | null {
-  if (components.Person === undefined) return null;
-  const s = components.Settler as SettlerValue | undefined;
-  if (s === undefined || typeof s.tribe !== 'number') return null;
-  return s;
-}
-
-function buildingOf(components: Readonly<Record<string, unknown>>): BuildingValue | null {
-  const b = components.Building as BuildingValue | undefined;
-  if (b === undefined || typeof b.tribe !== 'number') return null;
-  return b;
+/** A person's job (`Settler.jobType`), or {@link IDLE_JOB} when it has none. A job id of 0 is valid, so
+ *  idle is detected by type, never by a falsy test. */
+function jobTypeOf(components: Readonly<Record<string, unknown>>): number {
+  return readNumField(components, 'Settler', 'jobType') ?? IDLE_JOB;
 }
 
 /**
- * Build a tribe's {@link HudModel} from a frame {@link WorldSnapshot}, mirroring the sim read views
- * `tribePopulation`, `tribePopulationByJob` and `tribeStocks`. Output ordering is total (sorted by id), so
- * the same snapshot yields an identical model every call.
+ * Build one player's {@link HudModel} from a frame {@link WorldSnapshot}. Membership is `Owner.player`,
+ * not `tribe`: a seat routinely fields several tribes and a tribe is routinely split across seats, so
+ * only the owner answers "what do I command". A neutral entity carries no `Owner` and counts for nobody,
+ * which is stricter than the sim's `ownersCompatible` side rule - a neutral store every seat may draw
+ * from would show in none of their totals. No decoded map authors one.
+ * Output ordering is total (sorted by id), so the same snapshot yields an identical model every call.
  */
-export function buildHud(snapshot: WorldSnapshot, tribe: number): HudModel {
+export function buildHud(snapshot: WorldSnapshot, player: number): HudModel {
   let population = 0;
   const jobCounts = new Map<number, number>();
   const stockTotals = new Map<number, number>();
 
   for (const entity of snapshot.entities) {
-    const settler = personOf(entity.components);
-    if (settler !== null && settler.tribe === tribe) {
+    const components = entity.components;
+    if (readNumField(components, 'Owner', 'player') !== player) continue;
+
+    // The `Person` marker is the sim's own population query key, so wildlife and a claimed animal are
+    // left out here the same way.
+    if ('Person' in components) {
       population++;
-      // A job id of 0 is valid, so idle is detected by type, never by a falsy test.
-      const jobType = typeof settler.jobType === 'number' ? settler.jobType : IDLE_JOB;
+      const jobType = jobTypeOf(components);
       jobCounts.set(jobType, (jobCounts.get(jobType) ?? 0) + 1);
     }
 
-    const building = buildingOf(entity.components);
-    if (building !== null && building.tribe === tribe) {
-      for (const [goodType, amount] of readStockpileAmounts(entity.components)) {
+    if ('Building' in components) {
+      for (const [goodType, amount] of readStockpileAmounts(components)) {
         stockTotals.set(goodType, (stockTotals.get(goodType) ?? 0) + amount);
       }
     }
@@ -96,5 +80,5 @@ export function buildHud(snapshot: WorldSnapshot, tribe: number): HudModel {
     .map(([goodType, amount]) => ({ goodType, amount }))
     .sort((a, b) => a.goodType - b.goodType);
 
-  return { tick: snapshot.tick, tribe, population, jobs, stocks };
+  return { tick: snapshot.tick, player, population, jobs, stocks };
 }

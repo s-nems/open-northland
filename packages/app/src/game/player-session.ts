@@ -68,3 +68,17 @@ export function playerColourMap(
   if (bySlot.size === 0) return (player) => player;
   return (player) => bySlot.get(player) ?? player;
 }
+
+/**
+ * A seat's authored display name (`MapPlayerSlot.name`), or `undefined` when the map ships none. The one
+ * thing that tells two seats of the same tribe apart, so the stats panel names the seat with it.
+ */
+export function playerNameMap(
+  script: Pick<MapScript, 'players'> | null,
+): (player: number) => string | undefined {
+  const bySlot = new Map<number, string>();
+  for (const p of script?.players ?? []) {
+    if (p.name !== undefined) bySlot.set(p.player, p.name);
+  }
+  return (player) => bySlot.get(player);
+}

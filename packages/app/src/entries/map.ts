@@ -18,6 +18,7 @@ import {
   localPlayerParam,
   observerParam,
   playerColourMap,
+  playerNameMap,
   readOnlyObserverParam,
 } from '../game/player-session.js';
 import { sandboxGoods } from '../game/sandbox/index.js';
@@ -188,6 +189,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     observer: observerParam(params),
     readOnly: readOnlyObserverParam(params),
     playerColourOf,
+    seatNameOf: playerNameMap(script),
     ...terrainColourOption(terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },

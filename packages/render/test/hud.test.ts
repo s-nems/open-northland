@@ -4,45 +4,93 @@ import { IDLE_JOB } from '../src/data/hud/model.js';
 import { buildHud, type HudModel, layoutHud, placeHud } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 
-/** A snapshot person entity; a null `jobType` is an idle adult. */
-function settler(id: number, tribe: number, jobType: number | null): WorldSnapshot['entities'][number] {
-  return { id, components: { Settler: { tribe, jobType }, Person: { person: true } } };
+const VIKING = 0;
+const SARACEN = 1;
+
+/** A snapshot person entity owned by `player`; a null `jobType` is an idle adult. */
+function settler(
+  id: number,
+  player: number,
+  jobType: number | null,
+  tribe = VIKING,
+): WorldSnapshot['entities'][number] {
+  return {
+    id,
+    components: { Settler: { tribe, jobType }, Person: { person: true }, Owner: { player } },
+  };
 }
 
-/** A snapshot creature: the same `Settler` model with no `Person` marker, as the sim clones wildlife. */
-function creature(id: number, tribe: number): WorldSnapshot['entities'][number] {
-  return { id, components: { Settler: { tribe, jobType: null } } };
+/** A snapshot creature: the same `Settler` model with no `Person` marker, as the sim clones wildlife.
+ *  Owned, because a claimed animal must stay out of the count on the marker alone. */
+function creature(id: number, player: number): WorldSnapshot['entities'][number] {
+  return { id, components: { Settler: { tribe: VIKING, jobType: null }, Owner: { player } } };
 }
 
 function store(
   id: number,
-  tribe: number,
+  player: number,
   amounts: readonly [number, number][],
+  tribe = VIKING,
 ): WorldSnapshot['entities'][number] {
-  return { id, components: { Building: { tribe, buildingType: 0, built: 1 }, Stockpile: { amounts } } };
+  return {
+    id,
+    components: {
+      Building: { tribe, buildingType: 0, built: 1 },
+      Stockpile: { amounts },
+      Owner: { player },
+    },
+  };
+}
+
+/** An unowned fixture: neutral scenery or wildlife, which belongs to no seat. */
+function neutralStore(id: number, amounts: readonly [number, number][]): WorldSnapshot['entities'][number] {
+  return {
+    id,
+    components: { Building: { tribe: VIKING, buildingType: 0, built: 1 }, Stockpile: { amounts } },
+  };
 }
 
 describe('buildHud', () => {
-  it('counts every settler of the tribe as population, regardless of job', () => {
+  it('counts every settler of the player as population, regardless of job', () => {
     const hud = buildHud(
       snapshotOf([
         settler(1, 0, 5),
         settler(2, 0, null),
         settler(3, 0, 1), // a baby, whose job id is an age class
-        settler(4, 1, 5), // other tribe
+        settler(4, 1, 5), // other player
       ]),
       0,
     );
     expect(hud.population).toBe(3);
-    expect(hud.tribe).toBe(0);
+    expect(hud.player).toBe(0);
   });
 
-  it('counts people only, keyed on the marker rather than on the tribe id', () => {
-    // Sharing the tribe id is synthetic - no decoded animal tribe collides with a civilization - and that
-    // is the point: what keeps a creature out of the count is the `Person` marker, as it is in the sim.
+  it('counts a multi-tribe seat whole, and never another seat sharing its tribe', () => {
+    const hud = buildHud(
+      snapshotOf([
+        settler(1, 0, 5, SARACEN),
+        settler(2, 0, 5, VIKING),
+        settler(3, 1, 5, VIKING), // another seat, same tribe
+        store(4, 0, [[2, 10]], SARACEN),
+        store(5, 1, [[2, 99]], VIKING),
+      ]),
+      0,
+    );
+    expect(hud.population).toBe(2);
+    expect(hud.stocks).toEqual([{ goodType: 2, amount: 10 }]);
+  });
+
+  it('counts people only, keyed on the marker rather than on ownership', () => {
+    // A claimed animal is owned like a settler, so what keeps it out of the count is the `Person`
+    // marker, as it is in the sim.
     const hud = buildHud(snapshotOf([settler(1, 0, 5), creature(2, 0), creature(3, 0)]), 0);
     expect(hud.population).toBe(1);
     expect(hud.jobs).toEqual([{ jobType: 5, count: 1 }]);
+  });
+
+  it('leaves a neutral entity out: an unowned store belongs to no seat', () => {
+    const hud = buildHud(snapshotOf([store(1, 0, [[2, 4]]), neutralStore(2, [[2, 99]])]), 0);
+    expect(hud.stocks).toEqual([{ goodType: 2, amount: 4 }]);
   });
 
   it('breaks settlers down by jobType, idle adults under the IDLE_JOB sentinel, ascending', () => {
@@ -66,7 +114,7 @@ describe('buildHud', () => {
     ]);
   });
 
-  it('sums each good across the tribe stores, ascending by goodType, omitting zero totals', () => {
+  it('sums each good across the player stores, ascending by goodType, omitting zero totals', () => {
     const hud = buildHud(
       snapshotOf([
         store(1, 0, [
@@ -77,7 +125,7 @@ describe('buildHud', () => {
           [2, 4],
           [9, 0], // a real but empty slot
         ]),
-        store(3, 1, [[2, 99]]), // other tribe
+        store(3, 1, [[2, 99]]), // other player
       ]),
       0,
     );
@@ -96,9 +144,9 @@ describe('buildHud', () => {
     expect(a).toEqual(b);
   });
 
-  it('returns an empty-but-shaped model for a tribe with nothing', () => {
+  it('returns an empty-but-shaped model for a player with nothing', () => {
     const hud = buildHud(snapshotOf([settler(1, 1, 5)]), 0);
-    expect(hud).toEqual({ tick: 1, tribe: 0, population: 0, jobs: [], stocks: [] });
+    expect(hud).toEqual({ tick: 1, player: 0, population: 0, jobs: [], stocks: [] });
   });
 });
 
@@ -107,11 +155,11 @@ const HUD_LINE_H = 16;
 const HUD_INDENT = 12;
 
 function model(over: Partial<HudModel> = {}): HudModel {
-  return { tick: 0, tribe: 0, population: 0, jobs: [], stocks: [], ...over };
+  return { tick: 0, player: 0, population: 0, jobs: [], stocks: [], ...over };
 }
 
 const LABELS = {
-  tribeTick: (tribe: number, tick: number) => `Tribe ${tribe} · tick ${tick}`,
+  playerTick: (player: number, tick: number) => `Player ${player} · tick ${tick}`,
   population: (population: number) => `Population: ${population}`,
   jobs: 'Jobs',
   stocks: 'Stocks',
@@ -122,9 +170,9 @@ const LABELS = {
 
 describe('layoutHud', () => {
   it('emits the header + section headings for an empty model, stacked by line height', () => {
-    const layout = layoutHud(model({ tick: 7, tribe: 2, population: 0 }), LABELS);
+    const layout = layoutHud(model({ tick: 7, player: 2, population: 0 }), LABELS);
     expect(layout.rows).toEqual([
-      { x: HUD_PAD, y: HUD_PAD, text: 'Tribe 2 · tick 7' },
+      { x: HUD_PAD, y: HUD_PAD, text: 'Player 2 · tick 7' },
       { x: HUD_PAD, y: HUD_PAD + HUD_LINE_H, text: 'Population: 0' },
       { x: HUD_PAD, y: HUD_PAD + 2 * HUD_LINE_H, text: 'Jobs' },
       { x: HUD_PAD, y: HUD_PAD + 3 * HUD_LINE_H, text: 'Stocks' },
@@ -168,7 +216,7 @@ describe('layoutHud', () => {
 const HUD_MARGIN = 8; // mirrors the placement margin in hud.ts, kept local so a drift is caught
 
 describe('placeHud', () => {
-  const layout = layoutHud(model({ tick: 1, tribe: 1, population: 2 }), LABELS);
+  const layout = layoutHud(model({ tick: 1, player: 1, population: 2 }), LABELS);
 
   it('top-left: anchors the panel at the margin and offsets every row by the panel origin', () => {
     const placed = placeHud(layout, 'top-left', { width: 960, height: 540 });

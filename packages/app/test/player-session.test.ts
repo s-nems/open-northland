@@ -4,6 +4,7 @@ import {
   localPlayerParam,
   observerParam,
   playerColourMap,
+  playerNameMap,
   readOnlyObserverParam,
 } from '../src/game/player-session.js';
 
@@ -69,5 +70,24 @@ describe('playerColourMap', () => {
     const colourOf = playerColourMap(null, new Map());
     expect(colourOf(0)).toBe(0);
     expect(colourOf(3)).toBe(3);
+  });
+});
+
+describe('playerNameMap', () => {
+  it('names the seats the roster names, and only those', () => {
+    // Same tribe on both seats: the authored name is the only thing telling them apart.
+    const nameOf = playerNameMap({
+      players: [
+        { player: 0, type: 'human' as const, tribeId: 1, colorId: 7, name: 'Zachodni Wikingowie' },
+        { player: 1, type: 'ai' as const, tribeId: 1, colorId: 9 },
+      ],
+    });
+    expect(nameOf(0)).toBe('Zachodni Wikingowie');
+    expect(nameOf(1)).toBeUndefined(); // roster row without a name
+    expect(nameOf(5)).toBeUndefined(); // off-roster
+  });
+
+  it('names nothing for a roster-less map, which leaves the header on the slot id', () => {
+    expect(playerNameMap(null)(0)).toBeUndefined();
   });
 });
