@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { createOggEncoder } from 'wasm-media-encoders';
 import { decodeSegmentTiming, musicTimeToSeconds } from '../../decoders/sgt.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
+import { encodeOgg } from './ogg-encode.js';
 import { decodePcm16Wav } from './wav.js';
 
 /**
@@ -79,30 +79,6 @@ async function sharedInputsMtimeMs(dm2: string, dmrender: string): Promise<numbe
     if (mtimeMs > latest) latest = mtimeMs;
   }
   return latest;
-}
-
-/** Interleave planar float channels, trim to `frames`, encode to ogg/vorbis bytes. */
-async function encodeOgg(channels: readonly Float32Array[], frames: number): Promise<Uint8Array> {
-  const encoder = await createOggEncoder();
-  encoder.configure({ channels: CHANNELS, sampleRate: SAMPLE_RATE, vbrQuality: VBR_QUALITY });
-  const [left, right] = channels;
-  if (left === undefined || right === undefined) throw new Error('encode expects stereo channels');
-  const parts: Uint8Array[] = [];
-  // Encode in bounded slices so the wasm side never sees the whole track at once.
-  const SLICE_FRAMES = 1 << 20;
-  for (let start = 0; start < frames; start += SLICE_FRAMES) {
-    const end = Math.min(frames, start + SLICE_FRAMES);
-    parts.push(encoder.encode([left.subarray(start, end), right.subarray(start, end)]));
-  }
-  parts.push(encoder.finalize());
-  const total = parts.reduce((sum, p) => sum + p.length, 0);
-  const out = new Uint8Array(total);
-  let at = 0;
-  for (const part of parts) {
-    out.set(part, at);
-    at += part.length;
-  }
-  return out;
 }
 
 /**
@@ -181,7 +157,7 @@ export async function renderMusicStage(
         throw new Error(`unexpected render format ${wav.sampleRate}Hz/${wav.channels.length}ch`);
       }
       const frames = Math.min(Math.round(totalS * SAMPLE_RATE), wav.channels[0]?.length ?? 0);
-      await writeFile(outPath, await encodeOgg(wav.channels, frames));
+      await writeFile(outPath, await encodeOgg(wav.channels, frames, SAMPLE_RATE, VBR_QUALITY));
       rendered++;
     } catch (err) {
       manifest.delete(stem);
