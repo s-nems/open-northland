@@ -1,29 +1,60 @@
 import { describe, expect, it } from 'vitest';
-import { parseBackdropsIndex, shuffledOrder } from '../src/entries/main-menu/backdrops.js';
+import { randomStill, rotationOrder } from '../src/entries/main-menu/backdrops.js';
+import { parseStillList } from '../src/view/backdrop-stills.js';
 
-describe('parseBackdropsIndex', () => {
+const POOL = ['01-a.jpg', '02-b.jpg', '03-c.jpg', '04-d.jpg'];
+
+describe('parseStillList', () => {
   it('accepts a string list and rejects anything else', () => {
-    expect(parseBackdropsIndex(['01-a.jpg', '02-b.jpg'])).toEqual(['01-a.jpg', '02-b.jpg']);
-    expect(parseBackdropsIndex([])).toEqual([]);
-    expect(parseBackdropsIndex(['01-a.jpg', 7])).toBeNull();
-    expect(parseBackdropsIndex({ files: [] })).toBeNull();
-    expect(parseBackdropsIndex(null)).toBeNull();
+    expect(parseStillList(['01-a.jpg', '02-b.jpg'])).toEqual(['01-a.jpg', '02-b.jpg']);
+    expect(parseStillList([])).toEqual([]);
+    expect(parseStillList(['01-a.jpg', 7])).toBeNull();
+    expect(parseStillList({ files: [] })).toBeNull();
+    expect(parseStillList(null)).toBeNull();
   });
 });
 
-describe('shuffledOrder', () => {
-  it('permutes every index exactly once', () => {
-    const order = shuffledOrder(8, () => 0.31);
-    expect([...order].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+describe('randomStill', () => {
+  it('draws from the pool, pinned by the injected rng', () => {
+    expect(randomStill(POOL, null, () => 0)).toBe('01-a.jpg');
+    expect(randomStill(POOL, null, () => 0.99)).toBe('04-d.jpg');
+  });
+
+  it('never draws the still already seen while the pool holds anything else', () => {
+    for (const r of [0, 0.3, 0.6, 0.99]) expect(randomStill(POOL, '01-a.jpg', () => r)).not.toBe('01-a.jpg');
+  });
+
+  it('repeats the one still rather than leaving the menu with nothing', () => {
+    expect(randomStill(['01-a.jpg'], '01-a.jpg', () => 0.5)).toBe('01-a.jpg');
+  });
+
+  it('reads an empty pool as no still', () => {
+    expect(randomStill([], null, () => 0.5)).toBeNull();
+  });
+});
+
+describe('rotationOrder', () => {
+  it('visits every still exactly once', () => {
+    expect([...rotationOrder(POOL, null, () => 0.31)].sort()).toEqual([...POOL].sort());
   });
 
   it('is pinned by the injected rng', () => {
-    expect(shuffledOrder(4, () => 0)).toEqual(shuffledOrder(4, () => 0));
-    expect(shuffledOrder(4, () => 0.99)).toEqual([0, 1, 2, 3]);
+    expect(rotationOrder(POOL, null, () => 0)).toEqual(rotationOrder(POOL, null, () => 0));
+    expect(rotationOrder(POOL, null, () => 0.99)).toEqual(POOL);
+  });
+
+  it('leads with the still already on screen, and still visits the rest', () => {
+    const order = rotationOrder(POOL, '03-c.jpg', () => 0.99);
+    expect(order[0]).toBe('03-c.jpg');
+    expect([...order].sort()).toEqual([...POOL].sort());
+  });
+
+  it('ignores a still the pool no longer has', () => {
+    expect(rotationOrder(POOL, '09-gone.jpg', () => 0.99)).toEqual(POOL);
   });
 
   it('handles empty and single-image pools', () => {
-    expect(shuffledOrder(0, () => 0.5)).toEqual([]);
-    expect(shuffledOrder(1, () => 0.5)).toEqual([0]);
+    expect(rotationOrder([], null, () => 0.5)).toEqual([]);
+    expect(rotationOrder(['01-a.jpg'], '01-a.jpg', () => 0.5)).toEqual(['01-a.jpg']);
   });
 });

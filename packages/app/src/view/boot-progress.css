@@ -1,6 +1,6 @@
-/* The boot card (view/boot-progress.ts). Deliberately the main menu's vocabulary - same backdrop, serif,
-   carved-wood frame and gold - so menu → loading → game reads as one screen rather than three. The menu
-   navigates by full page load, so the backdrop is already in the HTTP cache when this card draws. */
+/* The boot card (view/boot-progress.ts). Deliberately the main menu's vocabulary - the settlement the
+   last menu visit showed, serif, carved-wood frame and gold - so menu → loading → game reads as one
+   screen rather than three. */
 
 .boot-card {
   --boot-cream: #ead8aa;
@@ -17,7 +17,8 @@
   font-family: Palatino, "Palatino Linotype", "Book Antiqua", Georgia, serif;
   /* Two scrims: a centre pool so the bar and label keep their contrast against whatever the backdrop
      happens to show, and a vignette dropping the edges. Both heavier than the menu's, which only had to
-     stay behind opaque panels. */
+     stay behind opaque panels. The still sits above the static art, so one the pool no longer has fails
+     to paint and uncovers the art rather than leaving bare scrims; the price is decoding both. */
   background:
     radial-gradient(
       ellipse 55% 40% at center,
@@ -31,6 +32,7 @@
       rgba(5, 3, 2, 0.72) 55%,
       rgba(2, 1, 1, 0.95) 100%
     ),
+    var(--boot-still, none) center 48% / cover,
     var(--boot-backdrop) center 48% / cover;
 }
 

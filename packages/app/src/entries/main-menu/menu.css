@@ -136,8 +136,8 @@
   filter: saturate(0.55) brightness(0.5);
 }
 
-/* A captured still crossfades in over the static art; two layers alternate so the swap is a fade,
-   and the slow push-in makes the backdrop read as alive. The push-in runs longer than the dwell +
+/* Two layers alternate so each new still arrives as a fade rather than a cut, and the slow push-in
+   makes the backdrop read as alive. The push-in runs longer than the dwell +
    fade (backdrops.ts DWELL_MS), so the motion never visibly freezes while a still is on screen. */
 .main-menu__backdrop {
   position: absolute;
