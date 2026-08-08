@@ -10,9 +10,6 @@ import type { NodeId } from '../../nav/terrain/index.js';
  * `yieldUnits` so the reap swing drops the whole yield as a {@link GroundDrop} sheaf pile and removes the
  * field. Only the farm that sowed a field waters and reaps it.
  *
- * Approximation: watering is the growth fuel and each stage step consumes it; the engine's watering
- * semantics are not decoded (see systems/economy/fields.ts).
- *
  * A field blocks neither walking nor building - it carries a {@link ResourceFootprint} declaring empty
  * walk/build areas, which is how the original's wheat landscape reads (`allowedonland 1`, no block areas).
  */
@@ -20,7 +17,7 @@ export const Crop = defineComponent<{
   goodType: number;
   /** The farm workplace this field belongs to (a cross-reference id; ids are never reused). */
   farm: Entity;
-  /** Current growth stage, 1..{@link stages}; ripe at the top stage. */
+  /** Current growth stage, 1..`stages`; ripe at the top stage. */
   stage: number;
   /** Total growth stages (the content `farming.stages`, snapshotted at sow). */
   stages: number;
@@ -29,19 +26,17 @@ export const Crop = defineComponent<{
   /** This field's ticks per growth stage, drawn at sow from the content's nominal rate and its
    *  `growthSpreadPercent` band by a hash of the node, so fields planted together ripen apart. */
   ticksPerStage: number;
-  /** Whether the field holds a live watering: only a watered field grows, and each stage step consumes
-   *  the watering. */
+  /** Whether the field holds a live watering: only a watered field grows, and a stage step consumes it. */
   watered: boolean;
   /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
   yieldUnits: number;
 }>('Crop');
 
 /**
- * A farmer's in-flight field intent - which node its current farm action (reap / sheaf pickup / sow /
- * water) targets. Stamped when the drive issues the action and removed the moment the settler replans, so
- * it exists exactly while the farmer is walking to or swinging at the target. Its one purpose is work
- * division: the planner folds every live task into the tick's claim set, so a second farmer never picks a
- * node a colleague is already en route to. A stale task over-claims one node until that farmer replans.
+ * A farmer's in-flight field intent - which node its current farm action (reap / sheaf pickup / sow / water)
+ * targets. Stamped when the drive issues the action and removed on replan, so it exists exactly while the
+ * farmer is walking to or swinging at the target. Its one purpose is work division: every live task joins
+ * the tick's claim set, so a second farmer never picks a node a colleague is already en route to.
  */
 export const FarmTask = defineComponent<{
   /** The farm workplace the action serves (the `byFarm` sow-count key). */
@@ -53,9 +48,9 @@ export const FarmTask = defineComponent<{
 }>('FarmTask');
 
 /**
- * A {@link Crop} field cut off from its farm - no work stance is both unblocked and routable from the
- * farm's door. The FieldReclaimSystem owns the rule and its pacing; the field is destroyed once the state
- * holds for a sustained span, returning its `maxFields` slot to the plot.
+ * A {@link Crop} field cut off from its farm - no work stance is both unblocked and routable from the farm's
+ * door. The field is destroyed once the state holds for a sustained span, returning its `maxFields` slot to
+ * the plot.
  */
 export const StrandedField = defineComponent<{
   /** Tick the sweep first observed the field cut off; cleared the moment a route exists again. */
@@ -63,10 +58,10 @@ export const StrandedField = defineComponent<{
 }>('StrandedField');
 
 /**
- * A settler that has stepped inside a building, stamped by the drive that put it there and shed the moment
- * nothing holds it in. Mostly a render fact - the render hides the settler and it steps back out the tick
- * work appears (observation: the original's off-duty workers wait inside the house, not at the door).
- * Several drives also read it as the is-inside test, so `systems/settlers/indoors.ts` owns who may hold it.
+ * A settler that has stepped inside a building, shed the moment nothing holds it in. Mostly a render fact -
+ * the render hides the settler and it steps back out the tick work appears (observation: the original's
+ * off-duty workers wait inside the house, not at the door). Several drives also read it as the is-inside
+ * test.
  */
 export const Resting = defineComponent<{
   /** The completed building the settler is inside. */

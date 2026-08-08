@@ -73,17 +73,16 @@ export const UnderConstruction = defineComponent<{ labor: Fixed }>('UnderConstru
  * to 0 - and its presence switches the site's bill to the target tier's own `construction`, the level
  * difference rather than the cumulative from-scratch bill.
  *
- * `savedStock` is the pre-upgrade inventory, stashed so the emptied {@link Stockpile} can serve as the
- * site's build hold and merged back when the upgrade completes. Bill goods the building already held
- * instead seed the hold, and `seeded` records those amounts so a cancel returns them to the inventory.
- * Workers' job assignments and residents' homes are deliberately not cleared.
- *
- * Source basis: the become-a-site-again flow, the separate build store, the difference-only cost, and kept
- * occupants are observed. Approximations: the builder-driven pace, and own goods counting toward the
+ * The become-a-site-again flow, the separate build store, the difference-only cost, and the kept workers and
+ * residents are observed. Approximations: the builder-driven pace, and own goods counting toward the
  * upgrade, since freezing them can deadlock the economy.
  */
 export const Upgrading = defineComponent<{
+  /** The pre-upgrade inventory, stashed so the emptied {@link Stockpile} can serve as the site's build
+   *  hold, and merged back when the upgrade completes. */
   savedStock: Map<number, number>;
+  /** Bill goods the building already held, seeded into the build hold instead; a cancel returns these
+   *  amounts to the inventory. */
   seeded: Map<number, number>;
 }>('Upgrading');
 
