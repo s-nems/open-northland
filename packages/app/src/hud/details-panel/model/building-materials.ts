@@ -27,7 +27,7 @@ export interface ConstructionRow {
 }
 
 /** One material line of the Upgrade button's cost preview: the bill shown before the upgrade starts, so
- *  unlike {@link ConstructionRow} it has no delivered half. */
+ *  it carries only the amount, nothing being delivered yet. */
 export interface UpgradeCostRow {
   readonly goodType: number;
   readonly label: string;
@@ -39,7 +39,7 @@ export interface ConstructionModel {
   readonly rows: readonly ConstructionRow[];
 }
 
-/** The current holdings of a building's {@link Stockpile}, as a goodType→amount map. */
+/** The current holdings of a building's `Stockpile`, as a goodType→amount map. */
 function liveAmounts(stockpile: unknown): Map<number, number> {
   const live = new Map<number, number>();
   const amounts = (stockpile as { amounts?: unknown } | undefined)?.amounts;
@@ -53,8 +53,8 @@ function liveAmounts(stockpile: unknown): Map<number, number> {
   return live;
 }
 
-/** The pending experience-bonus fraction per good (`ProductionBonus.remainders`, `Fixed` → float),
- *  for display only - withdrawal never sees these. Empty for a building without the component. */
+/** The pending experience-bonus fraction per good (`ProductionBonus.remainders`, `Fixed` → float).
+ *  Empty for a building without the component. */
 function bonusFractions(productionBonus: unknown): Map<number, number> {
   const out = new Map<number, number>();
   const remainders = (productionBonus as { remainders?: unknown } | undefined)?.remainders;
@@ -71,9 +71,7 @@ function bonusFractions(productionBonus: unknown): Map<number, number> {
 /**
  * The Magazyn rows: every good the building can store (its `def.stock` slots) with its current amount, 0
  * when empty, matching the original window, which lists a store's accepted goods rather than whatever it
- * happens to hold. Rows keep the declared slot order so a compact store's rows never swap places mid-work.
- * Each row's `category` is the tab the render filters by, from a named approximation of the good→category
- * mapping rather than from extracted data.
+ * happens to hold. Rows keep the declared slot order so a store's rows never swap places mid-work.
  */
 export function stockRows(
   ctx: UnitPanelModelContext,
@@ -91,8 +89,8 @@ export function stockRows(
       goodType: slot.goodType,
       // Shown by the hover tooltip only; the drawn row is just the icon and the amount.
       label: goodLabel(ctx, slot.goodType),
-      // Whole units plus the pending experience-bonus fraction, display only: floored to one decimal so
-      // a 0.97 fraction never reads as an extractable unit, and clamped at the slot capacity.
+      // Whole units plus the pending bonus fraction, floored to one decimal so a 0.97 fraction never
+      // reads as an extractable unit. Display only: a withdrawal still sees whole units.
       amount: Math.min(
         (live.get(slot.goodType) ?? 0) + Math.floor((fractions.get(slot.goodType) ?? 0) * 10) / 10,
         slot.capacity,
@@ -104,10 +102,8 @@ export function stockRows(
   });
 }
 
-/**
- * The upgrade target tier's own construction bill: the level-difference cost the sim charges to raise
- * `def` one tier. Empty when the type has no upgrade target or the target declares no cost.
- */
+/** The upgrade target tier's own construction bill: the level-difference cost the sim charges to raise
+ *  `def` one tier. Empty when the type has no upgrade target or the target declares no cost. */
 function upgradeTargetBill(
   ctx: UnitPanelModelContext,
   def: BuildingDef | undefined,
@@ -117,8 +113,8 @@ function upgradeTargetBill(
 }
 
 /**
- * One row per line of the site's bill: the type's from-scratch cumulative bill, or for an upgrading
- * building the target tier's own level-difference cost, each with how much the site's hold already has.
+ * One row per line of the site's bill - the type's from-scratch cumulative bill, or for an upgrading
+ * building the target tier's level-difference cost - each with how much the site's hold already has.
  * Null for a finished building.
  */
 export function constructionModel(

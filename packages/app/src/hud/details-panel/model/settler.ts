@@ -15,13 +15,8 @@ import type { EquipRow } from './settler-equipment.js';
 import type { UnlockProgressRowModel } from './settler-unlocks.js';
 import type { SettlerWorkModel } from './settler-work.js';
 
-/**
- * The original has no string for the sim's own states (stance names, status lines, need names), so those
- * carry pinned Polish labels here; everything it does provide is looked up from the decoded string tables
- * at render time.
- */
-
-/** The four military stances (`MILITARY_MODE`), with Polish labels for the live "Postawa" line. */
+/** The four military stances (`MILITARY_MODE`). The original carries no string for the sim's own states,
+ *  so the "Postawa" line's labels come from the app's own bundle. */
 export function stanceLabel(mode: number | undefined): string {
   const hud = messages().hud;
   if (mode === systems.MILITARY_MODE.ATTACK) return hud.attack;
@@ -34,13 +29,11 @@ export function stanceLabel(mode: number | undefined): string {
 export interface SettlerPanelModel {
   readonly kind: 'settler';
   readonly entityId: number;
-  /** The character's personal name, drawn as the section headline in place of the "Ogólne" title. */
   readonly name: string;
-  /** The character's profession (its job label) - the name line under the headline. */
   readonly profession: string;
   /** False for an idle or jobless settler, which has no trade to place. */
   readonly canAssignWorkplace: boolean;
-  /** True for a settler currently posted to a workplace, the only state the release has anything to do. */
+  /** True for a settler currently posted to a workplace. */
   readonly canUnassignWorkplace: boolean;
   /** Any adult may be housed; false for a growing child, whose family is housed through its parents. */
   readonly canAssignHome: boolean;
@@ -48,16 +41,15 @@ export interface SettlerPanelModel {
   readonly canUnassignHome: boolean;
   /** Owner/tribe meta line under the name, with the military stance appended for a soldier. */
   readonly meta: string;
-  /** A short live-state caption drawn in the portrait box, standing in for the original's animated
-   *  "what it's doing" preview. */
+  /** A short live-state caption standing in for the original's animated "what it's doing" preview. */
   readonly statusCaption: string;
   /** The Ogólne stat bars: Zdrowie (only for a unit with Health), then the need bars when they apply. */
   readonly bars: readonly PanelBar[];
   readonly work: SettlerWorkModel;
   /** Every specialization the settler has trained, most-trained first; empty when it has none. */
   readonly experience: readonly ExperienceRowModel[];
-  /** Progress toward the professions this settler's current work unlocks next, drawn dimmed under the
-   *  trained rows; empty while progression is off. */
+  /** Progress toward the professions this settler's current work unlocks next; empty while progression
+   *  is off. */
   readonly upcomingUnlocks: readonly UnlockProgressRowModel[];
   /** The Ekwipunek section as labeled rows, from the sim `Equipment` component. */
   readonly equipmentRows: readonly EquipRow[];
@@ -73,8 +65,7 @@ function needBar(label: string, deficit: number | undefined): PanelBar {
  * original's window shows the satisfaction level, so each need bar is `100 - need`. The labels
  * deliberately diverge from the decoded `humanwindow` 11-15 strings: each bar is named after the need it
  * shows (Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment), which the original's stat names do not map
- * onto 1:1. Every need bar drops for a cared-for baby, whose needs never accumulate, and for a match run
- * with the needs rule off.
+ * onto 1:1.
  */
 export function satisfactionBars(ent: SnapshotEntity, needsEnabled: boolean): PanelBar[] {
   const hud = messages().hud;
@@ -129,11 +120,8 @@ export function experienceLabel(
   return formatMessage(messages().hud.specialization, { id: spec });
 }
 
-/**
- * A specialization row's percent is the actual effect of that experience, never a raw curve read: the
- * scout bucket shows its vision gain over the scout's base radius, a carrier track none, and every other
- * work track the shared output/speed curve.
- */
+/** A specialization row's percent is the effect that experience actually buys, not a raw curve read: the
+ *  scout bucket its vision gain over the scout's base radius, a carrier track none. */
 function experienceBonusPct(
   ctx: UnitPanelModelContext,
   spec: number,
@@ -154,8 +142,7 @@ function experienceBonusPct(
 /**
  * The Doświadczenie rows, most-trained first, off the settler's `Settler.experience` map
  * (`humanjobexperiencetypes` id → raw points). Raw points are shown as completed-work repeats, dividing
- * the track's accrual rate back out, so "Zbieracz Drewna 5" means five wood gathered; a track-less
- * bucket (fight, scout) shows raw points.
+ * the track's accrual rate back out; a track-less bucket (fight, scout) shows raw points.
  */
 export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): ExperienceRowModel[] {
   const rows: (ExperienceRowModel & { spec: number })[] = [];
@@ -177,13 +164,12 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
 
 export function settlerStatus(snapshot: WorldSnapshot, components: Comp): string {
   const statuses = messages().hud.statuses;
-  // PlayerOrder is a bare en-route marker the sim retires the tick the unit reaches its commanded
-  // destination, so a settler carrying it is always still walking there (no post-arrival dwell).
+  // The sim retires PlayerOrder the tick the unit reaches its commanded destination, so a settler
+  // carrying it is still walking there.
   if ('PlayerOrder' in components) return statuses.ordered;
   if ('CurrentAtomic' in components) return statuses.working;
   if ('PathFollow' in components || 'MoveGoal' in components) return statuses.walking;
-  // A settler posted to a site still going up waits there by design, which without its own caption reads
-  // as plain idleness.
+  // Waiting out a workplace still going up is by design; without its own caption it reads as idleness.
   if (awaitsItsWorkplace(snapshot, components)) return statuses.awaitingWorkplace;
   return statuses.idle;
 }

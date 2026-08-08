@@ -39,12 +39,11 @@ export function unlockProgressRows(
   for (const req of tribeType.jobRequirements) {
     if (req.requirement !== 'need' || req.target !== 'job') continue;
     if (isFighterTarget(ctx, req.targetId)) continue; // barracks territory, never an XP promise
-    // "Reachable": at least one required track is one this settler's current job accrues.
     const tracks = req.experienceTypes.map((t) => ctx.jobExperience.find((d) => d.typeId === t));
     const reachable = tracks.findIndex((t) => t?.jobType === jobType);
     if (reachable < 0) continue;
     const current = systems.requirementRepeats(ctx.jobExperience, points, req.experienceTypes);
-    if (current >= req.amount) continue; // already unlocked - nothing left to show
+    if (current >= req.amount) continue;
     // The row names the track this settler actually trains toward, not the line's first.
     const trackType = req.experienceTypes[reachable];
     const trackLabel =
