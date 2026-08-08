@@ -4,7 +4,7 @@ import {
   type BobAtlas,
   packBobAtlas,
   packShadowBobAtlas,
-} from '../../decoders/atlas.js';
+} from '../../decoders/atlas/index.js';
 import { decodeBmd } from '../../decoders/bmd/index.js';
 import { paletteAliasMap } from '../../decoders/ini.js';
 import { decodePcx } from '../../decoders/pcx.js';

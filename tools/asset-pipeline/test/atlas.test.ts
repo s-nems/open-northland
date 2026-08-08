@@ -8,7 +8,7 @@ import {
   packIndexedBobAtlas,
   packShadowBobAtlas,
   SHADOW_ALPHA,
-} from '../src/decoders/atlas.js';
+} from '../src/decoders/atlas/index.js';
 import {
   type Bmd,
   BOB_TYPE_1BIT,

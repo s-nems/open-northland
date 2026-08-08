@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, sep } from 'node:path';
-import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
+import { type BobAtlas, packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas/index.js';
 import type { Bmd } from '../decoders/bmd/index.js';
 import { encodePng } from '../decoders/png.js';
 
