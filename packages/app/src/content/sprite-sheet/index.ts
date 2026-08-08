@@ -1,7 +1,4 @@
-/**
- * The real decoded {@link import('@open-northland/render').SpriteSheet} assembly - the byte-loading half of
- * the settler/building/resource render bindings, whose pure reducers live in `settler-gfx/`,
- * `building-gfx/` and `resource-gfx/`.
- */
+// The byte-loading half of the settler/building/resource render bindings, whose reducers are pure.
+
 export { loadHumanSpriteSheet } from './human-sheet.js';
 export { resolveSpriteSheet, syntheticSpriteSheet } from './resolve.js';
