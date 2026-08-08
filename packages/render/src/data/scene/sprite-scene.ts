@@ -1,4 +1,4 @@
-import { type EntitySnapshot, entityById, type WorldSnapshot } from '@open-northland/sim';
+import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
 import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
@@ -12,17 +12,11 @@ import {
   pushSignpostItems,
 } from './collect-fields.js';
 import { spriteDepth } from './depth.js';
-import type { MutableSpriteDrawItem, SpriteDrawItem, SpriteState } from './draw-item.js';
-import { isIndoorSettler, TARGET_FACING_ATOMIC_IDS, targetPositionsOf } from './snapshot-index.js';
-import {
-  assignStaticFields,
-  classify,
-  facingTowardTile,
-  readActingAtomic,
-  readAtomicTargetEntity,
-  readPosition,
-  readSpriteState,
-} from './snapshot-readers/index.js';
+import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
+import { emitEntities } from './entity-source.js';
+import { STANDING_POSE, settlerPose } from './settler-pose.js';
+import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
+import { assignStaticFields, classify, readPosition } from './snapshot-readers/index.js';
 import type { SpriteSpatialIndex } from './spatial-index.js';
 
 /** Whether a ref is alive (drawable) this frame. A `ReadonlySet` satisfies it; the index-backed build
@@ -104,8 +98,6 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     viewport,
     elevation,
     staticRefs,
-    index,
-    onlyRefs,
     fogVisible,
     ghosts,
     keepIndoorSettlers,
@@ -113,7 +105,6 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     playerColourOf,
   } = opts;
   const items: MutableSpriteDrawItem[] = [];
-  // Refs collected while emitting; in the walk modes this is the whole liveness set.
   const collected = new Set<number>();
   const posByRef = targetPositionsOf(snapshot);
 
@@ -126,45 +117,26 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     const pos = readPosition(components);
     if (pos === null) return;
     const isPortrait = portraitRef !== undefined && entity.id === portraitRef;
-    // An indoor settler stays live and pooled but draws nothing, unless kept or forced below.
-    let indoorSettler = false;
-    if (kind === 'settler') {
-      indoorSettler = isIndoorSettler(snapshot, components);
-      if (indoorSettler && keepIndoorSettlers !== true && !isPortrait) {
-        collected.add(entity.id);
-        return;
-      }
-    }
-    // Read here, not in the stockpile branch below, so it folds into the depth key.
-    const isFlag = 'DeliveryFlag' in components;
     collected.add(entity.id);
+    // An indoor settler stays live and pooled but draws nothing, unless kept or forced here.
+    const indoorSettler = kind === 'settler' && isIndoorSettler(snapshot, components);
+    if (indoorSettler && keepIndoorSettlers !== true && !isPortrait) return;
     const tileX = pos.x / ONE;
     const tileY = pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
-    // An indoor settler is forced idle, so a path or atomic left running from the tick it stepped
-    // inside can't leave it walking or mid-swing in the panel's portrait.
-    const state: SpriteState = kind === 'settler' && !indoorSettler ? readSpriteState(components) : 'idle';
-    const actingAtomic = kind === 'settler' && !indoorSettler ? readActingAtomic(components) : null;
-    // A mid-swing settler only turns; the drawn anchor never moves toward its target. The swing frames
-    // carry their own advance in the per-frame foot offsets, so a positional nudge would double it.
-    let targetFacing: number | undefined;
-    if (kind === 'settler' && actingAtomic !== null && TARGET_FACING_ATOMIC_IDS.has(actingAtomic)) {
-      const targetRef = readAtomicTargetEntity(components);
-      const to = targetRef !== null ? posByRef.get(targetRef) : undefined;
-      if (to !== undefined) {
-        targetFacing = facingTowardTile({ x: tileX, y: tileY }, { x: to.x / ONE, y: to.y / ONE });
-      }
-    }
-    const drawX = screen.x;
-    const drawY = screen.y;
     // Culls on the drawn anchor; the caller pre-inflates the box to cover a tall sprite's extent, so a
     // building straddling the edge still draws.
-    const offscreen = viewport !== undefined && !isVisible(viewport, drawX, drawY);
+    const offscreen = viewport !== undefined && !isVisible(viewport, screen.x, screen.y);
     if (offscreen && !isPortrait) return;
     // After the viewport cull on purpose: the fog probe costs a mask lookup per call, so it runs for
     // the few on-screen entities, not the map.
     const fogged = fogVisible !== undefined && !fogVisible(tileX, tileY);
     if (fogged && !isPortrait) return;
+
+    const pose =
+      kind === 'settler' && !indoorSettler ? settlerPose(components, tileX, tileY, posByRef) : STANDING_POSE;
+    // Read here, not in the stockpile branch below, so it folds into the depth key.
+    const isFlag = 'DeliveryFlag' in components;
     const lift = terrainLiftAt(elevation, tileX, tileY);
     // A projectile's ballistic height rides the same lift channel as terrain lift: a draw offset the
     // depth key never sees, so neither can reshuffle occlusion.
@@ -172,14 +144,14 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     const item: MutableSpriteDrawItem = {
       kind,
       ref: entity.id,
-      x: drawX,
-      y: drawY,
+      x: screen.x,
+      y: screen.y,
       depth: spriteDepth(tileX, tileY, kind, isFlag),
-      state,
+      state: pose.state,
     };
     switch (kind) {
       case 'settler':
-        assignSettlerFields(item, components, actingAtomic, targetFacing);
+        assignSettlerFields(item, components, pose.actingAtomic, pose.targetFacing);
         break;
       case 'building':
         assignBuildingFields(item, components);
@@ -209,7 +181,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     const drawLift = lift + arcLift;
     if (drawLift !== 0) item.lift = drawLift;
     if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;
-    // Only a kept or forced settler gets this far indoors, and both draw a motionless standing pose.
+    // Only a kept or forced settler gets this far indoors.
     if (indoorSettler) item.frozen = true;
     if (playerColourOf !== undefined && item.player !== undefined) {
       item.player = playerColourOf(item.player);
@@ -217,30 +189,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     items.push(item);
   };
 
-  // The index mode never walks the map, so its liveness answer is a view over `collected` (probed
-  // live, which covers the ghost refs pushed below) plus the index's drawables minus the static ones.
-  let liveRefs: LiveRefs = collected;
-  if (index !== undefined && viewport !== undefined && onlyRefs === undefined) {
-    // Each bucket candidate still runs the exact per-item cull above, so the emitted set matches the
-    // full walk's.
-    index.update(snapshot);
-    for (const entity of index.query(viewport)) emit(entity);
-    // The portrait subject may sit outside the queried buckets.
-    if (portraitRef !== undefined && !collected.has(portraitRef)) {
-      const subject = entityById(snapshot, portraitRef);
-      if (subject !== undefined) emit(subject);
-    }
-    liveRefs = { has: (ref) => collected.has(ref) || (index.has(ref) && staticRefs?.has(ref) !== true) };
-  } else if (onlyRefs !== undefined) {
-    // Binary search per ref, instead of walking a decoded map's tens of thousands of entities.
-    for (const ref of onlyRefs) {
-      const entity = entityById(snapshot, ref);
-      if (entity !== undefined) emit(entity);
-    }
-  } else {
-    for (const entity of snapshot.entities) emit(entity);
-  }
-
+  const liveRefs = emitEntities(snapshot, opts, collected, emit);
   if (ghosts !== undefined) pushGhostItems(items, collected, ghosts, viewport, elevation);
   // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
