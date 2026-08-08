@@ -4,8 +4,8 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
  * The strategic AI player's module ids, one per concern the AI runs for a seat. The list mirrors the
  * original's per-module HAI map-data toggles (`Game.exe` strings `HAI_DisableCollectResources`,
  * `HAI_DisableGuideBuild`, `HAI_DisableHomeExpansion`, `HAI_DisableHouseBuild`, `HAI_DisableHouseUpgrade`,
- * `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map onto it one-to-one. The behavior
- * inside each module is a named genre-convention approximation.
+ * `HAI_DisableMilitary`, `HAI_DisableRoadBuild`), so `[AIData]` flags map onto it one-to-one.
+ * Approximation: the behavior inside each module is a genre convention.
  */
 export const AI_MODULE_IDS = [
   'collectResources',
@@ -33,8 +33,7 @@ export function aiModuleEnables(overrides?: Partial<AiModuleEnables>): AiModuleE
 /**
  * The per-seat strategic-AI marker, set by the `setPlayerAi` command (original: `PLAYER_TYPE_AI`,
  * `Data/GameSourceIncludes/logicdefines.inc:358`). At most one carrier entity exists per player, and a
- * player with no carrier is not AI-driven. Hashed and replayed like any component, since the
- * AiPlayerSystem's decisions depend on it.
+ * player with no carrier is not AI-driven.
  */
 export const AiPlayer = defineComponent<{
   /** The player slot this brain drives (`[0, MAX_PLAYERS)`). */
@@ -53,7 +52,6 @@ export function aiPlayerEntity(world: World, player: number): Entity | null {
   return best;
 }
 
-/** Whether `player`'s seat is driven by the strategic AI. */
 export function isAiPlayer(world: World, player: number): boolean {
   return aiPlayerEntity(world, player) !== null;
 }

@@ -1,9 +1,7 @@
 import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
-/**
- * The assistant's production counters: the `extra*` kinds queue births, the `train*` kinds barracks drills.
- * Dispatch order and priorities live with the dispatcher in `systems/assistant/`.
- */
+/** The assistant's production counters: the `extra*` kinds queue births, the `train*` kinds barracks
+ *  drills. */
 export const ASSISTANT_COUNTER_KINDS = [
   'extraWomen',
   'extraMen',
@@ -24,14 +22,11 @@ export const INFINITE_COUNTER_KINDS: ReadonlySet<AssistantCounterKind> = new Set
   'trainBow',
 ]);
 
-/** Counter bounds shared with the chest window's steppers. The cap is authored balance. */
+/** Counter bounds shared with the chest window's steppers. The cap is authored. */
 export const ASSISTANT_COUNTER_MIN = 0;
 export const ASSISTANT_COUNTER_MAX = 100;
 
-/**
- * One counter's state: how many units remain to produce, and whether the queue never drains. The value is
- * retained while `infinite`, so switching infinity off restores it.
- */
+/** One counter's state; `value` is retained while `infinite`, so switching infinity off restores it. */
 export interface AssistantCounterState {
   value: number;
   infinite: boolean;
@@ -41,9 +36,9 @@ export type AssistantCounterValues = Record<AssistantCounterKind, AssistantCount
 
 /**
  * The per-player assistant grant list - the wearable good types the settlement assistant may hand out to
- * settlers with a free slot. At most one carrier entity exists per player, whose lifecycle
- * `systems/orders/assistant.ts` owns, so the state hashes and replays like any component. Which goods a
- * switch maps to is the app's content decision; the sim reads only the good's `equip` class.
+ * settlers with a free slot. At most one carrier entity exists per player, created on the first grant and
+ * destroyed when the list empties. Which goods a switch maps to is the app's content decision; the sim
+ * reads only the good's `equip` class.
  */
 export const AssistantGrants = defineComponent<{
   /** The player slot the grants belong to (`[0, MAX_PLAYERS)`). */
@@ -65,16 +60,16 @@ export function assistantGrantsEntity(world: World, player: number): Entity | nu
 
 const NO_GRANTS: readonly number[] = [];
 
-/** The good types granted to `player`'s settlers (ascending ids; empty when the assistant is idle). */
+/** The good types granted to `player`'s settlers, ascending; empty when nothing is granted. */
 export function assistantGrantedGoods(world: World, player: number): readonly number[] {
   const carrier = assistantGrantsEntity(world, player);
   return carrier === null ? NO_GRANTS : world.get(carrier, AssistantGrants).goods;
 }
 
 /**
- * The per-player assistant counter block - the sibling carrier of {@link AssistantGrants} with the same
- * lifecycle: at most one per player, created on the first non-default write and destroyed when every
- * counter returns to zero-and-finite.
+ * The per-player assistant counter block - the sibling carrier of {@link AssistantGrants}: at most one per
+ * player, created on the first non-default write and destroyed when every counter returns to
+ * zero-and-finite.
  */
 export const AssistantCounters = defineComponent<{
   /** The player slot the counters belong to (`[0, MAX_PLAYERS)`). */
