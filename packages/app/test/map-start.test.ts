@@ -5,8 +5,8 @@ import { type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * Headless coverage for the start-camera focus ladder (`?map=` opens on the player's start, not the
- * corner). The rungs - human settlers → human buildings → any entity → map centre - encode the policy
- * the PR exists to fix, so each is pinned here. `mapStartFocus` is pure over a `WorldSnapshot`; positions
+ * corner). Each rung - human settlers → human buildings → any entity → map centre - is pinned
+ * here. `mapStartFocus` is pure over a `WorldSnapshot`; positions
  * are fixed-point visual-tile coords, so `fx.fromInt(col/row)` builds a synthetic snapshot that reads back
  * as the plain tile coord (`fx.toFloat`).
  */

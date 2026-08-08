@@ -3,23 +3,17 @@ import { HUMAN_PLAYER } from './rules.js';
 import { isBuilding, isSettler, ownerPlayerOf, positionOf, type SnapshotEntity } from './snapshot.js';
 
 /**
- * The starting camera focus: the visual-tile `(col, row)` a decoded map opens centred on. Priority:
- *
- *   1. the local player's settlers centroid, since starting units spawn around the headquarters;
- *   2. the local player's buildings centroid, for a base placed with no starting units;
- *   3. any placed settler or building, on a foreign-owned-only map;
- *   4. the map centre, for a plain import with no authored entities.
- *
- * Settlers rank above buildings because a scenario scatters objective and enemy buildings across the
- * whole map, dragging a buildings-only centroid off the actual start.
+ * The starting camera focus: the visual-tile `(col, row)` a decoded map opens centred on. Settlers rank
+ * above buildings because a scenario scatters the player's own objective buildings across the whole map,
+ * dragging a buildings-only centroid off the actual start.
  *
  * Named approximation: the original authors an explicit `misc.inc` `[misc_startpositions]`
  * `startposition <slot> <x> <y>`, but only about 8 of the 125 maps ship it, so it is not extracted.
- * Settlers are authored with distinct per-player `sethuman` slots, so the local player's centroid sits
- * on `startposition 0` wherever that record exists.
+ * Settlers are authored with distinct per-player `sethuman` slots, so the local player's centroid sits on
+ * `startposition 0` wherever that record exists.
  *
- * Positions are fixed-point visual-tile coords, the same ones the renderer projects a bob through, so
- * the focus lands on the drawn anchor.
+ * Positions are fixed-point visual-tile coords, the same ones the renderer projects a bob through, so the
+ * focus lands on the drawn anchor.
  */
 export function mapStartFocus(
   snapshot: WorldSnapshot,
