@@ -22,7 +22,7 @@ import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, nearestFreeYardNode } from '../../targets/index.js';
 import { deliveryTargetFor } from './delivery-targets.js';
-import { isPorterBoundToStore } from './haul-targets.js';
+import { isBoundToStorageSink } from './store-policy.js';
 
 /**
  * Drop a stamped yard route that no longer holds - the settler still carries the routed good, is still
@@ -64,11 +64,11 @@ export function planDelivery(plan: PlannerContext, load: { goodType: number; amo
   if (store === null) {
     world.remove(entity, YardDeliveryRoute);
     const workplace = world.tryGet(entity, JobAssignment)?.workplace;
-    // A porter at a passive store sheds an undeliverable surplus through an instant set-down (no
-    // animation) so it can re-haul this same tick; producers keep their load and wait inside instead.
+    // A settler posted to a passive store sheds an undeliverable surplus through an instant set-down that
+    // costs no atomic; producers keep their load and wait inside instead.
     if (
       workplace !== undefined &&
-      isPorterBoundToStore(world, ctx, entity) &&
+      isBoundToStorageSink(world, ctx, entity) &&
       farmWorkGood(world, ctx, workplace) === null &&
       dropCarryAtOwnTile(world, entity) > 0
     ) {

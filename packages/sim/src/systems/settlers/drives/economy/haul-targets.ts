@@ -7,7 +7,7 @@ import type { PlannerContext } from '../../planner/context.js';
 import { buriedUnderBuilding, interactionCell, nearestByCell } from '../../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
-import { isFarmCarrierHaulOutRole, isStorageSink } from './store-policy.js';
+import { isFarmCarrierHaulOutRole } from './store-policy.js';
 
 /**
  * The nearest ground pile a porter should collect from and the good to lift, or null when none is within
@@ -101,11 +101,4 @@ export function porterPickupTarget(plan: PlannerContext): { from: Entity; goodTy
   if (haul !== null) return { from: haul.home, goodType: haul.goodType };
   const pile = nearestGroundPile(plan, { deliverable });
   return pile === null ? null : { from: pile.pile, goodType: pile.goodType };
-}
-
-/** Whether a settler is a porter: bound to a storage fixture rather than a producing workplace. */
-export function isPorterBoundToStore(world: World, ctx: SystemContext, settler: Entity): boolean {
-  const binding = world.tryGet(settler, JobAssignment);
-  if (binding === undefined) return false;
-  return isStorageSink(world, ctx, binding.workplace);
 }

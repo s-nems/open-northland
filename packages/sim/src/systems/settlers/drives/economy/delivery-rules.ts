@@ -132,8 +132,8 @@ function toStorageOffFarm(plan: PlannerContext, goodType: number, area: Delivery
   return store ?? 'no-sink';
 }
 
-/** A porter's or farmer's load goes to the storage it is bound to: a warehouse, a flag pile, or the farm's
- *  own store when a farmer banks its sheaf and the farm still has room. */
+/** A store-posted settler's or farmer's load goes to the storage it is bound to: a warehouse, a flag pile,
+ *  or the farm's own store when a farmer banks its sheaf and the farm still has room. */
 function toBoundStorage(plan: PlannerContext, goodType: number): DeliveryVerdict {
   const { world, ctx } = plan;
   const home = boundWorkplace(plan);

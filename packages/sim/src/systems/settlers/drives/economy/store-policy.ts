@@ -1,4 +1,4 @@
-import { Building, Position, Stockpile } from '../../../../components/index.js';
+import { Building, JobAssignment, Position, Stockpile } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { farmWorkGood } from '../../../economy/fields.js';
@@ -29,6 +29,12 @@ export function isFarmCarrierHaulOutRole(
     farmWorkGood(world, ctx, home) !== null &&
     !isFieldWorkerOf(world, ctx, home, jobType)
   );
+}
+
+/** Whether a settler is posted to a storage fixture rather than to a producing workplace. */
+export function isBoundToStorageSink(world: World, ctx: SystemContext, settler: Entity): boolean {
+  const binding = world.tryGet(settler, JobAssignment);
+  return binding !== undefined && isStorageSink(world, ctx, binding.workplace);
 }
 
 /** A positioned stockpile that accepts general deliveries rather than running a recipe. */

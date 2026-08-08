@@ -5,17 +5,24 @@ import type { PlannerContext } from '../../planner/context.js';
 import { nearestWorkplaceOutput } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { deliverableGoodProbe } from './delivery-targets.js';
-import { isPorterBoundToStore, porterPickupTarget } from './haul-targets.js';
+import { porterPickupTarget } from './haul-targets.js';
 import { markPorterDormant, porterDormant, wakePorter } from './porter-dormancy.js';
+import { isBoundToStorageSink } from './store-policy.js';
+
+/** A porter: the transport trade posted to a storage fixture. A store seats gathering trades beside its
+ *  transport slots, so the post alone does not name one. */
+function isPorterBoundToStore(plan: PlannerContext): boolean {
+  return isCarrierJob(plan.ctx, plan.jobType) && isBoundToStorageSink(plan.world, plan.ctx, plan.entity);
+}
 
 /**
- * PORTER - a settler bound to a storage fixture that moves loose goods. A carrier at a producing building
+ * PORTER - a carrier bound to a storage fixture that moves loose goods. A carrier at a producing building
  * hauls its finished output out to a warehouse first, so the producer's store keeps clearing; any bound
  * carrier then brings loose ground piles in. A warehouse or HQ carrier only ever reaches the bring-in half.
  */
 export function planPorter(plan: PlannerContext): boolean {
-  const { world, ctx, entity: e } = plan;
-  if (!isPorterBoundToStore(world, ctx, e)) return false;
+  const { world, entity: e } = plan;
+  if (!isPorterBoundToStore(plan)) return false;
   if (porterDormant(plan)) return false;
   const pick = porterPickupTarget(plan);
   if (pick === null) {
