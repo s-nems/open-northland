@@ -1,7 +1,6 @@
 # Add save round-trip self-checks to the determinism harness
 
 **Area:** sim · **Focus:** test harness · **Priority:** P2
-**Blocked by:** [SaveGame restore](save-load-sim-restore.md)
 
 A field missed by export surfaces as a hash divergence far from the commit that introduced the new
 state. 0 A.D. closes this gap with a serialization test mode that round-trips state every turn;
@@ -15,6 +14,12 @@ Every K ticks during the fuzz run: export, restore, compare `hashState` between 
 restored sim, and assert the restored sim re-exports byte-identically. Choose K so the suite stays
 within its current runtime budget, and measure that claim. New mutable sim state that misses export
 must fail this suite in the commit that adds the state.
+
+Also harden `savedValue` (`packages/sim/src/save/export.ts`) with a per-export visited `WeakSet`: a
+cyclic component value currently dies as a bare `RangeError` instead of a path-naming throw, and a
+cross-entity shared mutable object would be silently forked on restore - the byte comparison cannot
+see either until a mutation flows through the alias, but a visited guard turns both into loud
+export-time errors.
 
 ## Verify
 

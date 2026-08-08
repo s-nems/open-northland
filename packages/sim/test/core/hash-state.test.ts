@@ -54,26 +54,35 @@ describe('hashState string values', () => {
  *  bigint) or only part of itself (a class instance), so it must throw on the first hashed tick rather than
  *  let two diverging runs hash identically. */
 describe('hashState unhashable value shapes', () => {
-  function simWithComponentValue(value: unknown): Simulation {
+  // One component per case: a name registers globally, so a shared probe would collide.
+  const UnhashableSet = defineComponent<unknown>('UnhashableSetProbe');
+  const UnhashableBigint = defineComponent<unknown>('UnhashableBigintProbe');
+  const UnhashableInstance = defineComponent<unknown>('UnhashableInstanceProbe');
+
+  function simWithComponentValue(component: typeof UnhashableSet, value: unknown): Simulation {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.world.add(sim.world.create(), defineComponent<unknown>('UnhashableProbe'), value);
+    sim.world.add(sim.world.create(), component, value);
     return sim;
   }
 
   it('throws on a Set-valued component instead of hashing it to nothing', () => {
-    expect(() => simWithComponentValue({ ids: new Set([1, 2]) }).hashState()).toThrow(
+    expect(() => simWithComponentValue(UnhashableSet, { ids: new Set([1, 2]) }).hashState()).toThrow(
       /unhashable value shape Set/,
     );
   });
 
   it('throws on a bigint-valued component', () => {
-    expect(() => simWithComponentValue({ count: 1n }).hashState()).toThrow(/unhashable value shape bigint/);
+    expect(() => simWithComponentValue(UnhashableBigint, { count: 1n }).hashState()).toThrow(
+      /unhashable value shape bigint/,
+    );
   });
 
   it('throws on a class-instance component value', () => {
     class Marker {
       constructor(readonly n: number) {}
     }
-    expect(() => simWithComponentValue(new Marker(1)).hashState()).toThrow(/unhashable value shape Marker/);
+    expect(() => simWithComponentValue(UnhashableInstance, new Marker(1)).hashState()).toThrow(
+      /unhashable value shape Marker/,
+    );
   });
 });

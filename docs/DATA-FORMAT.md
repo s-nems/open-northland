@@ -151,13 +151,23 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
 - `sections` is an array with append-only string identifiers, never reused: `entities` (the
   allocation counter plus the alive list), one `component` section per store in first-registration
   order with entries in per-store insertion order (both orders are behavior contracts), `rng` (the
-  whole mulberry32 state), `fog` (per-player masks ascending by player, one visibility digit per
-  cell, plus the rebuild-cadence fields), and `commands` (pending envelopes plus the next sequence
-  number). The applied command log is replay history and stays out.
-- The encoding is canonical: object keys keep construction order, `Map` component fields become
-  key-sorted entry arrays, `Fixed` values are plain integers, and export throws (naming the
+  whole mulberry32 state), `fog` (present exactly when the header names a map fingerprint:
+  per-player masks ascending by player, one visibility digit per cell, plus the rebuild-cadence
+  fields), and `commands` (pending envelopes plus the next sequence number). The applied command
+  log is replay history and stays out.
+- The encoding is canonical: object keys keep construction order, a `Map` component field becomes a
+  single-key `{"$map": [[key, value], ...]}` wrapper holding its live insertion order (raw Map order
+  is observable sim state a restore must reproduce; the `$map` key is reserved, and export rejects a
+  plain record carrying it), `Fixed` values are plain integers, and export throws (naming the
   component) on any shape JSON would corrupt, such as `undefined`, a non-finite number, or a class
   instance. The same state always serializes byte-identically, and parse plus re-serialize
   round-trips the bytes.
+
+Reading is split in two: `parseSaveGame` validates an untrusted document's structure (header
+identity, the exact section order, allocation coherence, pending envelopes), and `restoreSimulation`
+materializes it onto a fresh sim, validating component values as it goes plus everything that needs
+loaded content or a map. The IR version and map fingerprint must match exactly; a `contentRevision`
+difference is reported to the caller, never a rejection, because the revision also bumps for
+presentation-only decoder fixes.
 
 `SAVE_FORMAT_VERSION` is a single monotonic integer; any layout change bumps it.

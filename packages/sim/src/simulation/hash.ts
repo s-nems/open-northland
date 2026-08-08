@@ -5,7 +5,9 @@ import type { FogState } from '../systems/vision/index.js';
 
 /**
  * A canonical hash of all simulation state, in a fixed order: tick, RNG state, every registered
- * component on every alive entity by ascending id, then the fog masks. Any divergence must change it.
+ * component on every alive entity by ascending id, then the fog masks. Any divergence must change
+ * it, with one known blind spot: `Map` entries mix key-sorted, so two states differing only in a
+ * Map's insertion order - observable state the save format preserves - hash identically.
  */
 export function hashSimState(
   world: World,

@@ -273,6 +273,33 @@ export class World {
     }
   }
 
+  /** Restore seam: adopt a saved allocation state verbatim; only valid on a world that has never
+   *  allocated, so a restore cannot splice into live state. */
+  restoreAllocation(nextId: number, alive: readonly Entity[]): void {
+    if (this.nextId !== 1 || this.alive.size > 0) {
+      throw new Error('restoreAllocation: the world has already allocated entities');
+    }
+    this.nextId = nextId;
+    for (const e of alive) this.alive.add(e);
+    this.canonicalCache = null;
+  }
+
+  /** Restore seam: register `component` and fill its store in the given entry order, so a restored
+   *  world's registration and iteration orders are exactly the saved ones. Values must be detached
+   *  copies; only valid while the store is unregistered. */
+  restoreStore(component: Component<unknown>, entries: ReadonlyArray<readonly [Entity, unknown]>): void {
+    if (this.stores.has(component)) {
+      throw new Error(`restoreStore: component '${component.name}' is already registered`);
+    }
+    const store = this.storeOrCreate(component);
+    for (const [entity, value] of entries) {
+      if (!store.has(entity)) this.insertMembership(entity, component);
+      store.set(entity, value);
+      // Every stored value carries a revision, or the first component walk over the restored world throws.
+      this.recordComponentWrite(component, entity);
+    }
+  }
+
   /** Visit an entity's components in registration order and O(carried components), without allocating.
    *  The revision changes only when this stored value is added or acquired through {@link mut}. */
   forEachComponent(entity: Entity, visit: (name: string, value: unknown, revision: number) => void): void {

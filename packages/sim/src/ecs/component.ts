@@ -24,6 +24,18 @@ export interface Component<T> {
   readonly __value?: T;
 }
 
+/** Every defined component by name: the vocabulary a save's component sections resolve against. */
+const defined = new Map<string, Component<unknown>>();
+
+/** `name` must be unique per process - it is the component's identity in state hashes and save files,
+ *  where two stores sharing a name would be indistinguishable. */
 export function defineComponent<T>(name: string): Component<T> {
-  return { name };
+  if (defined.has(name)) throw new Error(`component name '${name}' is already defined`);
+  const component: Component<T> = { name };
+  defined.set(name, component);
+  return component;
+}
+
+export function componentByName(name: string): Component<unknown> | undefined {
+  return defined.get(name);
 }

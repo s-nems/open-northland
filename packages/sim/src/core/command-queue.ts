@@ -54,6 +54,16 @@ export class CommandQueue {
     return this.nextSequence;
   }
 
+  /** Restore seam: adopt a saved queue position - the pending envelopes (as owned copies) and the
+   *  next sequence. Only valid on a queue nothing has touched. */
+  restore(pending: readonly CommandEnvelope[], nextSequence: number): void {
+    if (this.pending.length > 0 || this.applied.length > 0 || this.nextSequence !== 0) {
+      throw new Error('CommandQueue.restore: the queue is already in use');
+    }
+    this.pending = pending.map(ownedEnvelope);
+    this.nextSequence = nextSequence;
+  }
+
   /**
    * Throw away the pending commands without applying them - replay reconstruction's seam (see
    * `stepReplaying`): a replaying sim's own systems re-emit their commands live, but the log already

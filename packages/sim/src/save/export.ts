@@ -1,7 +1,13 @@
 import type { CommandEnvelope } from '../core/commands/index.js';
-import { isPlainRecord, sortedMapEntries, valueShapeName } from '../core/plain-value.js';
+import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
 import type { Simulation } from '../simulation.js';
-import { SAVE_FORMAT_VERSION, SAVE_KIND, type SaveGame, type SaveGameSection } from './format.js';
+import {
+  SAVE_FORMAT_VERSION,
+  SAVE_KIND,
+  SAVE_MAP_KEY,
+  type SaveGame,
+  type SaveGameSection,
+} from './format.js';
 
 export interface ExportSaveOptions {
   /** The decoded map id the run loaded, recorded as provenance; omit for scenes and mapless sims. */
@@ -70,9 +76,9 @@ export function serializeSaveGame(save: SaveGame): string {
 }
 
 /**
- * Deep-copy one component or envelope value to JSON-safe plain data: `Map` entries key-sorted,
- * record keys in insertion order, and a throw naming `path` for any shape JSON would corrupt -
- * `undefined`, a non-finite number, or a non-plain object.
+ * Deep-copy one component or envelope value to JSON-safe plain data: a `Map` becomes a single-key
+ * `{'$map': entries}` wrapper, record keys keep insertion order, and a throw names `path` for any
+ * shape JSON would corrupt - `undefined`, a non-finite number, or a non-plain object.
  */
 function savedValue(value: unknown, path: string): unknown {
   if (value === null) return null;
@@ -82,10 +88,14 @@ function savedValue(value: unknown, path: string): unknown {
   }
   if (typeof value === 'string' || typeof value === 'boolean') return value;
   if (value instanceof Map) {
-    return sortedMapEntries(value).map(([k, v], i) => [
-      savedValue(k, `${path}[${i}].key`),
-      savedValue(v, `${path}[${i}]`),
-    ]);
+    // Entry order is the Map's live insertion order, not key-sorted: systems iterate component Maps
+    // directly, so the order is observable state a restore must reproduce.
+    const entries: unknown[] = [];
+    for (const [k, v] of value) {
+      const i = entries.length;
+      entries.push([savedValue(k, `${path}[${i}].key`), savedValue(v, `${path}[${i}]`)]);
+    }
+    return { [SAVE_MAP_KEY]: entries };
   }
   if (Array.isArray(value)) {
     // An index loop, not `map`: a sparse hole must hit the undefined throw, never serialize as null.
@@ -94,6 +104,9 @@ function savedValue(value: unknown, path: string): unknown {
     return out;
   }
   if (isPlainRecord(value)) {
+    if (Object.hasOwn(value, SAVE_MAP_KEY)) {
+      throw new Error(`${path}: the key '${SAVE_MAP_KEY}' is reserved for the Map encoding`);
+    }
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(value)) out[key] = savedValue(value[key], `${path}.${key}`);
     return out;

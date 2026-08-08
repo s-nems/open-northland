@@ -1,7 +1,6 @@
 # Establish the SaveGame migration seam with a committed v1 fixture
 
 **Area:** sim · **Priority:** P1
-**Blocked by:** [SaveGame restore](save-load-sim-restore.md)
 
 Without a frozen fixture and a migration registry from day one, the first schema change silently
 breaks every existing save. 0 A.D. demonstrates the failure: a first-class serializer but no

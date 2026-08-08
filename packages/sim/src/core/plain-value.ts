@@ -9,8 +9,7 @@ export function isPlainRecord(value: unknown): value is Record<string, unknown> 
   return proto === Object.prototype || proto === null;
 }
 
-/** `Map` entries sorted by key under `<`: the one canonical order the hash, snapshot, and save walks
- *  must share, or their views of the same Map silently disagree. */
+/** `Map` entries sorted by key under `<`: the canonical order the hash and snapshot walks share. */
 export function sortedMapEntries<K, V>(map: ReadonlyMap<K, V>): Array<[K, V]> {
   return [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
 }

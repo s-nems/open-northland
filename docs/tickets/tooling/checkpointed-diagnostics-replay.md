@@ -1,7 +1,7 @@
 # Replay long diagnostics bundles from a state checkpoint
 
 **Area:** tooling, sim, app · **Focus:** replay, diag · **Priority:** P3
-**Blocked by:** [SaveGame restore](../features/save-load-sim-restore.md), [Replay CLI](bundle-replay-cli.md)
+**Blocked by:** [Replay CLI](bundle-replay-cli.md)
 
 Diagnostics bundles currently contain the full command log and the replay API rebuilds a fresh simulation
 from tick 1. The cost and payload therefore grow with the whole session even after a restorable state
