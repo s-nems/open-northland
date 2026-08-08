@@ -211,6 +211,19 @@ function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): number | n
 /** Every granting player's total stock of each good it grants: `player -> goodType -> units`. */
 type GrantedStock = ReadonlyMap<number, ReadonlyMap<number, number>>;
 
+interface GoodTotal {
+  readonly goodType: number;
+  units: number;
+}
+
+/** One granting player's row of the result and the per-good totals the store walk accumulates into.
+ *  Array-shaped, so that walk allocates no Map entry pair per step. */
+interface PlayerStock {
+  readonly player: number;
+  readonly totals: Map<number, number>;
+  readonly goods: readonly GoodTotal[];
+}
+
 /**
  * Total store and pile stock of every granted good, per granting player, in one walk of the candidate
  * stores. A construction site and a workshop's own input reserve are excluded, matching
@@ -225,8 +238,11 @@ function collectGrantedStock(
 ): GrantedStock {
   const { world, ctx, targets } = pass;
   const byPlayer = new Map<number, Map<number, number>>();
+  const rows: PlayerStock[] = [];
   for (const [player, specs] of grants) {
-    byPlayer.set(player, new Map(specs.map((spec) => [spec.goodType, 0])));
+    const totals = new Map<number, number>();
+    byPlayer.set(player, totals);
+    rows.push({ player, totals, goods: specs.map(({ goodType }) => ({ goodType, units: 0 })) });
   }
   for (const store of targets.stockpiles) {
     if (world.has(store, UnderConstruction)) continue;
@@ -235,14 +251,17 @@ function collectGrantedStock(
     // The reserve rule is keyed by store and cannot vary by player, so it is hoisted out of the
     // stores × players × goods walk below.
     const reserved = mergedRecipeOf(world, ctx, store)?.inputs;
-    for (const [player, totals] of byPlayer) {
-      if (!ownersCompatible(player, owner)) continue;
-      for (const [goodType, held] of totals) {
-        const units = amounts.get(goodType);
-        if (units === undefined || recipeConsumes(reserved, goodType)) continue;
-        totals.set(goodType, held + units);
+    for (const row of rows) {
+      if (!ownersCompatible(row.player, owner)) continue;
+      for (const good of row.goods) {
+        const units = amounts.get(good.goodType);
+        if (units === undefined || recipeConsumes(reserved, good.goodType)) continue;
+        good.units += units;
       }
     }
+  }
+  for (const row of rows) {
+    for (const good of row.goods) row.totals.set(good.goodType, good.units);
   }
   return byPlayer;
 }
