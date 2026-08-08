@@ -3,15 +3,12 @@ import { ONE, tileToScreenX, tileToScreenY, type Viewport } from '../projection/
 import { classify, readPosition } from './snapshot-readers/index.js';
 
 /**
- * Every drawable entity bucketed by its pre-lift screen anchor, retained across snapshots: a full
- * rebuild per snapshot would just move the map-wide walk, since once the tick outruns the frame,
- * per-snapshot work is per-frame work. A refresh rides {@link EntitySnapshot} identity, so an unchanged
- * entity costs one pointer compare; departures stop matching on the generation stamp immediately and
- * are reclaimed by a bounded sweep.
+ * Every drawable entity bucketed by its pre-lift screen anchor, retained across snapshots: a refresh
+ * rides {@link EntitySnapshot} identity, so an unchanged entity costs one pointer compare.
  *
  * Buckets use the same anchor formula the scene build culls with, so a bucket-range query over the
- * viewport is a strict superset of the visible set and the per-item `isVisible` test stays exact. Query
- * order is arbitrary; the scene's total `(depth, ref)` sort restores determinism.
+ * viewport is a strict superset of the visible set. Query order is arbitrary; the scene's total
+ * `(depth, ref)` sort restores determinism.
  */
 
 /** Bucket side in pre-lift screen px. Approximation: a few tile columns/rows per bucket, so a
@@ -41,7 +38,7 @@ export class SpriteSpatialIndex {
   private snapshot: WorldSnapshot | null = null;
   private gen = 0;
   /** Record per entity id, kept packed by pushing `undefined` up to a new id so lookups stay
-   *  array-fast instead of dictionary-mode. Sized by the largest id ever seen and never shrunk. */
+   *  array-fast. Sized by the largest id ever seen and never shrunk. */
   private readonly byId: (IndexRecord | undefined)[] = [];
   private readonly buckets = new Map<number, IndexRecord[]>();
   private sweepAt = 0;

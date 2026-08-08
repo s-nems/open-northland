@@ -9,15 +9,13 @@ import {
 } from './snapshot-readers/index.js';
 
 /**
- * The scene build's per-snapshot pre-scans. All come out of one walk memoized on snapshot identity, so
- * they run once per tick rather than once per frame or once per consumer.
- */
-
-/**
- * The atomic id of a combat attack swing - the original's `setatomic <job> 81 "..._attack"`, the attack
- * slot across every fighting job. The ids below are transcribed rather than imported: render reads the
+ * The scene build's per-snapshot pre-scans, memoized on snapshot identity so they run once per tick
+ * rather than once per frame. The atomic ids are transcribed rather than imported: render reads the
  * snapshot's plain ids, never sim code.
  */
+
+/** A combat attack swing - the original's `setatomic <job> 81 "..._attack"`, the attack slot across
+ *  every fighting job. */
 const ATTACK_ATOMIC_ID = 81;
 
 /** The builder hammer action (`setatomic 7 39`). */
@@ -43,10 +41,9 @@ const KISS_ATOMIC_IDS = [20, 21] as const;
 const CHAT_ATOMIC_IDS = [14, 15] as const;
 
 /**
- * Every atomic whose runner faces its target while the swing plays. Such a settler has stopped walking,
- * so without a target-derived facing it keeps its last walk heading and swings beside the node it works.
- * Facing the target is what the original does (`atomicanimations.ini` carries `startdirection` pins for
- * a subset).
+ * Every atomic whose runner faces its target while the swing plays; such a settler has stopped walking,
+ * so without this it keeps its last walk heading and swings beside the node it works. Facing the target
+ * is what the original does (`atomicanimations.ini` carries `startdirection` pins for a subset).
  */
 export const TARGET_FACING_ATOMIC_IDS: ReadonlySet<number> = new Set([
   BUILD_HOUSE_ATOMIC_ID,
@@ -71,8 +68,8 @@ const NO_SIGNPOSTS: readonly EntitySnapshot[] = [];
 
 /**
  * Completed buildings, the stores a settler can walk into. A settler exchanging goods with one is not
- * drawn: observed original, where the carrier vanishes into the house for the exchange. A ground pile,
- * flag or construction site is not enterable, so those exchanges keep their animation.
+ * drawn: observed original, where the carrier vanishes into the house. A ground pile, flag or
+ * construction site is not enterable, so those exchanges keep their animation.
  */
 export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> {
   return sceneIndexOf(snapshot).enterableStores;
@@ -80,8 +77,8 @@ export function enterableStoresOf(snapshot: WorldSnapshot): ReadonlySet<number> 
 
 /**
  * Whether the scene hides this settler inside a building: a `Resting` marker in its workplace, or a
- * goods exchange against an enterable store. Shared so an overlay that must not hang over an empty
- * doorway asks the same question the scene answered.
+ * goods exchange against an enterable store. Shared so an overlay does not hang over an empty doorway
+ * the scene drew nobody in.
  */
 export function isIndoorSettler(
   snapshot: WorldSnapshot,
@@ -94,9 +91,8 @@ export function isIndoorSettler(
 
 /**
  * The `entity id → live Position` index a mid-swing actor faces by and a projectile aims at. Holds only
- * the ids referenced as a target this tick, so one settlement fighting does not re-index a whole map's
- * forests. Values are the snapshot's own Position objects, not copies, still in raw `Fixed` units: the
- * `/ONE` to tile space is deferred to the rare lookups.
+ * the ids referenced as a target this tick. Values are the snapshot's own Position objects, not copies,
+ * still in raw `Fixed` units: the `/ONE` to tile space is deferred to the rare lookups.
  */
 export function targetPositionsOf(snapshot: WorldSnapshot): ReadonlyMap<number, { x: number; y: number }> {
   return sceneIndexOf(snapshot).targetPositions;

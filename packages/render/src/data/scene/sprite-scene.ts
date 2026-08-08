@@ -48,12 +48,9 @@ export interface SpriteSceneOptions {
   /** Entities the retained static map-object layer draws instead (a decoded map's virgin resource nodes) -
    *  skipped entirely: no draw item, excluded from {@link SpriteScene.liveRefs}. */
   readonly staticRefs?: ReadonlySet<number> | undefined;
-  /**
-   * The caller's retained {@link SpriteSpatialIndex}: with a `viewport`, the build walks only its
-   * buckets under the camera instead of every snapshot entity, and {@link SpriteScene.liveRefs} becomes
-   * a membership view over the index. The build updates the index to this snapshot itself. Ignored
-   * without a `viewport` or with `onlyRefs`.
-   */
+  /** The caller's retained {@link SpriteSpatialIndex}: with a `viewport`, the build walks only its
+   *  buckets under the camera instead of every snapshot entity, and updates the index itself. Ignored
+   *  without a `viewport` or with `onlyRefs`. */
   readonly index?: SpriteSpatialIndex | undefined;
   /** The fog-of-war cull; absent = no fog. An entity whose tile it rejects is treated like a
    *  viewport-culled one: no draw item, but kept live so its pooled sprite survives until the fog
@@ -63,18 +60,13 @@ export interface SpriteSceneOptions {
    *  {@link SpriteScene.liveRefs}. A ref never yields two items: the store deletes records on visible
    *  ground, and the fog cull drops live items elsewhere. */
   readonly ghosts?: readonly FogGhost[] | undefined;
-  /**
-   * Keep settlers that are inside a building, forced to the `idle` standing pose. The map hides these
-   * (observed original: off-duty workers wait in the house, not lined up at the door). Approximation:
-   * the observation covers hiding the settler on the map; how the original's building window presents
-   * one indoors is unverified.
-   */
+  /** Keep settlers that are inside a building, forced to the `idle` standing pose. The map hides these
+   *  (observed original: off-duty workers wait in the house). Approximation: how the original's
+   *  building window presents one indoors is unverified. */
   readonly keepIndoorSettlers?: boolean;
-  /**
-   * The details-panel portrait's subject: this one entity is emitted even when the viewport/fog cull or
-   * the indoor-settler suppression would drop it, so its live cutout never blanks. Absent = no portrait
-   * open.
-   */
+  /** The details-panel portrait's subject: emitted even when the viewport/fog cull or the
+   *  indoor-settler suppression would drop it, so its live cutout never blanks. Absent = no portrait
+   *  open. */
   readonly portraitRef?: number | undefined;
   /** Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
    *  default. Absent = identity. */
@@ -82,17 +74,13 @@ export interface SpriteSceneOptions {
 }
 
 /**
- * `onlyRefs` also keeps unlisted entities out of {@link SpriteScene.liveRefs}, which is why it lives
- * here rather than on {@link SpriteSceneOptions}: {@link buildSpriteScene} discards that view, while
- * the retained pool's reconcile would read a narrowed set as "everything else died" and destroy the
- * map's sprites.
+ * `onlyRefs` narrows {@link SpriteScene.liveRefs} too, which is why it is not on
+ * {@link SpriteSceneOptions}: the retained pool's reconcile would read a narrowed set as "everything
+ * else died" and destroy the map's sprites.
  */
 export interface DrawListOptions extends SpriteSceneOptions {
-  /**
-   * Emit draw items for these entities only; absent = every entity. Every pre-scan still reads the
-   * whole snapshot, so indoor state and target-derived facing resolve exactly as on the map - a caller
-   * narrowing the snapshot instead would starve those pre-scans.
-   */
+  /** Emit draw items for these entities only; absent = every entity. Every pre-scan still reads the
+   *  whole snapshot, so indoor state and target-derived facing resolve exactly as on the map. */
   readonly onlyRefs?: ReadonlySet<number> | undefined;
 }
 
@@ -104,9 +92,8 @@ export function buildSpriteScene(snapshot: WorldSnapshot, opts: DrawListOptions 
 
 /**
  * Build the draw list and the pre-cull liveness view in one pass, so a caller needing both does not
- * classify every entity twice per frame. The per-kind reads run only for items that survive the cull.
- * The emitted order is total and stable, so neither culling nor the entity source (full walk or the
- * index's arbitrary bucket order) changes the list.
+ * classify every entity twice per frame. The emitted order is total and stable, so neither culling nor
+ * the entity source (full walk or the index's arbitrary bucket order) changes the list.
  */
 export function collectSpriteScene(snapshot: WorldSnapshot, opts: SpriteSceneOptions = {}): SpriteScene {
   return collectScene(snapshot, opts);
