@@ -125,11 +125,17 @@ export const enSurfaces = {
       displayFullscreen: 'Fullscreen',
       displayWindow: 'Window',
       renderScale: 'Render scale',
+      renderScaleTip:
+        'Resolution the game world is drawn at: lower runs smoother on weak hardware, higher sharpens the image.',
       fpsLimit: 'Frame rate limit',
+      fpsLimitTip:
+        'Caps the drawn frames per second: less power draw and fan noise. Applies in game, not in the menu.',
       // The display's own refresh rate, next to the fixed 30/60 FPS caps.
       fpsLimitScreen: 'Display',
       postFx: 'Post-processing',
+      postFxTip: 'A vignette and warm colour grade layered over the world.',
       uiScale: 'In-game interface scale',
+      uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
       soundEnabled: 'In-game sound',
       masterVolume: 'Master volume',
       musicVolume: 'Music volume',
