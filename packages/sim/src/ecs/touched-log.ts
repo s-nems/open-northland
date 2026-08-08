@@ -20,13 +20,15 @@ export class TouchedLog {
     return this.mutations;
   }
 
-  record(entity: Entity): void {
+  /** Record an entity mutation and return its unique monotonic revision. */
+  record(entity: Entity): number {
     this.mutations++;
     if (this.entities.size >= OVERFLOW_LIMIT) {
       this.entities.clear();
       this.overflowed = true;
     }
     this.entities.add(entity);
+    return this.mutations;
   }
 
   /** Whether `entity` has a recorded mutation the next {@link drain} will deliver. After an overflow every

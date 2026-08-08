@@ -5,6 +5,7 @@
  */
 
 import type { Component, DeepReadonly, Entity } from './component.js';
+import { ComponentRevisions } from './component-revisions.js';
 import { MembershipJournals } from './membership-journal.js';
 import { QueryIterator } from './query-iterator.js';
 import { TouchedLog } from './touched-log.js';
@@ -35,6 +36,7 @@ export class World {
   /** Per-component in-place value-write generation (see {@link mut}), separate from the membership
    *  generations above so spatial indexes keyed on add/remove stay unaffected. */
   private readonly componentValueGenerations = new Map<Component<unknown>, number>();
+  private readonly componentRevisions = new ComponentRevisions();
   private readonly journals = new MembershipJournals();
   private readonly touched = new TouchedLog();
   /** Derived-cache verifiers by name, run in first-registration order; registering a name again replaces the
@@ -60,6 +62,7 @@ export class World {
       for (const index of carried) {
         const c = this.registered[index];
         if (c !== undefined && this.stores.get(c)?.delete(entity) === true) {
+          this.componentRevisions.remove(c, entity);
           this.bumpComponentGeneration(c, entity);
         }
       }
@@ -79,7 +82,7 @@ export class World {
     if (!store.has(entity)) this.insertMembership(entity, component as Component<unknown>);
     store.set(entity, value);
     this.bumpComponentGeneration(component as Component<unknown>, entity);
-    this.touched.record(entity);
+    this.recordComponentWrite(component as Component<unknown>, entity);
     return value;
   }
 
@@ -87,6 +90,8 @@ export class World {
     if (this.storeOf(component)?.delete(entity)) {
       this.removeMembership(entity, component as Component<unknown>);
       this.bumpComponentGeneration(component as Component<unknown>, entity);
+      // Revision removal and the touch jointly prevent a removed component's cached clone from surviving.
+      this.componentRevisions.remove(component as Component<unknown>, entity);
       this.touched.record(entity);
     }
   }
@@ -130,15 +135,16 @@ export class World {
       this.stores.set(component as Component<unknown>, store as Map<Entity, unknown>);
       this.registrationIndex.set(component as Component<unknown>, this.registered.length);
       this.registered.push(component as Component<unknown>);
+      this.componentRevisions.register(component as Component<unknown>);
     }
     return store;
   }
 
   /**
    * The one tracked in-place mutation seam: `entity`'s live stored `component` value, logged on every
-   * change channel at once (the identity-keyed snapshot clone cache and the component's value
-   * generation) so no observable write can bypass invalidation. The reference must not outlive the
-   * acquiring scope - a mutation through a held reference on a later tick is unlogged. Throws when
+   * change channel at once (the touched-entity log, the stored value's revision, and the component-wide
+   * value generation) so no observable write can bypass invalidation. The reference must not outlive
+   * the acquiring scope - a mutation through a held reference on a later tick is unlogged. Throws when
    * `entity` does not carry `component`.
    */
   mut<T>(entity: Entity, component: Component<T>): T {
@@ -158,8 +164,12 @@ export class World {
   }
 
   private recordValueWrite(component: Component<unknown>, entity: Entity): void {
-    this.touched.record(entity);
+    this.recordComponentWrite(component, entity);
     this.componentValueGenerations.set(component, (this.componentValueGenerations.get(component) ?? 0) + 1);
+  }
+
+  private recordComponentWrite(component: Component<unknown>, entity: Entity): void {
+    this.componentRevisions.record(component, entity, this.touched.record(entity));
   }
 
   /** In-place value writes seen by `component`'s store so far. A cache over stored VALUES memoizes against
@@ -179,7 +189,7 @@ export class World {
   }
 
   /** Whether a logged mutation of `entity` awaits the next {@link drainTouched}: its cached clone is
-   *  scheduled for eviction, which a cache verifier must not read as staleness. */
+   *  scheduled for refresh, which a cache verifier must not read as staleness. */
   mutationPending(entity: Entity): boolean {
     return this.touched.pending(entity);
   }
@@ -302,16 +312,20 @@ export class World {
     return out;
   }
 
-  /** Visit an entity's components (name and live value) in registration order, without allocating.
-   *  O(carried components): the membership list names them, so unrelated stores are never probed. */
-  forEachComponent(entity: Entity, visit: (name: string, value: unknown) => void): void {
+  /** Visit an entity's components in registration order and O(carried components), without allocating.
+   *  The revision changes only when this stored value is added or acquired through {@link mut}. */
+  forEachComponent(entity: Entity, visit: (name: string, value: unknown, revision: number) => void): void {
     const carried = this.memberships.get(entity);
     if (carried === undefined) return;
     for (const index of carried) {
       const c = this.registered[index];
       if (c === undefined) continue;
       const v = this.stores.get(c)?.get(entity);
-      if (v !== undefined) visit(c.name, v);
+      const revision = this.componentRevisions.revisionOf(c, entity);
+      if (v === undefined) continue;
+      // Every stored value is revision-stamped by add before this read can observe it.
+      if (revision === undefined) throw new Error(`entity ${entity} has no revision for component ${c.name}`);
+      visit(c.name, v, revision);
     }
   }
 
