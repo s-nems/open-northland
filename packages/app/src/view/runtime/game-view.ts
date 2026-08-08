@@ -125,7 +125,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const uiscale = floatParam(params, 'uiscale', uiScaleFor(app.screen.height, storedSettings.uiScaleFactor));
 
   const lang = currentLocale();
-  const keyBindings = readStoredSettings().keyBindings;
+  const keyBindings = storedSettings.keyBindings;
   // `?speed=` seeds the wall-clock multiplier; the tool panel's speed button then drives it live.
   const control = { paused: false, speed: floatParam(params, 'speed', 1) };
   // Owned here rather than by the loop, so the dropped-tick tally spans the whole session.

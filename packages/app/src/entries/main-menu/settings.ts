@@ -228,7 +228,6 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     );
     const postFx = togglePill(settings.postFxEnabled, (on) => updateSettings({ postFxEnabled: on }));
     postFx.setAttribute('aria-label', text.postFx);
-    // The interface scale sits right under the display mode as the most-adjusted control.
     return [
       settingRow(text.displayMode, displaySeg.root),
       settingRow(text.uiScale, uiScale, { tip: text.uiScaleTip }),

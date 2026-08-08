@@ -126,7 +126,7 @@ export const enSurfaces = {
       displayWindow: 'Window',
       renderScale: 'Render scale',
       renderScaleTip:
-        'Resolution the game world is drawn at: lower runs smoother on weak hardware, higher sharpens the image.',
+        'Resolution the whole game image is drawn at: lower runs smoother on weak hardware, higher sharpens it. Applies in game.',
       fpsLimit: 'Frame rate limit',
       fpsLimitTip:
         'Caps the drawn frames per second: less power draw and fan noise. Applies in game, not in the menu.',

@@ -12,7 +12,7 @@ import { colorOverridesParam, playerColourMap } from '../game/player-session.js'
 import { sandboxGoods } from '../game/sandbox/index.js';
 import { runAuthoredMap, runBareMap, terrainSceneFor } from '../game/world/index.js';
 import { cameraCenteredOnTile } from '../view/camera/index.js';
-import { floatParam, intParam } from '../view/params.js';
+import { floatParam, intParam, postFxParam } from '../view/params.js';
 import { createWorldRenderer, loadLocalizedRealContent } from '../view/runtime/world-bootstrap.js';
 
 /**
@@ -41,8 +41,10 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
   if (ir === null) throw new Error('backdrop: ir.json unavailable (content/ missing?)');
   const terrain: TerrainTextureSet = await loadRealTerrain(ir);
 
-  // Deliberately no stored render scale: a capture's pixel output must not vary with machine settings.
+  // Deliberately no stored render scale, and post-fx pinned on unless the URL overrides it: a
+  // capture's pixel output must not vary with machine settings.
   const app = await createWindowPixiApp(canvas);
+  if (postFxParam(params) === null) params.set('postfx', 'on');
   const renderer = createWorldRenderer(
     app,
     params,

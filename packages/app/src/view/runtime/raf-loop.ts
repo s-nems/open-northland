@@ -10,9 +10,9 @@ export interface RafLoop {
 const EARLY_FRAME_TOLERANCE_MS = 4;
 
 /**
- * Wall-clock gate for a drawn-frame cap: `null` admits every animation frame (the display's own
- * rate). Due times advance along the cap's own grid rather than from each admitted timestamp, so
- * the admitted rate averages the cap even when the display rate is not a multiple of it.
+ * Wall-clock gate for a drawn-frame cap: `null` admits every animation frame. Due times advance
+ * along the cap's own grid rather than from each admitted timestamp, so the admitted rate averages
+ * the cap even when the display rate is not a multiple of it.
  */
 export function createFrameLimiter(fpsLimit: FpsLimit): (nowMs: number) => boolean {
   if (fpsLimit === null) return () => true;
@@ -21,7 +21,7 @@ export function createFrameLimiter(fpsLimit: FpsLimit): (nowMs: number) => boole
   return (nowMs) => {
     if (nextDueMs !== null && nowMs < nextDueMs - EARLY_FRAME_TOLERANCE_MS) return false;
     if (nextDueMs === null || nowMs - nextDueMs > intervalMs) {
-      // A whole interval past due is a stall: re-anchor the grid instead of bursting the backlog.
+      // More than a whole interval past due is a stall: re-anchor the grid instead of replaying it.
       nextDueMs = nowMs + intervalMs;
     } else {
       nextDueMs += intervalMs;

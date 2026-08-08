@@ -68,9 +68,10 @@
   gap: calc(var(--u) * 24);
 }
 
-/* Styled hover tooltip under the row; the hovered row lifts over its siblings so the bubble
+/* Styled hover/focus tooltip under the row; the raised row lifts over its siblings so the bubble
    never hides behind the next row's control. */
-.main-menu__settings-row[data-tip]:hover {
+.main-menu__settings-row[data-tip]:hover,
+.main-menu__settings-row[data-tip]:focus-within {
   z-index: 1;
 }
 
@@ -95,7 +96,8 @@
   transition: opacity 120ms ease-out;
 }
 
-.main-menu__settings-row[data-tip]:hover::after {
+.main-menu__settings-row[data-tip]:hover::after,
+.main-menu__settings-row[data-tip]:focus-within::after {
   opacity: 1;
   /* Long enough that sweeping the pointer across the list does not flash every bubble. */
   transition-delay: 350ms;
