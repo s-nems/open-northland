@@ -6,9 +6,9 @@ import {
   type SettlerBubbleFrame,
   SettlerBubbleLayer,
 } from '../src/gpu/overlays/bubble-layer.js';
-import type { DrawnGeometry } from '../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
+import { drawnGeometry } from './support/fixtures.js';
 
 /**
  * The bubble hangs off whichever head estimate is available, in order: the pool's drawn sprite box, else
@@ -37,12 +37,6 @@ const bubble = (tileX: number, tileY: number): SettlerBubble => ({
   kind: 'child',
 });
 
-const drawnWith = (geometry: Partial<DrawnGeometry>): DrawnGeometry => ({
-  boundsOf: () => undefined,
-  anchorOf: () => undefined,
-  ...geometry,
-});
-
 function tipOf(frame: SettlerBubbleFrame): { x: number; y: number } {
   const layer = new SettlerBubbleLayer();
   layer.setGfx(GFX);
@@ -54,7 +48,7 @@ function tipOf(frame: SettlerBubbleFrame): { x: number; y: number } {
 describe('SettlerBubbleLayer head anchoring', () => {
   it('prefers the drawn sprite box: centred horizontally, floating above its top edge', () => {
     const bounds = { minX: 100, minY: 40, maxX: 140, maxY: 100 };
-    const tip = tipOf({ bubbles: [bubble(3, 5)], drawn: drawnWith({ boundsOf: () => bounds }) });
+    const tip = tipOf({ bubbles: [bubble(3, 5)], drawn: drawnGeometry({ boundsOf: () => bounds }) });
     expect(tip.x).toBe(120); // the box centre, not the raw projection
     expect(tip.y).toBe(40 - BUBBLE_GAP); // the box top edge
   });
@@ -62,14 +56,14 @@ describe('SettlerBubbleLayer head anchoring', () => {
   it('falls back to the drawn feet anchor raised a body height when no box was stamped', () => {
     const tip = tipOf({
       bubbles: [bubble(3, 5)],
-      drawn: drawnWith({ anchorOf: () => ({ x: 200, y: 300 }) }),
+      drawn: drawnGeometry({ anchorOf: () => ({ x: 200, y: 300 }) }),
     });
     expect(tip.x).toBe(200);
     expect(tip.y).toBe(300 - HEAD_ABOVE_FEET - BUBBLE_GAP);
   });
 
   it('falls back to the raw snapshot projection plus terrain lift for an undrawn settler', () => {
-    const flat = tipOf({ bubbles: [bubble(3, 5)], drawn: drawnWith({}) });
+    const flat = tipOf({ bubbles: [bubble(3, 5)], drawn: drawnGeometry() });
     const p = tileToScreen(3, 5);
     expect(flat.x).toBe(p.x);
     expect(flat.y).toBe(p.y - HEAD_ABOVE_FEET - BUBBLE_GAP);
@@ -77,7 +71,7 @@ describe('SettlerBubbleLayer head anchoring', () => {
 
   it('rides the same terrain lift the sprite pool applies on sloped ground', () => {
     const elevation = makeElevationField([160, 160, 160, 160], 2, 2);
-    const tip = tipOf({ bubbles: [bubble(0, 0)], drawn: drawnWith({}), elevation });
+    const tip = tipOf({ bubbles: [bubble(0, 0)], drawn: drawnGeometry(), elevation });
     const p = tileToScreen(0, 0);
     expect(tip.y).toBeCloseTo(p.y - elevation.liftAt(0, 0) - HEAD_ABOVE_FEET - BUBBLE_GAP, 6);
     expect(elevation.liftAt(0, 0)).toBeGreaterThan(0); // the lift is real, not a flat-field no-op
@@ -121,7 +115,7 @@ describe('SettlerBubbleLayer viewport cull', () => {
     const layer = new SettlerBubbleLayer();
     layer.setGfx(GFX);
     let lookups = 0;
-    const counting = drawnWith({
+    const counting = drawnGeometry({
       boundsOf: () => {
         lookups++;
         return undefined;

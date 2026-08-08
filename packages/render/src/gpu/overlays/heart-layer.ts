@@ -1,8 +1,6 @@
 import { Container, Graphics } from 'pixi.js';
-import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
-import type { ElevationField } from '../../data/terrain/index.js';
-import type { DrawnGeometry } from '../sprite-pool/index.js';
-import { feetAnchor } from './feet-anchor.js';
+import type { Viewport } from '../../data/projection/index.js';
+import { type MarkAnchorFrame, type MarkedEntity, markAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
@@ -12,20 +10,14 @@ import { retireUndrawn } from './retained-pool.js';
  * placeholder vector shape until the original's glyph is identified.
  */
 
-/** One unit's heart: snapshot `Position` in fixed-point units, the owning faction's `0xRRGGBB` colour,
- *  and remaining life as a `[0, 1]` fraction. */
-export interface LifeHeart {
-  readonly id: number;
-  readonly x: number;
-  readonly y: number;
+/** One unit's heart: the owning faction's `0xRRGGBB` colour and remaining life as a `[0, 1]` fraction. */
+export interface LifeHeart extends MarkedEntity {
   readonly colour: number;
   readonly life: number;
 }
 
-export interface LifeHeartFrame {
+export interface LifeHeartFrame extends MarkAnchorFrame {
   readonly hearts: readonly LifeHeart[];
-  readonly drawn?: DrawnGeometry | undefined;
-  readonly elevation?: ElevationField | undefined;
 }
 
 /** World-px the heart floats above the unit's back (the sprite-bounds top, or the feet estimate). */
@@ -76,10 +68,9 @@ export class LifeHeartLayer {
   draw(frame: LifeHeartFrame, viewport?: Viewport): void {
     this.seen.clear();
     for (const heart of frame.hearts) {
-      const feet = tileToScreen(heart.x / ONE, heart.y / ONE);
-      if (viewport !== undefined && !isVisible(viewport, feet.x, feet.y)) continue;
+      const top = markAnchor(frame, heart, BACK_ABOVE_FEET, viewport);
+      if (top === undefined) continue;
 
-      const top = this.backOf(frame, heart);
       let entry = this.hearts.get(heart.id);
       if (entry === undefined || entry.colour !== heart.colour) {
         entry?.node.destroy({ children: true });
@@ -92,15 +83,6 @@ export class LifeHeartLayer {
       this.seen.add(heart.id);
     }
     retireUndrawn(this.hearts, this.seen, (entry) => entry.node.destroy({ children: true }));
-  }
-
-  /** The point the heart floats over: the pool's lerped sprite-bounds top-centre, else the feet anchor
-   *  raised by the back estimate. */
-  private backOf(frame: LifeHeartFrame, heart: LifeHeart): { x: number; y: number } {
-    const bounds = frame.drawn?.boundsOf(heart.id);
-    if (bounds !== undefined) return { x: (bounds.minX + bounds.maxX) / 2, y: bounds.minY };
-    const feet = feetAnchor(frame.drawn, heart.id, heart, frame.elevation);
-    return { x: feet.x, y: feet.y - BACK_ABOVE_FEET };
   }
 
   destroy(): void {

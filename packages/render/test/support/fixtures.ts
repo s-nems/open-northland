@@ -1,6 +1,7 @@
 import { FOG_MODE, FOG_STATE, type FogMode, type FogView, type WorldSnapshot } from '@open-northland/sim';
 import { ONE } from '../../src/data/projection/index.js';
 import type { SpriteState } from '../../src/data/scene/index.js';
+import type { DrawnGeometry } from '../../src/gpu/sprite-pool/index.js';
 import type { DrawItem, SceneTerrain } from '../../src/index.js';
 
 /**
@@ -57,6 +58,11 @@ export function entity(
  *  a shape the sim never produces. */
 export function snapshotOf(entities: WorldSnapshot['entities'], tick = 1): WorldSnapshot {
   return { tick, entities: [...entities].sort((a, b) => a.id - b.id), events: [] };
+}
+
+/** A {@link DrawnGeometry} whose seams report nothing drawn, except the ones a test overrides. */
+export function drawnGeometry(seams: Partial<DrawnGeometry> = {}): DrawnGeometry {
+  return { boundsOf: () => undefined, anchorOf: () => undefined, ...seams };
 }
 
 /** A {@link FogView} over a sparse `"cx,cy"` map where a missing cell is UNEXPLORED, mirroring the sim's

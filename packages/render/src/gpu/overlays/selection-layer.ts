@@ -4,7 +4,7 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
-import { feetAnchor } from './feet-anchor.js';
+import { feetAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
