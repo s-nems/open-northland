@@ -2,9 +2,9 @@ import type { DrawItem, SpriteState } from '../scene/index.js';
 import type { ByJobTable, SettlerStateBinding, SpriteFrameRef } from './settler-bindings.js';
 
 /**
- * The facing for an item with no heading to derive one from. `5` is SE on screen in the `CR_Hum_Body`
- * direction layout (`0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N`), a toward-camera pose rather than a
- * back view. Approximation: there is no per-entity hold-the-last-heading yet.
+ * The facing for an item carrying no heading. Approximation: `5` is SE on screen in the `CR_Hum_Body`
+ * direction layout, chosen as a toward-camera pose rather than a back view. The pool's held last heading
+ * only covers a `moving`-state gap, so any other item without `facing` lands here.
  */
 export const DEFAULT_FACING = 5;
 
@@ -37,18 +37,12 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   return ref.start + dir * ref.stride + phase;
 }
 
-/**
- * The state pick runs a fixed fallback chain so a sparse table is always total: `acting` tries
- * `byAtomic[id]`, then `acting`, then `idle`; `moving` tries `moving`, then `idle`. The engaged and
- * carrying overrides take precedence for the `moving`/`idle` slots, in that order.
- */
+/** The state pick runs a fixed fallback chain so a sparse table is always total. */
 export function resolveSettlerBobId(
   binding: number | SettlerStateBinding,
   item: DrawItem,
   tick: number,
-  // The moving-state clock, where the pool passes a motion-scaled walk-cycle phase so feet track
-  // ground covered rather than wall ticks. Defaults to the free tick, the fixed cadence every other
-  // caller wants.
+  // The moving-state clock. Defaults to the free tick, for a caller with no motion track.
   gaitClock: number = tick,
 ): number {
   if (typeof binding === 'number') return binding;
@@ -60,7 +54,6 @@ export function resolveSettlerBobId(
     carrying === undefined
       ? undefined
       : { idle: byGood?.idle ?? carrying.idle, moving: byGood?.moving ?? carrying.moving };
-  // The engaged gait wins over the loaded one below: an engaged soldier is fighting, not hauling.
   const engaged = item.engaged ? binding.engaged : undefined;
   if (state === 'acting') {
     // An action runs on the atomic's own clock, rebased to 0 so frame 0 shows on its first tick.
@@ -70,13 +63,11 @@ export function resolveSettlerBobId(
       const specific = byAtomic[item.atomicId];
       if (specific !== undefined) return frameOf(specific, facing, clock);
     }
-    // An atomic with no bound animation stands still: a deposit has no decoded swing, and standing
-    // never borrows the woodcut swing at a wrong speed.
+    // With no generic `acting` bound the atomic stands still, rather than borrowing the woodcut swing
+    // at a wrong speed.
     return frameOf(engaged?.idle ?? carry?.idle ?? binding.acting ?? binding.idle, facing, clock);
   }
   if (state === 'moving') {
-    // The walk cycle runs on the gait clock; the idle loop below stays on the free tick, so a standing
-    // unit keeps breathing.
     return frameOf(engaged?.moving ?? carry?.moving ?? binding.moving ?? binding.idle, facing, gaitClock);
   }
   return frameOf(engaged?.idle ?? carry?.idle ?? binding.idle, facing, tick);

@@ -17,24 +17,21 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
   // The unbound checks cover the required-typed keys too: the binding record is content-built, and a
   // caller outside the type system gets the placeholder rather than a crash.
   switch (item.kind) {
-    case 'tile': // tiles bind by landscape typeId, not these per-kind bindings
+    case 'tile':
       return null;
-    // No decoded arrow bob exists, so the GPU pool draws its own oriented-arrow marker.
     case 'projectile':
       return null;
     case 'settler':
       return bindings.settler === undefined ? null : resolveSettlerBobId(bindings.settler, item, tick);
     case 'building':
       return bindings.building === undefined ? null : resolveBuildingDraw(bindings.building, item).bob;
-    // These kinds all reuse the per-good resource resolver, each from the atlas its own binding names.
-    // A ground drop's kind and binding key differ, so it names its key instead of reusing `item.kind`.
     case 'resource':
     case 'stump':
     case 'berrybush':
     case 'grounddrop': {
+      // A ground drop's kind and binding key differ, so it names its key instead of reusing `item.kind`.
       const binding = item.kind === 'grounddrop' ? bindings.trunk : bindings[item.kind];
-      // This bare-atlas path collapses an invisible level to the placeholder so the synthetic sheet
-      // shows every entity; the GPU path draws nothing for it.
+      // Unlike the GPU path, this one collapses a data-pinned invisible level to the placeholder.
       return binding === undefined ? null : (resolveResourceDraw(binding, item)?.bob ?? null);
     }
     case 'signpost':
@@ -42,7 +39,6 @@ export function resolveSpriteBobId(item: DrawItem, bindings: SpriteBindings, tic
     case 'stockpile':
       return bindings.stockpile === undefined ? null : resolveStockpileDraw(bindings.stockpile, item).bob;
     default: {
-      // A new DrawKind must fail to assign here instead of silently taking a neighbour's resolver.
       const _exhaustive: never = item.kind;
       void _exhaustive;
       return null;

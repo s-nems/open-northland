@@ -1,7 +1,3 @@
-/**
- * Pure frame selection, with no Pixi and no canvas: binding a resolved frame to a GPU texture is the
- * `gpu` layer's half.
- */
 export {
   type AtlasFrame,
   type AtlasManifest,
