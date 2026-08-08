@@ -30,11 +30,6 @@ export function continuesHarvest(world: World, node: Entity): boolean {
   return (res.strikes ?? 0) > 0;
 }
 
-/**
- * Whether the swing that just resolved should chain into the breather. The count lives per worker on the
- * atomic, not on the node, because an experienced worker's swing advances the node's counters by more than
- * one and their parity no longer tracks swings.
- */
 function restAfterHarvest(world: World, atomic: RestTailAtomic, node: Entity): boolean {
   if (!continuesHarvest(world, node)) return false;
   return (atomic.swingsSinceRest ?? 0) >= HARVEST_SWINGS_PER_REST;

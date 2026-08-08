@@ -27,10 +27,10 @@ import { interactionCell } from '../targets/index.js';
 export const EAT_ATOMIC_ID = 10;
 
 /**
- * Duration in ticks of one eat or forage atomic, taken from the settler's own eat clip
+ * Duration in ticks of one eat or forage atomic, from the settler's own eat clip
  * (`viking_civilist_eat_slot_food` = 50 ticks). The `[gfxanimatomic]` action-10 frame list raises, chews
- * and lowers, so the clip is a whole meal and nothing repeats on top of it. Most working trades bind no
- * eat clip, hence {@link needAtomicDuration} rather than a direct lookup.
+ * and lowers, so the clip is a whole meal. Most working trades bind no eat clip, hence
+ * {@link needAtomicDuration}.
  */
 export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): number {
   return needAtomicDuration(ctx.content, settler, EAT_ATOMIC_ID);
@@ -80,7 +80,6 @@ export const DROP_ATOMIC_ID = PICKUP_ATOMIC_ID;
 /**
  * Start a settler setting its carried load down. Clearing the nav state is what makes the drop a
  * standstill: a settler interrupted mid-walk halts and sets the load down instead of dropping on the move.
- * No-op on a settler already acting, whose atomic must not be clobbered, or one carrying nothing.
  */
 export function startDrop(world: World, ctx: SystemContext, settler: Entity): void {
   if (world.has(settler, CurrentAtomic)) return;
@@ -122,9 +121,6 @@ export function startAtomic(
   });
 }
 
-/**
- * Run `start` when already standing on the target's interaction `cell`, otherwise walk there.
- */
 export function atOrWalk(world: World, e: Entity, here: NodeId, cell: NodeId, start: () => void): void {
   if (cell === here) start();
   else world.add(e, MoveGoal, { cell });
@@ -162,9 +158,6 @@ export function startDraw(world: World, e: Entity, goodType: number, utility: En
   startAtomic(world, e, PICKUP_ATOMIC_ID, { kind: 'draw', goodType, utility }, ticks, utility);
 }
 
-/**
- * Walk to a store or pile's interaction cell and lift one {@link CARRY_CAPACITY} batch of `goodType`.
- */
 export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number): void {
   const { world, ctx, terrain, entity: e, here } = plan;
   atOrWalk(world, e, here, interactionCell(world, ctx, terrain, from, here), () =>

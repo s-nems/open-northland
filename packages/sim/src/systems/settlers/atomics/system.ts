@@ -11,14 +11,7 @@ import {
 import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
 import { atomicSoundFrame } from './sound-cue.js';
 
-/**
- * Advance every running `CurrentAtomic` and apply its effect on completion. Removing the component is what
- * tells the planner the settler is ready for its next atomic.
- *
- * Timing is the integer compare `elapsed >= duration`, never an accumulated fixed-point step: `ONE /
- * duration` truncates, so summing it would fall short of ONE and hang the atomic. `progress` is a
- * display-only 0..ONE value for render interpolation.
- */
+/** Advance every running `CurrentAtomic` and apply its effect on completion. */
 export const atomicSystem: System = (world, ctx) => {
   // Staggers are collected so the loop never adds to the CurrentAtomic store it iterates; self-removal on
   // completion stays the only membership change, which Map iteration tolerates.
