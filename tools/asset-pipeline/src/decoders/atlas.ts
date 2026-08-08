@@ -6,7 +6,7 @@
  * Index 0 is a real palette colour for bobs, so alpha always comes from a frame's `mask`.
  */
 
-import type { Bmd, BobFrame } from './bmd/index.js';
+import type { Bmd, BobFrame, SecondByteMode } from './bmd/index.js';
 import { BOB_ALPHA_OPAQUE, decodeBobFrame } from './bmd/index.js';
 import { assertPaletteBytes, paletteToRgba, type RgbaImage } from './image.js';
 
@@ -115,6 +115,17 @@ interface PreparedFrame {
  */
 export type AtlasAlphaMode = 'per-pixel' | 'build-time';
 
+/**
+ * One atlas bake: how a decoded bob turns into sheet pixels. `secondByte` is the reading
+ * {@link decodeBobFrame} applies to a double-byte pair, and `time` is present only for the bake that
+ * also fills {@link BobAtlas.timeImage}. Both expanders are called only for frames that have pixels.
+ */
+interface BobBake {
+  readonly secondByte: SecondByteMode;
+  readonly colour: (frame: BobFrame) => RgbaImage;
+  readonly time?: (frame: BobFrame) => RgbaImage;
+}
+
 /** Options for {@link packBobAtlas}. */
 export interface PackBobAtlasOptions {
   /** Shelf-packer wrap width (default {@link DEFAULT_ATLAS_MAX_WIDTH}). */
@@ -130,7 +141,15 @@ export interface PackBobAtlasOptions {
  */
 export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtlasOptions = {}): BobAtlas {
   const { maxWidth = DEFAULT_ATLAS_MAX_WIDTH, alpha = 'per-pixel' } = options;
-  return packBobAtlasWith(bmd, (frame) => expandBobFrame(frame, palette), maxWidth, alpha);
+  return packBobAtlasWith(bmd, colouredBake(palette, alpha), maxWidth);
+}
+
+/** The only place an {@link AtlasAlphaMode} resolves to a bake. */
+function colouredBake(palette: Uint8Array, alpha: AtlasAlphaMode): BobBake {
+  const colour = (frame: BobFrame): RgbaImage => expandBobFrame(frame, palette);
+  return alpha === 'build-time'
+    ? { secondByte: 'time', colour, time: expandBobFrameTime }
+    : { secondByte: 'alpha', colour };
 }
 
 /**
@@ -179,7 +198,11 @@ function expandBobFrameShadow(frame: BobFrame): RgbaImage {
  * so a cast shadow draws as a plain batched sprite instead of a blend-mode blit.
  */
 export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
-  return packBobAtlasWith(bmd, expandBobFrameShadow, DEFAULT_ATLAS_MAX_WIDTH, 'per-pixel');
+  return packBobAtlasWith(
+    bmd,
+    { secondByte: 'alpha', colour: expandBobFrameShadow },
+    DEFAULT_ATLAS_MAX_WIDTH,
+  );
 }
 
 /**
@@ -189,34 +212,27 @@ export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
  * translucency survives into the drawn sprite.
  */
 export function packIndexedBobAtlas(bmd: Bmd): BobAtlas {
-  return packBobAtlasWith(bmd, expandBobFrameIndexed, DEFAULT_ATLAS_MAX_WIDTH, 'per-pixel');
+  return packBobAtlasWith(
+    bmd,
+    { secondByte: 'alpha', colour: expandBobFrameIndexed },
+    DEFAULT_ATLAS_MAX_WIDTH,
+  );
 }
 
-/** `expand` is called only for frames that have pixels, so it always receives a non-empty frame. */
-function packBobAtlasWith(
-  bmd: Bmd,
-  expand: (frame: BobFrame) => RgbaImage,
-  maxWidth: number,
-  alpha: AtlasAlphaMode,
-): BobAtlas {
-  const buildTime = alpha === 'build-time';
-  const prepared = prepareFrames(bmd, expand, buildTime);
+function packBobAtlasWith(bmd: Bmd, bake: BobBake, maxWidth: number): BobAtlas {
+  const prepared = prepareFrames(bmd, bake);
   const layout = shelfPack(prepared, maxWidth);
-  return emitAtlas(prepared, layout, buildTime);
+  return emitAtlas(prepared, layout, bake.time !== undefined);
 }
 
-/** Decode + colour/index-encode every bob. `bobs` is `bobCount` long by the {@link Bmd} contract, so
- *  the index guard only discharges the checked-index `| undefined`. */
-function prepareFrames(
-  bmd: Bmd,
-  expand: (frame: BobFrame) => RgbaImage,
-  buildTime: boolean,
-): PreparedFrame[] {
+/** `bobs` is `bobCount` long by the {@link Bmd} contract, so the index guard only discharges the
+ *  checked-index `| undefined`. */
+function prepareFrames(bmd: Bmd, bake: BobBake): PreparedFrame[] {
   const prepared: PreparedFrame[] = [];
   for (let i = 0; i < bmd.bobCount; i++) {
     const bob = bmd.bobs[i];
     if (bob === undefined) continue;
-    const frame = decodeBobFrame(bmd, i, buildTime ? 'time' : 'alpha');
+    const frame = decodeBobFrame(bmd, i, bake.secondByte);
     const hasPixels = frame.width > 0 && frame.height > 0;
     let opaque = false;
     if (hasPixels) {
@@ -234,8 +250,8 @@ function prepareFrames(
       offsetY: bob.area.y,
       width: frame.width,
       height: frame.height,
-      image: hasPixels ? expand(frame) : undefined,
-      timeImage: hasPixels && buildTime ? expandBobFrameTime(frame) : undefined,
+      image: hasPixels ? bake.colour(frame) : undefined,
+      timeImage: hasPixels ? bake.time?.(frame) : undefined,
       opaque,
     });
   }
@@ -279,10 +295,14 @@ function shelfPack(prepared: readonly PreparedFrame[], maxWidth: number): Packed
 }
 
 /** Allocates the sheet(s), blits each placed frame, and builds the manifest the packer returns. */
-function emitAtlas(prepared: readonly PreparedFrame[], layout: PackedLayout, buildTime: boolean): BobAtlas {
+function emitAtlas(
+  prepared: readonly PreparedFrame[],
+  layout: PackedLayout,
+  withTimeSheet: boolean,
+): BobAtlas {
   const { placements, width, height } = layout;
   const image: RgbaImage = { width, height, rgba: new Uint8Array(width * height * 4) };
-  const timeImage: RgbaImage | undefined = buildTime
+  const timeImage: RgbaImage | undefined = withTimeSheet
     ? { width, height, rgba: new Uint8Array(width * height * 4) }
     : undefined;
 
