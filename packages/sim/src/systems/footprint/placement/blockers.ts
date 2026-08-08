@@ -22,12 +22,11 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  *  - **OBSTACLE** - resource WALK bodies, existing building FAMILY bodies, signpost cells. Rejects a
  *    building candidate's RESERVED zone (the "minimum distance from a node/wall") and any work flag. A
  *    building's door is part of its family body, so it stays walkable for routing but takes no flag.
- *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY (its walls may not
- *    sit in a resource's build margin); still valid open ground for a work flag.
+ *  - **EXCLUSION** - resource BUILD zones. Rejects a building candidate's FAMILY BODY, whose walls may not
+ *    sit in a resource's build margin; still valid open ground for a work flag.
  *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
  *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing `canPlaceAnchor` names as
- *    an approximation); still open ground for a work flag. Kept distinct from OBSTACLE (which also blocks
- *    a flag) and from EXCLUSION (which rejects a body, not a zone).
+ *    an approximation); still open ground for a work flag.
  *  - **RESOURCE_ANCHOR** - a footprinted resource's own cell, which its walk body need not cover. Blocks a
  *    work flag only; a footprint-less resource contributes OBSTACLE instead (the pre-footprint same-tile
  *    rule), which already covers its anchor for both rules.
@@ -62,7 +61,7 @@ export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisi
   const { hx, hy } = nodeOfPosition(p.x, p.y);
   const fp = world.tryGet(e, ResourceFootprint);
   if (fp === undefined) {
-    visit(hx, hy, OBSTACLE); // legacy anchor-only resource keeps the old same-tile rule
+    visit(hx, hy, OBSTACLE); // a footprint-less resource keeps the same-tile rule
     return;
   }
   visit(hx, hy, RESOURCE_ANCHOR);
@@ -107,9 +106,9 @@ export function markerBlockerCells(world: World, e: Entity, visit: BlockerVisit)
 
 /**
  * Enumerate every (cell, channel) the world's standing resources, buildings, signposts and - under
- * `'with-markers'` - delivery flags contribute. Consumers filter by channel; a cell may be visited on
- * more than one channel, and every consumer takes set unions / mask writes (membership, no pick), so
- * store-iteration order cannot change any later answer.
+ * `'with-markers'` - delivery flags contribute. Consumers filter by channel; a cell may be visited on more
+ * than one channel, and every consumer takes set unions or mask writes with no pick, so store-iteration
+ * order cannot change any later answer.
  */
 export function eachBlockerCell(
   world: World,
@@ -130,15 +129,13 @@ export function eachBlockerCell(
  * `Signpost` membership generations, plus the `Building` VALUE generation, since the home tier upgrade
  * swaps `buildingType` in place invisibly to membership. That swap cannot change the cells today
  * (`familyBody` and `reserved` are level-chain unions), so the value term only guards a future per-level
- * footprint. It moves when those cells can change rather than every tick; the work-flag rule adds the
- * `DeliveryFlag` generation on top.
+ * footprint. It moves when those cells can change rather than every tick.
  *
  * Exactness rests on buildings and resources never MOVING once placed, so a stored entity's cells are
- * fixed. `ResourceFootprint` is stamped and unstamped in the same step as its `Resource` add/destroy, so
- * its own generation term covers a future path that decouples them. Completeness is load-bearing: the
- * signpost placement probe memoizes on this through the work-flag version, so a missed input would be a
- * decision on a stale set, not just an overlay wash. A string, so the monotonic counters compose with no
- * overflow reasoning; never hashed, never a sim decision.
+ * fixed; `ResourceFootprint` is stamped and unstamped in the same step as its `Resource` add/destroy, so
+ * its own term covers a future path that decouples them. Completeness is load-bearing, since a memo keyed
+ * on this decides rather than merely washing an overlay. A string, so the monotonic counters compose with
+ * no overflow reasoning; never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
   return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;

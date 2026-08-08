@@ -4,10 +4,8 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { sameCells, translatedCells } from './geometry.js';
 
-// The incrementally-maintained per-world cache of cells standing resource nodes make unwalkable, plus
-// its coherence verifier. Maintained by the resource stamp/unstamp paths (see ./resources.ts) so
-// clearing a forest mutates just the affected node's cells instead of rescanning every resource on the
-// next route; a direct ResourceFootprint store mutation still falls back to a full rebuild.
+// The incrementally-maintained per-world cache of cells standing resource nodes make unwalkable, plus its
+// coherence verifier - the resource twin of ./building-blocked-cache.ts.
 
 interface ResourceBlockedCache {
   generation: number;
@@ -112,9 +110,9 @@ function verifyResourceBlockedCache(world: World, terrain: TerrainGraph): string
 
 /**
  * The cells standing resource nodes make unwalkable. Built once per world/terrain and maintained by
- * `stampResourceFootprint` / `unstampResourceFootprint` for the resource spawn/removal paths, so clearing
- * a forest mutates just the affected node's cells instead of scanning every resource on the next route.
- * A direct ResourceFootprint store mutation still falls back to a full rebuild for correctness.
+ * `stampResourceFootprint` / `unstampResourceFootprint`, so clearing a forest mutates just the affected
+ * node's cells instead of scanning every resource on the next route. A direct ResourceFootprint store
+ * mutation still falls back to a full rebuild.
  */
 export function resourceBlockedCells(world: World, terrain: TerrainGraph): ReadonlySet<NodeId> {
   const generation = world.componentGeneration(ResourceFootprint);

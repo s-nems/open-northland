@@ -19,10 +19,10 @@ import { workFlagMoveCount } from './flag-moves.js';
 
 /**
  * The per-world incremental blocked-set state. The refcounted `counts`/`blocked` pair is maintained
- * against the blocker stores' membership journals, so a burst that plants N flags/signposts costs
+ * against the blocker stores' membership journals, so a burst that plants N flags or signposts costs
  * N × O(own footprint) instead of the N × O(all blockers) a rebuild-on-bump memo pays. It feeds command
- * gates and sim decisions (`canPlaceWorkFlag`, the auto-flag plant), so the registered `verifyCaches`
- * verifier proves the held set byte-identical to a full {@link rederiveBlockedCells}.
+ * gates and sim decisions, so the registered `verifyCaches` verifier proves the held set byte-identical to
+ * a full {@link rederiveBlockedCells}.
  */
 interface IncrementalBlocks {
   readonly content: ContentSet;
@@ -135,9 +135,6 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
  *  (a journal gap, or a change on an input the journals cannot cover - see {@link IncrementalBlocks}). */
 function catchUp(world: World, state: IncrementalBlocks): boolean {
   if (world.componentValueGeneration(Building) !== state.buildingValueGen) return false;
-  // A footprint stamp/unstamp changes which cells its resource blocks - replay its own journal
-  // through the Resource capturer, so even a stamp decoupled from a Resource add/destroy resyncs
-  // exactly the affected entity (resync is idempotent against the Resource replay below).
   const footprintGen = world.componentGeneration(ResourceFootprint);
   if (footprintGen !== state.footprintGen) {
     const deltas = world.membershipDeltasSince(ResourceFootprint, state.footprintGen);
@@ -177,10 +174,10 @@ function liveBlocks(world: World, content: ContentSet, terrain: TerrainGraph): I
 }
 
 /** The nodes a work flag may NOT occupy - the {@link rederiveBlockedCells} rule, served off the incremental
- *  state so reads share one refcounted set that changes cost O(own footprint). The returned view reads
- *  that live state rather than a copy of it: read it fresh within a decision, never hold it across sim
- *  mutations. The `ignoreFlag` variant (a flag re-placed over its own cell) withholds that flag's
- *  contributions via the refcounts. */
+ *  state so reads share one refcounted set a change costs O(own footprint) to update. The returned view
+ *  reads that live state rather than a copy of it: read it fresh within a decision, never hold it across
+ *  sim mutations. `ignoreFlag` withholds one flag's own contributions via the refcounts, for a flag
+ *  re-placed over its own cell. */
 export function workFlagPlacementBlocks(
   world: World,
   content: ContentSet,

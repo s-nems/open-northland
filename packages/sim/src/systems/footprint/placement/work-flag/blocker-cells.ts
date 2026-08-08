@@ -24,8 +24,7 @@ import {
 export type BlockedCells = readonly NodeId[];
 
 /** Every channel but the margin zones, which stay open ground for a flag. Exhaustive over
- *  {@link BlockerChannel}, so a channel added later must state its own answer here instead of
- *  inheriting one. */
+ *  {@link BlockerChannel}, so a channel added later must state its own answer here. */
 const BLOCKS_WORK_FLAG: Record<BlockerChannel, boolean> = {
   [OBSTACLE]: true,
   [RESOURCE_ANCHOR]: true,

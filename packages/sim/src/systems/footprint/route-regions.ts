@@ -21,8 +21,8 @@ const OPEN_REGION = -1;
 
 /** In-flight label of the current flood's own nodes. A flood that steps onto a same-epoch node without
  *  this label has joined an earlier capped sweep's region, which proves the union larger than the cap, so
- *  the flood labels itself open even when its own remainder exhausts. The final labeling pass overwrites
- *  every visited node, so this never escapes a flood. */
+ *  it labels itself open even when its own remainder exhausts. The final pass overwrites every visited
+ *  node, so this never escapes a flood. */
 const PENDING_REGION = -2;
 
 /** Int32 stamp ceiling; on the (practically unreachable) wrap, clear the stamps so no stale slot can
@@ -53,7 +53,7 @@ const cacheByWorld = new WeakMap<World, RouteRegionCache>();
 
 /**
  * Route-reachability verdicts over the building and resource walk-block overlay. A verdict is a pure
- * function of terrain and overlay, never of query history: a pocket label is minted only for a completely
+ * function of terrain and overlay, never of query history: a pocket label is minted only for a fully
  * enumerated region and every other flood outcome collapses to the shared open label, so a cold cache
  * answers exactly like a warm one.
  */
@@ -85,10 +85,9 @@ export class RouteRegions {
 
   /**
    * Whether `node` provably sits in a sealed pocket. False for a blocked or unwalkable node and for
-   * everything the capped flood cannot prove - the same fail-open contract as {@link unroutable}.
-   * For a pick whose `from` is a proxy for the walker rather than its actual cell: a pocketed proxy
-   * inverts {@link unroutable} (every open spot reads unroutable), so such a pick must disable its
-   * veto instead.
+   * everything the capped flood cannot prove - the same fail-open contract as {@link unroutable}. A
+   * pocketed proxy inverts {@link unroutable} (every open spot reads unroutable), so a pick whose `from`
+   * stands in for the walker rather than being its cell must disable that veto instead.
    */
   pocketed(node: NodeId): boolean {
     const cache = this.cache;
