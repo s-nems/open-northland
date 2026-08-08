@@ -7,7 +7,12 @@ export { AMBIENT_FADE_S } from './ambient-mixer.js';
 export {
   type AudioEngineOptions,
   DEFAULT_MASTER_GAIN,
+  DEFAULT_MUSIC_BASE_URL,
+  DEFAULT_MUSIC_VOLUME,
+  DEFAULT_SFX_VOLUME,
   DEFAULT_SOUNDS_BASE_URL,
   ONE_SHOT_COOLDOWN_S,
+  VOLUME_RAMP_S,
   WebAudioEngine,
 } from './audio-engine.js';
+export { MUSIC_FADE_S, MusicPlayer } from './music-player.js';

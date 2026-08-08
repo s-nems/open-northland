@@ -2,6 +2,7 @@ import type { Camera } from '@open-northland/render/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
+import type { MusicTrack } from '../data/music.js';
 import type { AudioTerrain, SoundBindings } from '../data/types.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
 
@@ -55,9 +56,24 @@ export class SoundDriver {
     return this.engine.started;
   }
 
-  /** Mute/unmute (also stops ambient loops while muted). */
+  /** Mute/unmute (also stops ambient loops and music while muted). */
   setEnabled(enabled: boolean): void {
     this.engine.setEnabled(enabled);
+  }
+
+  /** Which music track should be playing (null = none); starts once audio is unlocked. */
+  setMusic(track: MusicTrack | null): void {
+    this.engine.setMusic(track);
+  }
+
+  /** Set the game-sounds volume (0..1). */
+  setSfxVolume(volume: number): void {
+    this.engine.setSfxVolume(volume);
+  }
+
+  /** Set the music volume (0..1). */
+  setMusicVolume(volume: number): void {
+    this.engine.setMusicVolume(volume);
   }
 
   /** Decide + play one frame of audio from the current world state. */
