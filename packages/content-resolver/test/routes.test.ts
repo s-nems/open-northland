@@ -32,6 +32,8 @@ describe('resolveContentRequest', () => {
     const sheet = await put('Data/engine2d/bin/bobs/ls_trees.tree01.png');
     const texture = await put('Data/engine2d/bin/textures/text_000.png');
     const sound = await put('Data/engine2d/bin/sounds/axe01.wav');
+    const track = await put('music/theme_viking_neutral.ogg');
+    const musicManifest = await put('music/manifest.json');
     const strings = await put('gui/strings.eng.json');
     const cursor = await put('gui/cursors/normal.cur');
     const bitmap = await put('Data/gui/bitmaps/bg01.png');
@@ -59,6 +61,14 @@ describe('resolveContentRequest', () => {
     expect(await resolveContentRequest(fs, '/sounds/axe01.wav', contentRoot)).toMatchObject({
       path: sound,
       contentType: 'audio/wav',
+    });
+    expect(await resolveContentRequest(fs, '/music/theme_viking_neutral.ogg', contentRoot)).toMatchObject({
+      path: track,
+      contentType: 'audio/ogg',
+    });
+    expect(await resolveContentRequest(fs, '/music/manifest.json', contentRoot)).toMatchObject({
+      path: musicManifest,
+      contentType: 'application/json',
     });
     expect(await resolveContentRequest(fs, '/gui/strings.eng.json', contentRoot)).toMatchObject({
       path: strings,
