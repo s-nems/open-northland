@@ -1,6 +1,7 @@
 import { type Container, Graphics } from 'pixi.js';
 import { HOVER_ALPHA, HOVER_TINT } from '../chrome.js';
-import { isPlainHotkey } from '../hotkeys.js';
+import { isActionHotkey } from '../hotkeys.js';
+import type { KeyBindings } from '../keybindings.js';
 import { hitTestToolPanel, type ToolButtonId, type ToolPanelLayout } from './layout.js';
 import type { ToolWindows } from './windows.js';
 
@@ -22,6 +23,7 @@ export interface ToolPanelInputDeps {
   readonly toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
   readonly windows: ToolWindows;
   readonly held: readonly HeldMode[];
+  readonly bindings: KeyBindings;
   readonly activateButton: (id: ToolButtonId) => void;
   readonly togglePause: () => void;
   readonly deferToOverlay?: (clientX: number, clientY: number) => boolean;
@@ -98,7 +100,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       }
     }
     // Each pause toggle re-rasterizes the strip, so key repeat must not flicker it.
-    if (isPlainHotkey(e, 'KeyP')) deps.togglePause();
+    if (isActionHotkey(e, deps.bindings, 'pauseToggle')) deps.togglePause();
   };
 
   canvas.addEventListener('mousedown', onMouseDown);

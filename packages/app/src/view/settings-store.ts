@@ -1,3 +1,4 @@
+import { DEFAULT_KEY_BINDINGS, type KeyBindings, parseKeyBindings } from '../hud/keybindings.js';
 import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../hud/ui-scale.js';
 import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
 
@@ -16,6 +17,8 @@ export interface MenuSettings {
   /** Mirrors the `?sound` param: `false` starts the game without an audio driver. */
   readonly soundEnabled: boolean;
   readonly language: Locale;
+  /** A launching game resolves its hotkeys from here, like the HUD scale factor. */
+  readonly keyBindings: KeyBindings;
 }
 
 /** A player who never chose a language follows the browser's. */
@@ -25,6 +28,7 @@ export function defaultSettings(): MenuSettings {
     uiScaleFactor: DEFAULT_UI_SCALE_FACTOR,
     soundEnabled: true,
     language: defaultLocale(),
+    keyBindings: DEFAULT_KEY_BINDINGS,
   };
 }
 
@@ -53,6 +57,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     uiScaleFactor: clampFactor(record.uiScaleFactor),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     language: isLocale(record.language) ? record.language : defaults.language,
+    keyBindings: parseKeyBindings(record.keyBindings),
   };
 }
 

@@ -17,6 +17,7 @@ import {
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
+import { readStoredSettings } from '../view/settings-store.js';
 
 /**
  * The `?scene=<id>` entry renders a registered acceptance scene with the standard game HUD, over the
@@ -100,6 +101,7 @@ export async function renderSceneMode(
     canvas,
     cameraFor(buildSpriteScene(sim.snapshot()), scene.initialZoom ?? 1, app.screen.width, app.screen.height),
     () => app.renderer.resolution,
+    readStoredSettings().keyBindings,
   );
 
   await boot.begin('hud');

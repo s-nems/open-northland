@@ -1,12 +1,14 @@
 import type { Camera } from '@open-northland/render';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_KEY_BINDINGS, type KeyBindings } from '../src/hud/keybindings.js';
 import {
   type CameraController,
   createCameraController,
   EDGE_SCROLL_MARGIN,
 } from '../src/view/camera/index.js';
 
-/** Which DOM events arm and disarm the camera controller's RTS edge-scroll probe. */
+/** Which DOM events arm and disarm the camera controller's RTS edge-scroll probe, and which key
+ *  bindings drive the held-key pan. */
 
 const CANVAS_W = 800;
 const CANVAS_H = 600;
@@ -34,7 +36,7 @@ const eventTarget = () => {
   };
 };
 
-const install = () => {
+const install = (bindings: KeyBindings = DEFAULT_KEY_BINDINGS) => {
   const win = eventTarget();
   const canvasEvents = eventTarget();
   const canvas = {
@@ -46,8 +48,12 @@ const install = () => {
   } as unknown as HTMLCanvasElement;
   vi.stubGlobal('window', win);
   vi.stubGlobal('document', { hasFocus: () => true });
+  // The typing-target guard probes these DOM classes, which the node test environment lacks.
+  vi.stubGlobal('HTMLInputElement', class {});
+  vi.stubGlobal('HTMLTextAreaElement', class {});
+  vi.stubGlobal('HTMLElement', class {});
   const start: Camera = { offsetX: 0, offsetY: 0 };
-  const ctl = createCameraController(canvas, start, () => 1);
+  const ctl = createCameraController(canvas, start, () => 1, bindings);
   return {
     ctl,
     win,
@@ -55,6 +61,12 @@ const install = () => {
     /** Fire a `mousemove` whose hit target is the canvas unless `over` names another element. */
     move: (x: number, y: number, over: unknown = canvas): void => {
       win.emit('mousemove', { clientX: x, clientY: y, target: over });
+    },
+    press: (code: string): void => {
+      win.emit('keydown', { code, target: null, preventDefault: (): void => undefined });
+    },
+    release: (code: string): void => {
+      win.emit('keyup', { code });
     },
   };
 };
@@ -116,6 +128,34 @@ describe('createCameraController edge-scroll arming', () => {
 
   it('does not pan before any pointer sample lands', () => {
     const { ctl } = install();
+    expect(panStep(ctl)).toBe(0);
+    ctl.dispose();
+  });
+});
+
+describe('createCameraController pan bindings', () => {
+  it('pans while the bound key is held and stops on keyup', () => {
+    const { ctl, press, release } = install();
+    press('ArrowLeft');
+    expect(panStep(ctl)).toBeGreaterThan(0);
+    release('ArrowLeft');
+    expect(panStep(ctl)).toBe(0);
+    ctl.dispose();
+  });
+
+  it('follows a rebound pan key and ignores the freed default arrow', () => {
+    const { ctl, press, release } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: 'KeyA' });
+    press('ArrowLeft');
+    expect(panStep(ctl)).toBe(0);
+    press('KeyA');
+    expect(panStep(ctl)).toBeGreaterThan(0);
+    release('KeyA');
+    ctl.dispose();
+  });
+
+  it('never pans on an unbound action', () => {
+    const { ctl, press } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: null });
+    press('ArrowLeft');
     expect(panStep(ctl)).toBe(0);
     ctl.dispose();
   });
