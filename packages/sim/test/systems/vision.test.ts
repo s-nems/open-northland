@@ -10,6 +10,7 @@ import {
   Health,
   Owner,
   Position,
+  playerContactsEntity,
   Settler,
   Stance,
 } from '../../src/components/index.js';
@@ -206,6 +207,70 @@ describe('fog modes - update rules over the per-player mask', () => {
     sim.run(1);
     expect(rawState(sim, P0, 2, 2)).toBe(FOG_STATE.UNEXPLORED); // history gone - only the new spot shows
     expect(rawState(sim, P0, 20, 2)).toBe(FOG_STATE.VISIBLE);
+  });
+});
+
+describe('first contact - the vision-driven discovery of other players', () => {
+  // Geometry: a P0 scout at (2,2) and a P1 civilian 10 cells east at (12,2) - 680 px apart, inside the
+  // scout's 884 px (26-node) eye but outside the civilian's 408 px (12-node) one, so only P0 sees P1.
+  const SCOUT_AT = { x: 2, y: 2 } as const;
+  const CIV_AT = { x: 12, y: 2 } as const;
+
+  it('with fog off everyone reads discovered and no contact table is ever created', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(24, 8) });
+    unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0);
+    unit(sim, CIV_AT.x, CIV_AT.y, P1);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(sim.hasMetPlayer(P0, P1)).toBe(true);
+    expect(sim.hasMetPlayer(P1, P0)).toBe(true);
+    expect(playerContactsEntity(sim.world)).toBeNull(); // pre-contact hashes stay put
+  });
+
+  it('records a DIRECTED contact: the scout meets the civilian, not the other way round', () => {
+    const sim = simOn(FOG_MODE.RECON);
+    unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
+    unit(sim, CIV_AT.x, CIV_AT.y, P1);
+    sim.run(1); // mode applied + first rebuild, contacts settle with the masks
+    expect(sim.hasMetPlayer(P0, P1)).toBe(true);
+    expect(sim.hasMetPlayer(P1, P0)).toBe(false);
+    expect(sim.hasMetPlayer(P0, P0)).toBe(true); // a player always knows itself
+  });
+
+  it('a contact never expires: it survives the eye leaving and a fog reset', () => {
+    const sim = simOn(FOG_MODE.RECON);
+    const civ = unit(sim, CIV_AT.x, CIV_AT.y, P1);
+    unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
+    sim.run(1);
+    expect(sim.hasMetPlayer(P0, P1)).toBe(true);
+
+    teleport(sim, civ, 23, 7); // out of the scout's eye
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(sim.hasMetPlayer(P0, P1)).toBe(true);
+
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
+    sim.run(1);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.run(1);
+    expect(sim.hasMetPlayer(P0, P1)).toBe(true); // masks reset, knowledge kept
+  });
+
+  it('skips an invalid owner slot instead of recording a contact for it', () => {
+    const sim = simOn(FOG_MODE.RECON);
+    unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
+    unit(sim, SCOUT_AT.x + 1, SCOUT_AT.y, 99); // in plain sight, but not a valid player
+    sim.run(1);
+    expect(playerContactsEntity(sim.world)).toBeNull();
+  });
+
+  it('is deterministic: two same-seed runs with fog and contacts reach the same state hash', () => {
+    const run = (): string => {
+      const sim = simOn(FOG_MODE.RECON);
+      unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
+      unit(sim, CIV_AT.x, CIV_AT.y, P1);
+      sim.run(VISION_CADENCE_TICKS * 3);
+      return sim.hashState();
+    };
+    expect(run()).toBe(run());
   });
 });
 

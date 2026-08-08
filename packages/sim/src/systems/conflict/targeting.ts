@@ -103,14 +103,11 @@ export function isHuntTarget(world: World, ctx: SystemContext, t: Entity, hunter
  *
  * When both sides carry an {@link Owner} the player axis alone decides, through the directed
  * {@link diplomacyStance} table: the attacker engages only a player it holds an `enemy` stance toward
- * (source basis "Combat hostility axis": the maps' `diplomacy` rows). A pair no map or command ever set
- * reads `enemy` - itself an approximation on maps that author only one direction of a pair. `friend`
- * and `neutral` both refuse to engage, but a landed blow flips the struck player's stance to `enemy`
- * (`provokeHostility`, observed original behavior), so a one-way war still ends in retaliation.
- * Otherwise the content
- * relations decide: {@link mayAttack} tribe hostility, {@link mayHunt} predation over unowned prey only
- * (claimed livestock is property), and a live {@link Anger} timer that makes a civ-animal fight valid in
- * both directions.
+ * (source basis "Combat hostility axis": the maps' `diplomacy` rows), and a pair no map or command ever
+ * set reads `enemy` - itself an approximation on maps that author only one direction of a pair.
+ * Otherwise the content relations decide: {@link mayAttack} tribe hostility, {@link mayHunt} predation
+ * over unowned prey only (claimed livestock is property), and a live {@link Anger} timer that makes a
+ * civ-animal fight valid in both directions.
  *
  * A lapsed anger timer is not reaped here, keeping this a const-time candidate check;
  * {@link hostileAnimalNow} reaps it once per tick on the attacker pass and an expired timer reads

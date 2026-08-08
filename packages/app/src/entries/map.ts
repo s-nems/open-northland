@@ -90,7 +90,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     decodedMap: loaded !== null,
     seed: WORLD_SEED,
     localPlayer,
-    rosterPlayers: script?.players.length ?? 0,
+    rosterSize: script?.players.length ?? 0,
   });
   const terrainGrid = terrainSceneFor(loaded ?? undefined);
   // Flat when the map carries no `lmhe` lane. The renderer builds its own field for the ground mesh;
@@ -200,6 +200,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     readOnly: readOnlyObserverParam(params),
     playerColourOf,
     seatNameOf: playerNameMap(script),
+    rosterPlayers: script?.players.map((p) => p.player) ?? [],
     ...terrainColourOption(terrain),
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },

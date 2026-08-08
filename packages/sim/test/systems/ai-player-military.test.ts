@@ -8,9 +8,9 @@ import {
   Health,
   MoveGoal,
   Owner,
-  setDiplomacyStance,
   Settler,
   Stance,
+  setDiplomacyStance,
   TrainingOrder,
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';

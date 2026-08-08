@@ -1,5 +1,6 @@
 import type { ContentSet, MapDiplomacy } from '@open-northland/data';
-import { Simulation, type TerrainMap } from '@open-northland/sim';
+import { components, Simulation, type TerrainMap } from '@open-northland/sim';
+import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
 import type { AuthoredPlacement } from './authored-placements.js';
 
@@ -18,6 +19,15 @@ export function newWorldSim(
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   for (const row of diplomacy) {
     sim.enqueueSetup({ kind: 'setDiplomacy', from: row.from, to: row.to, state: row.state });
+  }
+  const dropped = diplomacy.filter(
+    (r) => !components.isValidPlayer(r.from) || !components.isValidPlayer(r.to),
+  ).length;
+  if (dropped > 0) {
+    diag.warn(
+      'content',
+      `newWorldSim: ${dropped} authored diplomacy rows name out-of-range player slots and are skipped by the sim`,
+    );
   }
   return sim;
 }

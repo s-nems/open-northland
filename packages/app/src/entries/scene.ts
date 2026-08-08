@@ -6,6 +6,7 @@ import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { applySessionRuleOverrides, sessionRuleOverrides } from '../game/session-rules.js';
+import { ownerPlayerOf } from '../game/snapshot.js';
 import { createSceneSim, getScene, SCENES } from '../scenes/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
@@ -100,11 +101,18 @@ export async function renderSceneMode(
   // centroid is empty and `cameraFor` would fall back to the tile origin. The browser view therefore
   // runs one tick more than the headless twin.
   sim.step();
+  const snapshot = sim.snapshot();
   const cameraCtl = createCameraController(
     canvas,
-    cameraFor(buildSpriteScene(sim.snapshot()), scene.initialZoom ?? 1, app.screen.width, app.screen.height),
+    cameraFor(buildSpriteScene(snapshot), scene.initialZoom ?? 1, app.screen.width, app.screen.height),
     () => app.renderer.resolution,
     readStoredSettings().keyBindings,
+  );
+
+  // Scenes have no authored map roster, so the diplomacy window's roster is read off the first tick's
+  // owned spawns instead.
+  const rosterPlayers = [...new Set(snapshot.entities.flatMap((e) => ownerPlayerOf(e) ?? []))].sort(
+    (a, b) => a - b,
   );
 
   await boot.begin('hud');
@@ -117,6 +125,7 @@ export async function renderSceneMode(
     sim,
     cameraCtl,
     terrainGrid,
+    rosterPlayers,
     ...terrainColourOption(terrain),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
   });

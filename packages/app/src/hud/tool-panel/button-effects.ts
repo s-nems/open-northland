@@ -16,7 +16,8 @@ export type ToolButtonEffect =
   | { readonly kind: 'speed' }
   | { readonly kind: 'systemMenu' };
 
-/** `help` has no window yet, so it stands in for statistics. */
+/** `help` has no window yet, so it stands in for statistics. An informational window drops only the
+ *  chest window and leaves the pickers open, so reading stats never cancels a pick in progress. */
 const STATISTICS_EFFECT: ToolButtonEffect = {
   kind: 'window',
   toggles: 'stats',
@@ -28,12 +29,18 @@ const EFFECTS: Readonly<Record<ToolButtonId, ToolButtonEffect | null>> = {
   speed: { kind: 'speed' },
   options: { kind: 'systemMenu' },
   buildings: { kind: 'window', toggles: 'menu', closes: ['goods', 'extras'], cancelsHeld: true },
-  extras: { kind: 'window', toggles: 'extras', closes: ['menu', 'goods', 'stats'], cancelsHeld: true },
+  extras: {
+    kind: 'window',
+    toggles: 'extras',
+    closes: ['menu', 'goods', 'stats', 'diplomacy'],
+    cancelsHeld: true,
+  },
   /** The goods drop palette is the mission button's tenant until the mission window exists. */
   mission: { kind: 'window', toggles: 'goods', closes: ['menu', 'extras'], cancelsHeld: true },
   statistics: STATISTICS_EFFECT,
   help: STATISTICS_EFFECT,
-  diplomacy: null,
+  /** Informational like statistics. */
+  diplomacy: { kind: 'window', toggles: 'diplomacy', closes: ['extras'], cancelsHeld: false },
   population: null,
   tech_tree: null,
 };

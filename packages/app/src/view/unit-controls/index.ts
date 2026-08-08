@@ -122,6 +122,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     snapshot: opts.snapshot,
     humanPlayer: opts.humanPlayer,
     observer: opts.observer === true,
+    hostileToward: opts.hostileToward,
     drawnItems: opts.drawnItems,
     boundsOf: opts.boundsOf,
     pixelHitOf: opts.pixelHitOf,

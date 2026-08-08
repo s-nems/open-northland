@@ -171,6 +171,11 @@ export const plContent = {
       summary:
         'Drużyna wysłana przez mapę wycina posterunek stojący jej na drodze, po czym maszeruje dalej we wskazane miejsce.',
     },
+    diplomacy: {
+      title: 'Dyplomacja',
+      summary:
+        'Pierwszy kontakt pod mgłą: sojusznik obok jest znany od razu, jednostronny agresor zdradza się własnym ciosem i zmienia Twoje nastawienie na wrogie, a nigdy niewidziane plemię nie trafia do okna dyplomacji.',
+    },
     'goods-catalog': {
       title: 'Katalog towarów',
       summary: 'Wszystkie towary i odpowiadające im miejsca w magazynie w jednej scenie.',

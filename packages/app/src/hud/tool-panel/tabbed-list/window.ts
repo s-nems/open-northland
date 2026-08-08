@@ -4,7 +4,7 @@ import { contains } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
 import type { ToolButtonId } from '../layout.js';
 import { createWindowShell, type ToolWindow } from '../window-shell.js';
-import { clearFills, paintHover, paintWindow, placeRuns, type TabbedListLayers } from './chrome.js';
+import { clearFills, paintHover, paintWindow, type TabbedListLayers } from './chrome.js';
 import {
   chromeAboveList,
   hitTestTabbedList,
@@ -146,7 +146,6 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     hovered = lastPointer === null ? null : hoverAt(lastPointer.x, lastPointer.y);
 
     paintWindow(layers, layout, source.title());
-    placeRuns(layers, layout);
     drawHover();
   };
 

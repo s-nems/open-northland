@@ -14,5 +14,6 @@ export function ctxOf(sim: Simulation): SystemContext {
     events: sim.events,
     commands: sim.commands,
     ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
+    ...(sim.fog !== undefined ? { fog: sim.fog } : {}),
   };
 }

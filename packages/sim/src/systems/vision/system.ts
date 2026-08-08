@@ -3,8 +3,12 @@ import {
   Building,
   FOG_MODE,
   fogMode,
+  isValidPlayer,
   Owner,
+  PlayerContacts,
   Position,
+  playerContactsEntity,
+  recordContact,
   Settler,
   Signpost,
   Vehicle,
@@ -91,6 +95,33 @@ export const visionSystem: System = (world, ctx) => {
     const player = world.get(e, Owner).player;
     const rect = stampVision(fog.maskFor(player), fog.cellsWide, fog.cellsHigh, cx, cy, radius);
     if (rect !== null) fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
+  }
+
+  // Contact pass over the settled masks: a viewer meets every owner whose entity stands in a cell the
+  // viewer now sees. Any owned entity counts, eye or not - it is drawn on the viewer's screen either
+  // way. The met bits are hoisted out of the loop so a saturated world pays per-pair integer tests
+  // only; the list is re-read because a stamp may have allocated a player's first mask.
+  const contactsEntity = playerContactsEntity(world);
+  const contacts = contactsEntity === null ? null : world.get(contactsEntity, PlayerContacts).met;
+  const viewerBits = fog.playersWithMasks().map((viewer) => ({
+    viewer,
+    bits: contacts?.get(viewer) ?? 0,
+  }));
+  for (const e of world.query(Owner, Position)) {
+    const owner = world.get(e, Owner).player;
+    if (!isValidPlayer(owner)) continue; // never meetable - skip before any per-entity work
+    const ownerBit = 1 << owner;
+    if (viewerBits.every((v) => v.viewer === owner || (v.bits & ownerBit) !== 0)) continue;
+    const p = world.get(e, Position);
+    const n = nodeOfPosition(p.x, p.y);
+    const { cx, cy } = cellOfNode(n.hx, n.hy);
+    for (const v of viewerBits) {
+      if (v.viewer === owner || (v.bits & ownerBit) !== 0) continue;
+      if (fog.stateAt(v.viewer, cx, cy) === FOG_STATE.VISIBLE) {
+        recordContact(world, v.viewer, owner);
+        v.bits |= ownerBit;
+      }
+    }
   }
 
   fog.activeMode = mode;

@@ -69,6 +69,7 @@ function mountSurfaces() {
       read: () => defaultAssistantState().counters,
       set: () => true,
     },
+    diplomacyRows: () => [],
     onPickBuilding: (typeId) => placement.enter(typeId),
     onPickGood: (goodType) => goodsDrop.enter(goodType),
   });
@@ -88,6 +89,7 @@ function mountSurfaces() {
     goods: windows.byId.goods.isOpen(),
     extras: windows.byId.extras.isOpen(),
     stats: windows.byId.stats.isOpen(),
+    diplomacy: windows.byId.diplomacy.isOpen(),
   });
   return { press, open, placement, goodsDrop, pressed };
 }
@@ -102,9 +104,11 @@ describe('tool panel button effects', () => {
   it('pins which pop-ups each window button drops', () => {
     expect(windowEffect('buildings').closes).toEqual(['goods', 'extras']);
     expect(windowEffect('mission').closes).toEqual(['menu', 'extras']);
-    expect(windowEffect('extras').closes).toEqual(['menu', 'goods', 'stats']);
-    // Statistics only drops the chest window, whose rect it collides with; the picking windows stay.
+    expect(windowEffect('extras').closes).toEqual(['menu', 'goods', 'stats', 'diplomacy']);
+    // The informational windows only drop the chest window, whose rect they collide with; the picking
+    // windows stay.
     expect(windowEffect('statistics').closes).toEqual(['extras']);
+    expect(windowEffect('diplomacy').closes).toEqual(['extras']);
   });
 
   it('drops a held placement only for the buttons that open a picking window', () => {
@@ -112,6 +116,7 @@ describe('tool panel button effects', () => {
     expect(windowEffect('mission').cancelsHeld).toBe(true);
     expect(windowEffect('extras').cancelsHeld).toBe(true);
     expect(windowEffect('statistics').cancelsHeld).toBe(false);
+    expect(windowEffect('diplomacy').cancelsHeld).toBe(false);
   });
 
   it('stands help in for statistics until it has a window of its own', () => {
@@ -124,19 +129,19 @@ describe('applying a tool button press', () => {
     const { press, open } = mountSurfaces();
 
     press('mission');
-    expect(open()).toEqual({ menu: false, goods: true, extras: false, stats: false });
+    expect(open()).toEqual({ menu: false, goods: true, extras: false, stats: false, diplomacy: false });
 
     press('buildings');
-    expect(open()).toEqual({ menu: true, goods: false, extras: false, stats: false });
+    expect(open()).toEqual({ menu: true, goods: false, extras: false, stats: false, diplomacy: false });
 
     press('extras');
-    expect(open()).toEqual({ menu: false, goods: false, extras: true, stats: false });
+    expect(open()).toEqual({ menu: false, goods: false, extras: true, stats: false, diplomacy: false });
 
     press('statistics');
-    expect(open()).toEqual({ menu: false, goods: false, extras: false, stats: true });
+    expect(open()).toEqual({ menu: false, goods: false, extras: false, stats: true, diplomacy: false });
 
     press('help'); // the stand-in toggles the same window back shut
-    expect(open()).toEqual({ menu: false, goods: false, extras: false, stats: false });
+    expect(open()).toEqual({ menu: false, goods: false, extras: false, stats: false, diplomacy: false });
   });
 
   it('leaves the picking windows open when statistics opens over them', () => {
@@ -144,7 +149,7 @@ describe('applying a tool button press', () => {
 
     press('buildings');
     press('statistics');
-    expect(open()).toEqual({ menu: true, goods: false, extras: false, stats: true });
+    expect(open()).toEqual({ menu: true, goods: false, extras: false, stats: true, diplomacy: false });
   });
 
   it('drops a held building on a picking press but keeps it for statistics', () => {
@@ -166,16 +171,26 @@ describe('applying a tool button press', () => {
     expect(goodsDrop.isActive()).toBe(false);
   });
 
+  it('opens the diplomacy window over the pickers and closes it with the chest', () => {
+    const { press, open } = mountSurfaces();
+
+    press('buildings');
+    press('diplomacy');
+    expect(open()).toEqual({ menu: true, goods: false, extras: false, stats: false, diplomacy: true });
+
+    press('extras'); // the chest drops every other pop-up, diplomacy included
+    expect(open()).toEqual({ menu: false, goods: false, extras: true, stats: false, diplomacy: false });
+  });
+
   it('routes the speed and options buttons past the windows, and leaves the unwired ones inert', () => {
     const { press, open, pressed } = mountSurfaces();
 
     press('speed');
     press('options');
-    press('diplomacy');
     press('population');
     press('tech_tree');
 
     expect(pressed).toEqual(['speed', 'systemMenu']);
-    expect(open()).toEqual({ menu: false, goods: false, extras: false, stats: false });
+    expect(open()).toEqual({ menu: false, goods: false, extras: false, stats: false, diplomacy: false });
   });
 });

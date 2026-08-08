@@ -4,7 +4,9 @@ import {
   diplomacyStance,
   Engagement,
   Fleeing,
+  FOG_MODE,
   Health,
+  PlayerContacts,
   setDiplomacyStance,
 } from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
@@ -62,10 +64,25 @@ describe('diplomacyStance - the DiplomacyRules read/write pair', () => {
     const owned = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     const wild = fighterAt(sim, 1, 0, VIKING, WOODCUTTER, {});
     const foe = fighterAt(sim, 2, 0, VIKING, WOODCUTTER, { owner: P1 });
-    provokeHostility(sim.world, wild, owned);
-    provokeHostility(sim.world, owned, wild);
-    provokeHostility(sim.world, foe, owned); // both owned, but the pair already reads enemy
+    provokeHostility(sim.world, ctxOf(sim), wild, owned);
+    provokeHostility(sim.world, ctxOf(sim), owned, wild);
+    provokeHostility(sim.world, ctxOf(sim), foe, owned); // both owned, but the pair already reads enemy
     expect(sim.world.lowestEntityWith(DiplomacyRules)).toBeNull();
+    expect(sim.world.lowestEntityWith(PlayerContacts)).toBeNull(); // fog off - no contact write either
+  });
+
+  it('a landed blow under fog records the victim-to-attacker contact, even unseen', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 1) });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    // 15 cells = 1020 px apart: beyond both 408 px civilian eyes, so only the blow reveals anything.
+    const attacker = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
+    const victim = fighterAt(sim, 15, 0, VIKING, WOODCUTTER, { owner: P1 });
+    sim.step(); // apply the mode and settle the first rebuild
+
+    provokeHostility(sim.world, ctxOf(sim), attacker, victim);
+
+    expect(sim.hasMetPlayer(P1, P0)).toBe(true); // the victim learned who struck it
+    expect(sim.hasMetPlayer(P0, P1)).toBe(false); // the attacker learned nothing new
   });
 });
 

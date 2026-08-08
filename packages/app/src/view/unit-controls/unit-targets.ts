@@ -13,6 +13,9 @@ export interface UnitTargetsDeps {
   readonly humanPlayer: number;
   /** Observer session: every owner counts as ours, so nothing reads as an enemy. */
   readonly observer: boolean;
+  /** Whether the human seat holds an `enemy` stance toward `owner` - the same directed gate the sim's
+   *  attack order obeys, so a click on a non-enemy falls through to a move instead of a dropped order. */
+  readonly hostileToward: (owner: number) => boolean;
   /** The frame the player is clicking on. */
   readonly drawnItems: () => readonly DrawItem[];
   /** The renderer's exact per-entity sprite bounds (world px), or undefined for the kind box. */
@@ -28,8 +31,8 @@ export type UnitTargetKind = 'settler' | 'building';
 export interface UnitTargets {
   /** Owned, pickable targets (settlers + buildings) with their world-px feet anchors. */
   owned(kind?: UnitTargetKind): Pickable[];
-  /** Enemy attack targets - settlers AND buildings owned by another player. A right-click on one issues
-   *  an `attackUnit` order (the sim accepts a building target). */
+  /** Enemy attack targets - settlers AND buildings of a player the human holds an `enemy` stance
+   *  toward. A right-click on one issues an `attackUnit` order (the sim accepts a building target). */
   enemies(): Pickable[];
   /** The human's gatherers' drop-off flags, each mapped to its owning gatherer (a flag→unit proxy). */
   flags(): Pickable[];
@@ -109,6 +112,7 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         if (!isHitTarget(it)) continue;
         const owner = ownerOf.get(it.ref);
         if (owner === undefined || pickableOwner(owner)) continue; // neutral or "ours" - not an enemy
+        if (!deps.hostileToward(owner)) continue; // an ally or truce holder is not an attack target
         out.push(hitTarget(it, itemKind));
       }
       return out;

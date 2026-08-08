@@ -440,7 +440,7 @@ describe('tool windows registry', () => {
   };
   /** `windows.ts`'s mount order: each pop-up's child index in the panel's window container, which is the
    *  order they draw in. */
-  const MOUNT_INDEX = { menu: 0, goods: 1, extras: 2, stats: 3 } as const;
+  const MOUNT_INDEX = { menu: 0, goods: 1, extras: 2, stats: 3, diplomacy: 4 } as const;
 
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx: base } = stubContext();
@@ -463,6 +463,7 @@ describe('tool windows registry', () => {
       goods: [{ goodType: 10, id: 'wood', label: 'Drewno' }],
       grants: GRANTS,
       counters: stubCountersSeam().seam,
+      diplomacyRows: () => [],
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
     });

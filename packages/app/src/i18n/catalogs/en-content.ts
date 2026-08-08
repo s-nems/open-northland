@@ -170,6 +170,11 @@ export const enContent = {
       summary:
         'A warband ordered across the map cuts down the picket blocking its path, then walks on to the ordered spot.',
     },
+    diplomacy: {
+      title: 'Diplomacy',
+      summary:
+        'First contact under fog: the ally beside you is known at once, a one-way aggressor reveals itself by its blow and turns you hostile, and a tribe never seen stays off the diplomacy window.',
+    },
     'goods-catalog': {
       title: 'Goods catalog',
       summary: 'Every storable good and its warehouse slot in one compact reference scene.',

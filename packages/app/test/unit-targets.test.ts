@@ -24,11 +24,15 @@ describe('unit-controls targets over the renderer frame', () => {
     fullScene = buildSpriteScene(snapshot);
   });
 
-  const targetsOver = (drawn: readonly DrawItem[]): UnitTargets =>
+  const targetsOver = (
+    drawn: readonly DrawItem[],
+    hostileToward: (owner: number) => boolean = () => true,
+  ): UnitTargets =>
     createUnitTargets({
       snapshot: () => snapshot,
       humanPlayer: HUMAN_PLAYER,
       observer: false,
+      hostileToward,
       drawnItems: () => drawn,
       boundsOf: undefined,
       pixelHitOf: undefined,
@@ -55,6 +59,14 @@ describe('unit-controls targets over the renderer frame', () => {
     for (const ref of owned) expect(ownerOf(ref)).toBe(HUMAN_PLAYER);
     for (const ref of enemies) expect(ownerOf(ref)).toBe(ENEMY_PLAYER);
     expect(owned.filter((ref) => enemies.includes(ref))).toEqual([]);
+  });
+
+  it('drops a non-enemy stance holder from the attack set, so an ally click falls through', () => {
+    const allied = targetsOver(fullScene, (owner) => owner !== ENEMY_PLAYER);
+    expect(allied.enemies()).toEqual([]);
+
+    const atWar = targetsOver(fullScene, (owner) => owner === ENEMY_PLAYER);
+    expect(atWar.enemies().length).toBeGreaterThan(0);
   });
 
   it('reaches only what the frame drew - a culled unit is not clickable', () => {

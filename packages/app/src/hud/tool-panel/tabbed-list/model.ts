@@ -6,19 +6,20 @@ import { MIN_UI_SCALE } from '../../ui-scale.js';
  * row-quantized list, resolved from a screen origin and scale.
  */
 
-// Metrics in design px, scaled by uiscale. Approximation: the original's window metrics are not decoded,
-// so these are the build menu's proportions adopted as the shared set, and only the label widths they
-// must clear are measured.
+// Metrics in design px, scaled by uiscale, exported as the one metric set of the titled tab-grid
+// window family (the tabbed lists and the diplomacy window). Approximation: the original's window
+// metrics are not decoded, so these are the build menu's proportions adopted as the shared set, and
+// only the label widths they must clear are measured.
 
-const PAD = 6;
+export const WINDOW_FAMILY_PAD = 6;
 /** The rust title band across the top of the window. */
-const HEADLINE_H = 18;
-const TAB_H = 18;
+export const HEADLINE_H = 18;
+export const TAB_H = 18;
 /** Each item sits on its own button-card, so the row slot is taller than a plain text line. */
 export const ROW_H = 20;
-/** A small gap between the tab grid and the list, so the tabs read as a header for it. */
-const LIST_GAP = 3;
-const CLOSE = 13;
+/** A small gap between the tab grid and whatever content sits under it. */
+export const TAB_CONTENT_GAP = 3;
+export const CLOSE_BOX = 13;
 /** The scrollbar gutter width - reserved on the right only when the list overflows the viewport. */
 const SCROLLBAR_W = 8;
 /** Minimum scrollbar-thumb length so a long list's thumb stays grabbable. */
@@ -29,13 +30,13 @@ const THUMB_MIN = 12;
 const TAB_COLUMN_W = 62;
 /** How many seed columns the window holds - the build menu's five categories, its widest tab grid. */
 const WIDTH_COLUMNS = 5;
-/** Every tabbed-list window is this wide whatever its own tab count, so the pop-ups read as one window
- *  wherever they open. */
-const WINDOW_W = WIDTH_COLUMNS * TAB_COLUMN_W + 2 * PAD;
+/** Every tabbed-list window is this wide whatever its own tab count (the grid divides the content
+ *  width), so the pop-ups read as one window wherever they open. */
+const WINDOW_W = WIDTH_COLUMNS * TAB_COLUMN_W + 2 * WINDOW_FAMILY_PAD;
 
 /** Design-px chrome above the list for a `tabCount`-tab grid `tabColumns` wide. */
 export function chromeAboveList(tabCount: number, tabColumns: number): number {
-  return HEADLINE_H + Math.ceil(tabCount / tabColumns) * TAB_H + LIST_GAP;
+  return HEADLINE_H + Math.ceil(tabCount / tabColumns) * TAB_H + TAB_CONTENT_GAP;
 }
 
 /** The screen-px width of every tabbed-list window, fixed per scale so a controller knows its x-span
@@ -130,7 +131,7 @@ export function layoutTabbedList<Id, Item>(
   const headlineH = px(HEADLINE_H);
   const tabH = px(TAB_H);
   const rowH = px(ROW_H);
-  const pad = px(PAD);
+  const pad = px(WINDOW_FAMILY_PAD);
   const contentX = originX + pad;
   const contentW = width - 2 * pad;
   const tabRows = Math.ceil(opts.tabs.length / tabColumns);
@@ -142,9 +143,9 @@ export function layoutTabbedList<Id, Item>(
   const overflow = total > visible;
   const gutter = overflow ? px(SCROLLBAR_W) : 0;
 
-  const listTop = originY + headlineH + tabsBlockH + px(LIST_GAP);
+  const listTop = originY + headlineH + tabsBlockH + px(TAB_CONTENT_GAP);
   const listH = visible * rowH;
-  const height = headlineH + tabsBlockH + px(LIST_GAP) + listH + pad;
+  const height = headlineH + tabsBlockH + px(TAB_CONTENT_GAP) + listH + pad;
 
   // Column edges, so the tabs tile the content width exactly however it divides.
   const tabEdge = (column: number): number => contentX + Math.round((contentW * column) / tabColumns);
@@ -170,7 +171,7 @@ export function layoutTabbedList<Id, Item>(
     rows.push({ item, rect: { x: contentX, y: listTop + i * rowH, w: contentW - gutter, h: rowH } });
   }
 
-  const closeSize = px(CLOSE);
+  const closeSize = px(CLOSE_BOX);
   const layout: TabbedListLayout<Id, Item> = {
     scale: s,
     window: { x: originX, y: originY, w: width, h: height },

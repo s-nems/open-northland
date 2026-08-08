@@ -126,7 +126,7 @@ export function resolveCombatHit(
   const saved = wasAlive && health.hitpoints - dealt <= 0 && tryDeathSaveDraught(world, ctx, target);
   if (!saved) health.hitpoints = Math.max(0, health.hitpoints - dealt);
   provokeAnger(world, ctx, target);
-  provokeHostility(world, attacker, target);
+  provokeHostility(world, ctx, attacker, target);
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);
   if (health.hitpoints <= 0) {
     if (wasAlive) spawnCarcasses(world, ctx, attacker, target);
