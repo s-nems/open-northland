@@ -170,4 +170,12 @@ loaded content or a map. The IR version and map fingerprint must match exactly; 
 difference is reported to the caller, never a rejection, because the revision also bumps for
 presentation-only decoder fixes.
 
-`SAVE_FORMAT_VERSION` is a single monotonic integer; any layout change bumps it.
+`SAVE_FORMAT_VERSION` is a single monotonic integer; any layout change bumps it. Reading opens with
+a migration seam (`save/migrate.ts`): a version newer than the build is rejected as written by a
+newer build, one below `OLDEST_SUPPORTED_SAVE_VERSION` is rejected outright, and anything between
+runs through pure vN to vN+1 document transforms before validation. The registry must hold one step
+per supported older version - a load-time check fails the build otherwise, so a version bump either
+lands its migration or raises the oldest supported version in the same commit. The committed
+current-format fixture (`packages/sim/test/fixtures/save-v1.golden`) freezes the exact bytes of a
+small populated world as the layout's tripwire; the regeneration workflow lives in
+[`TESTING.md`](TESTING.md).

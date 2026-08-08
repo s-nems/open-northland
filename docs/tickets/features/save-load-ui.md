@@ -1,7 +1,6 @@
 # Add save and load controls to the game shell
 
 **Area:** app, desktop · **Priority:** P1
-**Blocked by:** [SaveGame migration seam](save-load-migration-seam.md)
 
 Once the sim can export and restore a validated save, players still need a safe way to use it. The
 browser and desktop builds currently expose no save or load action.
