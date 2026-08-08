@@ -24,6 +24,16 @@ applied by scripts/build-dmrender.sh before building. What it changes and why:
 - MusicMessages scheduleDx8PatternTrack/scheduleSequenceTrack: the schedulers the DMPT/seqt
   branches above use. Approximations: the default C chord (no segment carries a chord track),
   sequential variation choice per pattern repeat.
+- DlsPlayer insertArticulator: unit-correct DLS->SF2 conversion for what the banks author. Time
+  scales are timecents in 16.16 fixed (direct copy with clamps; the old seconds round-trip
+  overflowed int16 on the 0x80000000 "0 seconds" sentinel), EG1 sustain is 0.1% of full level
+  converted to centibels of attenuation (the old time conversion turned an 85.8% sustain into
+  -85.8 dB, so held notes faded to silence), and EG hold, per-region pan, LFO/vibrato rate,
+  delay and pitch depth are converted instead of dropped. Filter cutoff appears in the banks
+  only as the "no filter" sentinel and stays ignored.
+- DlsPlayer: no forced 100 ms attack on every region (unauthored attacks are instant), region
+  WSMP attenuation feeds kInitialAttenuation (boosts clamp to full level), MIDI velocity divides
+  by 127 rather than 255, and amplitude-to-decibel conversion uses 20*log10.
 - dmrender: renderBlock counts interleaved samples, so size the buffer by channels and write
   length/channels wav frames; stereo renders wrote half music, half out-of-bounds reads. The
   buffer is zero-initialised so silent stretches are silence, not heap garbage.
@@ -54,6 +64,182 @@ index 7cc48e3..114f2d5 100644
          throw DirectMusic::InvalidChunkException("art1", c.getId());
  
      const std::uint8_t *data = c.getData().data();
+diff --git i/src/DlsPlayer.cpp w/src/DlsPlayer.cpp
+index 65d57a5..d0792e7 100644
+--- i/src/DlsPlayer.cpp
++++ w/src/DlsPlayer.cpp
+@@ -21,38 +21,103 @@ static std::int16_t secondsToWordTimecents(double secs) {
+     return (std::int16_t)(1200 * log2(secs));
+ }
+ 
+-// FIXME: Only "envelope" articulators are supported
++// DLS time scales are timecents in 16.16 fixed point; 0x80000000 encodes "0 seconds".
++static std::int16_t timecentsFromScale(std::int32_t lScale) {
++    if (lScale == (std::int32_t)0x80000000) return -12000;
++    double tc = lScale / 65536.0;
++    if (tc < -12000) tc = -12000;
++    if (tc > 8000) tc = 8000;
++    return (std::int16_t)tc;
++}
++
++// DLS EG1 sustain is 0.1% of full level (16.16); SF2 wants centibels of attenuation.
++static std::int16_t sustainLevelToCentibels(std::int32_t lScale) {
++    double permille = lScale / 65536.0;
++    if (permille <= 0) return 1440;
++    if (permille >= 1000) return 0;
++    double cb = -200.0 * log10(permille / 1000.0);
++    return (std::int16_t)(cb > 1440 ? 1440 : cb);
++}
++
++// Pitch-cent scales (LFO frequencies, vibrato depth) are 16.16 fixed too.
++static std::int16_t centsFromScale(std::int32_t lScale, std::int32_t lo, std::int32_t hi) {
++    double cents = lScale / 65536.0;
++    if (cents < lo) cents = lo;
++    if (cents > hi) cents = hi;
++    return (std::int16_t)cents;
++}
++
++// Converts the connection blocks the Cultures banks author: volume/mod envelopes (with hold),
++// per-region pan, LFO rates and delays, and vibrato/LFO pitch depth. Filter cutoff appears only
++// as the 0x80000000 "no filter" sentinel and is ignored, as are one-off velocity/key scalers.
+ static void insertArticulator(const DLS::Articulator& articulator, std::vector<SFModulatorItem>& mods, std::vector<SFGeneratorItem>& gens) {
++    static const std::uint16_t DST_EG1_HOLD = 0x020c;
++    static const std::uint16_t DST_EG2_HOLD = 0x0310;
++    static const std::uint16_t DST_VIB_FREQUENCY = 0x0114;
++    static const std::uint16_t DST_VIB_STARTDELAY = 0x0115;
++    static const std::uint16_t SRC_VIBRATO = 0x0009;
++
+     for (const auto& connBlock : articulator.getConnectionBlocks()) {
+-        if (connBlock.usControl == (DLS::ArticulatorControl)0 &&
+-            connBlock.usSource == DLS::ArticulatorSource::None &&
+-            connBlock.usTransform == DLS::ArticulatorTransform::None) {
+-            SFGenerator gen;
+-            switch (connBlock.usDestination) {
+-            case DLS::ArticulatorDestination::EG1AttachTime:
+-                gen = SFGenerator::kAttackVolEnv; break;
+-            case DLS::ArticulatorDestination::EG1DecayTime:
+-                gen = SFGenerator::kDecayVolEnv; break;
+-            case DLS::ArticulatorDestination::EG1ReleaseTime:
+-                gen = SFGenerator::kReleaseVolEnv; break;
+-            case DLS::ArticulatorDestination::EG1SustainLevel:
+-                gen = SFGenerator::kSustainVolEnv; break;
++        if (connBlock.usControl != (DLS::ArticulatorControl)0 ||
++            connBlock.usTransform != DLS::ArticulatorTransform::None) continue;
++        std::uint16_t source = (std::uint16_t)connBlock.usSource;
++        std::uint16_t destination = (std::uint16_t)connBlock.usDestination;
++        std::int32_t scale = connBlock.lScale;
+ 
+-            case DLS::ArticulatorDestination::EG2AttachTime:
+-                gen = SFGenerator::kAttackModEnv; break;
+-            case DLS::ArticulatorDestination::EG2DecayTime:
+-                gen = SFGenerator::kDecayModEnv; break;
+-            case DLS::ArticulatorDestination::EG2ReleaseTime:
+-                gen = SFGenerator::kReleaseModEnv; break;
+-            case DLS::ArticulatorDestination::EG2SustainLevel:
+-                gen = SFGenerator::kSustainModEnv; break;
++        if (source == (std::uint16_t)DLS::ArticulatorSource::LFO &&
++            destination == (std::uint16_t)DLS::ArticulatorDestination::Pitch) {
++            gens.push_back(SFGeneratorItem(SFGenerator::kModLfoToPitch,
++                GenAmountType(centsFromScale(scale, -12000, 12000))));
++            continue;
++        }
++        if (source == SRC_VIBRATO &&
++            destination == (std::uint16_t)DLS::ArticulatorDestination::Pitch) {
++            gens.push_back(SFGeneratorItem(SFGenerator::kVibLfoToPitch,
++                GenAmountType(centsFromScale(scale, -12000, 12000))));
++            continue;
++        }
++        if (source != (std::uint16_t)DLS::ArticulatorSource::None) continue;
+ 
+-            default:
+-                continue;
+-            }
+-            double secs = dwordTimecentsToSeconds(connBlock.lScale);
+-            std::int16_t newValue = secondsToWordTimecents(secs);
+-            gens.push_back(SFGeneratorItem(gen, GenAmountType(newValue)));
++        switch (destination) {
++        case (std::uint16_t)DLS::ArticulatorDestination::EG1AttachTime:
++            gens.push_back(SFGeneratorItem(SFGenerator::kAttackVolEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::EG1DecayTime:
++            gens.push_back(SFGeneratorItem(SFGenerator::kDecayVolEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case DST_EG1_HOLD:
++            gens.push_back(SFGeneratorItem(SFGenerator::kHoldVolEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::EG1ReleaseTime:
++            gens.push_back(SFGeneratorItem(SFGenerator::kReleaseVolEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::EG1SustainLevel:
++            gens.push_back(SFGeneratorItem(SFGenerator::kSustainVolEnv, GenAmountType(sustainLevelToCentibels(scale)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::EG2AttachTime:
++            gens.push_back(SFGeneratorItem(SFGenerator::kAttackModEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::EG2DecayTime:
++            gens.push_back(SFGeneratorItem(SFGenerator::kDecayModEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case DST_EG2_HOLD:
++            gens.push_back(SFGeneratorItem(SFGenerator::kHoldModEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::EG2ReleaseTime:
++            gens.push_back(SFGeneratorItem(SFGenerator::kReleaseModEnv, GenAmountType(timecentsFromScale(scale)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::EG2SustainLevel: {
++            // Mod-env sustain: 0.1% of full level -> SF2 0.1% decrease from full.
++            double permille = scale / 65536.0;
++            if (permille < 0) permille = 0;
++            if (permille > 1000) permille = 1000;
++            gens.push_back(SFGeneratorItem(SFGenerator::kSustainModEnv, GenAmountType((std::int16_t)(1000 - permille))));
++            break;
++        }
++        case (std::uint16_t)DLS::ArticulatorDestination::Pan:
++            // Both sides are 0.1% units, full left -500 to full right 500.
++            gens.push_back(SFGeneratorItem(SFGenerator::kPan, GenAmountType(centsFromScale(scale, -500, 500)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::LFOFrequency:
++            gens.push_back(SFGeneratorItem(SFGenerator::kFreqModLFO, GenAmountType(centsFromScale(scale, -16000, 4500)))); break;
++        case (std::uint16_t)DLS::ArticulatorDestination::LFOStartDelay:
++            gens.push_back(SFGeneratorItem(SFGenerator::kDelayModLFO, GenAmountType(timecentsFromScale(scale)))); break;
++        case DST_VIB_FREQUENCY:
++            gens.push_back(SFGeneratorItem(SFGenerator::kFreqVibLFO, GenAmountType(centsFromScale(scale, -16000, 4500)))); break;
++        case DST_VIB_STARTDELAY:
++            gens.push_back(SFGeneratorItem(SFGenerator::kDelayVibLFO, GenAmountType(timecentsFromScale(scale)))); break;
++        default:
++            break;
+         }
+     }
+ }
+@@ -119,7 +184,6 @@ static std::shared_ptr<TinySoundFont> convertCollection(DirectMusic::DLS::Downlo
+             std::vector<SFModulatorItem> modItems;
+             std::shared_ptr<SFSample> sample;
+             std::uint16_t keyrangeLow, keyrangeHigh, velrangeLow, velrangeHigh;
+-            genItems.push_back(SFGeneratorItem(SFGenerator::kAttackVolEnv, GenAmountType(secondsToWordTimecents(0.1))));
+ 
+             for (const auto& art : instr.getArticulators()) {
+                 insertArticulator(art, modItems, genItems);
+@@ -160,6 +224,12 @@ static std::shared_ptr<TinySoundFont> convertCollection(DirectMusic::DLS::Downlo
+             }
+             sample->set_original_key(static_cast<std::uint8_t>(wavesample.usUnityNote));
+             sample->set_correction(static_cast<std::int8_t>(wavesample.sFineTune));
++            double regionGainDb = wavesample.lAttenuation / 65536.0;
++            if (regionGainDb < 0) {
++                double attenuationCb = -regionGainDb * 10.0;
++                if (attenuationCb > 1440) attenuationCb = 1440;
++                genItems.push_back(SFGeneratorItem(SFGenerator::kInitialAttenuation, GenAmountType((std::int16_t)attenuationCb)));
++            }
+             SFInstrumentZone zone(sample, genItems, modItems);
+             zones.push_back(zone);
+         }
+@@ -177,7 +247,7 @@ static std::shared_ptr<TinySoundFont> convertCollection(DirectMusic::DLS::Downlo
+ }
+ 
+ static float gainToDecibels(float gain) {
+-    return 10 * log10(gain);
++    return 20 * log10(gain);
+ }
+ 
+ DlsPlayer::DlsPlayer(std::uint8_t bankLo, std::uint8_t bankHi, std::uint8_t patch,
+@@ -227,7 +297,8 @@ std::uint32_t DlsPlayer::renderBlock(std::int16_t *buffer, std::uint32_t count,
+ 
+ /// Instructs the synthesizer to start playing a note
+ void DlsPlayer::noteOn(std::uint8_t note, std::uint8_t velocity) {
+-    m_soundfont->noteOn(m_preset, note, velocity / 255.0f);
++    // MIDI velocity range is 0-127.
++    m_soundfont->noteOn(m_preset, note, velocity > 127 ? 1.0f : velocity / 127.0f);
+ }
+ 
+ /// Instructs the synthesizer to stop playing a note
 diff --git i/src/Forms/Tracks.cpp w/src/Forms/Tracks.cpp
 index cbcfd11..f58a056 100644
 --- i/src/Forms/Tracks.cpp
