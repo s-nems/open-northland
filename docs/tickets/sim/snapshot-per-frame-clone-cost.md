@@ -1,6 +1,7 @@
 # Make per-frame snapshot cost follow touched entities, not the dynamic population
 
 **Area:** sim · **Focus:** inspect/snapshot · **Priority:** P2
+**Blocked by:** [tracked component writes](enforce-tracked-component-writes.md)
 
 `takeSnapshot` runs once per rendered frame that advanced the sim and walks every alive entity. The
 clone cache covers only scenery (`Resource`, `Stump`, `BerryBush`), so every other entity - settlers,
@@ -20,6 +21,10 @@ indicative only.
 - Reuse the cached clone for every entity the World's touched log did not name that tick. The log
   already drives scenery eviction and has a registered cache verifier; scenery stays a special case
   only if it still earns one.
+- The blocker is real, not formal: direct field assignments in family, assistant, and AI command
+  paths bypass the touched log today, so a general cache built before that seam is enforced serves
+  stale clones. A partial cache over component sets with proven tracked-write coverage may land
+  earlier if each covered set names its proof.
 - Cut the per-clone component walk: per-entity component membership (or an equivalent) instead of
   probing every registered store.
 - Keep the snapshot contract: detached plain data, canonical ascending-id order, structured-cloneable.
