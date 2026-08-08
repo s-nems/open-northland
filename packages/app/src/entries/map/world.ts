@@ -82,7 +82,7 @@ function runWorld(
 function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
   applySessionRuleOverrides(sim, options);
   for (const seat of options.aiSeats) {
-    sim.enqueue({ kind: 'setPlayerAi', player: seat, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: seat, enabled: true });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
 }

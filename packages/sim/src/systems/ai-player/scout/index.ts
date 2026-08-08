@@ -1,5 +1,5 @@
 import { CurrentAtomic, ErectSignpostOrder, PlayerOrder, Settler } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isScoutJob } from '../../readviews/index.js';
@@ -21,7 +21,7 @@ export {
  * never order the same man in one decision. Signposts outrank the round-up (authored): a lattice target
  * is static, while an animal that wanders off is picked up again next decision.
  */
-function runScout(world: World, ctx: SystemContext, player: number): readonly Command[] {
+function runScout(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   const scout = ownedSettlers(world, player).find((e) =>
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
   );

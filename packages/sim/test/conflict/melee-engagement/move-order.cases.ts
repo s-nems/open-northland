@@ -66,7 +66,7 @@ describe('a player order is authoritative - it overrides the autonomous drives (
     const enemy = fighterAt(sim, 7, 0, VIKING, WOODCUTTER, { owner: P1 }); // adjacent to the right
     const enemyHp0 = sim.world.get(enemy, Health).hitpoints;
 
-    sim.enqueue({ kind: 'moveUnit', entity: a, x: 0, y: 0 }); // ordered LEFT, away from the enemy
+    sim.enqueueSetup({ kind: 'moveUnit', entity: a, x: 0, y: 0 }); // ordered LEFT, away from the enemy
     for (let i = 0; i < 40; i++) sim.step();
 
     // It obeyed: advanced toward x=0 (away from the enemy at x=7) and never damaged the enemy.

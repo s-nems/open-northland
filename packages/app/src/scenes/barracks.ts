@@ -42,13 +42,13 @@ function build(sim: Simulation): void {
   // Spawn order matters: the assistant drafts the lowest-id free colonist, so the bystander comes after.
   spawnSettlerDirect(sim, JOB_CIVILIST, DRAFTEE_X, START_ROW_Y);
   spawnSettlerDirect(sim, JOB_CIVILIST, BYSTANDER_X, START_ROW_Y);
-  sim.enqueue({ kind: 'trainSoldier', entity: recruit, house: barracks });
-  sim.enqueue({ kind: 'trainSoldier', entity: veteran, house: barracks });
+  sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house: barracks });
+  sim.enqueueSetup({ kind: 'trainSoldier', entity: veteran, house: barracks });
   // Both swords in store, so the arming pass has to pick the stronger one.
-  sim.enqueue({ kind: 'dropGood', good: GOOD_SWORD_SHORT, x: ARMORY.x, y: ARMORY.y, amount: 1 });
-  sim.enqueue({ kind: 'dropGood', good: GOOD_SWORD_LONG, x: ARMORY.x, y: ARMORY.y, amount: 1 });
-  sim.enqueue({ kind: 'dropGood', good: GOOD_ARMOR_CHAIN, x: ARMORY.x, y: ARMORY.y, amount: 1 });
-  sim.enqueue({
+  sim.enqueueSetup({ kind: 'dropGood', good: GOOD_SWORD_SHORT, x: ARMORY.x, y: ARMORY.y, amount: 1 });
+  sim.enqueueSetup({ kind: 'dropGood', good: GOOD_SWORD_LONG, x: ARMORY.x, y: ARMORY.y, amount: 1 });
+  sim.enqueueSetup({ kind: 'dropGood', good: GOOD_ARMOR_CHAIN, x: ARMORY.x, y: ARMORY.y, amount: 1 });
+  sim.enqueueSetup({
     kind: 'setAssistantCounter',
     player: HUMAN_PLAYER,
     counter: 'trainSword',

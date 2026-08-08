@@ -52,7 +52,7 @@ describe('dropGood', () => {
     const sim = fresh();
     // Command coords are half-cell nodes; cell (6,7)'s anchor node sits exactly on tile (6,7).
     const anchor = cellAnchorNode(6, 7);
-    sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 4 });
+    sim.enqueueSetup({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 4 });
     sim.step();
 
     const pile = onlyPile(sim);
@@ -69,7 +69,7 @@ describe('dropGood', () => {
     const sim = fresh();
     const anchor = cellAnchorNode(5, 5);
     for (let i = 0; i < 3; i++) {
-      sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 1 });
+      sim.enqueueSetup({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 1 });
     }
     sim.step();
 
@@ -81,7 +81,7 @@ describe('dropGood', () => {
     const sim = fresh();
     const anchor = cellAnchorNode(2, 2);
     for (let i = 0; i < MAX_GROUND_STACK + 3; i++) {
-      sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 1 });
+      sim.enqueueSetup({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 1 });
     }
     sim.step();
 
@@ -92,8 +92,8 @@ describe('dropGood', () => {
   it('does NOT merge a different good onto an existing pile (each good keeps its own heap)', () => {
     const sim = fresh();
     const anchor = cellAnchorNode(3, 3);
-    sim.enqueue({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 2 });
-    sim.enqueue({ kind: 'dropGood', good: STONE, x: anchor.hx, y: anchor.hy, amount: 2 });
+    sim.enqueueSetup({ kind: 'dropGood', good: WOOD, x: anchor.hx, y: anchor.hy, amount: 2 });
+    sim.enqueueSetup({ kind: 'dropGood', good: STONE, x: anchor.hx, y: anchor.hy, amount: 2 });
     sim.step();
 
     const piles = [...sim.world.query(Stockpile, Position)].filter((e) => !sim.world.has(e, Building));
@@ -102,7 +102,7 @@ describe('dropGood', () => {
 
   it('skips a non-positive amount (id-neutral, still logged for faithful replay)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'dropGood', good: WOOD, x: 0, y: 0, amount: 0 });
+    sim.enqueueSetup({ kind: 'dropGood', good: WOOD, x: 0, y: 0, amount: 0 });
     expect(() => sim.step()).not.toThrow();
     expect(sim.world.entityCount).toBe(0); // no entity id burned
     expect(sim.commands.log).toHaveLength(1); // but recorded so replay stays faithful
@@ -110,7 +110,7 @@ describe('dropGood', () => {
 
   it('skips a good absent from the catalog (recoverable bad input - no throw, still logged)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'dropGood', good: UNKNOWN_GOOD, x: 0, y: 0, amount: 3 });
+    sim.enqueueSetup({ kind: 'dropGood', good: UNKNOWN_GOOD, x: 0, y: 0, amount: 3 });
     expect(() => sim.step()).not.toThrow();
     expect(sim.world.entityCount).toBe(0);
     expect(sim.commands.log).toHaveLength(1);
@@ -118,8 +118,8 @@ describe('dropGood', () => {
 
   it('is deterministic: same seed + same commands on the same ticks => byte-identical state', () => {
     const drop = (sim: Simulation): void => {
-      sim.enqueue({ kind: 'dropGood', good: WOOD, x: 4, y: 4, amount: 2 });
-      sim.enqueue({ kind: 'dropGood', good: STONE, x: 6, y: 4, amount: 5 });
+      sim.enqueueSetup({ kind: 'dropGood', good: WOOD, x: 4, y: 4, amount: 2 });
+      sim.enqueueSetup({ kind: 'dropGood', good: STONE, x: 6, y: 4, amount: 5 });
       sim.run(20);
     };
     const runA = fresh(7);

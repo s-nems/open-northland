@@ -77,7 +77,7 @@ function startAtomic(sim: Simulation, e: Entity, atomicId: number, duration: num
 /** Enqueue a moveUnit toward visual cell (cx,cy). */
 function orderMove(sim: Simulation, e: Entity, cx: number, cy: number): void {
   const n = cellAnchorNode(cx, cy);
-  sim.enqueue({ kind: 'moveUnit', entity: e, x: n.hx, y: n.hy });
+  sim.enqueueSetup({ kind: 'moveUnit', entity: e, x: n.hx, y: n.hy });
 }
 
 describe('moveUnit during a non-interruptible atomic', () => {
@@ -130,7 +130,7 @@ describe('setJob during a non-interruptible atomic', () => {
     const e = ownedSettler(sim, 3, 1, WOODCUTTER);
     startAtomic(sim, e, EAT_ATOMIC, EAT_TICKS);
 
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: CARPENTER });
     sim.step();
 
     expect(sim.world.get(e, CurrentAtomic).atomicId).toBe(EAT_ATOMIC);
@@ -150,7 +150,7 @@ describe('setJob during a non-interruptible atomic', () => {
 
     orderMove(sim, e, 8, 1);
     sim.step();
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: CARPENTER });
     sim.step();
     expect(sim.world.get(e, DeferredOrder).command.kind).toBe('setJob');
 
@@ -201,7 +201,7 @@ describe('placeSignpost during a non-interruptible atomic', () => {
     // Mid build-guide swing (unresolved clip in the fixture -> non-interruptible by the safe default).
     startAtomic(sim, scout, BUILD_GUIDE_ATOMIC_ID, 15);
 
-    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
     sim.step();
 
     // Nothing of the order landed yet - no erect intent beside a parked walk.

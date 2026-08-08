@@ -65,7 +65,7 @@ function familyContent(): ContentSet {
 
 function confinedSim(): Simulation {
   const sim = new Simulation({ seed: 5, content: familyContent(), map: grassMap(192, 8) });
-  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+  sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   sim.step();
   return sim;
 }
@@ -148,12 +148,12 @@ describe('confinement gates the marry partner pick', () => {
     const sim = confinedSim();
     const woman = adultAt(sim, 2, 2, WOMAN, true);
     adultAt(sim, OUT_OF_AREA, 2, CIVILIST, false);
-    sim.enqueue({ kind: 'marry', entity: woman });
+    sim.enqueueSetup({ kind: 'marry', entity: woman });
     sim.step();
     expect(sim.world.has(woman, Wedding)).toBe(false); // the only match is out of reach - auto-cancel
 
     adultAt(sim, IN_AREA, 2, CIVILIST, false);
-    sim.enqueue({ kind: 'marry', entity: woman });
+    sim.enqueueSetup({ kind: 'marry', entity: woman });
     sim.step();
     expect(sim.world.has(woman, Wedding)).toBe(true); // the near match is inside her area
   });
@@ -164,12 +164,12 @@ describe('confinement gates assignHouse', () => {
     const sim = confinedSim();
     const settler = adultAt(sim, 2, 2, CIVILIST, false);
     const farHome = homeAt(sim, OUT_OF_AREA, 2);
-    sim.enqueue({ kind: 'assignHouse', entity: settler, house: farHome });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: settler, house: farHome });
     sim.step();
     expect(sim.world.has(settler, Residence)).toBe(false);
 
     const nearHome = homeAt(sim, IN_AREA, 2);
-    sim.enqueue({ kind: 'assignHouse', entity: settler, house: nearHome });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: settler, house: nearHome });
     sim.step();
     expect(sim.world.tryGet(settler, Residence)?.home).toBe(nearHome);
   });

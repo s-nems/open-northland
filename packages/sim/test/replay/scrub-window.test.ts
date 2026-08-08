@@ -35,7 +35,7 @@ function recordRun(
 ): RunReplay {
   const sim = new Simulation({ seed, content: testContent(), map });
   for (let tick = 1; tick <= ticks; tick++) {
-    for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+    for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
     sim.step();
   }
   // The log is a plain value (LoggedCommand[]) - the replay inputs the tests reconstruct from.

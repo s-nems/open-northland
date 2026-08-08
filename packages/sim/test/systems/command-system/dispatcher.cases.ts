@@ -7,22 +7,22 @@ import { fresh, HEADQUARTERS, nthEntity, VIKING, WOODCUTTER } from './support.js
 describe('CommandSystem - dispatch and logging', () => {
   it('records applied commands in the log stamped with the tick they were applied on', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
     sim.step(); // tick 1
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 1, y: 1, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 1, y: 1, tribe: VIKING });
     sim.step(); // tick 2
 
     const log = sim.commands.log;
     expect(log).toHaveLength(2);
-    expect(log[0]).toMatchObject({ tick: 1, command: { kind: 'spawnSettler' } });
-    expect(log[1]).toMatchObject({ tick: 2, command: { kind: 'placeBuilding' } });
+    expect(log[0]).toMatchObject({ applyTick: 1, sequence: 0, command: { kind: 'spawnSettler' } });
+    expect(log[1]).toMatchObject({ applyTick: 2, sequence: 1, command: { kind: 'placeBuilding' } });
   });
 
   it('applies commands in FIFO enqueue order within one tick', () => {
     const sim = fresh();
     // Two placements; the entity ids must reflect enqueue order (first enqueued = lower id).
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 6, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 5, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 6, y: 0, tribe: VIKING });
     sim.step();
 
     expect(sim.world.canonicalEntities()).toHaveLength(2);
@@ -38,12 +38,12 @@ describe('CommandSystem - dispatch and logging', () => {
     ];
 
     const runA = fresh(7);
-    for (const c of cmds) runA.enqueue(c);
+    for (const c of cmds) runA.enqueueSetup(c);
     runA.run(50);
     const hashA = runA.hashState();
 
     const runB = fresh(7);
-    for (const c of cmds) runB.enqueue(c);
+    for (const c of cmds) runB.enqueueSetup(c);
     runB.run(50);
     const hashB = runB.hashState();
 

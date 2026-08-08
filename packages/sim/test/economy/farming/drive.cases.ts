@@ -207,7 +207,7 @@ describe('planFarmer - the drive ladder', () => {
     // good; the farmer's only harvestable good is FIELD-FARMED (a `farming` block), so it must stay
     // flagless - a flag would hijack every sheaf delivery to the flag instead of the farm's store.
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
-    sim.enqueue({ kind: 'spawnSettler', jobType: FARMER, x: 8, y: 8, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: FARMER, x: 8, y: 8, tribe: VIKING });
     sim.run(1);
     const spawned = [...sim.world.query(Settler)];
     expect(spawned).toHaveLength(1);

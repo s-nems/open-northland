@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AiPlayer, aiPlayerEntity, isAiPlayer } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
-import { World } from '../../src/ecs/world.js';
+import { type Entity, World } from '../../src/ecs/world.js';
 import { EventBuffer, Rng, replay, Simulation, stepReplaying } from '../../src/index.js';
 import {
   AI_DECISION_INTERVAL_TICKS,
@@ -21,6 +21,8 @@ import { testContent } from '../fixtures/content.js';
 const AI_SEAT = 2;
 const OTHER_SEAT = 5;
 const INVALID_PLAYER = 99;
+/** Any entity ref: the stub module's command is counted, never applied. */
+const STUB_UNIT = 1 as Entity;
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
@@ -29,7 +31,7 @@ function fresh(seed = 1): Simulation {
 describe('setPlayerAi - the AI seat flag', () => {
   it('flags a seat with all modules enabled by default', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     sim.step();
     expect(isAiPlayer(sim.world, AI_SEAT)).toBe(true);
     expect(isAiPlayer(sim.world, OTHER_SEAT)).toBe(false);
@@ -42,10 +44,10 @@ describe('setPlayerAi - the AI seat flag', () => {
 
   it('fills a partial module override with enabled defaults and updates the carrier in place', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     sim.step();
     const carrier = aiPlayerEntity(sim.world, AI_SEAT);
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
     sim.step();
     expect(aiPlayerEntity(sim.world, AI_SEAT)).toBe(carrier); // updated, not re-created
     if (carrier === null) return;
@@ -56,28 +58,28 @@ describe('setPlayerAi - the AI seat flag', () => {
 
   it('removes the seat on disable and skips an out-of-range player (still logged)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
-    sim.enqueue({ kind: 'setPlayerAi', player: INVALID_PLAYER, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: INVALID_PLAYER, enabled: true });
     sim.step();
     expect(isAiPlayer(sim.world, AI_SEAT)).toBe(true);
     expect(isAiPlayer(sim.world, INVALID_PLAYER)).toBe(false);
     expect(sim.commands.log).toHaveLength(2); // the skipped command still replays
 
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
     sim.step();
     expect(isAiPlayer(sim.world, AI_SEAT)).toBe(false);
   });
 
   it('withdraws every AI-published counter on disable', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     // The standing state the modules publish: the births, and the garrison rung's whole weapon mix.
     const published = ['extraMen', 'trainSoldiers', 'trainSword', 'trainSpear', 'trainBow'] as const;
     for (const counter of published) {
-      sim.enqueue({ kind: 'setAssistantCounter', player: AI_SEAT, counter, value: 3, infinite: false });
+      sim.enqueueSetup({ kind: 'setAssistantCounter', player: AI_SEAT, counter, value: 3, infinite: false });
     }
     sim.step();
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
     sim.step();
     const counters = sim.assistantCounters(AI_SEAT);
     for (const counter of published) {
@@ -87,15 +89,15 @@ describe('setPlayerAi - the AI seat flag', () => {
 
   it("withdraws a module's counters when its publishing gate flips off, keeping the rest", () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
-    sim.enqueue({
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({
       kind: 'setAssistantCounter',
       player: AI_SEAT,
       counter: 'extraWomen',
       value: 4,
       infinite: false,
     });
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'setAssistantCounter',
       player: AI_SEAT,
       counter: 'trainSoldiers',
@@ -104,7 +106,7 @@ describe('setPlayerAi - the AI seat flag', () => {
     });
     sim.step();
     // `military` off breaks the garrison rung's publishing conjunction; the births keep their module.
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
     sim.step();
     expect(sim.assistantCounters(AI_SEAT).trainSoldiers.value).toBe(0);
     expect(sim.assistantCounters(AI_SEAT).extraWomen.value).toBe(4);
@@ -112,14 +114,14 @@ describe('setPlayerAi - the AI seat flag', () => {
 
   it("leaves a never-AI seat's counters alone on a redundant disable", () => {
     const sim = fresh();
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'setAssistantCounter',
       player: OTHER_SEAT,
       counter: 'trainSpear',
       value: 7,
       infinite: false,
     });
-    sim.enqueue({ kind: 'setPlayerAi', player: OTHER_SEAT, enabled: false });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: OTHER_SEAT, enabled: false });
     sim.step();
     expect(sim.assistantCounters(OTHER_SEAT).trainSpear.value).toBe(7);
   });
@@ -158,7 +160,7 @@ describe('AiPlayerSystem - cadence, stagger, and module gates', () => {
       id: 'houseBuild',
       run: (_w, ctx, player) => {
         calls.push({ tick: ctx.tick, player });
-        return [{ kind: 'setNeedsEnabled', enabled: true }];
+        return [{ kind: 'marry', entity: STUB_UNIT }];
       },
     };
     for (let tick = 1; tick <= 2 * AI_DECISION_INTERVAL_TICKS; tick++) {
@@ -222,8 +224,8 @@ describe('AI seat determinism and replay', () => {
 
   function liveRun(): Simulation {
     const sim = fresh(7);
-    sim.enqueue({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { roadBuild: false } });
-    sim.enqueue({ kind: 'spawnSettler', jobType: 1, x: 2, y: 2, tribe: 1, owner: AI_SEAT });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { roadBuild: false } });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: 1, x: 2, y: 2, tribe: 1, owner: AI_SEAT });
     sim.run(TICKS);
     return sim;
   }
@@ -241,7 +243,7 @@ describe('AI seat determinism and replay', () => {
     // is - its applied copy already sits in the log) must be thrown away, never double-applied.
     const strayed = new Simulation({ seed: 7, content: testContent() });
     stepReplaying(strayed, live.commands.log, TICKS, () => {
-      strayed.enqueue({ kind: 'setNeedsEnabled', enabled: false }); // would move the hash if applied
+      strayed.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false }); // would move the hash if applied
     });
     expect(strayed.hashState()).toBe(live.hashState());
   });

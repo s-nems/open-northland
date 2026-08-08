@@ -178,7 +178,8 @@ const EQUIP_ORDER_GOODS = [
   UNKNOWN_EQUIP_GOOD,
   INVALID_TYPE,
 ] as const;
-/** Owner slots: two valid players + one out-of-range (skipped → neutral) - exercises `stampOwner`. */
+/** Owner slots: two valid players + one out-of-range (rejects the whole command) - exercises the
+ *  command system's owner-field check. */
 const OWNERS = [0, 1, 99] as const;
 /** The first tick the harness raises its scripted alarms on, and how often it puts them back up. Raising
  *  once is not enough: the stream's own alarm flips (case 43) and a seat handed to the strategic AI - which
@@ -623,16 +624,30 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
   // AIMED family rolls (24–26) have eligible targets and the wedding → household → child machinery runs
   // under the fuzz harness. Part of the input by construction (identical for both live runs), and
   // recorded in the log like every command, so replay fidelity covers it too.
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 10, y: 10, tribe: VIKING, owner: 0 });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 10, y: 10, tribe: VIKING, owner: 0 });
   for (let i = 0; i < 3; i++) {
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOMAN_TYPE, x: 6 + 4 * i, y: 6, tribe: VIKING, owner: 0 });
-    sim.enqueue({ kind: 'spawnSettler', jobType: 0, x: 6 + 4 * i, y: 14, tribe: VIKING, owner: 0 });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: WOMAN_TYPE,
+      x: 6 + 4 * i,
+      y: 6,
+      tribe: VIKING,
+      owner: 0,
+    });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 6 + 4 * i, y: 14, tribe: VIKING, owner: 0 });
   }
   // Loose food outside the home - the source the housed women's hoard rung and a child order's haul
   // stage draw from.
-  sim.enqueue({ kind: 'dropGood', good: FOOD_GOOD, x: 14, y: 10, amount: 5 });
+  sim.enqueueSetup({ kind: 'dropGood', good: FOOD_GOOD, x: 14, y: 10, amount: 5 });
   // The garrison building the scripted alarm below raises, placed last so the fixed ids above hold.
-  sim.enqueue({ kind: 'placeBuilding', buildingType: SHELTER_TYPE, x: 16, y: 16, tribe: VIKING, owner: 0 });
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: SHELTER_TYPE,
+    x: 16,
+    y: 16,
+    tribe: VIKING,
+    owner: 0,
+  });
   // An independent generator stream (any fixed derivation of the fuzz seed works - it only must
   // differ from the sim's seed so the two streams aren't trivially correlated).
   const gen = new Rng(fuzzSeed ^ 0x5eed);
@@ -645,14 +660,14 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     // AFTER that tick's commands applied, so a tick-1 assignHouse dies on the built gate. Fixed input,
     // logged like every command - replay fidelity covers it.
     if (t === 1) {
-      sim.enqueue({ kind: 'assignHouse', entity: 2 as Entity, house: 1 as Entity });
-      sim.enqueue({ kind: 'assignHouse', entity: 3 as Entity, house: 1 as Entity });
-      sim.enqueue({ kind: 'marry', entity: 2 as Entity });
+      sim.enqueueSetup({ kind: 'assignHouse', entity: 2 as Entity, house: 1 as Entity });
+      sim.enqueueSetup({ kind: 'assignHouse', entity: 3 as Entity, house: 1 as Entity });
+      sim.enqueueSetup({ kind: 'marry', entity: 2 as Entity });
     }
     // A child order for the housed wife once her scripted wedding has had time to finish - arms the
     // stock-the-larder → wait-inside → MakingLove → birth stages under the stream's interference (a
     // seed where the wedding hasn't completed just exercises the unmarried skip instead).
-    if (t === 150) sim.enqueue({ kind: 'makeChild', entity: 2 as Entity, child: 'female' });
+    if (t === 150) sim.enqueueSetup({ kind: 'makeChild', entity: 2 as Entity, child: 'female' });
     // Raise the alarm on the shelter and on the nucleus home once they stand, so every seed runs the
     // shelter drive and the release pass for real; the stream's own alarm flips (case 43) then interleave
     // with it. The shelter is found by type rather than by a hard-coded id - the preamble's entity order is
@@ -660,12 +675,12 @@ function runFuzz(fuzzSeed: number, ticks: number): FuzzRun {
     if (t >= ALARM_RAISED_FROM && (t - ALARM_RAISED_FROM) % ALARM_RERAISE_EVERY === 0) {
       for (const e of sim.world.query(Building)) {
         if (sim.world.get(e, Building).buildingType === SHELTER_TYPE) {
-          sim.enqueue({ kind: 'setDefenceMode', building: e, enabled: true });
+          sim.enqueueSetup({ kind: 'setDefenceMode', building: e, enabled: true });
         }
       }
-      sim.enqueue({ kind: 'setDefenceMode', building: 1 as Entity, enabled: true });
+      sim.enqueueSetup({ kind: 'setDefenceMode', building: 1 as Entity, enabled: true });
     }
-    if (gen.int(COMMAND_EVERY) === 0) sim.enqueue(nextCommand(gen));
+    if (gen.int(COMMAND_EVERY) === 0) sim.enqueueSetup(nextCommand(gen));
     sim.step();
     if (violations.length === 0) {
       const v = checkInvariants(sim.world, sim.content, CORE_INVARIANTS);

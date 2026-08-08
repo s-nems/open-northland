@@ -45,7 +45,7 @@ const URGENT: Fixed = justAbove(NEED_THRESHOLD);
 
 function confinedSim(): Simulation {
   const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(192, 8) });
-  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+  sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   sim.step();
   return sim;
 }
@@ -220,12 +220,12 @@ describe('confinement gates job assignment', () => {
     const sim = confinedSim();
     const u = ownedSettler(sim, 2, 2, WOODCUTTER);
     const far = sawmillAt(sim, OUT_OF_AREA, 2);
-    sim.enqueue({ kind: 'assignWorker', entity: u, building: far, jobPriority: [CARPENTER] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: u, building: far, jobPriority: [CARPENTER] });
     sim.step();
     expect(sim.world.has(u, JobAssignment)).toBe(false);
 
     const near = sawmillAt(sim, IN_AREA, 2);
-    sim.enqueue({ kind: 'assignWorker', entity: u, building: near, jobPriority: [CARPENTER] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: u, building: near, jobPriority: [CARPENTER] });
     sim.step();
     expect(sim.world.get(u, JobAssignment).workplace).toBe(near);
   });

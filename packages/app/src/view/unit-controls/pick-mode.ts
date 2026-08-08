@@ -1,6 +1,6 @@
 import { type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem, ElevationField } from '@open-northland/render';
-import type { Command, Entity, WorldSnapshot } from '@open-northland/sim';
+import type { Entity, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import {
@@ -27,7 +27,7 @@ export interface PickModeDeps {
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly elevation?: ElevationField;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
-  readonly enqueue: (command: Command) => void;
+  readonly enqueue: (command: PlayerCommand) => void;
   /** The order controller owns the attack-move so both walks fan a group out through the same formation
    *  spread. */
   readonly issueAttackMove: (event: MouseEvent) => void;

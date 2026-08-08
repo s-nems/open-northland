@@ -161,11 +161,11 @@ describe('defence mode', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     sim.step();
     const first = sim.events.current().filter((ev) => ev.kind === 'defenceAlarmRaised');
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true }); // re-raise: already up
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true }); // re-raise: already up
     sim.step();
     const second = sim.events.current().filter((ev) => ev.kind === 'defenceAlarmRaised');
 
@@ -179,7 +179,7 @@ describe('defence mode', () => {
     const sim = new Simulation({ seed: 1, content: defenceContent(), map: grass(10, 4) });
     const hut = buildingAt(sim, 5, 1, HUT, P1);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: hut, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: hut, enabled: true });
     sim.step();
 
     expect(sim.world.has(hut, DefenceMode)).toBe(false);
@@ -192,7 +192,7 @@ describe('defence mode', () => {
     const soldier = settlerAt(sim, 2, 1, P1, SOLDIER);
     const scout = settlerAt(sim, 3, 1, P1, SCOUT);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
 
     expect(insideOf(sim, farmer)).toBe(tower); // hidden inside, so the render stops drawing it
@@ -205,7 +205,7 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const civilians = [1, 2, 3].map((x) => settlerAt(sim, x, 1, P1, FARMER));
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => civilians.filter((e) => insideOf(sim, e) === tower).length >= TOWER_CAPACITY);
     sim.step();
 
@@ -219,8 +219,8 @@ describe('defence mode', () => {
     const nearWest = settlerAt(sim, 4, 1, P1, FARMER);
     const nearEast = settlerAt(sim, 15, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: west, enabled: true });
-    sim.enqueue({ kind: 'setDefenceMode', building: east, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: west, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: east, enabled: true });
     stepUntil(
       sim,
       400,
@@ -237,12 +237,12 @@ describe('defence mode', () => {
     const east = buildingAt(sim, 17, 1, TOWER, P1);
     const farmer = settlerAt(sim, 4, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: west, enabled: true });
-    sim.enqueue({ kind: 'setDefenceMode', building: east, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: west, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: east, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === west);
     expect(insideOf(sim, farmer)).toBe(west);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: west, enabled: false });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: west, enabled: false });
     stepUntil(sim, 600, () => insideOf(sim, farmer) === east);
 
     expect(shelterOf(sim, farmer)).toBe(east);
@@ -254,10 +254,10 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const farmer = settlerAt(sim, 1, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: false });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: false });
     sim.step();
 
     expect(sim.world.has(farmer, Sheltering)).toBe(false);
@@ -269,7 +269,7 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const farmer = settlerAt(sim, 4, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     // The raider walks up only after the farmer is under cover, so the shelter run is never a flight.
     const raider = settlerAt(sim, 7, 1, P2, SOLDIER);
@@ -286,7 +286,7 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const farmer = settlerAt(sim, 4, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     // A settler keeps the cell it entered by, and a real building's door sits off its anchor - this
     // fixture has no footprint, so the two coincide until the shooter is stood one cell off by hand.
@@ -314,7 +314,7 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const farmer = settlerAt(sim, 4, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     // Stand the shooter far off the tower (the door-vs-anchor gap a footprinted building really has,
     // exaggerated): the mark below is HOUSE_BOW_RANGE nodes from the tower and far outside that band from
@@ -338,7 +338,7 @@ describe('defence mode', () => {
     for (let i = 0; i < 5; i++) sim.world.create();
     const garrison = [first, settlerAt(sim, 4, 2, P1, FARMER)];
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => garrison.every((g) => insideOf(sim, g) === tower));
     // Three marks at three distances, all inside the bow's band: a garrison that always took the nearest
     // would put every arrow of every tick into the same man.
@@ -363,7 +363,7 @@ describe('defence mode', () => {
     const inside = settlerAt(sim, 4, 1, P1, FARMER);
     const runner = settlerAt(sim, 15, 1, P1, FARMER); // still crossing the field when the seats are read
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, inside) === tower && shelterOf(sim, runner) === tower);
 
     // Seats number the ARRIVED. Counting the runner would leave the seats in play {0, 2, ...} - a sparse
@@ -382,7 +382,7 @@ describe('defence mode', () => {
     // report itself full while standing empty.
     settlerAt(sim, 12, 1, P2, SOLDIER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     let fledWhileClaiming = false;
     for (let i = 0; i < 600 && insideOf(sim, farmer) !== tower; i++) {
       sim.step();
@@ -399,7 +399,7 @@ describe('defence mode', () => {
     const farmer = settlerAt(sim, 4, 1, P1, FARMER);
     const raider = settlerAt(sim, 12, 1, P2, SOLDIER); // past the house bow's band, and never chased
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     sim.world.add(farmer, AttackOrder, { target: raider });
     sim.step();
@@ -415,7 +415,7 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const farmer = settlerAt(sim, 4, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     sim.world.destroy(tower);
     sim.step();
@@ -432,11 +432,11 @@ describe('defence mode', () => {
     const east = buildingAt(sim, 17, 1, TOWER, P1);
     const farmer = settlerAt(sim, 4, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: west, enabled: true });
-    sim.enqueue({ kind: 'setDefenceMode', building: east, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: west, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: east, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === west);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: west, enabled: false });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: west, enabled: false });
     sim.step(); // ONE tick: the order, the release, and the re-claim
 
     expect(shelterOf(sim, farmer)).toBe(east);
@@ -451,9 +451,9 @@ describe('defence mode', () => {
     const homebody = settlerAt(sim, 1, 1, P1, FARMER);
     const outlier = settlerAt(sim, 30, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
-    sim.enqueue({ kind: 'setDefenceMode', building: near, enabled: true });
-    sim.enqueue({ kind: 'setDefenceMode', building: far, enabled: true });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: near, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: far, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, homebody) === near);
 
     expect(insideOf(sim, homebody)).toBe(near); // in reach of its own tower - takes cover
@@ -466,7 +466,7 @@ describe('defence mode', () => {
     const child = settlerAt(sim, 4, 1, P1, CHILD);
     sim.world.add(child, Age, { ticks: 0 }); // the born-young marker every growing settler carries
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, child) === tower);
     const raider = settlerAt(sim, 8, 1, P2, SOLDIER);
     for (let i = 0; i < 300; i++) sim.step();
@@ -480,7 +480,7 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const farmer = settlerAt(sim, 1, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     sim.world.write(farmer, Settler, (s) => {
       s.hunger = ONE;
@@ -498,7 +498,7 @@ describe('defence mode', () => {
     const tower = buildingAt(sim, 5, 1, TOWER, P1);
     const farmer = settlerAt(sim, 1, 1, P1, FARMER);
 
-    sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
     stepUntil(sim, 400, () => insideOf(sim, farmer) === tower);
     sim.world.add(farmer, Carrying, { goodType: RATION, amount: 1 });
     sim.world.write(farmer, Settler, (s) => {

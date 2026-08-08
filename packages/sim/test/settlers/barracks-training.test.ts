@@ -176,7 +176,7 @@ describe('trainSoldier - the barracks drill', () => {
     const recruit = settlerAt(sim, CIVILIST_JOB, 2, 3);
     expect(qualifiesAsSoldier(sim, recruit)).toBe(false); // no route onto the trade before the drill
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
     expect(sim.world.has(recruit, MoveGoal)).toBe(true); // heading for the door
@@ -195,7 +195,7 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 6, 3);
     const veteran = settlerAt(sim, SOLDIER_JOB, 2, 3);
 
-    sim.enqueue({ kind: 'trainSoldier', entity: veteran, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: veteran, house });
     run(sim, RUN_TICKS);
 
     expect(jobOf(sim, veteran)).toBe(SOLDIER_JOB);
@@ -207,7 +207,7 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 3, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // already on the door node - no walk
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     run(sim, RUN_TICKS);
 
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
@@ -221,19 +221,19 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 3, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     run(sim, 3 * EXERCISE_CLIP_TICKS + 1);
     const served = sim.world.get(recruit, TrainingOrder).drillTicksLeft;
     expect(served).toBeLessThan(BARRACKS_DRILL_TICKS);
 
     // A player walk calls the drill off - the one control that stops it. The order parks behind the
     // repetition in flight (the exercise clip is not interruptible), so it lands a few ticks later.
-    sim.enqueue({ kind: 'moveUnit', entity: recruit, x: 1, y: 1 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: recruit, x: 1, y: 1 });
     run(sim, EXERCISE_CLIP_TICKS + 2);
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
 
     // Sent back, it starts a fresh drill and still ends up a soldier.
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     run(sim, RUN_TICKS);
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
   });
@@ -243,24 +243,24 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 3, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     run(sim, 3 * EXERCISE_CLIP_TICKS + 1);
     const served = sim.world.get(recruit, TrainingOrder).drillTicksLeft;
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     expect(sim.world.get(recruit, TrainingOrder).drillTicksLeft).toBeLessThanOrEqual(served);
   });
 
   it('lets a hungry recruit eat first, keeping the errand and its untouched clock', () => {
     const sim = simWithBarracks();
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: true });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: true });
     const house = barracksAt(sim, 3, 3);
     const larder = larderAt(sim, 8, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
     sim.world.get(recruit, Settler).hunger = STARVING;
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     // The needs drives sit above the errand: the recruit leaves the door for the larder instead of
     // stepping inside, and its errand (and its untouched clock) survive the detour.
@@ -278,10 +278,10 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 3, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     // Parked behind the repetition in flight like the move order above, then applied.
-    sim.enqueue({ kind: 'setJob', entity: recruit, jobType: CARRIER_JOB });
+    sim.enqueueSetup({ kind: 'setJob', entity: recruit, jobType: CARRIER_JOB });
     run(sim, EXERCISE_CLIP_TICKS + 2);
 
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
@@ -293,7 +293,7 @@ describe('trainSoldier - the barracks drill', () => {
     const house = barracksAt(sim, 3, 3);
     const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3); // at the door - it drills from tick one
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
 
@@ -312,7 +312,7 @@ describe('trainSoldier - the barracks drill', () => {
     const door = interactionCell(sim.world, ctxOf(sim), terrainOf(sim), house);
     noteUnreachableGoal(sim.world, ctxOf(sim), recruit, door);
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     // Accepting it would cancel whatever the settler was doing, only for the drill rung to drop the
     // errand next tick - and the AI would re-issue the same order every decision.
@@ -332,7 +332,7 @@ describe('trainSoldier - the barracks drill', () => {
       issuer: 'player',
     });
 
-    sim.enqueue({ kind: 'trainSoldier', entity: recruit, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
     sim.step();
     expect(sim.world.has(recruit, EquipOrder)).toBe(false);
     expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
@@ -347,9 +347,9 @@ describe('trainSoldier - the barracks drill', () => {
     const foreignHouse = barracksAt(sim, 8, 3, VIKING + 1);
     const notAHouse = settlerAt(sim, CIVILIST_JOB, 8, 5);
 
-    sim.enqueue({ kind: 'trainSoldier', entity: woman, house });
-    sim.enqueue({ kind: 'trainSoldier', entity: stranger, house: foreignHouse });
-    sim.enqueue({ kind: 'trainSoldier', entity: stranger, house: notAHouse });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: woman, house });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: stranger, house: foreignHouse });
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: stranger, house: notAHouse });
     sim.step();
 
     expect(sim.world.has(woman, TrainingOrder)).toBe(false);

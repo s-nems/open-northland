@@ -74,19 +74,19 @@ function runSlice(seed: number, ticks: number): GoldenRun {
 
   // Placement via the command log (CommandSystem applies these on tick 1) - the seam the UI uses.
   // Command coords are half-cell nodes: cell x on row 0 sits at node (2x, 0).
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 10, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 8, y: 0, tribe: VIKING });
-  sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 10, y: 0, tribe: VIKING });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SAWMILL, x: 8, y: 0, tribe: VIKING });
+  sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
   // The two settlers the slice POSTS carry an owner: `assignWorker` is an owned-unit order. The
   // woodcutter and the buildings stay neutral (a neutral owner is compatible with any), so only the
   // posting itself gained a prerequisite.
-  sim.enqueue({ kind: 'spawnSettler', jobType: CARRIER, x: 2, y: 0, tribe: VIKING, owner: HUMAN });
+  sim.enqueueSetup({ kind: 'spawnSettler', jobType: CARRIER, x: 2, y: 0, tribe: VIKING, owner: HUMAN });
   // The sawmill's operator (carpenter) is spawned standing ON the sawmill (node 8): the worker-presence
   // gate runs the mill only while it is staffed, and the planner pins a settler on a workplace it
   // staffs so the carpenter stays put. It spawns with the fixture's `needforgood PLANK` threshold
   // earned (30 wood-track repeats × factor 10) so the slice keeps exercising production; the unearned
   // path is craft-selection.cases.ts. Seeded XP alters only the state hash, never the trace.
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'spawnSettler',
     jobType: CARPENTER,
     x: 8,
@@ -139,13 +139,13 @@ function runSlice(seed: number, ticks: number): GoldenRun {
  *  type/trade rather than by a hard-coded id, and a second match is a fixture bug - the resolution must not
  *  depend on store order for the pinned hash to mean anything. */
 function staffSlice(sim: Simulation): void {
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'assignWorker',
     entity: theSettlerOfJob(sim, CARPENTER),
     building: theBuildingOfType(sim, SAWMILL),
     jobPriority: [CARPENTER],
   });
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'assignWorker',
     entity: theSettlerOfJob(sim, CARRIER),
     building: theBuildingOfType(sim, HEADQUARTERS),

@@ -168,7 +168,7 @@ describe('setWorkFlag command - place / move a gatherer flag (Ctrl+Right-Click)'
   it('routes through the command dispatch (enqueue → step) end to end', () => {
     const sim = new Simulation({ seed: 4, content: testContent(), map: grassMap(40, 1) });
     const g = ownedGatherer(sim, 0, 0);
-    sim.enqueue(cmd(g, 6));
+    sim.enqueueSetup(cmd(g, 6));
     sim.step();
     expect(sim.world.has(g, WorkFlag)).toBe(true);
     expect(fx.toInt(sim.world.get(sim.world.get(g, WorkFlag).flag, Position).x)).toBe(6);
@@ -187,7 +187,7 @@ describe("spawnSettler gatherGood - a decoded map's authored setproducedgood", (
   };
 
   function spawn(sim: Simulation, jobType: number, gatherGood?: number): Entity {
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType,
       x: 2,

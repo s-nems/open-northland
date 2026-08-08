@@ -75,7 +75,7 @@ function build(sim: Simulation): void {
     });
   }
   // Only the military module: a full AI seat would spend the scene re-staffing its town instead.
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'setPlayerAi',
     player: ENEMY_PLAYER,
     enabled: true,

@@ -24,7 +24,7 @@ export function spawnSandboxSettler(
 ): void {
   const node = cellAnchorNode(x, y);
   const equipment = opts.equipment ?? weaponEquipmentFor(jobType, sim.content.goods);
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'spawnSettler',
     jobType,
     x: node.hx,

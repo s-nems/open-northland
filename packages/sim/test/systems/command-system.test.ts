@@ -1,3 +1,4 @@
+import './command-system/authority.cases.js';
 import './command-system/buildings.cases.js';
 import './command-system/dispatcher.cases.js';
 import './command-system/spawning.cases.js';

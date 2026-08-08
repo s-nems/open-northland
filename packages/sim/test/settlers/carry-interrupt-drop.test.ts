@@ -126,7 +126,7 @@ describe('setJob on a carrying settler - drop first, then re-employ', () => {
     const sim = freshSim();
     const e = carryingWoodcutter(sim, 3, 1, 1);
 
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: CARPENTER });
     sim.step();
 
     // The profession changed at once, but the load is being set down (the drop atomic), still on its back.
@@ -149,7 +149,7 @@ describe('a move order on a carrying settler - drop first, then walk', () => {
     const e = carryingWoodcutter(sim, 3, 1, 1);
 
     const dest = cellAnchorNode(8, 1);
-    sim.enqueue({ kind: 'moveUnit', entity: e, x: dest.hx, y: dest.hy });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: e, x: dest.hx, y: dest.hy });
     sim.step();
 
     // The order is accepted but parked behind the drop: the load is being set down, not walked off with.
@@ -183,7 +183,7 @@ describe('a move order on a carrying settler - drop first, then walk', () => {
     const startX = sim.world.get(e, Position).x;
 
     const dest = cellAnchorNode(8, 1);
-    sim.enqueue({ kind: 'moveUnit', entity: e, x: dest.hx, y: dest.hy });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: e, x: dest.hx, y: dest.hy });
     sim.step();
 
     // The walk is halted the moment the drop starts - no PathFollow ticking under the drop animation, and the

@@ -19,8 +19,8 @@ function firstYield(good: number): { readonly ticks: number; readonly units: num
   });
   const resource = resourceCommand(good, 8, 8);
   if (resource === null) throw new Error(`missing gatherer for good ${good}`);
-  sim.enqueue(resource);
-  sim.enqueue({
+  sim.enqueueSetup(resource);
+  sim.enqueueSetup({
     kind: 'spawnSettler',
     jobType: JOB_COLLECTOR,
     x: 8,

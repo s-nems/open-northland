@@ -208,7 +208,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     const home = sim.world.get(settler, Position);
     const homeNode = nodeOfPosition(home.x, home.y);
 
-    sim.enqueue(equip(settler, SHOES));
+    sim.enqueueSetup(equip(settler, SHOES));
     sim.run(ERRAND_TICKS);
 
     // Worn fresh at the pile; the walk home has already worn the pair a few steps (boots wear per
@@ -231,7 +231,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     pileAt(sim, 12, 2, LONG_SWORD, 1);
     const armoury = armouryAt(sim, 6, 4);
 
-    sim.enqueue(equip(settler, LONG_SWORD, 'weapon'));
+    sim.enqueueSetup(equip(settler, LONG_SWORD, 'weapon'));
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(settler, Equipment).weapon?.goodType).toBe(LONG_SWORD);
@@ -247,7 +247,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     pileAt(sim, 12, 2, FUR_BOOTS, 1);
     const armoury = armouryAt(sim, 6, 4);
 
-    sim.enqueue(equip(settler, FUR_BOOTS));
+    sim.enqueueSetup(equip(settler, FUR_BOOTS));
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(settler, Equipment).boots?.goodType).toBe(FUR_BOOTS);
@@ -266,7 +266,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     wear(sim, settler, { boots: { goodType: SHOES, usedPct: 80 } });
     pileAt(sim, 12, 2, SHOES, 1);
 
-    sim.enqueue(equip(settler, SHOES));
+    sim.enqueueSetup(equip(settler, SHOES));
     sim.run(ERRAND_TICKS);
 
     // The manual's rule (p. 27): equipping over an occupied slot drops the old item, and a part-used
@@ -284,7 +284,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     wear(sim, settler, { boots: SHOES });
     const pile = pileAt(sim, 12, 2, SHOES, 1);
 
-    sim.enqueue(equip(settler, SHOES));
+    sim.enqueueSetup(equip(settler, SHOES));
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(pile, Stockpile).amounts.get(SHOES)).toBe(1); // stock untouched
@@ -295,7 +295,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);
 
-    sim.enqueue(equip(settler, SHOES));
+    sim.enqueueSetup(equip(settler, SHOES));
     sim.run(50);
 
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
@@ -311,7 +311,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     const settler = ownedSettler(sim, 2, 2);
     const brewhouse = brewhouseAt(sim, 12, 2, [[MEAD, 3]]);
 
-    sim.enqueue(equip(settler, MEAD, 'misc', 0));
+    sim.enqueueSetup(equip(settler, MEAD, 'misc', 0));
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(settler, Equipment).misc[0]?.goodType).toBe(MEAD);
@@ -330,7 +330,7 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
 
     expect(sim.equipPickList(settler, 'boots')).toEqual([]);
 
-    sim.enqueue(equip(settler, SHOES, 'boots', 0));
+    sim.enqueueSetup(equip(settler, SHOES, 'boots', 0));
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.tryGet(settler, Equipment)?.boots ?? null).toBeNull();
@@ -346,7 +346,7 @@ describe('unequipGood - take off at the stow store, walk back', () => {
     wear(sim, settler, { weapon: SWORD });
     const armoury = armouryAt(sim, 10, 2);
 
-    sim.enqueue({ kind: 'unequipGood', entity: settler, group: 'weapon', slot: 0 });
+    sim.enqueueSetup({ kind: 'unequipGood', entity: settler, group: 'weapon', slot: 0 });
     sim.run(10); // mid-walk to the armoury: the sword must still be ON the body, not in the hands
     expect(sim.world.has(settler, EquipOrder)).toBe(true);
     expect(sim.world.get(settler, Equipment).weapon?.goodType).toBe(SWORD);
@@ -366,7 +366,7 @@ describe('unequipGood - take off at the stow store, walk back', () => {
     wear(sim, settler, { boots: { goodType: SHOES, usedPct: 50 } });
     const armoury = armouryAt(sim, 10, 2);
 
-    sim.enqueue({ kind: 'unequipGood', entity: settler, group: 'boots', slot: 0 });
+    sim.enqueueSetup({ kind: 'unequipGood', entity: settler, group: 'boots', slot: 0 });
     sim.run(100);
 
     expect(sim.world.get(settler, Equipment).boots).toBeNull();
@@ -388,7 +388,7 @@ describe('unequipGood - take off at the stow store, walk back', () => {
     const settler = ownedSettler(sim, 4, 2);
     wear(sim, settler, { weapon: SWORD });
 
-    sim.enqueue({ kind: 'unequipGood', entity: settler, group: 'weapon', slot: 0 });
+    sim.enqueueSetup({ kind: 'unequipGood', entity: settler, group: 'weapon', slot: 0 });
     sim.run(100);
 
     expect(sim.world.get(settler, Equipment).weapon).toBeNull();
@@ -459,7 +459,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     const e = ownedSettler(sim, 3, 2);
     wear(sim, e, { tool: TOOL_WOODEN });
 
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
     sim.step();
     expect(sim.world.get(e, Equipment).tool).toBeNull(); // the slot empties the moment it enlists
 
@@ -473,7 +473,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     const e = ownedSettler(sim, 3, 2);
     wear(sim, e, { tool: { goodType: TOOL_WOODEN, usedPct: 40 } });
 
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
     sim.run(30);
 
     expect(sim.world.get(e, Equipment).tool).toBeNull();
@@ -485,11 +485,11 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 2, 2);
     pileAt(sim, 12, 2, TOOL_WOODEN, 1);
-    sim.enqueue(equip(e, TOOL_WOODEN, 'tool'));
+    sim.enqueueSetup(equip(e, TOOL_WOODEN, 'tool'));
     sim.step();
     expect(sim.world.has(e, EquipOrder)).toBe(true);
 
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
     sim.step();
     expect(sim.world.has(e, EquipOrder)).toBe(false); // the fetch died with the civilian trade
 
@@ -505,7 +505,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     pileAt(sim, 12, 2, TOOL_WOODEN, 1);
     sim.world.add(e, TrainingOrder, { house, drillTicksLeft: 100 });
 
-    sim.enqueue(equip(e, TOOL_WOODEN, 'tool'));
+    sim.enqueueSetup(equip(e, TOOL_WOODEN, 'tool'));
     sim.step();
     // Without this the drill would outrank the fetch for its whole term, then the fetch would resume
     // and walk the settler back to a return spot the drill had already invalidated.
@@ -521,7 +521,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     const feet = sim.world.get(e, Position);
     pileAt(sim, 3, 2, SWORD, 1); // and the tile it stands on already holds a third good
 
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: FIGHTER_JOB });
     sim.run(30);
 
     expect(sim.world.get(e, Equipment).tool).toBeNull();
@@ -539,7 +539,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     const eq = sim.world.get(e, Equipment);
     eq.armor = { goodType: FUR_BOOTS, degreeOfUse: fx.fromInt(0) }; // any good stands in for armour here
 
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: WOODCUTTER });
     sim.run(30); // the hands-first unit rides the drop atomic to the ground
 
     expect(eq.weapon).toBeNull();
@@ -558,7 +558,7 @@ describe('enlisting - a fighter trade keeps no tool', () => {
 
     // A workshop trade, not a gatherer: a gatherer's fresh work flag would make its own yard the
     // delivery sink, so the arms would bank on the ground beside it rather than walk to the store.
-    sim.enqueue({ kind: 'setJob', entity: e, jobType: CARPENTER });
+    sim.enqueueSetup({ kind: 'setJob', entity: e, jobType: CARPENTER });
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(store, Stockpile).amounts.get(SWORD)).toBe(1); // banked, not left in the grass
@@ -573,11 +573,11 @@ describe('enlisting - a fighter trade keeps no tool', () => {
     pileAt(sim, 12, 2, TOOL_WOODEN, 1);
     pileAt(sim, 12, 4, SHOES, 1);
 
-    sim.enqueue(equip(e, TOOL_WOODEN, 'tool'));
+    sim.enqueueSetup(equip(e, TOOL_WOODEN, 'tool'));
     sim.step();
     expect(sim.world.has(e, EquipOrder)).toBe(false); // recoverable no-op, like every bad order
 
-    sim.enqueue(equip(e, SHOES));
+    sim.enqueueSetup(equip(e, SHOES));
     sim.step();
     expect(sim.world.has(e, EquipOrder)).toBe(true); // boots stay orderable on a fighter
   });
@@ -595,7 +595,7 @@ describe('errand interactions with combat and player orders', () => {
     sim.world.add(guard, Engagement, { repathAt: 0 });
     pileAt(sim, 10, 2, SHOES, 1);
 
-    sim.enqueue(equip(guard, SHOES));
+    sim.enqueueSetup(equip(guard, SHOES));
     sim.run(ERRAND_TICKS);
 
     expect(sim.world.get(guard, Equipment).boots?.goodType).toBe(SHOES);
@@ -610,11 +610,11 @@ describe('errand interactions with combat and player orders', () => {
     const settler = ownedSettler(sim, 2, 2);
     pileAt(sim, 12, 2, SHOES, 1);
 
-    sim.enqueue(equip(settler, SHOES));
+    sim.enqueueSetup(equip(settler, SHOES));
     sim.run(10); // errand under way (walking to the pile)
     expect(sim.world.has(settler, EquipOrder)).toBe(true);
 
-    sim.enqueue({ kind: 'moveUnit', entity: settler, x: 4, y: 8 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: settler, x: 4, y: 8 });
     sim.run(5);
     expect(sim.world.has(settler, EquipOrder)).toBe(false);
   });

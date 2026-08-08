@@ -5,6 +5,7 @@ import {
   type Entity,
   entityById,
   nodeOfPosition,
+  type PlayerCommand,
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -26,7 +27,7 @@ export interface UnitOrderDeps {
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly elevation?: ElevationField;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
-  readonly enqueue: (command: Command) => void;
+  readonly enqueue: (command: PlayerCommand) => void;
   readonly selectOwnSettler: (id: number) => void;
   readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
 }

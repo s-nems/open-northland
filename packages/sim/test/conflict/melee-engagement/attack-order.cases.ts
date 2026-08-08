@@ -25,7 +25,7 @@ describe('attackUnit - the explicit attack order', () => {
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0 });
     const enemy = fighterAt(sim, far, 0, VIKING, WOODCUTTER, { owner: P1 }); // beyond auto-engage sight
 
-    sim.enqueue({ kind: 'attackUnit', entity: a, target: enemy });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: a, target: enemy });
     sim.step();
 
     expect(sim.world.get(a, AttackOrder).target).toBe(enemy);
@@ -41,7 +41,7 @@ describe('attackUnit - the explicit attack order', () => {
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
     const enemy = fighterAt(sim, 1, 0, VIKING, WOODCUTTER, { owner: P1, hitpoints: 80 }); // frail, adjacent
 
-    sim.enqueue({ kind: 'attackUnit', entity: a, target: enemy });
+    sim.enqueueSetup({ kind: 'attackUnit', entity: a, target: enemy });
     for (let i = 0; i < 60 && sim.world.isAlive(enemy); i++) sim.step();
 
     expect(sim.world.isAlive(enemy)).toBe(false); // felled under the focused attack

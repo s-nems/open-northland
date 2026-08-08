@@ -1,4 +1,4 @@
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import type { AiPlayerModule } from '../index.js';
@@ -32,7 +32,7 @@ export { RALLY_HOLD_RADIUS_NODES, WAVE_FULL_SOLDIERS, WAVE_MIN_SOLDIERS } from '
  * Defence has no module flag of its own because the module list mirrors the original's `HAI_Disable*` map
  * flags, which name no defence toggle.
  */
-function runMilitary(world: World, ctx: SystemContext, player: number): readonly Command[] {
+function runMilitary(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return []; // mapless sim: no ground to march over
   const owned = ownedBuildings(world, player);

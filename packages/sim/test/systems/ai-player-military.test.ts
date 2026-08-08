@@ -90,7 +90,7 @@ function terrainOf(sim: Simulation): TerrainGraph {
 }
 
 function place(sim: Simulation, buildingType: number, at: { x: number; y: number }, owner = SEAT): void {
-  sim.enqueue({ kind: 'placeBuilding', buildingType, x: at.x, y: at.y, tribe: VIKING, owner });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x: at.x, y: at.y, tribe: VIKING, owner });
   sim.step();
 }
 
@@ -131,7 +131,7 @@ function spawnAt(
 ): Entity[] {
   const before = new Set(sim.world.query(Settler));
   for (const { x, y } of spots) {
-    sim.enqueue({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner });
   }
   sim.step();
   return [...sim.world.query(Settler)].filter((e) => !before.has(e));
@@ -238,7 +238,7 @@ describe('military module - the muster', () => {
     const rally = rallyOf(sim);
     const [stray] = spawn(sim, 1, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 2, y: rally.y });
     if (stray === undefined) throw new Error('setup: no soldier');
-    sim.enqueue({ kind: 'moveUnit', entity: stray, x: rally.x + 20, y: rally.y + 20 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: stray, x: rally.x + 20, y: rally.y + 20 });
     sim.step();
 
     expect(run(sim)).toEqual([]);
@@ -291,7 +291,7 @@ describe('military module - the muster', () => {
     const [waiting] = spawn(sim, 1, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 2, y: rally.y });
     if (waiting === undefined) throw new Error('setup: no recruit');
     sim.world.add(waiting, AssistantRecruit, { intent: 'trainSword', armed: false });
-    sim.enqueue({ kind: 'setJob', entity: waiting, jobType: FIST });
+    sim.enqueueSetup({ kind: 'setJob', entity: waiting, jobType: FIST });
     sim.step();
 
     // The armed men march; he is called in to the barracks to be armed.
@@ -559,7 +559,7 @@ describe('military module - the objective', () => {
     const sim = aiSim();
     place(sim, BARRACKS_TYPE, BARRACKS);
     const before = new Set(sim.world.query(Building));
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HQ_TYPE,
       x: FOE_HQ.x,
@@ -608,7 +608,7 @@ describe('military module - the live seat', { timeout: 60_000 }, () => {
     const rally = rallyOf(sim);
     place(sim, HQ_TYPE, { x: rally.x + 40, y: rally.y + 20 }, FOE);
     spawn(sim, WAR_BAND, { x: rally.x, y: rally.y + 1 });
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true, ...(modules ? { modules } : {}) });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true, ...(modules ? { modules } : {}) });
     return sim;
   }
 

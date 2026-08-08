@@ -114,7 +114,7 @@ export function ctxOf(sim: Simulation, tick = 0): SystemContext {
 }
 
 export function placeHq(sim: Simulation, x = HQ_X, y = HQ_Y): void {
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HQ_TYPE, x, y, tribe: VIKING, owner: SEAT });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ_TYPE, x, y, tribe: VIKING, owner: SEAT });
 }
 
 export function spawnMen(sim: Simulation, count: number, jobType = CIVILIST): void {
@@ -122,7 +122,7 @@ export function spawnMen(sim: Simulation, count: number, jobType = CIVILIST): vo
   for (let i = 0; i < count; i++) {
     const x = 4 + 2 * (i % 28);
     const y = 4 + 2 * Math.floor(i / 28);
-    sim.enqueue({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner: SEAT });
   }
 }
 
@@ -132,7 +132,7 @@ export function placeResources(
   remaining = 5,
 ): void {
   for (const spot of spots) {
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeResource',
       good: spot.good,
       x: spot.x,

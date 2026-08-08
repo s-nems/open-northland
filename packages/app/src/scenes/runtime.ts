@@ -19,16 +19,16 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
   scene.build(sim);
   // Scenes run with needs off so an inspection unit cannot starve mid-run. Enqueued after build so it
   // lands before tick 1's needsSystem; `SceneDefinition.needs` opts back in (FIFO, later write wins).
-  if (scene.needs !== true) sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+  if (scene.needs !== true) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   // Signpost confinement is on in every playable world; scenes enqueue it here, map worlds in their
   // builders.
-  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+  sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   // Enqueued here so the headless twin and the browser run share it; the browser `?progression=` flag
   // enqueues its override after this one (FIFO).
-  if (scene.progression === false) sim.enqueue({ kind: 'setProfessionProgression', enabled: false });
+  if (scene.progression === false) sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: false });
   // The browser `?fog=` flag enqueues its override after this one (FIFO).
   if (scene.fog !== undefined && scene.fog !== 'off') {
-    sim.enqueue({ kind: 'setFogMode', mode: FOG_MODE_BY_NAME[scene.fog] });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE_BY_NAME[scene.fog] });
   }
   return sim;
 }

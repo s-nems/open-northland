@@ -18,8 +18,8 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRuleOverri
  * stream byte-identical.
  */
 export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRuleOverrides): void {
-  if (overrides.fog !== null) sim.enqueue({ kind: 'setFogMode', mode: overrides.fog });
+  if (overrides.fog !== null) sim.enqueueSetup({ kind: 'setFogMode', mode: overrides.fog });
   if (overrides.progression !== null) {
-    sim.enqueue({ kind: 'setProfessionProgression', enabled: overrides.progression });
+    sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: overrides.progression });
   }
 }

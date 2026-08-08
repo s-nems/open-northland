@@ -1,4 +1,4 @@
-import type { Command } from '../../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
@@ -37,7 +37,7 @@ export function upkeepHolders(
   taken: TakenFlagNodes,
   relocateDue: boolean,
   builderJob: number | null,
-  commands: Command[],
+  commands: PlayerCommand[],
 ): void {
   for (const holder of holders) {
     const flag = liveWorkFlag(world, holder);

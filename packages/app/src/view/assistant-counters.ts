@@ -1,4 +1,4 @@
-import type { Command, Simulation } from '@open-northland/sim';
+import type { PlayerCommand, Simulation } from '@open-northland/sim';
 import type { AssistantCounterId } from '../hud/tool-panel/extras-menu.js';
 import { type AssistantCounterFace, SIM_KIND_BY_COUNTER_ID } from '../hud/tool-panel/extras-menu.js';
 import type { ExtrasCountersSeam } from '../hud/tool-panel/extras-window.js';
@@ -10,7 +10,7 @@ import type { ExtrasCountersSeam } from '../hud/tool-panel/extras-window.js';
 export function assistantCountersSeam(
   sim: Pick<Simulation, 'assistantCounters'>,
   player: number,
-  enqueue: (command: Command) => void,
+  enqueue: (command: PlayerCommand) => void,
   writable = true,
 ): ExtrasCountersSeam {
   return {

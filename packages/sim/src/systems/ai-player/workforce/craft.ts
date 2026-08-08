@@ -1,6 +1,6 @@
 import type { BuildingType } from '@open-northland/data';
 import { Building, CraftSelection, JobAssignment, Settler } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -32,8 +32,8 @@ interface RestrictedCrew {
  * every decision and issues a command only when the live selection differs. An empty result issues
  * nothing, because `setCraftGoods []` would mean "every product", the opposite of a restriction.
  */
-export function tuneCraftSelections(world: World, ctx: SystemContext, player: number): Command[] {
-  const commands: Command[] = [];
+export function tuneCraftSelections(world: World, ctx: SystemContext, player: number): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
   // Restricted workplace -> its operators, gathered first because a seat's share depends on how many
   // men the whole crew has. Insertion follows the canonical settler walk, so the seats and the emitted

@@ -130,7 +130,7 @@ describe('seedAnimalHerds (map populator)', () => {
     expect(cmds).toHaveLength(1);
 
     const sim = new Simulation({ seed: 1, content, map });
-    for (const c of cmds) sim.enqueue(c);
+    for (const c of cmds) sim.enqueueSetup(c);
     sim.step();
 
     const herd = [...sim.world.query(Settler, Health, Position)];

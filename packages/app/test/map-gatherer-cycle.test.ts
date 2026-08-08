@@ -73,7 +73,7 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
   it('fells, picks the trunk up and banks it at the flag - never leaves the kłoda lying', () => {
     const sim = new Simulation({ seed: 11, content: sandboxContent(), map: grassMap(40) });
     // A command-spawned gatherer - the map path: the spawn handler plants its work flag at its feet.
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType: JOB_COLLECTOR,
       x: 40,
@@ -129,7 +129,7 @@ describe('map-style gathering cycle (sandbox content, footprinted trees, dense f
     // stays TERRAIN_BLOCKED forever and the trunk lying there is unreachable - the reported stall.
     const grid: TerrainMap = buildCollisionTerrain(mapFile, ir, mapResourceObjectNames(ir));
     const sim = new Simulation({ seed: 12, content: sandboxContent(), map: grid });
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType: JOB_COLLECTOR,
       x: 40,

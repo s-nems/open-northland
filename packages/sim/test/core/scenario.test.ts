@@ -39,7 +39,7 @@ describe('integration: deterministic over many ticks', () => {
     // the RNG word in, so comparing seeds without a draw only ever compares the seeds themselves.
     const runWithSeed = (seed: number): Simulation => {
       const sim = new Simulation({ seed, content: testContent(), map: grassNodeMap(5, 1) });
-      sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+      sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
       sim.run(50);
       return sim;
     };

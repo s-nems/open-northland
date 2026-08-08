@@ -39,7 +39,7 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HOME_00, BUTTON_HOME.x, BUTTON_HOME.y, HUMAN_PLAYER);
   spawnSandboxSettler(sim, JOB_BUILDER, BUILDER.x, BUILDER.y, HUMAN_PLAYER);
   spawnSandboxSettler(sim, JOB_COLLECTOR, COLLECTOR.x, COLLECTOR.y, HUMAN_PLAYER);
-  sim.enqueue({ kind: 'upgradeBuilding', building: home });
+  sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
 }
 
 /** The scene places at most one next-tier building. */

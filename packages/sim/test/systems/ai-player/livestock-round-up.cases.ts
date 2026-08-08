@@ -35,7 +35,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
   function tiledSim(): Simulation {
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
     sim.step();
     plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
     for (const [q, r] of [
@@ -67,7 +67,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
   it('finishes the signpost lattice before rounding anything up', () => {
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
     sim.step();
     placeAnimal(sim, CENTER.x + 4, CENTER.y);
 
@@ -122,7 +122,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     const standingOrder = (cows: number): number => {
       const sim = aiSim();
       placeHq(sim);
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: BARRACKS_TYPE,
         x: 40,
@@ -132,7 +132,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
       });
       spawnMen(sim, 20, BUILDER);
       for (let i = 0; i < 20; i++) {
-        sim.enqueue({
+        sim.enqueueSetup({
           kind: 'spawnSettler',
           jobType: WOMAN,
           x: 4 + 2 * i,

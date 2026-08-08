@@ -37,7 +37,7 @@ describe('signpost-coverage module (guideBuild)', () => {
   it('starts the lattice beside the HQ, then walks the six-post ring outward', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
     sim.step();
 
     const commands = [...scoutModule.run(sim.world, ctxOf(sim), SEAT)];
@@ -63,7 +63,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     // exactly on it - the post then blocks where the HQ's settlers enter and leave.
     const sim = new Simulation({ seed: 1, content: doorHqContent(), map: grassNodeMap(64, 32) });
     placeHq(sim);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
     sim.step();
 
     const ctx = { ...ctxOf(sim), content: doorHqContent() };
@@ -81,7 +81,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     // The chooser must refuse the provably sealed spot up front and settle nearby instead.
     const sim = new Simulation({ seed: 1, content: doorHqContent(), map: grassNodeMap(64, 32) });
     placeHq(sim);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
     sim.step();
 
     // Seal the centre spot (doorway - 2, proven by the door test above) inside a ring of its eight
@@ -117,7 +117,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     // entirely. A pocketed reference must disable the veto, not invert it.
     const sim = new Simulation({ seed: 1, content: doorHqContent(), map: grassNodeMap(64, 32) });
     placeHq(sim);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
     sim.step();
 
     // Wall the door's seven open lattice neighbours (the eighth, east, is the HQ body): the door
@@ -148,7 +148,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     const CENTER = { x: 128, y: 128 };
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
     sim.step();
     // The centre and all six first-ring targets stand satisfied - the always-wanted lattice is done.
     plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
@@ -167,7 +167,7 @@ describe('signpost-coverage module (guideBuild)', () => {
 
     // A new building near the second ring's east corner makes exactly that outer target wanted.
     const reach = signpostLatticeOffset(2, 0);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
       x: CENTER.x + reach.dx - 2,
@@ -202,7 +202,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     // `moveUnit` cancelled the half-eaten meal - the scout ate forever and never fed.
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
     sim.step();
     const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
     if (scout === undefined) throw new Error('expected a spawned scout');
@@ -228,7 +228,7 @@ describe('signpost-coverage module (guideBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     // No resources and one man: the lattice has no work left to want, so the scout is retirable.
-    sim.enqueue({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
     sim.step();
     const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
     if (scout === undefined) throw new Error('expected a spawned scout');

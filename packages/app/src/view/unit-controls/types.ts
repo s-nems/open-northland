@@ -8,7 +8,7 @@ import type {
   EntityBounds,
   SpriteSheet,
 } from '@open-northland/render';
-import type { Command, EquipPickEntry, WorldSnapshot } from '@open-northland/sim';
+import type { EquipPickEntry, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
@@ -31,7 +31,7 @@ export interface UnitControlsOptions {
   readonly sheet?: SpriteSheet;
   /** Owner slot to team-colour slot; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
-  readonly enqueue: (command: Command) => void;
+  readonly enqueue: (command: PlayerCommand) => void;
   /** Re-centre the main view on a world-px point at the current zoom; the hud layer never reaches the
    *  camera itself. */
   readonly centerOn: (worldX: number, worldY: number) => void;

@@ -1,5 +1,5 @@
 import type { Camera, ElevationField } from '@open-northland/render';
-import type { Command } from '@open-northland/sim';
+import type { Command, PlayerCommand } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
@@ -25,7 +25,9 @@ export interface GameToolPanelDeps {
   readonly uiscale: number;
   readonly camera: () => Camera;
   /** A closure, so it follows a scene restart. */
-  readonly enqueue: (command: Command) => void;
+  readonly enqueue: (command: PlayerCommand) => void;
+  /** The goods palette's sandbox world-edit seam; a closure, so it follows a scene restart. */
+  readonly enqueueAdmin: (command: Command) => void;
   /** Gates the placement click; a closure, so it follows a scene restart. */
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
   /** A placement click outside these bounds is rejected, never clamped to the border. */
@@ -130,6 +132,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     tribe: deps.tribe,
     owner: deps.owner,
     enqueue: deps.enqueue,
+    enqueueAdmin: deps.enqueueAdmin,
     grants: deps.grants,
     counters: deps.counters,
     screenToTile: clientToTile,

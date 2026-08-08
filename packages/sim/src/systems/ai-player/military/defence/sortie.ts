@@ -1,5 +1,5 @@
 import { Stance } from '../../../../components/index.js';
-import type { Command } from '../../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { MILITARY_MODE } from '../../../readviews/index.js';
@@ -20,8 +20,8 @@ export function sortieOrders(
   terrain: TerrainGraph,
   free: readonly Entity[],
   raider: Raider,
-): Command[] {
-  const commands: Command[] = [];
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
   const goal = terrain.nodeAtClamped(raider.x, raider.y);
   const reachable = terrain.componentOf(goal);
   for (const e of free) {

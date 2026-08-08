@@ -33,7 +33,7 @@ export function placeSandboxBuilding(
 ): void {
   // Scenes author in whole tiles; the command seam speaks half-cell nodes.
   const node = cellAnchorNode(x, y);
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType: resolveVikingBuilding(ref).typeId,
     x: node.hx,

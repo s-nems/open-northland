@@ -64,7 +64,7 @@ describe.runIf(hasRealIr())('authored decoded-map humans - gathering XP gates', 
     );
     expect(node).not.toBeNull();
     if (node === null) return;
-    sim.enqueue({ kind: 'setWorkFlag', entity: collector, x: 22 * 2, y: 22 * 2 });
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: collector, x: 22 * 2, y: 22 * 2 });
     const before = sim.world.get(node, Resource).remaining;
     sim.run(800);
     expect(sim.world.get(node, Resource).remaining).toBe(before); // gated: a fresh collector digs no iron

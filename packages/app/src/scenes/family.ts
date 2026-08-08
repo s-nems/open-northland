@@ -69,16 +69,16 @@ function build(sim: Simulation): void {
 
   placeSandboxBuilding(sim, HOME_REF, HOME.x, HOME.y);
   const pile = cellAnchorNode(FOOD_PILE.x, FOOD_PILE.y);
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'dropGood',
     good: foodGoodType(sim),
     x: pile.hx,
     y: pile.hy,
     amount: FOOD_PILE.amount,
   });
-  sim.enqueue({ kind: 'marry', entity: bride });
-  sim.enqueue({ kind: 'assignHouse', entity: wife, house: HOME_ENTITY });
-  sim.enqueue({ kind: 'makeChild', entity: wife, child: 'female' });
+  sim.enqueueSetup({ kind: 'marry', entity: bride });
+  sim.enqueueSetup({ kind: 'assignHouse', entity: wife, house: HOME_ENTITY });
+  sim.enqueueSetup({ kind: 'makeChild', entity: wife, child: 'female' });
 }
 
 export const familyScene: SceneDefinition = {

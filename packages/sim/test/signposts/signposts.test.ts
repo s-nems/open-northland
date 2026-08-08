@@ -75,7 +75,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
   it('a scout standing at the goal swings the build-guide hammer once and the signpost appears', () => {
     const sim = freshSim();
     const scout = makeUnit(sim, 4, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 }); // the scout's own node
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 }); // the scout's own node
     let sawSwing = false;
     for (let t = 0; t < 60 && signposts(sim).length === 0; t++) {
       sim.step();
@@ -95,7 +95,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
   it('a scout walks to a distant goal first, then erects there', () => {
     const sim = freshSim();
     const scout = makeUnit(sim, 2, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 16, y: 4 }); // 4 tiles east of the scout
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 16, y: 4 }); // 4 tiles east of the scout
     stepUntilSignpost(sim, 400);
     const posts = signposts(sim);
     expect(posts.length).toBe(1);
@@ -106,7 +106,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
   it('a non-scout issuer is skipped', () => {
     const sim = freshSim();
     const woodcutter = makeUnit(sim, 4, 2, WOODCUTTER);
-    sim.enqueue({ kind: 'placeSignpost', entity: woodcutter, x: 8, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: woodcutter, x: 8, y: 4 });
     for (let t = 0; t < 40; t++) sim.step();
     expect(signposts(sim).length).toBe(0);
   });
@@ -114,19 +114,19 @@ describe('placeSignpost - the scout erects a guidepost', () => {
   it('rejects a second same-player post inside the spacing circle, accepts one beyond it', () => {
     const sim = freshSim(96, 8);
     const scout = makeUnit(sim, 4, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
     stepUntilSignpost(sim, 60);
     expect(signposts(sim).length).toBe(1);
 
     // Inside the spacing radius (a few nodes away) - the command is skipped outright.
     const near = makeUnit(sim, 6, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: near, x: 12, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: near, x: 12, y: 4 });
     for (let t = 0; t < 60; t++) sim.step();
     expect(signposts(sim).length).toBe(1);
 
     // Beyond the spacing radius - a second post rises.
     const far = makeUnit(sim, 4 + SIGNPOST_SPACING_RADIUS_NODES, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: far, x: 8 + 2 * SIGNPOST_SPACING_RADIUS_NODES, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: far, x: 8 + 2 * SIGNPOST_SPACING_RADIUS_NODES, y: 4 });
     for (let t = 0; t < 400 && signposts(sim).length < 2; t++) sim.step();
     expect(signposts(sim).length).toBe(2);
   });
@@ -136,7 +136,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     const scout = makeUnit(sim, 4, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
     stepUntilSignpost(sim, 60);
     const nearby = terrain.nodeAt(12, 4);
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(false);
@@ -148,7 +148,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     const scout = makeUnit(sim, 4, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
     stepUntilSignpost(sim, 60);
     const probe = sim.signpostProbe(P0);
     if (probe === null) throw new Error('mapped sim has a probe');
@@ -168,7 +168,7 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     const scout = makeUnit(sim, 4, 2, SCOUT);
-    sim.enqueue({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 8, y: 4 });
     stepUntilSignpost(sim, 60);
     const post = signposts(sim)[0];
     if (post === undefined) throw new Error('post erected');
@@ -176,12 +176,12 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(false);
 
     // Aiming at the scout is a skip, never a destroy - the kind gate.
-    sim.enqueue({ kind: 'demolishSignpost', signpost: scout });
+    sim.enqueueSetup({ kind: 'demolishSignpost', signpost: scout });
     sim.step();
     expect(sim.world.has(scout, Settler)).toBe(true);
     expect(signposts(sim).length).toBe(1);
 
-    sim.enqueue({ kind: 'demolishSignpost', signpost: post });
+    sim.enqueueSetup({ kind: 'demolishSignpost', signpost: post });
     sim.step();
     expect(signposts(sim).length).toBe(0);
     // The spacing circle fell with the post - the spot is placeable again.
@@ -215,7 +215,7 @@ describe('signpostNetwork - connected groups', () => {
 describe('signpost fog vision - the permanent recon reveal', () => {
   it('a standing signpost keeps its circle VISIBLE in RECON with no unit nearby', () => {
     const sim = freshSim(64, 16);
-    sim.enqueue({ kind: 'setFogMode', mode: FOG_MODE.RECON });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON });
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(8), y: fx.fromInt(8) });
     sim.world.add(e, Owner, { player: P0 });

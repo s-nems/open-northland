@@ -5,7 +5,7 @@ import {
   PlayerOrder,
   UnderConstruction,
 } from '../../../components/index.js';
-import type { Command } from '../../../core/commands/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried } from '../../family/eligibility.js';
@@ -47,7 +47,7 @@ function runWorkforce(
   ctx: SystemContext,
   player: number,
   order: readonly BuildOrderEntry[],
-): readonly Command[] {
+): readonly PlayerCommand[] {
   const builderJob = builderJobOf(ctx);
   const base = seatBaseOf(world, ctx, player);
   if (base === null) return rebuildCrew(world, ctx, player, builderJob);
@@ -83,7 +83,7 @@ function rebuildCrew(
   ctx: SystemContext,
   player: number,
   builderJob: number | null,
-): readonly Command[] {
+): readonly PlayerCommand[] {
   if (!ownedBuildings(world, player).some((e) => world.has(e, UnderConstruction))) return [];
   const force = new SpareForce(rebuildHands(world, ctx, player));
   return [
@@ -118,8 +118,8 @@ function allocateScout(
   scouts: readonly Entity[],
   force: SpareForce,
   builderJob: number | null,
-): Command[] {
-  const commands: Command[] = [];
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
   const scoutJob = scoutJobType(ctx.content);
   // The round-up probes first even though it ranks second: a satisfied lattice has to scan every ring
   // to answer null, so the cheaper herd scan short-circuits it.

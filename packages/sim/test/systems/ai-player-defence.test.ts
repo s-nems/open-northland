@@ -88,7 +88,7 @@ function terrainOf(sim: Simulation): TerrainGraph {
 
 function place(sim: Simulation, buildingType: number, at: { x: number; y: number }, owner = SEAT): Entity {
   const before = new Set(sim.world.query(Building));
-  sim.enqueue({ kind: 'placeBuilding', buildingType, x: at.x, y: at.y, tribe: VIKING, owner });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x: at.x, y: at.y, tribe: VIKING, owner });
   sim.step();
   const placed = [...sim.world.query(Building)].find((e) => !before.has(e));
   if (placed === undefined) throw new Error(`setup: building ${buildingType} was refused`);
@@ -105,7 +105,7 @@ function spawn(
 ): Entity[] {
   const before = new Set(sim.world.query(Settler));
   for (let i = 0; i < count; i++) {
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'spawnSettler',
       jobType,
       x: at.x + 2 * (i % 8),
@@ -126,7 +126,7 @@ function placeSite(
   owner = SEAT,
 ): Entity {
   const before = new Set(sim.world.query(Building));
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType,
     x: at.x,
@@ -171,7 +171,7 @@ function run(sim: Simulation, seed = EAGER_SEED): Command[] {
 }
 
 function apply(sim: Simulation, commands: readonly Command[]): void {
-  for (const command of commands) sim.enqueue(command);
+  for (const command of commands) sim.enqueueSetup(command);
   sim.step();
 }
 
@@ -268,7 +268,7 @@ describe('ai defence - the alarm', () => {
     const at = nodeOf(sim, hq);
     const tower = place(sim, TOWER_TYPE, { x: at.x + watchOf(sim) - 8, y: at.y }, FOE);
     const archer = standOff(sim, tower, 4, BOWMAN);
-    sim.enqueue({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: archer, building: tower, jobPriority: [BOWMAN] });
     for (let i = 0; i < WALK_IN_TICKS; i++) sim.step();
     // He is untargetable up there (`conflict/targeting.ts`), so a town frozen in cover over him would never
     // thaw and the band sent after him could never reach him.
@@ -288,13 +288,13 @@ describe('ai defence - the alarm', () => {
     const sim = aiSim();
     const hq = place(sim, HQ_TYPE, SEAT_HQ);
     standOff(sim, hq, watchOf(sim), SPEARMAN);
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     apply(sim, run(sim));
     expect(sim.world.has(hq, DefenceMode)).toBe(true);
 
     // Nothing else ever lowers it, so a seat that stops deciding would hold its people in cover for the
     // rest of the game.
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: false });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: false });
     sim.step();
     expect(sim.world.has(hq, DefenceMode)).toBe(false);
   });
@@ -303,10 +303,10 @@ describe('ai defence - the alarm', () => {
     const sim = aiSim();
     const hq = place(sim, HQ_TYPE, SEAT_HQ);
     standOff(sim, hq, watchOf(sim), SPEARMAN);
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true });
     apply(sim, run(sim));
 
-    sim.enqueue({ kind: 'setPlayerAi', player: SEAT, enabled: true, modules: { military: false } });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: SEAT, enabled: true, modules: { military: false } });
     sim.step();
     expect(sim.world.has(hq, DefenceMode)).toBe(false);
   });

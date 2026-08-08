@@ -56,7 +56,7 @@ function build(sim: Simulation): void {
     }
   }
   // Raised at build, so the browser view plays the scatter to cover from tick 0.
-  for (const tower of towers) sim.enqueue({ kind: 'setDefenceMode', building: tower, enabled: true });
+  for (const tower of towers) sim.enqueueSetup({ kind: 'setDefenceMode', building: tower, enabled: true });
 }
 
 function alarmedTowers(sim: Simulation): Entity[] {

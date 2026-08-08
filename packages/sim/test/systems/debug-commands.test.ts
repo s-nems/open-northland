@@ -81,7 +81,7 @@ describe('debugKill', () => {
     const sim = fresh();
     const victim = unitWithHealth(sim, 50);
 
-    sim.enqueue({ kind: 'debugKill', target: victim });
+    sim.enqueueSetup({ kind: 'debugKill', target: victim });
     sim.step();
 
     expect(sim.world.has(victim, Health)).toBe(false); // reaped (destroyed), not a lingering 0-HP zombie
@@ -94,7 +94,7 @@ describe('debugKill', () => {
     sim.world.add(store, Building, { buildingType: GRANARY, tribe: VIKING, built: ONE, level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map() });
 
-    sim.enqueue({ kind: 'debugKill', target: store });
+    sim.enqueueSetup({ kind: 'debugKill', target: store });
     expect(() => sim.step()).not.toThrow();
     expect(sim.world.has(store, Building)).toBe(true); // still standing
   });
@@ -108,7 +108,7 @@ describe('debugKill', () => {
     sim.world.add(site, Stockpile, { amounts: new Map() });
     sim.world.add(site, Health, { hitpoints: 1, max: GRANARY_MAX_HP });
 
-    sim.enqueue({ kind: 'debugKill', target: site });
+    sim.enqueueSetup({ kind: 'debugKill', target: site });
     sim.step();
 
     // Gated on Settler: the site is NOT reaped by the kill (that would bypass demolish's worker-unbind
@@ -124,12 +124,12 @@ describe('debugSetNeeds', () => {
   it('sets only the named needs (percent → 0..ONE Fixed); omitted needs are left untouched', () => {
     const sim = fresh();
     // Freeze needs first so the NeedsSystem's per-tick rise can't perturb the values we set.
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     sim.step();
 
     const start = fx.fromInt(0); // a sentinel the omitted needs must keep
     const settler = settlerWithNeeds(sim, start);
-    sim.enqueue({ kind: 'debugSetNeeds', target: settler, hunger: 100, fatigue: 50 });
+    sim.enqueueSetup({ kind: 'debugSetNeeds', target: settler, hunger: 100, fatigue: 50 });
     sim.step();
 
     const s = sim.world.get(settler, Settler);
@@ -142,7 +142,7 @@ describe('debugSetNeeds', () => {
   it('a non-settler target is a no-op', () => {
     const sim = fresh();
     const notASettler = healthOnlyEntity(sim, 10);
-    sim.enqueue({ kind: 'debugSetNeeds', target: notASettler, hunger: 100 });
+    sim.enqueueSetup({ kind: 'debugSetNeeds', target: notASettler, hunger: 100 });
     expect(() => sim.step()).not.toThrow();
   });
 });
@@ -154,7 +154,7 @@ describe('debugFillStockpile', () => {
     sim.world.add(store, Building, { buildingType: WORKPLACE, tribe: VIKING, built: ONE, level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map() });
 
-    sim.enqueue({ kind: 'debugFillStockpile', target: store });
+    sim.enqueueSetup({ kind: 'debugFillStockpile', target: store });
     sim.step();
 
     const amounts = sim.world.get(store, Stockpile).amounts;
@@ -164,7 +164,7 @@ describe('debugFillStockpile', () => {
   it('a non-building target is a no-op', () => {
     const sim = fresh();
     const settler = settlerWithNeeds(sim, fx.fromInt(0));
-    sim.enqueue({ kind: 'debugFillStockpile', target: settler });
+    sim.enqueueSetup({ kind: 'debugFillStockpile', target: settler });
     expect(() => sim.step()).not.toThrow();
   });
 });
@@ -179,7 +179,7 @@ describe('debugCompleteConstruction', () => {
     sim.world.add(site, Stockpile, { amounts: new Map() });
     sim.world.add(site, Health, { hitpoints: 1, max: GRANARY_MAX_HP });
 
-    sim.enqueue({ kind: 'debugCompleteConstruction', target: site });
+    sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: site });
     sim.step();
 
     expect(sim.world.get(site, Building).built).toBe(ONE);
@@ -196,7 +196,7 @@ describe('debugCompleteConstruction', () => {
     sim.world.add(built, Building, { buildingType: GRANARY, tribe: VIKING, built: ONE, level: 0 });
     sim.world.add(built, Stockpile, { amounts: new Map() });
 
-    sim.enqueue({ kind: 'debugCompleteConstruction', target: built });
+    sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: built });
     expect(() => sim.step()).not.toThrow();
     expect(sim.world.has(built, UnderConstruction)).toBe(false);
   });

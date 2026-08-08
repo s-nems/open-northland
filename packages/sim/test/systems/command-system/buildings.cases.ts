@@ -29,7 +29,7 @@ describe('CommandSystem - buildings and demolition', () => {
     const sim = fresh();
     // Command coords are half-cell nodes; cell (3,4)'s anchor node (6,8) sits exactly on tile (3,4).
     const anchor = cellAnchorNode(3, 4);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HEADQUARTERS,
       x: anchor.hx,
@@ -59,7 +59,7 @@ describe('CommandSystem - buildings and demolition', () => {
 
   it('placeBuilding initialGoods (authored addgoods) add on top of the type-default seeding', () => {
     const sim = fresh();
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HEADQUARTERS,
       x: 3,
@@ -78,7 +78,7 @@ describe('CommandSystem - buildings and demolition', () => {
 
   it('placeBuilding initialGoods are ignored for an under-construction site (empty hold)', () => {
     const sim = fresh();
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HEADQUARTERS,
       x: 3,
@@ -93,15 +93,22 @@ describe('CommandSystem - buildings and demolition', () => {
 
   it('placeBuilding with a valid owner stamps an Owner on the building', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 3, y: 4, tribe: VIKING, owner: 2 });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      x: 3,
+      y: 4,
+      tribe: VIKING,
+      owner: 2,
+    });
     sim.step();
     expect(sim.world.get(nthEntity(sim, 0), Owner)).toEqual({ player: 2 });
   });
 
   it('skips a command with an unknown type id (recoverable bad input - no throw, still logged)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: 999, x: 0, y: 0, tribe: VIKING });
-    sim.enqueue({ kind: 'spawnSettler', jobType: 999, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: 999, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: 999, x: 0, y: 0, tribe: VIKING });
     expect(() => sim.step()).not.toThrow();
 
     expect(sim.world.entityCount).toBe(0); // nothing created from bad input
@@ -110,12 +117,12 @@ describe('CommandSystem - buildings and demolition', () => {
 
   it('demolish destroys a placed building (ids are never recycled)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 0, y: 0, tribe: VIKING });
     sim.step();
     const e = nthEntity(sim, 0);
     expect(sim.world.isAlive(e)).toBe(true);
 
-    sim.enqueue({ kind: 'demolish', building: e });
+    sim.enqueueSetup({ kind: 'demolish', building: e });
     sim.step();
     expect(sim.world.isAlive(e)).toBe(false);
     expect(sim.world.entityCount).toBe(0);
@@ -127,13 +134,13 @@ describe('CommandSystem - buildings and demolition', () => {
 
   it('demolish aimed at a non-building entity is skipped (never destroys a settler)', () => {
     const sim = fresh();
-    sim.enqueue({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 0, y: 0, tribe: VIKING });
     sim.step();
     const settler = nthEntity(sim, 0);
 
     // A stale/hostile command targeting a live NON-building must validate the target kind at
     // execution (in lockstep any peer can send any command) - skip, don't destroy.
-    sim.enqueue({ kind: 'demolish', building: settler });
+    sim.enqueueSetup({ kind: 'demolish', building: settler });
     sim.step();
     expect(sim.world.isAlive(settler)).toBe(true);
     expect(sim.commands.log).toHaveLength(2); // still logged for faithful replay
@@ -143,15 +150,15 @@ describe('CommandSystem - buildings and demolition', () => {
     const sim = fresh();
     // A sawmill (type 2, one carpenter slot) and its bound carpenter. Employment is directed, so the
     // binding is stamped here rather than grown by the schedule.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: SAWMILL, x: 5, y: 5, tribe: VIKING });
-    sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SAWMILL, x: 5, y: 5, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CARPENTER, x: 5, y: 5, tribe: VIKING });
     sim.step();
     const mill = nthEntity(sim, 0);
     const worker = nthEntity(sim, 1);
     sim.world.add(worker, JobAssignment, { workplace: mill });
 
     // Demolish the mill: its operator must be released, not left latched to a dead entity.
-    sim.enqueue({ kind: 'demolish', building: mill });
+    sim.enqueueSetup({ kind: 'demolish', building: mill });
     sim.step();
     expect(sim.world.isAlive(mill)).toBe(false);
     expect(sim.world.has(worker, JobAssignment)).toBe(false); // binding cleared
@@ -165,15 +172,15 @@ describe('CommandSystem - buildings and demolition', () => {
   it.skip('gates a tech-locked building: skipped (still logged) until the enabling job exists', () => {
     const sim = fresh();
     // No carpenter yet - the SMITHY is locked behind `jobEnablesHouse 2 4`, so placement is skipped.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
     sim.step();
     expect(sim.world.entityCount).toBe(0); // gated out - nothing built
     expect(sim.commands.log).toHaveLength(1); // but still recorded for faithful replay
 
     // Spawn the enabling carpenter, then retry: now the smithy unlocks and is placed.
-    sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: VIKING });
     sim.step();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
     sim.step();
 
     const buildings = [...sim.world.query(Building)];
@@ -185,9 +192,9 @@ describe('CommandSystem - buildings and demolition', () => {
   it.skip('does not gate the building for a different tribe whose carpenter is enabling', () => {
     const sim = fresh();
     // A carpenter exists, but in a DIFFERENT tribe - the smithy stays gated for the viking tribe.
-    sim.enqueue({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: FRANK });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CARPENTER, x: 1, y: 0, tribe: FRANK });
     sim.step();
-    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: VIKING });
     sim.step();
     expect([...sim.world.query(Building)]).toHaveLength(0); // wrong tribe's carpenter doesn't unlock it
   });
@@ -195,7 +202,7 @@ describe('CommandSystem - buildings and demolition', () => {
   it('leaves ungated buildings (the headquarters) placeable with no enabling settler', () => {
     const sim = fresh();
     // The HQ carries no `jobEnablesHouse` edge, so it places without any settler present.
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 0, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 0, y: 0, tribe: VIKING });
     sim.step();
     expect([...sim.world.query(Building)]).toHaveLength(1);
   });
@@ -204,7 +211,7 @@ describe('CommandSystem - buildings and demolition', () => {
     const sim = fresh();
     // The FRANK tribe has no TribeType in the fixture, so its tech-graph gates nothing - even the
     // otherwise-locked smithy places (a map with no tribe data still gets its start buildings).
-    sim.enqueue({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: FRANK });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: SMITHY, x: 0, y: 0, tribe: FRANK });
     sim.step();
     expect([...sim.world.query(Building)]).toHaveLength(1);
   });

@@ -61,7 +61,7 @@ describe('assistantGrantsSeam', () => {
 describe('grantAssistantDefaults', () => {
   it('switches all four grants ON for the seat at world start', () => {
     const sent: Command[] = [];
-    grantAssistantDefaults({ enqueue: (c) => sent.push(c) }, CONTENT, [1]);
+    grantAssistantDefaults({ enqueueSetup: (c) => sent.push(c) }, CONTENT, [1]);
     const grants = sent.filter((c) => c.kind === 'setAssistantGrant');
     expect(grants.map((c) => c.goodType).sort((a, b) => a - b)).toEqual([
       SHOES,
@@ -74,7 +74,7 @@ describe('grantAssistantDefaults', () => {
 
   it('gives every played seat all four grants, a repeated seat only once', () => {
     const sent: Command[] = [];
-    grantAssistantDefaults({ enqueue: (c) => sent.push(c) }, CONTENT, [0, 2, 0]);
+    grantAssistantDefaults({ enqueueSetup: (c) => sent.push(c) }, CONTENT, [0, 2, 0]);
     const perSeat = new Map<number, number[]>();
     for (const c of sent.filter((c) => c.kind === 'setAssistantGrant')) {
       perSeat.set(

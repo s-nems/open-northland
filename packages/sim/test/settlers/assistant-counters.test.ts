@@ -227,7 +227,7 @@ function setCounter(
   infinite = false,
   player = PLAYER,
 ): void {
-  sim.enqueue({ kind: 'setAssistantCounter', player, counter, value, infinite });
+  sim.enqueueSetup({ kind: 'setAssistantCounter', player, counter, value, infinite });
 }
 
 function run(sim: Simulation, ticks: number): void {
@@ -326,7 +326,14 @@ describe('the training queue', () => {
   it('normalizes the spawn command idle sentinel to the trade-less null shape', () => {
     const sim = trainSim();
     // No barracks and no workplace on the map, so nothing employs him before the read.
-    sim.enqueue({ kind: 'spawnSettler', jobType: IDLE_SPAWN_JOB, x: 3, y: 3, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: IDLE_SPAWN_JOB,
+      x: 3,
+      y: 3,
+      tribe: VIKING,
+      owner: PLAYER,
+    });
     run(sim, 1);
     const spawned = [...sim.world.query(Settler)];
     expect(spawned).toHaveLength(1);
@@ -362,7 +369,7 @@ describe('the training queue', () => {
     runUntil(sim, () => sim.world.has(man, TrainingOrder), BEAT_TICKS, 'dispatched');
 
     // The player walks him off: the drill order dies, the booking goes stale, the counter is unpaid.
-    sim.enqueue({ kind: 'moveUnit', entity: man, x: 5, y: 3 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: man, x: 5, y: 3 });
     runUntil(sim, () => !sim.world.has(man, TrainingOrder), BEAT_TICKS, 'interrupted');
     expect(sim.assistantCounters(PLAYER).trainSoldiers.value).toBe(1);
 
@@ -449,7 +456,7 @@ describe('the training queue', () => {
     runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SWORDSMAN_LONG, 3000, 'swordsman');
     runUntil(sim, () => !sim.world.has(recruit, AssistantRecruit), 2000, 'booking released');
 
-    sim.enqueue({ kind: 'unequipGood', entity: recruit, group: 'weapon', slot: 0 });
+    sim.enqueueSetup({ kind: 'unequipGood', entity: recruit, group: 'weapon', slot: 0 });
     runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SOLDIER, 1000, 'demotion');
     expect(sim.world.has(recruit, Weapon)).toBe(false);
     expect(sim.world.tryGet(recruit, Equipment)?.weapon ?? null).toBe(null);
@@ -457,7 +464,7 @@ describe('the training queue', () => {
 
   it('shops for the weapon inside the signpost network instead of crossing the map', () => {
     const sim = trainSim(grassMap(64, 6));
-    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
     barracksAt(sim, 6, 3);
     const recruit = settlerAt(sim, CIVILIST, 3, 3);
@@ -486,7 +493,7 @@ describe('the training queue', () => {
 
   it('keeps him inside the network for the whole walk, not just the moment he is sent', () => {
     const sim = trainSim(grassMap(64, 6));
-    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
     barracksAt(sim, 6, 3);
     const recruit = settlerAt(sim, CIVILIST, 3, 3);
@@ -563,7 +570,7 @@ function coupleSim(couples: number): { sim: Simulation; wives: Entity[] } {
   setNeedsEnabled(sim.world, false);
   const wives: Entity[] = [];
   for (let i = 0; i < couples; i++) {
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HOME, x: 6 + 8 * i, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 6 + 8 * i, y: 0, tribe: VIKING });
   }
   sim.step();
   const homes = [...sim.world.query(Building)].sort((a, b) => a - b);
@@ -665,7 +672,7 @@ describe('the birth queue', () => {
     const wife = wives[0];
     if (wife === undefined) throw new Error('setup');
     setCounter(sim, 'extraMen', 2);
-    sim.enqueue({ kind: 'makeChild', entity: wife, child: 'male' }); // beats the assistant to the womb
+    sim.enqueueSetup({ kind: 'makeChild', entity: wife, child: 'male' }); // beats the assistant to the womb
     sim.step();
     expect(sim.world.has(wife, AssistantChildOrder)).toBe(false);
 

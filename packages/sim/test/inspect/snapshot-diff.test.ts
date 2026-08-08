@@ -165,7 +165,7 @@ describe('diffSnapshots', () => {
     let before: WorldSnapshot | undefined;
     let after: WorldSnapshot | undefined;
     for (let tick = 1; tick <= 5; tick++) {
-      for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+      for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
       sim.step();
       if (tick === 2) before = sim.snapshot(); // before the settler spawns at tick 3
       if (tick === 5) after = sim.snapshot();

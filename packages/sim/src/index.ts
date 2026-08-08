@@ -4,8 +4,21 @@ export * as components from './components/index.js';
 export { FOG_MODE, type FogMode } from './components/rules.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
-export type { LoggedCommand } from './core/command-queue.js';
-export type { Command, SettlerEquipment, SettlerEquipmentSlot } from './core/commands/index.js';
+export type { LoggedCommand, QueuedCommand } from './core/command-queue.js';
+export {
+  adminCommand,
+  aiCommand,
+  COMMAND_ENVELOPE_VERSION,
+  type Command,
+  type CommandEnvelope,
+  type CommandOrigin,
+  type PlayerCommand,
+  playerCommand,
+  type SettlerEquipment,
+  type SettlerEquipmentSlot,
+  setupCommand,
+} from './core/commands/index.js';
+export { parseCommandEnvelope, parseCommandLog } from './core/commands/parse.js';
 export { constructionBillForType, harvestJobsOf } from './core/content-index.js';
 export { EventBuffer, eventNode, type SimEvent, type SimEventKind } from './core/events.js';
 export { type Fixed, fx, ONE } from './core/fixed.js';

@@ -37,7 +37,7 @@ function build(sim: Simulation): void {
   placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, 9, 12, HUMAN_PLAYER);
   for (const pile of YARD_PILES) {
     const node = cellAnchorNode(pile.x, pile.y);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'dropGood',
       good: goodBySlug(sim, pile.slug),
       x: node.hx,

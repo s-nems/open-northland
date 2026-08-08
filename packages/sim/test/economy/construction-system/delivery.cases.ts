@@ -347,7 +347,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     }
     const builder = builderAt(sim, 1, 1);
     sim.world.add(builder, Owner, { player: 0 });
-    sim.enqueue({ kind: 'assignWorker', entity: builder, building: far, jobPriority: [BUILDER] });
+    sim.enqueueSetup({ kind: 'assignWorker', entity: builder, building: far, jobPriority: [BUILDER] });
 
     sim.step();
     expect(sim.world.get(builder, JobAssignment).workplace).toBe(far); // the site took him as staff
@@ -373,8 +373,8 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     const carrier = loadedCarrierAt(sim, 0, 2, WOOD, 1); // hauls, but its job can't run the build atomic
     sim.world.add(builder, Owner, { player: 0 }); // player commands steer only OWNED settlers
     sim.world.add(carrier, Owner, { player: 0 });
-    sim.enqueue({ kind: 'assignBuilder', entity: builder, site: far });
-    sim.enqueue({ kind: 'assignBuilder', entity: carrier, site: far });
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: builder, site: far });
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: carrier, site: far });
     sim.step();
     expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: far, pinned: true });
     expect(sim.world.has(carrier, SiteAssignment)).toBe(false); // only the builder trade assigns
@@ -401,7 +401,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     // The fixture HOUSE has no door and blocks its anchor. Construction routing must therefore use a
     // legal perimeter cell rather than inheriting the finished-building interaction point.
     const sim = new Simulation({ seed: 13, content: constructionContent(), map: grassMap(60, 8) });
-    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     const SITE_TILE_X = 20; // node x 40 - far beyond the 24-node local circle around the builder
     const site = siteAt(sim, HOUSE, SITE_TILE_X, 1);
     const warehouse = sim.world.create();
@@ -410,7 +410,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     sim.world.add(warehouse, Stockpile, { amounts: new Map<number, number>([[STONE, 2]]) });
     const builder = builderAt(sim, 2, 1);
     sim.world.add(builder, Owner, { player: 0 });
-    sim.enqueue({ kind: 'assignBuilder', entity: builder, site });
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: builder, site });
 
     // Phase 1: despite the pin pointing out of area, the builder fetches the site's material from the
     // in-area warehouse (planBuilder's self-supply is not disabled by the out-of-area pin).
@@ -514,7 +514,7 @@ describe('constructionSystem - upgrade-site DELIVERY dispatch (carrier path)', (
     loadedCarrierAt(sim, 0, 0, STONE, 1);
     loadedCarrierAt(sim, 1, 0, STONE, 1);
     builderAt(sim, 5, 0);
-    sim.enqueue({ kind: 'upgradeBuilding', building: home });
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
 
     let upgraded = false;
     // 2 units × STRIKES_PER_UNIT swings (several ticks each) on top of the delivery walks.
@@ -552,7 +552,7 @@ describe('constructionSystem - upgrade-site DELIVERY dispatch (carrier path)', (
       loadedCarrierAt(sim, 0, 0, STONE, 1);
       loadedCarrierAt(sim, 1, 0, STONE, 1);
       builderAt(sim, 5, 0);
-      sim.enqueue({ kind: 'upgradeBuilding', building: home });
+      sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
       for (let i = 0; i < 200; i++) sim.step();
       return sim.hashState();
     };

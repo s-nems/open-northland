@@ -36,9 +36,9 @@ class Scenario {
     this.sim = simFor({ content, seed, map });
   }
 
-  /** Commands enqueued before `run` apply on the first tick's CommandSystem pass. */
+  /** Authored-setup commands enqueued before `run` apply on the first tick's CommandSystem pass. */
   command(command: Command): this {
-    this.sim.enqueue(command);
+    this.sim.enqueueSetup(command);
     return this;
   }
 

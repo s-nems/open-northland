@@ -49,7 +49,7 @@ function ownedUnit(sim: Simulation, x: number, y: number, jobType: number): Enti
 /** A long grass strip with confinement switched on. LOCAL radius is 24 nodes = 12 tiles E/W. */
 function confinedSim(w = 128): Simulation {
   const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(w, 8) });
-  sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+  sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   sim.step();
   return sim;
 }
@@ -62,7 +62,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
   it('defaults OFF: a civilian walks anywhere', () => {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(128, 8) });
     const u = ownedUnit(sim, 2, 2, 1);
-    sim.enqueue({ kind: 'moveUnit', entity: u, x: 200, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 200, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(true);
   });
@@ -70,11 +70,11 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
   it('ON: a goal beyond the local circle is refused - the settler stays put', () => {
     const sim = confinedSim();
     const u = ownedUnit(sim, 2, 2, 1);
-    sim.enqueue({ kind: 'moveUnit', entity: u, x: 4 + 2 * LOCAL_NAV_RADIUS_NODES, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + 2 * LOCAL_NAV_RADIUS_NODES, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(false);
     // A goal within the local circle is obeyed.
-    sim.enqueue({ kind: 'moveUnit', entity: u, x: 4 + LOCAL_NAV_RADIUS_NODES, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + LOCAL_NAV_RADIUS_NODES, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(true);
   });
@@ -84,9 +84,9 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     const scout = ownedUnit(sim, 2, 2, SCOUT);
     const soldier = ownedUnit(sim, 2, 4, SOLDIER);
     const hunter = ownedUnit(sim, 2, 6, HUNTER);
-    sim.enqueue({ kind: 'moveUnit', entity: scout, x: 220, y: 4 });
-    sim.enqueue({ kind: 'moveUnit', entity: soldier, x: 220, y: 8 });
-    sim.enqueue({ kind: 'moveUnit', entity: hunter, x: 220, y: 12 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: scout, x: 220, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: soldier, x: 220, y: 8 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: hunter, x: 220, y: 12 });
     sim.step();
     expect(ordered(sim, scout)).toBe(true);
     expect(ordered(sim, soldier)).toBe(true);
@@ -103,7 +103,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     stampPost(sim, 12, 2, 16);
     stampPost(sim, 26, 2, 16);
     // Tile 32 (node 64) is far beyond the local circle but inside B's circle: allowed.
-    sim.enqueue({ kind: 'moveUnit', entity: u, x: 64, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 64, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(true);
   });
@@ -113,7 +113,7 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     const u = ownedUnit(sim, 2, 2, 1);
     // A lone far post whose circle covers the goal - but no chain reaches it from the settler.
     stampPost(sim, 60, 2, 16);
-    sim.enqueue({ kind: 'moveUnit', entity: u, x: 120, y: 4 });
+    sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 120, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(false);
     const terrain = sim.terrain;
@@ -171,10 +171,10 @@ describe('navigationLimitFor, the per-settler memo', () => {
     if (terrain === undefined) throw new Error('mapped sim');
     const first = navigationLimitFor(sim.world, sim.content, terrain, u);
     expect(first).not.toBeNull();
-    sim.enqueue({ kind: 'setSignpostNavigation', enabled: false });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: false });
     sim.step();
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBeNull();
-    sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
     sim.step();
     // Re-enabling serves the held entry again: the toggle never invalidates, it only gates.
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBe(first);
@@ -184,7 +184,7 @@ describe('navigationLimitFor, the per-settler memo', () => {
 describe('confinement gates the gatherer scan', () => {
   it('a woodcutter ignores a tree beyond its area and harvests it once a signpost links it', () => {
     const sim = confinedSim(192);
-    sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
     const g = makeWoodcutter(sim, 2, 2);
     sim.world.add(g, Owner, { player: P0 });
     // A tree 40 tiles east - far beyond the 12-tile local circle.

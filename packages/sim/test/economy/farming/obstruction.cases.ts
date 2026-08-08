@@ -41,7 +41,13 @@ describe('a building raised over a field', () => {
     for (let x = 1; x <= 4; x++) fieldAt(sim, farm, x, 2);
     const node = cellAnchorNode(2, 2);
 
-    sim.enqueue({ kind: 'placeBuilding', buildingType: BLOCKHOUSE, x: node.hx, y: node.hy, tribe: VIKING });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BLOCKHOUSE,
+      x: node.hx,
+      y: node.hy,
+      tribe: VIKING,
+    });
     sim.run(1);
 
     expect([...sim.world.query(Building)].length).toBe(2); // the farm plus the new blockhouse

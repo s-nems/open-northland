@@ -1,4 +1,4 @@
-import { HashTrace, stepReplaying } from '@open-northland/sim';
+import { HashTrace, parseCommandLog, stepReplaying } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   buildDiagnosticsBundle,
@@ -31,7 +31,7 @@ describe('diagnostics bundle', () => {
     const trace = new HashTrace();
     for (let tick = 1; tick <= RUN_TICKS; tick++) {
       // A mid-run player command, so the log carries more than the scene's own setup commands.
-      if (tick === RUN_TICKS / 2) sim.enqueue({ kind: 'setNeedsEnabled', enabled: true });
+      if (tick === RUN_TICKS / 2) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: true });
       sim.step();
       if (tick % HASH_TRACE_EVERY_TICKS === 0) trace.record(tick, sim.hashState());
     }
@@ -58,12 +58,14 @@ describe('diagnostics bundle', () => {
     expect(game.tick).toBe(RUN_TICKS);
     expect(game.hashes?.map((h) => h.tick)).toEqual([20, 40, 60]);
 
+    // The log arrives as untrusted JSON, so it is validated before it drives a sim.
+    const importedLog = parseCommandLog(game.commandLog);
     const replayed = createSceneSim(scene);
     // The builder enqueued its setup commands again, but the log already carries them (every applied
     // command is logged) - drop the pending duplicates and let the log supply ALL commands in their
     // original apply order.
     replayed.commands.drain();
-    stepReplaying(replayed, game.commandLog, game.tick);
+    stepReplaying(replayed, importedLog, game.tick);
     expect(replayed.hashState()).toBe(game.finalHash);
     expect(replayed.hashState()).toBe(game.hashes?.at(-1)?.hash);
   });
@@ -73,9 +75,9 @@ describe('diagnostics bundle', () => {
     // The same command OBJECT enqueued twice - commands are held by reference in the log, so a
     // naive whole-bundle cycle guard would stringify the second occurrence as "[circular]".
     const shared = { kind: 'setNeedsEnabled', enabled: true } as const;
-    sim.enqueue(shared);
+    sim.enqueueSetup(shared);
     sim.step();
-    sim.enqueue(shared);
+    sim.enqueueSetup(shared);
     sim.step();
     const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
     const bundle = buildDiagnosticsBundle(log, {
@@ -96,6 +98,25 @@ describe('diagnostics bundle', () => {
       serializeDiagnosticsBundle(buildDiagnosticsBundle(log, null)),
     ) as DiagnosticsBundle;
     expect(reserialized.log[0]?.data).toEqual({ self: '[circular]' });
+  });
+
+  it('refuses an imported log whose envelope claims authority it may not have', () => {
+    const sim = createSceneSim(scene);
+    sim.step();
+    const log = new DiagLog({ consoleLevel: 'silent', now: () => 1 });
+    const bundle = buildDiagnosticsBundle(log, {
+      entry: 'scene',
+      worldId: scene.id,
+      seed: scene.seed,
+      sim,
+      hashTrace: null,
+    });
+    const parsed = JSON.parse(serializeDiagnosticsBundle(bundle)) as DiagnosticsBundle;
+    const entries = parsed.game?.commandLog ?? [];
+    expect(entries.length).toBeGreaterThan(0);
+    const forged = entries.map((e) => ({ ...e, origin: 'player', player: 0 }));
+
+    expect(() => parseCommandLog(forged)).toThrow(/may not issue/);
   });
 
   it('degrades to a log-only bundle when no game session is registered', () => {

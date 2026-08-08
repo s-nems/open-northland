@@ -157,7 +157,7 @@ describe('traceEntity', () => {
     ]);
     const snaps: WorldSnapshot[] = [];
     for (let tick = 1; tick <= 6; tick++) {
-      for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+      for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
       sim.step();
       snaps.push(sim.snapshot());
     }

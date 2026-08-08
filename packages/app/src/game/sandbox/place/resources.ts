@@ -112,7 +112,7 @@ export function resourceCommand(good: number, x: number, y: number): Command | n
 /** `x`/`y` are whole tiles and become the anchor node the command speaks in. */
 export function dropSandboxGood(sim: Simulation, good: number, x: number, y: number, amount: number): void {
   const node = cellAnchorNode(x, y);
-  sim.enqueue({ kind: 'dropGood', good, x: node.hx, y: node.hy, amount });
+  sim.enqueueSetup({ kind: 'dropGood', good, x: node.hx, y: node.hy, amount });
 }
 
 /** A pure marker that stores nothing: the harvest piles around it as separate heaps, so moving the flag

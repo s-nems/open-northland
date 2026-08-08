@@ -29,7 +29,7 @@ export type RunReplay = Omit<ReplayOptions, 'untilTick'>;
 /** Rebuild a `Simulation` to its state at the end of `untilTick`. Throws on a negative target. */
 export function replay(opts: ReplayOptions): Simulation {
   const { log } = opts;
-  const lastLoggedTick = log.length === 0 ? 0 : (log[log.length - 1] as LoggedCommand).tick;
+  const lastLoggedTick = log.length === 0 ? 0 : (log[log.length - 1] as LoggedCommand).applyTick;
   const untilTick = opts.untilTick ?? lastLoggedTick;
   if (untilTick < 0) {
     throw new Error(`replay untilTick ${untilTick} is negative: a tick target must be >= 0`);
@@ -57,8 +57,8 @@ export function stepReplaying(
     // The log already carries the applied copies of what the sim's own systems emit, so keeping their
     // live re-emissions pending would double-apply them. The sim holds nothing pending at entry.
     sim.commands.discardPending();
-    while (cursor < log.length && (log[cursor] as LoggedCommand).tick <= nextTick) {
-      sim.enqueue((log[cursor] as LoggedCommand).command);
+    while (cursor < log.length && (log[cursor] as LoggedCommand).applyTick <= nextTick) {
+      sim.enqueue(log[cursor] as LoggedCommand);
       cursor++;
     }
     sim.step();

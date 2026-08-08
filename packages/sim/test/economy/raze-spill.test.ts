@@ -62,7 +62,7 @@ function stockedHut(
   at: { x: number; y: number },
   stock: ReadonlyArray<[number, number]>,
 ): Entity {
-  sim.enqueue({ kind: 'placeBuilding', buildingType: HUT, x: at.x, y: at.y, tribe: VIKING });
+  sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HUT, x: at.x, y: at.y, tribe: VIKING });
   sim.step();
   const placed = [...sim.world.query(Building)].sort((a, b) => a - b).at(-1);
   if (placed === undefined) throw new Error('the hut was not placed');
@@ -71,7 +71,7 @@ function stockedHut(
 }
 
 function demolish(sim: Simulation, building: Entity): void {
-  sim.enqueue({ kind: 'demolish', building });
+  sim.enqueueSetup({ kind: 'demolish', building });
   sim.step();
 }
 

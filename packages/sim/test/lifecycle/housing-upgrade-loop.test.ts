@@ -116,7 +116,7 @@ describe('e2e: the housing → upgrade loop (full step schedule)', () => {
     builderAt(sim, 7, 0);
 
     expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(3); // L0 capacity
-    sim.enqueue({ kind: 'upgradeBuilding', building: home });
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
     sim.step();
     expect(housingCapacity(sim.world, ctxOf(sim), VIKING)).toBe(0); // a site shelters no one
 
@@ -145,7 +145,7 @@ describe('e2e: the housing → upgrade loop (full step schedule)', () => {
       loadedCarrierAt(sim, 0, 0, STONE, 1);
       loadedCarrierAt(sim, 5, 0, STONE, 1);
       builderAt(sim, 7, 0);
-      sim.enqueue({ kind: 'upgradeBuilding', building: home });
+      sim.enqueueSetup({ kind: 'upgradeBuilding', building: home });
       for (let i = 0; i < 250; i++) sim.step();
       return sim.hashState();
     };

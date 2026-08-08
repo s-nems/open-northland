@@ -47,7 +47,7 @@ function recordRun(
   const sim = new Simulation({ seed, content: testContent(), ...(map !== undefined ? { map } : {}) });
   const hashes: string[] = [];
   for (let tick = 1; tick <= ticks; tick++) {
-    for (const cmd of schedule.get(tick) ?? []) sim.enqueue(cmd);
+    for (const cmd of schedule.get(tick) ?? []) sim.enqueueSetup(cmd);
     sim.step();
     hashes.push(sim.hashState());
   }
@@ -226,7 +226,7 @@ describe('rebaseContent', () => {
     // A live run exists; a bad reload arrives. The original sim must keep working: rebaseContent
     // returns `error` and builds no sim at all, so the live sim's state is unchanged.
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(4, 1) });
-    sim.enqueue({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 2, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 2, y: 0, tribe: VIKING });
     sim.run(10);
     const before = sim.hashState();
 

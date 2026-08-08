@@ -231,7 +231,7 @@ export function wallsContent(): ContentSet {
  *  cases are about what standing walls do to a plot, not about which sites the gate accepts. */
 export function blockhouseAt(sim: Simulation, x: number, y: number): void {
   const node = cellAnchorNode(x, y);
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType: BLOCKHOUSE,
     x: node.hx,

@@ -82,8 +82,8 @@ function armedSeat(arms: readonly { good: number; amount: number }[], options: S
   const men = options.men ?? SPARE_MEN;
   const barracks = options.barracks ?? BARRACKS_AT;
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
-  if (options.confined === true) sim.enqueue({ kind: 'setSignpostNavigation', enabled: true });
-  sim.enqueue({
+  if (options.confined === true) sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+  sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType: HQ_TYPE,
     x: HQ_X,
@@ -92,7 +92,7 @@ function armedSeat(arms: readonly { good: number; amount: number }[], options: S
     owner: SEAT,
     initialGoods: arms,
   });
-  sim.enqueue({
+  sim.enqueueSetup({
     kind: 'placeBuilding',
     buildingType: BARRACKS_TYPE,
     x: barracks.x,
@@ -147,7 +147,7 @@ describe('workforce module - the barracks and craft selections', () => {
   it('never staffs the barracks: it is a military building, not a workplace the plan crews', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BARRACKS_TYPE,
       x: 40,
@@ -175,7 +175,7 @@ describe('workforce module - the barracks and craft selections', () => {
   it('sizes the trainSoldiers counter to the free civilians left after the ladder', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BARRACKS_TYPE,
       x: 40,
@@ -212,7 +212,7 @@ describe('workforce module - the barracks and craft selections', () => {
   it('the assistant executes the standing order: civilians march to drill unpicked', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BARRACKS_TYPE,
       x: 40,
@@ -235,7 +235,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
     const off = aiSim();
     placeHq(off);
-    off.enqueue({
+    off.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BARRACKS_TYPE,
       x: 40,
@@ -255,7 +255,7 @@ describe('workforce module - the barracks and craft selections', () => {
     const counterOf = (men: number, women: number): number => {
       const sim = aiSim();
       placeHq(sim);
-      sim.enqueue({
+      sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: BARRACKS_TYPE,
         x: 40,
@@ -265,7 +265,7 @@ describe('workforce module - the barracks and craft selections', () => {
       });
       spawnMen(sim, men);
       for (let i = 0; i < women; i++) {
-        sim.enqueue({
+        sim.enqueueSetup({
           kind: 'spawnSettler',
           jobType: WOMAN,
           x: 4 + 2 * i,
@@ -291,7 +291,7 @@ describe('workforce module - the barracks and craft selections', () => {
   it('publishes no extra recruit for a booking whose drill was abandoned', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: BARRACKS_TYPE,
       x: 40,
@@ -455,7 +455,7 @@ describe('workforce module - the barracks and craft selections', () => {
   it('keeps a joinery operator on iron tools only, idempotently', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: JOINERY_TYPE,
       x: 40,
@@ -469,7 +469,7 @@ describe('workforce module - the barracks and craft selections', () => {
     // The min pass assigns the joiner; its craft selection only exists once the binding stands.
     const first = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     expect(first.filter((c) => c.kind === 'setCraftGoods')).toEqual([]);
-    for (const c of first) sim.enqueue(c);
+    for (const c of first) sim.enqueueSetup(c);
     sim.step();
 
     const second = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
@@ -480,7 +480,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(tuned).toEqual([{ kind: 'setCraftGoods', entity: joiner, goods: [TOOL_IRON] }]);
 
     // Applied once, the selection matches - the next decision issues nothing.
-    for (const c of second) sim.enqueue(c);
+    for (const c of second) sim.enqueueSetup(c);
     sim.step();
     expect(
       [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setCraftGoods'),
@@ -491,7 +491,7 @@ describe('workforce module - the barracks and craft selections', () => {
     const content = husbandryContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: ANIMAL_FARM_TYPE,
       x: 40,
@@ -507,7 +507,7 @@ describe('workforce module - the barracks and craft selections', () => {
     const hires = [...collectModule.run(sim.world, ctx, SEAT)].filter((c) => c.kind === 'assignWorker');
     const farm = entityOfBuilding(sim, ANIMAL_FARM_TYPE);
     expect(hires.filter((c) => c.building === farm && c.jobPriority.includes(BREEDER))).toHaveLength(2);
-    for (const c of hires) sim.enqueue(c);
+    for (const c of hires) sim.enqueueSetup(c);
     sim.step();
 
     // Seats are handed out in canonical settler order: the first breeder takes the hide, the second
@@ -530,7 +530,7 @@ describe('workforce module - the barracks and craft selections', () => {
     const content = husbandryContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
     placeHq(sim);
-    sim.enqueue({
+    sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: ANIMAL_FARM_TYPE,
       x: 40,
@@ -547,7 +547,7 @@ describe('workforce module - the barracks and craft selections', () => {
       (c) => c.kind === 'assignWorker' && c.building === farm && c.jobPriority.includes(BREEDER),
     );
     if (hire === undefined) throw new Error('expected a breeder hire');
-    sim.enqueue(hire);
+    sim.enqueueSetup(hire);
     sim.step();
 
     const lone = [...sim.world.query(Settler, JobAssignment)].filter(

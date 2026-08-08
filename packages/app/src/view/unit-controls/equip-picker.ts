@@ -1,5 +1,5 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
-import type { Command, Entity, EquipPickEntry } from '@open-northland/sim';
+import type { Entity, EquipPickEntry, PlayerCommand } from '@open-northland/sim';
 import { loadUiFont } from '../../content/ui-font.js';
 import type { EquipSlotRef } from '../../hud/details-panel/index.js';
 import { messages } from '../../i18n/index.js';
@@ -9,7 +9,7 @@ export interface EquipPickControllerOptions {
   /** The sim's pick-list read seam (`Simulation.equipPickList`), bound by the shell. */
   readonly pickList: (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
   readonly goods: ContentSet['goods'];
-  readonly enqueue: (command: Command) => void;
+  readonly enqueue: (command: PlayerCommand) => void;
 }
 
 export interface EquipPickController {

@@ -28,7 +28,7 @@ const CARRIERS = 3;
 /** A fresh sim over the real sandbox content, needs off (a jobless enabler must not starve mid-run). */
 function makeSim(): Simulation {
   const sim = new Simulation({ seed: 1, content: sandboxContent(MAP), map: halfCellMapFromCells(MAP) });
-  sim.enqueue({ kind: 'setNeedsEnabled', enabled: false });
+  sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   return sim;
 }
 
@@ -62,7 +62,7 @@ describe.skip('sandbox jobEnablesHouse gate - the warehouse employment catch-22'
 
     const store = warehouse(sim);
     for (const e of idlers) {
-      sim.enqueue({ kind: 'assignWorker', entity: e, building: store, jobPriority: [JOB_CARRIER] });
+      sim.enqueueSetup({ kind: 'assignWorker', entity: e, building: store, jobPriority: [JOB_CARRIER] });
     }
     sim.run(2);
 
@@ -83,7 +83,7 @@ describe.skip('sandbox jobEnablesHouse gate - the warehouse employment catch-22'
 
     const store = warehouse(sim);
     for (const e of idlers) {
-      sim.enqueue({ kind: 'assignWorker', entity: e, building: store, jobPriority: [JOB_CARRIER] });
+      sim.enqueueSetup({ kind: 'assignWorker', entity: e, building: store, jobPriority: [JOB_CARRIER] });
     }
     sim.run(2);
 

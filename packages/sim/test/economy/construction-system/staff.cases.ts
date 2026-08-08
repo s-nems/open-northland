@@ -198,7 +198,7 @@ describe('construction site staffing - the slots a building offers while it is r
     const smithy = buildingAt(sim, SMITHY_L0, 3, 0, { stock: [[STONE, 3]] });
     const mason = settlerAt(sim, 0, 0, null);
     post(sim, mason, smithy, [MASON]);
-    sim.enqueue({ kind: 'upgradeBuilding', building: smithy });
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: smithy });
     sim.step();
     expect(sim.world.has(smithy, UnderConstruction)).toBe(true);
     expect(boundTo(sim, mason)).toBe(smithy); // the upgrade keeps its crew
