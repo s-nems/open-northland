@@ -1,9 +1,7 @@
 /**
- * The settler render binding: one body's decoded `[bobseq]` ranges become the directional state bindings
- * the renderer plays, plus the per-job character roster (the `[jobbasegraphics]` join). A settler is two
- * layered bob sets, a body (`CR_Hum_Body_*`) and a head (`CR_Hum_Head_*`) drawn on top at the same bob id,
- * as the original's `jobgraphics` (`gfxbobmanagerbody` + `gfxbobmanagerhead`) composes a human. The reducers
- * here are pure; the byte loading and sheet assembly live in `../sprite-sheet/`.
+ * A settler is two layered bob sets drawn at the same bob id, a body (`CR_Hum_Body_*`) and a head
+ * (`CR_Hum_Head_*`) on top, as the original's `jobgraphics` (`gfxbobmanagerbody` + `gfxbobmanagerhead`)
+ * composes a human. The reducers here are pure; byte loading and sheet assembly live in `../sprite-sheet/`.
  */
 export { carryAnimsByGood, carryHeadAnims, characterBinding } from './bindings-character.js';
 export { buildHumanBindings } from './bindings-demo.js';

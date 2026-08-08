@@ -27,13 +27,10 @@ export interface CharacterGfx {
 }
 
 /**
- * The per-`goodType` loaded-gait table for one body from the original's `[gfxwalkatomic]` table (good slug
- * → body bobseq for this job): `moving` is the named ×8 cycle, `idle` its first-frame hold. Keyed on the
+ * The per-`goodType` loaded gait for one body, from the original's `[gfxwalkatomic]` table. Keyed on the
  * running content set's `typeId`, since the slug is what survives between it and the decoded IR's id space.
- *
  * A good with no record for this job is omitted, which is the source's own answer rather than a gap: that
- * job shows no load for it. A sequence the body doesn't author, or one that isn't a clean ×8 strip, is
- * likewise skipped.
+ * job shows no load for it.
  */
 export function carryAnimsByGood(
   seqByName: ReadonlyMap<string, BobSeqRow>,
@@ -53,10 +50,8 @@ export function carryAnimsByGood(
 }
 
 /**
- * A wait bobseq's authored standing program as a looping {@link FrameListAnim}, or `undefined` when
- * either the program or its `[bobseq]` row is missing. The idle slot always loops: a program without
- * the `gfxanimmode 1` mark is a one-shot fidget looped as a named approximation, since the body
- * authors no base wait and freezing after one play would read as a stuck sprite.
+ * A wait bobseq's authored standing program, looping. Approximation: a program without the `gfxanimmode 1`
+ * mark is a one-shot fidget, looped anyway because freezing after one play would read as a stuck sprite.
  */
 function waitListAnim(
   name: string | undefined,
@@ -71,12 +66,11 @@ function waitListAnim(
 }
 
 /**
- * Build one character's {@link SettlerStateBinding} from its spec, its body's decoded `[bobseq]` rows,
- * and the extracted animation tables. Every slot prefers the authored `[gfxanimatomic]` /
- * `[gfxwalkatomic]` program - the frame lists carry holds, facings, and cuts a bare bobseq range cannot
- * encode - and falls back to the raw strip only when the IR carries no program for that sequence.
- * Returns `null` when neither the walk nor a wait resolves, so the character is dropped and its jobs
- * fall back to the default look rather than a bogus frame range. Pure.
+ * Build one character's binding from its spec, its body's decoded `[bobseq]` rows, and the extracted
+ * animation tables. Every slot prefers the authored program, whose frame lists carry holds, facings, and
+ * cuts a bare bobseq range cannot encode, and falls back to the raw strip when the IR carries none.
+ * Returns `null` when neither the walk nor a wait resolves, so the character is dropped and its jobs draw
+ * the default look rather than a bogus frame range.
  */
 export function characterBinding(
   spec: CharacterSpec,
@@ -86,8 +80,6 @@ export function characterBinding(
 ): SettlerStateBinding | null {
   const { carrySeqBySlug, programsByAction, waitBySeq, walkLists } = gfx;
   const walk = eightDirAnim(seqByName, spec.walkSeq, walkLists);
-  // The authored wait program loops; without one the whole wait strip plays facing-locked, and without
-  // even a strip idle holds the walk's first frame per facing.
   const idle: SpriteFrameRef | null =
     waitListAnim(spec.waitSeq, seqByName, waitBySeq) ??
     singleDirAnim(spec.waitSeq !== undefined ? seqByName.get(spec.waitSeq) : undefined) ??
@@ -108,9 +100,8 @@ export function characterBinding(
       };
       continue;
     }
-    // Strip fallback for a sequence with no extracted program (the woman/child meals - the source
-    // authors no list for them): a clean ×8 strip is directional, anything else plays whole,
-    // facing-locked.
+    // Strip fallback for a sequence the source authors no frame list for, such as the woman and child
+    // meals.
     const anim: DirectionalAnim =
       row.length % DIRS === 0
         ? { start: row.start, dirs: DIRS, stride: row.length / DIRS }
@@ -122,9 +113,8 @@ export function characterBinding(
     };
   }
 
-  // The attack swing: the pool's `start` from the `[bobseq]` row, its per-direction layout from the
-  // action-81 frame lists keyed by the same seq name. Bound only when both resolve - a body or IR
-  // missing either just has no attack animation, never a bogus uniform slice.
+  // The attack swing binds only when both the `[bobseq]` row and the action-81 frame lists resolve, so a
+  // body or IR missing either has no attack animation rather than a bogus uniform slice.
   if (spec.attack !== undefined) {
     const row = seqByName.get(spec.attack);
     const program = programsByAction?.get(ATTACK_ATOMIC)?.get(spec.attack);
@@ -134,9 +124,6 @@ export function characterBinding(
     }
   }
 
-  // The combat-engaged gait: an ×8 aggressive walk plus the aggressive wait's program (or its
-  // facing-locked strip). A look with no aggressive variant yields no `engaged` and stays on its
-  // relaxed gait while engaged.
   const engagedMoving = eightDirAnim(seqByName, spec.engaged?.moving, walkLists);
   const engagedIdle =
     waitListAnim(spec.engaged?.idle, seqByName, waitBySeq) ??
@@ -149,9 +136,8 @@ export function characterBinding(
         }
       : undefined;
 
-  // The loaded gait from the `[gfxwalkatomic]` table. Where that table covers this job it is complete - a
-  // good it omits genuinely draws no load - so the `<prefix>wood` gait is the floor only for an IR without
-  // the lane.
+  // The `<prefix>wood` gait is the floor only for an IR with no `[gfxwalkatomic]` lane; where that table
+  // covers this job it is complete.
   const carryByGood =
     carrySeqBySlug !== undefined ? carryAnimsByGood(seqByName, carrySeqBySlug, goods, walkLists) : {};
   const genericCarry =
@@ -181,10 +167,9 @@ export function characterBinding(
 
 /**
  * The head-side twin of a per-good carry table. Most of the man's carry-walk variants ship empty head bobs
- * (19 of 27 in the real decode - the head is authored once, on the base walk), so a head drawn at the carry
- * range's own ids would vanish and a stone-hauler would walk headless. A good whose head frame is empty
- * borrows the base walk at the same (facing, frame) offset. Returns the input table by identity when
- * nothing borrows, so the caller can skip building a head binding at all.
+ * (19 of 27 in the real decode; the head is authored once, on the base walk), so a good whose head frame is
+ * empty borrows the base walk at the same (facing, frame) offset instead of walking headless. Returns the
+ * input table by identity when nothing borrows.
  */
 export function carryHeadAnims(
   byGood: NonNullable<CarryingBinding['byGood']>,

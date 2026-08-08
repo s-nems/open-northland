@@ -65,7 +65,7 @@ import {
 
 /**
  * One settler look: the roster body/heads it composes and the body's `[bobseq]` names per state. Sequence
- * names are matched verbatim - the source casing is mixed (`Warrior_Sword_Walk` vs `warrior_empty_walk`).
+ * names are matched verbatim, and the source casing is mixed (`Warrior_Sword_Walk` vs `warrior_empty_walk`).
  */
 export interface CharacterSpec {
   /** Key into the roster's `VIKING_CHARACTERS` for the body + default head stems. */
@@ -74,48 +74,41 @@ export interface CharacterSpec {
   readonly headBmds?: readonly string[];
   /** The ×8 locomotion cycle; absent → the look stands its wait even while moving. */
   readonly walkSeq?: string;
-  /**
-   * The standing-idle `[bobseq]`. Idle plays the seq's authored `[gfxanimatomic]` wait program (the
-   * `gfxanimmode 1` base wait); a seq with no extracted program plays its whole strip as a facing-locked
-   * loop. Absent → idle holds the walk's first frame per facing.
-   */
+  /** The standing-idle `[bobseq]`; absent → idle holds the walk's first frame per facing. */
   readonly waitSeq?: string;
   /**
-   * The viking `logicjob` this look hauls as - the `[gfxwalkatomic]` key for its per-good loaded gait.
-   * Civilian trades all use the civilist table; the source authors no per-trade carry records. Absent → no
-   * per-good carry look.
+   * The viking `logicjob` this look hauls as, the `[gfxwalkatomic]` key for its per-good loaded gait.
+   * Civilian trades all use the civilist table, since the source authors no per-trade carry records.
    */
   readonly logicJob?: number;
   /** Prefix of this body's per-good carry cycles (`<prefix><good>`) - the floor for an IR with no
    *  `[gfxwalkatomic]` lane, when the body has any. */
   readonly carryPrefix?: string;
   /**
-   * Atomic id → its action sequence on this body (the `setatomic` join, e.g. the woodcut swing). The
-   * binding plays the sequence's `[gfxanimatomic]` frame lists when the IR carries them; `phaseStart`
-   * tunes only the strip fallback, `ticksPerFrame` applies to both.
+   * Atomic id → its action sequence on this body (the `setatomic` join). `phaseStart` tunes only the strip
+   * fallback, `ticksPerFrame` applies to that and to the authored frame lists.
    */
   readonly atomics?: Readonly<
     Record<number, { readonly seq: string; readonly phaseStart?: number; readonly ticksPerFrame?: number }>
   >;
   /**
-   * The attack swing bobseq name - the `[gfxanimatomic]` action-81 `gfxbobseqbody` for this look's viking
-   * job. Its layout comes from the per-facing frame lists, so the name must be both a `[bobseq]` on this
-   * body and a viking gfxAtomics record.
+   * The attack swing bobseq name. Its layout comes from the per-facing frame lists, so the name must be
+   * both a `[bobseq]` on this body and an action-81 `[gfxanimatomic]` record for this look's viking job.
    */
   readonly attack?: string;
   /**
    * Px added to every body frame's draw `offsetY`, for a lib whose authored hotspots don't put the feet at
-   * the anchor. Calibrated against the other bodies' feet line (sprite bottoms ~4..9 px below the anchor).
+   * the anchor. Calibrated against the other bodies' feet line.
    */
   readonly feetShiftY?: number;
   /**
-   * The combat-engaged gait bobseq names (`..._walk_agressive` / `..._wait_agressive`): a clean ×8 walk and
-   * a facing-locked wait. Absent for a look with no aggressive variant, which stays on its relaxed gait.
+   * The combat-engaged gait bobseq names (`..._walk_agressive` / `..._wait_agressive`). Absent for a look
+   * with no aggressive variant, which stays on its relaxed gait.
    */
   readonly engaged?: { readonly moving?: string; readonly idle?: string };
 }
 
-/** Specs for every look, keyed by the id the job tables reference. `satisfies` keeps the keys literal, so
+/** Specs for every look, keyed by the id the job tables reference. `satisfies` keeps those keys literal, so
  *  a typo'd spec id in a job table is a compile error rather than a silent fall-to-default. */
 export const CHARACTER_SPECS = {
   civilian: {
@@ -125,12 +118,11 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
-    // The civilist's fist brawl (job 6, the viking action-81 join) on the generic man body every civilian
-    // trade shares.
+    // The civilist's fist brawl (job 6) on the generic man body every civilian trade shares.
     attack: 'human_man_Civilian_Fight_punch',
-    // The atomics this body authors a sequence for; each plays its `[gfxanimatomic]` frame lists (the
-    // collector/farmer jobs 8 and 18, the generic job-6 rows). The pick-up bend serves both pickup and
-    // deposit - the body authors no separate put-down, and a bound atomic wins over the carry override.
+    // The atomics this body authors a sequence for; their frame lists come from the collector/farmer jobs
+    // 8 and 18 and the generic job-6 rows. The pick-up bend serves the deposit too, since the body authors
+    // no separate put-down.
     atomics: {
       [HARVEST_ATOMIC]: { seq: CHOP_SEQ, phaseStart: CHOP_PHASE_START },
       [STONE_HARVEST_ATOMIC]: { seq: STONECRUSH_SEQ },
@@ -141,16 +133,12 @@ export const CHARACTER_SPECS = {
       [WHEAT_HARVEST_ATOMIC]: { seq: REAP_SEQ },
       [PLANT_ATOMIC]: { seq: SOW_SEQ },
       [CULTIVATE_ATOMIC]: { seq: WATER_SEQ },
-      // The builder's hammer (action 39, 13 entries/dir) at half cadence.
       [BUILD_HOUSE_ATOMIC]: { seq: HAMMER_SEQ, ticksPerFrame: HAMMER_TICKS_PER_FRAME },
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
-      // The body's one kiss clip serves both the kiss and kissed roles, played directionally through
-      // the action-20/21 lists so the groom faces his bride (TARGET_FACING).
       [KISS_ATOMIC]: { seq: 'human_man_generic_kiss' },
       [KISSED_ATOMIC]: { seq: 'human_man_generic_kiss' },
-      // The one speak clip serves talk and listen (the `[gfxanimatomic]` job-6 rows bind actions 14 and 15).
       [TALK_ATOMIC]: { seq: 'human_man_generic_speak' },
       [LISTEN_ATOMIC]: { seq: 'human_man_generic_speak' },
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
@@ -159,8 +147,7 @@ export const CHARACTER_SPECS = {
   },
   scout: {
     // The generic man body under the hatted scout heads (`jobgraphics.ini` logicjob 27 binds
-    // `cr_hum_body_00` + heads 80..83). Its one trade action is the build-guide swing (action 43), which
-    // the extracted gfxAtomics binds to the shared hammer clip.
+    // `cr_hum_body_00` + heads 80..83). Its one trade action is the build-guide swing.
     rosterId: 'civilian',
     headBmds: SCOUT_JOB_HEADS,
     logicJob: JOB_CIVILIST,
@@ -173,7 +160,6 @@ export const CHARACTER_SPECS = {
       [EAT_ATOMIC]: { seq: 'human_man_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_man_generic_pray' },
-      // `jobtypes.ini`: the scout inherits the civilist atomic set, so it gossips on the same speak clip.
       [TALK_ATOMIC]: { seq: 'human_man_generic_speak' },
       [LISTEN_ATOMIC]: { seq: 'human_man_generic_speak' },
       [STORE_PICKUP_ATOMIC]: { seq: PICKUP_SEQ },
@@ -185,8 +171,8 @@ export const CHARACTER_SPECS = {
     // record, so the original falls to the civilist look too, with its own bow-in-hand clips.
     rosterId: 'civilian',
     headBmds: CIVILIST_JOB_HEADS,
-    // Job 6 for the carry table: the job-15 walk lane authors only the unloaded (`logicgoodtype 0`)
-    // gait, which the carry join drops - the loaded walks are the generic man's per-good cycles.
+    // Job 6 for the carry table: the job-15 walk lane authors only the unloaded (`logicgoodtype 0`) gait,
+    // which the carry join drops.
     logicJob: JOB_CIVILIST,
     walkSeq: 'human_man_hunter_walk',
     waitSeq: 'human_man_generic_wait', // the body authors no hunter wait
@@ -210,16 +196,14 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_woman_generic_walk',
     waitSeq: 'human_woman_generic_wait',
     carryPrefix: 'human_woman_generic_walk_',
-    // The woman's fist brawl (job 5 viking action-81) on her own body (cr_hum_body_10).
+    // The woman's fist brawl (job 5) on her own body, `cr_hum_body_10`.
     attack: 'human_woman_Civilian_Fight_woman_punch',
     atomics: {
       [EAT_ATOMIC]: { seq: 'human_woman_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_woman_generic_sleep' },
       [PRAY_ATOMIC]: { seq: 'human_woman_generic_pray' },
-      // The body's one kiss clip serves both the kiss and kissed roles.
       [KISS_ATOMIC]: { seq: 'human_woman_generic_kiss' },
       [KISSED_ATOMIC]: { seq: 'human_woman_generic_kiss' },
-      // The one talk clip serves both roles (job-5 action-14/15 rows).
       [TALK_ATOMIC]: { seq: 'human_woman_generic_talk' },
       [LISTEN_ATOMIC]: { seq: 'human_woman_generic_talk' },
       [STORE_PICKUP_ATOMIC]: { seq: 'human_woman_generic_pick_up' },
@@ -231,8 +215,8 @@ export const CHARACTER_SPECS = {
     logicJob: JOB_CHILD_MALE,
     walkSeq: 'human_child_boy_generic_walk',
     waitSeq: 'human_child_boy_generic_wait',
-    // The child bodies author their own meal/nap clips, and the sim runs those drives for children too.
-    // No action-10 (eat) list exists for them, so the meal plays the plain strip.
+    // The child bodies author their own meal and nap clips; the source carries no action-10 (eat) frame
+    // list for them, so the meal plays the plain strip.
     atomics: {
       [EAT_ATOMIC]: { seq: 'human_child_boy_generic_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_child_boy_generic_sleep' },
@@ -258,9 +242,9 @@ export const CHARACTER_SPECS = {
     // lands 4..9 px below); +14 re-seats it on the ground.
     feetShiftY: 14,
   },
-  // The attack and aggressive-gait names are the viking (`logicdefines.inc` TRIBE_TYPE_HUMAN_VIKING = 1)
-  // `[gfxanimatomic]` action-81 joins; the per-direction frame counts match the viking atomicanimation
-  // lengths (spear 27, sword_long 29, bows 12/28). The unarmed body authors no `_agressive` gait.
+  // The attack and aggressive-gait names below are the viking (`logicdefines.inc` TRIBE_TYPE_HUMAN_VIKING
+  // = 1) joins; their per-direction frame counts match the viking atomicanimation lengths (spear 27,
+  // sword_long 29, bows 12/28). The unarmed body authors no `_agressive` gait.
   warrior: {
     rosterId: 'warrior',
     logicJob: JOB_SOLDIER_UNARMED,
@@ -323,9 +307,8 @@ export const CHARACTER_SPECS = {
     walkSeq: 'human_man_Warrior_Shortbow_walk',
     waitSeq: 'human_man_Warrior_Shortbow_wait',
     attack: 'human_man_Warrior_Shortbow_attack',
-    // The archer's `[gfxanimatomic]` meal/nap (job 40) binds the bare-hands body's clips - the bow
-    // disappears while he eats - and only those carry programs; the `Shortbow_eat/_sleep` strips are
-    // unreferenced by the source.
+    // The archer's meal and nap (job 40) bind the bare-hands body's clips, so the bow disappears while he
+    // eats; the `Shortbow_eat/_sleep` strips are unreferenced by the source.
     atomics: {
       [EAT_ATOMIC]: { seq: 'human_man_warrior_empty_eat' },
       [SLEEP_ATOMIC]: { seq: 'human_man_warrior_empty_sleep' },
@@ -354,19 +337,19 @@ export const CHARACTER_SPECS = {
 
 export type CharacterSpecId = keyof typeof CHARACTER_SPECS;
 
-/** The specs as `[id, spec]` pairs widened to {@link CharacterSpec} - the per-entry literal value types
- *  differ, so iteration goes through this view. */
+/** The specs as `[id, spec]` pairs widened to the interface, since the per-entry literal value types
+ *  differ. */
 export const CHARACTER_SPEC_ENTRIES = Object.entries(CHARACTER_SPECS) as readonly (readonly [
   CharacterSpecId,
   CharacterSpec,
 ])[];
 
 /**
- * Adult `jobType` → character spec id, the viking `[jobbasegraphics]` job → body join transcribed from the
- * mod's `types/humanstype/jobgraphics.ini` (`logictribe 1`) plus the `jobtypes` soldier family. The axe jobs
+ * Adult `jobType` → character spec id, the viking `[jobbasegraphics]` join transcribed from the mod's
+ * `types/humanstype/jobgraphics.ini` (`logictribe 1`) plus the `jobtypes` soldier family. The axe jobs
  * borrow the broadsword because the body authors no axe set, and the sabers the sword bodies. Named
- * approximation: heroes borrow the warrior body of their `baseatomics` soldier class until their own bodies
- * are extracted. An unmapped job falls to the `civilian` default.
+ * approximation: heroes borrow the warrior body of their `baseatomics` soldier class. An unmapped job falls
+ * to the `civilian` default.
  */
 export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   [JOB_WOMAN]: 'woman',
@@ -394,7 +377,7 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
 /**
  * Equipped weapon good id-slug → warrior spec: the weapon in a settler's `Equipment.weapon` slot decides
  * the look regardless of its jobType, and a settler with no weapon good falls through to
- * {@link ADULT_CHARACTER_BY_JOB}. Keyed by slug (`goodtypes.ini` names, `sword_shord` typo verbatim)
+ * {@link ADULT_CHARACTER_BY_JOB}. Keyed by slug (`goodtypes.ini` names, the `sword_shord` typo verbatim)
  * because the numeric good ids differ per content set.
  */
 export const WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG: Readonly<Record<string, CharacterSpecId>> = {
@@ -409,15 +392,15 @@ export const WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG: Readonly<Record<string, Character
 /** The empty-hand warrior body - what a weapon-job draws once its `Equipment.weapon` slot empties. */
 export const UNARMED_WARRIOR_SPEC: CharacterSpecId = 'warrior';
 
-/** The jobs a disarm strips to {@link UNARMED_WARRIOR_SPEC}: exactly the jobs the spawn seam can arm with
- *  a weapon good ({@link WEAPON_GOOD_SLUG_BY_JOB}). A job that can never re-arm keeps its body, so the axe
- *  soldiers (no axe good exists) never lose their drawn axe to an unrelated equip. */
+/** The jobs a disarm strips to {@link UNARMED_WARRIOR_SPEC}: the jobs the spawn seam can arm with a weapon
+ *  good. A job that can never re-arm keeps its body, so the axe soldiers (no axe good exists) never lose
+ *  their drawn axe to an unrelated equip. */
 export const WARRIOR_JOBS: readonly number[] = Object.keys(WEAPON_GOOD_SLUG_BY_JOB).map(Number);
 
 /**
- * Age-class `jobType` (a settler that carries `Age`) → character spec id, the baby/child bodies from the
- * same `[jobbasegraphics]` table. Kept separate from the adult table so a synthetic fixture's adult job id
- * can never draw a baby.
+ * Age-class `jobType` (a settler that carries `Age`) → character spec id, the baby and child bodies from
+ * the same `[jobbasegraphics]` table. Kept separate from the adult table so a synthetic fixture's adult job
+ * id can never draw a baby.
  */
 export const YOUNG_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> = {
   [JOB_BABY_FEMALE]: 'baby',
