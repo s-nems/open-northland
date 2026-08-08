@@ -209,7 +209,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     expect(listenAtomic.targetEntity).toBe(a);
   });
 
-  it('a round fires the clips’ authored voice cues as chatVoice events (talker frame 0, listener mid-clip)', () => {
+  it('a round fires the clips’ authored voice cues as atomicSound events (talker frame 0, listener mid-clip)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const a = gossiper(sim, 2, 0, LONELY);
     const b = gossiperBeside(sim, 2, 0, fx.fromInt(0));
@@ -218,7 +218,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     for (let i = 0; i < 30; i++) {
       sim.step();
       for (const ev of sim.snapshot().events) {
-        if (ev.kind === 'chatVoice') voices.push({ entity: ev.entity, soundType: ev.soundType });
+        if (ev.kind === 'atomicSound') voices.push({ entity: ev.entity, soundType: ev.soundType });
       }
     }
     // The fixture clips voice `logicSoundType` 61 (SocialTalk - societies.ts): the talker opens the

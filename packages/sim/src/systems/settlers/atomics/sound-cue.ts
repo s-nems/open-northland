@@ -3,22 +3,33 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
-  atomicAnimationName,
-  atomicEventFrame,
+  atomicAnimationByName,
+  atomicClipName,
+  atomicEventTick,
 } from '../../readviews/animations.js';
 
-/** The frame in a settler's atomic animation carrying its PLAY_SOUND_FX cue, or undefined when the tribe
- *  binds the atomic to no animation or that animation has no such event. */
-export function atomicSoundFrame(
+/**
+ * Emit the sound cues a settler's running atomic authors on this tick: every `event <at> 34 <id>` row of
+ * its animation whose clamped frame is `elapsed`, carrying `<id>` as the sound bank's `logicSoundType`.
+ * A clip with no such row is silent, and one with several sounds them all.
+ */
+export function emitAtomicSoundCues(
   world: World,
   ctx: SystemContext,
   settler: Entity,
   atomicId: number,
-): number | undefined {
+  elapsed: number,
+  duration: number,
+): void {
   const s = world.tryGet(settler, Settler);
-  if (s === undefined) return undefined;
-  const anim = atomicAnimationName(ctx.content, s, atomicId);
-  return anim === undefined
-    ? undefined
-    : atomicEventFrame(ctx.content, anim, ATOMIC_EVENT_TYPE_PLAY_SOUND_FX);
+  if (s === undefined) return;
+  const clip = atomicClipName(ctx.content, s, atomicId);
+  if (clip === undefined) return;
+  const anim = atomicAnimationByName(ctx.content, clip);
+  if (anim === undefined) return;
+  for (const event of anim.events) {
+    if (event.type !== ATOMIC_EVENT_TYPE_PLAY_SOUND_FX || event.value === undefined) continue;
+    if (atomicEventTick(event.at, duration) !== elapsed) continue;
+    ctx.events.emit({ kind: 'atomicSound', entity: settler, soundType: event.value });
+  }
 }

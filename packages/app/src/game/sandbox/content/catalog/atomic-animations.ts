@@ -20,11 +20,11 @@ import {
   SWORD_SWING_LENGTH,
 } from '../../combat.js';
 import { GATHERERS } from '../../ids/index.js';
+import { soundCueEvents } from '../../sound-cues.js';
 import {
   BUILD_GUIDE_ANIMATION,
   BUILD_GUIDE_SWING_LENGTH,
   BUILD_HOUSE_ANIMATION,
-  BUILD_HOUSE_STRIKE_FRAME,
   BUILD_HOUSE_SWING_LENGTH,
   CHANGE_SOCIAL_EVENT_TYPE,
   CIVILIST_EXERCISE_ANIMATION,
@@ -42,7 +42,6 @@ import {
   FARMER_WATER_ANIMATION,
   FARMER_WATER_LENGTH,
   LISTEN_QUIET_PULSE_VALUE,
-  PLAY_SOUND_FX_EVENT_TYPE,
   STORE_EXCHANGE_LENGTH,
   STORE_PICKUP_ANIMATION,
   STORE_PILEUP_ANIMATION,
@@ -67,17 +66,24 @@ function chatClip(
     length,
     // `interruptable 1` in the source rows.
     interruptible: true,
-    events: frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value })),
+    events: [
+      ...frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value })),
+      ...soundCueEvents(name, length),
+    ],
   };
 }
 
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
-    ...GATHERERS.map((gatherer) => ({
-      id: gatherer.animation,
-      name: gatherer.animation,
-      length: HARVEST_TICKS[gatherer.atomic] ?? 1,
-    })),
+    ...GATHERERS.map((gatherer) => {
+      const length = HARVEST_TICKS[gatherer.atomic] ?? 1;
+      return {
+        id: gatherer.animation,
+        name: gatherer.animation,
+        length,
+        events: soundCueEvents(gatherer.animation, length),
+      };
+    }),
     { id: STORE_PICKUP_ANIMATION, name: STORE_PICKUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
     { id: STORE_PILEUP_ANIMATION, name: STORE_PILEUP_ANIMATION, length: STORE_EXCHANGE_LENGTH },
     // Extracted lengths from the mod's `atomicanimations12/atomicanimations.ini`. The hearts phase runs
@@ -98,37 +104,55 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       id: 'viking_fist_attack',
       name: 'viking_fist_attack',
       length: FIST_SWING_LENGTH,
-      events: [{ at: FIST_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      events: [
+        { at: FIST_HIT_FRAME, type: ATTACK_EVENT_TYPE },
+        ...soundCueEvents('viking_fist_attack', FIST_SWING_LENGTH),
+      ],
     },
     {
       id: 'viking_spear_attack',
       name: 'viking_spear_attack',
       length: SPEAR_SWING_LENGTH,
-      events: [{ at: SPEAR_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      events: [
+        { at: SPEAR_HIT_FRAME, type: ATTACK_EVENT_TYPE },
+        ...soundCueEvents('viking_spear_attack', SPEAR_SWING_LENGTH),
+      ],
     },
     {
       id: 'viking_sword_attack',
       name: 'viking_sword_attack',
       length: SWORD_SWING_LENGTH,
-      events: [{ at: SWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      events: [
+        { at: SWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE },
+        ...soundCueEvents('viking_sword_attack', SWORD_SWING_LENGTH),
+      ],
     },
     {
       id: 'viking_broadsword_attack',
       name: 'viking_broadsword_attack',
       length: BROADSWORD_SWING_LENGTH,
-      events: [{ at: BROADSWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE }],
+      events: [
+        { at: BROADSWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE },
+        ...soundCueEvents('viking_broadsword_attack', BROADSWORD_SWING_LENGTH),
+      ],
     },
     {
       id: 'viking_bow_attack',
       name: 'viking_bow_attack',
       length: SHORT_BOW_DRAW_LENGTH,
-      events: [{ at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
+      events: [
+        { at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
+        ...soundCueEvents('viking_bow_attack', SHORT_BOW_DRAW_LENGTH),
+      ],
     },
     {
       id: 'viking_hunter_attack',
       name: 'viking_hunter_attack',
       length: HUNTER_BOW_DRAW_LENGTH,
-      events: [{ at: HUNTER_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
+      events: [
+        { at: HUNTER_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
+        ...soundCueEvents('viking_hunter_attack', HUNTER_BOW_DRAW_LENGTH),
+      ],
     },
     {
       id: 'viking_hunter_harvest_cadaver',
@@ -139,21 +163,22 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
       id: 'viking_bow_long_attack',
       name: 'viking_bow_long_attack',
       length: LONG_BOW_DRAW_LENGTH,
-      events: [{ at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE }],
+      events: [
+        { at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
+        ...soundCueEvents('viking_bow_long_attack', LONG_BOW_DRAW_LENGTH),
+      ],
     },
     {
       id: BUILD_HOUSE_ANIMATION,
       name: BUILD_HOUSE_ANIMATION,
       length: BUILD_HOUSE_SWING_LENGTH,
-      // The hammer knock sounds mid-swing at the authored `event 4 34 1` frame, not at completion.
-      events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 1 }],
+      events: soundCueEvents(BUILD_HOUSE_ANIMATION, BUILD_HOUSE_SWING_LENGTH),
     },
     {
-      // The extracted `viking_scout_build_guide` shares the builder's sound-FX frame at `event 4 34 2`.
       id: BUILD_GUIDE_ANIMATION,
       name: BUILD_GUIDE_ANIMATION,
       length: BUILD_GUIDE_SWING_LENGTH,
-      events: [{ at: BUILD_HOUSE_STRIKE_FRAME, type: PLAY_SOUND_FX_EVENT_TYPE, value: 2 }],
+      events: soundCueEvents(BUILD_GUIDE_ANIMATION, BUILD_GUIDE_SWING_LENGTH),
     },
     {
       id: CIVILIST_EXERCISE_ANIMATION,
@@ -167,8 +192,18 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
         },
       ],
     },
-    { id: FARMER_REAP_ANIMATION, name: FARMER_REAP_ANIMATION, length: FARMER_REAP_LENGTH },
+    {
+      id: FARMER_REAP_ANIMATION,
+      name: FARMER_REAP_ANIMATION,
+      length: FARMER_REAP_LENGTH,
+      events: soundCueEvents(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH),
+    },
     { id: FARMER_SOW_ANIMATION, name: FARMER_SOW_ANIMATION, length: FARMER_SOW_LENGTH },
-    { id: FARMER_WATER_ANIMATION, name: FARMER_WATER_ANIMATION, length: FARMER_WATER_LENGTH },
+    {
+      id: FARMER_WATER_ANIMATION,
+      name: FARMER_WATER_ANIMATION,
+      length: FARMER_WATER_LENGTH,
+      events: soundCueEvents(FARMER_WATER_ANIMATION, FARMER_WATER_LENGTH),
+    },
   ];
 }

@@ -20,25 +20,17 @@ export const JINGLE_HOUSE_BUILT = 26;
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
 /** Construction hammering - placed at a newly-sited building/boat. */
 export const GROUP_HAMMER_WOOD = 'Hammer Wood';
-/** Axe chops - the woodcutter working a tree (bound to the chop atomic by the caller). */
-export const GROUP_WOODCUTTER_AXE = 'Woodcutter Axe';
 /** Sawing - a workshop producing (bound to `goodProduced`). */
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 
-// --- Combat impact / weapon SFX (SoundFXStatic `Name`s, the weapon-impact `LogicSoundType` 67–96 set
-//     decoded from `soundfx.cif`). ---
-/** Melee swing swoosh - plays on every swing, hit or miss. The melee weapons share one swing wav set in
- *  the bank (`Weapon Sword Short` / `Weapon Spear` / `Weapon Fist` all point at the same `swing0N.wav`),
- *  so one generic swing group covers sword/spear/fist. */
-export const GROUP_MELEE_SWING = 'Weapon Sword Short';
+// --- Combat impact SFX (SoundFXStatic `Name`s, the weapon-impact `LogicSoundType` 67–96 set decoded from
+//     `soundfx.cif`). The swings themselves come from the attack clip's own cue, not from here. ---
 /** Fist impact - a bare-handed civilian brawl connecting (LogicSoundType 93). */
 export const GROUP_FIST_HIT = 'Weapon Fist Hit';
 /** Spear thrust connecting (LogicSoundType 68). */
 export const GROUP_SPEAR_HIT = 'Weapon Spear Hit';
 /** Sword blow connecting - the short-sword impact, the generic melee-thunk fallback too (LogicSoundType 82). */
 export const GROUP_SWORD_HIT = 'Weapon Sword Short Hit';
-/** Bow release - the string loosing an arrow (LogicSoundType 75, the long/hunter bow twang). */
-export const GROUP_BOW_SHOT = 'Weapon Bow Long';
 /** Arrow impact - the shot landing its blow (LogicSoundType 77). */
 export const GROUP_ARROW_HIT = 'Weapon Bow Hit';
 
@@ -58,9 +50,9 @@ export type VoiceClass = 'male' | 'female' | 'child';
 
 /**
  * The viking voice pools, keyed by sex/age - `SoundFXStatic` group names from `soundfx.cif` (the mod's
- * `humans/sounds.cif` binds these same groups per tribe/sex). In play, a voice comes from the sim's
- * `chatVoice` cue, which names its group by `logicSoundType` id straight from the talk clip's authored
- * event (the SocialTalk pair 61/62); this table remains the gallery's audition listing of all the pools.
+ * `humans/sounds.cif` binds these same groups per tribe/sex). In play, a voice comes from the talk clip's
+ * authored `atomicSound` cue, which names its group by `logicSoundType` id (the SocialTalk pair 61/62);
+ * this table remains the gallery's audition listing of all the pools.
  */
 export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>> = {
   male: ['Generic Viking Male', 'Talk Viking Male', 'SocialTalk Male'],
@@ -69,24 +61,11 @@ export const VIKING_VOICE_POOLS: Readonly<Record<VoiceClass, readonly string[]>>
 };
 
 /**
- * Build the default {@link SoundBindings}. `chopAtomicId`/`buildAtomicId`, when given, bind those
- * content-specific atomics to the woodcutter axe / construction hammer groups (the app knows its
- * content's atomic ids; the audio package cannot). The chop sounds on `atomicCompleted` (`byAtomic`); the
- * build hammer on the mid-swing `atomicSound` cue (`byAtomicSound`). Omit an id and that atomic produces
- * no sound.
+ * Build the default {@link SoundBindings} - the sounds this package picks, for the happenings that are not
+ * a settler's own animation. Every action a settler performs sounds through its clip's authored
+ * `logicSoundType` cue instead, so no atomic is bound here.
  */
-export function defaultBindings(opts?: {
-  readonly chopAtomicId?: number;
-  readonly buildAtomicId?: number;
-}): SoundBindings {
-  const byAtomic = new Map<number, EventSound>();
-  if (opts?.chopAtomicId !== undefined) {
-    byAtomic.set(opts.chopAtomicId, { kind: 'spatial', group: GROUP_WOODCUTTER_AXE });
-  }
-  const byAtomicSound = new Map<number, EventSound>();
-  if (opts?.buildAtomicId !== undefined) {
-    byAtomicSound.set(opts.buildAtomicId, { kind: 'spatial', group: GROUP_HAMMER_WOOD });
-  }
+export function defaultBindings(): SoundBindings {
   return {
     byEvent: {
       buildingPlaced: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
@@ -104,13 +83,12 @@ export function defaultBindings(opts?: {
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true, screenGated: true },
       defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
-      combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },
+      // No swing or release entry: the attack clip authors its own per-weapon swoosh and bowstring
+      // (`viking_soldier_attack_spear_iron` `event 16 34 67`), and a second hand-picked sound a tick or
+      // two off it reads as an echo. Only the impacts below are the engine's own choice.
       combatHit: { kind: 'spatial', group: GROUP_SWORD_HIT },
-      projectileLaunched: { kind: 'spatial', group: GROUP_BOW_SHOT },
       projectileHit: { kind: 'spatial', group: GROUP_ARROW_HIT },
     },
-    byAtomic,
-    byAtomicSound,
     byCombatWeapon: new Map<number, EventSound>([
       [WEAPON_MAIN_TYPE_FIST, { kind: 'spatial', group: GROUP_FIST_HIT }],
       [WEAPON_MAIN_TYPE_SPEAR, { kind: 'spatial', group: GROUP_SPEAR_HIT }],

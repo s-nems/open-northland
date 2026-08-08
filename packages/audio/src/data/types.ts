@@ -68,20 +68,12 @@ export type EventSound =
     };
 
 /**
- * The event→sound map the director resolves against. `byEvent` covers events identified by their
- * kind alone; `byAtomic` covers `atomicCompleted`, whose meaning is the numeric `atomicId` (a
- * content-specific id - a chop vs. a hammer-swing), so the app keys it by the ids its content defines.
+ * The event→sound map the director resolves against, for the events whose sound is a choice made here.
+ * An `atomicSound` needs no entry: it names its own group by `logicSoundType`, straight from the
+ * animation's authored cue.
  */
 export interface SoundBindings {
   readonly byEvent: Partial<Record<SimEventKind, EventSound>>;
-  readonly byAtomic: ReadonlyMap<number, EventSound>;
-  /**
-   * The mid-swing sound of an atomic that plays its SFX on an authored PLAY_SOUND_FX frame, keyed by
-   * `atomicId` - resolved for an `atomicSound` event (the sim's cue at that frame) rather than
-   * `atomicCompleted`, so the sound lands on the visual strike, not the swing's end. An atomic with no
-   * such cue keeps its completion-fired `byAtomic` sound.
-   */
-  readonly byAtomicSound: ReadonlyMap<number, EventSound>;
   /**
    * A melee `combatHit`'s weapon-specific impact sound, keyed by the striker's `weaponMainType`
    * (1 fist / 2 spear / 3 sword / 4 saber / 5 axe - `WEAPON_MAIN_TYPE_*`). A class with no entry (or a
@@ -117,7 +109,7 @@ export interface DirectorInput {
    * unaffected.
    */
   readonly localPlayer?: number;
-  /** The viewer's fog-of-war visibility at a fractional tile - gates a `chatVoice` (a settler hidden by
-   *  the fog must not natter from empty black). Omit → no fog, every on-screen chat is audible. */
+  /** The viewer's fog-of-war visibility at a fractional tile - gates an `atomicSound` (a settler hidden by
+   *  the fog must not natter or hammer out of empty black). Omit → no fog, every on-screen cue is audible. */
   readonly visibleTile?: (col: number, row: number) => boolean;
 }

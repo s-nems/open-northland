@@ -5,15 +5,18 @@ import { buildSoundGalleryModel } from '../src/entries/sound.js';
 
 /**
  * The `?sounds` gallery's PURE model: the auditable join of the decoded bank + the event→sound bindings.
- * This is the half a human can't self-judge made checkable - that the chop atomic reaches the axe clips,
- * a life event reaches its jingle, and the voice pools split by sex - without a browser or an AudioContext.
+ * This is the half a human can't self-judge made checkable - that a life event reaches its jingle, that
+ * the voice pools split by sex, and that every cue group is auditable by its `logicSoundType` id - without
+ * a browser or an AudioContext.
  */
-
-const CHOP_ATOMIC = 24;
 
 const bank: SoundBank = {
   staticGroups: [
-    { name: 'Woodcutter Axe', sfx: [f('static/axe01.wav'), f('static/axe02.wav'), f('static/axe03.wav')] },
+    {
+      name: 'Woodcutter Axe',
+      logicSoundType: 9,
+      sfx: [f('static/axe01.wav'), f('static/axe02.wav'), f('static/axe03.wav')],
+    },
     { name: 'Hammer Wood', sfx: [f('static/hammer01.wav'), f('static/hammer02.wav')] },
     { name: 'Carpenter Saw', sfx: [f('static/carpenter_saw01.wav')] },
     { name: 'Generic Viking Male', sfx: [f('generic/m1.wav')] },
@@ -45,13 +48,17 @@ function f(file: string): { file: string; params: number[] } {
 }
 
 describe('buildSoundGalleryModel', () => {
-  const model = buildSoundGalleryModel(bank, defaultBindings({ chopAtomicId: CHOP_ATOMIC }), CHOP_ATOMIC);
+  const model = buildSoundGalleryModel(bank, defaultBindings());
 
-  it('binds the chop atomic to the axe clips as a positional sound', () => {
-    const chop = model.actions.find((a) => a.label === 'Rąbanie drzewa');
-    expect(chop?.kind).toBe('spatial');
-    expect(chop?.sound).toBe('Woodcutter Axe');
-    expect(chop?.clips).toEqual(['static/axe01.wav', 'static/axe02.wav', 'static/axe03.wav']);
+  it('lists every cue group with the logicSoundType id an animation names it by', () => {
+    // A settler's work sounds are not bound here - the animation names them - so the gallery auditions
+    // the groups themselves, keyed by the id an `event <at> 34 <id>` row carries.
+    const axe = model.cues.find((c) => c.group === 'Woodcutter Axe');
+    expect(axe?.soundType).toBe(9);
+    expect(axe?.clips).toEqual(['static/axe01.wav', 'static/axe02.wav', 'static/axe03.wav']);
+    // A group the extraction left without an id is still listed, just unreachable from a cue.
+    expect(model.cues.find((c) => c.group === 'Hammer Wood')?.soundType).toBeUndefined();
+    expect(model.cues).toHaveLength(bank.staticGroups.length);
   });
 
   it('binds a finished building to the house-built jingle, marked screen-gated', () => {
@@ -90,18 +97,19 @@ describe('buildSoundGalleryModel', () => {
   });
 
   it('omits an action whose binding is absent in this build (no empty rows)', () => {
-    // No chop atomic id bound → the chop row is dropped rather than shown clip-less.
-    const noChop = buildSoundGalleryModel(bank, defaultBindings(), CHOP_ATOMIC);
-    expect(noChop.actions.some((a) => a.label === 'Rąbanie drzewa')).toBe(false);
-    expect(noChop.actions.some((a) => a.label === 'Postawienie budynku')).toBe(true);
+    // Swing and release moved to the animation cue, so nothing binds them - and no row claims they exist.
+    const labels = model.actions.map((a) => a.label);
+    expect(labels).not.toContain('Rąbanie drzewa');
+    expect(labels).toContain('Postawienie budynku');
   });
 
   it('shows a group missing from the bank with an empty clip list, not a crash', () => {
     const bare: SoundBank = { staticGroups: [], ambient: [], jingles: [] };
-    const m = buildSoundGalleryModel(bare, defaultBindings({ chopAtomicId: CHOP_ATOMIC }), CHOP_ATOMIC);
+    const m = buildSoundGalleryModel(bare, defaultBindings());
     // Voice groups still listed (the pools are static), each with no clips since the bank is empty.
     expect(m.voices.flatMap((v) => v.groups).every((g) => g.clips.length === 0)).toBe(true);
     // A spatial action whose group is missing resolves to an empty clip list (still shown for auditing).
-    expect(m.actions.find((a) => a.label === 'Rąbanie drzewa')?.clips).toEqual([]);
+    expect(m.actions.find((a) => a.label === 'Postawienie budynku')?.clips).toEqual([]);
+    expect(m.cues).toEqual([]);
   });
 });

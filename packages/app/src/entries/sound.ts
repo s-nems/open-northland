@@ -7,7 +7,6 @@ import {
 } from '@open-northland/audio';
 import type { SoundBank } from '@open-northland/data';
 import { withBaseUrl } from '../base-url.js';
-import { HARVEST_ATOMIC } from '../catalog/atomics.js';
 import { hasSoundContent } from '../content/audio.js';
 import { loadIr } from '../content/ir/load.js';
 import { formatMessage, messages } from '../i18n/index.js';
@@ -22,6 +21,9 @@ import { el, pageInnerStyle, pageRootStyle, pageSection } from '../view/overlay.
 export interface ClipList {
   readonly group: string;
   readonly clips: readonly string[];
+  /** The group's `logicSoundType` id, when it carries one - the id an animation's `event <at> 34 <id>`
+   *  names to play this group. Absent for a group no cue can reach. */
+  readonly soundType?: number;
 }
 
 export interface ActionRow {
@@ -46,14 +48,17 @@ export interface VoiceClassView {
 
 export interface SoundGalleryModel {
   readonly actions: readonly ActionRow[];
+  /** Every static group in the bank, carrying the `logicSoundType` id an animation cue names it by. This
+   *  is where a settler's own action sounds live - the axe, the hammer, the scythe - since those are
+   *  chosen by the animation data rather than bound to an event here. */
+  readonly cues: readonly ClipList[];
   readonly voices: readonly VoiceClassView[];
   readonly jingles: readonly ClipList[];
   readonly ambient: readonly ClipList[];
 }
 
-/** An action's binding key: the `chop` atomic, or one of the `byEvent` sim-event kinds. */
+/** An action's binding key - one of the `byEvent` sim-event kinds. */
 type ActionKind =
-  | 'chop'
   | 'buildingPlaced'
   | 'boatPlaced'
   | 'goodProduced'
@@ -64,7 +69,6 @@ type ActionKind =
 const ACTION_EVENTS: readonly {
   readonly kind: ActionKind;
 }[] = [
-  { kind: 'chop' },
   { kind: 'buildingPlaced' },
   { kind: 'boatPlaced' },
   { kind: 'goodProduced' },
@@ -102,15 +106,10 @@ function resolveSound(
 }
 
 /** Pure, with no DOM or Audio, so the "which sound answers which happening" join is unit-tested. */
-export function buildSoundGalleryModel(
-  sounds: SoundBank,
-  bindings: SoundBindings,
-  chopAtomicId: number,
-): SoundGalleryModel {
+export function buildSoundGalleryModel(sounds: SoundBank, bindings: SoundBindings): SoundGalleryModel {
   const actions: ActionRow[] = [];
   for (const ev of ACTION_EVENTS) {
-    const bound = ev.kind === 'chop' ? bindings.byAtomic.get(chopAtomicId) : bindings.byEvent[ev.kind];
-    const resolved = resolveSound(bound, sounds);
+    const resolved = resolveSound(bindings.byEvent[ev.kind], sounds);
     if (resolved === null) continue; // unbound in this build - omit the row rather than show an empty one
     const copy = messages().soundGallery.actionsCatalog[ev.kind];
     actions.push({ label: copy.label, trigger: copy.trigger, ...resolved });
@@ -137,7 +136,13 @@ export function buildSoundGalleryModel(
     clips: a.sfx.map((s) => s.file),
   }));
 
-  return { actions, voices, jingles, ambient };
+  const cues: ClipList[] = sounds.staticGroups.map((g) => ({
+    group: g.name,
+    clips: g.sfx.map((s) => s.file),
+    ...(g.logicSoundType !== undefined ? { soundType: g.logicSoundType } : {}),
+  }));
+
+  return { actions, cues, voices, jingles, ambient };
 }
 
 // ─── DOM render (browser-only) ───────────────────────────────────────────────────────────────────────
@@ -209,8 +214,9 @@ function clipButtons(clips: readonly string[]): HTMLElement {
 
 function groupRow(cl: ClipList): HTMLElement {
   const row = el('div', ROW_STYLE);
+  const id = cl.soundType !== undefined ? `  ·  id ${cl.soundType}` : '';
   row.append(
-    el('div', 'font-weight:700', `${cl.group}  ·  ${cl.clips.length} ${messages().common.recordings}`),
+    el('div', 'font-weight:700', `${cl.group}${id}  ·  ${cl.clips.length} ${messages().common.recordings}`),
   );
   row.append(clipButtons(cl.clips));
   return row;
@@ -256,11 +262,7 @@ export async function renderSoundGallery(
     return;
   }
 
-  const model = buildSoundGalleryModel(
-    sounds,
-    defaultBindings({ chopAtomicId: HARVEST_ATOMIC }),
-    HARVEST_ATOMIC,
-  );
+  const model = buildSoundGalleryModel(sounds, defaultBindings());
 
   const root = el('div', ROOT_STYLE);
   const inner = el('div', INNER_STYLE);
@@ -270,6 +272,7 @@ export async function renderSoundGallery(
   );
 
   inner.append(pageSection(messages().soundGallery.actions, model.actions.map(actionRow)));
+  inner.append(pageSection(messages().soundGallery.cues, model.cues.map(groupRow)));
   const voiceRows: HTMLElement[] = [];
   for (const v of model.voices) {
     voiceRows.push(el('div', 'font-weight:700;opacity:0.85;margin:10px 0 2px', v.label));

@@ -96,22 +96,22 @@ describe('SoundDriver', () => {
     expect((ctx.sources[0] as FakeSource).loop).toBe(true); // the looping meadow bed
   });
 
-  it('plays a chatVoice cue from an on-screen talker, resolved by its logicSoundType id', async () => {
+  it('plays an authored cue from an on-screen settler, resolved by its logicSoundType id', async () => {
     const { driver, fetched } = makeDriver();
     await driver.resume();
     const events: readonly SimEvent[] = [
-      { kind: 'chatVoice', entity: 3 as Entity, soundType: SOCIALTALK_MALE },
+      { kind: 'atomicSound', entity: 3 as Entity, soundType: SOCIALTALK_MALE },
     ];
     driver.update({ ...baseInput, events });
     await flush();
     expect(fetched).toEqual(['/sounds/voice/male_social.wav']);
   });
 
-  it('keeps a fogged talker silent (the visibleTile gate)', async () => {
+  it('keeps a fogged settler silent (the visibleTile gate)', async () => {
     const { driver, fetched } = makeDriver();
     await driver.resume();
     const events: readonly SimEvent[] = [
-      { kind: 'chatVoice', entity: 3 as Entity, soundType: SOCIALTALK_MALE },
+      { kind: 'atomicSound', entity: 3 as Entity, soundType: SOCIALTALK_MALE },
     ];
     driver.update({ ...baseInput, events, visibleTile: () => false });
     await flush();

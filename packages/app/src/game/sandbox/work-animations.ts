@@ -8,11 +8,6 @@ export const BUILD_HOUSE_ANIMATION = 'viking_builder_build_house';
 // The extracted `viking_scout_build_guide` `length 15`, at the builder swing's cadence.
 export const BUILD_GUIDE_SWING_LENGTH = 15 * HAMMER_TICKS_PER_FRAME;
 export const BUILD_GUIDE_ANIMATION = 'viking_scout_build_guide';
-// `ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX` in `logicdefines.inc`: the frame an animation sounds its
-// FX, which is mid-swing rather than at completion.
-export const PLAY_SOUND_FX_EVENT_TYPE = 34;
-// The extracted `event 4 34 1` on `viking_builder_build_house`, at the swing's scaled cadence.
-export const BUILD_HOUSE_STRIKE_FRAME = 4 * HAMMER_TICKS_PER_FRAME;
 // Extracted from `DataCnmd/atomicanimations12/atomicanimations.ini`; the names are the original's own
 // `setatomic 18 29/34/35` bindings.
 export const FARMER_REAP_ANIMATION = 'viking_farmer_harvest_wheat';

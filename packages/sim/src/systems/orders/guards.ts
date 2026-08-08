@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
-import { isInterruptibleAtomic, needAtomicAnimationName } from '../readviews/animations.js';
+import { atomicClipName, isInterruptibleAtomic } from '../readviews/animations.js';
 
 /** Whether `e` is a living, owned settler the player may issue a command to. A dead, non-settler, or
  *  unowned target is a recoverable no-op. Handlers that also need a Position or Health keep those extra
@@ -40,7 +40,7 @@ export function deferOrderDuringAtomic(
 ): boolean {
   const atomic = world.tryGet(e, CurrentAtomic);
   if (atomic === undefined) return false;
-  const clip = needAtomicAnimationName(ctx.content, world.get(e, Settler), atomic.atomicId);
+  const clip = atomicClipName(ctx.content, world.get(e, Settler), atomic.atomicId);
   if (clip !== undefined && isInterruptibleAtomic(ctx.content, clip)) return false;
   // Copied, not aliased: the caller's command object also sits in the replay log, and a shared reference
   // would let a post-enqueue mutation silently rewrite hashed component state.

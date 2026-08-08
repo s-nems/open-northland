@@ -50,8 +50,8 @@ export { schoolingMet } from './progression/unlocks.js';
 // The need-atomic clip resolution, exported so the real-content suite can pin both joins against the
 // served IR rather than a fixture.
 export {
+  atomicClipName,
   atomicDurationForName,
-  needAtomicAnimationName,
   needAtomicDuration,
 } from './readviews/animations.js';
 export { HEADQUARTERS_BUILDING_ID, isBarracksType } from './readviews/buildings.js';

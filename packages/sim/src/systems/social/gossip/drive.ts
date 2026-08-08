@@ -17,10 +17,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
-import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import {
-  ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
-  atomicAnimationName,
+  atomicClipName,
   atomicDurationForName,
   atomicEventChannelDelta,
 } from '../../readviews/animations.js';
@@ -50,19 +48,10 @@ export const CHAT_COOLDOWN_TICKS = 40;
  */
 const SOCIAL_EVENT_UNITS_PER_BAR = 4000;
 
-/** Resolve the animation name a settler's tribe binds to a chat atomic, falling back to the tribe's
- *  {@link CIVILIST_JOB} binding: the readable `setatomic` talk/listen rows exist only for the woman and
- *  civilist jobs, so every trade's chat resolves through the civilist's `baseatomics 6` inheritance. */
-function chatAnimationName(ctx: SystemContext, s: SettlerIdentity, atomicId: number): string | undefined {
-  return (
-    atomicAnimationName(ctx.content, s, atomicId) ??
-    atomicAnimationName(ctx.content, { tribe: s.tribe, jobType: CIVILIST_JOB }, atomicId)
-  );
-}
-
-/** A chat atomic's duration (ticks) through the civilist-fallback name resolution above. */
+/** A chat atomic's duration (ticks). The readable `setatomic` talk/listen rows exist only for the woman and
+ *  civilist jobs, so every other trade's chat resolves through {@link atomicClipName}'s civilist fallback. */
 function chatDuration(ctx: SystemContext, s: SettlerIdentity, atomicId: number): number {
-  return atomicDurationForName(ctx.content, chatAnimationName(ctx, s, atomicId));
+  return atomicDurationForName(ctx.content, atomicClipName(ctx.content, s, atomicId));
 }
 
 /** Remove a chat from both halves, interrupting any talk/listen atomic in flight (the clips are
@@ -106,10 +95,9 @@ function chatOutranked(world: World, e: Entity, s: { hunger: Fixed; fatigue: Fix
 
 /**
  * Apply this tick's talk/listen animation frame to `e`: each `event <elapsed> 3 <delta>` takes
- * `delta/4000` ({@link SOCIAL_EVENT_UNITS_PER_BAR}) off the company deficit, clamped at 0, and each
- * `event <elapsed> 34 <id>` emits the clip's authored voice cue. Observable frames are `0..duration-1`:
- * the AtomicSystem removes a finished clip before the next gossip pass, so an event authored at the clip's
- * length would never fire.
+ * `delta/4000` ({@link SOCIAL_EVENT_UNITS_PER_BAR}) off the company deficit, clamped at 0. Observable
+ * frames are `0..duration-1`: the AtomicSystem removes a finished clip before the next gossip pass, so an
+ * event authored at the clip's length would never fire.
  */
 function applyChatFrame(
   world: World,
@@ -120,16 +108,14 @@ function applyChatFrame(
   const atomic = world.tryGet(e, CurrentAtomic);
   if (atomic === undefined) return;
   if (atomic.atomicId !== TALK_ATOMIC_ID && atomic.atomicId !== LISTEN_ATOMIC_ID) return;
-  const name = chatAnimationName(ctx, s, atomic.atomicId);
+  const name = atomicClipName(ctx.content, s, atomic.atomicId);
   if (name === undefined) return;
   const anim = atomicAnimationByName(ctx.content, name);
   if (anim === undefined) return;
   let units = 0;
   for (const event of anim.events) {
-    if (event.at !== atomic.elapsed) continue;
-    if (event.type === ATOMIC_EVENT_CHANNEL.LEISURE) units += event.value ?? 0;
-    if (event.type === ATOMIC_EVENT_TYPE_PLAY_SOUND_FX && event.value !== undefined) {
-      ctx.events.emit({ kind: 'chatVoice', entity: e, soundType: event.value });
+    if (event.type === ATOMIC_EVENT_CHANNEL.LEISURE && event.at === atomic.elapsed) {
+      units += event.value ?? 0;
     }
   }
   if (units <= 0) return;
@@ -140,7 +126,7 @@ function applyChatFrame(
 /** The clip's total channel-3 restore for this half's next `atomicId` round, in event units; 0 means the
  *  animation is unreadable and the round falls back to a completion reset like eat/sleep. */
 function roundRefillUnits(ctx: SystemContext, s: SettlerIdentity, atomicId: number): number {
-  const name = chatAnimationName(ctx, s, atomicId);
+  const name = atomicClipName(ctx.content, s, atomicId);
   return name === undefined ? 0 : atomicEventChannelDelta(ctx.content, name, ATOMIC_EVENT_CHANNEL.LEISURE);
 }
 

@@ -4,7 +4,7 @@ import { defaultBindings, VIKING_VOICE_POOLS } from '../src/index.js';
 /**
  * The event→sound bindings: the "which sound answers which happening" layer, plus the voice-pool
  * listing the `?sounds` gallery auditions (in play a voice resolves by `logicSoundType` id from the
- * sim's `chatVoice` cue, not from these pools).
+ * clip's authored `atomicSound` cue, not from these pools).
  */
 
 describe('VIKING_VOICE_POOLS', () => {
@@ -19,23 +19,6 @@ describe('VIKING_VOICE_POOLS', () => {
 });
 
 describe('defaultBindings', () => {
-  it('binds the chop / build atomics to spatial groups only when their ids are given', () => {
-    expect(defaultBindings().byAtomic.size).toBe(0);
-    expect(defaultBindings().byAtomicSound.size).toBe(0);
-    // The chop sounds at swing completion (byAtomic → atomicCompleted).
-    const chop = defaultBindings({ chopAtomicId: 24 }).byAtomic.get(24);
-    expect(chop).toEqual({ kind: 'spatial', group: 'Woodcutter Axe' });
-    // The builder's hammer knocks mid-swing at its PLAY_SOUND_FX cue (byAtomicSound → atomicSound), the
-    // per-swing twin of the buildingPlaced hammer - not on byAtomic, so it never doubles at completion.
-    const build = defaultBindings({ buildAtomicId: 39 });
-    expect(build.byAtomicSound.get(39)).toEqual({ kind: 'spatial', group: 'Hammer Wood' });
-    expect(build.byAtomic.has(39)).toBe(false);
-    // Both ids together bind their atomics independently, each on its own map.
-    const both = defaultBindings({ chopAtomicId: 24, buildAtomicId: 39 });
-    expect(both.byAtomic.size).toBe(1);
-    expect(both.byAtomicSound.size).toBe(1);
-  });
-
   it('binds life events to jingles and placement/production to spatial groups', () => {
     const b = defaultBindings();
     expect(b.byEvent.buildingFinished?.kind).toBe('jingle');
@@ -59,11 +42,14 @@ describe('defaultBindings', () => {
     expect(alarm).toEqual({ kind: 'jingle', musicType: 24, localPlayerOnly: true });
   });
 
-  it('binds combat impacts: melee hit + bow shot/hit, with weapon-specific melee groups', () => {
+  it("binds combat impacts only, leaving swing and release to the attack clip's own cue", () => {
     const b = defaultBindings();
     expect(b.byEvent.combatHit).toEqual({ kind: 'spatial', group: 'Weapon Sword Short Hit' });
-    expect(b.byEvent.projectileLaunched).toEqual({ kind: 'spatial', group: 'Weapon Bow Long' });
     expect(b.byEvent.projectileHit).toEqual({ kind: 'spatial', group: 'Weapon Bow Hit' });
+    // The swoosh and the bowstring are authored per weapon in the animation, so binding them here would
+    // fire a second, near-simultaneous sound on every swing.
+    expect(b.byEvent.combatSwing).toBeUndefined();
+    expect(b.byEvent.projectileLaunched).toBeUndefined();
     // Per-weapon melee impacts: fist / spear / sword (mainType 1 / 2 / 3).
     expect(b.byCombatWeapon?.get(1)).toEqual({ kind: 'spatial', group: 'Weapon Fist Hit' });
     expect(b.byCombatWeapon?.get(2)).toEqual({ kind: 'spatial', group: 'Weapon Spear Hit' });

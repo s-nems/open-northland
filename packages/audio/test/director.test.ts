@@ -6,7 +6,6 @@ import { describe, expect, it } from 'vitest';
 import {
   type AudioTerrain,
   buildSoundIndex,
-  CHAT_VOICE_GAIN,
   defaultBindings,
   directAudio,
   JINGLE_GAIN,
@@ -22,13 +21,13 @@ import {
 const bank: SoundBank = {
   staticGroups: [
     { name: 'Hammer Wood', sfx: [{ file: 'static/hammer01.wav', params: [80] }] },
-    { name: 'Woodcutter Axe', sfx: [{ file: 'static/axe01.wav', params: [80] }] },
+    { name: 'Woodcutter Axe', logicSoundType: 9, sfx: [{ file: 'static/axe01.wav', params: [80] }] },
     // Combat impact groups (the weapon-specific melee hits + the bow shot/arrow-hit).
     { name: 'Weapon Sword Short Hit', sfx: [{ file: 'static/swordhit01.wav', params: [80] }] },
     { name: 'Weapon Spear Hit', sfx: [{ file: 'static/spearhit01.wav', params: [80] }] },
-    { name: 'Weapon Bow Long', sfx: [{ file: 'static/bow01.wav', params: [80] }] },
+    { name: 'Weapon Bow Long', logicSoundType: 75, sfx: [{ file: 'static/bow01.wav', params: [80] }] },
     { name: 'Weapon Bow Hit', sfx: [{ file: 'static/arrowhit01.wav', params: [80] }] },
-    // The chat voice pair - resolved by logicSoundType id (the talk clip's authored voice cue).
+    // The chat voice pair - like every cue group, resolved by its logicSoundType id.
     { name: 'SocialTalk Male', logicSoundType: 61, sfx: [{ file: 'voice/male_social.wav', params: [80] }] },
     {
       name: 'SocialTalk Female',
@@ -54,10 +53,12 @@ const bank: SoundBank = {
 const gfxPatterns = [{ id: 5, editGroups: ['meadow green'] }] as unknown as GfxPattern[];
 const terrainPatterns = [{ typeId: 1, patternId: 5 }] as unknown as TerrainPattern[];
 
-const CHOP_ATOMIC = 9;
-const BUILD_ATOMIC = 39;
+/** `logicSoundType` ids the fixture bank carries: the woodcutter's axe and the male chat voice. */
+const SOUND_AXE = 9;
+const SOUND_SOCIALTALK_MALE = 61;
+const SOUND_SOCIALTALK_FEMALE = 62;
 const index = buildSoundIndex(bank, gfxPatterns, terrainPatterns);
-const bindings = defaultBindings({ chopAtomicId: CHOP_ATOMIC, buildAtomicId: BUILD_ATOMIC });
+const bindings = defaultBindings();
 
 const CANVAS_W = 800;
 const CANVAS_H = 600;
@@ -130,22 +131,25 @@ describe('directAudio one-shots', () => {
     expect(frame.oneShots[0]?.key).toBe('buildingFinished:7');
   });
 
-  it('positions a chop SFX at the working settler via the atomic binding', () => {
-    const frame = direct([{ kind: 'atomicCompleted', entity: entity(3), atomicId: CHOP_ATOMIC }]);
+  it('positions an authored cue at the working settler, resolved by its logicSoundType', () => {
+    const frame = direct([{ kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE }]);
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['static/axe01.wav']);
-    expect(frame.oneShots[0]?.key).toBe('atomicCompleted:3');
+    expect(frame.oneShots[0]?.key).toBe(`atomicSound:${SOUND_AXE}:3`);
+    // The swing's completion carries no sound of its own, so nothing doubles at the end of the swing.
+    const done = direct([{ kind: 'atomicCompleted', entity: entity(3), atomicId: 24 }]);
+    expect(done.oneShots).toHaveLength(0);
   });
 
-  it('knocks the hammer on the MID-swing atomicSound cue, not at completion', () => {
-    // The builder's hammer sounds on `atomicSound` (its PLAY_SOUND_FX frame), located at the builder.
-    const struck = direct([{ kind: 'atomicSound', entity: entity(3), atomicId: BUILD_ATOMIC }]);
-    expect(struck.oneShots).toHaveLength(1);
-    expect(struck.oneShots[0]?.files).toEqual(['static/hammer01.wav']);
-    expect(struck.oneShots[0]?.key).toBe('atomicSound:3');
-    // The swing's completion event carries no hammer (it moved to the strike cue) - no double knock.
-    const done = direct([{ kind: 'atomicCompleted', entity: entity(3), atomicId: BUILD_ATOMIC }]);
-    expect(done.oneShots).toHaveLength(0);
+  it("keys a cue by sound as well as emitter, so one clip's two cues never debounce each other", () => {
+    const frame = direct([
+      { kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE },
+      { kind: 'atomicSound', entity: entity(3), soundType: SOUND_SOCIALTALK_MALE },
+    ]);
+    expect(frame.oneShots.map((s) => s.key)).toEqual([
+      `atomicSound:${SOUND_AXE}:3`,
+      `atomicSound:${SOUND_SOCIALTALK_MALE}:3`,
+    ]);
   });
 
   it('stays silent for an off-screen emitter', () => {
@@ -157,7 +161,7 @@ describe('directAudio one-shots', () => {
     const frame = direct([
       { kind: 'buildingUpgraded', entity: entity(7), level: 2 }, // no binding
       { kind: 'goodProduced', building: entity(7), goodType: 2, amount: 1 }, // bound to a group absent from the fixture bank
-      { kind: 'atomicCompleted', entity: entity(3), atomicId: 999 }, // no atomic binding
+      { kind: 'atomicSound', entity: entity(3), soundType: 999 }, // no group carries this id
     ]);
     expect(frame.oneShots).toHaveLength(0);
   });
@@ -189,7 +193,7 @@ describe('directAudio combat SFX', () => {
     expect(bare.oneShots[0]?.files).toEqual(['static/swordhit01.wav']);
   });
 
-  it('fires the bow twang on launch and the arrow thunk on hit', () => {
+  it('leaves the bow release to the clip cue and fires only the arrow thunk on hit', () => {
     const loose = direct([
       {
         kind: 'projectileLaunched',
@@ -200,7 +204,7 @@ describe('directAudio combat SFX', () => {
         at,
       },
     ]);
-    expect(loose.oneShots[0]?.files).toEqual(['static/bow01.wav']);
+    expect(loose.oneShots).toHaveLength(0);
     const hit = direct([
       {
         kind: 'projectileHit',
@@ -404,32 +408,30 @@ describe('directAudio ambient', () => {
   });
 });
 
-describe('chatVoice one-shots', () => {
-  it('plays the voice group named by the cue soundType, positioned at the talker', () => {
-    const frame = direct([{ kind: 'chatVoice', entity: entity(3), soundType: 61 }]);
+describe('authored cue one-shots', () => {
+  it('plays the group named by the cue soundType, positioned at the settler', () => {
+    const frame = direct([{ kind: 'atomicSound', entity: entity(3), soundType: SOUND_SOCIALTALK_MALE }]);
     expect(frame.oneShots).toHaveLength(1);
     const shot = frame.oneShots[0];
     expect(shot?.files).toEqual(['voice/male_social.wav']);
     expect(shot?.gain).toBeGreaterThan(0);
-    expect(shot?.gain).toBeLessThan(CHAT_VOICE_GAIN + 1e-9); // base voice gain × spatial attenuation
-    expect(shot?.pan).toBeCloseTo(0, 5); // centred talker
-    expect(shot?.key).toBe('chatVoice:3');
+    expect(shot?.pan).toBeCloseTo(0, 5); // centred emitter
   });
 
   it('resolves the female clip cue to the female group', () => {
-    const frame = direct([{ kind: 'chatVoice', entity: entity(3), soundType: 62 }]);
+    const frame = direct([{ kind: 'atomicSound', entity: entity(3), soundType: SOUND_SOCIALTALK_FEMALE }]);
     expect(frame.oneShots[0]?.files).toEqual(['voice/female_social.wav']);
   });
 
-  it('stays silent for an unknown soundType and for an off-screen talker', () => {
-    expect(direct([{ kind: 'chatVoice', entity: entity(3), soundType: 999 }]).oneShots).toHaveLength(0);
+  it('stays silent for an unknown soundType and for an off-screen emitter', () => {
+    expect(direct([{ kind: 'atomicSound', entity: entity(3), soundType: 999 }]).oneShots).toHaveLength(0);
     const farSnap: WorldSnapshot = {
       tick: 1,
       entities: [{ id: 3, components: { Position: { x: 100 * ONE, y: 100 * ONE }, Settler: {} } }],
       events: [],
     };
     const frame = directAudio({
-      events: [{ kind: 'chatVoice', entity: entity(3), soundType: 61 }],
+      events: [{ kind: 'atomicSound', entity: entity(3), soundType: SOUND_SOCIALTALK_MALE }],
       snapshot: farSnap,
       camera,
       canvasW: CANVAS_W,
@@ -440,9 +442,9 @@ describe('chatVoice one-shots', () => {
     expect(frame.oneShots).toHaveLength(0);
   });
 
-  it('keeps a fogged talker silent while leaving action SFX fog-agnostic', () => {
+  it("keeps a fogged settler silent while leaving the map's own events fog-agnostic", () => {
     const events: readonly SimEvent[] = [
-      { kind: 'chatVoice', entity: entity(3), soundType: 61 },
+      { kind: 'atomicSound', entity: entity(3), soundType: SOUND_SOCIALTALK_MALE },
       { kind: 'buildingPlaced', entity: entity(7), at: { hx: 11, hy: 10 } },
     ];
     const frame = direct(events, { visibleTile: () => false });

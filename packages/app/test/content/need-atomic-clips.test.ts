@@ -49,11 +49,7 @@ describe.runIf(hasRealIr())('need-atomic clips resolve against the served conten
   it('carries the at-home sleep twin the rung derives by name, and it is the shorter clip', async () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
-    const outdoor = systems.needAtomicAnimationName(
-      content,
-      { tribe: VIKING, jobType: CIVILIST },
-      SLEEP_ATOMIC,
-    );
+    const outdoor = systems.atomicClipName(content, { tribe: VIKING, jobType: CIVILIST }, SLEEP_ATOMIC);
     expect(outdoor).toBe('viking_civilist_sleep');
     // The suffix rule the sleep-at-home rung applies. Same rest for a fifth of the time is the mechanic;
     // if extraction ever drops the twin the rung silently falls back to the 237-tick outdoor clip.
