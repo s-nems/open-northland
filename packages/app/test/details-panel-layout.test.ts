@@ -284,12 +284,13 @@ describe('details panel layout', () => {
   });
 
   it('leads the Obrona row with the alarm toggle, centred on the line its status text sits on', () => {
+    const model = buildUnitPanelModel(
+      snapshotOf([buildingEntity(1, BUILDING_TOWER)]),
+      new Set([1]),
+      sandboxCtx(),
+    );
     for (const s of MENU_UISCALE_VALUES) {
-      const layout = viewOfKind(
-        buildUnitPanelModel(snapshotOf([buildingEntity(1, BUILDING_TOWER)]), new Set([1]), sandboxCtx()),
-        'building',
-        s,
-      ).layout;
+      const layout = viewOfKind(model, 'building', s).layout;
       const body = layout.defence?.body;
       const toggle = layout.defenceToggle?.rect;
       if (body === undefined || toggle === undefined) throw new Error(`no defence row at ×${s}`);
