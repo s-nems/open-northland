@@ -6,7 +6,7 @@ import {
   cutRamp,
   extractArmorRecipes,
 } from '../decoders/armor-palette.js';
-import { packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas.js';
+import { packBobAtlas, packIndexedBobAtlas } from '../decoders/atlas/index.js';
 import { decodeBmd } from '../decoders/bmd/index.js';
 import { buildPaletteLutImage } from '../decoders/image.js';
 import {
