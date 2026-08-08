@@ -16,7 +16,7 @@ export const ATLAS_GUTTER = 1;
 /** Default atlas width the shelf packer wraps at; frames wider than this still fit (they get their own row). */
 const DEFAULT_ATLAS_MAX_WIDTH = 1024;
 
-/** One frame's placement + metadata in the atlas. JSON-serializable (plain numbers/booleans only). */
+/** One frame's placement + metadata in the atlas. Plain JSON data - no typed arrays or class instances. */
 export interface AtlasFrame {
   /** The bob's stable id: `bmd.firstBobId + index`. */
   readonly bobId: number;
@@ -205,7 +205,8 @@ function packBobAtlasWith(
   return emitAtlas(prepared, layout, buildTime);
 }
 
-/** Decode + colour/index-encode every bob into a dense record, dropping only the gaps `bmd.bobs` omits. */
+/** Decode + colour/index-encode every bob. `bobs` is `bobCount` long by the {@link Bmd} contract, so
+ *  the index guard only discharges the checked-index `| undefined`. */
 function prepareFrames(
   bmd: Bmd,
   expand: (frame: BobFrame) => RgbaImage,

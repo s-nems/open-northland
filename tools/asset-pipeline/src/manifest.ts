@@ -1,11 +1,11 @@
-import { readFile, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { IR_VERSION } from '@open-northland/data';
-
 /**
  * The stamp `runPipeline` writes as its final step: the completion marker an interrupted conversion
  * never carries, and the staleness signal an installed shell compares against its own expectation.
  */
+
+import { readFile, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { IR_VERSION } from '@open-northland/data';
 
 /**
  * Bump when a decoder or extraction change alters `content/` bytes without touching the IR schema
