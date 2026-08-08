@@ -87,18 +87,6 @@
   opacity: 0.45;
 }
 
-/* The future resolution dropdown's slot; shows the live window size until one exists. */
-.main-menu__settings-chip {
-  font:
-    500 calc(var(--u) * 24) / 1 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  color: var(--text-muted);
-  border: 2px solid rgba(99, 196, 160, 0.35);
-  border-radius: 6px;
-  padding: calc(var(--u) * 12) calc(var(--u) * 26);
-}
-
 /* A key-cap chip: a button rebinds on click, `is-fixed` (a span) only documents, `is-capturing`
    waits for the next keydown, `is-unassigned` lost its key to a takeover. */
 .main-menu__settings-key {

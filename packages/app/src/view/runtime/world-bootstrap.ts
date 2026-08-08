@@ -11,6 +11,8 @@ import { diag } from '../../diag/index.js';
 import { messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
 import { mountMessage, navButton } from '../overlay.js';
+import { postFxParam } from '../params.js';
+import { readStoredSettings } from '../settings-store.js';
 import type { GameViewDeps } from './game-view.js';
 
 /** The localized real content a playable entry boots on. Both fields degrade on their own, so a
@@ -31,7 +33,8 @@ export async function loadLocalizedRealContent(params: URLSearchParams): Promise
 
 /**
  * The retained world renderer both playable entries draw through; the caller still sets the terrain.
- * `?postfx=off` is a renderer opt-out, not a player setting.
+ * Post-fx follows the stored graphics setting; an explicit `?postfx` wins for the session, so
+ * captures and diagnostics stay reproducible whatever the machine's stored choice.
  */
 export function createWorldRenderer(
   app: Application,
@@ -42,7 +45,7 @@ export function createWorldRenderer(
   return new WorldRenderer(app, {
     sheet,
     viewSmoothing: true,
-    postFx: params.get('postfx') !== 'off',
+    postFx: postFxParam(params) ?? readStoredSettings().postFxEnabled,
     ...(playerColourOf !== undefined ? { playerColourOf } : {}),
   });
 }

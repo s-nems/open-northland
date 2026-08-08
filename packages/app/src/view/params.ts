@@ -43,6 +43,12 @@ export function intParam(params: URLSearchParams, name: string, fallback: number
   return Number.isInteger(n) && n >= min ? n : fallback;
 }
 
+/** The `?postfx` session override for the stored post-fx setting; `null` when absent. */
+export function postFxParam(params: URLSearchParams): boolean | null {
+  const raw = params.get('postfx');
+  return raw === null ? null : raw !== 'off';
+}
+
 /**
  * Parse `?ai=<seat>[,<seat>...]`, the seats handed to the strategic AI player when a map starts.
  * Malformed entries are dropped.

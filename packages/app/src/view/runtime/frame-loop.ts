@@ -16,6 +16,7 @@ import type {
   FogGates,
   GeometryDebugOverlay,
 } from '../projections/index.js';
+import type { FpsLimit } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
 import type { GameViewDeps } from './game-view.js';
 import { placementCursor } from './placement-cursor.js';
@@ -24,6 +25,8 @@ import { type RafLoop, startRafLoop } from './raf-loop.js';
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
+  /** The stored drawn-frame cap; `null` follows the display refresh. */
+  readonly fpsLimit: FpsLimit;
   readonly control: LoopSpeedControl;
   readonly timestep: FixedTimestep;
   readonly frameStats: FrameStats;
@@ -244,5 +247,5 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     });
     perf.update(frameStats.report());
   }
-  return startRafLoop(frame);
+  return startRafLoop(frame, loop.fpsLimit);
 }

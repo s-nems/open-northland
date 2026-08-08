@@ -34,6 +34,9 @@ export function initialSettingsMemory(): SettingsMemory {
 /** Slider granularity, in 5% steps. */
 export const UI_SCALE_FACTOR_STEP = 0.05;
 
+/** Quarter steps: 50%, 75%, … 200%; finer render-scale grades are indistinguishable in play. */
+export const RENDER_SCALE_STEP = 0.25;
+
 export interface CarriedSettingParam {
   readonly key: keyof MenuSettings;
   readonly param: string;
