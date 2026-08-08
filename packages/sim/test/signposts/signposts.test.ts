@@ -187,6 +187,20 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     // The spacing circle fell with the post - the spot is placeable again.
     expect(canPlaceSignpost(sim.world, ctxOf(sim), terrain, nearby, P0)).toBe(true);
   });
+
+  it('is byte-identical across two same-seed runs (determinism)', () => {
+    const erect = (): { hash: string; erected: boolean } => {
+      const sim = freshSim();
+      const scout = makeUnit(sim, 2, 2, SCOUT);
+      sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 16, y: 4 });
+      stepUntilSignpost(sim, 400);
+      return { hash: sim.hashState(), erected: signposts(sim).length === 1 };
+    };
+    const a = erect();
+    const b = erect();
+    expect(a.erected).toBe(true); // the walk and the swing really ran (not a vacuous hash)
+    expect(a.hash).toBe(b.hash);
+  });
 });
 
 describe('signpostNetwork - connected groups', () => {

@@ -225,6 +225,20 @@ describe('the tower garrison - taking the post', () => {
     // doorstep left to put him back on.
     expect(tileOf(sim, soldier)).toEqual(rubble);
   });
+
+  it('is byte-identical across two same-seed runs (determinism)', () => {
+    const post = (): { hash: string; manned: boolean } => {
+      const sim = simWithTower();
+      const tower = towerAt(sim, 6, 3);
+      const soldier = settlerAt(sim, SOLDIER_JOB, 2, 3);
+      manTheTower(sim, soldier, tower);
+      return { hash: sim.hashState(), manned: sim.world.tryGet(soldier, Garrison)?.post === tower };
+    };
+    const a = post();
+    const b = post();
+    expect(a.manned).toBe(true); // the walk and the posting really ran (not a vacuous hash)
+    expect(a.hash).toBe(b.hash);
+  });
 });
 
 describe('the tower garrison - calling the posting off', () => {

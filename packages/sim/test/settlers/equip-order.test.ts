@@ -337,6 +337,21 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(sim.world.get(brewhouse, Stockpile).amounts.get(SHOES)).toBe(3);
     expect(sim.world.has(settler, EquipOrder)).toBe(false); // the drive found no source and gave up
   });
+
+  it('is byte-identical across two same-seed runs (determinism)', () => {
+    const errand = (): { hash: string; worn: boolean } => {
+      const sim = freshSim();
+      const settler = ownedSettler(sim, 2, 2);
+      pileAt(sim, 12, 2, SHOES, 1);
+      sim.enqueueSetup(equip(settler, SHOES));
+      sim.run(ERRAND_TICKS);
+      return { hash: sim.hashState(), worn: sim.world.get(settler, Equipment).boots?.goodType === SHOES };
+    };
+    const a = errand();
+    const b = errand();
+    expect(a.worn).toBe(true); // the fetch-and-wear errand really ran (not a vacuous hash)
+    expect(a.hash).toBe(b.hash);
+  });
 });
 
 describe('unequipGood - take off at the stow store, walk back', () => {
