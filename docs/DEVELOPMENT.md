@@ -66,8 +66,10 @@ art stands in. Direct entries are useful during focused work:
 | `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
 
 Common modifiers include `lang=<pol|eng|ger|rus>`, `fog=<...>`, `player=<...>`, `ai=<...>`,
-`sound=off`, and `postfx=off`. The menu's settings screen covers the player-facing options, so
-direct query parameters are mainly for reproducible diagnostics.
+`sound=off`, and `postfx=off`. The HUD scales from the canvas height sampled at game start times the
+stored interface-scale setting; `uiscale=<n>` pins an absolute scale for reproducible diagnostics
+and is not carried across menu/game switches. The menu's settings screen covers the player-facing
+options, so direct query parameters are mainly for reproducible diagnostics.
 
 Debug modes:
 

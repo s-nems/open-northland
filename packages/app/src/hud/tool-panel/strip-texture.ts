@@ -20,8 +20,9 @@ import type { DesignRect } from './layout.js';
 
 /**
  * Oversample cap for `oversampleFor`, which targets double the `uiscale × renderer.resolution` device px
- * per design px so the linear downscale anti-aliases. The cap bounds the texture memory a pathological
- * `?uiscale=` and DPR combination could request. Flat panel edges need no quality floor.
+ * per design px so the linear downscale anti-aliases. The cap bounds texture memory; above it (a high
+ * derived scale on HiDPI, e.g. 4K at DPR 2) the bake displays upscaled and the strip art softens - an
+ * accepted trade until a measured reason raises the cap. Flat panel edges need no quality floor.
  */
 const MAX_SUPERSAMPLE = 6;
 const MIN_SUPERSAMPLE = 1;

@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildingTabbedList, type MenuBuildingEntry } from '../src/hud/tool-panel/building-menu.js';
 import { goodsTabbedList, type MenuGoodEntry } from '../src/hud/tool-panel/goods-menu.js';
-import { DEFAULT_UI_SCALE } from '../src/hud/tool-panel/layout.js';
 import {
   hitTestTabbedList,
   layoutTabbedList,
   type TabbedListSource,
   type TabbedListTab,
 } from '../src/hud/tool-panel/tabbed-list/index.js';
+import { MIN_UI_SCALE } from '../src/hud/ui-scale.js';
 
 /**
  * The shared tabbed-list window model - the one layout + hit-test the build menu and the goods drop
@@ -27,6 +27,9 @@ const TABS: readonly TabbedListTab<string>[] = [
 ];
 
 const ITEMS: readonly Item[] = Array.from({ length: 10 }, (_, i) => ({ label: `I${i}` }));
+
+/** A representative fractional scale (the viewport-derived base at a ~1080-tall window). */
+const FRACTIONAL_SCALE = 1.4;
 
 const base = {
   originX: 100,
@@ -142,9 +145,9 @@ describe('tabbed-list scale', () => {
   }
 
   // The drift that motivated the shared model: the build menu resolved `?uiscale=` fractionally while
-  // the goods palette floored it, so at the 1.4 default the two windows drew at 1.4× and 1× side by side.
+  // the goods palette floored it, so at a fractional 1.4 the two windows drew at 1.4× and 1× side by side.
   it('resolves a fractional uiscale identically for the build menu and the goods palette', () => {
-    for (const scale of [1, DEFAULT_UI_SCALE, 2]) {
+    for (const scale of [1, FRACTIONAL_SCALE, 2]) {
       const build = layoutOf(buildingTabbedList(BUILDINGS), scale);
       const goods = layoutOf(goodsTabbedList(GOODS), scale);
       expect(goods.scale).toBe(build.scale);
@@ -158,13 +161,13 @@ describe('tabbed-list scale', () => {
   });
 
   it("wraps the palette's eight categories into two rows of the shared window width", () => {
-    const goods = layoutOf(goodsTabbedList(GOODS), DEFAULT_UI_SCALE);
+    const goods = layoutOf(goodsTabbedList(GOODS), FRACTIONAL_SCALE);
     expect(goods.tabs).toHaveLength(8);
     expect(new Set(goods.tabs.map((t) => t.rect.y)).size).toBe(2);
   });
 
-  it('never draws below the pinned 1× geometry', () => {
-    expect(layoutOf(buildingTabbedList(BUILDINGS), 0.5).scale).toBe(1);
-    expect(layoutOf(goodsTabbedList(GOODS), 0.5).scale).toBe(1);
+  it('never draws below the shared legibility floor', () => {
+    expect(layoutOf(buildingTabbedList(BUILDINGS), 0.5).scale).toBe(MIN_UI_SCALE);
+    expect(layoutOf(goodsTabbedList(GOODS), 0.5).scale).toBe(MIN_UI_SCALE);
   });
 });

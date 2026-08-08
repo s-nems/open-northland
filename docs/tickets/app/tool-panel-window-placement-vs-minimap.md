@@ -19,8 +19,9 @@ That closes every case a shorter list can close. Two cases it cannot:
 
    `MIN_LIST_ROWS = 3` deliberately outranks the reserve: at 1.4/H=600 dropping to the 1 row that
    would fit is worse than 3 rows with a 5 px sliver covered. The larger scales need placement, not
-   size. `uiscale` 1.75 and 2 both sit inside the settings slider range (`UI_SCALE_MIN..UI_SCALE_MAX`
-   in `entries/main-menu/settings-state.ts`).
+   size. Scales 1.75 and 2 stay reachable in play: the HUD scale is the window height over the 768
+   reference times the settings factor (`hud/ui-scale.ts`), and `?uiscale=` pins them directly. The
+   short-window rows now need the pin - the viewport derivation alone gives ~1 at these heights.
 
 2. **`extras-window.ts` cannot shrink at all** - its height follows its content (~173 design px on the
    assistant tab), so at 2x on a short screen its lower stepper rows sit under the same overlay and
@@ -42,4 +43,4 @@ Extend the real-geometry case in `test/tool-panel-controllers.test.ts` ("clears 
 at the shipped uiscales") to the goods palette and to heights 600/640/700/768. Human seam: `npm run dev`
 → `?scene=sandbox&uiscale=2` at a 700 px tall window, open the goods palette; no row and no tab may sit
 over the minimap braid, and a click on a bottom row's left half must arm the drop rather than jump the
-camera. Repeat at `uiscale=1.75` / 640 px and at the default scale / 600 px.
+camera. Repeat at `uiscale=1.75` / 640 px and at `uiscale=1.4` / 600 px.

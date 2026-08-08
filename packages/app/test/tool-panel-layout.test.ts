@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { bakedIconOrigin } from '../src/hud/icon-texture.js';
 import {
   buildToolPanelLayout,
-  DEFAULT_UI_SCALE,
   hitTestToolPanel,
   pointOverToolPanel,
   TOOL_BUTTONS,
 } from '../src/hud/tool-panel/layout.js';
+import { MIN_UI_SCALE } from '../src/hud/ui-scale.js';
 
 describe('tool-panel-layout', () => {
   it('scales the pinned design rects by the uiscale, anchored top-left', () => {
@@ -24,12 +24,12 @@ describe('tool-panel-layout', () => {
     });
   });
 
-  it('keeps a fractional uiscale and clamps a sub-1 one to ≥ 1', () => {
+  it('keeps a fractional uiscale and floors a too-small one at the legibility minimum', () => {
     expect(buildToolPanelLayout(1.2).scale).toBe(1.2);
     expect(buildToolPanelLayout(1.2).width).toBeCloseTo(60);
-    expect(buildToolPanelLayout(0).scale).toBe(1);
-    expect(buildToolPanelLayout(-3).scale).toBe(1);
-    expect(DEFAULT_UI_SCALE).toBe(1.4);
+    expect(buildToolPanelLayout(0.8).scale).toBe(0.8);
+    expect(buildToolPanelLayout(0).scale).toBe(MIN_UI_SCALE);
+    expect(buildToolPanelLayout(-3).scale).toBe(MIN_UI_SCALE);
   });
 
   it('reports the design-space bounds the supersample texture must cover', () => {

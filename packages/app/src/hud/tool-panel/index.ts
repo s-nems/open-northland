@@ -31,7 +31,7 @@ import { createToolWindows } from './windows.js';
 export interface ToolPanelOptions {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** UI scale (from `?uiscale=`); the pinned internal geometry is multiplied by this. May be fractional. */
+  /** The resolved HUD scale; the pinned internal geometry is multiplied by this. May be fractional. */
   readonly uiscale: number;
   /** The buildings the menu lists (typeId + label + kind) - e.g. derived from the viking catalog. */
   readonly buildings: readonly MenuBuildingEntry[];

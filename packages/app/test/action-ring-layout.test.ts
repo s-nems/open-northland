@@ -13,6 +13,7 @@ import {
   TOP_ARM,
 } from '../src/hud/action-ring-layout.js';
 import { HUMAN_DEFAULT_MENU } from '../src/hud/action-ring-menu.js';
+import { MIN_UI_SCALE } from '../src/hud/ui-scale.js';
 
 /**
  * Headless tests for the settler ACTION MENU's pure logic - the radial arm footprint transcribed from the
@@ -83,11 +84,11 @@ describe('action-ring-layout - arm footprint (transcribed from BuildHumanActionB
     expect(nth(l075.buttons, 1).rect.w).toBe(24);
   });
 
-  it('actionRingScale shrinks the shared uiscale by the ring factor after clamping it to ≥ 1', () => {
-    // The 1.4× default HUD scale draws the ring 25% smaller (user-requested): 1.4 × 0.75 = 1.05.
+  it('actionRingScale shrinks the shared uiscale by the ring factor after flooring it', () => {
+    // At a 1.4× HUD scale the ring draws 25% smaller: 1.4 × 0.75 = 1.05.
     expect(actionRingScale(1.4)).toBeCloseTo(1.05);
-    // The uiscale clamp still applies BEFORE the shrink (sub-1 uiscale → the shrunk floor, not less).
-    expect(actionRingScale(0.2)).toBeCloseTo(ACTION_RING_UI_FACTOR);
+    // The uiscale floor still applies BEFORE the shrink (too-small uiscale → the shrunk floor, not less).
+    expect(actionRingScale(0.2)).toBeCloseTo(MIN_UI_SCALE * ACTION_RING_UI_FACTOR);
   });
 
   it('clamps the whole menu on-screen when it would spill past an edge', () => {

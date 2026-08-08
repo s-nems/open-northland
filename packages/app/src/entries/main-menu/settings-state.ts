@@ -1,10 +1,10 @@
-import { DEFAULT_UI_SCALE } from '../../hud/tool-panel/layout.js';
-import { DEFAULT_LOCALE, type Locale, localeParam, setActiveLocale } from '../../i18n/index.js';
-import { floatParam } from '../../view/params.js';
+import { DEFAULT_LOCALE, localeParam, setActiveLocale } from '../../i18n/index.js';
+import { type MenuSettings, persistSettings, readStoredSettings } from '../../view/settings-store.js';
 
 /**
- * The menu's persistent settings: stored in localStorage and projected onto the carried URL params
- * (`lang`, `uiscale`, `sound`), so a launched game receives them.
+ * The menu's settings session: the persisted store plus URL overrides. `lang` and `sound` are
+ * projected onto the carried URL params so a launched game receives them; the HUD scale factor is
+ * read from the store directly and never enters the URL.
  */
 
 export type SettingsTab = 'graphics' | 'audio' | 'gameplay' | 'controls';
@@ -31,55 +31,8 @@ export function initialSettingsMemory(): SettingsMemory {
   return { tab: 'graphics' };
 }
 
-export interface MenuSettings {
-  /** Fullscreen preference. Browsers grant fullscreen only on a user gesture, so the screen shows
-   *  the live state; the stored value is for shells that can apply it at boot (desktop). */
-  readonly displayMode: 'fullscreen' | 'window';
-  /** In-game HUD scale multiplier (`?uiscale`); the menu's own scale is viewport-derived. */
-  readonly uiScale: number;
-  /** Mirrors the `?sound` param: `false` starts the game without an audio driver. */
-  readonly soundEnabled: boolean;
-  readonly language: Locale;
-}
-
-export const DEFAULT_SETTINGS: MenuSettings = {
-  displayMode: 'window',
-  uiScale: DEFAULT_UI_SCALE,
-  soundEnabled: true,
-  language: DEFAULT_LOCALE,
-};
-
-export const UI_SCALE_MIN = 1;
-export const UI_SCALE_MAX = 2;
 /** Slider granularity, in 5% steps. */
-export const UI_SCALE_STEP = 0.05;
-
-const STORAGE_KEY = 'open-northland.settings';
-
-function clampScale(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_UI_SCALE;
-  return Math.min(UI_SCALE_MAX, Math.max(UI_SCALE_MIN, value));
-}
-
-/** Parse a stored settings blob; a missing or deformed field falls back to its default. */
-export function parseStoredSettings(raw: string | null): MenuSettings {
-  if (raw === null) return DEFAULT_SETTINGS;
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
-  if (typeof data !== 'object' || data === null) return DEFAULT_SETTINGS;
-  const record = data as Record<string, unknown>;
-  return {
-    displayMode: record.displayMode === 'fullscreen' ? 'fullscreen' : 'window',
-    uiScale: clampScale(record.uiScale),
-    soundEnabled:
-      typeof record.soundEnabled === 'boolean' ? record.soundEnabled : DEFAULT_SETTINGS.soundEnabled,
-    language: record.language === 'eng' ? 'eng' : DEFAULT_LOCALE,
-  };
-}
+export const UI_SCALE_FACTOR_STEP = 0.05;
 
 export interface CarriedSettingParam {
   readonly key: keyof MenuSettings;
@@ -96,11 +49,6 @@ export function carriedSettingParams(settings: MenuSettings): readonly CarriedSe
       param: 'lang',
       value: settings.language === DEFAULT_LOCALE ? null : settings.language,
     },
-    {
-      key: 'uiScale',
-      param: 'uiscale',
-      value: settings.uiScale === DEFAULT_UI_SCALE ? null : String(settings.uiScale),
-    },
     { key: 'soundEnabled', param: 'sound', value: settings.soundEnabled ? null : 'off' },
   ];
 }
@@ -111,7 +59,7 @@ let persisted: MenuSettings | null = null;
 let current: MenuSettings | null = null;
 
 function persistedSettings(): MenuSettings {
-  persisted ??= parseStoredSettings(readStorage());
+  persisted ??= readStoredSettings();
   return persisted;
 }
 
@@ -128,45 +76,48 @@ export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
   const next = { ...menuSettings(), ...patch };
   current = next;
   persisted = { ...persistedSettings(), ...patch };
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
-  } catch {
-    // Storage denied (private mode): the change still applies for this session.
-  }
+  persistSettings(persisted);
   if (patch.language !== undefined) setActiveLocale(next.language);
   syncCarriedParams(patch, next);
   return next;
 }
 
 /**
- * Menu-boot bridge between the store and the URL: a carried param absent from the URL adopts the
- * stored value, while an explicit one wins for the session without being persisted. Only the menu runs
- * this; direct `?map=` and `?scene=` entries read the URL alone. Mutates `params` in place.
+ * The pure half of the menu-boot bridge: a carried param absent from `params` adopts the stored
+ * value (mutating `params` and reported in `adopted`), while an explicit one wins for the session.
  */
-export function adoptStoredSettings(params: URLSearchParams): void {
-  const stored = persistedSettings();
-  const url = new URL(window.location.href);
+export function adoptSettings(
+  stored: MenuSettings,
+  params: URLSearchParams,
+): { session: MenuSettings; adopted: readonly { param: string; value: string }[] } {
+  const adopted: { param: string; value: string }[] = [];
   for (const { param, value } of carriedSettingParams(stored)) {
     if (params.has(param) || value === null) continue;
-    url.searchParams.set(param, value);
     params.set(param, value);
+    adopted.push({ param, value });
   }
-  window.history.replaceState(window.history.state, '', url);
-  current = {
-    ...stored,
-    language: localeParam(params),
-    uiScale: clampScale(floatParam(params, 'uiscale', stored.uiScale)),
-    soundEnabled: params.get('sound') !== 'off',
+  return {
+    session: {
+      ...stored,
+      language: localeParam(params),
+      soundEnabled: params.get('sound') !== 'off',
+    },
+    adopted,
   };
-  setActiveLocale(current.language);
 }
 
-function readStorage(): string | null {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
+/**
+ * Menu-boot bridge between the store and the URL: layers the stored settings under the explicit URL
+ * params, without persisting URL overrides. Only the menu runs this; direct `?map=` and `?scene=`
+ * entries read the URL alone. Mutates `params` in place.
+ */
+export function adoptStoredSettings(params: URLSearchParams): void {
+  const { session, adopted } = adoptSettings(persistedSettings(), params);
+  const url = new URL(window.location.href);
+  for (const { param, value } of adopted) url.searchParams.set(param, value);
+  window.history.replaceState(window.history.state, '', url);
+  current = session;
+  setActiveLocale(session.language);
 }
 
 /** Project the touched carried keys onto the URL; a value at its default clears the param. */

@@ -1,5 +1,6 @@
 import type { GuiFrameName } from '../content/gui-atlas-map.js';
 import { contains, type Rect } from './geometry.js';
+import { MIN_UI_SCALE } from './ui-scale.js';
 
 /**
  * Radial geometry for the settler action menu: up to five short button groups around a 232 px box centred
@@ -94,11 +95,11 @@ const ACTION_EDGE_NUDGE_PX = 5;
 export const ACTION_RING_UI_FACTOR = 0.75;
 
 /**
- * The ring's effective scale for `?uiscale=`: clamped >= 1, then shrunk by the ring factor. The icon bake
- * and the layout must consume this same value or a drawn icon and its hit-rect drift apart.
+ * The ring's effective scale: the floored HUD scale shrunk by the ring factor. The icon bake and the
+ * layout must consume this same value or a drawn icon and its hit-rect drift apart.
  */
 export function actionRingScale(uiscale: number): number {
-  return Math.max(1, uiscale) * ACTION_RING_UI_FACTOR;
+  return Math.max(MIN_UI_SCALE, uiscale) * ACTION_RING_UI_FACTOR;
 }
 
 /** Group-type constants: indices into `ARMS`. */

@@ -2,6 +2,7 @@ import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { clientToCanvas, contains, type Rect } from '../geometry.js';
+import { MIN_UI_SCALE } from '../ui-scale.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { tooltipTextAt } from './hit-test.js';
 import { type EquipSlotRef, ROW_H } from './layout/index.js';
@@ -27,7 +28,7 @@ const PORTRAIT_BEVEL_INSET = 3;
 export interface UnitPanelOptions extends UnitPanelModelContext {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
-  /** Integer UI scale (from `?uiscale=`), shared with the left tool panel and action ring. */
+  /** The resolved HUD scale, shared with the left tool panel and action ring. May be fractional. */
   readonly uiscale?: number;
   readonly lang: string;
   /** Client→canvas coordinate mapping, injected so the hud layer stays view-free. */
@@ -87,7 +88,7 @@ export interface UnitPanel {
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
   const { app, canvas } = opts;
-  const scale = Math.max(1, opts.uiscale ?? 1);
+  const scale = Math.max(MIN_UI_SCALE, opts.uiscale ?? 1);
   const assets = await loadDetailsPanelAssets(opts.lang);
   const stage = createPanelStage({ app, assets, scale });
   // Drawn over the baked panel's Pracownicy field so the workers advance every frame while the panel

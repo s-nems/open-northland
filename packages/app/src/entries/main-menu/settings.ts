@@ -1,18 +1,16 @@
 import { DEFAULT_MASTER_GAIN } from '@open-northland/audio';
+import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
+import { DEFAULT_SETTINGS, type MenuSettings } from '../../view/settings-store.js';
 import { type SegHandle, segControl, togglePill } from './controls.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import {
-  DEFAULT_SETTINGS,
-  type MenuSettings,
   menuSettings,
   SETTINGS_TABS,
   type SettingsMemory,
   type SettingsTab,
-  UI_SCALE_MAX,
-  UI_SCALE_MIN,
-  UI_SCALE_STEP,
+  UI_SCALE_FACTOR_STEP,
   updateSettings,
 } from './settings-state.js';
 
@@ -36,6 +34,8 @@ interface SliderSpec {
   /** A multiplier; the value label renders it as a percentage. */
   readonly value: number;
   readonly onCommit?: (value: number) => void;
+  /** Replaces the default percent value label. */
+  readonly format?: (value: number) => string;
 }
 
 function sliderControl(label: string, spec: SliderSpec): HTMLDivElement {
@@ -53,7 +53,7 @@ function sliderControl(label: string, spec: SliderSpec): HTMLDivElement {
   value.className = 'main-menu__settings-value';
   const paint = (): void => {
     const v = Number(input.value);
-    value.textContent = `${Math.round(v * 100)}%`;
+    value.textContent = spec.format?.(v) ?? `${Math.round(v * 100)}%`;
     // The track's filled fraction; the CSS gradient reads it as a percentage.
     input.style.setProperty('--fill', String(((v - spec.min) / (spec.max - spec.min)) * 100));
   };
@@ -137,20 +137,25 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     nav.append(button);
   }
 
-  // Fullscreen also leaves via Esc, outside any control of ours, so the document event repaints
-  // whichever segment the current graphics render built.
+  // Fullscreen also leaves via Esc, and a resize can arrive from the OS, both outside any control of
+  // ours; either changes the height behind the display segment, the resolution chip and the
+  // effective-scale readout, so both viewport events rebuild the panel.
   let displaySeg: SegHandle<DisplayMode> | null = null;
   const liveDisplayMode = (): DisplayMode => (document.fullscreenElement !== null ? 'fullscreen' : 'window');
-  const onFullscreenChange = (): void => {
+  const onViewportChange = (): void => {
     if (!section.isConnected) {
-      unhookFullscreen();
+      unhookViewport();
       return;
     }
-    displaySeg?.setActive(liveDisplayMode());
+    renderPanel();
   };
-  const unhookFullscreen = (): void => document.removeEventListener('fullscreenchange', onFullscreenChange);
-  document.addEventListener('fullscreenchange', onFullscreenChange);
-  head.querySelector('.main-menu__back')?.addEventListener('click', unhookFullscreen);
+  const unhookViewport = (): void => {
+    document.removeEventListener('fullscreenchange', onViewportChange);
+    window.removeEventListener('resize', onViewportChange);
+  };
+  document.addEventListener('fullscreenchange', onViewportChange);
+  window.addEventListener('resize', onViewportChange);
+  head.querySelector('.main-menu__back')?.addEventListener('click', unhookViewport);
 
   const graphicsRows = (): HTMLElement[] => {
     const settings = menuSettings();
@@ -175,12 +180,15 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     const resolutionChip = document.createElement('span');
     resolutionChip.className = 'main-menu__settings-chip';
     resolutionChip.textContent = `${window.innerWidth} × ${window.innerHeight}`;
+    // 100% is the viewport-derived base; the label also shows the effective in-game multiplier, which
+    // exposes the `MIN_UI_SCALE` floor - on very short windows the lowest factor steps collapse to it.
     const uiScale = sliderControl(text.uiScale, {
-      min: UI_SCALE_MIN,
-      max: UI_SCALE_MAX,
-      step: UI_SCALE_STEP,
-      value: settings.uiScale,
-      onCommit: (value) => updateSettings({ uiScale: value }),
+      min: UI_SCALE_FACTOR_MIN,
+      max: UI_SCALE_FACTOR_MAX,
+      step: UI_SCALE_FACTOR_STEP,
+      value: settings.uiScaleFactor,
+      onCommit: (value) => updateSettings({ uiScaleFactor: value }),
+      format: (value) => `${Math.round(value * 100)}% (×${uiScaleFor(window.innerHeight, value).toFixed(2)})`,
     });
     return [
       settingRow(text.displayMode, displaySeg.root),

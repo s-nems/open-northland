@@ -1,7 +1,6 @@
 import { type EntitySnapshot, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR, JOB_SOLDIER } from '../src/catalog/jobs.js';
-import { UI_SCALE_MAX, UI_SCALE_MIN, UI_SCALE_STEP } from '../src/entries/main-menu/settings-state.js';
 import {
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
@@ -24,6 +23,7 @@ import {
 import { panelViewFor } from '../src/hud/details-panel/selection-view.js';
 import { ALL_STOCK_TAB, visibleStockRows } from '../src/hud/details-panel/stock-tabs.js';
 import type { Rect } from '../src/hud/geometry.js';
+import { MIN_UI_SCALE, UI_SCALE_FACTOR_MAX, uiScaleFor } from '../src/hud/ui-scale.js';
 import { PANEL_SCREEN, viewOfKind } from './support/details-panel.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
@@ -31,11 +31,18 @@ import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 const BUILDING_TOWER = 40;
 const BUILDING_BARRACKS = 39;
 
-/** Every `?uiscale` step the settings slider offers - layout must hold across the whole range. */
-const MENU_UISCALE_VALUES = Array.from(
-  { length: Math.round((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP) + 1 },
-  (_, i) => Math.round((UI_SCALE_MIN + i * UI_SCALE_STEP) * 100) / 100,
-);
+/** Representative effective scales across the now-continuous reachable range: the floor, sub-1
+ *  tracking, 1×, and the base and slider-max of 1080- and 2160-tall windows. Metrics round per
+ *  scale, so the fractional anchors are the ones that catch collisions. */
+const SWEEP_UISCALES = [
+  MIN_UI_SCALE,
+  0.9,
+  1,
+  uiScaleFor(1080),
+  uiScaleFor(1080, UI_SCALE_FACTOR_MAX),
+  uiScaleFor(2160),
+  uiScaleFor(2160, UI_SCALE_FACTOR_MAX),
+];
 
 const buildingLayoutOf = (model: UnitPanelModel): BuildingLayout => viewOfKind(model, 'building').layout;
 const settlerLayoutOf = (model: UnitPanelModel, s = 1): SettlerLayout =>
@@ -193,7 +200,7 @@ describe('details panel layout', () => {
       new Set([1]),
       sandboxCtx(),
     );
-    for (const s of MENU_UISCALE_VALUES) {
+    for (const s of SWEEP_UISCALES) {
       const layout = settlerLayoutOf(model, s);
       const misc = layout.equipRows[layout.equipRows.length - 1];
       if (misc === undefined) throw new Error('expected the misc equipment row');
@@ -289,7 +296,7 @@ describe('details panel layout', () => {
       new Set([1]),
       sandboxCtx(),
     );
-    for (const s of MENU_UISCALE_VALUES) {
+    for (const s of SWEEP_UISCALES) {
       const layout = viewOfKind(model, 'building', s).layout;
       const body = layout.defence?.body;
       const toggle = layout.defenceToggle?.rect;
@@ -342,7 +349,7 @@ describe('details panel layout', () => {
     );
     // Each metric rounds independently per scale, so a row that clears its neighbours at 1× can still
     // collide at another step - the sweep is what proves the gap, not the design-px constants.
-    for (const s of MENU_UISCALE_VALUES) {
+    for (const s of SWEEP_UISCALES) {
       const layout = viewOfKind(model, 'building', s).layout;
       const health = layout.health;
       const firstButton = layout.buttons[0];
