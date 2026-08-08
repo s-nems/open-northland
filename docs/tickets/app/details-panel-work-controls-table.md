@@ -4,8 +4,8 @@
 
 The settler panel's four work controls are now one `WorkControlRow` list built in `layout/settler.ts`
 and consumed by a single loop in the section draw, the hit-test, and `mapLayout`. What is still
-tripled by hand is the seam below the layout: `panel.ts` carries one optional callback and one switch
-arm per control, `pointer-intent.ts` maps each `WorkControlAction` to its own `PanelClick` kind, and
+tripled by hand is the seam below the layout: `click-actions.ts` carries one optional callback and one
+switch arm per control, `pointer-intent.ts` maps each `WorkControlAction` to its own `PanelClick` kind, and
 `view/unit-controls/index.ts` wires each callback separately. Adding a control still means four
 coordinated edits across three files.
 
