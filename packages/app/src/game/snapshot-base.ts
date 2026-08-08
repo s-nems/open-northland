@@ -43,40 +43,55 @@ export function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } 
  * settler is never gated.
  */
 export function progressionGatesSettler(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
-  const { progressionEnabled, aiSeats } = progressionGateFacts(snapshot);
+  const { progressionEnabled, aiSeats } = worldRuleFacts(snapshot);
   if (!progressionEnabled) return false;
   const owner = ownerPlayerOf(e);
   return owner === undefined || !aiSeats.has(owner);
 }
 
-/** Keyed by snapshot: a snapshot is a frozen per-frame value, so an entry lives exactly one frame. */
-const GATE_FACTS = new WeakMap<WorldSnapshot, ProgressionGateFacts>();
+/** Whether the needs mechanic runs, so a surface can drop what the rule has stopped moving. */
+export function needsRuleEnabled(snapshot: WorldSnapshot): boolean {
+  return worldRuleFacts(snapshot).needsEnabled;
+}
 
-interface ProgressionGateFacts {
+/** Keyed by snapshot: a snapshot is a frozen per-frame value, so an entry lives exactly one frame. */
+const RULE_FACTS = new WeakMap<WorldSnapshot, WorldRuleFacts>();
+
+interface WorldRuleFacts {
   /** The `ProgressionRules` singleton's toggle; an absent singleton means the sim default (enabled). */
   readonly progressionEnabled: boolean;
+  /** The `WorldRules` singleton's needs toggle; an absent singleton means the sim default (enabled). */
+  readonly needsEnabled: boolean;
   /** The player slots driven by the strategic AI (their `AiPlayer` carriers). */
   readonly aiSeats: ReadonlySet<number>;
 }
 
-/** The world-wide half of the gate check, resolved in one pass over the snapshot. */
-function progressionGateFacts(snapshot: WorldSnapshot): ProgressionGateFacts {
-  const cached = GATE_FACTS.get(snapshot);
+/** The world-wide facts a HUD surface consults, resolved in one pass over the snapshot. Each rule stays
+ *  null until its first carrier decides it, so a later duplicate cannot overwrite the winner. */
+function worldRuleFacts(snapshot: WorldSnapshot): WorldRuleFacts {
+  const cached = RULE_FACTS.get(snapshot);
   if (cached !== undefined) return cached;
   const aiSeats = new Set<number>();
-  let progressionEnabled = true;
-  let ruled = false;
+  let progressionEnabled: boolean | null = null;
+  let needsEnabled: boolean | null = null;
   for (const e of snapshot.entities) {
-    const rules = e.components.ProgressionRules as { professionProgressionEnabled?: unknown } | undefined;
-    if (rules !== undefined && !ruled) {
-      progressionEnabled = rules.professionProgressionEnabled !== false; // first carrier wins
-      ruled = true;
+    const progression = e.components.ProgressionRules as
+      | { professionProgressionEnabled?: unknown }
+      | undefined;
+    if (progression !== undefined && progressionEnabled === null) {
+      progressionEnabled = progression.professionProgressionEnabled !== false;
     }
+    const needs = e.components.WorldRules as { needsEnabled?: unknown } | undefined;
+    if (needs !== undefined && needsEnabled === null) needsEnabled = needs.needsEnabled !== false;
     const seat = num((e.components.AiPlayer as { player?: unknown } | undefined)?.player);
     if (seat !== undefined) aiSeats.add(seat);
   }
-  const facts: ProgressionGateFacts = { progressionEnabled, aiSeats };
-  GATE_FACTS.set(snapshot, facts);
+  const facts: WorldRuleFacts = {
+    progressionEnabled: progressionEnabled ?? true,
+    needsEnabled: needsEnabled ?? true,
+    aiSeats,
+  };
+  RULE_FACTS.set(snapshot, facts);
   return facts;
 }
 

@@ -106,6 +106,11 @@ export const enSurfaces = {
         on: 'Through experience',
         off: 'All unlocked from start',
       },
+      needsLabel: 'Settler needs',
+      needsModes: {
+        on: 'Rise over time',
+        off: 'Disabled',
+      },
       start: 'Start game',
       startNeedsSeat: 'Take a seat first',
     },

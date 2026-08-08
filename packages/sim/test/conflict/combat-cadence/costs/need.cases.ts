@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Settler } from '../../../../src/components/index.js';
+import { Settler, setNeedsEnabled } from '../../../../src/components/index.js';
 import { fx, Simulation } from '../../../../src/index.js';
 import { atomicSystem } from '../../../../src/systems/index.js';
 import {
@@ -41,5 +41,18 @@ describe('atomicSystem - the attacker pays the swing need-drain on completion', 
     const womanRise = fx.div(fx.fromInt(100), fx.fromInt(10_000));
     expect(sim.world.get(attacker, Settler).fatigue).toBe(womanRise);
     expect(womanRise).toBe(soldierRise * 5); // a woman's swing costs 5× a soldier's - the data ratio
+  });
+
+  it('charges nothing while the needs rule is off, so a long battle cannot walk a fighter off to eat', () => {
+    const sim = new Simulation({ seed: 1, content: combatCadenceContent(), map: grass(3, 1) });
+    setNeedsEnabled(sim.world, false);
+    const attacker = fighterAt(sim, 0, 0, VIKING, SOLDIER_SPEAR);
+    const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 10_000 });
+    startSwing(sim, attacker, { target, damage: 0, hitAt: 17 }, 27);
+
+    for (let i = 0; i < 27; i++) atomicSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(attacker, Settler).fatigue).toBe(0);
+    expect(sim.world.get(attacker, Settler).hunger).toBe(0);
   });
 });

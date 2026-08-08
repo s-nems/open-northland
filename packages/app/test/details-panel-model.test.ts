@@ -380,6 +380,29 @@ describe('selection details panel model', () => {
     expect(bare.bars.map((b) => b.label)).toEqual(['Głód', 'Sen', 'Towarzystwo', 'Religia']);
   });
 
+  it('drops every need bar while the needs rule is off, leaving only Zdrowie', () => {
+    const settler = {
+      Settler: { tribe: 1, hunger: ONE / 4, fatigue: ONE / 2, enjoyment: 0, piety: (ONE * 9) / 10 },
+      Health: { hitpoints: 300, max: 1000 },
+    };
+    const off = snapshotOf([
+      { id: 1, components: settler },
+      { id: 9, components: { WorldRules: { needsEnabled: false } } },
+    ]);
+
+    const model = buildUnitPanelModel(off, new Set([1]), sandboxCtx());
+    if (model.kind !== 'settler') throw new Error('expected a settler model');
+    expect(model.bars.map((b) => b.label)).toEqual(['Zdrowie']);
+
+    const on = snapshotOf([
+      { id: 1, components: settler },
+      { id: 9, components: { WorldRules: { needsEnabled: true } } },
+    ]);
+    const kept = buildUnitPanelModel(on, new Set([1]), sandboxCtx());
+    if (kept.kind !== 'settler') throw new Error('expected a settler model');
+    expect(kept.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
+  });
+
   it('shows a minor its age in years off the sim rate, and shows an adult none', () => {
     const snapshot = snapshotOf([
       // A four-year-old: exactly on the baby→child boundary, so the ramp must read a whole 4.

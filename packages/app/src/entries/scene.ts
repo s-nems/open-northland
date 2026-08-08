@@ -73,8 +73,8 @@ export async function renderSceneMode(
     sim,
     hashTrace: hashTraceFor(params),
   });
-  // `?fog=` and `?progression=` override the scene's own rules: a named divergence from the headless
-  // twin, requested by the human watching it.
+  // The session rule flags override the scene's own rules: a named divergence from the headless twin,
+  // requested by the human watching it.
   applySessionRuleOverrides(sim, sessionRuleOverrides(params));
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.

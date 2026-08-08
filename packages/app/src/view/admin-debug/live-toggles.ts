@@ -20,8 +20,9 @@ const FOG_MODES = [
 ] as const;
 
 /**
- * The global needs toggle, so test units do not starve mid-session. Scenes boot with needs off and maps
- * on; the label tracks the requested value, which the command applies next tick.
+ * The global needs toggle, so test units do not starve mid-session. Scenes boot with needs off, a map
+ * with whatever the lobby chose; the label tracks the requested value, which the command applies next
+ * tick.
  */
 export function createNeedsToggle(deps: {
   readonly enqueue: (command: Command) => void;

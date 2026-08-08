@@ -15,9 +15,8 @@ function singletonCarrier(world: World, component: Component<unknown>): Entity |
  * world's entity set and hash untouched.
  */
 export const WorldRules = defineComponent<{
-  /** Whether the needs mechanic runs (hunger/fatigue/piety/enjoyment rise plus starvation). Default true.
-   *  Authored as a dev/admin lever: acceptance scenes run with needs off so test units don't starve
-   *  mid-checklist. */
+  /** Whether the needs mechanic runs: the hunger, fatigue and enjoyment rise, the per-swing combat need
+   *  cost, the forge's piety charge, and starvation. Default true. */
   needsEnabled: boolean;
 }>('WorldRules');
 

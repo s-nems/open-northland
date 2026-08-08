@@ -60,7 +60,7 @@ export interface AdminDebugDeps {
   readonly goods: readonly GoodEntry[];
   /** Wildlife entries, each spawnable as its data-pinned herd. Empty or absent hides the section. */
   readonly animals?: readonly AnimalEntry[];
-  /** The sim's live needs-rule state, drawn on the toggle button: scenes boot needs off, maps on. */
+  /** The sim's live needs-rule state, drawn on the toggle button. */
   readonly needsEnabled?: () => boolean;
   /** The sim's live fog-of-war mode (`FOG_MODE.*`). Absent hides the fog section. */
   readonly fogMode?: () => number;

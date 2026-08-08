@@ -58,16 +58,19 @@ describe('lobbySlotRows', () => {
 });
 
 describe('initialLobbyOptions', () => {
-  it('defaults to classic fog and progression on, honouring explicit URL params', () => {
+  it('defaults to classic fog, progression on and needs on, honouring explicit URL params', () => {
     expect(initialLobbyOptions(new URLSearchParams(''))).toEqual({
       fog: 'reveal',
       professionProgression: true,
+      settlerNeeds: true,
     });
-    expect(initialLobbyOptions(new URLSearchParams('fog=off&progression=off'))).toEqual({
+    expect(initialLobbyOptions(new URLSearchParams('fog=off&progression=off&needs=off'))).toEqual({
       fog: 'off',
       professionProgression: false,
+      settlerNeeds: false,
     });
     expect(initialLobbyOptions(new URLSearchParams('fog=bogus')).fog).toBe('reveal');
+    expect(initialLobbyOptions(new URLSearchParams('needs=bogus')).settlerNeeds).toBe(true);
   });
 });
 
@@ -76,12 +79,27 @@ describe('lobbyStartEntry', () => {
     const players = [slot(0, { claimable: true, type: 'human' }), slot(1, { claimable: true })];
     const state = initialLobbyState(players);
     const params = new URLSearchParams(
-      lobbyStartEntry('zatoka', state, players, { fog: 'recon', professionProgression: false }),
+      lobbyStartEntry('zatoka', state, players, {
+        fog: 'recon',
+        professionProgression: false,
+        settlerNeeds: false,
+      }),
     );
     expect(params.get('map')).toBe('zatoka');
     expect(params.get('player')).toBe('0');
     expect(params.get('ai')).toBe('1'); // the vacant authored-ai seat keeps auto-playing
     expect(params.get('fog')).toBe('recon');
     expect(params.get('progression')).toBe('off');
+    expect(params.get('needs')).toBe('off');
+  });
+
+  it('writes the needs default explicitly, so a carried `needs=off` cannot leak into the next map', () => {
+    const players = [slot(0, { claimable: true, type: 'human' })];
+    const entry = lobbyStartEntry('zatoka', initialLobbyState(players), players, {
+      fog: 'reveal',
+      professionProgression: true,
+      settlerNeeds: true,
+    });
+    expect(new URLSearchParams(entry).get('needs')).toBe('on');
   });
 });

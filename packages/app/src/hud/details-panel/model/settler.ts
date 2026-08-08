@@ -49,7 +49,7 @@ export interface SettlerPanelModel {
   /** A short live-state caption drawn in the portrait box, standing in for the original's animated
    *  "what it's doing" preview. */
   readonly statusCaption: string;
-  /** The Ogólne stat bars: Zdrowie (only for a unit with Health) then Głód/Sen/Towarzystwo/Religia. */
+  /** The Ogólne stat bars: Zdrowie (only for a unit with Health), then the need bars when they apply. */
   readonly bars: readonly PanelBar[];
   readonly work: SettlerWorkModel;
   /** Every specialization the settler has trained, most-trained first; empty when it has none. */
@@ -68,18 +68,20 @@ function needBar(label: string, deficit: number | undefined): PanelBar {
 
 /**
  * The Ogólne stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier) while the
- * original's window shows the satisfaction level, so each need bar is `100 - need`. A cared-for baby
- * hides the four need bars because its needs never accumulate. The labels deliberately diverge from the
- * decoded `humanwindow` 11-15 strings: each bar is named after the need it shows (Głód←hunger,
- * Sen←fatigue, Towarzystwo←enjoyment), which the original's stat names do not map onto 1:1.
+ * original's window shows the satisfaction level, so each need bar is `100 - need`. The labels
+ * deliberately diverge from the decoded `humanwindow` 11-15 strings: each bar is named after the need it
+ * shows (Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment), which the original's stat names do not map
+ * onto 1:1. Every need bar drops for a cared-for baby, whose needs never accumulate, and for a match run
+ * with the needs rule off.
  */
-export function satisfactionBars(ent: SnapshotEntity): PanelBar[] {
+export function satisfactionBars(ent: SnapshotEntity, needsEnabled: boolean): PanelBar[] {
   const hud = messages().hud;
   const comps: Comp = ent.components;
   const s = (comps.Settler ?? {}) as Comp;
   const bars: PanelBar[] = [];
   const health = healthBar(ent);
   if (health !== null) bars.push(health);
+  if (!needsEnabled) return bars;
   if (comps.Age !== undefined && systems.isBaby(num(s.jobType) ?? null)) return bars;
   bars.push(needBar(hud.hunger, num(s.hunger)));
   bars.push(needBar(hud.sleep, num(s.fatigue)));
