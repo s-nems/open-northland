@@ -16,10 +16,9 @@ export const OVERLAY_TICKS_PER_FRAME = 2;
 
 /**
  * Reduce the decoded `buildingOverlays` IR (the `[GfxHouse]` type-4 `GfxOverlay` rows) to the render's
- * per-type animated-state-overlay binding for one tribe: the state-0 row's single frame as the still
- * `idle` blade, the state-1 row's frame list as the `working` spin cycle. Shares the bob binding's family
- * rules and the construction reduction's one-source-record stance (lowest `level` group). A type with
- * neither state row is simply absent.
+ * per-type animated-state-overlay binding for one tribe: the still `idle` blade and the `working` spin
+ * cycle. Shares the bob binding's family rules and the construction reduction's one-source-record stance
+ * (lowest `level` group).
  */
 export function buildingOverlayRefsByType(
   rows: readonly BuildingOverlayRow[],
