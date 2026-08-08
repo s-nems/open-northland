@@ -1,3 +1,4 @@
+export * from './fnv.js';
 export * from './footprint.js';
 export * from './job-atomics.js';
 export * from './lookup.js';

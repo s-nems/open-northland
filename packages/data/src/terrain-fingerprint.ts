@@ -1,3 +1,5 @@
+import { FNV_OFFSET_BASIS, fnvHex, fnvMixWord } from './fnv.js';
+
 /** The grid shape shared by the sim's half-cell `TerrainMap` and any cell-resolution source. */
 export interface TerrainGrid {
   readonly width: number;
@@ -5,25 +7,18 @@ export interface TerrainGrid {
   readonly typeIds: ArrayLike<number>;
 }
 
-const FNV_OFFSET_BASIS = 2166136261;
-const FNV_PRIME = 16777619;
-
 /**
  * FNV-1a 32-bit over `(width, height, typeIds)`, as 8 hex digits: the identity of the exact grid the
- * sim navigates. Render lanes and authored placements stay out; they do not shape navigation, and
- * their effects on state are covered by content identity plus the saved entities themselves.
+ * sim navigates. Render lanes and authored placements stay out; they do not shape navigation.
  */
 export function terrainGridFingerprint(grid: TerrainGrid): string {
-  let h = FNV_OFFSET_BASIS >>> 0;
-  const mix = (value: number): void => {
-    h = Math.imul(h ^ (value >>> 0), FNV_PRIME) >>> 0;
-  };
-  mix(grid.width);
-  mix(grid.height);
+  let h = FNV_OFFSET_BASIS;
+  h = fnvMixWord(h, grid.width);
+  h = fnvMixWord(h, grid.height);
   for (let i = 0; i < grid.typeIds.length; i++) {
     const typeId = grid.typeIds[i];
     if (typeId === undefined) throw new Error(`terrain grid has a hole at index ${i}`);
-    mix(typeId);
+    h = fnvMixWord(h, typeId);
   }
-  return h.toString(16).padStart(8, '0');
+  return fnvHex(h);
 }
