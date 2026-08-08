@@ -17,7 +17,7 @@ import { BERRY_FORAGE_RADIUS } from '../../economy/berries.js';
 import { reservedFoodUnits, storedFoodUnits } from '../../family/households.js';
 import { exportedGoodForm, isFood } from '../../readviews/index.js';
 import { bushesNearNode } from '../../spatial/bushes.js';
-import { closer, manhattan } from '../../spatial/nodes.js';
+import { closer, manhattan } from '../../spatial/metric.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 import type { TargetCandidates } from './candidates.js';
 import { type InteractionCellIndex, nearestByCell, qualifiedGood } from './cell-index.js';

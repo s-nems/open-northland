@@ -2,7 +2,7 @@ import { DeliveryFlag } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { closer, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../geometry.js';
+import { closer, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { placementBlockerVersion } from '../blockers.js';
 import { workFlagMoveCount } from './flag-moves.js';
 import { workFlagPlacementBlocks } from './incremental-blocks.js';

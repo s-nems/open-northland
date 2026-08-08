@@ -1,7 +1,8 @@
 import { insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { Component, Entity, World } from '../../ecs/world.js';
 import { createSpatialMemo } from './memo.js';
-import { NodeBuckets, nodeKey } from './nodes.js';
+import { nodeKey } from './metric.js';
+import { NodeBuckets } from './nodes.js';
 
 /**
  * The per-world region spatial index behind the standing-entity indexes, so a radius-bounded scan reads

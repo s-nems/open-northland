@@ -5,7 +5,7 @@ import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { type FarmingSpec, sowNodeOccupied } from '../../../economy/fields.js';
 import { dynamicBlockOverlay } from '../../../footprint/index.js';
-import { closer, manhattan } from '../../../spatial/nodes.js';
+import { closer, manhattan } from '../../../spatial/metric.js';
 import { lowestStockedGood } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
 import {

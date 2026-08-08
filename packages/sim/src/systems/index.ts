@@ -34,6 +34,7 @@ export * from './settlers/atomics/system.js';
 export * from './settlers/planner/system.js';
 export * from './signposts/index.js';
 export * from './social/index.js';
+export * from './spatial/metric.js';
 export * from './spatial/nodes.js';
 // `spawn` otherwise stays private to the command handler, but `createSettler` is the scene-facing entity
 // constructor, so pre-tick-0 setup can place a settler directly and stamp its bindings.

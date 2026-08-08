@@ -6,7 +6,8 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isHunterJob, MILITARY_MODE, stanceMode } from '../../readviews/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../../settlers/unreachable-goals.js';
-import { entityNode, manhattan } from '../../spatial/nodes.js';
+import { manhattan } from '../../spatial/metric.js';
+import { entityNode } from '../../spatial/nodes.js';
 import { anyResourceNear } from '../../spatial/resources.js';
 import { HUNT_CARCASS_SLACK_NODES, huntingGround } from './ground.js';
 

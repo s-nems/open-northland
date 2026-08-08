@@ -12,13 +12,8 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
-import {
-  ANCHOR_ONLY,
-  buildingFootprintOf,
-  nearestCell,
-  nearestFreeNeighbour,
-  translatedCells,
-} from './geometry.js';
+import { nearestCell, nearestFreeNeighbour } from '../spatial/metric.js';
+import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 import { resourceAtTile } from './resource-tile-cache.js';
 

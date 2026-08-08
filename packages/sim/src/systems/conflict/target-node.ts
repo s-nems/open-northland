@@ -4,16 +4,10 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { MapContext, SystemContext } from '../context.js';
-import {
-  buildingFootprintOf,
-  nearestCell,
-  ringOffsetCount,
-  ringOffsetDx,
-  ringOffsetDy,
-  translatedCells,
-} from '../footprint/geometry.js';
+import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import { interactionNode } from '../footprint/index.js';
-import { entityNode, manhattan } from '../spatial/nodes.js';
+import { manhattan, nearestCell, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../spatial/metric.js';
+import { entityNode } from '../spatial/nodes.js';
 import type { WeaponBand } from './melee-slots.js';
 
 // The nodes combat measures a target's distance to, and paths a chaser toward, so the ring-search index, the

@@ -10,7 +10,7 @@ import type { Fixed } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../../nav/terrain/index.js';
-import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../../spatial/nodes.js';
+import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../../spatial/metric.js';
 import { stockpilesAtNode } from '../../../../spatial/stockpiles.js';
 import { isYardHeap, lowestStockedGood, MAX_GROUND_STACK } from '../../../../stores/index.js';
 

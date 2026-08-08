@@ -11,7 +11,7 @@ import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js'
 import type { SpatialGate } from '../../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/nodes.js';
+import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import {
   bankedSlot,
   buildingProduces,

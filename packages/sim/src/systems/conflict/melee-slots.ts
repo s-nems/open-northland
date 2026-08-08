@@ -5,7 +5,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/index.js';
 import { standingFighterNodes } from '../movement/collision/index.js';
-import { manhattan } from '../spatial/nodes.js';
+import { manhattan } from '../spatial/metric.js';
 
 /** A weapon's contact band in half-cell-node Manhattan distance. */
 export interface WeaponBand {

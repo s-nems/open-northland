@@ -7,7 +7,8 @@ import {
   FRIGHT_RADIUS_NODES,
   frightenWildlifeNear,
 } from '../../src/systems/conflict/fright.js';
-import { entityNode, isTravelling, manhattan } from '../../src/systems/spatial/nodes.js';
+import { manhattan } from '../../src/systems/spatial/metric.js';
+import { entityNode, isTravelling } from '../../src/systems/spatial/nodes.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap } from '../fixtures/terrain.js';

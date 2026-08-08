@@ -20,7 +20,8 @@ import type { SystemContext } from '../../context.js';
 import { interactionNodeId } from '../../footprint/interaction.js';
 import { recipeOutputsEnabled } from '../../progression/index.js';
 import { isLivestockWorkplaceType, livestockTribeFedBy } from '../../readviews/index.js';
-import { canonicalById, entityNode, manhattan, NodeBuckets } from '../../spatial/nodes.js';
+import { manhattan } from '../../spatial/metric.js';
+import { canonicalById, entityNode, NodeBuckets } from '../../spatial/nodes.js';
 import {
   operatorCountOf,
   operatorSlotCapacity,

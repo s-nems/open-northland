@@ -3,7 +3,7 @@ import type { SpatialGate } from '../../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode } from '../../footprint/index.js';
-import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../spatial/nodes.js';
+import { closer, manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../spatial/metric.js';
 import { interactionCell } from './workplaces.js';
 
 /**
