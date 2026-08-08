@@ -20,7 +20,8 @@ export * from './workforce/index.js';
 /**
  * The STRATEGIC per-player brain (build order, workforce, expansion, military), distinct from the settler
  * micro-planner in `settlers/planner/system.ts`. Its modules return the same `PlayerCommand` union a
- * human issues, so AI orders hash, log, and replay exactly like player input.
+ * human issues and CommandSystem applies them next tick, so AI orders hash, log, and replay exactly like
+ * player input.
  */
 
 /** One strategic concern of the AI player (see {@link AiModuleId} - the HAI toggle decomposition).

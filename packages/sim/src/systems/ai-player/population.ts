@@ -18,7 +18,7 @@ import { assistantCounterCommand, isBuilt, ownedBuildings, ownedSettlers } from 
 
 /**
  * The HomeExpansion module (authored): who marries, which family takes a free home slot, and the birth
- * counters the settlement assistant is held at.
+ * counters the settlement assistant is held at - daughters up to the housing stock, sons unbounded.
  */
 
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
