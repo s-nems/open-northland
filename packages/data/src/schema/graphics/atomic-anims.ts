@@ -29,8 +29,8 @@ export const GfxAnimAtomic = z.strictObject({
    * facing-locked list.
    */
   dirFrames: z.array(z.array(z.number().int().nonnegative())),
-  /** `gfxanimmode` - `1` marks a body's looping base wait; `0` is a one-shot motion. Optional because
-   *  the key is absent on a few records. */
+  /** `gfxanimmode` - `1` marks a body's looping base wait, `0` a one-shot motion (`2`, the in-house
+   *  records, never carries a body and is not extracted). Optional so an older IR still loads. */
   mode: z.number().int().nonnegative().optional(),
   source: Provenance.optional(),
 });

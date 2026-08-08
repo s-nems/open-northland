@@ -7,8 +7,8 @@ warrior eat/sleep clips are bound. One verified gap remains: the source authors 
 (action 9/10) for the woman or either child body** - checked against the mod's
 `mapmoveableanimations/animations.ini`, which carries only their sleep rows (action 8). So
 `human_woman_generic_eat`, `human_child_boy_generic_eat` and `human_child_girl_generic_eat` play the
-strip fallback: the whole clip cycling facing-locked for the full 50-tick meal (~3 replays of a
-~17-frame clip).
+strip fallback: the whole clip cycling facing-locked for the full 50-tick meal (the woman's 16-frame
+clip about three times, the children's 27-frame clips about twice).
 
 Decide and implement a named approximation instead of the cycling strip, e.g. play the strip once and
 return to the first frame (the same overrun rule `frameOf` applies to one-shot lists - past the end

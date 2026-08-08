@@ -120,7 +120,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
         bodySeq,
         ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
         dirFrames,
-        ...(mode !== undefined ? { mode } : {}),
+        ...(mode !== undefined && mode >= 0 ? { mode } : {}),
         source: makeSource(src, 'gfxanimatomic'),
       }),
     );
