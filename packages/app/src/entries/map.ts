@@ -26,6 +26,7 @@ import { sessionRuleOverrides } from '../game/session-rules.js';
 import { terrainSceneFor } from '../game/world/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
+import { bindDisplayMode } from '../view/fullscreen.js';
 import { bindHarvestableHandover } from '../view/harvestable-handover.js';
 import { aiSeatsParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
@@ -72,6 +73,7 @@ function centerTile(raw: string | null, width: number, height: number): Camera |
 }
 
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
+  bindDisplayMode(params);
   const boot = mountBootProgress(MAP_BOOT_PHASES);
   await boot.begin('graphics');
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });

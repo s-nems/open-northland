@@ -16,8 +16,8 @@ export const RENDER_SCALE_MAX = 2;
 const DEFAULT_RENDER_SCALE = 1;
 
 export interface MenuSettings {
-  /** Fullscreen preference. Browsers grant fullscreen only on a user gesture, so the screen shows
-   *  the live state; the stored value is for shells that can apply it at boot (desktop). */
+  /** Fullscreen preference, written by whatever changes the window; `view/fullscreen.ts` owns how a
+   *  document gets back into it. */
   readonly displayMode: 'fullscreen' | 'window';
   /** Backing-resolution multiplier for the game canvas; 1 keeps the plain device oversample. */
   readonly renderScale: number;

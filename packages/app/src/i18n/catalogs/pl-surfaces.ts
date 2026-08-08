@@ -20,6 +20,7 @@ export const plSurfaces = {
     },
     comingSoon: 'wkrótce',
     comingSoonTip: 'Wkrótce',
+    fullscreenPrompt: 'Włącz pełny ekran, gra wygląda lepiej',
     backLabels: { main: 'Menu', newGame: 'Wybór mapy' },
     underConstruction: 'Ten ekran jest w budowie.',
     screenTitles: {

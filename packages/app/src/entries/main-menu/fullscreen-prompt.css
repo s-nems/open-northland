@@ -1,0 +1,67 @@
+/* The menu's fullscreen prompt (main-menu/fullscreen-prompt.ts). */
+
+.main-menu__fullscreen {
+  position: absolute;
+  top: calc(var(--u) * 64);
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  padding: calc(var(--u) * 12) calc(var(--u) * 22);
+  cursor: pointer;
+  font:
+    500 calc(var(--u) * 20) / 1 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.04em;
+  color: var(--text-body);
+  background: rgba(12, 20, 32, 0.72);
+  border: 1px solid rgba(99, 196, 160, 0.28);
+  border-right: 0;
+  border-radius: 6px 0 0 6px;
+  transform: translateX(100%);
+  transition:
+    transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 700ms,
+    color 150ms ease-out,
+    border-color 150ms ease-out;
+}
+
+.main-menu__fullscreen[hidden] {
+  display: none;
+}
+
+.main-menu__fullscreen.is-in {
+  transform: none;
+}
+
+.main-menu__fullscreen:hover,
+.main-menu__fullscreen:focus-visible {
+  color: var(--accent-bright);
+  border-color: var(--accent);
+}
+
+.main-menu__fullscreen:focus-visible {
+  outline: 2px solid var(--accent-bright);
+  outline-offset: -4px;
+}
+
+/* Arrows into the four corners: the same idea as the browser's own fullscreen control. */
+.main-menu__fullscreen-icon {
+  flex: none;
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 18);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%2363c4a0' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M6 1.8H1.8V6M10 1.8h4.2V6M6 14.2H1.8V10M10 14.2h4.2V10'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+/* Sub-screens fill the viewport, including the corner the prompt sits in. */
+.main-menu.is-sub .main-menu__fullscreen {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-menu__fullscreen {
+    transition: none;
+  }
+}

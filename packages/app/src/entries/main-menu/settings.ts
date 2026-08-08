@@ -1,6 +1,7 @@
 import { DEFAULT_MASTER_GAIN } from '@open-northland/audio';
 import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
+import { enterFullscreen, isFullscreen, leaveFullscreen } from '../../view/fullscreen.js';
 import {
   defaultSettings,
   type FpsLimit,
@@ -162,7 +163,7 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
   // ours; either changes the height behind the display segment and the effective-scale readout, so
   // both viewport events rebuild the panel.
   let displaySeg: SegHandle<DisplayMode> | null = null;
-  const liveDisplayMode = (): DisplayMode => (document.fullscreenElement !== null ? 'fullscreen' : 'window');
+  const liveDisplayMode = (): DisplayMode => (isFullscreen() ? 'fullscreen' : 'window');
   const onViewportChange = (): void => {
     if (!section.isConnected) {
       unhookViewport();
@@ -187,14 +188,11 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
       ],
       liveDisplayMode(),
       (mode) => {
-        updateSettings({ displayMode: mode });
-        // The repaint waits for fullscreenchange; a denied request must not leave the segment
-        // showing a fullscreen that never happened.
-        if (mode === 'fullscreen') {
-          document.documentElement.requestFullscreen().catch(() => displaySeg?.setActive(liveDisplayMode()));
-        } else if (document.fullscreenElement !== null) {
-          void document.exitFullscreen();
-        }
+        // The store follows the window itself, so a denied request records nothing and only the
+        // segment has to fall back to the mode the window is actually in.
+        void (mode === 'fullscreen' ? enterFullscreen() : leaveFullscreen()).then(() =>
+          displaySeg?.setActive(liveDisplayMode()),
+        );
       },
     );
     // 100% is the viewport-derived base; the label also shows the effective in-game multiplier, which
@@ -312,7 +310,7 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
   restore.textContent = text.restoreDefaults;
   restore.addEventListener('click', () => {
     updateSettings(defaultSettings());
-    if (document.fullscreenElement !== null) void document.exitFullscreen();
+    void leaveFullscreen();
     open('settings');
   });
   foot.append(autosave, restore);

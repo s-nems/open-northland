@@ -65,9 +65,9 @@ art stands in. Direct entries are useful during focused work:
 | `?shot` | single-frame screenshot entry used by the harness |
 | `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
 
-Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, and
-`sound=off`. Without `lang` the language follows the browser, and English stands in for a browser
-language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
+Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, `sound=off`,
+and `fullscreen=off`. Without `lang` the language follows the browser, and English stands in for a
+browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides
 the stored post-fx choice for that entry, so captures stay reproducible whatever the machine's
 settings. The HUD scales from the canvas height sampled at game start times the stored
@@ -91,6 +91,11 @@ window, and `setSpeed()` / `setPaused()` put the session into a state worth meas
 gives a baseline the per-frame step cap cannot distort, and pausing isolates the render half of a
 frame. Read `sampling.hidden` before trusting any timing: a background tab throttles its frame loop
 and every millisecond becomes fiction.
+
+A stored fullscreen preference is taken back on the session's first gesture, so a probe that clicks
+resizes the viewport mid-measurement and also records its own window mode. Add `&fullscreen=off` to a
+scripted URL: the session keeps the window it was given, stores nothing, and the menu shows no
+fullscreen prompt.
 
 ## Screenshots
 
