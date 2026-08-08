@@ -82,7 +82,8 @@ function sliderControl(label: string, spec: SliderSpec): HTMLDivElement {
 }
 
 interface SettingRowOptions {
-  /** Hover tooltip for a live row; a `soon` row shows the coming-soon tip instead. */
+  /** Hover tooltip for a live row; a `soon` row shows the coming-soon tip instead. Rendered as a
+   *  styled `data-tip` bubble, since a native `title` waits out a long OS hover delay. */
   readonly tip?: string;
   readonly soon?: { badge: string; tip: string };
 }
@@ -94,11 +95,11 @@ function settingRow(label: string, control: HTMLElement, options?: SettingRowOpt
   name.className = 'main-menu__settings-label';
   name.textContent = label;
   row.append(name, control);
-  if (options?.tip !== undefined) row.title = options.tip;
+  if (options?.tip !== undefined) row.dataset.tip = options.tip;
   const soon = options?.soon;
   if (soon !== undefined) {
     row.classList.add('is-coming-soon');
-    row.title = soon.tip;
+    row.dataset.tip = soon.tip;
     const badge = document.createElement('span');
     badge.className = 'main-menu__badge';
     badge.textContent = soon.badge;
