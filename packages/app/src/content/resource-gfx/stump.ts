@@ -10,8 +10,7 @@ import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
 export const STUMP_EDIT_NAME = 'tree debris medium';
 
 /** Resolve the stump/debris draw (served atlas stem + bob) from the IR's landscape gfx, matched by
- *  {@link STUMP_EDIT_NAME}, or `undefined` when the record or atlas is absent - the stump then falls back
- *  to the placeholder. Pure. */
+ *  {@link STUMP_EDIT_NAME}, or `undefined` when the record or atlas is absent. */
 export function resolveStumpRef(ir: ContentIr | null): GatheringNodeRef | undefined {
   const record = (ir?.landscapeGfx ?? []).find((g) => g.editName === STUMP_EDIT_NAME);
   return record !== undefined ? nodeRefFrom(record) : undefined;
@@ -20,7 +19,7 @@ export function resolveStumpRef(ir: ContentIr | null): GatheringNodeRef | undefi
 /**
  * Reduce the resolved stump ref to a {@link ResourceTypeBinding} with a single `default` debris frame - a
  * stump draws like a static node, from the dead-tree family. `undefined` when the debris atlas did not
- * load, so the stump falls back to the placeholder rather than borrowing a wrong frame. Pure.
+ * load, so the stump falls back to the placeholder rather than borrowing a wrong frame.
  */
 export function buildStumpBinding(
   stump: GatheringNodeRef | undefined,
