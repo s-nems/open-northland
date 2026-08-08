@@ -7,6 +7,7 @@ import {
   Owner,
   Position,
   Settler,
+  setDiplomacyStance,
 } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
@@ -206,6 +207,20 @@ describe('ai defence - the alarm', () => {
     standOff(sim, hq, watchOf(sim), CIVILIST);
 
     expect(alarms(run(sim))).toEqual([]);
+  });
+
+  it('ignores a fighter whose player is not hostile toward the seat', () => {
+    const sim = aiSim();
+    const hq = place(sim, HQ_TYPE, SEAT_HQ);
+    standOff(sim, hq, watchOf(sim), SPEARMAN);
+    setDiplomacyStance(sim.world, FOE, SEAT, 'friend');
+
+    // The threat scan keys on the fighter's directed stance toward the seat - the same axis the
+    // CombatSystem engages on - so an allied army walking the town is never read as a raid.
+    expect(alarms(run(sim))).toEqual([]);
+
+    setDiplomacyStance(sim.world, FOE, SEAT, 'enemy');
+    expect(alarms(run(sim))).toEqual([{ building: hq, enabled: true }]);
   });
 
   it('ignores a fighter one node outside the watch band', () => {
