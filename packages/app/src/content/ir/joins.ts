@@ -1,7 +1,7 @@
 import { type BuildingFootprint, fullStateBlockAreaCells } from '@open-northland/data';
 import { DOOR_SHIFTS } from '../../catalog/building-tweaks.js';
 import { diag } from '../../diag/index.js';
-import type { BobSeqRow, ContentIr, GfxAnimAtomicRow, LandscapeGfxRow } from './rows.js';
+import type { BobSeqRow, ContentIr, LandscapeGfxRow } from './rows.js';
 
 /** The served `/bobs/` atlas stem (`<bmd-basename-minus-.bmd>.<palette>`, the pipeline's naming) for a
  *  landscape gfx / building bob record, or `undefined` when it names no body bob or palette. The one home
@@ -86,21 +86,83 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
   return byName;
 }
 
+/** `gfxanimmode 1` - the record is a body's looping base wait rather than a one-shot motion. */
+export const GFX_ANIM_MODE_LOOP = 1;
+
+/** One `[gfxanimatomic]` record's playable payload: the per-`<dir>` frame lists plus its `gfxanimmode`. */
+export interface GfxAtomicProgram {
+  readonly dirFrames: readonly (readonly number[])[];
+  readonly mode?: number;
+}
+
 /**
- * The `[gfxanimatomic]` per-direction frame lists ({@link GfxAnimAtomicRow.dirFrames}) for one
- * `(tribe, action)`, indexed by body bobseq name; first record wins per seq. Filtering by `tribe` matters:
- * the same body bobseq name recurs across the human tribes with different frame lists, so the wrong tribe
- * yields a plausible-but-wrong animation. `tribe` is the `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_*`;
- * viking 1).
+ * Every `[gfxanimatomic]` program of one tribe, indexed by action then body bobseq name. First record
+ * wins per `(action, seq)` (a job/action may list several variant seqs; the caller names the one it
+ * wants). Filtering by `tribe` matters: the same body bobseq name recurs across the human tribes with
+ * different frame lists, so the wrong tribe yields a plausible-but-wrong animation. `tribe` is the
+ * `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_*`; viking 1).
  */
-export function gfxAtomicFrameLists(
+export function gfxAtomicProgramsByAction(
   ir: ContentIr | null,
   tribe: number,
-  action: number,
+): Map<number, Map<string, GfxAtomicProgram>> {
+  const byAction = new Map<number, Map<string, GfxAtomicProgram>>();
+  for (const row of ir?.gfxAtomics ?? []) {
+    if (row.tribe !== tribe) continue;
+    let bySeq = byAction.get(row.action);
+    if (bySeq === undefined) {
+      bySeq = new Map();
+      byAction.set(row.action, bySeq);
+    }
+    if (!bySeq.has(row.bodySeq)) {
+      bySeq.set(row.bodySeq, {
+        dirFrames: row.dirFrames,
+        ...(row.mode !== undefined ? { mode: row.mode } : {}),
+      });
+    }
+  }
+  return byAction;
+}
+
+/** The wait-atomic ladder (`jobtypes.ini` `allowatomic` 2..7) - the actions a standing body's authored
+ *  wait programs sit on. */
+const WAIT_ACTIONS = new Set([2, 3, 4, 5, 6, 7]);
+
+/**
+ * One tribe's standing-wait program per wait bobseq name. A body authors several wait programs (the
+ * one-shot fidgets on actions 2..6 and, usually last, the `gfxanimmode 1` looping base wait); the
+ * mode-1 program wins, since that is the one the original loops between fidgets. A body with no mode-1
+ * record keeps its first program, which a consumer loops as a named approximation.
+ */
+export function gfxWaitProgramsBySeq(ir: ContentIr | null, tribe: number): Map<string, GfxAtomicProgram> {
+  const bySeq = new Map<string, GfxAtomicProgram>();
+  for (const row of ir?.gfxAtomics ?? []) {
+    if (row.tribe !== tribe || !WAIT_ACTIONS.has(row.action)) continue;
+    if (row.dirFrames.every((list) => list.length === 0)) continue;
+    const existing = bySeq.get(row.bodySeq);
+    if (existing !== undefined && (existing.mode === GFX_ANIM_MODE_LOOP || row.mode !== GFX_ANIM_MODE_LOOP)) {
+      continue;
+    }
+    bySeq.set(row.bodySeq, {
+      dirFrames: row.dirFrames,
+      ...(row.mode !== undefined ? { mode: row.mode } : {}),
+    });
+  }
+  return bySeq;
+}
+
+/**
+ * One tribe's `gfxwalkframelist` per-`<dir>` lists, indexed by walk bobseq name (first record wins).
+ * A walk list is a contiguous run per direction that may end short of the pool's block stride (the
+ * baby crawl plays 12 of each 13-frame block), which the bare `[bobseq]` range cannot encode.
+ */
+export function gfxWalkFrameLists(
+  ir: ContentIr | null,
+  tribe: number,
 ): Map<string, readonly (readonly number[])[]> {
   const byName = new Map<string, readonly (readonly number[])[]>();
-  for (const row of ir?.gfxAtomics ?? []) {
-    if (row.tribe !== tribe || row.action !== action) continue;
+  for (const row of ir?.gfxWalkAtomics ?? []) {
+    if (row.tribe !== tribe || row.dirFrames === undefined) continue;
     if (!byName.has(row.bodySeq)) byName.set(row.bodySeq, row.dirFrames);
   }
   return byName;

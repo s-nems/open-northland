@@ -26,6 +26,8 @@ export interface GfxAnimAtomicRow {
   readonly headSeq?: string;
   /** Per-facing ordered lists of local frame indices into the `bodySeq` pool (outer length = directions). */
   readonly dirFrames: readonly (readonly number[])[];
+  /** `gfxanimmode` - `1` marks a body's looping base wait; `0` is a one-shot motion. */
+  readonly mode?: number;
 }
 
 /** One `[gfxwalkatomic]` row as it ships in `content/ir.json`'s `gfxWalkAtomics` - the original's
@@ -36,6 +38,11 @@ export interface GfxWalkAtomicRow {
   readonly goodType: number;
   readonly bodySeq: string;
   readonly headSeq?: string;
+  /** Per-facing `gfxwalkframelist` lists of local frame indices into the `bodySeq` pool - contiguous
+   *  runs that may play fewer frames than the pool's block stride holds. */
+  readonly dirFrames?: readonly (readonly number[])[];
+  /** `logicwalkspeed` - the gait's authored speed rating; no consumer yet. */
+  readonly walkSpeed?: number;
 }
 
 /** One good as it ships in `content/ir.json`'s `goods` - only the id join the graphics lanes need. */

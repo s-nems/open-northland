@@ -4,6 +4,7 @@ import {
   cifLinesToSections,
   extractBobSequences,
   extractGfxAnimAtomics,
+  extractGfxWalkAtomics,
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
@@ -216,6 +217,7 @@ describe('extractGfxAnimAtomics', () => {
       'logictribe 1',
       'logicjob 4',
       'logicatomicaction 8',
+      'gfxanimmode 1',
       'gfxbobseqbody "human_child_boy_generic_sleep"',
       'gfxanimframelist 0 1 2 3 2 1', // non-directional -> one facing-locked list
       '[gfxanimatomic]', // no tribe/job/action -> dropped
@@ -248,6 +250,7 @@ describe('extractGfxAnimAtomics', () => {
         action: 8,
         bodySeq: 'human_child_boy_generic_sleep',
         dirFrames: [[0, 1, 2, 3, 2, 1]], // one facing-locked list
+        mode: 1,
         source: { file: 'animations.ini', block: 'gfxanimatomic', layer: 'mod' },
       },
     ]);
@@ -269,6 +272,59 @@ describe('extractGfxAnimAtomics', () => {
       src,
     );
     expect(rec?.headSeq).toBe('human_man_Warrior_Sword_Attack');
+  });
+});
+
+describe('extractGfxWalkAtomics', () => {
+  // Mirrors the real [gfxwalkatomic] grammar: (tribe, job, good) → body bobseq, with per-direction
+  // `gfxwalkframelist <dir> <idx…>` lines and an optional `logicwalkspeed`. Walk lists are contiguous
+  // runs but not always full blocks (the baby crawl plays 12 of each 13-frame block).
+  const src = { file: 'animations.ini', layer: 'mod' as const };
+  const sections = parseIniSections(
+    [
+      '[gfxwalkatomic]',
+      'logictribe 1',
+      'logicjob 1',
+      'logicgoodtype 0',
+      'gfxbobseqbody "human_child_baby_generic_crouch"',
+      // Out of dir order - placed at the correct dir slot regardless of file order.
+      'gfxwalkframelist 1 13 14 15 16',
+      'gfxwalkframelist 0 52 53 54 55',
+      'logicwalkspeed 8',
+      '[gfxwalkatomic]', // no frame lists and no speed -> the bare binding still extracts
+      'logictribe 8',
+      'logicjob 49',
+      'logicgoodtype 0',
+      'gfxbobseqbody "animal_bear_walk"',
+      '[gfxwalkatomic]', // no good type -> dropped
+      'logictribe 1',
+      'logicjob 6',
+      'gfxbobseqbody "orphan"',
+    ].join('\n'),
+  );
+
+  it('places each gfxwalkframelist at its dir slot and keeps the optional walk speed', () => {
+    expect(extractGfxWalkAtomics(sections, src)).toEqual([
+      {
+        tribe: 1,
+        job: 1,
+        goodType: 0,
+        bodySeq: 'human_child_baby_generic_crouch',
+        dirFrames: [
+          [52, 53, 54, 55], // dir 0
+          [13, 14, 15, 16], // dir 1
+        ],
+        walkSpeed: 8,
+        source: { file: 'animations.ini', block: 'gfxwalkatomic', layer: 'mod' },
+      },
+      {
+        tribe: 8,
+        job: 49,
+        goodType: 0,
+        bodySeq: 'animal_bear_walk',
+        source: { file: 'animations.ini', block: 'gfxwalkatomic', layer: 'mod' },
+      },
+    ]);
   });
 });
 

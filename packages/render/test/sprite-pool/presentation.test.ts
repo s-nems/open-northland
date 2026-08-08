@@ -72,8 +72,16 @@ describe('walkPose', () => {
 });
 
 describe('animationClock', () => {
-  it('runs on the free sim tick for a normally drawn item', () => {
-    expect(animationClock(WALKER, TICK)).toBe(TICK);
+  it('runs on the free sim tick for a normally drawn non-settler item', () => {
+    expect(animationClock(SITE, TICK)).toBe(TICK);
+  });
+
+  it('offsets a settler by its entity id, so standing crowds do not idle in unison', () => {
+    const a = animationClock({ ...IDLE_SETTLER, ref: 1 }, TICK);
+    const b = animationClock({ ...IDLE_SETTLER, ref: 2 }, TICK);
+    expect(a).not.toBe(b);
+    // The offset is a constant phase, not a speed change: the clock still advances 1 per tick.
+    expect(animationClock({ ...IDLE_SETTLER, ref: 1 }, TICK + 1)).toBe(a + 1);
   });
 
   it('freezes a fog ghost, so an animating mill cannot leak that the building is still manned', () => {

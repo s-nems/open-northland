@@ -29,6 +29,9 @@ export const GfxAnimAtomic = z.strictObject({
    * facing-locked list.
    */
   dirFrames: z.array(z.array(z.number().int().nonnegative())),
+  /** `gfxanimmode` - `1` marks a body's looping base wait; `0` is a one-shot motion. Optional because
+   *  the key is absent on a few records. */
+  mode: z.number().int().nonnegative().optional(),
   source: Provenance.optional(),
 });
 export type GfxAnimAtomic = z.infer<typeof GfxAnimAtomic>;

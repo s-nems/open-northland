@@ -5,27 +5,16 @@ import type {
   SettlerStateBinding,
   SpriteLayer,
 } from '@open-northland/render';
-import {
-  ATTACK_ATOMIC,
-  BUILD_HOUSE_ATOMIC,
-  CLAY_HARVEST_ATOMIC,
-  CULTIVATE_ATOMIC,
-  GOLD_HARVEST_ATOMIC,
-  HARVEST_ATOMIC,
-  HARVEST_CADAVER_ATOMIC,
-  IRON_HARVEST_ATOMIC,
-  KISS_ATOMIC,
-  KISSED_ATOMIC,
-  LISTEN_ATOMIC,
-  MUSHROOM_HARVEST_ATOMIC,
-  PLANT_ATOMIC,
-  STONE_HARVEST_ATOMIC,
-  TALK_ATOMIC,
-  WHEAT_HARVEST_ATOMIC,
-} from '../../catalog/atomics.js';
+import { MUSHROOM_HARVEST_ATOMIC } from '../../catalog/atomics.js';
 import { characterStem, characterStems, VIKING_CHARACTERS } from '../../catalog/roster.js';
 import { diag } from '../../diag/index.js';
-import { carryWalkSeqs, gfxAtomicFrameLists, sequencesFor } from '../ir/joins.js';
+import {
+  carryWalkSeqs,
+  gfxAtomicProgramsByAction,
+  gfxWaitProgramsBySeq,
+  gfxWalkFrameLists,
+  sequencesFor,
+} from '../ir/joins.js';
 import { loadGalleryLayers, MissingAtlasError } from '../ir/load.js';
 import type { ContentIr } from '../ir/rows.js';
 import {
@@ -41,7 +30,6 @@ import {
   WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG,
   YOUNG_CHARACTER_BY_JOB,
 } from '../settler-gfx/index.js';
-import { EAT_ATOMIC, SLEEP_ATOMIC } from '../settler-gfx/sequences.js';
 
 /**
  * The viking `[gfxanimatomic]` `logictribe` - `logicdefines.inc` `TRIBE_TYPE_HUMAN_VIKING = 1`. Not the
@@ -106,40 +94,18 @@ export async function loadCharacters(
     }),
   );
 
-  // The viking directional attack frame lists (`[gfxanimatomic]` action-81), indexed by swing bobseq name.
-  const attackFrameLists = gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, ATTACK_ATOMIC);
-  // An action missing from `actionFrameLists` plays its plain `atomics` strip whole, cycling through the
-  // sheet's direction blocks.
-  const actionFrameLists = new Map(
-    [
-      HARVEST_ATOMIC,
-      HARVEST_CADAVER_ATOMIC,
-      STONE_HARVEST_ATOMIC,
-      CLAY_HARVEST_ATOMIC,
-      IRON_HARVEST_ATOMIC,
-      GOLD_HARVEST_ATOMIC,
-      MUSHROOM_HARVEST_ATOMIC,
-      WHEAT_HARVEST_ATOMIC,
-      PLANT_ATOMIC,
-      CULTIVATE_ATOMIC,
-      BUILD_HOUSE_ATOMIC,
-      KISS_ATOMIC,
-      KISSED_ATOMIC,
-      TALK_ATOMIC,
-      LISTEN_ATOMIC,
-      EAT_ATOMIC,
-      SLEEP_ATOMIC,
-    ].map((action) => [action, gfxAtomicFrameLists(ir, VIKING_ANIM_TRIBE, action)] as const),
-  );
+  // Every viking `[gfxanimatomic]` program, action → swing bobseq name → frame lists + mode. Built
+  // once; a spec whose seq has no program falls that atomic back to its plain strip.
+  const programsByAction = gfxAtomicProgramsByAction(ir, VIKING_ANIM_TRIBE);
   // One pick bends MUSHROOM_PLUCKS_PER_PICK times: repeat the authored one-shot pluck list back-to-back so
   // the whole pick is a single continuous motion (HARVEST_TICKS sizes the atomic to cover the repeats).
-  const pluck = actionFrameLists.get(MUSHROOM_HARVEST_ATOMIC);
+  const pluck = programsByAction.get(MUSHROOM_HARVEST_ATOMIC);
   if (pluck !== undefined) {
-    actionFrameLists.set(
+    programsByAction.set(
       MUSHROOM_HARVEST_ATOMIC,
       new Map(
-        [...pluck].map(([seq, dirs]) => {
-          for (const list of dirs) {
+        [...pluck].map(([seq, program]) => {
+          for (const list of program.dirFrames) {
             if (list.length !== MUSHROOM_PLUCK_FRAMES) {
               // The atomic duration is sized off the pin, so a drifted list would cut or pad the motion.
               diag.warn(
@@ -150,26 +116,33 @@ export async function loadCharacters(
           }
           return [
             seq,
-            dirs.map((list) => Array.from({ length: MUSHROOM_PLUCKS_PER_PICK }, () => list).flat()),
+            {
+              ...program,
+              dirFrames: program.dirFrames.map((list) =>
+                Array.from({ length: MUSHROOM_PLUCKS_PER_PICK }, () => list).flat(),
+              ),
+            },
           ] as const;
         }),
       ),
     );
   }
+  const waitBySeq = gfxWaitProgramsBySeq(ir, VIKING_ANIM_TRIBE);
+  const walkLists = gfxWalkFrameLists(ir, VIKING_ANIM_TRIBE);
 
   const bySpec = new Map<string, SettlerCharacter>();
   for (const [specId, spec] of CHARACTER_SPEC_ENTRIES) {
     const layers = layersByRoster.get(spec.rosterId);
     const roster = rosterById.get(spec.rosterId);
     if (layers === undefined || roster === undefined) continue;
-    const binding = characterBinding(
-      spec,
-      sequencesFor(ir, roster.imagelib),
-      goods,
-      spec.logicJob !== undefined ? carryWalkSeqs(ir, VIKING_ANIM_TRIBE, spec.logicJob) : undefined,
-      attackFrameLists,
-      actionFrameLists,
-    );
+    const binding = characterBinding(spec, sequencesFor(ir, roster.imagelib), goods, {
+      ...(spec.logicJob !== undefined
+        ? { carrySeqBySlug: carryWalkSeqs(ir, VIKING_ANIM_TRIBE, spec.logicJob) }
+        : {}),
+      programsByAction,
+      waitBySeq,
+      walkLists,
+    });
     if (binding === null) continue;
     const heads = (spec.headBmds ?? roster.headBmds)
       .map((bmd) => layers.headsByStem.get(characterStem(bmd, palette)))
@@ -177,8 +150,8 @@ export async function loadCharacters(
     // All of a body's heads share one bob layout, so checking the first head atlas stands for the set.
     const byGood = binding.carrying?.byGood;
     const headAtlas = heads[0]?.atlas;
-    // The head-borrow reference is the plain walk; `moving` is never a FrameListAnim, so exclude that kind
-    // to keep the type.
+    // The head-borrow reference is the plain walk; `moving` is never a FrameListAnim (walk lists reduce
+    // to a directional block cut), so exclude that kind to keep the type.
     const moving = binding.moving;
     const walk = typeof moving === 'object' && !('frameLists' in moving) ? moving : undefined;
     let headBinding: SettlerStateBinding | undefined;

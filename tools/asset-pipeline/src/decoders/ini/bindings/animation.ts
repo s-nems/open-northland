@@ -52,6 +52,32 @@ export function extractBobSequences(sections: readonly RuleSection[], src: Sourc
 }
 
 /**
+ * Parse the repeated `<key> <dir> <idx…>` frame-list lines of one section, placing each list at its
+ * `<dir>` slot so the outer index is the direction regardless of file order. A missing intermediate dir
+ * stays an empty list; `undefined` when the section carries no such key. Order and repeats are kept
+ * verbatim - a repeated index is an authored hold.
+ */
+function dirIndexedFrameLists(sec: RuleSection, key: string): number[][] | undefined {
+  const props = findProps(sec, key);
+  if (props.length === 0) return undefined;
+  const byDir = new Map<number, number[]>();
+  for (const p of props) {
+    const dir = Number.parseInt(p.values[0] ?? '', 10);
+    if (Number.isNaN(dir) || dir < 0) continue;
+    const ids = p.values
+      .slice(1)
+      .map((v) => Number.parseInt(v, 10))
+      .filter((n) => !Number.isNaN(n) && n >= 0);
+    byDir.set(dir, ids);
+  }
+  if (byDir.size === 0) return undefined;
+  const maxDir = Math.max(...byDir.keys());
+  const dirFrames: number[][] = [];
+  for (let d = 0; d <= maxDir; d++) dirFrames.push(byDir.get(d) ?? []);
+  return dirFrames;
+}
+
+/**
  * Extracts the `[gfxanimatomic]` records from `mapmoveableanimations/animations.ini` into
  * {@link GfxAnimAtomic} rows, reading the `gfxanimframelistdir <dir> <idx…>` lines that lay an animation
  * out per facing. One `(job, action)` may carry several records (the unarmed soldier's punch variants)
@@ -76,26 +102,8 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
       continue;
     }
     const headSeq = getStr(sec, 'gfxbobseqhead');
-    // Place each `gfxanimframelistdir <dir> <idx…>` at its `<dir>` slot so the outer index is the
-    // facing. A missing intermediate dir stays an empty list.
-    const dirProps = findProps(sec, 'gfxanimframelistdir');
-    let dirFrames: number[][];
-    if (dirProps.length > 0) {
-      const byDir = new Map<number, number[]>();
-      for (const p of dirProps) {
-        const dir = Number.parseInt(p.values[0] ?? '', 10);
-        if (Number.isNaN(dir) || dir < 0) continue;
-        const ids = p.values
-          .slice(1)
-          .map((v) => Number.parseInt(v, 10))
-          .filter((n) => !Number.isNaN(n) && n >= 0);
-        byDir.set(dir, ids);
-      }
-      if (byDir.size === 0) continue;
-      const maxDir = Math.max(...byDir.keys());
-      dirFrames = [];
-      for (let d = 0; d <= maxDir; d++) dirFrames.push(byDir.get(d) ?? []);
-    } else {
+    let dirFrames = dirIndexedFrameLists(sec, 'gfxanimframelistdir');
+    if (dirFrames === undefined) {
       // A non-directional record: one facing-locked list (`gfxanimframelist <idx…>` - no leading dir).
       const single = findProps(sec, 'gfxanimframelist')[0];
       if (single === undefined) continue;
@@ -103,6 +111,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
       dirFrames = [ids];
     }
     if (dirFrames.every((list) => list.length === 0)) continue; // nothing to draw
+    const mode = getInt(sec, 'gfxanimmode');
     out.push(
       GfxAnimAtomic.parse({
         tribe,
@@ -111,6 +120,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
         bodySeq,
         ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
         dirFrames,
+        ...(mode !== undefined ? { mode } : {}),
         source: makeSource(src, 'gfxanimatomic'),
       }),
     );
@@ -142,6 +152,8 @@ export function extractGfxWalkAtomics(sections: readonly RuleSection[], src: Sou
       continue;
     }
     const headSeq = getStr(sec, 'gfxbobseqhead');
+    const dirFrames = dirIndexedFrameLists(sec, 'gfxwalkframelist');
+    const walkSpeed = getInt(sec, 'logicwalkspeed');
     out.push(
       GfxWalkAtomic.parse({
         tribe,
@@ -149,6 +161,8 @@ export function extractGfxWalkAtomics(sections: readonly RuleSection[], src: Sou
         goodType,
         bodySeq,
         ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
+        ...(dirFrames !== undefined ? { dirFrames } : {}),
+        ...(walkSpeed !== undefined && walkSpeed > 0 ? { walkSpeed } : {}),
         source: makeSource(src, 'gfxwalkatomic'),
       }),
     );

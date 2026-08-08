@@ -273,20 +273,27 @@ describe('characterBinding', () => {
       waitSeq: 'wait',
       attack: 'spear_attack',
     } as const;
-    const frameLists = new Map<string, readonly (readonly number[])[]>([
+    const programsByAction = new Map([
       [
-        'spear_attack',
-        [
-          [79, 79, 80],
-          [97, 97, 98],
-        ],
+        ATTACK_ATOMIC,
+        new Map([
+          [
+            'spear_attack',
+            {
+              dirFrames: [
+                [79, 79, 80],
+                [97, 97, 98],
+              ],
+            },
+          ],
+        ]),
       ],
     ]);
     // The swing pool `start` comes from the [bobseq] row, its per-direction layout from the gfxAtomics
     // map. A PARTIAL multi-list table is still a <dir>-space table: dir 0 (E) lands on facing 4, dir 1
     // (SE) on facing 5, and the unauthored facings hold empty lists (frameOf pins the pool's first
     // frame there) - never an unremapped pass-through.
-    expect(characterBinding(spec, seqs, [], undefined, frameLists)?.byAtomic).toEqual({
+    expect(characterBinding(spec, seqs, [], { programsByAction })?.byAtomic).toEqual({
       81: {
         start: 2255,
         frameLists: [[], [], [], [], [79, 79, 80], [97, 97, 98], [], []],
@@ -301,16 +308,86 @@ describe('characterBinding', () => {
     ]);
     const spec = { rosterId: 'warrior', waitSeq: 'wait', attack: 'spear_attack' } as const;
     // Source <dir> order: 0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE, 6 N, 7 S (each list tagged by its dir).
-    const dirLists = new Map<string, readonly (readonly number[])[]>([
-      ['spear_attack', [[0], [1], [2], [3], [4], [5], [6], [7]]],
+    const programsByAction = new Map([
+      [ATTACK_ATOMIC, new Map([['spear_attack', { dirFrames: [[0], [1], [2], [3], [4], [5], [6], [7]] }]])],
     ]);
-    const swing = characterBinding(spec, seqs, [], undefined, dirLists)?.byAtomic?.[ATTACK_ATOMIC];
+    const swing = characterBinding(spec, seqs, [], { programsByAction })?.byAtomic?.[ATTACK_ATOMIC];
     // Facing order is the strip-block compass (0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N): the
     // east-facing swing (facing 4) must play the source dir-0 (E) list, and so on around the ring -
     // GFX_DIR_TO_BLOCK = [4,5,0,1,2,3,7,6], data-pinned by the 123 human-body [gfxanimatomic] records.
     expect(swing).toEqual({
       start: 2255,
       frameLists: [[2], [3], [4], [5], [0], [1], [7], [6]],
+    });
+  });
+
+  it('plays an atomic through its gfxAtomics program when one exists, looping only mode-1 records', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['eat', { name: 'eat', start: 1530, length: 17 }],
+      ['pray', { name: 'pray', start: 1647, length: 120 }],
+    ]);
+    const spec = {
+      rosterId: 'civilian',
+      waitSeq: 'wait',
+      atomics: { 10: { seq: 'eat' }, 12: { seq: 'pray', ticksPerFrame: 2 } },
+    } as const;
+    const programsByAction = new Map([
+      [10, new Map([['eat', { dirFrames: [[0, 1, 1, 2]], mode: 1 }]])],
+      [12, new Map([['pray', { dirFrames: [[3, 4, 4, 5]], mode: 0 }]])],
+    ]);
+    // The authored list replaces the strip reading entirely; the cadence override still applies, and
+    // only the mode-1 record loops.
+    expect(characterBinding(spec, seqs, [], { programsByAction })?.byAtomic).toEqual({
+      10: { start: 1530, frameLists: [[0, 1, 1, 2]], loop: true },
+      12: { start: 1647, frameLists: [[3, 4, 4, 5]], ticksPerFrame: 2 },
+    });
+  });
+
+  it('idles on the wait seq gfxAtomics program (looped) instead of cycling the raw wait strip', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 1931, length: 57 }],
+      ['walk', { name: 'walk', start: 1988, length: 96 }],
+    ]);
+    const spec = { rosterId: 'civilian', walkSeq: 'walk', waitSeq: 'wait' } as const;
+    const waitBySeq = new Map([['wait', { dirFrames: [[34, 34, 35, 36, 36, 35]], mode: 1 }]]);
+    expect(characterBinding(spec, seqs, [], { waitBySeq })?.idle).toEqual({
+      start: 1931,
+      frameLists: [[34, 34, 35, 36, 36, 35]],
+      loop: true,
+    });
+  });
+
+  it('cuts the walk cycle to the gfxwalkframelist run (the baby crawl plays 12 of each 13-frame block)', () => {
+    const run = (from: number, n: number): number[] => Array.from({ length: n }, (_, i) => from + i);
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 10, length: 42 }],
+      ['crawl', { name: 'crawl', start: 500, length: 104 }],
+    ]);
+    const spec = { rosterId: 'baby', walkSeq: 'crawl', waitSeq: 'wait' } as const;
+    // <dir> space: each dir indexes its GFX_DIR_TO_BLOCK block ([4,5,0,1,2,3,7,6]), 12 of 13 frames.
+    const blocks = [4, 5, 0, 1, 2, 3, 7, 6];
+    const walkLists = new Map([['crawl', blocks.map((b) => run(b * 13, 12))]]);
+    expect(characterBinding(spec, seqs, [], { walkLists })?.moving).toEqual({
+      start: 500,
+      dirs: 8,
+      stride: 13,
+      frames: 12,
+    });
+  });
+
+  it('keeps the whole-block walk reading when the walk list is not a contiguous block run', () => {
+    const seqs = new Map([
+      ['wait', { name: 'wait', start: 10, length: 42 }],
+      ['walk', { name: 'walk', start: 100, length: 96 }],
+    ]);
+    const spec = { rosterId: 'civilian', walkSeq: 'walk', waitSeq: 'wait' } as const;
+    // A list with a hold is not a block cut - the reduction must refuse it rather than mis-slice.
+    const walkLists = new Map([['walk', [[0, 0, 1, 2]]]]);
+    expect(characterBinding(spec, seqs, [], { walkLists })?.moving).toEqual({
+      start: 100,
+      dirs: 8,
+      stride: 12,
     });
   });
 
@@ -361,12 +438,9 @@ describe('characterBinding', () => {
   it('binds only what the walk table names - no generic gait to mask the goods it omits', () => {
     // wool is absent from the table, so it must stay absent from the binding: a generic fallback here
     // is what put a wood log in a honey-hauler's hands.
-    const binding = characterBinding(
-      CARRY_SPEC,
-      CARRY_SEQS,
-      CARRY_GOODS,
-      new Map([['stone', 'w_walk_stone']]),
-    );
+    const binding = characterBinding(CARRY_SPEC, CARRY_SEQS, CARRY_GOODS, {
+      carrySeqBySlug: new Map([['stone', 'w_walk_stone']]),
+    });
     expect(binding?.carrying).toEqual({
       byGood: {
         3: {

@@ -33,7 +33,7 @@ export const HAMMER_SEQ = 'human_man_constructionworker_Work_Hammer';
 export const HAMMER_TICKS_PER_FRAME = 2;
 // The farmer's three field clips - the render side of the original's `setatomic 18 29/34/35` farm loop.
 // None is a clean ×8 strip cut (reap 66 / sow 120 / water 96 frames; the `[gfxanimatomic]` job-18 frame
-// lists cut 24/23/29 per dir), so they bind through {@link CharacterSpec.dirListAtomics}.
+// lists cut 24/23/29 per dir), so only their extracted frame lists lay them out.
 export const REAP_SEQ = 'human_man_farmer_work_reap_grain'; // wheat harvest, atomic 29
 export const SOW_SEQ = 'human_man_farmer_work_sow'; // plant, atomic 34
 export const WATER_SEQ = 'human_man_farmer_work_water'; // cultivate, atomic 35
