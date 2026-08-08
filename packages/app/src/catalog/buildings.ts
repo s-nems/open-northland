@@ -30,7 +30,7 @@ export interface VikingBuilding {
   readonly kind: string;
 }
 
-/** Every viking building in `typeId` order; this is where the raw typeIds are defined. */
+/** Every viking building in `typeId` order. */
 export const VIKING_BUILDINGS: readonly VikingBuilding[] = [
   { typeId: 1, id: 'headquarters', label: 'Headquarters', kind: 'storage' },
   { typeId: 2, id: 'home_level_00', label: 'Home (level 1)', kind: 'home' },

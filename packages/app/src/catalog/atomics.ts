@@ -1,7 +1,7 @@
 /**
- * The committed catalog of atomic action ids, transcribed from the extracted data: the semantic ids the
- * sim issues and the render and audio layers bind clips and SFX to. The harvest ids are the original's
- * `atomicForHarvesting` per raw good, so each binds that good's own work clip rather than one shared swing.
+ * The committed catalog of atomic action ids, transcribed from the extracted data. The harvest ids are
+ * the original's `atomicForHarvesting` per raw good, so each binds that good's own work clip rather than
+ * one shared swing.
  */
 
 /** Wood's harvest action (the original's `harvest`). */

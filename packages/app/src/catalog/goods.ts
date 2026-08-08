@@ -22,7 +22,7 @@ export interface CatalogGood {
   readonly storable: boolean;
 }
 
-/** The extended goods in ir.json typeId order; this is where the raw typeIds are defined. */
+/** The extended goods in ir.json typeId order. */
 export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 101, id: 'water', name: 'Water', storable: true },
   { typeId: 104, id: 'wheat', name: 'Wheat', storable: true },

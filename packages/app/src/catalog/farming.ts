@@ -2,15 +2,9 @@ import type { GoodFarming } from '@open-northland/data';
 
 /**
  * The farm's field-cultivation calibration: the one global source for the wheat sow, water, grow and reap
- * loop, so its pace cannot drift per scene.
- *
- * Source split: {@link WHEAT_GROWTH_STAGES} comes from readable original data and the farmer's stroke
- * count from the extracted `jobExperience` track. The rest is calibration observed in the running
- * original, whose data carries no growth timing, field radius, or per-field yield.
- *
- * The observed target is about 10 grain per farmer per 10 minutes, on a plot standing at about 24 plants
- * whatever the crew size. The stroke count sets what a grain costs in labor and {@link FARM_MAX_FIELDS}
- * sets the plot, so the ladder bends at the bottom: a lone farmer cannot re-water 24 fields in a stage.
+ * loop, so its pace cannot drift per scene. Every value below is calibration observed against the running
+ * original except where its own comment names its own basis; the readable original data carries no growth
+ * timing, field radius, or per-field yield. The observed target is about 10 grain per farmer per 10 minutes.
  */
 
 /** Growth stages a sown field passes through before it is ripe (the `landscapetypes.ini` `wheat (growing)`
