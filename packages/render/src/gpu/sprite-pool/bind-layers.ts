@@ -82,13 +82,10 @@ export class LayerBinder {
     // Feet-local union of the drawn rects: one box for mesh and plain layers alike.
     const bounds = this.layerBounds;
     bounds.reset();
-    // The eased reveal the active stages were selected from, so the per-pixel reveal cannot disagree
-    // with them.
     const displayReveal = pe.reveal;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
-      // The pixel hit test skips a cast-shadow layer: darkened ground beside a caster is not the caster.
       pe.shadowFlags[i] = layer.shadow === true;
       // Per-pixel reveal: a pixel appears once the eased progress, mapped into the stage's own
       // [fromPct,toPct] window, reaches its baked TimeMask threshold (the original's
@@ -137,8 +134,6 @@ export class LayerBinder {
     }
   }
 
-  /** One team-coloured mesh layer. The mesh samples the indexed atlas by UV, so it needs the sheet
-   *  size, and it places itself in screen space about the feet anchor. */
   private bindPalettedLayer(
     pe: PalettedPooledEntity,
     i: number,
@@ -200,7 +195,7 @@ export class LayerBinder {
   }
 
   /** Show the placeholder marker - the unbound / no-sheet fallback - and stamp the entity's bounds from
-   *  its fixed body box. A projectile always draws this path: no decoded arrow bob exists. */
+   *  its fixed body box. */
   private showPlaceholder(pe: PooledEntity, item: DrawItem, frame: BindFrame, frameId: number): void {
     for (const s of pe.sprites) s.visible = false;
     if (pe.placeholder === undefined) {

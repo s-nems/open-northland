@@ -33,7 +33,6 @@ export function resolveCharacterLayers(
   const layers: ResolvedLayer[] = [];
   const bodyFrame = lookupFrame(char.body.atlas, bob);
   if (bodyFrame !== null) {
-    // atlasW/H ride along for the paletted mesh path.
     layers.push({
       source: char.body.source,
       frame: bodyFrame,

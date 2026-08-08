@@ -22,18 +22,16 @@ export interface DamagedBuilding {
   readonly hpFrac: number;
 }
 
-/**
- * The world-space bounding box of an entity's sprite as drawn last frame, or `undefined` if it wasn't
- * drawn - off-screen or gone from the snapshot, which leaves the picker on its kind box.
- */
+/** The world-space bounding box of an entity's sprite as drawn this frame; `undefined` leaves the picker
+ *  on its kind box. */
 export function boundsOf(pe: PooledEntity | undefined, frameId: number): EntityBounds | undefined {
   return pe !== undefined && pe.boundsFrame === frameId ? pe.bounds : undefined;
 }
 
 /**
- * Whether the world-px point `(wx, wy)` lands on a solid texel of the entity's sprite as drawn last frame.
- * `undefined` means no exact answer is available and the caller keeps its box verdict; `false` means the
- * point is inside the box but on transparent pixels only.
+ * Whether the world-px point `(wx, wy)` lands on a solid texel of the entity's sprite. `undefined` means
+ * no exact answer is available and the caller keeps its box verdict; `false` means the point is inside
+ * the box but on transparent pixels only.
  */
 export function pixelHit(
   pe: PooledEntity | undefined,
@@ -50,7 +48,6 @@ export function pixelHit(
   for (let i = 0; i < pe.sprites.length; i++) {
     const spr = pe.sprites[i];
     if (!(spr instanceof Sprite) || !spr.visible) continue;
-    // A cast-shadow layer never makes its caster clickable - darkened ground is still ground.
     if (pe.shadowFlags[i] === true) continue;
     const mask = alphaMaskOf(spr.texture.source);
     if (mask === null) return undefined; // pixels unreadable → the box hit stands
@@ -72,8 +69,7 @@ export function pixelHit(
 
 /**
  * The anchor an entity was drawn at this frame - the inter-tick lerped feet position, not the raw
- * snapshot tile - or `undefined` when it wasn't drawn. An overlay reading it glides with the drawn
- * sprite instead of stepping at the tick rate.
+ * snapshot tile. An overlay reading it glides with the drawn sprite instead of stepping at the tick rate.
  */
 export function anchorOf(
   pe: PooledEntity | undefined,

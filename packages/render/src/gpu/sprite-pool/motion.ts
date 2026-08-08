@@ -20,8 +20,7 @@ export const SNAP_DISTANCE = 128;
 /**
  * The snap band a kind's track runs under, resolved once per entity. A projectile must never snap
  * mid-flight: a multi-tick catch-up frame would trip {@link SNAP_DISTANCE} and stutter an ordinary
- * flight at the tick rate. It has no teleport to guard against - it lives launch-to-impact, and the
- * pool's `tick = -1` reset still snaps first sighting and cull re-entry.
+ * flight at the tick rate. It has no teleport to guard against - it lives launch-to-impact.
  */
 export function snapDistanceForKind(kind: SpriteKind): number {
   return kind === 'projectile' ? Number.POSITIVE_INFINITY : SNAP_DISTANCE;

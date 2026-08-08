@@ -22,20 +22,15 @@ import { animationClock, easeReveal, revealedItem, walkPose } from './presentati
 import { reconcileSprites } from './reconcile.js';
 import { resolveLayers } from './resolve-layers.js';
 
-/**
- * The retained per-entity sprite pool, keyed by the entity's monotonic, never-reused id. An entity
- * culled off-screen stays pooled (it may scroll back); only one that left the snapshot is destroyed.
- * Per-frame allocation is O(visible), bounded by the screen and never the map (the render contract).
- */
+/** The retained per-entity sprite pool, keyed by the entity's monotonic, never-reused id. */
 
 /**
- * Pooled entries the death reap sweeps per frame. A fixed budget keeps the reap's cost constant instead
- * of a whole-pool spike; a death detaches immediately, so the delay before its display object is freed
- * (one full round-robin pass) is memory reclamation only.
+ * Pooled entries the death reap sweeps per frame - the one pass that must reach off-screen entities, so
+ * a fixed budget keeps its cost constant instead of a whole-pool spike. A death detaches immediately, so
+ * the delay before its display object is freed (one full round-robin pass) is memory reclamation only.
  */
 const POOL_REAP_BUDGET = 32;
 
-/** Everything one {@link SpritePool.reconcile} pass needs beyond the pool's own state, built once per frame. */
 export interface PoolFrame {
   readonly snapshot: WorldSnapshot;
   /** The margin-inflated world-space box the camera frames - the sprite cull rectangle. */
@@ -44,7 +39,7 @@ export interface PoolFrame {
   readonly tick: number;
   /** The camera transform; the screen-space paletted settler meshes self-place from it. */
   readonly camera: Camera;
-  /** Canvas size in pixels (the paletted mesh maps screen px → clip space itself). */
+  /** Canvas size in pixels. */
   readonly screenW: number;
   readonly screenH: number;
   readonly elevation: ElevationField;
@@ -78,16 +73,13 @@ export class SpritePool {
   private readonly pool = new Map<number, PooledEntity>();
   /** The retained viewport index the scene build walks instead of every snapshot entity. */
   private readonly spatial = new SpriteSpatialIndex();
-  /** The pooled entities currently attached to {@link spriteLayer}. The detach and paletted-placement
-   *  passes iterate this instead of the whole pool so their per-frame cost tracks the screen. Kept in
-   *  sync with each entity's `attached` flag. */
+  /** The pooled entities currently attached to {@link spriteLayer}, kept in sync with each entity's
+   *  `attached` flag. */
   private readonly attached = new Set<PooledEntity>();
   /** The death reap's round-robin cursor, carried across frames; `undefined` restarts a pass from the front. */
   private reapCursor: MapIterator<number> | undefined;
   private frameId = 0;
-  /** The last {@link reconcile}'s culled, depth-sorted draw list, retained for read-only reuse. */
   private lastItems: readonly SpriteDrawItem[] = [];
-  /** This frame's drawn damaged finished buildings, rebuilt each {@link reconcile}. */
   private readonly damaged: DamagedBuilding[] = [];
   private readonly portrait: PortraitSubject;
   private readonly binder: LayerBinder;
@@ -109,8 +101,7 @@ export class SpritePool {
 
   /**
    * Reconcile the pool to one frame: update, depth-sort and attach the drawn entities, detach the rest,
-   * and reap the ones that left the snapshot. The reap is the only pass that must reach off-screen
-   * entities, so it sweeps a bounded {@link POOL_REAP_BUDGET} slice per frame rather than the whole pool.
+   * and reap the ones that left the snapshot.
    */
   reconcile(frame: PoolFrame): void {
     // One indexed pass yields both the culled draw list and the pre-cull liveness view the reap needs.
@@ -130,7 +121,6 @@ export class SpritePool {
     for (let i = 0; i < scene.items.length; i++) {
       const item = scene.items[i];
       if (item === undefined) continue;
-      // Collected off the already-culled draw list so the smoke overlay's cost tracks the screen.
       if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
         this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
       }
@@ -159,8 +149,6 @@ export class SpritePool {
         this.attached.add(pe);
       }
       pe.lastSeen = this.frameId;
-      // A portrait-only subject stays reconciled and attached but hidden on the main map; the portrait's
-      // second render reveals it, then hides it again before the main stage render.
       if (item.portraitOnly === true) this.portrait.capture(pe, item.frozen === true);
     }
     this.lastItems = scene.items;
@@ -177,10 +165,7 @@ export class SpritePool {
     this.reap(scene.liveRefs);
   }
 
-  /**
-   * Free the entries in the next {@link POOL_REAP_BUDGET} slice that left the snapshot. A culled but
-   * still-live entity is in `liveRefs`, so it stays pooled to scroll back.
-   */
+  /** Free the entries in the next {@link POOL_REAP_BUDGET} slice that left the snapshot. */
   private reap(liveRefs: LiveRefs): void {
     const swept: number[] = [];
     for (let i = 0; i < POOL_REAP_BUDGET; i++) {
@@ -200,7 +185,8 @@ export class SpritePool {
     }
   }
 
-  /** This frame's drawn damaged finished buildings, valid until the next {@link reconcile}. */
+  /** This frame's drawn damaged finished buildings, valid until the next {@link reconcile}. Collected off
+   *  the culled draw list, so the smoke overlay's cost tracks the screen. */
   damagedBuildings(): readonly DamagedBuilding[] {
     return this.damaged;
   }
@@ -214,17 +200,14 @@ export class SpritePool {
     return this.lastItems;
   }
 
-  /** The entity's world-space sprite box as drawn this frame, or `undefined` when it wasn't drawn. */
   boundsOf(ref: number): EntityBounds | undefined {
     return boundsOf(this.pool.get(ref), this.frameId);
   }
 
-  /** Pixel-accurate refinement of the AABB hit; `undefined` when no exact answer is available. */
   pixelHit(ref: number, wx: number, wy: number): boolean | undefined {
     return pixelHit(this.pool.get(ref), this.frameId, wx, wy);
   }
 
-  /** The inter-tick lerped feet anchor the entity was drawn at this frame, not its raw tick position. */
   anchorOf(ref: number): { x: number; y: number } | undefined {
     return anchorOf(this.pool.get(ref), this.frameId);
   }
@@ -232,8 +215,7 @@ export class SpritePool {
   /**
    * Scope the details-panel portrait's second render: re-place the self-placing paletted meshes for the
    * inset camera, reveal the force-hidden subject, solo an indoor one, then restore all of it even if
-   * `render` throws - a failed cutout must not leave a real unit hidden on the main map. `render` receives
-   * the sprite layer to keep visible for an indoor solo, or null.
+   * `render` throws - a failed cutout must not leave a real unit hidden on the main map.
    */
   portraitPass(inset: PortraitView, main: PortraitView, render: (soloKeep: Container | null) => void): void {
     this.placePaletted(inset.camera, inset.width, inset.height);
@@ -275,8 +257,6 @@ export class SpritePool {
   }
 
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    // The sim advances in 12 Hz ticks, so the drawn anchor lerps between the last two tick anchors of the
-    // terrain-lifted feet (`item.y − lift`): continuous motion at any display rate, half a tick behind.
     trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), frame.alpha);
     pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
     if (item.facing !== undefined) pe.lastFacing = item.facing;
@@ -287,8 +267,6 @@ export class SpritePool {
       this.sheet,
       revealedItem(walkPose(item, pe.kind, pe.motion, pe.lastFacing), pe.reveal),
       animationClock(item, frame.tick),
-      // The walk cycle rides the motion-scaled gait phase, not the tick, so a braking walker's legs slow
-      // with the ground actually covered instead of jogging in place.
       Math.floor(pe.motion.gaitPhase),
     );
     this.binder.bind(pe, item, layers, frame, this.frameId);

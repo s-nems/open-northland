@@ -11,8 +11,9 @@ type BoxKind = Exclude<SpriteKind, 'projectile'>;
 /**
  * The in-flight munition marker's authored parts, in feet-local px pointing screen-east (+x) so the pool
  * can rotate the whole graphic to the flight heading; `halfSpan` is a part's half-height off the shaft
- * line. Only the head reaches the forward extreme and it is the brightest part, so a player reads which
- * way the shot travels. Authored proportions: 32 px tip to tail beside a 24 px settler body.
+ * line. Only the head reaches the forward extreme and it is the palest part, so a player reads which way
+ * the shot travels; 32 px tip to tail beside a 24 px settler body. Approximation: no arrow bob exists in
+ * the extracted `[bobseq]` lanes, so this is the fallback until the effects bmds are decoded.
  */
 export const ARROW = {
   shaft: { colour: 0x7a4a24, tailX: -16, width: 2 },
@@ -20,7 +21,6 @@ export const ARROW = {
   fletching: { colour: 0x9c3b2e, apexX: -8, endX: -16, halfSpan: 2, width: 2 },
 } as const;
 
-/** Placeholder box colour per kind. */
 const KIND_COLOURS: Record<BoxKind, number> = {
   building: 0xc8a04a,
   settler: 0xe8e0d0,
@@ -41,11 +41,7 @@ const FOOTPRINT_HALF_H = 5;
  *  crosses between fighters instead of skimming their feet. A drawn-look approximation. */
 export const PROJECTILE_FLIGHT_HEIGHT = 14;
 
-/**
- * Paint {@link ARROW}, rotated by the pool to the flight heading. A drawn-shape approximation: no arrow
- * bob exists in the extracted `[bobseq]` lanes, so this is the named fallback until the effects bmds are
- * decoded.
- */
+/** Paint {@link ARROW}, rotated by the pool to the flight heading. */
 function drawArrow(g: Graphics): Graphics {
   const { shaft, head, fletching } = ARROW;
   g.moveTo(shaft.tailX, 0).lineTo(head.baseX, 0).stroke({ color: shaft.colour, width: shaft.width });
@@ -100,8 +96,7 @@ export function placeholderBounds(kind: SpriteKind): PlaceholderBounds {
 
 /**
  * Draw a feet-anchored placeholder into `g` about its container origin `(0,0)`: a small footprint
- * diamond on the ground and a body box rising from it, coloured by kind. Built once per entity, since
- * kind is stable; only its visibility toggles per frame.
+ * diamond on the ground and a body box rising from it, coloured by kind.
  */
 export function drawPlaceholder(g: Graphics, kind: SpriteKind): Graphics {
   if (kind === 'projectile') return drawArrow(g); // an arrow, not a box
