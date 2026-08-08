@@ -1,5 +1,5 @@
 import { FNV_OFFSET_BASIS, fnvHex, fnvMixWord } from '@open-northland/data';
-import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
+import { isPlainRecord, sortedMapEntries, valueShapeName } from '../core/plain-value.js';
 import type { World } from '../ecs/world.js';
 import type { FogState } from '../systems/vision/index.js';
 
@@ -38,7 +38,7 @@ export function hashSimState(
       mix(v.length);
       for (const item of v) hashValue(item);
     } else if (v instanceof Map) {
-      for (const [k, val] of [...v.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))) {
+      for (const [k, val] of sortedMapEntries(v)) {
         hashValue(k);
         hashValue(val);
       }

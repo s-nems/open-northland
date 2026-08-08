@@ -9,6 +9,12 @@ export function isPlainRecord(value: unknown): value is Record<string, unknown> 
   return proto === Object.prototype || proto === null;
 }
 
+/** `Map` entries sorted by key under `<`: the one canonical order the hash, snapshot, and save walks
+ *  must share, or their views of the same Map silently disagree. */
+export function sortedMapEntries<K, V>(map: ReadonlyMap<K, V>): Array<[K, V]> {
+  return [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+}
+
 /** A short shape name for a rejected value, for the walks' throw messages. */
 export function valueShapeName(value: unknown): string {
   if (value === null || typeof value !== 'object') return typeof value;

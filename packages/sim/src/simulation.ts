@@ -55,6 +55,8 @@ export type SystemInstrument = (name: string, run: () => void) => void;
 export class Simulation {
   readonly world = new World();
   readonly rng: Rng;
+  /** The RNG construction seed, kept as save-file provenance; the live stream position is `rng.getState()`. */
+  readonly seed: number;
   readonly content: ContentSet;
   /**
    * The cell-adjacency graph for navigation and placement, built once at construction; undefined for a
@@ -87,6 +89,7 @@ export class Simulation {
 
   constructor(opts: SimOptions) {
     this.rng = new Rng(opts.seed);
+    this.seed = opts.seed;
     this.content = opts.content;
     if (opts.map !== undefined) {
       this.terrain = buildTerrainGraph(opts.content, opts.map);

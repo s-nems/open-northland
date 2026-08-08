@@ -1,7 +1,6 @@
 # Restore a Simulation from a validated SaveGame
 
 **Area:** sim · **Priority:** P1
-**Blocked by:** [SaveGame export](save-load-sim-export.md)
 
 Loading needs a trusted initialization path that rebuilds a `Simulation` at the saved tick without
 replaying the session and without a general live-world mutation API. `packages/sim/AGENTS.md` pins

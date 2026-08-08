@@ -84,6 +84,21 @@ export {
 } from './replay/rebase-content.js';
 export { type ReplayOptions, type RunReplay, replay, stepReplaying } from './replay/replay.js';
 export { scrubWindow } from './replay/scrub-window.js';
+export {
+  type CommandsSection,
+  type ComponentSection,
+  type EntitiesSection,
+  type ExportSaveOptions,
+  exportSaveGame,
+  type FogSection,
+  type RngSection,
+  SAVE_FORMAT_VERSION,
+  SAVE_KIND,
+  type SaveGame,
+  type SaveGameHeader,
+  type SaveGameSection,
+  serializeSaveGame,
+} from './save/index.js';
 // The idle-adult job key of the HUD population tally: a façade read view, not a system.
 export { IDLE_JOB } from './simulation/hud.js';
 export { type FogView, type SimOptions, Simulation, type SystemInstrument } from './simulation.js';

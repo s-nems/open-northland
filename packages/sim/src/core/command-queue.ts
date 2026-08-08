@@ -43,6 +43,17 @@ export class CommandQueue {
     return out;
   }
 
+  /** The not-yet-drained envelopes in enqueue order, as detached copies. */
+  pendingSnapshot(): CommandEnvelope[] {
+    return this.pending.map(ownedEnvelope);
+  }
+
+  /** The sequence the next {@link record} assigns; restoring it keeps a resumed log numbered like the
+   *  uninterrupted run. */
+  get nextSequenceNumber(): number {
+    return this.nextSequence;
+  }
+
   /**
    * Throw away the pending commands without applying them - replay reconstruction's seam (see
    * `stepReplaying`): a replaying sim's own systems re-emit their commands live, but the log already
