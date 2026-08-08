@@ -40,3 +40,8 @@ export type System = (world: World, ctx: SystemContext) => void;
 /** The slice of a {@link SystemContext} a pure content lookup reads. A helper taking this is callable
  *  outside a tick - from a read view, which holds a `ContentSet` and no live context. */
 export type ContentContext = Pick<SystemContext, 'content'>;
+
+/** {@link ContentContext} plus the optional terrain, for a lookup that also resolves map geometry. A helper
+ *  taking this is callable from a derived-cache verifier, which runs outside a tick and holds no live
+ *  context. */
+export type MapContext = Pick<SystemContext, 'content' | 'terrain'>;

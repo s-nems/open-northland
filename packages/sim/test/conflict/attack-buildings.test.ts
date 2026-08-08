@@ -27,6 +27,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
+import { buildingBodyNodes } from '../../src/systems/conflict/target-node.js';
 import { combatSystem } from '../../src/systems/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -557,5 +558,44 @@ describe('warriors attack enemy buildings', () => {
 
     expect(sim.world.get(fort, Health).hitpoints).toBeLessThan(sim.world.get(fort, Health).max);
     expect(nodeOf(sim, soldier)).toEqual(settled); // parked on one slot, not pacing between two
+  });
+});
+
+/**
+ * A building's wall nodes are held across ticks - it never moves - so what a besieger measures reach to is
+ * only as fresh as the two Building store generations keying that cache. A tier upgrade swaps `buildingType`
+ * in place, moving the footprint with no membership change.
+ */
+describe('a held building body follows its footprint', () => {
+  it('re-derives after an in-place buildingType swap, and reports no stale cache', () => {
+    const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(8, 8) });
+    const ctx = ctxOf(sim);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('no terrain');
+    const building = buildingAt(sim, 3, 3, HOME, P2); // footprint-less: the door/anchor fallback
+
+    const asHome = buildingBodyNodes(sim.world, ctx, terrain, building);
+    sim.world.write(building, Building, (b) => {
+      b.buildingType = FORT;
+    });
+    const asFort = buildingBodyNodes(sim.world, ctx, terrain, building);
+
+    expect(asHome).toHaveLength(1);
+    expect(asFort).toHaveLength(4); // the fort's 2×2 blocked body
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('drops a razed building from the held bodies', () => {
+    const sim = new Simulation({ seed: 1, content: siegeContent(), map: grass(8, 8) });
+    const ctx = ctxOf(sim);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('no terrain');
+    const fort = buildingAt(sim, 3, 3, FORT, P2);
+
+    expect(buildingBodyNodes(sim.world, ctx, terrain, fort)).toHaveLength(4);
+    sim.world.destroy(fort);
+
+    expect(buildingBodyNodes(sim.world, ctx, terrain, fort)).toEqual([]);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 });

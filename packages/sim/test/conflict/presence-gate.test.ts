@@ -9,7 +9,7 @@ import { BEAR, BOAR, COW, fighterAtNode, HUNTER } from './combat-system/support.
 import { combatantAtNode, ctxOf, P0, P1 } from './stances/support.js';
 
 /**
- * The HostilePresence idle early-out (conflict/presence.ts) is perf-only: skipping the ring search
+ * The combat index's coarse idle early-out (conflict/combat-index.ts) is perf-only: skipping the ring search
  * must never skip a real target. These cases pin the conservative boundary - an enemy exactly at
  * the search radius, and one just across a coarse presence-cell border, must still be acquired,
  * while one past the radius stays unengaged (the gate may or may not fire there; behavior is what

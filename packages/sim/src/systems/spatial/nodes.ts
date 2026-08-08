@@ -19,36 +19,6 @@ const NO_ENTITIES: readonly Entity[] = Object.freeze([]);
 
 export { nodeKey };
 
-/** Called once per node an entity is indexed at. */
-export type IndexNodeVisitor = (e: Entity, x: number, y: number) => void;
-
-/**
- * The one resolution ladder every node-indexed structure builds through: multi-node `nodesOf` first, then
- * single-node `nodeOf`, then the entity's {@link Position} node. An entity resolving to none is dropped
- * from the grid.
- */
-export function forEachIndexNode(
-  world: World,
-  e: Entity,
-  nodeOf: ((e: Entity) => { x: number; y: number } | null) | undefined,
-  nodesOf: ((e: Entity) => readonly { x: number; y: number }[] | null) | undefined,
-  visit: IndexNodeVisitor,
-): void {
-  if (nodesOf !== undefined) {
-    const ns = nodesOf(e);
-    if (ns !== null) for (const n of ns) visit(e, n.x, n.y);
-    return;
-  }
-  if (nodeOf !== undefined) {
-    const node = nodeOf(e);
-    if (node !== null) visit(e, node.x, node.y);
-    return;
-  }
-  const p = world.tryGet(e, Position);
-  if (p === undefined) return;
-  visit(e, nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
-}
-
 /**
  * How many rings past the first hit {@link NodeBuckets.nearestFew} keeps walking. Without it a band holding
  * fewer acceptors than the caller asked for costs every ring out to `maxDist`. Approximation: three rings is
@@ -58,35 +28,21 @@ export function forEachIndexNode(
 const NEAREST_FEW_TAIL_RINGS = 3;
 
 /**
- * Entities grouped by their half-cell node, each bucket preserving input order. Feed it a
- * {@link canonicalById} list: {@link NodeBuckets.nearest} is only canonical because buckets hold ascending
- * ids. An entity buckets by its {@link Position} node unless a `nodeOf` resolver overrides that; an entity
- * resolving to `null` is dropped. Derived state, rebuilt each tick and never hashed.
+ * Entities grouped by their {@link Position}'s half-cell node, each bucket preserving input order. Feed the
+ * constructor a {@link canonicalById} list: {@link NodeBuckets.nearest} is only canonical because buckets
+ * hold ascending ids, and the build appends rather than sorts. {@link NodeBuckets.insert} is the seam for a
+ * caller placing an entity at a node of its own - a building's wall cells, or a bucket filled out of order.
+ * An entity without a Position is dropped. Derived state, never hashed.
  */
 export class NodeBuckets {
   private readonly byX = new Map<number, Map<number, Entity[]>>();
-  /** Fed a pre-sorted list, appending keeps buckets ascending-id. */
-  private readonly pushNode: IndexNodeVisitor = (e, x, y) => {
-    this.bucketFor(x, y).push(e);
-  };
 
-  constructor(
-    world: World,
-    entities: Iterable<Entity>,
-    nodeOf?: (e: Entity) => { x: number; y: number } | null,
-    nodesOf?: (e: Entity) => readonly { x: number; y: number }[] | null,
-    /** A second sink fed by this build's walk, valid only for a structure indexing the same list through
-     *  the same resolver. */
-    alsoVisit?: IndexNodeVisitor,
-  ) {
-    const visit: IndexNodeVisitor =
-      alsoVisit === undefined
-        ? this.pushNode
-        : (e, x, y) => {
-            this.pushNode(e, x, y);
-            alsoVisit(e, x, y);
-          };
-    for (const e of entities) forEachIndexNode(world, e, nodeOf, nodesOf, visit);
+  constructor(world: World, entities: Iterable<Entity>) {
+    for (const e of entities) {
+      const p = world.tryGet(e, Position);
+      if (p === undefined) continue;
+      this.bucketFor(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y)).push(e);
+    }
   }
 
   private bucketFor(x: number, y: number): Entity[] {

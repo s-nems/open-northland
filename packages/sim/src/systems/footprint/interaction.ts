@@ -11,7 +11,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
-import type { SystemContext } from '../context.js';
+import type { MapContext, SystemContext } from '../context.js';
 import {
   ANCHOR_ONLY,
   buildingFootprintOf,
@@ -38,7 +38,7 @@ export type InteractionNode = { readonly x: number; readonly y: number };
  * reaches that, since the placement rule forces the whole reserved zone, door included, in-bounds. Returns
  * null for an entity without a Building or Position.
  */
-export function interactionNode(world: World, ctx: SystemContext, building: Entity): InteractionNode | null {
+export function interactionNode(world: World, ctx: MapContext, building: Entity): InteractionNode | null {
   const b = world.tryGet(building, Building);
   const p = world.tryGet(building, Position);
   if (b === undefined || p === undefined) return null;

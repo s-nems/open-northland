@@ -148,18 +148,10 @@ describe('NodeBuckets.nearestFew - the nearest several', () => {
     // A building buckets at every wall cell, so one entity sits on several nodes of several rings.
     const world = new World();
     const wall = world.create();
-    world.add(wall, Position, positionOfNode(3, 0));
     const other = world.create();
-    world.add(other, Position, positionOfNode(0, 4));
-    const nodesOf = (e: Entity): { x: number; y: number }[] =>
-      e === wall
-        ? [
-            { x: 3, y: 0 },
-            { x: 4, y: 0 },
-            { x: 5, y: 0 },
-          ]
-        : [{ x: 0, y: 4 }];
-    const buckets = new NodeBuckets(world, [wall, other], undefined, nodesOf);
+    const buckets = new NodeBuckets(world, []);
+    for (const x of [3, 4, 5]) buckets.insert(wall, x, 0);
+    buckets.insert(other, 0, 4);
     expect(buckets.nearestFew(0, 0, 0, 10, ALL, 4)).toEqual([
       { entity: wall, distance: 3 },
       { entity: other, distance: 4 },

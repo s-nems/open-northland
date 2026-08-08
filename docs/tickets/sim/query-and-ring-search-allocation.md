@@ -11,13 +11,15 @@ cloning (owned by [the snapshot ticket](snapshot-per-frame-clone-cost.md)). GC s
 ~2.2% of CPU, but worst frames reach 34-58 ms against a 28 ms mean, and the collection cadence rides
 this churn.
 
+`forEachIndexNode` no longer exists: the combat index rebuild removed the per-node resolver ladder and
+its coordinate objects, so re-measure before assuming the 21.4% row still holds.
+
 ## Scope
 
 - Make hot query iteration allocation-free or buffer-reusing where caller structure permits; keep
   iteration order and results identical.
-- Reuse candidate buffers in the spatial ring searches (`nearest`, `forEachIndexNode`,
-  `ringNearest`) instead of allocating per call; a shared scratch must never escape into cached or
-  returned state.
+- Reuse candidate buffers in the spatial ring searches (`nearest`, `ringNearest`) instead of
+  allocating per call; a shared scratch must never escape into cached or returned state.
 - Non-goals: snapshot cloning (separate ticket), changing any search winner or query order.
 
 ## Verify

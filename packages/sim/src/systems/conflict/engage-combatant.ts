@@ -32,13 +32,13 @@ import {
   type MilitaryMode,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
-import { clearNavState, entityNode, isTravelling, type NodeBuckets } from '../spatial/nodes.js';
+import { clearNavState, entityNode, isTravelling } from '../spatial/nodes.js';
 import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
+import type { CombatIndex } from './combat-index.js';
 import { type CombatantStance, engageSpec, resolveTarget, stanceMode } from './engagement.js';
 import { fleeDrive } from './flee.js';
 import { HUNT_SEARCH_REST_TICKS, holdPrey } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
-import type { HostilePresence } from './presence.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
@@ -62,7 +62,7 @@ export function engageCombatant(
   pass: CombatPass,
   e: Entity,
 ): void {
-  const { bodyNodes, index, presence, seats, slots } = pass;
+  const { index, seats, slots } = pass;
   const attacker = world.get(e, Settler);
   const posted = attacker.jobType === null ? null : towerPostFor(world, ctx, e, attacker.jobType);
   const manning = posted !== null && standsAtPost(world, e) === posted;
@@ -97,7 +97,7 @@ export function engageCombatant(
   // The two passive stances are overridden by the post, not applied under it: a manned tower is itself the
   // order to hold and shoot, so a garrison neither stands down nor abandons the wall.
   if (!manning) {
-    if (resolveFleeState(world, ctx, terrain, index, presence, e, attacker, stance)) return;
+    if (resolveFleeState(world, ctx, terrain, index, e, attacker, stance)) return;
     if (ignoresCombat(ctx, stance, attacker)) {
       disengage(world, e);
       return;
@@ -160,8 +160,8 @@ export function engageCombatant(
   // building's full wall list rides along so a chaser whose nearest face is manned encircles to another.
   const chaseTarget: ChaseTarget = {
     entity: target,
-    node: combatTargetNode(world, ctx, terrain, here, target, bodyNodes),
-    body: world.has(target, Building) ? buildingBodyNodes(world, ctx, terrain, target, bodyNodes) : null,
+    node: combatTargetNode(world, ctx, terrain, here, target),
+    body: world.has(target, Building) ? buildingBodyNodes(world, ctx, terrain, target) : null,
   };
   chase(world, ctx, terrain, slots, e, here, chaseTarget, weapon, stance, spec.defend);
 }
@@ -221,8 +221,7 @@ function resolveFleeState(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  index: NodeBuckets,
-  presence: HostilePresence,
+  index: CombatIndex,
   e: Entity,
   attacker: SettlerIdentity,
   stance: CombatantStance,
@@ -241,7 +240,7 @@ function resolveFleeState(
   // keeping combat awake forever.
   world.remove(e, Engagement);
   world.remove(e, HuntFocus); // and with it the prey hold, which only the hunting branch can reap
-  fleeDrive(world, ctx, terrain, index, presence, e, attacker);
+  fleeDrive(world, ctx, terrain, index, e, attacker);
   return true;
 }
 
