@@ -76,11 +76,19 @@ function ownedSettler(sim: Simulation, x: number, y: number, player = HUMAN_PLAY
   return e;
 }
 
-/** A loose ground pile holding `amount` of `goodType` at visual cell (x,y). */
-function pileAt(sim: Simulation, x: number, y: number, goodType: number, amount: number): Entity {
+/** A ground pile holding `amount` of `goodType` at visual cell (x,y), loose unless `player` claims it. */
+function pileAt(
+  sim: Simulation,
+  x: number,
+  y: number,
+  goodType: number,
+  amount: number,
+  player?: number,
+): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Stockpile, { amounts: new Map([[goodType, amount]]) });
+  if (player !== undefined) sim.world.add(e, Owner, { player });
   return e;
 }
 
@@ -131,15 +139,18 @@ function mintAt(sim: Simulation, x: number, y: number, shoes: number): Entity {
   return e;
 }
 
-/** Step one tick at a time, recording the highest concurrent acquire-stage fetch count seen. */
-function runTrackingFetches(sim: Simulation, ticks: number): number {
+/** Step one tick at a time, recording the highest concurrent acquire-stage fetch count seen; `player`
+ *  narrows the count to one side's errands. */
+function runTrackingFetches(sim: Simulation, ticks: number, player?: number): number {
   let peak = 0;
   for (let i = 0; i < ticks; i++) {
     sim.run(1);
     let fetching = 0;
     for (const e of sim.world.query(EquipOrder)) {
       const order = sim.world.get(e, EquipOrder);
-      if (order.stage === 'acquire' && order.goodType !== null) fetching++;
+      if (order.stage !== 'acquire' || order.goodType === null) continue;
+      if (player !== undefined && sim.world.tryGet(e, Owner)?.player !== player) continue;
+      fetching++;
     }
     peak = Math.max(peak, fetching);
   }
@@ -200,6 +211,27 @@ describe('assistant auto-equip - dispatch, reservation, trickle', () => {
     expect(peak).toBe(1); // one pair, so at most one fetcher underway at any tick
     const shod = [first, second].filter((e) => sim.world.tryGet(e, Equipment)?.boots?.goodType === SHOES);
     expect(shod).toHaveLength(1);
+  });
+
+  it("budgets each granting player against its own stores, never a rival's", () => {
+    // Both sides grant shoes and own one pair each. The budget is per player, so this side may have one
+    // fetcher underway, not two off the pooled total - which its own `nearestStoreHolding` scan cannot
+    // catch, the second fetcher reaching an already emptied pile.
+    const sim = freshSim();
+    const first = ownedSettler(sim, 2, 2);
+    const second = ownedSettler(sim, 2, 4);
+    const rival = ownedSettler(sim, 4, 2, RIVAL_PLAYER);
+    pileAt(sim, 12, 2, SHOES, 1, HUMAN_PLAYER);
+    pileAt(sim, 12, 4, SHOES, 1, RIVAL_PLAYER);
+    grant(sim, SHOES);
+    grant(sim, SHOES, true, RIVAL_PLAYER);
+
+    const peak = runTrackingFetches(sim, ERRAND_TICKS, HUMAN_PLAYER);
+
+    expect(peak).toBe(1);
+    const shod = [first, second].filter((e) => sim.world.tryGet(e, Equipment)?.boots?.goodType === SHOES);
+    expect(shod).toHaveLength(1);
+    expect(sim.world.tryGet(rival, Equipment)?.boots?.goodType).toBe(SHOES);
   });
 
   it("never counts a workshop's input reserve toward the grant budget", () => {
