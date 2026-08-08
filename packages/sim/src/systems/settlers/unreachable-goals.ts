@@ -4,14 +4,9 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 
-/**
- * The failed-goal memo: written when the planner sheds a dead route, read by the target scans so a re-plan
- * skips what it just failed to reach.
- *
- * Keyed by cell alone and therefore drive-agnostic, since routing failed to reach that node whoever wanted
- * to go there. A settler's bound work targets are exempt, mirroring the signpost gate: a settler always
- * knows the way home, and vetoing its one legal sink would strand its load.
- */
+// The failed-goal memo is keyed by cell alone and therefore drive-agnostic, since routing failed to reach
+// that node whoever wanted to go there. A settler's bound work targets are exempt, mirroring the signpost
+// gate: vetoing its one legal sink would strand its load.
 
 /**
  * How long a failed goal stays excluded, whether or not the blocker clears sooner. Longer than the stranded

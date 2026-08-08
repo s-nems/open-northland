@@ -9,11 +9,8 @@ import { beginPlannerPass } from './pass.js';
 import { dispatchRecruitArming } from './recruit-arming.js';
 import { releaseStaleIntent } from './replan.js';
 
-/**
- * The settler planner: {@link atomicPlanner} chooses what each idle settler does, then
- * {@link navigationPlanner} turns any goal it set into a path request. The atomic pass runs first, so a
- * freshly-set goal is routed in the same tick rather than stalling for one.
- */
+/** The atomic pass runs before {@link navigationPlanner}, so a goal it sets is routed in the same tick
+ *  rather than stalling for one. */
 export const plannerSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to navigate over
   atomicPlanner(world, ctx, ctx.terrain);

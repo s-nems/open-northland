@@ -48,8 +48,7 @@ function ownsFailedRoute(world: World, e: Entity): boolean {
  * Whether a system outside the planner currently owns `e`'s actions, so the economy ladder must not
  * re-task it. Each marker's owner clears it when its episode ends.
  *
- * The DEFEND-stance hold is deliberately not here: it lives in the drive ladder below the equip errand,
- * the one player order a guard walks without dropping its post.
+ * The DEFEND-stance hold is deliberately not here: it lives in the drive ladder instead.
  */
 export function anotherSystemOwns(world: World, e: Entity): boolean {
   return (
@@ -67,13 +66,11 @@ export function anotherSystemOwns(world: World, e: Entity): boolean {
  *
  * Returns false while the settler is spoken for: an atomic is running, it walks a live route, or it
  * parks a failed one. A failed route is not travel and nothing on the nav side retries it, so a settler
- * left in that state stands forever; drives with their own failure protocol keep the signal, and for
- * everyone else the planner parks the dead route, then sheds it and re-plans.
+ * left in that state would stand forever.
  *
- * Returns true once the settler is genuinely re-planning, having released what the previous intent held:
- * its yard route, its farm claim (so it never blocks itself from re-choosing the field it walked to),
- * its rest-inside marker, its supply errand, and its expired failed-goal memo. Each is re-stamped within
- * the same tick by the drive that still wants it, so the render never sees a gap.
+ * Returns true once the settler is genuinely re-planning, having released what the previous intent held.
+ * A drive that still wants one of those holds re-stamps it within the same tick, so the render never sees
+ * a gap, and releasing the farm claim keeps a settler from blocking itself out of the field it walked to.
  */
 export function releaseStaleIntent(
   world: World,

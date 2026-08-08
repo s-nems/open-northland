@@ -4,10 +4,9 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import { atOrWalk } from './atomics/start.js';
 
 /**
- * Walk `e` to `door`, then step it inside `building` on arrival and run `then`: the tail of every errand
- * that ends indoors. The marker means "inside, and the render must not draw it", so it holds only while
- * some owner keeps the settler in - a family duty, a livestock visit, a manned post, or an alarm - while a
- * plain errand outlasts a re-plan by running an atomic and steps back out when it ends.
+ * Walk `e` to `door`, then step it inside `building` on arrival and run `then`. The `Resting` marker it
+ * sets means "inside, and the render must not draw it"; a re-plan sheds it unless a family duty, a
+ * livestock visit, a manned post, or an alarm still holds the settler in.
  */
 export function enterBuilding(
   world: World,
