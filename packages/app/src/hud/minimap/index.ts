@@ -124,8 +124,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   holeBg.rect(innerL.x, innerL.y - underlap, innerL.w + underlap, innerL.h + underlap).fill(HOLE_COLOUR);
   container.addChild(holeBg);
 
-  // The braided frame draws over the backdrop with its hole and outer margins keyed transparent, so the
-  // braid alone shows and covers the backdrop's underlap.
+  // The braid draws over the backdrop and covers its underlap; the frame's hole and outer margins are
+  // already keyed transparent.
   if (frame !== null) {
     frame.display.position.set(0, 0);
     container.addChild(frame.display);
@@ -138,7 +138,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   }
 
   // One whole-map RGBA raster, aspect-fitted into the hole. Colour precedence per cell: baked
-  // ground-lane colour → typeId debug colour → flat tint.
+  // ground-lane colour → the caller's per-typeId ground colour → flat tint.
   const colourOfType = (typeId: number): number => opts.colourOf?.(typeId) ?? flatTileColour(typeId);
   const colourOfCell = cellColourResolver(opts.cellColours, colourOfType);
   const makeGroundTexture = (): Texture => {

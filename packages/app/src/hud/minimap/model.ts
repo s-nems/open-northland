@@ -9,10 +9,10 @@ import { contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
- * The pure half of the minimap window: the bottom-left layout inside the braided frame, the
- * world↔minimap linear projection, the dot/fog raster writes and the camera-viewport rectangle.
- * "World" here is the renderer's projected px space before the camera transform, so clicks, dots and
- * the view rectangle all share one uniform downscale of the on-screen world.
+ * The pure half of the minimap window: layout, the world↔minimap projection, the raster writes and the
+ * camera-viewport rectangle. "World" here is the renderer's projected px space before the camera
+ * transform, so clicks, dots and the view rectangle all share one uniform downscale of the on-screen
+ * world.
  */
 
 /**
@@ -129,8 +129,8 @@ export function viewportRectOnMinimap(layout: MinimapLayout, bounds: WorldBounds
 
 /**
  * Stamp one opaque square dot (`2·half` px a side, centred on `cx, cy`) into an RGBA raster, clipped to
- * the buffer edges. Writing into one retained buffer replaces a per-tick Graphics rebuild, which
- * re-tessellates hundreds of dot rects and allocates on every tick.
+ * the buffer edges. Stamping into one retained buffer avoids a Graphics rebuild, which would
+ * re-tessellate hundreds of dot rects and allocate on every tick.
  */
 export function stampDot(
   rgba: Uint8Array,

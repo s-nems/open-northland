@@ -8,12 +8,9 @@ import { FRAME_NATIVE } from './model.js';
 
 /**
  * The minimap's braided window frame, from the original overview-window art (`ls_gui_window` bob 55). A
- * checkout without `content/` returns null and the mount draws its flat fallback frame.
- *
- * Two one-time raster passes shape the sprite. The indexed art is nearest-sampled, so it is baked at an
- * integer oversample and linear-downscaled. The art then fills the removable outside and the braid's own
- * crevice shadows with one near-black band, so a colour-only 'full' key would punch see-through holes in
- * the braid; instead the baked pixels are read back once and only the edge-connected band is keyed.
+ * checkout without `content/` returns null and the mount draws its flat fallback frame. Two one-time
+ * raster passes shape the sprite: an integer-oversample bake for the nearest-sampled indexed art, then a
+ * readback that keys the removable backdrop by connectivity and restores the silhouette rim.
  */
 
 /** `oversampleFor` bounds: braid highlights want ≥2 for smoothing headroom; 8 caps texture memory. */

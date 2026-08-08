@@ -1,7 +1,7 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 
 /** Wall-clock ms between re-plots, a 5 Hz ceiling against the sim's 12 ticks per second at speed 1.
- *  Approximation: the minimap reads at a glance, so the whole-roster plot is amortized across frames. */
+ *  Authored: the minimap reads at a glance, so the whole-roster plot is amortized across frames. */
 export const REPLOT_MIN_MS = 200;
 
 /**

@@ -2,18 +2,16 @@ import { messages } from '../i18n/index.js';
 
 /**
  * The good→stock-category grouping and the category names, shared by every HUD window that groups goods
- * into the original's eight tabs.
- *
- * The mapping is a named approximation: no 8-way stock-tab category field exists on goods, since
- * `goodtypes.ini` and ir.json carry only production flags and armor/weapon sub-types. The tab-plate
- * glyphs are unread, so the tab order is provisional too. The map keys by the good's stable string id, so
- * it serves the sandbox and the real ir.json good sets identically.
+ * into the original's stock categories. The mapping is a named approximation: no 8-way stock-tab category
+ * field exists on goods, since `goodtypes.ini` and ir.json carry only production flags and armor/weapon
+ * sub-types, and the unread tab-plate glyphs leave the tab order provisional too. Keyed by the good's
+ * stable string id, so the sandbox and the real ir.json good sets resolve identically.
  */
 
 /** The misc/"Inne" tab a good with no explicit category falls into. */
 const DEFAULT_TAB = 7;
 
-/** The eight category tabs' display names (index = tab), shown as a hover tooltip. */
+/** The eight category tabs' display names, indexed by tab. */
 export function stockTabLabels(): readonly string[] {
   return messages().hud.stockTabs;
 }

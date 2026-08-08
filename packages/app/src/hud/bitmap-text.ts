@@ -14,9 +14,9 @@ import type { TextRun } from './text-run.js';
 
 /**
  * A glyph-run drawer for the decoded `.fnt` bitmap fonts. A `.fnt` glyph atlas is indexed, so each glyph
- * draws as a `PalettedSprite` reading the `256 × 4` font colour LUT, one row per colour. Layout follows
- * the decoded glyph metrics: blit each non-empty glyph at the pen, advance by its `advance`, skip empty
- * glyphs. A run is a retained `Container` of one sprite per glyph, re-anchored in screen px by `place`.
+ * draws as a `PalettedSprite` reading the `256 × 4` font colour LUT, one row per colour, and a run is a
+ * retained `Container` of one sprite per glyph. The HUD draws its text through `ui-text.ts` instead, so
+ * the drawing path here has no caller; only the CP1250 mapping below is reached, from its test.
  */
 
 /** A loaded bitmap font: its indexed glyph atlas + metrics + the shared colour LUT. */
@@ -28,7 +28,7 @@ export interface BitmapFont {
   readonly colours: number;
 }
 
-/** The UI bitmap font the HUD draws text with (font10 is the standard in-game body font). */
+/** The default `.fnt` key; font10 is the original's standard in-game body font. */
 export const DEFAULT_FONT_KEY = 'font10';
 /** Fallback (no-`.fnt`) text size in design px, scaled by uiscale - kept legible inside the scaled row rects. */
 const FALLBACK_TEXT_PX = 9;
@@ -37,7 +37,7 @@ const fontOnce = new Map<string, Promise<BitmapFont | null>>();
 
 /**
  * Load a UI bitmap font (indexed atlas + colour LUT + metrics), or `null` if the pipeline hasn't run.
- * Memoized per key and page - several HUD panels mount the same font and must share its textures.
+ * Memoized per key and page, so callers sharing a key share its textures.
  */
 export function loadBitmapFont(key: string = DEFAULT_FONT_KEY): Promise<BitmapFont | null> {
   let once = fontOnce.get(key);
@@ -163,8 +163,8 @@ export function createBitmapTextRun(
 }
 
 /**
- * The HUD's one text factory: a bitmap-font run when the decoded `.fnt` is present, else a Pixi `Text`
- * behind the same `TextRun` surface.
+ * A bitmap-font run when the decoded `.fnt` is present, else a Pixi `Text` behind the same `TextRun`
+ * surface.
  */
 export function makeTextRun(
   font: BitmapFont | null,

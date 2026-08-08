@@ -5,8 +5,7 @@ import type { TextRun } from './text-run.js';
 
 /**
  * The HUD's default text face: the bundled vector serif drawn as Pixi `Text`, which rasters crisp at the
- * HUD's fractional UI scale where an indexed bitmap glyph can only be blocky or hazy. The decoded `.fnt`
- * path in `bitmap-text.ts` stays for text that must be the exact original face.
+ * HUD's fractional UI scale where an indexed bitmap glyph can only be blocky or hazy.
  */
 
 /** Default text size in design px, scaled by uiscale. */
