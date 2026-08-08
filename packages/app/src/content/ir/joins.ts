@@ -35,10 +35,8 @@ export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>
 /**
  * The half-cell row a bridge depth-sorts at relative to its own node (the far, lowest-`dy` row of its
  * deck), `undefined` for every other record. Settlers cross a bridge's span, so sorting at the object's
- * own row buries everyone on the far half of it.
- *
- * One sort row for a deck up to 13 half-rows long is an approximation: anything anchored between the far
- * row and the bridge's own row paints over the deck instead of under it.
+ * own row buries everyone on the far half of it. Approximation: with one sort row for a deck up to 13
+ * half-rows long, anything anchored between the far row and the bridge's own row paints over the deck.
  */
 export function deckFarRow(
   record: Pick<LandscapeGfxRow, 'walkBlockAreas' | 'editGroups'>,
@@ -56,10 +54,9 @@ export function servedShadowStem(shadowBmd: string | undefined): string | undefi
 }
 
 /**
- * The extracted building ground footprints from the served IR, by typeId - the collision/build-exclusion
- * data live content attaches so the real-content view enforces and shows placement collision. Empty when
- * the IR is absent or carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS}
- * applied here, the one seam extracted footprints pass through.
+ * The extracted building ground footprints from the served IR, by typeId. Empty when the IR is absent or
+ * carries no footprints. Door cells get the committed per-building {@link DOOR_SHIFTS} applied here, the one
+ * seam extracted footprints pass through.
  */
 export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFootprint> {
   const out = new Map<number, BuildingFootprint>();
@@ -68,8 +65,7 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
     const shift = b.id !== undefined ? DOOR_SHIFTS.get(b.id) : undefined;
     const door = b.footprint.door;
     if (shift !== undefined && door === undefined) {
-      // A committed shift with no extracted door to correct - warn instead of silently dropping it (the
-      // type still gets its verbatim footprint).
+      // The type still gets its verbatim footprint; the shift is dropped rather than applied blind.
       diag.warn('content', `buildingFootprints: DOOR_SHIFTS['${b.id}'] has no extracted door to shift`);
     }
     out.set(
@@ -92,10 +88,9 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
 
 /**
  * The `[gfxanimatomic]` per-direction frame lists ({@link GfxAnimAtomicRow.dirFrames}) for one
- * `(tribe, action)`, indexed by body bobseq name. First record wins per seq (a job/action may list several
- * variant seqs; the caller names the one it wants). Filtering by `tribe` matters: the same body bobseq
- * name recurs across the human tribes with different frame lists, so the wrong tribe yields a
- * plausible-but-wrong animation. `tribe` is the `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_*`;
+ * `(tribe, action)`, indexed by body bobseq name; first record wins per seq. Filtering by `tribe` matters:
+ * the same body bobseq name recurs across the human tribes with different frame lists, so the wrong tribe
+ * yields a plausible-but-wrong animation. `tribe` is the `logictribe` (= `logicdefines.inc` `TRIBE_TYPE_*`;
  * viking 1).
  */
 export function gfxAtomicFrameLists(
@@ -117,11 +112,8 @@ const UNLOADED_GOOD_TYPE = 0;
 /**
  * The `[gfxwalkatomic]` loaded-gait table for one `(tribe, job)`, as good id-slug → body bobseq name (honey
  * → `human_man_generic_walk_potion`). Keyed by slug, not the source's `logicgoodtype`, because the running
- * content set's `typeId`s are content-relative while slugs are stable.
- *
- * The unloaded walk (`logicgoodtype 0`) is dropped - that is the job's plain gait, not a carry look. A good
- * with no record for this job is absent from the map, which is itself the source's answer: that job shows
- * no load for it.
+ * content set's `typeId`s are content-relative while slugs are stable. A good with no record for this job is
+ * absent from the map, which is the source's answer: that job shows no load for it.
  */
 export function carryWalkSeqs(ir: ContentIr | null, tribe: number, job: number): Map<string, string> {
   const slugByType = new Map((ir?.goods ?? []).map((g) => [g.typeId, g.id]));
