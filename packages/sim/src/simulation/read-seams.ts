@@ -1,6 +1,6 @@
 /**
- * Resolution logic behind `Simulation`'s read seams. Each function resolves the optional world resources
- * a mapless sim lacks and delegates to the owning system; the public contract lives on the seam method.
+ * Resolves the optional world resources a mapless sim lacks, then delegates to the owning system. The
+ * public contract of each seam stays on its `Simulation` method.
  */
 import type { ContentSet } from '@open-northland/data';
 import { FOG_MODE, type FogMode, fogMode } from '../components/index.js';

@@ -29,7 +29,6 @@ export function hashSimState(
       mix(v | 0);
       mix(Math.trunc(v / 0x100000000));
     } else if (typeof v === 'string') {
-      // String values carry real state, so a run diverging only in one must move the hash.
       mixString(v);
     } else if (typeof v === 'boolean') {
       mix(v ? 1 : 0);
@@ -49,8 +48,7 @@ export function hashSimState(
         hashValue(v[k]);
       }
     } else {
-      // An uncovered shape would hide a divergence: a Set or bigint mixes in nothing, a class instance
-      // only whatever `Object.keys` exposes.
+      // An uncovered shape would hide a divergence: a Set or bigint mixes in nothing.
       throw new Error(`hashState: unhashable value shape ${valueShapeName(v)}`);
     }
   };

@@ -39,55 +39,39 @@ export type { FogView } from './simulation/read-seams.js';
 export interface SimOptions {
   seed: number;
   content: ContentSet;
-  /**
-   * The terrain map (dimensions + row-major landscape-typeId grid). Optional: trivial fixtures and the
-   * determinism golden run mapless. When given, the sim builds the cell-adjacency graph once and exposes it
-   * as the `terrain` resource on every system's context.
-   */
+  /** Dimensions plus a row-major landscape-typeId grid. Omitted for a mapless sim. */
   map?: TerrainMap;
 }
 
-/** Wraps one system invocation for timing (see {@link Simulation.setInstrument}) - observational only. */
+/** Wraps one system invocation for timing; observational only. */
 export type SystemInstrument = (name: string, run: () => void) => void;
 
 /**
- * The simulation: owns the world, the RNG, and the system schedule. Advance one deterministic
- * tick with `step()`. No rendering, no I/O - see docs/ECS.md.
- *
- * The read seams ({@link snapshot}, {@link placementProbe}, {@link constructionPlots},
- * {@link needsEnabled}, {@link fogMode}, {@link fogView}) are the sanctioned way the app and render
- * observe state instead of reaching into live component stores. None of them mutate, so none affect
- * determinism; their resolution logic lives in `simulation/read-seams.ts`.
+ * Owns the world, the RNG, and the system schedule. `step()` advances one deterministic tick. The read
+ * seams are how the app and render observe state instead of live component stores; none of them mutate.
  */
 export class Simulation {
   readonly world = new World();
   readonly rng: Rng;
   readonly content: ContentSet;
   /**
-   * The terrain cell-adjacency graph (navigation/placement), or undefined for a mapless sim. Built
-   * once at construction from `opts.map` so per-tick lookups are pure array reads. A world resource,
-   * not entities - it isn't hashed (immutable input, like content), so it never affects determinism.
+   * The cell-adjacency graph for navigation and placement, built once at construction; undefined for a
+   * mapless sim. An immutable input like content, so `hashState` does not mix it in.
    */
   readonly terrain?: TerrainGraph;
   /**
-   * The per-player fog-of-war masks (see systems/vision), or undefined for a mapless sim. A MUTABLE
-   * world resource like the RNG (the VisionSystem rebuilds it on its cadence) - unlike the immutable
-   * terrain it IS simulated state (combat gates read it), so {@link hashState} mixes its bytes in after
-   * the components. Inert (empty, zero cost) while the fog mode is OFF.
+   * The per-player fog-of-war masks; undefined for a mapless sim. Mutable simulated state that combat
+   * gates read, so `hashState` mixes its bytes in after the components. Empty while the fog mode is OFF.
    */
   readonly fog?: FogState;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
-  /**
-   * The serializable external-input queue. {@link CommandSystem} drains and logs it each tick for replay and
-   * diagnostics. Scenes and fixtures may assemble pre-tick-0 state through {@link world} directly.
-   */
+  /** The serializable external-input queue, drained and logged each tick for replay. */
   readonly commands = new CommandQueue();
   private currentTick = 0;
   /** The per-system instrumentation hook, or `null` for the direct (zero-overhead) call. */
   private instrument: SystemInstrument | null = null;
-  /** The last {@link snapshot} result, reusable while the tick and the World's mutation version are
-   *  unchanged (see snapshot). */
+  /** The last `snapshot()` result, reusable while the tick and the world's mutation version hold. */
   private snapshotMemo: {
     readonly tick: number;
     readonly version: number;
@@ -108,21 +92,18 @@ export class Simulation {
   }
 
   /**
-   * Install (or clear) the per-system instrumentation hook - the timing seam for the app's perf
-   * marks and the bench harness. The hook wraps each system invocation and MUST call `run` exactly
-   * once and stay hands-off otherwise (it gets no world/ctx access); the timer itself lives in the
-   * caller, keeping `performance.now` out of sim src (the hygiene scan). Purely observational, so
-   * an instrumented run hashes byte-identically to a bare one (pinned in test/core/instrument.test.ts).
+   * Install (or clear) the per-system instrumentation hook. The hook must call `run` exactly once; the
+   * timer stays in the caller, keeping wall-clock reads out of sim source. Purely observational, so an
+   * instrumented run hashes byte-identically to a bare one.
    */
   setInstrument(instrument: SystemInstrument | null): void {
     this.instrument = instrument;
   }
 
   /**
-   * Queue a serializable command - the only way to mutate sim state from outside once the sim is
-   * ticking. It is applied (and appended to the command log) by CommandSystem on the next `step()`.
-   * The UI, strategic AI, and replay tools go through here; only authored pre-tick-0 setup writes to
-   * {@link world} directly (see {@link commands}).
+   * Queue a serializable command, the only way to mutate sim state from outside once the sim is ticking.
+   * CommandSystem applies and logs it on the next `step()`. Only authored pre-tick-0 setup writes to
+   * `world` directly.
    */
   enqueue(command: Command): void {
     this.commands.enqueue(command);
@@ -138,8 +119,7 @@ export class Simulation {
       tick: this.currentTick,
       events: this.events,
       commands: this.commands,
-      // Only attach `terrain`/`fog` when present: under exactOptionalPropertyTypes an optional
-      // property must be omitted rather than set to undefined.
+      // An absent optional resource must be omitted, not set to undefined.
       ...(this.terrain !== undefined ? { terrain: this.terrain } : {}),
       ...(this.fog !== undefined ? { fog: this.fog } : {}),
     };
@@ -148,8 +128,7 @@ export class Simulation {
       if (instrument === null) {
         system(this.world, ctx);
       } else {
-        // Enforce the hook contract (`run` exactly once): a skipping/double-running hook would
-        // silently diverge the live session from its own command-log replay.
+        // A skipping or double-running hook would diverge the live session from its own replay.
         let runs = 0;
         instrument(name, () => {
           runs++;
@@ -161,19 +140,13 @@ export class Simulation {
   }
 
   /**
-   * A detached read-view of the world at the current tick boundary, consumed by `render`/audio
-   * instead of the live component stores, so they never observe a half-applied tick. Plain data (no
-   * class instances / live Maps), so it is also transferable to a render Web Worker for free. Pure:
-   * a snapshot is a function of state and is never read back into sim logic.
+   * A detached plain-data read view at the current tick boundary, so render and audio never observe a
+   * half-applied tick. Never read back into sim logic.
    *
-   * Memoized per tick: the app's frame loop (and its pointer handlers) snapshot every RAF while the fixed
-   * timestep may not have stepped, and re-cloning an unchanged world each frame was a large share of a real
-   * map's frame cost. The memo is reused while the tick and the World's {@link World.mutationVersion} are
-   * unchanged (any `create`/`add`/`remove`/`destroy`/`write` - e.g. a pre-tick-0 fixture spawn - bumps it).
-   * A monotonic counter, not the touched log's emptiness, so a direct external `takeSnapshot` draining the
-   * log between two same-tick snapshots cannot make this serve a stale view. A store write that bypasses
-   * `World.write` between same-tick snapshots is the one blind spot; sim systems only mutate inside
-   * `step()`, which advances the tick.
+   * Memoized while the tick and {@link World.mutationVersion} hold, since the frame loop snapshots every
+   * RAF while the fixed timestep may not have stepped. Keyed on that monotonic counter rather than the
+   * touched log, which an external `takeSnapshot` drains. A store write bypassing `World.write` between
+   * two same-tick snapshots is the one blind spot.
    */
   snapshot(): WorldSnapshot {
     const memo = this.snapshotMemo;
@@ -188,97 +161,71 @@ export class Simulation {
   }
 
   /**
-   * A buildability test for one building type - the read seam the app's build-mode overlay probes per
-   * visible tile to grey out where a click would be rejected. Reads the same rule the `placeBuilding`
-   * command gates on ({@link canPlaceBuilding}). The world's obstacle sets are memoized per
-   * {@link placementBlockerVersion}, so the once-per-frame probe build re-scans the world only when a
-   * building/resource actually appears or disappears (not every tick), and probing a viewport is then
-   * O(visible tiles). Returns null for a mapless sim (no terrain graph → no placement rule), where the
-   * caller shows no overlay.
+   * A buildability test for one building type, reading the same rule the `placeBuilding` command gates on.
+   * Obstacle sets are memoized per {@link placementBlockerVersion}, so probing a viewport costs O(visible
+   * tiles). Null for a mapless sim.
    */
   placementProbe(buildingType: number): PlacementProbe | null {
     return placementProbeFor(this.world, this.content, this.terrain, buildingType);
   }
 
   /**
-   * The version of the placement-blocker inputs - an opaque token that changes only when a building or
-   * resource (or its footprint) is added or removed (see {@link placementBlockerVersion}). The
-   * build-mode overlay keys its memoized band probe on this instead of the tick, so a still camera over
-   * a running sim reuses last frame's blocked set instead of re-probing the whole visible node band
-   * every RAF.
+   * An opaque token over the placement-blocker inputs, changing when one of them does rather than per
+   * tick. Overlay memos key on it.
    */
   placementBlockerVersion(): string {
     return placementBlockerVersion(this.world);
   }
 
   /**
-   * An erectability test for one player's signposts - the read seam the signpost placement overlay
-   * probes per visible node, mirroring {@link placementProbe}. Reads the same rule the erect command
-   * gates on ({@link canPlaceSignpost}): open work-flag ground outside the player's spacing circles.
-   * Memoized on {@link signpostBlockerVersion} like its building twin, since the app asks per RAF frame
-   * while the erect cursor is armed. Returns null for a mapless sim.
+   * An erectability test for one player's signposts, reading the same rule the erect command gates on:
+   * open work-flag ground outside the player's spacing circles. Null for a mapless sim.
    */
   signpostProbe(player: number): SignpostProbe | null {
     return signpostProbeFor(this.world, this.content, this.terrain, player);
   }
 
   /**
-   * The version of the signpost-probe inputs - {@link placementBlockerVersion} plus the work-flag
-   * generation (flags block signpost cells but not buildings). The signpost overlay's memo key.
+   * {@link placementBlockerVersion} plus the work-flag generation, since flags block signpost cells but
+   * not buildings.
    */
   signpostBlockerVersion(): string {
     return workFlagBlockerVersion(this.world);
   }
 
-  /**
-   * The ground plots of every under-construction building - its footprint body cells, for the render's
-   * grey "construction site" decal (see {@link constructionSitePlots}). Empty when nothing is under
-   * construction.
-   */
+  /** The footprint body cells of every under-construction building. */
   constructionPlots(): ConstructionPlot[] {
     return constructionSitePlots(this.world, this.content);
   }
 
   /**
-   * The equip pick-menu's rows for one settler and slot group - every good wearable there that the
-   * settler could reach and fetch right now, with the reachable unit count (see {@link equipPickList}).
-   * The read seam behind the equipment panel's plus/swap buttons; the `equipGood` command re-validates,
-   * so a row that staled between the menu and the click just returns the settler empty-handed.
+   * Every good wearable in `group` that `entity` could reach and fetch right now, with its reachable unit
+   * count. The `equipGood` command re-validates, so a row that staled since the menu opened just returns
+   * the settler empty-handed.
    */
   equipPickList(entity: Entity, group: EquipCategory): EquipPickEntry[] {
     return equipPickList(this.world, this.content, this.terrain, entity, group);
   }
 
-  /**
-   * Whether the needs mechanic is currently on (the `WorldRules` rule the `setNeedsEnabled` command sets;
-   * absent = enabled). The app's admin toggle labels itself from this.
-   */
+  /** The `WorldRules` rule the `setNeedsEnabled` command sets; absent = enabled. */
   needsEnabled(): boolean {
     return needsEnabled(this.world);
   }
 
   /**
-   * Whether profession progression gates job/good access (the `ProgressionRules` rule the
-   * `setProfessionProgression` command sets; absent = enabled). App surfaces label themselves from this.
+   * Whether profession progression gates job and good access: the `ProgressionRules` rule the
+   * `setProfessionProgression` command sets; absent = enabled.
    */
   professionProgressionEnabled(): boolean {
     return professionProgressionEnabled(this.world);
   }
 
-  /**
-   * The good types `player`'s assistant may hand out (the `setAssistantGrant` command's state; empty
-   * when nothing is granted). The chest window's grant switches label themselves from this. A
-   * detached copy - never the live component array.
-   */
+  /** The good types `player`'s assistant may hand out, as a detached copy of the command's state. */
   assistantGrants(player: number): readonly number[] {
     return [...assistantGrantedGoods(this.world, player)];
   }
 
-  /**
-   * `player`'s assistant production counters (the `setAssistantCounter` command's state; all-default
-   * when the carrier is absent). The chest window's steppers label themselves from this. A detached
-   * copy - never the live component block.
-   */
+  /** `player`'s assistant production counters as a detached copy; all-default when the carrier is absent. */
   assistantCounters(player: number): Readonly<AssistantCounterValues> {
     const carrier = assistantCountersEntity(this.world, player);
     if (carrier === null) return defaultAssistantCounters();
@@ -288,20 +235,14 @@ export class Simulation {
     return copy;
   }
 
-  /**
-   * The active fog-of-war mode (the `FogRules` rule the `setFogMode` command sets; absent =
-   * `FOG_MODE.OFF`). The app's admin fog switcher labels itself from this.
-   */
+  /** The `FogRules` rule the `setFogMode` command sets; absent = `FOG_MODE.OFF`. */
   fogMode(): FogMode {
     return fogMode(this.world);
   }
 
   /**
-   * The fog-of-war read view for one viewer player - the seam the render (terrain wash, sprite cull,
-   * minimap) consumes. `stateAt` answers the effective `FOG_STATE` of a cell (RECON's known-terrain view
-   * rule applied); `generation` bumps only when the masks actually rebuilt, so a render layer re-composites
-   * on it instead of per tick. Returns null when fog is OFF (the default) or the sim is mapless - the
-   * caller then draws no fog at all.
+   * The fog-of-war read view for one viewer player. Null when fog is OFF or the sim is mapless, where the
+   * caller draws no fog.
    */
   fogView(player: number): FogView | null {
     return fogViewFor(this.world, this.fog, player);
@@ -317,18 +258,13 @@ export class Simulation {
     return _checkInvariants(this.world, this.content, invariants);
   }
 
-  /**
-   * A canonical hash of ALL simulation state for determinism golden tests: tick, RNG state, and
-   * every registered component on every alive entity, in canonical (ascending) order, then the fog
-   * masks. If two runs from the same seed + inputs diverge in ANY hashed field, this changes - which
-   * is the point.
-   */
+  /** A canonical hash of all simulation state, for determinism golden tests. */
   hashState(): string {
     return hashSimState(this.world, this.currentTick, this.rng.getState(), this.fog);
   }
 }
 
-/** The inputs a fresh run starts from - what {@link simFor} needs to build a {@link Simulation}. */
+/** The inputs a fresh run starts from. */
 export interface SimInputs {
   readonly content: ContentSet;
   readonly seed: number;
@@ -336,9 +272,9 @@ export interface SimInputs {
 }
 
 /**
- * Build the fresh {@link Simulation} a run starts from - the one place that knows `map` must be OMITTED
- * rather than set to `undefined` under `exactOptionalPropertyTypes` (tsconfig.base.json), since the
- * Simulation builds its terrain graph iff the key is present. Callers may pass `map: undefined`.
+ * Build the fresh {@link Simulation} a run starts from. Callers may pass `map: undefined`; under
+ * `exactOptionalPropertyTypes` the key must be omitted, since Simulation builds its terrain graph iff the
+ * key is present.
  */
 export function simFor({ content, seed, map }: SimInputs): Simulation {
   return new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
