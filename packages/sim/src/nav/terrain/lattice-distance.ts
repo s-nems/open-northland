@@ -7,14 +7,9 @@ import type { NodeId } from './node-id.js';
  * The fixed-point half-cell lattice step distance between two nodes, the A* heuristic for the
  * 8-direction graph. With `ax` half-columns and `ay` half-rows apart, a diagonal covers `(1, 2)` for
  * less than its straight substitute `E + 2*N`, so the cheapest walk takes `min(ax, floor(ay/2))`
- * diagonals and covers the remainder straight:
- *
- *  - vertical dominates (`2*ax <= ay`): `ax*DIAGONAL_STEP + (ay - 2ax)*HALF_ROW`;
- *  - otherwise: `floor(ay/2)*DIAGONAL_STEP + (ax - floor(ay/2))*HALF_COLUMN + (ay mod 2)*HALF_ROW`.
- *
- * Every wasteful composition costs strictly more, so on unit-cost terrain this equals the true
- * open-terrain graph distance and the heuristic is admissible and consistent. Obstacles only raise the
- * true cost, so A* stays optimal.
+ * diagonals and covers the remainder straight. Every wasteful composition costs strictly more, so on
+ * unit-cost terrain this equals the true open-terrain graph distance and the heuristic is admissible and
+ * consistent. Obstacles only raise the true cost, so A* stays optimal.
  */
 export function nodeLatticeDistance(g: TerrainGraph, a: NodeId, b: NodeId): Fixed {
   return latticeDistanceTo(g, g.xOf(b), g.yOf(b), a);

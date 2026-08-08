@@ -9,7 +9,6 @@ import { StepBuffer } from './step-buffer.js';
  * {@link buildTerrainGraph}.
  */
 export class TerrainGraph extends TerrainEdges {
-  /** Static-connectivity label per node (-1 = unwalkable). See {@link componentOf}. */
   private readonly components: Int32Array;
 
   constructor(
