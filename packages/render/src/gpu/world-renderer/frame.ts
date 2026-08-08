@@ -16,41 +16,34 @@ export interface WorldRendererOptions {
   readonly sheet?: SpriteSheet | undefined;
   /**
    * Snap the camera pan to whole device pixels and minify the world atlases linear below zoom 1, killing
-   * the shimmer of nearest-sampled art. Live entries only: the deterministic `?shot` capture must stay
-   * byte-stable, so it never enables this.
+   * the shimmer of nearest-sampled art. The `?shot` entry omits it, so its capture stays comparable
+   * across machines.
    */
   readonly viewSmoothing?: boolean | undefined;
-  /**
-   * The world post pass: a warm-graded vignette multiply over the world, under the HUD. An enhancement
-   * over the original, so the deterministic `?shot` capture never enables it.
-   */
+  /** The world post pass: a warm-graded vignette multiply over the world, under the HUD. An enhancement
+   *  over the original. */
   readonly postFx?: boolean | undefined;
   /** Owner slot → team-colour slot when a map's roster recolours players; absent means identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
 }
 
-/** The decoded bone-pile art for a death mark (`ls_skeletons.bmd`); its frames are interchangeable.
- *  `scale` defaults to the native landscape-object scale of 1. */
+/** `scale` defaults to the native landscape-object scale of 1. */
 export interface CombatBonesGfx {
   readonly source: TextureSource;
   readonly frames: readonly AtlasFrame[];
   readonly scale?: number | undefined;
 }
 
-/** Shared empty highlight so clearing the assign-mode tint allocates nothing. */
+/** Shared empty defaults, so a cleared list or highlight allocates nothing. */
 export const EMPTY_HIGHLIGHT: ReadonlyMap<number, boolean> = new Map();
-
-/** Shared empty ref set so the common no-selection / no-flagged `update` allocates nothing. */
 export const NO_REFS: ReadonlySet<number> = new Set();
 export const NO_BADGES: readonly DoorBadge[] = [];
 export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
 
-/** The per-frame inputs of one `WorldRenderer.update`; every optional field falls back to a no-op default. */
 export interface WorldFrame {
   readonly snapshot: WorldSnapshot;
-  /** The world layer's own transform (screen = world*scale + offset). */
   readonly camera: Camera;
   /** The snapshot's integer sim tick, used as the animation clock for gaits, rotors and decor (default 0). */
   readonly tick?: number | undefined;
@@ -72,6 +65,6 @@ export interface WorldFrame {
 /**
  * World-space slack in px added to every side of the sprite cull box, since culling is by the feet anchor
  * and a tall sprite standing just off-screen still pokes into view. Covers the tallest scaled building or
- * map object while staying about 8 tiles wide, so culling still bites.
+ * map object, and stays around seven tile widths, so culling still bites.
  */
 export const SPRITE_CULL_MARGIN = 512;

@@ -26,12 +26,8 @@ import type { TextureCache } from '../texture-cache.js';
 import type { CombatBonesGfx } from './frame.js';
 import type { WorldSceneLayers } from './painter-order.js';
 
-/**
- * The marks the world draws on its entities rather than as entities. One owner because they fill the
- * mark slots of a single painter order and share one frame's inputs.
- */
+/** The marks the world draws on its entities rather than as entities. */
 
-/** The painter-order slots the marks fill; every other slot is the renderer's own. */
 export type MarkSlots = Pick<
   WorldSceneLayers,
   | 'selection'
@@ -52,8 +48,7 @@ export interface WorldMarksFrame {
   /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
    *  through `damaged`, and the selection rings track the selected set instead. */
   readonly viewport: Viewport;
-  /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate.
-   *  Decay membership is stamped on the integer tick in `ingest`, keeping `?shot` exact. */
+  /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
   readonly renderTime: number;
   readonly damaged: readonly DamagedBuilding[];
   readonly selection: ReadonlySet<number>;
@@ -72,13 +67,12 @@ export class WorldMarks {
    *  layer rather than a slot of their own, so fighters still occlude around the falling body. */
   private readonly collapses: CollapseLayer;
   private readonly damageSmoke = new DamageSmokeLayer();
-  /** Sign chains and garrison flags. Like the collapses these live inside the depth-sorted sprite layer,
-   *  so a settler walking in front of a chain occludes it. */
+  /** Sign chains and garrison flags. Also inside the depth-sorted sprite layer, so a settler walking in
+   *  front of a chain occludes it. */
   private readonly badges: BadgeLayer;
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
   private readonly hearts = new LifeHeartLayer();
-  /** The `?debug=geometry` footprint overlay. */
   private readonly geometryDebug = new GeometryDebugLayer();
   readonly slots: MarkSlots;
 
@@ -110,7 +104,6 @@ export class WorldMarks {
     this.collapses.ingest(events, tick);
   }
 
-  /** `null` (a checkout without `content/`) leaves deaths drawing the procedural pile. */
   setBonesGfx(gfx: CombatBonesGfx | null): void {
     this.effects.setBonesGfx(
       gfx === null ? undefined : { ...gfx, scale: gfx.scale ?? 1, textures: this.textures },
