@@ -16,7 +16,9 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
 - Load generated content through the shared network/resolver seams. A checkout without `content/`
   must still boot using synthetic fallback content or a clear unavailable state.
 - Keep `main.ts` a small URL dispatcher. Entry modules assemble their mode and share the common game
-  runtime.
+  runtime. Reach them only through the `src/routes.ts` thunks: a static `entries/` import anywhere in
+  the shell puts every mode back into the first download, which the build's size report shows but does
+  not block.
 
 The supported development entries and debug flags are documented in
 [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md). Add a new entry only when it is a distinct mode,
