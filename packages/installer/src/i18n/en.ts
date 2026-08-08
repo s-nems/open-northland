@@ -54,6 +54,7 @@ export const en = {
       ir: 'Extracting game rules',
       transitions: 'Composing terrain transitions',
       maps: 'Decoding maps',
+      music: 'Rendering the soundtrack',
     },
     mod: {
       requiredUpstreamHtml:
