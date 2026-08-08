@@ -16,10 +16,7 @@ export const ARMOR_MAIN_TYPE = {
   HEAVY: 2,
 } as const;
 
-/**
- * Buckets are source-order arrays, matching {@link weaponsByClass}, and records without a `mainType` are
- * omitted. Map iteration follows first appearance of each class, not ascending class id.
- */
+/** Armor bucketed by {@link armorClassOf}, in {@link groupByKey} order. */
 export function armorByClass(content: ContentSet): Map<number, ArmorType[]> {
   return groupByKey(content.armor, armorClassOf);
 }
@@ -40,7 +37,7 @@ export function armorWeightOf(armor: ArmorType): number {
   return armor.weight;
 }
 
-/** Four singleton tiers in the base data, ordered and shaped like {@link armorByClass}. */
+/** Armor bucketed by {@link armorMaterialOf}, in {@link groupByKey} order. */
 export function armorByMaterial(content: ContentSet): Map<number, ArmorType[]> {
   return groupByKey(content.armor, armorMaterialOf);
 }

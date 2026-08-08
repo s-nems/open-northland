@@ -3,8 +3,6 @@ import type { SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 
-// Read views over the `atomicanimations.ini` records.
-
 /**
  * The `atomicanimations.ini` `event <at> <type> <value>` channel ids - the need bar a timed event restores
  * or drains. The wider `type` vocabulary (ids 8..36) stays an undocumented render/effect channel space.
@@ -29,8 +27,8 @@ export const ATOMIC_EVENT_CHANNEL = {
 export const ATOMIC_EVENT_TYPE_ATTACK = 25;
 
 /**
- * The `event <at> <type>` type id marking the frame a swing plays its sound FX, so the builder's hammer
- * knock lands on the visual strike. An animation carrying no such event plays no mid-swing sound.
+ * The `event <at> <type>` type id marking the frame a swing plays its sound FX. An animation carrying no
+ * such event plays no mid-swing sound.
  *
  * Source basis: `logicdefines.inc` `ATOMIC_ANIMATION_EVENT_TYPE_PLAY_SOUND_FX` (l.754).
  */
@@ -49,30 +47,24 @@ export function atomicAnimationByName(content: ContentSet, name: string): Atomic
  *  so an unresolved atomic still takes visible time rather than completing instantly. */
 const DEFAULT_ATOMIC_DURATION = 4;
 
-/**
- * An atomic's duration in ticks: the settler's tribe binds `(jobType, atomicId)` to an animation name
- * (`setatomic`) and `atomicAnimations` gives that name's `length`.
- */
+/** An atomic's duration in ticks: the `length` of the animation the settler's tribe binds it to. */
 export function atomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
   return atomicDurationForName(content, atomicAnimationName(content, settler, atomicId));
 }
 
 /**
- * The animation a settler plays for a need atomic (eat, sleep), falling back to the tribe's civilist clip
+ * The duration in ticks of a settler's need atomic (eat, sleep), falling back to the tribe's civilist clip
  * when the settler's own trade binds none. `tribetypes.ini` `setatomic` covers eat only for jobs
- * 3,4,5,6,31,34 and sleep only for 1-6,31, so a builder, collector, farmer, carrier or scout binds neither
- * yet each clearly eats and sleeps in the original.
+ * 3,4,5,6,31,34 and sleep only for 1-6,31, so a builder, collector, farmer, carrier or scout binds neither.
  *
  * Approximation: routing the gap to the generic civilist body, the same join the render makes (every
- * civilian look draws through `logicJob: 6`). Without it the whole working population would eat in
- * {@link DEFAULT_ATOMIC_DURATION} ticks.
+ * civilian look draws through `logicJob: 6`).
  */
 export function needAtomicDuration(content: ContentSet, settler: SettlerIdentity, atomicId: number): number {
   return atomicDurationForName(content, needAtomicAnimationName(content, settler, atomicId));
 }
 
-/** The resolved need-atomic animation name behind {@link needAtomicDuration}, so a caller deriving a
- *  sibling clip by name starts from the same fallback. */
+/** The animation name behind {@link needAtomicDuration}, including its civilist fallback. */
 export function needAtomicAnimationName(
   content: ContentSet,
   settler: SettlerIdentity,
@@ -144,9 +136,8 @@ export function atomicEventChannelDelta(content: ContentSet, name: string, chann
 
 /**
  * Whether the named atomic animation carries any `eventx` event - the second event stream the source spells
- * with that key instead of plain `event`. In the real data `eventx` lines cluster on `*_produce_*`,
- * bracketing a production run and draining the worker's rest and hunger bars, so this doubles as the
- * "producing animation that self-drains the worker" marker.
+ * with that key. In the real data `eventx` lines cluster on `*_produce_*` clips, bracketing the run and
+ * draining the worker's rest and hunger bars, so this doubles as the self-draining-production marker.
  */
 export function atomicHasExtendedEvents(content: ContentSet, name: string): boolean {
   return atomicAnimationByName(content, name)?.events.some((e) => e.extended) ?? false;

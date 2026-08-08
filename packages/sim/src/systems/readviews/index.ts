@@ -1,9 +1,5 @@
-// Pure read views over `content`: the content-derived rule tables systems consult for game decisions.
-// Content is immutable input, so reading it cannot feed state back; each view is a pure, memoizable
-// projection that adds no mechanic of its own.
-//
-// `./equip-pick.ts` is the one member that is not a content table: it reads world and terrain, and serves
-// the façade's pick menu rather than any system.
+// Pure projections of the immutable `content` into the rule tables systems consult; a view adds no
+// mechanic of its own. `./equip-pick.ts` is the exception: it reads world and terrain for the pick menu.
 
 export {
   ATOMIC_EVENT_CHANNEL,

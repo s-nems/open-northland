@@ -62,9 +62,9 @@ function edibleForms(content: ContentSet): ReadonlyMap<number, number> {
 
 /**
  * The edible a dish becomes, or `goodType` unchanged when it is not a dish. Applying it conserves the
- * unit count but not the good's identity: the bakery's bread leaves as `food_simple`, because no store
- * has capacity for the dish itself and a carrier would never lift it. This resolves the mapping only;
- * the carry seams decide when a lift or a deposit applies it.
+ * unit count but not the good's identity: the bakery's bread leaves as `food_simple`, since only its
+ * producing house slots the dish. This resolves the mapping only; the carry seams decide when a lift or a
+ * deposit applies it.
  */
 export function exportedGoodForm(ctx: SystemContext, goodType: number): number {
   return edibleGoodFormOf(ctx.content, goodType);

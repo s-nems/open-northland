@@ -35,9 +35,8 @@ export function isMilitaryMode(mode: number): mode is MilitaryMode {
 }
 
 /**
- * The stance stamped on an owned settler at spawn and on a profession change, which `setStance` then
- * overrides. Observation: the readable data carries no per-job military-mode field, so mapping a role to
- * a mode is an approximation of the original's behavior.
+ * The stance stamped on an owned settler at spawn and on a profession change, until `setStance` overrides
+ * it. Approximation: the role-to-mode mapping, the readable data carrying no per-job military-mode field.
  */
 export function defaultStanceForJob(content: ContentSet, jobType: number | null): MilitaryMode {
   if (jobType === null) return MILITARY_MODE.FLEE; // a jobless settler or child is a civilian
