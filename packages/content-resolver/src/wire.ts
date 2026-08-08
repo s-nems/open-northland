@@ -20,7 +20,7 @@ export interface MapsIndexPlayerSlot {
   /** `[multiplayer]` `playerhideinmenu` - the original lobby never lists this slot. */
   readonly hidden: boolean;
   /** Whether the seat may auto-play when vacant: its `playeroption` row offers `ai`, or the map ships
-   *  no row for it. */
+   *  no row for it. A row can only deny `ai` - 47 of the 320 rows across the decoded maps omit it. */
   readonly aiAllowed: boolean;
 }
 
