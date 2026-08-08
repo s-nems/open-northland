@@ -40,11 +40,10 @@ export interface SpeedButtonDeps {
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
 }
 
-/** The mounted game-speed button: the strip's one interactive glyph (×1 → ×2 → ×3; P toggles pause). */
+/** The mounted game-speed button: the strip's one interactive glyph. */
 export interface SpeedButton {
-  /** Click action: un-pause if paused, else cycle to the next speed. */
+  /** A click while paused un-pauses instead of advancing the cycle. */
   cycle(): void;
-  /** The `P` key: toggle pause, remembering the running speed for the resume. */
   togglePause(): void;
   /** Set the button graphic from the current state without pushing to the loop (mount, strip re-bake). */
   syncGlyph(): void;

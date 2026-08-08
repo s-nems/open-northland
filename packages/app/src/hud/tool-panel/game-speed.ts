@@ -1,17 +1,12 @@
-/**
- * The game-speed button state machine, pinned to the original's speed button: the four decoded frames
- * map factor 0 → gfx 0x36 (paused), 1 → 0x31, 2 → 0x34, 3 → 0x35. Each visible state maps to an app-side
- * tick multiplier, since the sim tick stays fixed at `TICKS_PER_SECOND`. Exact cycling behavior is
- * unconfirmed against the running original.
- *
- * The control model is a named deviation: a click cycles only the running speeds (×1 → ×2 → ×3 → ×1,
- * never into pause), while pause is a separate toggle that restores the remembered running speed.
- */
+// The game-speed button state machine, pinned to the original's speed button. Each visible state maps to
+// an app-side tick multiplier, since the sim tick stays fixed at `TICKS_PER_SECOND`. Exact cycling
+// behavior is unconfirmed against the running original.
+//
+// The control model is a named deviation: a click cycles only the running speeds, never into pause, and
+// pause is a separate toggle.
 
-/** The four visible speed states the button can show (three running speeds + the paused glyph). */
 export type GameSpeedState = 'normal' | 'fast' | 'faster' | 'paused';
 
-/** The running (un-paused) speeds, in click-cycle order (a click advances to the next, wrapping). */
 export type RunningGameSpeed = 'normal' | 'fast' | 'faster';
 
 export interface GameSpeedStateSpec {
@@ -24,7 +19,7 @@ export interface GameSpeedStateSpec {
   readonly tickMultiplier: number;
 }
 
-/** gfx 0x31/0x34/0x35/0x36 per `MiscButtons_SpeedButton_Update`; multiplier == factor (paused = 0). */
+/** The gfx ids are the frames `MiscButtons_SpeedButton_Update` selects per speed factor. */
 export const GAME_SPEED_STATES: readonly GameSpeedStateSpec[] = [
   { state: 'normal', factor: 1, gfx: 0x31, tickMultiplier: 1 },
   { state: 'fast', factor: 2, gfx: 0x34, tickMultiplier: 2 },
@@ -36,7 +31,6 @@ const SPEC_BY_STATE: ReadonlyMap<GameSpeedState, GameSpeedStateSpec> = new Map(
   GAME_SPEED_STATES.map((s) => [s.state, s]),
 );
 
-/** The full spec for a state (gfx + factor + multiplier). Throws on an unknown state (programmer error). */
 export function gameSpeedSpec(state: GameSpeedState): GameSpeedStateSpec {
   const spec = SPEC_BY_STATE.get(state);
   if (spec === undefined) throw new Error(`game-speed: unknown state "${state}"`);
@@ -49,16 +43,13 @@ export interface GameSpeedControl {
   readonly paused: boolean;
 }
 
-/** The control the game starts with (normal ×1 running - the original's default in-game speed). */
+/** ×1 running is the original's default in-game speed. */
 export const DEFAULT_GAME_SPEED_CONTROL: GameSpeedControl = { running: 'normal', paused: false };
 
-/** The running click cycle (`normal → fast → faster → normal`) - pause is not a cycle stop. */
+/** Declaration order is the click cycle, wrapping. */
 const RUNNING_CYCLE: readonly RunningGameSpeed[] = ['normal', 'fast', 'faster'];
 
-/**
- * One click of the speed button: while running, advance the running cycle; while paused, resume at the
- * remembered running speed.
- */
+/** While paused, a click resumes at the remembered running speed instead of advancing the cycle. */
 export function cycleGameSpeed(control: GameSpeedControl): GameSpeedControl {
   if (control.paused) return { running: control.running, paused: false };
   const i = RUNNING_CYCLE.indexOf(control.running);
@@ -67,7 +58,6 @@ export function cycleGameSpeed(control: GameSpeedControl): GameSpeedControl {
   return { running: next, paused: false };
 }
 
-/** The `P` key: toggle pause, keeping the running speed remembered for the resume. */
 export function toggleGameSpeedPause(control: GameSpeedControl): GameSpeedControl {
   return { running: control.running, paused: !control.paused };
 }
