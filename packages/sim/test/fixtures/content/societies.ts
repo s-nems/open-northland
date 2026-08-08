@@ -76,7 +76,12 @@ export const societyContent = {
       // fights back (the mutual `mayAttack` relation). Binds the attack atomic (81) so it can swing.
       typeId: 10,
       id: 'test_bear',
-      atomicBindings: [{ jobType: 1, atomicId: 81, animation: 'bear_attack' }],
+      atomicBindings: [
+        { jobType: 1, atomicId: 81, animation: 'bear_attack' },
+        // A civilist row on an animal tribe, as the real `bears` tribe carries 26 of them pointing at
+        // `byzantine_civilist_*`: a beast must not inherit it, since it is the human bodies' fallback.
+        { jobType: 6, atomicId: 81, animation: 'viking_attack' },
+      ],
     },
     {
       // A decorative-fauna animal tribe (bee, typeId 11): a known animal tribe whose
@@ -213,7 +218,16 @@ export const societyContent = {
     { id: 'viking_eat', name: 'viking_eat', length: 5 },
     // Interruptible like the original's outdoor sleep (`interruptable 1`) - a sleeper obeys an order at
     // once, while an unmarked clip (eat, the swings) defaults non-interruptible and parks orders.
-    { id: 'viking_sleep', name: 'viking_sleep', length: 6, interruptible: true },
+    // Carries the outdoor clip's authored sound cue (`event <at> 34 35` - PLAY_SOUND_FX naming the Yawn
+    // Man `logicSoundType`). Its frame sits early enough to fall inside the shorter at-home twin too, as
+    // `viking_civilist_sleep`'s `event 23 34 35` falls inside the 50-tick `_home` clip.
+    {
+      id: 'viking_sleep',
+      name: 'viking_sleep',
+      length: 6,
+      interruptible: true,
+      events: [{ at: 1, type: 34, value: 35 }],
+    },
     { id: 'viking_pray', name: 'viking_pray', length: 7 },
     // The talk/listen clips carry the original's channel-3 refill shape (five `event <at> 3 +800`
     // pulses totalling the 4000-unit full bar - `viking_civilist_talk`), compressed to a short

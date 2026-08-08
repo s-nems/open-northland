@@ -31,8 +31,7 @@ export const atomicSystem: System = (world, ctx) => {
       }
     }
 
-    // The inter-swing breather extends the atomic past its clip, so it carries none of the clip's sounds.
-    if (atomic.restTail !== true) emitAtomicSoundCues(world, ctx, e, atomic);
+    emitAtomicSoundCues(world, ctx, e, atomic);
 
     if (atomic.elapsed < duration) continue;
 

@@ -47,8 +47,8 @@ export {
   TRAINING_EXPERIENCE_TYPE,
 } from './progression/experience.js';
 export { schoolingMet } from './progression/unlocks.js';
-// The need-atomic clip resolution, exported so the real-content suite can pin both joins against the
-// served IR rather than a fixture.
+// The atomic clip resolution, exported so the real-content suite can pin the joins against the served IR
+// rather than a fixture, and the sandbox catalog can author its cues on the same event type.
 export {
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicClipName,

@@ -63,6 +63,16 @@ function tiredAt(sim: Simulation, x: number, y: number): Entity {
   return needsSettlerAt(sim, x, y, { fatigue: TIRED });
 }
 
+/** The `logicSoundType` ids the sleeping settlers sound over `ticks` ticks. */
+function cuesOverNap(sim: Simulation, ticks: number): number[] {
+  const fired: number[] = [];
+  for (let i = 0; i < ticks; i++) {
+    sim.step();
+    for (const ev of sim.snapshot().events) if (ev.kind === 'atomicSound') fired.push(ev.soundType);
+  }
+  return fired;
+}
+
 function nodeAt(sim: Simulation, cx: number, cy: number): NodeId | undefined {
   const anchor = cellAnchorNode(cx, cy);
   return sim.terrain?.nodeAt(anchor.hx, anchor.hy);
@@ -83,6 +93,25 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
     expect(atomic.effect).toEqual({ kind: 'sleep' });
     // The at-home clip, not the outdoor one - a bed indoors is worth the same rest in less time.
     expect(atomic.duration).toBe(HOME_SLEEP_TICKS);
+  });
+
+  it("does not sound the outdoor clip's cue over the short at-home one", () => {
+    // The rung starts the `_home` twin under the bound clip's atomic id, so the id alone would resolve the
+    // outdoor clip and drop its snore onto a nap a third of the length. The sleeper is hidden indoors; it
+    // must be silent too, until the at-home clip authors a cue of its own.
+    const sim = simWithHomes();
+    const settler = tiredAt(sim, 3, 2);
+    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2) });
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const indoors = cuesOverNap(sim, HOME_SLEEP_TICKS);
+    expect(indoors).toEqual([]);
+
+    // The same body sleeping in the open runs its bound clip, and does sound it.
+    const outside = simWithHomes();
+    tiredAt(outside, 3, 2);
+    plannerSystem(outside.world, ctxOf(outside));
+    expect(cuesOverNap(outside, OUTDOOR_SLEEP_TICKS)).toEqual([35]);
   });
 
   it('walks to its own door rather than lying down where it stands', () => {

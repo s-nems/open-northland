@@ -14,6 +14,11 @@ import { grassCellMap } from '../fixtures/terrain.js';
  * by the projectile tests; here we pin the melee `combatHit` and its miss guard.
  */
 
+/** The fixture's aggressive animal tribe, which also carries a civilist `setatomic` row. */
+const BEAR_TRIBE = 10;
+
+const pos = (x: number, y: number) => ({ x: fx.fromInt(x), y: fx.fromInt(y) });
+
 /** A 1-tick melee attack atomic (id 81) - AtomicSystem lands the blow the first tick. */
 function attack(
   sim: Simulation,
@@ -112,6 +117,34 @@ describe('combatSwing - the swing swoosh at the strike frame', () => {
       { entity: attacker, soundType: 81 },
     ]);
     expect(evts.filter((ev) => ev.kind === 'combatHit')).toHaveLength(1); // the blow still lands
+  });
+
+  it('swooshes for a beast rather than inheriting the civilist body’s punch', () => {
+    // The bear's tribe binds atomic 81 under the civilist job too, as the real animal tribes do, and that
+    // clip sounds a human fist. Wildlife takes no clip from the human bodies, so the beast falls to the
+    // generic swoosh instead of punching like a townsman.
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const bear = settlerAt(sim, { jobType: null, tribe: BEAR_TRIBE, position: pos(4, 2) });
+    const target = settlerAt(sim, { jobType: 1, position: pos(5, 2) });
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    sim.world.add(bear, CurrentAtomic, {
+      atomicId: 81,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: 4, // the length `viking_attack` runs, so only the body rule can keep the punch away
+      effect: { kind: 'attack', target, damage: 10 },
+      targetEntity: target,
+      targetTile: null,
+    });
+
+    const evts = [];
+    for (let i = 0; i < 4; i++) {
+      sim.step();
+      evts.push(...sim.snapshot().events);
+    }
+
+    expect(evts.filter((ev) => ev.kind === 'atomicSound')).toHaveLength(0);
+    expect(evts.filter((ev) => ev.kind === 'combatSwing')).toHaveLength(1);
   });
 
   it('emits combatSwing at the attacker on a connecting swing (the audible twin of a bow release)', () => {

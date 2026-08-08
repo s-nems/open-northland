@@ -137,13 +137,11 @@ export function buildSoundGalleryModel(sounds: SoundBank, bindings: SoundBinding
     clips: a.sfx.map((s) => s.file),
   }));
 
-  const cues: ClipList[] = sounds.staticGroups
-    .filter((g) => g.logicSoundType !== undefined)
-    .map((g) => ({
-      group: g.name,
-      clips: g.sfx.map((s) => s.file),
-      ...(g.logicSoundType !== undefined ? { soundType: g.logicSoundType } : {}),
-    }));
+  const cues: ClipList[] = [];
+  for (const g of sounds.staticGroups) {
+    if (g.logicSoundType === undefined) continue; // no cue can name it
+    cues.push({ group: g.name, clips: g.sfx.map((s) => s.file), soundType: g.logicSoundType });
+  }
 
   return { actions, cues, voices, jingles, ambient };
 }

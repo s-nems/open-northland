@@ -19,12 +19,8 @@ import { entityOwner, entityTile, type TilePoint } from './snapshot.js';
 
 /** Base gain of a life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
 export const JINGLE_GAIN = 0.9;
-/**
- * Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. Approximation:
- * settler voices ride this too rather than a quieter one of their own - the data ranks no cue above
- * another, and a village now sounds every clip that authors one, so a separate voice level would be a
- * mix decision with nothing behind it.
- */
+/** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. Approximation:
+ *  settler voices share it, since the data ranks no authored cue above another. */
 export const SFX_GAIN = 0.8;
 
 /**
@@ -106,12 +102,8 @@ interface EmitterFacts {
   readonly owners: ReadonlyMap<number, number>;
 }
 
-/**
- * The positions and owners of exactly the `needed` entities, looked up one by one through the snapshot's
- * ascending-id binary search and allocating only for them. Every working settler cues its own animation,
- * so the emitter set follows the busy population rather than staying a handful, and a linear pass would
- * grow with the map instead of with the callers.
- */
+/** The positions and owners of exactly the `needed` entities, by per-id binary search: the emitter set
+ *  follows the busy population now that every working settler cues its own animation. */
 function emitterFacts(snapshot: WorldSnapshot, needed: ReadonlySet<number>): EmitterFacts {
   const tiles = new Map<number, TilePoint>();
   const owners = new Map<number, number>();
