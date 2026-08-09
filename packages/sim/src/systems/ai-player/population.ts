@@ -12,9 +12,10 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isAdultSettler, mayMarry } from '../family/eligibility.js';
 import { familiesOf } from '../family/households.js';
+import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import type { AiPlayerModule } from './index.js';
-import { assistantCounterCommand, isBuilt, ownedBuildings, ownedSettlers } from './shared.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from './seat-roster.js';
 
 /**
  * The HomeExpansion module (authored): who marries, which family takes a free home slot, and the birth

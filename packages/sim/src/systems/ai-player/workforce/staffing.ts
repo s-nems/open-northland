@@ -5,7 +5,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { isBuilt, ownedBuildings } from '../shared.js';
+import { isBuilt, ownedBuildings } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 import { incrementStaffing, type StaffingTally } from './tally.js';
 

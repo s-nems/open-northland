@@ -7,7 +7,7 @@ import { isAdultSettler } from '../../family/eligibility.js';
 import { isFighterJob, isScoutJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
-import { ownedSettlers } from '../shared.js';
+import { ownedSettlers } from '../seat-roster.js';
 import { GENERIC_COLLECTOR_TARGET, type WantedGood } from './collectors/index.js';
 
 export interface Workforce {

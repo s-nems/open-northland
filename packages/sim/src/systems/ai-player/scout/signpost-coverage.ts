@@ -5,7 +5,8 @@ import type { SystemContext } from '../../context.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { signpostNetwork, signpostProbe } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { anchorNodeOf, firstRingNode, ownedBuildings } from '../shared.js';
+import { anchorNodeOf, firstRingNode } from '../node-geometry.js';
+import { ownedBuildings } from '../seat-roster.js';
 
 /**
  * The signpost lattice the scout tiles the settlement with (authored): the covered field grows with the

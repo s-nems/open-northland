@@ -4,7 +4,7 @@ import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isScoutJob } from '../../readviews/index.js';
 import type { AiPlayerModule } from '../index.js';
-import { ownedSettlers } from '../shared.js';
+import { ownedSettlers } from '../seat-roster.js';
 import { nextLivestockCatch } from './livestock-catch.js';
 import { nextSignpostTarget } from './signpost-coverage.js';
 

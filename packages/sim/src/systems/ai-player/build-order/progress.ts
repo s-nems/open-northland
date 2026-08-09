@@ -6,15 +6,10 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
-import {
-  anchorNodeOf,
-  anyLiveResource,
-  buildingTypeByContentId,
-  goodTypeByContentId,
-  ownedBuildings,
-  ownedSettlers,
-  tiersAtOrAbove,
-} from '../shared.js';
+import { buildingTypeByContentId, goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import { anyLiveResource } from '../live-resources.js';
+import { anchorNodeOf } from '../node-geometry.js';
+import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import type { BuildOrderEntry } from './entries.js';
 import { firstUncoveredBuilding } from './tower-coverage.js';
 

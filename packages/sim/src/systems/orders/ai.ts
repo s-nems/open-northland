@@ -9,7 +9,7 @@ import {
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { AI_PUBLISHED_COUNTERS } from '../ai-player/shared.js';
+import { AI_PUBLISHED_COUNTERS } from '../ai-player/assistant-counters.js';
 import { resetAssistantCounters } from './assistant.js';
 
 /**

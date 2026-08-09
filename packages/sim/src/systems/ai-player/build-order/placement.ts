@@ -8,15 +8,9 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
 import { placementProbe } from '../../footprint/index.js';
-import {
-  anchorCentroid,
-  anchorNodeOf,
-  firstRingNode,
-  goodTypeByContentId,
-  nearestLiveResource,
-  outwardNode,
-  tiersAtOrAbove,
-} from '../shared.js';
+import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import { nearestLiveResource } from '../live-resources.js';
+import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 

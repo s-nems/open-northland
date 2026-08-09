@@ -14,7 +14,7 @@ import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
 import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
-import { ownedBuildings, ownedSettlers } from '../shared.js';
+import { ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import {
   allocateCollectors,
   allocateGenericCollectors,

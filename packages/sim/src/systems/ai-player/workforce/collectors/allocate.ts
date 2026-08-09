@@ -4,7 +4,8 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import type { SystemContext } from '../../../context.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
-import { anchorNodeOf, nearestLiveResource } from '../../shared.js';
+import { nearestLiveResource } from '../../live-resources.js';
+import { anchorNodeOf } from '../../node-geometry.js';
 import {
   claimFlagNode,
   collectorSpot,

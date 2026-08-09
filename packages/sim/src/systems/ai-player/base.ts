@@ -4,7 +4,8 @@ import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID, isBarracks } from '../readviews/index.js';
-import { anchorCentroid, anchorNodeOf, ownedBuildings } from './shared.js';
+import { anchorCentroid, anchorNodeOf } from './node-geometry.js';
+import { ownedBuildings } from './seat-roster.js';
 
 /**
  * The building the seat's economy anchors and gates on: its built headquarters, else the built storage
