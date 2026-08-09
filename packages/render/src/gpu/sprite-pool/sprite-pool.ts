@@ -7,6 +7,7 @@ import {
   type DrawItem,
   type LiveRefs,
   type SpriteDrawItem,
+  type SpriteScene,
   SpriteSpatialIndex,
   screenDepth,
 } from '../../data/scene/index.js';
@@ -21,6 +22,7 @@ import { PortraitSubject } from './portrait-subject.js';
 import { animationClock, easeReveal, revealedItem, walkPose } from './presentation.js';
 import { reconcileSprites } from './reconcile.js';
 import { resolveLayers } from './resolve-layers.js';
+import { SpriteSceneCache } from './scene-cache.js';
 
 /** The retained per-entity sprite pool, keyed by the entity's monotonic, never-reused id. */
 
@@ -51,6 +53,9 @@ export interface PoolFrame {
   readonly staticRefs?: ReadonlySet<number>;
   /** The fog-of-war cull: entities on tiles it rejects stay pooled but undrawn. Absent = no fog. */
   readonly fogVisible?: (tileX: number, tileY: number) => boolean;
+  /** Version of the fog cull's answers, bumped by the fog owner whenever `fogVisible` may answer
+   *  differently; a bump invalidates the cached scene build. Absent = no fog. */
+  readonly fogEpoch?: number;
   /** Remembered statics drawn dimmed on explored ground in place of their fog-culled or dead entities. */
   readonly ghosts?: readonly FogGhost[];
   /** Workplace-assignment highlight: building id → assignable (green tint) or not (red). Transient view
@@ -79,6 +84,7 @@ export class SpritePool {
   /** The death reap's round-robin cursor, carried across frames; `undefined` restarts a pass from the front. */
   private reapCursor: MapIterator<number> | undefined;
   private frameId = 0;
+  private readonly sceneCache = new SpriteSceneCache();
   private lastItems: readonly SpriteDrawItem[] = [];
   private readonly damaged: DamagedBuilding[] = [];
   private readonly portrait: PortraitSubject;
@@ -104,17 +110,7 @@ export class SpritePool {
    * and reap the ones that left the snapshot.
    */
   reconcile(frame: PoolFrame): void {
-    // One indexed pass yields both the culled draw list and the pre-cull liveness view the reap needs.
-    const scene = collectSpriteScene(frame.snapshot, {
-      viewport: frame.viewport,
-      elevation: frame.elevation,
-      staticRefs: frame.staticRefs,
-      index: this.spatial,
-      fogVisible: frame.fogVisible,
-      ghosts: frame.ghosts,
-      ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
-      ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
-    });
+    const scene = this.sceneFor(frame);
     this.frameId++;
     this.portrait.release();
     this.damaged.length = 0;
@@ -163,6 +159,29 @@ export class SpritePool {
     }
 
     this.reap(scene.liveRefs);
+  }
+
+  /**
+   * One indexed pass yields both the culled draw list and the pre-cull liveness view the reap needs,
+   * reused across frames while every input is unchanged - at high frame rates most frames only move
+   * `alpha`, which the build never reads. The cached liveness view stays valid because only a rebuild
+   * ever advances the spatial index it reads.
+   */
+  private sceneFor(frame: PoolFrame): SpriteScene {
+    const cached = this.sceneCache.lookup(frame);
+    if (cached !== null) return cached;
+    const scene = collectSpriteScene(frame.snapshot, {
+      viewport: frame.viewport,
+      elevation: frame.elevation,
+      staticRefs: frame.staticRefs,
+      index: this.spatial,
+      fogVisible: frame.fogVisible,
+      ghosts: frame.ghosts,
+      ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
+      ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
+    });
+    this.sceneCache.store(frame, scene);
+    return scene;
   }
 
   /** Free the entries in the next {@link POOL_REAP_BUDGET} slice that left the snapshot. */
@@ -254,6 +273,7 @@ export class SpritePool {
     this.pool.clear();
     this.attached.clear();
     this.reapCursor = undefined;
+    this.sceneCache.clear();
   }
 
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
