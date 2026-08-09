@@ -3,18 +3,23 @@ import { aiCommand, type PlayerCommand } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
+import { AI_DECISION_INTERVAL_TICKS } from './cadence.js';
 import { militaryModule } from './military/index.js';
 import { populationModule } from './population.js';
 import { scoutModule } from './scout/index.js';
-import { AI_DECISION_INTERVAL_TICKS } from './shared.js';
 import { workforceModule } from './workforce/index.js';
 
+export * from './assistant-counters.js';
 export * from './base.js';
 export * from './build-order/index.js';
+export * from './cadence.js';
+export * from './content-lookup.js';
+export * from './live-resources.js';
 export * from './military/index.js';
+export * from './node-geometry.js';
 export * from './population.js';
 export * from './scout/index.js';
-export * from './shared.js';
+export * from './seat-roster.js';
 export * from './workforce/index.js';
 
 /**

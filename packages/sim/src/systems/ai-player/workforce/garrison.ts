@@ -17,8 +17,9 @@ import { baseSoldierJobType, isSoldierJob } from '../../readviews/index.js';
 import { armableIntents } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
+import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
-import { assistantCounterCommand, ownedSettlers } from '../shared.js';
+import { ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 
 /** The army's weapon mix (authored): equal shares over the three armed classes, but only over those a

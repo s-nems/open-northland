@@ -2,7 +2,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import type { AiPlayerModule } from '../index.js';
-import { ownedBuildings } from '../shared.js';
+import { ownedBuildings } from '../seat-roster.js';
 import { takeCensus } from './census.js';
 import {
   alarmOrders,

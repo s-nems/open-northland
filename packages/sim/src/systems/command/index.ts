@@ -10,8 +10,9 @@ import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
-// Deliberately the module, not the orders barrel: the handler reaches into `ai-player/shared.js` for
-// the published-counter map, and routing that through the barrel would widen its import graph.
+// Deliberately the module, not the orders barrel: the handler reaches into
+// `ai-player/assistant-counters.js` for the published-counter map, and routing that through the
+// barrel would widen its import graph.
 import { setPlayerAi } from '../orders/ai.js';
 import {
   assignBuilder,

@@ -5,13 +5,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { hunterJobType, isHunterJob } from '../../readviews/index.js';
-import {
-  buildingTypeByContentId,
-  isBuilt,
-  ownedBuildings,
-  ownedSettlers,
-  tiersAtOrAbove,
-} from '../shared.js';
+import { buildingTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../seat-roster.js';
 import type { SpareForce } from './pool.js';
 
 /**

@@ -5,7 +5,8 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { goodTypeByContentId, ownedSettlers } from '../shared.js';
+import { goodTypeByContentId } from '../content-lookup.js';
+import { ownedSettlers } from '../seat-roster.js';
 
 /**
  * Product restrictions per workplace, by stable content ids (authored). One list per operator, handed

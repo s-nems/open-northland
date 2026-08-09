@@ -5,7 +5,7 @@ import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { shelterCapacityOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
-import { isBuilt } from '../../shared.js';
+import { isBuilt } from '../../seat-roster.js';
 import { nearestRaiderWithin, type Raider, watchBandOf } from './threat.js';
 
 /** Ring and unring the seat's shelters: defence mode goes up on every standing shelter a raider has

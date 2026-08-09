@@ -3,7 +3,9 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
-import { AI_DECISION_INTERVAL_TICKS, anchorNodeOf, nearestLiveResource } from '../../shared.js';
+import { AI_DECISION_INTERVAL_TICKS } from '../../cadence.js';
+import { nearestLiveResource } from '../../live-resources.js';
+import { anchorNodeOf } from '../../node-geometry.js';
 import {
   claimFlagNode,
   FLAG_MAX_DISTANCE_NODES,

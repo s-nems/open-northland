@@ -6,7 +6,8 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { workFlagPlacementBlocks } from '../../footprint/index.js';
 import { anyResourceNear } from '../../spatial/resources.js';
-import { anchorNodeOf, firstRingNode, nearestLiveResource } from '../shared.js';
+import { nearestLiveResource } from '../live-resources.js';
+import { anchorNodeOf, firstRingNode } from '../node-geometry.js';
 
 /** A collector's flag stands 2-3 tiles from its resource (authored) - 4..6 half-cell nodes. */
 export const FLAG_MIN_DISTANCE_NODES = 4;

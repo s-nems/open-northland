@@ -13,7 +13,7 @@ import { towerPostFor } from '../../conflict/tower-post.js';
 import { attackerWeapon } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
 import { isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE, weaponClassOf } from '../../readviews/index.js';
-import { ownedSettlers } from '../shared.js';
+import { ownedSettlers } from '../seat-roster.js';
 
 /** The seat's fighters, sorted by what this decision can do with them (canonical ascending id). */
 export interface ArmyCensus {

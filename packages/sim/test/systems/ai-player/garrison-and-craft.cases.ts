@@ -11,7 +11,7 @@ import {
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
-import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/shared.js';
+import { AI_PUBLISHED_COUNTERS } from '../../../src/systems/ai-player/assistant-counters.js';
 import { isFighterJob, type SystemContext } from '../../../src/systems/index.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import { stampPost } from '../../signposts/support.js';

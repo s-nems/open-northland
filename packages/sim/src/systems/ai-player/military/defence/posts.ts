@@ -8,7 +8,7 @@ import { isFighterJob } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { manhattan } from '../../../spatial/metric.js';
 import { entityNode } from '../../../spatial/nodes.js';
-import { isBuilt } from '../../shared.js';
+import { isBuilt } from '../../seat-roster.js';
 import { buildStaffingTally, incrementStaffing, type StaffingTally } from '../../workforce/tally.js';
 import { spokenFor } from '../errand.js';
 

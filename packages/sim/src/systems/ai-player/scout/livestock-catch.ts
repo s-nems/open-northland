@@ -4,7 +4,7 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { seatBaseOf } from '../base.js';
-import { anchorNodeOf } from '../shared.js';
+import { anchorNodeOf } from '../node-geometry.js';
 
 /**
  * How far (half-cell node Manhattan) from the seat's base an animal is still the settlement's to

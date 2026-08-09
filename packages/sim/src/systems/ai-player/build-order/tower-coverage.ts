@@ -7,7 +7,7 @@ import { withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { seatBaseOf } from '../base.js';
-import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../shared.js';
+import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 import { buildingSpotAccept } from './placement.js';
 
