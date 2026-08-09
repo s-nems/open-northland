@@ -354,10 +354,7 @@ function prepareSegment(bytes: Uint8Array): PreparedSegment & { readonly length:
     switch (track.kind) {
       case 'tempo':
         for (const item of track.items) {
-          // The validated renders come from a player that read each tempo item's time out of the
-          // record's padding dword, which this corpus always authors as zero: every tempo change
-          // applies at time zero, and the last one to pop wins.
-          messages.push({ kind: 'tempo', time: 0, tempo: item.bpm });
+          messages.push({ kind: 'tempo', time: item.time, tempo: item.bpm });
         }
         break;
       case 'pattern':
