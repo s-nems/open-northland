@@ -71,6 +71,7 @@ export {
   makeElevationField,
   mapPreviewSize,
   patternSrcRect,
+  projectTile,
   rasterizeTerrain,
   type TerrainCells,
   terrainLiftAt,
