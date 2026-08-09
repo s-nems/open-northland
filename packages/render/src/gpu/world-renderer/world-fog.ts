@@ -10,13 +10,20 @@ import type { PoolFrame } from '../sprite-pool/index.js';
  * disagree about a cell.
  */
 
-export type FogPoolFrame = Pick<PoolFrame, 'staticRefs' | 'fogVisible' | 'ghosts'>;
+export type FogPoolFrame = Pick<PoolFrame, 'staticRefs' | 'fogVisible' | 'fogEpoch' | 'ghosts'>;
 
 export class WorldFog {
   private readonly wash = new FogLayer();
   private view: FogView | null = null;
   private readonly ghosts = new FogGhostStore();
   private staticRefs: ReadonlySet<number> | undefined;
+  /** Bumped when the cull's answers may change: a mask rebuild (`generation`) or a mode remap of
+   *  `stateAt`. Consumers key their per-frame caches on it instead of re-probing a steady mask.
+   *  Load-bearing invariant: the view's player is fixed for a renderer's lifetime, so the viewer is
+   *  not key material; a future viewer switch must reset `lastGeneration`. */
+  private epoch = 0;
+  private lastGeneration = -1;
+  private lastMode: FogView['mode'] | null = null;
   /** Bound once: the pool's cull predicate reads the live view, so a frame allocates no closure. */
   private readonly visibleAt = (tileX: number, tileY: number): boolean =>
     this.view === null || fogTileVisible(this.view, tileX, tileY);
@@ -38,7 +45,8 @@ export class WorldFog {
     this.ghosts.adopt(ref);
   }
 
-  /** Live view: the caller keeps mutating this same set as nodes are first worked and never re-passes it. */
+  /** Live view: the caller keeps shrinking this same set as nodes are first worked and never
+   *  re-passes it (the handover seam's shrink-only contract). */
   setStaticallyDrawnRefs(refs: ReadonlySet<number>): void {
     this.staticRefs = refs;
   }
@@ -53,10 +61,16 @@ export class WorldFog {
       this.ghosts.clear();
       return staticRefs === undefined ? {} : { staticRefs };
     }
+    if (view.generation !== this.lastGeneration || view.mode !== this.lastMode) {
+      this.epoch++;
+      this.lastGeneration = view.generation;
+      this.lastMode = view.mode;
+    }
     const ghosts = this.ghosts.update(snapshot, view, staticRefs);
     return {
       ...(staticRefs !== undefined ? { staticRefs } : {}),
       fogVisible: this.visibleAt,
+      fogEpoch: this.epoch,
       ...(ghosts.length > 0 ? { ghosts } : {}),
     };
   }

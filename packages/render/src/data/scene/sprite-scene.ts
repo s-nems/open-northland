@@ -28,8 +28,8 @@ export interface LiveRefs {
 export interface SpriteScene {
   readonly items: SpriteDrawItem[];
   /** Membership over every drawable entity before the cull: a ref answering false has died, one
-   *  answering true but absent from {@link items} is merely off-screen. Valid for this build's frame
-   *  only, since the index-backed view reads shared mutable state. */
+   *  answering true but absent from {@link items} is merely off-screen. The index-backed view reads
+   *  shared mutable state, so it stays valid only until the index is next updated. */
   readonly liveRefs: LiveRefs;
 }
 

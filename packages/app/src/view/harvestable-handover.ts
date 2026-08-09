@@ -2,7 +2,8 @@ import type { Entity, SimEvent } from '@open-northland/sim';
 
 /** The renderer side of the static-to-dynamic draw split: the sim draw pool skips statically drawn refs. */
 export interface StaticDrawSurface<Sprite> {
-  /** Held and read per frame by the renderer, so the handover mutates it in place. */
+  /** Held and read per frame by the renderer, so the handover mutates it in place - and only ever
+   *  deletes from it, an invariant the renderer's scene cache keys on. */
   setStaticallyDrawnRefs(refs: ReadonlySet<number>): void;
   removeMapObject(sprite: Sprite): void;
   adoptFogGhost(entity: number): void;

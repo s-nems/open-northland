@@ -1,4 +1,4 @@
-import { FOG_STATE } from '@open-northland/sim';
+import { FOG_MODE, FOG_STATE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { ONE } from '../src/data/projection/index.js';
 import { WorldFog } from '../src/gpu/world-renderer/world-fog.js';
@@ -78,6 +78,22 @@ describe('WorldFog', () => {
     fog.setStaticallyDrawnRefs(new Set());
     fog.adoptGhost(TREE.id);
     expect(fog.update(WORLD, VIEWPORT).ghosts).toMatchObject([{ ref: TREE.id, kind: 'resource' }]);
+  });
+
+  it('holds the fog epoch on a steady mask and bumps it on a generation or mode change', () => {
+    const fog = new WorldFog();
+    expect(fog.update(WORLD, VIEWPORT).fogEpoch).toBeUndefined(); // fog off: no cull, no key
+    fog.setView(watching(HOUSE_CELL, 1));
+    const first = fog.update(WORLD, VIEWPORT).fogEpoch;
+    expect(first).toBeDefined();
+    fog.setView(watching(HOUSE_CELL, 1));
+    expect(fog.update(WORLD, VIEWPORT).fogEpoch).toBe(first);
+    fog.setView(watching(HOUSE_CELL, 2));
+    const rebuilt = fog.update(WORLD, VIEWPORT).fogEpoch;
+    expect(rebuilt).not.toBe(first);
+    // RECON remaps what stateAt answers without a mask rebuild, so the epoch must move too.
+    fog.setView(fogViewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 2, FOG_MODE.RECON));
+    expect(fog.update(WORLD, VIEWPORT).fogEpoch).not.toBe(rebuilt);
   });
 
   it('reads the mask once per generation, not once per frame', () => {
