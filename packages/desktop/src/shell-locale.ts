@@ -1,6 +1,12 @@
+import {
+  currentLocale,
+  LOCALE_CODES,
+  LOCALES,
+  type Locale,
+  setActiveLocale,
+} from '@open-northland/installer/i18n';
 import type { BrowserWindow } from 'electron';
 import { patchConfig } from './config.js';
-import { currentLocale, LOCALE_CODES, LOCALES, type Locale, setActiveLocale } from './i18n/index.js';
 import { isGamePage } from './protocol-routing.js';
 import type { ShellPaths } from './shell-state.js';
 import { buildAppMenu } from './window.js';

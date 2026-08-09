@@ -10,6 +10,7 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../content-resolver" },
+    { "path": "../installer" },
     { "path": "../vfs" },
     { "path": "../../tools/asset-pipeline" }
   ]

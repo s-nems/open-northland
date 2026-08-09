@@ -1,5 +1,6 @@
+import type { ModEvent, PipelineEvent } from '@open-northland/installer';
 import { contextBridge, ipcRenderer } from 'electron';
-import type { DesktopApi, ModEvent, PipelineEvent } from './ipc.js';
+import type { DesktopApi } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
 
 /** The context-isolated bridge: the renderer gets exactly this API as `window.desktop`, no `ipcRenderer`. */

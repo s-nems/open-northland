@@ -1,7 +1,4 @@
-import type { GameFolderProbe } from '@open-northland/asset-pipeline';
-import type { PipelineStageId } from '@open-northland/asset-pipeline/progress';
-import type { ContentStatus } from './content-state.js';
-import type { Locale } from './i18n/index.js';
+import type { ShellApi } from '@open-northland/installer';
 
 export const IPC_CHANNELS = {
   getState: 'desktop:get-state',
@@ -34,26 +31,6 @@ export type IpcInvokeChannel = Exclude<
   (typeof SEND_ONLY_CHANNELS)[number]
 >;
 
-/** What the setup renderer needs to render its first screen. */
-export interface DesktopState {
-  /** Where `content/` and the config live; the precedence is `paths.ts`. */
-  readonly dataRoot: string;
-  readonly portable: boolean;
-  /** The installer language: the persisted choice, else the detected OS locale. */
-  readonly locale: Locale;
-  /** How the installed content compares to this shell's pipeline. */
-  readonly contentStatus: ContentStatus;
-  /** The game folder remembered from a previous run, to prefill the picker. */
-  readonly gamePath?: string;
-  /** A usable culturesnation mod root outside the game folder, if any. */
-  readonly modRoot?: string;
-}
-
-export interface GameFolderCandidate {
-  readonly path: string;
-  readonly probe: GameFolderProbe;
-}
-
 /** A picked save file's display name and raw bytes; never a filesystem path. */
 export interface SaveFileBytes {
   readonly name: string;
@@ -68,43 +45,9 @@ export interface ListedSaveFile {
   readonly prefix: Uint8Array;
 }
 
-export type PipelineEvent =
-  | { readonly kind: 'stage'; readonly stage: PipelineStageId }
-  | { readonly kind: 'item'; readonly done: number; readonly total?: number }
-  | { readonly kind: 'log'; readonly line: string }
-  | { readonly kind: 'done' }
-  | { readonly kind: 'error'; readonly message: string };
-
-export type ModEvent =
-  | { readonly kind: 'mod-download'; readonly received: number; readonly total?: number }
-  | { readonly kind: 'mod-extract'; readonly done: number; readonly total: number }
-  | { readonly kind: 'mod-warning'; readonly message: string };
-
-/** The API the preload bridge exposes to the setup renderer as `window.desktop`. */
-export interface DesktopApi {
-  getState(): Promise<DesktopState>;
-  /** Native folder picker; `null` when the user cancels. */
-  pickGameFolder(): Promise<GameFolderCandidate | null>;
-  probeGamePath(path: string): Promise<GameFolderCandidate>;
-  detectGameFolders(): Promise<GameFolderCandidate[]>;
-  /** Start converting `gamePath` into the data root; progress arrives on `onPipelineEvent`. */
-  runPipeline(gamePath: string): Promise<void>;
-  /** Abort a running conversion; resolves once the child exited, without throwing. */
-  stopPipeline(): Promise<void>;
-  onPipelineEvent(listener: (event: PipelineEvent) => void): void;
-  /** Install the culturesnation mod into the data root; resolves to its root path. */
-  downloadMod(): Promise<string>;
-  /** Abort a running mod download, rejecting its `downloadMod` promise. */
-  cancelModDownload(): Promise<void>;
-  /** Resolves to the validated mod root under the picked folder; `null` when the user cancels. */
-  pickModFolder(): Promise<string | null>;
-  onModEvent(listener: (event: ModEvent) => void): void;
-  /** Swap the window from the setup page to the game. */
-  startGame(): Promise<void>;
-  /** Persist the installer language and re-localize the native menu. */
-  setLocale(locale: Locale): Promise<void>;
-  // The file methods mirror the game page's structural bridges, `GameFileBridge` and
-  // `SaveListBridge` (`packages/app/src/view/runtime/save-load/`).
+/** Native save-file access, mirroring the game page's structural bridges `GameFileBridge` and
+ *  `SaveListBridge` (`packages/app/src/view/runtime/save-load/`). */
+export interface DesktopSaveApi {
   /** Native save dialog for a game save; resolves to the written file's basename, null on cancel. */
   saveGameFile(suggestedName: string, contents: Uint8Array): Promise<string | null>;
   /** Native open dialog for a game save; null on cancel. */
@@ -119,3 +62,10 @@ export interface DesktopApi {
   /** Reveal the saves folder in the OS file manager, creating it first. */
   showSavesFolder(): Promise<void>;
 }
+
+/** The shared setup contract plus the desktop-only save bridges, implemented by the preload bridge
+ *  as `window.desktop`. The desktop shell serves typed paths and install detection; folder drops
+ *  stay a web-shell affordance. */
+export type DesktopApi = Required<Omit<ShellApi, 'handleDrop'>> &
+  Pick<ShellApi, 'handleDrop'> &
+  DesktopSaveApi;

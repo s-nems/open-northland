@@ -1,6 +1,6 @@
+import type { ContentStatus } from '@open-northland/installer';
+import { type Locale, messages } from '@open-northland/installer/i18n';
 import { BrowserWindow, dialog, Menu, shell } from 'electron';
-import type { ContentStatus } from './content-state.js';
-import { type Locale, messages } from './i18n/index.js';
 import { gameUrlForLocale, SETUP_URL } from './protocol.js';
 import { isAppUrl, isInGameSession } from './protocol-routing.js';
 

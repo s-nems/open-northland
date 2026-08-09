@@ -8,6 +8,8 @@ export const en = {
       'original game into its data folder. Select the folder your game is installed in (the one with ' +
       '<code>the original</code> and <code>DataX</code>) to begin.',
     pathPlaceholder: 'Path to your Cultures 8th Wonder folder…',
+    dropPrompt: 'Drop your Cultures 8th Wonder folder here',
+    browserStorage: "this browser's private storage",
     browse: 'Browse…',
     detected: 'Found on this computer:',
     install: 'Install game content',

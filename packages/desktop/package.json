@@ -15,6 +15,7 @@
   "dependencies": {
     "@open-northland/asset-pipeline": "*",
     "@open-northland/content-resolver": "*",
+    "@open-northland/installer": "*",
     "@open-northland/vfs": "*"
   },
   "devDependencies": {

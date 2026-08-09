@@ -7,7 +7,7 @@ import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf, SETUP_HOST } fro
 
 /** The `app://` scheme the shell serves the game from: the packaged stand-in for the Vite dev server. */
 
-import type { Locale } from './i18n/index.js';
+import type { Locale } from '@open-northland/installer/i18n';
 
 export const GAME_URL = `${APP_ORIGIN_PREFIX}${GAME_HOST}/index.html`;
 export const SETUP_URL = `${APP_ORIGIN_PREFIX}${SETUP_HOST}/setup.html`;

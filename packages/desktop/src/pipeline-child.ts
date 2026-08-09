@@ -1,8 +1,7 @@
 import { runPipeline } from '@open-northland/asset-pipeline';
 import type { PipelineProgress } from '@open-northland/asset-pipeline/progress';
+import { createEventThrottle, type PipelineEvent } from '@open-northland/installer';
 import { nodeVfs } from '@open-northland/vfs/node';
-import { createEventThrottle } from './event-throttle.js';
-import type { PipelineEvent } from './ipc.js';
 
 /**
  * The pipeline runner forked as an Electron `utilityProcess`: the conversion is CPU-bound JS (image

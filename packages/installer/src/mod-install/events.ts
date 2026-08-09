@@ -1,4 +1,4 @@
-import type { ModEvent } from '../ipc.js';
+import type { ModEvent } from '../shell-api.js';
 
 /**
  * Installer events the progress throttle must not drop: a lost last tick leaves that phase's bar

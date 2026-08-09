@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { ModEvent } from '../../src/ipc.js';
-import { isFinalModEvent } from '../../src/mod-install/events.js';
+import { isFinalModEvent } from '../src/mod-install/events.js';
+import type { ModEvent } from '../src/shell-api.js';
 
 /** Which installer events bypass the progress throttle. */
 describe('isFinalModEvent', () => {

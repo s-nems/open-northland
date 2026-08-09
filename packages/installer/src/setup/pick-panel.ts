@@ -1,6 +1,6 @@
 import type { ContentStatus } from '../content-state.js';
 import { messages } from '../i18n/index.js';
-import type { DesktopState, GameFolderCandidate, ModEvent } from '../ipc.js';
+import type { GameFolderCandidate, ModEvent, ShellApi, ShellSetupState } from '../shell-api.js';
 import { el } from './dom.js';
 import { createModPanel } from './mod-panel.js';
 import { type Probe, pickView } from './pick-view.js';
@@ -8,7 +8,7 @@ import { type Probe, pickView } from './pick-view.js';
 const PROBE_DEBOUNCE_MS = 300;
 
 export interface PickPanelView {
-  applyState(state: DesktopState): void;
+  applyState(state: ShellSetupState): void;
   /** Wires the controls, so it must run after {@link applyState}: no click may land first. */
   start(rememberedGamePath: string | undefined): Promise<void>;
   handleModEvent(event: ModEvent): void;
@@ -20,19 +20,20 @@ export interface PickPanelHandlers {
   onPlay(): void;
 }
 
-export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickPanelView {
+export function createPickPanel(api: ShellApi, { onInstall, onPlay }: PickPanelHandlers): PickPanelView {
   const pathInput = el<HTMLInputElement>('game-path');
   const probeNote = el('probe-note');
   const statusNote = el('status-note');
   const installButton = el<HTMLButtonElement>('install');
   const playNowButton = el<HTMLButtonElement>('play-now');
+  const dropZone = el('drop-zone');
 
   let probe: Probe = { kind: 'idle' };
   let externalModRoot: string | undefined;
   /** Remembered so a language switch can re-derive the phase without re-fetching the shell state. */
   let contentStatus: ContentStatus = 'missing';
 
-  const modPanel = createModPanel((root) => {
+  const modPanel = createModPanel(api, (root) => {
     externalModRoot = root;
     render();
   });
@@ -62,7 +63,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
 
   let probeGeneration = 0;
 
-  async function probeTyped(): Promise<void> {
+  async function probeTyped(probeGamePath: (path: string) => Promise<GameFolderCandidate>): Promise<void> {
     const generation = ++probeGeneration;
     const typed = pathInput.value.trim();
     if (typed === '') {
@@ -70,21 +71,43 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
       render();
       return;
     }
-    const candidate = await window.desktop.probeGamePath(typed);
+    const candidate = await probeGamePath(typed);
     if (generation !== probeGeneration) return; // a newer keystroke's probe is already in flight
     applyCandidate(candidate, false);
   }
 
+  function listenDropZone(handleDrop: NonNullable<ShellApi['handleDrop']>): void {
+    dropZone.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', (event) => {
+      event.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const transfer = event.dataTransfer;
+      if (transfer === null) return;
+      void handleDrop(transfer).then((candidate) => {
+        if (candidate !== null) applyCandidate(candidate);
+      });
+    });
+  }
+
   function listen(): void {
     el('browse').addEventListener('click', async () => {
-      const picked = await window.desktop.pickGameFolder();
+      const picked = await api.pickGameFolder();
       if (picked !== null) applyCandidate(picked);
     });
-    let probeTimer: number | undefined;
-    pathInput.addEventListener('input', () => {
-      window.clearTimeout(probeTimer);
-      probeTimer = window.setTimeout(() => void probeTyped(), PROBE_DEBOUNCE_MS);
-    });
+    const probeGamePath = api.probeGamePath?.bind(api);
+    if (probeGamePath !== undefined) {
+      let probeTimer: number | undefined;
+      pathInput.addEventListener('input', () => {
+        window.clearTimeout(probeTimer);
+        probeTimer = window.setTimeout(() => void probeTyped(probeGamePath), PROBE_DEBOUNCE_MS);
+      });
+    }
+    const handleDrop = api.handleDrop?.bind(api);
+    if (handleDrop !== undefined) listenDropZone(handleDrop);
     installButton.addEventListener('click', () => {
       if (probe.kind === 'valid') onInstall(probe.path);
     });
@@ -92,7 +115,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
   }
 
   return {
-    applyState(state: DesktopState): void {
+    applyState(state: ShellSetupState): void {
       contentStatus = state.contentStatus;
       // The mod panel is live from construction, so a mod resolved while this state was in flight
       // outranks the older startup answer.
@@ -100,11 +123,13 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     },
 
     async start(rememberedGamePath: string | undefined): Promise<void> {
-      if (rememberedGamePath !== undefined) {
-        applyCandidate(await window.desktop.probeGamePath(rememberedGamePath));
+      pathInput.classList.toggle('hidden', api.probeGamePath === undefined);
+      dropZone.classList.toggle('hidden', api.handleDrop === undefined);
+      if (rememberedGamePath !== undefined && api.probeGamePath !== undefined) {
+        applyCandidate(await api.probeGamePath(rememberedGamePath));
       }
       listen();
-      const detected = await window.desktop.detectGameFolders();
+      const detected = (await api.detectGameFolders?.()) ?? [];
       if (detected.length === 0) return;
       el('detected').classList.remove('hidden');
       const list = el('detected-list');
@@ -122,6 +147,7 @@ export function createPickPanel({ onInstall, onPlay }: PickPanelHandlers): PickP
     applyLabels(): void {
       const t = messages().setup;
       pathInput.placeholder = t.pathPlaceholder;
+      el('drop-zone-label').textContent = t.dropPrompt;
       el('browse').textContent = t.browse;
       el('detected-label').textContent = t.detected;
       modPanel.applyLabels();

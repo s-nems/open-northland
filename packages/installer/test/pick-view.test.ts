@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import type { ContentStatus } from '../../src/content-state.js';
-import { formatMessage, messages, setActiveLocale } from '../../src/i18n/index.js';
-import { type PickState, type Probe, pickView } from '../../src/setup/pick-view.js';
+import type { ContentStatus } from '../src/content-state.js';
+import { formatMessage, messages, setActiveLocale } from '../src/i18n/index.js';
+import { type PickState, type Probe, pickView } from '../src/setup/pick-view.js';
 
 const VALID_WITH_MOD: Probe = { kind: 'valid', path: '/games/cultures', hasMod: true };
 const VALID_WITHOUT_MOD: Probe = { kind: 'valid', path: '/games/cultures', hasMod: false };
