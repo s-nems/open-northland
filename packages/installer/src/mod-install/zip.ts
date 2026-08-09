@@ -1,5 +1,4 @@
-import type { FileHandle } from 'node:fs/promises';
-import { inflateRaw } from 'node:zlib';
+import type { Vfs } from '@open-northland/vfs';
 
 /**
  * Minimal ZIP reader (PKWARE APPNOTE 4.5): end-of-central-directory record → central directory →
@@ -32,11 +31,44 @@ const CENTRAL_COMMENT_LENGTH = 32;
 const CENTRAL_LOCAL_HEADER_OFFSET = 42;
 const LOCAL_NAME_LENGTH = 26;
 const LOCAL_EXTRA_LENGTH = 28;
-/** General-purpose flag bit 11: the name is UTF-8, otherwise CP437 - decoded as latin1, which
+/** General-purpose flag bit 11: the name is UTF-8, otherwise CP437 - decoded byte-identically, which
  * preserves the bytes for path handling. */
 const UTF8_NAME_FLAG = 1 << 11;
 const METHOD_STORED = 0;
 const METHOD_DEFLATE = 8;
+
+/** Random access over an archive, so a disk file and a browser Blob read through one seam. */
+export interface ZipSource {
+  readonly size: number;
+  /** Exactly `length` bytes at `offset`; a short read throws. */
+  read(offset: number, length: number): Promise<Uint8Array>;
+}
+
+export async function vfsZipSource(fs: Vfs, path: string): Promise<ZipSource> {
+  const info = await fs.stat(path);
+  if (info?.kind !== 'file') throw new Error(`zip: no archive at ${path}`);
+  return {
+    size: info.size,
+    async read(offset: number, length: number): Promise<Uint8Array> {
+      const bytes = await fs.readFileSlice(path, offset, length);
+      if (bytes.length !== length)
+        throw new Error(`zip: short read at ${offset} (${bytes.length}/${length})`);
+      return bytes;
+    },
+  };
+}
+
+export function blobZipSource(blob: Blob): ZipSource {
+  return {
+    size: blob.size,
+    async read(offset: number, length: number): Promise<Uint8Array> {
+      const bytes = new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer());
+      if (bytes.length !== length)
+        throw new Error(`zip: short read at ${offset} (${bytes.length}/${length})`);
+      return bytes;
+    },
+  };
+}
 
 export interface ZipEntry {
   /** Entry name as stored (forward-slash separated); directories end with `/`. */
@@ -48,88 +80,111 @@ export interface ZipEntry {
   readonly localHeaderOffset: number;
 }
 
-async function readAt(fh: FileHandle, offset: number, length: number): Promise<Buffer> {
-  const buffer = Buffer.alloc(length);
-  const { bytesRead } = await fh.read(buffer, 0, length, offset);
-  if (bytesRead !== length) throw new Error(`zip: short read at ${offset} (${bytesRead}/${length})`);
-  return buffer;
+const utf8 = new TextDecoder();
+
+/** Byte-identity decode for CP437-flagged names; code point = byte, so path bytes survive intact. */
+function decodeByteIdentity(bytes: Uint8Array): string {
+  let out = '';
+  for (const byte of bytes) out += String.fromCharCode(byte);
+  return out;
 }
 
-export async function readZipEntries(fh: FileHandle, fileSize: number): Promise<ZipEntry[]> {
-  const span = Math.min(fileSize, EOCD_SEARCH_SPAN);
-  const tail = await readAt(fh, fileSize - span, span);
+function viewOf(bytes: Uint8Array): DataView {
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+}
+
+export async function readZipEntries(source: ZipSource): Promise<ZipEntry[]> {
+  const span = Math.min(source.size, EOCD_SEARCH_SPAN);
+  const tail = await source.read(source.size - span, span);
+  const tailView = viewOf(tail);
   let eocd = -1;
   for (let i = span - EOCD_MIN_SIZE; i >= 0; i--) {
     // A real EOCD's comment length reaches exactly the end of the file; a stray signature inside a
     // comment or trailing garbage does not.
     if (
-      tail.readUInt32LE(i) === EOCD_SIGNATURE &&
-      i + EOCD_MIN_SIZE + tail.readUInt16LE(i + EOCD_COMMENT_LENGTH) === span
+      tailView.getUint32(i, true) === EOCD_SIGNATURE &&
+      i + EOCD_MIN_SIZE + tailView.getUint16(i + EOCD_COMMENT_LENGTH, true) === span
     ) {
       eocd = i;
       break;
     }
   }
   if (eocd === -1) throw new Error('zip: no end-of-central-directory record (not a zip file?)');
-  const count = tail.readUInt16LE(eocd + EOCD_ENTRY_COUNT);
-  const cdSize = tail.readUInt32LE(eocd + EOCD_CD_SIZE);
-  const cdOffset = tail.readUInt32LE(eocd + EOCD_CD_OFFSET);
+  const count = tailView.getUint16(eocd + EOCD_ENTRY_COUNT, true);
+  const cdSize = tailView.getUint32(eocd + EOCD_CD_SIZE, true);
+  const cdOffset = tailView.getUint32(eocd + EOCD_CD_OFFSET, true);
   if (count === 0xffff || cdOffset === 0xffffffff) throw new Error('zip: ZIP64 archives are not supported');
   // Untrusted u32 fields: a directory claiming to lie past the file would drive a multi-GB alloc.
-  if (cdOffset + cdSize > fileSize) throw new Error('zip: central directory lies outside the file');
+  if (cdOffset + cdSize > source.size) throw new Error('zip: central directory lies outside the file');
 
-  const cd = await readAt(fh, cdOffset, cdSize);
+  const cd = await source.read(cdOffset, cdSize);
+  const cdView = viewOf(cd);
   const entries: ZipEntry[] = [];
   let at = 0;
   for (let i = 0; i < count; i++) {
-    if (at + CENTRAL_HEADER_SIZE > cd.length || cd.readUInt32LE(at) !== CENTRAL_SIGNATURE) {
+    if (at + CENTRAL_HEADER_SIZE > cd.length || cdView.getUint32(at, true) !== CENTRAL_SIGNATURE) {
       throw new Error(`zip: corrupt central directory at entry ${i}`);
     }
-    const flags = cd.readUInt16LE(at + CENTRAL_FLAGS);
-    const method = cd.readUInt16LE(at + CENTRAL_METHOD);
-    const compressedSize = cd.readUInt32LE(at + CENTRAL_COMPRESSED_SIZE);
-    const size = cd.readUInt32LE(at + CENTRAL_UNCOMPRESSED_SIZE);
-    const nameLength = cd.readUInt16LE(at + CENTRAL_NAME_LENGTH);
-    const extraLength = cd.readUInt16LE(at + CENTRAL_EXTRA_LENGTH);
-    const commentLength = cd.readUInt16LE(at + CENTRAL_COMMENT_LENGTH);
-    const localHeaderOffset = cd.readUInt32LE(at + CENTRAL_LOCAL_HEADER_OFFSET);
-    const name = cd
-      .subarray(at + CENTRAL_HEADER_SIZE, at + CENTRAL_HEADER_SIZE + nameLength)
-      .toString((flags & UTF8_NAME_FLAG) !== 0 ? 'utf8' : 'latin1');
+    const flags = cdView.getUint16(at + CENTRAL_FLAGS, true);
+    const method = cdView.getUint16(at + CENTRAL_METHOD, true);
+    const compressedSize = cdView.getUint32(at + CENTRAL_COMPRESSED_SIZE, true);
+    const size = cdView.getUint32(at + CENTRAL_UNCOMPRESSED_SIZE, true);
+    const nameLength = cdView.getUint16(at + CENTRAL_NAME_LENGTH, true);
+    const extraLength = cdView.getUint16(at + CENTRAL_EXTRA_LENGTH, true);
+    const commentLength = cdView.getUint16(at + CENTRAL_COMMENT_LENGTH, true);
+    const localHeaderOffset = cdView.getUint32(at + CENTRAL_LOCAL_HEADER_OFFSET, true);
+    const nameBytes = cd.subarray(at + CENTRAL_HEADER_SIZE, at + CENTRAL_HEADER_SIZE + nameLength);
+    const name = (flags & UTF8_NAME_FLAG) !== 0 ? utf8.decode(nameBytes) : decodeByteIdentity(nameBytes);
     entries.push({ name, method, compressedSize, size, localHeaderOffset });
     at += CENTRAL_HEADER_SIZE + nameLength + extraLength + commentLength;
   }
   return entries;
 }
 
+/** Raw-deflate decompression, refusing output beyond `maxSize` so a lying member cannot exhaust memory. */
+async function inflateRawBounded(compressed: Uint8Array, maxSize: number): Promise<Uint8Array> {
+  const source: ReadableStream<BufferSource> = new Blob([compressed as BlobPart]).stream();
+  const reader = source.pipeThrough(new DecompressionStream('deflate-raw')).getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > maxSize) {
+      await reader.cancel();
+      throw new Error(`zip: deflate output exceeds the declared ${maxSize} bytes`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, at);
+    at += chunk.length;
+  }
+  return out;
+}
+
 /**
  * Reads and decompresses one entry through its local header, whose extra field can differ from the
- * central one. `fileSize` bounds the claimed compressed size and the central uncompressed size caps
- * inflate output, so a lying deflate member cannot exhaust memory.
+ * central one. The source size bounds the claimed compressed size and the central uncompressed size
+ * caps inflate output.
  */
-export async function readZipEntryData(
-  fh: FileHandle,
-  entry: ZipEntry,
-  fileSize: number,
-): Promise<Uint8Array> {
-  const local = await readAt(fh, entry.localHeaderOffset, LOCAL_HEADER_SIZE);
-  if (local.readUInt32LE(0) !== LOCAL_SIGNATURE) {
+export async function readZipEntryData(source: ZipSource, entry: ZipEntry): Promise<Uint8Array> {
+  const local = await source.read(entry.localHeaderOffset, LOCAL_HEADER_SIZE);
+  const localView = viewOf(local);
+  if (localView.getUint32(0, true) !== LOCAL_SIGNATURE) {
     throw new Error(`zip: corrupt local header for ${entry.name}`);
   }
-  const nameLength = local.readUInt16LE(LOCAL_NAME_LENGTH);
-  const extraLength = local.readUInt16LE(LOCAL_EXTRA_LENGTH);
+  const nameLength = localView.getUint16(LOCAL_NAME_LENGTH, true);
+  const extraLength = localView.getUint16(LOCAL_EXTRA_LENGTH, true);
   const dataOffset = entry.localHeaderOffset + LOCAL_HEADER_SIZE + nameLength + extraLength;
-  if (dataOffset + entry.compressedSize > fileSize) {
+  if (dataOffset + entry.compressedSize > source.size) {
     throw new Error(`zip: entry ${entry.name} lies outside the file`);
   }
-  const compressed = await readAt(fh, dataOffset, entry.compressedSize);
+  const compressed = await source.read(dataOffset, entry.compressedSize);
   if (entry.method === METHOD_STORED) return compressed;
-  if (entry.method === METHOD_DEFLATE) {
-    return new Promise((resolvePromise, reject) => {
-      inflateRaw(compressed, { maxOutputLength: entry.size }, (err, out) =>
-        err ? reject(err) : resolvePromise(out),
-      );
-    });
-  }
+  if (entry.method === METHOD_DEFLATE) return inflateRawBounded(compressed, entry.size);
   throw new Error(`zip: unsupported compression method ${entry.method} for ${entry.name}`);
 }

@@ -1,8 +1,8 @@
 import { once } from 'node:events';
 import { mkdirSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import type { PipelineEvent } from '@open-northland/installer';
 import { utilityProcess } from 'electron';
-import type { PipelineEvent } from './ipc.js';
 
 /**
  * Main-process side of the conversion: one `utilityProcess` child at a time, with its structured

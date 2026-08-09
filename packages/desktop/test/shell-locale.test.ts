@@ -9,7 +9,7 @@ const { patchConfig, buildAppMenu } = vi.hoisted(() => ({
 vi.mock('../src/config.js', () => ({ patchConfig }));
 vi.mock('../src/window.js', () => ({ buildAppMenu }));
 
-import { currentLocale, setActiveLocale } from '../src/i18n/index.js';
+import { currentLocale, setActiveLocale } from '@open-northland/installer/i18n';
 import { watchGameLocale } from '../src/shell-locale.js';
 import type { ShellPaths } from '../src/shell-state.js';
 

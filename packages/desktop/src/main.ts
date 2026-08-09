@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { currentLocale, resolveLocale, setActiveLocale } from '@open-northland/installer/i18n';
 import { app, type BrowserWindow } from 'electron';
 import { readConfig } from './config.js';
-import { currentLocale, resolveLocale, setActiveLocale } from './i18n/index.js';
 import { wireIpc } from './ipc-handlers.js';
 import { configFileOf, contentDirOf, DATA_DIR_ENV, modsDirOf, resolveDataRoot, savesDirOf } from './paths.js';
 import { PipelineHost } from './pipeline-host.js';

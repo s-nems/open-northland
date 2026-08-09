@@ -8,6 +8,7 @@
     { "path": "packages/audio" },
     { "path": "packages/app" },
     { "path": "packages/content-resolver" },
+    { "path": "packages/installer" },
     { "path": "packages/desktop" },
     { "path": "tools/asset-pipeline" }
   ]

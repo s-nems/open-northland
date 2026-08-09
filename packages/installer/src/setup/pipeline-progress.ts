@@ -1,6 +1,6 @@
 import { formatMessage, localeTag, messages } from '../i18n/index.js';
-import type { PipelineEvent } from '../ipc.js';
 import { overallFraction } from '../progress-model.js';
+import type { PipelineEvent } from '../shell-api.js';
 import { el } from './dom.js';
 
 const LOG_TAIL_LINES = 8;

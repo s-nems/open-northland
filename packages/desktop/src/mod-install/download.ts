@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import type { ModEvent } from '../ipc.js';
+import type { ModEvent } from '@open-northland/installer';
 
 /**
  * Fetches the culturesnation mod archive over an observed hop chain: culturesnation.pl's link
@@ -12,9 +12,6 @@ import type { ModEvent } from '../ipc.js';
 
 /** culturesnation.pl's stable download entry - redirects to the current mod archive. */
 const CNMOD_DOWNLOAD_URL = 'https://culturesnation.pl/serwerdownload.php?cat_id=8&file_id=344&limit=35688644';
-
-/** SHA-256 of the verified `CnMod 1.3.1.zip`; a mismatch means an unverified mod version. */
-export const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
 
 /** Cap on buffered interstitial HTML; the observed Drive confirm form is ~2 KB. */
 const MAX_INTERSTITIAL_BYTES = 1 << 20;

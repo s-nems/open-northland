@@ -206,3 +206,20 @@ button.primary {
   color: var(--ok);
   font-weight: 600;
 }
+
+.drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  border: 2px dashed #4a4131;
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: center;
+  padding: 12px;
+}
+
+.drop-zone.drag-over {
+  border-color: var(--accent, #c9a227);
+  color: var(--fg);
+}

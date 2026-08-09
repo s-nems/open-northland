@@ -62,7 +62,7 @@ describe('createShellState', () => {
       const state = await createShellState(paths).desktopState();
 
       expect(state).toEqual({
-        dataRoot: temp.path,
+        dataRootLabel: temp.path,
         portable: false,
         locale: 'eng',
         contentStatus: 'missing',

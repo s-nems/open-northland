@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "DOM.AsyncIterable"],
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../vfs" }, { "path": "../../tools/asset-pipeline" }]
+}

@@ -1,15 +1,27 @@
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname } from 'node:path';
 import { CULTURESNATION_HOME_URL, probeGameFolder } from '@open-northland/asset-pipeline';
+import {
+  createEventThrottle,
+  type GameFolderCandidate,
+  type ModEvent,
+  type PipelineEvent,
+} from '@open-northland/installer';
+import {
+  currentLocale,
+  formatMessage,
+  isLocale,
+  type Locale,
+  messages,
+} from '@open-northland/installer/i18n';
+import { findModRootUnder, installCnMod, isFinalModEvent } from '@open-northland/installer/mod-install';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { type BrowserWindow, dialog, ipcMain } from 'electron';
 import { patchConfig } from './config.js';
 import { detectGameFolders } from './detect.js';
-import { createEventThrottle } from './event-throttle.js';
-import { currentLocale, formatMessage, isLocale, type Locale, messages } from './i18n/index.js';
-import type { GameFolderCandidate, IpcInvokeChannel, ModEvent, PipelineEvent } from './ipc.js';
+import type { IpcInvokeChannel } from './ipc.js';
 import { IPC_CHANNELS } from './ipc.js';
-import { findModRootUnder, installCnMod, isFinalModEvent } from './mod-install/index.js';
+import { downloadCnModZip } from './mod-install/download.js';
 import type { PipelineHost } from './pipeline-host.js';
 import { gameUrlForLocale } from './protocol.js';
 import { isAppUrl } from './protocol-routing.js';
@@ -105,7 +117,13 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     if (modDownload !== undefined) throw new Error(messages().errors.modDownloadRunning);
     modDownload = new AbortController();
     try {
-      return await installCnMod(paths.modsDir, forwardModEvent, { signal: modDownload.signal });
+      return await installCnMod(
+        nodeVfs(),
+        paths.modsDir,
+        (dest, onEvent, signal) => downloadCnModZip(dest, onEvent, signal === undefined ? {} : { signal }),
+        forwardModEvent,
+        { signal: modDownload.signal },
+      );
     } finally {
       modDownload = undefined;
     }
@@ -117,7 +135,8 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     const path = await pickDirectory(win, messages().dialogs.pickModTitle);
     if (path === undefined) return null;
     // Accept the mod root itself, its wrapping folder, or a directly-picked DataCnmd child.
-    const root = (await findModRootUnder(path)) ?? (await findModRootUnder(dirname(path)));
+    const fs = nodeVfs();
+    const root = (await findModRootUnder(fs, path)) ?? (await findModRootUnder(fs, dirname(path)));
     if (root === undefined) {
       throw new Error(formatMessage(messages().errors.noDataCnmd, { url: CULTURESNATION_HOME_URL }));
     }

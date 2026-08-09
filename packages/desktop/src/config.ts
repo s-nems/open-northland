@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { isLocale, type Locale } from './i18n/index.js';
+import { isLocale, type Locale } from '@open-northland/installer/i18n';
 
 export interface DesktopConfig {
   readonly gamePath?: string;

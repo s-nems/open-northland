@@ -1,12 +1,11 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pipeline';
+import { type ContentStatus, classifyContent, type ShellSetupState } from '@open-northland/installer';
+import { currentLocale } from '@open-northland/installer/i18n';
+import { discoverInstalledMod, findModRootUnder } from '@open-northland/installer/mod-install';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { readConfig, writeConfig } from './config.js';
-import { type ContentStatus, classifyContent } from './content-state.js';
-import { currentLocale } from './i18n/index.js';
-import type { DesktopState } from './ipc.js';
-import { discoverInstalledMod, findModRootUnder } from './mod-install/index.js';
 import type { DataRoot } from './paths.js';
 
 /**
@@ -29,19 +28,19 @@ export interface ShellState {
    */
   availableModRoot(): Promise<string | undefined>;
   contentStatus(): Promise<ContentStatus>;
-  desktopState(): Promise<DesktopState>;
+  desktopState(): Promise<ShellSetupState>;
 }
 
 export function createShellState(paths: ShellPaths): ShellState {
   async function availableModRoot(): Promise<string | undefined> {
     const config = readConfig(paths.configFile);
     if (config.modPath !== undefined) {
-      const validated = await findModRootUnder(config.modPath);
+      const validated = await findModRootUnder(nodeVfs(), config.modPath);
       if (validated !== undefined) return validated;
       const { modPath: _stale, ...rest } = config;
       writeConfig(paths.configFile, rest);
     }
-    return discoverInstalledMod(paths.modsDir);
+    return discoverInstalledMod(nodeVfs(), paths.modsDir);
   }
 
   async function contentStatus(): Promise<ContentStatus> {
@@ -49,13 +48,13 @@ export function createShellState(paths: ShellPaths): ShellState {
     return classifyContent(stored, CURRENT_MANIFEST, existsSync(join(paths.contentDir, 'ir.json')));
   }
 
-  async function desktopState(): Promise<DesktopState> {
+  async function desktopState(): Promise<ShellSetupState> {
     // Read the remembered game path before availableModRoot() can rewrite the config to drop a
     // stale modPath.
     const remembered = readConfig(paths.configFile).gamePath;
     const modRoot = await availableModRoot();
     return {
-      dataRoot: paths.dataRoot.path,
+      dataRootLabel: paths.dataRoot.path,
       portable: paths.dataRoot.portable,
       locale: currentLocale(),
       contentStatus: await contentStatus(),

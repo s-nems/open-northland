@@ -1,5 +1,5 @@
 import { formatMessage, localeTag, messages } from '../i18n/index.js';
-import type { ModEvent } from '../ipc.js';
+import type { ModEvent, ShellApi } from '../shell-api.js';
 import { el } from './dom.js';
 
 /** Whole megabytes; the caller appends the unit. */
@@ -43,7 +43,7 @@ function renderModEvent(event: ModEvent): void {
   }
 }
 
-export function createModPanel(onModRoot: (root: string) => void): ModPanelView {
+export function createModPanel(api: ShellApi, onModRoot: (root: string) => void): ModPanelView {
   const panel = el('mod-panel');
   const progress = el('mod-progress');
   const note = el('mod-note');
@@ -53,7 +53,7 @@ export function createModPanel(onModRoot: (root: string) => void): ModPanelView 
     note.textContent = '';
     el<HTMLButtonElement>('mod-download').disabled = true;
     try {
-      onModRoot(await window.desktop.downloadMod());
+      onModRoot(await api.downloadMod());
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // A user Cancel surfaces as an AbortError riding the IPC rejection, not as a failure.
@@ -65,11 +65,11 @@ export function createModPanel(onModRoot: (root: string) => void): ModPanelView 
       el<HTMLButtonElement>('mod-download').disabled = false;
     }
   });
-  el('mod-cancel').addEventListener('click', () => void window.desktop.cancelModDownload());
+  el('mod-cancel').addEventListener('click', () => void api.cancelModDownload());
   el('mod-pick').addEventListener('click', async () => {
     const copy = messages().setup.mod;
     try {
-      const picked = await window.desktop.pickModFolder();
+      const picked = await api.pickModFolder();
       if (picked === null) return;
       note.textContent = '';
       onModRoot(picked);

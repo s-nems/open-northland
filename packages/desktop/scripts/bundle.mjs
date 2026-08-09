@@ -45,6 +45,6 @@ await Promise.all([
     entryPoints: [join(packageRoot, 'src/setup/setup.ts')],
     outfile: join(dist, 'renderer/setup.js'),
   }),
-  cp(join(packageRoot, 'src/setup/setup.html'), join(dist, 'renderer/setup.html')),
-  cp(join(packageRoot, 'src/setup/setup.css'), join(dist, 'renderer/setup.css')),
+  cp(join(packageRoot, '../installer/src/setup/setup.html'), join(dist, 'renderer/setup.html')),
+  cp(join(packageRoot, '../installer/src/setup/setup.css'), join(dist, 'renderer/setup.css')),
 ]);

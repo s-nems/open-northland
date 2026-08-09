@@ -9,6 +9,8 @@ export const pl = {
       'własnej kopii oryginalnej gry do swojego folderu danych. Wskaż folder, w którym zainstalowana jest ' +
       'gra (ten z plikiem <code>Game.exe</code> i katalogiem <code>DataX</code>), aby zacząć.',
     pathPlaceholder: 'Ścieżka do folderu z grą Cultures 8th Wonder…',
+    dropPrompt: 'Przeciągnij tutaj folder z grą Cultures 8th Wonder',
+    browserStorage: 'prywatnej pamięci tej przeglądarki',
     browse: 'Przeglądaj…',
     detected: 'Znalezione na tym komputerze:',
     install: 'Zainstaluj zawartość gry',
