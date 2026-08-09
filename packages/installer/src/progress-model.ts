@@ -20,9 +20,8 @@ const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   ir: 2,
   transitions: 1,
   maps: 3,
-  // The desktop shell has no locally built dmrender, so the music stage skips instantly there;
-  // weighting the long render would park the bar at half-done for everyone else.
-  music: 1,
+  // In-process render of the 64-track soundtrack; runs everywhere the game copy has DataX/DM2.
+  music: 60,
 };
 
 /** Item counts for the stages that walk as they go without an up-front total. */

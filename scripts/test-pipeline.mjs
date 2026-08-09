@@ -42,9 +42,8 @@ if (pipeline.status !== 0) {
   process.exit(pipeline.status ?? 1);
 }
 
-const dmrender = join(repoRoot, 'tools', 'asset-pipeline', 'vendor', 'dmrender');
 const dm2 = join(gameDir, 'DataX', 'DM2');
-if (existsSync(dmrender) && existsSync(dm2)) {
+if (existsSync(dm2)) {
   const expected = readdirSync(dm2).filter((file) => file.toLowerCase().endsWith('.sgt')).length;
   const manifestPath = join(outDir, 'music', 'manifest.json');
   const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : undefined;

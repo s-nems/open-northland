@@ -1,35 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { decodeBankName, decodeRejectedRegions } from '../src/decoders/dls.js';
+import { decodeRejectedRegions } from '../src/decoders/dls.js';
+import { chunk, list, riff, u16, u32 } from './riff-fixture.js';
 
 /**
- * Synthetic-fixture coverage for the DLS slices the music stage reads: the bank-level name and
- * loop-vs-wave validation with the pool-table indirection.
+ * Synthetic-fixture coverage for the DLS slice the music stage reads: loop-vs-wave validation
+ * with the pool-table indirection.
  */
-
-function ascii(s: string): number[] {
-  return [...s].map((c) => c.charCodeAt(0));
-}
-
-function u16(v: number): number[] {
-  return [v & 0xff, (v >>> 8) & 0xff];
-}
-
-function u32(v: number): number[] {
-  return [v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff];
-}
-
-function chunk(id: string, body: readonly number[]): number[] {
-  const padded = body.length & 1 ? [...body, 0] : [...body];
-  return [...ascii(id), ...u32(body.length), ...padded];
-}
-
-function list(listId: string, body: readonly number[]): number[] {
-  return chunk('LIST', [...ascii(listId), ...body]);
-}
-
-function riff(formId: string, body: readonly number[]): Uint8Array {
-  return new Uint8Array(chunk('RIFF', [...ascii(formId), ...body]));
-}
 
 const BITS_16 = 16;
 
@@ -79,22 +55,11 @@ function dlsFile(instruments: readonly number[][], waves: readonly number[][]): 
     at += w.length;
   }
   return riff('DLS ', [
-    ...list('INFO', chunk('INAM', ascii('Test Bank\0'))),
     ...list('lins', instruments.flat()),
     ...chunk('ptbl', [...u32(8), ...u32(offsets.length), ...offsets.flatMap((o) => u32(o))]),
     ...list('wvpl', waveBytes),
   ]);
 }
-
-describe('decodeBankName', () => {
-  it('reads the collection-level INAM', () => {
-    expect(decodeBankName(dlsFile([], []))).toBe('Test Bank');
-  });
-
-  it('returns undefined without an INFO list', () => {
-    expect(decodeBankName(riff('DLS ', chunk('colh', u32(0))))).toBeUndefined();
-  });
-});
 
 describe('decodeRejectedRegions', () => {
   it('accepts a loop that ends exactly at the wave end and rejects one past it', () => {

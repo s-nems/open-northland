@@ -1,6 +1,6 @@
 /**
- * Offline synthesis of a dmrender event dump through spessasynth_core using the game's own DLS
- * banks. Each band instrument becomes one MIDI channel (a bank's 17th instance opens another
+ * Offline synthesis of an interpreted event stream through spessasynth_core using the game's own
+ * DLS banks. Each band instrument becomes one MIDI channel (a bank's 17th instance opens another
  * processor); notes falling in regions the download validation rejects stay silent.
  */
 import { readdir, readFile } from 'node:fs/promises';
@@ -12,12 +12,7 @@ import {
   SoundBankLoader,
   SpessaSynthProcessor,
 } from 'spessasynth_core';
-import {
-  type DlsInstrumentRejects,
-  type DlsKeyRange,
-  decodeBankName,
-  decodeRejectedRegions,
-} from '../../decoders/dls.js';
+import { type DlsInstrumentRejects, type DlsKeyRange, decodeRejectedRegions } from '../../decoders/dls.js';
 import type { SegmentEvents } from './events.js';
 
 export interface DlsBank {
@@ -26,16 +21,14 @@ export interface DlsBank {
   readonly rejected: readonly DlsInstrumentRejects[];
 }
 
-/** Every collection under `dir`, keyed by its INFO name (the identity the event dump carries). */
+/** Every collection under `dir`, keyed by its lowercased file name (how bands reference it). */
 export async function loadDlsBanks(dir: string): Promise<Map<string, DlsBank>> {
   const banks = new Map<string, DlsBank>();
   for (const file of (await readdir(dir)).filter((f) => f.toLowerCase().endsWith('.dls')).sort()) {
     const bytes = await readFile(join(dir, file));
     const view = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const name = decodeBankName(view);
-    if (name === undefined) continue;
     const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-    banks.set(name, {
+    banks.set(file.toLowerCase(), {
       file,
       bank: SoundBankLoader.fromArrayBuffer(buffer),
       rejected: decodeRejectedRegions(view),
@@ -93,12 +86,13 @@ export async function synthesizeEvents(
   const slots = new Map<number, ChannelSlot>();
 
   for (const inst of segment.instances) {
-    const dls = banks.get(inst.dls);
-    if (dls === undefined) throw new Error(`no DLS bank named "${inst.dls}"`);
-    let pool = perBank.get(inst.dls);
+    const key = inst.dls.toLowerCase();
+    const dls = banks.get(key);
+    if (dls === undefined) throw new Error(`no DLS collection file "${inst.dls}"`);
+    let pool = perBank.get(key);
     if (pool === undefined) {
       pool = [];
-      perBank.set(inst.dls, pool);
+      perBank.set(key, pool);
     }
     let synth = pool.find((p) => (usedChannels.get(p) ?? 0) < MIDI_CHANNELS_PER_PROCESSOR);
     if (synth === undefined) {
