@@ -5,8 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { memoryVfs } from '../src/memory.js';
 import { mountVfs } from '../src/mount.js';
 import { nodeVfs } from '../src/node.js';
+import { fileMapVfs, opfsVfs } from '../src/opfs.js';
 import { readText, type Vfs, writeText } from '../src/types.js';
 import { vjoin } from '../src/vpath.js';
+import { fakeOpfsRoot } from './support/fake-opfs.js';
 
 /** The shared adapter contract, run against a root prepared by each adapter's harness. */
 function adapterContract(makeFs: () => Promise<{ fs: Vfs; root: string }>): void {
@@ -64,6 +66,37 @@ describe('nodeVfs', () => {
     const root = await mkdtemp(join(tmpdir(), 'vfs-node-'));
     cleanups.push(root);
     return { fs: nodeVfs(), root };
+  });
+});
+
+describe('opfsVfs over faked handles', () => {
+  adapterContract(() => Promise.resolve({ fs: opfsVfs(fakeOpfsRoot()), root: '' }));
+});
+
+describe('fileMapVfs', () => {
+  const files = new Map<string, File>([
+    ['the original', new File([Uint8Array.of(1, 2)], 'the original')],
+    ['DataX/Libs/data0001.lib', new File([Uint8Array.of(3)], 'data0001.lib')],
+  ]);
+
+  it('reads and lists the snapshot, deriving directories from keys', async () => {
+    const fs = fileMapVfs(files);
+    expect([...(await fs.readFile('the original'))]).toEqual([1, 2]);
+    expect([...(await fs.readFileSlice('the original', 1, 1))]).toEqual([2]);
+    expect(await fs.stat('DataX')).toEqual({ kind: 'dir', size: 0 });
+    expect(await fs.stat('DataX/Libs/data0001.lib')).toEqual({ kind: 'file', size: 1 });
+    expect(await fs.stat('missing')).toBeUndefined();
+    const top = (await fs.readdir('')).sort((a, b) => a.name.localeCompare(b.name));
+    expect(top).toEqual([
+      { name: 'DataX', kind: 'dir' },
+      { name: 'the original', kind: 'file' },
+    ]);
+  });
+
+  it('rejects writes', async () => {
+    const fs = fileMapVfs(files);
+    await expect(fs.writeFile('x', Uint8Array.of(1))).rejects.toThrow(/read-only/);
+    await expect(fs.rm('the original')).rejects.toThrow(/read-only/);
   });
 });
 

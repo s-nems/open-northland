@@ -35,7 +35,8 @@ export function memoryVfs(): Vfs {
     readFile(path: string): Promise<Uint8Array> {
       const data = files.get(keyOf(path));
       if (data === undefined) return Promise.reject(new Error(`memory vfs: no file ${path}`));
-      return Promise.resolve(data);
+      // A copy both ways: writeFile detaches from the caller, readFile from the store.
+      return Promise.resolve(Uint8Array.from(data));
     },
 
     async readFileSlice(path: string, offset: number, length: number): Promise<Uint8Array> {

@@ -1,10 +1,14 @@
 import { runPipeline } from '@open-northland/asset-pipeline';
-import type { PipelineProgress } from '@open-northland/asset-pipeline/progress';
-import { createEventThrottle } from '@open-northland/installer';
-import { mountVfs, vjoin } from '@open-northland/vfs';
+import { bridgePipelineProgress } from '@open-northland/installer';
+import { mountVfs } from '@open-northland/vfs';
 import { fileMapVfs, opfsVfs } from '@open-northland/vfs/opfs';
-import { CONTENT_DIR } from '../opfs-layout.js';
-import { DATA_MOUNT, GAME_MOUNT, type PipelineWorkerMessage, type RunPipelineRequest } from './protocol.js';
+import {
+  DATA_MOUNT,
+  GAME_MOUNT,
+  type PipelineWorkerMessage,
+  pipelineArgsOf,
+  type RunPipelineRequest,
+} from './protocol.js';
 
 /** The dedicated-worker global, typed locally: the page project compiles against the DOM lib. */
 interface WorkerGlobal {
@@ -27,18 +31,7 @@ for (const level of ['log', 'warn'] as const) {
   };
 }
 
-const itemThrottle = createEventThrottle();
-const progress: PipelineProgress = {
-  stage(stage) {
-    itemThrottle.reset();
-    post({ kind: 'stage', stage });
-  },
-  item(done, total) {
-    const lastOfStage = total !== undefined && done >= total - 1;
-    if (!itemThrottle.shouldEmit(lastOfStage)) return;
-    post(total === undefined ? { kind: 'item', done } : { kind: 'item', done, total });
-  },
-};
+const progress = bridgePipelineProgress(post);
 
 worker.onmessage = (event: MessageEvent): void => {
   const request = event.data as RunPipelineRequest;
@@ -48,12 +41,7 @@ worker.onmessage = (event: MessageEvent): void => {
       [GAME_MOUNT]: fileMapVfs(request.game),
       [DATA_MOUNT]: opfsVfs(await navigator.storage.getDirectory()),
     });
-    const args = {
-      game: GAME_MOUNT,
-      out: vjoin(DATA_MOUNT, CONTENT_DIR),
-      modRoot: request.modRoot === undefined ? undefined : vjoin(DATA_MOUNT, request.modRoot),
-    };
-    await runPipeline(fs, args, progress);
+    await runPipeline(fs, pipelineArgsOf(request), progress);
   })().then(
     () => post({ kind: 'done' }),
     (err: unknown) =>

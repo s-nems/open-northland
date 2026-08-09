@@ -87,16 +87,28 @@ export function createPickPanel(api: ShellApi, { onInstall, onPlay }: PickPanelH
       dropZone.classList.remove('drag-over');
       const transfer = event.dataTransfer;
       if (transfer === null) return;
-      void handleDrop(transfer).then((candidate) => {
-        if (candidate !== null) applyCandidate(candidate);
-      });
+      void handleDrop(transfer).then(
+        (candidate) => {
+          if (candidate !== null) applyCandidate(candidate);
+        },
+        (err: unknown) => showPickError(err),
+      );
     });
+  }
+
+  /** Until the next repaint, the probe line doubles as the picker's failure surface. */
+  function showPickError(err: unknown): void {
+    probeNote.textContent = err instanceof Error ? err.message : String(err);
   }
 
   function listen(): void {
     el('browse').addEventListener('click', async () => {
-      const picked = await api.pickGameFolder();
-      if (picked !== null) applyCandidate(picked);
+      try {
+        const picked = await api.pickGameFolder();
+        if (picked !== null) applyCandidate(picked);
+      } catch (err) {
+        showPickError(err);
+      }
     });
     const probeGamePath = api.probeGamePath?.bind(api);
     if (probeGamePath !== undefined) {

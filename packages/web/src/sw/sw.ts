@@ -52,6 +52,7 @@ async function serveContent(pathname: string, method: string): Promise<Response>
   const headers = { 'content-type': hit.contentType };
   if (method === 'HEAD') return new Response(null, { headers });
   const bytes = await fs.readFile(hit.path);
+  // BodyInit rejects a possibly-SharedArrayBuffer-backed view; OPFS reads are plain ArrayBuffers.
   return new Response(bytes as unknown as BodyInit, { headers });
 }
 

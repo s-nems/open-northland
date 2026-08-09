@@ -9,6 +9,6 @@ export interface TempDir {
 }
 
 export async function makeTempDir(label: string): Promise<TempDir> {
-  const path = await mkdtemp(join(tmpdir(), `opennorthland-desktop-${label}-`));
+  const path = await mkdtemp(join(tmpdir(), `opennorthland-installer-${label}-`));
   return { path, cleanup: () => rm(path, { recursive: true, force: true }) };
 }

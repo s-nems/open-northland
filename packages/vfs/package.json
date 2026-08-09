@@ -8,7 +8,6 @@
   "exports": {
     ".": "./dist/index.js",
     "./node": "./dist/node.js",
-    "./memory": "./dist/memory.js",
     "./opfs": "./dist/opfs.js"
   },
   "scripts": {
