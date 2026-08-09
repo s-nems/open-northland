@@ -98,6 +98,7 @@ export {
   type DoorBadge,
   type DoorBadgeRole,
   type DoorBadgeRow,
+  GARRISON_MAST_FALLBACK_DX,
   type GeometryDebugCell,
   type GeometryDebugItem,
   type HouseholdKind,

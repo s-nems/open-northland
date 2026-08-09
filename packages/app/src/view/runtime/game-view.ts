@@ -140,7 +140,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const frameStats = new FrameStats();
 
   // A checkout without a decoded sound bank degrades to silence.
-  const { sound: soundDriver, hasSignArt } = await mountGamePresentation(params, renderer);
+  const soundDriver = await mountGamePresentation(params, renderer);
 
   // The left inset clears the tool-panel strip, so the readout and the build menu never overlap.
   const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
@@ -235,8 +235,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // the sim on every mousemove.
   const pointerAt = trackCanvasPointer(canvas);
 
-  // Late-bound: the badge projection below needs the fog gates and the building index. Stays unbound
-  // without the decoded sign art, whose chain owns the pick geometry.
+  // Late-bound: the badge projection below needs the fog gates and the building index.
   let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
 
   const controls = await createUnitControls({
@@ -289,7 +288,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
     selection: { ids: controls.selectedIds, version: controls.selectionVersion },
   });
-  if (hasSignArt) pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
+  pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
 
   // Mounted after the unit controls, so an admin spawn click defers to their composed HUD claim.
   const geometryDebug = mountDebugOverlays({

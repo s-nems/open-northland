@@ -106,7 +106,7 @@ export function chainedFrame(kind: BuildingSignKind, frame: AtlasFrame): AtlasFr
 /** World-px half-width of a stack's click box. The widest badge frame is the worker disc, 25 px at
  *  `offsetX` -13, so it reaches 13 px left and 12 px right of the anchor; the box is symmetric at 14, a
  *  pixel of slack past that reach. */
-const SIGN_HALF_WIDTH = 14;
+export const SIGN_HALF_WIDTH = 14;
 
 /**
  * World-px the construction stand is planted left of the shared sign post, so it stands beside a site's
@@ -115,16 +115,24 @@ const SIGN_HALF_WIDTH = 14;
  * its stand on the flag point, and this offset is a pixel judgement.
  */
 export const CONSTRUCTION_SIGN_DX = -2 * SIGN_HALF_WIDTH;
+
+/**
+ * World-px the garrison flag stands right of the sign post when its building type authored no
+ * `gfxsoldierflagpoint`, the mirror of {@link CONSTRUCTION_SIGN_DX}: without it the flag plants on the
+ * badge chain and a click on the cloth answers with a row hidden behind it.
+ */
+export const GARRISON_MAST_FALLBACK_DX = 2 * SIGN_HALF_WIDTH;
+
 /** World-px the planted base sign's rock clump extends below the stack anchor. */
 const SIGN_BASE_BELOW = 8;
 /** Anchor-space split between a row's emblem band and the band above it - just under the banner cloth
  *  (-5) and the disc rim (-2), so each 20 px band covers one emblem (an approximation for clicking). */
-const SIGN_BAND_BOTTOM = 6;
+export const SIGN_BAND_BOTTOM = 6;
 
 /**
  * The stack row index at `(dx, dy)` world-px from the stack's anchor (+y down), or `null` outside the
  * stack. Row 0 is the planted base sign and also owns the clump below the anchor; each row above owns the
- * {@link SIGN_STEP} band over its emblem. The same layout `makeSignStack` draws.
+ * {@link SIGN_STEP} band over its emblem. The layout both the sign chain and the placeholder marks draw.
  */
 export function signRowAt(rowCount: number, dx: number, dy: number): number | null {
   if (rowCount <= 0 || Math.abs(dx) > SIGN_HALF_WIDTH || dy > SIGN_BASE_BELOW) return null;

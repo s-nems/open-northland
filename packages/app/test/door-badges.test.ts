@@ -1,4 +1,10 @@
-import { ONE, tileToScreen } from '@open-northland/render';
+import {
+  GARRISON_MAST_FALLBACK_DX,
+  hitsGarrisonFlag,
+  ONE,
+  signRowAt,
+  tileToScreen,
+} from '@open-northland/render';
 import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
@@ -38,6 +44,18 @@ const roleOf = (jobType: number): 'gatherer' | 'carrier' | 'craftsman' | 'garris
       : jobType === ARCHER
         ? 'garrison'
         : 'craftsman';
+
+/** Whether any point the flag's hit box accepts also answers a sign row, with the mast standing
+ *  `mastOverPost` world px from the chain both marks would otherwise share. */
+function flagOverlapsChain(mastOverPost: number, rowCount: number): boolean {
+  for (let dx = -60; dx <= 60; dx++) {
+    for (let dy = -80; dy <= 20; dy++) {
+      if (!hitsGarrisonFlag(dx, dy)) continue;
+      if (signRowAt(rowCount, mastOverPost + dx, dy) !== null) return true;
+    }
+  }
+  return false;
+}
 
 describe('computeDoorBadges', () => {
   it('emits one row per bound worker - discs first, carrier pennants on top - with settler ids', () => {
@@ -229,13 +247,17 @@ describe('computeDoorBadges', () => {
     expect(computeDoorBadges(snap, types, roleOf)[0]?.garrison).toBeUndefined();
   });
 
-  it('flies the flag from the sign post when nobody authored the building a mast', () => {
+  it('flies the flag beside the sign post when nobody authored the building a mast', () => {
     const types = new Map<number, BuildingDoorInfo>([[7, { flagPoint: { x: -6, y: 29 } }]]);
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, ARCHER, 1)]);
 
     const badge = computeDoorBadges(snap, types, roleOf)[0];
     expect(badge?.rows).toEqual([]); // still no row - the flag is the garrison's whole marker
-    expect(badge?.garrison).toEqual({ stars: 1, dx: -6, dy: 29 });
+    expect(badge?.garrison).toEqual({ stars: 1, dx: -6 + GARRISON_MAST_FALLBACK_DX, dy: 29 });
+    // Planted on the post the flag would hang over the chain, and a click on its cloth would answer
+    // with a row drawn behind it.
+    const mastOverPost = (badge?.garrison?.dx ?? 0) - (badge?.dx ?? 0);
+    expect(flagOverlapsChain(mastOverPost, 3)).toBe(false);
   });
 
   it("carries the building's owner slot so the layer picks that player's sign recolour", () => {

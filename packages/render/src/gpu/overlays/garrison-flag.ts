@@ -33,8 +33,11 @@ export const GARRISON_TICKS_PER_FRAME = 2;
  * Owned here with the drawing, so a click lands on the cloth rather than falling through to the ground
  * ~230 px below the banner.
  */
+const GARRISON_FLAG_BOX = { minX: -4, maxX: 42, minY: -38, maxY: 5 } as const;
+
 export function hitsGarrisonFlag(dx: number, dy: number): boolean {
-  return dx >= -4 && dx <= 42 && dy >= -38 && dy <= 5;
+  const { minX, maxX, minY, maxY } = GARRISON_FLAG_BOX;
+  return dx >= minX && dx <= maxX && dy >= minY && dy <= maxY;
 }
 
 /** A wave loop whose type carries its first frame, so callers never re-prove it is non-empty. */
@@ -80,31 +83,34 @@ export function makeGarrisonFlag(
   return { node, advance };
 }
 
-/** Placeholder mast + pennant + a dot per star (world px, drawn up from the mast foot). */
-const MAST_HEIGHT = 34;
+/** Placeholder mast + banner + a dot per star (world px, drawn up from the mast foot), sized from
+ *  {@link GARRISON_FLAG_BOX} so the no-art mark reads where it clicks. */
 const MAST_WIDTH = 2;
+const MAST_HEIGHT = -GARRISON_FLAG_BOX.minY;
 const MAST_COLOR = 0x6b4a26;
-const PENNANT_WIDTH = 27;
-const PENNANT_HEIGHT = 20;
-const PENNANT_COLOR = 0x3b6fd4;
-const STAR_RADIUS = 2.5;
+const BANNER_WIDTH = GARRISON_FLAG_BOX.maxX - MAST_WIDTH / 2;
+const BANNER_HEIGHT = MAST_HEIGHT;
+const BANNER_COLOR = 0x3b6fd4;
+const STAR_RADIUS = 4;
 const STAR_COLOR = 0xffcc33;
-/** Placeholder stars per row, so five fit the pennant. */
+/** Placeholder star grid, so five fit the banner. */
 const STAR_COLUMNS = 3;
+const STAR_ROWS = 2;
 
-/** The no-art flag, drawn in roughly the band the real art occupies. */
+/** The no-art flag. It leaves the box's left and bottom edges bare: the wave frames reach them, a
+ *  straight cloth on a centred mast does not. */
 function makePlaceholderFlag(stars: number): Graphics {
   const g = new Graphics();
   const top = -MAST_HEIGHT;
   g.rect(-MAST_WIDTH / 2, top, MAST_WIDTH, MAST_HEIGHT).fill({ color: MAST_COLOR });
-  g.rect(MAST_WIDTH / 2, top, PENNANT_WIDTH, PENNANT_HEIGHT).fill({ color: PENNANT_COLOR });
+  g.rect(MAST_WIDTH / 2, top, BANNER_WIDTH, BANNER_HEIGHT).fill({ color: BANNER_COLOR });
   const shown = Math.min(stars, GARRISON_STAR_MAX);
   for (let i = 0; i < shown; i++) {
     const col = i % STAR_COLUMNS;
-    const row = i < STAR_COLUMNS ? 0 : 1;
+    const row = Math.floor(i / STAR_COLUMNS);
     g.circle(
-      MAST_WIDTH / 2 + (col + 0.5) * (PENNANT_WIDTH / STAR_COLUMNS),
-      top + (row + 0.5) * (PENNANT_HEIGHT / 2),
+      MAST_WIDTH / 2 + (col + 0.5) * (BANNER_WIDTH / STAR_COLUMNS),
+      top + (row + 0.5) * (BANNER_HEIGHT / STAR_ROWS),
       STAR_RADIUS,
     ).fill({ color: STAR_COLOR });
   }

@@ -5,12 +5,12 @@ import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadCombatBones } from '../../content/objects.js';
 
-/** Load the optional decoded assets the game view's sound and combat rendering share. `hasSignArt`
- *  gates door-badge click picking, whose hit geometry comes from the sign chain. */
+/** Load the optional decoded assets the game view's sound and combat rendering share, and return the
+ *  sound driver they were loaded for. */
 export async function mountGamePresentation(
   params: URLSearchParams,
   renderer: WorldRenderer,
-): Promise<{ sound: ReturnType<typeof createSoundDriver> | null; hasSignArt: boolean }> {
+): Promise<ReturnType<typeof createSoundDriver> | null> {
   const ir = await loadIr();
   const sound = params.get('sound') === 'off' ? null : createSoundDriver(ir);
   if (sound !== null) {
@@ -31,7 +31,6 @@ export async function mountGamePresentation(
   }
   renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
   renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());
-  const signGfx = await loadBuildingSignGfx();
-  renderer.setBuildingSignGfx(signGfx);
-  return { sound, hasSignArt: signGfx !== null };
+  renderer.setBuildingSignGfx(await loadBuildingSignGfx());
+  return sound;
 }

@@ -2,7 +2,7 @@ import type { Container } from 'pixi.js';
 import { isVisible, type Viewport } from '../../data/projection/index.js';
 import { SIGN_DEPTH_EPS, screenDepth } from '../../data/scene/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
-import { makeSignStack, makeSquareStack } from './badge-stack.js';
+import { makePlaceholderStack, makeSignStack } from './badge-stack.js';
 import { badgeAnchor, type DoorBadge } from './door-badge.js';
 import { GARRISON_STAR_MAX, makeGarrisonFlag } from './garrison-flag.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
@@ -31,8 +31,8 @@ interface BadgeStack {
   /** Stars flown this build (0 = no garrison) - part of the key, so a man joining or leaving the post
    *  swaps the flag. */
   readonly stars: number;
-  /** The player recolour the stack was built with, 0 for the player-agnostic placeholder squares, so an
-   *  owner change never rebuilds a visually identical square stack. */
+  /** The player recolour the stack was built with, 0 for the player-agnostic placeholder marks, so an
+   *  owner change never rebuilds a visually identical placeholder stack. */
   readonly player: number;
 }
 
@@ -50,7 +50,7 @@ export class BadgeLayer {
   private readonly stacks = new Map<number, BadgeStack>();
   /** Reused scratch of ids drawn this frame, to avoid a per-frame allocation. */
   private readonly drawn = new Set<number>();
-  /** The decoded sign art; unset draws the placeholder squares. */
+  /** The decoded sign art; unset draws the placeholder marks. */
   private gfx: SignGfx | undefined;
   /** Session owner→colour-slot mapping - the same one pooled sprites draw through, so a building's
    *  door signs match its settlers' clothing band on a rostered map. */
@@ -122,8 +122,8 @@ export class BadgeLayer {
         stack.flag.visible = true;
         if (stack.flag.parent === null) this.spriteLayer.addChild(stack.flag);
         stack.flag.position.set(anchor.mast.x, anchor.mast.y);
-        // Its building's key, like the chain. A type with no authored mast plants both marks on the
-        // same anchor; the flag is added second, and the depth sort is stable, so it stays on top.
+        // Its building's key, like the chain. Two marks on one anchor tie here; the flag is added
+        // second, and the depth sort is stable, so it stays on top.
         stack.flag.zIndex = depth;
         stack.advanceFlag?.(clock);
       }
@@ -146,7 +146,7 @@ export class BadgeLayer {
     const node =
       gfx !== undefined && sheet !== undefined
         ? makeSignStack(badge.rows, hearts, gfx.textures, sheet)
-        : makeSquareStack(badge.rows, hearts);
+        : makePlaceholderStack(badge.rows, hearts);
     const base = { node, rows, hearts, stars, player };
     // Gated on the capped `stars`, not on `garrison` being present: `stars` is the whole garrison term
     // in the rebuild key, and a zero-star garrison keys the same as none, so such a flag never retires.
