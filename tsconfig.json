@@ -10,6 +10,7 @@
     { "path": "packages/content-resolver" },
     { "path": "packages/installer" },
     { "path": "packages/desktop" },
+    { "path": "packages/web" },
     { "path": "tools/asset-pipeline" }
   ]
 }
