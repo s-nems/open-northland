@@ -11,10 +11,13 @@ const ticketAreas = new Set([
   'content-resolver',
   'data',
   'desktop',
+  'installer',
   'pipeline',
   'render',
   'sim',
   'tooling',
+  'vfs',
+  'web',
 ]);
 const failures = [];
 
