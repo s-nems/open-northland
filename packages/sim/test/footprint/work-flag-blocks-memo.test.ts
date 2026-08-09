@@ -26,7 +26,7 @@ import {
 } from '../../src/systems/footprint/placement/blockers.js';
 import { setWorkFlag, workFlagPlacementBlocks } from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
-import { HUT, mappedSim, terrainOf, VIKING } from './building-placement/support.js';
+import { HQ, HUT, mappedSim, terrainOf, VIKING } from './building-placement/support.js';
 
 /**
  * The work-flag blocked set feeds command gates and the auto-flag plant, so the incremental state
@@ -158,6 +158,78 @@ describe('workFlagPlacementBlocks incremental state', () => {
     expect(withFlag.has(terrain.nodeAt(4, 4))).toBe(true);
     expect(ignoring.has(terrain.nodeAt(4, 4))).toBe(false); // its own cell must not block a re-place
     expect(blocksOf(sim).has(terrain.nodeAt(4, 4))).toBe(true); // the ignore path never mutated the shared set
+  });
+
+  it('keeps the live set through a construction-progress write without rebuilding', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(4, 4));
+    sim.world.add(site, Building, { buildingType: HUT, tribe: VIKING, built: fx.fromInt(0), level: 0 });
+
+    const before = blocksOf(sim);
+    expect(before.has(terrain.nodeAt(4, 4))).toBe(true);
+
+    // The write constructionSystem lands on every active site: a Building VALUE bump that changes no
+    // captured cell. Identity is the rebuild probe - a rebuild would discard the state for a fresh set.
+    sim.world.mut(site, Building).built = fx.fromInt(1);
+    expect(blocksOf(sim)).toBe(before);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('resyncs a building whose type swaps in place, still without rebuilding', () => {
+    const sim = mappedSim();
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(8, 8));
+    sim.world.add(site, Building, { buildingType: HQ, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+
+    const before = blocksOf(sim);
+    const sizeBefore = before.size;
+
+    // The tier-adoption write: an in-place `buildingType` swap. HQ is footprint-less (anchor-only),
+    // HUT carries a wider family body, so the swap must move cells.
+    sim.world.mut(site, Building).buildingType = HUT;
+    const after = blocksOf(sim);
+    expect(after).toBe(before); // resynced within the live set, not rebuilt
+    expect(after.size).toBeGreaterThan(sizeBefore); // the wider body landed - the swap was not skipped
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('converges when a type swap and a destroy land in the same catch-up window', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(8, 8));
+    sim.world.add(site, Building, { buildingType: HQ, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+
+    const before = blocksOf(sim);
+    expect(before.has(terrain.nodeAt(8, 8))).toBe(true);
+
+    sim.world.mut(site, Building).buildingType = HUT;
+    sim.world.destroy(site);
+    const after = blocksOf(sim);
+    expect(after).toBe(before);
+    expect(after.has(terrain.nodeAt(8, 8))).toBe(false);
+    expect(sim.world.verifyCaches()).toEqual([]);
+  });
+
+  it('converges when a type swaps away and back between reads', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    const site = sim.world.create();
+    sim.world.add(site, Position, positionOfNode(8, 8));
+    sim.world.add(site, Building, { buildingType: HQ, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+
+    const before = blocksOf(sim);
+    const sizeBefore = before.size;
+
+    sim.world.mut(site, Building).buildingType = HUT;
+    sim.world.mut(site, Building).buildingType = HQ;
+    const after = blocksOf(sim);
+    expect(after).toBe(before);
+    expect(after.size).toBe(sizeBefore); // net-zero swap leaves the held cells untouched
+    expect(after.has(terrain.nodeAt(8, 8))).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('keeps a node the ignored flag shares with another blocker blocked', () => {

@@ -1,13 +1,13 @@
 # Slice one seat's AI decision pass across ticks
 
 **Area:** sim · **Focus:** ai-player · **Priority:** P2 · **Complexity:** medium
-**Blocked by:** [work-flag rebuild invalidation](work-flag-blocks-rebuild-invalidation.md)
 
 A due seat runs all five strategic modules (workforce, build order, scout, population, military) in
 one tick. Live magiczny_las 6-AI evidence (rev fb833032, `?debug=profile`): `aiPlayer` mean
 3.8-5.1 ms/tick but max 41-54 ms on the due tick, and with six staggered seats a due tick lands
-every ~4th tick - the per-seat pass is the dominant recurring frame spike. Most of today's max is
-the work-flag rebuild (its own ticket); this ticket bounds whatever remains.
+every ~4th tick - the per-seat pass is the dominant recurring frame spike. Most of that max was the
+work-flag blocked-set rebuild, since removed (construction progress no longer invalidates the
+incremental set); this ticket bounds whatever remains.
 
 ## Scope
 

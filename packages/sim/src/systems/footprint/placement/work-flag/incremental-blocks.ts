@@ -6,6 +6,7 @@ import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { sameCells } from '../../geometry.js';
 import {
   type BlockedCells,
+  BUILDING_SOURCE,
   markerCells,
   RESOURCE_SOURCE,
   rederiveBlockedCells,
@@ -34,8 +35,13 @@ interface IncrementalBlocks {
    *  that resource blocks), so a stamp decoupled from its Resource membership change is still caught. */
   footprintGen: number;
   /** Guard for the one input no journal covers: the in-place tier swap (a `World.mut` value bump)
-   *  changes captured cells with no membership bump - any move forces a full rebuild (rare). */
+   *  changes captured cells with no membership bump. The bump itself is ambiguous - construction
+   *  progress moves it every active-site tick - so {@link buildingTypes} narrows it to the buildings
+   *  whose type actually changed. */
   buildingValueGen: number;
+  /** The `buildingType` each held Building capture used - the only Building value the capture reads,
+   *  so a value bump resyncs exactly the mismatches instead of demanding a full rebuild. */
+  readonly buildingTypes: Map<Entity, number>;
   /** The marker layer's inputs; a bump re-diffs the whole DeliveryFlag store - O(flags), tiny. */
   flagGen: number;
   flagMoves: number;
@@ -85,10 +91,19 @@ function resyncEntity(world: World, state: IncrementalBlocks, source: StaticBloc
     removeCells(state, held);
     map.delete(e);
   }
+  if (source === BUILDING_SOURCE) recordBuildingType(world, state, e);
   if (!world.has(e, source.component)) return;
   const cells = source.capture(world, state.content, state.terrain, e);
   map.set(e, cells);
   addCells(state, cells);
+}
+
+/** Record the type the held cells were derived from (cleared on removal), synchronously with the
+ *  resync so record and cells cannot drift. */
+function recordBuildingType(world: World, state: IncrementalBlocks, e: Entity): void {
+  const b = world.tryGet(e, Building);
+  if (b === undefined) state.buildingTypes.delete(e);
+  else state.buildingTypes.set(e, b.buildingType);
 }
 
 /** Re-derive the whole marker layer from the DeliveryFlag store - flags are the one blocker that MOVES
@@ -117,6 +132,7 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
     gens,
     footprintGen: world.componentGeneration(ResourceFootprint),
     buildingValueGen: world.componentValueGeneration(Building),
+    buildingTypes: new Map(),
     flagGen: world.componentGeneration(DeliveryFlag),
     flagMoves: workFlagMoveCount(world),
     counts: new Map(),
@@ -132,9 +148,8 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
 }
 
 /** Catch `state` up to the live world via the membership journals; false demands a full rebuild
- *  (a journal gap, or a change on an input the journals cannot cover - see {@link IncrementalBlocks}). */
+ *  (a journal gap). */
 function catchUp(world: World, state: IncrementalBlocks): boolean {
-  if (world.componentValueGeneration(Building) !== state.buildingValueGen) return false;
   const footprintGen = world.componentGeneration(ResourceFootprint);
   if (footprintGen !== state.footprintGen) {
     const deltas = world.membershipDeltasSince(ResourceFootprint, state.footprintGen);
@@ -151,6 +166,11 @@ function catchUp(world: World, state: IncrementalBlocks): boolean {
     for (const e of deltas) resyncEntity(world, state, source, e);
     state.gens.set(source.component, gen);
   }
+  const buildingValueGen = world.componentValueGeneration(Building);
+  if (buildingValueGen !== state.buildingValueGen) {
+    resyncChangedBuildingTypes(world, state);
+    state.buildingValueGen = buildingValueGen;
+  }
   const flagGen = world.componentGeneration(DeliveryFlag);
   const moves = workFlagMoveCount(world);
   if (flagGen !== state.flagGen || moves !== state.flagMoves) {
@@ -159,6 +179,15 @@ function catchUp(world: World, state: IncrementalBlocks): boolean {
     state.flagMoves = moves;
   }
   return true;
+}
+
+/** The Building value-bump response: resync only buildings whose live type differs from the held
+ *  record - O(buildings) compares, zero captures when only construction progress (`built`) moved. */
+function resyncChangedBuildingTypes(world: World, state: IncrementalBlocks): void {
+  for (const e of world.query(Building, Position)) {
+    if (state.buildingTypes.get(e) === world.get(e, Building).buildingType) continue;
+    resyncEntity(world, state, BUILDING_SOURCE, e);
+  }
 }
 
 /** The live incremental state for `world`, caught up or rebuilt as needed. */
