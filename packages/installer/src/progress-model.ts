@@ -21,7 +21,7 @@ const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   transitions: 1,
   maps: 3,
   // The desktop shell has no locally built dmrender, so the music stage skips instantly there;
-  // weighting the ~195 s dev-machine render would park the bar at half-done for everyone else.
+  // weighting the long render would park the bar at half-done for everyone else.
   music: 1,
 };
 
