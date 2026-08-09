@@ -161,7 +161,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const orders = createUnitOrderController({
-    selected: selection.ids(),
+    selected: selection.ids,
     targets: unitTargets,
     snapshot: opts.snapshot,
     content: opts.content,

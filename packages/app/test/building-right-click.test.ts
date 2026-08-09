@@ -75,7 +75,7 @@ function rightClick(
     ownedSettlersIn: () => [{ ref: settler, x: 0, y: 0 }],
   };
   createUnitOrderController({
-    selected: new Set<number>([settler]),
+    selected: () => new Set<number>([settler]),
     targets,
     snapshot: (): WorldSnapshot => snapshot,
     content,
