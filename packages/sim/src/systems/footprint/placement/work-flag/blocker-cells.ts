@@ -53,13 +53,15 @@ export const RESOURCE_SOURCE: StaticBlockerSource = {
   capture: (world, _content, terrain, e) => captureCells(terrain, (v) => resourceBlockerCells(world, e, v)),
 };
 
+export const BUILDING_SOURCE: StaticBlockerSource = {
+  component: Building,
+  capture: (world, content, terrain, e) =>
+    captureCells(terrain, (v) => buildingBlockerCells(world, content, e, v)),
+};
+
 export const STATIC_SOURCES: readonly StaticBlockerSource[] = [
   RESOURCE_SOURCE,
-  {
-    component: Building,
-    capture: (world, content, terrain, e) =>
-      captureCells(terrain, (v) => buildingBlockerCells(world, content, e, v)),
-  },
+  BUILDING_SOURCE,
   {
     component: Signpost,
     capture: (world, _content, terrain, e) => captureCells(terrain, (v) => signpostBlockerCells(world, e, v)),
