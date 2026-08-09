@@ -49,10 +49,10 @@ export interface GameFolderCandidate {
   readonly probe: GameFolderProbe;
 }
 
-/** A picked save file's display name and full text; never a filesystem path. */
-export interface SaveFileContents {
+/** A picked save file's display name and raw bytes; never a filesystem path. */
+export interface SaveFileBytes {
   readonly name: string;
-  readonly contents: string;
+  readonly bytes: Uint8Array;
 }
 
 export type PipelineEvent =
@@ -93,7 +93,7 @@ export interface DesktopApi {
   // The two file methods mirror the game page's structural `GameFileBridge`
   // (`packages/app/src/view/runtime/save-load/file-access.ts`).
   /** Native save dialog for a game save; resolves to the written file's basename, null on cancel. */
-  saveGameFile(suggestedName: string, contents: string): Promise<string | null>;
+  saveGameFile(suggestedName: string, contents: Uint8Array): Promise<string | null>;
   /** Native open dialog for a game save; null on cancel. */
-  openGameFile(): Promise<SaveFileContents | null>;
+  openGameFile(): Promise<SaveFileBytes | null>;
 }

@@ -2,6 +2,7 @@ import { exportSaveGame, SAVE_FORMAT_VERSION, type Simulation, serializeSaveGame
 import { describe, expect, it } from 'vitest';
 import { runDemoWorld } from '../src/game/world/index.js';
 import { stagedSaveFrom } from '../src/view/runtime/save-load/boot.js';
+import { decodeSaveText, isGzipSave, type SaveBytes } from '../src/view/runtime/save-load/codec.js';
 import {
   evaluateSaveFile,
   type LiveWorldIdentity,
@@ -30,6 +31,11 @@ function liveIdentity(sim: Simulation): LiveWorldIdentity {
 
 function savedBytes(sim: Simulation, mapId: string = WORLD_TOKEN): string {
   return serializeSaveGame(exportSaveGame(sim, { mapId }));
+}
+
+/** A pick of an uncompressed save file, as a pre-gzip build would have written it. */
+function pickedOf(text: string, name = 'a.json'): PickedSaveFile {
+  return { name, contents: text, raw: new TextEncoder().encode(text) };
 }
 
 describe('evaluateSaveFile', () => {
@@ -84,25 +90,25 @@ describe('evaluateSaveFile', () => {
 
 interface Harness {
   readonly session: ReturnType<typeof saveLoadSession>;
-  readonly staged: string[];
+  readonly staged: SaveBytes[];
   readonly reloads: () => number;
   readonly paused: () => boolean;
-  readonly delivered: Array<{ fileName: string; bytes: string }>;
+  readonly delivered: Array<{ fileName: string; bytes: SaveBytes }>;
 }
 
 function harness(
   sim: Simulation,
   overrides: {
     pickFile?: () => Promise<PickedSaveFile | null>;
-    stagePending?: (bytes: string) => Promise<void>;
+    stagePending?: (bytes: SaveBytes) => Promise<void>;
     deliverSave?: 'cancel' | 'throw';
     startPaused?: boolean;
   } = {},
 ): Harness {
   let paused = overrides.startPaused === true;
   let reloads = 0;
-  const staged: string[] = [];
-  const delivered: Array<{ fileName: string; bytes: string }> = [];
+  const staged: SaveBytes[] = [];
+  const delivered: Array<{ fileName: string; bytes: SaveBytes }> = [];
   const session = saveLoadSession({
     sim,
     worldToken: WORLD_TOKEN,
@@ -144,17 +150,19 @@ describe('stagedSaveFrom', () => {
 });
 
 describe('saveLoadSession save flow', () => {
-  it('delivers the serialized live sim under the world token and reports saved', async () => {
+  it('delivers the gzipped live sim under the world token and reports saved', async () => {
     const sim = demoSim();
     const h = harness(sim);
     await expect(h.session.saveGame()).resolves.toEqual({ kind: 'saved' });
     expect(h.delivered).toHaveLength(1);
-    const doc = JSON.parse(h.delivered[0]?.bytes ?? '') as {
+    const bytes = h.delivered[0]?.bytes ?? new Uint8Array();
+    expect(isGzipSave(bytes)).toBe(true);
+    const doc = JSON.parse(await decodeSaveText(bytes)) as {
       header: { mapId: string; tick: number };
     };
     expect(doc.header.mapId).toBe(WORLD_TOKEN);
     expect(doc.header.tick).toBe(sim.tick);
-    expect(h.delivered[0]?.fileName).toMatch(/^open-northland-demo-test-tick2-.*\.json$/);
+    expect(h.delivered[0]?.fileName).toMatch(/^open-northland-demo-test-tick2-.*\.json\.gz$/);
     expect(h.paused()).toBe(false);
   });
 
@@ -170,12 +178,12 @@ describe('saveLoadSession save flow', () => {
 });
 
 describe('saveLoadSession load flow', () => {
-  it('stages a matching save and reloads, still paused for the dying page', async () => {
+  it('stages the picked file bytes and reloads, still paused for the dying page', async () => {
     const sim = demoSim();
-    const bytes = savedBytes(sim);
-    const h = harness(sim, { pickFile: () => Promise.resolve({ name: 'a.json', contents: bytes }) });
+    const picked = pickedOf(savedBytes(sim));
+    const h = harness(sim, { pickFile: () => Promise.resolve(picked) });
     await expect(h.session.loadGame()).resolves.toEqual({ kind: 'loading' });
-    expect(h.staged).toEqual([bytes]);
+    expect(h.staged).toEqual([picked.raw]);
     expect(h.reloads()).toBe(1);
     expect(h.paused()).toBe(true);
   });
@@ -192,7 +200,7 @@ describe('saveLoadSession load flow', () => {
     const sim = demoSim();
     const wrongWorld = savedBytes(sim, 'another-map');
     const h = harness(sim, {
-      pickFile: () => Promise.resolve({ name: 'a.json', contents: wrongWorld }),
+      pickFile: () => Promise.resolve(pickedOf(wrongWorld)),
       startPaused: true,
     });
     await expect(h.session.loadGame()).resolves.toEqual({
@@ -213,7 +221,7 @@ describe('saveLoadSession load flow', () => {
     });
 
     const storage = harness(sim, {
-      pickFile: () => Promise.resolve({ name: 'a.json', contents: savedBytes(sim) }),
+      pickFile: () => Promise.resolve(pickedOf(savedBytes(sim))),
       stagePending: () => Promise.reject(new Error('quota')),
     });
     await expect(storage.session.loadGame()).resolves.toEqual({

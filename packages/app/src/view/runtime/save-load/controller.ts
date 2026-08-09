@@ -1,4 +1,5 @@
 import { exportSaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
+import { compressSaveText, type SaveBytes } from './codec.js';
 import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import type { PickedSaveFile } from './file-access.js';
 
@@ -17,11 +18,11 @@ export interface SaveLoadDeps {
   readonly isPaused: () => boolean;
   /** Restart the page into the staged save; nothing after it runs in the surviving flow. */
   readonly reload: () => void;
-  /** Stage validated bytes for the reloaded boot. */
-  readonly stagePending: (bytes: string) => Promise<void>;
+  /** Stage a validated file's bytes for the reloaded boot. */
+  readonly stagePending: (bytes: SaveBytes) => Promise<void>;
   readonly pickFile: () => Promise<PickedSaveFile | null>;
-  /** Hand serialized bytes to the user: a browser download or the desktop save dialog. */
-  readonly deliverSave: (fileName: string, bytes: string) => Promise<SaveOutcome>;
+  /** Hand gzipped save bytes to the user: a browser download or the desktop save dialog. */
+  readonly deliverSave: (fileName: string, bytes: SaveBytes) => Promise<SaveOutcome>;
 }
 
 export interface SaveLoadSession {
@@ -55,7 +56,8 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
       forcePause();
       try {
         const save = exportSaveGame(sim, worldToken !== null ? { mapId: worldToken } : {});
-        return await deps.deliverSave(saveFileName(worldToken, sim.tick), serializeSaveGame(save));
+        const bytes = await compressSaveText(serializeSaveGame(save));
+        return await deps.deliverSave(saveFileName(worldToken, sim.tick), bytes);
       } catch {
         return { kind: 'failed' };
       } finally {
@@ -81,7 +83,7 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
         });
         if (!evaluated.ok) return { kind: 'rejected', reason: evaluated.reason };
         try {
-          await deps.stagePending(picked.contents);
+          await deps.stagePending(picked.raw);
         } catch {
           return { kind: 'rejected', reason: 'storage' };
         }
@@ -100,5 +102,5 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 function saveFileName(worldToken: string | null, tick: number): string {
   const world = (worldToken ?? 'world').replace(/[^a-z0-9-]+/gi, '-');
   const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
-  return `open-northland-${world}-tick${tick}-${stamp}.json`;
+  return `open-northland-${world}-tick${tick}-${stamp}.json.gz`;
 }

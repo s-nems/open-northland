@@ -9,7 +9,7 @@ export {
 } from './bundle.js';
 export { installCrashCapture } from './crash.js';
 export { debugFlags, hasDebugFlag, setDebugFlag } from './debug-flags.js';
-export { downloadJsonFile } from './download.js';
+export { downloadFile, downloadJsonFile } from './download.js';
 export { logBootHeader } from './env-header.js';
 export {
   type FrameDistribution,
