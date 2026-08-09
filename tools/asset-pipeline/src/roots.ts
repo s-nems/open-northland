@@ -180,11 +180,7 @@ export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
  * none given a game folder that contains one is its own overlay. No mod anywhere fails fast here,
  * because the tribe/weapon/house tables are readable only under `DataCnmd/`.
  */
-export async function resolveModRoot(
-  fs: Vfs,
-  game: string,
-  modRoot: string | undefined,
-): Promise<string> {
+export async function resolveModRoot(fs: Vfs, game: string, modRoot: string | undefined): Promise<string> {
   const hasMod = async (root: string): Promise<boolean> =>
     (await fs.stat(vjoin(root, CULTURESNATION_MOD)))?.kind === 'dir';
   if (modRoot !== undefined) {

@@ -104,17 +104,17 @@ describe('buildIr / resolveIniSources', () => {
     // The DataCnmd rels are always requested; without an overlay they still resolve against the game
     // tree itself (the mod-installed-in-place layout this fixture lays down).
     const noOverlay = await resolveIniSources(fs, { game, mod: undefined });
-    // Sort both sides: Windows '\' separators order Data/ vs DataCnmd/ differently than '/'.
+    // Sort both sides: sources resolve in wanted-list order, not path order.
     expect(noOverlay.map((s) => s.file).sort()).toEqual(
       [
-        join('Data', 'logic', 'armortypes.ini'),
-        join('Data', 'logic', 'goodtypes.ini'),
-        join('Data', 'logic', 'jobtypes.ini'),
-        join('Data', 'logic', 'landscapetypes.ini'),
-        join('Data', 'logic', 'vehicletypes.ini'),
-        join('DataCnmd', 'atomicanimations12', 'atomicanimations.ini'),
-        join('DataCnmd', 'tribetypes12', 'tribetypes.ini'),
-        join('DataCnmd', 'types', 'weapons.ini'),
+        'Data/logic/armortypes.ini',
+        'Data/logic/goodtypes.ini',
+        'Data/logic/jobtypes.ini',
+        'Data/logic/landscapetypes.ini',
+        'Data/logic/vehicletypes.ini',
+        'DataCnmd/atomicanimations12/atomicanimations.ini',
+        'DataCnmd/tribetypes12/tribetypes.ini',
+        'DataCnmd/types/weapons.ini',
       ].sort(),
     );
 

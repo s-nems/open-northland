@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import { vjoin } from '@open-northland/vfs';
 import { describe, expect, it } from 'vitest';
 import {
   assertDistinctBobBasenames,
@@ -26,19 +27,19 @@ describe('servedRelPath', () => {
   it('rewrites a served subtree to the route spelling, whatever the winning layer spelled', () => {
     // The content routes match case-sensitively, so these all have to collapse onto one output tree.
     expect(servedRelPath(join('data', 'engine2d', 'bin', 'textures', 'tran_meadow.png'))).toBe(
-      join(TEXTURES_DIR, 'tran_meadow.png'),
+      vjoin(TEXTURES_DIR, 'tran_meadow.png'),
     );
     expect(servedRelPath(join('Data', 'Engine2D', 'Bin', 'Bobs', 'Ls_Trees.bmd'))).toBe(
-      join(BOBS_DIR, 'ls_trees.bmd'),
+      vjoin(BOBS_DIR, 'ls_trees.bmd'),
     );
     expect(servedRelPath(join('DATA', 'GUI', 'BITMAPS', 'Bg_Normal.png'))).toBe(
-      join(GUI_BITMAPS_DIR, 'bg_normal.png'),
+      vjoin(GUI_BITMAPS_DIR, 'bg_normal.png'),
     );
   });
 
   it('lower-cases the whole tail, subdirectories included (`/sounds/<file>` joins on it)', () => {
     expect(servedRelPath(join('Data', 'engine2d', 'bin', 'sounds', 'GUI', 'Click.wav'))).toBe(
-      join(SOUNDS_DIR, 'gui', 'click.wav'),
+      vjoin(SOUNDS_DIR, 'gui', 'click.wav'),
     );
   });
 

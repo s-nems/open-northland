@@ -9,16 +9,16 @@ import { makeTempDir } from './support/game-tree.js';
 const fs = nodeVfs();
 
 describe('libMemberRelPath', () => {
-  it('rewrites backslash member paths to a native, Data/-canonical relative path', () => {
+  it('rewrites backslash member paths to a /-separated, Data/-canonical relative path', () => {
     expect(libMemberRelPath('data\\engine2d\\bin\\bobs\\ls_bridge.bmd')).toBe(
-      join('Data', 'engine2d', 'bin', 'bobs', 'ls_bridge.bmd'),
+      'Data/engine2d/bin/bobs/ls_bridge.bmd',
     );
-    expect(libMemberRelPath('DATA\\gui\\cursor.pcx')).toBe(join('Data', 'gui', 'cursor.pcx'));
-    expect(libMemberRelPath('other\\file.bin')).toBe(join('other', 'file.bin'));
+    expect(libMemberRelPath('DATA\\gui\\cursor.pcx')).toBe('Data/gui/cursor.pcx');
+    expect(libMemberRelPath('other\\file.bin')).toBe('other/file.bin');
     expect(libMemberRelPath('logo.pcx')).toBe('logo.pcx');
     // A member landing in a served subtree takes that route's spelling, not the archive's.
     expect(libMemberRelPath('Data\\Engine2D\\Bin\\Sounds\\GUI\\Click.wav')).toBe(
-      join('Data', 'engine2d', 'bin', 'sounds', 'gui', 'click.wav'),
+      'Data/engine2d/bin/sounds/gui/click.wav',
     );
   });
 
@@ -58,8 +58,8 @@ describe('unpackLibTree', () => {
 
     const done = await unpackLibTree(fs, { game, mod: undefined }, out);
 
-    expect(done.map((e) => e.member).sort()).toEqual([join('Data', 'logic', 'goodtypes.cif'), 'logo.pcx']);
-    expect(done.every((e) => e.archive === join('DataX', 'Libs', 'data0001.lib'))).toBe(true);
+    expect(done.map((e) => e.member).sort()).toEqual(['Data/logic/goodtypes.cif', 'logo.pcx']);
+    expect(done.every((e) => e.archive === 'DataX/Libs/data0001.lib')).toBe(true);
     // The bytes that survived the round-trip must equal what we packed.
     expect(Array.from(await readFile(join(out, 'Data', 'logic', 'goodtypes.cif')))).toEqual([1, 2, 3, 4]);
     expect(Array.from(await readFile(join(out, 'logo.pcx')))).toEqual([9, 8, 7]);

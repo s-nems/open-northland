@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { vjoin } from '@open-northland/vfs';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
@@ -75,7 +76,7 @@ describe('convertPlayerColorLut', () => {
 
     expect(result.colors).toBe(PLAYER_COLORS.length);
     expect(result.armorTiers).toBe(1); // no readable recipes - player rows only
-    expect(result.png).toBe(join(BOBS_DIR, 'player-lut.png'));
+    expect(result.png).toBe(vjoin(BOBS_DIR, 'player-lut.png'));
 
     const png = await decodePng(await readFile(join(outDir, result.png)));
     expect(png.width).toBe(256); // 256 palette entries per row
