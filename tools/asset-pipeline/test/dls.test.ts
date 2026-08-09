@@ -62,7 +62,15 @@ function region(keys: [number, number], cue: number, loop?: { start: number; len
   ]);
 }
 
-function dlsFile(regions: readonly number[][], waves: readonly number[][]): Uint8Array {
+/** `INSH`: region count, then the locale (ulBank with LSB low bits and MSB at bit 8, ulInstrument). */
+function instrument(bankLo: number, bankHi: number, patch: number, regions: readonly number[][]): number[] {
+  return list('ins ', [
+    ...chunk('insh', [...u32(regions.length), ...u32(bankLo | (bankHi << 8)), ...u32(patch)]),
+    ...list('lrgn', regions.flat()),
+  ]);
+}
+
+function dlsFile(instruments: readonly number[][], waves: readonly number[][]): Uint8Array {
   const waveBytes = waves.flat();
   const offsets: number[] = [];
   let at = 0;
@@ -72,7 +80,7 @@ function dlsFile(regions: readonly number[][], waves: readonly number[][]): Uint
   }
   return riff('DLS ', [
     ...list('INFO', chunk('INAM', ascii('Test Bank\0'))),
-    ...list('lins', list('ins ', list('lrgn', regions.flat()))),
+    ...list('lins', instruments.flat()),
     ...chunk('ptbl', [...u32(8), ...u32(offsets.length), ...offsets.flatMap((o) => u32(o))]),
     ...list('wvpl', waveBytes),
   ]);
@@ -91,20 +99,46 @@ describe('decodeBankName', () => {
 describe('decodeRejectedRegions', () => {
   it('accepts a loop that ends exactly at the wave end and rejects one past it', () => {
     const bytes = dlsFile(
-      [region([36, 68], 0, { start: 50, length: 50 }), region([69, 96], 0, { start: 50, length: 51 })],
+      [
+        instrument(1, 0, 72, [
+          region([36, 68], 0, { start: 50, length: 50 }),
+          region([69, 96], 0, { start: 50, length: 51 }),
+        ]),
+      ],
       [wave(100)],
     );
-    expect(decodeRejectedRegions(bytes)).toEqual([{ lo: 69, hi: 96 }]);
+    expect(decodeRejectedRegions(bytes)).toEqual([
+      { bankLo: 1, bankHi: 0, patch: 72, ranges: [{ lo: 69, hi: 96 }] },
+    ]);
   });
 
   it('treats loopless regions as valid', () => {
-    const bytes = dlsFile([region([0, 127], 0)], [wave(10)]);
+    const bytes = dlsFile([instrument(0, 0, 0, [region([0, 127], 0)])], [wave(10)]);
     expect(decodeRejectedRegions(bytes)).toEqual([]);
+  });
+
+  it('scopes rejection to the broken instrument, not the whole bank', () => {
+    // Two instruments share the wave; only the second authors a loop past it.
+    const bytes = dlsFile(
+      [
+        instrument(0, 0, 10, [region([0, 127], 0, { start: 0, length: 100 })]),
+        instrument(0, 0, 20, [region([0, 127], 0, { start: 0, length: 101 })]),
+      ],
+      [wave(100)],
+    );
+    expect(decodeRejectedRegions(bytes)).toEqual([
+      { bankLo: 0, bankHi: 0, patch: 20, ranges: [{ lo: 0, hi: 127 }] },
+    ]);
   });
 
   it('resolves waves through the pool table, not file order assumptions', () => {
     // Two waves; the region's cue 1 points at the second (short) wave.
-    const bytes = dlsFile([region([60, 72], 1, { start: 0, length: 150 })], [wave(200), wave(100)]);
-    expect(decodeRejectedRegions(bytes)).toEqual([{ lo: 60, hi: 72 }]);
+    const bytes = dlsFile(
+      [instrument(0, 0, 0, [region([60, 72], 1, { start: 0, length: 150 })])],
+      [wave(200), wave(100)],
+    );
+    expect(decodeRejectedRegions(bytes)).toEqual([
+      { bankLo: 0, bankHi: 0, patch: 0, ranges: [{ lo: 60, hi: 72 }] },
+    ]);
   });
 });
