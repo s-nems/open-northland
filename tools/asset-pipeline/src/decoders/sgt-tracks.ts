@@ -14,6 +14,7 @@ export interface DmTimeSignature {
 }
 
 export interface DmTempoItem {
+  /** Signed music time (`lTime`). */
   readonly time: number;
   readonly bpm: number;
 }
@@ -99,8 +100,6 @@ export type DmTrack =
   | { readonly kind: 'sequence'; readonly items: readonly DmSequenceItem[] };
 
 export interface DmSegment {
-  /** `dwRepeats` (0xffffffff = infinite). */
-  readonly repeats: number;
   /** `mtLength` in music-time ticks. */
   readonly length: number;
   readonly tracks: readonly DmTrack[];
@@ -172,7 +171,7 @@ function decodeTempoItems(bytes: Uint8Array, chunk: RiffChild): DmTempoItem[] {
   const count = Math.floor((chunk.bodyEnd - chunk.bodyStart - 4) / structSize);
   for (let i = 0; i < count; i++) {
     const rec = chunk.bodyStart + 4 + i * structSize;
-    items.push({ time: view.getUint32(rec, true), bpm: view.getFloat64(rec + TEMPO_ITEM_BPM_OFFSET, true) });
+    items.push({ time: view.getInt32(rec, true), bpm: view.getFloat64(rec + TEMPO_ITEM_BPM_OFFSET, true) });
   }
   return items;
 }
@@ -369,12 +368,10 @@ export function decodeSegmentTracks(bytes: Uint8Array): DmSegment {
   const view = viewOf(bytes);
   const root = riffChildren(bytes, 0, bytes.length)[0];
   if (root === undefined || root.form !== 'DMSG') throw new Error('not a DirectMusic segment');
-  let repeats = 0;
   let length = 0;
   const tracks: DmTrack[] = [];
   for (const seg of riffChildren(bytes, root.bodyStart, root.bodyEnd)) {
     if (seg.id === 'segh') {
-      repeats = view.getUint32(seg.bodyStart, true);
       length = view.getUint32(seg.bodyStart + 4, true);
     }
     if (!(seg.id === 'LIST' && seg.form === 'trkl')) continue;
@@ -408,5 +405,5 @@ export function decodeSegmentTracks(bytes: Uint8Array): DmSegment {
       }
     }
   }
-  return { repeats, length, tracks };
+  return { length, tracks };
 }

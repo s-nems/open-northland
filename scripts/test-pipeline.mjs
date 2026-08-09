@@ -42,8 +42,13 @@ if (pipeline.status !== 0) {
   process.exit(pipeline.status ?? 1);
 }
 
-const dm2 = join(gameDir, 'DataX', 'DM2');
-if (existsSync(dm2)) {
+// Case-insensitive like the stage's own lookup, so the guard arms on any cased copy.
+const childCaseInsensitive = (base, name) =>
+  existsSync(base) ? readdirSync(base).find((entry) => entry.toLowerCase() === name) : undefined;
+const dataX = childCaseInsensitive(gameDir, 'datax');
+const dm2Name = dataX === undefined ? undefined : childCaseInsensitive(join(gameDir, dataX), 'dm2');
+const dm2 = dm2Name === undefined ? undefined : join(gameDir, dataX, dm2Name);
+if (dm2 !== undefined) {
   const expected = readdirSync(dm2).filter((file) => file.toLowerCase().endsWith('.sgt')).length;
   const manifestPath = join(outDir, 'music', 'manifest.json');
   const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : undefined;
