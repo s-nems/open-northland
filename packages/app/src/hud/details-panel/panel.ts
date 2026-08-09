@@ -1,20 +1,18 @@
 import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
-import { clientToCanvas, contains, type Rect } from '../geometry.js';
+import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { loadDetailsPanelAssets } from './assets.js';
 import { applyPanelClick, type PanelClickActions } from './click-actions.js';
 import { tooltipTextAt } from './hit-test.js';
-import { ROW_H } from './layout/index.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
 import { NO_PANEL_HOVER, type PanelHover, panelClickAt, panelHoverAt, sameHover } from './pointer-intent.js';
 import { createPanelRebuildGate } from './rebuild-gate.js';
-import { hasWorkerLimitsRow } from './sections/building/workers.js';
 import { EMPTY_PANEL_VIEW, type PanelView, panelViewFor } from './selection-view.js';
-import { createPanelStage, WORKER_OVERLAY_Z } from './stage.js';
+import { createPanelStage } from './stage.js';
 import { ALL_STOCK_TAB } from './stock-tabs.js';
-import { WorkerSpriteOverlay } from './worker-sprites.js';
+import { createWorkerField } from './worker-field.js';
 
 /** Owns the selection, hover and stock-tab state the model, layout and stage read. */
 
@@ -65,15 +63,16 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   const scale = Math.max(MIN_UI_SCALE, opts.uiscale ?? 1);
   const assets = await loadDetailsPanelAssets(opts.lang);
   const stage = createPanelStage({ app, assets, scale });
-  // Drawn over the baked panel's Pracownicy field so the workers advance every sim tick, while the
-  // panel's own value-driven re-bakes stay throttled to 4 Hz.
-  const workerOverlay = new WorkerSpriteOverlay(app, opts.sheet, WORKER_OVERLAY_Z, opts.playerColourOf);
+  const workerField = createWorkerField({
+    app,
+    scale,
+    sheet: opts.sheet,
+    playerColourOf: opts.playerColourOf,
+  });
 
   const ctx: UnitPanelModelContext = opts;
 
   let selectedIds: ReadonlySet<number> = new Set();
-  /** Bumped by every rebuild; the model and layout the worker overlay reads change only there. */
-  let panelEpoch = 0;
   const rebuildGate = createPanelRebuildGate({
     derive: (snapshot) => buildUnitPanelModel(snapshot, selectedIds, ctx),
     now: () => performance.now(),
@@ -87,7 +86,6 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
   let activeStockTab = ALL_STOCK_TAB;
 
   const rebuild = (model: UnitPanelModel): void => {
-    panelEpoch++;
     rebuildGate.rebuilt();
     view = panelViewFor(model, app.screen, scale);
     stage.paint(view, hover, activeStockTab);
@@ -133,7 +131,7 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     if (button !== 0) return true; // over the panel - swallow, but only the left button acts
     const { x, y } = toCanvas(clientX, clientY);
     // A worker sprite claims the click ahead of any tab or button under it.
-    const worker = workerOverlay.hitTest(x, y);
+    const worker = workerField.hitTest(x, y);
     if (worker !== null) {
       opts.onSelectEntity?.(worker);
       return true;
@@ -191,47 +189,22 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     };
   };
 
-  let lastWorkersKey = '';
-
-  /** Redraw the animated worker sprites into the live Pracownicy field, or clear them when the selection
-   *  isn't a building. Skipped while its inputs hold: it runs every frame over an O(entities) scan. */
-  const refreshWorkers = (snapshot: WorldSnapshot): void => {
-    const key = `${snapshot.tick}|${app.screen.width}x${app.screen.height}|${panelEpoch}`;
-    if (key === lastWorkersKey) return;
-    lastWorkersKey = key;
-    if (view.kind !== 'building') {
-      workerOverlay.update(snapshot, null, null);
-      return;
-    }
-    const b = view.layout.workers.body;
-    // The limits strip owns the first row wherever it is drawn; the sprite field takes what is left.
-    const siteCrew = view.model.construction !== null;
-    const inset = hasWorkerLimitsRow(view.model) ? Math.round(ROW_H * scale) : 0;
-    const field: Rect = { x: b.x, y: b.y + inset, w: b.w, h: Math.max(0, b.h - inset) };
-    // A home's field draws residents grouped per family (the Mieszkańcy window), not the bound-worker scan.
-    const groups = view.model.home?.families.map((f) => f.members);
-    workerOverlay.update(snapshot, view.model.entityId, field, {
-      siteCrew,
-      ...(groups !== undefined ? { groups } : {}),
-    });
-  };
-
   return {
     render(snapshot, selected): void {
       selectedIds = new Set(selected);
       updateModel(snapshot, true);
-      refreshWorkers(snapshot);
+      workerField.sync(snapshot, view);
     },
     tick(snapshot): void {
       updateModel(snapshot);
-      refreshWorkers(snapshot);
+      workerField.sync(snapshot, view);
     },
     claimsPointer,
     handleMouseDown,
     portrait,
     dispose(): void {
       canvas.removeEventListener('mousemove', onMouseMove);
-      workerOverlay.dispose();
+      workerField.dispose();
       canvas.removeEventListener('mouseleave', onMouseLeave);
       opts.tooltip?.hide();
       stage.dispose();
