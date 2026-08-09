@@ -4,6 +4,7 @@ node_modules/
 # Build output
 dist/
 dist-types/
+dist-web/
 *.tsbuildinfo
 # electron-builder output + the shell's dev-run config (a dev data root is the repo root)
 packages/desktop/release/
