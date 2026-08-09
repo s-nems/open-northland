@@ -35,19 +35,15 @@ export {
   extractHouseHitpoints,
   extractUpgradeTargets,
 } from './ini/buildings-gfx/index.js';
-export type {
-  RuleSection,
-  SourceRef,
-} from './ini/grammar.js';
+export type { RuleSection } from './ini/grammar.js';
 export {
   cifBytesToSections,
   cifLinesToSections,
   decodeIni,
   iniBytesToSections,
-  makeSource,
-  normalizeAssetPath,
   parseIniSections,
 } from './ini/grammar.js';
+export { makeSource, normalizeAssetPath, type SourceRef } from './ini/ir-fields.js';
 export { extractMapScript } from './ini/map-script.js';
 export type { MapStaticObjects } from './ini/maps.js';
 export {

@@ -5,16 +5,9 @@
  */
 
 import { BobSequenceSet, GfxAnimAtomic, GfxWalkAtomic } from '@open-northland/data';
-import {
-  findProps,
-  getInt,
-  getStr,
-  makeSource,
-  normalizeAssetPath,
-  normalizeOptionalPath,
-  type RuleSection,
-  type SourceRef,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { makeSource, normalizeAssetPath, normalizeOptionalPath, type SourceRef } from '../ir-fields.js';
+import { findProps, getInt, getStr } from '../props.js';
 
 /**
  * Extracts the `[bobseq]` records from `animation/mapmoveableanimations/animations.ini` into one

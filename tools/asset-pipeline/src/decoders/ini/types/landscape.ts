@@ -1,18 +1,14 @@
 import { LandscapeGfx, LandscapeType, TrianglePatternType } from '@open-northland/data';
+import type { RuleSection } from '../grammar.js';
 import {
-  findProp,
-  getInt,
-  getIntRows,
-  getIntTuple,
   getPaletteName,
-  getStr,
   makeSource,
   normalizeOptionalPath,
-  type RuleSection,
   requireTypeId,
   type SourceRef,
   slug,
-} from '../grammar.js';
+} from '../ir-fields.js';
+import { findProp, getInt, getIntRows, getIntTuple, getStr } from '../props.js';
 
 /**
  * The `allowedon*` flags mark the placement layer, not traversal, so `walkable`/`buildable` keep

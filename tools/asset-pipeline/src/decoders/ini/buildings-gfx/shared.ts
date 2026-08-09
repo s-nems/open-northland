@@ -1,13 +1,6 @@
-import {
-  findProp,
-  findProps,
-  getInt,
-  getStr,
-  normalizeAssetPath,
-  normalizeOptionalPath,
-  type RuleProp,
-  type RuleSection,
-} from '../grammar.js';
+import type { RuleProp, RuleSection } from '../grammar.js';
+import { normalizeAssetPath, normalizeOptionalPath } from '../ir-fields.js';
+import { findProp, findProps, getInt, getStr } from '../props.js';
 
 /**
  * The `LogicType <sizeIdx> <typeId>` table of one `[GfxHouse]` record: the size-level → building-typeId

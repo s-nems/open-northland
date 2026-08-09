@@ -4,7 +4,8 @@
  * macros (`#PLAYER_TYPE_HUMAN`) and the packed `map.cif` carrying those macros already resolved to numbers.
  */
 import { MAP_PLAYER_COLOR_COUNT, MapScript, type MapScriptLine } from '@open-northland/data';
-import { makeSource, type RuleProp, type RuleSection, type SourceRef } from './grammar.js';
+import type { RuleProp, RuleSection } from './grammar.js';
+import { makeSource, type SourceRef } from './ir-fields.js';
 
 /**
  * The `#define` codes the plaintext macros resolve through, from the owned copy's

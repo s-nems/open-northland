@@ -3,7 +3,8 @@
  * wonders).
  */
 
-import { getStr, type RuleSection } from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { getStr } from '../props.js';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js';
 
 /**

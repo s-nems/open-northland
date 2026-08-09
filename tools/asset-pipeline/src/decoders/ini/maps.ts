@@ -2,7 +2,9 @@
  * Map metadata and decoded static-object placements from a map `.cif`.
  */
 import { MapInfo } from '@open-northland/data';
-import { findProp, getInt, makeSource, type RuleSection, type SourceRef } from './grammar.js';
+import type { RuleSection } from './grammar.js';
+import { makeSource, type SourceRef } from './ir-fields.js';
+import { findProp, getInt } from './props.js';
 
 /**
  * Reduces one decoded `map.cif`'s logic header into a validated {@link MapInfo}: the `logiccontrol`

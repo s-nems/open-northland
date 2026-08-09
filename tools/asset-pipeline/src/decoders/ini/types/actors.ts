@@ -1,15 +1,7 @@
 import { AnimalType, ArmorType, AtomicAnimation, VehicleType, WeaponType } from '@open-northland/data';
-import {
-  findProps,
-  getInt,
-  getIntList,
-  getStr,
-  makeSource,
-  type RuleSection,
-  requireTypeId,
-  type SourceRef,
-  slug,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { makeSource, requireTypeId, type SourceRef, slug } from '../ir-fields.js';
+import { findProps, getInt, getIntList, getStr } from '../props.js';
 
 /** A section without a `name` is unreferenceable by a tribe's `setatomic`, so it throws. */
 export function extractAtomicAnimations(sections: readonly RuleSection[], src: SourceRef): AtomicAnimation[] {

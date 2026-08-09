@@ -3,14 +3,9 @@
  * resolves that name to the `.pcx` whose trailer holds the actual 256 colours.
  */
 
-import {
-  findProp,
-  findProps,
-  getStr,
-  normalizeAssetPath,
-  normalizePaletteName,
-  type RuleSection,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { normalizeAssetPath, normalizePaletteName } from '../ir-fields.js';
+import { findProp, findProps, getStr } from '../props.js';
 
 /** One resolved palette alias: a name a graphics record references (via `gfxpalettebody "<name>"`)
  *  mapped to the `.pcx` whose trailer palette holds the actual 256 colours. */

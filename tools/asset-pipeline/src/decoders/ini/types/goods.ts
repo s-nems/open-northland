@@ -4,17 +4,9 @@ import {
   type GoodGathering,
   GoodType,
 } from '@open-northland/data';
-import {
-  getInt,
-  getIntValues,
-  getStr,
-  makeSource,
-  type RuleSection,
-  requireTypeId,
-  type SourceRef,
-  slug,
-  tallyIds,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { makeSource, requireTypeId, type SourceRef, slug, tallyIds } from '../ir-fields.js';
+import { getInt, getIntValues, getStr } from '../props.js';
 
 export function extractGoods(sections: readonly RuleSection[], src: SourceRef): GoodType[] {
   const goods: GoodType[] = [];

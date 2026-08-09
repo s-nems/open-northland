@@ -8,17 +8,9 @@ import {
   JobType,
   TribeType,
 } from '@open-northland/data';
-import {
-  findProps,
-  getInt,
-  getIntList,
-  getStr,
-  makeSource,
-  type RuleSection,
-  requireTypeId,
-  type SourceRef,
-  slug,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { makeSource, requireTypeId, type SourceRef, slug } from '../ir-fields.js';
+import { findProps, getInt, getIntList, getStr } from '../props.js';
 
 export function extractJobs(sections: readonly RuleSection[], src: SourceRef): JobType[] {
   const jobs: JobType[] = [];
