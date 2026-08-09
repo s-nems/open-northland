@@ -1,0 +1,20 @@
+{
+  "name": "@open-northland/vfs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./node": "./dist/node.js",
+    "./memory": "./dist/memory.js",
+    "./opfs": "./dist/opfs.js"
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1"
+  }
+}
