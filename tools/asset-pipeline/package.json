@@ -22,6 +22,7 @@
     "@open-northland/data": "*",
     "@open-northland/render": "*",
     "@open-northland/vfs": "*",
+    "spessasynth_core": "^4.3.16",
     "wasm-media-encoders": "^0.7.0"
   },
   "devDependencies": {
