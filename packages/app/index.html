@@ -19,6 +19,8 @@
          fixed-size ?shot canvas, which IS CSS-stretched to the viewport: nearest keeps that stretched
          preview crisp for the pixel art. */
       #game { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+      /* An author `display` outranks the UA rule behind `hidden`, so the attribute needs its own. */
+      #game[hidden] { display: none; }
     </style>
   </head>
   <body>

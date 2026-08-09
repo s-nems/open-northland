@@ -1,6 +1,6 @@
 /**
  * The one home for `window.location.search` handling, shared by the app entries and the menu-to-game
- * navigation, so no entry re-declares its own parser.
+ * launch, so no entry re-declares its own parser.
  */
 
 /** The player-facing settings that survive a menu/game switch; every other param is dropped. The

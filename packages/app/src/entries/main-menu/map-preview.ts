@@ -10,9 +10,18 @@ import { loadTerrainMap } from '../../content/map-loader.js';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { buildGroundPatternIndex, buildTerrainDebugColourIndex } from '../../content/terrain.js';
 
-/** mapId → generated preview URL, so each map rasterises at most once. The blob URLs are never
- *  revoked: Start is a full navigation, so the cache dies with the menu page. */
+/** mapId → generated preview URL, so each map rasterises at most once. */
 const previews = new Map<string, Promise<string | null>>();
+
+/** Frees the rasterised previews; the game the menu launches runs in the same document. */
+export function releaseMapPreviews(): void {
+  for (const pending of previews.values()) {
+    void pending.then((url) => {
+      if (url !== null) URL.revokeObjectURL(url);
+    });
+  }
+  previews.clear();
+}
 
 function imageUrl(rgba: Uint8Array, width: number, height: number): Promise<string | null> {
   const canvas = document.createElement('canvas');

@@ -1,10 +1,12 @@
 import { messages } from '../../i18n/index.js';
+import { type LaunchEntry, swapToEntry } from '../../launch.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
 import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
 import { mountFullscreenPrompt } from './fullscreen-prompt.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
+import { releaseMapPreviews } from './map-preview.js';
 import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VERSION_LINE } from './model.js';
@@ -87,10 +89,16 @@ function placeholderScreen(screen: SubScreen, open: (screen: MenuScreen) => void
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   // Runs before anything reads the locale or the URL.
   adoptStoredSettings(params);
+  // Owns the handlers this module binds outside `root`, so `closeMenu` releases them in one step.
+  const scope = new AbortController();
   // Through the menu's own writer, so the settings session it caches stays in step with the store.
-  bindDisplayMode(params, (displayMode) => {
-    updateSettings({ displayMode });
-  });
+  bindDisplayMode(
+    params,
+    (displayMode) => {
+      updateSettings({ displayMode });
+    },
+    scope.signal,
+  );
   const root = document.createElement('main');
   root.className = 'main-menu';
   // The scene layer hosts the opening still and the rotating ones above it. The menu draws no GL, so
@@ -108,8 +116,31 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   content.className = 'main-menu__content';
   root.append(content);
   document.body.append(root);
-  void startBackdropRotation(sceneLayer);
-  const fullscreenPrompt = mountFullscreenPrompt(root, params);
+  void startBackdropRotation(sceneLayer, scope.signal);
+  const fullscreenPrompt = mountFullscreenPrompt(root, params, scope.signal);
+
+  const closeMenu = (): void => {
+    scope.abort();
+    root.remove();
+    canvas.hidden = false;
+    releaseMapPreviews();
+  };
+  // Set from the click, not from the handover: the entry's module has to download first, and the
+  // screens must not start another game or walk back to a different map in the meantime.
+  let launching = false;
+  const launch: LaunchEntry = (search) => {
+    if (launching) return;
+    launching = true;
+    root.classList.add('is-launching');
+    void swapToEntry(search, closeMenu).catch((err: unknown) => {
+      // A load that failed before the handover leaves the menu on screen, and it takes input again.
+      if (root.isConnected) {
+        launching = false;
+        root.classList.remove('is-launching');
+      }
+      throw err; // installCrashCapture's unhandledrejection hook owns the reporting
+    });
+  };
 
   let screen: MenuScreen = 'main';
   // Screen state that outlives the screens themselves, so a round trip keeps the filter and seats.
@@ -123,13 +154,14 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   };
   const screenFor = (next: MenuScreen): HTMLElement => {
     if (next === 'main') return mainScreen(show);
-    if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby);
-    if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters);
+    if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby, launch);
+    if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters, launch);
     if (next === 'settings') return settingsScreen(show, settingsMemory);
     if (next === 'credits') return creditsScreen(show);
     return placeholderScreen(next, show);
   };
   const show = (next: MenuScreen): void => {
+    if (launching) return;
     screen = next;
     root.classList.toggle('is-sub', next !== 'main');
     content.replaceChildren(screenFor(next));
@@ -144,7 +176,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   };
   show('main');
 
-  window.addEventListener('keydown', (event) => {
+  const onKeydown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {
       // Esc inside a non-empty text field is the field's own clear; only an empty field lets it
       // bubble up into back-navigation.
@@ -168,5 +200,6 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     // With nothing focused yet, Down enters at the first interactive item, Up at the last.
     const from = focused >= 0 ? focused : delta === 1 ? -1 : 0;
     buttons[moveFocus(MAIN_NAV, from, delta)]?.focus();
-  });
+  };
+  window.addEventListener('keydown', onKeydown, { signal: scope.signal });
 }

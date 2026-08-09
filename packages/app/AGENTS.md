@@ -15,10 +15,13 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
 - Read the world through snapshots and explicit simulation probes.
 - Load generated content through the shared network/resolver seams. A checkout without `content/`
   must still boot using synthetic fallback content or a clear unavailable state.
-- Keep `main.ts` a small URL dispatcher. Entry modules assemble their mode and share the common game
-  runtime. Reach them only through the `src/routes.ts` thunks: a static `entries/` import anywhere in
-  the shell puts every mode back into the first download, which the build's size report shows but does
-  not block.
+- Keep `main.ts` and `launch.ts` a small URL dispatcher. Entry modules assemble their mode and share
+  the common game runtime. Reach them only through the `src/routes.ts` thunks: a static `entries/`
+  import anywhere in the shell puts every mode back into the first download, which the build's size
+  report shows but does not block.
+- The menu hands over to a game through `swapToEntry`, never by assigning `window.location`. A
+  document navigation ends the browser's fullscreen grant, and the next document can only take it
+  back on the player's next click. Entries that still navigate owe the player that flash.
 
 The supported development entries and debug flags are documented in
 [`docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md). Add a new entry only when it is a distinct mode,
