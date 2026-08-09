@@ -45,7 +45,6 @@ const CC_VOLUME = 7;
 const CC_PAN = 10;
 const CC_BANK_LSB = 32;
 const CC_REVERB_SEND = 91;
-const CC_ALL_NOTES_OFF = 123;
 const MIDI_MAX = 127;
 const PAN_CENTER = 63;
 const PITCH_WHEEL_MAX = 16383;
@@ -159,9 +158,6 @@ export async function synthesizeEvents(
           break;
         case 'pb':
           synth.pitchWheel(channel, Math.max(0, Math.min(PITCH_WHEEL_MAX, Math.round(ev.val))));
-          break;
-        case 'alloff':
-          synth.controllerChange(channel, CC_ALL_NOTES_OFF, 0);
           break;
       }
     }

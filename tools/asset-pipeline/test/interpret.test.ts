@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { interpretSegment, LibcxxPriorityQueue } from '../src/stages/music/interpret.js';
-import { bandTrack, patternTrack, segment, tempoTrack } from './segment-fixture.js';
+import { interpretSegment } from '../src/stages/music/interpret.js';
+import { LibcxxPriorityQueue } from '../src/stages/music/priority-queue.js';
+import { bandTrack, CHORD_SCALE_MODE, patternTrack, segment, tempoTrack } from './segment-fixture.js';
 
 const INFINITE = 0xffffffff;
 const OPTIONS = { sampleRate: 44100, audioChannels: 2, renderSeconds: 3 };
@@ -15,7 +16,7 @@ function oneNoteSegment(): Uint8Array {
     patternTrack(120, 1, [
       {
         guidSeed: 1,
-        playMode: 14,
+        playMode: CHORD_SCALE_MODE,
         variations: 0b1,
         logicalPartId: 2,
         notes: [{ gridStart: 0, variation: 1, duration: 768, musicValue: 0x3000, velocity: 100 }],
@@ -45,7 +46,7 @@ describe('interpretSegment', () => {
       patternTrack(120, 1, [
         {
           guidSeed: 1,
-          playMode: 14,
+          playMode: CHORD_SCALE_MODE,
           variations: 0b1,
           logicalPartId: 2,
           notes: [{ gridStart: 0, variation: 1, duration: 768, musicValue: 0x3000, velocity: 100 }],
@@ -64,7 +65,7 @@ describe('interpretSegment', () => {
       patternTrack(120, 1, [
         {
           guidSeed: 1,
-          playMode: 14,
+          playMode: CHORD_SCALE_MODE,
           variations: 0b11,
           logicalPartId: 2,
           notes: [
@@ -92,7 +93,7 @@ describe('interpretSegment', () => {
       patternTrack(120, 1, [
         {
           guidSeed: 1,
-          playMode: 14,
+          playMode: CHORD_SCALE_MODE,
           variations: 0b1,
           logicalPartId: 2,
           notes: [{ gridStart: 8, variation: 1, duration: 768, musicValue: 0x3000, velocity: 100 }],
@@ -115,7 +116,7 @@ describe('interpretSegment', () => {
       patternTrack(120, 1, [
         {
           guidSeed: 1,
-          playMode: 14,
+          playMode: CHORD_SCALE_MODE,
           variations: 0b1,
           logicalPartId: 25,
           notes: [{ gridStart: 0, variation: 1, duration: 768, musicValue: 0x3000, velocity: 90 }],

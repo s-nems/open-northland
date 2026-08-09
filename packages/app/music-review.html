@@ -78,6 +78,8 @@ function row(stem, track) {
   audio.controls = true;
   audio.preload = 'metadata';
   audio.src = `/music/${track.file}`;
+  // Local-only comparison files exist on some checkouts; a missing one drops its row.
+  audio.addEventListener('error', () => div.remove());
   audio.addEventListener('play', () => {
     if (current && current !== audio) current.pause();
     current = audio;

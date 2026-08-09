@@ -1,5 +1,15 @@
 /** Synthetic DirectMusic segment builders on top of the RIFF byte helpers. */
+import {
+  DMUS_PLAYMODE_CHORD_INTERVALS,
+  DMUS_PLAYMODE_CHORD_ROOT,
+  DMUS_PLAYMODE_NONE,
+  DMUS_PLAYMODE_SCALE_INTERVALS,
+} from '../src/stages/music/music-value.js';
 import { chunk, f64, list, riffChunk, u16, u32, utf16z } from './riff-fixture.js';
+
+/** The part play mode the corpus authors: chord-root walks over chord and scale intervals. */
+export const CHORD_SCALE_MODE =
+  DMUS_PLAYMODE_CHORD_ROOT | DMUS_PLAYMODE_SCALE_INTERVALS | DMUS_PLAYMODE_CHORD_INTERVALS;
 
 function fourCcBytes(s: string): number[] {
   const bytes = [0, 0, 0, 0];
@@ -57,7 +67,7 @@ function noteRecord(n: FixtureNote): number[] {
     0,
     0,
     0,
-    n.playMode ?? 16,
+    n.playMode ?? DMUS_PLAYMODE_NONE,
     0,
   ];
 }

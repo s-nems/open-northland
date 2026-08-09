@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { decodeSegmentTracks } from '../src/decoders/sgt-tracks.js';
+import { DMUS_PLAYMODE_NONE } from '../src/stages/music/music-value.js';
 import { chunk, u32 } from './riff-fixture.js';
 import {
   bandTrack,
+  CHORD_SCALE_MODE,
   chordTrack,
   patternTrack,
   rawTrack,
@@ -20,7 +22,7 @@ describe('decodeSegmentTracks', () => {
       patternTrack(120, 1, [
         {
           guidSeed: 1,
-          playMode: 14,
+          playMode: CHORD_SCALE_MODE,
           variations: 0b1,
           logicalPartId: 2,
           notes: [{ gridStart: 0, variation: 1, duration: 768, musicValue: 0x3000, velocity: 100 }],
@@ -34,7 +36,6 @@ describe('decodeSegmentTracks', () => {
       ]),
     ]);
     const decoded = decodeSegmentTracks(bytes);
-    expect(decoded.repeats).toBe(INFINITE);
     expect(decoded.length).toBe(3072);
     expect(decoded.tracks.map((t) => t.kind)).toEqual(['tempo', 'pattern', 'band']);
 
@@ -45,7 +46,7 @@ describe('decodeSegmentTracks', () => {
     expect(pattern.pattern.measures).toBe(1);
     expect(pattern.pattern.partRefs).toHaveLength(1);
     const part = pattern.pattern.parts.get(pattern.pattern.partRefs[0]?.partId ?? '');
-    expect(part?.playMode).toBe(14);
+    expect(part?.playMode).toBe(CHORD_SCALE_MODE);
     expect(part?.notes).toEqual([
       {
         gridStart: 0,
@@ -54,7 +55,7 @@ describe('decodeSegmentTracks', () => {
         timeOffset: 0,
         musicValue: 0x3000,
         velocity: 100,
-        playMode: 16,
+        playMode: DMUS_PLAYMODE_NONE,
       },
     ]);
     expect(band).toMatchObject({

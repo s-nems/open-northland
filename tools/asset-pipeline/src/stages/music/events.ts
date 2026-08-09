@@ -20,8 +20,7 @@ export type TimedEvent =
   | { readonly e: 'on'; readonly t: number; readonly id: number; readonly note: number; readonly vel: number }
   | { readonly e: 'off'; readonly t: number; readonly id: number; readonly note: number }
   | { readonly e: 'cc'; readonly t: number; readonly id: number; readonly cc: number; readonly val: number }
-  | { readonly e: 'pb'; readonly t: number; readonly id: number; readonly val: number }
-  | { readonly e: 'alloff'; readonly t: number; readonly id: number };
+  | { readonly e: 'pb'; readonly t: number; readonly id: number; readonly val: number };
 
 export interface SegmentEvents {
   readonly instances: readonly EventInstance[];

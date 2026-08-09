@@ -1,10 +1,9 @@
 /**
  * DirectMusic performance interpreter: schedules a segment's tracks as timed messages and runs
- * the render clock to produce the instrument event stream the synthesizer replays. Behavioral
- * port of the MIT libdmusic player this pipeline previously vendored (with the project patch);
- * message vector order, priority-queue tie behavior (libc++ heap), and the uint32/double clock
- * arithmetic are reproduced exactly, proven by event parity against its dumps over the owned
- * corpus.
+ * the render clock to produce the instrument event stream the synthesizer replays. Scheduling
+ * order, priority-queue tie behavior, and the uint32/double clock arithmetic follow the MIT
+ * libdmusic player, proven by event parity against it over the owned corpus. One named deviation:
+ * tempo changes apply at their authored times instead of that player's collapse to time zero.
  */
 
 import { DMUS_PPQ } from '../../decoders/sgt.js';
@@ -23,6 +22,7 @@ import {
   DMUS_CURVET_PBCURVE,
   musicValueToMidi,
 } from './music-value.js';
+import { LibcxxPriorityQueue } from './priority-queue.js';
 
 /** Ticks between successive interpolated curve messages. */
 const CURVE_SPACING = 5;
@@ -86,79 +86,6 @@ function priority(message: Message): number {
 /** Heap order: earliest time first; on ties the higher priority pops first. */
 function messageLess(a: Message, b: Message): boolean {
   return a.time === b.time ? priority(a) < priority(b) : a.time > b.time;
-}
-
-/**
- * Priority queue reproducing libc++'s `std::priority_queue` element order exactly, including the
- * pop order of tie groups: push is a plain sift-up, pop is Floyd's sift-down (walk the hole to a
- * leaf along the larger children) followed by a sift-up fixup of the relocated tail element.
- */
-export class LibcxxPriorityQueue<T> {
-  private readonly heap: T[] = [];
-
-  constructor(private readonly less: (a: T, b: T) => boolean) {}
-
-  get size(): number {
-    return this.heap.length;
-  }
-
-  top(): T | undefined {
-    return this.heap[0];
-  }
-
-  push(value: T): void {
-    this.heap.push(value);
-    this.siftUp(this.heap.length);
-  }
-
-  pop(): void {
-    const h = this.heap;
-    const len = h.length;
-    if (len > 1) {
-      const top = h[0] as T;
-      let hole = 0;
-      let childI = 0;
-      let child = 0;
-      for (;;) {
-        childI += child + 1;
-        child = 2 * child + 1;
-        if (child + 1 < len && this.less(h[childI] as T, h[childI + 1] as T)) {
-          childI++;
-          child++;
-        }
-        h[hole] = h[childI] as T;
-        hole = childI;
-        if (child > Math.floor((len - 2) / 2)) break;
-      }
-      const last = len - 1;
-      if (hole === last) {
-        h[hole] = top;
-      } else {
-        h[hole] = h[last] as T;
-        h[last] = top;
-        this.siftUp(hole + 1);
-      }
-    }
-    h.pop();
-  }
-
-  /** Bubbles the element at slot `len - 1` toward the root within the first `len` slots. */
-  private siftUp(len: number): void {
-    const h = this.heap;
-    if (len <= 1) return;
-    let parent = Math.floor((len - 2) / 2);
-    let hole = len - 1;
-    if (!this.less(h[parent] as T, h[hole] as T)) return;
-    const value = h[hole] as T;
-    for (;;) {
-      h[hole] = h[parent] as T;
-      hole = parent;
-      if (parent === 0) break;
-      parent = Math.floor((parent - 1) / 2);
-      if (!this.less(h[parent] as T, value)) break;
-    }
-    h[hole] = value;
-  }
 }
 
 interface PreparedSegment {
@@ -354,7 +281,7 @@ function prepareSegment(bytes: Uint8Array): PreparedSegment & { readonly length:
     switch (track.kind) {
       case 'tempo':
         for (const item of track.items) {
-          messages.push({ kind: 'tempo', time: item.time, tempo: item.bpm });
+          messages.push({ kind: 'tempo', time: Math.max(0, item.time), tempo: item.bpm });
         }
         break;
       case 'pattern':
@@ -422,8 +349,7 @@ function execute(state: PerformanceState, prepared: PreparedSegment, message: Me
       for (const [pChannel, id] of message.assignments) state.channels.set(pChannel, id);
       break;
     case 'chord':
-      // Chord state is only read when notes resolve at run time; the DX8 path resolves them at
-      // schedule time, so the message only contributes its queue-boundary timing.
+      // Contributes only its queue-boundary timing (why: the sgt-tracks chord decoder).
       break;
     case 'segmentEnd':
       enqueueSegment(state, prepared);
@@ -476,13 +402,17 @@ function renderAudio(
   sampleRate: number,
   audioChannels: number,
 ): void {
-  let pulsesPerSample = (DMUS_PPQ * (state.tempo / 60)) / sampleRate;
+  let pulsesPerSample = (DMUS_PPQ * (state.tempo / 60)) / (sampleRate * audioChannels);
   let offset = 0;
   while (offset < count) {
     const next = state.queue.top();
     if (next === undefined) break;
     pulsesPerSample = (DMUS_PPQ * (state.tempo / 60)) / (sampleRate * audioChannels);
     let ticks = next.time < state.musicTime ? 0 : next.time - state.musicTime;
+    // Advancing time at a non-positive tempo would pop every later message at zero samples and
+    // loop forever (the enqueued default tempo is transiently zero until a tempo item executes in
+    // the same tie group); failing the render beats an in-process hang.
+    if (ticks > 0 && !(state.tempo > 0)) throw new Error(`non-positive tempo ${state.tempo}`);
     let samples = Math.trunc(ticks / pulsesPerSample) >>> 0;
     if (samples % audioChannels !== 0) {
       samples = (samples + 1) >>> 0;
