@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, normalize, sep } from 'node:path';
+import { normalizeRelPath, type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeLib, type LibFile } from '../decoders/lib.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
@@ -8,10 +7,9 @@ import { DATA_DIR, servedRelPath } from './content-tree.js';
 
 /**
  * Maps a `.lib` member name (a backslash path like `data\engine2d\bin\bobs\ls_bridge.bmd`) to a safe
- * path relative to the extraction root, or `undefined` if it would escape it. Archive names use Windows
- * backslashes on every host, so they are rewritten to the native separator before normalizing; a
- * normalized path that is absolute or still climbs out of the root is rejected as a defence against a
- * malformed or hostile archive.
+ * path relative to the extraction root, or `undefined` if it would escape it. A name that is empty,
+ * absolute, drive-relative, or climbs out of the root is rejected as a defence against a malformed or
+ * hostile archive.
  *
  * The leading segment folds to {@link DATA_DIR} and a member landing in a served subtree takes that
  * route's spelling ({@link servedRelPath}): the real archive stores members lowercase under `data\`
@@ -19,20 +17,18 @@ import { DATA_DIR, servedRelPath } from './content-tree.js';
  * case-sensitive filesystem the verbatim spelling would split extraction and routes into two trees.
  */
 export function libMemberRelPath(name: string): string | undefined {
-  const native = name.replace(/\\/g, sep);
-  const norm = normalize(native);
-  if (norm === '' || norm === '.') return undefined;
-  if (isAbsolute(norm) || norm === '..' || norm.startsWith(`..${sep}`)) return undefined;
-  const [head, ...rest] = norm.split(sep);
+  const norm = normalizeRelPath(name);
+  if (norm === undefined) return undefined;
+  const [head, ...rest] = norm.split('/');
   if (head === undefined || head.toLowerCase() !== DATA_DIR.toLowerCase()) return norm;
-  return servedRelPath(join(DATA_DIR, ...rest));
+  return servedRelPath(vjoin(DATA_DIR, ...rest));
 }
 
 /** One extracted archive member: the source `.lib` and the member, both relative for a stable report. */
 export interface LibExtraction {
   /** The `.lib` archive's root-relative path. */
   readonly archive: string;
-  /** The member's path relative to `outDir` (native separators). */
+  /** The member's path relative to `outDir`. */
   readonly member: string;
 }
 
@@ -47,15 +43,18 @@ export interface LibExtraction {
  * sliced from that single buffer through `decodeLib`'s zero-copy payload views.
  */
 export async function unpackLibTree(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
 ): Promise<LibExtraction[]> {
   const done: LibExtraction[] = [];
-  for (const { rel: archive, path: file } of await collectSourceFiles(roots, (rel) => rel.endsWith('.lib'))) {
+  for (const { rel: archive, path: file } of await collectSourceFiles(fs, roots, (rel) =>
+    rel.endsWith('.lib'),
+  )) {
     let archiveBytes: Uint8Array;
     try {
-      archiveBytes = await readFile(file);
+      archiveBytes = await fs.readFile(file);
     } catch (err) {
       console.warn(`[pipeline] skipped archive ${archive}: ${errorMessage(err)}`);
       continue;
@@ -80,9 +79,7 @@ export async function unpackLibTree(
         throw new Error(`colliding members "${twin}" and "${member.name}" in ${archive} extract to one path`);
       }
       seen.set(rel.toLowerCase(), member.name);
-      const outPath = join(outDir, rel);
-      await mkdir(dirname(outPath), { recursive: true });
-      await writeFile(outPath, member.data);
+      await fs.writeFile(vjoin(outDir, rel), member.data);
       done.push({ archive, member: rel });
       onItem?.(done.length);
     }

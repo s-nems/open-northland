@@ -45,7 +45,7 @@ describe('createMinimapSynthesizer', () => {
       ground: { patterns: ['water 01'], a: [0, 0, 0, 0], b: [0, 0, 0, 0] },
     });
     if (png === undefined) throw new Error('expected a synthesized PNG');
-    const image = decodePng(png);
+    const image = await decodePng(png);
     // 2×2 world bounds are 170×114 px; the 720×420 cap scales by 420/114.
     expect(image.height).toBe(420);
     expect(image.width).toBe(Math.round(170 * (420 / 114)));
@@ -68,7 +68,7 @@ describe('createMinimapSynthesizer', () => {
       ground: { patterns: ['water 01', 'missing'], a: [0, 1, 1, 1], b: [0, 1, 1, 1] },
     });
     if (png === undefined) throw new Error('expected a synthesized PNG');
-    const image = decodePng(png);
+    const image = await decodePng(png);
     const seen = new Set<number>();
     for (let i = 0; i < image.width * image.height; i++) {
       seen.add(

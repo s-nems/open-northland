@@ -1,6 +1,4 @@
-import type { Dirent } from 'node:fs';
-import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { type Vfs, type VfsEntry, vjoin } from '@open-northland/vfs';
 
 /**
  * Cheap validation of a user-picked original-game folder for installer UIs. An owned install is
@@ -25,18 +23,18 @@ export const CULTURESNATION_MOD = 'DataCnmd';
  * Probes `dir` as a game-folder candidate with a bounded breadth-first scan, never a full-tree walk,
  * so a wrong pick like the user's home directory stays cheap. Unreadable directories count as empty.
  */
-export async function probeGameFolder(dir: string): Promise<GameFolderProbe> {
-  let top: Dirent[];
+export async function probeGameFolder(fs: Vfs, dir: string): Promise<GameFolderProbe> {
+  let top: VfsEntry[];
   try {
-    top = await readdir(dir, { withFileTypes: true });
+    top = await fs.readdir(dir);
   } catch {
     return { hasArchives: false, hasMod: false };
   }
-  const hasMod = top.some((e) => e.isDirectory() && e.name === CULTURESNATION_MOD);
-  const scan = (parent: string, entries: readonly Dirent[], next: string[]): boolean => {
+  const hasMod = top.some((e) => e.kind === 'dir' && e.name === CULTURESNATION_MOD);
+  const scan = (parent: string, entries: readonly VfsEntry[], next: string[]): boolean => {
     for (const entry of entries) {
-      if (entry.isFile() && entry.name.toLowerCase().endsWith('.lib')) return true;
-      if (entry.isDirectory() && !entry.name.startsWith('.')) next.push(join(parent, entry.name));
+      if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.lib')) return true;
+      if (entry.kind === 'dir' && !entry.name.startsWith('.')) next.push(vjoin(parent, entry.name));
     }
     return false;
   };
@@ -45,9 +43,9 @@ export async function probeGameFolder(dir: string): Promise<GameFolderProbe> {
   for (let depth = 1; depth < PROBE_MAX_DEPTH && level.length > 0; depth++) {
     const next: string[] = [];
     for (const current of level) {
-      let entries: Dirent[];
+      let entries: VfsEntry[];
       try {
-        entries = await readdir(current, { withFileTypes: true });
+        entries = await fs.readdir(current);
       } catch {
         continue;
       }

@@ -2,6 +2,7 @@ import type { Dirent } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { probeGameFolder } from '@open-northland/asset-pipeline';
+import { nodeVfs } from '@open-northland/vfs/node';
 import type { GameFolderCandidate } from './ipc.js';
 
 /**
@@ -31,7 +32,7 @@ export async function detectGameFolders(
       if (found.length >= CANDIDATE_LIMIT) return found;
       if (!entry.isDirectory() || !entry.name.toLowerCase().includes('cultures')) continue;
       const path = join(root, entry.name);
-      const probe = await probeGameFolder(path);
+      const probe = await probeGameFolder(nodeVfs(), path);
       if (probe.hasArchives) found.push({ path, probe });
     }
   }

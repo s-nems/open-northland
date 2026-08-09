@@ -3,9 +3,13 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "DOM.AsyncIterable"],
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../../packages/data" }, { "path": "../../packages/render" }]
+  "references": [
+    { "path": "../../packages/data" },
+    { "path": "../../packages/render" },
+    { "path": "../../packages/vfs" }
+  ]
 }

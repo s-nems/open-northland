@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import type { Vfs } from '@open-northland/vfs';
 import {
   decodeCifStringTable,
   extractStringTable,
@@ -49,6 +49,7 @@ function sectionInt(sections: readonly RuleSection[], key: string): number | und
  * encrypted `map.cif`'s sections, passed in already decoded so this module never re-decodes the cif.
  */
 async function resolveMapNameStringIds(
+  fs: Vfs,
   mapDirs: readonly string[],
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
@@ -61,10 +62,10 @@ async function resolveMapNameStringIds(
   };
   for (const file of ['misc.inc', 'map.ini']) {
     if (nameStringId !== undefined && descriptionStringId !== undefined) break;
-    const path = await findPathCaseInsensitiveInDirs(mapDirs, [file]);
+    const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [file]);
     if (path === undefined) continue;
     try {
-      consider(iniBytesToSections(await readFile(path)));
+      consider(iniBytesToSections(await fs.readFile(path)));
     } catch (err) {
       console.warn(`[pipeline] map ${rel}: ${file} unreadable: ${errorMessage(err)}`);
     }
@@ -82,16 +83,17 @@ async function resolveMapNameStringIds(
  * unreadable or empty table falls through to the next form, then the next language.
  */
 export async function loadMapStringTable(
+  fs: Vfs,
   mapDirs: readonly string[],
   rel: string,
 ): Promise<Record<number, string> | undefined> {
   for (const lang of MAP_TEXT_LANGS) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {
-      const path = await findPathCaseInsensitiveInDirs(mapDirs, [STRING_TABLE_DIR, lang, form]);
+      const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [STRING_TABLE_DIR, lang, form]);
       if (path === undefined) continue;
       let table: Record<number, string>;
       try {
-        const bytes = await readFile(path);
+        const bytes = await fs.readFile(path);
         table =
           form === 'strings.ini'
             ? extractStringTable(iniBytesToSections(bytes))
@@ -113,14 +115,15 @@ export async function loadMapStringTable(
  * once.
  */
 export async function resolveMapMeta(
+  fs: Vfs,
   mapDirs: readonly string[],
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
   strings?: Record<number, string>,
 ): Promise<MapMetaFile | undefined> {
-  strings ??= await loadMapStringTable(mapDirs, rel);
+  strings ??= await loadMapStringTable(fs, mapDirs, rel);
   if (strings === undefined) return undefined;
-  const { nameStringId, descriptionStringId } = await resolveMapNameStringIds(mapDirs, rel, cifSections);
+  const { nameStringId, descriptionStringId } = await resolveMapNameStringIds(fs, mapDirs, rel, cifSections);
   const name = strings[nameStringId];
   const description = strings[descriptionStringId];
   if (name === undefined && description === undefined) return undefined;

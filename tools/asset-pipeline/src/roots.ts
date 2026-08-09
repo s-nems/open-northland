@@ -1,5 +1,4 @@
-import { readdir, stat } from 'node:fs/promises';
-import { join, relative, sep } from 'node:path';
+import { relIn, type Vfs, vjoin } from '@open-northland/vfs';
 import { CULTURESNATION_MOD } from './probe.js';
 import { walkFiles } from './walk.js';
 
@@ -65,6 +64,7 @@ export function pickCaseFoldedEntry(
  * case-insensitive macOS/Windows filesystem hides and a case-sensitive Linux one does not.
  */
 export async function findPathCaseInsensitive(
+  fs: Vfs,
   dir: string,
   segments: readonly string[],
 ): Promise<string | undefined> {
@@ -72,24 +72,25 @@ export async function findPathCaseInsensitive(
   for (const segment of segments) {
     let entries: string[];
     try {
-      entries = await readdir(current);
+      entries = (await fs.readdir(current)).map((e) => e.name);
     } catch {
       return undefined; // `current` missing or not a directory - the path does not resolve
     }
     const match = pickCaseFoldedEntry(entries, segment, current);
     if (match === undefined) return undefined;
-    current = join(current, match);
+    current = vjoin(current, match);
   }
   return current;
 }
 
 /** Case-insensitive resolution across candidate directories in priority order; the first hit wins. */
 export async function findPathCaseInsensitiveInDirs(
+  fs: Vfs,
   dirs: readonly string[],
   segments: readonly string[],
 ): Promise<string | undefined> {
   for (const dir of dirs) {
-    const path = await findPathCaseInsensitive(dir, segments);
+    const path = await findPathCaseInsensitive(fs, dir, segments);
     if (path !== undefined) return path;
   }
   return undefined;
@@ -97,11 +98,15 @@ export async function findPathCaseInsensitiveInDirs(
 
 /**
  * Resolves `rel` overlay-first: the first root where the path resolves case-insensitively, or
- * undefined when none does. Splits on either separator, since callers pass either a `join`ed constant
+ * undefined when none does. Splits on either separator, since callers pass either a joined constant
  * or an ini-borne reference already forward-slashed by `normalizeAssetPath`.
  */
-export async function resolveSourceFile(roots: SourceRoots, rel: string): Promise<string | undefined> {
-  return findPathCaseInsensitiveInDirs(rootsInOrder(roots), rel.split(/[\\/]+/));
+export async function resolveSourceFile(
+  fs: Vfs,
+  roots: SourceRoots,
+  rel: string,
+): Promise<string | undefined> {
+  return findPathCaseInsensitiveInDirs(fs, rootsInOrder(roots), rel.split(/[\\/]+/));
 }
 
 /** One root's walked files, before the cross-root union. */
@@ -141,14 +146,15 @@ export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[
  * as a layer-ordered case-folded union. A missing root propagates as an environmental error.
  */
 export async function collectSourceFiles(
+  fs: Vfs,
   roots: SourceRoots,
   match: (relLower: string) => boolean,
 ): Promise<SourceFile[]> {
   const perRoot: RootFiles[] = [];
   for (const root of rootsInOrder(roots)) {
     const files: { rel: string; path: string }[] = [];
-    for await (const file of walkFiles(root)) {
-      const rel = relative(root, file);
+    for await (const file of walkFiles(fs, root)) {
+      const rel = relIn(root, file);
       if (match(rel.toLowerCase())) files.push({ rel, path: file });
     }
     perRoot.push({ root, files });
@@ -157,9 +163,13 @@ export async function collectSourceFiles(
 }
 
 /** Collects every file whose last path segment is `name`, case-insensitively, across the roots. */
-export async function collectSourceFilesNamed(roots: SourceRoots, name: string): Promise<SourceFile[]> {
-  const suffix = `${sep}${name.toLowerCase()}`;
-  return collectSourceFiles(roots, (rel) => `${sep}${rel}`.endsWith(suffix));
+export async function collectSourceFilesNamed(
+  fs: Vfs,
+  roots: SourceRoots,
+  name: string,
+): Promise<SourceFile[]> {
+  const suffix = `/${name.toLowerCase()}`;
+  return collectSourceFiles(fs, roots, (rel) => `/${rel}`.endsWith(suffix));
 }
 
 /** Where players download the culturesnation mod. */
@@ -170,14 +180,13 @@ export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
  * none given a game folder that contains one is its own overlay. No mod anywhere fails fast here,
  * because the tribe/weapon/house tables are readable only under `DataCnmd/`.
  */
-export async function resolveModRoot(game: string, modRoot: string | undefined): Promise<string> {
-  const hasMod = async (root: string): Promise<boolean> => {
-    try {
-      return (await stat(join(root, CULTURESNATION_MOD))).isDirectory();
-    } catch {
-      return false;
-    }
-  };
+export async function resolveModRoot(
+  fs: Vfs,
+  game: string,
+  modRoot: string | undefined,
+): Promise<string> {
+  const hasMod = async (root: string): Promise<boolean> =>
+    (await fs.stat(vjoin(root, CULTURESNATION_MOD)))?.kind === 'dir';
   if (modRoot !== undefined) {
     if (await hasMod(modRoot)) return modRoot;
     throw new Error(

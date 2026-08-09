@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import { decodePcx, expandToRgba } from '../../decoders/pcx.js';
 import { encodePng } from '../../decoders/png.js';
 import { errorMessage } from '../../errors.js';
@@ -62,6 +61,7 @@ export function liftPaletteShadows(palette: Uint8Array): Uint8Array {
  * `outDir`. Baking instead of recolouring through a runtime LUT keeps the app side a plain tileable texture.
  */
 export async function convertWindowBitmaps(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   paletteByName: ReadonlyMap<string, Uint8Array>,
@@ -75,10 +75,9 @@ export async function convertWindowBitmaps(
     }
     if (softenShadows === true) paletteBytes = liftPaletteShadows(paletteBytes);
     try {
-      const image = decodePcx(await readSourceFile(roots, join(GUI_BITMAPS_DIR, `${bitmap}.pcx`)));
-      const png = encodePng(expandToRgba({ ...image, palette: paletteBytes }));
-      await mkdir(join(outDir, GUI_BITMAPS_DIR), { recursive: true });
-      await writeFile(join(outDir, GUI_BITMAPS_DIR, `${bitmap}.${palette}.png`), png);
+      const image = decodePcx(await readSourceFile(fs, roots, vjoin(GUI_BITMAPS_DIR, `${bitmap}.pcx`)));
+      const png = await encodePng(expandToRgba({ ...image, palette: paletteBytes }));
+      await fs.writeFile(vjoin(outDir, GUI_BITMAPS_DIR, `${bitmap}.${palette}.png`), png);
       done++;
     } catch (err) {
       console.warn(`[pipeline] gui: skipped ${bitmap}.${palette}: ${errorMessage(err)}`);

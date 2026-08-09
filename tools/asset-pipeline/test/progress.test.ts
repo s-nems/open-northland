@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, describe, expect, it } from 'vitest';
 import { encodeLib } from '../src/decoders/lib.js';
 import { probeGameFolder } from '../src/probe.js';
 import { unpackLibTree } from '../src/stages/lib.js';
 import { makeTempDir, type TempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 /**
  * The progress seam (`src/progress.ts`) + the installer's game-folder probe (`src/probe.ts`).
@@ -38,7 +41,7 @@ describe('unpackLibTree item reporting', () => {
       }),
     );
     const ticks: number[] = [];
-    const extracted = await unpackLibTree({ game, mod: undefined }, out, (done) => ticks.push(done));
+    const extracted = await unpackLibTree(fs, { game, mod: undefined }, out, (done) => ticks.push(done));
     expect(extracted).toHaveLength(2);
     expect(ticks).toEqual([1, 2]);
   });
@@ -50,14 +53,14 @@ describe('probeGameFolder', () => {
     await mkdir(join(game, 'DataX', 'Libs'), { recursive: true });
     await mkdir(join(game, 'DataCnmd'));
     await writeFile(join(game, 'DataX', 'Libs', 'data0001.lib'), 'x');
-    expect(await probeGameFolder(game)).toEqual({ hasArchives: true, hasMod: true });
+    expect(await probeGameFolder(fs, game)).toEqual({ hasArchives: true, hasMod: true });
   });
 
   it('rejects a folder without archives and tolerates a missing path', async () => {
     const empty = await tempDir('probe-empty');
     await mkdir(join(empty, 'Data'));
-    expect(await probeGameFolder(empty)).toEqual({ hasArchives: false, hasMod: false });
-    expect(await probeGameFolder(join(empty, 'no-such-dir'))).toEqual({
+    expect(await probeGameFolder(fs, empty)).toEqual({ hasArchives: false, hasMod: false });
+    expect(await probeGameFolder(fs, join(empty, 'no-such-dir'))).toEqual({
       hasArchives: false,
       hasMod: false,
     });
@@ -68,6 +71,6 @@ describe('probeGameFolder', () => {
     const buried = join(deep, 'a', 'b', 'c', 'd', 'e');
     await mkdir(buried, { recursive: true });
     await writeFile(join(buried, 'data0001.lib'), 'x');
-    expect((await probeGameFolder(deep)).hasArchives).toBe(false);
+    expect((await probeGameFolder(fs, deep)).hasArchives).toBe(false);
   });
 });

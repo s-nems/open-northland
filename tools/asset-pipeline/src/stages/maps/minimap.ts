@@ -15,7 +15,7 @@ const MINIMAP_FILLER_INDEX = 0;
  * approximation of the engine's undocumented compositing. Throws on a malformed `.pcx` or an
  * all-filler picture.
  */
-export function minimapToPng(bytes: Uint8Array): Uint8Array {
+export async function minimapToPng(bytes: Uint8Array): Promise<Uint8Array> {
   const image = decodePcx(bytes);
   const { width, height, pixels } = image;
 

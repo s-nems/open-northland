@@ -1,4 +1,4 @@
-import { join, sep } from 'node:path';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   assertDistinctBobBasenames,
@@ -13,7 +13,7 @@ import {
 describe('served subtree constants', () => {
   it('spell the four roots the content routes serve (packages/content-resolver FILE_ROUTES)', () => {
     // Pinned as literals, not rebuilt from the constants: a drift here 404s a whole route silently.
-    expect([BOBS_DIR, TEXTURES_DIR, SOUNDS_DIR, GUI_BITMAPS_DIR].map((d) => d.split(sep).join('/'))).toEqual([
+    expect([BOBS_DIR, TEXTURES_DIR, SOUNDS_DIR, GUI_BITMAPS_DIR]).toEqual([
       'Data/engine2d/bin/bobs',
       'Data/engine2d/bin/textures',
       'Data/engine2d/bin/sounds',

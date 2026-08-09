@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, describe, expect, it } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { PLAYER_COLORS } from '../src/decoders/player-palette.js';
@@ -7,6 +8,8 @@ import { decodePng } from '../src/decoders/png.js';
 import { convertPlayerColorLut } from '../src/stages/player-colors.js';
 import { indexSourceAssets } from '../src/stages/source-files.js';
 import { BOBS_DIR, makeTempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 /**
  * Covers the player-colour LUT stage's contract shape: one row per {@link PLAYER_COLORS} slot (10
@@ -64,16 +67,17 @@ describe('convertPlayerColorLut', () => {
   it('composes one LUT row per player colour into a 256×N PNG (armor rows degrade without recipes)', async () => {
     const outDir = await outTreeWithSources();
     const result = await convertPlayerColorLut(
+      fs,
       rootsAt(outDir),
       outDir,
-      await indexSourceAssets(rootsAt(outDir)),
+      await indexSourceAssets(fs, rootsAt(outDir)),
     );
 
     expect(result.colors).toBe(PLAYER_COLORS.length);
     expect(result.armorTiers).toBe(1); // no readable recipes - player rows only
     expect(result.png).toBe(join(BOBS_DIR, 'player-lut.png'));
 
-    const png = decodePng(await readFile(join(outDir, result.png)));
+    const png = await decodePng(await readFile(join(outDir, result.png)));
     expect(png.width).toBe(256); // 256 palette entries per row
     expect(png.height).toBe(PLAYER_COLORS.length); // one row per player slot, in slot order
   });
@@ -97,13 +101,14 @@ describe('convertPlayerColorLut', () => {
     );
 
     const result = await convertPlayerColorLut(
+      fs,
       rootsAt(outDir),
       outDir,
-      await indexSourceAssets(rootsAt(outDir)),
+      await indexSourceAssets(fs, rootsAt(outDir)),
     );
 
     expect(result.armorTiers).toBe(5); // none + wool/leather/chain/plate blocks
-    const png = decodePng(await readFile(join(outDir, result.png)));
+    const png = await decodePng(await readFile(join(outDir, result.png)));
     expect(png.height).toBe(PLAYER_COLORS.length * 5); // row = 16*tier + player
   });
 
@@ -111,7 +116,7 @@ describe('convertPlayerColorLut', () => {
     const { path: outDir, cleanup } = await makeTempDir('player-lut-empty');
     tempCleanups.push(cleanup);
     await expect(
-      convertPlayerColorLut(rootsAt(outDir), outDir, await indexSourceAssets(rootsAt(outDir))),
+      convertPlayerColorLut(fs, rootsAt(outDir), outDir, await indexSourceAssets(fs, rootsAt(outDir))),
     ).rejects.toThrow(/test_human_00\.pcx not found/);
   });
 });

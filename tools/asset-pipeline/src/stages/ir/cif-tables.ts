@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import type { Vfs } from '@open-northland/vfs';
 import { cifBytesToSections, type RuleSection, type SourceRef } from '../../decoders/ini.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
@@ -8,13 +8,14 @@ import { resolveSourceFile, type SourceRoots } from '../../roots.js';
  * `fallback`; a present but undecodable one throws, so corrupt input is not mistaken for absent input.
  */
 export async function loadCifTable<T>(
+  fs: Vfs,
   roots: SourceRoots,
   relFile: string,
   extract: (sections: RuleSection[], src: SourceRef) => T,
   fallback: T,
 ): Promise<T> {
-  const path = await resolveSourceFile(roots, relFile);
+  const path = await resolveSourceFile(fs, roots, relFile);
   if (path === undefined) return fallback;
-  const sections = cifBytesToSections(await readFile(path));
+  const sections = cifBytesToSections(await fs.readFile(path));
   return extract(sections, { file: relFile, layer: 'base' });
 }

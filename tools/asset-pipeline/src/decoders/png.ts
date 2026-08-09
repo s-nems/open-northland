@@ -4,12 +4,10 @@
  * (W3C / ISO 15948):
  *   signature 89 50 4E 47 0D 0A 1A 0A, then length-prefixed CRC-32'd chunks IHDR, IDAT(s), IEND
  *   (all multi-byte fields big-endian).
- *
- * zlib comes from node:zlib: this is an offline build tool, not the deterministic sim.
  */
 
-import { deflateSync, inflateSync } from 'node:zlib';
 import { viewOf } from './byte-cursor.js';
+import { deflate, inflate } from './compress.js';
 import type { RgbaImage } from './image.js';
 
 const SIGNATURE = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -58,7 +56,7 @@ function chunk(type: string, data: Uint8Array): Uint8Array {
  * Encodes straight 8-bit RGBA pixels into the simplest conformant stream: colour type 6 (truecolour
  * plus alpha), no interlace, filter-0 scanlines, and one zlib-deflated IDAT.
  */
-export function encodePng(image: RgbaImage): Uint8Array {
+export async function encodePng(image: RgbaImage): Promise<Uint8Array> {
   const { width, height, rgba } = image;
   if (width <= 0 || height <= 0) {
     throw new Error(`png: cannot encode invalid dimensions ${width}x${height}`);
@@ -75,7 +73,7 @@ export function encodePng(image: RgbaImage): Uint8Array {
   for (let y = 0; y < height; y++) {
     filtered.set(rgba.subarray(y * stride, y * stride + stride), y * (stride + 1) + 1);
   }
-  const idat = deflateSync(filtered);
+  const idat = await deflate(filtered);
 
   const ihdr = new Uint8Array(IHDR_BYTES);
   const hv = new DataView(ihdr.buffer);
@@ -97,7 +95,7 @@ export function encodePng(image: RgbaImage): Uint8Array {
  * a `png:`-prefixed error on a bad signature, a CRC mismatch, an unsupported header (non-8-bit,
  * non-RGBA, interlaced), a row filter other than None, or a truncated pixel stream.
  */
-export function decodePng(bytes: Uint8Array): RgbaImage {
+export async function decodePng(bytes: Uint8Array): Promise<RgbaImage> {
   if (bytes.length < SIGNATURE.length || !signatureMatches(bytes)) {
     throw new Error('png: not a PNG (bad signature)');
   }
@@ -153,7 +151,7 @@ export function decodePng(bytes: Uint8Array): RgbaImage {
   if (!sawHeader) throw new Error('png: missing IHDR chunk');
   if (idatParts.length === 0) throw new Error('png: missing IDAT data');
 
-  const filtered: Uint8Array = inflateSync(concat(idatParts));
+  const filtered: Uint8Array = await inflate(concat(idatParts));
   const stride = width * CHANNELS;
   if (filtered.length < height * (stride + 1)) {
     throw new Error(

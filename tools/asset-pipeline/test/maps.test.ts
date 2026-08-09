@@ -1,5 +1,6 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
@@ -13,6 +14,8 @@ import {
 import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
 import { rampPalette } from './fixtures/palette.js';
 import { makeTempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 describe('mapIdFromPath', () => {
   it('slugs the containing folder name (lower-case, non-alphanumerics -> _)', () => {
@@ -81,7 +84,7 @@ describe('decodeMapTree', () => {
   });
 
   it('decodes every map.cif under the tree, sorted by relative path, id from folder', async () => {
-    const maps = await decodeMapTree({ game, mod: undefined });
+    const maps = await decodeMapTree(fs, { game, mod: undefined });
     expect(maps.map((m) => m.id)).toEqual(['forteca', 'tutorial_002']); // sorted by rel path
     expect(maps.find((m) => m.id === 'tutorial_002')).toMatchObject({ width: 142, height: 146, mapType: 1 });
     expect(maps.find((m) => m.id === 'forteca')?.campaign).toBeUndefined();
@@ -90,14 +93,14 @@ describe('decodeMapTree', () => {
   it('skips a stray map.cif in the text/ string-table subfolder of a map folder', async () => {
     await mkdir(join(game, 'CnModMaps', 'forteca', 'text'), { recursive: true });
     await writeFile(join(game, 'CnModMaps', 'forteca', 'text', 'map.cif'), buildStringCif(sampleMapLines()));
-    const maps = await decodeMapTree({ game, mod: undefined });
+    const maps = await decodeMapTree(fs, { game, mod: undefined });
     expect(maps.map((m) => m.id)).toEqual(['forteca', 'tutorial_002']); // no ghost `text` entry
   });
 
   it('skips a malformed map.cif with a warning instead of aborting the batch', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await writeFile(join(game, 'CnModMaps', 'forteca', 'map.cif'), Uint8Array.from([0, 1, 2, 3]));
-    const maps = await decodeMapTree({ game, mod: undefined });
+    const maps = await decodeMapTree(fs, { game, mod: undefined });
     expect(maps.map((m) => m.id)).toEqual(['tutorial_002']); // the good one still decodes
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped map.*forteca/));
     warn.mockRestore();
@@ -108,7 +111,7 @@ describe('minimapToPng', () => {
   // The filler is keyed by palette INDEX 0 (its RGB varies across the corpus - magenta, blue, brown),
   // so the fixtures only need index 0 as the frame; rampPalette's entry 0 = (0, 255, 0) stands in.
 
-  it('keys the border-connected index-0 filler transparent and crops to the real map pixels', () => {
+  it('keys the border-connected index-0 filler transparent and crops to the real map pixels', async () => {
     // A 4×2 canvas whose real pixels occupy the middle 2×1 (indices 1/2); the rest is index-0 filler.
     const pcx = encodePcx({
       width: 4,
@@ -116,13 +119,13 @@ describe('minimapToPng', () => {
       pixels: Uint8Array.from([0, 0, 0, 0, 0, 1, 2, 0]),
       palette: rampPalette(),
     });
-    const png = decodePng(minimapToPng(pcx));
+    const png = await decodePng(await minimapToPng(pcx));
     expect({ width: png.width, height: png.height }).toEqual({ width: 2, height: 1 });
     // rampPalette entry 1 = (1, 254, 7), entry 2 = (2, 253, 14), both fully opaque after the crop.
     expect(Array.from(png.rgba)).toEqual([1, 254, 7, 255, 2, 253, 14, 255]);
   });
 
-  it('keeps an ENCLOSED index-0 pixel opaque (map content, not filler)', () => {
+  it('keeps an ENCLOSED index-0 pixel opaque (map content, not filler)', async () => {
     // 5×5: an index-0 frame, a ring of real pixels, and an enclosed index-0 hole in the middle. The
     // border flood fill keys only the frame; the hole mirrors the sparse index-0 speckles observed
     // INSIDE the two full-bleed shipped minimaps - content, so it stays opaque.
@@ -139,14 +142,14 @@ describe('minimapToPng', () => {
       ]),
       palette: rampPalette(),
     });
-    const png = decodePng(minimapToPng(pcx));
+    const png = await decodePng(await minimapToPng(pcx));
     expect({ width: png.width, height: png.height }).toEqual({ width: 3, height: 3 });
     const center = (1 * 3 + 1) * 4;
     expect(png.rgba[center + 3]).toBe(255); // enclosed index-0 = content, kept opaque
     expect(png.rgba[(0 * 3 + 0) * 4 + 3]).toBe(255); // the real ring survives
   });
 
-  it('keys a ragged filler intrusion inside the crop box to alpha 0', () => {
+  it('keys a ragged filler intrusion inside the crop box to alpha 0', async () => {
     // The filler bites into the picture's bounding box (BLEKINY_NURT-style ragged edge): (1,0) is
     // index 0 connected to the frame, inside the crop - transparent, while the columns stay.
     const pcx = encodePcx({
@@ -160,19 +163,19 @@ describe('minimapToPng', () => {
       ]),
       palette: rampPalette(),
     });
-    const png = decodePng(minimapToPng(pcx));
+    const png = await decodePng(await minimapToPng(pcx));
     expect({ width: png.width, height: png.height }).toEqual({ width: 3, height: 2 });
     expect(png.rgba[(0 * 3 + 1) * 4 + 3]).toBe(0); // the intruding filler pixel, transparent
     expect(png.rgba[(1 * 3 + 1) * 4 + 3]).toBe(255); // the real pixel below it, opaque
   });
 
-  it('throws on an all-filler picture (nothing to crop to)', () => {
+  it('throws on an all-filler picture (nothing to crop to)', async () => {
     const pcx = encodePcx({
       width: 2,
       height: 1,
       pixels: Uint8Array.from([0, 0]),
       palette: rampPalette(),
     });
-    expect(() => minimapToPng(pcx)).toThrow(/filler/);
+    await expect(minimapToPng(pcx)).rejects.toThrow(/filler/);
   });
 });
