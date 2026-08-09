@@ -31,9 +31,15 @@ applied by scripts/build-dmrender.sh before building. What it changes and why:
   -85.8 dB, so held notes faded to silence), and EG hold, per-region pan, LFO/vibrato rate,
   delay and pitch depth are converted instead of dropped. Filter cutoff appears in the banks
   only as the "no filter" sentinel and stays ignored.
-- DlsPlayer: no forced 100 ms attack on every region (unauthored attacks are instant), region
-  WSMP attenuation feeds kInitialAttenuation (boosts clamp to full level), and amplitude-to-decibel
-  conversion uses 20*log10.
+- DlsPlayer: no forced 100 ms attack on every region (unauthored attacks are instant), and
+  amplitude-to-decibel conversion uses 20*log10.
+- DlsPlayer region articulation: a region's lar2 list replaces the instrument-level list (DLS2
+  semantics). The main melodic banks author per-region stereo pans and releases there; ignoring
+  them collapsed L/R sample pairs into doubled mono and cut every release.
+- DlsPlayer WSMP gain: the unit is 0.1 dB steps in 16.16 fixed point (dB = lGain / 655360;
+  evidence: banks author +60 raw on near-full-scale drum samples and -330 on audible pads,
+  plausible only as +6 and -33 dB). Zones keep relative differences as SF2 attenuation, and an
+  instrument's largest positive gain applies as preset gain, since SF2 zones cannot boost.
 - DlsPlayer volume curves: note velocity and CC7/CC11 land on the DLS curve (attenuation
   40*log10(127/value)) by passing the squared fraction through the synth's linear-amplitude
   gain; the band's already-squared bVolume then hits the same curve. The old code halved
@@ -56,6 +62,18 @@ index 374cb2c..aac77b6 100644
          }
  
          return result;
+diff --git i/include/dmusic/DlsPlayer.h w/include/dmusic/DlsPlayer.h
+index 48af509..0a32102 100644
+--- i/include/dmusic/DlsPlayer.h
++++ w/include/dmusic/DlsPlayer.h
+@@ -13,6 +13,7 @@ namespace DirectMusic {
+     class DlsPlayer : public InstrumentPlayer {
+     private:
+         int m_preset;
++        float m_gainBoostDb;
+         std::shared_ptr<TinySoundFont> m_soundfont;
+ 
+         static std::unordered_map<an original routine, std::shared_ptr<TinySoundFont>> m_soundfonts;
 diff --git i/src/Articulator.cpp w/src/Articulator.cpp
 index 7cc48e3..114f2d5 100644
 --- i/src/Articulator.cpp
@@ -70,10 +88,21 @@ index 7cc48e3..114f2d5 100644
  
      const std::uint8_t *data = c.getData().data();
 diff --git i/src/DlsPlayer.cpp w/src/DlsPlayer.cpp
-index 65d57a5..776dcde 100644
+index 65d57a5..3ac95ce 100644
 --- i/src/DlsPlayer.cpp
 +++ w/src/DlsPlayer.cpp
-@@ -21,38 +21,103 @@ static std::int16_t secondsToWordTimecents(double secs) {
+@@ -13,6 +13,10 @@ using namespace sf2cute;
+ 
+ std::unordered_map<DownloadableSound, std::shared_ptr<TinySoundFont>> an original routine;
+ 
++// WSMP gains above 0 dB cannot be expressed as SF2 zone attenuation; they apply as preset gain,
++// keyed by MIDI program within each collection.
++static std::unordered_map<DownloadableSound, std::unordered_map<std::uint32_t, float>> s_presetBoostDb;
++
+ static double dwordTimecentsToSeconds(std::int32_t tc) {
+     return exp2((double)tc / (1200.0 * 65536.0));
+ }
+@@ -21,38 +25,103 @@ static std::int16_t secondsToWordTimecents(double secs) {
      return (std::int16_t)(1200 * log2(secs));
  }
  
@@ -205,28 +234,62 @@ index 65d57a5..776dcde 100644
          }
      }
  }
-@@ -119,7 +184,6 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
+@@ -111,6 +180,16 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
+ 
+     for (const auto& instr : dls.getInstruments()) {
+         std::vector<SFInstrumentZone> zones;
++
++        // WSMP gain is 0.1 dB steps in 16.16 fixed point (dB = lGain / 655360). SF2 zones only
++        // attenuate, so the largest positive gain becomes preset gain and each zone keeps its
++        // relative difference as attenuation.
++        double instrumentBoostDb = 0;
++        for (const auto& reg : instr.getRegions()) {
++            double gainDb = reg.getWavesample().lAttenuation / 655360.0;
++            if (gainDb > instrumentBoostDb) instrumentBoostDb = gainDb;
++        }
++
+         for (const auto& reg : instr.getRegions()) {
+             auto hdr = reg.getRegionHeader();
+             auto wavelink = reg.getWaveLink();
+@@ -119,9 +198,12 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
              std::vector<SFModulatorItem> modItems;
              std::shared_ptr<SFSample> sample;
              std::uint16_t keyrangeLow, keyrangeHigh, velrangeLow, velrangeHigh;
 -            genItems.push_back(SFGeneratorItem(an original routine, GenAmountType(secondsToWordTimecents(0.1))));
  
-             for (const auto& art : instr.getArticulators()) {
+-            for (const auto& art : instr.getArticulators()) {
++            // DLS2: a region's articulation list replaces the instrument-level list.
++            const auto regionArticulators = reg.getArticulators();
++            const auto& articulators =
++                regionArticulators.empty() ? instr.getArticulators() : regionArticulators;
++            for (const auto& art : articulators) {
                  insertArticulator(art, modItems, genItems);
-@@ -160,6 +224,12 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
+             }
+ 
+@@ -160,6 +242,12 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
              }
              sample->set_original_key(static_cast<std::uint8_t>(wavesample.usUnityNote));
              sample->set_correction(static_cast<std::int8_t>(wavesample.sFineTune));
-+            double regionGainDb = wavesample.lAttenuation / 65536.0;
-+            if (regionGainDb < 0) {
-+                double attenuationCb = -regionGainDb * 10.0;
-+                if (attenuationCb > 1440) attenuationCb = 1440;
++            double regionGainDb = wavesample.lAttenuation / 655360.0;
++            double attenuationCb = (instrumentBoostDb - regionGainDb) * 10.0;
++            if (attenuationCb > 1440) attenuationCb = 1440;
++            if (attenuationCb > 0) {
 +                genItems.push_back(SFGeneratorItem(an original routine, GenAmountType((std::int16_t)attenuationCb)));
 +            }
              SFInstrumentZone zone(sample, genItems, modItems);
              zones.push_back(zone);
          }
-@@ -177,7 +247,7 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
+@@ -169,6 +257,9 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
+             std::vector<SFPresetZone>{
+             SFPresetZone(instrument)
+         }));
++        if (instrumentBoostDb > 0) {
++            s_presetBoostDb[dls][instr.getMidiProgram()] = (float)instrumentBoostDb;
++        }
+     }
+ 
+     std::stringstream stream;
+@@ -177,7 +268,7 @@ static std::shared_ptr<TinySoundFont> convertCollection(an original routine
  }
  
  static float gainToDecibels(float gain) {
@@ -235,7 +298,27 @@ index 65d57a5..776dcde 100644
  }
  
  an original routine(std::uint8_t bankLo, std::uint8_t bankHi, std::uint8_t patch,
-@@ -227,7 +297,10 @@ std::uint32_t an original routine(std::int16_t *buffer, std::uint32_t count,
+@@ -213,11 +304,18 @@ an original routine(std::uint8_t bankLo, std::uint8_t bankHi, std::uint8_t patc
+         throw std::runtime_error("Preset not found");
+     }
+ 
++    m_gainBoostDb = 0;
++    auto boosts = s_presetBoostDb.find(dls);
++    if (boosts != s_presetBoostDb.end()) {
++        auto boost = boosts->second.find(patch);
++        if (boost != boosts->second.end()) m_gainBoostDb = boost->second;
++    }
++
+     float volFactorRight = sqrt((m_pan + 1) / 2);
+     float volFactorLeft = sqrt((-m_pan + 1) / 2);
+ 
+     m_soundfont->setPresetPanning(m_preset, volFactorLeft, volFactorRight);
+-    m_soundfont->setPresetGain(m_preset, gainToDecibels(m_volume));
++    m_soundfont->setPresetGain(m_preset, gainToDecibels(m_volume) + m_gainBoostDb);
+ }
+ 
+ std::uint32_t an original routine(std::int16_t *buffer, std::uint32_t count, bool mix) noexcept {
+@@ -227,7 +325,10 @@ std::uint32_t an original routine(std::int16_t *buffer, std::uint32_t count,
  
  /// Instructs the synthesizer to start playing a note
  void an original routine(std::uint8_t note, std::uint8_t velocity) {
@@ -247,14 +330,14 @@ index 65d57a5..776dcde 100644
  }
  
  /// Instructs the synthesizer to stop playing a note
-@@ -248,8 +321,9 @@ void an original routine(std::uint8_t note, std::uint8_t val) {}
+@@ -248,8 +349,9 @@ void an original routine(std::uint8_t note, std::uint8_t val) {}
  /// Sends a "control change" message
  void an original routine(an original routine control, float val) {
      if (control == an original routine || control == an original routine) {
 +        // Same DLS curve as note velocity: squared value through the linear-amplitude gain.
          m_volume = val;
 -        m_soundfont->setPresetGain(m_preset, gainToDecibels(m_volume * m_volume * m_volume * m_volume));
-+        m_soundfont->setPresetGain(m_preset, gainToDecibels(m_volume * m_volume));
++        m_soundfont->setPresetGain(m_preset, gainToDecibels(m_volume * m_volume) + m_gainBoostDb);
      }
  }
  
