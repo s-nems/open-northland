@@ -29,6 +29,8 @@ import {
   WELL_TYPE,
 } from './support.js';
 
+/** The build-order executor: entry order, the counts it repairs, and the one-open-site stall. */
+
 describe('build-order module (houseBuild)', () => {
   const module = buildOrderModule(DEFAULT_BUILD_ORDER);
 
@@ -172,8 +174,8 @@ describe('build-order module (houseBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
-    // The tail's housing rule (user decision 2026-07-26): the opening homes walk the upgrade chain,
-    // but every home after them is placed at the top tier outright - its own construction bill.
+    // The tail's housing rule: the opening homes walk the upgrade chain, but every home after them
+    // is placed at the top tier outright - its own construction bill.
     const topHomes = buildOrderModule([{ kind: 'place', building: 'home_level_02', count: 1 }]);
     const first = [...topHomes.run(sim.world, ctxOf(sim), SEAT)][0];
     if (first?.kind !== 'placeBuilding') throw new Error('expected the top-tier home placement');

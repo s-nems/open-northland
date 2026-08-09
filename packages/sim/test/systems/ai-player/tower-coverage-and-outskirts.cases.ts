@@ -21,6 +21,8 @@ import {
   WALL_TYPE,
 } from './support.js';
 
+/** The two entries that answer to settlement shape: perpetual tower coverage and outskirts spread. */
+
 describe('build-order tower coverage and outskirts', () => {
   const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
 
@@ -143,7 +145,6 @@ describe('build-order tower coverage and outskirts', () => {
   it('sends apart warehouses to opposite wings of the settlement', () => {
     const sim = aiSim();
     placeHq(sim);
-    // A settlement with an east and a west wing: each warehouse should claim one.
     for (const dx of [14, -14]) {
       sim.enqueueSetup({
         kind: 'placeBuilding',
