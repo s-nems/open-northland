@@ -10,7 +10,7 @@
  *   +0x05 "pck"               on-disk bytes "kcp", reversed like a chunk tag
  *   +0x08 "X8el" | "X6el"     the codec id; the trailing 8/6 is the per-element bit depth
  *   +0x0C u8   subFormat      observed constant 0x72
- *   +0x0D u32  unpackedLength = the decoded byte count (= elements × elementBytes)
+ *   +0x0D u32  unpackedLength = the decoded byte count (= element count × element width)
  *   +0x11 u32  innerSize      (the +0x01 value repeated)
  *   +0x15 …    the RLE stream, running to the end of the payload
  *
@@ -31,10 +31,33 @@ export const MAP_LAYER_CODEC_X8 = 'X8el';
 export const MAP_LAYER_CODEC_X6 = 'X6el';
 /** The constant sub-format byte at inner offset +0x0C (observed 0x72 on every real layer). */
 export const MAP_LAYER_SUBFORMAT = 0x72;
-/** Bytes one `X8el` element occupies unpacked (a single byte). */
+
 const X8EL_BYTES_PER_CELL = 1;
-/** Bytes one `X6el` element occupies unpacked (a little-endian u16). */
 const X6EL_BYTES_PER_CELL = 2;
+
+type PckCodecId = typeof MAP_LAYER_CODEC_X8 | typeof MAP_LAYER_CODEC_X6;
+
+/**
+ * One element width of the shared `pck` grammar. `TCells` only unifies when the array a caller
+ * supplies is the one this codec allocates, so a stream cannot be unpacked at the wrong width.
+ */
+interface PckCodec<TCells extends Uint8Array | Uint16Array> {
+  readonly id: PckCodecId;
+  readonly bytesPerElement: typeof X8EL_BYTES_PER_CELL | typeof X6EL_BYTES_PER_CELL;
+  readonly allocateCells: (elementCount: number) => TCells;
+}
+
+const X8EL: PckCodec<Uint8Array> = {
+  id: MAP_LAYER_CODEC_X8,
+  bytesPerElement: X8EL_BYTES_PER_CELL,
+  allocateCells: (elementCount) => new Uint8Array(elementCount),
+};
+
+const X6EL: PckCodec<Uint16Array> = {
+  id: MAP_LAYER_CODEC_X6,
+  bytesPerElement: X6EL_BYTES_PER_CELL,
+  allocateCells: (elementCount) => new Uint16Array(elementCount),
+};
 
 export interface MapLayer {
   readonly codec: typeof MAP_LAYER_CODEC_X8;
@@ -64,49 +87,51 @@ export function isPackedLayer(chunk: MapDatChunk): boolean {
   return chunk.length >= MAP_LAYER_HEADER_SIZE && ascii(chunk.payload, 0x05, 3) === MAP_LAYER_MARKER;
 }
 
-/**
- * Shared RLE decode for both element widths, filling every element of `out` from the stream that
- * starts at {@link MAP_LAYER_HEADER_SIZE}. Each value is composed explicitly little-endian
- * (`lo | hi<<8`) rather than through a byte-reinterpreting view, so it decodes identically on a
- * big-endian host. Throws a `<tag>`-labelled error on any stream corruption.
- */
-function unpackRle(p: Uint8Array, out: Uint8Array | Uint16Array, elementBytes: number, tag: string): void {
-  const elementCount = out.length;
-  const unpackedLength = elementCount * elementBytes;
-  const valueNoun = elementBytes === X8EL_BYTES_PER_CELL ? 'byte' : 'element';
+/** Fills every element of `cells` from the RLE stream starting at {@link MAP_LAYER_HEADER_SIZE}. */
+function unpackRle<TCells extends Uint8Array | Uint16Array>(
+  payload: Uint8Array,
+  cells: TCells,
+  codec: PckCodec<TCells>,
+  tag: string,
+): void {
+  const { bytesPerElement } = codec;
+  const elementCount = cells.length;
+  const unpackedLength = elementCount * bytesPerElement;
+  // Explicit little-endian composition, so a stream decodes the same on a big-endian host. A single
+  // reader holding the width branch keeps this call site monomorphic on the corpus-wide decode loop.
   const readElement = (at: number): number =>
-    elementBytes === X8EL_BYTES_PER_CELL
-      ? (p[at] as number)
-      : (p[at] as number) | ((p[at + 1] as number) << 8);
+    bytesPerElement === X8EL_BYTES_PER_CELL
+      ? (payload[at] as number)
+      : (payload[at] as number) | ((payload[at + 1] as number) << 8);
 
   let o = 0;
   let i = MAP_LAYER_HEADER_SIZE;
   while (o < elementCount) {
-    if (i >= p.length) {
+    if (i >= payload.length) {
       throw new Error(
-        `mapdat: layer "${tag}" stream underran (${o * elementBytes}/${unpackedLength} bytes) before its end`,
+        `mapdat: layer "${tag}" stream underran (${o * bytesPerElement}/${unpackedLength} bytes) before its end`,
       );
     }
-    const b = p[i++] as number;
+    const b = payload[i++] as number;
     if ((b & 0x80) !== 0) {
-      // Run: (b & 0x7F) copies of the next element.
       const count = b & 0x7f;
-      if (i + elementBytes > p.length) {
-        throw new Error(`mapdat: layer "${tag}" run control at end of stream has no value ${valueNoun}`);
+      if (i + bytesPerElement > payload.length) {
+        throw new Error(
+          `mapdat: layer "${tag}" run control at end of stream has no ${bytesPerElement}-byte value`,
+        );
       }
       const value = readElement(i);
-      i += elementBytes;
+      i += bytesPerElement;
       if (o + count > elementCount) {
         throw new Error(
           `mapdat: layer "${tag}" run overflows the ${unpackedLength}-byte grid (corrupt stream)`,
         );
       }
-      out.fill(value, o, o + count);
+      cells.fill(value, o, o + count);
       o += count;
     } else {
-      // Literal: b elements copied verbatim (each little-endian).
       const count = b;
-      if (i + count * elementBytes > p.length) {
+      if (i + count * bytesPerElement > payload.length) {
         throw new Error(`mapdat: layer "${tag}" literal run reads past the stream end (corrupt/truncated)`);
       }
       if (o + count > elementCount) {
@@ -115,39 +140,41 @@ function unpackRle(p: Uint8Array, out: Uint8Array | Uint16Array, elementBytes: n
         );
       }
       for (let k = 0; k < count; k++) {
-        out[o++] = readElement(i);
-        i += elementBytes;
+        cells[o++] = readElement(i);
+        i += bytesPerElement;
       }
     }
   }
 }
 
 /**
- * Shared RLE encode for both element widths, emitting the control stream without the inner header.
- * Runs of two or more identical elements become a run control, everything else a literal run, both
- * capped at 0x7F. The original generator's exact run and literal boundaries are not reproduced; only
- * recovering the input grid through {@link unpackRle} is pinned.
+ * Emits the RLE control stream for `cells`, without the inner header. Runs of two or more identical
+ * elements become a run control, everything else a literal run, both capped at 0x7F. The original
+ * generator's exact run and literal boundaries are not reproduced; only recovering the input grid
+ * through {@link unpackRle} is pinned.
  */
-function packRle(elementCount: number, get: (index: number) => number, elementBytes: number): number[] {
+function packRle<TCells extends Uint8Array | Uint16Array>(cells: TCells, codec: PckCodec<TCells>): number[] {
+  const { bytesPerElement } = codec;
+  const elementCount = cells.length;
   const stream: number[] = [];
-  const pushValue = (v: number): void => {
-    stream.push(v & 0xff);
-    if (elementBytes === X6EL_BYTES_PER_CELL) stream.push((v >>> 8) & 0xff);
+  const pushElement = (value: number): void => {
+    stream.push(value & 0xff);
+    if (bytesPerElement === X6EL_BYTES_PER_CELL) stream.push((value >>> 8) & 0xff);
   };
 
   let i = 0;
   while (i < elementCount) {
-    const value = get(i);
+    const value = cells[i] as number;
     let run = 1;
-    while (run < 0x7f && i + run < elementCount && get(i + run) === value) run++;
+    while (run < 0x7f && i + run < elementCount && cells[i + run] === value) run++;
     if (run >= 2) {
       stream.push(0x80 | run);
-      pushValue(value);
+      pushElement(value);
       i += run;
     } else {
       const litStart = i;
       let lit = 0;
-      while (lit < 0x7f && i < elementCount && !(i + 1 < elementCount && get(i + 1) === get(i))) {
+      while (lit < 0x7f && i < elementCount && !(i + 1 < elementCount && cells[i + 1] === cells[i])) {
         i++;
         lit++;
       }
@@ -157,105 +184,87 @@ function packRle(elementCount: number, get: (index: number) => number, elementBy
         lit = 1;
       }
       stream.push(lit);
-      for (let k = 0; k < lit; k++) pushValue(get(litStart + k));
+      for (let k = 0; k < lit; k++) pushElement(cells[litStart + k] as number);
     }
   }
   return stream;
 }
 
-/** Writes the 21-byte inner header + the packed stream (shared by both codecs). */
-function encodeLayerPayload(
-  stream: readonly number[],
-  codec: string,
-  unpackedLength: number,
+/** Validates the packed-layer marker and codec id, returning the declared unpacked byte length. */
+function readLayerHeader(chunk: MapDatChunk, expectedCodec: PckCodecId): number {
+  if (!isPackedLayer(chunk)) {
+    throw new Error(
+      `mapdat: chunk "${chunk.tag}" is not a pck-packed layer (no "${MAP_LAYER_MARKER}" marker)`,
+    );
+  }
+  const payload = chunk.payload;
+  const codec = ascii(payload, 0x08, 4);
+  if (codec !== expectedCodec) {
+    throw new Error(`mapdat: chunk "${chunk.tag}" codec "${codec}" is not an ${expectedCodec} layer`);
+  }
+  return viewOf(payload).getUint32(0x0d, true);
+}
+
+/** Unpacks a `pck` layer chunk at one codec's element width, throwing on header or stream corruption. */
+function unpackLayerCells<TCells extends Uint8Array | Uint16Array>(
+  chunk: MapDatChunk,
+  codec: PckCodec<TCells>,
+): TCells {
+  const unpackedLength = readLayerHeader(chunk, codec.id);
+  if (unpackedLength % codec.bytesPerElement !== 0) {
+    throw new Error(
+      `mapdat: layer "${chunk.tag}" unpacked length ${unpackedLength} is not a whole number of ${codec.bytesPerElement}-byte elements`,
+    );
+  }
+  const cells = codec.allocateCells(unpackedLength / codec.bytesPerElement);
+  unpackRle(chunk.payload, cells, codec, chunk.tag);
+  return cells;
+}
+
+/**
+ * Writes a layer payload: the 21-byte inner header followed by the packed stream. Kept faithful so the
+ * unpackers can be round-trip tested without committing copyrighted fixtures.
+ */
+function packLayerPayload<TCells extends Uint8Array | Uint16Array>(
+  cells: TCells,
+  codec: PckCodec<TCells>,
   version: number,
 ): Uint8Array {
+  const stream = packRle(cells, codec);
   const innerSize = 16 + stream.length; // bytes after the +0x01 innerSize field
   const out = new Uint8Array(5 + innerSize);
   const view = new DataView(out.buffer);
   out[0x00] = version & 0xff;
   view.setUint32(0x01, innerSize, true);
   out.set(asciiBytes(MAP_LAYER_MARKER), 0x05);
-  out.set(asciiBytes(codec), 0x08);
+  out.set(asciiBytes(codec.id), 0x08);
   out[0x0c] = MAP_LAYER_SUBFORMAT;
-  view.setUint32(0x0d, unpackedLength, true);
+  view.setUint32(0x0d, cells.length * codec.bytesPerElement, true);
   view.setUint32(0x11, innerSize, true);
   out.set(stream, MAP_LAYER_HEADER_SIZE);
   return out;
 }
 
-/** Validates the packed-layer marker and codec id, returning the declared unpacked byte length. */
-function readLayerHeader(
-  chunk: MapDatChunk,
-  expectedCodec: string,
-  mismatchMessage: (foundCodec: string) => string,
-): number {
-  const p = chunk.payload;
-  if (!isPackedLayer(chunk)) {
-    throw new Error(
-      `mapdat: chunk "${chunk.tag}" is not a pck-packed layer (no "${MAP_LAYER_MARKER}" marker)`,
-    );
-  }
-  const codec = ascii(p, 0x08, 4);
-  if (codec !== expectedCodec) {
-    throw new Error(mismatchMessage(codec));
-  }
-  const view = viewOf(p);
-  return view.getUint32(0x0d, true);
-}
-
-/**
- * Unpacks a `pck`/`X8el` grid layer chunk into its row-major byte grid. Throws on a non-packed chunk,
- * a codec other than `X8el`, or a stream that underruns its declared `unpackedLength`.
- */
+/** Unpacks a `pck`/`X8el` grid layer chunk into its row-major byte grid. */
 export function unpackMapLayer(chunk: MapDatChunk): MapLayer {
-  const unpackedLength = readLayerHeader(
-    chunk,
-    MAP_LAYER_CODEC_X8,
-    (codec) => `mapdat: chunk "${chunk.tag}" codec "${codec}" is not supported (only ${MAP_LAYER_CODEC_X8})`,
-  );
-  const cells = new Uint8Array(unpackedLength);
-  unpackRle(chunk.payload, cells, X8EL_BYTES_PER_CELL, chunk.tag);
-  return { codec: MAP_LAYER_CODEC_X8, cells };
+  return { codec: MAP_LAYER_CODEC_X8, cells: unpackLayerCells(chunk, X8EL) };
 }
 
-/**
- * Inverse of {@link unpackMapLayer}: RLE-packs a row-major byte grid into a `pck`/`X8el` chunk
- * payload. Kept faithful so the unpacker can be round-trip tested without committing copyrighted
- * fixtures.
- */
+/** Inverse of {@link unpackMapLayer}. */
 export function packMapLayer(cells: Uint8Array, version = 1): Uint8Array {
-  const stream = packRle(cells.length, (index) => cells[index] as number, X8EL_BYTES_PER_CELL);
-  return encodeLayerPayload(stream, MAP_LAYER_CODEC_X8, cells.length, version);
+  return packLayerPayload(cells, X8EL, version);
 }
 
 /**
  * Unpacks an `X6el` grid layer into its row-major u16 grid. Byte-level inspection of owned maps shows
- * its inner header is identical to the `X8el` one and only the RLE stream differs, operating on
- * 2-byte little-endian elements. Throws on a non-packed chunk, a codec other than `X6el`, an odd
- * declared length, or a stream that underruns or overflows that length.
+ * its inner header is identical to the `X8el` one and only the RLE stream differs, operating on 2-byte
+ * little-endian elements.
  */
 export function unpackX6elLayer(chunk: MapDatChunk): MapLayerU16 {
-  const unpackedLength = readLayerHeader(
-    chunk,
-    MAP_LAYER_CODEC_X6,
-    (codec) => `mapdat: chunk "${chunk.tag}" codec "${codec}" is not an ${MAP_LAYER_CODEC_X6} layer`,
-  );
-  if (unpackedLength % X6EL_BYTES_PER_CELL !== 0) {
-    throw new Error(
-      `mapdat: layer "${chunk.tag}" unpacked length ${unpackedLength} is not a whole number of u16 cells`,
-    );
-  }
-  const cells = new Uint16Array(unpackedLength / X6EL_BYTES_PER_CELL);
-  unpackRle(chunk.payload, cells, X6EL_BYTES_PER_CELL, chunk.tag);
-  return { codec: MAP_LAYER_CODEC_X6, cells };
+  return { codec: MAP_LAYER_CODEC_X6, cells: unpackLayerCells(chunk, X6EL) };
 }
 
-/**
- * Inverse of {@link unpackX6elLayer}: RLE-packs a row-major u16 grid into an `X6el` chunk payload.
- * Kept faithful so the unpacker can be round-trip tested without committing copyrighted fixtures.
- */
+/** Inverse of {@link unpackX6elLayer}. */
 export function packX6elLayer(cells: Uint16Array, version = 1): Uint8Array {
-  const stream = packRle(cells.length, (index) => cells[index] as number, X6EL_BYTES_PER_CELL);
-  return encodeLayerPayload(stream, MAP_LAYER_CODEC_X6, cells.length * X6EL_BYTES_PER_CELL, version);
+  return packLayerPayload(cells, X6EL, version);
 }

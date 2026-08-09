@@ -100,7 +100,7 @@ describe('unpackMapLayer / pck-X8el round-trip', () => {
     payload.set([0x6b, 0x63, 0x70], 0x05); // "kcp"
     payload.set([0x58, 0x36, 0x65, 0x6c], 0x08); // "X6el"
     const map = decodeMapDat(encodeMapDat([{ tag: 'empa', version: 1, payload }]));
-    expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/is not supported/);
+    expect(() => unpackMapLayer(map.chunks[0] as never)).toThrow(/is not an X8el layer/);
   });
 
   it('throws on a stream that underruns its declared unpacked length', () => {
@@ -144,7 +144,7 @@ describe('unpackMapLayer / pck-X8el round-trip', () => {
 
   it('throws on a run control sitting at the very end with no value byte', () => {
     // Grid claims 5 bytes; a run control is the final stream byte (no value follows).
-    expect(() => unpackMapLayer(craftLayer(5, [0x80 | 5]))).toThrow(/no value byte/);
+    expect(() => unpackMapLayer(craftLayer(5, [0x80 | 5]))).toThrow(/no 1-byte value/);
   });
 });
 
@@ -246,7 +246,7 @@ describe('unpackX6elLayer / pck-X6el round-trip', () => {
   };
 
   it('throws on an odd unpacked length (not a whole number of u16 cells)', () => {
-    expect(() => unpackX6elLayer(craftX6el(3, [1, 0xaa, 0xbb]))).toThrow(/whole number of u16/);
+    expect(() => unpackX6elLayer(craftX6el(3, [1, 0xaa, 0xbb]))).toThrow(/whole number of 2-byte elements/);
   });
 
   it('throws on a run that overflows the declared grid', () => {
@@ -266,7 +266,7 @@ describe('unpackX6elLayer / pck-X6el round-trip', () => {
 
   it('throws on a run control at the very end with no value element', () => {
     // Grid claims 4 bytes; a run control is the final stream byte (no u16 value follows).
-    expect(() => unpackX6elLayer(craftX6el(4, [0x80 | 2]))).toThrow(/no value element/);
+    expect(() => unpackX6elLayer(craftX6el(4, [0x80 | 2]))).toThrow(/no 2-byte value/);
   });
 
   it('throws on a stream that underruns its declared length', () => {
