@@ -14,6 +14,7 @@ import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { takeStagedSave } from '../view/runtime/save-load/index.js';
+import { SCENE_TOKEN_PREFIX } from '../view/runtime/save-load/world-names.js';
 import {
   createWorldRenderer,
   haltOnFailedRestore,
@@ -54,7 +55,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   bindDisplayMode(params);
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
-  const worldToken = `scene:${sceneId}`;
+  const worldToken = `${SCENE_TOKEN_PREFIX}${sceneId}`;
   // Consumed before any world assembly: a staged save that fails from here on halts the boot rather
   // than silently starting a fresh world.
   let stagedSave: SaveGame | null;

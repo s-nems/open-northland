@@ -1,8 +1,7 @@
 import type { Simulation } from '@open-northland/sim';
-import { downloadFile } from '../../../diag/index.js';
 import { entrySearch } from '../../params.js';
 import { type SaveLoadSession, type SaveOutcome, saveLoadSession } from './controller.js';
-import { desktopFileBridge, platformSavePicker } from './file-access.js';
+import { browserSaveDownload, desktopFileBridge, platformSavePicker } from './file-access.js';
 import { storePendingLoad } from './pending-store.js';
 import { createSaveStore } from './store.js';
 
@@ -34,7 +33,7 @@ export function createSaveLoadSession(opts: SaveLoadSessionOptions): SaveLoadSes
         ? async (fileName, bytes): Promise<SaveOutcome> =>
             (await bridge.saveGameFile(fileName, bytes)) !== null ? { kind: 'saved' } : { kind: 'cancelled' }
         : (fileName, bytes): Promise<SaveOutcome> => {
-            downloadFile(fileName, bytes, 'application/gzip');
+            browserSaveDownload(fileName, bytes);
             return Promise.resolve({ kind: 'saved' });
           },
   });

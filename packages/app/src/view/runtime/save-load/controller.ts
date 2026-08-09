@@ -1,7 +1,7 @@
 import { exportSaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
 import { compressSaveText, isGzipSave, type SaveBytes } from './codec.js';
 import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
-import { type PickedSaveFile, pickedSaveOf } from './file-access.js';
+import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
 import { displayNameOf } from './list-model.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 
@@ -31,6 +31,7 @@ export interface SaveLoadDeps {
 }
 
 export interface SaveLoadSession {
+  readonly worldToken: string | null;
   listSaves(): Promise<SaveSlotInfo[]>;
   /** Write the running game into the named slot, overwriting a same-named save. */
   saveGame(name: string): Promise<SaveOutcome>;
@@ -41,16 +42,16 @@ export interface SaveLoadSession {
   deleteSave(id: string): Promise<void>;
   /** Reveal the desktop saves folder; null where no such folder exists. */
   readonly showFolder: (() => Promise<void>) | null;
-  /** Pause for an open panel, remembering the player's own pause state. */
+  /** Pause for the open system menu, remembering the player's own pause state. */
   forcePause(): void;
   /** Lift a forced pause, for menu-close paths where a browser never reports dialog dismissal. */
   releaseForcedPause(): void;
 }
 
 /**
- * The system menu's save and load flows. The pause belongs to the open panel, not the flows: a
- * panel forces it on open and releases it on every path back to the game, so a load that stages
- * its file reloads the page still paused, and a rejected or cancelled flow changes nothing.
+ * The system menu's save and load flows. The pause belongs to the open menu, not the flows: the
+ * menu forces it while visible and releases it on close, so a load that stages its file reloads
+ * the page still paused, and a rejected or cancelled flow changes nothing.
  */
 export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
   const { sim, worldToken } = deps;
@@ -90,6 +91,8 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
   };
 
   return {
+    worldToken,
+
     listSaves: () => deps.store.list(),
 
     async saveGame(name: string): Promise<SaveOutcome> {
@@ -141,4 +144,13 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
  *  suffixed basename, a browser slot name is whatever the player typed. */
 function exportFileName(id: string, bytes: SaveBytes): string {
   return `${displayNameOf(id)}${isGzipSave(bytes) ? '.json.gz' : '.json'}`;
+}
+
+/** The browser backup path over a stored slot, shared by the menu screen and `deliverSave`'s
+ *  wiring: download the slot's bytes under its display name. */
+export async function downloadStoredSave(store: SaveStore, id: string): Promise<'downloaded' | 'missing'> {
+  const bytes = await store.read(id);
+  if (bytes === null) return 'missing';
+  browserSaveDownload(exportFileName(id, bytes), bytes);
+  return 'downloaded';
 }

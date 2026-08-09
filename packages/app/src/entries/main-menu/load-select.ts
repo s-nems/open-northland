@@ -1,18 +1,18 @@
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
 import type { LaunchEntry } from '../../launch.js';
+import { confirmDialog } from '../../view/confirm-dialog.js';
 import { decodeSaveText, type SaveBytes } from '../../view/runtime/save-load/codec.js';
+import { downloadStoredSave } from '../../view/runtime/save-load/controller.js';
 import { evaluateSaveDocument } from '../../view/runtime/save-load/evaluate.js';
 import { type PickedSaveFile, platformSavePicker } from '../../view/runtime/save-load/file-access.js';
 import { flowRunner } from '../../view/runtime/save-load/flow-runner.js';
 import { formatPlaytime, formatSavedAt } from '../../view/runtime/save-load/list-model.js';
 import { storePendingLoad } from '../../view/runtime/save-load/pending-store.js';
 import { createSaveStore, type SaveSlotInfo } from '../../view/runtime/save-load/store.js';
+import { SCENE_TOKEN_PREFIX, worldNameIndex } from '../../view/runtime/save-load/world-names.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import { targetSearch } from './target-search.js';
-
-/** World tokens of scene entries; everything else is a decoded map id (`entries/scene.ts`). */
-const SCENE_TOKEN_PREFIX = 'scene:';
 
 /** The search that relaunches a save's session: its recorded entry when that selects a world, else
  *  one rebuilt from the world token alone (a v1 save), which loses the seat but boots the world. */
@@ -64,25 +64,39 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
   const run = flowRunner(setStatus);
 
   let selected: SaveSlotInfo | null = null;
-  let armedDelete: string | null = null;
   const rowButtons = new Map<SaveSlotInfo, HTMLButtonElement>();
+  /** Buttons meaningless without a selected row; disabled until one is picked. */
+  const selectionActions: HTMLButtonElement[] = [];
 
   const loadButton = document.createElement('button');
   loadButton.type = 'button';
   loadButton.className = 'main-menu__primary';
   loadButton.textContent = listCopy.load;
   loadButton.disabled = true;
+  selectionActions.push(loadButton);
 
   const selectSlot = (slot: SaveSlotInfo): void => {
     selected = slot;
-    armedDelete = null;
     for (const [rowSlot, button] of rowButtons) {
       button.classList.toggle('is-selected', rowSlot === slot);
       button.setAttribute('aria-pressed', String(rowSlot === slot));
+      // Roving tabindex: the selected row is the list's only tab stop; arrows walk the rest.
       button.tabIndex = rowSlot === slot ? 0 : -1;
     }
-    loadButton.disabled = false;
+    for (const button of selectionActions) button.disabled = false;
   };
+
+  list.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    event.preventDefault();
+    const entries = [...rowButtons.entries()];
+    const index = entries.findIndex(([slot]) => slot === selected);
+    const next = entries[index + (event.key === 'ArrowDown' ? 1 : -1)];
+    if (next !== undefined) {
+      selectSlot(next[0]);
+      next[1].focus();
+    }
+  });
 
   /** Validate, stage, and hand the document to the save's own entry; a returned string is the
    *  rejection to show. */
@@ -115,7 +129,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     });
   loadButton.addEventListener('click', loadSelected);
 
-  const slotRow = (slot: SaveSlotInfo): HTMLButtonElement => {
+  const slotRow = (slot: SaveSlotInfo, worldName: string | null): HTMLButtonElement => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'main-menu__map-row';
@@ -127,7 +141,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     const rowMeta = document.createElement('div');
     rowMeta.className = 'main-menu__map-row-meta';
     const playtime = slot.tick !== null ? formatPlaytime(slot.tick) : '-';
-    rowMeta.textContent = `${slot.mapId ?? '-'} · ${playtime} · ${formatSavedAt(slot.savedAt, bcp47Tag())}`;
+    rowMeta.textContent = `${worldName ?? '-'} · ${playtime} · ${formatSavedAt(slot.savedAt, bcp47Tag())}`;
     text.append(rowName, rowMeta);
     button.append(text);
     button.addEventListener('click', () => selectSlot(slot));
@@ -137,8 +151,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
 
   const refresh = async (): Promise<void> => {
     selected = null;
-    armedDelete = null;
-    loadButton.disabled = true;
+    for (const button of selectionActions) button.disabled = true;
     rowButtons.clear();
     let slots: readonly SaveSlotInfo[];
     try {
@@ -155,7 +168,8 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
       list.replaceChildren(notice);
       return;
     }
-    for (const slot of slots) rowButtons.set(slot, slotRow(slot));
+    const worldName = await worldNameIndex();
+    for (const slot of slots) rowButtons.set(slot, slotRow(slot, worldName(slot.mapId)));
     list.replaceChildren(...rowButtons.values());
   };
 
@@ -172,10 +186,12 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     run(async () => {
       if (selected === null) return null;
       const slot = selected;
-      if (armedDelete !== slot.id) {
-        armedDelete = slot.id;
-        return formatMessage(listCopy.deleteArm, { name: slot.name });
-      }
+      const confirmed = await confirmDialog({
+        message: formatMessage(listCopy.deleteConfirm, { name: slot.name }),
+        confirmLabel: listCopy.del,
+        cancelLabel: listCopy.cancel,
+      });
+      if (!confirmed) return null;
       try {
         await store.remove(slot.id);
       } catch {
@@ -199,6 +215,9 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     }),
   );
 
+  deleteButton.disabled = true;
+  selectionActions.push(deleteButton);
+
   const actions = document.createElement('div');
   actions.className = 'main-menu__load-actions';
   actions.append(loadButton, deleteButton, fromFile);
@@ -216,6 +235,21 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
         }),
       ),
     );
+  } else {
+    const download = ghost(listCopy.export, () =>
+      run(async () => {
+        if (selected === null) return null;
+        const slot = selected;
+        try {
+          return (await downloadStoredSave(store, slot.id)) === 'missing' ? errors.missing : null;
+        } catch {
+          return listCopy.exportFailed;
+        }
+      }),
+    );
+    download.disabled = true;
+    selectionActions.push(download);
+    actions.append(download);
   }
 
   listCol.append(listScroll, actions, status);
