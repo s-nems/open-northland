@@ -18,9 +18,17 @@ applied by scripts/build-dmrender.sh before building. What it changes and why:
   instruments were ever loaded.
 - MusicMessages BandChangeMessage: priority above notes, so instrument setup precedes notes that
   share its timestamp.
-- MusicMessages getOffsetFromScale: a degree beyond the chord's note count projects into the next
-  octave (the 4th tone of a triad is the root an octave up) instead of dropping the note; half the
-  Cultures notes resolve chord tone 3 against the default triad.
+- MusicMessages music-value resolution: rewritten to the retail synthesizer's algorithm - a
+  chord-tone walk over the chord pattern that spills into a scale walk, two-octave scale
+  normalization with per-root fallback scales, and one octave down in chord-root play modes. A note
+  flagged DMUS_PLAYMODE_NONE inherits its part's play mode; DMUS_PLAYMODE_FIXED plays the raw note.
+  Every Cultures pattern note is flagged NONE over chord-root parts, so the old resolver played the
+  whole corpus an octave high. Algorithm structure follows the GothicKit dmusic project's
+  documentation of the retail binary (MIT); validated by per-note pitch analysis against an
+  in-game recording.
+- MusicMessages pattern curves: pitch-bend curves (DMUS_CURVET_PBCURVE, 4745 across the corpus,
+  previously dropped - every bend and slide froze) schedule PitchBendMessage series next to the CC
+  curves in both pattern paths, sharing one curve-shape helper.
 - MusicMessages scheduleDx8PatternTrack/scheduleSequenceTrack: the schedulers the DMPT/seqt
   branches above use. Approximations: the default C chord (no segment carries a chord track),
   sequential variation choice per pattern repeat.
@@ -48,6 +56,10 @@ applied by scripts/build-dmrender.sh before building. What it changes and why:
 - dmrender: renderBlock counts interleaved samples, so size the buffer by channels and write
   length/channels wav frames; stereo renders wrote half music, half out-of-bounds reads. The
   buffer is zero-initialised so silent stretches are silence, not heap garbage.
+- dmrender -e <file>: dump every player message as JSONL (band-instrument identity rows plus
+  frame-stamped note/CC/pitch-bend events) instead of synthesizing, so the pipeline can replay the
+  segment through an external synthesizer; the first player of each sub-block advances the shared
+  frame clock.
 
 diff --git i/include/dmusic/Common.h w/include/dmusic/Common.h
 index 374cb2c..aac77b6 100644
@@ -74,6 +86,20 @@ index 48af509..0a32102 100644
          std::shared_ptr<TinySoundFont> m_soundfont;
  
          static std::unordered_map<DirectMusic::DLS::DownloadableSound, std::shared_ptr<TinySoundFont>> m_soundfonts;
+diff --git i/include/dmusic/MusicMessage.h w/include/dmusic/MusicMessage.h
+index 56b56b2..3bcb0cb 100644
+--- i/include/dmusic/MusicMessage.h
++++ w/include/dmusic/MusicMessage.h
+@@ -19,7 +19,8 @@ namespace DirectMusic {
+         NoteOff,
+         SegmentEnd,
+         PatternEnd,
+-        ControlChange
++        ControlChange,
++        PitchBend
+     };
+ 
+     class MusicMessage {
 diff --git i/src/Articulator.cpp w/src/Articulator.cpp
 index 7cc48e3..114f2d5 100644
 --- i/src/Articulator.cpp
@@ -368,39 +394,319 @@ index 465333d..d644ac3 100644
                      m_articulators.push_back(Articulator(art));
                  }
 diff --git i/src/MusicMessages.cpp w/src/MusicMessages.cpp
-index 9692438..1e0fd65 100644
+index 9692438..aa70a35 100644
 --- i/src/MusicMessages.cpp
 +++ w/src/MusicMessages.cpp
-@@ -119,13 +119,18 @@ static bool getOffsetFromScale(std::uint8_t degree, std::uint32_t scale, std::ui
-         }
-     }
+@@ -106,124 +106,167 @@ static std::int32_t getMusicOffset(std::uint32_t mtGridStart, std::int16_t nTime
+             );
+ }
  
+-// Returns true if the specified degree is present in a certain scale, and puts the distance from the
+-// root note into offset. If not present, returns false.
+-static bool getOffsetFromScale(std::uint8_t degree, std::uint32_t scale, std::uint8_t* offset) {
+-    assert(offset != nullptr);
++// Music-value resolution follows the retail dmime synthesizer as documented from binary
++// analysis by the GothicKit dmusic project (MIT). Chord-root play modes place the resolved
++// note one octave below the raw octave nibble; a note flagged DMUS_PLAYMODE_NONE inherits
++// the part's play mode. Validated against an in-game recording of the owned copy.
+ 
+-    // FIXME: There is probably a faster way to do this
+-    std::vector<int> degrees;
+-    for (int i = 0; i < 24; i++) {
+-        if (scale & (0x00000001 << i)) {
+-            degrees.push_back(i);
++static int countBits(std::uint32_t v) {
++    int count = 0;
++    for (; v != 0; v >>= 1) count += v & 1;
++    return count;
++}
++
++// One replacement scale per chromatic root, substituted when a pattern is degenerate.
++static const std::uint32_t FALLBACK_SCALES[12] = {
++    0xab5ab5, 0x6ad6ad, 0x5ab5ab, 0xad5ad5, 0x6b56b5, 0x5ad5ad,
++    0x56b56b, 0xd5ad5a, 0xb56b56, 0xd6ad6a, 0xb5ab5a, 0xad6ad6,
++};
++
++static std::uint32_t normalizeScale(std::uint32_t scale, std::uint8_t scaleRoot) {
++    // Force the scale to exactly two octaves, rotate it to the root, and re-normalize. The & 12
++    // root mask mirrors the retail binary as documented; the corpus only authors scale root 0.
++    scale = (scale & 0x0FFF) | (scale << 12);
++    scale = scale >> (12 - (scaleRoot & 12));
++    scale = (scale & 0x0FFF) | (scale << 12);
++    if (countBits(scale & 0xFFF) <= 4) {
++        std::uint32_t best = FALLBACK_SCALES[0];
++        int bestScore = 0;
++        for (int i = 0; i < 12; i++) {
++            int score = countBits(FALLBACK_SCALES[i] & scale & 0xFFF);
++            if (score > bestScore) {
++                best = FALLBACK_SCALES[i];
++                bestScore = score;
++            }
+         }
++        scale = best;
+     }
+-
 -    if (degree < degrees.size()) {
 -        *offset = degrees[degree];
 -        return true;
 -    } else {
 -        *offset = degrees[degrees.size() - 1];
-+    if (degrees.empty()) {
-+        *offset = 0;
-         return false;
-     }
-+    if (degree < degrees.size()) {
-+        *offset = degrees[degree];
-+    } else {
-+        // A degree beyond the available notes projects into the next octave (the 4th tone of a
-+        // triad is the root an octave up), instead of dropping the note.
-+        *offset = degrees[degree % degrees.size()] + 12 * (degree / degrees.size());
-+    }
-+    return true;
+-        return false;
+-    }
++    // Copy the second octave into the empty third so long walks stay in scale.
++    if ((scale & 0xFF000000) == 0) scale |= (scale & 0xFFF000) << 12;
++    return scale;
  }
  
  static bool MusicValueToMIDI(std::uint32_t chord, const std::vector<DMUS_IO_SUBCHORD>& subchords, DMUS_IO_STYLENOTE note, DMUS_IO_STYLEPART part, std::uint8_t* value) {
-@@ -497,4 +502,128 @@ void ControlChangeMessage::Execute(PlayingContext& ctx) {
+     assert(value != nullptr);
+ 
+-    if (note.bPlayModeFlags == DMUS_PLAYMODE_FIXED) {
+-        // In the original Gothic sountrack this is not used, but it might be useful for modding purposes
+-        *value = (std::uint8_t)(note.wMusicValue);
++    std::uint8_t mode = note.bPlayModeFlags == DMUS_PLAYMODE_NONE ? part.bPlayModeFlags : note.bPlayModeFlags;
++    if (mode == DMUS_PLAYMODE_FIXED) {
++        *value = (std::uint8_t)(note.wMusicValue & 0x7F);
+         return true;
+     }
+ 
+-    // TODO: The subchord level should be obtained from the part reference,
+-    // but in Gothic's soundtrack it's always set to the first level.
+-
+-    /*
+-    A chord (or a scale) has the following structure: the first 8 bits represent the
+-    root of the chord (scale), with the standard MIDI notation:
+-    0 -> C
+-    1 -> C#
+-    ....
+-    23 -> B
+-
+-    The following 24 bits represent which notes are present in the chord, with each
+-    bit meaning a semitone from the root (the LSB). Example taken from G2:
+-
+-    chord = 0x00AB5AB5
+-    0   0   A   B   5   A   B   5
+-    00000000101010110101101010110101
+-    |-------|-|-|-||-|-||-|-|-||-|-|
+-    C    W W W HW W HW W W HW W -----> C Major scale
+-    */
+     DMUS_IO_SUBCHORD subchord;
+-    subchord.bChordRoot = 12;
++    subchord.bChordRoot = (chord & 0xFF000000) >> 24;
+     subchord.bScaleRoot = 0;
+     subchord.dwChordPattern = 0x00000091;
+     subchord.dwInversionPoints = 0xFFFFFFFF;
+     subchord.dwLevels = 1;
+     subchord.dwScalePattern = 0x00AB5AB5;
+-
+     if (subchords.size() > 0) {
+         subchord = subchords[0];
+     }
+ 
+-    /* Had to dig hard for this one: https://msdn.microsoft.com/en-us/library/ms898477.aspx
+-    Here is how to interpret wMusicValue:
+-    First nibble: octave (from -2 to 14 (??? I guess they meant -2 to 13) )
+-    Second nibble: chord tone (0 to 15)
+-    Third nibble: scale offset (0 to 15)
+-    Fourth nibble: accidentals (-8 to 7)
+-    */
++    std::uint16_t musicValue = note.wMusicValue;
++    int wrapOffset = 0;
+ 
+-    int octave = ((note.wMusicValue & 0xF000) >> 12);
+-    int chordTone = ((note.wMusicValue & 0x0F00) >> 8);
+-    int scaleTone = ((note.wMusicValue & 0x00F0) >> 4);
++    // A negative octave nibble transposes up while remembering the octaves to give back.
++    while (musicValue >= 0xE000) {
++        musicValue += 0x1000;
++        wrapOffset -= 12;
++    }
++    // Keep the scale-offset nibble addable without spilling into the chord nibble.
++    std::uint16_t scaleNibblePlus = (musicValue & 0x00F0) + 0x0070;
++    if ((scaleNibblePlus & 0x0F00) != 0) {
++        musicValue = (musicValue & 0xFF0F) | (scaleNibblePlus & 0x00F0);
++        wrapOffset -= 12;
++    }
+ 
+-    // Explanation: the accidentals are represented as a two's complement 4bit value.
+-    // We first take only the last four bits from the word, then we shift it left
+-    // while keeping it unsigned, so that when we convert it into a signed byte
+-    // it has the correct sign. Then we divide by 16 to simulate an arithmetic
+-    // right shift of 4, to bring the value back into the correct range
+-    int accidentals = (std::int8_t)(note.wMusicValue & 0x000F);
+-    if (accidentals > 7) { accidentals = (accidentals - 16); }
+-
+-    int noteValue = ((chord & 0xFF000000) >> 24) + 12 * octave;
+-    std::uint8_t chordOffset = 0;
+-    std::uint8_t scaleOffset = 0;
+-    if (getOffsetFromScale(chordTone, subchord.dwChordPattern, &chordOffset)) {
+-        noteValue += chordOffset;
+-        // Is it possible to not find chordTone?
+-        // } else if (getOffsetFromScale(chordTone, subchord.dwScalePattern, &scaleOffset)) {
+-        //     noteValue += scaleOffset;
+-    } else {
+-        TRACE_VERBOSE("Note not found: " << noteValue);
++    std::uint16_t root = 0;
++    if (mode & DMUS_PLAYMODE_CHORD_ROOT) {
++        root = subchord.bChordRoot;
++    } else if (mode & DMUS_PLAYMODE_KEY_ROOT) {
++        // Key-root modes are not authored in the supported corpus.
+         return false;
+     }
+ 
+-    // Start scale offset from resolved chordTone.
+-    // Let's draw an example:
+-    //      * chordTone is 2, scaleTone is 1
+-    //      * in normal chord chordTone 2 is resolved to 5th grade in scale
+-    //      * plus scaleTone 1 it makes 6th grade of the scale
+-    //      * depending on scale, it might be 8 semitones (minor) or 9 semitones (major)
+-    // So, scaleOffset depends on chord's grade
+-    // That works even if chord's grade doesn't fit into scale
+-    // Chord grade might be off of the scale, so if scaleOffset = 0, don't ruin it
+-    if (scaleTone && getOffsetFromScale(scaleTone, subchord.dwScalePattern >> chordOffset, &scaleOffset)) {
+-        noteValue += scaleOffset;
++    if ((mode & (DMUS_PLAYMODE_CHORD_INTERVALS | DMUS_PLAYMODE_SCALE_INTERVALS)) == 0) {
++        return false;
+     }
+ 
+-    noteValue += accidentals;
+-    while (noteValue < 0) {
+-        noteValue += 12;
+-    }
+-    while (noteValue > 127) {
+-        noteValue -= 12;
++    std::uint32_t scalePattern = subchord.dwScalePattern != 0 ? subchord.dwScalePattern : 0x00AB5AB5;
++    scalePattern = normalizeScale(scalePattern, subchord.bScaleRoot);
++    std::uint32_t chordPattern = subchord.dwChordPattern != 0 ? subchord.dwChordPattern : 1;
++
++    std::uint16_t chordPosition = (musicValue & 0x0F00) >> 8;
++    std::uint16_t scalePosition = (musicValue & 0x0070) >> 4;
++    int accidentals = musicValue & 0x000F;
++    if (accidentals > 8) accidentals -= 16;
++
++    int noteValue = 0;
++    int noteOffset = 0;
++    std::uint32_t walkPattern = 0;
++    std::uint16_t walkPosition = 0;
++
++    std::uint16_t rootOctave = root % 12;
++    int chordBits = countBits(chordPattern);
++
++    if ((mode & DMUS_PLAYMODE_CHORD_INTERVALS) && scalePosition == 0 && chordPosition < chordBits) {
++        noteOffset = root + accidentals;
++        walkPattern = chordPattern;
++        walkPosition = chordPosition;
++    } else if ((mode & DMUS_PLAYMODE_CHORD_INTERVALS) && chordPosition < chordBits) {
++        walkPattern = chordPattern;
++        walkPosition = chordPosition;
++        // Walk to the chord tone first, then continue the scale from there.
++        if (walkPattern != 0) {
++            while ((walkPattern & 1) == 0) {
++                walkPattern >>= 1;
++                noteValue += 1;
++            }
++        }
++        if (walkPosition > 0) {
++            do {
++                walkPattern >>= 1;
++                noteValue += 1;
++                if (walkPattern & 1) walkPosition -= 1;
++                if (walkPattern == 0) {
++                    noteValue += walkPosition;
++                    break;
++                }
++            } while (walkPosition > 0);
++        }
++        noteValue += rootOctave;
++        noteOffset = accidentals + root - rootOctave;
++        walkPattern = scalePattern >> (noteValue % 12);
++        walkPosition = scalePosition;
++    } else if (mode & DMUS_PLAYMODE_SCALE_INTERVALS) {
++        noteValue = rootOctave;
++        noteOffset = accidentals + root - rootOctave;
++        walkPattern = scalePattern >> rootOctave;
++        walkPosition = chordPosition * 2 + scalePosition;
++    } else {
++        return false;
+     }
+ 
+-    *value = noteValue;
++    walkPosition += 1;
++    for (; walkPosition > 0; walkPattern >>= 1) {
++        noteValue += 1;
++        if (walkPattern & 1) walkPosition -= 1;
++        if (walkPattern == 0) {
++            noteValue += walkPosition;
++            break;
++        }
++    }
++    noteValue -= 1;
++
++    noteValue += noteOffset + wrapOffset;
++    int octave = (musicValue & 0xF000) >> 12;
++    noteValue += octave * 12;
++    if (mode & DMUS_PLAYMODE_CHORD_ROOT) noteValue -= 12;
++
++    while (noteValue < 0) noteValue += 12;
++    while (noteValue > 127) noteValue -= 12;
++    *value = (std::uint8_t)noteValue;
+     return true;
+ }
+ 
+@@ -262,6 +305,17 @@ static T lerp(float x, T start, T end) {
+     return (1 - x) * start + x * end;
+ }
+ 
++static float curveValue(std::uint8_t shape, float phase, float startValue, float endValue) {
++    switch (shape) {
++    case DMUS_CURVES_INSTANT: return endValue;
++    case DMUS_CURVES_EXP: return lerp(phase * phase * phase * phase, startValue, endValue);
++    case DMUS_CURVES_LOG: return lerp(sqrtf(phase), startValue, endValue);
++    case DMUS_CURVES_SINE: return lerp((sinf((phase - 0.5f) * PI) + 1) * 0.5f, startValue, endValue);
++    case DMUS_CURVES_LINEAR:
++    default: return lerp(phase, startValue, endValue);
++    }
++}
++
+ void MusicMessage::playPattern(PlayingContext& ctx) {
+     TRACE("Playing pattern");
+     ctx.m_patternMessageQueue = MessageQueue();
+@@ -316,7 +370,18 @@ void MusicMessage::playPattern(PlayingContext& ctx) {
+ 
+                     std::uint32_t timeStart = getMusicOffset(curve.mtGridStart, curve.nTimeOffset, header.timeSig);
+                     std::uint32_t duration = curve.mtDuration;
+-                    if (curve.bEventType == DMUS_CURVET_CCCURVE) {
++                    if (curve.bEventType == DMUS_CURVET_PBCURVE) {
++                        // Pitch bend curve: values are the raw 0-16383 wheel range, 8192 center.
++                        float startValue = (float)curve.nStartValue, endValue = (float)curve.nEndValue;
++                        for (uint32_t i = 0; i < duration / DMUSIC_CURVE_MESSAGE_SPACING; i++) {
++                            std::uint32_t offset = i * DMUSIC_CURVE_MESSAGE_SPACING;
++                            float phase = (float)offset / duration;
++                            float value = curveValue(curve.bCurveShape, phase, startValue, endValue);
++                            auto msg = std::make_shared<PitchBendMessage>(ctx.m_musicTime + timeStart + offset,
++                                partRef.wLogicalPartID, PChannel, (std::uint16_t)value);
++                            ctx.m_patternMessageQueue.push(msg);
++                        }
++                    } else if (curve.bEventType == DMUS_CURVET_CCCURVE) {
+                         if (curve.nStartValue > 127 || curve.nEndValue > 127) continue;
+ 
+                         float startValue = (float)curve.nStartValue / 127, endValue = (float)curve.nEndValue / 127;
+@@ -497,4 +562,138 @@ void ControlChangeMessage::Execute(PlayingContext& ctx) {
          player->controlChange(m_control, m_value);
      }
      assert(player != nullptr);
 -}
 \ No newline at end of file
++}
++
++void PitchBendMessage::Execute(PlayingContext& ctx) {
++    TRACE("Pitch bend");
++    const auto& channels = getChannels(ctx);
++    std::shared_ptr<InstrumentPlayer> player = nullptr;
++    if (player = findChannel(channels, m_channel, m_channelAlt)) {
++        player->pitchBend((std::int16_t)m_value);
++    }
++    assert(player != nullptr);
 +}
 +
 +// --- DX8 pattern/sequence track scheduling ---------------------------------------------------
@@ -476,13 +782,16 @@ index 9692438..1e0fd65 100644
 +
 +            for (const auto& curve : part.getCurves()) {
 +                if (!(curve.dwVariation & variation)) continue;
-+                if (curve.bEventType != DMUS_CURVET_CCCURVE) continue;
-+                if (curve.nStartValue > 127 || curve.nEndValue > 127) continue;
++                bool isPitchBend = curve.bEventType == DMUS_CURVET_PBCURVE;
++                if (!isPitchBend && curve.bEventType != DMUS_CURVET_CCCURVE) continue;
++                if (!isPitchBend && (curve.nStartValue > 127 || curve.nEndValue > 127)) continue;
 +
 +                std::int64_t timeStart = (std::int64_t)start
 +                    + getMusicOffset(curve.mtGridStart, curve.nTimeOffset, partHeader.timeSig);
 +                std::uint32_t duration = curve.mtDuration;
-+                float startValue = (float)curve.nStartValue / 127, endValue = (float)curve.nEndValue / 127;
++                // Pitch bend curves carry the raw 0-16383 wheel range (8192 center); CC curves 0-127.
++                float startValue = isPitchBend ? (float)curve.nStartValue : (float)curve.nStartValue / 127;
++                float endValue = isPitchBend ? (float)curve.nEndValue : (float)curve.nEndValue / 127;
 +                auto control = (DirectMusic::Midi::Control)curve.bCCData;
 +
 +                for (std::uint32_t i = 0; i < duration / DMUSIC_CURVE_MESSAGE_SPACING; i++) {
@@ -491,18 +800,15 @@ index 9692438..1e0fd65 100644
 +                    std::int64_t time = timeStart + offset;
 +                    if (time < 0 || time >= (std::int64_t)segmentLength) continue;
 +
-+                    float value;
-+                    switch (curve.bCurveShape) {
-+                    case DMUS_CURVES_INSTANT: value = endValue; break;
-+                    case DMUS_CURVES_EXP: value = lerp(phase * phase * phase * phase, startValue, endValue); break;
-+                    case DMUS_CURVES_LOG: value = lerp(sqrtf(phase), startValue, endValue); break;
-+                    case DMUS_CURVES_SINE: value = lerp((sinf((phase - 0.5f) * PI) + 1) * 0.5f, startValue, endValue); break;
-+                    case DMUS_CURVES_LINEAR:
-+                    default: value = lerp(phase, startValue, endValue); break;
-+                    }
++                    float value = curveValue(curve.bCurveShape, phase, startValue, endValue);
 +
-+                    messages.push_back(std::make_shared<ControlChangeMessage>((std::uint32_t)time,
-+                        partRef.wLogicalPartID, pChannel, control, value));
++                    if (isPitchBend) {
++                        messages.push_back(std::make_shared<PitchBendMessage>((std::uint32_t)time,
++                            partRef.wLogicalPartID, pChannel, (std::uint16_t)value));
++                    } else {
++                        messages.push_back(std::make_shared<ControlChangeMessage>((std::uint32_t)time,
++                            partRef.wLogicalPartID, pChannel, control, value));
++                    }
 +                }
 +            }
 +        }
@@ -527,7 +833,7 @@ index 9692438..1e0fd65 100644
 +    }
 +}
 diff --git i/src/MusicMessages.h w/src/MusicMessages.h
-index f29ecfc..db38e92 100644
+index f29ecfc..49a220f 100644
 --- i/src/MusicMessages.h
 +++ w/src/MusicMessages.h
 @@ -40,6 +40,9 @@ namespace DirectMusic {
@@ -540,12 +846,33 @@ index f29ecfc..db38e92 100644
      private:
          std::map<std::uint32_t, std::shared_ptr<InstrumentPlayer>> instruments;
      };
-@@ -182,4 +185,13 @@ namespace DirectMusic {
+@@ -182,4 +185,34 @@ namespace DirectMusic {
          std::uint32_t m_channel, m_channelAlt;
          DirectMusic::Midi::Control m_control;
      };
 -}
 \ No newline at end of file
++
++    class PitchBendMessage : public MusicMessage {
++    public:
++        PitchBendMessage(std::uint32_t time, std::uint32_t channel, std::uint32_t channelAlt, std::uint16_t value)
++            : MusicMessage(time),
++            m_channel(channel),
++            m_channelAlt(channelAlt),
++            m_value(value) {}
++
++        virtual std::shared_ptr<MusicMessage> Clone(std::uint32_t newTime) {
++            return std::make_shared<PitchBendMessage>(newTime, m_channel, m_channelAlt, m_value);
++        }
++
++        virtual MusicMessageType getMessageType() const { return MusicMessageType::PitchBend; }
++
++        virtual void Execute(PlayingContext& ctx);
++
++    private:
++        std::uint32_t m_channel, m_channelAlt;
++        std::uint16_t m_value;
++    };
 +
 +    // Schedules a DX8 pattern track's embedded pattern as absolute-time messages, looping the
 +    // pattern until segmentLength. All pattern tracks of a segment play simultaneously.
@@ -621,19 +948,132 @@ index 0026f08..9d19262 100644
                  m_articulators.push_back(Articulator(art1ck));
              }
 diff --git i/utils/dmrender/src/dmrender.cpp w/utils/dmrender/src/dmrender.cpp
-index 2b5b6f2..5dada55 100644
+index 2b5b6f2..9252f3b 100644
 --- i/utils/dmrender/src/dmrender.cpp
 +++ w/utils/dmrender/src/dmrender.cpp
-@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
+@@ -9,6 +9,7 @@
+ #include <dmusic/Tracks.h>
+ #include <dmusic/dls/DownloadableSound.h>
+ #include <cmath>
++#include <cstdio>
+ #include <args.hxx>
+ 
+ #include "../../../src/dr_wav.h"
+@@ -16,12 +17,79 @@
+ using namespace DirectMusic;
+ using namespace DirectMusic::DLS;
+ 
++// Event-dump mode: instead of synthesizing audio, every player logs the messages it receives as
++// JSONL, timestamped in absolute frames at the render rate. An external synthesizer replays them.
++static FILE* g_eventLog = nullptr;
++static std::uint64_t g_eventFrames = 0;
++static int g_nextEventId = 0;
++
++class EventDumpPlayer : public InstrumentPlayer {
++public:
++    EventDumpPlayer(std::uint8_t bankLo, std::uint8_t bankHi, std::uint8_t patch,
++        DownloadableSound& dls, std::uint32_t sampleRate, std::uint32_t channels,
++        float volume, float pan)
++        : InstrumentPlayer(bankLo, bankHi, patch, dls, sampleRate, channels, volume, pan)
++        , m_id(++g_nextEventId) {
++        std::string dlsName;
++        for (char c : dls.getInfo().getName()) {
++            if ((unsigned char)c >= 0x20 && c != '"' && c != '\\') dlsName += c;
++        }
++        std::fprintf(g_eventLog,
++            "{\"e\":\"inst\",\"id\":%d,\"dls\":\"%s\",\"bankLo\":%u,\"bankHi\":%u,\"patch\":%u,\"vol\":%.6f,\"pan\":%.6f}\n",
++            m_id, dlsName.c_str(), (unsigned)bankLo, (unsigned)bankHi, (unsigned)patch, volume, pan);
++    }
++
++    // The first player of each sub-block advances the shared frame clock; nothing is synthesized.
++    std::uint32_t renderBlock(std::int16_t*, std::uint32_t count, bool mix) noexcept override {
++        if (!mix) g_eventFrames += count / m_channels;
++        return count;
++    }
++
++    void noteOn(std::uint8_t note, std::uint8_t velocity) override {
++        std::fprintf(g_eventLog, "{\"e\":\"on\",\"t\":%llu,\"id\":%d,\"note\":%u,\"vel\":%u}\n",
++            (unsigned long long)g_eventFrames, m_id, (unsigned)note, (unsigned)velocity);
++    }
++    void noteOff(std::uint8_t note, std::uint8_t) override {
++        std::fprintf(g_eventLog, "{\"e\":\"off\",\"t\":%llu,\"id\":%d,\"note\":%u}\n",
++            (unsigned long long)g_eventFrames, m_id, (unsigned)note);
++    }
++    void allNotesOff() override {
++        std::fprintf(g_eventLog, "{\"e\":\"alloff\",\"t\":%llu,\"id\":%d}\n",
++            (unsigned long long)g_eventFrames, m_id);
++    }
++    void channelPressure(std::uint8_t) override {}
++    void polyAftertouch(std::uint8_t, std::uint8_t) override {}
++    void controlChange(DirectMusic::Midi::Control control, float val) override {
++        std::fprintf(g_eventLog, "{\"e\":\"cc\",\"t\":%llu,\"id\":%d,\"cc\":%u,\"val\":%.6f}\n",
++            (unsigned long long)g_eventFrames, m_id, (unsigned)control, val);
++    }
++    void programChange(std::uint8_t) override {}
++    void pitchBend(std::int16_t val) override {
++        std::fprintf(g_eventLog, "{\"e\":\"pb\",\"t\":%llu,\"id\":%d,\"val\":%d}\n",
++            (unsigned long long)g_eventFrames, m_id, (int)val);
++    }
++
++private:
++    int m_id;
++};
++
++static PlayerFactory eventDumpFactory() {
++    return [](std::uint8_t bankLo, std::uint8_t bankHi, std::uint8_t patch,
++        const GUID&, DownloadableSound& dls, std::uint32_t sampleRate, std::uint32_t chans,
++        float vol, float pan) -> std::shared_ptr<InstrumentPlayer> {
++        return std::shared_ptr<EventDumpPlayer>{
++            new EventDumpPlayer(bankLo, bankHi, patch, dls, sampleRate, chans, vol, pan)
++        };
++    };
++}
++
+ int main(int argc, char **argv) {
+     args::ArgumentParser parser("dmrender renders DirectMusic segments into audio files");
+     args::HelpFlag help(parser, "help", "Display this help menu", { 'h', "help" });
+     args::ValueFlag<unsigned int> chunkLength(parser, "length", "The length in seconds of the audio to render", { 'l', "length" });
+     args::ValueFlag<unsigned int> samplingRate(parser, "sampling rate", "The sampling rate to use", { 's', "sample" });
+     args::ValueFlag<unsigned int> numChannels(parser, "channels", "The number of channels to use", { 'c', "channels" });
++    args::ValueFlag<std::string> eventsFile(parser, "events", "Write player events as JSONL instead of synthesizing audio", { 'e', "events" });
+     args::Positional<std::string> segmentName(parser, "segment", "The segment to render");
+     args::Positional<std::string> outputFile(parser, "output", "The output file");
+ 
+@@ -44,11 +112,19 @@ int main(int argc, char **argv) {
+         std::cerr << "dmrender: No input specified." << std::endl;
+         return 1;
+     }
+-   
+-    if (!outputFile) {
++
++    bool dumpEvents = static_cast<bool>(eventsFile);
++    if (!dumpEvents && !outputFile) {
+         std::cerr << "dmrender: No output file specified" << std::endl;
+         return 1;
+     }
++    if (dumpEvents) {
++        g_eventLog = std::fopen(args::get(eventsFile).c_str(), "w");
++        if (g_eventLog == nullptr) {
++            std::cerr << "dmrender: Cannot open events file" << std::endl;
++            return 1;
++        }
++    }
+ 
+     int sampleRate = samplingRate ? args::get(samplingRate) : 44100;
+     int channels = numChannels ? args::get(numChannels) : 1;
+@@ -56,32 +132,35 @@ int main(int argc, char **argv) {
          std::cerr << "dmrender: Invalid number of channels" << std::endl;
          return 1;
      }
 -    std::uint64_t length = (chunkLength ? args::get(chunkLength) : 60) * sampleRate;
 +    std::uint64_t length = (chunkLength ? args::get(chunkLength) : 60) * sampleRate * channels;
  
-     // Store soundfonts based on their name
-     PlayingContext ctx(sampleRate, channels, DlsPlayer::createFactory());
-@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
+-    // Store soundfonts based on their name
+-    PlayingContext ctx(sampleRate, channels, DlsPlayer::createFactory());
++    PlayingContext ctx(sampleRate, channels, dumpEvents ? eventDumpFactory() : DlsPlayer::createFactory());
+     std::cout << "Loading segment...";
+     auto segment = ctx.loadSegment(args::get(segmentName));
+     std::cout << " done.\nStart playback... ";
      ctx.playSegment(*segment);
      std::cout << " done.\nBegin rendering... \n";
  
@@ -642,12 +1082,31 @@ index 2b5b6f2..5dada55 100644
      for (std::uint64_t i = 0; i < length; i += sampleRate) {
          ctx.renderBlock(buffer + i, sampleRate);
          std::cout << "\rProgress: " <<  ceil((i / (float)length) * 100) << "%";
-@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
-     format.bitsPerSample = 16;
+     }
  
-     drwav* dr = drwav_open_file_write(args::get(outputFile).c_str(), &format);
+-    drwav_data_format format;
+-    format.container = drwav_container_riff;
+-    format.format = DR_WAVE_FORMAT_PCM;
+-    format.channels = channels;
+-    format.sampleRate = sampleRate;
+-    format.bitsPerSample = 16;
++    if (dumpEvents) {
++        std::fclose(g_eventLog);
++    } else {
++        drwav_data_format format;
++        format.container = drwav_container_riff;
++        format.format = DR_WAVE_FORMAT_PCM;
++        format.channels = channels;
++        format.sampleRate = sampleRate;
++        format.bitsPerSample = 16;
+ 
+-    drwav* dr = drwav_open_file_write(args::get(outputFile).c_str(), &format);
 -    drwav_write_pcm_frames(dr, length, buffer);
-+    drwav_write_pcm_frames(dr, length / channels, buffer);
-     drwav_close(dr);
+-    drwav_close(dr);
++        drwav* dr = drwav_open_file_write(args::get(outputFile).c_str(), &format);
++        drwav_write_pcm_frames(dr, length / channels, buffer);
++        drwav_close(dr);
++    }
  
      delete[] buffer;
+ 

@@ -9,17 +9,19 @@ import { decodeSegmentAudiopath, decodeSegmentTiming, musicTimeToSeconds } from 
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
+import { parseEventDump } from './events.js';
 import { encodeOgg } from './ogg-encode.js';
 import { decimateByTwo } from './resample.js';
 import { applyWavesReverb } from './reverb.js';
-import { decodePcm16Wav } from './wav.js';
+import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
 
 /**
  * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - one `mtLength`
  * pass per segment, with the loop-back point in the manifest (loop semantics: `decoders/sgt.ts`).
- * Each segment's embedded audiopath then shapes the render: the authored Waves Reverb applies to
- * the whole mix and a 22050 Hz port rate halves the published rate (the synth itself renders
- * oversampled at 44.1 kHz).
+ * dmrender interprets the segment and dumps timed note/controller events (`-e`); spessasynth
+ * synthesizes them from the game's DLS banks. Each segment's embedded audiopath then shapes the
+ * render: the authored Waves Reverb applies to the whole mix and a 22050 Hz port rate halves the
+ * published rate (the synth itself renders oversampled at 44.1 kHz).
  * `Theme_Viking_Hostile` alone authors `repeats: 1`; looping it like its 63 infinite siblings is an
  * approximation. Rendering needs the locally built dmrender binary (`scripts/build-dmrender.sh`);
  * without it, or without `DataX/DM2`, the stage is skipped and the app plays no music.
@@ -34,11 +36,11 @@ const VBR_QUALITY = 3;
 /** Headroom for the reverb's wet sum; uniform so relative track loudness survives. */
 const MASTER_GAIN = 10 ** (-3 / 20);
 /**
- * Bump when this stage's own post-processing (reverb, decimation, master gain) changes rendered
- * bytes: source mtimes cannot see code changes, so a stored manifest with another version marks
- * every ogg stale.
+ * Bump when this stage's own synthesis or post-processing (event replay, reverb, decimation,
+ * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
+ * with another version marks every ogg stale.
  */
-const RENDER_VERSION = 2;
+const RENDER_VERSION = 3;
 /** Rendered wav headroom over the loop length; trimmed away at encode. dmrender takes whole seconds. */
 const RENDER_TAIL_S = 1;
 /** Concurrent dmrender processes; renders are CPU-bound and independent. */
@@ -147,6 +149,7 @@ export async function renderMusicStage(
   }
 
   const manifest = new Map<string, ManifestTrack>();
+  let banksPromise: Promise<Map<string, DlsBank>> | undefined;
   let rendered = 0;
   let kept = 0;
   let failed = 0;
@@ -169,31 +172,23 @@ export async function renderMusicStage(
         kept++;
         return;
       }
-      const wavPath = join(workDir, `${stem}.wav`);
+      const renderS = Math.ceil(totalS) + RENDER_TAIL_S;
+      const eventsPath = join(workDir, `${stem}.events.jsonl`);
       await execFileAsync(
         dmrender,
-        [
-          '-l',
-          String(Math.ceil(totalS) + RENDER_TAIL_S),
-          '-s',
-          String(SAMPLE_RATE),
-          '-c',
-          String(CHANNELS),
-          segment,
-          wavPath,
-        ],
+        ['-e', eventsPath, '-l', String(renderS), '-s', String(SAMPLE_RATE), '-c', String(CHANNELS), segment],
         { cwd: workDir, timeout: RENDER_TIMEOUT_MS, maxBuffer: 1 << 20 },
       );
-      const wav = decodePcm16Wav(await readFile(wavPath));
-      await rm(wavPath, { force: true });
-      if (wav.sampleRate !== SAMPLE_RATE || wav.channels.length !== CHANNELS) {
-        throw new Error(`unexpected render format ${wav.sampleRate}Hz/${wav.channels.length}ch`);
-      }
+      const events = parseEventDump(await readFile(eventsPath, 'utf8'));
+      await rm(eventsPath, { force: true });
+      if (banksPromise === undefined) banksPromise = loadDlsBanks(dm2);
+      const banks = await banksPromise;
+      const synthesized = await synthesizeEvents(events, banks, SAMPLE_RATE, renderS * SAMPLE_RATE);
       const audiopath = decodeSegmentAudiopath(segmentBytes);
       if (audiopath?.reverb !== undefined) {
-        applyWavesReverb(wav.channels, SAMPLE_RATE, audiopath.reverb);
+        applyWavesReverb(synthesized, SAMPLE_RATE, audiopath.reverb);
       }
-      let channels = wav.channels;
+      let channels = synthesized;
       let outRate = SAMPLE_RATE;
       if (audiopath?.sampleRate !== undefined && audiopath.sampleRate * 2 === SAMPLE_RATE) {
         channels = channels.map(decimateByTwo);
