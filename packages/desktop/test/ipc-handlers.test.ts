@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IPC_CHANNELS, SEND_ONLY_CHANNELS } from '../src/ipc.js';
 import { type IpcDeps, wireIpc } from '../src/ipc-handlers.js';
@@ -46,6 +48,8 @@ beforeEach(() => {
       configFile: '/data/config.json',
       contentDir: '/data/content',
       modsDir: '/data/mods',
+      // A never-created path, so the listSaves handler exercises its empty-folder branch for real.
+      savesDir: join(tmpdir(), `on-ipc-test-saves-${process.pid}`),
       dataRoot: { path: '/data' },
     },
     state: {
@@ -106,5 +110,31 @@ describe('wireIpc sender guard', () => {
     await expect(
       registered.get(IPC_CHANNELS.saveGameFile)?.(APP_FRAME, 'a.json.gz', '{"header":{}}'),
     ).rejects.toThrow('expected save bytes');
+  });
+
+  it('refuses save names that could escape or litter the saves folder', async () => {
+    const cases: Array<[string, unknown[]]> = [
+      [IPC_CHANNELS.writeSave, ['sub/dir', new Uint8Array()]],
+      [IPC_CHANNELS.writeSave, ['..\\up', new Uint8Array()]],
+      [IPC_CHANNELS.writeSave, ['', new Uint8Array()]],
+      [IPC_CHANNELS.readSave, ['../escape.json.gz']],
+      [IPC_CHANNELS.deleteSave, ['a:b.json.gz']],
+    ];
+    for (const [channel, args] of cases) {
+      await expect(registered.get(channel)?.(APP_FRAME, ...args)).rejects.toThrow(
+        'expected a plain save name',
+      );
+    }
+    // A clean name that is still not a file the listing could have produced.
+    await expect(registered.get(IPC_CHANNELS.readSave)?.(APP_FRAME, 'notes.txt')).rejects.toThrow(
+      'expected a save file name',
+    );
+    await expect(registered.get(IPC_CHANNELS.writeSave)?.(APP_FRAME, 'ok', '{}')).rejects.toThrow(
+      'expected save bytes',
+    );
+  });
+
+  it('lists no saves when the folder does not exist', async () => {
+    await expect(registered.get(IPC_CHANNELS.listSaves)?.(APP_FRAME)).resolves.toEqual([]);
   });
 });

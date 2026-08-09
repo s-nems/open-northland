@@ -50,3 +50,8 @@ export function configFileOf(dataRoot: string): string {
 export function modsDirOf(dataRoot: string): string {
   return join(dataRoot, 'mods');
 }
+
+/** The game's save files, one `<name>.json.gz` per save; created on first write. */
+export function savesDirOf(dataRoot: string): string {
+  return join(dataRoot, 'saves');
+}

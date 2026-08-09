@@ -8,6 +8,12 @@ type SaveMigration = (document: Record<string, unknown>) => Record<string, unkno
  *  commit or raises OLDEST_SUPPORTED_SAVE_VERSION instead; the load-time check enforces the choice. */
 const MIGRATIONS = new Map<number, SaveMigration>();
 
+// v2 added the header's `entry` relaunch token; a v1 save recorded none.
+MIGRATIONS.set(1, (document) => ({
+  ...document,
+  header: { ...asRecord(document.header, 'save.header'), formatVersion: 2, entry: null },
+}));
+
 for (let v = OLDEST_SUPPORTED_SAVE_VERSION; v < SAVE_FORMAT_VERSION; v++) {
   if (!MIGRATIONS.has(v)) {
     throw new Error(`save format ${SAVE_FORMAT_VERSION} ships without a v${v} -> v${v + 1} migration`);

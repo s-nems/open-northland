@@ -68,7 +68,7 @@ describe('exportSaveGame header', () => {
     const content = testContent();
     const sim = new Simulation({ seed: 42, content, map: grassCellMap(4, 4) });
     sim.run(3);
-    const save = exportSaveGame(sim, { mapId: 'campaign_01' });
+    const save = exportSaveGame(sim, { mapId: 'campaign_01', entry: '?map=campaign_01&player=2' });
     expect(save.header).toEqual({
       kind: SAVE_KIND,
       formatVersion: SAVE_FORMAT_VERSION,
@@ -76,6 +76,7 @@ describe('exportSaveGame header', () => {
       contentRevision: content.manifest.contentRevision,
       mapId: 'campaign_01',
       mapFingerprint: sim.mapFingerprint,
+      entry: '?map=campaign_01&player=2',
       seed: 42,
       tick: 3,
     });
@@ -85,6 +86,7 @@ describe('exportSaveGame header', () => {
     const save = exportSaveGame(new Simulation({ seed: 1, content: testContent() }));
     expect(save.header.mapId).toBeNull();
     expect(save.header.mapFingerprint).toBeNull();
+    expect(save.header.entry).toBeNull();
   });
 });
 

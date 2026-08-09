@@ -24,6 +24,11 @@ const api: DesktopApi = {
   saveGameFile: (suggestedName, contents) =>
     ipcRenderer.invoke(IPC_CHANNELS.saveGameFile, suggestedName, contents),
   openGameFile: () => ipcRenderer.invoke(IPC_CHANNELS.openGameFile),
+  listSaves: () => ipcRenderer.invoke(IPC_CHANNELS.listSaves),
+  readSave: (file) => ipcRenderer.invoke(IPC_CHANNELS.readSave, file),
+  writeSave: (name, bytes) => ipcRenderer.invoke(IPC_CHANNELS.writeSave, name, bytes),
+  deleteSave: (file) => ipcRenderer.invoke(IPC_CHANNELS.deleteSave, file),
+  showSavesFolder: () => ipcRenderer.invoke(IPC_CHANNELS.showSavesFolder),
 };
 
 contextBridge.exposeInMainWorld('desktop', api);

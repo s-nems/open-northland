@@ -1,8 +1,10 @@
 import type { Simulation } from '@open-northland/sim';
 import { downloadFile } from '../../../diag/index.js';
+import { entrySearch } from '../../params.js';
 import { type SaveLoadSession, type SaveOutcome, saveLoadSession } from './controller.js';
-import { desktopFileBridge, pickedSaveOf, pickSaveFile } from './file-access.js';
+import { desktopFileBridge, platformSavePicker } from './file-access.js';
 import { storePendingLoad } from './pending-store.js';
+import { createSaveStore } from './store.js';
 
 export { takeStagedSave } from './boot.js';
 export type { LoadOutcome, SaveLoadSession, SaveOutcome } from './controller.js';
@@ -17,20 +19,16 @@ export interface SaveLoadSessionOptions {
   readonly isPaused: () => boolean;
 }
 
-/** The browser-wired session: desktop shells route both dialogs over the native file bridge. */
+/** The browser-wired session: desktop shells route the file dialogs over the native bridge. */
 export function createSaveLoadSession(opts: SaveLoadSessionOptions): SaveLoadSession {
   const bridge = desktopFileBridge();
   return saveLoadSession({
     ...opts,
+    entrySearch: entrySearch(),
     reload: () => window.location.reload(),
     stagePending: storePendingLoad,
-    pickFile:
-      bridge !== null
-        ? async () => {
-            const picked = await bridge.openGameFile();
-            return picked === null ? null : pickedSaveOf(picked.name, picked.bytes);
-          }
-        : pickSaveFile,
+    store: createSaveStore(),
+    pickFile: platformSavePicker(),
     deliverSave:
       bridge !== null
         ? async (fileName, bytes): Promise<SaveOutcome> =>

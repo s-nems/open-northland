@@ -1,4 +1,5 @@
 import { isSaveBytes, type SaveBytes } from './codec.js';
+import { completed, openDb } from './idb.js';
 
 /**
  * The one-shot hand-off from a validated in-game load to the reloaded page's boot. IndexedDB rather
@@ -10,26 +11,13 @@ const DB_NAME = 'open-northland-pending-load';
 const STORE_NAME = 'files';
 const ENTRY_KEY = 'next';
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB open failed'));
-  });
-}
-
-function completed(txn: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    txn.oncomplete = () => resolve();
-    txn.onerror = () => reject(txn.error ?? new Error('IndexedDB transaction failed'));
-    txn.onabort = () => reject(txn.error ?? new Error('IndexedDB transaction aborted'));
-  });
+function openPendingDb(): Promise<IDBDatabase> {
+  return openDb(DB_NAME, (db) => db.createObjectStore(STORE_NAME));
 }
 
 /** Stage a validated save file's bytes for the page reload that follows. */
 export async function storePendingLoad(bytes: SaveBytes): Promise<void> {
-  const db = await openDb();
+  const db = await openPendingDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
     txn.objectStore(STORE_NAME).put(bytes, ENTRY_KEY);
@@ -44,7 +32,7 @@ export async function storePendingLoad(bytes: SaveBytes): Promise<void> {
  * loop the failure; null on a normal fresh boot.
  */
 export async function takePendingLoad(): Promise<SaveBytes | null> {
-  const db = await openDb();
+  const db = await openPendingDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
     const store = txn.objectStore(STORE_NAME);

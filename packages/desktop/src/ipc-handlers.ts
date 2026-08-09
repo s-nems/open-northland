@@ -12,6 +12,14 @@ import { findModRootUnder, installCnMod, isFinalModEvent } from './mod-install/i
 import type { PipelineHost } from './pipeline-host.js';
 import { gameUrlForLocale } from './protocol.js';
 import { isAppUrl } from './protocol-routing.js';
+import {
+  deleteSaveFile,
+  listSaveFiles,
+  MAX_SAVE_FILE_BYTES,
+  readSaveFile,
+  revealSavesFolder,
+  writeSaveFile,
+} from './save-files.js';
 import { applyShellLocale } from './shell-locale.js';
 import type { ShellPaths, ShellState } from './shell-state.js';
 
@@ -53,10 +61,6 @@ async function pickDirectory(win: BrowserWindow, title: string): Promise<string 
   const path = picked.filePaths[0];
   return picked.canceled || path === undefined ? undefined : path;
 }
-
-/** Refuses absurd save reads and writes before they hit memory. The renderer's decode seam caps
- *  what a compressed save may inflate to at the same magnitude. */
-const MAX_SAVE_FILE_BYTES = 256 * 1024 * 1024;
 
 /** `gz` for the gzipped saves the game writes, `json` for uncompressed saves. */
 function saveFileFilters(): { name: string; extensions: string[] }[] {
@@ -158,6 +162,14 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     // The renderer gets the basename only; the full path stays in the main process.
     return { name: basename(path), bytes: await readFile(path) };
   });
+
+  handleFromAppFrame(IPC_CHANNELS.listSaves, () => listSaveFiles(paths.savesDir));
+  handleFromAppFrame(IPC_CHANNELS.readSave, (file: unknown) => readSaveFile(paths.savesDir, file));
+  handleFromAppFrame(IPC_CHANNELS.writeSave, (name: unknown, bytes: unknown) =>
+    writeSaveFile(paths.savesDir, name, bytes),
+  );
+  handleFromAppFrame(IPC_CHANNELS.deleteSave, (file: unknown) => deleteSaveFile(paths.savesDir, file));
+  handleFromAppFrame(IPC_CHANNELS.showSavesFolder, () => revealSavesFolder(paths.savesDir));
 
   handleFromAppFrame(IPC_CHANNELS.setLocale, (locale: unknown) => {
     assertLocale(locale);

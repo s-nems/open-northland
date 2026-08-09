@@ -3,14 +3,14 @@ export type MenuScreen = 'main' | 'newGame' | 'lobby' | 'load' | 'settings' | 'c
 export const VERSION_LINE = 'pre-alpha 0.1 · GPL-3.0';
 
 export type MainNavItem =
-  | { readonly id: Extract<MenuScreen, 'newGame' | 'settings' | 'credits'>; readonly kind: 'open' }
-  | { readonly id: 'loadGame' | 'multiplayer'; readonly kind: 'comingSoon' }
+  | { readonly id: Extract<MenuScreen, 'newGame' | 'load' | 'settings' | 'credits'>; readonly kind: 'open' }
+  | { readonly id: 'multiplayer'; readonly kind: 'comingSoon' }
   | { readonly id: 'exit'; readonly kind: 'exit' };
 
 /** Main-screen nav in display order; `comingSoon` rows take no input. */
 export const MAIN_NAV: readonly MainNavItem[] = [
   { id: 'newGame', kind: 'open' },
-  { id: 'loadGame', kind: 'comingSoon' },
+  { id: 'load', kind: 'open' },
   { id: 'multiplayer', kind: 'comingSoon' },
   { id: 'settings', kind: 'open' },
   { id: 'credits', kind: 'open' },

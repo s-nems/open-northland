@@ -145,9 +145,12 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
 { "header": { "...": "..." }, "sections": [] }
 ```
 
-- `header` holds `{kind, formatVersion, irVersion, contentRevision, mapId, mapFingerprint, seed,
-  tick}` and is the document's first key, so a reader classifies compatibility without touching
-  sections. A later format may compress the sections but never the header.
+- `header` holds `{kind, formatVersion, irVersion, contentRevision, mapId, mapFingerprint, entry,
+  seed, tick}` and is the document's first key, so a reader classifies compatibility without
+  touching sections. A later format may compress the sections but never the header. `entry` is a
+  caller-recorded relaunch token, opaque to the sim like `mapId`: the app stores the entry URL
+  search that reboots the session, so a load launched outside a running world (the main menu's save
+  list) can reproduce the seat and session flags.
 - `sections` is an array with append-only string identifiers, never reused: `entities` (the
   allocation counter plus the alive list), one `component` section per store in first-registration
   order with entries in per-store insertion order (both orders are behavior contracts), `rng` (the
@@ -181,6 +184,7 @@ newer build, one below `OLDEST_SUPPORTED_SAVE_VERSION` is rejected outright, and
 runs through pure vN to vN+1 document transforms before validation. The registry must hold one step
 per supported older version - a load-time check fails the build otherwise, so a version bump either
 lands its migration or raises the oldest supported version in the same commit. The committed
-current-format fixture (`packages/sim/test/fixtures/save-v1.golden`) freezes the exact bytes of a
-small populated world as the layout's tripwire; the regeneration workflow lives in
+current-format fixture (`packages/sim/test/fixtures/save-v2.golden`) freezes the exact bytes of a
+small populated world as the layout's tripwire, and superseded layouts stay committed beside it as
+historical parse-and-restore fixtures; the regeneration workflow lives in
 [`TESTING.md`](TESTING.md).

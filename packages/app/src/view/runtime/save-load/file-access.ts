@@ -1,4 +1,5 @@
 import { decodeSaveText, type SaveBytes } from './codec.js';
+import type { SaveListBridge } from './store-desktop.js';
 
 /** A picked save file: display name, decoded JSON text, and the file's bytes exactly as picked -
  *  what a validated load stages, so the reloaded boot decodes the same artifact the user chose. */
@@ -27,7 +28,8 @@ export interface GameFileBridge {
 
 declare global {
   interface Window {
-    readonly desktop?: GameFileBridge;
+    /** The two dialogs are the bridge's floor; the save-list methods arrived in a later shell. */
+    readonly desktop?: GameFileBridge & Partial<SaveListBridge>;
   }
 }
 
@@ -45,6 +47,16 @@ export function desktopFileBridge(): GameFileBridge | null {
 /** Decode picked bytes into the file both flows consume; throws on a corrupt gzip envelope. */
 export async function pickedSaveOf(name: string, bytes: SaveBytes): Promise<PickedSaveFile> {
   return { name, contents: await decodeSaveText(bytes), raw: bytes };
+}
+
+/** The platform's save picker: the desktop native dialog when bridged, else the browser input. */
+export function platformSavePicker(): () => Promise<PickedSaveFile | null> {
+  const bridge = desktopFileBridge();
+  if (bridge === null) return pickSaveFile;
+  return async () => {
+    const picked = await bridge.openGameFile();
+    return picked === null ? null : pickedSaveOf(picked.name, picked.bytes);
+  };
 }
 
 /** Browser file picker for a save; resolves null when the dialog closes without a choice. */

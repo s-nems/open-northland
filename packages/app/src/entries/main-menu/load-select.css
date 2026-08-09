@@ -1,0 +1,7 @@
+.main-menu__load-actions {
+  display: flex;
+  gap: calc(var(--u) * 16);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: calc(var(--u) * 20);
+}
