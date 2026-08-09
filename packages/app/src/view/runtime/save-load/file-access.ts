@@ -1,4 +1,5 @@
-import { decodeSaveText, type SaveBytes } from './codec.js';
+import { downloadFile } from '../../../diag/index.js';
+import { decodeSaveText, isGzipSave, type SaveBytes } from './codec.js';
 import type { SaveListBridge } from './store-desktop.js';
 
 /** A picked save file: display name, decoded JSON text, and the file's bytes exactly as picked -
@@ -42,6 +43,11 @@ export function desktopFileBridge(): GameFileBridge | null {
   return typeof partial.saveGameFile === 'function' && typeof partial.openGameFile === 'function'
     ? bridge
     : null;
+}
+
+/** The browser's save delivery: a download whose MIME matches the payload it carries. */
+export function browserSaveDownload(fileName: string, bytes: SaveBytes): void {
+  downloadFile(fileName, bytes, isGzipSave(bytes) ? 'application/gzip' : 'application/json');
 }
 
 /** Decode picked bytes into the file both flows consume; throws on a corrupt gzip envelope. */

@@ -1,4 +1,5 @@
 import { bcp47Tag, formatMessage, messages } from '../i18n/index.js';
+import { confirmDialog } from './confirm-dialog.js';
 import { flowRunner } from './runtime/save-load/flow-runner.js';
 import type { SaveLoadSession } from './runtime/save-load/index.js';
 import {
@@ -8,16 +9,17 @@ import {
   sanitizedSaveName,
 } from './runtime/save-load/list-model.js';
 import type { SaveSlotInfo } from './runtime/save-load/store.js';
+import { type WorldNameOf, worldNameIndex } from './runtime/save-load/world-names.js';
 
 /**
  * The system menu's save and load panels: one list of the store's slots, saved into by name and
- * loaded from by row. Destructive clicks (overwrite, delete) arm on the first press and run on the
- * second, so no native confirm dialog blocks the page.
+ * loaded from by row. Destructive actions (overwrite, delete) ask through the in-page confirm
+ * dialog, never `window.confirm`.
  */
 
 export interface SavePanelDeps {
   readonly saveLoad: SaveLoadSession;
-  /** Swap the modal back to the menu's root buttons, lifting the panel's forced pause. */
+  /** Swap the modal back to the menu's root buttons; the menu itself owns the forced pause. */
   readonly showMenu: () => void;
   readonly panelStyle: string;
   readonly buttonStyle: string;
@@ -25,14 +27,14 @@ export interface SavePanelDeps {
 
 export interface SavePanelView {
   readonly el: HTMLElement;
-  /** Called when the panel becomes the modal's visible view; pauses and refreshes the list. */
+  /** Called when the panel becomes the modal's visible view; refreshes the list. */
   open(): void;
 }
 
-const PANEL_WIDTH_STYLE = 'width:min(580px,92vw)';
+const PANEL_WIDTH_STYLE = 'width:min(660px,92vw)';
 const LIST_GRID_STYLE = [
   'display:grid',
-  'grid-template-columns:minmax(0,1fr) minmax(0,130px) 70px 130px',
+  'grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 64px 130px',
   'gap:0 10px',
   'align-items:baseline',
 ].join(';');
@@ -60,11 +62,11 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function rowCells(row: HTMLElement, slot: SaveSlotInfo): void {
+function rowCells(row: HTMLElement, slot: SaveSlotInfo, worldName: WorldNameOf): void {
   const copyCell = (text: string): HTMLElement => el('span', CELL_OVERFLOW_STYLE, text);
   row.append(
     copyCell(slot.name),
-    copyCell(slot.mapId ?? '-'),
+    copyCell(worldName(slot.mapId) ?? '-'),
     copyCell(slot.tick !== null ? formatPlaytime(slot.tick) : '-'),
     copyCell(formatSavedAt(slot.savedAt, bcp47Tag())),
   );
@@ -73,7 +75,7 @@ function rowCells(row: HTMLElement, slot: SaveSlotInfo): void {
 interface ListParts {
   readonly box: HTMLElement;
   /** Rebuild the rows; resolves to the slots now shown (empty on a failed listing). */
-  refresh(): Promise<readonly SaveSlotInfo[]>;
+  refresh(worldName: WorldNameOf): Promise<readonly SaveSlotInfo[]>;
 }
 
 function slotList(
@@ -84,7 +86,7 @@ function slotList(
   const copy = messages().saveList;
   const box = el('div', LIST_BOX_STYLE);
   box.setAttribute('role', 'listbox');
-  const refresh = async (): Promise<readonly SaveSlotInfo[]> => {
+  const refresh = async (worldName: WorldNameOf): Promise<readonly SaveSlotInfo[]> => {
     let slots: readonly SaveSlotInfo[];
     try {
       slots = await saveLoad.listSaves();
@@ -103,7 +105,7 @@ function slotList(
         `${LIST_GRID_STYLE};padding:5px 8px;background:${ROW_BACKGROUND};color:inherit;font:inherit;border:none;border-radius:4px;cursor:pointer;text-align:left`,
       );
       row.type = 'button';
-      rowCells(row, slot);
+      rowCells(row, slot, worldName);
       onRow(slot, row);
       return row;
     });
@@ -142,24 +144,25 @@ export function buildSavePanel(deps: SavePanelDeps): SavePanelView {
   nameInput.type = 'text';
   nameLabel.append(nameInput);
 
-  /** Names on the list at the last refresh; overwrite arming compares against these. */
+  /** Names on the list at the last refresh; a save into one of these asks before overwriting. */
   let existing: readonly string[] = [];
-  let armedOverwrite: string | null = null;
-  nameInput.addEventListener('input', () => {
-    armedOverwrite = null;
-  });
 
   const list = slotList(deps.saveLoad, setStatus, (slot, row) => {
     row.addEventListener('click', () => {
       nameInput.value = slot.name;
-      armedOverwrite = null;
       setStatus(null);
     });
   });
 
   const refresh = async (): Promise<void> => {
-    existing = (await list.refresh()).map((slot) => slot.name);
-    if (nameInput.value === '') nameInput.value = autoSaveName(copy.autoName, existing);
+    const worldName = await worldNameIndex();
+    existing = (await list.refresh(worldName)).map((slot) => slot.name);
+    if (nameInput.value === '') {
+      const world = worldName(deps.saveLoad.worldToken);
+      // `formatMessage` leaves the unknown `{n}` in place for `autoSaveName` to number.
+      const template = world !== null ? formatMessage(copy.autoNameMap, { map: world }) : copy.autoName;
+      nameInput.value = autoSaveName(template, existing);
+    }
   };
 
   const save = el('button', deps.buttonStyle, copy.save);
@@ -168,17 +171,24 @@ export function buildSavePanel(deps: SavePanelDeps): SavePanelView {
     run(async () => {
       const name = sanitizedSaveName(nameInput.value);
       if (name === null) return copy.invalidName;
-      if (existing.includes(name) && armedOverwrite !== name) {
-        armedOverwrite = name;
-        return formatMessage(copy.overwriteArm, { name });
+      if (existing.includes(name)) {
+        const confirmed = await confirmDialog({
+          message: formatMessage(copy.overwriteConfirm, { name }),
+          confirmLabel: copy.overwrite,
+          cancelLabel: copy.cancel,
+        });
+        if (!confirmed) return null;
       }
       const outcome = await deps.saveLoad.saveGame(name);
       if (outcome.kind !== 'saved') return hud.saveFailed;
-      armedOverwrite = null;
       await refresh();
       return hud.gameSaved;
     }),
   );
+  nameInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') save.click();
+  });
+
   const back = el('button', deps.buttonStyle, copy.back);
   back.type = 'button';
   back.addEventListener('click', deps.showMenu);
@@ -190,9 +200,7 @@ export function buildSavePanel(deps: SavePanelDeps): SavePanelView {
   return {
     el: panel,
     open(): void {
-      deps.saveLoad.forcePause();
       setStatus(null);
-      armedOverwrite = null;
       void refresh();
     },
   };
@@ -217,7 +225,8 @@ export function buildLoadPanel(deps: SavePanelDeps): SavePanelView {
 
   let selected: SaveSlotInfo | null = null;
   let selectedRow: HTMLButtonElement | null = null;
-  let armedDelete: string | null = null;
+  /** Buttons meaningless without a selected row; disabled until one is picked. */
+  const selectionActions: HTMLButtonElement[] = [];
 
   const list = slotList(deps.saveLoad, setStatus, (slot, row) => {
     row.addEventListener('click', () => {
@@ -225,7 +234,7 @@ export function buildLoadPanel(deps: SavePanelDeps): SavePanelView {
       selected = slot;
       selectedRow = row;
       row.style.background = SELECTED_ROW_BACKGROUND;
-      armedDelete = null;
+      for (const button of selectionActions) button.disabled = false;
       setStatus(null);
     });
     row.addEventListener('dblclick', () => loadSelected());
@@ -234,32 +243,47 @@ export function buildLoadPanel(deps: SavePanelDeps): SavePanelView {
   const refresh = async (): Promise<void> => {
     selected = null;
     selectedRow = null;
-    armedDelete = null;
-    await list.refresh();
+    for (const button of selectionActions) button.disabled = true;
+    await list.refresh(await worldNameIndex());
   };
 
   const loadSelected = (): void =>
     run(async () => {
       if (selected === null) return null;
-      const outcome = await deps.saveLoad.loadSave(selected.id);
+      const slot = selected;
+      // Loading replaces the running session, so it asks like the other destructive actions.
+      const confirmed = await confirmDialog({
+        message: formatMessage(copy.loadConfirm, { name: slot.name }),
+        confirmLabel: copy.load,
+        cancelLabel: copy.cancel,
+      });
+      if (!confirmed) return null;
+      const outcome = await deps.saveLoad.loadSave(slot.id);
       return outcome.kind === 'rejected' ? hud.loadErrors[outcome.reason] : null;
     });
 
   const load = el('button', deps.buttonStyle, copy.load);
   load.type = 'button';
+  load.disabled = true;
   load.addEventListener('click', loadSelected);
+  selectionActions.push(load);
 
   const del = el('button', deps.buttonStyle, copy.del);
   del.type = 'button';
+  del.disabled = true;
+  selectionActions.push(del);
   del.addEventListener('click', () =>
     run(async () => {
       if (selected === null) return null;
-      if (armedDelete !== selected.id) {
-        armedDelete = selected.id;
-        return formatMessage(copy.deleteArm, { name: selected.name });
-      }
+      const slot = selected;
+      const confirmed = await confirmDialog({
+        message: formatMessage(copy.deleteConfirm, { name: slot.name }),
+        confirmLabel: copy.del,
+        cancelLabel: copy.cancel,
+      });
+      if (!confirmed) return null;
       try {
-        await deps.saveLoad.deleteSave(selected.id);
+        await deps.saveLoad.deleteSave(slot.id);
       } catch {
         return copy.deleteFailed;
       }
@@ -300,6 +324,8 @@ export function buildLoadPanel(deps: SavePanelDeps): SavePanelView {
       : (() => {
           const button = el('button', deps.buttonStyle, copy.export);
           button.type = 'button';
+          button.disabled = true;
+          selectionActions.push(button);
           button.addEventListener('click', () =>
             run(async () => {
               if (selected === null) return null;
@@ -321,7 +347,6 @@ export function buildLoadPanel(deps: SavePanelDeps): SavePanelView {
   return {
     el: panel,
     open(): void {
-      deps.saveLoad.forcePause();
       setStatus(null);
       void refresh();
     },

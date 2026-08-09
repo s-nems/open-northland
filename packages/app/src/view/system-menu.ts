@@ -83,8 +83,6 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     for (const view of panels) view.el.style.display = 'none';
   };
   const showMenu = (): void => {
-    // The panels force a pause while open; returning to the root buttons hands the clock back.
-    deps.saveLoad.releaseForcedPause();
     hidePanels();
     panel.style.display = 'flex';
   };
@@ -119,13 +117,21 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
 
   const hide = (): void => {
     backdrop.style.display = 'none';
-    // A panel may still hold the pause it forced; closing the modal is the player's way out.
+    deps.saveLoad.releaseForcedPause();
     showMenu();
   };
   const close = button(copy.closeMenu, hide);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) hide();
   });
+  // Escape steps back one level: panel to the root buttons, root to the game. The confirm dialog
+  // handles its own Escape in the capture phase and stops it from reaching here.
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape' || backdrop.style.display === 'none') return;
+    if (panel.style.display === 'none') showMenu();
+    else hide();
+  };
+  document.addEventListener('keydown', onKey);
 
   panel.append(title, save, load, quit, diagnostics, ...(trace !== null ? [trace] : []), close);
   backdrop.append(panel, savePanel.el, loadPanel.el);
@@ -133,10 +139,16 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
 
   return {
     toggle(): void {
-      if (backdrop.style.display === 'none') backdrop.style.display = 'grid';
-      else hide();
+      if (backdrop.style.display === 'none') {
+        // The whole menu holds the pause, so the sim never runs behind the dimmed backdrop.
+        deps.saveLoad.forcePause();
+        backdrop.style.display = 'grid';
+      } else {
+        hide();
+      }
     },
     dispose(): void {
+      document.removeEventListener('keydown', onKey);
       backdrop.remove();
     },
   };
