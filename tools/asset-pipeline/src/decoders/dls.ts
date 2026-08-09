@@ -14,14 +14,31 @@ export interface DlsKeyRange {
   readonly hi: number;
 }
 
+/** One instrument's rejected key ranges, addressed the way bands address instruments. */
+export interface DlsInstrumentRejects {
+  readonly bankLo: number;
+  readonly bankHi: number;
+  readonly patch: number;
+  readonly ranges: readonly DlsKeyRange[];
+}
+
 const RIFF_HEADER_BYTES = 8;
 const FORM_TYPE_BYTES = 4;
-/** `WLOOP` start/length offsets inside the loop record. */
+/** `WSMPL.cSampleLoops`, then `WLOOP` start/length offsets inside the loop record. */
+const WSMP_LOOP_COUNT_OFFSET = 16;
 const LOOP_START_OFFSET = 8;
 const LOOP_LENGTH_OFFSET = 12;
+/** `INSH.Locale`: ulBank at +4 (bits 0-6 CC32, 8-14 CC0), ulInstrument at +8. */
+const INSH_BANK_OFFSET = 4;
+const INSH_INSTRUMENT_OFFSET = 8;
+const MIDI_7BIT_MASK = 0x7f;
+const INSH_BANK_MSB_SHIFT = 8;
 /** `WLINK.ulTableIndex`: the wave's pool-table cue. */
 const WLNK_TABLE_INDEX_OFFSET = 8;
 const FMT_BITS_OFFSET = 14;
+const FIRST_PRINTABLE = 0x20;
+const QUOTE = 0x22;
+const BACKSLASH = 0x5c;
 
 function fourCc(bytes: Uint8Array, off: number): string {
   return String.fromCharCode(bytes[off] ?? 0, bytes[off + 1] ?? 0, bytes[off + 2] ?? 0, bytes[off + 3] ?? 0);
@@ -71,8 +88,11 @@ export function decodeBankName(bytes: Uint8Array): string | undefined {
         const subSize = view.getUint32(sub + 4, true);
         if (subId === 'INAM') {
           const raw = bytes.subarray(sub + RIFF_HEADER_BYTES, sub + RIFF_HEADER_BYTES + subSize);
-          return String.fromCharCode(...raw)
-            .replace(/\0+$/, '')
+          // Same normalization as the event dump's identity rows: drop control, quote, backslash.
+          return [...raw]
+            .filter((c) => c >= FIRST_PRINTABLE && c !== QUOTE && c !== BACKSLASH)
+            .map((c) => String.fromCharCode(c))
+            .join('')
             .trim();
         }
         sub += RIFF_HEADER_BYTES + subSize + (subSize & 1);
@@ -121,37 +141,62 @@ function waveFramesByCue(bytes: Uint8Array): Map<number, number> {
   return byCue;
 }
 
-/** Key ranges of every region whose authored loop extends past its wave. */
-export function decodeRejectedRegions(bytes: Uint8Array): readonly DlsKeyRange[] {
+/** The one region's key range when its authored loop extends past its wave, else undefined. */
+function rejectedRange(
+  bytes: Uint8Array,
+  bodyStart: number,
+  bodyEnd: number,
+  framesByCue: ReadonlyMap<number, number>,
+): DlsKeyRange | undefined {
+  const view = viewOf(bytes);
+  let keys: DlsKeyRange | undefined;
+  let loop: { start: number; length: number } | undefined;
+  let cue: number | undefined;
+  walkChunks(bytes.subarray(bodyStart, bodyEnd), (subId, _form, subStart) => {
+    const at = bodyStart + subStart;
+    if (subId === 'rgnh') {
+      keys = { lo: view.getUint16(at, true), hi: view.getUint16(at + 2, true) };
+    } else if (subId === 'wsmp') {
+      const cbSize = view.getUint32(at, true);
+      if (view.getUint32(at + WSMP_LOOP_COUNT_OFFSET, true) > 0) {
+        loop = {
+          start: view.getUint32(at + cbSize + LOOP_START_OFFSET, true),
+          length: view.getUint32(at + cbSize + LOOP_LENGTH_OFFSET, true),
+        };
+      }
+    } else if (subId === 'wlnk') {
+      cue = view.getUint32(at + WLNK_TABLE_INDEX_OFFSET, true);
+    }
+  });
+  if (keys === undefined || cue === undefined || loop === undefined) return undefined;
+  const frames = framesByCue.get(cue);
+  return frames !== undefined && loop.start + loop.length > frames ? keys : undefined;
+}
+
+/** Per instrument, the key ranges of regions whose authored loop extends past their wave. */
+export function decodeRejectedRegions(bytes: Uint8Array): readonly DlsInstrumentRejects[] {
   const view = viewOf(bytes);
   const framesByCue = waveFramesByCue(bytes);
-  const rejected: DlsKeyRange[] = [];
+  const rejected: DlsInstrumentRejects[] = [];
   walkChunks(bytes, (id, formType, bodyStart, bodyEnd) => {
-    if (id !== 'LIST' || (formType !== 'rgn ' && formType !== 'rgn2')) return;
-    let keys: DlsKeyRange | undefined;
-    let loop: { start: number; length: number } | undefined;
-    let hasLoop = false;
-    let cue: number | undefined;
-    walkChunks(bytes.subarray(bodyStart, bodyEnd), (subId, _form, subStart) => {
+    if (id !== 'LIST' || formType !== 'ins ') return;
+    let locale: { bankLo: number; bankHi: number; patch: number } | undefined;
+    const ranges: DlsKeyRange[] = [];
+    walkChunks(bytes.subarray(bodyStart, bodyEnd), (subId, subForm, subStart, subEnd) => {
       const at = bodyStart + subStart;
-      if (subId === 'rgnh') {
-        keys = { lo: view.getUint16(at, true), hi: view.getUint16(at + 2, true) };
-      } else if (subId === 'wsmp') {
-        const cbSize = view.getUint32(at, true);
-        hasLoop = view.getUint32(at + 16, true) > 0;
-        if (hasLoop) {
-          loop = {
-            start: view.getUint32(at + cbSize + LOOP_START_OFFSET, true),
-            length: view.getUint32(at + cbSize + LOOP_LENGTH_OFFSET, true),
-          };
-        }
-      } else if (subId === 'wlnk') {
-        cue = view.getUint32(at + WLNK_TABLE_INDEX_OFFSET, true);
+      if (subId === 'insh') {
+        const bank = view.getUint32(at + INSH_BANK_OFFSET, true);
+        locale = {
+          bankLo: bank & MIDI_7BIT_MASK,
+          bankHi: (bank >>> INSH_BANK_MSB_SHIFT) & MIDI_7BIT_MASK,
+          patch: view.getUint32(at + INSH_INSTRUMENT_OFFSET, true) & MIDI_7BIT_MASK,
+        };
+      } else if (subId === 'LIST' && (subForm === 'rgn ' || subForm === 'rgn2')) {
+        const range = rejectedRange(bytes, at, bodyStart + subEnd, framesByCue);
+        if (range !== undefined) ranges.push(range);
       }
     });
-    if (keys === undefined || cue === undefined || !hasLoop || loop === undefined) return;
-    const frames = framesByCue.get(cue);
-    if (frames !== undefined && loop.start + loop.length > frames) rejected.push(keys);
+    if (locale !== undefined && ranges.length > 0) rejected.push({ ...locale, ranges });
   });
   return rejected;
 }

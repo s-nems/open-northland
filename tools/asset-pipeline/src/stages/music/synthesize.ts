@@ -12,13 +12,18 @@ import {
   SoundBankLoader,
   SpessaSynthProcessor,
 } from 'spessasynth_core';
-import { type DlsKeyRange, decodeBankName, decodeRejectedRegions } from '../../decoders/dls.js';
+import {
+  type DlsInstrumentRejects,
+  type DlsKeyRange,
+  decodeBankName,
+  decodeRejectedRegions,
+} from '../../decoders/dls.js';
 import type { SegmentEvents } from './events.js';
 
 export interface DlsBank {
   readonly file: string;
   readonly bank: BasicSoundBank;
-  readonly rejected: readonly DlsKeyRange[];
+  readonly rejected: readonly DlsInstrumentRejects[];
 }
 
 /** Every collection under `dir`, keyed by its INFO name (the identity the event dump carries). */
@@ -58,17 +63,17 @@ interface ChannelSlot {
   readonly rejected: readonly DlsKeyRange[];
 }
 
-function matchPreset(
-  bank: BasicSoundBank,
-  bankLo: number,
-  bankHi: number,
-  patch: number,
-): BasicPreset | undefined {
-  return (
-    bank.presets.find((p) => p.program === patch && p.bankMSB === bankHi && p.bankLSB === bankLo) ??
-    bank.presets.find((p) => p.program === patch) ??
-    bank.presets[0]
-  );
+function matchPreset(dls: DlsBank, bankLo: number, bankHi: number, patch: number): BasicPreset | undefined {
+  const presets = dls.bank.presets;
+  const exact = presets.find((p) => p.program === patch && p.bankMSB === bankHi && p.bankLSB === bankLo);
+  if (exact !== undefined) return exact;
+  const fallback = presets.find((p) => p.program === patch) ?? presets[0];
+  if (fallback !== undefined) {
+    console.warn(
+      `[pipeline] music: ${dls.file} has no preset ${bankHi}:${bankLo}:${patch}; using "${fallback.name}"`,
+    );
+  }
+  return fallback;
 }
 
 function clampMidi(value: number): number {
@@ -83,7 +88,7 @@ export async function synthesizeEvents(
   frames: number,
 ): Promise<Float32Array[]> {
   const processors: SpessaSynthProcessor[] = [];
-  const free = new Map<SpessaSynthProcessor, number>();
+  const usedChannels = new Map<SpessaSynthProcessor, number>();
   const perBank = new Map<string, SpessaSynthProcessor[]>();
   const slots = new Map<number, ChannelSlot>();
 
@@ -95,7 +100,7 @@ export async function synthesizeEvents(
       pool = [];
       perBank.set(inst.dls, pool);
     }
-    let synth = pool.find((p) => (free.get(p) ?? 0) < MIDI_CHANNELS_PER_PROCESSOR);
+    let synth = pool.find((p) => (usedChannels.get(p) ?? 0) < MIDI_CHANNELS_PER_PROCESSOR);
     if (synth === undefined) {
       synth = new SpessaSynthProcessor(sampleRate, {
         effectsEnabled: false,
@@ -107,23 +112,28 @@ export async function synthesizeEvents(
       pool.push(synth);
       processors.push(synth);
     }
-    const channel = free.get(synth) ?? 0;
-    free.set(synth, channel + 1);
+    const channel = usedChannels.get(synth) ?? 0;
+    usedChannels.set(synth, channel + 1);
 
-    const preset = matchPreset(dls.bank, inst.bankLo, inst.bankHi, inst.patch);
+    const preset = matchPreset(dls, inst.bankLo, inst.bankHi, inst.patch);
     if (preset === undefined) throw new Error(`no presets in ${dls.file}`);
     const midiChannel = synth.midiChannels[channel];
     if (midiChannel === undefined) throw new Error(`no MIDI channel ${channel}`);
     midiChannel.setDrums(preset.isGMGSDrum);
+    // Bank select and program keep channel state coherent; pinning the preset then overrides the
+    // GS bank heuristics, which can pick another candidate for exotic bank pairs.
     synth.controllerChange(channel, CC_BANK_MSB, preset.bankMSB);
     synth.controllerChange(channel, CC_BANK_LSB, preset.bankLSB);
     synth.programChange(channel, preset.program);
-    if (midiChannel.preset !== preset) midiChannel.preset = preset;
+    midiChannel.preset = preset;
     // Recover the authored band bytes: volume arrives squared, pan as (bPan - 63) / 64.
     synth.controllerChange(channel, CC_VOLUME, clampMidi(Math.sqrt(inst.vol) * MIDI_MAX));
     synth.controllerChange(channel, CC_PAN, clampMidi(inst.pan * (PAN_CENTER + 1) + PAN_CENTER));
     synth.controllerChange(channel, CC_REVERB_SEND, 0);
-    slots.set(inst.id, { synth, channel, rejected: dls.rejected });
+    const rejects = dls.rejected.find(
+      (r) => r.bankLo === inst.bankLo && r.bankHi === inst.bankHi && r.patch === inst.patch,
+    );
+    slots.set(inst.id, { synth, channel, rejected: rejects?.ranges ?? [] });
   }
 
   const left = new Float32Array(frames);
@@ -149,6 +159,7 @@ export async function synthesizeEvents(
           break;
         }
         case 'cc':
+          // MIDIController enumerates every 0-127 value, which clampMidi proves.
           synth.controllerChange(channel, clampMidi(ev.cc) as MIDIController, clampMidi(ev.val * MIDI_MAX));
           break;
         case 'pb':
