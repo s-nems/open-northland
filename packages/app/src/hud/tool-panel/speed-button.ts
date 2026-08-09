@@ -1,4 +1,3 @@
-import type { PalettedSprite } from '@open-northland/render';
 import type { Application, Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
 import type { TextRun } from '../text-run.js';
@@ -14,7 +13,7 @@ import {
   toggleGameSpeedPause,
 } from './game-speed.js';
 import type { PlacedRect } from './layout.js';
-import type { SupersampledStrip } from './strip-texture.js';
+import type { StripBake } from './strip-surface.js';
 
 /** Fallback speed-glyph nudges inside the button rect (design px). */
 const SPEED_LABEL_INSET_X = 4;
@@ -29,10 +28,8 @@ export interface SpeedButtonDeps {
   readonly stripContainer: Container;
   /** The decoded GUI art, or null → the flat-Graphics fallback (a text glyph on the button rect). */
   readonly art: GuiArt | null;
-  /** The current baked strip texture (real-art path). A getter, because a live DPR change replaces the
-   *  bake. */
-  readonly strip: () => SupersampledStrip | null;
-  readonly speedSprites: readonly PalettedSprite[];
+  /** The strip the real-art glyph lives in; re-framing its meshes needs the bake redrawn. */
+  readonly bake: StripBake;
   /** The speed button's placed rect, for the fallback glyph position (undefined → no fallback glyph). */
   readonly speedBtnRect: PlacedRect | undefined;
   readonly onSpeedChange: (spec: GameSpeedStateSpec, cause: GameSpeedChangeCause) => void;
@@ -47,21 +44,22 @@ export interface SpeedButton {
 }
 
 export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
-  const { ctx, app, scale, stripContainer, art, strip, speedSprites, speedBtnRect } = deps;
+  const { ctx, app, scale, stripContainer, art, bake, speedBtnRect } = deps;
   let speedControl: GameSpeedControl = DEFAULT_GAME_SPEED_CONTROL;
   let speedRun: TextRun | null = null; // fallback glyph (the flat mode has no distinct per-state sprite)
 
   // A null `cause` refreshes the glyph without pushing to the loop.
   const applySpeed = (cause: GameSpeedChangeCause | null): void => {
     const spec = effectiveGameSpeedSpec(speedControl);
-    if (speedSprites.length > 0 && art !== null) {
+    const glyphs = bake.speedSprites();
+    if (glyphs.length > 0 && art !== null) {
       const frame = art.layer.atlas.frames.get(spec.gfx);
       if (frame !== undefined) {
         // Outline stamps + real glyph share the frame, so the rim follows the new glyph's shape.
-        for (const s of speedSprites) {
+        for (const s of glyphs) {
           s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
         }
-        strip()?.redraw();
+        bake.current()?.redraw();
       }
     }
     if (art === null && speedBtnRect !== undefined) {
