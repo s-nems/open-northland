@@ -230,6 +230,16 @@
   animation: main-menu-fade 220ms ease-out;
 }
 
+/* The menu holds the frame while the entry it launched downloads, so it has to look occupied rather
+   than idle: the screens stop taking input until the game replaces them. */
+.main-menu.is-launching {
+  cursor: progress;
+}
+
+.main-menu.is-launching .main-menu__content {
+  pointer-events: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .main-menu__content.is-entering {
     animation: none;

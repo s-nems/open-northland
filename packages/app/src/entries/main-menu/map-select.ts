@@ -1,6 +1,7 @@
 import { withBaseUrl } from '../../base-url.js';
 import { loadMapList } from '../../content/maps-index.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import type { LaunchEntry } from '../../launch.js';
 import { SCENES } from '../../scenes/index.js';
 import { createMapDetailsCard, metaLine } from './map-card.js';
 import { generatedMapPreview } from './map-preview.js';
@@ -35,6 +36,7 @@ export function mapSelectScreen(
   open: (screen: MenuScreen) => void,
   memory: MapSelectMemory,
   openLobby: (item: MapSelectItem) => void,
+  launch: LaunchEntry,
 ): HTMLElement {
   const copy = messages().mainMenu;
   const select = copy.mapSelect;
@@ -267,7 +269,7 @@ export function mapSelectScreen(
     if (selected === null) return;
     if (selected.kind === 'scene') {
       // targetSearch carries the sticky menu params (lang, sound, ...).
-      window.location.search = targetSearch(`?scene=${encodeURIComponent(selected.id)}`);
+      launch(targetSearch(`?scene=${encodeURIComponent(selected.id)}`));
       return;
     }
     openLobby(selected);

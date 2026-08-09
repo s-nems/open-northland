@@ -16,7 +16,11 @@ export interface FullscreenPrompt {
   relabel(): void;
 }
 
-export function mountFullscreenPrompt(root: HTMLElement, params: URLSearchParams): FullscreenPrompt {
+export function mountFullscreenPrompt(
+  root: HTMLElement,
+  params: URLSearchParams,
+  signal: AbortSignal,
+): FullscreenPrompt {
   if (!fullscreenControllable() || fullscreenOptedOut(params)) return { relabel: () => undefined };
 
   const button = document.createElement('button');
@@ -38,7 +42,7 @@ export function mountFullscreenPrompt(root: HTMLElement, params: URLSearchParams
   const paint = (): void => {
     button.hidden = isFullscreen();
   };
-  document.addEventListener('fullscreenchange', paint);
+  document.addEventListener('fullscreenchange', paint, { signal });
   paint();
 
   root.append(button);

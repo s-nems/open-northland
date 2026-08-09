@@ -1,6 +1,7 @@
 import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
 import { playerSwatchHex } from '../../../catalog/roster.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
+import type { LaunchEntry } from '../../../launch.js';
 import { createMapDetailsCard } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
@@ -32,6 +33,7 @@ export function lobbyScreen(
   item: MapSelectItem,
   open: (screen: MenuScreen) => void,
   rosters: Map<string, RosterState>,
+  launch: LaunchEntry,
 ): HTMLElement {
   const copy = messages().mainMenu;
   const lobby = copy.lobby;
@@ -78,8 +80,8 @@ export function lobbyScreen(
   const card = createMapDetailsCard();
   card.show(item);
 
-  const launch = document.createElement('div');
-  launch.className = 'main-menu__lobby-launch';
+  const launchPanel = document.createElement('div');
+  launchPanel.className = 'main-menu__lobby-launch';
 
   const options = initialLobbyOptions(new URLSearchParams(window.location.search));
 
@@ -87,8 +89,8 @@ export function lobbyScreen(
   start.type = 'button';
   start.className = 'main-menu__primary main-menu__lobby-start';
   start.textContent = lobby.start;
-  launch.append(lobbyOptionsCard(options), start);
-  side.append(card.root, launch);
+  launchPanel.append(lobbyOptionsCard(options), start);
+  side.append(card.root, launchPanel);
 
   body.append(main, side);
   section.append(head, body);
@@ -323,7 +325,7 @@ export function lobbyScreen(
   start.addEventListener('click', () => {
     if (start.disabled) return;
     unhookKeys();
-    window.location.search = targetSearch(lobbyStartEntry(item.id, state, item.players, options));
+    launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options)));
   });
 
   return section;

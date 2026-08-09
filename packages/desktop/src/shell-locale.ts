@@ -35,7 +35,8 @@ export function watchGameLocale(win: BrowserWindow, paths: ShellPaths): void {
       applyShellLocale(win, paths, locale);
     });
   };
-  // The settings screen rewrites the URL in place; a menu-to-world launch loads a fresh document.
+  // The settings screen and a menu-to-world launch both rewrite the URL in place; quitting to the
+  // menu loads a fresh document.
   win.webContents.on('did-navigate-in-page', (_event, url) => adopt(url));
   win.webContents.on('did-finish-load', () => adopt(win.webContents.getURL()));
 }

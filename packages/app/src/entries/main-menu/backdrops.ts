@@ -55,13 +55,13 @@ export function rotationOrder(
 }
 
 /**
- * Resolves once the rotation is running or the degrade path has logged. The timer then runs for the
- * page's lifetime: every way out of the menu is a URL navigation, which is the teardown.
+ * Resolves once the rotation is running or the degrade path has logged. `signal` ends the rotation,
+ * which otherwise keeps swapping stills after the menu leaves for a game.
  */
-export async function startBackdropRotation(host: HTMLElement): Promise<void> {
+export async function startBackdropRotation(host: HTMLElement, signal: AbortSignal): Promise<void> {
   try {
     const opening = await paintOpening(host);
-    if (await boot(host, opening)) return;
+    if (await boot(host, opening, signal)) return;
     diag.warn('content', 'menu backdrops unavailable, static backdrop stands');
   } catch (err) {
     diag.warn('content', `menu backdrops failed, static backdrop stands: ${String(err)}`);
@@ -97,7 +97,7 @@ function setSceneArt(host: HTMLElement, url: string): void {
 }
 
 /** False leaves the static art standing. */
-async function boot(host: HTMLElement, opening: string | null): Promise<boolean> {
+async function boot(host: HTMLElement, opening: string | null, signal: AbortSignal): Promise<boolean> {
   const files = parseStillList(await fetchJsonOrNull<unknown>('/backdrops-index'));
   // An unreachable route says nothing about the pool; an empty one clears the cached copy.
   if (files === null) return false;
@@ -122,6 +122,7 @@ async function boot(host: HTMLElement, opening: string | null): Promise<boolean>
   if (files.length < 2) return true;
 
   const advance = async (): Promise<void> => {
+    if (signal.aborted) return;
     position += 1;
     if (await showOn(back, fileAt(position))) {
       front.classList.remove('is-visible');

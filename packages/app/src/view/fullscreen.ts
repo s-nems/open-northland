@@ -63,6 +63,8 @@ function persistDisplayMode(mode: DisplayMode): void {
 export function bindDisplayMode(
   params: URLSearchParams,
   persist: (mode: DisplayMode) => void = persistDisplayMode,
+  // A document that never swaps its entry binds for its own lifetime.
+  signal: AbortSignal = new AbortController().signal,
 ): void {
   const plan = displayModePlan({
     optedOut: fullscreenOptedOut(params),
@@ -75,23 +77,35 @@ export function bindDisplayMode(
   // tearing the document down rather than the player asking for a window. Restoring the same document
   // from the back/forward cache resumes it, so the flag has to clear again.
   let unloading = false;
-  window.addEventListener('pagehide', () => {
-    unloading = true;
-  });
-  window.addEventListener('pageshow', () => {
-    unloading = false;
-  });
-  document.addEventListener('fullscreenchange', () => {
-    if (!unloading) persist(isFullscreen() ? 'fullscreen' : 'window');
-  });
-  if (plan === 'restore') armFirstGesture();
+  window.addEventListener(
+    'pagehide',
+    () => {
+      unloading = true;
+    },
+    { signal },
+  );
+  window.addEventListener(
+    'pageshow',
+    () => {
+      unloading = false;
+    },
+    { signal },
+  );
+  document.addEventListener(
+    'fullscreenchange',
+    () => {
+      if (!unloading) persist(isFullscreen() ? 'fullscreen' : 'window');
+    },
+    { signal },
+  );
+  if (plan === 'restore') armFirstGesture(signal);
 }
 
 /**
  * Capture phase on `window` so any first gesture counts, including one the menu, HUD or camera
  * consumes. Nothing is prevented or stopped, so the gesture still reaches its real handler.
  */
-function armFirstGesture(): void {
+function armFirstGesture(signal: AbortSignal): void {
   let pending = false;
   const take = (): void => {
     if (pending) return;
@@ -107,6 +121,6 @@ function armFirstGesture(): void {
     window.removeEventListener('pointerdown', take, true);
     window.removeEventListener('keydown', take, true);
   };
-  window.addEventListener('pointerdown', take, true);
-  window.addEventListener('keydown', take, true);
+  window.addEventListener('pointerdown', take, { capture: true, signal });
+  window.addEventListener('keydown', take, { capture: true, signal });
 }
