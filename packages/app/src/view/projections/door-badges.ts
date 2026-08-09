@@ -1,4 +1,9 @@
-import type { DoorBadge, DoorBadgeRow, HouseholdKind } from '@open-northland/render';
+import {
+  type DoorBadge,
+  type DoorBadgeRow,
+  GARRISON_MAST_FALLBACK_DX,
+  type HouseholdKind,
+} from '@open-northland/render';
 import { ONE, tileToScreen } from '@open-northland/render/data';
 import {
   entityById,
@@ -136,13 +141,15 @@ function anchorOf(
   return { x: pos.x, y: pos.y, dx: to.x - from.x, dy: to.y - from.y };
 }
 
-/** Where the garrison flag is planted: the authored mast point, else the sign post the badges stand on. */
+/** Where the garrison flag is planted: the authored mast point, else beside the sign post the badges
+ *  stand on, so a mastless post's flag does not cover the rows a click has to reach. */
 function mastOf(
   info: BuildingDoorInfo | undefined,
   post: Pick<DoorBadge, 'dx' | 'dy'>,
 ): { readonly dx: number; readonly dy: number } {
   const mast = info?.mastPoint;
-  return mast !== undefined ? { dx: mast.x, dy: mast.y } : { dx: post.dx ?? 0, dy: post.dy ?? 0 };
+  if (mast !== undefined) return { dx: mast.x, dy: mast.y };
+  return { dx: (post.dx ?? 0) + GARRISON_MAST_FALLBACK_DX, dy: post.dy ?? 0 };
 }
 
 /** Parents raising a child read 'family', a childless pair 'couple', anyone alone 'single'. */

@@ -32,6 +32,7 @@ export {
   type BuildingSignSheet,
   type DoorBadgeRole,
   type DoorBadgeRow,
+  GARRISON_MAST_FALLBACK_DX,
   type HouseholdKind,
   signRowAt,
 } from './sign-gfx.js';

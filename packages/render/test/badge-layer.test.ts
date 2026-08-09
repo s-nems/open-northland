@@ -5,7 +5,12 @@ import type { AtlasFrame } from '../src/data/sprites/index.js';
 import { BadgeLayer } from '../src/gpu/overlays/badge-layer.js';
 import { type ConstructionSign, ConstructionSignLayer } from '../src/gpu/overlays/construction-sign-layer.js';
 import { badgeAnchor, type DoorBadge } from '../src/gpu/overlays/door-badge.js';
-import { GARRISON_TICKS_PER_FRAME, garrisonFlagLoop } from '../src/gpu/overlays/garrison-flag.js';
+import {
+  GARRISON_STAR_MAX,
+  GARRISON_TICKS_PER_FRAME,
+  garrisonFlagLoop,
+  hitsGarrisonFlag,
+} from '../src/gpu/overlays/garrison-flag.js';
 import {
   type BuildingSignSheet,
   CONSTRUCTION_SIGN_DX,
@@ -75,10 +80,32 @@ function garrisonSheet(): { sheet: BuildingSignSheet; frames: readonly (readonly
 /** The committed viking small-tower flag offset. */
 const MAST = { dx: -4, dy: -228 };
 
+/** A mark's inset into its band plus its outline stroke - how far a click can land off the ink. */
+const MARK_BAND_SLACK = 4;
+/** The flag box's left and bottom edges, which the wave frames reach and the straight placeholder does not. */
+const FLAG_BAND_SLACK = 6;
+
 const manned = (id: number, tileX: number, tileY: number, stars: number): DoorBadge => ({
   ...badge(id, tileX, tileY, []),
   garrison: { stars, ...MAST },
 });
+
+/** The furthest a point the picker accepts sits outside `bounds`, 0 when the ink covers every such point.
+ *  Probed through the hit test itself, so a drawn mark cannot pass by restating the box it derives from. */
+function worstUncoveredReach(
+  hit: (dx: number, dy: number) => boolean,
+  bounds: { minX: number; maxX: number; minY: number; maxY: number },
+  range: number,
+): number {
+  let worst = 0;
+  for (let dx = -range; dx <= range; dx++) {
+    for (let dy = -range; dy <= range; dy++) {
+      if (!hit(dx, dy)) continue;
+      worst = Math.max(worst, bounds.minX - dx, dx - bounds.maxX, bounds.minY - dy, dy - bounds.maxY);
+    }
+  }
+  return Math.max(worst, 0);
+}
 
 /** The mark standing at the mast, picked by position so the test does not pin the layer's attach order. */
 function flagOf(root: Container, tileX: number, tileY: number): Container | undefined {
@@ -92,8 +119,46 @@ function flownFrame(root: Container, tileX: number, tileY: number): Sprite['text
   return sprite.texture.frame;
 }
 
-describe('BadgeLayer (placeholder squares)', () => {
-  it('stacks one square per row at its anchor node', () => {
+describe('BadgeLayer (placeholder marks)', () => {
+  it('draws every mark inside the pick band its own row resolves to', () => {
+    const { layer, root } = layerIn();
+    const rows: DoorBadgeRow[] = [{ role: 'single' }, ...workers(1, 1, 1)];
+    layer.draw([badge(1, 3, 5, rows)]);
+    const marks = (root.children[0] as Container).children;
+    expect(marks).toHaveLength(rows.length);
+    marks.forEach((mark, row) => {
+      const b = mark.getLocalBounds();
+      for (const x of [b.minX, b.maxX]) {
+        for (const y of [b.minY, b.maxY]) {
+          expect(signRowAt(rows.length, x, y)).toBe(row);
+        }
+      }
+    });
+  });
+
+  it('centres the stack on the post the picker measures from', () => {
+    const { layer, root } = layerIn();
+    layer.draw([{ ...badge(1, 3, 5, workers(2, 1)), hearts: true }]);
+    const b = (root.children[0] as Container).getLocalBounds();
+    expect(b.minX).toBeCloseTo(-b.maxX, 6);
+  });
+
+  it('fills its band, so grass beside a mark is not a click on that mark', () => {
+    const { layer, root } = layerIn();
+    const rows = workers(2, 0);
+    layer.draw([badge(1, 3, 5, rows)]);
+    // The row above the base has no rock-clump skirt below it, so its whole band should be under ink.
+    const mark = (root.children[0] as Container).children[1];
+    if (mark === undefined) throw new Error('no second mark drawn');
+    const reach = worstUncoveredReach(
+      (dx, dy) => signRowAt(rows.length, dx, dy) === 1,
+      mark.getLocalBounds(),
+      80,
+    );
+    expect(reach).toBeLessThanOrEqual(MARK_BAND_SLACK);
+  });
+
+  it('stacks one mark per row at its anchor node', () => {
     const { layer, root } = layerIn();
     layer.draw([badge(1, 3, 5, workers(2, 1, 1))]);
     const stack = root.children[0];
@@ -342,6 +407,15 @@ describe('BadgeLayer (garrison flag)', () => {
 
     layer.draw([]);
     expect(root.children).toHaveLength(0);
+  });
+
+  it('spans the placeholder flag across the band the picker claims', () => {
+    const { layer, root } = layerIn();
+    layer.draw([manned(1, 3, 5, GARRISON_STAR_MAX)]);
+    const b = flagOf(root, 3, 5)?.getLocalBounds();
+    if (b === undefined) throw new Error('no flag flying at the mast');
+    // Cloth stopping short of its own click box leaves clickable sky beside a marker 230 px up.
+    expect(worstUncoveredReach(hitsGarrisonFlag, b, 80)).toBeLessThanOrEqual(FLAG_BAND_SLACK);
   });
 
   it('retires the flag with the chain when the art basis is swapped out', () => {

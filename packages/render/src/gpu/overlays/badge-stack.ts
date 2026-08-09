@@ -5,6 +5,8 @@ import {
   chainedFrame,
   type DoorBadgeRow,
   type HouseholdKind,
+  SIGN_BAND_BOTTOM,
+  SIGN_HALF_WIDTH,
   SIGN_HEIGHT,
   SIGN_STEP,
   signKindOf,
@@ -12,13 +14,15 @@ import {
 
 /**
  * The drawn half of the door-badge marker: one building's sign chain, as the decoded `ls_temp` signs or
- * as the placeholder squares a checkout without `content/` gets. Both grow upward from the chain's own
+ * as the placeholder marks a checkout without `content/` gets. Both grow upward from the chain's own
  * anchor (the planted base row sits at y 0).
  */
 
-/** Placeholder square edge + vertical gap between stacked badges (world px). */
-const SIZE = 9;
-const GAP = 3;
+/** Placeholder mark geometry (world px): a mark fills the pick band `signRowAt` gives its row, less an
+ *  inset that keeps the outline stroke inside the band and reads the stacked rows apart. */
+const MARK_INSET = 3;
+const MARK_WIDTH = 2 * SIGN_HALF_WIDTH - 2 * MARK_INSET;
+const MARK_HEIGHT = SIGN_STEP - 2 * MARK_INSET;
 /** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
 const ROLE_COLOR: Readonly<Record<'craftsman' | 'carrier' | 'gatherer', number>> = {
   craftsman: 0x5ab6ff, // blue
@@ -68,21 +72,26 @@ export function makeSignStack(
   return c;
 }
 
-/** The placeholder stack when no art is decoded: the same rows as the sign chain, a coloured square per
- *  worker and a round dot per resident family, so the two read apart. */
-export function makeSquareStack(rows: readonly DoorBadgeRow[], hearts: boolean): Container {
+/** Top of `row`'s placeholder mark in anchor space (+y down): inset into the band `signRowAt` resolves
+ *  to that row, so a click on the mark answers with that row. */
+function markTop(row: number): number {
+  return -SIGN_BAND_BOTTOM - (row + 1) * SIGN_STEP + MARK_INSET;
+}
+
+/** The placeholder stack when no art is decoded: the same rows as the sign chain, a coloured bar per
+ *  worker and a rounded one per resident family, so the two read apart. */
+export function makePlaceholderStack(rows: readonly DoorBadgeRow[], hearts: boolean): Container {
   const c = new Container();
   let drawn = 0;
   for (const row of rows) {
     const g = new Graphics();
+    const yTop = markTop(drawn);
     if (row.role === 'single' || row.role === 'couple' || row.role === 'family') {
-      const yCentre = -(drawn + 1) * (SIZE + GAP) + SIZE / 2;
-      g.circle(SIZE / 2, yCentre, SIZE / 2)
+      g.ellipse(0, yTop + MARK_HEIGHT / 2, MARK_WIDTH / 2, MARK_HEIGHT / 2)
         .fill({ color: HOUSEHOLD_COLOR[row.role] })
         .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
     } else {
-      const yTop = -(drawn + 1) * (SIZE + GAP);
-      g.rect(0, yTop, SIZE, SIZE)
+      g.rect(-MARK_WIDTH / 2, yTop, MARK_WIDTH, MARK_HEIGHT)
         .fill({ color: ROLE_COLOR[row.role] })
         .stroke({ width: 1, color: BORDER_COLOR, alpha: 0.9 });
     }
@@ -90,9 +99,9 @@ export function makeSquareStack(rows: readonly DoorBadgeRow[], hearts: boolean):
     drawn++;
   }
   if (hearts) {
-    const top = -(drawn * (SIZE + GAP)) - HEART_LIFT;
+    const top = markTop(drawn - 1) - HEART_LIFT;
     for (let i = 0; i < HEART_COUNT; i++) {
-      c.addChild(makeHeart(SIZE / 2 + (i - 1) * HEART_DRIFT, top - i * HEART_GAP));
+      c.addChild(makeHeart((i - 1) * HEART_DRIFT, top - i * HEART_GAP));
     }
   }
   return c;
