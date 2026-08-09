@@ -1,15 +1,10 @@
-import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 import { decodeSegmentAudiopath, decodeSegmentTiming, musicTimeToSeconds } from '../../decoders/sgt.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
-import { parseEventDump } from './events.js';
+import { interpretSegment } from './interpret.js';
 import { encodeOgg } from './ogg-encode.js';
 import { decimateByTwo } from './resample.js';
 import { applyWavesReverb } from './reverb.js';
@@ -18,16 +13,14 @@ import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
 /**
  * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - one `mtLength`
  * pass per segment, with the loop-back point in the manifest (loop semantics: `decoders/sgt.ts`).
- * dmrender interprets the segment and dumps timed note/controller events (`-e`); spessasynth
+ * The performance interpreter turns each segment into timed note/controller events; spessasynth
  * synthesizes them from the game's DLS banks. Each segment's embedded audiopath then shapes the
  * render: the authored Waves Reverb applies to the whole mix and a 22050 Hz port rate halves the
  * published rate (the synth itself renders oversampled at 44.1 kHz).
  * `Theme_Viking_Hostile` alone authors `repeats: 1`; looping it like its 63 infinite siblings is an
- * approximation. Rendering needs the locally built dmrender binary (`scripts/build-dmrender.sh`);
- * without it, or without `DataX/DM2`, the stage is skipped and the app plays no music.
+ * approximation. Without `DataX/DM2` in the game copy the stage is skipped and the app plays no
+ * music.
  */
-
-const execFileAsync = promisify(execFile);
 
 /** Synth render parameters: 44.1 kHz stereo, encoder quality ~mid VBR. */
 const SAMPLE_RATE = 44100;
@@ -41,12 +34,8 @@ const MASTER_GAIN = 10 ** (-3 / 20);
  * with another version marks every ogg stale.
  */
 const RENDER_VERSION = 4;
-/** Synthesized headroom over the loop length; trimmed away at encode. dmrender takes whole seconds. */
+/** Synthesized headroom over the loop length, in whole seconds; trimmed away at encode. */
 const RENDER_TAIL_S = 1;
-/** Concurrent renders; the event dumps overlap while synthesis serializes on the JS thread. */
-const RENDER_POOL = 4;
-/** One render must finish within this budget; a hung tool must not wedge the whole pipeline. */
-const RENDER_TIMEOUT_MS = 10 * 60 * 1000;
 
 export const MUSIC_DIR = 'music';
 export const MUSIC_MANIFEST_NAME = 'manifest.json';
@@ -67,15 +56,7 @@ export interface MusicStageResult {
   readonly skipped?: string;
 }
 
-/** The dmrender binary: an explicit override, or the build script's committed output path. */
-function resolveDmrender(): string | undefined {
-  const override = process.env.OPEN_NORTHLAND_DMRENDER;
-  if (override !== undefined && override.length > 0) return existsSync(override) ? override : undefined;
-  const vendored = fileURLToPath(new URL('../../../vendor/dmrender', import.meta.url));
-  return existsSync(vendored) ? vendored : undefined;
-}
-
-/** The ogg is current only if it is newer than every render input (segment, banks, renderer). */
+/** The ogg is current only if it is newer than every render input (segment and banks). */
 async function isUpToDate(outPath: string, sourcePath: string, inputsMtimeMs: number): Promise<boolean> {
   try {
     const [out, source] = await Promise.all([stat(outPath), stat(sourcePath)]);
@@ -99,9 +80,9 @@ async function storedRenderVersion(musicDir: string): Promise<number> {
   return 0;
 }
 
-/** Latest mtime of the shared render inputs: the DLS banks and the dmrender binary itself. */
-async function sharedInputsMtimeMs(dm2: string, dmrender: string): Promise<number> {
-  let latest = (await stat(dmrender)).mtimeMs;
+/** Latest mtime of the shared render inputs: the DLS banks. */
+async function sharedInputsMtimeMs(dm2: string): Promise<number> {
+  let latest = 0;
   for (const entry of await readdir(dm2)) {
     if (!entry.toLowerCase().endsWith('.dls')) continue;
     const { mtimeMs } = await stat(join(dm2, entry));
@@ -122,31 +103,13 @@ export async function renderMusicStage(
 ): Promise<MusicStageResult> {
   const dm2 = await findPathCaseInsensitive(roots.game, ['DataX', 'DM2']);
   if (dm2 === undefined) return { rendered: 0, kept: 0, failed: 0, skipped: 'no DataX/DM2 in the game copy' };
-  const dmrender = resolveDmrender();
-  if (dmrender === undefined) {
-    const override = process.env.OPEN_NORTHLAND_DMRENDER;
-    return {
-      rendered: 0,
-      kept: 0,
-      failed: 0,
-      skipped:
-        override !== undefined && override.length > 0
-          ? `OPEN_NORTHLAND_DMRENDER points at a missing file (${override})`
-          : 'dmrender not built (tools/asset-pipeline/scripts/build-dmrender.sh)',
-    };
-  }
   const segments = (await readdir(dm2)).filter((f) => f.toLowerCase().endsWith('.sgt')).sort();
   if (segments.length === 0) return { rendered: 0, kept: 0, failed: 0, skipped: 'no segments in DataX/DM2' };
 
   const musicDir = join(outDir, MUSIC_DIR);
   await mkdir(musicDir, { recursive: true });
-  const inputsMtimeMs = await sharedInputsMtimeMs(dm2, dmrender);
+  const inputsMtimeMs = await sharedInputsMtimeMs(dm2);
   const sameRenderVersion = (await storedRenderVersion(musicDir)) === RENDER_VERSION;
-  // dmrender resolves the segments' DLS references against its working directory.
-  const workDir = await mkdtemp(join(tmpdir(), 'dmrender-'));
-  for (const entry of await readdir(dm2)) {
-    await symlink(join(dm2, entry), join(workDir, entry));
-  }
 
   const manifest = new Map<string, ManifestTrack>();
   let banksPromise: Promise<Map<string, DlsBank>> | undefined;
@@ -173,14 +136,11 @@ export async function renderMusicStage(
         return;
       }
       const renderS = Math.ceil(totalS) + RENDER_TAIL_S;
-      const eventsPath = join(workDir, `${stem}.events.jsonl`);
-      await execFileAsync(
-        dmrender,
-        ['-e', eventsPath, '-l', String(renderS), '-s', String(SAMPLE_RATE), '-c', String(CHANNELS), segment],
-        { cwd: workDir, timeout: RENDER_TIMEOUT_MS, maxBuffer: 1 << 20 },
-      );
-      const events = parseEventDump(await readFile(eventsPath, 'utf8'));
-      await rm(eventsPath, { force: true });
+      const events = interpretSegment(segmentBytes, {
+        sampleRate: SAMPLE_RATE,
+        audioChannels: CHANNELS,
+        renderSeconds: renderS,
+      });
       if (banksPromise === undefined) banksPromise = loadDlsBanks(dm2);
       const banks = await banksPromise;
       const synthesized = await synthesizeEvents(events, banks, SAMPLE_RATE, renderS * SAMPLE_RATE);
@@ -211,17 +171,9 @@ export async function renderMusicStage(
     }
   };
 
-  try {
-    const queue = [...segments];
-    await Promise.all(
-      Array.from({ length: Math.min(RENDER_POOL, queue.length) }, async () => {
-        for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
-          await renderOne(next);
-        }
-      }),
-    );
-  } finally {
-    await rm(workDir, { recursive: true, force: true });
+  // Interpretation, synthesis, and encoding are all main-thread CPU work; render sequentially.
+  for (const segment of segments) {
+    await renderOne(segment);
   }
 
   const tracks = Object.fromEntries([...manifest.entries()].sort(([a], [b]) => a.localeCompare(b)));

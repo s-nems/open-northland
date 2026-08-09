@@ -1,10 +1,10 @@
 /**
- * DLS collection decoder for the slices the music stage needs: the bank-level INFO name and the
- * regions whose authored loop extends past their wave's PCM. The retail synth validates instrument
- * downloads and refuses such regions, so their keys stay silent (byte evidence: `015.dls` authors
- * loops past every wave above key 68, one of them a 273-frame wave carrying mangled header text as
- * PCM; keeping them audible was rejected by ear against an in-game recording). Layouts from the
- * published DLS Level 2 specification.
+ * DLS collection decoder for the slice the music stage needs: the regions whose authored loop
+ * extends past their wave's PCM. The retail synth validates instrument downloads and refuses such
+ * regions, so their keys stay silent (byte evidence: `015.dls` authors loops past every wave above
+ * key 68, one of them a 273-frame wave carrying mangled header text as PCM; keeping them audible
+ * was rejected by ear against an in-game recording). Layouts from the published DLS Level 2
+ * specification.
  */
 import { viewOf } from './byte-cursor.js';
 
@@ -36,9 +36,6 @@ const INSH_BANK_MSB_SHIFT = 8;
 /** `WLINK.ulTableIndex`: the wave's pool-table cue. */
 const WLNK_TABLE_INDEX_OFFSET = 8;
 const FMT_BITS_OFFSET = 14;
-const FIRST_PRINTABLE = 0x20;
-const QUOTE = 0x22;
-const BACKSLASH = 0x5c;
 
 function fourCc(bytes: Uint8Array, off: number): string {
   return String.fromCharCode(bytes[off] ?? 0, bytes[off + 1] ?? 0, bytes[off + 2] ?? 0, bytes[off + 3] ?? 0);
@@ -70,37 +67,6 @@ function walkChunks(
     }
   };
   walk(0, bytes.length);
-}
-
-/** The collection-level `INFO`/`INAM` name, or undefined without one. */
-export function decodeBankName(bytes: Uint8Array): string | undefined {
-  const view = viewOf(bytes);
-  let off = RIFF_HEADER_BYTES + FORM_TYPE_BYTES;
-  const end = Math.min(bytes.length, RIFF_HEADER_BYTES + view.getUint32(4, true));
-  while (off + RIFF_HEADER_BYTES <= end) {
-    const id = fourCc(bytes, off);
-    const size = view.getUint32(off + 4, true);
-    const body = off + RIFF_HEADER_BYTES;
-    if (id === 'LIST' && fourCc(bytes, body) === 'INFO') {
-      let sub = body + FORM_TYPE_BYTES;
-      while (sub + RIFF_HEADER_BYTES <= body + size) {
-        const subId = fourCc(bytes, sub);
-        const subSize = view.getUint32(sub + 4, true);
-        if (subId === 'INAM') {
-          const raw = bytes.subarray(sub + RIFF_HEADER_BYTES, sub + RIFF_HEADER_BYTES + subSize);
-          // Same normalization as the event dump's identity rows: drop control, quote, backslash.
-          return [...raw]
-            .filter((c) => c >= FIRST_PRINTABLE && c !== QUOTE && c !== BACKSLASH)
-            .map((c) => String.fromCharCode(c))
-            .join('')
-            .trim();
-        }
-        sub += RIFF_HEADER_BYTES + subSize + (subSize & 1);
-      }
-    }
-    off = body + size + (size & 1);
-  }
-  return undefined;
 }
 
 /** PCM frame counts of the pool waves, keyed by their pool-table cue index. */
