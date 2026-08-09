@@ -7,7 +7,7 @@
 // the game folder is auto-detected, `CULTURES_MOD_ROOT` points at one unpacked elsewhere). On
 // failure the output directory is kept for inspection.
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +40,25 @@ const pipeline = run('npm', [
 if (pipeline.status !== 0) {
   console.error(`pipeline run failed; partial output kept at ${outDir}`);
   process.exit(pipeline.status ?? 1);
+}
+
+const dmrender = join(repoRoot, 'tools', 'asset-pipeline', 'vendor', 'dmrender');
+const dm2 = join(gameDir, 'DataX', 'DM2');
+if (existsSync(dmrender) && existsSync(dm2)) {
+  const expected = readdirSync(dm2).filter((file) => file.toLowerCase().endsWith('.sgt')).length;
+  const manifestPath = join(outDir, 'music', 'manifest.json');
+  const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : undefined;
+  const actual =
+    typeof manifest === 'object' &&
+    manifest !== null &&
+    typeof manifest.tracks === 'object' &&
+    manifest.tracks !== null
+      ? Object.keys(manifest.tracks).length
+      : 0;
+  if (actual !== expected) {
+    console.error(`music pipeline emitted ${actual} of ${expected} tracks; output kept at ${outDir}`);
+    process.exit(1);
+  }
 }
 
 const suite = run('node', ['scripts/test-content.mjs'], { ON_CONTENT_DIR: outDir });
