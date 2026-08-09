@@ -60,6 +60,43 @@ describe('World cache coherence', () => {
     expect(w.componentEntries(second).map(([name]) => name)).toEqual(['A']);
   });
 
+  it('verifyCaches reports a membership list that disagrees with the stores', () => {
+    const w = new World();
+    const A = defineComponent<{ n: number }>('A');
+    const e = w.create();
+    w.add(e, A, { n: 1 });
+    expect(w.verifyCaches()).toEqual([]);
+    // Both report branches, from a state no public seam can produce: a store entry no list names, then
+    // a listed index the entity does not carry.
+    const memberships = Reflect.get(w, 'memberships') as Map<Entity, number[]>;
+    memberships.delete(e);
+    expect(w.verifyCaches()).toEqual(['entity 1 carries A but its membership list misses it']);
+
+    // The list-side branch: an index the entity does not carry.
+    memberships.set(e, [0, 7]);
+    expect(w.verifyCaches()).toEqual(['entity 1 lists component index 7 it does not carry']);
+
+    memberships.set(e, [0, 0]);
+    expect(w.verifyCaches()).toEqual(['entity 1 membership list is not ascending at index 0']);
+  });
+
+  it('verifyCaches reports the canonical memo, then memberships, then registered verifiers', () => {
+    const w = new World();
+    const A = defineComponent<{ n: number }>('A');
+    const e = w.create();
+    w.add(e, A, { n: 1 });
+    w.canonicalEntities();
+    w.registerCacheVerifier('registered', () => ['registered says stale']);
+    Reflect.set(w, 'canonicalCache', Object.freeze([999 as Entity]));
+    (Reflect.get(w, 'memberships') as Map<Entity, number[]>).delete(e);
+    // A registered verifier can never preempt the World's own two checks.
+    expect(w.verifyCaches()).toEqual([
+      'canonicalEntities cache diverges at index 0: cached 999, alive 1 - stale memo',
+      'entity 1 carries A but its membership list misses it',
+      'registered says stale',
+    ]);
+  });
+
   it('verifyCaches reports a stale memo (a simulated missed invalidation)', () => {
     const w = new World();
     w.create();

@@ -4,18 +4,16 @@
  * iteration order history-dependent.
  */
 
+import { type CacheVerifier, CacheVerifiers } from './cache-verifier.js';
 import type { Component, DeepReadonly, Entity } from './component.js';
 import { ComponentRevisions } from './component-revisions.js';
 import { MembershipJournals } from './membership-journal.js';
 import { QueryIterator } from './query-iterator.js';
 import { TouchedLog } from './touched-log.js';
 
+export type { CacheVerifier } from './cache-verifier.js';
 export type { Component, DeepReadonly, Entity } from './component.js';
 export { defineComponent } from './component.js';
-
-/** Re-derives one incrementally-maintained cache from authoritative state and returns a message per
- *  mismatch (empty = coherent). Must be pure over current state. */
-export type CacheVerifier = () => string[];
 
 export class World {
   private nextId = 1;
@@ -39,9 +37,7 @@ export class World {
   private readonly componentRevisions = new ComponentRevisions();
   private readonly journals = new MembershipJournals();
   private readonly touched = new TouchedLog();
-  /** Derived-cache verifiers by name, run in first-registration order; registering a name again replaces the
-   *  verifier but keeps its position. */
-  private readonly cacheVerifiers = new Map<string, CacheVerifier>();
+  private readonly cacheVerifiers = new CacheVerifiers();
   /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create} and
    *  {@link destroy} since component add/remove cannot change the alive set. */
   private canonicalCache: readonly Entity[] | null = null;
@@ -247,69 +243,20 @@ export class World {
   }
 
   registerCacheVerifier(name: string, verifier: CacheVerifier): void {
-    this.cacheVerifiers.set(name, verifier);
+    this.cacheVerifiers.register(name, verifier);
   }
 
-  /**
-   * Recompute every incrementally-maintained cache from scratch and report mismatches with the live
-   * copy (empty = coherent), so a missed invalidation surfaces at the tick it happens rather than as a
-   * hash divergence later. The World's own memo is checked first and unconditionally, so no registered
-   * name can shadow it.
-   */
+  /** Recompute every incrementally-maintained cache and report mismatches with the live copy (empty =
+   *  coherent), so a missed invalidation surfaces at the tick it happens rather than as a hash divergence
+   *  later. Off the tick path: an invariant and test seam, never called by a system. */
   verifyCaches(): string[] {
-    const out = this.verifyCanonicalCache();
-    out.push(...this.verifyMemberships());
-    for (const verify of this.cacheVerifiers.values()) out.push(...verify());
-    return out;
-  }
-
-  /** Re-derive the per-entity membership lists from the stores: every store entry must be listed, every
-   *  listed index must be stored, and lists must ascend (registration order). */
-  private verifyMemberships(): string[] {
-    const out: string[] = [];
-    this.registered.forEach((component, index) => {
-      const store = this.stores.get(component);
-      if (store === undefined) return;
-      for (const e of store.keys()) {
-        if (this.memberships.get(e)?.includes(index) !== true) {
-          out.push(`entity ${e} carries ${component.name} but its membership list misses it`);
-        }
-      }
+    return this.cacheVerifiers.run({
+      alive: this.alive,
+      stores: this.stores,
+      registered: this.registered,
+      memberships: this.memberships,
+      canonicalCache: this.canonicalCache,
     });
-    for (const [e, list] of this.memberships) {
-      let previous = -1;
-      for (const index of list) {
-        const component = this.registered[index];
-        if (component === undefined || this.stores.get(component)?.has(e) !== true) {
-          out.push(`entity ${e} lists component index ${index} it does not carry`);
-        }
-        if (index <= previous) out.push(`entity ${e} membership list is not ascending at index ${index}`);
-        previous = index;
-      }
-    }
-    return out;
-  }
-
-  private verifyCanonicalCache(): string[] {
-    const cached = this.canonicalCache;
-    if (cached === null) return [];
-    const out: string[] = [];
-    const fresh = [...this.alive].sort((a, b) => a - b);
-    if (cached.length !== fresh.length) {
-      out.push(
-        `canonicalEntities cache holds ${cached.length} ids but ${fresh.length} are alive - a create/destroy missed invalidation`,
-      );
-    } else {
-      for (let i = 0; i < fresh.length; i++) {
-        if (cached[i] !== fresh[i]) {
-          out.push(
-            `canonicalEntities cache diverges at index ${i}: cached ${cached[i]}, alive ${fresh[i]} - stale memo`,
-          );
-          break;
-        }
-      }
-    }
-    return out;
   }
 
   /** Visit an entity's components in registration order and O(carried components), without allocating.
