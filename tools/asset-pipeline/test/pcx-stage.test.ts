@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { vjoin } from '@open-northland/vfs';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodePcx, encodePcx, expandToRgba } from '../src/decoders/pcx.js';
@@ -55,7 +56,7 @@ describe('convertPcxTree', () => {
 
     const done = await convertPcxTree(fs, { game, mod: undefined }, out);
 
-    expect(done.map((c) => c.output).sort()).toEqual([join('logo.png'), join('pics', 'gui', 'button.png')]);
+    expect(done.map((c) => c.output).sort()).toEqual(['logo.png', 'pics/gui/button.png']);
     const png = await readFile(join(out, 'logo.png'));
     const decoded = await decodePng(png);
     expect(decoded.width).toBe(width);
@@ -74,7 +75,7 @@ describe('convertPcxTree', () => {
 
     const done = await convertPcxTree(fs, { game, mod: undefined }, out);
 
-    expect(done.map((c) => c.output)).toEqual([join(TEXTURES_DIR, 'text_000.png')]);
+    expect(done.map((c) => c.output)).toEqual([vjoin(TEXTURES_DIR, 'text_000.png')]);
     await expect(readFile(join(out, TEXTURES_DIR, 'text_000.png'))).resolves.toBeInstanceOf(Buffer);
   });
 
@@ -88,14 +89,14 @@ describe('convertPcxTree', () => {
 
     const done = await convertPcxTree(fs, { game: out, mod: undefined }, out);
 
-    expect(done.map((c) => c.output)).toEqual([join('data', 'bobs', 'embedded.png')]);
+    expect(done.map((c) => c.output)).toEqual(['data/bobs/embedded.png']);
     const decoded = await decodePng(await readFile(join(out, 'data', 'bobs', 'embedded.png')));
     expect(decoded.width).toBe(width);
     expect(decoded.height).toBe(height);
     // The .png sibling is never re-matched as a .pcx, so the pass doesn't walk its own output; the
     // source .pcx survives the conversion, so a re-run simply re-converts it to identical bytes.
     expect((await convertPcxTree(fs, { game: out, mod: undefined }, out)).map((c) => c.output)).toEqual([
-      join('data', 'bobs', 'embedded.png'),
+      'data/bobs/embedded.png',
     ]);
   });
 
@@ -151,7 +152,7 @@ describe('convertPcxTree', () => {
       },
     ]);
 
-    expect(done.map((c) => c.output)).toEqual([join(TEXTURES_DIR, 'tran_meadow.masked.png')]);
+    expect(done.map((c) => c.output)).toEqual([vjoin(TEXTURES_DIR, 'tran_meadow.masked.png')]);
     const decoded = await decodePng(await readFile(join(out, TEXTURES_DIR, 'tran_meadow.masked.png')));
     const expectedRgb = expandToRgba(decodePcx(colour)).rgba;
     for (let i = 0; i < width * height; i++) {

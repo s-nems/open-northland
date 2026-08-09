@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { vjoin } from '@open-northland/vfs';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -76,20 +77,20 @@ describe('source roots', () => {
     it('resolves an exactly-cased path', async () => {
       await write(game, join('text', 'strings.ini'), 'x');
       expect(await findPathCaseInsensitive(fs, game, ['text', 'strings.ini'])).toBe(
-        join(game, 'text', 'strings.ini'),
+        vjoin(game, 'text', 'strings.ini'),
       );
     });
 
     it('matches each segment case-insensitively and returns the real on-disk casing', async () => {
       await write(game, join('Text', 'Strings.ini'), 'x');
       expect(await findPathCaseInsensitive(fs, game, ['text', 'strings.ini'])).toBe(
-        join(game, 'Text', 'Strings.ini'),
+        vjoin(game, 'Text', 'Strings.ini'),
       );
     });
 
     it('resolves a multi-segment nested path', async () => {
       await mkdir(join(game, 'MISSION', 'POL'), { recursive: true });
-      expect(await findPathCaseInsensitive(fs, game, ['mission', 'pol'])).toBe(join(game, 'MISSION', 'POL'));
+      expect(await findPathCaseInsensitive(fs, game, ['mission', 'pol'])).toBe(vjoin(game, 'MISSION', 'POL'));
     });
 
     it('is undefined when a segment or the base directory is absent', async () => {
@@ -105,14 +106,14 @@ describe('source roots', () => {
 
   describe('resolveSourceFile', () => {
     it('prefers the overlay copy and falls back to the base game', async () => {
-      const rel = join('Data', 'logic', 'goodtypes.ini');
+      const rel = 'Data/logic/goodtypes.ini';
       await write(game, rel, 'base');
       await write(mod, rel, 'overlay');
       const roots: SourceRoots = { game, mod };
-      expect(await resolveSourceFile(fs, roots, rel)).toBe(join(mod, rel));
+      expect(await resolveSourceFile(fs, roots, rel)).toBe(vjoin(mod, rel));
       await write(game, join('Data', 'base-only.ini'), 'base');
       expect(await resolveSourceFile(fs, roots, join('Data', 'base-only.ini'))).toBe(
-        join(game, 'Data', 'base-only.ini'),
+        vjoin(game, 'Data', 'base-only.ini'),
       );
       expect(await resolveSourceFile(fs, roots, join('Data', 'absent.ini'))).toBeUndefined();
     });
@@ -121,7 +122,7 @@ describe('source roots', () => {
       await write(game, join('Data', 'logic', 'goodtypes.ini'), 'base');
       expect(
         await resolveSourceFile(fs, { game, mod: undefined }, join('data', 'LOGIC', 'GoodTypes.INI')),
-      ).toBe(join(game, 'Data', 'logic', 'goodtypes.ini'));
+      ).toBe(vjoin(game, 'Data', 'logic', 'goodtypes.ini'));
     });
 
     // Callers pass both shapes on every platform: `join`ed constants carry the platform separator,
@@ -130,7 +131,7 @@ describe('source roots', () => {
     it('splits either separator, whichever the caller built the reference with', async () => {
       await write(game, join('Data', 'logic', 'goodtypes.ini'), 'base');
       const roots: SourceRoots = { game, mod: undefined };
-      const resolved = join(game, 'Data', 'logic', 'goodtypes.ini');
+      const resolved = vjoin(game, 'Data', 'logic', 'goodtypes.ini');
       expect(await resolveSourceFile(fs, roots, 'data/logic/goodtypes.ini')).toBe(resolved);
       expect(await resolveSourceFile(fs, roots, 'data\\logic\\goodtypes.ini')).toBe(resolved);
     });
@@ -145,16 +146,16 @@ describe('source roots', () => {
       const found = await collectSourceFilesNamed(fs, { game, mod }, 'map.dat');
       expect(found).toEqual([
         {
-          rel: join('CnModMaps', 'mod_only', 'map.dat'),
-          path: join(mod, 'CnModMaps', 'mod_only', 'map.dat'),
+          rel: 'CnModMaps/mod_only/map.dat',
+          path: vjoin(mod, 'CnModMaps', 'mod_only', 'map.dat'),
         },
         {
-          rel: join('Data', 'maps', 'base_only', 'map.dat'),
-          path: join(game, 'Data', 'maps', 'base_only', 'map.dat'),
+          rel: 'Data/maps/base_only/map.dat',
+          path: vjoin(game, 'Data', 'maps', 'base_only', 'map.dat'),
         },
         {
-          rel: join('Data', 'maps', 'shared', 'map.dat'),
-          path: join(mod, 'Data', 'maps', 'shared', 'map.dat'),
+          rel: 'Data/maps/shared/map.dat',
+          path: vjoin(mod, 'Data', 'maps', 'shared', 'map.dat'),
         },
       ]);
     });
@@ -163,7 +164,7 @@ describe('source roots', () => {
       await write(game, 'MAP.DAT', 'base');
       await write(game, join('deep', 'Map.Dat'), 'base');
       const found = await collectSourceFilesNamed(fs, { game, mod: undefined }, 'map.dat');
-      expect(found.map((f) => f.rel)).toEqual(['MAP.DAT', join('deep', 'Map.Dat')]);
+      expect(found.map((f) => f.rel)).toEqual(['MAP.DAT', 'deep/Map.Dat']);
     });
 
     it('visits an identity overlay once', async () => {
@@ -178,8 +179,8 @@ describe('source roots', () => {
       const found = await collectSourceFilesNamed(fs, { game, mod }, 'map.dat');
       expect(found).toEqual([
         {
-          rel: join('data', 'maps', 'shared', 'map.dat'),
-          path: join(mod, 'data', 'maps', 'shared', 'map.dat'),
+          rel: 'data/maps/shared/map.dat',
+          path: vjoin(mod, 'data', 'maps', 'shared', 'map.dat'),
         },
       ]);
     });
@@ -190,32 +191,30 @@ describe('source roots', () => {
       await write(game, join('DataX', 'Libs', 'data0001.LIB'), 'base');
       await write(mod, join('DataX', 'Libs', 't.dat'), 'placeholder');
       const found = await collectSourceFiles(fs, { game, mod }, (rel) => rel.endsWith('.lib'));
-      expect(found.map((f) => f.rel)).toEqual([join('DataX', 'Libs', 'data0001.LIB')]);
+      expect(found.map((f) => f.rel)).toEqual(['DataX/Libs/data0001.LIB']);
     });
   });
 
   describe('unionCaseFoldedRoots', () => {
     const file = (root: string, rel: string): { rel: string; path: string } => ({
       rel,
-      path: join(root, rel),
+      path: vjoin(root, rel),
     });
 
     it('keys on the case-folded path: an earlier root wins, spelling differences included', () => {
       const union = unionCaseFoldedRoots([
-        { root: '/m', files: [file('/m', join('data', 'a.pcx'))] },
-        { root: '/g', files: [file('/g', join('Data', 'A.PCX')), file('/g', join('Data', 'b.pcx'))] },
+        { root: '/m', files: [file('/m', 'data/a.pcx')] },
+        { root: '/g', files: [file('/g', 'Data/A.PCX'), file('/g', 'Data/b.pcx')] },
       ]);
       expect(union).toEqual([
-        { rel: join('Data', 'b.pcx'), path: join('/g', 'Data', 'b.pcx') },
-        { rel: join('data', 'a.pcx'), path: join('/m', 'data', 'a.pcx') },
+        { rel: 'Data/b.pcx', path: vjoin('/g', 'Data', 'b.pcx') },
+        { rel: 'data/a.pcx', path: vjoin('/m', 'data', 'a.pcx') },
       ]);
     });
 
     it('throws on two same-root paths that differ only in case (no over-install merges them)', () => {
       expect(() =>
-        unionCaseFoldedRoots([
-          { root: '/g', files: [file('/g', join('Data', 'x.pcx')), file('/g', join('data', 'X.PCX'))] },
-        ]),
+        unionCaseFoldedRoots([{ root: '/g', files: [file('/g', 'Data/x.pcx'), file('/g', 'data/X.PCX')] }]),
       ).toThrow(/case-colliding sources .* under \/g/);
     });
   });

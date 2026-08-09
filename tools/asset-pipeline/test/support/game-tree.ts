@@ -10,7 +10,7 @@ import { join } from 'node:path';
  */
 
 /** Relative path of the engine bob directory under a game tree - the pipeline's `/bobs/` I/O convention. */
-export const BOBS_DIR = join('Data', 'engine2d', 'bin', 'bobs');
+export const BOBS_DIR = 'Data/engine2d/bin/bobs';
 
 /** A disposable OS temp directory; `cleanup()` removes it recursively (call from `afterEach`). */
 export interface TempDir {

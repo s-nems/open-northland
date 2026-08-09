@@ -43,10 +43,7 @@ export async function clearPipelineManifest(fs: Vfs, outDir: string): Promise<vo
 }
 
 /** The stamp of a previous conversion under `outDir`; absent or malformed reads as `undefined`. */
-export async function readPipelineManifest(
-  fs: Vfs,
-  outDir: string,
-): Promise<PipelineManifest | undefined> {
+export async function readPipelineManifest(fs: Vfs, outDir: string): Promise<PipelineManifest | undefined> {
   try {
     const parsed: unknown = JSON.parse(await readText(fs, vjoin(outDir, PIPELINE_MANIFEST_NAME)));
     if (typeof parsed !== 'object' || parsed === null) return undefined;

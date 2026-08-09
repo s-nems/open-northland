@@ -1,5 +1,6 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { vjoin } from '@open-northland/vfs';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { encodeLib } from '../src/decoders/lib.js';
@@ -46,15 +47,15 @@ describe('split game/mod source roots', () => {
   });
 
   it("resolves a mod-patched base file (the zip's Data/logic twins) over the base game's copy", async () => {
-    const rel = join('Data', 'logic', 'goodtypes.ini');
+    const rel = 'Data/logic/goodtypes.ini';
     await write(game, rel, '[goodtype]\ntype 1\nname "base_wood"\n');
     await write(mod, rel, '[goodtype]\ntype 1\nname "mod_wood"\n');
     await write(mod, join('DataCnmd', 'types', 'weapons.ini'), '[weapontype]\n');
     const sources = await resolveIniSources(fs, { game, mod });
     const goodtypes = sources.find((s) => s.file === rel);
-    expect(goodtypes?.path).toBe(join(mod, rel));
+    expect(goodtypes?.path).toBe(vjoin(mod, rel));
     const weapons = sources.find((s) => s.file.endsWith('weapons.ini'));
-    expect(weapons?.path).toBe(join(mod, 'DataCnmd', 'types', 'weapons.ini'));
+    expect(weapons?.path).toBe(vjoin(mod, 'DataCnmd', 'types', 'weapons.ini'));
   });
 
   it('emits mod-only maps, and the overlay copy wins a same-path map collision', async () => {
@@ -85,8 +86,8 @@ describe('split game/mod source roots', () => {
  * that resolve by reference - the mod's new building bobs exist in no archive.
  */
 describe('loose files over unpacked .lib members', () => {
-  const TEXTURES = join('Data', 'engine2d', 'bin', 'textures');
-  const BOBS = join('Data', 'engine2d', 'bin', 'bobs');
+  const TEXTURES = 'Data/engine2d/bin/textures';
+  const BOBS = 'Data/engine2d/bin/bobs';
   const LOOSE_RGB = [10, 20, 30] as const;
   const ARCHIVE_RGB = [200, 210, 220] as const;
 
@@ -136,7 +137,7 @@ describe('loose files over unpacked .lib members', () => {
 
     const done = await convertPcxTree(fs, withArchiveLayer({ game, mod: undefined }, out), out);
 
-    const collided = done.filter((d) => d.output === join(TEXTURES, 'text_000.png'));
+    const collided = done.filter((d) => d.output === vjoin(TEXTURES, 'text_000.png'));
     expect(collided).toHaveLength(1);
     expect(await firstPixel(join(TEXTURES, 'text_000.png'))).toEqual([...LOOSE_RGB]);
     expect(await firstPixel(join(TEXTURES, 'archive_only.png'))).toEqual([...ARCHIVE_RGB]);
@@ -153,9 +154,9 @@ describe('loose files over unpacked .lib members', () => {
 
     const index = await indexSourceAssets(fs, withArchiveLayer({ game, mod: undefined }, out));
 
-    expect(index.get('data/engine2d/bin/bobs/body.bmd')?.path).toBe(join(game, BOBS, 'body.bmd'));
+    expect(index.get('data/engine2d/bin/bobs/body.bmd')?.path).toBe(vjoin(game, BOBS, 'body.bmd'));
     expect(index.get('data/engine2d/bin/bobs/nowe/f_bakery.bmd')?.path).toBe(
-      join(game, BOBS, 'nowe', 'f_bakery.bmd'),
+      vjoin(game, BOBS, 'nowe', 'f_bakery.bmd'),
     );
   });
 
@@ -184,7 +185,7 @@ describe('loose files over unpacked .lib members', () => {
 
     // The app asks for `/bobs/f_bakery.house.png` - the source's `nowe/` subdirectory must not reach
     // the served name, or the mod's building bobs 404 and fall back.
-    expect(done.map((d) => d.png)).toEqual([join(BOBS, 'f_bakery.house.png')]);
+    expect(done.map((d) => d.png)).toEqual([vjoin(BOBS, 'f_bakery.house.png')]);
     // The atlas lands under out, never back into the read-only game tree.
     await expect(readFile(join(out, BOBS, 'f_bakery.house.png'))).resolves.toBeInstanceOf(Buffer);
     expect(await readdir(join(game, BOBS, 'nowe'))).toEqual(['f_bakery.bmd']);

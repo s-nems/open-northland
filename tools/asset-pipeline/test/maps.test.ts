@@ -30,13 +30,13 @@ describe('mapIdFromPath', () => {
 
 describe('excludeStringTableCopies', () => {
   it('drops a candidate in a Text/ subfolder of another candidate folder (case-folded)', () => {
-    const map = { rel: join('CnModMaps', 'WICHRY_ZIMY', 'map.dat'), path: '/m' };
-    const stray = { rel: join('CnModMaps', 'WICHRY_ZIMY', 'Text', 'map.dat'), path: '/s' };
+    const map = { rel: 'CnModMaps/WICHRY_ZIMY/map.dat', path: '/m' };
+    const stray = { rel: 'CnModMaps/WICHRY_ZIMY/Text/map.dat', path: '/s' };
     expect(excludeStringTableCopies([map, stray])).toEqual([map]);
   });
 
   it('keeps a top-level map folder that happens to be named text', () => {
-    const map = { rel: join('CnModMaps', 'text', 'map.dat'), path: '/m' };
+    const map = { rel: 'CnModMaps/text/map.dat', path: '/m' };
     expect(excludeStringTableCopies([map])).toEqual([map]);
   });
 });
@@ -44,7 +44,7 @@ describe('excludeStringTableCopies', () => {
 describe('mapCifToInfo', () => {
   it('decodes a synthetic map.cif logic header into a validated MapInfo', () => {
     const info = mapCifToInfo(buildStringCif(sampleMapLines()), 'tutorial_002', {
-      file: join('CnModMaps', 'tutorial_002', 'map.cif'),
+      file: 'CnModMaps/tutorial_002/map.cif',
     });
     expect(info).toMatchObject({ id: 'tutorial_002', width: 142, height: 146, mapType: 1 });
     expect(info.guid).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
