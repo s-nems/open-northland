@@ -1,12 +1,4 @@
-import {
-  type Camera,
-  cameraViewport,
-  cellColourResolver,
-  flatTileColour,
-  rasterizeTerrain,
-  type SceneTerrain,
-  terrainWorldBounds,
-} from '@open-northland/render';
+import { type Camera, cameraViewport, type SceneTerrain, terrainWorldBounds } from '@open-northland/render';
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
 import type { Rect } from '../geometry.js';
@@ -23,6 +15,7 @@ import {
   viewportRectOnMinimap,
 } from './model.js';
 import { createDotReplotGate } from './replot-gate.js';
+import { createMinimapSurface } from './surface.js';
 
 /**
  * The bottom-left minimap in the original's braided overview frame: the static ground raster, the
@@ -31,19 +24,9 @@ import { createDotReplotGate } from './replot-gate.js';
  * so they never fall through to unit selection or world orders.
  */
 
-/** Ground-raster px per device px: 2 pins the GPU's linear downscale at full averaging, so the per-cell
- *  mosaic's diamond edges resolve smooth at any DPR. */
-const RASTER_OVERSAMPLE = 2;
-/** How far (native frame px) the black hole backdrop underlaps the braid's top/right inner edge, since
- *  'full' keying opens the braid's near-black crevices. Must stay under the braid's 16 px top strip. */
-const HOLE_UNDERLAP_NATIVE_PX = 8;
 /** The camera view rectangle's stroke. */
 const VIEW_RECT_COLOUR = 0xffffff;
 const VIEW_RECT_ALPHA = 0.9;
-/** The letterbox bars + hole backdrop (matches the frame art's near-black window). */
-const HOLE_COLOUR = 0x000000;
-/** The flat fallback frame (bare checkout - no GUI art): parchment-dark border strokes. */
-const FALLBACK_FRAME_COLOUR = 0x2c241a;
 /** The HUD overlay plane, shared with the tool-panel root and the action ring. Equal zIndex keeps mount
  *  order, so the framed window draws over the earlier-mounted strip and under the later-mounted ring. */
 const MINIMAP_Z = 1000;
@@ -94,68 +77,25 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   container.zIndex = MINIMAP_Z;
   app.stage.addChild(container);
 
-  /** The renderer resolution the ground raster and frame were baked at; a DPR change re-bakes both.
-   *  Captured before the await, so a change landing mid-load still differs and triggers the re-bake. */
-  let bakedResolution = app.renderer.resolution;
-  let frame = await loadMinimapFrame(app.renderer, layout.artScale, bakedResolution);
-
-  const local = (r: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  }): {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-  } => ({
+  const local = (r: Rect): Rect => ({
     x: r.x - layout.panel.x,
     y: r.y - layout.panel.y,
     w: r.w,
     h: r.h,
   });
-
-  // The window hole backdrop: uniform near-black, so the letterbox bars around a non-square map read as
-  // one clean window. Left and bottom run flush to the screen corner.
-  const holeBg = new Graphics();
-  const innerL = local(layout.inner);
-  const underlap = frame !== null ? HOLE_UNDERLAP_NATIVE_PX * layout.artScale : 0;
-  holeBg.rect(innerL.x, innerL.y - underlap, innerL.w + underlap, innerL.h + underlap).fill(HOLE_COLOUR);
-  container.addChild(holeBg);
-
-  // The braid draws over the backdrop and covers its underlap; the frame's hole and outer margins are
-  // already keyed transparent.
-  if (frame !== null) {
-    frame.display.position.set(0, 0);
-    container.addChild(frame.display);
-  } else {
-    const fallbackFrame = new Graphics();
-    fallbackFrame
-      .rect(innerL.x - 1, innerL.y - 1, innerL.w + 2, innerL.h + 2)
-      .stroke({ width: 2, color: FALLBACK_FRAME_COLOUR });
-    container.addChild(fallbackFrame);
-  }
-
-  // One whole-map RGBA raster, aspect-fitted into the hole. Colour precedence per cell: baked
-  // ground-lane colour → the caller's per-typeId ground colour → flat tint.
-  const colourOfType = (typeId: number): number => opts.colourOf?.(typeId) ?? flatTileColour(typeId);
-  const colourOfCell = cellColourResolver(opts.cellColours, colourOfType);
-  const makeGroundTexture = (): Texture => {
-    const pxW = Math.max(1, Math.round(layout.map.w * RASTER_OVERSAMPLE * app.renderer.resolution));
-    const pxH = Math.max(1, Math.round(layout.map.h * RASTER_OVERSAMPLE * app.renderer.resolution));
-    const rgba = rasterizeTerrain(terrain, colourOfCell, pxW, pxH);
-    return new Texture({
-      source: new BufferImageSource({ resource: rgba, width: pxW, height: pxH, scaleMode: 'linear' }),
-    });
-  };
-  let groundTex = makeGroundTexture();
-  const ground = new Sprite(groundTex);
   const mapL = local(layout.map);
-  ground.position.set(mapL.x, mapL.y);
-  ground.width = mapL.w;
-  ground.height = mapL.h;
-  container.addChild(ground);
+
+  const surface = await createMinimapSurface({
+    container,
+    terrain,
+    cellColours: opts.cellColours,
+    colourOf: opts.colourOf,
+    hole: local(layout.inner),
+    map: mapL,
+    artScale: layout.artScale,
+    resolution: () => app.renderer.resolution,
+    loadFrame: (artScale, resolution) => loadMinimapFrame(app.renderer, artScale, resolution),
+  });
 
   const fogMask = createFogMaskLayer(container, mapL);
 
@@ -215,33 +155,6 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
 
   const claimDotReplot = createDotReplotGate(() => performance.now());
   let lastHeight = -1;
-  let disposed = false;
-  /** Monotonic guard: only the newest in-flight frame re-bake may swap the braid in. */
-  let frameEpoch = 0;
-  const rebuildDensity = (): void => {
-    bakedResolution = app.renderer.resolution;
-    const nextTex = makeGroundTexture();
-    ground.texture = nextTex;
-    groundTex.destroy(true);
-    groundTex = nextTex;
-    // A texture swap re-derives the sprite scale from the new texel size, so re-pin the on-screen size.
-    ground.width = mapL.w;
-    ground.height = mapL.h;
-    if (frame === null) return;
-    const epoch = ++frameEpoch;
-    void loadMinimapFrame(app.renderer, layout.artScale, bakedResolution).then((next) => {
-      if (next === null) return;
-      if (disposed || epoch !== frameEpoch || frame === null) {
-        next.dispose();
-        return;
-      }
-      const at = container.getChildIndex(frame.display);
-      frame.dispose();
-      frame = next;
-      next.display.position.set(0, 0);
-      container.addChildAt(next.display, at);
-    });
-  };
   // The view rect the Graphics currently shows (`[x, y, w, h]`; NaN = cleared). Redrawn only on change,
   // since a per-frame clear and stroke re-tessellates and forces the stage's instruction rebuild.
   let lastViewRect: [number, number, number, number] = [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
@@ -273,7 +186,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
         container.visible = true;
       }
       container.position.set(layout.panel.x, layout.panel.y);
-      if (app.renderer.resolution !== bakedResolution) rebuildDensity();
+      surface.syncResolution();
       fogMask.draw(fog);
       if (claimDotReplot(snapshot)) drawDots(snapshot, fog);
       const vp = viewportRectOnMinimap(
@@ -298,14 +211,12 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       }
     },
     dispose: () => {
-      disposed = true;
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('blur', onBlur);
+      surface.dispose();
       container.destroy({ children: true });
-      frame?.dispose();
-      groundTex.destroy(true);
       dotsTexture.destroy(true);
       fogMask.dispose();
     },
