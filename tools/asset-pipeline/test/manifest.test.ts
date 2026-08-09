@@ -1,5 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   CURRENT_MANIFEST,
@@ -9,6 +10,8 @@ import {
   writePipelineManifest,
 } from '../src/manifest.js';
 import { makeTempDir, type TempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 /** The conversion stamp (`src/manifest.ts`): exact round-trip, and tolerant reads for anything else. */
 describe('pipeline manifest', () => {
@@ -23,22 +26,22 @@ describe('pipeline manifest', () => {
   });
 
   it('round-trips the current stamp', async () => {
-    await writePipelineManifest(out.path);
-    expect(await readPipelineManifest(out.path)).toEqual(CURRENT_MANIFEST);
+    await writePipelineManifest(fs, out.path);
+    expect(await readPipelineManifest(fs, out.path)).toEqual(CURRENT_MANIFEST);
   });
 
   it('clears a previous stamp so an interrupted rerun cannot pass as complete', async () => {
-    await writePipelineManifest(out.path);
-    await clearPipelineManifest(out.path);
-    expect(await readPipelineManifest(out.path)).toBeUndefined();
-    await clearPipelineManifest(out.path); // absent stamp (first run) is a no-op, not an error
+    await writePipelineManifest(fs, out.path);
+    await clearPipelineManifest(fs, out.path);
+    expect(await readPipelineManifest(fs, out.path)).toBeUndefined();
+    await clearPipelineManifest(fs, out.path); // absent stamp (first run) is a no-op, not an error
   });
 
   it('reads absent or malformed stamps as undefined', async () => {
-    expect(await readPipelineManifest(out.path)).toBeUndefined();
+    expect(await readPipelineManifest(fs, out.path)).toBeUndefined();
     await writeFile(join(out.path, PIPELINE_MANIFEST_NAME), 'not json');
-    expect(await readPipelineManifest(out.path)).toBeUndefined();
+    expect(await readPipelineManifest(fs, out.path)).toBeUndefined();
     await writeFile(join(out.path, PIPELINE_MANIFEST_NAME), '{"irVersion":"x","contentRevision":1}');
-    expect(await readPipelineManifest(out.path)).toBeUndefined();
+    expect(await readPipelineManifest(fs, out.path)).toBeUndefined();
   });
 });

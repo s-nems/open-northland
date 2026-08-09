@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pipeline';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { readConfig, writeConfig } from './config.js';
 import { type ContentStatus, classifyContent } from './content-state.js';
 import { currentLocale } from './i18n/index.js';
@@ -44,7 +45,7 @@ export function createShellState(paths: ShellPaths): ShellState {
   }
 
   async function contentStatus(): Promise<ContentStatus> {
-    const stored = await readPipelineManifest(paths.contentDir);
+    const stored = await readPipelineManifest(nodeVfs(), paths.contentDir);
     return classifyContent(stored, CURRENT_MANIFEST, existsSync(join(paths.contentDir, 'ir.json')));
   }
 

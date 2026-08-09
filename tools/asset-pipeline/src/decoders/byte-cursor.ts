@@ -111,10 +111,16 @@ export class ByteWriter {
  *
  * Deliberately not `new TextDecoder('latin1')`: that WHATWG label is an alias for windows-1252, which
  * remaps 0x80-0x9F (byte 0x9C becomes U+0153 'œ' instead of U+009C), silently corrupting the CP1250
- * letters ś/ź/Ś/Ź that live in that range. Node's `Buffer.toString('latin1')` is genuine byte-identity.
+ * letters ś/ź/Ś/Ź that live in that range. `String.fromCharCode` per byte is genuine byte-identity
+ * on every platform.
  */
 export function decodeLatin1(bytes: Uint8Array): string {
-  return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('latin1');
+  const CHUNK = 0x8000; // fromCharCode spreads the chunk onto the stack, so keep it bounded
+  let out = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    out += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return out;
 }
 
 /** Encodes a string as latin1 bytes (1:1 byte mapping; ASCII stays exact). Inverse of {@link decodeLatin1}. */

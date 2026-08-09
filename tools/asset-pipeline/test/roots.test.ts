@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   collectSourceFiles,
@@ -12,6 +13,8 @@ import {
   unionCaseFoldedRoots,
 } from '../src/roots.js';
 import { makeTempDir, type TempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 describe('source roots', () => {
   let tmp: TempDir;
@@ -72,31 +75,31 @@ describe('source roots', () => {
   describe('findPathCaseInsensitive', () => {
     it('resolves an exactly-cased path', async () => {
       await write(game, join('text', 'strings.ini'), 'x');
-      expect(await findPathCaseInsensitive(game, ['text', 'strings.ini'])).toBe(
+      expect(await findPathCaseInsensitive(fs, game, ['text', 'strings.ini'])).toBe(
         join(game, 'text', 'strings.ini'),
       );
     });
 
     it('matches each segment case-insensitively and returns the real on-disk casing', async () => {
       await write(game, join('Text', 'Strings.ini'), 'x');
-      expect(await findPathCaseInsensitive(game, ['text', 'strings.ini'])).toBe(
+      expect(await findPathCaseInsensitive(fs, game, ['text', 'strings.ini'])).toBe(
         join(game, 'Text', 'Strings.ini'),
       );
     });
 
     it('resolves a multi-segment nested path', async () => {
       await mkdir(join(game, 'MISSION', 'POL'), { recursive: true });
-      expect(await findPathCaseInsensitive(game, ['mission', 'pol'])).toBe(join(game, 'MISSION', 'POL'));
+      expect(await findPathCaseInsensitive(fs, game, ['mission', 'pol'])).toBe(join(game, 'MISSION', 'POL'));
     });
 
     it('is undefined when a segment or the base directory is absent', async () => {
       await mkdir(join(game, 'text'), { recursive: true });
-      expect(await findPathCaseInsensitive(game, ['text', 'missing.ini'])).toBeUndefined();
-      expect(await findPathCaseInsensitive(join(game, 'nope'), ['anything'])).toBeUndefined();
+      expect(await findPathCaseInsensitive(fs, game, ['text', 'missing.ini'])).toBeUndefined();
+      expect(await findPathCaseInsensitive(fs, join(game, 'nope'), ['anything'])).toBeUndefined();
     });
 
     it('returns the directory itself for an empty segment list', async () => {
-      expect(await findPathCaseInsensitive(game, [])).toBe(game);
+      expect(await findPathCaseInsensitive(fs, game, [])).toBe(game);
     });
   });
 
@@ -106,19 +109,19 @@ describe('source roots', () => {
       await write(game, rel, 'base');
       await write(mod, rel, 'overlay');
       const roots: SourceRoots = { game, mod };
-      expect(await resolveSourceFile(roots, rel)).toBe(join(mod, rel));
+      expect(await resolveSourceFile(fs, roots, rel)).toBe(join(mod, rel));
       await write(game, join('Data', 'base-only.ini'), 'base');
-      expect(await resolveSourceFile(roots, join('Data', 'base-only.ini'))).toBe(
+      expect(await resolveSourceFile(fs, roots, join('Data', 'base-only.ini'))).toBe(
         join(game, 'Data', 'base-only.ini'),
       );
-      expect(await resolveSourceFile(roots, join('Data', 'absent.ini'))).toBeUndefined();
+      expect(await resolveSourceFile(fs, roots, join('Data', 'absent.ini'))).toBeUndefined();
     });
 
     it('resolves every path segment case-insensitively to the real on-disk casing', async () => {
       await write(game, join('Data', 'logic', 'goodtypes.ini'), 'base');
-      expect(await resolveSourceFile({ game, mod: undefined }, join('data', 'LOGIC', 'GoodTypes.INI'))).toBe(
-        join(game, 'Data', 'logic', 'goodtypes.ini'),
-      );
+      expect(
+        await resolveSourceFile(fs, { game, mod: undefined }, join('data', 'LOGIC', 'GoodTypes.INI')),
+      ).toBe(join(game, 'Data', 'logic', 'goodtypes.ini'));
     });
 
     // Callers pass both shapes on every platform: `join`ed constants carry the platform separator,
@@ -128,8 +131,8 @@ describe('source roots', () => {
       await write(game, join('Data', 'logic', 'goodtypes.ini'), 'base');
       const roots: SourceRoots = { game, mod: undefined };
       const resolved = join(game, 'Data', 'logic', 'goodtypes.ini');
-      expect(await resolveSourceFile(roots, 'data/logic/goodtypes.ini')).toBe(resolved);
-      expect(await resolveSourceFile(roots, 'data\\logic\\goodtypes.ini')).toBe(resolved);
+      expect(await resolveSourceFile(fs, roots, 'data/logic/goodtypes.ini')).toBe(resolved);
+      expect(await resolveSourceFile(fs, roots, 'data\\logic\\goodtypes.ini')).toBe(resolved);
     });
   });
 
@@ -139,7 +142,7 @@ describe('source roots', () => {
       await write(game, join('Data', 'maps', 'base_only', 'map.dat'), 'base');
       await write(mod, join('Data', 'maps', 'shared', 'map.dat'), 'overlay');
       await write(mod, join('CnModMaps', 'mod_only', 'map.dat'), 'overlay');
-      const found = await collectSourceFilesNamed({ game, mod }, 'map.dat');
+      const found = await collectSourceFilesNamed(fs, { game, mod }, 'map.dat');
       expect(found).toEqual([
         {
           rel: join('CnModMaps', 'mod_only', 'map.dat'),
@@ -159,20 +162,20 @@ describe('source roots', () => {
     it('matches the file name case-insensitively, including at the root level', async () => {
       await write(game, 'MAP.DAT', 'base');
       await write(game, join('deep', 'Map.Dat'), 'base');
-      const found = await collectSourceFilesNamed({ game, mod: undefined }, 'map.dat');
+      const found = await collectSourceFilesNamed(fs, { game, mod: undefined }, 'map.dat');
       expect(found.map((f) => f.rel)).toEqual(['MAP.DAT', join('deep', 'Map.Dat')]);
     });
 
     it('visits an identity overlay once', async () => {
       await write(game, join('maps', 'x', 'map.dat'), 'base');
-      const found = await collectSourceFilesNamed({ game, mod: game }, 'map.dat');
+      const found = await collectSourceFilesNamed(fs, { game, mod: game }, 'map.dat');
       expect(found).toHaveLength(1);
     });
 
     it('collapses a case-divergent spelling of the same path (overlay wins, like an over-install)', async () => {
       await write(game, join('Data', 'Maps', 'shared', 'map.dat'), 'base');
       await write(mod, join('data', 'maps', 'shared', 'map.dat'), 'overlay');
-      const found = await collectSourceFilesNamed({ game, mod }, 'map.dat');
+      const found = await collectSourceFilesNamed(fs, { game, mod }, 'map.dat');
       expect(found).toEqual([
         {
           rel: join('data', 'maps', 'shared', 'map.dat'),
@@ -186,7 +189,7 @@ describe('source roots', () => {
     it('filters on the lower-cased relative path', async () => {
       await write(game, join('DataX', 'Libs', 'data0001.LIB'), 'base');
       await write(mod, join('DataX', 'Libs', 't.dat'), 'placeholder');
-      const found = await collectSourceFiles({ game, mod }, (rel) => rel.endsWith('.lib'));
+      const found = await collectSourceFiles(fs, { game, mod }, (rel) => rel.endsWith('.lib'));
       expect(found.map((f) => f.rel)).toEqual([join('DataX', 'Libs', 'data0001.LIB')]);
     });
   });

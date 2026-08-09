@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeFnt } from '../decoders/fnt/codec.js';
 import { type FontMetrics, fontMetrics } from '../decoders/fnt/metrics.js';
 import { errorMessage } from '../errors.js';
@@ -8,11 +8,11 @@ import { buildPaletteLut, identityPalette, type PaletteLutResult } from './palet
 import { readSourceFile } from './source-files.js';
 
 /** Per-font metrics and manifest land here, served at `/gui/fonts/`. */
-const FONTS_CONTENT_DIR = join('gui', 'fonts');
+const FONTS_CONTENT_DIR = vjoin('gui', 'fonts');
 /** The root font set; the `latin/` and `rus/` variants live in sibling subdirs. */
-const FONTS_DIR = join('Data', 'gui', 'fonts');
+const FONTS_DIR = vjoin('Data', 'gui', 'fonts');
 /** Dir holding the `font_*.pcx` colour palette carriers. */
-const FONT_PALETTES_DIR = join('Data', 'gui', 'palettes');
+const FONT_PALETTES_DIR = vjoin('Data', 'gui', 'palettes');
 /** Stem of the emitted `256 x 4` font-colour LUT PNG, served at `/bobs/`. */
 export const FONT_COLOR_LUT_STEM = 'font-palettes-lut';
 /** The colour a font's RGBA preview atlas is rendered in (the LUT's first row). */
@@ -29,10 +29,10 @@ interface FontColorSource {
  * `packages/app/src/content/font-gfx.ts`: append, never reorder, or the app's row indices drift.
  */
 const FONT_COLORS: readonly FontColorSource[] = [
-  { name: 'white', file: join(FONT_PALETTES_DIR, 'font_white.pcx') },
-  { name: 'dark', file: join(FONT_PALETTES_DIR, 'font_dark.pcx') },
-  { name: 'dimmed', file: join(FONT_PALETTES_DIR, 'font_dimmed.pcx') },
-  { name: 'red', file: join(FONT_PALETTES_DIR, 'font_red.pcx') },
+  { name: 'white', file: vjoin(FONT_PALETTES_DIR, 'font_white.pcx') },
+  { name: 'dark', file: vjoin(FONT_PALETTES_DIR, 'font_dark.pcx') },
+  { name: 'dimmed', file: vjoin(FONT_PALETTES_DIR, 'font_dimmed.pcx') },
+  { name: 'red', file: vjoin(FONT_PALETTES_DIR, 'font_red.pcx') },
 ];
 
 /** The four font sizes shipped in each set. */
@@ -69,13 +69,13 @@ const FONT_SOURCES: readonly FontSource[] = FONT_VARIANTS.flatMap((v) =>
     key: v.name === 'default' ? stem : `${v.name}_${stem}`,
     stem,
     variant: v.name,
-    file: join(FONTS_DIR, v.dir, `${stem}.fnt`),
+    file: vjoin(FONTS_DIR, v.dir, `${stem}.fnt`),
   })),
 );
 
 /** Stacks the {@link FONT_COLORS} carriers' 256-colour trailers into one `256 x 4` LUT PNG. */
-export function convertFontColorLut(roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
-  return buildPaletteLut(roots, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, {
+export function convertFontColorLut(fs: Vfs, roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
+  return buildPaletteLut(fs, roots, outDir, FONT_COLORS, FONT_COLOR_LUT_STEM, {
     label: 'fonts',
     noun: 'colour',
   });
@@ -115,6 +115,7 @@ interface FontMetricsFile extends FontMetrics {
  * font. Results follow {@link FONT_SOURCES} order.
  */
 export async function convertFonts(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   previewPalette: Uint8Array | undefined,
@@ -124,7 +125,7 @@ export async function convertFonts(
   for (const src of FONT_SOURCES) {
     let bytes: Uint8Array;
     try {
-      bytes = await readSourceFile(roots, src.file);
+      bytes = await readSourceFile(fs, roots, src.file);
     } catch (err) {
       console.warn(`[pipeline] fonts: skipped ${src.key}: ${errorMessage(err)}`);
       continue;
@@ -136,6 +137,7 @@ export async function convertFonts(
       const font = decodeFnt(bytes);
       metrics = fontMetrics(font);
       ({ indexedStem, previewStem } = await emitIndexedAndPreviewAtlas(
+        fs,
         outDir,
         src.key,
         font.bmd,
@@ -147,9 +149,9 @@ export async function convertFonts(
       continue;
     }
 
-    const metricsPath = join(FONTS_CONTENT_DIR, `${src.key}.metrics.json`);
+    const metricsPath = vjoin(FONTS_CONTENT_DIR, `${src.key}.metrics.json`);
     const metricsFile: FontMetricsFile = { key: src.key, stem: src.stem, variant: src.variant, ...metrics };
-    await writeJsonFile(outDir, metricsPath, metricsFile);
+    await writeJsonFile(fs, outDir, metricsPath, metricsFile);
 
     done.push({
       key: src.key,
@@ -158,8 +160,7 @@ export async function convertFonts(
       indexedStem,
       previewStem,
       previewColor: DEFAULT_FONT_COLOR,
-      // A browser fetches this path, so it must not carry OS separators.
-      metricsPath: metricsPath.split(/[\\/]/).join('/'),
+      metricsPath,
       glyphs: metrics.charCount,
       lineHeight: metrics.lineHeight,
       baseline: metrics.baseline,
@@ -182,15 +183,19 @@ export interface FontStageSummary {
 }
 
 /** Runs the font extraction end to end; each sub-step warns and skips, so a partial install still converts. */
-export async function convertFontStage(roots: SourceRoots, outDir: string): Promise<FontStageSummary> {
-  const colors = await convertFontColorLut(roots, outDir);
-  const fonts = await convertFonts(roots, outDir, colors.byName.get(DEFAULT_FONT_COLOR));
+export async function convertFontStage(
+  fs: Vfs,
+  roots: SourceRoots,
+  outDir: string,
+): Promise<FontStageSummary> {
+  const colors = await convertFontColorLut(fs, roots, outDir);
+  const fonts = await convertFonts(fs, roots, outDir, colors.byName.get(DEFAULT_FONT_COLOR));
 
   const manifest: FontManifest = {
     fonts,
     colorLut: { stem: colors.stem, names: colors.names },
   };
-  await writeJsonFile(outDir, join(FONTS_CONTENT_DIR, 'manifest.json'), manifest);
+  await writeJsonFile(fs, outDir, vjoin(FONTS_CONTENT_DIR, 'manifest.json'), manifest);
 
   return {
     fonts: fonts.length,

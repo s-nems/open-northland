@@ -1,5 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { type Vfs, vbasename, vjoin } from '@open-northland/vfs';
 import { decodePcx, expandToRgba } from '../decoders/pcx.js';
 import { encodePng } from '../decoders/png.js';
 import { errorMessage } from '../errors.js';
@@ -20,7 +19,7 @@ export interface MaskedTexturePair {
  * `.pcx` bytes to `.png` bytes. Throws a `pcx:`/`png:`-prefixed error for a malformed or palette-less
  * picture.
  */
-export function pcxToPng(bytes: Uint8Array): Uint8Array {
+export async function pcxToPng(bytes: Uint8Array): Promise<Uint8Array> {
   return encodePng(expandToRgba(decodePcx(bytes)));
 }
 
@@ -40,6 +39,7 @@ export interface PcxConversion {
  * by texture path, and a missing or undecodable picture is logged and skipped.
  */
 export async function composeMaskedTransitionPages(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   pairs: readonly MaskedTexturePair[],
@@ -47,12 +47,12 @@ export async function composeMaskedTransitionPages(
   const done: PcxConversion[] = [];
   const seen = new Set<string>();
   const readTexturePcx = (normalizedPath: string): Promise<Uint8Array> =>
-    readSourceFile(roots, join(TEXTURES_DIR, basename(normalizedPath)));
+    readSourceFile(fs, roots, vjoin(TEXTURES_DIR, vbasename(normalizedPath)));
   for (const pair of pairs) {
     if (seen.has(pair.texture)) continue;
     seen.add(pair.texture);
-    const outputName = basename(pair.texture).replace(/\.pcx$/i, '.masked.png');
-    const output = join(TEXTURES_DIR, outputName);
+    const outputName = vbasename(pair.texture).replace(/\.pcx$/i, '.masked.png');
+    const output = vjoin(TEXTURES_DIR, outputName);
     try {
       const colour = expandToRgba(decodePcx(await readTexturePcx(pair.texture)));
       const mask = decodePcx(await readTexturePcx(pair.textureAlpha));
@@ -64,9 +64,7 @@ export async function composeMaskedTransitionPages(
       for (let i = 0; i < mask.pixels.length; i++) {
         colour.rgba[4 * i + 3] = mask.pixels[i] ?? 0;
       }
-      const outPath = join(outDir, output);
-      await mkdir(dirname(outPath), { recursive: true });
-      await writeFile(outPath, encodePng(colour));
+      await fs.writeFile(vjoin(outDir, output), await encodePng(colour));
       done.push({ input: pair.texture, output });
     } catch (err) {
       console.warn(`[pipeline] skipped masked page ${pair.texture}: ${errorMessage(err)}`);
@@ -82,23 +80,22 @@ export async function composeMaskedTransitionPages(
  * failure or an unreadable game root propagates as an environmental error.
  */
 export async function convertPcxTree(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
 ): Promise<PcxConversion[]> {
   const done: PcxConversion[] = [];
-  for (const { rel: input, path } of await collectSourceFiles(roots, (rel) => rel.endsWith('.pcx'))) {
+  for (const { rel: input, path } of await collectSourceFiles(fs, roots, (rel) => rel.endsWith('.pcx'))) {
     const output = servedRelPath(input.replace(/\.pcx$/i, '.png'));
-    const outPath = join(outDir, output);
     let png: Uint8Array;
     try {
-      png = pcxToPng(await readFile(path));
+      png = await pcxToPng(await fs.readFile(path));
     } catch (err) {
       console.warn(`[pipeline] skipped ${input}: ${errorMessage(err)}`);
       continue;
     }
-    await mkdir(dirname(outPath), { recursive: true });
-    await writeFile(outPath, png);
+    await fs.writeFile(vjoin(outDir, output), png);
     done.push({ input, output });
     onItem?.(done.length);
   }

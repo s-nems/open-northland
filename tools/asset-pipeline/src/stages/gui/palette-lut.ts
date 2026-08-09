@@ -1,11 +1,11 @@
-import { join } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import type { SourceRoots } from '../../roots.js';
 import { buildPaletteLut, type PaletteLutResult } from '../palette-lut.js';
 
 /** The dir holding the palette carriers the engine colours HUD elements with. */
-const GUI_PALETTES_DIR = join('Data', 'gui', 'palettes');
+const GUI_PALETTES_DIR = vjoin('Data', 'gui', 'palettes');
 /** The speech/thought-bubble palette, which lives outside the element-palette tree. */
-const BUBBLES_PALETTE_FILE = join('Data', 'engine2d', 'bin', 'palettes', 'gui', 'gui_bubbles.pcx');
+const BUBBLES_PALETTE_FILE = vjoin('Data', 'engine2d', 'bin', 'palettes', 'gui', 'gui_bubbles.pcx');
 /** Filename stem of the emitted GUI palette LUT PNG under `/bobs/`. */
 export const GUI_PALETTE_LUT_STEM = 'gui-palettes-lut';
 
@@ -22,25 +22,25 @@ interface GuiPaletteSource {
  * never reorder, or the app's row indices drift.
  */
 const GUI_PALETTES: readonly GuiPaletteSource[] = [
-  { name: 'iconsleft', file: join(GUI_PALETTES_DIR, 'iconsleft.pcx') },
-  { name: 'context', file: join(GUI_PALETTES_DIR, 'context.pcx') },
-  { name: 'frame', file: join(GUI_PALETTES_DIR, 'frame.pcx') },
-  { name: 'bar_standart', file: join(GUI_PALETTES_DIR, 'bar_standart.pcx') },
-  { name: 'bar_hitpoints', file: join(GUI_PALETTES_DIR, 'bar_hitpoints.pcx') },
-  { name: 'bar_disabled', file: join(GUI_PALETTES_DIR, 'bar_disabled.pcx') },
-  { name: 'bg_normal', file: join(GUI_PALETTES_DIR, 'bg_normal.pcx') },
-  { name: 'bg_hilite', file: join(GUI_PALETTES_DIR, 'bg_hilite.pcx') },
-  { name: 'bg_invert', file: join(GUI_PALETTES_DIR, 'bg_invert.pcx') },
-  { name: 'ingame_remap_01', file: join(GUI_PALETTES_DIR, 'ingame_remap_01.pcx') },
-  { name: 'ingame_remap_02', file: join(GUI_PALETTES_DIR, 'ingame_remap_02.pcx') },
-  { name: 'ingame_remap_03', file: join(GUI_PALETTES_DIR, 'ingame_remap_03.pcx') },
-  { name: 'papyrus', file: join(GUI_PALETTES_DIR, 'papyrus.pcx') },
+  { name: 'iconsleft', file: vjoin(GUI_PALETTES_DIR, 'iconsleft.pcx') },
+  { name: 'context', file: vjoin(GUI_PALETTES_DIR, 'context.pcx') },
+  { name: 'frame', file: vjoin(GUI_PALETTES_DIR, 'frame.pcx') },
+  { name: 'bar_standart', file: vjoin(GUI_PALETTES_DIR, 'bar_standart.pcx') },
+  { name: 'bar_hitpoints', file: vjoin(GUI_PALETTES_DIR, 'bar_hitpoints.pcx') },
+  { name: 'bar_disabled', file: vjoin(GUI_PALETTES_DIR, 'bar_disabled.pcx') },
+  { name: 'bg_normal', file: vjoin(GUI_PALETTES_DIR, 'bg_normal.pcx') },
+  { name: 'bg_hilite', file: vjoin(GUI_PALETTES_DIR, 'bg_hilite.pcx') },
+  { name: 'bg_invert', file: vjoin(GUI_PALETTES_DIR, 'bg_invert.pcx') },
+  { name: 'ingame_remap_01', file: vjoin(GUI_PALETTES_DIR, 'ingame_remap_01.pcx') },
+  { name: 'ingame_remap_02', file: vjoin(GUI_PALETTES_DIR, 'ingame_remap_02.pcx') },
+  { name: 'ingame_remap_03', file: vjoin(GUI_PALETTES_DIR, 'ingame_remap_03.pcx') },
+  { name: 'papyrus', file: vjoin(GUI_PALETTES_DIR, 'papyrus.pcx') },
   { name: 'gui_bubbles', file: BUBBLES_PALETTE_FILE },
 ];
 
 /** Stacks every {@link GUI_PALETTES} carrier into one `256 × N` LUT PNG under `BOBS_DIR`. */
-export function convertGuiPaletteLut(roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
-  return buildPaletteLut(roots, outDir, GUI_PALETTES, GUI_PALETTE_LUT_STEM, {
+export function convertGuiPaletteLut(fs: Vfs, roots: SourceRoots, outDir: string): Promise<PaletteLutResult> {
+  return buildPaletteLut(fs, roots, outDir, GUI_PALETTES, GUI_PALETTE_LUT_STEM, {
     label: 'gui',
     noun: 'palette',
   });

@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeCifStringTable } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
@@ -35,6 +35,7 @@ export interface GuiStringsResult {
  * language with no tables at all emits nothing.
  */
 export async function convertGuiStrings(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   langs: readonly string[] = STRING_LANGS,
@@ -45,10 +46,10 @@ export async function convertGuiStrings(
     let tableCount = 0;
     let stringCount = 0;
     for (const table of STRING_TABLES) {
-      const rel = join('Data', 'text', lang, 'strings', 'ingamegui', `ingamegui${table}.cif`);
+      const rel = vjoin('Data', 'text', lang, 'strings', 'ingamegui', `ingamegui${table}.cif`);
       let byId: Record<number, string>;
       try {
-        byId = decodeCifStringTable(await readSourceFile(roots, rel));
+        byId = decodeCifStringTable(await readSourceFile(fs, roots, rel));
       } catch (err) {
         console.warn(`[pipeline] gui: skipped strings ${lang}/${table}: ${errorMessage(err)}`);
         continue;
@@ -58,8 +59,8 @@ export async function convertGuiStrings(
       stringCount += Object.keys(byId).length;
     }
     if (tableCount === 0) continue;
-    const path = join(GUI_CONTENT_DIR, 'strings', `${lang}.json`);
-    await writeJsonFile(outDir, path, tables);
+    const path = vjoin(GUI_CONTENT_DIR, 'strings', `${lang}.json`);
+    await writeJsonFile(fs, outDir, path, tables);
     done.push({ lang, path, tables: tableCount, strings: stringCount });
   }
   return done;

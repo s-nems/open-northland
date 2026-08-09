@@ -1,9 +1,9 @@
-import { join } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import { CULTURESNATION_MOD } from '../../probe.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 export interface IniSource {
-  /** Absolute path of the `.ini` file to read. */
+  /** Resolved root-joined path of the `.ini` file to read. */
   readonly path: string;
   /** Path stamped onto each record's `source.file` - relative so the IR is location-agnostic. */
   readonly file: string;
@@ -18,27 +18,27 @@ export interface IniSource {
  * `Data/logic/*.ini` tables resolve overlay-first because the mod ships patched copies of them too. A
  * source missing from every root is skipped with a warning, so a partial install still yields an IR.
  */
-export async function resolveIniSources(roots: SourceRoots): Promise<IniSource[]> {
+export async function resolveIniSources(fs: Vfs, roots: SourceRoots): Promise<IniSource[]> {
   const wanted: { rel: string; layer: 'base' | 'mod' }[] = [
-    { rel: join('Data', 'logic', 'goodtypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'jobtypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'humanjobexperiencetypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'landscapetypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'vehicletypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'armortypes.ini'), layer: 'base' },
-    { rel: join('Data', 'logic', 'animaltypes.ini'), layer: 'base' },
-    { rel: join(CULTURESNATION_MOD, 'tribetypes12', 'tribetypes.ini'), layer: 'mod' },
-    { rel: join(CULTURESNATION_MOD, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
-    { rel: join(CULTURESNATION_MOD, 'types', 'weapons.ini'), layer: 'mod' },
-    { rel: join(CULTURESNATION_MOD, 'types', 'houses.ini'), layer: 'mod' },
+    { rel: vjoin('Data', 'logic', 'goodtypes.ini'), layer: 'base' },
+    { rel: vjoin('Data', 'logic', 'jobtypes.ini'), layer: 'base' },
+    { rel: vjoin('Data', 'logic', 'humanjobexperiencetypes.ini'), layer: 'base' },
+    { rel: vjoin('Data', 'logic', 'landscapetypes.ini'), layer: 'base' },
+    { rel: vjoin('Data', 'logic', 'vehicletypes.ini'), layer: 'base' },
+    { rel: vjoin('Data', 'logic', 'armortypes.ini'), layer: 'base' },
+    { rel: vjoin('Data', 'logic', 'animaltypes.ini'), layer: 'base' },
+    { rel: vjoin(CULTURESNATION_MOD, 'tribetypes12', 'tribetypes.ini'), layer: 'mod' },
+    { rel: vjoin(CULTURESNATION_MOD, 'atomicanimations12', 'atomicanimations.ini'), layer: 'mod' },
+    { rel: vjoin(CULTURESNATION_MOD, 'types', 'weapons.ini'), layer: 'mod' },
+    { rel: vjoin(CULTURESNATION_MOD, 'types', 'houses.ini'), layer: 'mod' },
     // The renderer's `[bobseq]` animation table.
-    { rel: join(CULTURESNATION_MOD, 'animation', 'mapmoveableanimations', 'animations.ini'), layer: 'mod' },
+    { rel: vjoin(CULTURESNATION_MOD, 'animation', 'mapmoveableanimations', 'animations.ini'), layer: 'mod' },
     // The `[GfxHouse]` graphics twin of the logic house table above.
-    { rel: join(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'), layer: 'mod' },
+    { rel: vjoin(CULTURESNATION_MOD, 'budynki12', 'houses', 'houses.ini'), layer: 'mod' },
   ];
   const sources: IniSource[] = [];
   for (const { rel, layer } of wanted) {
-    const path = await resolveSourceFile(roots, rel);
+    const path = await resolveSourceFile(fs, roots, rel);
     if (path === undefined) {
       console.warn(`[pipeline] ini source not found, skipping: ${rel}`);
       continue;

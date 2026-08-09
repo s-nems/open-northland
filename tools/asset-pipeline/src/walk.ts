@@ -1,12 +1,10 @@
-import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 
-/** Recursively yields every regular file under `dir` (absolute paths), in directory-entry order. */
-export async function* walkFiles(dir: string): AsyncGenerator<string> {
-  const entries = await readdir(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) yield* walkFiles(full);
-    else if (entry.isFile()) yield full;
+/** Recursively yields every regular file under `dir`, in directory-entry order. */
+export async function* walkFiles(fs: Vfs, dir: string): AsyncGenerator<string> {
+  for (const entry of await fs.readdir(dir)) {
+    const full = vjoin(dir, entry.name);
+    if (entry.kind === 'dir') yield* walkFiles(fs, full);
+    else yield full;
   }
 }

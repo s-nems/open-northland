@@ -10,6 +10,6 @@ export {
 } from './manifest.js';
 export { CULTURESNATION_MOD, type GameFolderProbe, probeGameFolder } from './probe.js';
 export { CULTURESNATION_HOME_URL, resolveModRoot } from './roots.js';
-// Progress symbols stay on the import-free `./progress` subpath: re-exporting them here would pull
-// this barrel's node:fs graph into browser bundles.
+// Progress symbols stay on the import-free `./progress` subpath so a UI bundle can size its bar
+// without pulling the decoder graph in.
 export { runPipeline } from './run.js';

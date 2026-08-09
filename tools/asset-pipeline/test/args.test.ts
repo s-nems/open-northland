@@ -1,10 +1,13 @@
 import { mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { assertOutStaysInCheckout, parseArgs, resolveArgs } from '../src/args.js';
 import { CULTURESNATION_MOD } from '../src/probe.js';
 import { resolveModRoot } from '../src/roots.js';
 import { makeTempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 describe('parseArgs', () => {
   it('reads --game/--mod-root/--out and defaults out to content', () => {
@@ -67,32 +70,32 @@ describe('resolveModRoot', () => {
   it('accepts an explicit mod root that contains DataCnmd/', async () => {
     const modRoot = join(base, 'CnMod 1.3.1');
     await mkdir(join(modRoot, CULTURESNATION_MOD), { recursive: true });
-    await expect(resolveModRoot(join(base, 'game'), modRoot)).resolves.toBe(modRoot);
+    await expect(resolveModRoot(fs, join(base, 'game'), modRoot)).resolves.toBe(modRoot);
   });
 
   it('rejects an explicit mod root without DataCnmd/', async () => {
     const modRoot = join(base, 'not-a-mod');
     await mkdir(modRoot, { recursive: true });
-    await expect(resolveModRoot(join(base, 'game'), modRoot)).rejects.toThrow(/DataCnmd/);
+    await expect(resolveModRoot(fs, join(base, 'game'), modRoot)).rejects.toThrow(/DataCnmd/);
   });
 
   it('rejects a DataCnmd that is a file, not a directory', async () => {
     const modRoot = join(base, 'file-mod');
     await mkdir(modRoot, { recursive: true });
     await writeFile(join(modRoot, CULTURESNATION_MOD), 'not a directory');
-    await expect(resolveModRoot(join(base, 'game'), modRoot)).rejects.toThrow(/DataCnmd/);
+    await expect(resolveModRoot(fs, join(base, 'game'), modRoot)).rejects.toThrow(/DataCnmd/);
   });
 
   it('auto-detects a mod installed inside the game folder', async () => {
     const game = join(base, 'game');
     await mkdir(join(game, CULTURESNATION_MOD), { recursive: true });
-    await expect(resolveModRoot(game, undefined)).resolves.toBe(game);
+    await expect(resolveModRoot(fs, game, undefined)).resolves.toBe(game);
   });
 
   it('fails fast with the download pointer when no mod is found anywhere', async () => {
     const game = join(base, 'game');
     await mkdir(game, { recursive: true });
-    await expect(resolveModRoot(game, undefined)).rejects.toThrow(/culturesnation\.pl/);
+    await expect(resolveModRoot(fs, game, undefined)).rejects.toThrow(/culturesnation\.pl/);
   });
 });
 

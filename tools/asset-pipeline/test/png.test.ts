@@ -77,54 +77,56 @@ const makePngWithFilter = (width: number, height: number, rgba: Uint8Array, filt
 };
 
 describe('encodePng / decodePng', () => {
-  it('round-trips dimensions and RGBA pixels', () => {
+  it('round-trips dimensions and RGBA pixels', async () => {
     const width = 7;
     const height = 5;
     const rgba = gradient(width, height);
-    const decoded = decodePng(encodePng({ width, height, rgba }));
+    const decoded = await decodePng(await encodePng({ width, height, rgba }));
     expect(decoded.width).toBe(width);
     expect(decoded.height).toBe(height);
     expect(decoded.rgba).toEqual(rgba);
   });
 
-  it('round-trips a 1x1 image and emits the PNG signature', () => {
-    const png = encodePng({ width: 1, height: 1, rgba: Uint8Array.from([10, 20, 30, 40]) });
+  it('round-trips a 1x1 image and emits the PNG signature', async () => {
+    const png = await encodePng({ width: 1, height: 1, rgba: Uint8Array.from([10, 20, 30, 40]) });
     expect([...png.subarray(0, 8)]).toEqual(SIGNATURE);
-    expect(decodePng(png).rgba).toEqual(Uint8Array.from([10, 20, 30, 40]));
+    expect((await decodePng(png)).rgba).toEqual(Uint8Array.from([10, 20, 30, 40]));
   });
 
-  it('decodes a hand-built filter-0 PNG (independent CRC) identically', () => {
+  it('decodes a hand-built filter-0 PNG (independent CRC) identically', async () => {
     const rgba = gradient(4, 3);
-    const decoded = decodePng(makePngWithFilter(4, 3, rgba, 0));
+    const decoded = await decodePng(makePngWithFilter(4, 3, rgba, 0));
     expect(decoded).toEqual({ width: 4, height: 3, rgba });
   });
 });
 
 describe('encodePng guards', () => {
-  it('rejects an rgba buffer whose length disagrees with the dimensions', () => {
-    expect(() => encodePng({ width: 2, height: 2, rgba: new Uint8Array(8) })).toThrow(/does not match 2x2x4/);
+  it('rejects an rgba buffer whose length disagrees with the dimensions', async () => {
+    await expect(encodePng({ width: 2, height: 2, rgba: new Uint8Array(8) })).rejects.toThrow(
+      /does not match 2x2x4/,
+    );
   });
 
-  it('rejects non-positive dimensions', () => {
-    expect(() => encodePng({ width: 0, height: 4, rgba: new Uint8Array(0) })).toThrow(
+  it('rejects non-positive dimensions', async () => {
+    await expect(encodePng({ width: 0, height: 4, rgba: new Uint8Array(0) })).rejects.toThrow(
       /invalid dimensions 0x4/,
     );
   });
 });
 
 describe('decodePng guards', () => {
-  it('throws on a buffer without the PNG signature', () => {
-    expect(() => decodePng(new Uint8Array(8))).toThrow(/bad signature/);
+  it('throws on a buffer without the PNG signature', async () => {
+    await expect(decodePng(new Uint8Array(8))).rejects.toThrow(/bad signature/);
   });
 
-  it('throws a CRC mismatch when a chunk byte is corrupted', () => {
-    const png = encodePng({ width: 2, height: 2, rgba: gradient(2, 2) });
+  it('throws a CRC mismatch when a chunk byte is corrupted', async () => {
+    const png = await encodePng({ width: 2, height: 2, rgba: gradient(2, 2) });
     png[41] = (png[41] ?? 0) ^ 0xff; // first IDAT data byte: signature(8) + IHDR chunk(25) + len(4) + type(4)
-    expect(() => decodePng(png)).toThrow(/CRC mismatch in IDAT/);
+    await expect(decodePng(png)).rejects.toThrow(/CRC mismatch in IDAT/);
   });
 
-  it('rejects a non-None row filter until those are implemented', () => {
+  it('rejects a non-None row filter until those are implemented', async () => {
     const png = makePngWithFilter(3, 2, gradient(3, 2), 1); // filter 1 = Sub
-    expect(() => decodePng(png)).toThrow(/unsupported row filter 1/);
+    await expect(decodePng(png)).rejects.toThrow(/unsupported row filter 1/);
   });
 });

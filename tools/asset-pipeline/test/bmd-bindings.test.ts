@@ -1,9 +1,12 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jobBaseGraphicsToBindings, resolveGraphicsBindings } from '../src/stages/bmd/index.js';
 import { buildStringCif } from './fixtures/cif.js';
 import { makeTempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 /** The hand-authored guidepost binding appended LAST on every resolve (engine-bound in the original -
  *  no data table names it; see resolveGraphicsBindings). */
@@ -33,7 +36,7 @@ describe('resolveGraphicsBindings', () => {
       '[GfxPalette256]\neditname "Bear01"\ngfxfile "data\\pal\\bear01.pcx"\n',
     );
 
-    const { bindings, palettes } = await resolveGraphicsBindings({ game, mod: undefined });
+    const { bindings, palettes } = await resolveGraphicsBindings(fs, { game, mod: undefined });
 
     expect(bindings).toHaveLength(2); // the animals record + the appended guidepost hand-binding
     expect(bindings[0]?.bmd).toBe('data/bobs/body.bmd');
@@ -59,7 +62,7 @@ describe('resolveGraphicsBindings', () => {
         'gfxpalettebasebody "human_body"\ngfxpalettebasehead "human_head"\ngfxpaletterandom "Vik_Man_Base"\n',
     );
 
-    const { bindings } = await resolveGraphicsBindings({ game, mod: game });
+    const { bindings } = await resolveGraphicsBindings(fs, { game, mod: game });
 
     // Base animals binding first, then the flattened mod body + head slots.
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
@@ -102,7 +105,7 @@ describe('resolveGraphicsBindings', () => {
       ]),
     );
 
-    const { bindings } = await resolveGraphicsBindings({ game, mod: undefined });
+    const { bindings } = await resolveGraphicsBindings(fs, { game, mod: undefined });
 
     // Base animals binding first, then the flattened base-human body + head slots; the
     // jobchangegraphics body00 record is NOT emitted (different section name).
@@ -138,7 +141,7 @@ describe('resolveGraphicsBindings', () => {
       ]),
     );
 
-    const { bindings } = await resolveGraphicsBindings({ game, mod: undefined });
+    const { bindings } = await resolveGraphicsBindings(fs, { game, mod: undefined });
 
     // Base animals binding first, then the flattened vehicle record.
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
@@ -181,7 +184,7 @@ describe('resolveGraphicsBindings', () => {
         'gfxbobmanagerbody "Data\\Bobs\\Ship.bmd" "Data\\Bobs\\Ship_s.bmd"\ngfxpalettebody "Human_Ship01"\n',
     );
 
-    const { bindings } = await resolveGraphicsBindings({ game, mod: game });
+    const { bindings } = await resolveGraphicsBindings(fs, { game, mod: game });
 
     // Base animals binding, then the base vehicle .cif record, then the mod's [jobgraphics] overlay.
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
@@ -206,7 +209,7 @@ describe('resolveGraphicsBindings', () => {
         'GfxPalette "house01" "house02"\n',
     );
 
-    const { bindings, buildTimeBmds } = await resolveGraphicsBindings({ game, mod: game });
+    const { bindings, buildTimeBmds } = await resolveGraphicsBindings(fs, { game, mod: game });
 
     // Every palette recolour becomes a binding, and the CLAIM is on the .bmd path alone, so the
     // landscape twins of the same geometry bake opaque too (convertBmdTree keys on the bmd).
@@ -277,7 +280,7 @@ describe('resolveGraphicsBindings', () => {
       '[GfxHouse]\nEditName "viking home"\n' + 'GfxBobLibs "Data\\Bobs\\Houses.bmd"\nGfxPalette "House01"\n',
     );
 
-    const { bindings, buildTimeBmds } = await resolveGraphicsBindings({ game, mod: game });
+    const { bindings, buildTimeBmds } = await resolveGraphicsBindings(fs, { game, mod: game });
 
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/animal.bmd', 'animal01'],
@@ -296,7 +299,7 @@ describe('resolveGraphicsBindings', () => {
   it('returns only the hand-authored guidepost with a warning when every source is missing', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const { bindings, palettes } = await resolveGraphicsBindings({ game, mod: undefined }); // nothing laid down
+    const { bindings, palettes } = await resolveGraphicsBindings(fs, { game, mod: undefined }); // nothing laid down
 
     // The unconditional guidepost hand-binding remains (convertBmdTree skips it when unresolvable).
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([GUIDEPOST_BINDING]);

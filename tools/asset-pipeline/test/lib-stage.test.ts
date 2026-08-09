@@ -1,9 +1,12 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodeLib } from '../src/decoders/lib.js';
 import { libMemberRelPath, unpackLibTree } from '../src/stages/lib.js';
 import { makeTempDir } from './support/game-tree.js';
+
+const fs = nodeVfs();
 
 describe('libMemberRelPath', () => {
   it('rewrites backslash member paths to a native, Data/-canonical relative path', () => {
@@ -53,7 +56,7 @@ describe('unpackLibTree', () => {
     await writeFile(join(game, 'DataX', 'Libs', 'data0001.lib'), lib);
     await writeFile(join(game, 'notes.txt'), 'ignore me'); // not a .lib
 
-    const done = await unpackLibTree({ game, mod: undefined }, out);
+    const done = await unpackLibTree(fs, { game, mod: undefined }, out);
 
     expect(done.map((e) => e.member).sort()).toEqual([join('Data', 'logic', 'goodtypes.cif'), 'logo.pcx']);
     expect(done.every((e) => e.archive === join('DataX', 'Libs', 'data0001.lib'))).toBe(true);
@@ -68,7 +71,7 @@ describe('unpackLibTree', () => {
     });
     await writeFile(join(game, 'a.lib'), lib);
 
-    await unpackLibTree({ game, mod: undefined }, out);
+    await unpackLibTree(fs, { game, mod: undefined }, out);
 
     // readdir reports stored names even on a case-insensitive filesystem, so this pins the exact
     // casing the `/sounds/` route resolves on a case-sensitive one.
@@ -89,7 +92,7 @@ describe('unpackLibTree', () => {
     });
     await writeFile(join(game, 'a.lib'), lib);
 
-    await expect(unpackLibTree({ game, mod: undefined }, out)).rejects.toThrow(/colliding members/);
+    await expect(unpackLibTree(fs, { game, mod: undefined }, out)).rejects.toThrow(/colliding members/);
   });
 
   it('skips a member with an unsafe (escaping) name instead of writing outside out', async () => {
@@ -102,7 +105,7 @@ describe('unpackLibTree', () => {
     await writeFile(join(game, 'a.lib'), lib);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await unpackLibTree({ game, mod: undefined }, out);
+    const done = await unpackLibTree(fs, { game, mod: undefined }, out);
 
     expect(done.map((e) => e.member)).toEqual(['safe.bin']);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/unsafe member ".*escape\.bin"/));
@@ -115,7 +118,7 @@ describe('unpackLibTree', () => {
     await writeFile(join(game, 'broken.lib'), Uint8Array.from([1, 0, 0])); // truncated header
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
-    const done = await unpackLibTree({ game, mod: undefined }, out);
+    const done = await unpackLibTree(fs, { game, mod: undefined }, out);
 
     expect(done.map((e) => e.member)).toEqual(['ok.bin']);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped archive broken\.lib:/));
@@ -123,6 +126,6 @@ describe('unpackLibTree', () => {
   });
 
   it('throws when the game dir does not exist (a real argument error, not per-file)', async () => {
-    await expect(unpackLibTree({ game: join(game, 'nope'), mod: undefined }, out)).rejects.toThrow();
+    await expect(unpackLibTree(fs, { game: join(game, 'nope'), mod: undefined }, out)).rejects.toThrow();
   });
 });

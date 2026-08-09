@@ -1,5 +1,5 @@
-import { join } from 'node:path';
 import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import {
   extractLandscapeGfx,
   extractPatterns,
@@ -22,7 +22,7 @@ import { buildTerrainPatterns } from './terrain-patterns.js';
 export { type IniSource, resolveIniSources } from './sources.js';
 
 /** Extracts the `.ini` and `.cif` tables, resolves the cross-table joins, then validates the set. */
-export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
+export async function buildIr(fs: Vfs, roots: SourceRoots): Promise<ContentSet> {
   const {
     goods,
     jobs,
@@ -44,23 +44,23 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingFlagPoints,
     buildingSoldierFlagPoints,
     buildingGraphicsOverlays,
-  } = await extractIniTables(await resolveIniSources(roots));
-  const maps = await decodeMapTree(roots);
-  const patternFile = join('Data', 'engine2d', 'inis', 'patterns', 'pattern.cif');
-  const gfxPatterns = await loadCifTable(roots, patternFile, extractPatterns, []);
-  const triangleFile = join('Data', 'logic', 'trianglepatterntypes.cif');
-  const triangleTypes = await loadCifTable(roots, triangleFile, extractTrianglePatternTypes, []);
+  } = await extractIniTables(fs, await resolveIniSources(fs, roots));
+  const maps = await decodeMapTree(fs, roots);
+  const patternFile = vjoin('Data', 'engine2d', 'inis', 'patterns', 'pattern.cif');
+  const gfxPatterns = await loadCifTable(fs, roots, patternFile, extractPatterns, []);
+  const triangleFile = vjoin('Data', 'logic', 'trianglepatterntypes.cif');
+  const triangleTypes = await loadCifTable(fs, roots, triangleFile, extractTrianglePatternTypes, []);
   const terrainPatterns = buildTerrainPatterns(landscape, gfxPatterns, triangleTypes, {
     file: patternFile,
     layer: 'base',
   });
-  const transitionFile = join('Data', 'engine2d', 'inis', 'patterntransitions', 'transitions.cif');
-  const gfxPatternTransitions = await loadCifTable(roots, transitionFile, extractPatternTransitions, []);
-  const landscapeFile = join('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
-  const landscapeGfx = await loadCifTable(roots, landscapeFile, extractLandscapeGfx, []);
+  const transitionFile = vjoin('Data', 'engine2d', 'inis', 'patterntransitions', 'transitions.cif');
+  const gfxPatternTransitions = await loadCifTable(fs, roots, transitionFile, extractPatternTransitions, []);
+  const landscapeFile = vjoin('Data', 'engine2d', 'inis', 'landscapes', 'landscapes.cif');
+  const landscapeGfx = await loadCifTable(fs, roots, landscapeFile, extractLandscapeGfx, []);
   const gatheringPipeline = buildGatheringPipeline(goods, landscapeGfx);
-  const soundFile = join('Data', 'engine2d', 'inis', 'soundfx', 'soundfx.cif');
-  const sounds = await loadCifTable(roots, soundFile, extractSounds, {
+  const soundFile = vjoin('Data', 'engine2d', 'inis', 'soundfx', 'soundfx.cif');
+  const sounds = await loadCifTable(fs, roots, soundFile, extractSounds, {
     staticGroups: [],
     ambient: [],
     jingles: [],
@@ -108,8 +108,8 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
  * Builds the validated IR and writes it to `<out>/ir.json`. The output tree is gitignored, so no
  * content decoded from the owned game copy enters the repository.
  */
-export async function writeIr(roots: SourceRoots, out: string): Promise<ContentSet> {
-  const set = await buildIr(roots);
-  await writeJsonFile(out, 'ir.json', set);
+export async function writeIr(fs: Vfs, roots: SourceRoots, out: string): Promise<ContentSet> {
+  const set = await buildIr(fs, roots);
+  await writeJsonFile(fs, out, 'ir.json', set);
   return set;
 }

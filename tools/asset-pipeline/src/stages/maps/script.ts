@@ -1,6 +1,5 @@
-import { readFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import type { MapScript } from '@open-northland/data';
+import { type Vfs, vdirname } from '@open-northland/vfs';
 import { extractMapScript, iniBytesToSections, type RuleSection } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from '../../roots.js';
@@ -21,22 +20,23 @@ const SCRIPT_INC_FILES = ['player.inc', 'mission.inc', 'misc.inc', 'map.ini'] as
  * undefined when neither source yields anything.
  */
 export async function resolveMapScript(
+  fs: Vfs,
   mapDirs: readonly string[],
   rel: string,
   cifSections: readonly RuleSection[] | undefined,
   strings: Record<number, string> | undefined,
 ): Promise<MapScript | undefined> {
-  const mapDir = dirname(rel);
+  const mapDir = vdirname(rel);
   let script =
     cifSections !== undefined ? extractMapScript(cifSections, { file: `${mapDir}/map.cif` }) : undefined;
   if (script === undefined) {
     const sections: RuleSection[] = [];
     const read: string[] = [];
     for (const inc of SCRIPT_INC_FILES) {
-      const path = await findPathCaseInsensitiveInDirs(mapDirs, [inc]);
+      const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [inc]);
       if (path === undefined) continue;
       try {
-        sections.push(...iniBytesToSections(await readFile(path)));
+        sections.push(...iniBytesToSections(await fs.readFile(path)));
         read.push(inc);
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: ${inc} unreadable: ${errorMessage(err)}`);

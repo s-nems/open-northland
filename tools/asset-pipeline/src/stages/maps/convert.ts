@@ -1,6 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
 import type { MapScript } from '@open-northland/data';
+import { type Vfs, vdirname, vjoin, writeText } from '@open-northland/vfs';
 import {
   cifBytesToSections,
   extractStaticObjects,
@@ -28,7 +27,7 @@ export interface MapDatConversion {
   readonly id: string;
   readonly width: number;
   readonly height: number;
-  /** The terrain JSON's path relative to `outDir` (native separators). */
+  /** The terrain JSON's path relative to `outDir`. */
   readonly output: string;
   /** Whether a `maps/<id>.meta.json` name/description sidecar was emitted. */
   readonly meta: boolean;
@@ -49,21 +48,22 @@ export interface MapDatConversion {
  * and a missing `gameDir` propagate.
  */
 export async function convertMapDatTree(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
   synthesizeMinimap?: (terrain: MapDatTerrainFile) => Promise<Uint8Array | undefined>,
 ): Promise<MapDatConversion[]> {
-  const found = excludeStringTableCopies(await collectSourceFilesNamed(roots, 'map.dat'));
+  const found = excludeStringTableCopies(await collectSourceFilesNamed(fs, roots, 'map.dat'));
   // This stage is the only writer under <outDir>/maps, so a wholesale reset is safe.
-  await rm(join(outDir, 'maps'), { recursive: true, force: true });
+  await fs.rm(vjoin(outDir, 'maps'));
   const done: MapDatConversion[] = [];
   for (const [processed, { rel, path }] of found.entries()) {
     onItem?.(processed, found.length);
     const id = mapIdFromPath(rel);
     let terrain: MapDatTerrainFile;
     try {
-      terrain = mapDatToTerrain(await readFile(path));
+      terrain = mapDatToTerrain(await fs.readFile(path));
     } catch (err) {
       console.warn(`[pipeline] skipped map.dat ${rel}: ${errorMessage(err)}`);
       continue;
@@ -72,15 +72,15 @@ export async function convertMapDatTree(
     // decoded sections feed the meta sidecar's `[misc_mapname]` fallback, so the cif is decoded at most
     // once per map. An over-installed mod merges folder contents, so siblings resolve overlay-first
     // across the map folder's candidate dirs.
-    const mapDirs = rootsInOrder(roots).map((root) => join(root, dirname(rel)));
+    const mapDirs = rootsInOrder(roots).map((root) => vjoin(root, vdirname(rel)));
     let cifSections: readonly RuleSection[] | undefined;
     for (const mapDir of mapDirs) {
       // The map folders mix casing freely, which a case-sensitive filesystem would otherwise turn
       // into a silently missing entity layer.
-      const cifPath = await findPathCaseInsensitive(mapDir, ['map.cif']);
+      const cifPath = await findPathCaseInsensitive(fs, mapDir, ['map.cif']);
       if (cifPath === undefined) continue;
       try {
-        cifSections = cifBytesToSections(await readFile(cifPath));
+        cifSections = cifBytesToSections(await fs.readFile(cifPath));
         const entities = extractStaticObjects(cifSections);
         if (entities !== undefined) terrain = { ...terrain, entities };
         break;
@@ -93,51 +93,49 @@ export async function convertMapDatTree(
     // `staticobjects.inc` with the identical `[StaticObjects]` grammar (sethouse/sethuman/setanimal),
     // and readable mod source is preferred over the encrypted cif.
     if (terrain.entities === undefined) {
-      const incPath = await findPathCaseInsensitiveInDirs(mapDirs, ['staticobjects.inc']);
+      const incPath = await findPathCaseInsensitiveInDirs(fs, mapDirs, ['staticobjects.inc']);
       if (incPath !== undefined) {
         try {
-          const entities = extractStaticObjects(iniBytesToSections(await readFile(incPath)));
+          const entities = extractStaticObjects(iniBytesToSections(await fs.readFile(incPath)));
           if (entities !== undefined) terrain = { ...terrain, entities };
         } catch (err) {
           console.warn(`[pipeline] map ${rel}: staticobjects.inc undecodable: ${errorMessage(err)}`);
         }
       }
     }
-    const output = join('maps', `${id}.json`);
-    const outPath = join(outDir, output);
-    await mkdir(dirname(outPath), { recursive: true });
+    const output = vjoin('maps', `${id}.json`);
     // Compact JSON: the lanes are hundreds of thousands of numbers, and one per line costs ~8x size.
-    await writeFile(outPath, `${JSON.stringify(terrain)}\n`);
+    await writeText(fs, vjoin(outDir, output), `${JSON.stringify(terrain)}\n`);
 
     // A same-id twin converted earlier this run may have emitted sidecars; clear them so
     // last-write-wins covers the sidecars, not just the grid.
-    const metaPath = join(outDir, 'maps', `${id}.meta.json`);
-    const pngPath = join(outDir, 'maps', `${id}.png`);
-    const scriptPath = join(outDir, 'maps', `${id}.script.json`);
-    await rm(metaPath, { force: true });
-    await rm(pngPath, { force: true });
-    await rm(scriptPath, { force: true });
-    const strings = await loadMapStringTable(mapDirs, rel);
-    const metaFile = await resolveMapMeta(mapDirs, rel, cifSections, strings);
+    const metaPath = vjoin(outDir, 'maps', `${id}.meta.json`);
+    const pngPath = vjoin(outDir, 'maps', `${id}.png`);
+    const scriptPath = vjoin(outDir, 'maps', `${id}.script.json`);
+    await fs.rm(metaPath);
+    await fs.rm(pngPath);
+    await fs.rm(scriptPath);
+    const strings = await loadMapStringTable(fs, mapDirs, rel);
+    const metaFile = await resolveMapMeta(fs, mapDirs, rel, cifSections, strings);
     if (metaFile !== undefined) {
-      await writeFile(metaPath, `${JSON.stringify(metaFile)}\n`);
+      await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
     }
     let scriptFile: MapScript | undefined;
     try {
-      scriptFile = await resolveMapScript(mapDirs, rel, cifSections, strings);
+      scriptFile = await resolveMapScript(fs, mapDirs, rel, cifSections, strings);
     } catch (err) {
       // A schema-invalid script degrades that map to no roster rather than aborting the batch.
       console.warn(`[pipeline] map ${rel}: script undecodable: ${errorMessage(err)}`);
     }
     if (scriptFile !== undefined) {
-      await writeFile(scriptPath, `${JSON.stringify(scriptFile)}\n`);
+      await writeText(fs, scriptPath, `${JSON.stringify(scriptFile)}\n`);
     }
     let minimap = false;
     let minimapSynthesized = false;
-    const minimapPath = await findPathCaseInsensitiveInDirs(mapDirs, ['minimap', 'minimap.pcx']);
+    const minimapPath = await findPathCaseInsensitiveInDirs(fs, mapDirs, ['minimap', 'minimap.pcx']);
     if (minimapPath !== undefined) {
       try {
-        await writeFile(pngPath, minimapToPng(await readFile(minimapPath)));
+        await fs.writeFile(pngPath, await minimapToPng(await fs.readFile(minimapPath)));
         minimap = true;
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: minimap undecodable: ${errorMessage(err)}`);
@@ -149,7 +147,7 @@ export async function convertMapDatTree(
       try {
         const png = await synthesizeMinimap(terrain);
         if (png !== undefined) {
-          await writeFile(pngPath, png);
+          await fs.writeFile(pngPath, png);
           minimap = true;
           minimapSynthesized = true;
         }

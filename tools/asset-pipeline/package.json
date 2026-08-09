@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@open-northland/data": "*",
-    "@open-northland/render": "*"
+    "@open-northland/render": "*",
+    "@open-northland/vfs": "*"
   },
   "devDependencies": {
     "@types/node": "^26.1.1"

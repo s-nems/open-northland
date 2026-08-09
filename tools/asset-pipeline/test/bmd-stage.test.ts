@@ -1,5 +1,6 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Bmd, BOB_TYPE_1BIT, BOB_TYPE_DOUBLE8BIT, encodeBmd } from '../src/decoders/bmd/index.js';
 import type { BmdPaletteBinding, PaletteAlias } from '../src/decoders/ini.js';
@@ -11,8 +12,10 @@ import { rampPalette, solidPalette } from './fixtures/palette.js';
 import { samplePcx } from './fixtures/pcx.js';
 import { BOBS_DIR, makeTempDir } from './support/game-tree.js';
 
+const fs = nodeVfs();
+
 describe('bmdToAtlas', () => {
-  it('decodes a .bmd, packs an atlas, and yields a PNG-encodable image + manifest', () => {
+  it('decodes a .bmd, packs an atlas, and yields a PNG-encodable image + manifest', async () => {
     const atlas = bmdToAtlas(sampleBmdBytes(), rampPalette());
     expect(atlas.manifest.frames).toHaveLength(1);
     const frame = atlas.manifest.frames[0];
@@ -20,8 +23,8 @@ describe('bmdToAtlas', () => {
     expect(frame?.rect.width).toBe(2);
     expect(frame?.opaque).toBe(true);
     // The atlas image round-trips through the PNG encoder (proves it is a valid RGBA sheet).
-    const png = encodePng(atlas.image);
-    const decoded = decodePng(png);
+    const png = await encodePng(atlas.image);
+    const decoded = await decodePng(png);
     expect(decoded.width).toBe(atlas.image.width);
     expect(decoded.height).toBe(atlas.image.height);
     // Manifest dimensions must agree with the image it describes.
@@ -106,9 +109,10 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
 
     const done = await convertBmdTree(
+      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
     expect(done).toHaveLength(1);
@@ -119,7 +123,7 @@ describe('convertBmdTree', () => {
     expect(done[0]?.manifest).toBe(join(BOBS_DIR, 'body.bear01.atlas.json'));
     expect(done[0]?.paletteName).toBe('bear01');
     // The emitted PNG decodes (a valid RGBA sheet) and the manifest JSON round-trips its frame table.
-    const decoded = decodePng(await readFile(join(out, BOBS_DIR, 'body.bear01.png')));
+    const decoded = await decodePng(await readFile(join(out, BOBS_DIR, 'body.bear01.png')));
     expect(decoded.width).toBeGreaterThan(0);
     const manifest = JSON.parse(await readFile(join(out, BOBS_DIR, 'body.bear01.atlas.json'), 'utf8'));
     expect(manifest.frames).toHaveLength(1);
@@ -146,9 +150,10 @@ describe('convertBmdTree', () => {
     ];
 
     const done = await convertBmdTree(
+      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
     expect(done).toHaveLength(2);
@@ -164,7 +169,7 @@ describe('convertBmdTree', () => {
       const stem = png.replace(/\.png$/, '');
       const manifest = JSON.parse(await readFile(join(out, `${stem}.atlas.json`), 'utf8'));
       const { x, y } = manifest.frames[0].rect;
-      const img = decodePng(await readFile(join(out, png)));
+      const img = await decodePng(await readFile(join(out, png)));
       const o = (y * img.width + x) * 4;
       return [...img.rgba.subarray(o, o + 4)];
     };
@@ -184,9 +189,10 @@ describe('convertBmdTree', () => {
     ];
 
     const done = await convertBmdTree(
+      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
     expect(done.map((c) => c.png)).toEqual([join(BOBS_DIR, 'body.bear01.png')]);
@@ -204,9 +210,10 @@ describe('convertBmdTree', () => {
 
     await expect(
       convertBmdTree(
+        fs,
         { bindings, palettes, buildTimeBmds: new Set() },
         out,
-        await indexSourceAssets({ game: out, mod: undefined }),
+        await indexSourceAssets(fs, { game: out, mod: undefined }),
       ),
     ).rejects.toThrow(/basename collision.*nowe\/body\.bmd/s);
   });
@@ -229,9 +236,10 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
+      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
     expect(done.map((c) => c.png)).toEqual([join(BOBS_DIR, 'body.bear01.png')]);
@@ -245,9 +253,10 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
+      fs,
       { bindings, palettes: [], buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     ); // empty palette index
 
     expect(done).toEqual([]);
@@ -263,9 +272,10 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
+      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
     expect(done).toEqual([]);
@@ -282,9 +292,10 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
+      fs,
       { bindings, palettes, buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
     expect(done).toEqual([]);
@@ -328,9 +339,10 @@ describe('convertShadowBmdTree', () => {
 
   const convert = async (bindings: BmdPaletteBinding[]): Promise<string[]> =>
     convertShadowBmdTree(
+      fs,
       { bindings, palettes: [], buildTimeBmds: new Set() },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
   it('writes `<shadow-basename>.shadow.{png,atlas.json}` under bobs/ - the name the app joins on', async () => {
@@ -342,7 +354,7 @@ describe('convertShadowBmdTree', () => {
     // The literal `.shadow.` filenames are the contract `servedShadowStem` (packages/app) resolves
     // against - a drift here silently degrades to shadow-less rendering.
     expect(done).toEqual([join(BOBS_DIR, 'body_s.shadow.png')]);
-    const decoded = decodePng(await readFile(join(out, BOBS_DIR, 'body_s.shadow.png')));
+    const decoded = await decodePng(await readFile(join(out, BOBS_DIR, 'body_s.shadow.png')));
     expect(decoded.width).toBeGreaterThan(0);
     const manifest = JSON.parse(await readFile(join(out, BOBS_DIR, 'body_s.shadow.atlas.json'), 'utf8')) as {
       frames: { bobId: number }[];
@@ -437,13 +449,14 @@ describe('convertBmdTree build-time bake', () => {
     ];
 
     await convertBmdTree(
+      fs,
       { bindings, palettes, buildTimeBmds: new Set(['data/bobs/house.bmd']) },
       out,
-      await indexSourceAssets({ game: out, mod: undefined }),
+      await indexSourceAssets(fs, { game: out, mod: undefined }),
     );
 
     const alphaOf = async (png: string): Promise<number> => {
-      const img = decodePng(await readFile(join(out, BOBS_DIR, png)));
+      const img = await decodePng(await readFile(join(out, BOBS_DIR, png)));
       return img.rgba[(1 * img.width + 1) * 4 + 3] ?? -1; // the 1x1 frame sits at the gutter origin
     };
     expect(await alphaOf('house.house01.png')).toBe(255); // claimed → opaque colour plane
@@ -451,7 +464,7 @@ describe('convertBmdTree build-time bake', () => {
     expect(await alphaOf('fern.house01.png')).toBe(0x40); // unclaimed → per-pixel alpha survives
 
     // The claimed bmd's second byte lands in the sibling time sheet + the manifest announces it.
-    const timeSheet = decodePng(await readFile(join(out, BOBS_DIR, 'house.house01.build.png')));
+    const timeSheet = await decodePng(await readFile(join(out, BOBS_DIR, 'house.house01.build.png')));
     expect(timeSheet.rgba[(1 * timeSheet.width + 1) * 4] ?? -1).toBe(0x40); // the threshold, in R
     const manifest = JSON.parse(await readFile(join(out, BOBS_DIR, 'house.house01.atlas.json'), 'utf8')) as {
       build?: boolean;

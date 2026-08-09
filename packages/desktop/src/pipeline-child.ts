@@ -1,4 +1,5 @@
 import { runPipeline } from '@open-northland/asset-pipeline';
+import { nodeVfs } from '@open-northland/vfs/node';
 import type { PipelineProgress } from '@open-northland/asset-pipeline/progress';
 import { createEventThrottle } from './event-throttle.js';
 import type { PipelineEvent } from './ipc.js';
@@ -43,7 +44,7 @@ const progress: PipelineProgress = {
 
 // No process.exit() after posting: postMessage is asynchronous, so exiting on the same tick can
 // drop the terminal event. The process ends by draining naturally.
-runPipeline({ game: gameDir, out: outDir, modRoot: modRoot === '' ? undefined : modRoot }, progress)
+runPipeline(nodeVfs(), { game: gameDir, out: outDir, modRoot: modRoot === '' ? undefined : modRoot }, progress)
   .then(() => {
     post({ kind: 'done' });
   })

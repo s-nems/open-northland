@@ -1,6 +1,7 @@
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname } from 'node:path';
 import { CULTURESNATION_HOME_URL, probeGameFolder } from '@open-northland/asset-pipeline';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { type BrowserWindow, dialog, ipcMain } from 'electron';
 import { patchConfig } from './config.js';
 import { detectGameFolders } from './detect.js';
@@ -49,7 +50,7 @@ function assertLocale(value: unknown): asserts value is Locale {
 }
 
 async function candidateOf(path: string): Promise<GameFolderCandidate> {
-  return { path, probe: await probeGameFolder(path) };
+  return { path, probe: await probeGameFolder(nodeVfs(), path) };
 }
 
 /** Native open-directory dialog; `undefined` when the user cancels. */
@@ -80,7 +81,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
   handleFromAppFrame(IPC_CHANNELS.runPipeline, async (gamePath: unknown) => {
     assertString(gamePath);
     if (modDownload !== undefined) throw new Error(messages().errors.modStillDownloading);
-    const probe = await probeGameFolder(gamePath);
+    const probe = await probeGameFolder(nodeVfs(), gamePath);
     if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
     // The pipeline auto-detects a mod inside the game folder; only an external one must be passed.
     const modRoot = probe.hasMod ? undefined : await state.availableModRoot();

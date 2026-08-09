@@ -1,8 +1,11 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveMapScript } from '../src/stages/maps/script.js';
+
+const fs = nodeVfs();
 
 /**
  * The per-folder script resolution (`stages/maps/script.ts`): plaintext `player.inc`/`mission.inc`
@@ -32,7 +35,7 @@ describe('resolveMapScript', () => {
       join(dir, 'mission.inc'),
       '[MissionData]\ndebuginfo "Start"\nactive 1\ngoal "True"\nresult "Exit"\n',
     );
-    const script = await resolveMapScript([dir], 'x/map.dat', undefined, {
+    const script = await resolveMapScript(fs, [dir], 'x/map.dat', undefined, {
       50: 'Ragnar',
       51: 'Rurik',
     });
@@ -49,10 +52,10 @@ describe('resolveMapScript', () => {
       join(dir, 'player.inc'),
       '[playerdata]\nplayer 0 #PLAYER_TYPE_HUMAN #TRIBE_TYPE_HUMAN_VIKING #PLAYER_COLOR_ID_BLUE\n',
     );
-    const script = await resolveMapScript([dir], 'x/map.dat', undefined, undefined);
+    const script = await resolveMapScript(fs, [dir], 'x/map.dat', undefined, undefined);
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
     expect(
-      await resolveMapScript([dir.concat('-missing')], 'x/map.dat', undefined, undefined),
+      await resolveMapScript(fs, [dir.concat('-missing')], 'x/map.dat', undefined, undefined),
     ).toBeUndefined();
   });
 
@@ -63,7 +66,7 @@ describe('resolveMapScript', () => {
         '[multiplayer]\nplayeroption 0 #PLAYER_TYPE_HUMAN #PLAYER_TYPE_NONE\n',
     );
     await writeFile(join(dir, 'map.ini'), '[MissionData]\ndebuginfo "Inline"\ngoal "True"\n');
-    const script = await resolveMapScript([dir], 'x/map.dat', undefined, undefined);
+    const script = await resolveMapScript(fs, [dir], 'x/map.dat', undefined, undefined);
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 1, colorId: 0 }]);
     expect(script?.multiplayer?.slotOptions).toEqual([{ player: 0, allowed: ['human', 'none'] }]);
     expect(script?.missions).toHaveLength(1);
@@ -81,7 +84,7 @@ describe('resolveMapScript', () => {
         props: [{ key: 'player', values: ['0', '1', '4', '7'] }],
       },
     ];
-    const script = await resolveMapScript([dir], 'x/map.dat', cifSections, undefined);
+    const script = await resolveMapScript(fs, [dir], 'x/map.dat', cifSections, undefined);
     expect(script?.players).toEqual([{ player: 0, type: 'human', tribeId: 4, colorId: 7 }]);
     expect(script?.source?.file).toBe('x/map.cif');
   });
