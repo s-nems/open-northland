@@ -1,5 +1,4 @@
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import { buildBackdropsIndexEntries } from './backdrops-index.js';
 import { buildBobsIndexEntries } from './bobs-index.js';
 import { buildMapsIndexEntries } from './maps-index.js';
@@ -20,7 +19,7 @@ export interface ContentFileHit {
 /** A payload built per request by scanning a subtree of `content/`. */
 export interface ContentJsonHit {
   readonly kind: 'json';
-  readonly body: () => unknown;
+  readonly body: () => Promise<unknown>;
 }
 
 export type ContentHit = ContentFileHit | ContentJsonHit;
@@ -66,7 +65,7 @@ const FILE_ROUTES: readonly FileRoute[] = [
 interface IndexRoute {
   readonly pathname: string;
   readonly root: string;
-  readonly build: (root: string) => unknown;
+  readonly build: (fs: Vfs, root: string) => Promise<unknown>;
 }
 
 // An absent root is a miss rather than an empty list, so the app can tell "not converted" from "none".
@@ -117,21 +116,29 @@ export function isContentRoute(rawPathname: string): boolean {
 }
 
 /** Resolve a request path (the raw URL pathname, query already stripped) against the content dir. */
-export function resolveContentRequest(rawPathname: string, contentRoot: string): ContentHit | undefined {
+export async function resolveContentRequest(
+  fs: Vfs,
+  rawPathname: string,
+  contentRoot: string,
+): Promise<ContentHit | undefined> {
   const match = matchRoute(rawPathname);
   if (match === undefined) return undefined;
   switch (match.kind) {
     case 'ir': {
-      const file = join(contentRoot, 'ir.json');
-      return existsSync(file) ? { kind: 'file', path: file, contentType: CONTENT_TYPES['.json'] } : undefined;
+      const file = vjoin(contentRoot, 'ir.json');
+      return (await fs.stat(file))?.kind === 'file'
+        ? { kind: 'file', path: file, contentType: CONTENT_TYPES['.json'] }
+        : undefined;
     }
     case 'index': {
-      const root = join(contentRoot, match.route.root);
-      return existsSync(root) ? { kind: 'json', body: () => match.route.build(root) } : undefined;
+      const root = vjoin(contentRoot, match.route.root);
+      return (await fs.stat(root))?.kind === 'dir'
+        ? { kind: 'json', body: () => match.route.build(fs, root) }
+        : undefined;
     }
     case 'file': {
-      const root = resolve(contentRoot, match.route.root);
-      const file = resolveFileUnderRoot(root, match.relative);
+      const root = vjoin(contentRoot, match.route.root);
+      const file = await resolveFileUnderRoot(fs, root, match.relative);
       if (file === undefined) return undefined;
       const ext = servedExtension(file, match.route.extensions);
       return ext === undefined ? undefined : { kind: 'file', path: file, contentType: CONTENT_TYPES[ext] };

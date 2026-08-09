@@ -1,5 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readText, type Vfs, vjoin } from '@open-northland/vfs';
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from './wire.js';
 
 /** The sidecar's `[multiplayer]` lobby table, read tolerantly off the parsed JSON. */
@@ -59,11 +58,11 @@ function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPl
 }
 
 /** Undefined when `<id><suffix>` is absent or unparsable; an unparsable sidecar warns, never throws. */
-function readSidecar(mapsRoot: string, id: string, suffix: string): unknown {
-  const file = join(mapsRoot, `${id}${suffix}`);
-  if (!existsSync(file)) return undefined;
+async function readSidecar(fs: Vfs, mapsRoot: string, id: string, suffix: string): Promise<unknown> {
+  const file = vjoin(mapsRoot, `${id}${suffix}`);
+  if ((await fs.stat(file))?.kind !== 'file') return undefined;
   try {
-    return JSON.parse(readFileSync(file, 'utf8'));
+    return JSON.parse(await readText(fs, file));
   } catch (err) {
     console.warn(`[content-resolver] maps-index: ${id}${suffix} unreadable: ${(err as Error).message}`);
     return undefined;
@@ -71,8 +70,12 @@ function readSidecar(mapsRoot: string, id: string, suffix: string): unknown {
 }
 
 /** Display strings from `<id>.meta.json`; a wrong-typed field is dropped without a warning. */
-function metaOf(mapsRoot: string, id: string): { readonly name?: string; readonly description?: string } {
-  const parsed = readSidecar(mapsRoot, id, '.meta.json');
+async function metaOf(
+  fs: Vfs,
+  mapsRoot: string,
+  id: string,
+): Promise<{ readonly name?: string; readonly description?: string }> {
+  const parsed = await readSidecar(fs, mapsRoot, id, '.meta.json');
   if (parsed === undefined) return {};
   if (typeof parsed !== 'object' || parsed === null) {
     console.warn(`[content-resolver] maps-index: ${id}.meta.json is not an object; serving the bare id`);
@@ -86,17 +89,19 @@ function metaOf(mapsRoot: string, id: string): { readonly name?: string; readonl
 }
 
 /** Undefined when `<id>.script.json` is absent, malformed, or carries no readable slot. */
-function playersOf(
+async function playersOf(
+  fs: Vfs,
   mapsRoot: string,
   id: string,
-):
+): Promise<
   | {
       readonly slots: readonly MapsIndexPlayerSlot[];
       readonly fixedColors: boolean;
       readonly multiplayer: boolean;
     }
-  | undefined {
-  const parsed = readSidecar(mapsRoot, id, '.script.json');
+  | undefined
+> {
+  const parsed = await readSidecar(fs, mapsRoot, id, '.script.json');
   if (typeof parsed !== 'object' || parsed === null) return undefined;
   const { players, multiplayer } = parsed as Record<string, unknown>;
   if (!Array.isArray(players)) return undefined;
@@ -116,21 +121,29 @@ function playersOf(
  * entry: one malformed sidecar degrades its own entry, never the list. `mapsRoot` must exist - the
  * caller guards.
  */
-export function buildMapsIndexEntries(mapsRoot: string): MapsIndexEntry[] {
-  return readdirSync(mapsRoot)
-    .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json') && !f.endsWith('.script.json'))
-    .map((f) => f.slice(0, -'.json'.length))
-    .sort()
-    .map((id) => {
-      const meta = metaOf(mapsRoot, id);
-      const players = playersOf(mapsRoot, id);
-      return {
-        id,
-        ...meta,
-        minimap: existsSync(join(mapsRoot, `${id}.png`)),
-        ...(players !== undefined ? { players: players.slots } : {}),
-        ...(players?.fixedColors ? { fixedColors: true } : {}),
-        ...(players?.multiplayer ? { multiplayer: true } : {}),
-      };
+export async function buildMapsIndexEntries(fs: Vfs, mapsRoot: string): Promise<MapsIndexEntry[]> {
+  const ids = (await fs.readdir(mapsRoot))
+    .filter(
+      (e) =>
+        e.kind === 'file' &&
+        e.name.endsWith('.json') &&
+        !e.name.endsWith('.meta.json') &&
+        !e.name.endsWith('.script.json'),
+    )
+    .map((e) => e.name.slice(0, -'.json'.length))
+    .sort();
+  const entries: MapsIndexEntry[] = [];
+  for (const id of ids) {
+    const meta = await metaOf(fs, mapsRoot, id);
+    const players = await playersOf(fs, mapsRoot, id);
+    entries.push({
+      id,
+      ...meta,
+      minimap: (await fs.stat(vjoin(mapsRoot, `${id}.png`)))?.kind === 'file',
+      ...(players !== undefined ? { players: players.slots } : {}),
+      ...(players?.fixedColors ? { fixedColors: true } : {}),
+      ...(players?.multiplayer ? { multiplayer: true } : {}),
     });
+  }
+  return entries;
 }

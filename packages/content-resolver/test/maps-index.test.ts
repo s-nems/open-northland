@@ -1,10 +1,12 @@
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildMapsIndexEntries } from '../src/maps-index.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 describe('buildMapsIndexEntries', () => {
+  const fs = nodeVfs();
   let tmp: TempDir;
   let mapsRoot: string;
 
@@ -20,7 +22,7 @@ describe('buildMapsIndexEntries', () => {
     await writeFile(join(mapsRoot, 'a_map.json'), '{}');
     await writeFile(join(mapsRoot, 'a_map.meta.json'), '{"name":"Mapa A","description":"Opis A"}');
     await writeFile(join(mapsRoot, 'a_map.png'), 'png-bytes');
-    expect(buildMapsIndexEntries(mapsRoot)).toEqual([
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([
       { id: 'a_map', name: 'Mapa A', description: 'Opis A', minimap: true },
       { id: 'b_map', minimap: false },
     ]);
@@ -28,7 +30,7 @@ describe('buildMapsIndexEntries', () => {
 
   it('never lists a .meta.json sidecar as a map of its own', async () => {
     await writeFile(join(mapsRoot, 'lonely.meta.json'), '{"name":"ghost"}');
-    expect(buildMapsIndexEntries(mapsRoot)).toEqual([]);
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([]);
   });
 
   it('degrades a malformed sidecar to the bare id instead of failing the list', async () => {
@@ -39,7 +41,7 @@ describe('buildMapsIndexEntries', () => {
     await writeFile(join(mapsRoot, 'bad.meta.json'), '{not json');
     await writeFile(join(mapsRoot, 'typ.json'), '{}');
     await writeFile(join(mapsRoot, 'typ.meta.json'), '{"name":42,"description":["x"]}');
-    expect(buildMapsIndexEntries(mapsRoot)).toEqual([
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([
       { id: 'bad', minimap: false },
       { id: 'nul', minimap: false },
       { id: 'typ', minimap: false },
@@ -61,7 +63,7 @@ describe('buildMapsIndexEntries', () => {
       }),
     );
     await writeFile(join(mapsRoot, 'lonely.script.json'), '{"players":[]}');
-    expect(buildMapsIndexEntries(mapsRoot)).toEqual([
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([
       {
         id: 'arena',
         minimap: false,
@@ -104,7 +106,7 @@ describe('buildMapsIndexEntries', () => {
         },
       }),
     );
-    expect(buildMapsIndexEntries(mapsRoot)).toEqual([
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([
       {
         id: 'bridges',
         minimap: false,
@@ -146,7 +148,7 @@ describe('buildMapsIndexEntries', () => {
       join(mapsRoot, 'typ.script.json'),
       '{"players":[{"player":-1,"type":"human","tribeId":1,"colorId":0},{"player":0,"type":"robot","tribeId":1,"colorId":0}]}',
     );
-    expect(buildMapsIndexEntries(mapsRoot)).toEqual([
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([
       { id: 'bad', minimap: false },
       { id: 'typ', minimap: false },
     ]);

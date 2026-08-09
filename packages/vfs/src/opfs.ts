@@ -159,7 +159,11 @@ export function fileMapVfs(files: FolderSnapshot): Vfs {
     },
 
     async readFileSlice(path: string, offset: number, length: number): Promise<Uint8Array> {
-      return new Uint8Array(await fileAt(path).slice(offset, offset + length).arrayBuffer());
+      return new Uint8Array(
+        await fileAt(path)
+          .slice(offset, offset + length)
+          .arrayBuffer(),
+      );
     },
 
     writeFile: readOnly,

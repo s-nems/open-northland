@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { vjoin } from '@open-northland/vfs';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { isContentRoute, resolveContentRequest } from '../src/routes.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
 describe('resolveContentRequest', () => {
+  const fs = nodeVfs();
   let tmp: TempDir;
   let contentRoot: string;
 
@@ -19,7 +22,7 @@ describe('resolveContentRequest', () => {
     const file = join(contentRoot, rel);
     await mkdir(join(file, '..'), { recursive: true });
     await writeFile(file, body);
-    return file;
+    return vjoin(contentRoot, rel);
   }
 
   it('serves each file route from its own subtree with the right content type', async () => {
@@ -35,30 +38,42 @@ describe('resolveContentRequest', () => {
     const goods = await put('goods/manifest.json');
     const backdrop = await put('backdrops/01-demo.jpg');
 
-    expect(resolveContentRequest('/maps/campaign01.json', contentRoot)).toEqual({
+    expect(await resolveContentRequest(fs, '/maps/campaign01.json', contentRoot)).toEqual({
       kind: 'file',
       path: map,
       contentType: 'application/json',
     });
-    expect(resolveContentRequest('/maps/campaign01.png', contentRoot)).toMatchObject({ path: minimap });
-    expect(resolveContentRequest('/bobs/ls_trees.tree01.atlas.json', contentRoot)).toMatchObject({
+    expect(await resolveContentRequest(fs, '/maps/campaign01.png', contentRoot)).toMatchObject({
+      path: minimap,
+    });
+    expect(await resolveContentRequest(fs, '/bobs/ls_trees.tree01.atlas.json', contentRoot)).toMatchObject({
       path: atlas,
       contentType: 'application/json',
     });
-    expect(resolveContentRequest('/bobs/ls_trees.tree01.png', contentRoot)).toMatchObject({ path: sheet });
-    expect(resolveContentRequest('/textures/text_000.png', contentRoot)).toMatchObject({ path: texture });
-    expect(resolveContentRequest('/sounds/axe01.wav', contentRoot)).toMatchObject({
+    expect(await resolveContentRequest(fs, '/bobs/ls_trees.tree01.png', contentRoot)).toMatchObject({
+      path: sheet,
+    });
+    expect(await resolveContentRequest(fs, '/textures/text_000.png', contentRoot)).toMatchObject({
+      path: texture,
+    });
+    expect(await resolveContentRequest(fs, '/sounds/axe01.wav', contentRoot)).toMatchObject({
       path: sound,
       contentType: 'audio/wav',
     });
-    expect(resolveContentRequest('/gui/strings.eng.json', contentRoot)).toMatchObject({ path: strings });
-    expect(resolveContentRequest('/gui/cursors/normal.cur', contentRoot)).toMatchObject({
+    expect(await resolveContentRequest(fs, '/gui/strings.eng.json', contentRoot)).toMatchObject({
+      path: strings,
+    });
+    expect(await resolveContentRequest(fs, '/gui/cursors/normal.cur', contentRoot)).toMatchObject({
       path: cursor,
       contentType: 'image/x-icon',
     });
-    expect(resolveContentRequest('/gui-bitmaps/bg01.png', contentRoot)).toMatchObject({ path: bitmap });
-    expect(resolveContentRequest('/goods/manifest.json', contentRoot)).toMatchObject({ path: goods });
-    expect(resolveContentRequest('/backdrops/01-demo.jpg', contentRoot)).toMatchObject({
+    expect(await resolveContentRequest(fs, '/gui-bitmaps/bg01.png', contentRoot)).toMatchObject({
+      path: bitmap,
+    });
+    expect(await resolveContentRequest(fs, '/goods/manifest.json', contentRoot)).toMatchObject({
+      path: goods,
+    });
+    expect(await resolveContentRequest(fs, '/backdrops/01-demo.jpg', contentRoot)).toMatchObject({
       path: backdrop,
       contentType: 'image/jpeg',
     });
@@ -67,14 +82,14 @@ describe('resolveContentRequest', () => {
   it('serves /ir.json as the one whole file and nothing else at the top level', async () => {
     const ir = await put('ir.json');
     await put('secret.json');
-    expect(resolveContentRequest('/ir.json', contentRoot)).toMatchObject({ path: ir });
-    expect(resolveContentRequest('/secret.json', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/ir.json', contentRoot)).toMatchObject({ path: ir });
+    expect(await resolveContentRequest(fs, '/secret.json', contentRoot)).toBeUndefined();
   });
 
   it('builds the index payloads only when their roots exist', async () => {
-    expect(resolveContentRequest('/maps-index', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/bobs-index', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/backdrops-index', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/maps-index', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/bobs-index', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/backdrops-index', contentRoot)).toBeUndefined();
 
     await put('maps/campaign01.json');
     await put('Data/engine2d/bin/bobs/ls_trees.tree01.atlas.json');
@@ -83,15 +98,17 @@ describe('resolveContentRequest', () => {
     await put('backdrops/01-first.jpg');
     await put('backdrops/notes.txt');
 
-    const maps = resolveContentRequest('/maps-index', contentRoot);
+    const maps = await resolveContentRequest(fs, '/maps-index', contentRoot);
     expect(maps?.kind).toBe('json');
-    expect(maps?.kind === 'json' ? maps.body() : undefined).toEqual([{ id: 'campaign01', minimap: false }]);
-    const bobs = resolveContentRequest('/bobs-index', contentRoot);
-    expect(bobs?.kind === 'json' ? bobs.body() : undefined).toEqual([
+    expect(maps?.kind === 'json' ? await maps.body() : undefined).toEqual([
+      { id: 'campaign01', minimap: false },
+    ]);
+    const bobs = await resolveContentRequest(fs, '/bobs-index', contentRoot);
+    expect(bobs?.kind === 'json' ? await bobs.body() : undefined).toEqual([
       { stem: 'ls_trees.tree01', base: 'ls_trees', variant: 'tree01' },
     ]);
-    const backdrops = resolveContentRequest('/backdrops-index', contentRoot);
-    expect(backdrops?.kind === 'json' ? backdrops.body() : undefined).toEqual([
+    const backdrops = await resolveContentRequest(fs, '/backdrops-index', contentRoot);
+    expect(backdrops?.kind === 'json' ? await backdrops.body() : undefined).toEqual([
       '01-first.jpg',
       '02-second.jpg',
     ]);
@@ -100,37 +117,41 @@ describe('resolveContentRequest', () => {
   it('rejects extensions outside a route allowlist (bare .json never rides /bobs)', async () => {
     await put('Data/engine2d/bin/bobs/notes.json');
     await put('maps/campaign01.wav');
-    expect(resolveContentRequest('/bobs/notes.json', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/maps/campaign01.wav', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/bobs/notes.json', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/maps/campaign01.wav', contentRoot)).toBeUndefined();
   });
 
   it('rejects traversal out of a route root even toward served extensions', async () => {
     await put('maps/campaign01.json');
     await put('gui/strings.eng.json');
-    expect(resolveContentRequest('/bobs/../../../../maps/campaign01.json', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/maps/../gui/strings.eng.json', contentRoot)).toBeUndefined();
+    expect(
+      await resolveContentRequest(fs, '/bobs/../../../../maps/campaign01.json', contentRoot),
+    ).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/maps/../gui/strings.eng.json', contentRoot)).toBeUndefined();
   });
 
   it('resolves absent files and unmatched prefixes to undefined', async () => {
-    expect(resolveContentRequest('/maps/missing.json', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/src/main.ts', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/maps', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/maps/missing.json', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/src/main.ts', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/maps', contentRoot)).toBeUndefined();
   });
 
   it('percent-decodes the raw pathname the same way for every host', async () => {
     const spaced = await put('maps/two words.json');
-    expect(resolveContentRequest('/maps/two%20words.json', contentRoot)).toMatchObject({ path: spaced });
+    expect(await resolveContentRequest(fs, '/maps/two%20words.json', contentRoot)).toMatchObject({
+      path: spaced,
+    });
   });
 
   it('rejects encoded traversal and malformed percent sequences without throwing', async () => {
     await put('maps/campaign01.json');
     // Single-encoded dots decode to a real `..` and must still fail the containment check.
     expect(
-      resolveContentRequest('/bobs/%2e%2e/%2e%2e/%2e%2e/%2e%2e/maps/campaign01.json', contentRoot),
+      await resolveContentRequest(fs, '/bobs/%2e%2e/%2e%2e/%2e%2e/%2e%2e/maps/campaign01.json', contentRoot),
     ).toBeUndefined();
-    expect(resolveContentRequest('/maps/%zz.json', contentRoot)).toBeUndefined();
-    expect(resolveContentRequest('/maps/%.json', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/maps/%zz.json', contentRoot)).toBeUndefined();
+    expect(await resolveContentRequest(fs, '/maps/%.json', contentRoot)).toBeUndefined();
   });
 
   it('claims every pathname it can resolve, so no hit is left to a host catch-all', async () => {
@@ -154,7 +175,10 @@ describe('resolveContentRequest', () => {
       '/src/main.ts',
       '/secret.json',
     ];
-    const resolvable = probed.filter((p) => resolveContentRequest(p, contentRoot) !== undefined);
+    const resolvable: string[] = [];
+    for (const p of probed) {
+      if ((await resolveContentRequest(fs, p, contentRoot)) !== undefined) resolvable.push(p);
+    }
     expect(resolvable).toEqual([
       '/ir.json',
       '/maps-index',

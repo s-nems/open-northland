@@ -17,5 +17,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.1"
+  },
+  "dependencies": {
+    "@open-northland/vfs": "*"
   }
 }

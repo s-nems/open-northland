@@ -1,6 +1,7 @@
 import { extname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveContentRequest, resolveFileUnderRoot } from '@open-northland/content-resolver';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { net, protocol } from 'electron';
 import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf, SETUP_HOST } from './protocol-routing.js';
 
@@ -71,16 +72,17 @@ export interface AppProtocolRoots {
 
 /** Install the `app://` handler; call once in `app.whenReady`. */
 export function handleAppProtocol(roots: AppProtocolRoots): void {
+  const fs = nodeVfs();
   protocol.handle(APP_SCHEME, async (request) => {
     const url = new URL(request.url);
 
     // The shared resolver takes the raw pathname (it owns percent-decoding).
     const routePath = routePathOf(url.host, url.pathname);
     if (routePath !== undefined) {
-      const hit = resolveContentRequest(routePath, roots.contentRoot);
+      const hit = await resolveContentRequest(fs, routePath, roots.contentRoot);
       if (hit !== undefined) {
         if (hit.kind === 'json') {
-          return new Response(JSON.stringify(hit.body()), {
+          return new Response(JSON.stringify(await hit.body()), {
             headers: { 'content-type': 'application/json', ...CORS_HEADER },
           });
         }
@@ -97,7 +99,7 @@ export function handleAppProtocol(roots: AppProtocolRoots): void {
       return notFound();
     }
     const root = url.host === SETUP_HOST ? roots.setupRoot : roots.appRoot;
-    const file = resolveFileUnderRoot(root, pathname.replace(/^\/+/, '') || DIRECTORY_INDEX);
+    const file = await resolveFileUnderRoot(fs, root, pathname.replace(/^\/+/, '') || DIRECTORY_INDEX);
     if (file === undefined) return notFound();
     const contentType = STATIC_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
     return serveFile(file, contentType, request.method);
