@@ -3,15 +3,9 @@
  * `[jobbasegraphics]`/`[jobchangegraphics]` one.
  */
 
-import {
-  findProps,
-  getInt,
-  getPaletteName,
-  normalizeAssetPath,
-  normalizeOptionalPath,
-  type RuleProp,
-  type RuleSection,
-} from '../grammar.js';
+import type { RuleProp, RuleSection } from '../grammar.js';
+import { getPaletteName, normalizeAssetPath, normalizeOptionalPath } from '../ir-fields.js';
+import { findProps, getInt } from '../props.js';
 import { type BmdPaletteBinding, readBmdPaletteBindings } from './bmd-palette.js';
 
 /**

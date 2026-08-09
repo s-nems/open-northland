@@ -8,7 +8,9 @@
  */
 
 import { assertPaletteBytes, PALETTE_RGB_BYTES } from './image.js';
-import { findProp, findProps, normalizePaletteName, type RuleSection } from './ini/grammar.js';
+import type { RuleSection } from './ini/grammar.js';
+import { normalizePaletteName } from './ini/ir-fields.js';
+import { findProp, findProps } from './ini/props.js';
 
 /** `TArmorType` count (`logicdefines.inc`: none/wool/leather/chain/plate) - one recipe per tier. */
 export const ARMOR_PALETTE_TIERS = 5;

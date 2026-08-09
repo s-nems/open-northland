@@ -4,7 +4,9 @@
  * tribe, per size level) to one flat value per typeId.
  */
 import type { BuildingFootprint, FootprintCell } from '@open-northland/data';
-import { findProps, type RuleSection, tallyIds } from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { tallyIds } from '../ir-fields.js';
+import { findProps } from '../props.js';
 import { gfxHouseLogicRecords } from './shared.js';
 
 /**

@@ -1,14 +1,7 @@
 import { BUILDING_KIND, type BuildingKind, BuildingType } from '@open-northland/data';
-import {
-  findProps,
-  getInt,
-  getIntList,
-  getStr,
-  makeSource,
-  type RuleSection,
-  type SourceRef,
-  slug,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { makeSource, type SourceRef, slug } from '../ir-fields.js';
+import { findProps, getInt, getIntList, getStr } from '../props.js';
 
 /** The source names no kind: these `logicmaintype` ids are observed from the `houses.ini` records. */
 const HOUSE_KIND_BY_MAIN_TYPE: Readonly<Record<number, BuildingKind>> = {

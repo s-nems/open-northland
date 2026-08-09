@@ -2,17 +2,9 @@
  * Terrain GFX patterns and transitions.
  */
 import { GfxPattern, GfxPatternTransition, type TrianglePatternType } from '@open-northland/data';
-import {
-  findProp,
-  getInt,
-  getIntRows,
-  getIntTuple,
-  getStr,
-  makeSource,
-  normalizeAssetPath,
-  type RuleSection,
-  type SourceRef,
-} from './grammar.js';
+import type { RuleSection } from './grammar.js';
+import { makeSource, normalizeAssetPath, type SourceRef } from './ir-fields.js';
+import { findProp, getInt, getIntRows, getIntTuple, getStr } from './props.js';
 
 /**
  * Extracts the `.cif`-only `[GfxPattern]` sections of `Data/engine2d/inis/patterns/pattern.cif` into

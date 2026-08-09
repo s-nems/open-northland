@@ -3,15 +3,9 @@
  * `[GfxHouse]`), which differ only in section name, key spelling, and single-vs-multi palette.
  */
 
-import {
-  findProp,
-  getInt,
-  getStr,
-  normalizeAssetPath,
-  normalizeOptionalPath,
-  normalizePaletteName,
-  type RuleSection,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { normalizeAssetPath, normalizeOptionalPath, normalizePaletteName } from '../ir-fields.js';
+import { findProp, getInt, getStr } from '../props.js';
 
 /**
  * One bob set's palette pairing: a `.bmd` body (and its optional shadow) bound to the palette `editname`

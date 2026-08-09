@@ -9,14 +9,9 @@ import {
   BuildingOverlay,
 } from '@open-northland/data';
 import { type NamedBmdPaletteBinding, readBmdPaletteBindings } from '../bindings/index.js';
-import {
-  findProps,
-  getStr,
-  makeSource,
-  normalizePaletteName,
-  type RuleSection,
-  type SourceRef,
-} from '../grammar.js';
+import type { RuleSection } from '../grammar.js';
+import { makeSource, normalizePaletteName, type SourceRef } from '../ir-fields.js';
+import { findProps, getStr } from '../props.js';
 import { gfxHouseGraphicsRecords, gfxHouseRecords } from './shared.js';
 
 /**
