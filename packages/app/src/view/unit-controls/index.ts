@@ -1,12 +1,12 @@
-import type { DoorBadge } from '@open-northland/render';
 import { type Entity, systems } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { isActionHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
-import { pickDoorBadgeRow, pickGarrisonFlag, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
+import { pickInRect, screenToWorld } from '../picking.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
+import { createClickHits } from './click-hits.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
@@ -121,12 +121,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return screenToWorld(opts.camera(), c.x, c.y);
   };
 
-  /** Clickable door badges: an enemy building's sign chain must not select its settler. */
-  const ownDoorBadges = (): readonly DoorBadge[] => {
-    const badges = opts.doorBadges?.() ?? [];
-    if (opts.observer === true) return badges;
-    return badges.filter((b) => b.player === opts.humanPlayer);
-  };
+  const clickHits = createClickHits({
+    ...(opts.doorBadges !== undefined ? { doorBadges: opts.doorBadges } : {}),
+    targets: unitTargets,
+    humanPlayer: opts.humanPlayer,
+    observer: opts.observer === true,
+    ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
+  });
 
   const pickMode = createPickModeController({
     snapshot: opts.snapshot,
@@ -183,13 +184,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (e.button === 2) {
       if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(e);
       else {
-        // A sign-chain row takes the right button as a plain select: without this mask the click reads
-        // as a right-click on the settler idling below the door, or falls through into a move order.
         const w = toWorld(e.clientX, e.clientY);
-        const badgeSettler = pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation);
-        // A garrison flag hands its click to the building, so right-clicking it posts selected soldiers there.
-        if (badgeSettler !== null) applySelection([badgeSettler], false);
-        else orders.issueRightClick(e, pickGarrisonFlag(ownDoorBadges(), w.x, w.y, opts.elevation));
+        const marker = clickHits.doorMarkerAt(w.x, w.y);
+        if (marker?.kind === 'settler') applySelection([marker.ref], false);
+        else orders.issueRightClick(e, marker?.kind === 'building' ? marker.ref : null);
       }
       return;
     }
@@ -211,14 +209,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       applySelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
-      // Pick order matters: a sign row is a small target on a busy door that the building's own pixel
-      // hit would otherwise swallow, and a signpost is direct-click only.
-      const hit =
-        pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation) ??
-        pickGarrisonFlag(ownDoorBadges(), w.x, w.y, opts.elevation) ??
-        pickTopAt(unitTargets.owned(), w.x, w.y) ??
-        pickTopAt(unitTargets.flags(), w.x, w.y) ??
-        pickTopAt(unitTargets.signposts(), w.x, w.y);
+      const hit = clickHits.selectionAt(w.x, w.y);
       if (hit !== null) applySelection([hit], e.shiftKey);
       else if (!e.shiftKey) applySelection([], false);
     }
