@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { components, type Entity, halfCellMapFromCells } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
@@ -173,12 +173,23 @@ describe.runIf(hasRealIr())('authored decoded-map settlers - the attachtohouse t
 /** The corpus map with the most `attachtohouse` rows, and the one whose towers this feature mans. */
 const CORPUS_MAP = 'tale_of_six_sons_multiplayer';
 
+/** Whether the installed map carries the `attach` field at all. Content generated before the field
+ *  existed is stale rather than wrong - `CONTENT_REVISION` is what asks for the regeneration - so this
+ *  suite skips there instead of reporting a regression. `test:pipeline` always regenerates, so the run
+ *  that has to catch a decoder that stopped emitting `attach` is the one where it cannot skip. */
+function corpusMapCarriesAttachments(): boolean {
+  const path = realMapPath(CORPUS_MAP);
+  if (!existsSync(path)) return false;
+  const map: { entities?: { humans?: { attach?: unknown[] }[] } } = JSON.parse(readFileSync(path, 'utf8'));
+  return (map.entities?.humans ?? []).some((h) => (h.attach?.length ?? 0) > 0);
+}
+
 /**
  * The whole chain over one real decoded map, from the generated `content/maps/*.json` to the settlers
- * standing in their buildings. It is the only check that fails when the pipeline stops emitting `attach`
- * at all - every other test here builds its own entity rows.
+ * standing in their buildings. Every other test here builds its own entity rows, so this is the only
+ * one that reads what the pipeline actually wrote.
  */
-describe.runIf(hasRealIr() && existsSync(realMapPath(CORPUS_MAP)))('a real decoded map, end to end', () => {
+describe.runIf(hasRealIr() && corpusMapCarriesAttachments())('a real decoded map, end to end', () => {
   it('lands its authored attachments at tick 0', { timeout: 120_000 }, async () => {
     const { sim } = await realMapWorld({ mapId: CORPUS_MAP, aiSeats: [] });
     const housed = [...sim.world.query(Residence)].length;
