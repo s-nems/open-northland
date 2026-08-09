@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { type Bmd, BOB_TYPE_8BIT, BOB_TYPE_EMPTY, type BobRecord } from '../src/decoders/bmd/index.js';
+import { decodeFnt, encodeFnt, FONT_FIRST_CHAR, type Font } from '../src/decoders/fnt/codec.js';
 import {
   bobAdvance,
-  decodeFnt,
   deriveBaseline,
   deriveLineHeight,
-  encodeFnt,
-  FONT_FIRST_CHAR,
   FONT_SPACE_BOB_ID,
-  type Font,
   fontMetrics,
-} from '../src/decoders/fnt.js';
+} from '../src/decoders/fnt/metrics.js';
 import { StorableId } from '../src/decoders/storable.js';
 import { packLineControl } from './fixtures/bmd.js';
 

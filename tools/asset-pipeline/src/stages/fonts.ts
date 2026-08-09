@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { decodeFnt, type FontMetrics, fontMetrics } from '../decoders/fnt.js';
+import { decodeFnt } from '../decoders/fnt/codec.js';
+import { type FontMetrics, fontMetrics } from '../decoders/fnt/metrics.js';
 import { errorMessage } from '../errors.js';
 import type { SourceRoots } from '../roots.js';
 import { emitIndexedAndPreviewAtlas, writeJsonFile } from './content-tree.js';
