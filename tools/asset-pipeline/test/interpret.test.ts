@@ -81,6 +81,34 @@ describe('interpretSegment', () => {
     expect(events.filter((e) => e.e === 'on').map((e) => e.note)).toEqual([36, 48, 36]);
   });
 
+  it('applies tempo changes at their authored times', () => {
+    // 120 bpm for the first half measure, 60 bpm after: the note at tick 1536 starts at one
+    // second and its 768-tick duration then spans a full second.
+    const bytes = segment(INFINITE, MEASURE_TICKS, [
+      tempoTrack([
+        { time: 0, bpm: 120 },
+        { time: 1536, bpm: 60 },
+      ]),
+      patternTrack(120, 1, [
+        {
+          guidSeed: 1,
+          playMode: 14,
+          variations: 0b1,
+          logicalPartId: 2,
+          notes: [{ gridStart: 8, variation: 1, duration: 768, musicValue: 0x3000, velocity: 100 }],
+        },
+      ]),
+      bandTrack([
+        { time: 0, instruments: [{ patch: 0, pChannel: 2, pan: 63, volume: 127, file: 'test.dls' }] },
+      ]),
+    ]);
+    const { events } = interpretSegment(bytes, { ...OPTIONS, renderSeconds: 4 });
+    expect(events.slice(0, 2)).toEqual([
+      { e: 'on', t: 2 * HALF_SECOND_FRAMES, id: 1, note: 36, vel: 100 },
+      { e: 'off', t: 4 * HALF_SECOND_FRAMES, id: 1, note: 36 },
+    ]);
+  });
+
   it('folds high percussion channels onto channel 9', () => {
     const bytes = segment(INFINITE, MEASURE_TICKS, [
       tempoTrack([{ time: 0, bpm: 120 }]),

@@ -33,7 +33,7 @@ const MASTER_GAIN = 10 ** (-3 / 20);
  * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
  * with another version marks every ogg stale.
  */
-const RENDER_VERSION = 4;
+const RENDER_VERSION = 5;
 /** Synthesized headroom over the loop length, in whole seconds; trimmed away at encode. */
 const RENDER_TAIL_S = 1;
 
