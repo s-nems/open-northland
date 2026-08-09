@@ -1,14 +1,18 @@
-import { existsSync } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { normalizeRelPath, type Vfs, vjoin } from '@open-northland/vfs';
 
 /**
  * The shared containment rule: a request may only ever reach an existing file inside the root it was
- * routed to. `root` must be absolute and normalized - a host constant, never a request - and
- * `relative` is matched as given, so a host that wants percent-decoding does it first.
+ * routed to. `root` is a host constant, never a request, and `relative` is matched as given, so a
+ * host that wants percent-decoding does it first.
  */
-export function resolveFileUnderRoot(root: string, relative: string): string | undefined {
-  // `resolve` collapses `..` first, so the containment check below sees the real target.
-  const file = resolve(root, relative.replace(/^\/+/, ''));
-  if (!file.startsWith(root + sep) || !existsSync(file)) return undefined;
-  return file;
+export async function resolveFileUnderRoot(
+  fs: Vfs,
+  root: string,
+  relative: string,
+): Promise<string | undefined> {
+  // normalizeRelPath collapses `..` and rejects escapes, so the join below cannot leave the root.
+  const rel = normalizeRelPath(relative.replace(/^\/+/, ''));
+  if (rel === undefined) return undefined;
+  const file = vjoin(root, rel);
+  return (await fs.stat(file))?.kind === 'file' ? file : undefined;
 }

@@ -1,15 +1,18 @@
-import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { type Vfs, vjoin } from '@open-northland/vfs';
 import type { BobsIndexEntry } from './wire.js';
 
 /** One entry per viewable atlas - a palette-applied `<stem>.png` + `<stem>.atlas.json` pair - sorted
  *  by (base, variant). `bobsRoot` must exist - the caller guards. */
-export function buildBobsIndexEntries(bobsRoot: string): BobsIndexEntry[] {
-  const stems = readdirSync(bobsRoot)
-    .filter((f) => f.endsWith('.atlas.json'))
-    .map((f) => f.slice(0, -'.atlas.json'.length))
+export async function buildBobsIndexEntries(fs: Vfs, bobsRoot: string): Promise<BobsIndexEntry[]> {
+  const candidates = (await fs.readdir(bobsRoot))
+    .filter((e) => e.kind === 'file' && e.name.endsWith('.atlas.json'))
+    .map((e) => e.name.slice(0, -'.atlas.json'.length))
     // An `.indexed` sheet holds a palette index in red and a mask in alpha, not a viewable image.
-    .filter((stem) => !stem.endsWith('.indexed') && existsSync(join(bobsRoot, `${stem}.png`)));
+    .filter((stem) => !stem.endsWith('.indexed'));
+  const stems: string[] = [];
+  for (const stem of candidates) {
+    if ((await fs.stat(vjoin(bobsRoot, `${stem}.png`)))?.kind === 'file') stems.push(stem);
+  }
 
   return stems
     .map((stem) => {

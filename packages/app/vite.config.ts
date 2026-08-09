@@ -2,6 +2,7 @@ import { createReadStream } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isContentRoute, resolveContentRequest } from '@open-northland/content-resolver';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { defineConfig, type Plugin } from 'vite';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
@@ -24,6 +25,7 @@ const basePath =
   configuredBasePath === '/' ? '/' : `/${configuredBasePath.split('/').filter(Boolean).join('/')}/`;
 
 function serveContent(): Plugin {
+  const fs = nodeVfs();
   return {
     name: 'opennorthland-serve-content',
     configureServer(server) {
@@ -35,23 +37,25 @@ function serveContent(): Plugin {
             : requestPathname.startsWith(basePath)
               ? `/${requestPathname.slice(basePath.length)}`
               : requestPathname;
-        const hit = resolveContentRequest(pathname, contentRoot);
-        if (hit === undefined) {
-          if (isContentRoute(pathname)) {
-            res.statusCode = 404;
-            res.end();
+        void (async () => {
+          const hit = await resolveContentRequest(fs, pathname, contentRoot);
+          if (hit === undefined) {
+            if (isContentRoute(pathname)) {
+              res.statusCode = 404;
+              res.end();
+              return;
+            }
+            next();
             return;
           }
-          next();
-          return;
-        }
-        if (hit.kind === 'json') {
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify(hit.body()));
-          return;
-        }
-        res.setHeader('Content-Type', hit.contentType);
-        createReadStream(hit.path).pipe(res);
+          if (hit.kind === 'json') {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(await hit.body()));
+            return;
+          }
+          res.setHeader('Content-Type', hit.contentType);
+          createReadStream(hit.path).pipe(res);
+        })().catch(next);
       });
     },
   };
