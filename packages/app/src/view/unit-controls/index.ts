@@ -5,12 +5,13 @@ import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js
 import { isActionHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen, screenScale } from '../camera/index.js';
 import { pickDoorBadgeRow, pickGarrisonFlag, pickInRect, pickTopAt, screenToWorld } from '../picking.js';
-import { entityAnchor, memoBySnapshot, selectedWorkFlags } from '../projections/index.js';
+import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { createPickModeController } from './pick-mode.js';
+import { createUnitSelection } from './selection.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
 
@@ -22,23 +23,9 @@ export type { UnitControls, UnitControlsOptions } from './types.js';
  * rings; only the local player's entities are pickable, unless the session is an observer.
  */
 
-/** Shared empty id set, so an empty selection allocates nothing per call. */
-const EMPTY_IDS: ReadonlySet<number> = new Set();
-
-const sameSelection = (a: ReadonlySet<number>, b: ReadonlySet<number>): boolean => {
-  if (a.size !== b.size) return false;
-  for (const id of a) if (!b.has(id)) return false;
-  return true;
-};
-
 export async function createUnitControls(opts: UnitControlsOptions): Promise<UnitControls> {
   const { canvas } = opts;
-  const selected = new Set<number>();
-  // Memo key for the projections that read `selected`: snapshot identity alone cannot invalidate them,
-  // because a click can re-select within one tick.
-  let selectionVersion = 0;
-  // Late-bound: the panel's worker-sprite callback needs `setSelection`, which closes over `panel`.
-  let selectFromPanel: (id: number) => void = () => {};
+  const selection = createUnitSelection();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
   const equipPicker: EquipPickController | null =
     opts.equipPickList === undefined
@@ -84,7 +71,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     ...(equipPicker !== null ? { onEquipSlot: (id, ref) => equipPicker.open(id, ref) } : {}),
     onUnequipSlot: (id, ref) =>
       opts.enqueue({ kind: 'unequipGood', entity: id as Entity, group: ref.group, slot: ref.slot }),
-    onSelectEntity: (id) => selectFromPanel(id),
+    onSelectEntity: (id) => applySelection([id], false),
     // The original centres the view from its own controls (`housewindow` 116/117, `humanwindow` 100).
     // Approximation: this centres a building's base, so a tall house sits above centre after the jump.
     onCenterOnEntity: (id) => {
@@ -100,8 +87,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     canvas,
     uiscale: opts.uiscale ?? 1,
     selectionCentre: memoBySnapshot(
-      (snapshot) => selectionCentre(snapshot, selected),
-      () => selectionVersion,
+      (snapshot) => selectionCentre(snapshot, selection.ids()),
+      selection.version,
     ),
     professions: opts.professions,
     content: opts.content,
@@ -158,34 +145,22 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
 
   /** Refused when the selection holds no settler to send, so the mode never arms into a click that does nothing. */
   const armAttackMove = (): void => {
-    if (unitTargets.ownedSettlersIn(selected).length === 0) return;
+    if (unitTargets.ownedSettlersIn(selection.ids()).length === 0) return;
     actions.close();
     pickMode.armAttackMove();
   };
 
-  const changed = (): void => {
-    panel.render(opts.snapshot(), selected);
-  };
-
-  const setSelection = (ids: Iterable<number>, add: boolean): void => {
-    const before = new Set(selected);
-    if (!add) selected.clear();
-    for (const id of ids) selected.add(id);
-    if (!sameSelection(before, selected)) {
-      selectionVersion++;
-      pickMode.cancel();
-    }
-    changed();
+  const applySelection = (ids: Iterable<number>, add: boolean): void => {
+    const changed = selection.apply(ids, add);
+    if (changed) pickMode.cancel();
+    panel.render(opts.snapshot(), selection.ids());
     // Only a changed set closes the ring, so it never lingers on a stale unit while re-selecting the
     // same set leaves an open menu alone.
-    if (!sameSelection(before, selected)) actions.close();
+    if (changed) actions.close();
   };
 
-  // Clicking a worker sprite in the details panel selects that settler alone, dropping the building.
-  selectFromPanel = (id) => setSelection([id], false);
-
   const orders = createUnitOrderController({
-    selected,
+    selected: selection.ids(),
     targets: unitTargets,
     snapshot: opts.snapshot,
     content: opts.content,
@@ -193,7 +168,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
     toWorld,
     enqueue: opts.enqueue,
-    selectOwnSettler: (id) => setSelection([id], false),
+    selectOwnSettler: (id) => applySelection([id], false),
     openActions: (atClient) => actions.open(atClient),
   });
 
@@ -213,7 +188,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         const w = toWorld(e.clientX, e.clientY);
         const badgeSettler = pickDoorBadgeRow(ownDoorBadges(), w.x, w.y, opts.elevation);
         // A garrison flag hands its click to the building, so right-clicking it posts selected soldiers there.
-        if (badgeSettler !== null) setSelection([badgeSettler], false);
+        if (badgeSettler !== null) applySelection([badgeSettler], false);
         else orders.issueRightClick(e, pickGarrisonFlag(ownDoorBadges(), w.x, w.y, opts.elevation));
       }
       return;
@@ -233,7 +208,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (release.moved) {
       const a = toWorld(release.startX, release.startY);
       const b = toWorld(e.clientX, e.clientY);
-      setSelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
+      applySelection(pickInRect(unitTargets.owned(), a.x, a.y, b.x, b.y), e.shiftKey);
     } else {
       const w = toWorld(e.clientX, e.clientY);
       // Pick order matters: a sign row is a small target on a busy door that the building's own pixel
@@ -244,17 +219,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
         pickTopAt(unitTargets.owned(), w.x, w.y) ??
         pickTopAt(unitTargets.flags(), w.x, w.y) ??
         pickTopAt(unitTargets.signposts(), w.x, w.y);
-      if (hit !== null) setSelection([hit], e.shiftKey);
-      else if (!e.shiftKey) setSelection([], false);
+      if (hit !== null) applySelection([hit], e.shiftKey);
+      else if (!e.shiftKey) applySelection([], false);
     }
   };
-
-  /** Memoized per tick and selection: the renderer reads these every frame. */
-  const flaggedFlags = memoBySnapshot(
-    (snapshot) => (selected.size === 0 ? EMPTY_IDS : selectedWorkFlags(snapshot, selected)),
-    () => selectionVersion,
-  );
-  const flaggedFlagIds = (): ReadonlySet<number> => flaggedFlags(opts.snapshot());
 
   const onContextMenu = (e: MouseEvent): void => {
     e.preventDefault(); // let the right button be a move order, not the browser menu
@@ -269,7 +237,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (e.code === 'Escape') {
       if (pickMode.isArmed())
         pickMode.cancel(); // Esc backs out of a pick mode first, keeping the selection
-      else setSelection([], false);
+      else applySelection([], false);
     }
   };
 
@@ -280,10 +248,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   window.addEventListener('keydown', onKeyDown);
 
   return {
-    selectedIds: () => selected,
-    selectionVersion: () => selectionVersion,
+    selectedIds: selection.ids,
+    selectionVersion: selection.version,
     portrait: () => panel.portrait(),
-    flaggedFlagIds,
+    flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     assignHighlight: pickMode.highlight,
     signpostPlacementActive: pickMode.signpostActive,
     // Includes the details panel, so a consumer gating on this treats a point over the panel as HUD
