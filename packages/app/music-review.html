@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Przegląd muzyki - Open Northland</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; background: #1c1c22; color: #ddd; }
+  h1 { font-size: 1.3rem; } h2 { font-size: 1.05rem; margin-top: 2rem; color: #9bc; }
+  .track { display: flex; align-items: center; gap: 0.8rem; padding: 0.35rem 0; border-bottom: 1px solid #333; }
+  .name { width: 21rem; font-family: ui-monospace, monospace; font-size: 0.85rem; }
+  .meta { width: 11rem; color: #888; font-size: 0.8rem; }
+  audio { height: 2rem; flex: 1; }
+  button { background: #2c3c4c; color: #ddd; border: 1px solid #456; border-radius: 4px; cursor: pointer; padding: 0.2rem 0.5rem; }
+  button:hover { background: #3c4c5c; }
+  .hint { color: #999; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Przegląd muzyki (64 utwory z DataX/DM2)</h1>
+<p class="hint">„Szew" przewija do 6 s przed końcem, żeby ocenić przejście pętli - w grze utwór
+wraca wtedy do punktu pętli (tu odtwarzacz zapętla tak samo przez JS). Gra tylko jeden naraz.</p>
+<h2>Porównanie z nagraniem (magiczny las / franken2)</h2>
+<p class="hint">REF = wycinek nagrania z gry wyrównany do początku naszego renderu (offset 206 s).
+Porównuj z mission_addon_franken2_standard poniżej - wszystkie 64 utwory grają już przez nowy
+syntezator (poprawione nuty + spessasynth).</p>
+<div id="ab"></div>
+<div id="list">Ładowanie manifestu…</div>
+<script>
+const GROUPS = [
+  ['theme_', 'Motywy plemion (dyplomacja)'],
+  ['mission_addon_', 'Misje - dodatek'],
+  ['mission_', 'Misje - podstawka'],
+  ['attack_', 'Muzyka ataku'],
+];
+const SEAM_BACKOFF_S = 6;
+let current = null;
+
+document.getElementById('ab').appendChild(row('REF: nagranie z gry (wyrównane)', { file: '_proto_reference_excerpt.ogg' }));
+
+fetch('/music/manifest.json').then((r) => r.json()).then(({ tracks }) => {
+  const list = document.getElementById('list');
+  list.textContent = '';
+  const entries = Object.entries(tracks);
+  const used = new Set();
+  for (const [prefix, label] of GROUPS) {
+    const group = entries.filter(([stem]) => stem.startsWith(prefix) && !used.has(stem));
+    if (group.length === 0) continue;
+    for (const [stem] of group) used.add(stem);
+    const h = document.createElement('h2');
+    h.textContent = `${label} (${group.length})`;
+    list.appendChild(h);
+    for (const [stem, track] of group) list.appendChild(row(stem, track));
+  }
+  const rest = entries.filter(([stem]) => !used.has(stem));
+  if (rest.length > 0) {
+    const h = document.createElement('h2');
+    h.textContent = `Pozostałe (${rest.length})`;
+    list.appendChild(h);
+    for (const [stem, track] of rest) list.appendChild(row(stem, track));
+  }
+});
+
+function row(stem, track) {
+  const div = document.createElement('div');
+  div.className = 'track';
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = stem;
+  const audio = document.createElement('audio');
+  audio.controls = true;
+  audio.preload = 'metadata';
+  audio.src = `/music/${track.file}`;
+  audio.addEventListener('play', () => {
+    if (current && current !== audio) current.pause();
+    current = audio;
+  });
+  // Emulate the in-game loop: past the end, jump back to the loop start.
+  audio.addEventListener('ended', () => {
+    if (track.loopStartS !== undefined) {
+      audio.currentTime = track.loopStartS;
+      audio.play();
+    }
+  });
+  const meta = document.createElement('span');
+  meta.className = 'meta';
+  meta.textContent = track.loopStartS !== undefined ? `pętla od ${track.loopStartS.toFixed(2)} s` : 'bez pętli';
+  const seam = document.createElement('button');
+  seam.textContent = 'Szew';
+  seam.addEventListener('click', () => {
+    const jump = () => { audio.currentTime = Math.max(0, audio.duration - SEAM_BACKOFF_S); audio.play(); };
+    if (Number.isFinite(audio.duration)) jump();
+    else audio.addEventListener('loadedmetadata', jump, { once: true });
+  });
+  div.append(name, audio, meta, seam);
+  return div;
+}
+</script>
+</body>
+</html>
