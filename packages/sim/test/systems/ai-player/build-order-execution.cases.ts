@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Settler, UnderConstruction } from '../../../src/components/index.js';
+import { Building, Settler } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Simulation } from '../../../src/index.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from '../../../src/systems/ai-player/index.js';
@@ -10,6 +10,7 @@ import {
   BARRACKS_TYPE,
   BREWERY_TYPE,
   COLLECTOR,
+  completeSites,
   ctxOf,
   entityOfBuilding,
   FARM_TYPE,
@@ -38,14 +39,10 @@ describe('build-order module (houseBuild)', () => {
     return [...module.run(sim.world, ctxOf(sim), SEAT)][0];
   }
 
-  /** Apply one module command, then force-finish every open site (upgrades adopt their tier). */
   function applyAndFinish(sim: Simulation, command: Command): void {
     sim.enqueueSetup(command);
     sim.step();
-    for (const e of [...sim.world.query(UnderConstruction)]) {
-      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: e });
-    }
-    sim.step();
+    completeSites(sim);
   }
 
   it('executes the opening list in order near the HQ, one open site at a time', () => {
@@ -69,10 +66,7 @@ describe('build-order module (houseBuild)', () => {
 
     // One open site - the executor stalls until it finishes.
     expect(nextPlacement(sim)).toBeUndefined();
-    for (const e of [...sim.world.query(UnderConstruction)]) {
-      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: e });
-    }
-    sim.step();
+    completeSites(sim);
 
     // Homes fill to their count of three; the entries absent from this content (pottery, mason)
     // are skipped, and the farm→mill→bakery/well chain follows.

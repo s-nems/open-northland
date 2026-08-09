@@ -11,6 +11,7 @@ import {
   SIGNPOST_NAV_RADIUS_NODES,
   SIGNPOST_SPACING_RADIUS_NODES,
   Signpost,
+  UnderConstruction,
 } from '../../../src/components/index.js';
 import { CommandQueue } from '../../../src/core/command-queue.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -148,6 +149,14 @@ export function entityOfBuilding(sim: Simulation, buildingType: number): Entity 
     if (sim.world.get(e, Building).buildingType === buildingType) return e;
   }
   throw new Error(`setup: building ${buildingType} missing`);
+}
+
+/** Force-finish every open construction site; an upgrade site adopts its tier. */
+export function completeSites(sim: Simulation): void {
+  for (const e of [...sim.world.query(UnderConstruction)]) {
+    sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: e });
+  }
+  sim.step();
 }
 
 /** Flag `player`'s seat AI-driven - the state `setPlayerAi` lands, which the garrison hire reads. */
