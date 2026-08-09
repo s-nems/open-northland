@@ -46,6 +46,7 @@ function parsedHeader(value: unknown): SaveGameHeader {
     contentRevision: asCount(raw.contentRevision, `${at}.contentRevision`),
     mapId: asNullableString(raw.mapId, `${at}.mapId`),
     mapFingerprint: asNullableString(raw.mapFingerprint, `${at}.mapFingerprint`),
+    entry: asNullableString(raw.entry, `${at}.entry`),
     seed: asInteger(raw.seed, `${at}.seed`),
     tick: asCount(raw.tick, `${at}.tick`),
   };

@@ -13,6 +13,9 @@ export interface ExportSaveOptions {
   /** The caller's world identity token (the app uses the decoded map id, or `scene:<id>`), recorded
    *  so a loader can match the save to the world it boots. Omit for a world with no identity. */
   mapId?: string;
+  /** The caller's relaunch token (the app uses the entry URL search), recorded so a loader can
+   *  reboot the session the save came from. Omit when there is nothing to reboot into. */
+  entry?: string;
 }
 
 /**
@@ -67,6 +70,7 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
       contentRevision: sim.content.manifest.contentRevision,
       mapId: opts.mapId ?? null,
       mapFingerprint: sim.mapFingerprint ?? null,
+      entry: opts.entry ?? null,
       seed: sim.seed,
       tick: sim.tick,
     },

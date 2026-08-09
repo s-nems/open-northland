@@ -4,7 +4,7 @@ import type { CommandEnvelope } from '../core/commands/index.js';
 export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. */
-export const SAVE_FORMAT_VERSION = 1;
+export const SAVE_FORMAT_VERSION = 2;
 
 /** The oldest formatVersion this build still migrates; anything older is rejected, never silently
  *  parsed. */
@@ -25,6 +25,9 @@ export interface SaveGameHeader {
   /** Provenance of the decoded map the run loaded, or null for scenes and mapless sims. */
   readonly mapId: string | null;
   readonly mapFingerprint: string | null;
+  /** Caller-recorded relaunch token, opaque to the sim like `mapId`; the app stores the entry URL
+   *  search that reboots the session. Null when the caller records none. */
+  readonly entry: string | null;
   /** The RNG construction seed, provenance only; the live stream position is in the rng section. */
   readonly seed: number;
   readonly tick: number;

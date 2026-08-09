@@ -27,6 +27,20 @@ export function menuSearch(current = new URLSearchParams(window.location.search)
   return formatSearch(carriedParams(current));
 }
 
+/** The world and seat selection a save records so a menu load can relaunch the session; carried
+ *  settings and diagnostic pins stay out, so a relaunch takes those from the player's own session. */
+const ENTRY_PARAMS = ['map', 'scene', 'player', 'colors', 'ai'] as const;
+
+export function entrySearch(current = new URLSearchParams(window.location.search)): string | null {
+  const target = new URLSearchParams();
+  for (const key of ENTRY_PARAMS) {
+    const value = current.get(key);
+    if (value !== null) target.set(key, value);
+  }
+  const search = formatSearch(target);
+  return search === '' ? null : search;
+}
+
 /** Parse a positive-float URL param, falling back when it is absent or invalid. */
 export function floatParam(params: URLSearchParams, name: string, fallback: number): number {
   const raw = params.get(name);

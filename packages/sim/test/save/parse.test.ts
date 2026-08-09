@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { FOG_MODE, Owner, Position, Signpost } from '../../src/components/index.js';
 import { fx } from '../../src/core/fixed.js';
-import { exportSaveGame, parseSaveGame, Simulation, serializeSaveGame } from '../../src/index.js';
+import {
+  exportSaveGame,
+  parseSaveGame,
+  SAVE_FORMAT_VERSION,
+  Simulation,
+  serializeSaveGame,
+} from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -35,6 +41,15 @@ describe('parseSaveGame acceptance', () => {
     const bytes = JSON.stringify(doc);
     expect(serializeSaveGame(parseSaveGame(JSON.parse(bytes)))).toBe(bytes);
   });
+
+  it('lifts a v1 document, defaulting the entry token it predates', () => {
+    const doc = populatedDoc();
+    delete doc.header.entry;
+    doc.header.formatVersion = 1;
+    const save = parseSaveGame(doc);
+    expect(save.header.formatVersion).toBe(SAVE_FORMAT_VERSION);
+    expect(save.header.entry).toBeNull();
+  });
 });
 
 describe('parseSaveGame header rejection', () => {
@@ -47,9 +62,9 @@ describe('parseSaveGame header rejection', () => {
 
   it('rejects a version written by a newer build', () => {
     const doc = populatedDoc();
-    doc.header.formatVersion = 2;
+    doc.header.formatVersion = 3;
     expect(() => parseSaveGame(doc)).toThrow(
-      /save\.header\.formatVersion: version 2 was written by a newer build; this build reads up to 1/,
+      /save\.header\.formatVersion: version 3 was written by a newer build; this build reads up to 2/,
     );
   });
 
@@ -68,6 +83,9 @@ describe('parseSaveGame header rejection', () => {
     doc.header.mapFingerprint = 12;
     expect(() => parseSaveGame(doc)).toThrow(/save\.header\.mapFingerprint: expected a string or null/);
     doc.header.mapFingerprint = null;
+    doc.header.entry = 12;
+    expect(() => parseSaveGame(doc)).toThrow(/save\.header\.entry: expected a string or null/);
+    doc.header.entry = null;
     doc.header.tick = -1;
     expect(() => parseSaveGame(doc)).toThrow(/save\.header\.tick: expected a non-negative integer/);
   });

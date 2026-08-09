@@ -98,10 +98,10 @@ export const plGame = {
       corrupt: 'Ten plik nie jest poprawnym zapisem Open Northland.',
       incompatibleVersion: 'Ten zapis pochodzi z niezgodnej wersji gry.',
       wrongContent: 'Ten zapis został utworzony z inną zawartością gry.',
-      wrongWorld:
-        'Ten zapis należy do innej mapy lub sceny. Najpierw uruchom tamten świat, potem wczytaj plik z jego menu.',
+      wrongWorld: 'Ten zapis należy do innej mapy lub sceny. Wczytaj go z menu głównego.',
       wrongMap: 'Mapa z tego zapisu nie zgadza się już z zainstalowaną zawartością.',
       storage: 'Nie udało się przygotować zapisu do wczytania.',
+      missing: 'Ten zapis już nie istnieje.',
     },
     downloadDiagnostics: 'Pobierz raport diagnostyczny',
     downloadTrace: 'Pobierz zapis wydajności',

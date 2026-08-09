@@ -18,6 +18,7 @@ const PATHS: ShellPaths = {
   contentDir: '/data/content',
   configFile: '/data/config.json',
   modsDir: '/data/mods',
+  savesDir: '/data/saves',
 };
 
 type Navigation = 'did-navigate-in-page' | 'did-finish-load';

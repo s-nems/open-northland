@@ -16,17 +16,16 @@ describe('backTarget', () => {
 });
 
 describe('MAIN_NAV', () => {
-  it('lists the design order with load and multiplayer as coming-soon rows', () => {
+  it('lists the design order with multiplayer as the one coming-soon row', () => {
     expect(MAIN_NAV.map((item) => item.id)).toEqual([
       'newGame',
-      'loadGame',
+      'load',
       'multiplayer',
       'settings',
       'credits',
       'exit',
     ]);
     expect(MAIN_NAV.filter((item) => item.kind === 'comingSoon').map((item) => item.id)).toEqual([
-      'loadGame',
       'multiplayer',
     ]);
   });
@@ -34,10 +33,10 @@ describe('MAIN_NAV', () => {
 
 describe('moveFocus', () => {
   it('skips coming-soon rows in both directions', () => {
-    // From "Nowa gra" down: over the two badged rows onto "Ustawienia".
-    expect(moveFocus(MAIN_NAV, 0, 1)).toBe(3);
-    // From "Ustawienia" up: back over the badged rows onto "Nowa gra".
-    expect(moveFocus(MAIN_NAV, 3, -1)).toBe(0);
+    // From "Wczytaj grę" down: over the badged multiplayer row onto "Ustawienia".
+    expect(moveFocus(MAIN_NAV, 1, 1)).toBe(3);
+    // From "Ustawienia" up: back over the badged row onto "Wczytaj grę".
+    expect(moveFocus(MAIN_NAV, 3, -1)).toBe(1);
   });
 
   it('wraps at both ends', () => {
@@ -51,7 +50,7 @@ describe('moveFocus', () => {
 
   it('stays put when nothing is interactive', () => {
     const allBadged: readonly MainNavItem[] = [
-      { id: 'loadGame', kind: 'comingSoon' },
+      { id: 'multiplayer', kind: 'comingSoon' },
       { id: 'multiplayer', kind: 'comingSoon' },
     ];
     expect(moveFocus(allBadged, 0, 1)).toBe(0);

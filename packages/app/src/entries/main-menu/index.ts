@@ -4,6 +4,7 @@ import { bindDisplayMode } from '../../view/fullscreen.js';
 import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
 import { mountFullscreenPrompt } from './fullscreen-prompt.js';
+import { loadSelectScreen } from './load-select.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
 import { releaseMapPreviews } from './map-preview.js';
@@ -155,6 +156,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   const screenFor = (next: MenuScreen): HTMLElement => {
     if (next === 'main') return mainScreen(show);
     if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby, launch);
+    if (next === 'load') return loadSelectScreen(show, launch);
     if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters, launch);
     if (next === 'settings') return settingsScreen(show, settingsMemory, scope.signal);
     if (next === 'credits') return creditsScreen(show);

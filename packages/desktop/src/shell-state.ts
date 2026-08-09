@@ -18,6 +18,7 @@ export interface ShellPaths {
   readonly contentDir: string;
   readonly configFile: string;
   readonly modsDir: string;
+  readonly savesDir: string;
 }
 
 export interface ShellState {

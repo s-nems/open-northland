@@ -91,6 +91,7 @@ export {
   type ExportSaveOptions,
   exportSaveGame,
   type FogSection,
+  OLDEST_SUPPORTED_SAVE_VERSION,
   parseSaveGame,
   type RestoredSimulation,
   type RestoreOptions,

@@ -4,6 +4,7 @@ export {
   type ComponentSection,
   type EntitiesSection,
   type FogSection,
+  OLDEST_SUPPORTED_SAVE_VERSION,
   type RngSection,
   SAVE_FORMAT_VERSION,
   SAVE_KIND,

@@ -1,6 +1,7 @@
 import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '../diag/index.js';
 import { messages } from '../i18n/index.js';
 import type { SaveLoadSession } from './runtime/save-load/index.js';
+import { buildLoadPanel, buildSavePanel, type SavePanelView } from './save-panels.js';
 
 export interface SystemMenu {
   toggle(): void;
@@ -39,8 +40,8 @@ const MODAL_BUTTON_STYLE = [
 ].join(';');
 
 /**
- * The in-game system menu: a centred DOM overlay for saving and loading, returning to the main menu
- * and downloading diagnostics. It does not implement the original's settings and help window.
+ * The in-game system menu: a centred DOM overlay whose one modal swaps between the root buttons and
+ * the save or load panel. It does not implement the original's settings and help window.
  */
 export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   const copy = messages().hud;
@@ -77,41 +78,36 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     return el;
   };
 
-  // Save and load outcomes land here; anything else (a cancel, a page reload) leaves it hidden.
-  const status = document.createElement('p');
-  status.setAttribute('role', 'status');
-  Object.assign(status.style, { margin: '0', font: '13px/1.4 ui-serif,Georgia,serif', display: 'none' });
-  const setStatus = (text: string | null): void => {
-    status.textContent = text ?? '';
-    status.style.display = text === null ? 'none' : 'block';
+  const panels: SavePanelView[] = [];
+  const hidePanels = (): void => {
+    for (const view of panels) view.el.style.display = 'none';
+  };
+  const showMenu = (): void => {
+    // The panels force a pause while open; returning to the root buttons hands the clock back.
+    deps.saveLoad.releaseForcedPause();
+    hidePanels();
+    panel.style.display = 'flex';
+  };
+  const panelDeps = {
+    saveLoad: deps.saveLoad,
+    showMenu,
+    panelStyle: MODAL_PANEL_STYLE,
+    buttonStyle: MODAL_BUTTON_STYLE,
+  };
+  const savePanel = buildSavePanel(panelDeps);
+  const loadPanel = buildLoadPanel(panelDeps);
+  panels.push(savePanel, loadPanel);
+  hidePanels();
+
+  const showPanel = (view: SavePanelView): void => {
+    panel.style.display = 'none';
+    hidePanels();
+    view.el.style.display = 'flex';
+    view.open();
   };
 
-  // One flow at a time: a second click while a file dialog is open would stack a second dialog.
-  let busy = false;
-  const runFlow = (flow: () => Promise<string | null>): void => {
-    if (busy) return;
-    busy = true;
-    setStatus(null);
-    void flow()
-      .then(setStatus)
-      .finally(() => {
-        busy = false;
-      });
-  };
-
-  const save = button(copy.saveGame, () =>
-    runFlow(async () => {
-      const outcome = await deps.saveLoad.saveGame();
-      if (outcome.kind === 'saved') return copy.gameSaved;
-      return outcome.kind === 'failed' ? copy.saveFailed : null;
-    }),
-  );
-  const load = button(copy.loadGame, () =>
-    runFlow(async () => {
-      const outcome = await deps.saveLoad.loadGame();
-      return outcome.kind === 'rejected' ? copy.loadErrors[outcome.reason] : null;
-    }),
-  );
+  const save = button(copy.saveGame, () => showPanel(savePanel));
+  const load = button(copy.loadGame, () => showPanel(loadPanel));
 
   const quit = button(copy.returnToMenu, deps.onQuit);
 
@@ -123,19 +119,16 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
 
   const hide = (): void => {
     backdrop.style.display = 'none';
-    setStatus(null);
-    // Browsers without the file input's `cancel` event leave the load flow pending forever; closing
-    // the menu is the player's way out, so it releases both the forced pause and the busy latch.
-    busy = false;
-    deps.saveLoad.releaseForcedPause();
+    // A panel may still hold the pause it forced; closing the modal is the player's way out.
+    showMenu();
   };
   const close = button(copy.closeMenu, hide);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) hide();
   });
 
-  panel.append(title, save, load, quit, diagnostics, ...(trace !== null ? [trace] : []), close, status);
-  backdrop.append(panel);
+  panel.append(title, save, load, quit, diagnostics, ...(trace !== null ? [trace] : []), close);
+  backdrop.append(panel, savePanel.el, loadPanel.el);
   document.body.append(backdrop);
 
   return {

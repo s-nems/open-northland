@@ -98,10 +98,10 @@ export const enGame = {
       corrupt: 'This file is not a readable Open Northland save.',
       incompatibleVersion: 'This save comes from an incompatible game version.',
       wrongContent: 'This save was made with different game content.',
-      wrongWorld:
-        'This save belongs to a different map or scene. Start that world first, then load the file from its menu.',
+      wrongWorld: 'This save belongs to a different map or scene. Load it from the main menu instead.',
       wrongMap: 'The map in this save no longer matches the installed content.',
       storage: 'The save could not be prepared for loading.',
+      missing: 'This save no longer exists.',
     },
     downloadDiagnostics: 'Download diagnostics report',
     downloadTrace: 'Download performance trace',

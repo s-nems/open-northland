@@ -4,7 +4,7 @@ import { app, type BrowserWindow } from 'electron';
 import { readConfig } from './config.js';
 import { currentLocale, resolveLocale, setActiveLocale } from './i18n/index.js';
 import { wireIpc } from './ipc-handlers.js';
-import { configFileOf, contentDirOf, DATA_DIR_ENV, modsDirOf, resolveDataRoot } from './paths.js';
+import { configFileOf, contentDirOf, DATA_DIR_ENV, modsDirOf, resolveDataRoot, savesDirOf } from './paths.js';
 import { PipelineHost } from './pipeline-host.js';
 import { handleAppProtocol, registerAppScheme } from './protocol.js';
 import { watchGameLocale } from './shell-locale.js';
@@ -31,6 +31,7 @@ const paths: ShellPaths = {
   contentDir: contentDirOf(dataRoot.path),
   configFile: configFileOf(dataRoot.path),
   modsDir: modsDirOf(dataRoot.path),
+  savesDir: savesDirOf(dataRoot.path),
 };
 const state = createShellState(paths);
 const pipeline = new PipelineHost(join(here, 'pipeline-child.cjs'));

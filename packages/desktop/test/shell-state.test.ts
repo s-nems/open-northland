@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readConfig, writeConfig } from '../src/config.js';
-import { configFileOf, contentDirOf, modsDirOf } from '../src/paths.js';
+import { configFileOf, contentDirOf, modsDirOf, savesDirOf } from '../src/paths.js';
 import { createShellState, type ShellPaths } from '../src/shell-state.js';
 import { makeTempDir, type TempDir } from './support/temp-dir.js';
 
@@ -18,6 +18,7 @@ describe('createShellState', () => {
       contentDir: contentDirOf(temp.path),
       configFile: configFileOf(temp.path),
       modsDir: modsDirOf(temp.path),
+      savesDir: savesDirOf(temp.path),
     };
   });
 

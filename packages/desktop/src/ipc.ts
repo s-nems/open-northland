@@ -19,6 +19,11 @@ export const IPC_CHANNELS = {
   setLocale: 'desktop:set-locale',
   saveGameFile: 'desktop:save-game-file',
   openGameFile: 'desktop:open-game-file',
+  listSaves: 'desktop:list-saves',
+  readSave: 'desktop:read-save',
+  writeSave: 'desktop:write-save',
+  deleteSave: 'desktop:delete-save',
+  showSavesFolder: 'desktop:show-saves-folder',
 } as const;
 
 /** Channels the main process pushes to the renderer; every other one is invoked. */
@@ -53,6 +58,14 @@ export interface GameFolderCandidate {
 export interface SaveFileBytes {
   readonly name: string;
   readonly bytes: Uint8Array;
+}
+
+/** One save in the saves folder: the basename, the file mtime in ms, and the leading bytes the
+ *  renderer peeks the save header from. */
+export interface ListedSaveFile {
+  readonly file: string;
+  readonly savedAt: number;
+  readonly prefix: Uint8Array;
 }
 
 export type PipelineEvent =
@@ -90,10 +103,19 @@ export interface DesktopApi {
   startGame(): Promise<void>;
   /** Persist the installer language and re-localize the native menu. */
   setLocale(locale: Locale): Promise<void>;
-  // The two file methods mirror the game page's structural `GameFileBridge`
-  // (`packages/app/src/view/runtime/save-load/file-access.ts`).
+  // The file methods mirror the game page's structural bridges, `GameFileBridge` and
+  // `SaveListBridge` (`packages/app/src/view/runtime/save-load/`).
   /** Native save dialog for a game save; resolves to the written file's basename, null on cancel. */
   saveGameFile(suggestedName: string, contents: Uint8Array): Promise<string | null>;
   /** Native open dialog for a game save; null on cancel. */
   openGameFile(): Promise<SaveFileBytes | null>;
+  /** Every save file in the saves folder, unordered; empty when the folder does not exist yet. */
+  listSaves(): Promise<ListedSaveFile[]>;
+  /** A listed file's bytes; null when it vanished since the listing. */
+  readSave(file: string): Promise<Uint8Array | null>;
+  /** Write `<name>.json.gz` into the saves folder, overwriting a same-named save. */
+  writeSave(name: string, bytes: Uint8Array): Promise<void>;
+  deleteSave(file: string): Promise<void>;
+  /** Reveal the saves folder in the OS file manager, creating it first. */
+  showSavesFolder(): Promise<void>;
 }
