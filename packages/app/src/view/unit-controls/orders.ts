@@ -20,7 +20,7 @@ import { assignFormation, type FormationUnit } from './formation.js';
 import type { UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
-  readonly selected: ReadonlySet<number>;
+  readonly selected: () => ReadonlySet<number>;
   readonly targets: UnitTargets;
   readonly snapshot: () => WorldSnapshot;
   readonly content: ContentSet;
@@ -60,12 +60,18 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
 
   // A carrying settler stays in the formation: the sim makes it set its load down before walking, so
   // there is no client-side filtering.
-  const issueWalkOrder = (event: MouseEvent, movers: readonly FormationUnit[], kind: WalkOrderKind): void => {
+  const issueWalkOrder = (
+    event: MouseEvent,
+    movers: readonly FormationUnit[],
+    // The whole selection, not just `movers`: standing units keep their ground reserved.
+    selected: ReadonlySet<number>,
+    kind: WalkOrderKind,
+  ): void => {
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
     const world = deps.toWorld(event.clientX, event.clientY);
     const target = clampTile(worldToTile(world.x, world.y, deps.elevation), width, height);
-    const blocked = occupiedTiles(deps.selected);
+    const blocked = occupiedTiles(selected);
     for (const order of assignFormation(movers, target, width, height, blocked)) {
       deps.enqueue({ kind, entity: order.ref as Entity, x: order.tile.col, y: order.tile.row });
     }
@@ -79,8 +85,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       deps.openActions({ x: event.clientX, y: event.clientY });
       return;
     }
-    if (deps.selected.size === 0) return;
-    const commanded = deps.targets.ownedSettlersIn(deps.selected);
+    const selected = deps.selected();
+    if (selected.size === 0) return;
+    const commanded = deps.targets.ownedSettlersIn(selected);
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
     if (enemy !== null) {
       for (const target of commanded) {
@@ -136,15 +143,16 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
       return;
     }
-    issueWalkOrder(event, commanded, 'moveUnit');
+    issueWalkOrder(event, commanded, selected, 'moveUnit');
   };
 
   const issueAttackMove = (event: MouseEvent): void => {
-    issueWalkOrder(event, deps.targets.ownedSettlersIn(deps.selected), 'attackMoveUnit');
+    const selected = deps.selected();
+    issueWalkOrder(event, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
   };
 
   const issueSetWorkFlag = (event: MouseEvent): void => {
-    const movers = deps.targets.ownedSettlersIn(deps.selected);
+    const movers = deps.targets.ownedSettlersIn(deps.selected());
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
     const world = deps.toWorld(event.clientX, event.clientY);
