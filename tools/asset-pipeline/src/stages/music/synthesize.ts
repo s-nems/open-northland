@@ -44,7 +44,7 @@ export async function loadDlsBanks(dir: string): Promise<Map<string, DlsBank>> {
   return banks;
 }
 
-/** spessasynth renders in fixed quanta; events are applied at quantum boundaries (~3 ms). */
+/** Maximum processor block; shorter blocks keep events on their authored sample frame. */
 const SYNTH_QUANTUM = 128;
 const MIDI_CHANNELS_PER_PROCESSOR = 16;
 const CC_BANK_MSB = 0;
@@ -141,10 +141,11 @@ export async function synthesizeEvents(
   const quantumL = new Float32Array(SYNTH_QUANTUM);
   const quantumR = new Float32Array(SYNTH_QUANTUM);
   let next = 0;
-  for (let frame = 0; frame < frames; frame += SYNTH_QUANTUM) {
+  let frame = 0;
+  while (frame < frames) {
     while (next < segment.events.length) {
       const ev = segment.events[next];
-      if (ev === undefined || ev.t >= frame + SYNTH_QUANTUM) break;
+      if (ev === undefined || Math.round(ev.t) > frame) break;
       next++;
       const slot = slots.get(ev.id);
       if (slot === undefined) continue;
@@ -170,7 +171,8 @@ export async function synthesizeEvents(
           break;
       }
     }
-    const count = Math.min(SYNTH_QUANTUM, frames - frame);
+    const nextEventFrame = Math.round(segment.events[next]?.t ?? frames);
+    const count = Math.min(SYNTH_QUANTUM, frames - frame, Math.max(1, nextEventFrame - frame));
     for (const synth of processors) {
       quantumL.fill(0);
       quantumR.fill(0);
@@ -180,6 +182,7 @@ export async function synthesizeEvents(
         right[frame + i] = (right[frame + i] ?? 0) + (quantumR[i] ?? 0);
       }
     }
+    frame += count;
   }
   return [left, right];
 }
