@@ -1,9 +1,4 @@
-/**
- * Barrel for the .ini/.cif extractors, split into `ini/` by domain concern. Importers keep the
- * `decoders/ini.js` specifier: this re-exports every extractor the pipeline and tests use (four
- * internal parser/binding types that were exported but never imported outside `ini/` were dropped;
- * each stays reachable via its function's inferred return type). See each module for its concern.
- */
+/** Public surface of the `ini/` modules: importers outside `decoders/` use this specifier. */
 
 export type {
   BmdPaletteBinding,
