@@ -22,7 +22,9 @@ wraca wtedy do punktu pętli (tu odtwarzacz zapętla tak samo przez JS). Gra tyl
 <h2>Porównanie z nagraniem (magiczny las / franken2)</h2>
 <p class="hint">REF = wycinek nagrania z gry wyrównany do początku naszego renderu (offset 206 s).
 Porównuj z mission_addon_franken2_standard poniżej - wszystkie 64 utwory grają już przez nowy
-syntezator (poprawione nuty + spessasynth).</p>
+syntezator (poprawione nuty + spessasynth). Rzędy B/C/D to lokalny materiał do ticketu pogłosu:
+B = snapshot Spessa + nasza aproksymacja pogłosu, C = ten sam render na sucho, D = suchy render
+przez natywny Waves Reverb DMO z DirectX (wzorzec porównawczy, nie zależność projektu).</p>
 <div id="ab"></div>
 <div id="list">Ładowanie manifestu…</div>
 <script>
@@ -35,7 +37,13 @@ const GROUPS = [
 const SEAM_BACKOFF_S = 6;
 let current = null;
 
-document.getElementById('ab').appendChild(row('REF: nagranie z gry (wyrównane)', { file: '_proto_reference_excerpt.ogg' }));
+const AB_ROWS = [
+  ['REF: nagranie z gry (wyrównane)', '_proto_reference_excerpt.ogg'],
+  ['B: Spessa + nasz pogłos', '_proto_franken2_spessa.ogg'],
+  ['C: Spessa bez pogłosu', '_proto_franken2_spessa_dry.ogg'],
+  ['D: Spessa + Waves DMO', '_proto_franken2_spessa_dmo.ogg'],
+];
+for (const [label, file] of AB_ROWS) document.getElementById('ab').appendChild(row(label, { file }));
 
 fetch('/music/manifest.json').then((r) => r.json()).then(({ tracks }) => {
   const list = document.getElementById('list');
