@@ -1,5 +1,5 @@
 import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
-import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
+import { type ElevationField, projectTile } from '../../data/terrain/index.js';
 import type { DrawnGeometry } from '../sprite-pool/index.js';
 
 /**
@@ -14,10 +14,7 @@ export function feetAnchor(
 ): { x: number; y: number } {
   const anchor = drawn?.anchorOf(id);
   if (anchor !== undefined) return anchor;
-  const tileX = pos.x / ONE;
-  const tileY = pos.y / ONE;
-  const p = tileToScreen(tileX, tileY);
-  return { x: p.x, y: p.y - terrainLiftAt(elevation, tileX, tileY) };
+  return projectTile(elevation, pos.x / ONE, pos.y / ONE);
 }
 
 /** An entity wearing a mark: the retained-pool key and the snapshot `Position` in fixed-point units. */

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { cellNode, elevationLiftPerUnit } from '../src/data/terrain/index.js';
-import { buildSpriteScene, makeElevationField, TILE_HALF_H, tileToScreen } from '../src/index.js';
+import {
+  buildSpriteScene,
+  makeElevationField,
+  projectTile,
+  TILE_HALF_H,
+  tileToScreen,
+} from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
 /** Elevation lifts by elevation/16 half-row-steps, from observed map alignment. */
@@ -49,6 +55,23 @@ describe('makeElevationField.liftAt', () => {
     expect(flat.liftAt(1.5, 0.5)).toBe(0);
     expect(makeElevationField([], 3, 2).maxLift).toBe(0);
     expect(makeElevationField([5, 5], 0, 0).maxLift).toBe(0);
+  });
+});
+
+describe('projectTile - the ground anchor a tile coordinate is drawn at', () => {
+  const field = makeElevationField([0, 10, 20, 30, 40, 50], 3, 2);
+
+  it('drops the projected point onto the slope under it', () => {
+    const flat = tileToScreen(1.5, 0.5);
+    const lifted = projectTile(field, 1.5, 0.5);
+    expect(lifted.x).toBe(flat.x);
+    expect(lifted.y).toBe(flat.y - field.liftAt(1.5, 0.5));
+    expect(field.liftAt(1.5, 0.5)).toBeGreaterThan(0);
+  });
+
+  it('is the raw projection on flat ground - an absent field and a map with no elevation lane alike', () => {
+    expect(projectTile(undefined, 1.5, 0.5)).toEqual(tileToScreen(1.5, 0.5));
+    expect(projectTile(makeElevationField(undefined, 3, 2), 1.5, 0.5)).toEqual(tileToScreen(1.5, 0.5));
   });
 });
 

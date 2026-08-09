@@ -1,4 +1,4 @@
-import { halfCellToScreen, TILE_HALF_H } from '../projection/index.js';
+import { halfCellToScreen, TILE_HALF_H, tileToScreen } from '../projection/index.js';
 import { makeCellSampler } from './cell-field.js';
 import { nodeCell } from './tessellation.js';
 
@@ -45,6 +45,17 @@ export function terrainLiftAt(elevation: ElevationField | undefined, col: number
 /** {@link terrainLiftAt} for a half-cell node address. */
 export function terrainLiftAtNode(elevation: ElevationField | undefined, hx: number, hy: number): number {
   return elevation !== undefined && elevation.maxLift > 0 ? elevation.liftAtNode(hx, hy) : 0;
+}
+
+/** A continuous cell coordinate's lifted screen point: {@link tileToScreen} with the terrain height
+ *  under it subtracted from `y`. */
+export function projectTile(
+  elevation: ElevationField | undefined,
+  col: number,
+  row: number,
+): { x: number; y: number } {
+  const p = tileToScreen(col, row);
+  return { x: p.x, y: p.y - terrainLiftAt(elevation, col, row) };
 }
 
 /** A half-cell node's lifted screen point: {@link halfCellToScreen} with the terrain height under the

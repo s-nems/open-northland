@@ -8,6 +8,7 @@ export {
   elevationLiftPerUnit,
   makeElevationField,
   projectNode,
+  projectTile,
   terrainLiftAt,
   terrainLiftAtNode,
 } from './elevation.js';
