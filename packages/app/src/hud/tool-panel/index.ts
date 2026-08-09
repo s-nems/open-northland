@@ -1,7 +1,7 @@
-import type { HudLayout, PalettedSprite } from '@open-northland/render';
+import type { HudLayout } from '@open-northland/render';
 import type { Command, PlayerCommand } from '@open-northland/sim';
-import { type Application, Container, Graphics, Texture } from 'pixi.js';
-import { type GuiArt, loadGuiArt, makeGuiSprite } from '../../content/gui-art.js';
+import { type Application, Container, Texture } from 'pixi.js';
+import { loadGuiArt } from '../../content/gui-art.js';
 import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
 import { loadUiFont } from '../../content/ui-font.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
@@ -16,11 +16,10 @@ import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
 import { createToolPanelInput, type HeldMode } from './input.js';
-import { buildToolPanelLayout, pointOverToolPanel, TOOL_PANEL_STRIP, type ToolButtonId } from './layout.js';
+import { buildToolPanelLayout, pointOverToolPanel, type ToolButtonId } from './layout.js';
 import { createPlacementController } from './placement.js';
 import { createSpeedButton } from './speed-button.js';
-import { buildOutlinedButtonSpecs } from './strip-outline.js';
-import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip } from './strip-texture.js';
+import { createStripSurface } from './strip-surface.js';
 import { createToolWindows } from './windows.js';
 
 export interface ToolPanelOptions {
@@ -80,11 +79,6 @@ export interface ToolPanelController {
   dispose(): void;
 }
 
-/** Strip and button block colours drawn when the decoded GUI art is absent. */
-const FALLBACK_STRIP = 0x1c1810;
-const FALLBACK_BUTTON = 0x4a3f28;
-const FALLBACK_BUTTON_BORDER = 0x8a744a;
-
 /** Mount the tool panel onto the app stage; async because it loads the optional decoded GUI art and font. */
 export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelController> {
   const { app, canvas, enqueue } = opts;
@@ -117,43 +111,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const bannerContainer = new Container();
   root.addChild(stripContainer, windowContainer, hoverContainer, bannerContainer);
 
-  let supersampled: SupersampledStrip | null = null;
-  /** The renderer resolution the strip was baked at; a live DPR change re-bakes at the new density. */
-  let stripResolution = app.renderer.resolution;
-  const speedSprites: PalettedSprite[] = [];
-
-  const buildStrip = (guiArt: GuiArt): void => {
-    supersampled?.display.destroy();
-    supersampled?.dispose();
-    speedSprites.length = 0;
-    // Deviation from the original's opaque panel: the strip keys its near-black backdrop away, so the
-    // world shows past the carved silhouette.
-    const specs: StripSpriteSpec[] = [];
-    const strip = makeGuiSprite(guiArt, layout.stripGfx, {
-      defaultPalette: 'iconsleft',
-      colorKey: 'full',
-    });
-    if (strip !== null) specs.push({ spr: strip.sprite, design: TOOL_PANEL_STRIP });
-    const outlined = buildOutlinedButtonSpecs(guiArt, layout.buttons);
-    specs.push(...outlined.specs);
-    speedSprites.push(...outlined.speedSprites);
-    supersampled = createSupersampledStrip({ app, bounds: layout.designBounds, scale, sprites: specs });
-    stripContainer.addChild(supersampled.display);
-    stripResolution = app.renderer.resolution;
-  };
-
-  if (art !== null) {
-    buildStrip(art);
-  } else {
-    const g = new Graphics();
-    g.rect(layout.strip.x, layout.strip.y, layout.strip.w, layout.strip.h).fill(FALLBACK_STRIP);
-    for (const b of layout.buttons) {
-      g.rect(b.placed.x + 2, b.placed.y + 2, b.placed.w - 4, b.placed.h - 4)
-        .fill(FALLBACK_BUTTON)
-        .stroke({ color: FALLBACK_BUTTON_BORDER, width: 1 });
-    }
-    stripContainer.addChild(g);
-  }
+  const stripSurface = createStripSurface({ app, container: stripContainer, layout, art });
 
   const ctx: PanelContext = {
     layout,
@@ -202,8 +160,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     scale,
     stripContainer,
     art,
-    strip: () => supersampled,
-    speedSprites,
+    bake: stripSurface,
     speedBtnRect: layout.buttons.find((b) => b.id === 'speed')?.placed,
     onSpeedChange: opts.onSpeedChange,
   });
@@ -254,17 +211,14 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     claimsWheel,
     placementType: () => placement.activeType(),
     update(hudFor): void {
-      if (art !== null && app.renderer.resolution !== stripResolution) {
-        buildStrip(art);
-        speedButton.syncGlyph();
-      }
+      if (stripSurface.syncResolution()) speedButton.syncGlyph();
       windows.refresh(hudFor);
       for (const mode of held) mode.placeBanner();
     },
     dispose(): void {
       input.dispose();
       root.destroy({ children: true });
-      supersampled?.dispose();
+      stripSurface.dispose();
     },
   };
 }
