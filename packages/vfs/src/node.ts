@@ -13,8 +13,14 @@ export function nodeVfs(): Vfs {
       const handle = await open(path, 'r');
       try {
         const buffer = new Uint8Array(length);
-        const { bytesRead } = await handle.read(buffer, 0, length, offset);
-        return buffer.subarray(0, bytesRead);
+        // One read may return short of the request; keep reading until the range or EOF is reached.
+        let filled = 0;
+        while (filled < length) {
+          const { bytesRead } = await handle.read(buffer, filled, length - filled, offset + filled);
+          if (bytesRead === 0) break;
+          filled += bytesRead;
+        }
+        return buffer.subarray(0, filled);
       } finally {
         await handle.close();
       }

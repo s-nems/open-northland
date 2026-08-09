@@ -1,6 +1,5 @@
 import { runPipeline } from '@open-northland/asset-pipeline';
-import type { PipelineProgress } from '@open-northland/asset-pipeline/progress';
-import { createEventThrottle, type PipelineEvent } from '@open-northland/installer';
+import { bridgePipelineProgress, type PipelineEvent } from '@open-northland/installer';
 import { nodeVfs } from '@open-northland/vfs/node';
 
 /**
@@ -28,18 +27,7 @@ if (gameDir === undefined || outDir === undefined) {
   process.exit(2);
 }
 
-const itemThrottle = createEventThrottle();
-const progress: PipelineProgress = {
-  stage(stage) {
-    itemThrottle.reset();
-    post({ kind: 'stage', stage });
-  },
-  item(done, total) {
-    const lastOfStage = total !== undefined && done >= total - 1;
-    if (!itemThrottle.shouldEmit(lastOfStage)) return;
-    post(total === undefined ? { kind: 'item', done } : { kind: 'item', done, total });
-  },
-};
+const progress = bridgePipelineProgress(post);
 
 // No process.exit() after posting: postMessage is asynchronous, so exiting on the same tick can
 // drop the terminal event. The process ends by draining naturally.

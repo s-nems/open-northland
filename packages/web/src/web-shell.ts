@@ -30,36 +30,38 @@ function storedLocale(): Locale {
   return isLocale(raw) ? raw : resolveLocale(navigator.languages);
 }
 
-/** Streams `response` into `destZip`, reporting download progress; resolves to undefined - the web
- *  transport has no streaming hash, and the archive comes from this site anyway. */
-async function streamToVfs(
-  fs: Vfs,
-  response: Response,
+/** Streams `response` into an OPFS file chunk by chunk - the ~600 MB archive must never sit in
+ *  memory whole. Resolves to undefined: the web transport has no streaming hash, and the archive
+ *  comes from this site anyway. */
+async function streamToOpfsFile(
   destZip: string,
+  response: Response,
   onEvent: (event: ModEvent) => void,
   signal: AbortSignal | undefined,
 ): Promise<undefined> {
   if (response.body === null) throw new Error('mod download: empty response body');
   const lengthHeader = response.headers.get('content-length');
   const total = lengthHeader === null ? undefined : Number.parseInt(lengthHeader, 10);
+  let dir = await navigator.storage.getDirectory();
+  const segments = destZip.split('/');
+  const name = segments.pop();
+  if (name === undefined || name === '') throw new Error(`mod download: unusable path ${destZip}`);
+  for (const segment of segments) dir = await dir.getDirectoryHandle(segment, { create: true });
+  const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
   const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
   let received = 0;
-  for (;;) {
-    signal?.throwIfAborted();
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    received += value.length;
-    onEvent({ kind: 'mod-download', received, ...(total !== undefined ? { total } : {}) });
+  try {
+    for (;;) {
+      signal?.throwIfAborted();
+      const { done, value } = await reader.read();
+      if (done) break;
+      await writable.write(value);
+      received += value.length;
+      onEvent({ kind: 'mod-download', received, ...(total !== undefined ? { total } : {}) });
+    }
+  } finally {
+    await writable.close();
   }
-  const bytes = new Uint8Array(received);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.length;
-  }
-  await fs.writeFile(destZip, bytes);
   return undefined;
 }
 
@@ -86,10 +88,10 @@ export function createWebShellApi(): ShellApi {
     return { path: folder.name, probe: await probeGameFolder(fileMapVfs(folder.files), '') };
   }
 
+  /** OPFS-root-relative, exactly as the worker's data mount and the setup page both consume it. */
   async function availableModRoot(): Promise<string | undefined> {
     const fs = await opfsRoot();
-    const root = await discoverInstalledMod(fs, MODS_DIR);
-    return root === undefined ? undefined : relIn(DATA_DIR, root);
+    return discoverInstalledMod(fs, MODS_DIR);
   }
 
   async function contentStatus(): Promise<ShellSetupState['contentStatus']> {
@@ -118,12 +120,14 @@ export function createWebShellApi(): ShellApi {
     async pickGameFolder(): Promise<GameFolderCandidate | null> {
       const picker = (window as DirectoryPickerWindow).showDirectoryPicker;
       if (picker !== undefined) {
+        let handle: FileSystemDirectoryHandle;
         try {
-          const handle = await picker.call(window, { id: 'open-northland-game' });
-          return await candidateOf(await snapshotDirectoryHandle(handle));
-        } catch {
-          return null; // the picker rejects on cancel
+          handle = await picker.call(window, { id: 'open-northland-game' });
+        } catch (err) {
+          if (err instanceof DOMException && err.name === 'AbortError') return null;
+          throw err; // a permission or read failure is not a cancel and must surface
         }
+        return candidateOf(await snapshotDirectoryHandle(handle));
       }
       const files = await pickDirectoryFiles();
       if (files === null) return null;
@@ -179,7 +183,7 @@ export function createWebShellApi(): ShellApi {
       const { signal } = modDownload;
       try {
         const fs = await opfsRoot();
-        const root = await installCnMod(
+        return await installCnMod(
           fs,
           MODS_DIR,
           async (destZip, onEvent, downloadSignal) => {
@@ -187,12 +191,11 @@ export function createWebShellApi(): ShellApi {
             if (!response.ok) {
               throw new Error(`mod download: ${CNMOD_ARCHIVE_URL.pathname} answered ${response.status}`);
             }
-            return streamToVfs(fs, response, destZip, onEvent, downloadSignal);
+            return streamToOpfsFile(destZip, response, onEvent, downloadSignal);
           },
           forwardModEvent,
           { signal },
         );
-        return relIn(DATA_DIR, root);
       } finally {
         modDownload = undefined;
       }
@@ -206,13 +209,12 @@ export function createWebShellApi(): ShellApi {
       const file = await pickZipFile();
       if (file === null) return null;
       const fs = await opfsRoot();
-      const root = await installCnMod(
+      return installCnMod(
         fs,
         MODS_DIR,
-        (destZip, onEvent, signal) => streamToVfs(fs, new Response(file), destZip, onEvent, signal),
+        (destZip, onEvent, signal) => streamToOpfsFile(destZip, new Response(file), onEvent, signal),
         forwardModEvent,
       );
-      return relIn(DATA_DIR, root);
     },
 
     onModEvent(listener: (event: ModEvent) => void): void {
