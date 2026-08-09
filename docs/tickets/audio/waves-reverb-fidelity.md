@@ -1,6 +1,6 @@
 # Match the DirectSound Waves Reverb response
 
-**Area:** audio pipeline · **Priority:** P1
+**Area:** audio · **Priority:** P1
 
 Music segments route the synthesized DLS mix through an authored DirectSound Waves Reverb DMO.
 The pipeline's Freeverb approximation has the right parameter inputs but the wrong mix and decay:
