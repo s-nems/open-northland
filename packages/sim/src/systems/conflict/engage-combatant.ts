@@ -52,8 +52,8 @@ type Attacker = SettlerIdentity & { readonly experience: ReadonlyMap<number, num
 
 /**
  * Resolve and act on one combatant's engagement this tick: swing, chase, hold a post, flee, or hand back to
- * the economy. The gates below run as a ladder and their order is behavior - each rung shields every rung
- * under it from a case it must not see.
+ * the economy. The gates run as a ladder whose order is behavior: each rung shields every rung under it
+ * from a case it must not see.
  */
 export function engageCombatant(
   world: World,
@@ -66,17 +66,15 @@ export function engageCombatant(
   const attacker = world.get(e, Settler);
   const posted = attacker.jobType === null ? null : towerPostFor(world, ctx, e, attacker.jobType);
   const manning = posted !== null && standsAtPost(world, e) === posted;
-  // Posted but not up there yet: it does not stop to auto-engage on the way, because a swing benches the
-  // planner for its whole length and leaves an Engagement, so an archer that opens fire at the foot of its
-  // own tower never climbs it. Ahead of the busy gate on purpose - a swing already in flight has to release
-  // its Engagement here, or the planner never gets the settler back.
-  if (posted !== null && !manning && !world.has(e, AttackOrder)) {
+  if (climbingToPost(world, e, posted, manning)) {
+    // Released, not merely skipped: a swing already in flight leaves an Engagement the planner would
+    // otherwise never get the settler back from.
     disengage(world, e);
     return;
   }
   if (busyOrFelled(world, e)) return;
-  // An attack-move march is the one player walk that does not bench combat: the unit fights its way there.
-  // While its aggression rests (`blockedUntil` - the last chase could not route) it walks as a plain move.
+  // `blockedUntil` rests an attack-move's aggression after a chase that could not route: it walks as a
+  // plain move until then.
   const march = world.tryGet(e, PlayerOrder)?.attackMove;
   const marching = march !== undefined && ctx.tick >= march.blockedUntil;
   if (suppressedByMoveOrder(world, e, marching)) return;
@@ -94,8 +92,7 @@ export function engageCombatant(
     shelter: manned === null ? null : { building: manned, seat: seats.get(e) ?? 0 },
   };
 
-  // The two passive stances are overridden by the post, not applied under it: a manned tower is itself the
-  // order to hold and shoot, so a garrison neither stands down nor abandons the wall.
+  // A manned post is itself the order to hold and shoot, so neither passive stance applies under one.
   if (!manning) {
     if (resolveFleeState(world, ctx, terrain, index, e, attacker, stance)) return;
     if (ignoresCombat(ctx, stance, attacker)) {
@@ -163,6 +160,12 @@ export function engageCombatant(
   if (gaveUp) restPreySearch(world, ctx, e, spec);
 }
 
+/** A posted fighter still on its way up. Auto-engaging here would bench the planner for a whole swing, so
+ *  an archer that opens fire at the foot of its own tower never climbs it. */
+function climbingToPost(world: World, e: Entity, posted: Entity | null, manning: boolean): boolean {
+  return posted !== null && !manning && !world.has(e, AttackOrder);
+}
+
 /** The weapon typeId this combatant fights with, overriding its `(tribe, job)` class binding: the house bow
  *  while it mans a shelter, else the {@link Weapon} it carries. `undefined` falls back to the class binding,
  *  which leaves an unarmed civilian unarmed. */
@@ -183,8 +186,7 @@ function busyOrFelled(world: World, e: Entity): boolean {
 }
 
 /** A live player move order suppresses all auto-behavior en route, engage and flee alike; it dies on
- *  arrival, so the unit's own stance takes over at the spot. An attack-move `marching` order is the
- *  exception: the whole point of that walk is to keep fighting along it. */
+ *  arrival. An attack-move `marching` order is the exception - that walk exists to keep fighting along it. */
 function suppressedByMoveOrder(world: World, e: Entity, marching: boolean): boolean {
   return !marching && world.has(e, PlayerOrder) && !world.has(e, AttackOrder);
 }
@@ -203,8 +205,7 @@ function actingMode(
 }
 
 /** Whether an explicit {@link AttackOrder} is in flight, dropping one that has outlived its target first:
- *  left standing, its stale general-hostility spec would fall through the stance dispatch as a one-tick
- *  ATTACK-style re-acquire regardless of the unit's actual stance. */
+ *  left standing, its stale spec re-acquires ATTACK-style whatever the unit's actual stance says. */
 function liveAttackOrder(world: World, ctx: SystemContext, e: Entity, attacker: SettlerIdentity): boolean {
   if (!world.has(e, AttackOrder)) return false;
   if (isValidTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) return true;
@@ -233,26 +234,23 @@ function resolveFleeState(
     }
     return false;
   }
-  // A fleeing unit is not attack-engaged. A stale marker would outlive the flee, benching the unit and
-  // keeping combat awake forever.
+  // A marker outliving the flee would bench the unit and keep combat awake forever.
   world.remove(e, Engagement);
   world.remove(e, HuntFocus); // and with it the prey hold, which only the hunting branch can reap
   fleeDrive(world, ctx, terrain, index, e, attacker);
   return true;
 }
 
-/** The passive stance never auto-engages. A hunter is exempt: its huntable-prey predation is an economic
- *  drive independent of the military mode, so it falls through to the engage path under a predation-only
- *  filter. */
+/** The passive stance never auto-engages. A hunter is exempt: predation is an economic drive independent of
+ *  the military mode, so it falls through to the engage path under a predation-only filter. */
 function ignoresCombat(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   return (
     stance.mode === MILITARY_MODE.IGNORE && !stance.ordered && !isHunterJob(ctx.content, attacker.jobType)
   );
 }
 
-/** The carry leg of the one-kill cycle: a loaded hunter banks its kill before any new acquisition. Without
- *  this, the tick after the last pickup - carcass node gone, delivery not yet planned - reads as an idle
- *  hunter and combat steals it mid-cycle. */
+/** The carry leg of the one-kill cycle: a loaded hunter banks its kill before any new acquisition. The tick
+ *  after the last pickup - carcass gone, delivery unplanned - would otherwise read as an idle hunter. */
 function carriesKillHome(
   world: World,
   ctx: SystemContext,
@@ -264,8 +262,7 @@ function carriesKillHome(
 }
 
 /** A travelling unit that is neither engaged nor commanded walks under another drive and must not be yanked
- *  into combat. An engaged or commanded one is re-evaluated, so a chaser swings the instant it is in reach
- *  and a marching unit acquires without first standing still. */
+ *  into combat. The engaged and commanded are re-evaluated, so they acquire without first standing still. */
 function walksUnderAnotherDrive(world: World, e: Entity, travelling: boolean, commanded: boolean): boolean {
   return travelling && !world.has(e, Engagement) && !commanded;
 }
@@ -326,9 +323,8 @@ function swingAt(
 }
 
 /** Who never walks toward a target out of reach: anyone shooting from inside a building, and an unowned
- *  scenario civ. For the men indoors this is where a player's attack order onto something past their reach
- *  dies - {@link resolveTarget} hands the focus back at its real distance, so {@link disengage} lets it go
- *  instead of marching the man out. An owned combatant advances, and so does a hostile wild animal. */
+ *  scenario civ. For the men indoors this is also where an attack order onto something past their reach
+ *  dies, rather than marching them out. An owned combatant advances, and so does a hostile wild animal. */
 function hasNoAdvanceDrive(ctx: SystemContext, stance: CombatantStance, attacker: SettlerIdentity): boolean {
   if (stance.post !== null || stance.shelter !== null) return true;
   return !stance.owned && !isAnimalTribe(ctx.content, attacker.tribe);
