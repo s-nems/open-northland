@@ -45,6 +45,8 @@ import {
   WOOD_HARVEST,
 } from './support.js';
 
+/** The allocator's hiring ladder: collector posts, workshop staffing tiers, scout, builder reserve. */
+
 describe('workforce module (collectResources)', () => {
   it('hires flag collectors beside their resources, one scout, and the builder reserve', () => {
     const sim = aiSim();
@@ -144,7 +146,6 @@ describe('workforce module (collectResources)', () => {
     sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: null });
     sim.step();
 
-    // No resource stands anywhere: the generic flag feeds nothing - back to the builder pool.
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     expect(commands.filter((c) => c.kind === 'setJob' && c.entity === gatherer)).toEqual([
       { kind: 'setJob', entity: gatherer, jobType: BUILDER },
@@ -531,7 +532,7 @@ describe('workforce module (collectResources)', () => {
     expect(commands).toEqual([{ kind: 'setJob', entity: scout, jobType: BUILDER }]);
   });
 
-  it('idles a seat without a built headquarters (user rule: no HQ → no AI)', () => {
+  it('idles a seat without a built headquarters - no HQ, no AI', () => {
     const sim = aiSim();
     spawnMen(sim, 3);
     sim.step();
