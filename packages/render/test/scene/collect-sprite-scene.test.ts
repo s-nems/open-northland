@@ -156,6 +156,18 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     });
   });
 
+  it('maps an owned item’s team-colour slot through playerColourOf, leaving an unowned one alone', () => {
+    const scene = collectSpriteScene(
+      snapshotOf([
+        entity(1, 1, 1, { Settler: { tribe: 0 }, Owner: { player: 3 } }),
+        entity(2, 2, 1, { Settler: { tribe: 0 } }),
+      ]),
+      { playerColourOf: (player) => player + 10 },
+    );
+    expect(scene.items.find((d) => d.ref === 1)?.player).toBe(13);
+    expect(scene.items.find((d) => d.ref === 2)?.player).toBeUndefined();
+  });
+
   // `portraitOnly` tells the pool to hide the item on the main map and draw it only in the portrait's
   // second render.
   it('portraitRef force-draws its off-screen subject, tagged portraitOnly (not frozen)', () => {

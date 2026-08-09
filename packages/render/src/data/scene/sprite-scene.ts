@@ -1,22 +1,14 @@
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
-import { type ElevationField, terrainLiftAt } from '../terrain/index.js';
-import {
-  assignBerryBushFields,
-  assignBuildingFields,
-  assignProjectileArc,
-  assignSettlerFields,
-  assignStockpileFields,
-  pushGhostItems,
-  pushSignpostItems,
-} from './collect-fields.js';
-import { spriteDepth } from './depth.js';
+import type { ElevationField } from '../terrain/index.js';
+import { pushGhostItems } from './collect-fields.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
 import { emitEntities } from './entity-source.js';
+import { assembleItem, type SceneBuild } from './item-assembly.js';
 import { STANDING_POSE, settlerPose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
-import { assignStaticFields, classify, readPosition } from './snapshot-readers/index.js';
+import { classify, readPosition } from './snapshot-readers/index.js';
 import type { SpriteSpatialIndex } from './spatial-index.js';
 
 /** Whether a ref is alive (drawable) this frame. A `ReadonlySet` satisfies it; the index-backed build
@@ -107,6 +99,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   const items: MutableSpriteDrawItem[] = [];
   const collected = new Set<number>();
   const posByRef = targetPositionsOf(snapshot);
+  const build: SceneBuild = { snapshot, items, collected, posByRef, elevation, playerColourOf };
 
   const emit = (entity: EntitySnapshot): void => {
     // Drawn by the retained static layer instead - skip before paying for a classify.
@@ -135,57 +128,10 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
 
     const pose =
       kind === 'settler' && !indoorSettler ? settlerPose(components, tileX, tileY, posByRef) : STANDING_POSE;
-    // Read here, not in the stockpile branch below, so it folds into the depth key.
-    const isFlag = 'DeliveryFlag' in components;
-    const lift = terrainLiftAt(elevation, tileX, tileY);
-    // A projectile's ballistic height rides the same lift channel as terrain lift: a draw offset the
-    // depth key never sees, so neither can reshuffle occlusion.
-    let arcLift = 0;
-    const item: MutableSpriteDrawItem = {
-      kind,
-      ref: entity.id,
-      x: screen.x,
-      y: screen.y,
-      depth: spriteDepth(tileX, tileY, kind, isFlag),
-      state: pose.state,
-    };
-    switch (kind) {
-      case 'settler':
-        assignSettlerFields(item, components, pose.actingAtomic, pose.targetFacing);
-        break;
-      case 'building':
-        assignBuildingFields(item, components);
-        break;
-      case 'resource':
-      case 'stump':
-        assignStaticFields(item, kind, components);
-        break;
-      case 'berrybush':
-        assignBerryBushFields(item, components);
-        break;
-      case 'signpost':
-        pushSignpostItems(items, collected, snapshot, item, components, tileX, tileY, lift, playerColourOf);
-        break;
-      case 'projectile':
-        arcLift = assignProjectileArc(item, components, screen, posByRef);
-        break;
-      case 'stockpile':
-      case 'grounddrop':
-        assignStockpileFields(item, components, isFlag);
-        break;
-      default: {
-        const _exhaustive: never = kind;
-        void _exhaustive;
-      }
-    }
-    const drawLift = lift + arcLift;
-    if (drawLift !== 0) item.lift = drawLift;
+    const item = assembleItem(build, entity, kind, tileX, tileY, screen, pose);
     if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;
     // Only a kept or forced settler gets this far indoors.
     if (indoorSettler) item.frozen = true;
-    if (playerColourOf !== undefined && item.player !== undefined) {
-      item.player = playerColourOf(item.player);
-    }
     items.push(item);
   };
 
