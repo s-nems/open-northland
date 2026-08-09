@@ -5,16 +5,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
-import { decodeSegmentTiming, musicTimeToSeconds } from '../../decoders/sgt.js';
+import { decodeSegmentAudiopath, decodeSegmentTiming, musicTimeToSeconds } from '../../decoders/sgt.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { encodeOgg } from './ogg-encode.js';
+import { decimateByTwo } from './resample.js';
+import { applyWavesReverb } from './reverb.js';
 import { decodePcm16Wav } from './wav.js';
 
 /**
  * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - one `mtLength`
  * pass per segment, with the loop-back point in the manifest (loop semantics: `decoders/sgt.ts`).
+ * Each segment's embedded audiopath then shapes the render: the authored Waves Reverb applies to
+ * the whole mix and a 22050 Hz port rate halves the published rate (the synth itself renders
+ * oversampled at 44.1 kHz).
  * `Theme_Viking_Hostile` alone authors `repeats: 1`; looping it like its 63 infinite siblings is an
  * approximation. Rendering needs the locally built dmrender binary (`scripts/build-dmrender.sh`);
  * without it, or without `DataX/DM2`, the stage is skipped and the app plays no music.
@@ -22,10 +27,18 @@ import { decodePcm16Wav } from './wav.js';
 
 const execFileAsync = promisify(execFile);
 
-/** Rendered track parameters: 44.1 kHz stereo, encoder quality ~mid VBR. */
+/** Synth render parameters: 44.1 kHz stereo, encoder quality ~mid VBR. */
 const SAMPLE_RATE = 44100;
 const CHANNELS = 2;
 const VBR_QUALITY = 3;
+/** Headroom for the reverb's wet sum; uniform so relative track loudness survives. */
+const MASTER_GAIN = 10 ** (-3 / 20);
+/**
+ * Bump when this stage's own post-processing (reverb, decimation, master gain) changes rendered
+ * bytes: source mtimes cannot see code changes, so a stored manifest with another version marks
+ * every ogg stale.
+ */
+const RENDER_VERSION = 2;
 /** Rendered wav headroom over the loop length; trimmed away at encode. dmrender takes whole seconds. */
 const RENDER_TAIL_S = 1;
 /** Concurrent dmrender processes; renders are CPU-bound and independent. */
@@ -70,6 +83,20 @@ async function isUpToDate(outPath: string, sourcePath: string, inputsMtimeMs: nu
   }
 }
 
+/** The render version the stored manifest carries, or 0 when there is none to trust. */
+async function storedRenderVersion(musicDir: string): Promise<number> {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(join(musicDir, MUSIC_MANIFEST_NAME), 'utf8'));
+    if (typeof parsed === 'object' && parsed !== null && 'renderVersion' in parsed) {
+      const version = (parsed as { renderVersion: unknown }).renderVersion;
+      if (typeof version === 'number') return version;
+    }
+  } catch {
+    // No readable manifest: every ogg is stale.
+  }
+  return 0;
+}
+
 /** Latest mtime of the shared render inputs: the DLS banks and the dmrender binary itself. */
 async function sharedInputsMtimeMs(dm2: string, dmrender: string): Promise<number> {
   let latest = (await stat(dmrender)).mtimeMs;
@@ -95,11 +122,15 @@ export async function renderMusicStage(
   if (dm2 === undefined) return { rendered: 0, kept: 0, failed: 0, skipped: 'no DataX/DM2 in the game copy' };
   const dmrender = resolveDmrender();
   if (dmrender === undefined) {
+    const override = process.env.OPEN_NORTHLAND_DMRENDER;
     return {
       rendered: 0,
       kept: 0,
       failed: 0,
-      skipped: 'dmrender not built (tools/asset-pipeline/scripts/build-dmrender.sh)',
+      skipped:
+        override !== undefined && override.length > 0
+          ? `OPEN_NORTHLAND_DMRENDER points at a missing file (${override})`
+          : 'dmrender not built (tools/asset-pipeline/scripts/build-dmrender.sh)',
     };
   }
   const segments = (await readdir(dm2)).filter((f) => f.toLowerCase().endsWith('.sgt')).sort();
@@ -108,6 +139,7 @@ export async function renderMusicStage(
   const musicDir = join(outDir, MUSIC_DIR);
   await mkdir(musicDir, { recursive: true });
   const inputsMtimeMs = await sharedInputsMtimeMs(dm2, dmrender);
+  const sameRenderVersion = (await storedRenderVersion(musicDir)) === RENDER_VERSION;
   // dmrender resolves the segments' DLS references against its working directory.
   const workDir = await mkdtemp(join(tmpdir(), 'dmrender-'));
   for (const entry of await readdir(dm2)) {
@@ -127,12 +159,13 @@ export async function renderMusicStage(
     const sourcePath = join(dm2, segment);
     const outPath = join(musicDir, file);
     try {
-      const timing = decodeSegmentTiming(await readFile(sourcePath));
+      const segmentBytes = await readFile(sourcePath);
+      const timing = decodeSegmentTiming(segmentBytes);
       if (timing === undefined) throw new Error('no segh header');
       const loopStartS = musicTimeToSeconds(timing.loopStartTicks, timing.tempos);
       const totalS = musicTimeToSeconds(timing.lengthTicks, timing.tempos);
       manifest.set(stem, loopStartS > 0 ? { file, loopStartS } : { file });
-      if (await isUpToDate(outPath, sourcePath, inputsMtimeMs)) {
+      if (sameRenderVersion && (await isUpToDate(outPath, sourcePath, inputsMtimeMs))) {
         kept++;
         return;
       }
@@ -156,8 +189,25 @@ export async function renderMusicStage(
       if (wav.sampleRate !== SAMPLE_RATE || wav.channels.length !== CHANNELS) {
         throw new Error(`unexpected render format ${wav.sampleRate}Hz/${wav.channels.length}ch`);
       }
-      const frames = Math.min(Math.round(totalS * SAMPLE_RATE), wav.channels[0]?.length ?? 0);
-      await writeFile(outPath, await encodeOgg(wav.channels, frames, SAMPLE_RATE, VBR_QUALITY));
+      const audiopath = decodeSegmentAudiopath(segmentBytes);
+      if (audiopath?.reverb !== undefined) {
+        applyWavesReverb(wav.channels, SAMPLE_RATE, audiopath.reverb);
+      }
+      let channels = wav.channels;
+      let outRate = SAMPLE_RATE;
+      if (audiopath?.sampleRate !== undefined && audiopath.sampleRate * 2 === SAMPLE_RATE) {
+        channels = channels.map(decimateByTwo);
+        outRate = audiopath.sampleRate;
+      } else if (audiopath?.sampleRate !== undefined && audiopath.sampleRate !== SAMPLE_RATE) {
+        console.warn(
+          `[pipeline] music: ${segment} authors a ${audiopath.sampleRate} Hz port; publishing at ${SAMPLE_RATE} Hz`,
+        );
+      }
+      for (const channel of channels) {
+        for (let i = 0; i < channel.length; i++) channel[i] = (channel[i] ?? 0) * MASTER_GAIN;
+      }
+      const frames = Math.min(Math.round(totalS * outRate), channels[0]?.length ?? 0);
+      await writeFile(outPath, await encodeOgg(channels, frames, outRate, VBR_QUALITY));
       rendered++;
     } catch (err) {
       manifest.delete(stem);
@@ -180,6 +230,9 @@ export async function renderMusicStage(
   }
 
   const tracks = Object.fromEntries([...manifest.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  await writeFile(join(musicDir, MUSIC_MANIFEST_NAME), `${JSON.stringify({ tracks }, null, 2)}\n`);
+  await writeFile(
+    join(musicDir, MUSIC_MANIFEST_NAME),
+    `${JSON.stringify({ renderVersion: RENDER_VERSION, tracks }, null, 2)}\n`,
+  );
   return { rendered, kept, failed };
 }

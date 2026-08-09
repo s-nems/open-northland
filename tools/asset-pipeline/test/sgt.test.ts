@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { DMUS_PPQ, decodeSegmentTiming, musicTimeToSeconds } from '../src/decoders/sgt.js';
+import {
+  DMUS_PPQ,
+  decodeSegmentAudiopath,
+  decodeSegmentTiming,
+  musicTimeToSeconds,
+} from '../src/decoders/sgt.js';
 
 /**
  * Synthetic-fixture coverage for the segment timing decoder: fixtures are authored here (never game
@@ -88,6 +93,63 @@ describe('decodeSegmentTiming', () => {
     expect(decodeSegmentTiming(riff('DMSG', chunk('guid', u32(1))))).toBeUndefined();
     expect(decodeSegmentTiming(riff('DMSG', chunk('segh', u32(1))))).toBeUndefined();
     expect(decodeSegmentTiming(new Uint8Array([1, 2, 3]))).toBeUndefined();
+  });
+});
+
+function f32(v: number): number[] {
+  const buf = new ArrayBuffer(4);
+  new DataView(buf).setFloat32(0, v, true);
+  return [...new Uint8Array(buf)];
+}
+
+const WAVES_REVERB_CLSID = [
+  0x68, 0x02, 0xfc, 0x87, 0x55, 0x9a, 0x60, 0x43, 0x95, 0xaa, 0x00, 0x4a, 0x1d, 0x9d, 0xe2, 0x6c,
+];
+const PORTPARAMS_SAMPLERATE_FLAG = 0x08;
+
+/** A pprh chunk: `DMUS_PORTPARAMS8` with only the sample-rate field marked valid. */
+function pprhChunk(sampleRate: number, validParams = PORTPARAMS_SAMPLERATE_FLAG): number[] {
+  return chunk('pprh', [
+    ...u32(36),
+    ...u32(validParams),
+    ...u32(0), // dwVoices
+    ...u32(0), // dwChannelGroups
+    ...u32(0), // dwAudioChannels
+    ...u32(sampleRate),
+    ...u32(0), // dwEffectFlags
+    ...u32(0), // fShare
+    ...u32(0), // dwFeatures
+  ]);
+}
+
+function dsfxForm(clsid: readonly number[], params: readonly number[]): number[] {
+  return chunk('RIFF', [
+    ...ascii('DSFX'),
+    ...chunk('fxhr', [...u32(0), ...clsid, ...u32(0), ...u32(0)]),
+    ...chunk('data', [...params]),
+  ]);
+}
+
+describe('decodeSegmentAudiopath', () => {
+  const reverbParams = [...f32(0), ...f32(-4.8), ...f32(2000), ...f32(0.001)];
+
+  it('reads the port rate and the Waves Reverb params', () => {
+    const bytes = riff('DMSG', [...pprhChunk(22050), ...dsfxForm(WAVES_REVERB_CLSID, reverbParams)]);
+    const audiopath = decodeSegmentAudiopath(bytes);
+    expect(audiopath?.sampleRate).toBe(22050);
+    expect(audiopath?.reverb?.inGainDb).toBe(0);
+    expect(audiopath?.reverb?.reverbMixDb).toBeCloseTo(-4.8, 4);
+    expect(audiopath?.reverb?.reverbTimeMs).toBeCloseTo(2000, 4);
+  });
+
+  it('ignores an unmarked port rate and a foreign effect class', () => {
+    const otherClsid = [...WAVES_REVERB_CLSID.slice(0, 15), 0x00];
+    const bytes = riff('DMSG', [...pprhChunk(22050, 0), ...dsfxForm(otherClsid, reverbParams)]);
+    expect(decodeSegmentAudiopath(bytes)).toBeUndefined();
+  });
+
+  it('returns undefined for a segment without an audiopath', () => {
+    expect(decodeSegmentAudiopath(riff('DMSG', chunk('guid', u32(1))))).toBeUndefined();
   });
 });
 
