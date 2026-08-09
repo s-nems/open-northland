@@ -1,7 +1,17 @@
-/** A picked save file: display name plus full text, never a filesystem path. */
+import { decodeSaveText, type SaveBytes } from './codec.js';
+
+/** A picked save file: display name, decoded JSON text, and the file's bytes exactly as picked -
+ *  what a validated load stages, so the reloaded boot decodes the same artifact the user chose. */
 export interface PickedSaveFile {
   readonly name: string;
   readonly contents: string;
+  readonly raw: SaveBytes;
+}
+
+/** A picked file's name and raw bytes as the desktop main process hands them over. */
+export interface SaveFileBytes {
+  readonly name: string;
+  readonly bytes: SaveBytes;
 }
 
 /**
@@ -10,9 +20,9 @@ export interface PickedSaveFile {
  */
 export interface GameFileBridge {
   /** Native save dialog; resolves to the written file's basename, or null when the user cancels. */
-  saveGameFile(suggestedName: string, contents: string): Promise<string | null>;
+  saveGameFile(suggestedName: string, contents: Uint8Array): Promise<string | null>;
   /** Native open dialog; null when the user cancels. */
-  openGameFile(): Promise<PickedSaveFile | null>;
+  openGameFile(): Promise<SaveFileBytes | null>;
 }
 
 declare global {
@@ -32,12 +42,17 @@ export function desktopFileBridge(): GameFileBridge | null {
     : null;
 }
 
+/** Decode picked bytes into the file both flows consume; throws on a corrupt gzip envelope. */
+export async function pickedSaveOf(name: string, bytes: SaveBytes): Promise<PickedSaveFile> {
+  return { name, contents: await decodeSaveText(bytes), raw: bytes };
+}
+
 /** Browser file picker for a save; resolves null when the dialog closes without a choice. */
 export function pickSaveFile(): Promise<PickedSaveFile | null> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json,application/json';
+    input.accept = '.json,.gz,application/json,application/gzip';
     input.addEventListener(
       'change',
       () => {
@@ -46,7 +61,10 @@ export function pickSaveFile(): Promise<PickedSaveFile | null> {
           resolve(null);
           return;
         }
-        file.text().then((contents) => resolve({ name: file.name, contents }), reject);
+        file
+          .arrayBuffer()
+          .then((buffer) => pickedSaveOf(file.name, new Uint8Array(buffer)))
+          .then(resolve, reject);
       },
       { once: true },
     );

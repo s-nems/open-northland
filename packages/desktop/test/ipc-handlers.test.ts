@@ -103,5 +103,8 @@ describe('wireIpc sender guard', () => {
     await expect(registered.get(IPC_CHANNELS.saveGameFile)?.(APP_FRAME, 42, 'bytes')).rejects.toThrow(
       'expected a string argument',
     );
+    await expect(
+      registered.get(IPC_CHANNELS.saveGameFile)?.(APP_FRAME, 'a.json.gz', '{"header":{}}'),
+    ).rejects.toThrow('expected save bytes');
   });
 });

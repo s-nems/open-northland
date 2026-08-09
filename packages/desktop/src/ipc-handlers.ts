@@ -39,6 +39,10 @@ function assertLocale(value: unknown): asserts value is Locale {
   if (!isLocale(value)) throw new Error('expected a supported locale');
 }
 
+function assertSaveBytes(value: unknown): asserts value is Uint8Array {
+  if (!(value instanceof Uint8Array)) throw new Error('expected save bytes');
+}
+
 async function candidateOf(path: string): Promise<GameFolderCandidate> {
   return { path, probe: await probeGameFolder(path) };
 }
@@ -50,12 +54,13 @@ async function pickDirectory(win: BrowserWindow, title: string): Promise<string 
   return picked.canceled || path === undefined ? undefined : path;
 }
 
-/** Refuses absurd save reads and writes before they hit memory: bytes on read, UTF-16 units on
- *  write - the same magnitude either way, far above a real save's megabytes. */
+/** Refuses absurd save reads and writes before they hit memory. The renderer's decode seam caps
+ *  what a compressed save may inflate to at the same magnitude. */
 const MAX_SAVE_FILE_BYTES = 256 * 1024 * 1024;
 
+/** `gz` for the gzipped saves the game writes, `json` for uncompressed saves. */
 function saveFileFilters(): { name: string; extensions: string[] }[] {
-  return [{ name: messages().dialogs.saveFileFilter, extensions: ['json'] }];
+  return [{ name: messages().dialogs.saveFileFilter, extensions: ['gz', 'json'] }];
 }
 
 export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
@@ -128,8 +133,8 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
 
   handleFromAppFrame(IPC_CHANNELS.saveGameFile, async (suggestedName: unknown, contents: unknown) => {
     assertString(suggestedName);
-    assertString(contents);
-    if (contents.length > MAX_SAVE_FILE_BYTES) throw new Error('save exceeds the size limit');
+    assertSaveBytes(contents);
+    if (contents.byteLength > MAX_SAVE_FILE_BYTES) throw new Error('save exceeds the size limit');
     const picked = await dialog.showSaveDialog(win, {
       title: messages().dialogs.saveGameTitle,
       // basename: the suggestion crosses the bridge untyped, and a path in it must not steer the dialog.
@@ -137,7 +142,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
       filters: saveFileFilters(),
     });
     if (picked.canceled || picked.filePath === '') return null;
-    await writeFile(picked.filePath, contents, 'utf8');
+    await writeFile(picked.filePath, contents);
     return basename(picked.filePath);
   });
 
@@ -151,7 +156,7 @@ export function wireIpc({ win, paths, state, pipeline }: IpcDeps): void {
     if (picked.canceled || path === undefined) return null;
     if ((await stat(path)).size > MAX_SAVE_FILE_BYTES) throw new Error('save exceeds the size limit');
     // The renderer gets the basename only; the full path stays in the main process.
-    return { name: basename(path), contents: await readFile(path, 'utf8') };
+    return { name: basename(path), bytes: await readFile(path) };
   });
 
   handleFromAppFrame(IPC_CHANNELS.setLocale, (locale: unknown) => {

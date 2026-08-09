@@ -1,3 +1,5 @@
+import { isSaveBytes, type SaveBytes } from './codec.js';
+
 /**
  * The one-shot hand-off from a validated in-game load to the reloaded page's boot. IndexedDB rather
  * than sessionStorage: a real map's save runs to megabytes, and the storage quota rejection would
@@ -25,8 +27,8 @@ function completed(txn: IDBTransaction): Promise<void> {
   });
 }
 
-/** Stage a validated save's bytes for the page reload that follows. */
-export async function storePendingLoad(bytes: string): Promise<void> {
+/** Stage a validated save file's bytes for the page reload that follows. */
+export async function storePendingLoad(bytes: SaveBytes): Promise<void> {
   const db = await openDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
@@ -41,7 +43,7 @@ export async function storePendingLoad(bytes: string): Promise<void> {
  * Read and delete the staged bytes in one transaction, so a boot that fails to restore them cannot
  * loop the failure; null on a normal fresh boot.
  */
-export async function takePendingLoad(): Promise<string | null> {
+export async function takePendingLoad(): Promise<SaveBytes | null> {
   const db = await openDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
@@ -49,7 +51,7 @@ export async function takePendingLoad(): Promise<string | null> {
     const read = store.get(ENTRY_KEY);
     store.delete(ENTRY_KEY);
     await completed(txn);
-    return typeof read.result === 'string' ? read.result : null;
+    return isSaveBytes(read.result) ? read.result : null;
   } finally {
     db.close();
   }
