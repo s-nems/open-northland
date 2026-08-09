@@ -6,6 +6,7 @@ import {
   type DoorBadgeRow,
   type HouseholdKind,
   SIGN_BAND_BOTTOM,
+  SIGN_BASE_BELOW,
   SIGN_HALF_WIDTH,
   SIGN_HEIGHT,
   SIGN_STEP,
@@ -23,6 +24,8 @@ import {
 const MARK_INSET = 3;
 const MARK_WIDTH = 2 * SIGN_HALF_WIDTH - 2 * MARK_INSET;
 const MARK_HEIGHT = SIGN_STEP - 2 * MARK_INSET;
+/** Approximation: a pixel judgement, narrower than the clump the post stands in for. */
+const POST_WIDTH = 8;
 /** Placeholder colours: one per worker role, with a dark outline so each reads on any ground. */
 const ROLE_COLOR: Readonly<Record<'craftsman' | 'carrier' | 'gatherer', number>> = {
   craftsman: 0x5ab6ff, // blue
@@ -78,6 +81,13 @@ function markTop(row: number): number {
   return -SIGN_BAND_BOTTOM - (row + 1) * SIGN_STEP + MARK_INSET;
 }
 
+/** Plant the base mark on the ground row 0's band claims, where the decoded sign draws its rock clump.
+ *  Unstroked, so the foot stays inside {@link SIGN_BASE_BELOW}. */
+function drawPost(g: Graphics): void {
+  const top = markTop(0) + MARK_HEIGHT;
+  g.rect(-POST_WIDTH / 2, top, POST_WIDTH, SIGN_BASE_BELOW - top).fill({ color: BORDER_COLOR });
+}
+
 /** The placeholder stack when no art is decoded: the same rows as the sign chain, a coloured bar per
  *  worker and a rounded one per resident family, so the two read apart. */
 export function makePlaceholderStack(rows: readonly DoorBadgeRow[], hearts: boolean): Container {
@@ -86,6 +96,7 @@ export function makePlaceholderStack(rows: readonly DoorBadgeRow[], hearts: bool
   for (const row of rows) {
     const g = new Graphics();
     const yTop = markTop(drawn);
+    if (drawn === 0) drawPost(g);
     if (row.role === 'single' || row.role === 'couple' || row.role === 'family') {
       g.ellipse(0, yTop + MARK_HEIGHT / 2, MARK_WIDTH / 2, MARK_HEIGHT / 2)
         .fill({ color: HOUSEHOLD_COLOR[row.role] })

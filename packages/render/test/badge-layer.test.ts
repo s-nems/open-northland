@@ -1,4 +1,4 @@
-import { Container, type Sprite, TextureSource } from 'pixi.js';
+import { Container, type Graphics, Point, type Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { SIGN_DEPTH_EPS, screenDepth } from '../src/data/scene/index.js';
 import type { AtlasFrame } from '../src/data/sprites/index.js';
@@ -15,6 +15,7 @@ import {
   type BuildingSignSheet,
   CONSTRUCTION_SIGN_DX,
   type DoorBadgeRow,
+  SIGN_BASE_BELOW,
   signRowAt,
 } from '../src/gpu/overlays/sign-gfx.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
@@ -90,7 +91,7 @@ const manned = (id: number, tileX: number, tileY: number, stars: number): DoorBa
   garrison: { stars, ...MAST },
 });
 
-/** The furthest a point the picker accepts sits outside `bounds`, 0 when the ink covers every such point.
+/** The furthest a point the picker accepts sits outside `bounds`, 0 when `bounds` covers every such point.
  *  Probed through the hit test itself, so a drawn mark cannot pass by restating the box it derives from. */
 function worstUncoveredReach(
   hit: (dx: number, dy: number) => boolean,
@@ -143,19 +144,31 @@ describe('BadgeLayer (placeholder marks)', () => {
     expect(b.minX).toBeCloseTo(-b.maxX, 6);
   });
 
-  it('fills its band, so grass beside a mark is not a click on that mark', () => {
+  it('keeps every row band inside its mark box, so grass beside a mark is not a click on it', () => {
     const { layer, root } = layerIn();
     const rows = workers(2, 0);
     layer.draw([badge(1, 3, 5, rows)]);
-    // The row above the base has no rock-clump skirt below it, so its whole band should be under ink.
-    const mark = (root.children[0] as Container).children[1];
-    if (mark === undefined) throw new Error('no second mark drawn');
-    const reach = worstUncoveredReach(
-      (dx, dy) => signRowAt(rows.length, dx, dy) === 1,
-      mark.getLocalBounds(),
-      80,
-    );
-    expect(reach).toBeLessThanOrEqual(MARK_BAND_SLACK);
+    const marks = (root.children[0] as Container).children;
+    expect(marks).toHaveLength(rows.length);
+    marks.forEach((mark, row) => {
+      const reach = worstUncoveredReach(
+        (dx, dy) => signRowAt(rows.length, dx, dy) === row,
+        mark.getLocalBounds(),
+        80,
+      );
+      expect(reach).toBeLessThanOrEqual(MARK_BAND_SLACK);
+    });
+  });
+
+  it('draws the base mark onto the ground its band claims, so bare grass is no click on its settler', () => {
+    const { layer, root } = layerIn();
+    const rows = workers(2, 0);
+    layer.draw([badge(1, 3, 5, rows)]);
+    const base = (root.children[0] as Container).children[0] as Graphics;
+    // Probed on the drawn shape: row 0's box would answer for a planted post that is not there.
+    const foot = new Point(0, SIGN_BASE_BELOW - 1);
+    expect(signRowAt(rows.length, foot.x, foot.y)).toBe(0);
+    expect(base.context.containsPoint(foot)).toBe(true);
   });
 
   it('stacks one mark per row at its anchor node', () => {

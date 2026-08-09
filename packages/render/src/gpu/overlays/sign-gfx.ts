@@ -123,8 +123,9 @@ export const CONSTRUCTION_SIGN_DX = -2 * SIGN_HALF_WIDTH;
  */
 export const GARRISON_MAST_FALLBACK_DX = 2 * SIGN_HALF_WIDTH;
 
-/** World-px the planted base sign's rock clump extends below the stack anchor. */
-const SIGN_BASE_BELOW = 8;
+/** World-px the planted base sign's rock clump extends below the stack anchor. Its lowest opaque row is
+ *  +7 in the `ls_temp` banner frames and +6 in the worker disc, plus a pixel of slack past the deeper. */
+export const SIGN_BASE_BELOW = 8;
 /** Anchor-space split between a row's emblem band and the band above it - just under the banner cloth
  *  (-5) and the disc rim (-2), so each 20 px band covers one emblem (an approximation for clicking). */
 export const SIGN_BAND_BOTTOM = 6;
