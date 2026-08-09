@@ -1,4 +1,5 @@
 import {
+  badgeAnchor,
   type Camera,
   type DoorBadge,
   halfCellToScreen,
@@ -254,9 +255,11 @@ describe('pickDoorBadgeRow', () => {
     elev[6 * W + 1] = 160; // a hill under cell (col 1, row 6)
     const field = makeElevationField(elev, W, H);
     const p = tileToScreen(1, 6);
-    const badges = [stack(1, 1, 6, { dx: -6, dy: 29 })];
+    const post = stack(1, 1, 6, { dx: -6, dy: 29 });
+    const badges = [post];
     const ax = p.x - 6;
     const ay = p.y + 29 - field.liftAt(1, 6);
+    expect(badgeAnchor(post, field)).toMatchObject({ x: ax, y: ay }); // the picker's shared anchor
     expect(pickDoorBadgeRow(badges, ax, ay - 10, field)).toBe(40);
     expect(pickDoorBadgeRow(badges, p.x, p.y - 10, field)).toBeNull(); // the unlifted spot misses
   });
@@ -318,8 +321,10 @@ describe('pickGarrisonFlag', () => {
     elev[6 * W + 1] = 160;
     const field = makeElevationField(elev, W, H);
     const p = tileToScreen(1, 6);
-    const badges = [manned(1, 1, 6)];
+    const tower = manned(1, 1, 6);
+    const badges = [tower];
     const lifted = p.y + MAST.dy - field.liftAt(1, 6);
+    expect(badgeAnchor(tower, field).mast).toEqual({ x: p.x + MAST.dx, y: lifted });
     expect(pickGarrisonFlag(badges, p.x + MAST.dx + 20, lifted - 20, field)).toBe(1);
     expect(pickGarrisonFlag(badges, p.x + MAST.dx + 20, p.y + MAST.dy - 20, field)).toBeNull();
 

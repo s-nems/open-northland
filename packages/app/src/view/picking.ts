@@ -1,16 +1,14 @@
 import {
+  badgeAnchor,
   type Camera,
   type DoorBadge,
   type DrawItem,
   type ElevationField,
   type EntityBounds,
   hitsGarrisonFlag,
-  ONE,
   signRowAt,
   TILE_HALF_H,
   TILE_HALF_W,
-  terrainLiftAt,
-  tileToScreen,
 } from '@open-northland/render';
 
 /**
@@ -176,18 +174,14 @@ export function pickDoorBadgeRow(
   let bestY = Number.NEGATIVE_INFINITY;
   for (const badge of badges) {
     if (badge.rows.length === 0) continue;
-    const tileX = badge.x / ONE;
-    const tileY = badge.y / ONE;
-    const p = tileToScreen(tileX, tileY);
-    const ax = p.x + (badge.dx ?? 0);
-    const ay = p.y + (badge.dy ?? 0) - terrainLiftAt(elevation, tileX, tileY);
-    const row = signRowAt(badge.rows.length, wx - ax, wy - ay);
+    const anchor = badgeAnchor(badge, elevation);
+    const row = signRowAt(badge.rows.length, wx - anchor.x, wy - anchor.y);
     if (row === null) continue;
     const settler = badge.rows[row]?.settler;
     if (settler === undefined) continue;
-    if (p.y > bestY) {
+    if (anchor.depthY > bestY) {
       best = settler;
-      bestY = p.y;
+      bestY = anchor.depthY;
     }
   }
   return best;
@@ -207,15 +201,11 @@ export function pickGarrisonFlag(
   let best: number | null = null;
   let bestY = Number.NEGATIVE_INFINITY;
   for (const badge of badges) {
-    if (badge.garrison === undefined) continue;
-    const tileX = badge.x / ONE;
-    const tileY = badge.y / ONE;
-    const p = tileToScreen(tileX, tileY);
-    const ax = p.x + badge.garrison.dx;
-    const ay = p.y + badge.garrison.dy - terrainLiftAt(elevation, tileX, tileY);
-    if (!hitsGarrisonFlag(wx - ax, wy - ay) || p.y <= bestY) continue;
+    const { mast, depthY } = badgeAnchor(badge, elevation);
+    if (mast === undefined || depthY <= bestY) continue;
+    if (!hitsGarrisonFlag(wx - mast.x, wy - mast.y)) continue;
     best = badge.id;
-    bestY = p.y;
+    bestY = depthY;
   }
   return best;
 }

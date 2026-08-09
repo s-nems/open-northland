@@ -1,11 +1,5 @@
 // Files inside this folder import their deps directly, not through this barrel.
-export {
-  BadgeLayer,
-  type DoorBadge,
-  type DoorBadgeRole,
-  type DoorBadgeRow,
-  type HouseholdKind,
-} from './badge-layer.js';
+export { BadgeLayer } from './badge-layer.js';
 export {
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -16,6 +10,7 @@ export { CollapseLayer } from './collapse-layer.js';
 export { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
 export { type ConstructionSign, ConstructionSignLayer } from './construction-sign-layer.js';
 export { DamageSmokeLayer } from './damage-smoke-layer.js';
+export { type BadgeAnchor, badgeAnchor, type DoorBadge } from './door-badge.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer } from './fog-layer.js';
 export { hitsGarrisonFlag } from './garrison-flag.js';
@@ -35,5 +30,8 @@ export {
   type BuildingSignGfx,
   type BuildingSignKind,
   type BuildingSignSheet,
+  type DoorBadgeRole,
+  type DoorBadgeRow,
+  type HouseholdKind,
   signRowAt,
 } from './sign-gfx.js';

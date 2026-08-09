@@ -1,20 +1,12 @@
 import type { Container } from 'pixi.js';
-import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
+import { isVisible, type Viewport } from '../../data/projection/index.js';
 import { SIGN_DEPTH_EPS, screenDepth } from '../../data/scene/index.js';
-import { type ElevationField, terrainLiftAt } from '../../data/terrain/index.js';
-import { makeSignStack, makeSquareStack, STACK_BASE_DROP } from './badge-stack.js';
+import type { ElevationField } from '../../data/terrain/index.js';
+import { makeSignStack, makeSquareStack } from './badge-stack.js';
+import { badgeAnchor, type DoorBadge } from './door-badge.js';
 import { GARRISON_STAR_MAX, makeGarrisonFlag } from './garrison-flag.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
-import {
-  type BuildingSignSheet,
-  type DoorBadgeRow,
-  IDENTITY_COLOUR,
-  type SignGfx,
-  sheetFor,
-} from './sign-gfx.js';
-
-// Re-exported so app-side DoorBadge producers import them from the layer they feed.
-export type { DoorBadgeRole, DoorBadgeRow, HouseholdKind } from './sign-gfx.js';
+import { type BuildingSignSheet, IDENTITY_COLOUR, type SignGfx, sheetFor } from './sign-gfx.js';
 
 /**
  * The door-badge layer - a stacked marker at each staffed building's sign post showing who works there
@@ -26,36 +18,6 @@ export type { DoorBadgeRole, DoorBadgeRow, HouseholdKind } from './sign-gfx.js';
  * where a settler draws in front of a post he stands behind. Approximation: how the original sorts its
  * sign records against units is not established.
  */
-
-/** One building's badge data: its stack anchor (snapshot `Position` fixed-point units + an optional
- *  screen-px offset) and the bottom-to-top sign rows bound to it. */
-export interface DoorBadge {
-  /** The building entity id - the retained-pool key. */
-  readonly id: number;
-  /** The owning building's position in fixed-point `Position` units - the depth key, so the stack sorts
-   *  with its house wherever the post stands. */
-  readonly x: number;
-  readonly y: number;
-  /** Screen-px offset from the projected anchor to the post (+y down); absent = 0. The original's
-   *  `GfxFlagPoint`, or the projected step to the derived worker-icon node when a type has none. */
-  readonly dx?: number;
-  readonly dy?: number;
-  /** The owning player slot (0-based `Owner.player`) - selects the sign recolour. */
-  readonly player?: number;
-  /** Bottom-to-top sign rows; the projection owns the order and this layer draws them as given. */
-  readonly rows: readonly DoorBadgeRow[];
-  /** True while the resident couple makes love here - draws the hearts over the house. */
-  readonly hearts?: boolean;
-  /** The garrison this building's roof flies a flag for - the men posted to it, not the ones currently up
-   *  there, so the flag does not drop a star every time one climbs down for a meal. Its soldiers stay out
-   *  of `rows`: the flag stands for the whole post, one star per man, at its own screen-px offset from
-   *  the projected anchor (the mast point, +y down). */
-  readonly garrison?: {
-    readonly stars: number;
-    readonly dx: number;
-    readonly dy: number;
-  };
-}
 
 interface BadgeStack {
   readonly node: Container;
@@ -72,8 +34,6 @@ interface BadgeStack {
   /** The player recolour the stack was built with, 0 for the player-agnostic placeholder squares, so an
    *  owner change never rebuilds a visually identical square stack. */
   readonly player: number;
-  /** px added below the anchor when positioning (the placeholder squares sit slightly lower). */
-  readonly baseDrop: number;
 }
 
 /** A badge's row roles as a change-detection key (order matters - it is the drawn order). A settler
@@ -122,21 +82,18 @@ export class BadgeLayer {
     this.drawn.clear();
     for (const badge of badges) {
       if (badge.rows.length === 0 && badge.hearts !== true && badge.garrison === undefined) continue;
-      const tileX = badge.x / ONE;
-      const tileY = badge.y / ONE;
-      const p = tileToScreen(tileX, tileY);
+      const anchor = badgeAnchor(badge, elevation);
 
       let stack = this.stacks.get(badge.id);
       // Off-screen: retain the pooled stack so it isn't retired, but skip the reposition/rebuild and drop
       // it out of the sprite layer, whose depth sort runs over its children every frame. An id whose stack
       // doesn't exist yet stays unmarked (see {@link retainOffscreen}).
-      if (viewport !== undefined && !isVisible(viewport, p.x, p.y)) {
+      if (viewport !== undefined && !isVisible(viewport, anchor.depthX, anchor.depthY)) {
         retainOffscreen(stack?.node, badge.id, this.drawn);
         stack?.node.removeFromParent();
         stack?.flag?.removeFromParent();
         continue;
       }
-      const lift = terrainLiftAt(elevation, tileX, tileY);
 
       const colour = this.colourOf(badge.player ?? 0);
       const sheet = this.gfx === undefined ? undefined : sheetFor(this.gfx, colour);
@@ -158,15 +115,13 @@ export class BadgeLayer {
       }
       stack.node.visible = true;
       if (stack.node.parent === null) this.spriteLayer.addChild(stack.node);
-      stack.node.position.set(p.x + (badge.dx ?? 0), p.y + (badge.dy ?? 0) - lift + stack.baseDrop);
-      // `p` is the pre-lift projection the line above then lifts - the same key the pool builds a
-      // building from, so the chain sorts with its house on a hill too.
-      const depth = screenDepth(p.x, p.y, 'building') + SIGN_DEPTH_EPS;
+      stack.node.position.set(anchor.x, anchor.y);
+      const depth = screenDepth(anchor.depthX, anchor.depthY, 'building') + SIGN_DEPTH_EPS;
       stack.node.zIndex = depth;
-      if (stack.flag !== undefined && badge.garrison !== undefined) {
+      if (stack.flag !== undefined && anchor.mast !== undefined) {
         stack.flag.visible = true;
         if (stack.flag.parent === null) this.spriteLayer.addChild(stack.flag);
-        stack.flag.position.set(p.x + badge.garrison.dx, p.y + badge.garrison.dy - lift);
+        stack.flag.position.set(anchor.mast.x, anchor.mast.y);
         // Its building's key, like the chain. A type with no authored mast plants both marks on the
         // same anchor; the flag is added second, and the depth sort is stable, so it stays on top.
         stack.flag.zIndex = depth;
@@ -192,8 +147,7 @@ export class BadgeLayer {
       gfx !== undefined && sheet !== undefined
         ? makeSignStack(badge.rows, hearts, gfx.textures, sheet)
         : makeSquareStack(badge.rows, hearts);
-    const baseDrop = sheet === undefined ? STACK_BASE_DROP : 0;
-    const base = { node, rows, hearts, stars, player, baseDrop };
+    const base = { node, rows, hearts, stars, player };
     // Gated on the capped `stars`, not on `garrison` being present: `stars` is the whole garrison term
     // in the rebuild key, and a zero-star garrison keys the same as none, so such a flag never retires.
     if (badge.garrison === undefined || stars < 1) return base;
