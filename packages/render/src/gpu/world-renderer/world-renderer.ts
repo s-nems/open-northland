@@ -186,7 +186,7 @@ export class WorldRenderer {
     this.terrain.cull(vp);
     this.terrain.animate(tick + alpha);
     const fogFrame = this.fog.update(snapshot, vp);
-    this.mapObjects.update(vp, tick, this.fog.cellStateAt);
+    this.mapObjects.update(vp, tick, this.fog.cellStateAt, fogFrame.fogEpoch);
     const portraitRef = this.portrait.subjectRef();
     this.pool.reconcile({
       snapshot,

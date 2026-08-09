@@ -17,11 +17,25 @@ import { TallObjectLayer } from './tall-blocks.js';
  *  a terrain chunk. */
 const DECOR_CHUNK_PX = TERRAIN_CHUNK_TILES * TILE_HALF_W * 2;
 
+/** The frame inputs the whole layer's output is a function of: attach state and culling follow the
+ *  viewport and fog, bound frames follow the tick and fog. */
+interface UpdateInputs {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+  readonly tick: number;
+  readonly fogEpoch: number | undefined;
+}
+
 export class MapObjectLayer {
   /** Flat map-object decor (waves, grass, mine stains). */
   readonly decorContainer = new Container();
   private decorChunks: DecorChunk[] = [];
   private readonly tall: TallObjectLayer;
+  /** The last frame's inputs; an identical frame skips the walk since the retained scene already
+   *  matches. `remove` needs no reset - it detaches and zeroes directly. */
+  private lastInputs: UpdateInputs | null = null;
 
   constructor(spriteLayer: Container, textures: TextureCache) {
     this.tall = new TallObjectLayer(spriteLayer, textures);
@@ -73,7 +87,30 @@ export class MapObjectLayer {
    * Advance the landscape objects for one frame. Flat decor keeps drawing on ground the viewer does not
    * watch, because it reads as terrain dressing, but its animation freezes there.
    */
-  update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
+  update(
+    vp: Viewport,
+    tick: number,
+    fogStateOfCell?: (cellX: number, cellY: number) => number,
+    fogEpoch?: number,
+  ): void {
+    // A fog probe without an epoch has no change signal, so such a frame never counts as identical.
+    const fogKeyed = fogStateOfCell === undefined || fogEpoch !== undefined;
+    const last = this.lastInputs;
+    if (
+      fogKeyed &&
+      last !== null &&
+      last.minX === vp.minX &&
+      last.minY === vp.minY &&
+      last.maxX === vp.maxX &&
+      last.maxY === vp.maxY &&
+      last.tick === tick &&
+      last.fogEpoch === fogEpoch
+    ) {
+      return;
+    }
+    this.lastInputs = fogKeyed
+      ? { minX: vp.minX, minY: vp.minY, maxX: vp.maxX, maxY: vp.maxY, tick, fogEpoch }
+      : null;
     for (const chunk of this.decorChunks) {
       const visible = aabbIntersects(vp, chunk);
       chunk.container.visible = visible;
@@ -108,5 +145,6 @@ export class MapObjectLayer {
     }
     this.decorChunks = [];
     this.tall.destroy();
+    this.lastInputs = null;
   }
 }
