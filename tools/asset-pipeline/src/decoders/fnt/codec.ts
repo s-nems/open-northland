@@ -1,5 +1,5 @@
 /**
- * `.fnt` bitmap-font container - CFont (storable id 0x3F5), a wrapper around the `.bmd` bob container.
+ * `.fnt` bitmap-font codec - CFont (storable id 0x3F5), a wrapper around the `.bmd` bob container.
  * Each glyph is one bob: character `c` (>= 0x20) draws bob `c - 0x20`. On disk:
  *
  *   [u32 id=0x3F5][u32 version]                  CFont storable header
@@ -63,7 +63,7 @@ export function decodeFnt(bytes: Uint8Array): Font {
     );
   }
   const bmd = decodeBmd(bytes.subarray(FONT_PREFIX_BYTES));
-  // `fontMetrics` addresses glyphs as `glyphs[c - firstChar]`, so a non-zero origin would silently
+  // Consumers address a glyph as bob `c - FONT_FIRST_CHAR`, so a non-zero origin would silently
   // shift every glyph rather than fail.
   if (bmd.firstBobId !== 0) {
     throw new Error(`fnt: glyph container must start at bob 0, got ${bmd.firstBobId}`);

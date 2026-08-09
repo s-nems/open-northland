@@ -1,7 +1,4 @@
-/**
- * Font layout metrics derived from a decoded `.fnt`. Glyph layout is an observation from decoded
- * glyph placement in owned font files, not a field the format stores.
- */
+/** Glyph layout is an observation from decoded glyph placement in owned font files. */
 
 import { type Bmd, BOB_TYPE_EMPTY, type BobRecord } from '../bmd/index.js';
 import { FONT_FIRST_CHAR, type Font } from './codec.js';
