@@ -89,9 +89,11 @@ export {
 } from './gpu/gallery/index.js';
 export type { MapObjectSprite } from './gpu/map-objects/index.js';
 export {
+  type BadgeAnchor,
   type BuildingSignGfx,
   type BuildingSignKind,
   type BuildingSignSheet,
+  badgeAnchor,
   type ConstructionSign,
   type DoorBadge,
   type DoorBadgeRole,

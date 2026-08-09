@@ -2,10 +2,16 @@ import { Container, type Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { SIGN_DEPTH_EPS, screenDepth } from '../src/data/scene/index.js';
 import type { AtlasFrame } from '../src/data/sprites/index.js';
-import { BadgeLayer, type DoorBadge, type DoorBadgeRow } from '../src/gpu/overlays/badge-layer.js';
+import { BadgeLayer } from '../src/gpu/overlays/badge-layer.js';
 import { type ConstructionSign, ConstructionSignLayer } from '../src/gpu/overlays/construction-sign-layer.js';
+import { badgeAnchor, type DoorBadge } from '../src/gpu/overlays/door-badge.js';
 import { GARRISON_TICKS_PER_FRAME, garrisonFlagLoop } from '../src/gpu/overlays/garrison-flag.js';
-import { type BuildingSignSheet, CONSTRUCTION_SIGN_DX, signRowAt } from '../src/gpu/overlays/sign-gfx.js';
+import {
+  type BuildingSignSheet,
+  CONSTRUCTION_SIGN_DX,
+  type DoorBadgeRow,
+  signRowAt,
+} from '../src/gpu/overlays/sign-gfx.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { makeElevationField, ONE, tileToScreen } from '../src/index.js';
 
@@ -21,9 +27,6 @@ const badge = (id: number, tileX: number, tileY: number, rows: readonly DoorBadg
   y: tileY * ONE,
   rows,
 });
-
-/** Mirrors badge-layer's `STACK_BASE_DROP`: the placeholder stack sits just below its anchor. */
-const DOOR_LIFT = -6;
 
 /** `root` stands in for the renderer's shared depth-sorted sprite layer, where drawn stacks land. */
 function layerIn(colourOf?: (player: number) => number): { layer: BadgeLayer; root: Container } {
@@ -98,7 +101,7 @@ describe('BadgeLayer (placeholder squares)', () => {
     expect(stack?.children).toHaveLength(4);
     const anchor = tileToScreen(3, 5);
     expect(stack?.position.x).toBe(anchor.x);
-    expect(stack?.position.y).toBe(anchor.y - DOOR_LIFT);
+    expect(stack?.position.y).toBe(anchor.y);
   });
 
   it('rebuilds a stack when its rows change and retires it when the building leaves the list', () => {
@@ -161,7 +164,7 @@ describe('BadgeLayer (placeholder squares)', () => {
     layer.draw([badge(1, 1, 6, workers(1, 0))], field);
     const door = tileToScreen(1, 6);
     const y = root.children[0]?.position.y ?? 0;
-    expect(y).toBeCloseTo(door.y - field.liftAt(1, 6) - DOOR_LIFT, 6);
+    expect(y).toBeCloseTo(door.y - field.liftAt(1, 6), 6);
     expect(y).toBeLessThan(door.y - 100); // the hill lift is real, not a rounding wobble
     // The depth stays keyed to the pre-lift anchor, so occlusion sorts by map row while the chain rides
     // the hill.
@@ -190,7 +193,7 @@ describe('BadgeLayer (placeholder squares)', () => {
     for (const dy of [-23, 67, 130]) {
       layer.draw([{ ...badge(1, 3, 5, workers(1, 0)), dy }]);
       const stack = root.children[0];
-      expect(stack?.position.y).toBe(anchor.y + dy - DOOR_LIFT);
+      expect(stack?.position.y).toBe(anchor.y + dy);
       expect(stack?.zIndex).toBe(keyed);
     }
   });
@@ -213,7 +216,6 @@ describe('BadgeLayer (decoded sign art)', () => {
     expect((stack.children[1] as Sprite).texture.frame.height).toBe(22);
     expect((stack.children[2] as Sprite).texture.frame.height).toBe(25);
     expect((stack.children[5] as Sprite).texture.frame.height).toBe(24);
-    // The sign stack anchors at the node, with no placeholder base drop.
     const anchor = tileToScreen(3, 5);
     expect(stack.position.y).toBe(anchor.y);
   });
@@ -249,7 +251,7 @@ describe('BadgeLayer (decoded sign art)', () => {
     expect(root.children).toHaveLength(0);
     layer.draw([badge(1, 3, 5, workers(1, 0))]);
     const anchor = tileToScreen(3, 5);
-    expect(root.children[0]?.position.y).toBe(anchor.y - DOOR_LIFT);
+    expect(root.children[0]?.position.y).toBe(anchor.y);
   });
 
   it('leaves the borrowed sprite layer empty on destroy', () => {
@@ -364,6 +366,33 @@ describe('BadgeLayer (garrison flag)', () => {
     expect(root.children).toHaveLength(0);
     layer.draw([manned(1, 3, 5, 2)], undefined, vp);
     expect(root.children).toHaveLength(2);
+  });
+});
+
+describe('badgeAnchor', () => {
+  it('is where the layer plants both marks, with the decoded art and without it', () => {
+    const W = 4;
+    const H = 8;
+    const elev = new Array<number>(W * H).fill(0);
+    elev[6 * W + 1] = 160;
+    const field = makeElevationField(elev, W, H);
+    const post: DoorBadge = {
+      ...manned(1, 1, 6, 2),
+      rows: workers(1, 1),
+      dx: -6,
+      dy: 29,
+    };
+    const anchor = badgeAnchor(post, field);
+
+    for (const gfx of [undefined, { byPlayer: [garrisonSheet().sheet], textures: new TextureCache() }]) {
+      const { layer, root } = layerIn();
+      layer.setGfx(gfx);
+      layer.draw([post], field);
+      const drawn = root.children.map((c) => ({ x: c.position.x, y: c.position.y }));
+      expect(drawn).toHaveLength(2); // the sign chain and the flag, nothing else
+      expect(drawn).toContainEqual({ x: anchor.x, y: anchor.y });
+      expect(drawn).toContainEqual(anchor.mast);
+    }
   });
 });
 

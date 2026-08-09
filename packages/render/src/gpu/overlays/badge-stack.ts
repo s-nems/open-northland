@@ -16,9 +16,6 @@ import {
  * anchor (the planted base row sits at y 0).
  */
 
-/** px the placeholder stack's base sits below its anchor node. */
-export const STACK_BASE_DROP = 6;
-
 /** Placeholder square edge + vertical gap between stacked badges (world px). */
 const SIZE = 9;
 const GAP = 3;
