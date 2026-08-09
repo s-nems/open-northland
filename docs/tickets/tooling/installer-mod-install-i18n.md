@@ -3,17 +3,17 @@
 **Area:** desktop · **Priority:** P3
 
 The first-run installer's UI, native menu, dialogs, and IPC-handler errors are now localized
-(EN/PL) through `packages/desktop/src/i18n/`. Deliberately left in English as a named boundary: the
+(EN/PL) through `packages/installer/src/i18n/`. Deliberately left in English as a named boundary: the
 **deep diagnostic strings** thrown/emitted from the mod installer and streamed from the pipeline,
 which the setup page surfaces verbatim. The most user-visible is the CnMod hash-mismatch warning,
 shown in the mod panel's note line.
 
 Still English:
 
-- `packages/desktop/src/mod-install/install.ts` - the sha256 mismatch `mod-warning`
+- `packages/installer/src/mod-install/install.ts` - the sha256 mismatch `mod-warning`
   ("downloaded archive differs from the verified CnMod 1.3.1 …") and "the downloaded archive
   contained no files".
-- `packages/desktop/src/mod-install/extract.ts` - "skipped unsafe zip member …" warning.
+- `packages/installer/src/mod-install/extract.ts` - "skipped unsafe zip member …" warning.
 - `packages/desktop/src/mod-install/download.ts` - "empty response body", "Google Drive kept
   answering with a page instead of the file".
 - Pipeline `log`/`error` lines shown in the run phase's log tail and the failure log (raw
@@ -21,8 +21,8 @@ Still English:
 
 ## Scope
 
-- Route the mod-install messages through the installer catalog. They are generated in the main
-  process below the IPC layer, so either thread a translator/`messages()` call down into
+- Route the mod-install messages through the installer catalog. On desktop they are generated in
+  the main process below the IPC layer, so either thread a translator/`messages()` call down into
   `mod-install/*`, or have those layers emit a small discriminated `code` + params and translate at
   the `forwardModEvent` / handler boundary (preferred - keeps `mod-install/` string-free and pure).
 - Decide explicitly whether raw pipeline log/error lines are worth translating; if not, say so in
