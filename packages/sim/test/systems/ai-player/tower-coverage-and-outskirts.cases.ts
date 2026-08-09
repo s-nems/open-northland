@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { UnderConstruction } from '../../../src/components/index.js';
-import type { Simulation } from '../../../src/index.js';
 import { withinNodeRadius } from '../../../src/nav/node-circle.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -9,6 +7,7 @@ import {
 } from '../../../src/systems/ai-player/index.js';
 import {
   aiSim,
+  completeSites,
   ctxOf,
   HOME_TYPE,
   HQ_X,
@@ -21,17 +20,8 @@ import {
   WALL_TYPE,
 } from './support.js';
 
-/** The two entries that answer to settlement shape: perpetual tower coverage and outskirts spread. */
-
 describe('build-order tower coverage and outskirts', () => {
   const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
-
-  function completeSites(sim: Simulation): void {
-    for (const e of [...sim.world.query(UnderConstruction)]) {
-      sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: e });
-    }
-    sim.step();
-  }
 
   it('rests while every building sits in the HQ circle, then covers an outlying one', () => {
     const sim = aiSim();

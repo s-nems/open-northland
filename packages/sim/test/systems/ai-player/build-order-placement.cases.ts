@@ -25,8 +25,6 @@ import {
   WELL_TYPE,
 } from './support.js';
 
-/** Where an entry's building lands: the affinity pulls, their band clamp, and the ground rules. */
-
 describe('build-order placement - affinity and ground rules', () => {
   /** A half-cell node map that is grass except where `sandy(x, y)` says otherwise. */
   function mapWithSand(width: number, height: number, sandy: (x: number, y: number) => boolean): TerrainMap {
