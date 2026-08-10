@@ -42,12 +42,20 @@ export function desktopSaveStore(bridge: SaveListBridge): SaveStore {
   return {
     async list(): Promise<SaveSlotInfo[]> {
       const files = await bridge.listSaves();
+      // `Foo.json` beside `Foo.json.gz` strips to one title. The writer only ever produces the
+      // second, so the shadowed file keeps its full name instead of listing as a twin.
+      const titles = new Map<string, number>();
+      for (const entry of files) {
+        const title = displayNameOf(entry.file);
+        titles.set(title, (titles.get(title) ?? 0) + 1);
+      }
       const slots = await Promise.all(
         files.map(async (entry): Promise<SaveSlotInfo> => {
           const peeked = isSaveBytes(entry.prefix) ? await peekSaveHeader(entry.prefix) : null;
+          const title = displayNameOf(entry.file);
           return {
             id: entry.file,
-            name: displayNameOf(entry.file),
+            name: (titles.get(title) ?? 0) > 1 ? entry.file : title,
             mapId: peeked?.mapId ?? null,
             tick: peeked?.tick ?? null,
             entry: peeked?.entry ?? null,
