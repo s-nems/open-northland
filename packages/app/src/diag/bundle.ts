@@ -17,6 +17,9 @@ export interface DiagnosticsGameReport {
   readonly worldId: string | null;
   readonly seed: number;
   readonly tick: number;
+  /** Set when the session was restored from a save: the command log covers only the ticks after it,
+   *  so a replay from tick 0 cannot reproduce `finalHash`. */
+  readonly restoredAtTick?: number;
   /** `hashState()` at bundle time, the replay target; `null` when hashing threw on a wedged sim. */
   readonly finalHash: string | null;
   readonly commandLog: readonly LoggedCommand[];
@@ -64,6 +67,9 @@ function gameReport(session: DiagGameSession): DiagnosticsGameReport {
     worldId: session.worldId,
     seed: session.seed,
     tick: sim.tick,
+    ...(session.restoredAtTick !== undefined && session.restoredAtTick !== null
+      ? { restoredAtTick: session.restoredAtTick }
+      : {}),
     finalHash,
     commandLog: sim.commands.log,
     ...(session.hashTrace !== null

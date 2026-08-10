@@ -95,6 +95,9 @@ export interface GameViewDeps {
   /** The entry's world identity for save headers: the decoded map id, or `scene:<id>`. Omitted, saves
    *  carry no world token and only load back into another tokenless world. */
   readonly worldToken?: string | null;
+  /** True when the world came from a save: the session opens paused, so the player reads the board
+   *  they loaded before it moves. */
+  readonly restored?: boolean;
 }
 
 export interface GameSession {
@@ -147,7 +150,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const lang = currentLocale();
   const keyBindings = storedSettings.keyBindings;
   // `?speed=` seeds the wall-clock multiplier; the tool panel's speed button then drives it live.
-  const control = { paused: false, speed: floatParam(params, 'speed', 1) };
+  const control = { paused: deps.restored === true, speed: floatParam(params, 'speed', 1) };
   // Owned here rather than by the loop, so the dropped-tick tally spans the whole session.
   const timestep = new FixedTimestep();
   const frameStats = new FrameStats();

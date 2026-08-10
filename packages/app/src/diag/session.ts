@@ -10,6 +10,9 @@ export interface DiagGameSession {
   /** The map/scene id; decoded map bytes never ship in a bundle. */
   readonly worldId: string | null;
   readonly seed: number;
+  /** The tick a restored session started from, so a bundle is not read as a run from tick 0; null
+   *  for a world that booted fresh. */
+  readonly restoredAtTick?: number | null;
   readonly sim: Simulation;
   /** State-hash ring when `?debug=diag` recording is on; `null` otherwise. */
   readonly hashTrace: HashTrace | null;

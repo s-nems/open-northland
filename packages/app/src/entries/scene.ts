@@ -42,6 +42,17 @@ export const SCENE_BOOT_PHASES = [
 
 export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const sceneId = params.get('scene') ?? '';
+  const worldToken = `${SCENE_TOKEN_PREFIX}${sceneId}`;
+  // Claimed before the scene lookup, and so before any world assembly: the staged bytes are one-shot,
+  // and an entry that returns without claiming them leaves them for an unrelated boot to restore. A
+  // staged save that fails from here on halts the boot rather than silently starting a fresh world.
+  let stagedSave: SaveGame | null;
+  try {
+    stagedSave = await takeStagedSave(worldToken);
+  } catch (err) {
+    haltOnFailedRestore(err);
+    return;
+  }
   const scene = getScene(sceneId);
   if (scene === undefined) {
     mountUnknownSceneOverlay(
@@ -55,16 +66,6 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   bindDisplayMode(params);
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
-  const worldToken = `${SCENE_TOKEN_PREFIX}${sceneId}`;
-  // Consumed before any world assembly: a staged save that fails from here on halts the boot rather
-  // than silently starting a fresh world.
-  let stagedSave: SaveGame | null;
-  try {
-    stagedSave = await takeStagedSave(worldToken);
-  } catch (err) {
-    haltOnFailedRestore(err);
-    return;
-  }
   // Window-tracking backing store at the stored render scale times the device oversample: resizing
   // changes the visible field, never the scale.
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
@@ -101,6 +102,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     entry: 'scene',
     worldId: sceneId,
     seed: sim.seed,
+    restoredAtTick: stagedSave !== null ? sim.tick : null,
     sim,
     hashTrace: hashTraceFor(params),
   });
@@ -155,6 +157,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     ...terrainColourOption(terrain),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     worldToken,
+    restored: stagedSave !== null,
   });
   await boot.finish();
 }

@@ -1,6 +1,7 @@
 import { messages } from '../../i18n/index.js';
 import { type LaunchEntry, swapToEntry } from '../../launch.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
+import { clearPendingLoad } from '../../view/runtime/save-load/pending-store.js';
 import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
 import { mountFullscreenPrompt } from './fullscreen-prompt.js';
@@ -139,6 +140,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
         launching = false;
         root.classList.remove('is-launching');
       }
+      // Save bytes the load screen staged for this entry: no boot will claim them now.
+      void clearPendingLoad();
       throw err; // installCrashCapture's unhandledrejection hook owns the reporting
     });
   };

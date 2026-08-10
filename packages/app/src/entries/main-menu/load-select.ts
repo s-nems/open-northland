@@ -8,27 +8,12 @@ import { type PickedSaveFile, platformSavePicker } from '../../view/runtime/save
 import { flowRunner } from '../../view/runtime/save-load/flow-runner.js';
 import { formatPlaytime, formatSavedAt } from '../../view/runtime/save-load/list-model.js';
 import { storePendingLoad } from '../../view/runtime/save-load/pending-store.js';
+import { relaunchSearch } from '../../view/runtime/save-load/relaunch.js';
 import { createSaveStore, type SaveSlotInfo } from '../../view/runtime/save-load/store.js';
-import { SCENE_TOKEN_PREFIX, worldNameIndex } from '../../view/runtime/save-load/world-names.js';
+import { worldNameIndex } from '../../view/runtime/save-load/world-names.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import { targetSearch } from './target-search.js';
-
-/** The search that relaunches a save's session: its recorded entry when that selects a world, else
- *  one rebuilt from the world token alone (a v1 save), which loses the seat but boots the world. */
-function relaunchSearch(header: {
-  readonly mapId: string | null;
-  readonly entry: string | null;
-}): string | null {
-  if (header.entry !== null) {
-    const recorded = new URLSearchParams(header.entry.startsWith('?') ? header.entry.slice(1) : header.entry);
-    if (recorded.has('map') || recorded.has('scene')) return header.entry;
-  }
-  if (header.mapId === null) return null;
-  return header.mapId.startsWith(SCENE_TOKEN_PREFIX)
-    ? `?scene=${encodeURIComponent(header.mapId.slice(SCENE_TOKEN_PREFIX.length))}`
-    : `?map=${encodeURIComponent(header.mapId)}`;
-}
 
 /** The main menu's load screen: the platform save store's slots, launched into their own worlds. */
 export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: LaunchEntry): HTMLElement {
@@ -61,7 +46,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     status.hidden = text === null;
   };
 
-  const run = flowRunner(setStatus);
+  const run = flowRunner(setStatus, listCopy.actionFailed);
 
   let selected: SaveSlotInfo | null = null;
   const rowButtons = new Map<SaveSlotInfo, HTMLButtonElement>();
@@ -98,9 +83,14 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     }
   });
 
+  /** Set once a save is staged: the entry downloading behind the screen owns those bytes, and a
+   *  second hand-off would swap them under it. */
+  let handedOff = false;
+
   /** Validate, stage, and hand the document to the save's own entry; a returned string is the
    *  rejection to show. */
   const stageAndLaunch = async (contents: string, raw: SaveBytes): Promise<string | null> => {
+    if (handedOff) return null;
     const evaluated = evaluateSaveDocument(contents);
     if (!evaluated.ok) return errors[evaluated.reason];
     const search = relaunchSearch(evaluated.save.header);
@@ -110,6 +100,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     } catch {
       return errors.storage;
     }
+    handedOff = true;
     launch(targetSearch(search));
     return null;
   };
@@ -149,7 +140,11 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
     return button;
   };
 
+  /** Only the newest refresh may draw its rows, so a slower earlier one cannot list slots the store
+   *  has already moved past. */
+  let refreshes = 0;
   const refresh = async (): Promise<void> => {
+    const mine = ++refreshes;
     selected = null;
     for (const button of selectionActions) button.disabled = true;
     rowButtons.clear();
@@ -161,6 +156,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
       setStatus(listCopy.listFailed);
       return;
     }
+    if (mine !== refreshes) return;
     if (slots.length === 0) {
       const notice = document.createElement('p');
       notice.className = 'main-menu__map-empty';
@@ -169,6 +165,7 @@ export function loadSelectScreen(open: (screen: MenuScreen) => void, launch: Lau
       return;
     }
     const worldName = await worldNameIndex();
+    if (mine !== refreshes) return;
     for (const slot of slots) rowButtons.set(slot, slotRow(slot, worldName(slot.mapId)));
     list.replaceChildren(...rowButtons.values());
   };
