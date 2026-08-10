@@ -89,6 +89,9 @@ export const plGame = {
     diplomacyNoneMet: 'Nie spotkano jeszcze innych plemion',
     systemMenu: 'Menu',
     returnToMenu: 'Wróć do menu',
+    quitConfirm: 'Wrócić do menu? Postęp od ostatniego zapisu przepadnie.',
+    quitConfirmYes: 'Wróć do menu',
+    quitConfirmNo: 'Graj dalej',
     closeMenu: 'Zamknij',
     saveGame: 'Zapisz grę',
     loadGame: 'Wczytaj grę',
@@ -97,10 +100,11 @@ export const plGame = {
     loadErrors: {
       corrupt: 'Ten plik nie jest poprawnym zapisem Open Northland.',
       incompatibleVersion: 'Ten zapis pochodzi z niezgodnej wersji gry.',
-      wrongContent: 'Ten zapis został utworzony z inną zawartością gry.',
+      wrongContent: 'Ten zapis powstał przy innej zawartości gry.',
       wrongWorld: 'Ten zapis należy do innej mapy lub sceny. Wczytaj go z menu głównego.',
       wrongMap: 'Mapa z tego zapisu nie zgadza się już z zainstalowaną zawartością.',
-      storage: 'Nie udało się przygotować zapisu do wczytania.',
+      storage:
+        'Nie udało się odłożyć zapisu w pamięci przeglądarki. Sprawdź, czy nie brakuje miejsca i czy nie jest to tryb prywatny.',
       missing: 'Ten zapis już nie istnieje.',
     },
     downloadDiagnostics: 'Pobierz raport diagnostyczny',

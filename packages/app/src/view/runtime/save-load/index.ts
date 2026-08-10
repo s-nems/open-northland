@@ -9,7 +9,6 @@ export { takeStagedSave } from './boot.js';
 export type { LoadOutcome, SaveLoadSession, SaveOutcome } from './controller.js';
 export { saveLoadSession } from './controller.js';
 export { evaluateSaveFile, type LiveWorldIdentity, type SaveRejection } from './evaluate.js';
-export type { GameFileBridge, PickedSaveFile, SaveFileBytes } from './file-access.js';
 
 export interface SaveLoadSessionOptions {
   readonly sim: Simulation;

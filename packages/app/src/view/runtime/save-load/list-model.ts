@@ -37,11 +37,13 @@ export function sanitizedSaveName(raw: string): string | null {
   return name.length === 0 ? null : name;
 }
 
-/** The first free autoname: `template`'s `{n}` starts past the list size and skips taken names. */
+/** The first free autoname: `template`'s `{n}` starts past the list size and skips taken names. A
+ *  template that lost its `{n}` in translation numbers by suffix instead of never terminating. */
 export function autoSaveName(template: string, taken: readonly string[]): string {
   const names = new Set(taken);
+  const numbered = template.includes('{n}') ? template : `${template} {n}`;
   for (let n = taken.length + 1; ; n++) {
-    const candidate = template.replace('{n}', String(n));
+    const candidate = numbered.replace('{n}', String(n));
     if (!names.has(candidate)) return candidate;
   }
 }

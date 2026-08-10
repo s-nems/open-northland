@@ -1,7 +1,8 @@
 import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '../diag/index.js';
 import { messages } from '../i18n/index.js';
+import { confirmDialog } from './confirm-dialog.js';
 import type { SaveLoadSession } from './runtime/save-load/index.js';
-import { buildLoadPanel, buildSavePanel, type SavePanelView } from './save-panels.js';
+import { buildLoadPanel, buildSavePanel, type SavePanelView } from './save-panels/index.js';
 
 export interface SystemMenu {
   toggle(): void;
@@ -107,7 +108,16 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   const save = button(copy.saveGame, () => showPanel(savePanel));
   const load = button(copy.loadGame, () => showPanel(loadPanel));
 
-  const quit = button(copy.returnToMenu, deps.onQuit);
+  // Quitting throws away everything since the last save, so it asks like the save flows do.
+  const quit = button(copy.returnToMenu, () => {
+    void confirmDialog({
+      message: copy.quitConfirm,
+      confirmLabel: copy.quitConfirmYes,
+      cancelLabel: copy.quitConfirmNo,
+    }).then((confirmed) => {
+      if (confirmed) deps.onQuit();
+    });
+  });
 
   // The same report path the crash banner offers, also reachable without a crash.
   const diagnostics = button(copy.downloadDiagnostics, () => downloadDiagnosticsBundle());

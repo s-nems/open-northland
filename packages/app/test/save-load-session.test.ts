@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { runDemoWorld } from '../src/game/world/index.js';
 import { stagedSaveFrom } from '../src/view/runtime/save-load/boot.js';
 import { decodeSaveText, isGzipSave, type SaveBytes } from '../src/view/runtime/save-load/codec.js';
+import type { PickedSaveFile } from '../src/view/runtime/save-load/file-access.js';
 import {
   evaluateSaveFile,
   type LiveWorldIdentity,
-  type PickedSaveFile,
   saveLoadSession,
 } from '../src/view/runtime/save-load/index.js';
 

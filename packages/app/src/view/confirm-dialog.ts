@@ -29,6 +29,9 @@ export interface ConfirmDialogCopy {
   readonly message: string;
   readonly confirmLabel: string;
   readonly cancelLabel: string;
+  /** Focused button, and so what Enter answers. Cancel unless the question stands between the
+   *  player and the action they just asked for. */
+  readonly defaultChoice?: 'confirm' | 'cancel';
 }
 
 /**
@@ -101,6 +104,7 @@ export function confirmDialog(copy: ConfirmDialogCopy): Promise<boolean> {
     });
     document.addEventListener('keydown', onKey, true);
     document.body.append(backdrop);
-    cancel.focus();
+    if (copy.defaultChoice === 'confirm') confirm.focus();
+    else cancel.focus();
   });
 }
