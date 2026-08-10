@@ -114,7 +114,11 @@ function settingRow(label: string, control: HTMLElement, options?: SettingRowOpt
 
 /** Every live control applies and persists immediately; controls without an engine seam sit
  *  disabled behind "coming soon" badges. */
-export function settingsScreen(open: (screen: MenuScreen) => void, memory: SettingsMemory): HTMLElement {
+export function settingsScreen(
+  open: (screen: MenuScreen) => void,
+  memory: SettingsMemory,
+  signal: AbortSignal,
+): HTMLElement {
   const copy = messages().mainMenu;
   const text = copy.settings;
   const soon = { badge: copy.comingSoon, tip: copy.comingSoonTip };
@@ -175,8 +179,8 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
     document.removeEventListener('fullscreenchange', onViewportChange);
     window.removeEventListener('resize', onViewportChange);
   };
-  document.addEventListener('fullscreenchange', onViewportChange);
-  window.addEventListener('resize', onViewportChange);
+  document.addEventListener('fullscreenchange', onViewportChange, { signal });
+  window.addEventListener('resize', onViewportChange, { signal });
   head.querySelector('.main-menu__back')?.addEventListener('click', unhookViewport);
 
   const graphicsRows = (): HTMLElement[] => {

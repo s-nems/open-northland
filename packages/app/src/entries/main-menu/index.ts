@@ -156,7 +156,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     if (next === 'main') return mainScreen(show);
     if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby, launch);
     if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters, launch);
-    if (next === 'settings') return settingsScreen(show, settingsMemory);
+    if (next === 'settings') return settingsScreen(show, settingsMemory, scope.signal);
     if (next === 'credits') return creditsScreen(show);
     return placeholderScreen(next, show);
   };
