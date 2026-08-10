@@ -191,6 +191,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     entry: 'map',
     worldId: mapId,
     seed: sim.seed,
+    restoredAtTick: stagedSave !== null ? sim.tick : null,
     sim,
     hashTrace: hashTraceFor(params),
   });
@@ -249,6 +250,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     ...(harvestableHandover !== null ? { onEvents: harvestableHandover } : {}),
     worldToken: mapId,
+    restored: stagedSave !== null,
   });
   await boot.finish();
 }

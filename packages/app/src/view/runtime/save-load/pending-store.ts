@@ -27,6 +27,18 @@ export async function storePendingLoad(bytes: SaveBytes): Promise<void> {
   }
 }
 
+/** Drop staged bytes whose hand-off never reached an entry, so no later boot consumes them. */
+export async function clearPendingLoad(): Promise<void> {
+  const db = await openPendingDb();
+  try {
+    const txn = db.transaction(STORE_NAME, 'readwrite');
+    txn.objectStore(STORE_NAME).delete(ENTRY_KEY);
+    await completed(txn);
+  } finally {
+    db.close();
+  }
+}
+
 /**
  * Read and delete the staged bytes in one transaction, so a boot that fails to restore them cannot
  * loop the failure; null on a normal fresh boot.

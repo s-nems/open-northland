@@ -1,4 +1,5 @@
 import { exportSaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
+import { diag } from '../../../diag/index.js';
 import { compressSaveText, isGzipSave, type SaveBytes } from './codec.js';
 import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
@@ -49,9 +50,10 @@ export interface SaveLoadSession {
 }
 
 /**
- * The system menu's save and load flows. The pause belongs to the open menu, not the flows: the
- * menu forces it while visible and releases it on close, so a load that stages its file reloads
- * the page still paused, and a rejected or cancelled flow changes nothing.
+ * The system menu's save and load flows. The pause belongs to the open menu, not the flows: the menu
+ * forces it while visible and releases it on close, so a rejected or cancelled flow leaves the
+ * running game exactly as it stood. A staged load reboots the page, where the restored session opens
+ * paused on its own.
  */
 export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
   const { sim, worldToken } = deps;
@@ -71,7 +73,9 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
     let picked: PickedSaveFile | null;
     try {
       picked = await pick();
-    } catch {
+    } catch (err) {
+      // The player only ever sees the rejection reason, so the cause has to reach the log here.
+      diag.warn('save', `reading the save to load failed: ${String(err)}`);
       return { kind: 'rejected', reason: 'corrupt' };
     }
     if (picked === null) return { kind: 'cancelled' };
@@ -108,15 +112,24 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
           entry: deps.entrySearch,
         });
         return { kind: 'saved' };
-      } catch {
+      } catch (err) {
+        diag.warn('save', `writing slot ${JSON.stringify(name)} failed: ${String(err)}`);
         return { kind: 'failed' };
       }
     },
 
     async loadSave(id: string): Promise<LoadOutcome> {
-      const bytes = await deps.store.read(id).catch(() => null);
+      let bytes: SaveBytes | null;
+      try {
+        bytes = await deps.store.read(id);
+      } catch (err) {
+        // A store that threw still holds the slot: saying it is gone would invite deleting a live save.
+        diag.warn('save', `reading slot ${JSON.stringify(id)} failed: ${String(err)}`);
+        return { kind: 'rejected', reason: 'storage' };
+      }
       if (bytes === null) return { kind: 'rejected', reason: 'missing' };
-      return runLoad(() => pickedSaveOf(id, bytes));
+      const stored = bytes;
+      return runLoad(() => pickedSaveOf(id, stored));
     },
 
     loadFromFile: () => runLoad(deps.pickFile),
@@ -126,7 +139,8 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
         const bytes = await deps.store.read(id);
         if (bytes === null) return { kind: 'failed' };
         return await deps.deliverSave(exportFileName(id, bytes), bytes);
-      } catch {
+      } catch (err) {
+        diag.warn('save', `exporting slot ${JSON.stringify(id)} failed: ${String(err)}`);
         return { kind: 'failed' };
       }
     },
