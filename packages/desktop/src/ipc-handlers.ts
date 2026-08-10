@@ -13,6 +13,7 @@ import type { PipelineHost } from './pipeline-host.js';
 import { gameUrlForLocale } from './protocol.js';
 import { isAppUrl } from './protocol-routing.js';
 import {
+  assertSaveBytes,
   deleteSaveFile,
   listSaveFiles,
   MAX_SAVE_FILE_BYTES,
@@ -45,10 +46,6 @@ function assertString(value: unknown): asserts value is string {
 
 function assertLocale(value: unknown): asserts value is Locale {
   if (!isLocale(value)) throw new Error('expected a supported locale');
-}
-
-function assertSaveBytes(value: unknown): asserts value is Uint8Array {
-  if (!(value instanceof Uint8Array)) throw new Error('expected save bytes');
 }
 
 async function candidateOf(path: string): Promise<GameFolderCandidate> {

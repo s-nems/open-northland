@@ -1,4 +1,4 @@
-import { mkdir, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { shell } from 'electron';
 import type { ListedSaveFile } from './ipc.js';
@@ -15,7 +15,9 @@ export const MAX_SAVE_FILE_BYTES = 256 * 1024 * 1024;
 /** Characters no cross-platform save filename may carry; the renderer sanitizes, main enforces. */
 const INVALID_SAVE_NAME_CHARS = /[\\/:*?"<>|]/;
 const CONTROL_CHAR_CEILING = 0x20;
-const MAX_SAVE_NAME_LENGTH = 120;
+/** Filesystem headroom rather than the renderer's shorter display cap, which main must never
+ *  undercut: common filesystems stop a basename at 255 bytes and the writer appends `.json.gz`. */
+const MAX_SAVE_NAME_LENGTH = 200;
 /** Boundary-forced mirror of the renderer's list (`save-load/list-model.ts`). */
 const SAVE_FILE_SUFFIXES = ['.json.gz', '.json', '.gz'] as const;
 
@@ -51,7 +53,7 @@ function assertSaveFileName(value: unknown): asserts value is string {
   if (!hasSaveSuffix(value)) throw new Error('expected a save file name');
 }
 
-function assertSaveBytes(value: unknown): asserts value is Uint8Array {
+export function assertSaveBytes(value: unknown): asserts value is Uint8Array {
   if (!(value instanceof Uint8Array)) throw new Error('expected save bytes');
 }
 
@@ -99,7 +101,17 @@ export async function writeSaveFile(savesDir: string, name: unknown, bytes: unkn
   assertSaveBytes(bytes);
   if (bytes.byteLength > MAX_SAVE_FILE_BYTES) throw new Error('save exceeds the size limit');
   await mkdir(savesDir, { recursive: true });
-  await writeFile(join(savesDir, `${name}.json.gz`), bytes);
+  // Written beside the target and renamed over it: a write that dies on a full disk must not take
+  // the save it was overwriting with it.
+  const target = join(savesDir, `${name}.json.gz`);
+  const staging = `${target}.part`;
+  await writeFile(staging, bytes);
+  try {
+    await rename(staging, target);
+  } catch (err) {
+    await rm(staging, { force: true });
+    throw err;
+  }
 }
 
 export async function deleteSaveFile(savesDir: string, file: unknown): Promise<void> {

@@ -78,7 +78,7 @@ export const pl = {
   dialogs: {
     pickGameTitle: 'Wybierz folder z grą Cultures - 8th Wonder of the World',
     pickModTitle: 'Wybierz rozpakowany folder moda CulturesNation',
-    saveGameTitle: 'Zapisz grę',
+    saveGameTitle: 'Zapisz do pliku',
     loadGameTitle: 'Wczytaj zapisaną grę',
     saveFileFilter: 'Zapis Open Northland',
     leaveGame: 'Opuść grę',
