@@ -8,11 +8,12 @@ panel, minimap, unit controls and perf overlay; the opening camera is framed onc
 or `fullscreenchange`, so a viewport that grows mid-match keeps the launch-time scale and the
 launch-time frame for the rest of the session, with no in-game control to correct either.
 
-Restoring a stored fullscreen makes this reachable on a normal path: the match document always boots
-windowed and enters fullscreen on the session's first gesture, after both reads. On a 1200x800 window
-filling a 1440p display the HUD stays near 0.91x where the viewport calls for 1.88x, and the settlement
-the entry framed at the window's centre sits in the upper-left quadrant. Plain window resizing has
-always had the same gap.
+A menu launch now hands over in-document, so the scale is sampled in the mode the player is already
+in. What is left is every other way the viewport moves: a `?map=` link or a reload boots windowed and
+takes a stored fullscreen back on the first gesture, after both reads; plain window resizing and a
+monitor change have always had the same gap. On a 900x533 window filling a 3440x1440 display the HUD
+stays at the `MIN_UI_SCALE` floor where the viewport calls for `MAX_UI_SCALE_BASE`, and the
+settlement framed at the window's centre sits in the upper-left quadrant.
 
 - Give the HUD a scale seam the runtime can drive, so a viewport change rebuilds or rescales the
   mounted controls instead of requiring a reload. `?uiscale` must keep pinning an absolute value.
@@ -24,6 +25,10 @@ always had the same gap.
 - `packages/app/src/view/runtime/game-view.ts`, the HUD mounts that take `uiscale`
   (`hud/tool-panel`, `hud/minimap`, `view/unit-controls`, `view/perf-overlay`), and the initial
   camera in `packages/app/src/entries/map.ts` and `entries/scene.ts`.
+- The seam is wider than the four mount calls: `PanelContext` hands `layout` and `scale` to every
+  tool-panel sub-controller, `createStripSurface` bakes a texture for one scale, and `frame-loop.ts`
+  captures the mounts by value. `hud/minimap` already re-reads `app.screen.height` per layout and is
+  the cheap half.
 - Out of scope: `view/fullscreen.ts`. The restore needs no change once the runtime reacts to a
   viewport change.
 
@@ -31,6 +36,6 @@ always had the same gap.
 
 - Unit: a scale seam driven from a changed viewport height reports the value `uiScaleFor` gives for
   that height, and the camera recentre keeps a chosen world point at the viewport centre.
-- Human pass: take the menu's fullscreen prompt, launch `?map=` in a small window on a large display,
-  click once to let the stored mode return, and confirm the panels match a session that started
-  fullscreen and that the settlement stays centred.
+- Human pass: launch `?map=` in a small window on a large display with a stored fullscreen, click
+  once to let the mode return, and confirm the panels match a session that started fullscreen and
+  that the settlement stays centred.
