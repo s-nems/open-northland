@@ -102,7 +102,7 @@ describe('persistSettings', () => {
   it('clamps stored volumes into 0..1 and defaults deformed ones', () => {
     expect(parseStoredSettings('{"soundVolume":1.4}').soundVolume).toBe(1);
     expect(parseStoredSettings('{"musicVolume":-0.5}').musicVolume).toBe(0);
-    expect(parseStoredSettings('{"musicVolume":"loud"}').musicVolume).toBe(DEFAULT_SETTINGS.musicVolume);
+    expect(parseStoredSettings('{"musicVolume":"loud"}').musicVolume).toBe(defaultSettings().musicVolume);
   });
 });
 
