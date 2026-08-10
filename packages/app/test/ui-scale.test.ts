@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clampUiScaleFactor,
+  MAX_UI_SCALE_BASE,
   MIN_UI_SCALE,
   REFERENCE_VIEWPORT_HEIGHT,
   UI_SCALE_FACTOR_MAX,
@@ -11,14 +12,18 @@ import {
 describe('uiScaleFor', () => {
   it('scales linearly with viewport height from the 768-line reference', () => {
     expect(uiScaleFor(REFERENCE_VIEWPORT_HEIGHT)).toBe(1);
-    expect(uiScaleFor(1080)).toBeCloseTo(1.40625);
-    expect(uiScaleFor(1440)).toBeCloseTo(1.875);
-    expect(uiScaleFor(2160)).toBeCloseTo(2.8125);
+    expect(uiScaleFor(900)).toBeCloseTo(1.171875);
   });
 
-  it('applies the relative settings factor on the viewport-derived base', () => {
-    expect(uiScaleFor(1080, 1.5)).toBeCloseTo(2.109375);
-    expect(uiScaleFor(2160, 0.5)).toBeCloseTo(1.40625);
+  it('stops widening the chrome once a tall viewport is only buying more view', () => {
+    expect(uiScaleFor(1080)).toBe(MAX_UI_SCALE_BASE);
+    expect(uiScaleFor(1440)).toBe(MAX_UI_SCALE_BASE);
+    expect(uiScaleFor(2160)).toBe(MAX_UI_SCALE_BASE);
+  });
+
+  it('applies the relative settings factor on the capped base, so a player can still go bigger', () => {
+    expect(uiScaleFor(900, 1.2)).toBeCloseTo(1.40625);
+    expect(uiScaleFor(1080, 1.5)).toBeCloseTo(1.875);
   });
 
   it('tracks short viewports proportionally, then floors at the legibility minimum', () => {

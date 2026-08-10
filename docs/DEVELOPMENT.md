@@ -70,7 +70,7 @@ and `fullscreen=off`. Without `lang` the language follows the browser, and Engli
 browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides
 the stored post-fx choice for that entry, so captures stay reproducible whatever the machine's
-settings. The HUD scales from the canvas height sampled at game start times the stored
+settings. The HUD scales from the canvas height sampled at game start, capped, times the stored
 interface-scale setting; `uiscale=<n>` pins an absolute scale for reproducible diagnostics and is
 not carried across menu/game switches. The menu's settings screen covers the player-facing options,
 so direct query parameters are mainly for reproducible diagnostics.

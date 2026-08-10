@@ -196,7 +196,8 @@ export function settingsScreen(open: (screen: MenuScreen) => void, memory: Setti
       },
     );
     // 100% is the viewport-derived base; the label also shows the effective in-game multiplier, which
-    // exposes the `MIN_UI_SCALE` floor - on very short windows the lowest factor steps collapse to it.
+    // exposes both bounds - on a short window the lowest factor steps collapse onto `MIN_UI_SCALE`,
+    // and on a tall one the base already sits at `MAX_UI_SCALE_BASE`.
     const uiScale = sliderControl(text.uiScale, {
       min: UI_SCALE_FACTOR_MIN,
       max: UI_SCALE_FACTOR_MAX,
