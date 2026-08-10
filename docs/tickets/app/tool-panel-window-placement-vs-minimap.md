@@ -19,9 +19,9 @@ That closes every case a shorter list can close. Two cases it cannot:
 
    `MIN_LIST_ROWS = 3` deliberately outranks the reserve: at 1.4/H=600 dropping to the 1 row that
    would fit is worse than 3 rows with a 5 px sliver covered. The larger scales need placement, not
-   size. Scales 1.75 and 2 stay reachable in play: the HUD scale is the window height over the 768
-   reference times the settings factor (`hud/ui-scale.ts`), and `?uiscale=` pins them directly. The
-   short-window rows now need the pin - the viewport derivation alone gives ~1 at these heights.
+   size. Only 1.75 stays reachable in play: the HUD scale is the window height over the 768 reference
+   capped at `MAX_UI_SCALE_BASE`, times the settings factor (`hud/ui-scale.ts`), so 1.875 is the
+   ceiling. 2 and the short-window rows need `?uiscale=`, which pins any scale directly.
 
 2. **`extras-window.ts` cannot shrink at all** - its height follows its content (~173 design px on the
    assistant tab), so at 2x on a short screen its lower stepper rows sit under the same overlay and

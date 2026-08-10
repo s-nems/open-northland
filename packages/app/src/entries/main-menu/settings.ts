@@ -199,9 +199,8 @@ export function settingsScreen(
         );
       },
     );
-    // 100% is the viewport-derived base; the label also shows the effective in-game multiplier, which
-    // exposes both bounds - on a short window the lowest factor steps collapse onto `MIN_UI_SCALE`,
-    // and on a tall one the base already sits at `MAX_UI_SCALE_BASE`.
+    // 100% is the viewport-derived base; the label also shows the effective in-game multiplier,
+    // because either bound can swallow a step the player just moved.
     const uiScale = sliderControl(text.uiScale, {
       min: UI_SCALE_FACTOR_MIN,
       max: UI_SCALE_FACTOR_MAX,

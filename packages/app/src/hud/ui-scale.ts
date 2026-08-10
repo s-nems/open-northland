@@ -1,7 +1,8 @@
 /**
  * HUD design px are the original's asset px (640×480-1024×768 modes); at the largest mode the chrome
- * occupied its design px over 768 screen lines. `viewportHeight / 768` keeps that fraction on a
- * window (approximation), up to {@link MAX_UI_SCALE_BASE}.
+ * occupied its design px over 768 screen lines. `viewportHeight / 768` keeps that fraction
+ * (approximation), and between the bounds below that leaves the derivation live from 576 to 960
+ * canvas lines.
  */
 export const REFERENCE_VIEWPORT_HEIGHT = 768;
 
@@ -11,7 +12,7 @@ export const MIN_UI_SCALE = 0.75;
 /**
  * Ceiling for the viewport-derived base. The world draws at 1:1 asset px on every viewport, so chrome
  * that kept tracking screen height would swallow the extra view a tall display buys rather than match
- * it (approximation). The player's relative factor still applies on top.
+ * it (approximation).
  */
 export const MAX_UI_SCALE_BASE = 1.25;
 
