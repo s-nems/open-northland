@@ -31,17 +31,17 @@ import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 const BUILDING_TOWER = 40;
 const BUILDING_BARRACKS = 39;
 
-/** Representative effective scales across the now-continuous reachable range: the floor, sub-1
- *  tracking, 1×, and the base and slider-max of 1080- and 2160-tall windows. Metrics round per
- *  scale, so the fractional anchors are the ones that catch collisions. */
+/** Representative effective scales across the reachable range: the floor, sub-1 tracking, 1×, the
+ *  capped base a tall window lands on, and that base at the slider maximum. The last entry only a
+ *  `?uiscale` pin reaches, and it keeps the widest layouts under test. Metrics round per scale, so
+ *  the fractional anchors are the ones that catch collisions. */
 const SWEEP_UISCALES = [
   MIN_UI_SCALE,
   0.9,
   1,
   uiScaleFor(1080),
   uiScaleFor(1080, UI_SCALE_FACTOR_MAX),
-  uiScaleFor(2160),
-  uiScaleFor(2160, UI_SCALE_FACTOR_MAX),
+  2.8125,
 ];
 
 const buildingLayoutOf = (model: UnitPanelModel): BuildingLayout => viewOfKind(model, 'building').layout;

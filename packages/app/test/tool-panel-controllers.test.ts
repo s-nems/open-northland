@@ -260,7 +260,7 @@ describe('tabbed-list window bound by a bottom-corner overlay', () => {
     expect(claimedBottom(other, columnX(beside))).toBe(claimedBottom(free, columnX(unbounded)));
   });
 
-  it('clears the real minimap window at the shipped uiscales', () => {
+  it('clears the real minimap window across the reachable and pinned uiscales', () => {
     // The shipped bottom-left overlay, not a fixture: the wired reserve is exactly this rect.
     const bounds = terrainWorldBounds(200, 200);
     for (const uiscale of [1, 1.25, 1.4, 1.75, 2]) {
