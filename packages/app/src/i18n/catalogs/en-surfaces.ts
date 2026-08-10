@@ -1,6 +1,6 @@
 export const enSurfaces = {
   mainMenu: {
-    eyebrow: 'An open reimplementation of the Cultures series',
+    eyebrow: 'For fans of the Cultures franchise',
     tribeNames: {
       1: 'Vikings',
       2: 'Franks',
@@ -173,7 +173,7 @@ export const enSurfaces = {
     },
     credits: {
       intro:
-        'Open Northland is an independent, open-source engine for the Cultures strategy series: a deterministic simulation, a new renderer and tooling that prepares the assets from the original game, built from scratch.',
+        'Open Northland is an independent, open-source engine for the Cultures strategy series: a new renderer and tooling that prepares the assets from the original game, built from scratch.',
       sourceLink: 'Source code - GitHub',
       reportLink: 'Report a bug',
       teamTitle: 'Team',

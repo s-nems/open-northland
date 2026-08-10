@@ -1,6 +1,6 @@
 export const plSurfaces = {
   mainMenu: {
-    eyebrow: 'Otwarta reimplementacja serii Cultures',
+    eyebrow: 'Dla fanów serii Cultures',
     tribeNames: {
       1: 'Wikingowie',
       2: 'Frankowie',
@@ -170,7 +170,7 @@ export const plSurfaces = {
     },
     credits: {
       intro:
-        'Open Northland to niezależny, otwarty silnik dla gier z serii Cultures: deterministyczna symulacja, nowy renderer i narzędzia przygotowujące zasoby z oryginalnej gry, budowane od zera.',
+        'Open Northland to niezależny, otwarty silnik dla gier z serii Cultures: nowy renderer i narzędzia przygotowujące zasoby z oryginalnej gry, budowane od zera.',
       sourceLink: 'Kod źródłowy - GitHub',
       reportLink: 'Zgłoś błąd',
       teamTitle: 'Zespół',
