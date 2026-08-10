@@ -1,35 +1,40 @@
-import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-import { nodeVfs } from '@open-northland/vfs/node';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { discoverInstalledMod, findModRootUnder } from '../src/mod-install/discover.js';
-import { makeTempDir, type TempDir } from './support/temp-dir.js';
+import { vjoin } from '@open-northland/vfs';
+import { memoryVfs } from '@open-northland/vfs/memory';
+import { describe, expect, it } from 'vitest';
+import {
+  discoverInstalledMod,
+  findModRootUnder,
+  markComplete,
+  markIncomplete,
+} from '../src/mod-install/discover.js';
 
 describe('mod root discovery', () => {
-  const fs = nodeVfs();
-  let tmp: TempDir;
-  beforeEach(async () => {
-    tmp = await makeTempDir('mod-discovery');
-  });
-  afterEach(() => tmp.cleanup());
-
   it('finds the root at the dir itself or one level below, else undefined', async () => {
-    await mkdir(join(tmp.path, 'direct', 'DataCnmd'), { recursive: true });
-    expect(await findModRootUnder(fs, join(tmp.path, 'direct'))).toBe(join(tmp.path, 'direct'));
-    await mkdir(join(tmp.path, 'wrapped', 'CnMod 1.3.1', 'DataCnmd'), { recursive: true });
-    expect(await findModRootUnder(fs, join(tmp.path, 'wrapped'))).toBe(
-      join(tmp.path, 'wrapped', 'CnMod 1.3.1'),
-    );
-    await mkdir(join(tmp.path, 'empty'), { recursive: true });
-    expect(await findModRootUnder(fs, join(tmp.path, 'empty'))).toBeUndefined();
+    const fs = memoryVfs();
+    await fs.mkdir('direct/DataCnmd');
+    expect(await findModRootUnder(fs, 'direct')).toBe('direct');
+    await fs.mkdir('wrapped/CnMod 1.3.1/DataCnmd');
+    expect(await findModRootUnder(fs, 'wrapped')).toBe('wrapped/CnMod 1.3.1');
+    await fs.mkdir('empty');
+    expect(await findModRootUnder(fs, 'empty')).toBeUndefined();
   });
 
   it('discovers the newest installed mod under mods/ (lexicographically last)', async () => {
-    const mods = join(tmp.path, 'mods');
-    expect(await discoverInstalledMod(fs, mods)).toBeUndefined(); // no mods/ dir yet
-    await mkdir(join(mods, 'CnMod 1.3.1', 'DataCnmd'), { recursive: true });
-    await mkdir(join(mods, 'CnMod 1.3.2', 'DataCnmd'), { recursive: true });
-    await mkdir(join(mods, 'not-a-mod'), { recursive: true });
-    expect(await discoverInstalledMod(fs, mods)).toBe(join(mods, 'CnMod 1.3.2'));
+    const fs = memoryVfs();
+    expect(await discoverInstalledMod(fs, 'mods')).toBeUndefined(); // no mods/ dir yet
+    await fs.mkdir('mods/CnMod 1.3.1/DataCnmd');
+    await fs.mkdir('mods/CnMod 1.3.2/DataCnmd');
+    await fs.mkdir('mods/not-a-mod');
+    expect(await discoverInstalledMod(fs, 'mods')).toBe('mods/CnMod 1.3.2');
+  });
+
+  it('treats a mod still carrying the incomplete marker as absent', async () => {
+    const fs = memoryVfs();
+    const root = vjoin('mods', 'CnMod 1.3.1');
+    await fs.mkdir(vjoin(root, 'DataCnmd'));
+    await markIncomplete(fs, root);
+    expect(await discoverInstalledMod(fs, 'mods')).toBeUndefined();
+    await markComplete(fs, root);
+    expect(await discoverInstalledMod(fs, 'mods')).toBe(root);
   });
 });

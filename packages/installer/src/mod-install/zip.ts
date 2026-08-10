@@ -1,4 +1,4 @@
-import type { Vfs } from '@open-northland/vfs';
+import type { ReadableVfs } from '@open-northland/vfs';
 
 /**
  * Minimal ZIP reader (PKWARE APPNOTE 4.5): end-of-central-directory record → central directory →
@@ -44,25 +44,13 @@ export interface ZipSource {
   read(offset: number, length: number): Promise<Uint8Array>;
 }
 
-export async function vfsZipSource(fs: Vfs, path: string): Promise<ZipSource> {
+export async function vfsZipSource(fs: ReadableVfs, path: string): Promise<ZipSource> {
   const info = await fs.stat(path);
   if (info?.kind !== 'file') throw new Error(`zip: no archive at ${path}`);
   return {
     size: info.size,
     async read(offset: number, length: number): Promise<Uint8Array> {
       const bytes = await fs.readFileSlice(path, offset, length);
-      if (bytes.length !== length)
-        throw new Error(`zip: short read at ${offset} (${bytes.length}/${length})`);
-      return bytes;
-    },
-  };
-}
-
-export function blobZipSource(blob: Blob): ZipSource {
-  return {
-    size: blob.size,
-    async read(offset: number, length: number): Promise<Uint8Array> {
-      const bytes = new Uint8Array(await blob.slice(offset, offset + length).arrayBuffer());
       if (bytes.length !== length)
         throw new Error(`zip: short read at ${offset} (${bytes.length}/${length})`);
       return bytes;

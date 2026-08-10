@@ -1,4 +1,4 @@
-import type { PipelineManifest } from '@open-northland/asset-pipeline';
+import type { PipelineManifest } from '@open-northland/asset-pipeline/manifest';
 
 export type ContentStatus =
   | 'missing'

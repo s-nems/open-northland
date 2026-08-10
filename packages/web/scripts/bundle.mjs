@@ -4,10 +4,11 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { cp, mkdir, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { cp, mkdir, readdir, rm } from 'node:fs/promises';
+import { dirname, extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { forbiddenGameExtensions } from '../../../scripts/game-asset-policy.mjs';
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const appRoot = join(packageRoot, '../app');
@@ -51,4 +52,20 @@ await Promise.all([
   cp(join(installerSetup, 'setup.css'), join(site, 'setup.css')),
 ]);
 await cp(join(appRoot, 'dist-web'), join(site, 'play'), { recursive: true });
+
+/** The deployment must carry no original game material; each visitor converts their own copy. */
+async function assertNoGameAssets(dir) {
+  const offenders = [];
+  for (const entry of await readdir(dir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (forbiddenGameExtensions.has(extname(entry.name).toLowerCase())) {
+      offenders.push(relative(site, join(entry.parentPath, entry.name)));
+    }
+  }
+  if (offenders.length > 0) {
+    throw new Error(`[web] site carries original game assets: ${offenders.join(', ')}`);
+  }
+}
+
+await assertNoGameAssets(site);
 console.log(`[web] site assembled in ${site}`);

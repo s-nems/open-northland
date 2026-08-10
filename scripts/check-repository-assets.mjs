@@ -1,20 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { basename, extname } from 'node:path';
-
-const forbiddenGameExtensions = new Set([
-  '.bmd',
-  '.cif',
-  '.cur',
-  '.dll',
-  '.dls',
-  '.exe',
-  '.fnt',
-  '.hlt',
-  '.lib',
-  '.pcx',
-  '.sgt',
-  '.wav',
-]);
+import { forbiddenGameExtensions } from './game-asset-policy.mjs';
 
 const reviewedBinaryAssets = new Set([
   'docs/images/logo.webp',

@@ -1,4 +1,4 @@
-import { normalizeRelPath, type Vfs, vjoin } from '@open-northland/vfs';
+import { normalizeRelPath, type ReadableVfs, vjoin } from '@open-northland/vfs';
 
 /**
  * The shared containment rule: a request may only ever reach an existing file inside the root it was
@@ -6,7 +6,7 @@ import { normalizeRelPath, type Vfs, vjoin } from '@open-northland/vfs';
  * host that wants percent-decoding does it first.
  */
 export async function resolveFileUnderRoot(
-  fs: Vfs,
+  fs: ReadableVfs,
   root: string,
   relative: string,
 ): Promise<string | undefined> {

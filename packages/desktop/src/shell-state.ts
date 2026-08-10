@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pipeline';
+import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pipeline/manifest';
 import { type ContentStatus, classifyContent, type ShellSetupState } from '@open-northland/installer';
 import { currentLocale } from '@open-northland/installer/i18n';
 import { discoverInstalledMod, findModRootUnder } from '@open-northland/installer/mod-install';

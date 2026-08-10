@@ -1,4 +1,5 @@
 import type { PipelineEvent } from '@open-northland/installer';
+import type { Locale } from '@open-northland/installer/i18n';
 import { vjoin } from '@open-northland/vfs';
 import type { FolderSnapshot } from '@open-northland/vfs/opfs';
 import { CONTENT_DIR } from '../opfs-layout.js';
@@ -11,6 +12,8 @@ export interface RunPipelineRequest {
   /** OPFS-root-relative mod root (`open-northland/mods/…`), or undefined when the mod sits inside
    *  the game folder. */
   readonly modRoot: string | undefined;
+  /** The page's installer language, so a failure raised inside the worker speaks it too. */
+  readonly locale: Locale;
 }
 
 export type PipelineWorkerMessage = PipelineEvent;

@@ -5,13 +5,4 @@
  */
 export { discoverInstalledMod, findModRootUnder } from './discover.js';
 export { isFinalModEvent } from './events.js';
-export { extractModZip, zipMemberRelPath } from './extract.js';
 export { CNMOD_KNOWN_SHA256, installCnMod, type ModZipDownload } from './install.js';
-export {
-  blobZipSource,
-  readZipEntries,
-  readZipEntryData,
-  vfsZipSource,
-  type ZipEntry,
-  type ZipSource,
-} from './zip.js';

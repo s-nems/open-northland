@@ -1,34 +1,34 @@
-import { CURRENT_MANIFEST, probeGameFolder, readPipelineManifest } from '@open-northland/asset-pipeline';
+import { CURRENT_MANIFEST, readPipelineManifest } from '@open-northland/asset-pipeline/manifest';
+import { probeGameFolder } from '@open-northland/asset-pipeline/probe';
 import {
   classifyContent,
   createEventThrottle,
   type GameFolderCandidate,
   type ModEvent,
+  type PickedFolder,
   type PipelineEvent,
   type ShellApi,
   type ShellSetupState,
 } from '@open-northland/installer';
-import { isLocale, type Locale, messages, resolveLocale } from '@open-northland/installer/i18n';
+import { snapshotDirectoryHandle, snapshotFileList } from '@open-northland/installer/folder';
+import type { Locale } from '@open-northland/installer/i18n';
+import { messages } from '@open-northland/installer/i18n';
 import { discoverInstalledMod, installCnMod, isFinalModEvent } from '@open-northland/installer/mod-install';
 import { vjoin } from '@open-northland/vfs';
 import { fileMapVfs } from '@open-northland/vfs/opfs';
+import { effectiveLocale, storeLocale } from './locale.js';
 import { CONTENT_DIR, MODS_DIR, opfsRoot } from './opfs-layout.js';
-import { type DroppedFolder, snapshotDirectoryHandle, snapshotDrop, snapshotFileList } from './snapshot.js';
+import { assertRoomForConversion, requestPersistentStorage, storageFullMessage } from './storage.js';
 import type { PipelineWorkerMessage, RunPipelineRequest } from './worker/protocol.js';
 
-/** The installer language persisted per browser; the game keeps its own setting. */
-const LOCALE_STORAGE_KEY = 'open-northland.web-locale';
+/** Web Locks name guarding the one conversion this origin may run at a time. */
+const PIPELINE_LOCK = 'open-northland.pipeline';
 
 /** Where the site hosts the CnMod archive, beside the game path (same origin, no CORS). */
 const CNMOD_ARCHIVE_URL = new URL('../cnmod/cnmod.zip', document.baseURI);
 
 /** The playable app, served under the site base with the shared content routes beneath it. */
 const PLAY_URL = 'play/';
-
-function storedLocale(): Locale {
-  const raw = localStorage.getItem(LOCALE_STORAGE_KEY);
-  return isLocale(raw) ? raw : resolveLocale(navigator.languages);
-}
 
 /** Streams `response` into an OPFS file chunk by chunk - the ~600 MB archive must never sit in
  *  memory whole. Resolves to undefined: the web transport has no streaming hash, and the archive
@@ -65,14 +65,29 @@ async function streamToOpfsFile(
   return undefined;
 }
 
+/** Storage exhaustion would otherwise reach the mod panel as a raw DOMException. */
+async function withStorageMessage<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    const message = storageFullMessage(error);
+    throw message === undefined ? error : new Error(message);
+  }
+}
+
 /** `showDirectoryPicker` is Chromium-only (WICG File System Access); absent elsewhere. */
 interface DirectoryPickerWindow {
   showDirectoryPicker?(options?: { readonly id?: string }): Promise<FileSystemDirectoryHandle>;
 }
 
+/** Every capability this shell implements. A new optional member on `ShellApi` fails this build
+ *  until the web shell either implements it or is listed here as not offering it. */
+type WebShellApi = Required<Omit<ShellApi, 'probeGamePath' | 'detectGameFolders'>>;
+
 export function createWebShellApi(): ShellApi {
-  let picked: DroppedFolder | undefined;
+  let picked: PickedFolder | undefined;
   let worker: Worker | undefined;
+  let releasePipelineLock: (() => void) | undefined;
   const pipelineListeners: ((event: PipelineEvent) => void)[] = [];
   const modListeners: ((event: ModEvent) => void)[] = [];
   let modDownload: AbortController | undefined;
@@ -83,7 +98,7 @@ export function createWebShellApi(): ShellApi {
     for (const listener of modListeners) listener(event);
   };
 
-  async function candidateOf(folder: DroppedFolder): Promise<GameFolderCandidate> {
+  async function candidateOf(folder: PickedFolder): Promise<GameFolderCandidate> {
     picked = folder;
     return { path: folder.name, probe: await probeGameFolder(fileMapVfs(folder.files), '') };
   }
@@ -104,14 +119,37 @@ export function createWebShellApi(): ShellApi {
   function stopWorker(): void {
     worker?.terminate();
     worker = undefined;
+    releasePipelineLock?.();
+    releasePipelineLock = undefined;
   }
 
-  const api: ShellApi = {
+  /**
+   * One conversion per origin: two tabs writing into the same content tree would interleave, and
+   * whichever finished last would stamp the mixture as ready. The lock is held for as long as the
+   * worker runs, so it is released from {@link stopWorker} rather than by awaiting the callback.
+   */
+  async function holdPipelineLock(): Promise<boolean> {
+    if (navigator.locks === undefined) return true;
+    return new Promise<boolean>((resolve) => {
+      void navigator.locks.request(PIPELINE_LOCK, { ifAvailable: true }, (lock) => {
+        if (lock === null) {
+          resolve(false);
+          return Promise.resolve();
+        }
+        resolve(true);
+        return new Promise<void>((release) => {
+          releasePipelineLock = release;
+        });
+      });
+    });
+  }
+
+  const api: WebShellApi = {
     async getState(): Promise<ShellSetupState> {
       const modRoot = await availableModRoot();
       return {
         portable: false,
-        locale: storedLocale(),
+        locale: effectiveLocale(),
         contentStatus: await contentStatus(),
         ...(modRoot !== undefined ? { modRoot } : {}),
       };
@@ -135,9 +173,8 @@ export function createWebShellApi(): ShellApi {
       return folder === undefined ? null : candidateOf(folder);
     },
 
-    async handleDrop(transfer: DataTransfer): Promise<GameFolderCandidate | null> {
-      const folder = await snapshotDrop(transfer);
-      return folder === undefined ? null : candidateOf(folder);
+    async adoptFolder(folder: PickedFolder): Promise<GameFolderCandidate | null> {
+      return candidateOf(folder);
     },
 
     async runPipeline(gamePath: string): Promise<void> {
@@ -151,6 +188,9 @@ export function createWebShellApi(): ShellApi {
       if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
       const modRoot = probe.hasMod ? undefined : await availableModRoot();
       if (!probe.hasMod && modRoot === undefined) throw new Error(messages().errors.modRequired);
+      await requestPersistentStorage();
+      await assertRoomForConversion();
+      if (!(await holdPipelineLock())) throw new Error(messages().errors.conversionElsewhere);
 
       const spawned = new Worker(new URL('pipeline-worker.js', document.baseURI));
       worker = spawned;
@@ -165,7 +205,12 @@ export function createWebShellApi(): ShellApi {
           listener({ kind: 'error', message: event.message || 'pipeline worker crashed' });
         }
       };
-      const request: RunPipelineRequest = { kind: 'run', game: folder.files, modRoot };
+      const request: RunPipelineRequest = {
+        kind: 'run',
+        game: folder.files,
+        modRoot,
+        locale: effectiveLocale(),
+      };
       spawned.postMessage(request);
     },
 
@@ -179,22 +224,28 @@ export function createWebShellApi(): ShellApi {
 
     async downloadMod(): Promise<string> {
       if (modDownload !== undefined) throw new Error(messages().errors.modDownloadRunning);
+      // The archive and the tree it unpacks to are the bulk of what a visitor must fit; refusing
+      // here beats failing after 600 MB of download.
+      await requestPersistentStorage();
+      await assertRoomForConversion();
       modDownload = new AbortController();
       const { signal } = modDownload;
       try {
         const fs = await opfsRoot();
-        return await installCnMod(
-          fs,
-          MODS_DIR,
-          async (destZip, onEvent, downloadSignal) => {
-            const response = await fetch(CNMOD_ARCHIVE_URL, { signal: downloadSignal ?? null });
-            if (!response.ok) {
-              throw new Error(`mod download: ${CNMOD_ARCHIVE_URL.pathname} answered ${response.status}`);
-            }
-            return streamToOpfsFile(destZip, response, onEvent, downloadSignal);
-          },
-          forwardModEvent,
-          { signal },
+        return await withStorageMessage(() =>
+          installCnMod(
+            fs,
+            MODS_DIR,
+            async (destZip, onEvent, downloadSignal) => {
+              const response = await fetch(CNMOD_ARCHIVE_URL, { signal: downloadSignal ?? null });
+              if (!response.ok) {
+                throw new Error(`mod download: ${CNMOD_ARCHIVE_URL.pathname} answered ${response.status}`);
+              }
+              return streamToOpfsFile(destZip, response, onEvent, downloadSignal);
+            },
+            forwardModEvent,
+            { signal },
+          ),
         );
       } finally {
         modDownload = undefined;
@@ -208,12 +259,16 @@ export function createWebShellApi(): ShellApi {
     async pickModFolder(): Promise<string | null> {
       const file = await pickZipFile();
       if (file === null) return null;
+      await requestPersistentStorage();
+      await assertRoomForConversion();
       const fs = await opfsRoot();
-      return installCnMod(
-        fs,
-        MODS_DIR,
-        (destZip, onEvent, signal) => streamToOpfsFile(destZip, new Response(file), onEvent, signal),
-        forwardModEvent,
+      return withStorageMessage(() =>
+        installCnMod(
+          fs,
+          MODS_DIR,
+          (destZip, onEvent, signal) => streamToOpfsFile(destZip, new Response(file), onEvent, signal),
+          forwardModEvent,
+        ),
       );
     },
 
@@ -226,11 +281,11 @@ export function createWebShellApi(): ShellApi {
       if ((await contentStatus()) === 'stale-schema') {
         throw new Error(messages().errors.incompatibleSchema);
       }
-      location.assign(`${PLAY_URL}?lang=${storedLocale()}`);
+      location.assign(`${PLAY_URL}?lang=${effectiveLocale()}`);
     },
 
     async setLocale(locale: Locale): Promise<void> {
-      localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+      storeLocale(locale);
     },
   };
   return api;

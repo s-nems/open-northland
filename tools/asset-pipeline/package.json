@@ -7,6 +7,8 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
+    "./manifest": "./dist/manifest.js",
+    "./probe": "./dist/probe.js",
     "./progress": "./dist/progress.js"
   },
   "bin": {

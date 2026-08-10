@@ -3,8 +3,8 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "lib": ["ES2022"],
-    "types": ["node"]
+    "lib": ["ES2022", "DOM"],
+    "types": []
   },
   "include": ["src/**/*.ts"],
   "references": [{ "path": "../vfs" }]

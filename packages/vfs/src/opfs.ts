@@ -1,7 +1,7 @@
-import type { Vfs, VfsEntry, VfsStat } from './types.js';
+import type { ReadableVfs, Vfs, VfsEntry, VfsStat } from './types.js';
 import { normalizeRelPath, toPosix } from './vpath.js';
 
-/** Browser adapters: the origin-private file system and read-only dropped-folder snapshots. */
+/** Browser adapters: the origin-private file system and read-only picked-folder snapshots. */
 
 function segmentsOf(path: string): string[] {
   const stripped = toPosix(path).replace(/^\/+/, '');
@@ -9,19 +9,6 @@ function segmentsOf(path: string): string[] {
   const normalized = normalizeRelPath(stripped);
   if (normalized === undefined) throw new Error(`opfs vfs: unusable path ${path}`);
   return normalized.split('/');
-}
-
-async function copyTree(fs: Vfs, from: string, to: string): Promise<void> {
-  const info = await fs.stat(from);
-  if (info === undefined) throw new Error(`opfs vfs: no entry ${from}`);
-  if (info.kind === 'file') {
-    await fs.writeFile(to, await fs.readFile(from));
-    return;
-  }
-  await fs.mkdir(to);
-  for (const entry of await fs.readdir(from)) {
-    await copyTree(fs, `${from}/${entry.name}`, `${to}/${entry.name}`);
-  }
 }
 
 /** Read-write adapter over a directory handle, typically `navigator.storage.getDirectory()`. */
@@ -116,79 +103,91 @@ export function opfsVfs(root: FileSystemDirectoryHandle): Vfs {
         // rm -rf semantics: an absent path or parent is a no-op.
       }
     },
-
-    async rename(from: string, to: string): Promise<void> {
-      // No cross-browser directory move exists, so a one-time copy-and-delete stands in.
-      await copyTree(fs, from, to);
-      await fs.rm(from);
-    },
   };
   return fs;
 }
 
 /**
- * Read-only snapshot of a dropped or picked folder: keys are `/`-relative file paths inside it,
- * values the lazily-read `File`s. Structured-cloneable, so a page can hand it to a worker.
+ * A picked folder's file, kept unresolved where the browser offers a handle: materializing every
+ * `File` up front costs one main-thread round trip per file, and a game folder holds ~44k of them.
  */
-export type FolderSnapshot = ReadonlyMap<string, File>;
+export type SnapshotFile = File | FileSystemFileHandle;
 
-export function fileMapVfs(files: FolderSnapshot): Vfs {
+/**
+ * Read-only snapshot of a picked or dropped folder: keys are `/`-relative file paths inside it.
+ * Structured-cloneable, so a page can hand it to a worker.
+ */
+export type FolderSnapshot = ReadonlyMap<string, SnapshotFile>;
+
+type Children = Map<string, VfsEntry['kind']>;
+
+/** One pass over the keys, so `readdir` and directory `stat` cost a lookup instead of a full scan. */
+function directoryIndex(files: FolderSnapshot): Map<string, Children> {
+  const dirs = new Map<string, Children>();
+  const childrenOf = (dir: string): Children => {
+    const existing = dirs.get(dir);
+    if (existing !== undefined) return existing;
+    const created: Children = new Map();
+    dirs.set(dir, created);
+    return created;
+  };
+  childrenOf('');
+  for (const key of files.keys()) {
+    let parent = '';
+    let at = 0;
+    for (;;) {
+      const cut = key.indexOf('/', at);
+      if (cut < 0) {
+        childrenOf(parent).set(key.slice(at), 'file');
+        break;
+      }
+      const name = key.slice(at, cut);
+      childrenOf(parent).set(name, 'dir');
+      parent = parent === '' ? name : `${parent}/${name}`;
+      childrenOf(parent);
+      at = cut + 1;
+    }
+  }
+  return dirs;
+}
+
+export function fileMapVfs(files: FolderSnapshot): ReadableVfs {
+  const dirs = directoryIndex(files);
+
   function keyOf(path: string): string {
     return segmentsOf(path).join('/');
   }
 
-  function isDir(key: string): boolean {
-    if (key === '') return true;
-    const prefix = `${key}/`;
-    for (const file of files.keys()) if (file.startsWith(prefix)) return true;
-    return false;
+  async function fileAt(path: string): Promise<File> {
+    const entry = files.get(keyOf(path));
+    if (entry === undefined) throw new Error(`picked folder: no file ${path}`);
+    return entry instanceof File ? entry : entry.getFile();
   }
-
-  function fileAt(path: string): File {
-    const file = files.get(keyOf(path));
-    if (file === undefined) throw new Error(`dropped folder: no file ${path}`);
-    return file;
-  }
-
-  const readOnly = (path: string): Promise<never> =>
-    Promise.reject(new Error(`dropped folder: read-only, cannot write ${path}`));
 
   return {
     async readFile(path: string): Promise<Uint8Array> {
-      return new Uint8Array(await fileAt(path).arrayBuffer());
+      return new Uint8Array(await (await fileAt(path)).arrayBuffer());
     },
 
     async readFileSlice(path: string, offset: number, length: number): Promise<Uint8Array> {
-      return new Uint8Array(
-        await fileAt(path)
-          .slice(offset, offset + length)
-          .arrayBuffer(),
-      );
+      const file = await fileAt(path);
+      return new Uint8Array(await file.slice(offset, offset + length).arrayBuffer());
     },
-
-    writeFile: readOnly,
-    mkdir: readOnly,
-    rm: readOnly,
-    rename: readOnly,
 
     readdir(path: string): Promise<VfsEntry[]> {
-      const key = keyOf(path);
-      if (!isDir(key)) return Promise.reject(new Error(`dropped folder: no directory ${path}`));
-      const prefix = key === '' ? '' : `${key}/`;
-      const names = new Map<string, VfsEntry['kind']>();
-      for (const file of files.keys()) {
-        if (!file.startsWith(prefix)) continue;
-        const rest = file.slice(prefix.length);
-        names.set(rest.split('/')[0] ?? rest, rest.includes('/') ? 'dir' : 'file');
-      }
-      return Promise.resolve([...names].map(([name, kind]) => ({ name, kind })));
+      const children = dirs.get(keyOf(path));
+      if (children === undefined) return Promise.reject(new Error(`picked folder: no directory ${path}`));
+      return Promise.resolve([...children].map(([name, kind]) => ({ name, kind })));
     },
 
-    stat(path: string): Promise<VfsStat | undefined> {
+    async stat(path: string): Promise<VfsStat | undefined> {
       const key = keyOf(path);
-      const file = files.get(key);
-      if (file !== undefined) return Promise.resolve({ kind: 'file', size: file.size });
-      return Promise.resolve(isDir(key) ? { kind: 'dir', size: 0 } : undefined);
+      const entry = files.get(key);
+      if (entry !== undefined) {
+        const file = entry instanceof File ? entry : await entry.getFile();
+        return { kind: 'file', size: file.size };
+      }
+      return dirs.has(key) ? { kind: 'dir', size: 0 } : undefined;
     },
   };
 }

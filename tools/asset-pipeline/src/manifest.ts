@@ -3,8 +3,8 @@
  * never carries, and the staleness signal an installed shell compares against its own expectation.
  */
 
-import { IR_VERSION } from '@open-northland/data';
-import { readText, type Vfs, vjoin, writeText } from '@open-northland/vfs';
+import { IR_VERSION } from '@open-northland/data/ir-version';
+import { type ReadableVfs, readText, type Vfs, vjoin, writeText } from '@open-northland/vfs';
 
 /**
  * Bump when a decoder or extraction change alters `content/` bytes without touching the IR schema
@@ -43,7 +43,10 @@ export async function clearPipelineManifest(fs: Vfs, outDir: string): Promise<vo
 }
 
 /** The stamp of a previous conversion under `outDir`; absent or malformed reads as `undefined`. */
-export async function readPipelineManifest(fs: Vfs, outDir: string): Promise<PipelineManifest | undefined> {
+export async function readPipelineManifest(
+  fs: ReadableVfs,
+  outDir: string,
+): Promise<PipelineManifest | undefined> {
   try {
     const parsed: unknown = JSON.parse(await readText(fs, vjoin(outDir, PIPELINE_MANIFEST_NAME)));
     if (typeof parsed !== 'object' || parsed === null) return undefined;

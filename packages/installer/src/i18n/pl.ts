@@ -102,5 +102,19 @@ export const pl = {
     noDataCnmd: 'nie znaleziono tam DataCnmd/ - wskaż rozpakowany folder moda (pobierz go z {url})',
     incompatibleSchema:
       'zawartość została wygenerowana dla niezgodnego schematu - najpierw wygeneruj ją ponownie',
+    noServiceWorker:
+      'ta przeglądarka nie uruchomi dla tej strony service workera, więc nie da się podać ' +
+      'przekonwertowanej zawartości gry. Okna prywatne zwykle to blokują - spróbuj w zwykłym oknie.',
+    noStorage:
+      'ta przeglądarka nie daje stronie prywatnego magazynu, więc nie ma gdzie zapisać ' +
+      'przekonwertowanej zawartości gry.',
+    storageFull:
+      'przeglądarce zabrakło miejsca dla tej strony przed końcem konwersji. Zwolnij miejsce na ' +
+      'dysku i zacznij instalację od nowa.',
+    notEnoughStorage:
+      'konwersja potrzebuje około {needed} GB magazynu przeglądarki, a dla tej strony dostępne ' +
+      'jest tylko {available} GB. Zwolnij miejsce na dysku i odśwież stronę.',
+    conversionElsewhere: 'inna karta tej strony już konwertuje - dokończ ją lub zamknij',
+    setupFailed: 'nie udało się uruchomić instalatora: {message}',
   },
 } as const satisfies Messages;

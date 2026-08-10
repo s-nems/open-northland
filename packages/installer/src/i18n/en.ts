@@ -100,6 +100,20 @@ export const en = {
     modDownloadRunning: 'mod download already running',
     noDataCnmd: 'no DataCnmd/ found there - pick the unpacked mod folder (download it from {url})',
     incompatibleSchema: 'content was generated for an incompatible schema - regenerate it first',
+    noServiceWorker:
+      'this browser will not run a service worker for this site, so the converted game content ' +
+      'cannot be served. Private and incognito windows usually block it - try a normal window.',
+    noStorage:
+      'this browser gives the site no private storage, so there is nowhere to put the converted ' +
+      'game content.',
+    storageFull:
+      'the browser ran out of storage for this site before the conversion finished. Free some disk ' +
+      'space and start the installation again.',
+    notEnoughStorage:
+      'the conversion needs about {needed} GB of browser storage and only {available} GB is ' +
+      'available for this site. Free some disk space and reload.',
+    conversionElsewhere: 'another tab of this site is already converting - finish or close it first',
+    setupFailed: 'the installer could not start: {message}',
   },
 } as const;
 

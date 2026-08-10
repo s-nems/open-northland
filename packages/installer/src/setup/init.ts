@@ -1,20 +1,16 @@
-import { currentLocale, type Locale, messages, setActiveLocale } from '../i18n/index.js';
+import { currentLocale, formatMessage, type Locale, messages, setActiveLocale } from '../i18n/index.js';
 import type { ShellApi } from '../shell-api.js';
+import { showSetupBlocked } from './blocked.js';
 import { el } from './dom.js';
 import { createLangSwitch } from './lang-switch.js';
+import { showPhase } from './phases.js';
 import { createPickPanel } from './pick-panel.js';
 import { createPipelineProgress } from './pipeline-progress.js';
 
+export { showSetupBlocked } from './blocked.js';
+
 /** Boots the shared setup page against the hosting shell's {@link ShellApi}. */
 export function initSetup(api: ShellApi): void {
-  const phases = { pick: el('pick'), run: el('run'), done: el('done'), failed: el('failed') } as const;
-
-  function showPhase(name: keyof typeof phases): void {
-    for (const [key, section] of Object.entries(phases)) {
-      section.classList.toggle('hidden', key !== name);
-    }
-  }
-
   const progress = createPipelineProgress(showPhase);
   const langSwitch = createLangSwitch((locale) => void applyLocale(locale));
   const pick = createPickPanel(api, {
@@ -79,5 +75,8 @@ export function initSetup(api: ShellApi): void {
     await pick.start(state.gamePath);
   }
 
-  void boot();
+  void boot().catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    showSetupBlocked(formatMessage(messages().errors.setupFailed, { message }));
+  });
 }
