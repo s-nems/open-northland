@@ -43,12 +43,10 @@ function adapterContract(makeFs: () => Promise<{ fs: Vfs; root: string }>): void
     await fs.rm(vjoin(root, 'tree'));
   });
 
-  it('renames files and directory trees', async () => {
+  it('round-trips text', async () => {
     const { fs, root } = await makeFs();
-    await writeText(fs, vjoin(root, 'stage/x/data.txt'), 'payload');
-    await fs.rename(vjoin(root, 'stage'), vjoin(root, 'final'));
-    expect(await readText(fs, vjoin(root, 'final/x/data.txt'))).toBe('payload');
-    expect(await fs.stat(vjoin(root, 'stage'))).toBeUndefined();
+    await writeText(fs, vjoin(root, 'notes/a.txt'), 'payload');
+    expect(await readText(fs, vjoin(root, 'notes/a.txt'))).toBe('payload');
   });
 }
 
@@ -84,6 +82,7 @@ describe('fileMapVfs', () => {
     expect([...(await fs.readFile('Game.exe'))]).toEqual([1, 2]);
     expect([...(await fs.readFileSlice('Game.exe', 1, 1))]).toEqual([2]);
     expect(await fs.stat('DataX')).toEqual({ kind: 'dir', size: 0 });
+    expect(await fs.stat('DataX/Libs')).toEqual({ kind: 'dir', size: 0 });
     expect(await fs.stat('DataX/Libs/data0001.lib')).toEqual({ kind: 'file', size: 1 });
     expect(await fs.stat('missing')).toBeUndefined();
     const top = (await fs.readdir('')).sort((a, b) => a.name.localeCompare(b.name));
@@ -91,12 +90,27 @@ describe('fileMapVfs', () => {
       { name: 'DataX', kind: 'dir' },
       { name: 'Game.exe', kind: 'file' },
     ]);
+    expect(await fs.readdir('DataX')).toEqual([{ name: 'Libs', kind: 'dir' }]);
+    await expect(fs.readdir('DataX/nope')).rejects.toThrow(/no directory/);
   });
 
-  it('rejects writes', async () => {
-    const fs = fileMapVfs(files);
-    await expect(fs.writeFile('x', Uint8Array.of(1))).rejects.toThrow(/read-only/);
-    await expect(fs.rm('Game.exe')).rejects.toThrow(/read-only/);
+  it('resolves handle-backed entries only when their bytes or size are asked for', async () => {
+    let materialized = 0;
+    const file = new File([Uint8Array.of(9, 9, 9)], 'late.bin');
+    const handle = {
+      getFile: (): Promise<File> => {
+        materialized++;
+        return Promise.resolve(file);
+      },
+    } as unknown as FileSystemFileHandle;
+
+    const fs = fileMapVfs(new Map([['deep/late.bin', handle]]));
+    expect(materialized).toBe(0);
+    expect(await fs.readdir('deep')).toEqual([{ name: 'late.bin', kind: 'file' }]);
+    expect(await fs.stat('deep')).toEqual({ kind: 'dir', size: 0 });
+    expect(materialized).toBe(0);
+    expect([...(await fs.readFile('deep/late.bin'))]).toEqual([9, 9, 9]);
+    expect(materialized).toBe(1);
   });
 });
 
@@ -105,14 +119,18 @@ describe('mountVfs', () => {
     Promise.resolve({ fs: mountVfs({ '/data': memoryVfs(), '/game': memoryVfs() }), root: '/data' }),
   );
 
-  it('routes by first segment and refuses cross-mount renames', async () => {
-    const game = memoryVfs();
+  it('routes by first segment and refuses writes into a read-only mount', async () => {
     const data = memoryVfs();
-    const fs = mountVfs({ '/game': game, '/data': data });
+    const fs = mountVfs({
+      '/game': fileMapVfs(new Map([['Game.exe', new File([Uint8Array.of(1)], 'Game.exe')]])),
+      '/data': data,
+    });
     await fs.writeFile('/data/out.txt', Uint8Array.of(7));
     expect(await data.stat('out.txt')).toEqual({ kind: 'file', size: 1 });
-    expect(await fs.stat('/game/out.txt')).toBeUndefined();
+    expect(await fs.stat('/game/Game.exe')).toEqual({ kind: 'file', size: 1 });
+    expect(await fs.stat('/data/Game.exe')).toBeUndefined();
     await expect(fs.readFile('/elsewhere/x')).rejects.toThrow(/outside every mount/);
-    await expect(fs.rename('/data/out.txt', '/game/out.txt')).rejects.toThrow(/across mounts/);
+    await expect(fs.writeFile('/game/Game.exe', Uint8Array.of(2))).rejects.toThrow(/read-only mount/);
+    await expect(fs.rm('/game/Game.exe')).rejects.toThrow(/read-only mount/);
   });
 });

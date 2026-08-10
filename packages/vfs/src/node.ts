@@ -1,4 +1,4 @@
-import { mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { Vfs, VfsEntry, VfsStat } from './types.js';
 
@@ -57,11 +57,6 @@ export function nodeVfs(): Vfs {
 
     async rm(path: string): Promise<void> {
       await rm(path, { recursive: true, force: true });
-    },
-
-    async rename(from: string, to: string): Promise<void> {
-      await mkdir(dirname(to), { recursive: true });
-      await rename(from, to);
     },
   };
 }

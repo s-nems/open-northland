@@ -1,7 +1,7 @@
 import type { Dirent } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { probeGameFolder } from '@open-northland/asset-pipeline';
+import { probeGameFolder } from '@open-northland/asset-pipeline/probe';
 import type { GameFolderCandidate } from '@open-northland/installer';
 import { nodeVfs } from '@open-northland/vfs/node';
 

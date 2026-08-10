@@ -1,9 +1,9 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
+import { type ReadableVfs, vjoin } from '@open-northland/vfs';
 import type { BobsIndexEntry } from './wire.js';
 
 /** One entry per viewable atlas - a palette-applied `<stem>.png` + `<stem>.atlas.json` pair - sorted
  *  by (base, variant). `bobsRoot` must exist - the caller guards. */
-export async function buildBobsIndexEntries(fs: Vfs, bobsRoot: string): Promise<BobsIndexEntry[]> {
+export async function buildBobsIndexEntries(fs: ReadableVfs, bobsRoot: string): Promise<BobsIndexEntry[]> {
   const candidates = (await fs.readdir(bobsRoot))
     .filter((e) => e.kind === 'file' && e.name.endsWith('.atlas.json'))
     .map((e) => e.name.slice(0, -'.atlas.json'.length))

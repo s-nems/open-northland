@@ -1,5 +1,5 @@
 import { formatMessage, localeTag, messages } from '../i18n/index.js';
-import type { ModEvent, ShellApi } from '../shell-api.js';
+import type { ModEvent, ModInstallApi } from '../shell-api.js';
 import { el } from './dom.js';
 
 /** Whole megabytes; the caller appends the unit. */
@@ -43,7 +43,7 @@ function renderModEvent(event: ModEvent): void {
   }
 }
 
-export function createModPanel(api: ShellApi, onModRoot: (root: string) => void): ModPanelView {
+export function createModPanel(api: ModInstallApi, onModRoot: (root: string) => void): ModPanelView {
   const panel = el('mod-panel');
   const progress = el('mod-progress');
   const note = el('mod-note');

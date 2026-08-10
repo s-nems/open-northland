@@ -4,8 +4,13 @@ export { bridgePipelineProgress } from './progress-bridge.js';
 export { overallFraction, type ProgressSnapshot } from './progress-model.js';
 export type {
   GameFolderCandidate,
+  GamePickerApi,
   ModEvent,
+  ModInstallApi,
+  PickedFolder,
+  PipelineApi,
   PipelineEvent,
   ShellApi,
+  ShellChromeApi,
   ShellSetupState,
 } from './shell-api.js';

@@ -1,30 +1,21 @@
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { nodeVfs } from '@open-northland/vfs/node';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { memoryVfs } from '@open-northland/vfs/memory';
+import { describe, expect, it } from 'vitest';
 import { readZipEntries, readZipEntryData, vfsZipSource, type ZipSource } from '../src/mod-install/zip.js';
-import { makeTempDir, type TempDir } from './support/temp-dir.js';
 import { buildZip, type FixtureEntry } from './support/zip-fixture.js';
 
 describe('zip reader', () => {
-  const fs = nodeVfs();
-  let tmp: TempDir;
-  beforeEach(async () => {
-    tmp = await makeTempDir('zip');
-  });
-  afterEach(() => tmp.cleanup());
+  const ZIP_PATH = 'fixture.zip';
 
-  const writeZip = async (entries: readonly FixtureEntry[]): Promise<string> => {
-    const bytes = buildZip(entries);
-    const path = join(tmp.path, 'fixture.zip');
-    await writeFile(path, bytes);
-    return path;
+  const sourceOf = async (entries: readonly FixtureEntry[]): Promise<ZipSource> => {
+    const fs = memoryVfs();
+    await fs.writeFile(ZIP_PATH, buildZip(entries));
+    return vfsZipSource(fs, ZIP_PATH);
   };
 
   it('reads stored and deflated members back byte-identical, honouring a local-only extra field', async () => {
     const stored = Uint8Array.from([1, 2, 3, 4]);
     const compressible = new TextEncoder().encode('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-    const path = await writeZip([
+    const source = await sourceOf([
       // Real archives' local extra field differs from the central record's, so the data offset must
       // come from the local header.
       {
@@ -34,7 +25,6 @@ describe('zip reader', () => {
       },
       { name: 'CnMod 1.3.1/Data/logic/goodtypes.ini', data: compressible, deflate: true },
     ]);
-    const source = await vfsZipSource(fs, path);
     const [first, second, ...rest] = await readZipEntries(source);
     if (first === undefined || second === undefined) throw new Error('expected two entries');
     expect(rest).toEqual([]);
@@ -45,8 +35,7 @@ describe('zip reader', () => {
 
   it('caps deflate output at the declared uncompressed size', async () => {
     const bomb = new Uint8Array(1 << 16);
-    const path = await writeZip([{ name: 'bomb', data: bomb, deflate: true }]);
-    const source = await vfsZipSource(fs, path);
+    const source = await sourceOf([{ name: 'bomb', data: bomb, deflate: true }]);
     const [entry] = await readZipEntries(source);
     if (entry === undefined) throw new Error('expected one entry');
     expect((await readZipEntryData(source, entry)).length).toBe(bomb.length);
@@ -54,25 +43,28 @@ describe('zip reader', () => {
   });
 
   it('rejects central-directory and entry offsets that lie outside the file', async () => {
-    const path = await writeZip([{ name: 'x', data: Uint8Array.from([1]) }]);
-    const bytes = await readFile(path);
+    const bytes = buildZip([{ name: 'x', data: Uint8Array.from([1]) }]);
     // Corrupt the EOCD's central-directory size to reach past end-of-file.
-    bytes.writeUInt32LE(0xff00, bytes.length - 22 + 12);
-    await writeFile(path, bytes);
-    const source = await vfsZipSource(fs, path);
-    await expect(readZipEntries(source)).rejects.toThrow(/outside the file/);
+    new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setUint32(
+      bytes.length - 22 + 12,
+      0xff00,
+      true,
+    );
+    const fs = memoryVfs();
+    await fs.writeFile(ZIP_PATH, bytes);
+    await expect(readZipEntries(await vfsZipSource(fs, ZIP_PATH))).rejects.toThrow(/outside the file/);
   });
 
   it('rejects a non-zip file', async () => {
-    const path = join(tmp.path, 'not-a.zip');
-    await writeFile(path, Buffer.from('definitely not a zip archive, long enough to scan'));
-    const source = await vfsZipSource(fs, path);
-    await expect(readZipEntries(source)).rejects.toThrow(/end-of-central-directory/);
+    const fs = memoryVfs();
+    await fs.writeFile(ZIP_PATH, new TextEncoder().encode('definitely not a zip archive, long enough'));
+    await expect(readZipEntries(await vfsZipSource(fs, ZIP_PATH))).rejects.toThrow(
+      /end-of-central-directory/,
+    );
   });
 
   it('rejects an unsupported compression method', async () => {
-    const path = await writeZip([{ name: 'x', data: Uint8Array.from([1]) }]);
-    const source = await vfsZipSource(fs, path);
+    const source = await sourceOf([{ name: 'x', data: Uint8Array.from([1]) }]);
     const [entry] = await readZipEntries(source);
     if (entry === undefined) throw new Error('expected one entry');
     await expect(readZipEntryData(source, { ...entry, method: 12 })).rejects.toThrow(/method 12/);

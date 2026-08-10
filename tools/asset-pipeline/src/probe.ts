@@ -1,4 +1,4 @@
-import { type Vfs, type VfsEntry, vjoin } from '@open-northland/vfs';
+import { type ReadableVfs, type VfsEntry, vjoin } from '@open-northland/vfs';
 
 /**
  * Cheap validation of a user-picked original-game folder for installer UIs. An owned install is
@@ -23,7 +23,7 @@ export const CULTURESNATION_MOD = 'DataCnmd';
  * Probes `dir` as a game-folder candidate with a bounded breadth-first scan, never a full-tree walk,
  * so a wrong pick like the user's home directory stays cheap. Unreadable directories count as empty.
  */
-export async function probeGameFolder(fs: Vfs, dir: string): Promise<GameFolderProbe> {
+export async function probeGameFolder(fs: ReadableVfs, dir: string): Promise<GameFolderProbe> {
   let top: VfsEntry[];
   try {
     top = await fs.readdir(dir);

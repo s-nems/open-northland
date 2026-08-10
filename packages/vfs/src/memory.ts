@@ -96,30 +96,5 @@ export function memoryVfs(): Vfs {
       }
       return Promise.resolve();
     },
-
-    async rename(from: string, to: string): Promise<void> {
-      const fromKey = keyOf(from);
-      const toKey = keyOf(to);
-      const data = files.get(fromKey);
-      if (data !== undefined) {
-        await this.writeFile(toKey, data);
-        files.delete(fromKey);
-        return;
-      }
-      if (!isDir(fromKey) || fromKey === '') throw new Error(`memory vfs: no entry ${from}`);
-      const prefix = `${fromKey}/`;
-      addDirWithAncestors(toKey);
-      for (const [file, bytes] of [...files]) {
-        if (!file.startsWith(prefix)) continue;
-        files.set(`${toKey}/${file.slice(prefix.length)}`, bytes);
-        files.delete(file);
-      }
-      for (const dir of [...dirs]) {
-        if (dir === fromKey || dir.startsWith(prefix)) {
-          if (dir !== fromKey) dirs.add(`${toKey}/${dir.slice(prefix.length)}`);
-          dirs.delete(dir);
-        }
-      }
-    },
   };
 }

@@ -1,4 +1,4 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
+import { type ReadableVfs, vjoin } from '@open-northland/vfs';
 import { buildBackdropsIndexEntries } from './backdrops-index.js';
 import { buildBobsIndexEntries } from './bobs-index.js';
 import { buildMapsIndexEntries } from './maps-index.js';
@@ -65,7 +65,7 @@ const FILE_ROUTES: readonly FileRoute[] = [
 interface IndexRoute {
   readonly pathname: string;
   readonly root: string;
-  readonly build: (fs: Vfs, root: string) => Promise<unknown>;
+  readonly build: (fs: ReadableVfs, root: string) => Promise<unknown>;
 }
 
 // An absent root is a miss rather than an empty list, so the app can tell "not converted" from "none".
@@ -117,7 +117,7 @@ export function isContentRoute(rawPathname: string): boolean {
 
 /** Resolve a request path (the raw URL pathname, query already stripped) against the content dir. */
 export async function resolveContentRequest(
-  fs: Vfs,
+  fs: ReadableVfs,
   rawPathname: string,
   contentRoot: string,
 ): Promise<ContentHit | undefined> {

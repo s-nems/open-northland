@@ -6,19 +6,17 @@
 nothing publishes it yet. Wire the release flow so the same CI that builds desktop artifacts also
 ships the site.
 
-The layout the server must provide (mirrored locally by `packages/web/scripts/serve.mjs`):
-
-- `/game/` serves `packages/web/dist/site` (installer page, `sw.js`, `pipeline-worker.js`, and the
-  app under `/game/play/` - the `/game/play` base is baked into the app build);
-- `/cnmod/cnmod.zip` hosts the CulturesNation archive on the same origin (the installer downloads it
-  without CORS; mod authors approve rehosting);
-- HTTPS is required - service workers and OPFS do not run on plain HTTP.
+The layout, cache rules, and route ownership the host must respect are the deployment contract in
+[`packages/web/AGENTS.md`](../../../packages/web/AGENTS.md); the permission to rehost the mod
+archive is recorded in [`docs/LEGAL.md`](../../LEGAL.md). HTTPS is required - service workers and
+OPFS do not run on plain HTTP.
 
 ## Scope
 
 - A container or static-hosting job that runs `npm run web:site` and publishes `dist/site`.
-- Upload the verified CnMod archive to `/cnmod/cnmod.zip`.
-- Cache headers: `sw.js` must not be served immutable; hashed `play/assets/*` may be.
+- Upload the verified CnMod archive to `/cnmod/cnmod.zip`. A ~600 MB same-origin file rules out
+  hosts with a per-file cap in the low hundreds of MB.
+- Cache headers per the deployment contract: `sw.js` never immutable, hashed `play/assets/*` may be.
 
 ## Verify
 

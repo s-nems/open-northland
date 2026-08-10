@@ -64,8 +64,6 @@ export interface DesktopSaveApi {
 }
 
 /** The shared setup contract plus the desktop-only save bridges, implemented by the preload bridge
- *  as `window.desktop`. The desktop shell serves typed paths and install detection; folder drops
- *  stay a web-shell affordance. */
-export type DesktopApi = Required<Omit<ShellApi, 'handleDrop'>> &
-  Pick<ShellApi, 'handleDrop'> &
-  DesktopSaveApi;
+ *  as `window.desktop`. The desktop shell serves typed paths and install detection; adopting a
+ *  browser-picked folder stays a web-shell affordance. */
+export type DesktopApi = Required<Omit<ShellApi, 'adoptFolder'>> & DesktopSaveApi;

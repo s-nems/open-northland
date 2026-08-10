@@ -1,6 +1,13 @@
 import type { ContentStatus } from '../content-state.js';
+import { snapshotDrop } from '../folder-snapshot.js';
 import { messages } from '../i18n/index.js';
-import type { GameFolderCandidate, ModEvent, ShellApi, ShellSetupState } from '../shell-api.js';
+import type {
+  GameFolderCandidate,
+  GamePickerApi,
+  ModEvent,
+  ModInstallApi,
+  ShellSetupState,
+} from '../shell-api.js';
 import { el } from './dom.js';
 import { createModPanel } from './mod-panel.js';
 import { type Probe, pickView } from './pick-view.js';
@@ -20,7 +27,10 @@ export interface PickPanelHandlers {
   onPlay(): void;
 }
 
-export function createPickPanel(api: ShellApi, { onInstall, onPlay }: PickPanelHandlers): PickPanelView {
+export function createPickPanel(
+  api: GamePickerApi & ModInstallApi,
+  { onInstall, onPlay }: PickPanelHandlers,
+): PickPanelView {
   const pathInput = el<HTMLInputElement>('game-path');
   const probeNote = el('probe-note');
   const statusNote = el('status-note');
@@ -76,7 +86,7 @@ export function createPickPanel(api: ShellApi, { onInstall, onPlay }: PickPanelH
     applyCandidate(candidate, false);
   }
 
-  function listenDropZone(handleDrop: NonNullable<ShellApi['handleDrop']>): void {
+  function listenDropZone(adoptFolder: NonNullable<GamePickerApi['adoptFolder']>): void {
     dropZone.addEventListener('dragover', (event) => {
       event.preventDefault();
       dropZone.classList.add('drag-over');
@@ -87,12 +97,14 @@ export function createPickPanel(api: ShellApi, { onInstall, onPlay }: PickPanelH
       dropZone.classList.remove('drag-over');
       const transfer = event.dataTransfer;
       if (transfer === null) return;
-      void handleDrop(transfer).then(
-        (candidate) => {
-          if (candidate !== null) applyCandidate(candidate);
-        },
-        (err: unknown) => showPickError(err),
-      );
+      void snapshotDrop(transfer)
+        .then(async (folder) => (folder === undefined ? null : adoptFolder(folder)))
+        .then(
+          (candidate) => {
+            if (candidate !== null) applyCandidate(candidate);
+          },
+          (err: unknown) => showPickError(err),
+        );
     });
   }
 
@@ -118,8 +130,8 @@ export function createPickPanel(api: ShellApi, { onInstall, onPlay }: PickPanelH
         probeTimer = window.setTimeout(() => void probeTyped(probeGamePath), PROBE_DEBOUNCE_MS);
       });
     }
-    const handleDrop = api.handleDrop?.bind(api);
-    if (handleDrop !== undefined) listenDropZone(handleDrop);
+    const adoptFolder = api.adoptFolder?.bind(api);
+    if (adoptFolder !== undefined) listenDropZone(adoptFolder);
     installButton.addEventListener('click', () => {
       if (probe.kind === 'valid') onInstall(probe.path);
     });
@@ -136,7 +148,7 @@ export function createPickPanel(api: ShellApi, { onInstall, onPlay }: PickPanelH
 
     async start(rememberedGamePath: string | undefined): Promise<void> {
       pathInput.classList.toggle('hidden', api.probeGamePath === undefined);
-      dropZone.classList.toggle('hidden', api.handleDrop === undefined);
+      dropZone.classList.toggle('hidden', api.adoptFolder === undefined);
       if (rememberedGamePath !== undefined && api.probeGamePath !== undefined) {
         applyCandidate(await api.probeGamePath(rememberedGamePath));
       }

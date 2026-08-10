@@ -1,4 +1,4 @@
-import { readText, type Vfs, vjoin } from '@open-northland/vfs';
+import { type ReadableVfs, readText, vjoin } from '@open-northland/vfs';
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from './wire.js';
 
 /** The sidecar's `[multiplayer]` lobby table, read tolerantly off the parsed JSON. */
@@ -58,7 +58,7 @@ function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPl
 }
 
 /** Undefined when `<id><suffix>` is absent or unparsable; an unparsable sidecar warns, never throws. */
-async function readSidecar(fs: Vfs, mapsRoot: string, id: string, suffix: string): Promise<unknown> {
+async function readSidecar(fs: ReadableVfs, mapsRoot: string, id: string, suffix: string): Promise<unknown> {
   const file = vjoin(mapsRoot, `${id}${suffix}`);
   if ((await fs.stat(file))?.kind !== 'file') return undefined;
   try {
@@ -71,7 +71,7 @@ async function readSidecar(fs: Vfs, mapsRoot: string, id: string, suffix: string
 
 /** Display strings from `<id>.meta.json`; a wrong-typed field is dropped without a warning. */
 async function metaOf(
-  fs: Vfs,
+  fs: ReadableVfs,
   mapsRoot: string,
   id: string,
 ): Promise<{ readonly name?: string; readonly description?: string }> {
@@ -90,7 +90,7 @@ async function metaOf(
 
 /** Undefined when `<id>.script.json` is absent, malformed, or carries no readable slot. */
 async function playersOf(
-  fs: Vfs,
+  fs: ReadableVfs,
   mapsRoot: string,
   id: string,
 ): Promise<
@@ -121,7 +121,7 @@ async function playersOf(
  * entry: one malformed sidecar degrades its own entry, never the list. `mapsRoot` must exist - the
  * caller guards.
  */
-export async function buildMapsIndexEntries(fs: Vfs, mapsRoot: string): Promise<MapsIndexEntry[]> {
+export async function buildMapsIndexEntries(fs: ReadableVfs, mapsRoot: string): Promise<MapsIndexEntry[]> {
   const ids = (await fs.readdir(mapsRoot))
     .filter(
       (e) =>
