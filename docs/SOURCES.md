@@ -67,7 +67,7 @@ way for every collision above; an archive-**only** file of those kinds would sta
 | `.lib` | packed file library | decoder tests and `decoders/lib.ts` |
 | `.cur` | Windows cursor resource | decoder tests and `decoders/cur.ts` |
 | `.wav` | sound effects and voices | browser-native playback |
-| `.sgt` / `.dls` | DirectMusic soundtrack data | decoded by `decoders/sgt.ts`, `decoders/sgt-tracks.ts`, `decoders/dls.ts`; performed by `stages/music/interpret.ts`, a behavioral port of the MIT [libdmusic](https://github.com/frabert/libdmusic) player with music-value resolution as documented from binary analysis by the MIT [GothicKit dmusic](https://github.com/GothicKit/dmusic) project, proven by event parity against the previously vendored renderer over the owned corpus |
+| `.sgt` / `.dls` | DirectMusic soundtrack data | decoded by `decoders/sgt.ts`, `decoders/sgt-tracks.ts`, `decoders/dls.ts`; performed by `stages/music/interpret.ts`, a behavioral port of the MIT [libdmusic](https://github.com/frabert/libdmusic) player with music-value resolution as documented from binary analysis by the MIT [GothicKit dmusic](https://github.com/GothicKit/dmusic) project, proven by event parity against the previously vendored renderer over the owned corpus. Tracks publish at the 44.1 kHz synth rate rather than the audiopath's requested 22050 Hz port rate: most bank samples are 44.1 kHz, and a recording of the original carries content past 11 kHz with no break there |
 
 ## Verification
 

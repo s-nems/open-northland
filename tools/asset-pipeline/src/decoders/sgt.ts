@@ -99,7 +99,10 @@ export interface SegmentReverb {
 
 /** Audiopath facts that shape the rendered sound. */
 export interface SegmentAudiopath {
-  /** `DMUS_PORTPARAMS8.dwSampleRate`, when its valid flag is set. */
+  /**
+   * `DMUS_PORTPARAMS8.dwSampleRate`, when its valid flag is set: the rate the segment requests of
+   * the synth port, which the music stage deliberately does not adopt as its publish rate.
+   */
   readonly sampleRate?: number;
   readonly reverb?: SegmentReverb;
 }

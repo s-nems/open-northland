@@ -6,7 +6,6 @@ import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { interpretSegment } from './interpret.js';
 import { encodeOgg } from './ogg-encode.js';
-import { decimateByTwo } from './resample.js';
 import { applyWavesReverb } from './reverb.js';
 import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
 
@@ -14,9 +13,11 @@ import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
  * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - one `mtLength`
  * pass per segment, with the loop-back point in the manifest (loop semantics: `decoders/sgt.ts`).
  * The performance interpreter turns each segment into timed note/controller events; spessasynth
- * synthesizes them from the game's DLS banks. Each segment's embedded audiopath then shapes the
- * render: the authored Waves Reverb applies to the whole mix and a 22050 Hz port rate halves the
- * published rate (the synth itself renders oversampled at 44.1 kHz).
+ * synthesizes them from the game's DLS banks. The authored Waves Reverb from each segment's
+ * embedded audiopath applies to the whole mix.
+ * Deviation: the audiopath's 22050 Hz port rate is a synth-port request, not an output format, and
+ * is not applied - most DLS samples are 44.1 kHz, and a recording of the original carries unbroken
+ * content past 11 kHz, so publishing at the synth rate keeps a band that halving would discard.
  * `Theme_Viking_Hostile` alone authors `repeats: 1`; looping it like its 63 infinite siblings is an
  * approximation. Without `DataX/DM2` in the game copy the stage is skipped and the app plays no
  * music.
@@ -29,11 +30,11 @@ const VBR_QUALITY = 3;
 /** Headroom for the reverb's wet sum; uniform so relative track loudness survives. */
 const MASTER_GAIN = 10 ** (-3 / 20);
 /**
- * Bump when this stage's own synthesis or post-processing (event replay, reverb, decimation,
+ * Bump when this stage's own synthesis or post-processing (event replay, reverb, publish rate,
  * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
  * with another version marks every ogg stale.
  */
-const RENDER_VERSION = 5;
+const RENDER_VERSION = 6;
 /** Synthesized headroom over the loop length, in whole seconds; trimmed away at encode. */
 const RENDER_TAIL_S = 1;
 
@@ -148,21 +149,11 @@ export async function renderMusicStage(
       if (audiopath?.reverb !== undefined) {
         applyWavesReverb(synthesized, SAMPLE_RATE, audiopath.reverb);
       }
-      let channels = synthesized;
-      let outRate = SAMPLE_RATE;
-      if (audiopath?.sampleRate !== undefined && audiopath.sampleRate * 2 === SAMPLE_RATE) {
-        channels = channels.map(decimateByTwo);
-        outRate = audiopath.sampleRate;
-      } else if (audiopath?.sampleRate !== undefined && audiopath.sampleRate !== SAMPLE_RATE) {
-        console.warn(
-          `[pipeline] music: ${segment} authors a ${audiopath.sampleRate} Hz port; publishing at ${SAMPLE_RATE} Hz`,
-        );
-      }
-      for (const channel of channels) {
+      for (const channel of synthesized) {
         for (let i = 0; i < channel.length; i++) channel[i] = (channel[i] ?? 0) * MASTER_GAIN;
       }
-      const frames = Math.min(Math.round(totalS * outRate), channels[0]?.length ?? 0);
-      await writeFile(outPath, await encodeOgg(channels, frames, outRate, VBR_QUALITY));
+      const frames = Math.min(Math.round(totalS * SAMPLE_RATE), synthesized[0]?.length ?? 0);
+      await writeFile(outPath, await encodeOgg(synthesized, frames, SAMPLE_RATE, VBR_QUALITY));
       rendered++;
     } catch (err) {
       manifest.delete(stem);
