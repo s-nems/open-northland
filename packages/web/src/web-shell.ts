@@ -10,11 +10,11 @@ import {
 } from '@open-northland/installer';
 import { isLocale, type Locale, messages, resolveLocale } from '@open-northland/installer/i18n';
 import { discoverInstalledMod, installCnMod, isFinalModEvent } from '@open-northland/installer/mod-install';
-import { relIn, type Vfs, vjoin } from '@open-northland/vfs';
+import { vjoin } from '@open-northland/vfs';
 import { fileMapVfs } from '@open-northland/vfs/opfs';
-import { CONTENT_DIR, DATA_DIR, MODS_DIR, opfsRoot } from './opfs-layout.js';
+import { CONTENT_DIR, MODS_DIR, opfsRoot } from './opfs-layout.js';
 import { type DroppedFolder, snapshotDirectoryHandle, snapshotDrop, snapshotFileList } from './snapshot.js';
-import { GAME_MOUNT, type PipelineWorkerMessage, type RunPipelineRequest } from './worker/protocol.js';
+import type { PipelineWorkerMessage, RunPipelineRequest } from './worker/protocol.js';
 
 /** The installer language persisted per browser; the game keeps its own setting. */
 const LOCALE_STORAGE_KEY = 'open-northland.web-locale';
