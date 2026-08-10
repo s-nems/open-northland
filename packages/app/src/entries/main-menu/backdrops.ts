@@ -61,7 +61,8 @@ export function rotationOrder(
 export async function startBackdropRotation(host: HTMLElement, signal: AbortSignal): Promise<void> {
   try {
     const opening = await paintOpening(host);
-    if (await boot(host, opening, signal)) return;
+    // A menu that left mid-boot has no backdrop to degrade, so the warning would name nothing.
+    if (signal.aborted || (await boot(host, opening, signal))) return;
     diag.warn('content', 'menu backdrops unavailable, static backdrop stands');
   } catch (err) {
     diag.warn('content', `menu backdrops failed, static backdrop stands: ${String(err)}`);
@@ -96,7 +97,7 @@ function setSceneArt(host: HTMLElement, url: string): void {
   host.style.setProperty('--menu-scene-art', `url("${url}")`);
 }
 
-/** False leaves the static art standing. */
+/** False leaves the static art standing; an aborted menu reports true, having nothing to fall back to. */
 async function boot(host: HTMLElement, opening: string | null, signal: AbortSignal): Promise<boolean> {
   const files = parseStillList(await fetchJsonOrNull<unknown>('/backdrops-index'));
   // An unreachable route says nothing about the pool; an empty one clears the cached copy.
@@ -112,9 +113,10 @@ async function boot(host: HTMLElement, opening: string | null, signal: AbortSign
   let front = makeLayer(host);
   let back = makeLayer(host);
   let position = 0;
-  for (; position < order.length; position += 1) {
+  for (; position < order.length && !signal.aborted; position += 1) {
     if (await showOn(front, fileAt(position))) break;
   }
+  if (signal.aborted) return true;
   if (position === order.length) return false;
 
   // A single still holds the frame. Reduced motion does not stop the rotation: menu.css keeps the
@@ -124,7 +126,9 @@ async function boot(host: HTMLElement, opening: string | null, signal: AbortSign
   const advance = async (): Promise<void> => {
     if (signal.aborted) return;
     position += 1;
-    if (await showOn(back, fileAt(position))) {
+    const shown = await showOn(back, fileAt(position));
+    if (signal.aborted) return;
+    if (shown) {
       front.classList.remove('is-visible');
       [front, back] = [back, front];
     }
