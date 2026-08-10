@@ -3,11 +3,13 @@ import { FOG_MODE, Owner, Position, Signpost } from '../../src/components/index.
 import { fx } from '../../src/core/fixed.js';
 import {
   exportSaveGame,
+  OLDEST_SUPPORTED_SAVE_VERSION,
   parseSaveGame,
   SAVE_FORMAT_VERSION,
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
+import { registeredMigrations } from '../../src/save/migrate.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -49,6 +51,14 @@ describe('parseSaveGame acceptance', () => {
     const save = parseSaveGame(doc);
     expect(save.header.formatVersion).toBe(SAVE_FORMAT_VERSION);
     expect(save.header.entry).toBeNull();
+  });
+});
+
+describe('save format migration registry', () => {
+  it('registers a step for every supported version below the current one', () => {
+    const wanted: number[] = [];
+    for (let v = OLDEST_SUPPORTED_SAVE_VERSION; v < SAVE_FORMAT_VERSION; v++) wanted.push(v);
+    expect(registeredMigrations()).toEqual(wanted);
   });
 });
 
@@ -160,6 +170,12 @@ describe('parseSaveGame allocation rejection', () => {
     const at = doc.sections.findIndex((s) => s.id === 'component');
     doc.sections.splice(at, 0, { ...sectionOf(doc, 'component'), entries: [] });
     expect(() => parseSaveGame(doc)).toThrow(/duplicate component section/);
+  });
+
+  it('rejects a nextId past the allocation ceiling, where ids would stop being distinct', () => {
+    const doc = populatedDoc();
+    sectionOf(doc, 'entities').nextId = Number.MAX_SAFE_INTEGER;
+    expect(() => parseSaveGame(doc)).toThrow(/allocation ceiling/);
   });
 });
 

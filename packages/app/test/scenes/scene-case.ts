@@ -1,6 +1,6 @@
 import { basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CORE_INVARIANTS, checkInvariants } from '@open-northland/sim';
+import { CORE_INVARIANTS, checkInvariants, exportSaveGame } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { createSceneSim } from '../../src/scenes/runtime.js';
 import type { SceneDefinition } from '../../src/scenes/types.js';
@@ -31,5 +31,9 @@ export function sceneAcceptance(scene: SceneDefinition, testFileUrl: string): vo
     for (const check of scene.checks) {
       expect(check.predicate(sim), check.label).toBe(true);
     }
+    // The export rejects a component payload shared with another component or a module constant, and
+    // it is the player's Save button that would hit it. These scenes reach far more systems than the
+    // save suite's own worlds do, so each one proves its own state is saveable.
+    expect(() => exportSaveGame(sim)).not.toThrow();
   });
 }

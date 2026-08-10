@@ -96,9 +96,17 @@ function parsedSections(value: unknown, header: SaveGameHeader): readonly SaveGa
   return sections;
 }
 
+/** Allocation ceiling for a restored world. Ids are never recycled, so the counter must stay far
+ *  inside the range where `id + 1` is still a distinct integer: past 2^53 it stops advancing and
+ *  every later `create` hands out an id that is already in use. */
+const MAX_ENTITY_ID = 0x7fffffff;
+
 function parsedEntities(raw: Record<string, unknown>, at: string): EntitiesSection {
   const nextId = asCount(raw.nextId, `${at}.nextId`);
   if (nextId < 1) throw new Error(`${at}.nextId: entity ids start at 1, got ${nextId}`);
+  if (nextId > MAX_ENTITY_ID) {
+    throw new Error(`${at}.nextId: ${nextId} is past the ${MAX_ENTITY_ID} allocation ceiling`);
+  }
   const rawAlive = raw.alive;
   if (!Array.isArray(rawAlive)) {
     throw new Error(`${at}.alive: expected an array, got ${typeName(rawAlive)}`);

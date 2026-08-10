@@ -1,5 +1,5 @@
 import type { CommandEnvelope } from '../core/commands/index.js';
-import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
+import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import type { Simulation } from '../simulation.js';
 import {
   SAVE_FORMAT_VERSION,
@@ -122,6 +122,9 @@ function savedValue(value: unknown, path: string, seen: WeakMap<object, string>)
   if (isPlainRecord(value)) {
     if (Object.hasOwn(value, SAVE_MAP_KEY)) {
       throw new Error(`${path}: the key '${SAVE_MAP_KEY}' is reserved for the Map encoding`);
+    }
+    if (Object.hasOwn(value, PROTO_KEY)) {
+      throw new Error(`${path}: the key '${PROTO_KEY}' cannot round-trip as plain data`);
     }
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(value)) out[key] = savedValue(value[key], `${path}.${key}`, seen);

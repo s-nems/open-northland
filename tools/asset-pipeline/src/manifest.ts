@@ -9,8 +9,8 @@ import { IR_VERSION } from '@open-northland/data';
 
 /**
  * Bump when a decoder or extraction change alters `content/` bytes without touching the IR schema
- * (IR_VERSION covers that leg). A mismatch reads as "regeneration recommended", so a forgotten bump
- * costs staleness detection, never correctness.
+ * (IR_VERSION covers that leg). Save files record it as part of their content identity, so a
+ * forgotten bump also costs a loaded game the warning that its content moved under it.
  */
 export const CONTENT_REVISION = 5;
 

@@ -68,11 +68,8 @@ export class Simulation {
    * gates read, so `hashState` mixes its bytes in after the components. Empty while the fog mode is OFF.
    */
   readonly fog?: FogState;
-  /**
-   * Identity of the navigated half-cell grid, for a save file's map check; undefined for a mapless
-   * sim. An immutable input digest like `terrain`, so `hashState` does not mix it in.
-   */
-  readonly mapFingerprint?: string;
+  private readonly map?: TerrainMap;
+  private mapFingerprintMemo?: string;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /** The serializable external-input queue, drained and logged each tick for replay. */
@@ -92,10 +89,21 @@ export class Simulation {
     this.seed = opts.seed;
     this.content = opts.content;
     if (opts.map !== undefined) {
+      this.map = opts.map;
       this.terrain = buildTerrainGraph(opts.content, opts.map);
       this.fog = new FogState(this.terrain, this.world);
-      this.mapFingerprint = terrainGridFingerprint(opts.map);
     }
+  }
+
+  /**
+   * Identity of the navigated half-cell grid, for a save file's map check; undefined for a mapless
+   * sim. An immutable input digest like `terrain`, so `hashState` does not mix it in. Digested on
+   * first read: a whole-grid walk that only a save, a load, or a diagnostic ever needs.
+   */
+  get mapFingerprint(): string | undefined {
+    if (this.map === undefined) return undefined;
+    this.mapFingerprintMemo ??= terrainGridFingerprint(this.map);
+    return this.mapFingerprintMemo;
   }
 
   get tick(): number {

@@ -298,6 +298,9 @@ export class World {
       // Every stored value carries a revision, or the first component walk over the restored world throws.
       this.recordComponentWrite(component, entity);
     }
+    // One bump for the whole fill: a cache built against generation 0 must not read as current over
+    // a store this call populated.
+    this.componentGenerations.set(component, (this.componentGenerations.get(component) ?? 0) + 1);
   }
 
   /** Visit an entity's components in registration order and O(carried components), without allocating.
