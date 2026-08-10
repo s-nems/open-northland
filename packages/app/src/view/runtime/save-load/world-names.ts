@@ -27,8 +27,12 @@ export function worldNamesOf(entries: readonly MapsIndexEntry[]): WorldNameOf {
   };
 }
 
-/** The join over the served maps index, fetched once per call; contentless checkouts degrade to
- *  token pass-through. */
+/** The served maps index, fetched once per document: the roster cannot change under a session, and
+ *  every panel open would otherwise re-download it. */
+let mapList: Promise<readonly MapsIndexEntry[]> | null = null;
+
+/** The join over the served maps index; contentless checkouts degrade to token pass-through. */
 export async function worldNameIndex(): Promise<WorldNameOf> {
-  return worldNamesOf(await loadMapList());
+  mapList ??= loadMapList();
+  return worldNamesOf(await mapList);
 }
