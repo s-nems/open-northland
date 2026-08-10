@@ -236,6 +236,34 @@ describe('restoreSimulation rejection', () => {
     expect(() => restoredFromDoc(doc, 'mapped')).toThrow(/fog mask for player 0 holds/);
   });
 
+  it('rejects an injected __proto__ key rather than restoring a value nothing can read', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    sim.world.add(sim.world.create(), defineComponent<{ n: number }>('ProtoProbe'), { n: 1 });
+    const doc = docOf(sim);
+    const section = doc.sections.find((s) => s.id === 'component');
+    if (section === undefined) throw new Error('exported save must hold the probe store');
+    const entry = (section.entries as Array<[number, Record<string, unknown>]>)[0];
+    if (entry === undefined) throw new Error('exported save must hold the probe entry');
+    // Only a parsed document can carry this as an own key, so it is spliced into the JSON text.
+    const text = JSON.stringify(doc).replace('{"n":1}', '{"n":1,"__proto__":{"x":9}}');
+    expect(() => restoreSimulation(parseSaveGame(JSON.parse(text)), { content: testContent() })).toThrow(
+      /component:ProtoProbe\/1: the key '__proto__'/,
+    );
+  });
+
+  it('rejects a save whose restored state breaks the core invariants', () => {
+    const sim = new Simulation({ seed: 7, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: 0, x: 4, y: 4, tribe: VIKING, owner: P0 });
+    sim.run(4);
+    const doc = docOf(sim);
+    const settlers = doc.sections.find((s) => s.id === 'component' && s.name === 'Settler');
+    if (settlers === undefined) throw new Error('exported save must hold the settler store');
+    const entry = (settlers.entries as Array<[number, Record<string, unknown>]>)[0];
+    if (entry === undefined) throw new Error('exported save must hold a settler');
+    entry[1] = { ...entry[1], hunger: -1 }; // past the needs clamp, which no live tick can produce
+    expect(() => restoredFromDoc(doc, 'mapped')).toThrow(/violates the core invariants/);
+  });
+
   it('reports a contentRevision difference instead of rejecting', () => {
     const original = new Simulation({ seed: 1, content: testContent() });
     original.run(3);

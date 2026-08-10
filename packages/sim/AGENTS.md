@@ -16,6 +16,8 @@
 - Component values form an ownership tree: mint each payload fresh, never stamp a shared module
   constant or an object another component already holds. Save export rejects the alias, because a
   restore would fork it into disconnected copies.
+- A component name is unique per process and identifies the store in save files, so `defineComponent`
+  belongs at module scope and throws on a second call with the same name.
 
 External callers mutate a running simulation only through serializable commands. Systems mutate the
 world during `step()`. Authored scenes and fixtures may assemble pre-tick-zero state directly.

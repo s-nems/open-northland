@@ -5,7 +5,7 @@ import { OLDEST_SUPPORTED_SAVE_VERSION, SAVE_FORMAT_VERSION, SAVE_KIND } from '.
 type SaveMigration = (document: Record<string, unknown>) => Record<string, unknown>;
 
 /** Key v holds the v -> v+1 step. A SAVE_FORMAT_VERSION bump lands its migration here in the same
- *  commit or raises OLDEST_SUPPORTED_SAVE_VERSION instead; the load-time check enforces the choice. */
+ *  commit or raises OLDEST_SUPPORTED_SAVE_VERSION instead; `registeredMigrations` pins the choice. */
 const MIGRATIONS = new Map<number, SaveMigration>();
 
 // v2 added the header's `entry` relaunch token; a v1 save recorded none.
@@ -14,17 +14,15 @@ MIGRATIONS.set(1, (document) => ({
   header: { ...asRecord(document.header, 'save.header'), formatVersion: 2, entry: null },
 }));
 
-for (let v = OLDEST_SUPPORTED_SAVE_VERSION; v < SAVE_FORMAT_VERSION; v++) {
-  if (!MIGRATIONS.has(v)) {
-    throw new Error(`save format ${SAVE_FORMAT_VERSION} ships without a v${v} -> v${v + 1} migration`);
-  }
+/** The versions the chain can lift, for the test that pins the registry against the format's own
+ *  supported range. */
+export function registeredMigrations(): readonly number[] {
+  return [...MIGRATIONS.keys()].sort((a, b) => a - b);
 }
 
 /**
- * Classify an untrusted document's format version and lift it to the current layout: newer than
- * this build and older than {@link OLDEST_SUPPORTED_SAVE_VERSION} are rejected here, anything
- * between runs through the migration chain. The result is still untrusted data; `parseSaveGame`
- * validates it in full afterwards.
+ * Classify an untrusted document's format version and lift it to the current layout. The result is
+ * still untrusted data; `parseSaveGame` validates it in full afterwards.
  */
 export function migratedToCurrent(value: unknown): Record<string, unknown> {
   const raw = asRecord(value, 'save');

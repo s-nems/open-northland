@@ -1,6 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import { assertNever } from '../core/brand.js';
-import { isPlainRecord, valueShapeName } from '../core/plain-value.js';
+import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import { componentByName } from '../ecs/component.js';
 import type { Entity } from '../ecs/world.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
@@ -68,6 +68,13 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
     }
   }
   sim.restoreTick(header.tick);
+  // Structural validation cannot see that a saved reference points at a settler with no marriage or a
+  // building nobody owns. The core invariants can, and a save that fails them would otherwise throw
+  // on every tick of a world the player already believes they loaded.
+  const violations = sim.checkInvariants();
+  if (violations.length > 0) {
+    throw new Error(`save state violates the core invariants: ${violations.join('; ')}`);
+  }
   return { sim, contentRevisionDiffers: header.contentRevision !== loaded.contentRevision };
 }
 
@@ -129,6 +136,11 @@ function materializedValue(value: unknown, path: string): unknown {
   }
   if (isPlainRecord(value)) {
     if (Object.hasOwn(value, SAVE_MAP_KEY)) return materializedMap(value, path);
+    // A parsed `__proto__` is an own key here but a prototype assignment in the copy below, which
+    // would leave a value the snapshot, hash, and export walks all reject from then on.
+    if (Object.hasOwn(value, PROTO_KEY)) {
+      throw new Error(`${path}: the key '${PROTO_KEY}' cannot round-trip as plain data`);
+    }
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(value)) out[key] = materializedValue(value[key], `${path}.${key}`);
     return out;

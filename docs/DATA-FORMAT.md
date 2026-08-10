@@ -38,7 +38,7 @@ The document also contains a manifest:
 {
   "manifest": {
     "version": 3,
-    "contentRevision": 4,
+    "contentRevision": 5,
     "generatedFrom": {
       "game": "<local game path>",
       "mod": "<optional local mod path>"
@@ -173,8 +173,8 @@ Approximation: the original also restores the camera.
 
 Reading is split in two: `parseSaveGame` validates an untrusted document's structure (header
 identity, the exact section order, allocation coherence, pending envelopes), and `restoreSimulation`
-materializes it onto a fresh sim, validating component values as it goes plus everything that needs
-loaded content or a map. The IR version and map fingerprint must match exactly; a `contentRevision`
+materializes it onto a fresh sim, validating value shapes as it goes plus everything that needs
+loaded content or a map, and finally runs the core invariants over the rebuilt world. The IR version and map fingerprint must match exactly; a `contentRevision`
 difference is reported to the caller, never a rejection, because the revision also bumps for
 presentation-only decoder fixes.
 
