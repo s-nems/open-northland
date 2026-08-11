@@ -88,8 +88,8 @@ function findForms(bytes: Uint8Array, formType: string): Uint8Array[] {
 }
 
 /**
- * `DSFXWavesReverb`, minus the high-frequency decay ratio: every segment authors 0.001 (the DMO
- * minimum), which the render's fixed reverb damping realizes.
+ * `DSFXWavesReverb`, minus the high-frequency decay ratio: every segment leaves that field at the
+ * DMO default, so it selects nothing for the render to apply.
  */
 export interface SegmentReverb {
   readonly inGainDb: number;

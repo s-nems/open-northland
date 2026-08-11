@@ -2,8 +2,7 @@
  * Approximation: Freeverb-topology reverb standing in for the DirectSound Waves Reverb DMO that
  * the segments' embedded audiopath routes all channels through. Mix and decay time come from the
  * authored `DSFXWavesReverb` params; the fixed input gain calibrates the comb bank so the wet
- * level of sustained material lands near the authored mix, and the fixed damping sits at the dark
- * end because every segment authors the 0.001 high-frequency ratio, the DMO minimum.
+ * level of sustained material lands near the authored mix.
  */
 
 import type { SegmentReverb } from '../../decoders/sgt.js';
@@ -15,7 +14,9 @@ const ALLPASS_DELAYS = [556, 441, 341, 225] as const;
 /** Right-channel delay offset decorrelating the two tails. */
 const STEREO_SPREAD = 23;
 const ALLPASS_FEEDBACK = 0.5;
-/** Comb feedback lowpass; realizes the authored 0.001 high-frequency decay ratio. */
+/** Comb feedback lowpass. Approximation: every segment leaves `fHighFreqRTRatio` at the DMO
+ *  default, so nothing authored selects a decay ratio; this value keeps the wet path's octave-band
+ *  gain flat. */
 const DAMPING = 0.95;
 /** Comb-bank input level putting sustained wet output near the dry level at 0 dB mix. */
 const INPUT_GAIN = 0.07;
