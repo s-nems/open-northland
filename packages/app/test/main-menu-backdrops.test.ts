@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { randomStill, rotationOrder } from '../src/entries/main-menu/backdrops.js';
+import { randomStill } from '../src/entries/main-menu/backdrops.js';
+import { rotationOrder } from '../src/entries/main-menu/rotation.js';
 import { parseStillList } from '../src/view/backdrop-stills.js';
 
 const POOL = ['01-a.jpg', '02-b.jpg', '03-c.jpg', '04-d.jpg'];

@@ -1,12 +1,11 @@
-# Music: mood variants, attack music, menu theme
+# Music: mood variants and attack music
 
 **Area:** audio · **Priority:** P2
 
-The first music pass plays one track per map: `musicType` from the meta sidecar resolved through
-`DEFAULT_MUSIC_STEMS` to the Neutral/Standard variant, looping forever. The other 36 rendered
-variants sit unused in `content/music/`, and the main menu is silent. The seam is ready: the
-manifest carries every variant's loop point and `WebAudioEngine.setMusic` crossfades on any track
-change.
+A map plays one track for its whole session: `musicType` from the meta sidecar resolved through
+`DEFAULT_MUSIC_STEMS` to the Neutral/Standard variant, looping forever. The Friendly/Hostile,
+Wealthy/Danger and `Attack_*` renders sit unused in `content/music/`. The seam is ready: the manifest
+carries every variant's loop point and `WebAudioEngine.setMusic` crossfades on any track change.
 
 ## Scope
 
@@ -18,9 +17,6 @@ change.
   which fight) from evidence before implementing.
 - `Theme_Viking_Hostile` alone authors `repeats: 1` where its 63 siblings loop infinitely; decide
   whether to honour that or keep looping it when the hostile variant becomes selectable.
-- Main menu: hypothesis from the OpenVikings reversing repo (not admissible evidence) is that the
-  menu plays type 2 (`Theme_Viking_*`); confirm by observing the original before implementing.
-  Needs a music-capable driver in the menu entry, which today has no audio at all.
 - Put the mood decision in the pure audio director (per-frame, from snapshot state), not in app
   control flow.
 

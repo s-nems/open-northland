@@ -8,7 +8,7 @@ import { loadMapMusicType } from '../../content/map-loader.js';
 import { loadMusicManifest } from '../../content/music.js';
 import { loadCombatBones } from '../../content/objects.js';
 import { readStoredSettings } from '../settings-store.js';
-import { startSound } from './sound-start.js';
+import { startSound } from '../sound-start.js';
 
 /** Resolve the map's `musictype` against the rendered-music manifest and hand the driver its track;
  *  the track starts once audio is unlocked. Both fetches degrade to "no music". */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type GestureSource, startSound } from '../src/view/runtime/sound-start.js';
+import { type GestureSource, startSound } from '../src/view/sound-start.js';
 
 class FakeGestures implements GestureSource {
   readonly listeners = new Map<string, Set<() => void>>();
@@ -44,7 +44,7 @@ describe('startSound', () => {
   it('starts at once when the document is already activated, without waiting for another gesture', async () => {
     const sound = new FakeSound();
     const gestures = new FakeGestures();
-    startSound(sound, gestures, ACTIVATED);
+    startSound(sound, { gestures, activation: ACTIVATED });
     expect(sound.resumes).toBe(1);
     await Promise.resolve();
     expect(gestures.bound).toBe(0);
@@ -53,7 +53,7 @@ describe('startSound', () => {
   it('waits for the first gesture when the document has never been activated', async () => {
     const sound = new FakeSound();
     const gestures = new FakeGestures();
-    startSound(sound, gestures, UNTOUCHED);
+    startSound(sound, { gestures, activation: UNTOUCHED });
     expect(sound.resumes).toBe(0);
     gestures.fire('pointerdown');
     expect(sound.resumes).toBe(1);
@@ -64,7 +64,7 @@ describe('startSound', () => {
   it('waits for a gesture where the browser reports no activation state', () => {
     const sound = new FakeSound();
     const gestures = new FakeGestures();
-    startSound(sound, gestures, null);
+    startSound(sound, { gestures, activation: null });
     expect(sound.resumes).toBe(0);
     gestures.fire('keydown');
     expect(sound.resumes).toBe(1);
@@ -74,13 +74,24 @@ describe('startSound', () => {
     const sound = new FakeSound();
     sound.refuse = true;
     const gestures = new FakeGestures();
-    startSound(sound, gestures, ACTIVATED);
+    startSound(sound, { gestures, activation: ACTIVATED });
     await Promise.resolve();
     expect(gestures.bound).toBeGreaterThan(0);
     sound.refuse = false;
     gestures.fire('pointerup');
     await Promise.resolve();
     expect(gestures.bound).toBe(0);
+  });
+
+  it('stops listening for audio the page outlives, so a later gesture cannot revive it', () => {
+    const sound = new FakeSound();
+    const gestures = new FakeGestures();
+    const scope = new AbortController();
+    startSound(sound, { gestures, activation: UNTOUCHED, signal: scope.signal });
+    scope.abort();
+    expect(gestures.bound).toBe(0);
+    gestures.fire('pointerdown');
+    expect(sound.resumes).toBe(0);
   });
 
   it('survives a driver whose resume rejects', async () => {
@@ -90,7 +101,7 @@ describe('startSound', () => {
       resume: (): Promise<void> => Promise.reject(new Error('context cap reached')),
     };
     expect(() => {
-      startSound(failing, gestures, ACTIVATED);
+      startSound(failing, { gestures, activation: ACTIVATED });
     }).not.toThrow();
     await Promise.resolve();
     expect(gestures.bound).toBeGreaterThan(0);

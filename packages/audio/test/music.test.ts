@@ -10,8 +10,8 @@ import { FakeContext, type FakeGain, type FakeSource, flush } from './helpers/fa
 
 /**
  * The music path end to end minus the browser: the pure manifest/type selection, and the engine's
- * music bus + player (intro-then-loop source setup, crossfade on change, mute/resume reconciliation,
- * memoised failed load, volume ramps).
+ * music bus + player (intro-then-loop source setup, crossfade on change, rotation advance,
+ * mute/resume reconciliation, memoised failed load, volume ramps).
  */
 
 const MANIFEST = parseMusicManifest({
@@ -47,7 +47,7 @@ interface Harness {
   readonly fetched: string[];
 }
 
-function makeEngine(opts: { failFetch?: boolean } = {}): Harness {
+function makeEngine(opts: { failFetch?: boolean; random?: () => number } = {}): Harness {
   const ctx = new FakeContext();
   const fetched: string[] = [];
   const engine = new WebAudioEngine({
@@ -57,7 +57,7 @@ function makeEngine(opts: { failFetch?: boolean } = {}): Harness {
       if (opts.failFetch) throw new Error('missing track');
       return new ArrayBuffer(4);
     },
-    random: () => 0,
+    random: opts.random ?? (() => 0),
   });
   return { engine, ctx, fetched };
 }
@@ -178,6 +178,92 @@ describe('WebAudioEngine music', () => {
     engine.setMusic(null); // replaced before the fetch resolved
     await flush();
     expect(ctx.sources).toHaveLength(0);
+  });
+});
+
+describe('WebAudioEngine music rotation', () => {
+  const ROTATION = [{ file: 'one.ogg' }, { file: 'two.ogg' }, { file: 'three.ogg' }];
+
+  it('plays one entry through and starts the next when it ends, at full gain', async () => {
+    const { engine, ctx, fetched } = makeEngine();
+    await engine.resume();
+    engine.setMusicRotation(ROTATION);
+    await flush();
+    const first = ctx.sources[0] as FakeSource;
+    expect(first.loop).toBe(false); // a rotation entry hands over instead of looping
+    expect((first.connectedTo[0] as FakeGain).gain.ramps.at(-1)?.value).toBe(1); // faded in
+    first.onended?.();
+    await flush();
+    expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg']);
+    const second = ctx.sources[1] as FakeSource;
+    const gain = second.connectedTo[0] as FakeGain;
+    expect(gain.gain.value).toBe(1); // opens at full gain - no fade over a track that finished
+    expect(gain.gain.ramps).toEqual([]);
+  });
+
+  it('wraps to the first entry after the last one, playing every entry in order', async () => {
+    const { engine, ctx, fetched } = makeEngine();
+    await engine.resume();
+    engine.setMusicRotation(ROTATION);
+    await flush();
+    for (let i = 0; i < ROTATION.length; i++) {
+      (ctx.sources[i] as FakeSource).onended?.();
+      await flush();
+    }
+    expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg', '/music/three.ogg', '/music/one.ogg']);
+  });
+
+  it('keeps a running rotation going when the same rotation is asserted again', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusicRotation(ROTATION);
+    await flush();
+    engine.setMusicRotation([...ROTATION]); // same tracks, fresh array
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+  });
+
+  it('stops the rotation on mute and starts it again on unmute', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusicRotation(ROTATION);
+    await flush();
+    engine.setEnabled(false);
+    expect((ctx.sources[0] as FakeSource).stoppedAt).not.toBeNull();
+    engine.setEnabled(true);
+    await flush();
+    expect(ctx.sources).toHaveLength(2);
+  });
+
+  it('does not advance on the ended event a mute-driven stop fires', async () => {
+    const { engine, ctx, fetched } = makeEngine();
+    await engine.resume();
+    engine.setMusicRotation(ROTATION);
+    await flush();
+    engine.setEnabled(false); // stop() ends the source, which must not read as "track finished"
+    await flush();
+    expect(fetched).toEqual(['/music/one.ogg']);
+    expect(ctx.sources.filter((s) => s.stoppedAt === null)).toHaveLength(0);
+  });
+
+  it('drops entries that cannot load and falls silent once none is left', async () => {
+    const { engine, ctx, fetched } = makeEngine({ failFetch: true });
+    await engine.resume();
+    engine.setMusicRotation(ROTATION);
+    await flush();
+    expect(fetched).toHaveLength(ROTATION.length); // each tried once, no spin between failures
+    expect(ctx.sources).toHaveLength(0);
+  });
+
+  it('releases the context on close and goes silent', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusicRotation(ROTATION);
+    await flush();
+    engine.close();
+    expect((ctx.sources[0] as FakeSource).stoppedAt).not.toBeNull();
+    expect(ctx.state).toBe('closed');
+    expect(engine.audible).toBe(false);
   });
 });
 

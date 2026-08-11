@@ -61,6 +61,15 @@ export function carriedSettingParams(settings: MenuSettings): readonly CarriedSe
 let persisted: MenuSettings | null = null;
 /** The session's effective settings: `persisted` plus any explicit URL overrides. */
 let current: MenuSettings | null = null;
+/** Live consumers of the settings the menu writes, such as the menu's own music. */
+const listeners = new Set<(settings: MenuSettings) => void>();
+
+/** Follow every {@link updateSettings} until `signal` aborts. */
+export function onSettingsChange(listener: (settings: MenuSettings) => void, signal: AbortSignal): void {
+  if (signal.aborted) return;
+  listeners.add(listener);
+  signal.addEventListener('abort', () => listeners.delete(listener));
+}
 
 function persistedSettings(): MenuSettings {
   persisted ??= readStoredSettings();
@@ -83,6 +92,7 @@ export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
   persistSettings(persisted);
   if (patch.language !== undefined) setActiveLocale(next.language);
   syncCarriedParams(patch, next);
+  for (const listener of listeners) listener(next);
   return next;
 }
 

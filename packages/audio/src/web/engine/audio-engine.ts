@@ -81,6 +81,8 @@ export class WebAudioEngine {
   private musicVolume: number;
   /** The track that should be playing - re-asserted when a resume/unmute brings playback back. */
   private desiredMusic: MusicTrack | null = null;
+  /** The rotation that should be playing instead; non-empty wins over {@link desiredMusic}. */
+  private desiredRotation: readonly MusicTrack[] = [];
   private enabled = true;
   /** one-shot key → last play time (audio clock seconds) for cooldown debounce. */
   private readonly lastPlayed = new Map<string, number>();
@@ -121,8 +123,8 @@ export class WebAudioEngine {
         // A browser that refuses to resume outside a gesture just stays silent - not an error.
       }
     }
-    // A track requested while suspended starts on the gesture that unlocked audio.
-    if (this.canPlay()) this.music?.set(this.desiredMusic);
+    // Music requested while suspended starts on the gesture that unlocked audio.
+    this.assertMusic();
   }
 
   /** Mute/unmute without tearing down state (running ambient loops and music fade out on mute). */
@@ -131,15 +133,35 @@ export class WebAudioEngine {
     if (!enabled) {
       this.mixer?.stopAll();
       this.music?.stop();
-    } else if (this.canPlay()) {
-      this.music?.set(this.desiredMusic);
+    } else {
+      this.assertMusic();
     }
+  }
+
+  /**
+   * Release the audio context and go permanently silent. A view that hands over to another one closes
+   * its engine, so a page never accumulates contexts past the browser's cap.
+   */
+  close(): void {
+    const ctx = this.ctx;
+    if (ctx === null) return;
+    this.mixer?.stopAll();
+    this.music?.stop();
+    void ctx.close().catch(() => undefined); // a context already closed elsewhere rejects
   }
 
   /** Which music track should be playing (null = none); takes effect once playback is live. */
   setMusic(track: MusicTrack | null): void {
     this.desiredMusic = track;
+    this.desiredRotation = [];
     if (this.canPlay()) this.music?.set(track);
+  }
+
+  /** Play `tracks` one at a time in the given order, moving on when each finishes; empty = no music. */
+  setMusicRotation(tracks: readonly MusicTrack[]): void {
+    this.desiredMusic = null;
+    this.desiredRotation = tracks;
+    if (this.canPlay()) this.music?.setRotation(tracks);
   }
 
   /** Set the game-sounds bus volume (0..1), ramped to avoid a zipper click. */
@@ -160,6 +182,12 @@ export class WebAudioEngine {
     if (!this.canPlay() || ctx === null || this.samples === null || this.mixer === null) return;
     for (const shot of frame.oneShots) this.playOneShot(ctx, this.samples, shot);
     this.mixer.reconcile(frame.ambient);
+  }
+
+  private assertMusic(): void {
+    if (!this.canPlay()) return;
+    if (this.desiredRotation.length > 0) this.music?.setRotation(this.desiredRotation);
+    else this.music?.set(this.desiredMusic);
   }
 
   /** Live and audible: not muted, context created + resumed. Re-checked after every async load. */
