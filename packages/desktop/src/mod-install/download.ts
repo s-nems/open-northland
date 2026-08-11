@@ -5,63 +5,11 @@ import { pipeline } from 'node:stream/promises';
 import type { ModEvent } from '@open-northland/installer';
 
 /**
- * Fetches the culturesnation mod archive over an observed hop chain: culturesnation.pl's link
- * 302-redirects to a Google Drive file page, and Drive answers a large-file GET with an HTML confirm
- * form whose hidden fields, replayed as query params, yield the byte stream.
+ * Fetches the culturesnation mod archive from the project's own origin, the same bytes the web
+ * installer serves at its root.
  */
 
-/** culturesnation.pl's stable download entry - redirects to the current mod archive. */
-const CNMOD_DOWNLOAD_URL = 'https://culturesnation.pl/serwerdownload.php?cat_id=8&file_id=344&limit=35688644';
-
-/** Cap on buffered interstitial HTML; the observed Drive confirm form is ~2 KB. */
-const MAX_INTERSTITIAL_BYTES = 1 << 20;
-
-export function parseDriveFileId(url: string): string | undefined {
-  return /\/file\/d\/([\w-]+)/.exec(url)?.[1];
-}
-
-export function parseDriveConfirmUrl(html: string): string | undefined {
-  const action = /<form[^>]+action="([^"]+)"/.exec(html)?.[1];
-  if (action === undefined) return undefined;
-  // Security boundary: only a google.com action is followed, since the pinned hash only warns.
-  try {
-    const host = new URL(action).hostname;
-    if (host !== 'google.com' && !host.endsWith('.google.com')) return undefined;
-  } catch {
-    return undefined;
-  }
-  const params = new URLSearchParams();
-  for (const input of html.matchAll(/<input type="hidden" name="([^"]+)" value="([^"]*)"/g)) {
-    const [, name, value] = input;
-    if (name !== undefined && value !== undefined) params.set(name, value);
-  }
-  if (!params.has('id')) return undefined;
-  return `${action}?${params.toString()}`;
-}
-
-function isFileResponse(response: Response): boolean {
-  const type = response.headers.get('content-type') ?? '';
-  return !type.includes('text/html');
-}
-
-/** Fails a non-2xx hop instead of streaming its error page to disk. */
-function assertOk(response: Response, hop: string): void {
-  if (!response.ok)
-    throw new Error(`mod download: ${hop} answered ${response.status} ${response.statusText}`);
-}
-
-async function readBoundedText(response: Response): Promise<string> {
-  if (response.body === null) return '';
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
-    chunks.push(chunk);
-    received += chunk.length;
-    if (received >= MAX_INTERSTITIAL_BYTES) break;
-  }
-  await response.body.cancel().catch(() => undefined);
-  return Buffer.concat(chunks, Math.min(received, MAX_INTERSTITIAL_BYTES)).toString('utf8');
-}
+const CNMOD_DOWNLOAD_URL = 'https://game.opennorthland.org/cnmod.zip';
 
 /** Streams `response` into `file` and returns the bytes' SHA-256 as hex. */
 async function streamToFile(
@@ -97,10 +45,7 @@ export interface ModDownloadOptions {
   readonly url?: string;
 }
 
-/**
- * Downloads the mod archive to `destZip` and returns its SHA-256. Any hop may already answer with
- * the file itself, short-circuiting the rest of the chain.
- */
+/** Downloads the mod archive to `destZip` and returns its SHA-256. */
 export async function downloadCnModZip(
   destZip: string,
   onEvent: (event: ModEvent) => void,
@@ -108,33 +53,10 @@ export async function downloadCnModZip(
 ): Promise<string> {
   const fetchFn = options?.fetchFn ?? fetch;
   const signal = options?.signal;
-  const first = await fetchFn(options?.url ?? CNMOD_DOWNLOAD_URL, { signal: signal ?? null });
-  assertOk(first, 'the culturesnation.pl link');
-  if (isFileResponse(first)) return streamToFile(first, destZip, onEvent, signal);
-
-  const fileId = parseDriveFileId(first.url);
-  if (fileId === undefined) {
-    throw new Error(
-      `mod download: the culturesnation.pl link did not lead to a Google Drive file (${first.url})`,
-    );
+  const url = options?.url ?? CNMOD_DOWNLOAD_URL;
+  const response = await fetchFn(url, { signal: signal ?? null });
+  if (!response.ok) {
+    throw new Error(`mod download: ${url} answered ${response.status} ${response.statusText}`);
   }
-  await first.body?.cancel();
-  const second = await fetchFn(`https://drive.usercontent.google.com/download?id=${fileId}&export=download`, {
-    signal: signal ?? null,
-  });
-  assertOk(second, 'Google Drive');
-  if (isFileResponse(second)) return streamToFile(second, destZip, onEvent, signal);
-
-  const confirmUrl = parseDriveConfirmUrl(await readBoundedText(second));
-  if (confirmUrl === undefined) {
-    throw new Error(
-      'mod download: Google Drive did not offer a download form (quota exceeded, or the page changed)',
-    );
-  }
-  const third = await fetchFn(confirmUrl, { signal: signal ?? null });
-  assertOk(third, 'the Google Drive download');
-  if (!isFileResponse(third)) {
-    throw new Error('mod download: Google Drive kept answering with a page instead of the file');
-  }
-  return streamToFile(third, destZip, onEvent, signal);
+  return streamToFile(response, destZip, onEvent, signal);
 }

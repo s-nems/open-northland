@@ -7,8 +7,8 @@ import { readZipEntries, vfsZipSource } from './zip.js';
 
 const DOWNLOAD_ZIP_NAME = 'cnmod-download.zip';
 
-/** SHA-256 of the verified `CnMod 1.3.1.zip`; a mismatch means an unverified mod version. */
-export const CNMOD_KNOWN_SHA256 = '847e974a4a56960e081fb313d655a85b6256cd2e6cb9430d4974ff1826170ad9';
+/** SHA-256 of the `CnMod 1.3.2.zip` the project serves; a mismatch means an unverified mod version. */
+export const CNMOD_KNOWN_SHA256 = '68537a89a972621f5dc400912e0c660bd875f649b693f3dad70d26f49465f043';
 
 export interface ModInstallOptions {
   readonly signal?: AbortSignal;
@@ -41,7 +41,7 @@ export async function installCnMod(
     if (sha256 !== undefined && sha256 !== CNMOD_KNOWN_SHA256) {
       onEvent({
         kind: 'mod-warning',
-        message: `downloaded archive differs from the verified CnMod 1.3.1 (sha256 ${sha256}) - likely a newer mod release`,
+        message: `downloaded archive differs from the verified CnMod 1.3.2 (sha256 ${sha256}) - likely a newer mod release`,
       });
     }
     const source = await vfsZipSource(fs, zipPath);
