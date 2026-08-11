@@ -23,9 +23,7 @@ every visitor converts their own game copy inside their own browser, where the c
 ## CulturesNation mod
 
 The free community mod *CulturesNation* is required to play, and the project rehosts its archive at
-`game.opennorthland.org/cnmod.zip` so the installer can fetch it from its own origin. The mod's
-authors have granted permission for this rehosting. The archive is redistributed unmodified and is
-not part of this repository; the mod remains the work and property of its authors.
+`game.opennorthland.org/cnmod.zip` so the installer can fetch it from its own origin.
 
 ## Independent implementation
 
