@@ -4,6 +4,8 @@ import {
   DEFAULT_MUSIC_VOLUME,
   GAME_MUSIC_TIMING,
   MENU_MUSIC_TIMING,
+  MUSIC_STOP_FADE_S,
+  MUSIC_SWITCH_TIMING,
   musicTrackFor,
   parseMusicManifest,
   WebAudioEngine,
@@ -119,7 +121,7 @@ describe('WebAudioEngine music', () => {
     expect((ctx.sources[1] as FakeSource).startedAt).toBeCloseTo(GAME_MUSIC_TIMING.gapS, 5);
   });
 
-  it('parts a changed track with a fade and a gap, and keeps an unchanged one running', async () => {
+  it('hands a mood switch over promptly rather than taking the pass-parting break', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.setMusic(TRACK);
@@ -132,10 +134,40 @@ describe('WebAudioEngine music', () => {
     await flush();
     expect(ctx.sources).toHaveLength(2);
     const [old, next] = ctx.sources as [FakeSource, FakeSource];
-    const silentAt = 10 + GAME_MUSIC_TIMING.fadeS;
+    const silentAt = 10 + MUSIC_SWITCH_TIMING.fadeS;
     expect(old.stoppedAt).toBeCloseTo(silentAt, 5);
     expect((old.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({ value: 0, time: silentAt });
-    expect(next.startedAt).toBeCloseTo(silentAt + GAME_MUSIC_TIMING.gapS, 5);
+    expect(next.startedAt).toBeCloseTo(silentAt + MUSIC_SWITCH_TIMING.gapS, 5);
+    // The whole switch has to land inside the tense hold, not after the pass-parting silence.
+    expect(next.startedAt - 10).toBeLessThan(GAME_MUSIC_TIMING.fadeS + GAME_MUSIC_TIMING.gapS);
+  });
+
+  it('waits out a stop fade before opening the next track, so the two never overlap', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(TRACK);
+    await flush();
+    ctx.currentTime = 30;
+    engine.setEnabled(false); // fades out over MUSIC_STOP_FADE_S, but stays audible until then
+    ctx.currentTime = 30.2;
+    engine.setEnabled(true);
+    await flush();
+    const [old, next] = ctx.sources as [FakeSource, FakeSource];
+    expect(old.stoppedAt).toBeCloseTo(30 + MUSIC_STOP_FADE_S, 5);
+    expect(next.startedAt).toBeGreaterThanOrEqual(old.stoppedAt ?? 0);
+  });
+
+  it('releases a finished track’s nodes instead of leaving them on the music bus', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(TRACK);
+    await flush();
+    const source = ctx.sources[0] as FakeSource;
+    const gain = source.connectedTo[0] as FakeGain;
+    source.onended?.();
+    await flush();
+    expect(source.disconnected).toBe(true);
+    expect(gain.disconnected).toBe(true);
   });
 
   it('stops on mute and resumes the desired track on unmute', async () => {
@@ -184,15 +216,25 @@ describe('WebAudioEngine music', () => {
     expect(ctx.sources).toHaveLength(1);
   });
 
-  it('memoises a failed track load and never re-fetches it', async () => {
+  it('does not re-fetch a failed track while the same one stays desired', async () => {
+    const { engine, fetched } = makeEngine({ failFetch: true });
+    await engine.resume();
+    engine.setMusic(TRACK);
+    await flush();
+    for (let frame = 0; frame < 20; frame++) engine.setMusic(TRACK); // the driver re-asserts per frame
+    await flush();
+    expect(fetched).toEqual(['/music/theme_viking_neutral.ogg']);
+  });
+
+  it('gives a failed track another chance after a mute, so a network blip is not permanent', async () => {
     const { engine, fetched } = makeEngine({ failFetch: true });
     await engine.resume();
     engine.setMusic(TRACK);
     await flush();
     engine.setEnabled(false);
-    engine.setEnabled(true); // re-set of the desired track must not re-fetch
+    engine.setEnabled(true);
     await flush();
-    expect(fetched).toEqual(['/music/theme_viking_neutral.ogg']);
+    expect(fetched).toHaveLength(2);
   });
 
   it('drops a track that was replaced while its load was in flight', async () => {

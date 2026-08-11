@@ -4,27 +4,47 @@
  * what), source lifecycle (started/stopped) and gain ramps, which is what the tests assert.
  */
 
+/** One scheduled automation call, so a test can assert the anchor a ramp starts from and not only
+ *  the target it ends on. */
+export interface ParamEvent {
+  readonly kind: 'set' | 'ramp' | 'cancel';
+  readonly value: number;
+  readonly time: number;
+}
+
 export class FakeParam {
   value = 0;
   /** Every linearRamp target scheduled on this param, in order. */
   ramps: Array<{ value: number; time: number }> = [];
-  cancelScheduledValues(): void {}
-  setValueAtTime(value: number): void {
+  /** Every automation call in order, including the anchors and cancels `ramps` leaves out. */
+  events: ParamEvent[] = [];
+  cancelScheduledValues(time = 0): void {
+    this.events.push({ kind: 'cancel', value: this.value, time });
+  }
+  setValueAtTime(value: number, time = 0): void {
+    this.events.push({ kind: 'set', value, time });
     this.value = value;
   }
   // Simplification: ramps complete instantly - `value` jumps straight to the target, so it is never
   // time-accurate mid-ramp. Assert on `ramps` (the scheduled targets), not on `value` over time.
   linearRampToValueAtTime(value: number, time: number): void {
     this.ramps.push({ value, time });
+    this.events.push({ kind: 'ramp', value, time });
     this.value = value;
   }
 }
 
 export class FakeNode {
   readonly connectedTo: unknown[] = [];
+  /** Set by {@link disconnect}, so a test can prove a finished track released its nodes. */
+  disconnected = false;
   connect<T>(node: T): T {
     this.connectedTo.push(node);
     return node;
+  }
+  // `connectedTo` is left intact so a test can still read the graph a released node was part of.
+  disconnect(): void {
+    this.disconnected = true;
   }
 }
 

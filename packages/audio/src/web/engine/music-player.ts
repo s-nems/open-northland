@@ -22,6 +22,13 @@ export interface MusicTiming {
 export const GAME_MUSIC_TIMING: MusicTiming = { fadeS: 4, gapS: 5 };
 export const MENU_MUSIC_TIMING: MusicTiming = { fadeS: 2, gapS: 1.5 };
 
+/**
+ * Replacing the track is a decision, not the end of a pass: a mood switch has to arrive while the
+ * fight that called for it is still on screen, so it hands over promptly instead of taking the
+ * parting break above.
+ */
+export const MUSIC_SWITCH_TIMING: MusicTiming = { fadeS: 1.5, gapS: 0 };
+
 /** Muting or tearing down is not a handover: the track only has to get out of the way. */
 export const MUSIC_STOP_FADE_S = 1.5;
 
@@ -45,15 +52,24 @@ export class MusicPlayer {
   private generation = 0;
   /** file → decoded buffer, most-recently-used last. */
   private readonly buffers = new Map<string, AudioBuffer>();
-  /** Files whose fetch/decode failed - never re-fetched (a resume/enable re-set would loop otherwise). */
+  /** Files whose fetch/decode failed, so one request never re-fetches them. Cleared by {@link stop},
+   *  which is the mute or map change that gives a track dropped by a network blip another chance. */
   private readonly failed = new Set<string>();
-  /** The tracks being played one at a time. */
+  /** The tracks the latest reconcile asked for. A failed load leaves {@link queue} but not this, so a
+   *  re-assert of the same request is still recognised as unchanged. */
+  private desired: readonly MusicTrack[] = [];
+  /** Set once every entry of {@link desired} has failed to load, so re-asserting it does nothing. */
+  private unplayable = false;
+  /** The tracks still playable, played one at a time. */
   private queue: readonly MusicTrack[] = [];
   /** Index in {@link queue} of the entry playing or loading. */
   private queueAt = 0;
   private timing: MusicTiming = GAME_MUSIC_TIMING;
   /** Context time the next track may open at: when the outgoing one fell silent, plus the gap. */
   private openAt = 0;
+  /** Context time the last track faded out reaches silence. A fade outlives {@link current}, so this
+   *  is what a later handover has to wait for rather than opening over an audible tail. */
+  private silentUntil = 0;
 
   constructor(
     private readonly ctx: AudioContext,
@@ -79,28 +95,36 @@ export class MusicPlayer {
   /** Fade out and drop the running track (mute / teardown); the desired track is forgotten. */
   stop(): void {
     this.queue = [];
+    this.desired = [];
     this.desiredFile = null;
+    this.unplayable = false;
+    this.failed.clear();
     this.generation++;
     this.fadeOutCurrent(MUSIC_STOP_FADE_S);
   }
 
   private reconcile(tracks: readonly MusicTrack[], timing: MusicTiming): void {
-    const unchanged =
-      timing === this.timing &&
-      tracks.length === this.queue.length &&
-      tracks.every((track, i) => track.file === this.queue[i]?.file);
-    if (unchanged && this.desiredFile !== null) return; // playing or already loading
     if (tracks.length === 0) {
-      this.stop();
+      if (this.desired.length > 0 || this.current !== null) this.stop();
       return;
     }
+    const unchanged =
+      timing === this.timing &&
+      tracks.length === this.desired.length &&
+      tracks.every((track, i) => track.file === this.desired[i]?.file);
+    // Playing, still loading, or already proven unplayable: re-asserting it every frame has nothing to do.
+    if (unchanged && (this.desiredFile !== null || this.unplayable)) return;
     this.timing = timing;
+    this.desired = tracks;
     this.queue = tracks;
+    this.unplayable = false;
     this.queueAt = 0;
     this.generation++;
-    // Only a track that has to make way earns the gap; with nothing playing the first one opens now.
-    const silentAt = this.fadeOutCurrent(timing.fadeS);
-    this.openAt = silentAt === null ? this.ctx.currentTime : silentAt + timing.gapS;
+    this.fadeOutCurrent(MUSIC_SWITCH_TIMING.fadeS);
+    // A tail from this fade - or from an earlier stop still running - has to finish before the
+    // replacement opens, or the two play at once.
+    const now = this.ctx.currentTime;
+    this.openAt = this.silentUntil > now ? this.silentUntil + MUSIC_SWITCH_TIMING.gapS : now;
     this.startQueued();
   }
 
@@ -112,37 +136,39 @@ export class MusicPlayer {
   }
 
   private startQueued(): void {
-    if (this.queue.length === 0) {
-      this.stop();
-      return;
-    }
-    this.queueAt %= this.queue.length;
+    if (this.queue.length > 0) this.queueAt %= this.queue.length;
     const track = this.queue[this.queueAt];
     if (track === undefined) {
-      this.stop();
+      // Every entry failed to load. Hold the desire rather than forgetting it, so the next re-assert
+      // of the same request returns early instead of rebuilding the queue frame after frame.
+      this.unplayable = true;
+      this.desiredFile = null;
       return;
     }
     this.desiredFile = track.file;
     this.start(track, this.generation);
   }
 
-  /** Silence the running track, returning when it falls silent, or null if none was playing. */
-  private fadeOutCurrent(fadeS: number): number | null {
+  /** Silence the running track, recording in {@link silentUntil} when it stops being audible. */
+  private fadeOutCurrent(fadeS: number): void {
     const now = this.ctx.currentTime;
     const current = this.current;
-    if (current === null) return null;
+    if (current === null) return;
     this.current = null;
     // A track still waiting out its gap was never heard; drop it rather than fade silence.
     const silentAt = current.startsAt > now ? now : now + fadeS;
+    // Read the live level before cancelling: cancelling first drops the ramp event this anchor is
+    // meant to capture, which would restart the fade from full gain.
+    const level = current.gain.gain.value;
     current.gain.gain.cancelScheduledValues(now);
-    current.gain.gain.setValueAtTime(current.gain.gain.value, now);
+    current.gain.gain.setValueAtTime(level, now);
     if (silentAt > now) current.gain.gain.linearRampToValueAtTime(0, silentAt);
     try {
       current.source.stop(silentAt);
     } catch {
       // Already stopped - nothing to do.
     }
-    return silentAt;
+    this.silentUntil = silentAt;
   }
 
   private async load(file: string): Promise<AudioBuffer | null> {
@@ -156,8 +182,10 @@ export class MusicPlayer {
     let buffer: AudioBuffer;
     try {
       buffer = await this.ctx.decodeAudioData(await this.fetchBytes(this.baseUrl + file));
-    } catch {
+    } catch (err) {
       this.failed.add(file); // remember the failure - a re-set must not re-fetch
+      // Silence is what a missing track sounds like either way, so say which file went missing.
+      console.warn(`[audio] music track ${file} failed to load: ${String(err)}`);
       return null;
     }
     this.buffers.set(file, buffer);
@@ -172,7 +200,7 @@ export class MusicPlayer {
     void this.load(track.file).then((buffer) => {
       if (generation !== this.generation) return; // a newer reconcile/stop superseded this load
       if (buffer === null) {
-        // A track that cannot load leaves the queue, so the retry cannot spin between failures.
+        // A track that cannot load leaves the queue; the others carry on without it.
         this.queue = this.queue.filter((entry) => entry.file !== track.file);
         this.startQueued();
         return;
@@ -187,6 +215,10 @@ export class MusicPlayer {
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
       source.onended = (): void => {
+        // Before the generation guard: a superseded track is exactly the one whose nodes would
+        // otherwise stay connected to the music bus for the rest of the session.
+        source.disconnect();
+        gain.disconnect();
         if (generation !== this.generation) return; // stopped or superseded, not finished
         this.current = null;
         this.advance();
