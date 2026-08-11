@@ -7,6 +7,7 @@
  * specification.
  */
 import { viewOf } from './byte-cursor.js';
+import { walkRiffTree } from './riff.js';
 
 /** Inclusive MIDI key range of one instrument region. */
 export interface DlsKeyRange {
@@ -37,36 +38,15 @@ const INSH_BANK_MSB_SHIFT = 8;
 const WLNK_TABLE_INDEX_OFFSET = 8;
 const FMT_BITS_OFFSET = 14;
 
-function fourCc(bytes: Uint8Array, off: number): string {
-  return String.fromCharCode(bytes[off] ?? 0, bytes[off + 1] ?? 0, bytes[off + 2] ?? 0, bytes[off + 3] ?? 0);
-}
-
 /**
  * Depth-first visit of every chunk. Containers report their form type and the body after it;
- * `bodyStart` is the absolute offset into `bytes` either way.
+ * `bodyStart` is the offset into `bytes` either way.
  */
 function walkChunks(
   bytes: Uint8Array,
   visit: (id: string, formType: string | undefined, bodyStart: number, bodyEnd: number) => void,
 ): void {
-  const view = viewOf(bytes);
-  const walk = (start: number, end: number): void => {
-    let off = start;
-    while (off + RIFF_HEADER_BYTES <= end) {
-      const id = fourCc(bytes, off);
-      const size = view.getUint32(off + 4, true);
-      const body = off + RIFF_HEADER_BYTES;
-      if (body + size > end) break;
-      if (id === 'RIFF' || id === 'LIST') {
-        visit(id, fourCc(bytes, body), body + FORM_TYPE_BYTES, body + size);
-        walk(body + FORM_TYPE_BYTES, body + size);
-      } else {
-        visit(id, undefined, body, body + size);
-      }
-      off = body + size + (size & 1);
-    }
-  };
-  walk(0, bytes.length);
+  walkRiffTree(bytes, (c) => visit(c.id, c.form, c.bodyStart, c.bodyEnd));
 }
 
 /** PCM frame counts of the pool waves, keyed by their pool-table cue index. */
@@ -94,10 +74,13 @@ function waveFramesByCue(bytes: Uint8Array): Map<number, number> {
   if (wvplDataStart === undefined) return byCue;
   const offsetToWave = new Map<number, number>();
   for (const [i, start] of waveStarts.entries()) offsetToWave.set(start - wvplDataStart, i);
-  walkChunks(bytes, (id, _form, bodyStart) => {
+  walkChunks(bytes, (id, _form, bodyStart, bodyEnd) => {
     if (id !== 'ptbl') return;
     const cbSize = view.getUint32(bodyStart, true);
     const cues = view.getUint32(bodyStart + 4, true);
+    // Both counts come from the file: a cue array running past the chunk would read unrelated bytes
+    // as wave offsets and mute real keys.
+    if (cbSize < 8 || cbSize + 4 * cues > bodyEnd - bodyStart) return;
     for (let i = 0; i < cues; i++) {
       const wave = offsetToWave.get(view.getUint32(bodyStart + cbSize + 4 * i, true));
       const count = wave === undefined ? undefined : frames[wave];
@@ -118,12 +101,18 @@ function rejectedRange(
   let keys: DlsKeyRange | undefined;
   let loop: { start: number; length: number } | undefined;
   let cue: number | undefined;
-  walkChunks(bytes.subarray(bodyStart, bodyEnd), (subId, _form, subStart) => {
+  walkChunks(bytes.subarray(bodyStart, bodyEnd), (subId, _form, subStart, subEnd) => {
     const at = bodyStart + subStart;
     if (subId === 'rgnh') {
+      if (subEnd - subStart < 4) return;
       keys = { lo: view.getUint16(at, true), hi: view.getUint16(at + 2, true) };
     } else if (subId === 'wsmp') {
+      // `cbSize` is the file's own header length and is used as the offset of the loop record after
+      // it; an overlong one would build a key range out of unrelated bytes and mute real notes.
+      const size = subEnd - subStart;
+      if (size < WSMP_LOOP_COUNT_OFFSET + 4) return;
       const cbSize = view.getUint32(at, true);
+      if (cbSize < WSMP_LOOP_COUNT_OFFSET + 4 || cbSize + LOOP_LENGTH_OFFSET + 4 > size) return;
       if (view.getUint32(at + WSMP_LOOP_COUNT_OFFSET, true) > 0) {
         loop = {
           start: view.getUint32(at + cbSize + LOOP_START_OFFSET, true),
@@ -131,6 +120,7 @@ function rejectedRange(
         };
       }
     } else if (subId === 'wlnk') {
+      if (subEnd - subStart < WLNK_TABLE_INDEX_OFFSET + 4) return;
       cue = view.getUint32(at + WLNK_TABLE_INDEX_OFFSET, true);
     }
   });

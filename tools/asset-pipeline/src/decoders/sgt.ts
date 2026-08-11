@@ -5,6 +5,7 @@
  * `DMUS_PORTPARAMS8`, `DSFXWavesReverb`), byte-verified against the owned copy's segments.
  */
 import { viewOf } from './byte-cursor.js';
+import { walkRiffTree } from './riff.js';
 
 /** Music-time ticks per quarter note (`DMUS_PPQ`). */
 export const DMUS_PPQ = 768;
@@ -23,8 +24,6 @@ export interface SegmentTiming {
   readonly tempos: readonly TempoItem[];
 }
 
-const RIFF_HEADER_BYTES = 8;
-const LIST_ID_BYTES = 4;
 /** `DMUS_IO_SEGMENT_HEADER`: dwRepeats, mtLength, mtPlayStart, mtLoopStart, mtLoopEnd. */
 const SEGH_MIN_BYTES = 20;
 /** `DMUS_IO_TEMPO_ITEM`: lTime at +0, dblTempo at +8 (4 bytes of struct padding between). */
@@ -33,43 +32,11 @@ const TEMPO_ITEM_BPM_OFFSET = 8;
 const TEMPO_ITEM_MIN_BYTES = 16;
 const DEFAULT_BPM = 120;
 
-function fourCc(bytes: Uint8Array, off: number): string {
-  return String.fromCharCode(bytes[off] ?? 0, bytes[off + 1] ?? 0, bytes[off + 2] ?? 0, bytes[off + 3] ?? 0);
-}
-
-/**
- * Depth-first visit of every chunk in the RIFF tree. Leaves pass their data; RIFF/LIST containers
- * pass their form type and the body after it, then recurse.
- */
-function walkRiff(
-  bytes: Uint8Array,
-  visit: (chunkId: string, body: Uint8Array, formType?: string) => void,
-): void {
-  const view = viewOf(bytes);
-  const walk = (start: number, end: number): void => {
-    let off = start;
-    while (off + RIFF_HEADER_BYTES <= end) {
-      const chunkId = fourCc(bytes, off);
-      const size = view.getUint32(off + 4, true);
-      const body = off + RIFF_HEADER_BYTES;
-      if (body + size > end) break; // truncated container: stop at the last complete chunk
-      if (chunkId === 'RIFF' || chunkId === 'LIST') {
-        visit(chunkId, bytes.subarray(body + LIST_ID_BYTES, body + size), fourCc(bytes, body));
-        walk(body + LIST_ID_BYTES, body + size);
-      } else {
-        visit(chunkId, bytes.subarray(body, body + size));
-      }
-      off = body + size + (size & 1); // chunks are word-aligned
-    }
-  };
-  walk(0, bytes.length);
-}
-
 /** Every non-container chunk with `id` anywhere in the tree, as subarray views of the chunk data. */
 function findChunks(bytes: Uint8Array, id: string): Uint8Array[] {
   const out: Uint8Array[] = [];
-  walkRiff(bytes, (chunkId, body) => {
-    if (chunkId === id) out.push(body);
+  walkRiffTree(bytes, (c) => {
+    if (c.id === id && c.form === undefined) out.push(bytes.subarray(c.bodyStart, c.bodyEnd));
   });
   return out;
 }
@@ -77,15 +44,15 @@ function findChunks(bytes: Uint8Array, id: string): Uint8Array[] {
 /** Bodies (after the 4-byte form type) of every RIFF/LIST container with the given form type. */
 function findForms(bytes: Uint8Array, formType: string): Uint8Array[] {
   const out: Uint8Array[] = [];
-  walkRiff(bytes, (_chunkId, body, form) => {
-    if (form === formType) out.push(body);
+  walkRiffTree(bytes, (c) => {
+    if (c.form === formType) out.push(bytes.subarray(c.bodyStart, c.bodyEnd));
   });
   return out;
 }
 
 /**
- * `DSFXWavesReverb`, minus the high-frequency decay ratio: every segment leaves that field at the
- * DMO default, so it selects nothing for the render to apply.
+ * `DSFXWavesReverb`, minus the high-frequency decay ratio: every segment in the owned corpus leaves
+ * that field at the DMO default, so decoding it would tell one segment apart from no other.
  */
 export interface SegmentReverb {
   readonly inGainDb: number;

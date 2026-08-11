@@ -64,17 +64,24 @@ interface ChannelSlot {
   readonly transpose: number;
 }
 
+/**
+ * The collection's preset for a band instrument. Approximation: bands routinely author bank numbers
+ * the collection's own `insh` disagrees with, so an exact miss falls back on the program number and
+ * then on the only preset present. Across the owned corpus the program fallback resolves every miss
+ * and the last rung is never reached; it would substitute an unrelated instrument on a bank holding
+ * several.
+ */
 function matchPreset(dls: DlsBank, bankLo: number, bankHi: number, patch: number): BasicPreset | undefined {
   const presets = dls.bank.presets;
   const exact = presets.find((p) => p.program === patch && p.bankMSB === bankHi && p.bankLSB === bankLo);
   if (exact !== undefined) return exact;
-  const fallback = presets.find((p) => p.program === patch) ?? presets[0];
-  if (fallback !== undefined) {
-    console.warn(
-      `[pipeline] music: ${dls.file} has no preset ${bankHi}:${bankLo}:${patch}; using "${fallback.name}"`,
-    );
+  const byProgram = presets.find((p) => p.program === patch);
+  if (byProgram !== undefined) return byProgram;
+  const only = presets[0];
+  if (only !== undefined) {
+    console.warn(`[pipeline] music: ${dls.file} has no preset for program ${patch}; using "${only.name}"`);
   }
-  return fallback;
+  return only;
 }
 
 function clampMidi(value: number): number {
@@ -132,9 +139,13 @@ export async function synthesizeEvents(
     synth.controllerChange(channel, CC_VOLUME, clampMidi(Math.sqrt(inst.vol) * MIDI_MAX));
     synth.controllerChange(channel, CC_PAN, clampMidi(inst.pan * (PAN_CENTER + 1) + PAN_CENTER));
     synth.controllerChange(channel, CC_REVERB_SEND, 0);
-    const rejects = dls.rejected.find(
-      (r) => r.bankLo === inst.bankLo && r.bankHi === inst.bankHi && r.patch === inst.patch,
-    );
+    // Bands routinely author bank numbers the collection's own `insh` disagrees with, so this falls
+    // back on the program alone the way preset matching does; an exact-only match would drop the
+    // guard for the very instruments it was written for.
+    const rejects =
+      dls.rejected.find(
+        (r) => r.bankLo === inst.bankLo && r.bankHi === inst.bankHi && r.patch === inst.patch,
+      ) ?? dls.rejected.find((r) => r.patch === inst.patch);
     slots.set(inst.id, { synth, channel, rejected: rejects?.ranges ?? [], transpose: inst.transpose });
   }
 

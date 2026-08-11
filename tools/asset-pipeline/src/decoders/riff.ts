@@ -19,6 +19,19 @@ export function fourCc(bytes: Uint8Array, off: number): string {
   return String.fromCharCode(bytes[off] ?? 0, bytes[off + 1] ?? 0, bytes[off + 2] ?? 0, bytes[off + 3] ?? 0);
 }
 
+/** Depth-first visit of every chunk under [start, end), each container before its own children. */
+export function walkRiffTree(
+  bytes: Uint8Array,
+  visit: (child: RiffChild) => void,
+  start = 0,
+  end = bytes.length,
+): void {
+  for (const child of riffChildren(bytes, start, end)) {
+    visit(child);
+    if (child.form !== undefined) walkRiffTree(bytes, visit, child.bodyStart, child.bodyEnd);
+  }
+}
+
 /** The chunks of one container body [start, end); truncated trailing chunks are dropped. */
 export function riffChildren(bytes: Uint8Array, start: number, end: number): RiffChild[] {
   const view = viewOf(bytes);

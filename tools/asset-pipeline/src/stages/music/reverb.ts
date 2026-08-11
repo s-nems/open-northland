@@ -14,9 +14,13 @@ const ALLPASS_DELAYS = [556, 441, 341, 225] as const;
 /** Right-channel delay offset decorrelating the two tails. */
 const STEREO_SPREAD = 23;
 const ALLPASS_FEEDBACK = 0.5;
-/** Comb feedback lowpass. Approximation: every segment leaves `fHighFreqRTRatio` at the DMO
- *  default, so nothing authored selects a decay ratio; this value keeps the wet path's octave-band
- *  gain flat. */
+/**
+ * Comb feedback lowpass. Approximation: no segment authors `fHighFreqRTRatio`, so this stands in for
+ * the DMO default of 0.001, which would decay high frequencies far faster than the value chosen here.
+ * The resulting wet path is not flat: measured octave gains span about 5 dB, and above 2 kHz the tail
+ * is gone within ~150 ms while below 200 Hz it runs the authored RT60. The coefficient is the one
+ * tuning here that does not scale with `sampleRate`, so it only holds at the stage's publish rate.
+ */
 const DAMPING = 0.95;
 /** Comb-bank input level putting sustained wet output near the dry level at 0 dB mix. */
 const INPUT_GAIN = 0.07;
@@ -30,6 +34,8 @@ export function applyWavesReverb(
 ): void {
   const frames = channels[0]?.length ?? 0;
   if (frames === 0 || channels.length === 0) return;
+  // One non-finite authored float would otherwise spread NaN across every sample of the track.
+  if (!Number.isFinite(params.reverbTimeMs + params.inGainDb + params.reverbMixDb)) return;
   const rt60S = Math.max(params.reverbTimeMs, 1) / 1000;
   const inputGain = INPUT_GAIN * 10 ** (params.inGainDb / 20);
   const wetGain = 10 ** (params.reverbMixDb / 20);
