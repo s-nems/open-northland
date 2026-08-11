@@ -118,7 +118,7 @@ describe('SoundDriver', () => {
     expect(fetched).toHaveLength(0);
   });
 
-  it('plays the map music, then crossfades to its Danger variant once we are struck', async () => {
+  it('plays the map music, then hands over to its Danger variant once we are struck', async () => {
     const MISSION_ARABS1 = 17;
     const { driver, fetched } = makeDriver();
     await driver.resume();
@@ -141,7 +141,7 @@ describe('SoundDriver', () => {
       ...baseInput,
       snapshot: owned,
       localPlayer: 1,
-      standing: { population: 0, stance: 'neutral' },
+      standingOf: () => ({ population: 0, stance: 'neutral' }) as const,
     } as const;
     driver.update({ ...ours, events: [] });
     await flush();

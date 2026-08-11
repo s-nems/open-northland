@@ -1,4 +1,10 @@
-import { type DiplomacyState, entityById, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import {
+  type DiplomacyState,
+  entityById,
+  type SimEvent,
+  TICKS_PER_SECOND,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { entityOwner } from '../snapshot.js';
 import { MUSIC_VARIANTS, type MusicVariants, type ThemeMood } from './catalog.js';
 import type { MusicManifest, MusicTrack } from './manifest.js';
@@ -9,8 +15,9 @@ import type { MusicManifest, MusicTrack } from './manifest.js';
  * and the variant sets they switch between are not.
  */
 
-/** How long the tense variant holds after the last blow, in sim ticks (12 per second). Approximation. */
-export const CONFLICT_HOLD_TICKS = 240;
+/** How long the tense variant holds after the last blow. Approximation. Sim ticks, so a faster game
+ *  speed shortens the hold in wall-clock terms; it stays well clear of the player's handover fade. */
+export const CONFLICT_HOLD_TICKS = 20 * TICKS_PER_SECOND;
 
 /** Settlers the local player must own before a mission plays its Wealthy variant. Approximation: the
  *  head-count is the figure the HUD already shows, the threshold is a choice. */
