@@ -15,7 +15,7 @@ graphics, and audio, provide your own copy of *Cultures - 8th Wonder of the Worl
 [GOG](https://www.gog.com/en/game/cultures_34)) and generate a local `content/` directory.
 
 To test it out, try:
-- [Browser-based build](https://opennorthland.org/game) (as a quick-access demo)
+- [Browser-based build](https://game.opennorthland.org) (as a quick-access demo)
 - [Desktop application builds](https://github.com/s-nems/open-northland/tags) (preferred distribution)
 
 ![A settlement rendered by Open Northland using locally decoded game data](docs/images/settlement.webp)

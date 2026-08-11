@@ -24,8 +24,8 @@ import type { PipelineWorkerMessage, RunPipelineRequest } from './worker/protoco
 /** Web Locks name guarding the one conversion this origin may run at a time. */
 const PIPELINE_LOCK = 'open-northland.pipeline';
 
-/** Where the site hosts the CnMod archive, beside the game path (same origin, no CORS). */
-const CNMOD_ARCHIVE_URL = new URL('../cnmod/cnmod.zip', document.baseURI);
+/** Where the site hosts the CnMod archive, beside the installer page (same origin, no CORS). */
+const CNMOD_ARCHIVE_URL = new URL('cnmod.zip', document.baseURI);
 
 /** The playable app, served under the site base with the shared content routes beneath it. */
 const PLAY_URL = 'play/';

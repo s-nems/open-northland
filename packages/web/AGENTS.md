@@ -1,6 +1,6 @@
 # Web package contract
 
-`packages/web` hosts the game in a plain browser at `opennorthland.org/game`: the shared installer
+`packages/web` hosts the game in a plain browser at `game.opennorthland.org`: the shared installer
 as a page, the asset pipeline in a dedicated worker, converted content in the origin-private file
 system, and a service worker serving the content routes. The root [`AGENTS.md`](../../AGENTS.md)
 applies.
@@ -19,19 +19,29 @@ applies.
   downloads.
 - Everything the shell stores lives under the one OPFS directory in `src/opfs-layout.ts` plus the
   locale key in `localStorage`; the rest of the origin's storage is not this package's.
+- The page addresses its own files relatively, and the service worker derives the app prefix from
+  where `sw.js` was served, so the site works under any mount point. Only the app's build base is
+  absolute. Keep it that way: an absolute URL added here pins the deployment to one path.
 - Every path out of the boot must end in something the visitor can read. A missing service worker,
   absent origin storage, a full quota, or a second converting tab are conditions to report, never to
   fall through.
 
 ## Deployment contract
 
-The host serves a static directory and nothing else, but three facts are not negotiable:
+The host serves a static directory over HTTPS and nothing else. Plain HTTP runs neither service
+workers nor OPFS, and these facts are not negotiable:
 
-- the layout is fixed - the site at `/game/`, the app under `/game/play/`, the mod archive at
-  `/cnmod/cnmod.zip` on the same origin (`scripts/serve.mjs` mirrors it locally and never deploys);
-- `sw.js` must never be served immutable or long-cached: a stale service worker keeps serving old
-  logic until every visitor clears their storage;
-- the content-route prefixes under `/game/play/` belong to the resolver, so the app must not ship a
+- the origin belongs to the game alone. `sw.js` is served from the site root, so its scope is the
+  whole origin, and anything else hosted there would be routed through the game's service worker;
+- the layout is fixed - the site at `/`, the app under `/play/`, the mod archive at `/cnmod.zip` on
+  the same origin (`scripts/serve.mjs` mirrors it locally and never deploys);
+- a conversion belongs to the origin, not to the path. Moving the site within one origin keeps every
+  visitor's content; moving it to another origin makes all of them convert again and strands the old
+  copy in their browser;
+- only `play/assets/*` carries content hashes. Everything else ships under a fixed name and must not
+  be long-cached, `sw.js` least of all: a stale service worker keeps serving old logic until the
+  visitor clears their storage;
+- the content-route prefixes under `/play/` belong to the resolver, so the app must not ship a
   static file at one of them - the service worker answers those from OPFS, while `npm run dev`
   would serve the file and hide the clash.
 

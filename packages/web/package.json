@@ -2,7 +2,7 @@
   "name": "@open-northland/web",
   "version": "0.0.0",
   "private": true,
-  "description": "OpenNorthland web shell - the browser-hosted installer and game host for opennorthland.org/game",
+  "description": "OpenNorthland web shell - the browser-hosted installer and game host for game.opennorthland.org",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {

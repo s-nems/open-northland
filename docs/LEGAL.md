@@ -17,13 +17,13 @@ underlying game artwork remains the property of its respective rights holders.
 Tests use synthetic fixtures created for this project. A test or pull request must not contain an
 original file, decoded asset, extracted text corpus, or other distributable game content.
 
-The browser deployment holds to the same line: `opennorthland.org/game` serves engine code only, and
+The browser deployment holds to the same line: `game.opennorthland.org` serves engine code only, and
 every visitor converts their own game copy inside their own browser, where the converted data stays.
 
 ## CulturesNation mod
 
 The free community mod *CulturesNation* is required to play, and the project rehosts its archive at
-`opennorthland.org/cnmod/cnmod.zip` so the installer can fetch it from its own origin. The mod's
+`game.opennorthland.org/cnmod.zip` so the installer can fetch it from its own origin. The mod's
 authors have granted permission for this rehosting. The archive is redistributed unmodified and is
 not part of this repository; the mod remains the work and property of its authors.
 
