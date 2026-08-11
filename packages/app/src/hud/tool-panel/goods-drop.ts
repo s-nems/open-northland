@@ -22,6 +22,7 @@ export interface GoodsDropDeps {
  */
 export interface GoodsDropController {
   isActive(): boolean;
+  activeGood(): number | null;
   enter(goodType: number): void;
   cancel(): void;
   /** An off-map click is inert but still consumed: drop mode claims the canvas until cancelled. */
@@ -43,6 +44,7 @@ export function createGoodsDropController(deps: GoodsDropDeps): GoodsDropControl
 
   return {
     isActive: () => goodType !== null,
+    activeGood: () => goodType,
     enter: (type): void => {
       goodType = type;
       const label = deps.labelByGood.get(type) ?? `#${type}`;

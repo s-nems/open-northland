@@ -2,6 +2,8 @@ import { type Camera, tileToScreen } from '@open-northland/render';
 import { describe, expect, it } from 'vitest';
 import {
   cameraCenteredOnTile,
+  cameraCenteredOnWorld,
+  cameraForViewportResize,
   DEFAULT_CAMERA_TUNING,
   EDGE_SCROLL_MARGIN,
   edgePanVelocity,
@@ -67,6 +69,23 @@ describe('cameraCenteredOnTile', () => {
     // screen = world*scale + offset - the tile lands dead centre.
     expect(cam.offsetX + s.x * zoom).toBeCloseTo(w / 2);
     expect(cam.offsetY + s.y * zoom).toBeCloseTo(h / 2);
+  });
+});
+
+describe('cameraForViewportResize', () => {
+  it('keeps the centred world point centred after the viewport size changes', () => {
+    const [worldX, worldY, zoom] = [125, -40, 1.5];
+    const camera = cameraCenteredOnWorld(worldX, worldY, zoom, 800, 600);
+    const resized = cameraForViewportResize(camera, 800, 600, 1280, 900);
+    expect(resized.offsetX + worldX * zoom).toBeCloseTo(1280 / 2);
+    expect(resized.offsetY + worldY * zoom).toBeCloseTo(900 / 2);
+    expect(resized.scale).toBe(zoom);
+  });
+
+  it('preserves an omitted scale field', () => {
+    const resized = cameraForViewportResize({ offsetX: 10, offsetY: 20 }, 800, 600, 1000, 500);
+    expect(resized).toEqual({ offsetX: 110, offsetY: -30 });
+    expect(resized.scale).toBeUndefined();
   });
 });
 

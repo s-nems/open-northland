@@ -22,7 +22,6 @@ import { FrameStats, installSessionInstruments } from '../../diag/index.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
-import { buildToolPanelLayout } from '../../hud/tool-panel/layout.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
@@ -46,6 +45,7 @@ import { createUnitControls } from '../unit-controls/index.js';
 import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
+import { createLiveGameSettings, perfLeftForUiScale } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
 import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
@@ -58,6 +58,8 @@ export interface GameViewDeps {
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly params: URLSearchParams;
+  /** The viewport used to frame the initial camera, before asynchronous HUD mounts can observe a resize. */
+  readonly initialViewport: { readonly width: number; readonly height: number };
   /** World renderer with its terrain already set. */
   readonly renderer: WorldRenderer;
   /** Absent in a checkout without decoded content, which leaves the animated worker field empty. */
@@ -101,12 +103,9 @@ export interface GameViewDeps {
 }
 
 export interface GameSession {
-  /** Stop the frame loop and remove this session's overlays. Idempotent; leaves DOM, Pixi and listener teardown to the caller. */
+  /** Stop the frame loop and remove this session's HUD overlays. Idempotent. */
   destroy(): void;
 }
-
-/** px gap between the tool-panel strip's right edge and the debug overlay's left edge. */
-const PERF_STRIP_GAP = 8;
 
 /** Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
@@ -118,6 +117,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const profile = installSessionInstruments(sim, params);
 
   let loop: RafLoop | null = null;
+  let systemMenu: ReturnType<typeof createSystemMenu> | null = null;
+  let disposeHud = (): void => undefined;
   let destroyed = false;
   const saveLoad = createSaveLoadSession({
     sim,
@@ -128,12 +129,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     },
     isPaused: () => control.paused,
   });
-  const systemMenu = createSystemMenu({ onQuit: () => quitToMenu(), saveLoad });
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;
     loop?.stop();
-    systemMenu.dispose();
+    systemMenu?.dispose();
+    disposeHud();
     // Leaving the debug seam set would pin this sim, renderer and stats for the document's lifetime.
     delete window.__opennorthland;
   };
@@ -143,9 +144,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   };
 
   const storedSettings = readStoredSettings();
-  // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; otherwise the scale follows
-  // the canvas height at launch times the stored interface-scale factor. Fractional values are allowed.
-  const uiscale = floatParam(params, 'uiscale', uiScaleFor(app.screen.height, storedSettings.uiScaleFactor));
+  const pinnedUiScale = floatParam(params, 'uiscale', 0) || null;
+  // `?uiscale` pins an absolute HUD scale for reproducible diagnostics.
+  const uiscale = pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, storedSettings.uiScaleFactor);
 
   const lang = currentLocale();
   const keyBindings = storedSettings.keyBindings;
@@ -159,7 +160,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const soundDriver = await mountGamePresentation(params, renderer);
 
   // The left inset clears the tool-panel strip, so the readout and the build menu never overlap.
-  const perf = mountPerfOverlay(buildToolPanelLayout(uiscale).width + PERF_STRIP_GAP);
+  const perf = mountPerfOverlay(perfLeftForUiScale(uiscale));
 
   // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
   const fogGates = createFogGates();
@@ -214,7 +215,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
     overlayReserve: () => minimap?.panelRect() ?? null,
-    onSystemMenu: () => systemMenu.toggle(),
+    onSystemMenu: () => systemMenu?.toggle(),
   });
 
   // Injected rather than imported: `hud/` never imports `view/`.
@@ -340,6 +341,33 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
       controls.claimsPointer(clientX, clientY),
   });
 
+  const liveSettings = createLiveGameSettings({
+    screen: app.screen,
+    initialViewport: deps.initialViewport,
+    params,
+    stored: storedSettings,
+    pinnedUiScale,
+    camera: cameraCtl,
+    toolPanel,
+    minimap: mountedMinimap,
+    controls,
+    perf,
+    sound: soundDriver,
+  });
+  systemMenu = createSystemMenu({
+    onQuit: quitToMenu,
+    saveLoad,
+    settings: liveSettings.settings,
+    setCameraSuspended: cameraCtl.setSuspended,
+  });
+  disposeHud = (): void => {
+    liveSettings.dispose();
+    toolPanel.dispose();
+    mountedMinimap.dispose();
+    controls.dispose();
+    perf.dispose();
+  };
+
   installDebugHandle({
     sim,
     renderer,
@@ -378,6 +406,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     soundDriver,
     perf,
     pointer: pointerAt,
+    syncViewport: liveSettings.syncViewport,
+    systemMenuOpen: () => systemMenu?.isOpen() ?? false,
   });
 
   return { destroy };

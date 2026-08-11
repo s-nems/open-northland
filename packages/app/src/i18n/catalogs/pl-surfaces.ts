@@ -135,6 +135,8 @@ export const plSurfaces = {
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
       uiScale: 'Skala interfejsu w grze',
       uiScaleTip: 'Wielkość paneli i przycisków w grze; nie zmienia ostrości świata.',
+      uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',
+      uiScaleApplyFailed: 'Nie udało się zastosować skali interfejsu. Poprzednia skala pozostaje aktywna.',
       soundEnabled: 'Dźwięk w grze',
       musicVolume: 'Głośność muzyki',
       sfxVolume: 'Głośność dźwięków gry',

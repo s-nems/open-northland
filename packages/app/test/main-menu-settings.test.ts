@@ -6,6 +6,7 @@ import type { MenuSettings } from '../src/view/settings-store.js';
 import {
   defaultSettings,
   parseStoredSettings,
+  patchStoredSettings,
   persistSettings,
   RENDER_SCALE_MAX,
   RENDER_SCALE_MIN,
@@ -103,6 +104,25 @@ describe('persistSettings', () => {
     expect(parseStoredSettings('{"soundVolume":1.4}').soundVolume).toBe(1);
     expect(parseStoredSettings('{"musicVolume":-0.5}').musicVolume).toBe(0);
     expect(parseStoredSettings('{"musicVolume":"loud"}').musicVolume).toBe(defaultSettings().musicVolume);
+  });
+
+  it('patches one live setting without overwriting the rest of the stored choices', () => {
+    const setItem = vi.fn();
+    vi.stubGlobal('window', {
+      localStorage: {
+        getItem: () => JSON.stringify({ renderScale: 1.5, soundVolume: 0.8 }),
+        setItem,
+      },
+    });
+
+    const next = patchStoredSettings({ soundVolume: 0.25 });
+
+    expect(next.renderScale).toBe(1.5);
+    expect(next.soundVolume).toBe(0.25);
+    expect(JSON.parse(String(setItem.mock.calls[0]?.[1]))).toMatchObject({
+      renderScale: 1.5,
+      soundVolume: 0.25,
+    });
   });
 });
 

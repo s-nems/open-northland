@@ -212,9 +212,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       : null;
 
   const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
+  const initialViewport = { width: app.screen.width, height: app.screen.height };
   const initialCamera =
-    centerTile(params.get('center'), app.screen.width, app.screen.height) ??
-    cameraCenteredOnTile(focus.x, focus.y, 1, app.screen.width, app.screen.height);
+    centerTile(params.get('center'), initialViewport.width, initialViewport.height) ??
+    cameraCenteredOnTile(focus.x, focus.y, 1, initialViewport.width, initialViewport.height);
   const cameraCtl = createCameraController(
     canvas,
     initialCamera,
@@ -232,6 +233,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     app,
     canvas,
     params,
+    initialViewport,
     renderer,
     sheet,
     sim,

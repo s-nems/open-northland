@@ -56,10 +56,16 @@ export async function loadMinimapFrame(
   offscreen.addChild(made.sprite);
   made.sprite.place(0, 0, ss, texW, texH);
   const baked = bakeToSprite(renderer, offscreen, texW, texH, 1);
-  // Alphas are exactly 0 or 255 at an integer nearest scale, so premultiplication is identity and this
-  // readback sees exact LUT colours.
-  const { pixels, width, height } = renderer.extract.pixels(baked.display.texture);
-  baked.dispose();
+  let extracted: ReturnType<typeof renderer.extract.pixels>;
+  try {
+    // Alphas are exactly 0 or 255 at an integer nearest scale, so premultiplication is identity and this
+    // readback sees exact LUT colours.
+    extracted = renderer.extract.pixels(baked.display.texture);
+  } finally {
+    baked.display.destroy();
+    baked.dispose();
+  }
+  const { pixels, width, height } = extracted;
   keyEdgeConnectedNearBlack(pixels, width, height);
   // The keying eats the art's own dark contour, which touches the backdrop, so redraw a 1-native-px
   // (= ss baked px) black rim to stop the silhouette fraying against the world.
@@ -72,14 +78,19 @@ export async function loadMinimapFrame(
       scaleMode: 'linear', // the fractional downscale to display size stays smooth
     }),
   });
-  const display = new Sprite(texture);
-  display.scale.set(artScale / ss);
-  display.tint = BRAID_WOOD_TINT;
-  return {
-    display,
-    dispose(): void {
-      display.destroy();
-      texture.destroy(true);
-    },
-  };
+  try {
+    const display = new Sprite(texture);
+    display.scale.set(artScale / ss);
+    display.tint = BRAID_WOOD_TINT;
+    return {
+      display,
+      dispose(): void {
+        display.destroy();
+        texture.destroy(true);
+      },
+    };
+  } catch (error: unknown) {
+    texture.destroy(true);
+    throw error;
+  }
 }

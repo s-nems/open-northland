@@ -39,24 +39,35 @@ function bake(
   invScale: number,
   flipDisplay: boolean,
 ): SupersampledTexture {
-  const texture = RenderTexture.create({ width: texW, height: texH, resolution: 1, antialias: false });
-  texture.source.scaleMode = 'linear'; // linear so the fractional downscale to screen is smooth
-  const redraw = (): void => {
-    renderer.render({ container: source, target: texture, clear: true });
-  };
-  redraw();
+  let texture: RenderTexture | null = null;
+  let display: Sprite | null = null;
+  try {
+    texture = RenderTexture.create({ width: texW, height: texH, resolution: 1, antialias: false });
+    texture.source.scaleMode = 'linear'; // linear so the fractional downscale to screen is smooth
+    const bakedTexture = texture;
+    const redraw = (): void => {
+      renderer.render({ container: source, target: bakedTexture, clear: true });
+    };
+    redraw();
 
-  const display = new Sprite(texture);
-  display.scale.set(invScale, flipDisplay ? -invScale : invScale);
+    display = new Sprite(bakedTexture);
+    display.scale.set(invScale, flipDisplay ? -invScale : invScale);
+    const bakedDisplay = display;
 
-  return {
-    display,
-    redraw,
-    dispose(): void {
-      source.destroy({ children: true });
-      texture.destroy(true);
-    },
-  };
+    return {
+      display: bakedDisplay,
+      redraw,
+      dispose(): void {
+        source.destroy({ children: true });
+        bakedTexture.destroy(true);
+      },
+    };
+  } catch (error: unknown) {
+    display?.destroy();
+    source.destroy({ children: true });
+    texture?.destroy(true);
+    throw error;
+  }
 }
 
 /** Bake an all-PalettedSprite source: the display is Y-flipped and the caller bottom-anchors it. */
@@ -103,11 +114,24 @@ export function createReusableBaker(renderer: Renderer): ReusableBaker {
     if (target === null || view === null || target.width < w || target.height < h) {
       const grownW = Math.max(w, target?.width ?? 0);
       const grownH = Math.max(h, target?.height ?? 0);
+      const nextTarget = RenderTexture.create({
+        width: grownW,
+        height: grownH,
+        resolution: 1,
+        antialias: false,
+      });
+      nextTarget.source.scaleMode = 'linear';
+      let nextView: Texture;
+      try {
+        nextView = new Texture({ source: nextTarget.source, frame: new Rectangle(0, 0, w, h) });
+      } catch (error: unknown) {
+        nextTarget.destroy(true);
+        throw error;
+      }
       view?.destroy(false);
       target?.destroy(true);
-      target = RenderTexture.create({ width: grownW, height: grownH, resolution: 1, antialias: false });
-      target.source.scaleMode = 'linear';
-      view = new Texture({ source: target.source, frame: new Rectangle(0, 0, w, h) });
+      target = nextTarget;
+      view = nextView;
     } else if (view.frame.width !== w || view.frame.height !== h) {
       view.frame.width = w;
       view.frame.height = h;
@@ -118,22 +142,31 @@ export function createReusableBaker(renderer: Renderer): ReusableBaker {
   return {
     bake(source, texW, texH, invScale): SupersampledTexture {
       if (outstanding) throw new Error('ReusableBaker is single-slot: dispose the previous bake first');
-      outstanding = true;
-      const bakeView = ensure(texW, texH);
-      const redraw = (): void => {
-        renderer.render({ container: source, target: bakeView, clear: true });
-      };
-      redraw();
-      const display = new Sprite(bakeView);
-      display.scale.set(invScale);
-      return {
-        display,
-        redraw,
-        dispose(): void {
-          outstanding = false;
-          source.destroy({ children: true }); // the shared view + target stay with the baker
-        },
-      };
+      let display: Sprite | null = null;
+      try {
+        const bakeView = ensure(texW, texH);
+        outstanding = true;
+        const redraw = (): void => {
+          renderer.render({ container: source, target: bakeView, clear: true });
+        };
+        redraw();
+        display = new Sprite(bakeView);
+        display.scale.set(invScale);
+        const bakedDisplay = display;
+        return {
+          display: bakedDisplay,
+          redraw,
+          dispose(): void {
+            outstanding = false;
+            source.destroy({ children: true }); // the shared view + target stay with the baker
+          },
+        };
+      } catch (error: unknown) {
+        outstanding = false;
+        display?.destroy();
+        source.destroy({ children: true });
+        throw error;
+      }
     },
     dispose(): void {
       view?.destroy(false);

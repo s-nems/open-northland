@@ -3,6 +3,7 @@ export {
   cameraCenteredOnTile,
   cameraCenteredOnWorld,
   cameraFor,
+  cameraForViewportResize,
 } from './frame.js';
 export {
   type CameraTuning,

@@ -67,5 +67,6 @@ export interface UnitControls {
   readonly signpostPlacementActive: () => boolean;
   readonly tick: (snapshot: WorldSnapshot) => void;
   readonly claimsPointer: (clientX: number, clientY: number) => boolean;
+  readonly setUiScale: (uiscale: number) => Promise<void>;
   readonly dispose: () => void;
 }

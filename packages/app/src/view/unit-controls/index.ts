@@ -1,11 +1,7 @@
-import { type Entity, systems } from '@open-northland/sim';
-import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
-import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { isActionHotkey } from '../../hud/hotkeys.js';
-import { clientToScreen, screenScale } from '../camera/index.js';
+import { clientToScreen } from '../camera/index.js';
 import { pickInRect, screenToWorld } from '../picking.js';
-import { entityAnchor, memoBySnapshot } from '../projections/index.js';
-import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
+import { createUnitChrome } from './chrome.js';
 import { createClickHits } from './click-hits.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
@@ -35,72 +31,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           goods: opts.content.goods,
           enqueue: opts.enqueue,
         });
-  const panel: UnitPanel = await mountUnitPanel({
-    app: opts.app,
-    canvas,
-    uiscale: opts.uiscale ?? 1,
-    lang: opts.lang,
-    backingScale: (c: HTMLCanvasElement) => screenScale(c, opts.app.renderer.resolution),
-    buildings: opts.content.buildings,
-    goods: opts.content.goods,
-    jobs: opts.content.jobs,
-    jobExperience: opts.content.jobExperience,
-    tribes: opts.content.tribes,
-    // The sim's own classifications, so the panel and the recipe table cannot disagree.
-    isLivestockWorkplace: (typeId) => systems.isLivestockWorkplaceType(opts.content, typeId),
-    isLivestockGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType) !== null,
-    livestockMeatGood: systems.livestockMeatGoodOf(opts.content),
-    edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
-    ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
-    ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
-    onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),
-    onUpgrade: (id) => opts.enqueue({ kind: 'upgradeBuilding', building: id as Entity }),
-    onCancelUpgrade: (id) => opts.enqueue({ kind: 'cancelUpgrade', building: id as Entity }),
-    onDemolishSignpost: (id) => opts.enqueue({ kind: 'demolishSignpost', signpost: id as Entity }),
-    onSetDefenceMode: (id, enabled) =>
-      opts.enqueue({ kind: 'setDefenceMode', building: id as Entity, enabled }),
-    onAssignWorkplace: (id) => pickMode.armWorkplace(id),
-    onAssignHome: (id) => pickMode.armHome(id),
-    // Neither release picks a target, so both enqueue directly instead of arming a pick mode.
-    onUnassignWorkplace: (id) => opts.enqueue({ kind: 'unassignWorker', entity: id as Entity }),
-    onUnassignHome: (id) => opts.enqueue({ kind: 'unassignHouse', entity: id as Entity }),
-    onSetGatherGood: (id, goodType) =>
-      opts.enqueue({ kind: 'setGatherGood', entity: id as Entity, goodType }),
-    onSetCraftGoods: (id, goods) =>
-      opts.enqueue({ kind: 'setCraftGoods', entity: id as Entity, goods: [...goods] }),
-    ...(equipPicker !== null ? { onEquipSlot: (id, ref) => equipPicker.open(id, ref) } : {}),
-    onUnequipSlot: (id, ref) =>
-      opts.enqueue({ kind: 'unequipGood', entity: id as Entity, group: ref.group, slot: ref.slot }),
-    onSelectEntity: (id) => applySelection([id], false),
-    // The original centres the view from its own controls (`housewindow` 116/117, `humanwindow` 100).
-    // Approximation: this centres a building's base, so a tall house sits above centre after the jump.
-    onCenterOnEntity: (id) => {
-      const at = entityAnchor(opts.snapshot(), id, opts.elevation);
-      if (at !== null) opts.centerOn(at.x, at.y);
-    },
-    ...(opts.tooltip !== undefined ? { tooltip: opts.tooltip } : {}),
-  });
-  // Mounted before this controller's own canvas listeners, so a click on a menu button consumes the
-  // press and never falls through to selection or a move order.
-  const actions: SettlerActions = await mountSettlerActions({
-    app: opts.app,
-    canvas,
-    uiscale: opts.uiscale ?? 1,
-    selectionCentre: memoBySnapshot(
-      (snapshot) => selectionCentre(snapshot, selection.ids()),
-      selection.version,
-    ),
-    professions: opts.professions,
-    content: opts.content,
-    jobUnlocked: (ids, jobType) => jobUnlockedForSelection(opts.content, opts.snapshot(), ids, jobType),
-    onSetJob: (ids, jobType) => {
-      for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
-    },
-    onErectSignpost: (ids) => pickMode.armSignpost(ids),
-    onAttackMove: () => armAttackMove(),
-    onMarry: (id) => opts.enqueue({ kind: 'marry', entity: id as Entity }),
-    onAssignHouse: (id) => pickMode.armHome(id),
-    onMakeChild: (id, sex) => opts.enqueue({ kind: 'makeChild', entity: id as Entity, child: sex }),
+  const chrome = await createUnitChrome(opts, selection, equipPicker, {
+    assignWorkplace: (id) => pickMode.armWorkplace(id),
+    assignHome: (id) => pickMode.armHome(id),
+    selectEntity: (id) => applySelection([id], false),
+    erectSignpost: (ids) => pickMode.armSignpost(ids),
+    attackMove: () => armAttackMove(),
   });
 
   const marquee = createSelectionMarquee();
@@ -147,17 +83,17 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   /** Refused when the selection holds no settler to send, so the mode never arms into a click that does nothing. */
   const armAttackMove = (): void => {
     if (unitTargets.ownedSettlersIn(selection.ids()).length === 0) return;
-    actions.close();
+    chrome.actions().close();
     pickMode.armAttackMove();
   };
 
   const applySelection = (ids: Iterable<number>, add: boolean): void => {
     const changed = selection.apply(ids, add);
     if (changed) pickMode.cancel();
-    panel.render(opts.snapshot(), selection.ids());
+    chrome.panel().render(opts.snapshot(), selection.ids());
     // Only a changed set closes the ring, so it never lingers on a stale unit while re-selecting the
     // same set leaves an open menu alone.
-    if (changed) actions.close();
+    if (changed) chrome.actions().close();
   };
 
   const orders = createUnitOrderController({
@@ -170,7 +106,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     toWorld,
     enqueue: opts.enqueue,
     selectOwnSettler: (id) => applySelection([id], false),
-    openActions: (atClient) => actions.open(atClient),
+    openActions: (atClient) => chrome.actions().open(atClient),
   });
 
   const onMouseDown = (e: MouseEvent): void => {
@@ -178,8 +114,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     // too, since its own listener consumes left clicks only.
     if (opts.claimPointer?.(e.clientX, e.clientY) === true) return;
     // The details panel routes its buttons through the same claim, so no panel-owned listener races this one.
-    if (panel.handleMouseDown(e.clientX, e.clientY, e.button, e.ctrlKey || e.metaKey)) return;
-    if (actions.claimsPointer(e.clientX, e.clientY)) return;
+    if (chrome.panel().handleMouseDown(e.clientX, e.clientY, e.button, e.ctrlKey || e.metaKey)) return;
+    if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
     if (pickMode.handleMouseDown(e)) return;
     if (e.button === 2) {
       if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(e);
@@ -222,7 +158,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const onKeyDown = (e: KeyboardEvent): void => {
     if (isActionHotkey(e, opts.bindings, 'actionRing')) {
       e.preventDefault(); // Space (the default binding) would otherwise scroll the page
-      actions.toggle(); // the info card is always-on; the hotkey toggles only the action ring
+      chrome.actions().toggle(); // the info card is always-on; the hotkey toggles only the action ring
     } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
       armAttackMove();
     } else if (e.code === 'Escape') {
@@ -241,19 +177,22 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   return {
     selectedIds: selection.ids,
     selectionVersion: selection.version,
-    portrait: () => panel.portrait(),
+    portrait: () => chrome.panel().portrait(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     assignHighlight: pickMode.highlight,
     signpostPlacementActive: pickMode.signpostActive,
     // Includes the details panel, so a consumer gating on this treats a point over the panel as HUD
     // rather than world.
     claimsPointer: (x, y) =>
-      opts.claimPointer?.(x, y) === true || panel.claimsPointer(x, y) || actions.claimsPointer(x, y),
+      opts.claimPointer?.(x, y) === true ||
+      chrome.panel().claimsPointer(x, y) ||
+      chrome.actions().claimsPointer(x, y),
     tick: (snapshot) => {
-      panel.tick(snapshot);
+      chrome.panel().tick(snapshot);
       // Re-anchors the ring on the selection's on-screen centroid; a no-op while it is closed.
-      actions.update(opts.camera(), snapshot);
+      chrome.actions().update(opts.camera(), snapshot);
     },
+    setUiScale: chrome.setUiScale,
     dispose: () => {
       pickMode.cancel(); // an armed mode owns the canvas cursor, which teardown must not leave set
       canvas.removeEventListener('mousedown', onMouseDown);
@@ -262,8 +201,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       canvas.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('keydown', onKeyDown);
       marquee.dispose();
-      panel.dispose();
-      actions.dispose();
+      chrome.dispose();
       equipPicker?.dispose();
     },
   };

@@ -15,6 +15,8 @@ export interface ProfessionPicker {
   /** Reveal the window, offering only the professions `unlocked` admits. */
   show(unlocked: (jobType: number) => boolean): void;
   hide(): void;
+  scrollTop(): number;
+  setScrollTop(top: number): void;
   dispose(): void;
 }
 
@@ -46,6 +48,8 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
       window_.show();
     },
     hide: window_.hide,
+    scrollTop: window_.scrollTop,
+    setScrollTop: window_.setScrollTop,
     dispose: window_.dispose,
   };
 }

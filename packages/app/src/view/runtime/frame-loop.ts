@@ -58,6 +58,10 @@ export interface FrameLoopDeps {
   readonly perf: PerfOverlayHandle;
   /** Client coords; null when the pointer left the canvas. */
   readonly pointer: () => { clientX: number; clientY: number } | null;
+  /** Reconcile Pixi's live screen size before camera and HUD work. */
+  readonly syncViewport: (nowMs: number) => void;
+  /** True while the system modal owns keyboard and pointer interaction. */
+  readonly systemMenuOpen: () => boolean;
 }
 
 /**
@@ -90,6 +94,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     soundDriver,
     perf,
     pointer: pointerAt,
+    syncViewport,
+    systemMenuOpen,
   } = loop;
   const { app, renderer, sim, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
@@ -126,6 +132,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   };
 
   function frame(nowMs: number): void {
+    syncViewport(nowMs);
     const pointer = pointerAt();
     const elapsed = nowMs - lastMs;
     lastMs = nowMs;
@@ -141,7 +148,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       });
     }
     const simMs = performance.now() - cpu0;
-    cameraCtl.update(elapsed);
+    if (!systemMenuOpen()) cameraCtl.update(elapsed);
     // Idempotent: the sepia wash mirrors the pause flag every frame rather than on transitions, so a
     // pauser never has to know about the renderer.
     renderer.setPaused(control.paused);

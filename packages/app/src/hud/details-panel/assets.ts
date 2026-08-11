@@ -123,15 +123,29 @@ export interface DetailsPanelAssets {
   readonly barRamp: GuiBarRamp | undefined;
 }
 
+const assetsByLanguage = new Map<string, Promise<DetailsPanelAssets>>();
+
 export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanelAssets> {
-  const [art, goods, uiFont, bitmaps, strings, previews, barRamp] = await Promise.all([
-    loadGuiArt(),
-    loadGoodsArt(),
-    loadUiFont(),
-    loadGuiBitmaps(),
-    loadGuiStrings(lang),
-    loadBuildingPreviews(),
-    loadGuiBarRamp(),
-  ]);
-  return { art, goods, uiFont, bitmaps, strings, previews, barRamp };
+  let assets = assetsByLanguage.get(lang);
+  if (assets === undefined) {
+    assets = Promise.all([
+      loadGuiArt(),
+      loadGoodsArt(),
+      loadUiFont(),
+      loadGuiBitmaps(),
+      loadGuiStrings(lang),
+      loadBuildingPreviews(),
+      loadGuiBarRamp(),
+    ]).then(([art, goods, uiFont, bitmaps, strings, previews, barRamp]) => ({
+      art,
+      goods,
+      uiFont,
+      bitmaps,
+      strings,
+      previews,
+      barRamp,
+    }));
+    assetsByLanguage.set(lang, assets);
+  }
+  return assets;
 }

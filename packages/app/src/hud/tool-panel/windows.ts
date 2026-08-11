@@ -1,12 +1,17 @@
 import type { HudLayout } from '@open-northland/render';
 import type { Container } from 'pixi.js';
-import { buildingTabbedList, type MenuBuildingEntry } from './building-menu.js';
+import { type BuildingCategory, buildingTabbedList, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
+import type { ExtrasTab } from './extras-menu.js';
 import { createExtrasWindow, type ExtrasCountersSeam, type ExtrasGrantsSeam } from './extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
 import { createStatsWindow } from './stats-window.js';
-import { createTabbedListWindow, type TabbedListWindow } from './tabbed-list/index.js';
+import {
+  createTabbedListWindow,
+  type TabbedListWindow,
+  type TabbedListWindowState,
+} from './tabbed-list/index.js';
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
 /** The pop-ups in mount order, which is their draw order. */
@@ -44,6 +49,16 @@ export interface ToolWindows {
   handleWheel(x: number, y: number, deltaY: number): boolean;
   handleHover(x: number, y: number): void;
   refresh(hudFor: () => HudLayout): void;
+  state(): ToolWindowsState;
+  restore(state: ToolWindowsState): void;
+}
+
+export interface ToolWindowsState {
+  readonly openIds: readonly ToolWindowId[];
+  readonly buildings: TabbedListWindowState<BuildingCategory>;
+  readonly goods: TabbedListWindowState<number>;
+  readonly extras: ExtrasTab;
+  readonly diplomacy: number | null;
 }
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
@@ -65,7 +80,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const diplomacy = createDiplomacyWindow({ ctx, container, rows: deps.diplomacyRows });
 
   /** The pop-ups that own a scrollable, hoverable list. */
-  const lists: readonly TabbedListWindow[] = [menu, goods];
+  const lists: readonly TabbedListWindow<BuildingCategory | number>[] = [menu, goods];
 
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {
     menu: { window: menu, perFrame: () => menu.refresh() },
@@ -102,6 +117,24 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     },
     refresh: (hudFor): void => {
       for (const e of mounted) e.perFrame(hudFor);
+    },
+    state: () => ({
+      openIds: MOUNT_ORDER.filter((id) => entries[id].window.isOpen()),
+      buildings: menu.state(),
+      goods: goods.state(),
+      extras: extras.state(),
+      diplomacy: diplomacy.state(),
+    }),
+    restore: (state): void => {
+      menu.restore(state.buildings);
+      goods.restore(state.goods);
+      extras.restore(state.extras);
+      diplomacy.restore(state.diplomacy);
+      const open = new Set(state.openIds);
+      for (const id of MOUNT_ORDER) {
+        const window = entries[id].window;
+        if (open.has(id) !== window.isOpen()) window.toggle();
+      }
     },
   };
 }

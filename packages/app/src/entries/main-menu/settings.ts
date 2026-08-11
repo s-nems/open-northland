@@ -1,6 +1,18 @@
-import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, uiScaleFor } from '../../hud/ui-scale.js';
+import {
+  UI_SCALE_FACTOR_MAX,
+  UI_SCALE_FACTOR_MIN,
+  UI_SCALE_FACTOR_STEP,
+  uiScaleFor,
+} from '../../hud/ui-scale.js';
 import { currentLocale, type Locale, messages } from '../../i18n/index.js';
 import { enterFullscreen, isFullscreen, leaveFullscreen } from '../../view/fullscreen.js';
+import {
+  type SegHandle,
+  segControl,
+  settingRow,
+  sliderControl,
+  togglePill,
+} from '../../view/settings-controls.js';
 import {
   defaultSettings,
   type FpsLimit,
@@ -8,7 +20,6 @@ import {
   RENDER_SCALE_MAX,
   RENDER_SCALE_MIN,
 } from '../../view/settings-store.js';
-import { type SegHandle, segControl, togglePill } from './controls.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import { createControlsTab } from './settings-controls.js';
@@ -18,7 +29,6 @@ import {
   SETTINGS_TABS,
   type SettingsMemory,
   type SettingsTab,
-  UI_SCALE_FACTOR_STEP,
   updateSettings,
 } from './settings-state.js';
 
@@ -43,80 +53,6 @@ const VOLUME_MAX = 1;
 const VOLUME_STEP = 0.01;
 const SCROLL_SPEED_MIN = 0.5;
 const SCROLL_SPEED_MAX = 2;
-
-interface SliderSpec {
-  readonly min: number;
-  readonly max: number;
-  readonly step: number;
-  /** A multiplier; the value label renders it as a percentage. */
-  readonly value: number;
-  readonly onCommit?: (value: number) => void;
-  /** Commit while the handle is still moving, for a control the ear judges as it drags. A setting
-   *  whose application costs a rebuild leaves this off and lands on release instead. */
-  readonly live?: boolean;
-  /** Replaces the default percent value label. */
-  readonly format?: (value: number) => string;
-}
-
-function sliderControl(label: string, spec: SliderSpec): HTMLDivElement {
-  const wrap = document.createElement('div');
-  wrap.className = 'main-menu__settings-slider';
-  const input = document.createElement('input');
-  input.type = 'range';
-  input.className = 'main-menu__settings-range';
-  input.min = String(spec.min);
-  input.max = String(spec.max);
-  input.step = String(spec.step);
-  input.value = String(spec.value);
-  input.setAttribute('aria-label', label);
-  const value = document.createElement('span');
-  value.className = 'main-menu__settings-value';
-  const paint = (): void => {
-    const v = Number(input.value);
-    value.textContent = spec.format?.(v) ?? `${Math.round(v * 100)}%`;
-    // The track's filled fraction; the CSS gradient reads it as a percentage.
-    input.style.setProperty('--fill', String(((v - spec.min) / (spec.max - spec.min)) * 100));
-  };
-  paint();
-  input.addEventListener('input', paint);
-  const commit = spec.onCommit;
-  if (commit !== undefined) {
-    input.addEventListener('change', () => commit(Number(input.value)));
-    if (spec.live === true) input.addEventListener('input', () => commit(Number(input.value)));
-  }
-  wrap.append(input, value);
-  return wrap;
-}
-
-interface SettingRowOptions {
-  /** Hover tooltip for a live row; a `soon` row shows the coming-soon tip instead. Rendered as a
-   *  styled `data-tip` bubble, since a native `title` waits out a long OS hover delay. */
-  readonly tip?: string;
-  readonly soon?: { badge: string; tip: string };
-}
-
-function settingRow(label: string, control: HTMLElement, options?: SettingRowOptions): HTMLDivElement {
-  const row = document.createElement('div');
-  row.className = 'main-menu__settings-row';
-  const name = document.createElement('span');
-  name.className = 'main-menu__settings-label';
-  name.textContent = label;
-  row.append(name, control);
-  if (options?.tip !== undefined) row.dataset.tip = options.tip;
-  const soon = options?.soon;
-  if (soon !== undefined) {
-    row.classList.add('is-coming-soon');
-    row.dataset.tip = soon.tip;
-    const badge = document.createElement('span');
-    badge.className = 'main-menu__badge';
-    badge.textContent = soon.badge;
-    name.append(badge);
-    for (const el of [control, ...control.querySelectorAll('button, input')]) {
-      if (el instanceof HTMLButtonElement || el instanceof HTMLInputElement) el.disabled = true;
-    }
-  }
-  return row;
-}
 
 /** Every live control applies and persists immediately; controls without an engine seam sit
  *  disabled behind "coming soon" badges. */

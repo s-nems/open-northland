@@ -215,6 +215,24 @@ describe('tabbed-list window controller (build menu)', () => {
     menu.handleClick(p.x, p.y);
     expect(picks.at(-1)).toBe(top + 5);
   });
+
+  it('restores the selected tab and scroll position into replacement chrome', () => {
+    const { ctx } = stubContext();
+    const original = menuWindow(ctx, MANY, () => undefined);
+    const point = firstRowPoint(ctx);
+    original.toggle();
+    for (let i = 0; i < 5; i++) original.handleWheel(point.x, point.y, 120);
+
+    const saved = original.state();
+    const picks: number[] = [];
+    const replacement = menuWindow(ctx, MANY, (typeId) => picks.push(typeId));
+    replacement.restore(saved);
+    replacement.toggle();
+    replacement.handleClick(point.x, point.y);
+
+    expect(saved).toEqual({ selected: 'all', scrollTop: 5 });
+    expect(picks).toEqual([205]);
+  });
 });
 
 describe('tabbed-list window bound by a bottom-corner overlay', () => {
@@ -866,6 +884,17 @@ describe('extras window controller', () => {
     expect(extras.handleClick(plansTab.x, plansTab.y)).toBe(true);
     expect(made).toContain(messages().hud.extras.plansEmpty);
     expect(made).not.toContain(messages().hud.extras.extraWomen);
+
+    const replacement = createExtrasWindow({
+      ctx,
+      container: new Container(),
+      grants: stubGrantsSeam().seam,
+      counters: stubCountersSeam().seam,
+    });
+    replacement.restore(extras.state());
+    made.length = 0;
+    replacement.toggle();
+    expect(made).toContain(messages().hud.extras.plansEmpty);
 
     // A click where a stepper used to sit is now bare chrome or outside the shrunken window - never a step.
     const plus = centreOf(geo.counters[0]?.plusRect ?? { x: 0, y: 0, w: 0, h: 0 });

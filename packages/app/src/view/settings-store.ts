@@ -4,9 +4,8 @@ import { clampUiScaleFactor, DEFAULT_UI_SCALE_FACTOR } from '../hud/ui-scale.js'
 import { defaultLocale, isLocale, type Locale } from '../i18n/index.js';
 
 /**
- * The player settings persisted in localStorage. The menu edits them; a launching game reads the
- * session-shaping ones (the HUD scale factor and the graphics settings) directly from here rather
- * than through URL params.
+ * The player settings persisted in localStorage. Settings surfaces edit them; a launching game reads
+ * session-shaping values directly from here rather than through URL params.
  */
 
 /** Drawn-frame cap in frames per second; `null` follows the display's own refresh rate. */
@@ -28,7 +27,7 @@ export interface MenuSettings {
   /** The world post pass: a warm-graded vignette over the world, under the HUD. */
   readonly postFxEnabled: boolean;
   readonly fpsLimit: FpsLimit;
-  /** Mirrors the `?sound` param: `false` starts the game without an audio driver. */
+  /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
   /** Game-sounds volume, 0..1 (effects, jingles, voices - the original `fx_volume`). */
   readonly soundVolume: number;
@@ -128,4 +127,11 @@ export function persistSettings(settings: MenuSettings): void {
   } catch {
     // Storage denied (private mode): the caller's in-memory state still applies.
   }
+}
+
+/** Merge one live surface's changes without overwriting settings it does not own. */
+export function patchStoredSettings(patch: Partial<MenuSettings>): MenuSettings {
+  const next = { ...readStoredSettings(), ...patch };
+  persistSettings(next);
+  return next;
 }

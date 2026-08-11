@@ -78,6 +78,8 @@ export interface ExtrasWindowDeps {
 export interface ExtrasWindow extends ToolWindow {
   /** Per-frame hook: rebuild when the sim's live counter block moved off what the window shows. */
   refresh(): void;
+  state(): ExtrasTab;
+  restore(tab: ExtrasTab): void;
 }
 
 /** Build the extras-window controller; the whole window is rebuilt on open and on any control click. */
@@ -254,6 +256,10 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
       if (countersEqual(state.counters, live)) return;
       state = { ...state, counters: live };
       rebuild();
+    },
+    state: () => tab,
+    restore: (nextTab): void => {
+      tab = nextTab;
     },
   };
 }

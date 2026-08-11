@@ -136,6 +136,8 @@ export interface PickerWindow {
   show(): void;
   hide(): void;
   isOpen(): boolean;
+  scrollTop(): number;
+  setScrollTop(top: number): void;
   dispose(): void;
 }
 
@@ -204,6 +206,10 @@ export function createPickerWindow(opts: {
       window_.style.display = 'none';
     },
     isOpen: (): boolean => open,
+    scrollTop: () => list.scrollTop,
+    setScrollTop: (top): void => {
+      list.scrollTop = top;
+    },
     dispose: (): void => {
       window_.remove();
       backdrop.remove();

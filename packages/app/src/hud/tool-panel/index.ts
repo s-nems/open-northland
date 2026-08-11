@@ -2,8 +2,14 @@ import type { HudLayout } from '@open-northland/render';
 import type { Command, PlayerCommand } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { loadGuiArt } from '../../content/gui-art.js';
-import { type GuiBitmapName, loadGuiBitmap, loadGuiStrings, uiStringLookup } from '../../content/gui-gfx.js';
-import { loadUiFont } from '../../content/ui-font.js';
+import {
+  type GuiBitmapName,
+  type GuiStrings,
+  loadGuiBitmap,
+  loadGuiStrings,
+  uiStringLookup,
+} from '../../content/gui-gfx.js';
+import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
 import { makeUiTextRun } from '../ui-text.js';
@@ -12,15 +18,15 @@ import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects
 import type { PanelBitmaps, PanelContext } from './context.js';
 import type { DiplomacyPanelRow } from './diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from './extras-window.js';
-import type { GameSpeedChangeCause, GameSpeedStateSpec } from './game-speed.js';
+import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from './game-speed.js';
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
-import { createToolPanelInput, type HeldMode } from './input.js';
+import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout, pointOverToolPanel, type ToolButtonId } from './layout.js';
 import { createPlacementController } from './placement.js';
 import { createSpeedButton } from './speed-button.js';
-import { createStripSurface } from './strip-surface.js';
-import { createToolWindows } from './windows.js';
+import { createStripSurface, type StripSurface } from './strip-surface.js';
+import { createToolWindows, type ToolWindowsState } from './windows.js';
 
 export interface ToolPanelOptions {
   readonly app: Application;
@@ -76,7 +82,50 @@ export interface ToolPanelController {
   /** Per-frame hook; the HUD layout arrives as an accessor so a closed window never runs its
    *  `buildHud` scan. */
   update(hudFor: () => HudLayout): void;
+  state(): ToolPanelState;
+  restore(state: ToolPanelState): void;
   dispose(): void;
+}
+
+export interface ToolPanelState {
+  readonly speed: GameSpeedControl;
+  readonly windows: ToolWindowsState;
+  readonly placementType: number | null;
+  readonly goodType: number | null;
+}
+
+interface ToolPanelAssets {
+  readonly art: Awaited<ReturnType<typeof loadGuiArt>>;
+  readonly strings: GuiStrings | null;
+  readonly uiFont: UiFont;
+  readonly bitmaps: PanelBitmaps;
+}
+
+const assetsByLanguage = new Map<string, Promise<ToolPanelAssets>>();
+
+function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
+  let assets = assetsByLanguage.get(lang);
+  if (assets !== undefined) return assets;
+  const loadBitmap = async (name: GuiBitmapName): Promise<Texture | undefined> => {
+    const source = await loadGuiBitmap(name);
+    return source === undefined ? undefined : new Texture({ source });
+  };
+  assets = Promise.all([
+    loadGuiArt(),
+    loadGuiStrings(lang),
+    loadUiFont(),
+    loadBitmap('bg'),
+    loadBitmap('bg_button'),
+    loadBitmap('bg_button_hilite'),
+    loadBitmap('bg_headline'),
+  ]).then(([art, strings, uiFont, bg, button, buttonHilite, headline]) => ({
+    art,
+    strings,
+    uiFont,
+    bitmaps: { bg, button, buttonHilite, headline },
+  }));
+  assetsByLanguage.set(lang, assets);
+  return assets;
 }
 
 /** Mount the tool panel onto the app stage; async because it loads the optional decoded GUI art and font. */
@@ -85,20 +134,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const layout = buildToolPanelLayout(opts.uiscale);
   const scale = layout.scale;
 
-  const loadBitmap = async (name: GuiBitmapName): Promise<Texture | undefined> => {
-    const source = await loadGuiBitmap(name);
-    return source === undefined ? undefined : new Texture({ source });
-  };
-  const [art, strings, uiFont, bg, button, buttonHilite, headline] = await Promise.all([
-    loadGuiArt(),
-    loadGuiStrings(opts.lang),
-    loadUiFont(),
-    loadBitmap('bg'),
-    loadBitmap('bg_button'),
-    loadBitmap('bg_button_hilite'),
-    loadBitmap('bg_headline'),
-  ]);
-  const bitmaps: PanelBitmaps = { bg, button, buttonHilite, headline };
+  const { art, strings, uiFont, bitmaps } = await loadToolPanelAssets(opts.lang);
 
   const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
 
@@ -111,114 +147,137 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const bannerContainer = new Container();
   root.addChild(stripContainer, windowContainer, hoverContainer, bannerContainer);
 
-  const stripSurface = createStripSurface({ app, container: stripContainer, layout, art });
+  let stripSurface: StripSurface | null = null;
+  let input: ToolPanelInput | null = null;
+  try {
+    stripSurface = createStripSurface({ app, container: stripContainer, layout, art });
+    const mountedStrip = stripSurface;
 
-  const ctx: PanelContext = {
-    layout,
-    scale,
-    makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, scale, px),
-    bitmaps,
-    uiString: uiStringLookup(strings),
-    screen: () => app.screen,
-    ...(opts.overlayReserve !== undefined ? { overlayReserve: opts.overlayReserve } : {}),
-  };
+    const ctx: PanelContext = {
+      layout,
+      scale,
+      makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, scale, px),
+      bitmaps,
+      uiString: uiStringLookup(strings),
+      screen: () => app.screen,
+      ...(opts.overlayReserve !== undefined ? { overlayReserve: opts.overlayReserve } : {}),
+    };
 
-  const placement = createPlacementController({
-    ctx,
-    container: bannerContainer,
-    labelByType,
-    enqueue,
-    screenToTile: opts.screenToTile,
-    canPlaceAt: opts.canPlaceAt,
-    tribe: opts.tribe,
-    owner: opts.owner,
-  });
-  const goodsDrop = createGoodsDropController({
-    ctx,
-    container: bannerContainer,
-    labelByGood: new Map(opts.goods.map((g) => [g.goodType, g.label])),
-    enqueue: opts.enqueueAdmin,
-    screenToTile: opts.screenToTile,
-  });
-  const held: readonly HeldMode[] = [placement, goodsDrop];
+    const placement = createPlacementController({
+      ctx,
+      container: bannerContainer,
+      labelByType,
+      enqueue,
+      screenToTile: opts.screenToTile,
+      canPlaceAt: opts.canPlaceAt,
+      tribe: opts.tribe,
+      owner: opts.owner,
+    });
+    const goodsDrop = createGoodsDropController({
+      ctx,
+      container: bannerContainer,
+      labelByGood: new Map(opts.goods.map((g) => [g.goodType, g.label])),
+      enqueue: opts.enqueueAdmin,
+      screenToTile: opts.screenToTile,
+    });
+    const held: readonly HeldMode[] = [placement, goodsDrop];
 
-  const windows = createToolWindows({
-    ctx,
-    container: windowContainer,
-    buildings: opts.buildings,
-    goods: opts.goods,
-    grants: opts.grants,
-    counters: opts.counters,
-    diplomacyRows: opts.diplomacyRows,
-    onPickBuilding: (typeId) => placement.enter(typeId),
-    onPickGood: (goodType) => goodsDrop.enter(goodType),
-  });
+    const windows = createToolWindows({
+      ctx,
+      container: windowContainer,
+      buildings: opts.buildings,
+      goods: opts.goods,
+      grants: opts.grants,
+      counters: opts.counters,
+      diplomacyRows: opts.diplomacyRows,
+      onPickBuilding: (typeId) => placement.enter(typeId),
+      onPickGood: (goodType) => goodsDrop.enter(goodType),
+    });
 
-  const speedButton = createSpeedButton({
-    ctx,
-    app,
-    scale,
-    stripContainer,
-    art,
-    bake: stripSurface,
-    speedBtnRect: layout.buttons.find((b) => b.id === 'speed')?.placed,
-    onSpeedChange: opts.onSpeedChange,
-  });
+    const speedButton = createSpeedButton({
+      ctx,
+      app,
+      scale,
+      stripContainer,
+      art,
+      bake: stripSurface,
+      speedBtnRect: layout.buttons.find((b) => b.id === 'speed')?.placed,
+      onSpeedChange: opts.onSpeedChange,
+    });
 
-  const surfaces: ToolButtonSurfaces = {
-    windows: windows.byId,
-    cancelHeld: () => {
-      for (const mode of held) mode.cancel();
-    },
-    cycleSpeed: () => speedButton.cycle(),
-    openSystemMenu: () => opts.onSystemMenu?.(),
-  };
+    const surfaces: ToolButtonSurfaces = {
+      windows: windows.byId,
+      cancelHeld: () => {
+        for (const mode of held) mode.cancel();
+      },
+      cycleSpeed: () => speedButton.cycle(),
+      openSystemMenu: () => opts.onSystemMenu?.(),
+    };
 
-  const activateButton = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
+    const activateButton = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
 
-  const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
-    clientToCanvas(opts.screenScale(canvas), clientX, clientY);
+    const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
+      clientToCanvas(opts.screenScale(canvas), clientX, clientY);
 
-  const input = createToolPanelInput({
-    canvas,
-    container: hoverContainer,
-    layout,
-    toCanvas,
-    windows,
-    held,
-    bindings: opts.bindings,
-    activateButton,
-    togglePause: () => speedButton.togglePause(),
-    ...(opts.deferToOverlay !== undefined ? { deferToOverlay: opts.deferToOverlay } : {}),
-  });
+    input = createToolPanelInput({
+      canvas,
+      container: hoverContainer,
+      layout,
+      toCanvas,
+      windows,
+      held,
+      bindings: opts.bindings,
+      activateButton,
+      togglePause: () => speedButton.togglePause(),
+      ...(opts.deferToOverlay !== undefined ? { deferToOverlay: opts.deferToOverlay } : {}),
+    });
+    const mountedInput = input;
 
-  const claimsPointer = (clientX: number, clientY: number): boolean => {
-    const { x, y } = toCanvas(clientX, clientY);
-    if (pointOverToolPanel(layout, x, y)) return true;
-    if (windows.claims(x, y)) return true;
-    return held.some((mode) => mode.isActive());
-  };
+    const claimsPointer = (clientX: number, clientY: number): boolean => {
+      const { x, y } = toCanvas(clientX, clientY);
+      if (pointOverToolPanel(layout, x, y)) return true;
+      if (windows.claims(x, y)) return true;
+      return held.some((mode) => mode.isActive());
+    };
 
-  speedButton.syncGlyph();
+    speedButton.syncGlyph();
 
-  const claimsWheel = (clientX: number, clientY: number): boolean => {
-    const { x, y } = toCanvas(clientX, clientY);
-    return windows.claims(x, y);
-  };
+    const claimsWheel = (clientX: number, clientY: number): boolean => {
+      const { x, y } = toCanvas(clientX, clientY);
+      return windows.claims(x, y);
+    };
 
-  return {
-    claimsPointer,
-    claimsWheel,
-    placementType: () => placement.activeType(),
-    update(hudFor): void {
-      if (stripSurface.syncResolution()) speedButton.syncGlyph();
-      windows.refresh(hudFor);
-      for (const mode of held) mode.placeBanner();
-    },
-    dispose(): void {
-      input.dispose();
-      root.destroy({ children: true });
-      stripSurface.dispose();
-    },
-  };
+    return {
+      claimsPointer,
+      claimsWheel,
+      placementType: () => placement.activeType(),
+      update(hudFor): void {
+        if (mountedStrip.syncResolution()) speedButton.syncGlyph();
+        windows.refresh(hudFor);
+        for (const mode of held) mode.placeBanner();
+      },
+      state: () => ({
+        speed: speedButton.state(),
+        windows: windows.state(),
+        placementType: placement.activeType(),
+        goodType: goodsDrop.activeGood(),
+      }),
+      restore(state): void {
+        speedButton.restore(state.speed);
+        windows.restore(state.windows);
+        if (state.placementType !== null) placement.enter(state.placementType);
+        if (state.goodType !== null) goodsDrop.enter(state.goodType);
+      },
+      dispose(): void {
+        mountedInput.dispose();
+        root.destroy({ children: true });
+        mountedStrip.dispose();
+      },
+    };
+  } catch (error: unknown) {
+    input?.dispose();
+    root.destroy({ children: true });
+    stripSurface?.dispose();
+    throw error;
+  }
 }
