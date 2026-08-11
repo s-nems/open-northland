@@ -1,41 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { downloadCnModZip, parseDriveConfirmUrl, parseDriveFileId } from '../../src/mod-install/download.js';
-import { fetchStub, fileResponse, htmlResponse } from '../support/fetch-stub.js';
+import { downloadCnModZip } from '../../src/mod-install/download.js';
+import { fetchStub, fileResponse } from '../support/fetch-stub.js';
 import { makeTempDir, type TempDir } from '../support/temp-dir.js';
-
-describe('drive URL parsing', () => {
-  it('extracts the file id from a drive file-page URL', () => {
-    expect(
-      parseDriveFileId(
-        'https://drive.google.com/file/d/1m0m00ywvKjJwdHiOnPA77avuaM239-e_/view?usp=drive_link',
-      ),
-    ).toBe('1m0m00ywvKjJwdHiOnPA77avuaM239-e_');
-    expect(parseDriveFileId('https://culturesnation.pl/news.php')).toBeUndefined();
-  });
-
-  it('replays the confirm form fields as query params on the form action', () => {
-    // Shape observed on the live drive.usercontent.google.com interstitial.
-    const html =
-      '<form action="https://drive.usercontent.google.com/download" method="get">' +
-      '<input type="hidden" name="id" value="FILE"><input type="hidden" name="export" value="download">' +
-      '<input type="hidden" name="confirm" value="t"><input type="hidden" name="uuid" value="U-1"></form>';
-    expect(parseDriveConfirmUrl(html)).toBe(
-      'https://drive.usercontent.google.com/download?id=FILE&export=download&confirm=t&uuid=U-1',
-    );
-    expect(parseDriveConfirmUrl('<html><body>quota exceeded</body></html>')).toBeUndefined();
-  });
-
-  it('refuses a confirm form that submits anywhere but Google', () => {
-    const html =
-      '<form action="https://evil.example/download"><input type="hidden" name="id" value="FILE"></form>';
-    expect(parseDriveConfirmUrl(html)).toBeUndefined();
-    const lookalike =
-      '<form action="https://notgoogle.com/download"><input type="hidden" name="id" value="FILE"></form>';
-    expect(parseDriveConfirmUrl(lookalike)).toBeUndefined();
-  });
-});
 
 describe('downloadCnModZip', () => {
   let tmp: TempDir;
@@ -44,52 +12,37 @@ describe('downloadCnModZip', () => {
   });
   afterEach(() => tmp.cleanup());
 
-  it('follows the culturesnation → drive-page → confirm-form → stream chain', async () => {
+  it('streams the archive to disk and returns its sha256', async () => {
     const bytes = Uint8Array.from([80, 75, 3, 4]);
-    const confirmHtml =
-      '<form action="https://drive.usercontent.google.com/download">' +
-      '<input type="hidden" name="id" value="FILE"><input type="hidden" name="confirm" value="t"></form>';
     const fetchFn = fetchStub({
-      'https://cn.example/download': () =>
-        htmlResponse('<html>drive page</html>', 'https://drive.google.com/file/d/FILE/view'),
-      'https://drive.usercontent.google.com/download?id=FILE&export=download': () =>
-        htmlResponse(confirmHtml, 'https://drive.usercontent.google.com/download'),
-      'https://drive.usercontent.google.com/download?id=FILE&confirm=t': () =>
-        fileResponse(bytes, 'https://drive.usercontent.google.com/download'),
+      'https://cn.example/cnmod.zip': () => fileResponse(bytes, 'https://cn.example/cnmod.zip'),
     });
     const dest = join(tmp.path, 'mod.zip');
     const events: unknown[] = [];
     const sha = await downloadCnModZip(dest, (e) => events.push(e), {
       fetchFn,
-      url: 'https://cn.example/download',
+      url: 'https://cn.example/cnmod.zip',
     });
     expect(Array.from(await readFile(dest))).toEqual(Array.from(bytes));
     expect(sha).toMatch(/^[0-9a-f]{64}$/);
     expect(events.length).toBeGreaterThan(0);
   });
 
-  it('short-circuits when a hop already answers with the file', async () => {
-    const bytes = Uint8Array.from([1, 2, 3]);
-    const fetchFn = fetchStub({
-      'https://cn.example/direct': () => fileResponse(bytes, 'https://cn.example/direct'),
-    });
+  it('fetches the project origin when no url is given', async () => {
+    const url = 'https://game.opennorthland.org/cnmod.zip';
+    const fetchFn = fetchStub({ [url]: () => fileResponse(Uint8Array.from([1, 2, 3]), url) });
     const dest = join(tmp.path, 'mod.zip');
-    await downloadCnModZip(dest, () => undefined, { fetchFn, url: 'https://cn.example/direct' });
-    expect(Array.from(await readFile(dest))).toEqual(Array.from(bytes));
+    await downloadCnModZip(dest, () => undefined, { fetchFn });
+    expect(Array.from(await readFile(dest))).toEqual([1, 2, 3]);
   });
 
-  it('reports a quota/changed-page failure as an actionable error', async () => {
+  it('fails a non-2xx answer instead of writing the error page to disk', async () => {
+    const url = 'https://cn.example/cnmod.zip';
     const fetchFn = fetchStub({
-      'https://cn.example/download': () =>
-        htmlResponse('<html>page</html>', 'https://drive.google.com/file/d/FILE/view'),
-      'https://drive.usercontent.google.com/download?id=FILE&export=download': () =>
-        htmlResponse('<html>quota exceeded</html>', 'https://drive.usercontent.google.com/download'),
+      [url]: () => new Response('not here', { status: 404, statusText: 'Not Found' }),
     });
     await expect(
-      downloadCnModZip(join(tmp.path, 'mod.zip'), () => undefined, {
-        fetchFn,
-        url: 'https://cn.example/download',
-      }),
-    ).rejects.toThrow(/quota exceeded, or the page changed/);
+      downloadCnModZip(join(tmp.path, 'mod.zip'), () => undefined, { fetchFn, url }),
+    ).rejects.toThrow(/answered 404 Not Found/);
   });
 });
