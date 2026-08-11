@@ -51,6 +51,9 @@ interface SliderSpec {
   /** A multiplier; the value label renders it as a percentage. */
   readonly value: number;
   readonly onCommit?: (value: number) => void;
+  /** Commit while the handle is still moving, for a control the ear judges as it drags. A setting
+   *  whose application costs a rebuild leaves this off and lands on release instead. */
+  readonly live?: boolean;
   /** Replaces the default percent value label. */
   readonly format?: (value: number) => string;
 }
@@ -77,7 +80,10 @@ function sliderControl(label: string, spec: SliderSpec): HTMLDivElement {
   paint();
   input.addEventListener('input', paint);
   const commit = spec.onCommit;
-  if (commit !== undefined) input.addEventListener('change', () => commit(Number(input.value)));
+  if (commit !== undefined) {
+    input.addEventListener('change', () => commit(Number(input.value)));
+    if (spec.live === true) input.addEventListener('input', () => commit(Number(input.value)));
+  }
   wrap.append(input, value);
   return wrap;
 }
@@ -250,6 +256,7 @@ export function settingsScreen(
         step: VOLUME_STEP,
         value,
         onCommit: commit,
+        live: true,
       });
     return [
       settingRow(text.soundEnabled, sound),

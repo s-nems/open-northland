@@ -26,6 +26,9 @@ export interface StartSoundEnv {
  *  earns a suspended context and a browser warning, so a document that has none waits for its gesture. */
 export function startSound(sound: ResumableAudio, env: StartSoundEnv = {}): void {
   const { gestures = window, activation = navigator.userActivation ?? null, signal } = env;
+  // An already-aborted scope never fires `abort`, so binding here would pin the listeners and the
+  // engine they close over for the life of the document.
+  if (signal?.aborted === true) return;
   const resume = (): void => {
     void sound
       .resume()

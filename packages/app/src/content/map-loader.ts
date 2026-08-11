@@ -63,7 +63,9 @@ export async function loadMapMusicType(id: string, fetchImpl: typeof fetch = fet
     if (typeof meta !== 'object' || meta === null) return null;
     const { musicType } = meta as Record<string, unknown>;
     return typeof musicType === 'number' && Number.isInteger(musicType) ? musicType : null;
-  } catch {
+  } catch (err) {
+    // Otherwise a corrupt sidecar is indistinguishable from a map that authored no music.
+    diag.warn('content', `loadMapMusicType: malformed /maps/${safe}.meta.json (${String(err)})`);
     return null;
   }
 }
