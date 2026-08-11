@@ -5,15 +5,14 @@ import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { interpretSegment } from './interpret.js';
-import { repeatedLoopFrames, spliceSteadyLoop, withRepeatedLoop } from './loop.js';
+import { eventsThroughEnd, foldLoopTail } from './loop.js';
 import { encodeOgg } from './ogg-encode.js';
 import { applyWavesReverb } from './reverb.js';
 import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
 
 /**
- * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - the intro once and
- * the loop region {@link LOOP_TRAVERSALS} times, publishing the last so the file loops on its own
- * decay ({@link spliceSteadyLoop}); the loop-back point rides the manifest (see `decoders/sgt.ts`).
+ * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - one `mtLength`
+ * pass per segment, with the loop-back point in the manifest (loop semantics: `decoders/sgt.ts`).
  * The performance interpreter turns each segment into timed note/controller events; spessasynth
  * synthesizes them from the game's DLS banks. The authored Waves Reverb from each segment's
  * embedded audiopath applies to the whole mix.
@@ -36,15 +35,10 @@ const MASTER_GAIN = 10 ** (-3 / 20);
  * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
  * with another version marks every ogg stale.
  */
-const RENDER_VERSION = 11;
-/** Decay rendered past the last loop traversal, in seconds; the splice leaves it behind. */
+const RENDER_VERSION = 12;
+/** Synthesized headroom over the loop length, in whole seconds. Folded back over the loop region
+ *  ({@link foldLoopTail}) before the encode trims it. */
 const RENDER_TAIL_S = 1;
-/**
- * Traversals of the loop region rendered before the published one. Measured on the corpus' worst
- * seam, the join settles from 23x the local sample slew at one traversal to 10x at two and under 2x
- * at three: the decay carried into the region needs that long to match the decay carried out.
- */
-const LOOP_TRAVERSALS = 3;
 
 export const MUSIC_DIR = 'music';
 export const MUSIC_MANIFEST_NAME = 'manifest.json';
@@ -152,13 +146,12 @@ export async function renderMusicStage(
       });
       if (banksPromise === undefined) banksPromise = loadDlsBanks(dm2);
       const banks = await banksPromise;
-      const loopFrame = Math.round(loopStartS * SAMPLE_RATE);
       const endFrame = Math.round(totalS * SAMPLE_RATE);
       const synthesized = await synthesizeEvents(
-        { ...events, events: withRepeatedLoop(events.events, loopFrame, endFrame, LOOP_TRAVERSALS) },
+        { ...events, events: eventsThroughEnd(events.events, endFrame) },
         banks,
         SAMPLE_RATE,
-        repeatedLoopFrames(loopFrame, endFrame, LOOP_TRAVERSALS, RENDER_TAIL_S * SAMPLE_RATE),
+        renderS * SAMPLE_RATE,
       );
       const audiopath = decodeSegmentAudiopath(segmentBytes);
       if (audiopath?.reverb !== undefined) {
@@ -167,8 +160,9 @@ export async function renderMusicStage(
       for (const channel of synthesized) {
         for (let i = 0; i < channel.length; i++) channel[i] = (channel[i] ?? 0) * MASTER_GAIN;
       }
-      const track = spliceSteadyLoop(synthesized, loopFrame, endFrame, LOOP_TRAVERSALS);
-      await writeFile(outPath, await encodeOgg(track, endFrame, SAMPLE_RATE, VBR_QUALITY));
+      foldLoopTail(synthesized, endFrame, Math.round(loopStartS * SAMPLE_RATE));
+      const frames = Math.min(endFrame, synthesized[0]?.length ?? 0);
+      await writeFile(outPath, await encodeOgg(synthesized, frames, SAMPLE_RATE, VBR_QUALITY));
       rendered++;
     } catch (err) {
       manifest.delete(stem);
