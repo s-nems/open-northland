@@ -155,12 +155,12 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   );
 
   progress?.stage?.('music');
-  const music = await renderMusicStage(roots, args.out, progress?.item);
+  const music = await renderMusicStage(fs, roots, args.out, progress?.item);
   console.log(
     music.skipped !== undefined
       ? `[pipeline] music skipped: ${music.skipped}`
       : `[pipeline] music: ${music.rendered} rendered, ${music.kept} kept, ${music.failed} failed ` +
-          `into ${join(args.out, 'music')}`,
+          `into ${vjoin(args.out, 'music')}`,
   );
 
   // Stamped last: its presence is what marks a conversion that ran to completion.

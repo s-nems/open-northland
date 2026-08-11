@@ -3,8 +3,7 @@
  * DLS banks. Each band instrument becomes one MIDI channel (a bank's 17th instance opens another
  * processor); notes falling in regions the download validation rejects stay silent.
  */
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { type ReadableVfs, vjoin } from '@open-northland/vfs';
 import {
   type BasicPreset,
   type BasicSoundBank,
@@ -22,19 +21,27 @@ export interface DlsBank {
 }
 
 /** Every collection under `dir`, keyed by its lowercased file name (how bands reference it). */
-export async function loadDlsBanks(dir: string): Promise<Map<string, DlsBank>> {
+export async function loadDlsBanks(fs: ReadableVfs, dir: string): Promise<Map<string, DlsBank>> {
   const banks = new Map<string, DlsBank>();
-  for (const file of (await readdir(dir)).filter((f) => f.toLowerCase().endsWith('.dls')).sort()) {
-    const bytes = await readFile(join(dir, file));
-    const view = new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+  for (const file of await dlsFileNames(fs, dir)) {
+    const bytes = await fs.readFile(vjoin(dir, file));
+    // The loader takes ownership of an ArrayBuffer, so it gets its own copy of the read.
+    const buffer = new ArrayBuffer(bytes.byteLength);
+    new Uint8Array(buffer).set(bytes);
     banks.set(file.toLowerCase(), {
       file,
       bank: SoundBankLoader.fromArrayBuffer(buffer),
-      rejected: decodeRejectedRegions(view),
+      rejected: decodeRejectedRegions(bytes),
     });
   }
   return banks;
+}
+
+export async function dlsFileNames(fs: ReadableVfs, dir: string): Promise<string[]> {
+  return (await fs.readdir(dir))
+    .filter((entry) => entry.kind === 'file' && entry.name.toLowerCase().endsWith('.dls'))
+    .map((entry) => entry.name)
+    .sort();
 }
 
 /** Maximum processor block; shorter blocks keep events on their authored sample frame. */

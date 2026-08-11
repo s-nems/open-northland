@@ -11,6 +11,7 @@ export const CONTENT_ROUTES = [
   '/bobs/probe.png',
   '/textures/probe.png',
   '/sounds/probe.wav',
+  '/music/probe.ogg',
   '/gui/probe.json',
   '/gui-bitmaps/probe.png',
   '/goods/probe.json',
