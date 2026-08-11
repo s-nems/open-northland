@@ -9,6 +9,11 @@ field, matching the renderer the current sound was validated against. Whether th
 applies it is unverified: the recording-based validation used octave-invariant chroma, which
 cannot see a one-octave shift on a single instrument.
 
+An octave-band comparison of `Mission_AddOn_Franken2_Standard` against the game recording is
+consistent with a misplaced octave: the render carries about 1.5 dB more energy at 88-125 Hz and
+2.6 dB less at 250-354 Hz, and the gap sits in the dry synth output rather than in the reverb. The
+recording chain's own response is unknown, so this is a lead, not proof.
+
 ## Scope
 
 - Establish retail behavior from allowed sources: targeted listening against an in-game recording
