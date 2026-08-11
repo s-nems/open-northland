@@ -8,10 +8,7 @@
   h1 { font-size: 1.3rem; } h2 { font-size: 1.05rem; margin-top: 2rem; color: #9bc; }
   .track { display: flex; align-items: center; gap: 0.8rem; padding: 0.35rem 0; border-bottom: 1px solid #333; }
   .name { width: 21rem; font-family: ui-monospace, monospace; font-size: 0.85rem; }
-  .meta { width: 11rem; color: #888; font-size: 0.8rem; }
   audio { height: 2rem; flex: 1; }
-  button { background: #2c3c4c; color: #ddd; border: 1px solid #456; border-radius: 4px; cursor: pointer; padding: 0.2rem 0.5rem; }
-  button:hover { background: #3c4c5c; }
   .hint { color: #999; font-size: 0.85rem; }
 </style>
 </head>
@@ -19,8 +16,7 @@
 <h1>Przegląd muzyki (64 utwory z DataX/DM2)</h1>
 <p class="hint">Wszystkie utwory w pełnym paśmie 44.1 kHz - bez decymacji do autoryzowanego portu
 22050 Hz, która ścinała wszystko powyżej 11 kHz.</p>
-<p class="hint">„Szew" przewija do 6 s przed końcem, żeby ocenić przejście pętli - w grze utwór
-wraca wtedy do punktu pętli (tu odtwarzacz zapętla tak samo przez JS). Gra tylko jeden naraz.</p>
+<p class="hint">Każdy utwór to jeden przebieg segmentu. Gra tylko jeden naraz.</p>
 <div id="list">Ładowanie manifestu…</div>
 <script>
 const GROUPS = [
@@ -29,7 +25,6 @@ const GROUPS = [
   ['mission_', 'Misje - podstawka'],
   ['attack_', 'Muzyka ataku'],
 ];
-const SEAM_BACKOFF_S = 6;
 let current = null;
 
 fetch('/music/manifest.json').then((r) => r.json()).then(({ tracks }) => {
@@ -69,24 +64,7 @@ function row(stem, track) {
     if (current && current !== audio) current.pause();
     current = audio;
   });
-  // Emulate the in-game loop: past the end, jump back to the loop start.
-  audio.addEventListener('ended', () => {
-    if (track.loopStartS !== undefined) {
-      audio.currentTime = track.loopStartS;
-      audio.play();
-    }
-  });
-  const meta = document.createElement('span');
-  meta.className = 'meta';
-  meta.textContent = track.loopStartS !== undefined ? `pętla od ${track.loopStartS.toFixed(2)} s` : 'bez pętli';
-  const seam = document.createElement('button');
-  seam.textContent = 'Szew';
-  seam.addEventListener('click', () => {
-    const jump = () => { audio.currentTime = Math.max(0, audio.duration - SEAM_BACKOFF_S); audio.play(); };
-    if (Number.isFinite(audio.duration)) jump();
-    else audio.addEventListener('loadedmetadata', jump, { once: true });
-  });
-  div.append(name, audio, meta, seam);
+  div.append(name, audio);
   return div;
 }
 </script>

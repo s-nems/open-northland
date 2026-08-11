@@ -3,13 +3,10 @@
  * degrades to silence.
  */
 
-/** One playable music track: a file under the music route and its loop-back point. */
+/** One playable music track. */
 export interface MusicTrack {
   /** The audio file, relative to the music root (e.g. `theme_viking_neutral.ogg`). */
   readonly file: string;
-  /** Where the infinite loop restarts, in seconds - the segment's one-shot intro ends here.
-   *  Absent or 0, the whole file loops. */
-  readonly loopStartS?: number;
 }
 
 /** The pipeline's `music/manifest.json`: rendered tracks keyed by lower-cased segment stem. */
@@ -25,9 +22,9 @@ export function parseMusicManifest(raw: unknown): MusicManifest | null {
   const parsed: Record<string, MusicTrack> = {};
   for (const [stem, entry] of Object.entries(tracks)) {
     if (typeof entry !== 'object' || entry === null) continue;
-    const { file, loopStartS } = entry as Record<string, unknown>;
+    const { file } = entry as Record<string, unknown>;
     if (typeof file !== 'string' || file.length === 0) continue;
-    parsed[stem] = typeof loopStartS === 'number' && loopStartS > 0 ? { file, loopStartS } : { file };
+    parsed[stem] = { file };
   }
   return { tracks: parsed };
 }

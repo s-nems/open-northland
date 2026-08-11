@@ -39,14 +39,15 @@ export class FakePanner extends FakeNode {
 export class FakeSource extends FakeNode {
   buffer: unknown = null;
   loop = false;
-  loopStart = 0;
-  loopEnd = 0;
   started = false;
+  /** Context time the source was scheduled to open at, so a test can assert a silent gap. */
+  startedAt = 0;
   stoppedAt: number | null = null;
   /** A test fires this to play the buffer out; a stop fires it too, as the real node does. */
   onended: (() => void) | null = null;
-  start(): void {
+  start(at = 0): void {
     this.started = true;
+    this.startedAt = at;
   }
   stop(at: number): void {
     this.stoppedAt = at;

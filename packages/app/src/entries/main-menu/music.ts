@@ -1,4 +1,9 @@
-import { MUSIC_FADE_S, type MusicManifest, type MusicTrack, WebAudioEngine } from '@open-northland/audio';
+import {
+  MUSIC_STOP_FADE_S,
+  type MusicManifest,
+  type MusicTrack,
+  WebAudioEngine,
+} from '@open-northland/audio';
 import { withBaseUrl } from '../../base-url.js';
 import { loadMusicManifest } from '../../content/music.js';
 import { startSound } from '../../view/sound-start.js';
@@ -56,6 +61,6 @@ export function startMenuMusic(signal: AbortSignal): void {
 
   signal.addEventListener('abort', () => {
     engine.setMusic(null); // the fade covers the load screen the launched entry puts up
-    window.setTimeout(() => engine.close(), MUSIC_FADE_S * 1000);
+    window.setTimeout(() => engine.close(), MUSIC_STOP_FADE_S * 1000);
   });
 }

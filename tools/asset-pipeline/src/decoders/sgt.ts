@@ -15,14 +15,10 @@ export interface TempoItem {
   readonly bpm: number;
 }
 
-/** The loop-relevant slice of a segment: play starts at 0, the region [loopStart, length] repeats. */
+/** How long a segment plays: one pass from music-time 0 to `lengthTicks`, under `tempos`. */
 export interface SegmentTiming {
-  /** `dwRepeats` (0xffffffff = infinite). */
-  readonly repeats: number;
   /** `mtLength` in music-time ticks (== `mtLoopEnd` across the owned corpus). */
   readonly lengthTicks: number;
-  /** `mtLoopStart` in music-time ticks - the one-shot intro ends here. */
-  readonly loopStartTicks: number;
   /** Tempo map in file order; empty falls back to the DirectMusic default 120 bpm. */
   readonly tempos: readonly TempoItem[];
 }
@@ -157,9 +153,7 @@ export function decodeSegmentTiming(bytes: Uint8Array): SegmentTiming | undefine
   const segh = findChunks(bytes, 'segh')[0];
   if (segh === undefined || segh.length < SEGH_MIN_BYTES) return undefined;
   const view = viewOf(segh);
-  const repeats = view.getUint32(0, true);
   const lengthTicks = view.getInt32(4, true);
-  const loopStartTicks = view.getInt32(12, true);
   const tempos: TempoItem[] = [];
   for (const tetr of findChunks(bytes, 'tetr')) {
     if (tetr.length < 4) continue;
@@ -174,7 +168,7 @@ export function decodeSegmentTiming(bytes: Uint8Array): SegmentTiming | undefine
     }
   }
   tempos.sort((a, b) => a.time - b.time);
-  return { repeats, lengthTicks, loopStartTicks, tempos };
+  return { lengthTicks, tempos };
 }
 
 /** Seconds from music-time 0 to `ticks`, integrating the piecewise-constant tempo map. */

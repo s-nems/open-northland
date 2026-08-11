@@ -2,33 +2,35 @@ import { describe, expect, it } from 'vitest';
 import {
   CALM_MOOD,
   DEFAULT_MUSIC_VOLUME,
-  MUSIC_FADE_S,
+  GAME_MUSIC_TIMING,
+  MENU_MUSIC_TIMING,
   musicTrackFor,
   parseMusicManifest,
-  ROTATION_GAP_S,
   WebAudioEngine,
 } from '../src/index.js';
 import { FakeContext, type FakeGain, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**
  * The music path end to end minus the browser: the manifest parse, and the engine's music bus +
- * player (intro-then-loop source setup, crossfade on change, rotation advance, mute/resume
+ * player (one pass parted from the next by a fade and a gap, queue advance, mute/resume
  * reconciliation, memoised failed load, volume ramps). Mood selection is covered in `music-mood`.
  */
 
+/** The fake serves a 4-byte buffer, and one fetched byte decodes to one second. */
+const TRACK_S = 4;
+
 const MANIFEST = parseMusicManifest({
   tracks: {
-    theme_viking_neutral: { file: 'theme_viking_neutral.ogg', loopStartS: 8.5 },
+    theme_viking_neutral: { file: 'theme_viking_neutral.ogg' },
     attack_arabs: { file: 'attack_arabs.ogg' },
   },
 });
 
 describe('music selection', () => {
-  it('resolves a rendered stem through the manifest, keeping its loop point', () => {
+  it('resolves a rendered stem through the manifest', () => {
     const THEME_VIKING = 2;
     expect(musicTrackFor(THEME_VIKING, 'neutral', CALM_MOOD, 0, MANIFEST)).toEqual({
       file: 'theme_viking_neutral.ogg',
-      loopStartS: 8.5,
     });
   });
 
@@ -66,10 +68,10 @@ function makeEngine(opts: { failFetch?: boolean; random?: () => number } = {}): 
   return { engine, ctx, fetched };
 }
 
-const TRACK = { file: 'theme_viking_neutral.ogg', loopStartS: 8.5 } as const;
+const TRACK = { file: 'theme_viking_neutral.ogg' } as const;
 
 describe('WebAudioEngine music', () => {
-  it('plays the desired track as an intro-then-infinite-loop into the music bus', async () => {
+  it('plays the desired track once through into the music bus', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
     engine.setMusic(TRACK);
@@ -77,9 +79,7 @@ describe('WebAudioEngine music', () => {
     expect(fetched).toEqual(['/music/theme_viking_neutral.ogg']);
     const source = ctx.sources[0] as FakeSource;
     expect(source.started).toBe(true);
-    expect(source.loop).toBe(true);
-    expect(source.loopStart).toBeCloseTo(8.5, 5);
-    expect(source.loopEnd).toBe(0); // 0 = the buffer's end
+    expect(source.loop).toBe(false); // a pass hands over rather than rejoining itself
     // source → fade gain → music bus (gains: master, sfx, music) → master.
     const fade = source.connectedTo[0] as FakeGain;
     const [master, , musicBus] = ctx.gains as [FakeGain, FakeGain, FakeGain];
@@ -98,17 +98,28 @@ describe('WebAudioEngine music', () => {
     expect(ctx.sources).toHaveLength(1);
   });
 
-  it('opens at full gain when silence precedes it, instead of fading in over nothing', async () => {
+  it('opens at full gain and only ever ramps down, so nothing creeps in from silence', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.setMusic(TRACK);
     await flush();
     const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
-    expect(gain.gain.value).toBe(1);
-    expect(gain.gain.ramps).toEqual([]);
+    expect(gain.gain.ramps).toEqual([{ value: 0, time: TRACK_S }]);
   });
 
-  it('crossfades to a changed track and keeps an unchanged one running', async () => {
+  it('comes round to the same track a gap after it has played out', async () => {
+    const { engine, ctx, fetched } = makeEngine();
+    await engine.resume();
+    engine.setMusic(TRACK);
+    await flush();
+    (ctx.sources[0] as FakeSource).onended?.();
+    await flush();
+    expect(ctx.sources).toHaveLength(2);
+    expect(fetched).toHaveLength(1); // the decoded buffer is re-used
+    expect((ctx.sources[1] as FakeSource).startedAt).toBeCloseTo(GAME_MUSIC_TIMING.gapS, 5);
+  });
+
+  it('parts a changed track with a fade and a gap, and keeps an unchanged one running', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.setMusic(TRACK);
@@ -121,11 +132,10 @@ describe('WebAudioEngine music', () => {
     await flush();
     expect(ctx.sources).toHaveLength(2);
     const [old, next] = ctx.sources as [FakeSource, FakeSource];
-    expect(old.stoppedAt).toBeCloseTo(10 + MUSIC_FADE_S, 5);
-    const oldFade = old.connectedTo[0] as FakeGain;
-    expect(oldFade.gain.ramps.at(-1)?.value).toBe(0);
-    const nextFade = next.connectedTo[0] as FakeGain;
-    expect(nextFade.gain.ramps.at(-1)?.value).toBe(1);
+    const silentAt = 10 + GAME_MUSIC_TIMING.fadeS;
+    expect(old.stoppedAt).toBeCloseTo(silentAt, 5);
+    expect((old.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({ value: 0, time: silentAt });
+    expect(next.startedAt).toBeCloseTo(silentAt + GAME_MUSIC_TIMING.gapS, 5);
   });
 
   it('stops on mute and resumes the desired track on unmute', async () => {
@@ -197,28 +207,29 @@ describe('WebAudioEngine music', () => {
 
 describe('WebAudioEngine music rotation', () => {
   const ROTATION = [{ file: 'one.ogg' }, { file: 'two.ogg' }, { file: 'three.ogg' }];
-  /** The fake serves a 4-byte buffer, and one fetched byte decodes to one second. */
-  const TRACK_S = 4;
 
-  it('plays one entry through, fading it out into a silent gap before the next opens', async () => {
+  it('plays one entry through, landing it on silence a gap before the next opens', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
     engine.setMusicRotation(ROTATION);
     await flush();
     const first = ctx.sources[0] as FakeSource;
-    expect(first.loop).toBe(false); // a rotation entry hands over instead of looping
-    const opening = first.connectedTo[0] as FakeGain;
-    // Nothing to cover, so it opens at full gain; the only ramp is the fade into the gap, which
-    // reaches silence a gap before the buffer runs out (the fake serves one second per fetched byte).
-    expect(opening.gain.ramps).toEqual([{ value: 0, time: TRACK_S - ROTATION_GAP_S }]);
+    expect(first.startedAt).toBe(0);
+    // The one ramp lands the entry on silence at its last sample, so nothing is cut mid-level.
+    expect((first.connectedTo[0] as FakeGain).gain.ramps).toEqual([{ value: 0, time: TRACK_S }]);
     first.onended?.();
     await flush();
     expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg']);
     const second = ctx.sources[1] as FakeSource;
-    const gain = second.connectedTo[0] as FakeGain;
-    // Opens at full gain - the entry it follows already faded itself out, so there is nothing to
-    // creep in over.
-    expect(gain.gain.ramps).toEqual([{ value: 0, time: TRACK_S - ROTATION_GAP_S }]);
+    expect(second.startedAt).toBeCloseTo(MENU_MUSIC_TIMING.gapS, 5);
+    expect((second.connectedTo[0] as FakeGain).gain.ramps).toEqual([
+      { value: 0, time: MENU_MUSIC_TIMING.gapS + TRACK_S },
+    ]);
+  });
+
+  it('parts the menu sooner than the game does', () => {
+    expect(MENU_MUSIC_TIMING.fadeS).toBeLessThan(GAME_MUSIC_TIMING.fadeS);
+    expect(MENU_MUSIC_TIMING.gapS).toBeLessThan(GAME_MUSIC_TIMING.gapS);
   });
 
   it('wraps to the first entry after the last one, playing every entry in order', async () => {
