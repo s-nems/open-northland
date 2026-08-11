@@ -94,6 +94,16 @@ describe('WebAudioEngine music', () => {
     expect(ctx.sources).toHaveLength(1);
   });
 
+  it('opens at full gain when silence precedes it, instead of fading in over nothing', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(TRACK);
+    await flush();
+    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    expect(gain.gain.value).toBe(1);
+    expect(gain.gain.ramps).toEqual([]);
+  });
+
   it('crossfades to a changed track and keeps an unchanged one running', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
@@ -191,7 +201,9 @@ describe('WebAudioEngine music rotation', () => {
     await flush();
     const first = ctx.sources[0] as FakeSource;
     expect(first.loop).toBe(false); // a rotation entry hands over instead of looping
-    expect((first.connectedTo[0] as FakeGain).gain.ramps.at(-1)?.value).toBe(1); // faded in
+    const opening = first.connectedTo[0] as FakeGain;
+    expect(opening.gain.value).toBe(1); // nothing to cover, so no fade to creep in over
+    expect(opening.gain.ramps).toEqual([]);
     first.onended?.();
     await flush();
     expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg']);
