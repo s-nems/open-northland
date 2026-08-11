@@ -45,6 +45,11 @@ workers nor OPFS, and these facts are not negotiable:
   static file at one of them - the service worker answers those from OPFS, while `npm run dev`
   would serve the file and hide the clash.
 
+`Dockerfile` and `nginx.conf` here are that host, published as a container image beside the desktop
+installers of the same commit. The image carries the site and nothing else: the certificate and the
+mod archive belong to the proxy in front of it. `scripts/smoke-image.mjs` holds the rules above to
+the built image.
+
 ## Verification
 
 Unit-test pure logic without a browser. The installer flow, worker conversion, and service-worker

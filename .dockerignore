@@ -2,9 +2,10 @@
 .playwright-mcp
 bench-out
 content
-node_modules
+**/node_modules
 packages/desktop/release
 **/dist
+**/dist-web
 **/dist-types
 **/*.tsbuildinfo
 **/.DS_Store

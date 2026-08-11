@@ -1,10 +1,13 @@
-name: Desktop build
+name: Release
 
-# Manually-dispatched installer build: run it from the Actions tab against main (optionally an
-# older commit via the `commit` input). Each OS builds its own installers natively, then `publish`
-# collects them into a `build-<short-sha>` prerelease - release assets are plain public download
-# links, unlike workflow artifacts which require a GitHub login. There is no semver release train
-# yet; the version IS the commit (0.0.0-<short-sha>), stamped via electron-builder extraMetadata.
+# Manually-dispatched build of everything one commit ships - the desktop installers and the web
+# container image - so the two halves always come from the same source. Run it from the Actions tab
+# against main (optionally an older commit via the `commit` input).
+#
+# Each OS builds its own installers natively, then `publish` collects them into a `build-<short-sha>`
+# prerelease: release assets are plain public download links, unlike workflow artifacts which require
+# a GitHub login. There is no semver release train yet; the version IS the commit
+# (0.0.0-<short-sha>), stamped via electron-builder extraMetadata.
 on:
   workflow_dispatch:
     inputs:
@@ -17,7 +20,20 @@ permissions:
   contents: read
 
 jobs:
+  # Both halves publish under names that look official, so neither may build an object that is not on
+  # main: the `commit` input can otherwise name anything in the repo network, fork-PR heads included.
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.commit || github.ref }}
+          fetch-depth: 0
+      - name: Refuse to build a commit that is not on main
+        run: git merge-base --is-ancestor "$(git rev-parse HEAD)" origin/main
+
   installers:
+    needs: guard
     strategy:
       fail-fast: false
       matrix:
@@ -47,8 +63,50 @@ jobs:
             packages/desktop/release/*.AppImage
           if-no-files-found: error
 
+  image:
+    needs: guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.commit || github.ref }}
+      - name: Name the image after the commit
+        id: image
+        run: |
+          repository="ghcr.io/${{ github.repository }}-web"
+          echo "tags=$repository:latest,$repository:sha-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # One architecture into the local daemon first: the smoke test needs an image it can run, and
+      # an image that fails its own deployment contract must not reach the registry.
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: packages/web/Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: open-northland-web:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: node packages/web/scripts/smoke-image.mjs open-northland-web:smoke
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: packages/web/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          cache-from: type=gha
+
   publish:
-    needs: installers
+    needs: [installers, image]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -56,11 +114,6 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ inputs.commit || github.ref }}
-          fetch-depth: 0
-      - name: Refuse to publish a commit that is not on main
-        # The `commit` input could otherwise tag any object in the repo network (including fork-PR
-        # heads) as an official-looking prerelease. Loosen deliberately when stable branches ship.
-        run: git merge-base --is-ancestor "$(git rev-parse HEAD)" origin/main
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: installers
@@ -78,7 +131,7 @@ jobs:
           else
             # Quoted heredoc + sed keeps the markdown literal (backticks, fences) with only the
             # sha substituted.
-            sed "s/@SHA@/$sha/" > notes.md <<'EOF'
+            sed -e "s/@SHA@/$sha/" -e "s/@SHORT@/$short/" > notes.md <<'EOF'
           Unsigned development build of commit @SHA@ - code signing is tracked in docs/tickets/tooling/desktop-code-signing.md.
 
           - **Windows:** SmartScreen warns about an unknown publisher; choose "More info" → "Run anyway".
@@ -87,6 +140,12 @@ jobs:
             ```sh
             xattr -cr /Applications/OpenNorthland.app
             ```
+
+          The browser deployment of the same commit:
+
+          ```sh
+          docker pull ghcr.io/s-nems/open-northland-web:sha-@SHORT@
+          ```
           EOF
             gh release create "$tag" installers/* \
               --prerelease \
