@@ -1,65 +1,93 @@
 import { describe, expect, it } from 'vitest';
 import type { TimedEvent } from '../src/stages/music/events.js';
-import { eventsThroughEnd, foldLoopTail } from '../src/stages/music/loop.js';
+import { repeatedLoopFrames, spliceSteadyLoop, withRepeatedLoop } from '../src/stages/music/loop.js';
 
 /**
- * The loop fold: what still rings past the segment's end has to land on the start of the loop region,
- * so a trimmed file repeats the way an uninterrupted sequencer would.
+ * Publishing a segment so it loops on its own decay: the loop region is queued a second time and that
+ * traversal replaces the first, which was standing under the intro's decay instead.
  */
 
-/** `[0..n)` as a channel, so every folded sample is identifiable by its value. */
+/** `[1..n]` as a channel, so every spliced frame is identifiable by its value. */
 const ramp = (n: number): Float32Array => Float32Array.from({ length: n }, (_, i) => i + 1);
 
-describe('foldLoopTail', () => {
-  it('adds the tail onto the loop region, leaving the intro untouched', () => {
-    const channel = ramp(10);
-    foldLoopTail([channel], 8, 3);
-    // Intro [0, 3) is the one-shot the loop never returns to.
-    expect([...channel.subarray(0, 3)]).toEqual([1, 2, 3]);
-    // Loop region from 3 takes frames 8 and 9 onto 3 and 4.
-    expect([...channel.subarray(3, 8)]).toEqual([4 + 9, 5 + 10, 6, 7, 8]);
+const on = (t: number, note: number): TimedEvent => ({ e: 'on', t, id: 1, note, vel: 100 });
+const off = (t: number, note: number): TimedEvent => ({ e: 'off', t, id: 1, note });
+
+describe('withRepeatedLoop', () => {
+  it('queues the loop region again a region-length later, in frame order', () => {
+    // Intro [0, 10), loop region [10, 40): the repeat lands 30 frames on.
+    const events = [on(0, 60), on(10, 62), on(25, 64)];
+    expect(withRepeatedLoop(events, 10, 40, 2)).toEqual([
+      on(0, 60),
+      on(10, 62),
+      on(25, 64),
+      on(40, 62),
+      on(55, 64),
+    ]);
   });
 
-  it('folds each channel against its own tail', () => {
-    const left = ramp(6);
-    const right = ramp(6).map((v) => -v);
-    foldLoopTail([left, right], 4, 0);
-    expect([...left.subarray(0, 4)]).toEqual([1 + 5, 2 + 6, 3, 4]);
-    expect([...right.subarray(0, 4)]).toEqual([-1 - 5, -2 - 6, -3, -4]);
+  it('drops what the next pass starts past the end, so only this one decays into the repeat', () => {
+    const events = [on(10, 60), on(40, 62), { e: 'cc', t: 45, id: 1, cc: 7, val: 1 } as const];
+    // Only the note inside the region survives, and its repeat lands where the dropped one stood.
+    expect(withRepeatedLoop(events, 10, 40, 2)).toEqual([on(10, 60), on(40, 60)]);
   });
 
-  it('folds only what the loop region can hold, never reaching past the trim point', () => {
-    const channel = ramp(12);
-    // Region [4, 6) is two frames; the six-frame tail cannot all land inside it.
-    foldLoopTail([channel], 6, 4);
-    expect([...channel.subarray(4, 6)]).toEqual([5 + 7, 6 + 8]);
-    expect([...channel.subarray(6)]).toEqual([7, 8, 9, 10, 11, 12]); // past the trim, untouched
+  it('keeps a note-off past the end and repeats it too, so neither pass hangs', () => {
+    expect(withRepeatedLoop([on(20, 60), off(45, 60)], 10, 40, 2)).toEqual([
+      on(20, 60),
+      off(45, 60),
+      on(50, 60),
+      off(75, 60),
+    ]);
   });
 
-  it('leaves a segment rendered no longer than its own end alone', () => {
-    const channel = ramp(4);
-    foldLoopTail([channel], 4, 1);
-    expect([...channel]).toEqual([1, 2, 3, 4]);
+  it('queues every traversal the published one has to settle behind', () => {
+    expect(withRepeatedLoop([on(0, 60), on(10, 62)], 10, 40, 3)).toEqual([
+      on(0, 60),
+      on(10, 62),
+      on(40, 62),
+      on(70, 62),
+    ]);
   });
 
-  it('does nothing when the loop region is empty', () => {
-    const channel = ramp(4);
-    foldLoopTail([channel], 2, 2);
-    expect([...channel]).toEqual([1, 2, 3, 4]);
+  it('leaves a segment that is all intro alone', () => {
+    const events = [on(0, 60), on(5, 62)];
+    expect(withRepeatedLoop(events, 10, 10, 2)).toEqual(events);
   });
 });
 
-describe('eventsThroughEnd', () => {
-  const on = (t: number, note: number): TimedEvent => ({ e: 'on', t, id: 1, note, vel: 100 });
-  const off = (t: number, note: number): TimedEvent => ({ e: 'off', t, id: 1, note });
+describe('repeatedLoopFrames', () => {
+  it('covers the pass, the repeated region, and the decay past it', () => {
+    expect(repeatedLoopFrames(10, 40, 2, 5)).toBe(40 + 30 + 5);
+    expect(repeatedLoopFrames(10, 40, 3, 5)).toBe(40 + 30 + 30 + 5);
+  });
+});
 
-  it('drops what the next pass starts past the end, so only this one decays into the tail', () => {
-    const events = [on(0, 60), on(90, 62), on(100, 64), { e: 'cc', t: 110, id: 1, cc: 7, val: 1 } as const];
-    expect(eventsThroughEnd(events, 100)).toEqual([on(0, 60), on(90, 62)]);
+describe('spliceSteadyLoop', () => {
+  it('keeps the intro and publishes the loop region from its second traversal', () => {
+    const channel = ramp(80);
+    const [out] = spliceSteadyLoop([channel], 3, 8, 2);
+    // Intro [0, 3) as played, then frames [8, 13) - the repeat - in place of [3, 8).
+    expect([...(out as Float32Array)]).toEqual([1, 2, 3, 9, 10, 11, 12, 13]);
   });
 
-  it('keeps a note-off past the end, so a note held across it still releases', () => {
-    const events = [on(90, 60), off(140, 60)];
-    expect(eventsThroughEnd(events, 100)).toEqual(events);
+  it('splices each channel against its own repeat', () => {
+    const left = ramp(20);
+    const right = ramp(20).map((v) => -v);
+    const [l, r] = spliceSteadyLoop([left, right], 2, 5, 2);
+    expect([...(l as Float32Array)]).toEqual([1, 2, 6, 7, 8]);
+    expect([...(r as Float32Array)]).toEqual([-1, -2, -6, -7, -8]);
+  });
+
+  it('reaches one region further in for each traversal past the second', () => {
+    const channel = ramp(80);
+    const [out] = spliceSteadyLoop([channel], 3, 8, 3);
+    expect([...(out as Float32Array)]).toEqual([1, 2, 3, 14, 15, 16, 17, 18]);
+  });
+
+  it('publishes a segment that is all loop region entirely from the second traversal', () => {
+    const channel = ramp(12);
+    const [out] = spliceSteadyLoop([channel], 0, 4, 2);
+    expect([...(out as Float32Array)]).toEqual([5, 6, 7, 8]);
   });
 });
