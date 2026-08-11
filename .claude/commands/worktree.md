@@ -151,5 +151,9 @@ pool instead of serving a deleted checkout. Stop other processes started by the 
 branch is an ancestor of `main`, remove the worktree, then delete the merged branch. Report the merged
 commits and cleanup result.
 
+At the very end, list every ticket created by this branch. For each, state why it was created and what
+concrete problem it is meant to solve; if none were created, say so explicitly. Ask the user to confirm
+keeping the new tickets—merge approval does not count as that confirmation.
+
 If the user abandons the task, confirm before removing the worktree and force-deleting an unmerged
 branch.
