@@ -1,13 +1,14 @@
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { FNV_OFFSET_BASIS, fnvHex, fnvMixWord } from '@open-northland/data';
+import { type ReadableVfs, readText, type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeSegmentAudiopath, decodeSegmentTiming, musicTimeToSeconds } from '../../decoders/sgt.js';
 import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
+import { writeJsonFile } from '../content-tree.js';
 import { interpretSegment } from './interpret.js';
 import { encodeOgg } from './ogg-encode.js';
 import { applyWavesReverb } from './reverb.js';
-import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
+import { type DlsBank, dlsFileNames, loadDlsBanks, synthesizeEvents } from './synthesize.js';
 
 /**
  * Music stage: render the `DataX/DM2` DirectMusic segments to one ogg track each, a single
@@ -31,8 +32,8 @@ const VBR_QUALITY = 3;
 const MASTER_GAIN = 10 ** (-3 / 20);
 /**
  * Bump when this stage's own synthesis or post-processing (event replay, reverb, publish rate,
- * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
- * with another version marks every ogg stale.
+ * master gain) changes rendered bytes: the source fingerprint cannot see a code change, so a stored
+ * manifest with another version marks every ogg stale.
  */
 const RENDER_VERSION = 13;
 /** Synthesized headroom over the segment length, in whole seconds; trimmed away at encode. */
@@ -56,60 +57,68 @@ export interface MusicStageResult {
   readonly skipped?: string;
 }
 
-/** The ogg is current only if it is newer than every render input (segment and banks). */
-async function isUpToDate(outPath: string, sourcePath: string, inputsMtimeMs: number): Promise<boolean> {
-  try {
-    const [out, source] = await Promise.all([stat(outPath), stat(sourcePath)]);
-    return out.mtimeMs > source.mtimeMs && out.mtimeMs > inputsMtimeMs;
-  } catch {
-    return false;
-  }
+/**
+ * What the stored oggs were rendered from: this stage's render version and the byte sizes of every
+ * segment and bank under `DataX/DM2`. The Vfs seam exposes no mtime, so a swapped game copy is
+ * recognised by input size rather than by time.
+ */
+interface RenderIdentity {
+  readonly renderVersion: number;
+  readonly sources: string;
 }
 
-/** The render version the stored manifest carries, or 0 when there is none to trust. */
-async function storedRenderVersion(musicDir: string): Promise<number> {
+/** FNV-1a over the input sizes, so the manifest carries one short token instead of a file list. */
+async function sourcesFingerprint(fs: ReadableVfs, dm2: string, files: readonly string[]): Promise<string> {
+  let hash = FNV_OFFSET_BASIS;
+  for (const file of files) {
+    const size = (await fs.stat(vjoin(dm2, file)))?.size ?? 0;
+    const text = `${file.toLowerCase()}:${size};`;
+    for (let i = 0; i < text.length; i++) hash = fnvMixWord(hash, text.charCodeAt(i));
+  }
+  return fnvHex(hash);
+}
+
+/** The identity the stored manifest carries, or a blank one when there is none to trust. */
+async function storedIdentity(fs: ReadableVfs, musicDir: string): Promise<RenderIdentity> {
   try {
-    const parsed: unknown = JSON.parse(await readFile(join(musicDir, MUSIC_MANIFEST_NAME), 'utf8'));
-    if (typeof parsed === 'object' && parsed !== null && 'renderVersion' in parsed) {
-      const version = (parsed as { renderVersion: unknown }).renderVersion;
-      if (typeof version === 'number') return version;
+    const parsed: unknown = JSON.parse(await readText(fs, vjoin(musicDir, MUSIC_MANIFEST_NAME)));
+    if (typeof parsed === 'object' && parsed !== null) {
+      const { renderVersion, sources } = parsed as Record<string, unknown>;
+      if (typeof renderVersion === 'number' && typeof sources === 'string') {
+        return { renderVersion, sources };
+      }
     }
   } catch {
     // No readable manifest: every ogg is stale.
   }
-  return 0;
-}
-
-/** Latest mtime of the shared render inputs: the DLS banks. */
-async function sharedInputsMtimeMs(dm2: string): Promise<number> {
-  let latest = 0;
-  for (const entry of await readdir(dm2)) {
-    if (!entry.toLowerCase().endsWith('.dls')) continue;
-    const { mtimeMs } = await stat(join(dm2, entry));
-    if (mtimeMs > latest) latest = mtimeMs;
-  }
-  return latest;
+  return { renderVersion: 0, sources: '' };
 }
 
 /**
  * Render every `*.sgt` under the owned copy's `DataX/DM2` into `<outDir>/music/<stem>.ogg` plus the
- * track manifest. Incremental: a segment whose ogg is newer than its source is kept. A segment that
- * fails leaves the others alone.
+ * track manifest. Incremental: oggs rendered from the same inputs by the same version are kept. A
+ * segment that fails leaves the others alone.
  */
 export async function renderMusicStage(
+  fs: Vfs,
   roots: SourceRoots,
   outDir: string,
   onItem?: StageItemReporter,
 ): Promise<MusicStageResult> {
-  const dm2 = await findPathCaseInsensitive(roots.game, ['DataX', 'DM2']);
+  const dm2 = await findPathCaseInsensitive(fs, roots.game, ['DataX', 'DM2']);
   if (dm2 === undefined) return { rendered: 0, kept: 0, failed: 0, skipped: 'no DataX/DM2 in the game copy' };
-  const segments = (await readdir(dm2)).filter((f) => f.toLowerCase().endsWith('.sgt')).sort();
+  const entries = await fs.readdir(dm2);
+  const segments = entries
+    .filter((entry) => entry.kind === 'file' && entry.name.toLowerCase().endsWith('.sgt'))
+    .map((entry) => entry.name)
+    .sort();
   if (segments.length === 0) return { rendered: 0, kept: 0, failed: 0, skipped: 'no segments in DataX/DM2' };
 
-  const musicDir = join(outDir, MUSIC_DIR);
-  await mkdir(musicDir, { recursive: true });
-  const inputsMtimeMs = await sharedInputsMtimeMs(dm2);
-  const sameRenderVersion = (await storedRenderVersion(musicDir)) === RENDER_VERSION;
+  const musicDir = vjoin(outDir, MUSIC_DIR);
+  await fs.mkdir(musicDir);
+  const sources = await sourcesFingerprint(fs, dm2, [...segments, ...(await dlsFileNames(fs, dm2))]);
+  const stored = await storedIdentity(fs, musicDir);
+  const sameInputs = stored.renderVersion === RENDER_VERSION && stored.sources === sources;
 
   const manifest = new Map<string, ManifestTrack>();
   let banksPromise: Promise<Map<string, DlsBank>> | undefined;
@@ -122,15 +131,14 @@ export async function renderMusicStage(
     onItem?.(processed++, segments.length);
     const stem = segment.replace(/\.sgt$/i, '').toLowerCase();
     const file = `${stem}.ogg`;
-    const sourcePath = join(dm2, segment);
-    const outPath = join(musicDir, file);
+    const outPath = vjoin(musicDir, file);
     try {
-      const segmentBytes = await readFile(sourcePath);
+      const segmentBytes = await fs.readFile(vjoin(dm2, segment));
       const timing = decodeSegmentTiming(segmentBytes);
       if (timing === undefined) throw new Error('no segh header');
       const totalS = musicTimeToSeconds(timing.lengthTicks, timing.tempos);
       manifest.set(stem, { file });
-      if (sameRenderVersion && (await isUpToDate(outPath, sourcePath, inputsMtimeMs))) {
+      if (sameInputs && (await fs.stat(outPath))?.kind === 'file') {
         kept++;
         return;
       }
@@ -140,7 +148,7 @@ export async function renderMusicStage(
         audioChannels: CHANNELS,
         renderSeconds: renderS,
       });
-      if (banksPromise === undefined) banksPromise = loadDlsBanks(dm2);
+      if (banksPromise === undefined) banksPromise = loadDlsBanks(fs, dm2);
       const banks = await banksPromise;
       const synthesized = await synthesizeEvents(events, banks, SAMPLE_RATE, renderS * SAMPLE_RATE);
       const audiopath = decodeSegmentAudiopath(segmentBytes);
@@ -151,7 +159,7 @@ export async function renderMusicStage(
         for (let i = 0; i < channel.length; i++) channel[i] = (channel[i] ?? 0) * MASTER_GAIN;
       }
       const frames = Math.min(Math.round(totalS * SAMPLE_RATE), synthesized[0]?.length ?? 0);
-      await writeFile(outPath, await encodeOgg(synthesized, frames, SAMPLE_RATE, VBR_QUALITY));
+      await fs.writeFile(outPath, await encodeOgg(synthesized, frames, SAMPLE_RATE, VBR_QUALITY));
       rendered++;
     } catch (err) {
       manifest.delete(stem);
@@ -166,9 +174,10 @@ export async function renderMusicStage(
   }
 
   const tracks = Object.fromEntries([...manifest.entries()].sort(([a], [b]) => a.localeCompare(b)));
-  await writeFile(
-    join(musicDir, MUSIC_MANIFEST_NAME),
-    `${JSON.stringify({ renderVersion: RENDER_VERSION, tracks }, null, 2)}\n`,
-  );
+  await writeJsonFile(fs, outDir, vjoin(MUSIC_DIR, MUSIC_MANIFEST_NAME), {
+    renderVersion: RENDER_VERSION,
+    sources,
+    tracks,
+  });
   return { rendered, kept, failed };
 }
