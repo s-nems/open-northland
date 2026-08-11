@@ -68,6 +68,8 @@ export interface DmBandInstrument {
   readonly pChannel: number;
   readonly pan: number;
   readonly volume: number;
+  /** `nTranspose` in semitones, or 0 when the instrument does not mark the field valid. */
+  readonly transpose: number;
   /** DLS collection file the `DMRF` reference names; absent for GM-preset instruments. */
   readonly file?: string;
 }
@@ -128,8 +130,12 @@ const CURVE_SHAPE_OFFSET = 25;
 const CURVE_CC_OFFSET = 26;
 const BD2H_PHYSICAL_TIME_OFFSET = 4;
 const BINS_PCHANNEL_OFFSET = 24;
+const BINS_FLAGS_OFFSET = 28;
 const BINS_PAN_OFFSET = 32;
 const BINS_VOLUME_OFFSET = 33;
+const BINS_TRANSPOSE_OFFSET = 34;
+/** `DMUS_IO_INST_TRANSPOSE`: without it `nTranspose` holds nothing the authoring tool wrote. */
+const INST_TRANSPOSE_VALID = 1 << 7;
 const CHORD_TIME_OFFSET = 32;
 const SEQ_ITEM_OFFSET_OFFSET = 12;
 const SEQ_ITEM_STATUS_OFFSET = 14;
@@ -236,15 +242,20 @@ function decodeBand(bytes: Uint8Array, band: RiffChild): DmBand {
     if (!(c.id === 'LIST' && c.form === 'lbil')) continue;
     for (const inst of riffChildren(bytes, c.bodyStart, c.bodyEnd)) {
       if (!(inst.id === 'LIST' && inst.form === 'lbin')) continue;
-      let header: { patch: number; pChannel: number; pan: number; volume: number } | undefined;
+      let header: Omit<DmBandInstrument, 'file'> | undefined;
       let file: string | undefined;
       for (const x of riffChildren(bytes, inst.bodyStart, inst.bodyEnd)) {
         if (x.id === 'bins') {
+          const flags = view.getUint32(x.bodyStart + BINS_FLAGS_OFFSET, true);
           header = {
             patch: view.getUint32(x.bodyStart, true),
             pChannel: view.getUint32(x.bodyStart + BINS_PCHANNEL_OFFSET, true),
             pan: bytes[x.bodyStart + BINS_PAN_OFFSET] ?? 0,
             volume: bytes[x.bodyStart + BINS_VOLUME_OFFSET] ?? 0,
+            transpose:
+              (flags & INST_TRANSPOSE_VALID) === 0
+                ? 0
+                : view.getInt16(x.bodyStart + BINS_TRANSPOSE_OFFSET, true),
           };
         } else if (x.id === 'LIST' && x.form === 'DMRF') {
           for (const r of riffChildren(bytes, x.bodyStart, x.bodyEnd)) {

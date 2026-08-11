@@ -263,6 +263,7 @@ function bandChange(
       // Both are single-precision in the reference player.
       vol: f32((inst.volume * inst.volume) / (127 * 127)),
       pan: f32((inst.pan - 63) / 64),
+      transpose: inst.transpose,
     });
     assignments.set(inst.pChannel, id);
   }
