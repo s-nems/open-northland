@@ -1,11 +1,14 @@
 # Content resolver package contract
 
-`packages/content-resolver` maps generated content onto the same public routes for Vite and Electron.
-The root [`AGENTS.md`](../../AGENTS.md) applies in full.
+`packages/content-resolver` maps generated content onto the same public routes for its three hosts:
+Vite in development, the Electron protocol handler, and the browser service worker. The root
+[`AGENTS.md`](../../AGENTS.md) applies in full.
 
 ## Boundaries
 
-- Route resolution stays host-neutral. Browser and desktop adapters supply roots and transport.
+- Route resolution stays host-neutral. Each host supplies a content root and a
+  `@open-northland/vfs` `ReadableVfs`; that seam is this package's only dependency, and a second one
+  needs a reason as good.
 - Resolve files under the configured content root; reject traversal and do not expose arbitrary paths.
 - Treat sidecars and request paths as untrusted input even though the pipeline emitted them. Narrow
   unknown JSON at the route boundary.

@@ -25,8 +25,8 @@ See [`tickets/README.md`](tickets/README.md) for the format.
 ## Agent instructions
 
 The root [`AGENTS.md`](../AGENTS.md) is the project-wide contract for coding agents. Package-local
-files add rules for `sim`, `render`, `audio`, `app`, `data`, `content-resolver`, `desktop`, and the
-asset pipeline.
+files add rules for `sim`, `render`, `audio`, `app`, `data`, `vfs`, `content-resolver`, `installer`,
+`desktop`, `web`, and the asset pipeline.
 
 Claude workflow definitions live in `.claude/commands/` and reviewer checklists in
 `.claude/agents/`. `CLAUDE.md` only loads the nearest `AGENTS.md`; Codex reads `AGENTS.md` directly.

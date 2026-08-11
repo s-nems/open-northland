@@ -16,13 +16,13 @@
       <p class="intro" id="intro"></p>
 
       <section id="pick" class="phase">
-        <p id="status-note" class="note hidden"></p>
+        <p id="status-note" class="note hidden" aria-live="polite"></p>
         <div id="drop-zone" class="drop-zone hidden"><span id="drop-zone-label"></span></div>
         <div class="pick-row">
           <input id="game-path" type="text" spellcheck="false" />
           <button id="browse" type="button"></button>
         </div>
-        <p id="probe-note" class="note"></p>
+        <p id="probe-note" class="note" aria-live="polite"></p>
         <div id="mod-panel" class="mod-panel hidden">
           <p class="note" id="mod-required-note"></p>
           <div class="actions">
@@ -30,11 +30,11 @@
             <button id="mod-pick" type="button"></button>
           </div>
           <div id="mod-progress" class="hidden">
-            <div class="bar"><div id="mod-bar-fill" class="bar-fill"></div></div>
+            <div class="bar" role="progressbar"><div id="mod-bar-fill" class="bar-fill"></div></div>
             <p class="status-row"><span id="mod-stage"></span><span id="mod-count"></span></p>
             <div class="actions"><button id="mod-cancel" type="button"></button></div>
           </div>
-          <p id="mod-note" class="note"></p>
+          <p id="mod-note" class="note" aria-live="polite"></p>
         </div>
         <div id="detected" class="detected hidden">
           <p class="note" id="detected-label"></p>
@@ -47,7 +47,7 @@
       </section>
 
       <section id="run" class="phase hidden">
-        <div class="bar"><div id="bar-fill" class="bar-fill"></div></div>
+        <div class="bar" role="progressbar"><div id="bar-fill" class="bar-fill"></div></div>
         <p class="status-row"><span id="stage-label"></span><span id="item-count"></span></p>
         <pre id="log-tail" class="log"></pre>
         <div class="actions">
@@ -61,13 +61,13 @@
       </section>
 
       <section id="failed" class="phase hidden">
-        <p class="error" id="error-message"></p>
+        <p class="error" id="error-message" aria-live="assertive"></p>
         <pre id="error-log" class="log"></pre>
         <button id="retry" type="button"></button>
       </section>
 
       <section id="blocked" class="phase hidden">
-        <p class="error" id="blocked-message"></p>
+        <p class="error" id="blocked-message" aria-live="assertive"></p>
       </section>
 
       <p class="legal" id="legal"></p>

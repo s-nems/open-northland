@@ -8,7 +8,7 @@ import { PIPELINE_STAGES } from '@open-northland/asset-pipeline/progress';
  * game copy plus the culturesnation mod. They only shape the bar and never gate completion.
  */
 
-// Approximate seconds per stage in that run, 167 s end to end.
+// Approximate seconds per stage in that run.
 const STAGE_WEIGHTS: Readonly<Record<PipelineStageId, number>> = {
   unpack: 10,
   pictures: 55,

@@ -176,9 +176,11 @@ stays in each browser's origin-private storage.
 ## Web image
 
 The `Release` workflow builds that site into a container and publishes it to
-`ghcr.io/s-nems/open-northland-web` as `latest` and `sha-<short>`, for `linux/amd64` and
-`linux/arm64`. One dispatch of that workflow builds the desktop installers and this image from the
-same commit, so a release is never half a version. Deploying is manual:
+`ghcr.io/s-nems/open-northland-web`, for `linux/amd64` and `linux/arm64`. One dispatch builds the
+desktop installers and this image from the same resolved commit. Every build gets a `sha-<short>`
+tag; `latest` moves only once both halves and the download page are published, and only for a
+dispatch of the branch head, so rebuilding an older commit cannot roll a deployment backwards.
+Deploying is manual:
 
 ```bash
 docker run --detach --restart unless-stopped --publish 127.0.0.1:8080:80 \

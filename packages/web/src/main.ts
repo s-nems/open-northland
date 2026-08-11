@@ -57,7 +57,7 @@ async function ensureContentRoutes(): Promise<void> {
 
 async function boot(): Promise<void> {
   setActiveLocale(effectiveLocale());
-  assertStorageAvailable();
+  await assertStorageAvailable();
   await ensureContentRoutes();
   const api = createWebShellApi();
   const forceSetup = new URLSearchParams(location.search).has('setup');

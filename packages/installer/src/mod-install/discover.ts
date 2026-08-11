@@ -45,7 +45,10 @@ export async function findModRootUnder(fs: ReadableVfs, dir: string): Promise<st
 export async function discoverInstalledMod(fs: ReadableVfs, modsDir: string): Promise<string | undefined> {
   let children: string[];
   try {
-    children = (await fs.readdir(modsDir)).filter((e) => e.kind === 'dir').map((e) => e.name);
+    children = (await fs.readdir(modsDir))
+      // A dot-directory is scratch space of some install, never a mod an installer put there.
+      .filter((e) => e.kind === 'dir' && !e.name.startsWith('.'))
+      .map((e) => e.name);
   } catch {
     return undefined;
   }

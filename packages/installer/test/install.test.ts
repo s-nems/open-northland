@@ -1,5 +1,9 @@
-import { readText, vjoin } from '@open-northland/vfs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { readText, type Vfs, vjoin } from '@open-northland/vfs';
 import { memoryVfs } from '@open-northland/vfs/memory';
+import { nodeVfs } from '@open-northland/vfs/node';
 import { describe, expect, it } from 'vitest';
 import { discoverInstalledMod } from '../src/mod-install/discover.js';
 import { installCnMod, type ModZipDownload } from '../src/mod-install/install.js';
@@ -11,7 +15,7 @@ describe('installCnMod', () => {
   const HOUSES_INI = 'DataCnmd/types/houses.ini';
 
   const downloadOf =
-    (fs: ReturnType<typeof memoryVfs>, zipBytes: Uint8Array, sha256: string | undefined): ModZipDownload =>
+    (fs: Vfs, zipBytes: Uint8Array, sha256: string | undefined): ModZipDownload =>
     async (destZip, onEvent) => {
       onEvent({ kind: 'mod-download', received: zipBytes.length, total: zipBytes.length });
       await fs.writeFile(destZip, zipBytes);
@@ -66,6 +70,25 @@ describe('installCnMod', () => {
     );
     expect(await discoverInstalledMod(fs, MODS_DIR)).toBeUndefined();
     expect(await fs.readdir(MODS_DIR)).toEqual([]);
+  });
+
+  it('installs onto a real file system, including backslash-spelled directory members', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'installer-mod-'));
+    try {
+      const fs = nodeVfs();
+      const modsDir = join(dir, 'mods');
+      const text = new TextEncoder().encode('[housetype]\n');
+      const zipBytes = buildZip([
+        { name: 'CnMod 1.0\\DataCnmd\\types\\', data: new Uint8Array(0) },
+        { name: 'CnMod 1.0\\DataCnmd\\types\\houses.ini', data: text },
+      ]);
+      const root = await installCnMod(fs, modsDir, downloadOf(fs, zipBytes, undefined), () => {});
+      expect(root).toBe(vjoin(modsDir, 'CnMod 1.0'));
+      expect(await readText(fs, vjoin(root, HOUSES_INI))).toBe('[housetype]\n');
+      expect(await discoverInstalledMod(fs, modsDir)).toBe(root);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('discards a half-written tree when extraction is aborted', async () => {

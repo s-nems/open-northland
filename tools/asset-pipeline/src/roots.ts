@@ -1,4 +1,4 @@
-import { relIn, type Vfs, vjoin } from '@open-northland/vfs';
+import { type ReadableVfs, relIn, vjoin } from '@open-northland/vfs';
 import { CULTURESNATION_MOD } from './probe.js';
 import { walkFiles } from './walk.js';
 
@@ -64,7 +64,7 @@ export function pickCaseFoldedEntry(
  * case-insensitive macOS/Windows filesystem hides and a case-sensitive Linux one does not.
  */
 export async function findPathCaseInsensitive(
-  fs: Vfs,
+  fs: ReadableVfs,
   dir: string,
   segments: readonly string[],
 ): Promise<string | undefined> {
@@ -85,7 +85,7 @@ export async function findPathCaseInsensitive(
 
 /** Case-insensitive resolution across candidate directories in priority order; the first hit wins. */
 export async function findPathCaseInsensitiveInDirs(
-  fs: Vfs,
+  fs: ReadableVfs,
   dirs: readonly string[],
   segments: readonly string[],
 ): Promise<string | undefined> {
@@ -102,7 +102,7 @@ export async function findPathCaseInsensitiveInDirs(
  * or an ini-borne reference already forward-slashed by `normalizeAssetPath`.
  */
 export async function resolveSourceFile(
-  fs: Vfs,
+  fs: ReadableVfs,
   roots: SourceRoots,
   rel: string,
 ): Promise<string | undefined> {
@@ -146,7 +146,7 @@ export function unionCaseFoldedRoots(perRoot: readonly RootFiles[]): SourceFile[
  * as a layer-ordered case-folded union. A missing root propagates as an environmental error.
  */
 export async function collectSourceFiles(
-  fs: Vfs,
+  fs: ReadableVfs,
   roots: SourceRoots,
   match: (relLower: string) => boolean,
 ): Promise<SourceFile[]> {
@@ -164,7 +164,7 @@ export async function collectSourceFiles(
 
 /** Collects every file whose last path segment is `name`, case-insensitively, across the roots. */
 export async function collectSourceFilesNamed(
-  fs: Vfs,
+  fs: ReadableVfs,
   roots: SourceRoots,
   name: string,
 ): Promise<SourceFile[]> {
@@ -180,7 +180,11 @@ export const CULTURESNATION_HOME_URL = 'https://culturesnation.pl/news.php';
  * none given a game folder that contains one is its own overlay. No mod anywhere fails fast here,
  * because the tribe/weapon/house tables are readable only under `DataCnmd/`.
  */
-export async function resolveModRoot(fs: Vfs, game: string, modRoot: string | undefined): Promise<string> {
+export async function resolveModRoot(
+  fs: ReadableVfs,
+  game: string,
+  modRoot: string | undefined,
+): Promise<string> {
   const hasMod = async (root: string): Promise<boolean> =>
     (await fs.stat(vjoin(root, CULTURESNATION_MOD)))?.kind === 'dir';
   if (modRoot !== undefined) {

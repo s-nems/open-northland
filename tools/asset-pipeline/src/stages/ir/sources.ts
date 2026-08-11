@@ -1,4 +1,4 @@
-import { type Vfs, vjoin } from '@open-northland/vfs';
+import { type ReadableVfs, vjoin } from '@open-northland/vfs';
 import { CULTURESNATION_MOD } from '../../probe.js';
 import { resolveSourceFile, type SourceRoots } from '../../roots.js';
 
@@ -18,7 +18,7 @@ export interface IniSource {
  * `Data/logic/*.ini` tables resolve overlay-first because the mod ships patched copies of them too. A
  * source missing from every root is skipped with a warning, so a partial install still yields an IR.
  */
-export async function resolveIniSources(fs: Vfs, roots: SourceRoots): Promise<IniSource[]> {
+export async function resolveIniSources(fs: ReadableVfs, roots: SourceRoots): Promise<IniSource[]> {
   const wanted: { rel: string; layer: 'base' | 'mod' }[] = [
     { rel: vjoin('Data', 'logic', 'goodtypes.ini'), layer: 'base' },
     { rel: vjoin('Data', 'logic', 'jobtypes.ini'), layer: 'base' },

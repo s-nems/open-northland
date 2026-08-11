@@ -66,6 +66,7 @@ describe('createShellState', () => {
         portable: false,
         locale: 'eng',
         contentStatus: 'missing',
+        modDelivery: 'upstream-folder',
       });
       expect('gamePath' in state).toBe(false);
       expect('modRoot' in state).toBe(false);

@@ -1,4 +1,4 @@
-import { formatMessage, messages } from '@open-northland/installer/i18n';
+import { formatMessage, localeTag, messages } from '@open-northland/installer/i18n';
 
 /**
  * What the shell needs from browser storage, and what it tells the visitor when it is not there.
@@ -10,8 +10,12 @@ const GB = 1e9;
  *  archive, and the tree it unpacks to. Used only to refuse a visibly hopeless start. */
 const CONVERSION_BYTES = 3 * GB;
 
-export function assertStorageAvailable(): void {
-  if (typeof navigator.storage?.getDirectory !== 'function') {
+/** Storage can be present as an API and still refused: blocking site data leaves the methods in
+ *  place and rejects the call. */
+export async function assertStorageAvailable(): Promise<void> {
+  try {
+    await navigator.storage.getDirectory();
+  } catch {
     throw new Error(messages().errors.noStorage);
   }
 }
@@ -29,16 +33,28 @@ export function storageFullMessage(error: unknown): string | undefined {
     : undefined;
 }
 
-/** Refuses work the browser visibly cannot hold. An absent estimate is not an objection. */
-export async function assertRoomForConversion(): Promise<void> {
+/** Bytes this origin may still write, or undefined when the browser will not estimate. */
+async function availableBytes(): Promise<number | undefined> {
   const estimate = await navigator.storage.estimate?.();
-  if (estimate?.quota === undefined) return;
-  const available = estimate.quota - (estimate.usage ?? 0);
-  if (available >= CONVERSION_BYTES) return;
+  if (estimate?.quota === undefined) return undefined;
+  return Math.max(0, estimate.quota - (estimate.usage ?? 0));
+}
+
+/** An absent estimate is not an objection. */
+export async function hasRoomForConversion(): Promise<boolean> {
+  const available = await availableBytes();
+  return available === undefined || available >= CONVERSION_BYTES;
+}
+
+const gb = (bytes: number): string => (bytes / GB).toLocaleString(localeTag(), { maximumFractionDigits: 1 });
+
+/** Refuses work the browser visibly cannot hold. */
+export async function assertRoomForConversion(): Promise<void> {
+  if (await hasRoomForConversion()) return;
   throw new Error(
     formatMessage(messages().errors.notEnoughStorage, {
-      needed: (CONVERSION_BYTES / GB).toFixed(1),
-      available: Math.max(0, available / GB).toFixed(1),
+      needed: gb(CONVERSION_BYTES),
+      available: gb((await availableBytes()) ?? 0),
     }),
   );
 }

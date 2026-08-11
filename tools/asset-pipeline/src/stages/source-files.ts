@@ -1,4 +1,4 @@
-import type { Vfs } from '@open-northland/vfs';
+import type { ReadableVfs } from '@open-northland/vfs';
 import { normalizeAssetPath } from '../decoders/ini.js';
 import {
   collectSourceFiles,
@@ -12,7 +12,11 @@ import {
  * Reads a source file layer-first, every path segment resolving case-insensitively through the
  * pipeline's one source-path rule ({@link resolveSourceFile}). Throws when absent in every root.
  */
-export async function readSourceFile(fs: Vfs, roots: SourceRoots, relPath: string): Promise<Uint8Array> {
+export async function readSourceFile(
+  fs: ReadableVfs,
+  roots: SourceRoots,
+  relPath: string,
+): Promise<Uint8Array> {
   const path = await resolveSourceFile(fs, roots, relPath);
   if (path === undefined) {
     throw new Error(`${relPath} not found under ${rootsInOrder(roots).join(' or ')}`);
@@ -33,7 +37,7 @@ const ATLAS_SOURCE_RE = /\.(bmd|pcx)$/;
  * `SourceFile.path`; a derived file's own path under `--out` comes from the served layout, not the
  * layer's spelling of `rel`. Walks every layer in full, so build it once and thread it through.
  */
-export async function indexSourceAssets(fs: Vfs, roots: SourceRoots): Promise<SourceAssetIndex> {
+export async function indexSourceAssets(fs: ReadableVfs, roots: SourceRoots): Promise<SourceAssetIndex> {
   const index = new Map<string, SourceFile>();
   for (const file of await collectSourceFiles(fs, roots, (rel) => ATLAS_SOURCE_RE.test(rel))) {
     index.set(normalizeAssetPath(file.rel), file);

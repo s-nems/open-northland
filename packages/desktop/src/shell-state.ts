@@ -58,6 +58,7 @@ export function createShellState(paths: ShellPaths): ShellState {
       portable: paths.dataRoot.portable,
       locale: currentLocale(),
       contentStatus: await contentStatus(),
+      modDelivery: 'upstream-folder',
       ...(remembered !== undefined ? { gamePath: remembered } : {}),
       ...(modRoot !== undefined ? { modRoot } : {}),
     };

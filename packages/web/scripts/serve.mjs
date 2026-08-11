@@ -26,8 +26,6 @@ const TYPES = {
   '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
-  '.cur': 'image/x-icon',
-  '.wav': 'audio/wav',
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
   '.zip': 'application/zip',

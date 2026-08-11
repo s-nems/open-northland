@@ -22,8 +22,11 @@ every visitor converts their own game copy inside their own browser, where the c
 
 ## CulturesNation mod
 
-The free community mod *CulturesNation* is required to play, and the project rehosts its archive at
-`game.opennorthland.org/cnmod.zip` so the installer can fetch it from its own origin.
+The free community mod *CulturesNation* is required to play. The desktop installer downloads it from
+the mod's own site; the browser installer fetches it from `game.opennorthland.org/cnmod.zip`, because
+a browser page can only stream an archive of that size from its own origin. Placing that archive is
+an operator step, not part of this repository, and `CNMOD_KNOWN_SHA256` in
+`packages/installer/src/mod-install/install.ts` records the bytes the project verified against.
 
 ## Independent implementation
 

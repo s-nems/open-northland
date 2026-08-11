@@ -4,6 +4,7 @@ import { messages } from '../i18n/index.js';
 import type {
   GameFolderCandidate,
   GamePickerApi,
+  ModDelivery,
   ModEvent,
   ModInstallApi,
   ShellSetupState,
@@ -42,11 +43,16 @@ export function createPickPanel(
   let externalModRoot: string | undefined;
   /** Remembered so a language switch can re-derive the phase without re-fetching the shell state. */
   let contentStatus: ContentStatus = 'missing';
+  let modDelivery: ModDelivery = 'upstream-folder';
 
-  const modPanel = createModPanel(api, (root) => {
-    externalModRoot = root;
-    render();
-  });
+  const modPanel = createModPanel(
+    api,
+    (root) => {
+      externalModRoot = root;
+      render();
+    },
+    () => modDelivery,
+  );
 
   /** Every state change repaints the section through here. */
   function render(): void {
@@ -97,14 +103,12 @@ export function createPickPanel(
       dropZone.classList.remove('drag-over');
       const transfer = event.dataTransfer;
       if (transfer === null) return;
-      void snapshotDrop(transfer)
-        .then(async (folder) => (folder === undefined ? null : adoptFolder(folder)))
-        .then(
-          (candidate) => {
-            if (candidate !== null) applyCandidate(candidate);
-          },
-          (err: unknown) => showPickError(err),
-        );
+      void whileReading(async () => {
+        const folder = await snapshotDrop(transfer);
+        // A drop of loose files, or of nothing this browser exposes as a directory.
+        if (folder === undefined) throw new Error(messages().errors.notAFolder);
+        return adoptFolder(folder);
+      });
     });
   }
 
@@ -113,15 +117,28 @@ export function createPickPanel(
     probeNote.textContent = err instanceof Error ? err.message : String(err);
   }
 
+  /**
+   * Acquiring a folder walks it, which on a game copy is tens of thousands of entries and on a
+   * mistaken pick can be far more. The controls are held and the line says so, rather than leaving
+   * a dead button that invites a second click.
+   */
+  async function whileReading(acquire: () => Promise<GameFolderCandidate | null>): Promise<void> {
+    const browse = el<HTMLButtonElement>('browse');
+    browse.disabled = true;
+    probeNote.textContent = messages().setup.readingFolder;
+    try {
+      const candidate = await acquire();
+      if (candidate === null) render();
+      else applyCandidate(candidate);
+    } catch (err) {
+      showPickError(err);
+    } finally {
+      browse.disabled = false;
+    }
+  }
+
   function listen(): void {
-    el('browse').addEventListener('click', async () => {
-      try {
-        const picked = await api.pickGameFolder();
-        if (picked !== null) applyCandidate(picked);
-      } catch (err) {
-        showPickError(err);
-      }
-    });
+    el('browse').addEventListener('click', () => void whileReading(() => api.pickGameFolder()));
     const probeGamePath = api.probeGamePath?.bind(api);
     if (probeGamePath !== undefined) {
       let probeTimer: number | undefined;
@@ -141,6 +158,7 @@ export function createPickPanel(
   return {
     applyState(state: ShellSetupState): void {
       contentStatus = state.contentStatus;
+      modDelivery = state.modDelivery;
       // The mod panel is live from construction, so a mod resolved while this state was in flight
       // outranks the older startup answer.
       externalModRoot ??= state.modRoot;

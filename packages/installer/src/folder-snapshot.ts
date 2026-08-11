@@ -10,9 +10,9 @@ export async function snapshotDirectoryHandle(root: FileSystemDirectoryHandle): 
     for await (const handle of dir.values()) {
       const path = prefix === '' ? handle.name : `${prefix}/${handle.name}`;
       if (handle.kind === 'directory') {
-        await walk(handle as FileSystemDirectoryHandle, path);
+        await walk(handle, path);
       } else {
-        files.set(path, handle as FileSystemFileHandle);
+        files.set(path, handle);
       }
     }
   }

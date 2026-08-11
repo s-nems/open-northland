@@ -185,7 +185,7 @@ button.primary {
 
 .log {
   height: 132px;
-  overflow: hidden;
+  overflow-y: auto;
   margin: 0;
   padding: 8px 10px;
   border-radius: 6px;
@@ -220,6 +220,6 @@ button.primary {
 }
 
 .drop-zone.drag-over {
-  border-color: var(--accent, #c9a227);
-  color: var(--fg);
+  border-color: var(--accent);
+  color: var(--text);
 }

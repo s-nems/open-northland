@@ -1,7 +1,8 @@
-import { isContentRoute, resolveContentRequest } from '@open-northland/content-resolver';
+import { resolveContentRequest } from '@open-northland/content-resolver';
 import type { Vfs } from '@open-northland/vfs';
 import { opfsVfs } from '@open-northland/vfs/opfs';
 import { CONTENT_DIR } from '../opfs-layout.js';
+import { contentRouteOf } from './route.js';
 
 /**
  * Serves the app's `content/` routes from the origin-private file system: the web analogue of the
@@ -27,9 +28,6 @@ interface SwGlobal {
 
 const sw = self as unknown as SwGlobal;
 
-// sw.js sits at the site base (`<base>/sw.js`); the app lives under `<base>/play/`.
-const playPrefix = `${sw.location.pathname.replace(/\/[^/]*$/, '')}/play`;
-
 let opfs: Vfs | undefined;
 async function contentFs(): Promise<Vfs> {
   opfs ??= opfsVfs(await navigator.storage.getDirectory());
@@ -40,7 +38,7 @@ function notFound(): Response {
   return new Response('not found', { status: 404 });
 }
 
-async function serveContent(pathname: string, method: string): Promise<Response> {
+async function readContent(pathname: string, method: string): Promise<Response> {
   const fs = await contentFs();
   const hit = await resolveContentRequest(fs, pathname, CONTENT_DIR);
   if (hit === undefined) return notFound();
@@ -56,15 +54,24 @@ async function serveContent(pathname: string, method: string): Promise<Response>
   return new Response(bytes as unknown as BodyInit, { headers });
 }
 
+/** Storage can fail between the resolver's stat and the read - another tab regenerating content is
+ *  enough. A rejection here would reach the app as an opaque network error instead. */
+async function serveContent(pathname: string, method: string): Promise<Response> {
+  try {
+    return await readContent(pathname, method);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(`content unavailable: ${message}`, { status: 500 });
+  }
+}
+
 sw.addEventListener('install', () => void sw.skipWaiting());
 sw.addEventListener('activate', (event) => event.waitUntil(sw.clients.claim()));
 
 sw.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET' && request.method !== 'HEAD') return;
-  const url = new URL(request.url);
-  if (url.origin !== sw.location.origin || !url.pathname.startsWith(`${playPrefix}/`)) return;
-  const pathname = url.pathname.slice(playPrefix.length);
-  if (!isContentRoute(pathname)) return;
-  event.respondWith(serveContent(pathname, request.method));
+  const route = contentRouteOf(sw.location.pathname, new URL(request.url), sw.location.origin);
+  if (route === undefined) return;
+  event.respondWith(serveContent(route, request.method));
 });

@@ -6,7 +6,8 @@
 `<id>.script.json` (`multiplayerOf`, `playerSlotOf`: `typeof player !== 'number'`, allowed-type
 string checks), duplicating `MapPlayerSlot`/`MapMultiplayer`/`MapMultiplayerSlot` from
 `packages/data/src/schema/maps/script.ts`. A comment frames the missing schema dependency as a
-design fact, but `content-resolver/package.json` has zero dependencies by choice, not constraint.
+design fact, but `content-resolver/package.json` already carries one workspace dependency
+(`@open-northland/vfs`), so the boundary is a choice, not a constraint.
 It compounds: `claimable`/`hidden`/`aiAllowed` are derived at serve time in the HTTP layer, so a
 consumer reading the sidecar directly gets different answers than one reading `/maps-index`, and
 any schema evolution must be mirrored by hand.
