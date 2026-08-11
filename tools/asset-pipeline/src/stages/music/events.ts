@@ -14,6 +14,9 @@ export interface EventInstance {
   readonly vol: number;
   /** Band pan in [-1, 1]. */
   readonly pan: number;
+  /** Semitones the band transposes the instrument's notes by. The synthesizer applies it, so these
+   *  events carry the performance's own note numbers. */
+  readonly transpose: number;
 }
 
 export type TimedEvent =

@@ -68,6 +68,23 @@ describe('decodeSegmentTracks', () => {
     });
   });
 
+  it('reads a band transpose only where the instrument marks the field valid', () => {
+    const bytes = segment(1, 3072, [
+      bandTrack([
+        {
+          time: 0,
+          instruments: [
+            { patch: 0, pChannel: 1, pan: 63, volume: 127, transpose: -12, file: 'a.dls' },
+            { patch: 0, pChannel: 2, pan: 63, volume: 127, transposeUnflagged: -12, file: 'b.dls' },
+          ],
+        },
+      ]),
+    ]);
+    const [band] = decodeSegmentTracks(bytes).tracks;
+    if (band?.kind !== 'band') throw new Error('no band');
+    expect(band.changes[0]?.band.instruments.map((i) => i.transpose)).toEqual([-12, 0]);
+  });
+
   it('decodes chord change times', () => {
     const decoded = decodeSegmentTracks(segment(1, 3072, [chordTrack([768, 1536])]));
     expect(decoded.tracks).toEqual([{ kind: 'chord', times: [768, 1536] }]);

@@ -174,8 +174,14 @@ export interface FixtureInstrument {
   readonly pChannel: number;
   readonly pan: number;
   readonly volume: number;
+  /** Written with `DMUS_IO_INST_TRANSPOSE` set; pass `transposeUnflagged` to leave the flag clear. */
+  readonly transpose?: number;
+  /** `nTranspose` bytes the instrument never marks valid. */
+  readonly transposeUnflagged?: number;
   readonly file?: string;
 }
+
+const INST_TRANSPOSE_VALID = 1 << 7;
 
 function bandInstrument(inst: FixtureInstrument): number[] {
   const bins = chunk('bins', [
@@ -186,10 +192,10 @@ function bandInstrument(inst: FixtureInstrument): number[] {
     ...u32(0),
     ...u32(0),
     ...u32(inst.pChannel),
-    ...u32(0),
+    ...u32(inst.transpose === undefined ? 0 : INST_TRANSPOSE_VALID),
     inst.pan,
     inst.volume,
-    ...u16(0),
+    ...u16((inst.transpose ?? inst.transposeUnflagged ?? 0) & 0xffff),
     ...u32(0),
     ...u16(0),
   ]);

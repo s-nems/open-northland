@@ -53,6 +53,8 @@ interface ChannelSlot {
   readonly synth: SpessaSynthProcessor;
   readonly channel: number;
   readonly rejected: readonly DlsKeyRange[];
+  /** Semitones added to every key this instrument plays, so region rejection sees the sounding key. */
+  readonly transpose: number;
 }
 
 function matchPreset(dls: DlsBank, bankLo: number, bankHi: number, patch: number): BasicPreset | undefined {
@@ -126,7 +128,7 @@ export async function synthesizeEvents(
     const rejects = dls.rejected.find(
       (r) => r.bankLo === inst.bankLo && r.bankHi === inst.bankHi && r.patch === inst.patch,
     );
-    slots.set(inst.id, { synth, channel, rejected: rejects?.ranges ?? [] });
+    slots.set(inst.id, { synth, channel, rejected: rejects?.ranges ?? [], transpose: inst.transpose });
   }
 
   const left = new Float32Array(frames);
@@ -142,11 +144,11 @@ export async function synthesizeEvents(
       next++;
       const slot = slots.get(ev.id);
       if (slot === undefined) continue;
-      const { synth, channel, rejected } = slot;
+      const { synth, channel, rejected, transpose } = slot;
       switch (ev.e) {
         case 'on':
         case 'off': {
-          const note = ev.note;
+          const note = clampMidi(ev.note + transpose);
           if (rejected.some((r) => note >= r.lo && note <= r.hi)) break;
           if (ev.e === 'on') synth.noteOn(channel, note, clampMidi(ev.vel));
           else synth.noteOff(channel, note);
