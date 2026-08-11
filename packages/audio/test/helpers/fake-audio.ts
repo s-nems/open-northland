@@ -73,8 +73,9 @@ export class FakeContext {
   createStereoPanner(): FakePanner {
     return new FakePanner();
   }
+  // One second of audio per fetched byte, so a test picks a track length by the buffer it serves.
   async decodeAudioData(bytes: ArrayBuffer): Promise<AudioBuffer> {
-    return { length: bytes.byteLength } as unknown as AudioBuffer;
+    return { length: bytes.byteLength, duration: bytes.byteLength } as unknown as AudioBuffer;
   }
   async resume(): Promise<void> {
     if (this.state !== 'closed') this.state = 'running'; // a closed context never reopens

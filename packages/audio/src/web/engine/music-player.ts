@@ -11,6 +11,15 @@ import type { FetchBytes } from '../platform.js';
  *  bar-aligned, which a rendered file cannot reproduce. */
 export const MUSIC_FADE_S = 1.5;
 
+/**
+ * A rotation entry ends at its loop point, not on a cadence, so it is faded out rather than cut. The
+ * gap that follows runs out the rest of the buffer in silence, which hands over on the source's own
+ * ended event instead of a second clock. Both are choices: the original loops one segment and never
+ * plays a rotation.
+ */
+export const ROTATION_FADE_S = 2;
+export const ROTATION_GAP_S = 1.5;
+
 /** Decoded tracks kept for re-use (current + the previous one a mood flip returns to). */
 const BUFFER_CACHE_SIZE = 2;
 
@@ -116,6 +125,15 @@ export class MusicPlayer {
     this.start(track, this.generation, { ...mode, fadeIn });
   }
 
+  /** Fade a rotation entry out before its abrupt end and leave the rest of the buffer silent, so the
+   *  next entry opens after a beat rather than over a cut. */
+  private scheduleHandover(gain: GainNode, startedAt: number, durationS: number): void {
+    const silentAt = startedAt + Math.max(0, durationS - ROTATION_GAP_S);
+    const fadeFrom = Math.max(startedAt, silentAt - ROTATION_FADE_S);
+    gain.gain.setValueAtTime(1, fadeFrom);
+    gain.gain.linearRampToValueAtTime(0, silentAt);
+  }
+
   private fadeOutCurrent(): void {
     const current = this.current;
     if (current === null) return;
@@ -185,11 +203,12 @@ export class MusicPlayer {
       gain.gain.value = options.fadeIn ? 0 : 1;
       source.connect(gain).connect(this.out);
       source.start();
+      const now = this.ctx.currentTime;
       if (options.fadeIn) {
-        const now = this.ctx.currentTime;
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(1, now + MUSIC_FADE_S);
       }
+      if (!options.loop) this.scheduleHandover(gain, now, buffer.duration);
       this.current = { file: track.file, source, gain };
     });
   }

@@ -64,6 +64,8 @@ export {
   DEFAULT_SOUNDS_BASE_URL,
   MUSIC_FADE_S,
   ONE_SHOT_COOLDOWN_S,
+  ROTATION_FADE_S,
+  ROTATION_GAP_S,
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './web/engine/index.js';
