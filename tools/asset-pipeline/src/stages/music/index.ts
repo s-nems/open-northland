@@ -5,6 +5,7 @@ import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { interpretSegment } from './interpret.js';
+import { foldLoopTail } from './loop.js';
 import { encodeOgg } from './ogg-encode.js';
 import { applyWavesReverb } from './reverb.js';
 import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
@@ -34,8 +35,9 @@ const MASTER_GAIN = 10 ** (-3 / 20);
  * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
  * with another version marks every ogg stale.
  */
-const RENDER_VERSION = 7;
-/** Synthesized headroom over the loop length, in whole seconds; trimmed away at encode. */
+const RENDER_VERSION = 8;
+/** Synthesized headroom over the loop length, in whole seconds. Folded back over the loop region
+ *  ({@link foldLoopTail}) before the encode trims it. */
 const RENDER_TAIL_S = 1;
 
 export const MUSIC_DIR = 'music';
@@ -152,7 +154,9 @@ export async function renderMusicStage(
       for (const channel of synthesized) {
         for (let i = 0; i < channel.length; i++) channel[i] = (channel[i] ?? 0) * MASTER_GAIN;
       }
-      const frames = Math.min(Math.round(totalS * SAMPLE_RATE), synthesized[0]?.length ?? 0);
+      const endFrame = Math.round(totalS * SAMPLE_RATE);
+      foldLoopTail(synthesized, endFrame, Math.round(loopStartS * SAMPLE_RATE));
+      const frames = Math.min(endFrame, synthesized[0]?.length ?? 0);
       await writeFile(outPath, await encodeOgg(synthesized, frames, SAMPLE_RATE, VBR_QUALITY));
       rendered++;
     } catch (err) {
