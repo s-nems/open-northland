@@ -9,6 +9,7 @@ import {
   stillUrl,
 } from '../../view/backdrop-stills.js';
 import { BRAND_BACKDROP } from '../../view/brand-art.js';
+import { rotationOrder } from './rotation.js';
 
 /**
  * The menu's settlement backdrop: stills captured from decoded maps by `npm run menu-backdrops`, shown
@@ -28,30 +29,6 @@ export function randomStill(
   const others = pool.filter((file) => file !== avoid);
   const choices = others.length > 0 ? others : pool;
   return choices[Math.floor(random() * choices.length)] ?? null;
-}
-
-/**
- * A Fisher-Yates order over `files` that leads with `first` while the pool still has it, so the still
- * already on the scene layer is not replaced the moment the menu opens. `random` is injected so tests
- * can pin the order.
- */
-export function rotationOrder(
-  files: readonly string[],
-  first: string | null,
-  random: () => number,
-): readonly string[] {
-  const order = [...files];
-  for (let i = order.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(random() * (i + 1));
-    const a = order[i];
-    const b = order[j];
-    if (a !== undefined && b !== undefined) {
-      order[i] = b;
-      order[j] = a;
-    }
-  }
-  const at = first === null ? -1 : order.indexOf(first);
-  return at > 0 ? [...order.slice(at), ...order.slice(0, at)] : order;
 }
 
 /**

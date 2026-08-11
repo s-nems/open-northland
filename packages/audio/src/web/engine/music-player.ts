@@ -2,8 +2,9 @@ import type { MusicTrack } from '../../data/music.js';
 import type { FetchBytes } from '../platform.js';
 
 /**
- * The one-track music half of playback: play the desired track's intro once, then loop its tail
- * forever, crossfading when the desired track changes.
+ * The music half of playback: either one track, whose intro plays once before its tail loops
+ * forever, or a rotation whose entries play through one at a time, in the given order, wrapping at
+ * the end. A changed desire crossfades.
  */
 
 /** Track changes crossfade over this many seconds. Approximation - DirectMusic transitions are
@@ -19,6 +20,14 @@ interface PlayingTrack {
   readonly gain: GainNode;
 }
 
+/** How one track is to be played, decided before its load and never re-read from live state. */
+interface StartOptions {
+  /** A single track loops its tail forever; a rotation entry plays through and hands over. */
+  readonly loop: boolean;
+  /** Ramp up over the outgoing track, rather than opening at full gain. */
+  readonly fadeIn: boolean;
+}
+
 export class MusicPlayer {
   private current: PlayingTrack | null = null;
   /** The file the latest {@link set} asked for. */
@@ -30,6 +39,10 @@ export class MusicPlayer {
   private readonly buffers = new Map<string, AudioBuffer>();
   /** Files whose fetch/decode failed - never re-fetched (a resume/enable re-set would loop otherwise). */
   private readonly failed = new Set<string>();
+  /** The rotation being played one entry at a time; empty in single-track mode. */
+  private rotation: readonly MusicTrack[] = [];
+  /** Index in {@link rotation} of the entry playing or loading. */
+  private rotationAt = 0;
 
   constructor(
     private readonly ctx: AudioContext,
@@ -44,15 +57,26 @@ export class MusicPlayer {
 
   /** Reconcile playback to `track`: keep it when already playing or loading, crossfade when it changed. */
   set(track: MusicTrack | null): void {
+    // A rotation entry plays through once, so leaving a rotation always restarts the track as a loop.
+    const wasRotating = this.rotation.length > 0;
+    this.rotation = [];
     if (track === null) {
       this.stop();
       return;
     }
-    if (this.desiredFile === track.file) return; // playing or already loading
-    this.desiredFile = track.file;
-    this.generation++;
-    this.fadeOutCurrent();
-    this.start(track, this.generation);
+    if (!wasRotating && this.desiredFile === track.file) return; // playing or already loading
+    this.startTrack(track, { loop: true, fadeIn: true });
+  }
+
+  /** Reconcile playback to `tracks` in order; a running rotation of the same tracks keeps going. */
+  setRotation(tracks: readonly MusicTrack[]): void {
+    const unchanged =
+      tracks.length === this.rotation.length &&
+      tracks.every((track, i) => track.file === this.rotation[i]?.file);
+    if (unchanged && this.desiredFile !== null) return; // already rotating these
+    if (!unchanged) this.rotationAt = 0;
+    this.rotation = tracks;
+    this.playRotationEntry(true);
   }
 
   /** Fade out and drop the running track (mute / teardown); the desired track is forgotten. */
@@ -60,6 +84,30 @@ export class MusicPlayer {
     this.desiredFile = null;
     this.generation++;
     this.fadeOutCurrent();
+  }
+
+  /** Move to the next rotation entry, wrapping at the end. */
+  private advance(): void {
+    this.rotationAt += 1;
+    this.playRotationEntry(false);
+  }
+
+  private playRotationEntry(fadeIn: boolean): void {
+    if (this.rotation.length === 0) {
+      this.stop();
+      return;
+    }
+    this.rotationAt %= this.rotation.length;
+    const track = this.rotation[this.rotationAt];
+    if (track === undefined) this.stop();
+    else this.startTrack(track, { loop: false, fadeIn });
+  }
+
+  private startTrack(track: MusicTrack, options: StartOptions): void {
+    this.desiredFile = track.file;
+    this.generation++;
+    this.fadeOutCurrent();
+    this.start(track, this.generation, options);
   }
 
   private fadeOutCurrent(): void {
@@ -100,10 +148,17 @@ export class MusicPlayer {
     return buffer;
   }
 
-  private start(track: MusicTrack, generation: number): void {
+  private start(track: MusicTrack, generation: number, options: StartOptions): void {
     void this.load(track.file).then((buffer) => {
       if (generation !== this.generation) return; // a newer set/stop superseded this load
-      if (buffer === null) return;
+      if (buffer === null) {
+        if (this.rotation.length > 0) {
+          // A track that cannot load leaves the rotation, so the retry cannot spin between failures.
+          this.rotation = this.rotation.filter((entry) => entry.file !== track.file);
+          this.playRotationEntry(options.fadeIn);
+        }
+        return;
+      }
       if (!this.canPlay()) {
         // Dropped without a stop() (context suspended externally): forget the desire so a later
         // set/resume re-assert retries instead of hitting the already-loading early return.
@@ -112,16 +167,23 @@ export class MusicPlayer {
       }
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
-      source.loop = true;
       // loopEnd stays 0 = the buffer's end; playback starts at 0 so the intro plays once.
-      if (track.loopStartS !== undefined) source.loopStart = track.loopStartS;
+      source.loop = options.loop;
+      if (options.loop && track.loopStartS !== undefined) source.loopStart = track.loopStartS;
+      source.onended = (): void => {
+        if (generation !== this.generation) return; // stopped or superseded, not finished
+        this.current = null;
+        this.advance();
+      };
       const gain = this.ctx.createGain();
-      gain.gain.value = 0;
+      gain.gain.value = options.fadeIn ? 0 : 1;
       source.connect(gain).connect(this.out);
       source.start();
-      const now = this.ctx.currentTime;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(1, now + MUSIC_FADE_S);
+      if (options.fadeIn) {
+        const now = this.ctx.currentTime;
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(1, now + MUSIC_FADE_S);
+      }
       this.current = { file: track.file, source, gain };
     });
   }

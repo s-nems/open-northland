@@ -43,11 +43,14 @@ export class FakeSource extends FakeNode {
   loopEnd = 0;
   started = false;
   stoppedAt: number | null = null;
+  /** A test fires this to play the buffer out; a stop fires it too, as the real node does. */
+  onended: (() => void) | null = null;
   start(): void {
     this.started = true;
   }
   stop(at: number): void {
     this.stoppedAt = at;
+    this.onended?.();
   }
 }
 
@@ -74,7 +77,10 @@ export class FakeContext {
     return { length: bytes.byteLength } as unknown as AudioBuffer;
   }
   async resume(): Promise<void> {
-    this.state = 'running';
+    if (this.state !== 'closed') this.state = 'running'; // a closed context never reopens
+  }
+  async close(): Promise<void> {
+    this.state = 'closed';
   }
 }
 

@@ -12,6 +12,7 @@ import { releaseMapPreviews } from './map-preview.js';
 import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VERSION_LINE } from './model.js';
+import { startMenuMusic } from './music.js';
 import { screenHead } from './screen-head.js';
 import { settingsScreen } from './settings.js';
 import { adoptStoredSettings, initialSettingsMemory, updateSettings } from './settings-state.js';
@@ -119,6 +120,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   root.append(content);
   document.body.append(root);
   void startBackdropRotation(sceneLayer, scope.signal);
+  startMenuMusic(scope.signal);
   const fullscreenPrompt = mountFullscreenPrompt(root, params, scope.signal);
 
   const closeMenu = (): void => {
