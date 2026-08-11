@@ -1,3 +1,4 @@
+import type { MusicStanding } from '@open-northland/audio';
 import type { HudLayout, HudModel } from '@open-northland/render';
 import type { FixedTimestep, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
@@ -108,6 +109,12 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     rosterPlayers: deps.rosterPlayers ?? [],
     observer: deps.observer === true,
   };
+  // Bound once and pulled by the driver only once a map has handed over its music, so a scene, a muted
+  // session, or a map without music never pays the head-count's O(entities) tally.
+  const musicStanding = (snap: WorldSnapshot): MusicStanding => ({
+    population: hudModelFor(snap).population,
+    stance: harshestStance(sim, musicRoster),
+  });
   // Bound once, so a frame never mints a fresh pair of closures.
   const buildingOverlay = (buildingType: number) =>
     overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height);
@@ -229,7 +236,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         // they need their own fog gate: a hidden enemy must not natter or hammer out of empty black.
         visibleTile: fogGates.visibleTile,
         // Which mood variant of the map's music plays: our head-count and how we stand with the roster.
-        standing: { population: hudModelFor(snap).population, stance: harshestStance(sim, musicRoster) },
+        standingOf: musicStanding,
       });
     }
     const cpuMs = performance.now() - cpu0;

@@ -7,7 +7,6 @@ import {
   type MusicManifest,
   type MusicMoodState,
   type MusicStanding,
-  type MusicTrack,
   musicTrackFor,
   nextMusicMood,
 } from '../data/music/index.js';
@@ -30,9 +29,10 @@ export interface SoundFrameInput {
   /** The viewer's fog-of-war visibility at a fractional tile - gates the settler animation cues (a
    *  settler hidden by the fog must not natter or hammer out of empty black). Omit → no fog. */
   readonly visibleTile?: (col: number, row: number) => boolean;
-  /** The local settlement's standing, picking the mood variant of the map's music. Omit → the calm
-   *  variant, which only a fight then moves. */
-  readonly standing?: MusicStanding;
+  /** The local settlement's standing, picking the mood variant of the map's music. Pulled only once a
+   *  map has handed over its music, since the head-count behind it is an O(entities) read. Omit → the
+   *  calm variant, which only a fight then moves. */
+  readonly standingOf?: (snapshot: WorldSnapshot) => MusicStanding;
 }
 
 /** The music a map authored: its `musictype` and what the pipeline rendered for it. */
@@ -83,13 +83,8 @@ export class SoundDriver {
     this.engine.setEnabled(enabled);
   }
 
-  /** Which music track should be playing (null = none); starts once audio is unlocked. */
-  setMusic(track: MusicTrack | null): void {
-    this.engine.setMusic(track);
-  }
-
-  /** Hand over the map's music, after which each frame picks its mood variant. Null stops choosing,
-   *  leaving whatever {@link setMusic} last asked for. */
+  /** Hand over the map's music, after which each frame picks its mood variant. Null stops choosing
+   *  and leaves the running track alone. */
   setMusicMap(map: MusicMap | null): void {
     this.musicMap = map;
     this.mood = CALM_MOOD;
@@ -132,7 +127,7 @@ export class SoundDriver {
   private updateMusic(input: SoundFrameInput): void {
     const map = this.musicMap;
     if (map === null) return;
-    const standing = input.standing ?? UNKNOWN_STANDING;
+    const standing = input.standingOf?.(input.snapshot) ?? UNKNOWN_STANDING;
     this.mood = nextMusicMood(this.mood, {
       events: input.events,
       snapshot: input.snapshot,

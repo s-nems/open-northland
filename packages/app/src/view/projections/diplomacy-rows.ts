@@ -22,7 +22,8 @@ export interface DiplomacyRosterOptions {
 /**
  * The harshest stance standing between the viewer and the roster players it has met, either
  * direction: `enemy` if anyone is hostile, `friend` only if everyone met is friendly, else `neutral`.
- * A viewer that has met nobody stands `neutral`.
+ * A viewer that has met nobody stands `neutral`. Approximation: the original's own rule for picking a
+ * theme's mood is not readable, so this collapses the roster the way the diplomacy window reads it.
  */
 export function harshestStance(
   sim: DiplomacySimView,
