@@ -7,9 +7,12 @@ export async function encodeOgg(
   sampleRate: number,
   vbrQuality: number,
 ): Promise<Uint8Array> {
-  const encoder = await createOggEncoder();
   const [left, right] = channels;
   if (left === undefined || right === undefined) throw new Error('encode expects stereo channels');
+  // A non-positive count would skip the loop and emit a headerless-sounding, zero-audio file that the
+  // manifest would still advertise.
+  if (!(frames > 0)) throw new Error(`encode expects a positive frame count, got ${frames}`);
+  const encoder = await createOggEncoder();
   encoder.configure({ channels: 2, sampleRate, vbrQuality });
   const parts: Uint8Array[] = [];
   // Encode in bounded slices so the wasm side never sees the whole track at once. Each returned

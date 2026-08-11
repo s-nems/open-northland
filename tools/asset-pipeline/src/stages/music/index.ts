@@ -28,16 +28,26 @@ import { type DlsBank, dlsFileNames, loadDlsBanks, synthesizeEvents } from './sy
 const SAMPLE_RATE = 44100;
 const CHANNELS = 2;
 const VBR_QUALITY = 3;
-/** Headroom for the reverb's wet sum; uniform so relative track loudness survives. */
+/**
+ * Brings the mix back inside full scale: 12 of the 64 segments peak above it once the reverb's wet
+ * sum is added, and this scaling is what keeps them from clipping rather than a spare margin over
+ * one. Uniform, so relative track loudness survives. Anything that raises levels lands on 0 dBFS.
+ */
 const MASTER_GAIN = 10 ** (-3 / 20);
 /**
  * Bump when this stage's own synthesis or post-processing (event replay, reverb, publish rate,
  * master gain) changes rendered bytes: the source fingerprint cannot see a code change, so a stored
  * manifest with another version marks every ogg stale.
  */
-const RENDER_VERSION = 13;
+const RENDER_VERSION = 14;
 /** Synthesized headroom over the segment length, in whole seconds; trimmed away at encode. */
 const RENDER_TAIL_S = 1;
+/**
+ * Longest segment this stage will render. `mtLength` is four unvalidated bytes that size every buffer
+ * downstream, so a corrupt or hostile header must be rejected here rather than allocating from it. The
+ * owned corpus tops out near 68 s.
+ */
+const MAX_SEGMENT_S = 300;
 
 export const MUSIC_DIR = 'music';
 export const MUSIC_MANIFEST_NAME = 'manifest.json';
@@ -60,7 +70,9 @@ export interface MusicStageResult {
 /**
  * What the stored oggs were rendered from: this stage's render version and the byte sizes of every
  * segment and bank under `DataX/DM2`. The Vfs seam exposes no mtime, so a swapped game copy is
- * recognised by input size rather than by time.
+ * recognised by input size rather than by time. A same-size edit therefore reads as unchanged, and
+ * the synthesizer and encoder are pinned to exact versions in `package.json` because a caret bump
+ * would change rendered bytes without changing anything this identity can see.
  */
 interface RenderIdentity {
   readonly renderVersion: number;
@@ -137,6 +149,9 @@ export async function renderMusicStage(
       const timing = decodeSegmentTiming(segmentBytes);
       if (timing === undefined) throw new Error('no segh header');
       const totalS = musicTimeToSeconds(timing.lengthTicks, timing.tempos);
+      if (!(totalS > 0) || totalS > MAX_SEGMENT_S) {
+        throw new Error(`segment length ${timing.lengthTicks} ticks is out of range`);
+      }
       manifest.set(stem, { file });
       if (sameInputs && (await fs.stat(outPath))?.kind === 'file') {
         kept++;
@@ -163,6 +178,9 @@ export async function renderMusicStage(
       rendered++;
     } catch (err) {
       manifest.delete(stem);
+      // Drop any ogg an earlier version left here: the keep check tests existence, not provenance, so
+      // a survivor would be adopted as this version's render on the next run.
+      await fs.rm(outPath);
       failed++;
       console.warn(`[pipeline] music: ${segment} failed: ${errorMessage(err)}`);
     }

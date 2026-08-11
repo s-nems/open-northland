@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { applyWavesReverb } from '../src/stages/music/reverb.js';
 
-const RATE = 22050;
+/** The rate the stage publishes at: the damping coefficient does not scale, so a different rate here
+ *  would measure a filter that never ships. */
+const RATE = 44100;
 
 function impulseChannels(seconds: number): Float32Array[] {
   const frames = Math.round(seconds * RATE);

@@ -142,6 +142,30 @@ const SEQ_ITEM_STATUS_OFFSET = 14;
 /** `DMUS_IO_TEMPO_ITEM` on disk: `lTime` at +0, four pad bytes, `dblTempo` at +8. */
 const TEMPO_ITEM_BPM_OFFSET = 8;
 
+/** Smallest body each fixed-offset read needs, so a short chunk fails here instead of reading the
+ *  next chunk's bytes as this one's fields. */
+const STYH_MIN_BYTES = STYH_TEMPO_OFFSET + 8;
+const PTNH_MIN_BYTES = PTNH_MEASURES_OFFSET + 2;
+const PRFC_MIN_BYTES = PRFC_LOGICAL_PART_OFFSET + 2;
+const PRTH_MIN_BYTES = PRTH_PLAYMODE_OFFSET + 1;
+const BINS_MIN_BYTES = BINS_TRANSPOSE_OFFSET + 2;
+const CRDB_MIN_BYTES = 4 + CHORD_TIME_OFFSET + 4;
+/** Smallest record each variable-stride array needs; the stride comes from the file, so a small one
+ *  would otherwise multiply the record count and walk past the chunk. */
+const NOTE_ITEM_MIN_BYTES = NOTE_PLAYMODE_OFFSET + 1;
+const CURVE_ITEM_MIN_BYTES = CURVE_CC_OFFSET + 1;
+const SEQ_ITEM_MIN_BYTES = SEQ_ITEM_STATUS_OFFSET + 3;
+
+function requireBody(chunk: RiffChild, minBytes: number): void {
+  const size = chunk.bodyEnd - chunk.bodyStart;
+  if (size < minBytes) throw new Error(`${chunk.id} chunk holds ${size} bytes, needs ${minBytes}`);
+}
+
+/** How many whole `stride`-byte records follow the leading size prefix of a chunk body. */
+function recordCount(chunk: RiffChild, stride: number): number {
+  return Math.floor((chunk.bodyEnd - chunk.bodyStart - 4) / stride);
+}
+
 function guidHex(bytes: Uint8Array, off: number): string {
   let out = '';
   for (let i = 0; i < GUID_BYTES; i++) out += (bytes[off + i] ?? 0).toString(16).padStart(2, '0');
@@ -192,6 +216,7 @@ function decodeStylePart(bytes: Uint8Array, part: RiffChild): { id: string; part
   const curves: DmStyleCurve[] = [];
   for (const c of riffChildren(bytes, part.bodyStart, part.bodyEnd)) {
     if (c.id === 'prth') {
+      requireBody(c, PRTH_MIN_BYTES);
       timeSig = timeSigAt(bytes, c.bodyStart);
       for (let i = 0; i < VARIATION_COUNT; i++) {
         variationChoices.push(view.getUint32(c.bodyStart + PRTH_VARIATION_CHOICES_OFFSET + 4 * i, true));
@@ -200,7 +225,7 @@ function decodeStylePart(bytes: Uint8Array, part: RiffChild): { id: string; part
       playMode = bytes[c.bodyStart + PRTH_PLAYMODE_OFFSET] ?? 0;
     } else if (c.id === 'note') {
       const structSize = view.getUint32(c.bodyStart, true);
-      const count = structSize > 0 ? Math.floor((c.bodyEnd - c.bodyStart - 4) / structSize) : 0;
+      const count = structSize >= NOTE_ITEM_MIN_BYTES ? recordCount(c, structSize) : 0;
       for (let i = 0; i < count; i++) {
         const rec = c.bodyStart + 4 + i * structSize;
         notes.push({
@@ -215,7 +240,7 @@ function decodeStylePart(bytes: Uint8Array, part: RiffChild): { id: string; part
       }
     } else if (c.id === 'crve') {
       const structSize = view.getUint32(c.bodyStart, true);
-      const count = structSize > 0 ? Math.floor((c.bodyEnd - c.bodyStart - 4) / structSize) : 0;
+      const count = structSize >= CURVE_ITEM_MIN_BYTES ? recordCount(c, structSize) : 0;
       for (let i = 0; i < count; i++) {
         const rec = c.bodyStart + 4 + i * structSize;
         curves.push({
@@ -246,6 +271,7 @@ function decodeBand(bytes: Uint8Array, band: RiffChild): DmBand {
       let file: string | undefined;
       for (const x of riffChildren(bytes, inst.bodyStart, inst.bodyEnd)) {
         if (x.id === 'bins') {
+          requireBody(x, BINS_MIN_BYTES);
           const flags = view.getUint32(x.bodyStart + BINS_FLAGS_OFFSET, true);
           header = {
             patch: view.getUint32(x.bodyStart, true),
@@ -276,6 +302,7 @@ function decodePatternTrack(bytes: Uint8Array, track: RiffChild): DmTrack {
   let pattern: DmPattern | undefined;
   for (const c of riffChildren(bytes, track.bodyStart, track.bodyEnd)) {
     if (c.id === 'styh') {
+      requireBody(c, STYH_MIN_BYTES);
       tempo = view.getFloat64(c.bodyStart + STYH_TEMPO_OFFSET, true);
     } else if (c.id === 'LIST' && c.form === 'pttn') {
       let timeSig: DmTimeSignature = { beatsPerMeasure: 0, beat: 0, gridsPerBeat: 0 };
@@ -285,11 +312,13 @@ function decodePatternTrack(bytes: Uint8Array, track: RiffChild): DmTrack {
       const parts = new Map<string, DmStylePart>();
       for (const p of riffChildren(bytes, c.bodyStart, c.bodyEnd)) {
         if (p.id === 'ptnh') {
+          requireBody(p, PTNH_MIN_BYTES);
           timeSig = timeSigAt(bytes, p.bodyStart);
           measures = view.getUint16(p.bodyStart + PTNH_MEASURES_OFFSET, true);
         } else if (p.id === 'LIST' && p.form === 'pref') {
           for (const r of riffChildren(bytes, p.bodyStart, p.bodyEnd)) {
             if (r.id === 'prfc') {
+              requireBody(r, PRFC_MIN_BYTES);
               partRefs.push({
                 partId: guidHex(bytes, r.bodyStart),
                 logicalPartId: view.getUint16(r.bodyStart + PRFC_LOGICAL_PART_OFFSET, true),
@@ -338,6 +367,7 @@ function decodeChordTrack(bytes: Uint8Array, track: RiffChild): DmTrack {
   const times: number[] = [];
   for (const c of riffChildren(bytes, track.bodyStart, track.bodyEnd)) {
     if (c.id === 'crdb') {
+      requireBody(c, CRDB_MIN_BYTES);
       // Only the chord's time matters: the DX8 path resolves notes at schedule time, so the
       // runtime chord state a chord message writes is never read back.
       times.push(view.getUint32(c.bodyStart + 4 + CHORD_TIME_OFFSET, true));
@@ -352,14 +382,10 @@ function decodeSequenceTrack(bytes: Uint8Array, chunk: RiffChild): DmTrack {
   for (const c of riffChildren(bytes, chunk.bodyStart, chunk.bodyEnd)) {
     if (c.id !== 'evtl') continue;
     const structSize = view.getUint32(c.bodyStart, true);
-    if (structSize === 0) continue;
-    // Strict `<`: a record ending exactly at the chunk end is dropped. Approximation carried over
-    // from the parser the shipped renders were validated against.
-    for (
-      let rec = c.bodyStart + 4;
-      rec - c.bodyStart + structSize < c.bodyEnd - c.bodyStart;
-      rec += structSize
-    ) {
+    if (structSize < SEQ_ITEM_MIN_BYTES) continue;
+    const count = recordCount(c, structSize);
+    for (let i = 0; i < count; i++) {
+      const rec = c.bodyStart + 4 + i * structSize;
       items.push({
         time: view.getUint32(rec, true),
         duration: view.getUint32(rec + 4, true),
@@ -383,7 +409,9 @@ export function decodeSegmentTracks(bytes: Uint8Array): DmSegment {
   const tracks: DmTrack[] = [];
   for (const seg of riffChildren(bytes, root.bodyStart, root.bodyEnd)) {
     if (seg.id === 'segh') {
-      length = view.getUint32(seg.bodyStart + 4, true);
+      // `MUSIC_TIME` is a signed long: read it the same way `sgt.ts` does, so the two decoders cannot
+      // disagree about the same header by 2^32.
+      length = view.getInt32(seg.bodyStart + 4, true);
     }
     if (!(seg.id === 'LIST' && seg.form === 'trkl')) continue;
     for (const trk of riffChildren(bytes, seg.bodyStart, seg.bodyEnd)) {

@@ -200,7 +200,12 @@ export function musicValueToMidi(
   return noteValue;
 }
 
-/** The pi literal the reference interpolator authors (not `Math.PI`). */
+/**
+ * Truncated on purpose. Curve shaping runs in single precision, and swapping in `Math.PI` moves
+ * interpolated controller values in the low bits, so the constant is part of the rendered result
+ * rather than an imprecise spelling of pi.
+ */
+// biome-ignore lint/suspicious/noApproximativeNumericConstant: the truncation is the specified value
 const CURVE_PI = 3.14159265359;
 const f32 = Math.fround;
 

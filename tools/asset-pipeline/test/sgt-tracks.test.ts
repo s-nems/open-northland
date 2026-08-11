@@ -90,16 +90,22 @@ describe('decodeSegmentTracks', () => {
     expect(decoded.tracks).toEqual([{ kind: 'chord', times: [768, 1536] }]);
   });
 
-  it('drops the final sequence record on an exact fit and keeps it with slack', () => {
+  it('keeps the final sequence record whether or not it ends flush with the chunk', () => {
     const items = [
       { time: 0, duration: 100, pChannel: 1, status: 0x90, byte1: 60, byte2: 90 },
       { time: 200, duration: 100, pChannel: 1, status: 0x90, byte1: 62, byte2: 90 },
     ];
-    const exact = decodeSegmentTracks(segment(1, 3072, [sequenceTrack(items)]));
-    expect(exact.tracks[0]).toMatchObject({ kind: 'sequence', items: [{ byte1: 60 }] });
-    const slack = decodeSegmentTracks(segment(1, 3072, [sequenceTrack(items, true)]));
-    if (slack.tracks[0]?.kind !== 'sequence') throw new Error('no sequence');
-    expect(slack.tracks[0].items.map((i) => i.byte1)).toEqual([60, 62]);
+    for (const trailingSlack of [false, true]) {
+      const decoded = decodeSegmentTracks(segment(1, 3072, [sequenceTrack(items, trailingSlack)]));
+      if (decoded.tracks[0]?.kind !== 'sequence') throw new Error('no sequence');
+      expect(decoded.tracks[0].items.map((i) => i.byte1)).toEqual([60, 62]);
+    }
+  });
+
+  it('ignores a sequence stride too small to hold a record', () => {
+    const items = [{ time: 0, duration: 100, pChannel: 1, status: 0x90, byte1: 60, byte2: 90 }];
+    const decoded = decodeSegmentTracks(segment(1, 3072, [sequenceTrack(items, false, 4)]));
+    expect(decoded.tracks[0]).toEqual({ kind: 'sequence', items: [] });
   });
 
   it('throws on track types the interpreter does not support', () => {

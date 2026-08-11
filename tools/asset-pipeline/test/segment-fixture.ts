@@ -53,7 +53,8 @@ export interface FixtureNote {
   readonly playMode?: number;
 }
 
-const NOTE_RECORD_BYTES = 23;
+/** The stride every `note` chunk in the owned corpus authors. */
+const NOTE_RECORD_BYTES = 24;
 
 function noteRecord(n: FixtureNote): number[] {
   return [
@@ -68,6 +69,7 @@ function noteRecord(n: FixtureNote): number[] {
     0,
     0,
     n.playMode ?? DMUS_PLAYMODE_NONE,
+    0,
     0,
   ];
 }
@@ -233,8 +235,13 @@ export interface FixtureSequenceItem {
 
 const SEQ_RECORD_BYTES = 17;
 
-/** `slack` appends a trailing byte so the strict-< reader keeps the final record. */
-export function sequenceTrack(items: readonly FixtureSequenceItem[], slack = false): number[] {
+/** `slack` appends a trailing byte, so a caller can build both a flush and a padded chunk end.
+ *  `stride` overrides the authored record size, for the too-small case. */
+export function sequenceTrack(
+  items: readonly FixtureSequenceItem[],
+  slack = false,
+  stride = SEQ_RECORD_BYTES,
+): number[] {
   const records = items.flatMap((i) => [
     ...u32(i.time),
     ...u32(i.duration),
@@ -244,11 +251,7 @@ export function sequenceTrack(items: readonly FixtureSequenceItem[], slack = fal
     i.byte1,
     i.byte2,
   ]);
-  return track(
-    'seqt',
-    '',
-    chunk('seqt', chunk('evtl', [...u32(SEQ_RECORD_BYTES), ...records, ...(slack ? [0] : [])])),
-  );
+  return track('seqt', '', chunk('seqt', chunk('evtl', [...u32(stride), ...records, ...(slack ? [0] : [])])));
 }
 
 export function chordTrack(times: readonly number[]): number[] {
