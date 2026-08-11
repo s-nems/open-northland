@@ -39,15 +39,14 @@ function riff(formId: string, body: readonly number[]): Uint8Array {
   return new Uint8Array(chunk('RIFF', [...ascii(formId), ...body]));
 }
 
-const INFINITE = 0xffffffff;
-
-function seghChunk(opts: { repeats?: number; length: number; loopStart: number }): number[] {
+/** The full `DMUS_IO_SEGMENT_HEADER`, with the fields the decoder skips filled distinctly. */
+function seghChunk(length: number): number[] {
   return chunk('segh', [
-    ...u32(opts.repeats ?? INFINITE),
-    ...u32(opts.length),
+    ...u32(0xffffffff), // dwRepeats (infinite)
+    ...u32(length),
     ...u32(0), // mtPlayStart
-    ...u32(opts.loopStart),
-    ...u32(opts.length), // mtLoopEnd
+    ...u32(6144), // mtLoopStart
+    ...u32(length), // mtLoopEnd
     ...u32(0), // dwResolution
   ]);
 }
@@ -64,20 +63,18 @@ function tetrChunk(items: readonly { time: number; bpm: number }[]): number[] {
 describe('decodeSegmentTiming', () => {
   it('reads the header and a nested tempo track', () => {
     const bytes = riff('DMSG', [
-      ...seghChunk({ length: 92160, loopStart: 6144 }),
+      ...seghChunk(92160),
       ...list('trkl', list('DMTK', tetrChunk([{ time: 0, bpm: 110 }]))),
     ]);
     expect(decodeSegmentTiming(bytes)).toEqual({
-      repeats: INFINITE,
       lengthTicks: 92160,
-      loopStartTicks: 6144,
       tempos: [{ time: 0, bpm: 110 }],
     });
   });
 
   it('sorts tempo items by time', () => {
     const bytes = riff('DMSG', [
-      ...seghChunk({ length: 1000, loopStart: 0 }),
+      ...seghChunk(1000),
       ...tetrChunk([
         { time: 500, bpm: 60 },
         { time: 0, bpm: 120 },

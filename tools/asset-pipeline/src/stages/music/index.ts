@@ -5,23 +5,22 @@ import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { interpretSegment } from './interpret.js';
-import { eventsThroughEnd, foldLoopTail } from './loop.js';
 import { encodeOgg } from './ogg-encode.js';
 import { applyWavesReverb } from './reverb.js';
 import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
 
 /**
- * Music stage: render the `DataX/DM2` DirectMusic segments to looping ogg tracks - one `mtLength`
- * pass per segment, with the loop-back point in the manifest (loop semantics: `decoders/sgt.ts`).
- * The performance interpreter turns each segment into timed note/controller events; spessasynth
- * synthesizes them from the game's DLS banks. The authored Waves Reverb from each segment's
- * embedded audiopath applies to the whole mix.
+ * Music stage: render the `DataX/DM2` DirectMusic segments to one ogg track each, a single
+ * `mtLength` pass. The performance interpreter turns each segment into timed note/controller events;
+ * spessasynth synthesizes them from the game's DLS banks. The authored Waves Reverb from each
+ * segment's embedded audiopath applies to the whole mix.
  * Deviation: the audiopath's 22050 Hz port rate is a synth-port request, not an output format, and
  * is not applied - most DLS samples are 44.1 kHz, and a recording of the original carries unbroken
  * content past 11 kHz, so publishing at the synth rate keeps a band that halving would discard.
- * `Theme_Viking_Hostile` alone authors `repeats: 1`; looping it like its 63 infinite siblings is an
- * approximation. Without `DataX/DM2` in the game copy the stage is skipped and the app plays no
- * music.
+ * Approximation: the original repeats a segment's authored loop region without a break, which a
+ * rendered file cannot join cleanly; playback parts whole passes with a fade and a gap instead, so
+ * the segment's loop point is not published. Without `DataX/DM2` in the game copy the stage is
+ * skipped and the app plays no music.
  */
 
 /** Synth render parameters: 44.1 kHz stereo, encoder quality ~mid VBR. */
@@ -35,9 +34,8 @@ const MASTER_GAIN = 10 ** (-3 / 20);
  * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
  * with another version marks every ogg stale.
  */
-const RENDER_VERSION = 12;
-/** Synthesized headroom over the loop length, in whole seconds. Folded back over the loop region
- *  ({@link foldLoopTail}) before the encode trims it. */
+const RENDER_VERSION = 13;
+/** Synthesized headroom over the segment length, in whole seconds; trimmed away at encode. */
 const RENDER_TAIL_S = 1;
 
 export const MUSIC_DIR = 'music';
@@ -45,7 +43,6 @@ export const MUSIC_MANIFEST_NAME = 'manifest.json';
 
 interface ManifestTrack {
   readonly file: string;
-  readonly loopStartS?: number;
 }
 
 export interface MusicStageResult {
@@ -131,9 +128,8 @@ export async function renderMusicStage(
       const segmentBytes = await readFile(sourcePath);
       const timing = decodeSegmentTiming(segmentBytes);
       if (timing === undefined) throw new Error('no segh header');
-      const loopStartS = musicTimeToSeconds(timing.loopStartTicks, timing.tempos);
       const totalS = musicTimeToSeconds(timing.lengthTicks, timing.tempos);
-      manifest.set(stem, loopStartS > 0 ? { file, loopStartS } : { file });
+      manifest.set(stem, { file });
       if (sameRenderVersion && (await isUpToDate(outPath, sourcePath, inputsMtimeMs))) {
         kept++;
         return;
@@ -146,13 +142,7 @@ export async function renderMusicStage(
       });
       if (banksPromise === undefined) banksPromise = loadDlsBanks(dm2);
       const banks = await banksPromise;
-      const endFrame = Math.round(totalS * SAMPLE_RATE);
-      const synthesized = await synthesizeEvents(
-        { ...events, events: eventsThroughEnd(events.events, endFrame) },
-        banks,
-        SAMPLE_RATE,
-        renderS * SAMPLE_RATE,
-      );
+      const synthesized = await synthesizeEvents(events, banks, SAMPLE_RATE, renderS * SAMPLE_RATE);
       const audiopath = decodeSegmentAudiopath(segmentBytes);
       if (audiopath?.reverb !== undefined) {
         applyWavesReverb(synthesized, SAMPLE_RATE, audiopath.reverb);
@@ -160,8 +150,7 @@ export async function renderMusicStage(
       for (const channel of synthesized) {
         for (let i = 0; i < channel.length; i++) channel[i] = (channel[i] ?? 0) * MASTER_GAIN;
       }
-      foldLoopTail(synthesized, endFrame, Math.round(loopStartS * SAMPLE_RATE));
-      const frames = Math.min(endFrame, synthesized[0]?.length ?? 0);
+      const frames = Math.min(Math.round(totalS * SAMPLE_RATE), synthesized[0]?.length ?? 0);
       await writeFile(outPath, await encodeOgg(synthesized, frames, SAMPLE_RATE, VBR_QUALITY));
       rendered++;
     } catch (err) {
