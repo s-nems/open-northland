@@ -1,5 +1,6 @@
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { vjoin } from '@open-northland/vfs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readConfig, writeConfig } from '../src/config.js';
 import { configFileOf, contentDirOf, modsDirOf, savesDirOf } from '../src/paths.js';
@@ -24,17 +25,25 @@ describe('createShellState', () => {
 
   afterEach(() => temp.cleanup());
 
+  const INSTALLED_MOD = 'CnMod 1.3.1';
+
   /** An unpacked mod root is any dir holding a `DataCnmd/` child. */
-  async function makeModRoot(...segments: string[]): Promise<string> {
-    const root = join(temp.path, ...segments);
+  async function makeModRoot(root: string): Promise<string> {
     await mkdir(join(root, 'DataCnmd'), { recursive: true });
     return root;
   }
 
+  /** Discovery appends the found name through the `Vfs` seam, which joins with `/` everywhere. */
+  async function installMod(): Promise<string> {
+    await makeModRoot(join(paths.modsDir, INSTALLED_MOD));
+    return vjoin(paths.modsDir, INSTALLED_MOD);
+  }
+
   describe('availableModRoot', () => {
     it('prefers a still-valid hand-picked mod root', async () => {
-      const picked = await makeModRoot('elsewhere', 'CnMod');
-      await makeModRoot('mods', 'CnMod 1.3.1');
+      // A hand-picked root arrives in the platform's own spelling and is validated, not rewritten.
+      const picked = await makeModRoot(join(temp.path, 'elsewhere', 'CnMod'));
+      await installMod();
       writeConfig(paths.configFile, { modPath: picked });
 
       expect(await createShellState(paths).availableModRoot()).toBe(picked);
@@ -42,7 +51,7 @@ describe('createShellState', () => {
     });
 
     it('drops a stale hand-picked root from the config and falls back to mods/', async () => {
-      const installed = await makeModRoot('mods', 'CnMod 1.3.1');
+      const installed = await installMod();
       writeConfig(paths.configFile, { gamePath: '/somewhere/game', modPath: join(temp.path, 'deleted') });
 
       expect(await createShellState(paths).availableModRoot()).toBe(installed);
@@ -73,7 +82,7 @@ describe('createShellState', () => {
     });
 
     it('carries the remembered game path and a discovered mod root', async () => {
-      const installed = await makeModRoot('mods', 'CnMod 1.3.1');
+      const installed = await installMod();
       writeConfig(paths.configFile, { gamePath: '/somewhere/game' });
 
       const state = await createShellState(paths).desktopState();
