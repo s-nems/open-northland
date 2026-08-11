@@ -5,6 +5,7 @@ import {
   MUSIC_FADE_S,
   musicTrackFor,
   parseMusicManifest,
+  ROTATION_GAP_S,
   WebAudioEngine,
 } from '../src/index.js';
 import { FakeContext, type FakeGain, type FakeSource, flush } from './helpers/fake-audio.js';
@@ -196,8 +197,10 @@ describe('WebAudioEngine music', () => {
 
 describe('WebAudioEngine music rotation', () => {
   const ROTATION = [{ file: 'one.ogg' }, { file: 'two.ogg' }, { file: 'three.ogg' }];
+  /** The fake serves a 4-byte buffer, and one fetched byte decodes to one second. */
+  const TRACK_S = 4;
 
-  it('plays one entry through and starts the next when it ends, at full gain', async () => {
+  it('plays one entry through, fading it out into a silent gap before the next opens', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
     engine.setMusicRotation(ROTATION);
@@ -205,15 +208,17 @@ describe('WebAudioEngine music rotation', () => {
     const first = ctx.sources[0] as FakeSource;
     expect(first.loop).toBe(false); // a rotation entry hands over instead of looping
     const opening = first.connectedTo[0] as FakeGain;
-    expect(opening.gain.value).toBe(1); // nothing to cover, so no fade to creep in over
-    expect(opening.gain.ramps).toEqual([]);
+    // Nothing to cover, so it opens at full gain; the only ramp is the fade into the gap, which
+    // reaches silence a gap before the buffer runs out (the fake serves one second per fetched byte).
+    expect(opening.gain.ramps).toEqual([{ value: 0, time: TRACK_S - ROTATION_GAP_S }]);
     first.onended?.();
     await flush();
     expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg']);
     const second = ctx.sources[1] as FakeSource;
     const gain = second.connectedTo[0] as FakeGain;
-    expect(gain.gain.value).toBe(1); // opens at full gain - no fade over a track that finished
-    expect(gain.gain.ramps).toEqual([]);
+    // Opens at full gain - the entry it follows already faded itself out, so there is nothing to
+    // creep in over.
+    expect(gain.gain.ramps).toEqual([{ value: 0, time: TRACK_S - ROTATION_GAP_S }]);
   });
 
   it('wraps to the first entry after the last one, playing every entry in order', async () => {
