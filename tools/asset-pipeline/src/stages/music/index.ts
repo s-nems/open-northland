@@ -5,7 +5,7 @@ import { errorMessage } from '../../errors.js';
 import type { StageItemReporter } from '../../progress.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { interpretSegment } from './interpret.js';
-import { foldLoopTail } from './loop.js';
+import { eventsThroughEnd, foldLoopTail } from './loop.js';
 import { encodeOgg } from './ogg-encode.js';
 import { applyWavesReverb } from './reverb.js';
 import { type DlsBank, loadDlsBanks, synthesizeEvents } from './synthesize.js';
@@ -35,7 +35,7 @@ const MASTER_GAIN = 10 ** (-3 / 20);
  * master gain) changes rendered bytes: source mtimes cannot see code changes, so a stored manifest
  * with another version marks every ogg stale.
  */
-const RENDER_VERSION = 8;
+const RENDER_VERSION = 9;
 /** Synthesized headroom over the loop length, in whole seconds. Folded back over the loop region
  *  ({@link foldLoopTail}) before the encode trims it. */
 const RENDER_TAIL_S = 1;
@@ -146,7 +146,13 @@ export async function renderMusicStage(
       });
       if (banksPromise === undefined) banksPromise = loadDlsBanks(dm2);
       const banks = await banksPromise;
-      const synthesized = await synthesizeEvents(events, banks, SAMPLE_RATE, renderS * SAMPLE_RATE);
+      const endFrame = Math.round(totalS * SAMPLE_RATE);
+      const synthesized = await synthesizeEvents(
+        { ...events, events: eventsThroughEnd(events.events, endFrame) },
+        banks,
+        SAMPLE_RATE,
+        renderS * SAMPLE_RATE,
+      );
       const audiopath = decodeSegmentAudiopath(segmentBytes);
       if (audiopath?.reverb !== undefined) {
         applyWavesReverb(synthesized, SAMPLE_RATE, audiopath.reverb);
@@ -154,7 +160,6 @@ export async function renderMusicStage(
       for (const channel of synthesized) {
         for (let i = 0; i < channel.length; i++) channel[i] = (channel[i] ?? 0) * MASTER_GAIN;
       }
-      const endFrame = Math.round(totalS * SAMPLE_RATE);
       foldLoopTail(synthesized, endFrame, Math.round(loopStartS * SAMPLE_RATE));
       const frames = Math.min(endFrame, synthesized[0]?.length ?? 0);
       await writeFile(outPath, await encodeOgg(synthesized, frames, SAMPLE_RATE, VBR_QUALITY));

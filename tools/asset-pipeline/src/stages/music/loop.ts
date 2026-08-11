@@ -1,8 +1,20 @@
+import type { TimedEvent } from './events.js';
+
 /**
  * Seamless looping for a rendered segment. A live sequencer never stops: the reverb and the notes
  * still sounding when a pass reaches the segment's end ring on over the next pass. A file cut at that
  * end loses both, so the loop restarts dry after an abrupt stop.
  */
+
+/**
+ * The performance with the next pass's fresh notes dropped. The interpreter re-enqueues the whole
+ * segment at its end, so rendering past the trim point would otherwise start the piece again where
+ * only this pass's decay belongs. Note-offs are kept at any time, so a note held across the end still
+ * releases instead of ringing on.
+ */
+export function eventsThroughEnd(events: readonly TimedEvent[], endFrame: number): TimedEvent[] {
+  return events.filter((event) => event.t < endFrame || event.e === 'off');
+}
 
 /**
  * Add what still rings past `endFrame` onto the loop region starting at `loopFrame`, so the trimmed
