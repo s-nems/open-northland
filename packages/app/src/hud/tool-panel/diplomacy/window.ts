@@ -52,6 +52,8 @@ export interface DiplomacyWindowDeps {
 /** The pop-up diplomacy window; per-frame refresh rebuilds only when the rows or selection changed. */
 export interface DiplomacyWindow extends ToolWindow {
   refresh(): void;
+  state(): number | null;
+  restore(player: number | null): void;
 }
 
 export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindow {
@@ -220,6 +222,10 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       const rows = deps.rows();
       if (rebuildKey(rows, resolveSelectedPlayer(rows, selected)) === key) return;
       rebuild(rows);
+    },
+    state: () => selected,
+    restore: (player): void => {
+      selected = player;
     },
   };
 }

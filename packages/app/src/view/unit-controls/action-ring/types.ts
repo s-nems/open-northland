@@ -46,5 +46,13 @@ export interface SettlerActions {
   close(): void;
   /** True when a client point is over a visible menu button; the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
+  state(): SettlerActionsState;
+  restore(state: SettlerActionsState): void;
   dispose(): void;
+}
+
+export interface SettlerActionsState {
+  readonly mode: MenuMode;
+  readonly anchor: { readonly x: number; readonly y: number } | null;
+  readonly pickerScrollTop: number;
 }

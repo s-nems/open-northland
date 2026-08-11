@@ -31,6 +31,8 @@ export interface CameraController {
   update(dtMs: number): void;
   /** Replace the frame outright; an in-flight middle-drag keeps panning from the new frame. */
   jumpTo(next: Camera): void;
+  /** Suspend camera gestures and discard held, dragged, edge-pan, and glide state. */
+  setSuspended(suspended: boolean): void;
   /**
    * Claim a client point for the HUD so the wheel does not zoom there; `null` clears. Wired to open
    * pop-up windows only, since the wheel should still zoom over the strip and during placement.
@@ -73,8 +75,10 @@ export function createCameraController(
   // The edge-scroll probe: the last `mousemove` sample that landed on the canvas, in client px. Null
   // while the cursor is elsewhere or nothing has moved yet, so a parked cursor waits.
   let pointerSample: { readonly x: number; readonly y: number } | null = null;
+  let suspended = false;
 
   const onMouseDown = (e: MouseEvent): void => {
+    if (suspended) return;
     if (e.button !== 1) return; // middle button only
     dragging = true;
     lastX = e.clientX;
@@ -82,6 +86,7 @@ export function createCameraController(
     e.preventDefault(); // suppress the middle-click autoscroll widget
   };
   const onMouseMove = (e: MouseEvent): void => {
+    if (suspended) return;
     // Every move re-arms the probe, because `mouseenter` fires only on a boundary crossing and a refocus
     // over the canvas gets none. Tested by hit target, so a DOM element stacked over the canvas disarms it.
     pointerSample = e.target === canvas ? { x: e.clientX, y: e.clientY } : null;
@@ -99,6 +104,7 @@ export function createCameraController(
     pointerSample = null;
   };
   const onWheel = (e: WheelEvent): void => {
+    if (suspended) return;
     // The event is left for the claiming panel's own handler, which scrolls its list and preventDefaults.
     if (pointerGuard?.(e.clientX, e.clientY)) return;
     e.preventDefault(); // don't scroll the page
@@ -110,6 +116,7 @@ export function createCameraController(
     zoomAnchorY = y;
   };
   const onKeyDown = (e: KeyboardEvent): void => {
+    if (suspended) return;
     const action = panActionByCode.get(e.code);
     // Modifier combos stay with the browser: a pan key rebound to a letter must not hijack shortcuts
     // like Cmd+A, and macOS swallows the keyup of a key released while Meta is held.
@@ -145,6 +152,14 @@ export function createCameraController(
       // Retargeted, so a jump never carries the old glide into the new view.
       targetScale = next.scale ?? 1;
     },
+    setSuspended: (next) => {
+      suspended = next;
+      if (!next) return;
+      held.clear();
+      dragging = false;
+      pointerSample = null;
+      targetScale = cam.scale ?? 1;
+    },
     setPointerGuard: (guard) => {
       pointerGuard = guard;
     },
@@ -152,6 +167,7 @@ export function createCameraController(
       edgeGuard = guard;
     },
     update: (dtMs) => {
+      if (suspended) return;
       const dt = Math.min(dtMs, MAX_PAN_STEP_MS);
       if (targetScale !== (cam.scale ?? 1)) {
         cam = stepZoomToward(cam, targetScale, zoomAnchorX, zoomAnchorY, dt, tuning.zoomGlideRate);

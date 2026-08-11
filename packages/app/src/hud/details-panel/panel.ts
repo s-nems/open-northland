@@ -55,7 +55,13 @@ export interface UnitPanel {
    * from replace-selection to toggle.
    */
   handleMouseDown(clientX: number, clientY: number, button: number, toggleModifier?: boolean): boolean;
+  state(): UnitPanelState;
+  restore(state: UnitPanelState): void;
   dispose(): void;
+}
+
+export interface UnitPanelState {
+  readonly activeStockTab: number;
 }
 
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
@@ -202,6 +208,12 @@ export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel>
     claimsPointer,
     handleMouseDown,
     portrait,
+    state: () => ({ activeStockTab }),
+    restore(state): void {
+      if (state.activeStockTab === activeStockTab) return;
+      activeStockTab = state.activeStockTab;
+      rebuildCurrent();
+    },
     dispose(): void {
       canvas.removeEventListener('mousemove', onMouseMove);
       workerField.dispose();

@@ -130,9 +130,15 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   // runs one tick more than the headless twin. A restored world stands at its saved tick already.
   if (stagedSave === null) sim.step();
   const snapshot = sim.snapshot();
+  const initialViewport = { width: app.screen.width, height: app.screen.height };
   const cameraCtl = createCameraController(
     canvas,
-    cameraFor(buildSpriteScene(snapshot), scene.initialZoom ?? 1, app.screen.width, app.screen.height),
+    cameraFor(
+      buildSpriteScene(snapshot),
+      scene.initialZoom ?? 1,
+      initialViewport.width,
+      initialViewport.height,
+    ),
     () => app.renderer.resolution,
     readStoredSettings().keyBindings,
   );
@@ -148,6 +154,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     app,
     canvas,
     params,
+    initialViewport,
     renderer,
     sheet,
     sim,

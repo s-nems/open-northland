@@ -137,6 +137,8 @@ export const enSurfaces = {
       postFxTip: 'A vignette and warm colour grade layered over the world.',
       uiScale: 'In-game interface scale',
       uiScaleTip: 'Size of in-game panels and buttons; does not change world sharpness.',
+      uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',
+      uiScaleApplyFailed: 'The interface scale could not be applied. The previous scale is still active.',
       soundEnabled: 'In-game sound',
       musicVolume: 'Music volume',
       sfxVolume: 'Game sounds volume',

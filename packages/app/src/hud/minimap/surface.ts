@@ -32,6 +32,7 @@ export interface MinimapSurfaceDeps {
   readonly artScale: number;
   readonly resolution: () => number;
   readonly loadFrame: (artScale: number, resolution: number) => Promise<MinimapFrame | null>;
+  readonly onFrameError?: (error: unknown) => void;
 }
 
 export interface MinimapSurface {
@@ -49,74 +50,86 @@ export async function createMinimapSurface(deps: MinimapSurfaceDeps): Promise<Mi
   const layers = new Container();
   container.addChild(layers);
 
-  const underlap = frame !== null ? HOLE_UNDERLAP_NATIVE_PX * artScale : 0;
-  const holeBg = new Graphics();
-  holeBg.rect(hole.x, hole.y - underlap, hole.w + underlap, hole.h + underlap).fill(HOLE_COLOUR);
-  layers.addChild(holeBg);
+  let initialGroundTexture: Texture | null = null;
+  try {
+    const underlap = frame !== null ? HOLE_UNDERLAP_NATIVE_PX * artScale : 0;
+    const holeBg = new Graphics();
+    holeBg.rect(hole.x, hole.y - underlap, hole.w + underlap, hole.h + underlap).fill(HOLE_COLOUR);
+    layers.addChild(holeBg);
 
-  if (frame !== null) {
-    frame.display.position.set(0, 0);
-    layers.addChild(frame.display);
-  } else {
-    const fallbackFrame = new Graphics();
-    fallbackFrame
-      .rect(hole.x - 1, hole.y - 1, hole.w + 2, hole.h + 2)
-      .stroke({ width: 2, color: FALLBACK_FRAME_COLOUR });
-    layers.addChild(fallbackFrame);
+    if (frame !== null) {
+      frame.display.position.set(0, 0);
+      layers.addChild(frame.display);
+    } else {
+      const fallbackFrame = new Graphics();
+      fallbackFrame
+        .rect(hole.x - 1, hole.y - 1, hole.w + 2, hole.h + 2)
+        .stroke({ width: 2, color: FALLBACK_FRAME_COLOUR });
+      layers.addChild(fallbackFrame);
+    }
+
+    const colourOfType = (typeId: number): number => colourOf?.(typeId) ?? flatTileColour(typeId);
+    const colourOfCell = cellColourResolver(cellColours, colourOfType);
+    const bakeGround = (): Texture => {
+      const pxW = Math.max(1, Math.round(map.w * RASTER_OVERSAMPLE * resolution()));
+      const pxH = Math.max(1, Math.round(map.h * RASTER_OVERSAMPLE * resolution()));
+      const rgba = rasterizeTerrain(terrain, colourOfCell, pxW, pxH);
+      return new Texture({
+        source: new BufferImageSource({ resource: rgba, width: pxW, height: pxH, scaleMode: 'linear' }),
+      });
+    };
+    let groundTex = bakeGround();
+    initialGroundTexture = groundTex;
+    const ground = new Sprite(groundTex);
+    ground.position.set(map.x, map.y);
+    ground.width = map.w;
+    ground.height = map.h;
+    layers.addChild(ground);
+
+    let disposed = false;
+    /** Monotonic guard: only the newest in-flight frame re-bake may swap the braid in. */
+    let frameEpoch = 0;
+    const reloadFrame = (): void => {
+      if (frame === null) return;
+      const epoch = ++frameEpoch;
+      void loadFrame(artScale, bakedResolution).then(
+        (next) => {
+          if (next === null) return;
+          if (disposed || epoch !== frameEpoch || frame === null) {
+            next.dispose();
+            return;
+          }
+          const at = layers.getChildIndex(frame.display);
+          frame.dispose();
+          frame = next;
+          next.display.position.set(0, 0);
+          layers.addChildAt(next.display, at);
+        },
+        (error: unknown) => deps.onFrameError?.(error),
+      );
+    };
+
+    return {
+      syncResolution: (): void => {
+        if (resolution() === bakedResolution) return;
+        bakedResolution = resolution();
+        const nextTex = bakeGround();
+        ground.texture = nextTex;
+        groundTex.destroy(true);
+        groundTex = nextTex;
+        reloadFrame();
+      },
+      dispose: (): void => {
+        disposed = true;
+        frame?.dispose();
+        groundTex.destroy(true);
+        layers.destroy({ children: true });
+      },
+    };
+  } catch (error: unknown) {
+    frame?.dispose();
+    initialGroundTexture?.destroy(true);
+    layers.destroy({ children: true });
+    throw error;
   }
-
-  const colourOfType = (typeId: number): number => colourOf?.(typeId) ?? flatTileColour(typeId);
-  const colourOfCell = cellColourResolver(cellColours, colourOfType);
-  const bakeGround = (): Texture => {
-    const pxW = Math.max(1, Math.round(map.w * RASTER_OVERSAMPLE * resolution()));
-    const pxH = Math.max(1, Math.round(map.h * RASTER_OVERSAMPLE * resolution()));
-    const rgba = rasterizeTerrain(terrain, colourOfCell, pxW, pxH);
-    return new Texture({
-      source: new BufferImageSource({ resource: rgba, width: pxW, height: pxH, scaleMode: 'linear' }),
-    });
-  };
-  let groundTex = bakeGround();
-  const ground = new Sprite(groundTex);
-  ground.position.set(map.x, map.y);
-  ground.width = map.w;
-  ground.height = map.h;
-  layers.addChild(ground);
-
-  let disposed = false;
-  /** Monotonic guard: only the newest in-flight frame re-bake may swap the braid in. */
-  let frameEpoch = 0;
-  const reloadFrame = (): void => {
-    if (frame === null) return;
-    const epoch = ++frameEpoch;
-    void loadFrame(artScale, bakedResolution).then((next) => {
-      if (next === null) return;
-      if (disposed || epoch !== frameEpoch || frame === null) {
-        next.dispose();
-        return;
-      }
-      const at = layers.getChildIndex(frame.display);
-      frame.dispose();
-      frame = next;
-      next.display.position.set(0, 0);
-      layers.addChildAt(next.display, at);
-    });
-  };
-
-  return {
-    syncResolution: (): void => {
-      if (resolution() === bakedResolution) return;
-      bakedResolution = resolution();
-      const nextTex = bakeGround();
-      ground.texture = nextTex;
-      groundTex.destroy(true);
-      groundTex = nextTex;
-      reloadFrame();
-    },
-    dispose: (): void => {
-      disposed = true;
-      frame?.dispose();
-      groundTex.destroy(true);
-      layers.destroy({ children: true });
-    },
-  };
 }

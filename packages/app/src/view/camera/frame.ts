@@ -35,6 +35,21 @@ export function cameraCenteredOnWorld(
   return { offsetX: width / 2 - worldX * zoom, offsetY: height / 2 - worldY * zoom, scale: zoom };
 }
 
+/** Reframe a resized viewport without moving the world point at its centre. */
+export function cameraForViewportResize(
+  camera: Camera,
+  previousWidth: number,
+  previousHeight: number,
+  nextWidth: number,
+  nextHeight: number,
+): Camera {
+  return {
+    ...camera,
+    offsetX: camera.offsetX + (nextWidth - previousWidth) / 2,
+    offsetY: camera.offsetY + (nextHeight - previousHeight) / 2,
+  };
+}
+
 function centroid(
   scene: readonly DrawItem[],
   keep: (kind: DrawItem['kind']) => boolean,

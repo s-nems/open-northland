@@ -5,6 +5,7 @@ import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
+import { createReplaceableMount } from '../hud/replaceable-mount.js';
 import type { MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { DiplomacyPanelRow } from '../hud/tool-panel/diplomacy/index.js';
 import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/extras-window.js';
@@ -65,6 +66,8 @@ export interface GameToolPanelHandle {
   claimsWheel(clientX: number, clientY: number): boolean;
   /** Shared with the frame loop's build hover, so the ghost and the placement click resolve identically. */
   clientToTile(clientX: number, clientY: number): { col: number; row: number } | null;
+  setUiScale(uiscale: number): Promise<void>;
+  dispose(): void;
 }
 
 export interface LoopSpeedControl {
@@ -115,8 +118,6 @@ export function menuGoodsFromContent(content: {
 }
 
 export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameToolPanelHandle> {
-  const { uiscale } = deps;
-
   const clientToTile = (clientX: number, clientY: number): { col: number; row: number } | null => {
     const c = clientToScreen(deps.canvas, deps.app.renderer.resolution, clientX, clientY);
     const w = screenToWorld(deps.camera(), c.x, c.y);
@@ -127,34 +128,45 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     return { col: t.col, row: t.row };
   };
 
-  const controller = await mountToolPanel({
-    app: deps.app,
-    canvas: deps.canvas,
-    uiscale,
-    buildings: deps.buildings,
-    goods: deps.goods,
-    lang: deps.lang ?? currentLocale(),
-    bindings: deps.bindings,
-    tribe: deps.tribe,
-    owner: deps.owner,
-    enqueue: deps.enqueue,
-    enqueueAdmin: deps.enqueueAdmin,
-    grants: deps.grants,
-    counters: deps.counters,
-    diplomacyRows: deps.diplomacyRows,
-    screenToTile: clientToTile,
-    canPlaceAt: deps.canPlaceAt,
-    onSpeedChange: deps.onSpeed,
-    screenScale: (c) => screenScale(c, deps.app.renderer.resolution),
-    ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
-    ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),
-    ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
-  });
+  const mountController = (uiscale: number) =>
+    mountToolPanel({
+      app: deps.app,
+      canvas: deps.canvas,
+      uiscale,
+      buildings: deps.buildings,
+      goods: deps.goods,
+      lang: deps.lang ?? currentLocale(),
+      bindings: deps.bindings,
+      tribe: deps.tribe,
+      owner: deps.owner,
+      enqueue: deps.enqueue,
+      enqueueAdmin: deps.enqueueAdmin,
+      grants: deps.grants,
+      counters: deps.counters,
+      diplomacyRows: deps.diplomacyRows,
+      screenToTile: clientToTile,
+      canPlaceAt: deps.canPlaceAt,
+      onSpeedChange: deps.onSpeed,
+      screenScale: (c) => screenScale(c, deps.app.renderer.resolution),
+      ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
+      ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),
+      ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
+    });
+
+  const mounts = createReplaceableMount(
+    await mountController(deps.uiscale),
+    mountController,
+    (next, previous) => next.restore(previous.state()),
+  );
 
   return {
-    controller,
-    claimPointer: (x, y) => controller.claimsPointer(x, y),
-    claimsWheel: (x, y) => controller.claimsWheel(x, y),
+    get controller() {
+      return mounts.current();
+    },
+    claimPointer: (x, y) => mounts.current().claimsPointer(x, y),
+    claimsWheel: (x, y) => mounts.current().claimsWheel(x, y),
     clientToTile,
+    setUiScale: (uiscale) => mounts.replace(uiscale),
+    dispose: () => mounts.dispose(),
   };
 }

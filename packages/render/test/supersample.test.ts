@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { oversampleFor } from '../src/gpu/supersample.js';
+import { Container, type Renderer } from 'pixi.js';
+import { describe, expect, it, vi } from 'vitest';
+import { createReusableBaker, oversampleFor } from '../src/gpu/supersample.js';
 
 /**
  * The bake targets double the device coverage so the linear downscale ratio stays in (1, 2]: a ratio near
@@ -31,5 +32,25 @@ describe('oversampleFor - supersample sizing policy', () => {
   it('applies the quality floor and the memory cap', () => {
     expect(oversampleFor(1.05, 1, 3, 6)).toBe(3); // round-icon floor wins over the tiny target
     expect(oversampleFor(2, 2, 1, 6)).toBe(6); // target 8 capped - a big ?uiscale×DPR cannot balloon memory
+  });
+});
+
+describe('createReusableBaker', () => {
+  it('releases its slot and source when rendering a bake fails', () => {
+    const render = vi.fn().mockImplementationOnce(() => {
+      throw new Error('context lost');
+    });
+    const baker = createReusableBaker({ render } as unknown as Renderer);
+    const failedSource = new Container();
+
+    expect(() => baker.bake(failedSource, 8, 8, 1)).toThrow('context lost');
+    expect(failedSource.destroyed).toBe(true);
+
+    const nextSource = new Container();
+    const baked = baker.bake(nextSource, 8, 8, 1);
+    expect(render).toHaveBeenCalledTimes(2);
+    baked.display.destroy();
+    baked.dispose();
+    baker.dispose();
   });
 });

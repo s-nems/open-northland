@@ -146,6 +146,13 @@ describe('diplomacy window controller', () => {
     expect(texts).toContain('neutralny');
     expect(texts).toContain('wrogi');
 
+    const replacement = createDiplomacyWindow({ ctx, container: new Container(), rows: () => rows });
+    replacement.restore(window.state());
+    texts.length = 0;
+    replacement.toggle();
+    expect(replacement.state()).toBe(3);
+    expect(texts).toContain('wrogi');
+
     const close = centreOf(layout.closeRect);
     expect(window.handleClick(close.x, close.y)).toBe(true);
     expect(window.isOpen()).toBe(false);

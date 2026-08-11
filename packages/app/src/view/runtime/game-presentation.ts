@@ -9,6 +9,7 @@ import { loadMusicManifest } from '../../content/music.js';
 import { loadCombatBones } from '../../content/objects.js';
 import { readStoredSettings } from '../settings-store.js';
 import { startSound } from '../sound-start.js';
+import { gameSoundEnabled } from './game-settings.js';
 
 /** Hand the driver the map's `musictype` and the rendered-music manifest, after which each frame picks
  *  the mood variant; playback starts once audio is unlocked. Both fetches degrade to "no music". */
@@ -25,9 +26,10 @@ export async function mountGamePresentation(
   renderer: WorldRenderer,
 ): Promise<ReturnType<typeof createSoundDriver> | null> {
   const ir = await loadIr();
-  const sound = params.get('sound') === 'off' ? null : createSoundDriver(ir);
+  const sound = createSoundDriver(ir);
   if (sound !== null) {
     const settings = readStoredSettings();
+    sound.setEnabled(gameSoundEnabled(params, settings.soundEnabled));
     sound.setSfxVolume(settings.soundVolume);
     sound.setMusicVolume(settings.musicVolume);
     startSound(sound);

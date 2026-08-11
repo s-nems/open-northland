@@ -168,6 +168,7 @@ export class WorkerSpriteOverlay {
   dispose(): void {
     this.container.destroy({ children: true });
     this.sprites.clear();
+    for (const texture of this.plainTextures.values()) texture.destroy(false);
     this.plainTextures.clear();
   }
 

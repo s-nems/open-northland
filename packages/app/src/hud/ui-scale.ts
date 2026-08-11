@@ -22,6 +22,8 @@ export const DEFAULT_UI_SCALE_FACTOR = 1;
 /** Player-facing bounds for the relative factor; the settings slider and the stored value obey them. */
 export const UI_SCALE_FACTOR_MIN = 0.5;
 export const UI_SCALE_FACTOR_MAX = 1.5;
+/** Player-facing slider granularity. */
+export const UI_SCALE_FACTOR_STEP = 0.05;
 
 export function clampUiScaleFactor(factor: number): number {
   return Math.min(UI_SCALE_FACTOR_MAX, Math.max(UI_SCALE_FACTOR_MIN, factor));

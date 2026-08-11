@@ -68,6 +68,14 @@ const install = (bindings: KeyBindings = DEFAULT_KEY_BINDINGS) => {
     release: (code: string): void => {
       win.emit('keyup', { code });
     },
+    startMiddleDrag: (x: number, y: number): void => {
+      canvasEvents.emit('mousedown', {
+        button: 1,
+        clientX: x,
+        clientY: y,
+        preventDefault: (): void => undefined,
+      });
+    },
   };
 };
 
@@ -157,6 +165,25 @@ describe('createCameraController pan bindings', () => {
     const { ctl, press } = install({ ...DEFAULT_KEY_BINDINGS, panLeft: null });
     press('ArrowLeft');
     expect(panStep(ctl)).toBe(0);
+    ctl.dispose();
+  });
+});
+
+describe('createCameraController suspension', () => {
+  it('cancels a middle drag and held key until fresh input arrives', () => {
+    const { ctl, move, press, startMiddleDrag } = install();
+    startMiddleDrag(400, 300);
+    press('ArrowLeft');
+    ctl.setSuspended(true);
+    const before = ctl.camera();
+
+    move(500, 300);
+    ctl.update(16);
+    expect(ctl.camera()).toEqual(before);
+
+    ctl.setSuspended(false);
+    ctl.update(16);
+    expect(ctl.camera()).toEqual(before);
     ctl.dispose();
   });
 });

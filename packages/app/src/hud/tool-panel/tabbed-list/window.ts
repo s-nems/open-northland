@@ -49,7 +49,12 @@ export interface TabbedListWindowDeps<Id, Item extends TabbedListItem> {
 }
 
 /** A pop-up tabbed list: open/close, tabs, scroll, row hover, and the pick hand-off. */
-export interface TabbedListWindow extends ToolWindow {
+export interface TabbedListWindowState<Id> {
+  readonly selected: Id;
+  readonly scrollTop: number;
+}
+
+export interface TabbedListWindow<Id> extends ToolWindow {
   /** Route a wheel event; returns true when this window consumed it (scrolled its list). */
   handleWheel(x: number, y: number, deltaY: number): boolean;
   /** Update the row-hover highlight from a canvas-space point (no-op when closed). */
@@ -58,6 +63,8 @@ export interface TabbedListWindow extends ToolWindow {
   clearHover(): void;
   /** Per-frame hook: reflow the list only when a canvas resize changes how many rows fit. */
   refresh(): void;
+  state(): TabbedListWindowState<Id>;
+  restore(state: TabbedListWindowState<Id>): void;
 }
 
 /**
@@ -66,7 +73,7 @@ export interface TabbedListWindow extends ToolWindow {
  */
 export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   deps: TabbedListWindowDeps<Id, Item>,
-): TabbedListWindow {
+): TabbedListWindow<Id> {
   const { ctx, source } = deps;
   const { scale } = ctx;
   // Right of the strip, dropping from the button that opens it, which clears the top-left debug overlay.
@@ -231,6 +238,11 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     refresh: (): void => {
       if (!shell.isOpen() || layout === null) return;
       if (listRows() !== builtRows) rebuild();
+    },
+    state: () => ({ selected, scrollTop }),
+    restore: (state): void => {
+      selected = state.selected;
+      scrollTop = state.scrollTop;
     },
   };
 }

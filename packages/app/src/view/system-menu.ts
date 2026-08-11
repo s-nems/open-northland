@@ -1,11 +1,14 @@
 import { downloadDiagnosticsBundle, downloadTraceFile, isTraceRecording } from '../diag/index.js';
 import { messages } from '../i18n/index.js';
 import { confirmDialog } from './confirm-dialog.js';
+import type { GameSettingsRuntime } from './runtime/game-settings.js';
 import type { SaveLoadSession } from './runtime/save-load/index.js';
 import { buildLoadPanel, buildSavePanel, type SavePanelView } from './save-panels/index.js';
+import { buildSystemSettingsPanel } from './system-settings-panel.js';
 
 export interface SystemMenu {
   toggle(): void;
+  isOpen(): boolean;
   dispose(): void;
 }
 
@@ -14,6 +17,8 @@ export interface SystemMenuDeps {
   readonly onQuit: () => void;
   /** The save and load flows behind the two game buttons. */
   readonly saveLoad: SaveLoadSession;
+  readonly settings: GameSettingsRuntime;
+  readonly setCameraSuspended: (suspended: boolean) => void;
 }
 
 const MODAL_PANEL_STYLE = [
@@ -40,12 +45,10 @@ const MODAL_BUTTON_STYLE = [
   'cursor:pointer',
 ].join(';');
 
-/**
- * The in-game system menu: a centred DOM overlay whose one modal swaps between the root buttons and
- * the save or load panel. It does not implement the original's settings and help window.
- */
+/** The in-game system menu and its save, load, and live-settings panels. */
 export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
-  const copy = messages().hud;
+  const allCopy = messages();
+  const copy = allCopy.hud;
 
   const backdrop = document.createElement('div');
   // Visibility toggles `display`, not the `hidden` attribute: the inline `grid` below outranks the UA
@@ -95,7 +98,13 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   };
   const savePanel = buildSavePanel(panelDeps);
   const loadPanel = buildLoadPanel(panelDeps);
-  panels.push(savePanel, loadPanel);
+  const settingsPanel = buildSystemSettingsPanel({
+    settings: deps.settings,
+    showMenu,
+    panelStyle: MODAL_PANEL_STYLE,
+    buttonStyle: MODAL_BUTTON_STYLE,
+  });
+  panels.push(savePanel, loadPanel, settingsPanel);
   hidePanels();
 
   const showPanel = (view: SavePanelView): void => {
@@ -107,6 +116,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
 
   const save = button(copy.saveGame, () => showPanel(savePanel));
   const load = button(copy.loadGame, () => showPanel(loadPanel));
+  const settings = button(allCopy.mainMenu.items.settings, () => showPanel(settingsPanel));
 
   // Quitting throws away everything since the last save, so it asks like the save flows do.
   const quit = button(copy.returnToMenu, () => {
@@ -127,6 +137,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
 
   const hide = (): void => {
     backdrop.style.display = 'none';
+    deps.setCameraSuspended(false);
     deps.saveLoad.releaseForcedPause();
     showMenu();
   };
@@ -137,14 +148,17 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   // Escape steps back one level: panel to the root buttons, root to the game. The confirm dialog
   // handles its own Escape in the capture phase and stops it from reaching here.
   const onKey = (event: KeyboardEvent): void => {
-    if (event.key !== 'Escape' || backdrop.style.display === 'none') return;
+    if (backdrop.style.display === 'none') return;
+    event.stopPropagation();
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
     if (panel.style.display === 'none') showMenu();
     else hide();
   };
   document.addEventListener('keydown', onKey);
 
-  panel.append(title, save, load, quit, diagnostics, ...(trace !== null ? [trace] : []), close);
-  backdrop.append(panel, savePanel.el, loadPanel.el);
+  panel.append(title, save, load, settings, quit, diagnostics, ...(trace !== null ? [trace] : []), close);
+  backdrop.append(panel, savePanel.el, loadPanel.el, settingsPanel.el);
   document.body.append(backdrop);
 
   return {
@@ -152,12 +166,15 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       if (backdrop.style.display === 'none') {
         // The whole menu holds the pause, so the sim never runs behind the dimmed backdrop.
         deps.saveLoad.forcePause();
+        deps.setCameraSuspended(true);
         backdrop.style.display = 'grid';
       } else {
         hide();
       }
     },
+    isOpen: () => backdrop.style.display !== 'none',
     dispose(): void {
+      deps.setCameraSuspended(false);
       document.removeEventListener('keydown', onKey);
       backdrop.remove();
     },

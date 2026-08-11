@@ -44,20 +44,26 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
   // Keyed by the button object, so placement stays correct for a face that shows only a subset.
   const visuals: ButtonVisual[] = [];
   const visualByButton = new Map<ActionButton, ButtonVisual>();
-  for (const button of deps.buttons) {
-    const sprite = iconSprite(button.icon);
-    let icon: BakedIcon | null = null;
-    let fallback: Graphics | null = null;
-    if (sprite === null) {
-      fallback = new Graphics();
-      container.addChild(fallback);
-    } else {
-      icon = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
-      container.addChild(icon.display);
+  try {
+    for (const button of deps.buttons) {
+      const sprite = iconSprite(button.icon);
+      let icon: BakedIcon | null = null;
+      let fallback: Graphics | null = null;
+      if (sprite === null) fallback = new Graphics();
+      else icon = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
+      const v: ButtonVisual = { button, icon, fallback };
+      visuals.push(v);
+      visualByButton.set(button, v);
+      if (fallback !== null) container.addChild(fallback);
+      else if (icon !== null) container.addChild(icon.display);
     }
-    const v: ButtonVisual = { button, icon, fallback };
-    visuals.push(v);
-    visualByButton.set(button, v);
+  } catch (error: unknown) {
+    for (const v of visuals) {
+      v.icon?.display.destroy();
+      v.icon?.dispose();
+      v.fallback?.destroy();
+    }
+    throw error;
   }
 
   /** The renderer resolution the icons were baked at; a DPR change re-bakes them at the next placement pass. */
@@ -68,10 +74,17 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
       if (v.icon === null) continue;
       const sprite = iconSprite(v.button.icon);
       if (sprite === null) continue;
+      const next = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
+      try {
+        container.addChild(next.display);
+      } catch (error: unknown) {
+        next.display.destroy();
+        next.dispose();
+        throw error;
+      }
       v.icon.display.destroy();
       v.icon.dispose();
-      v.icon = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
-      container.addChild(v.icon.display);
+      v.icon = next;
     }
   };
 

@@ -44,7 +44,11 @@ async function mountSurface(firstFrame: MinimapFrame | null) {
   const host = new Container();
   let resolution = 1;
   const requested: number[] = [];
-  const pending: ((frame: MinimapFrame | null) => void)[] = [];
+  const pending: {
+    readonly resolve: (frame: MinimapFrame | null) => void;
+    readonly reject: (error: unknown) => void;
+  }[] = [];
+  const frameErrors: unknown[] = [];
   const created = createMinimapSurface({
     container: host,
     terrain: TERRAIN,
@@ -54,10 +58,11 @@ async function mountSurface(firstFrame: MinimapFrame | null) {
     resolution: () => resolution,
     loadFrame: (_artScale, res) => {
       requested.push(res);
-      return new Promise((resolve) => pending.push(resolve));
+      return new Promise((resolve, reject) => pending.push({ resolve, reject }));
     },
+    onFrameError: (error) => frameErrors.push(error),
   });
-  pending.shift()?.(firstFrame);
+  pending.shift()?.resolve(firstFrame);
   const surface = await created;
   const container = host.children[0];
   if (!(container instanceof Container)) throw new Error('the surface parented no layer container');
@@ -68,6 +73,7 @@ async function mountSurface(firstFrame: MinimapFrame | null) {
     surface,
     /** The resolution of every braid load the surface asked for, in order. */
     requested,
+    frameErrors,
     ground: (): Sprite => {
       const child = container.children[2];
       if (!(child instanceof Sprite)) throw new Error('the surface baked no ground sprite');
@@ -78,11 +84,15 @@ async function mountSurface(firstFrame: MinimapFrame | null) {
       surface.syncResolution();
     },
     settleOldest: async (frame: MinimapFrame | null): Promise<void> => {
-      pending.shift()?.(frame);
+      pending.shift()?.resolve(frame);
       await flush();
     },
     settleNewest: async (frame: MinimapFrame | null): Promise<void> => {
-      pending.pop()?.(frame);
+      pending.pop()?.resolve(frame);
+      await flush();
+    },
+    rejectOldest: async (error: unknown): Promise<void> => {
+      pending.shift()?.reject(error);
       await flush();
     },
   };
@@ -203,6 +213,19 @@ describe('minimap surface braid', () => {
     expect(late.disposed()).toBe(true);
     // The surface took its own layers down with it, and parented nothing after the teardown.
     expect(h.host.children).toHaveLength(0);
+  });
+
+  it('keeps the current braid when a DPR re-bake fails', async () => {
+    const art = fakeFrame();
+    const h = await mountSurface(art.frame);
+    const failure = new Error('context lost');
+
+    h.moveResolution(2);
+    await h.rejectOldest(failure);
+
+    expect(h.frameErrors).toEqual([failure]);
+    expect(art.disposed()).toBe(false);
+    expect(h.container.getChildIndex(art.frame.display)).toBe(1);
   });
 });
 

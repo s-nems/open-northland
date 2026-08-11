@@ -41,6 +41,8 @@ export interface SpeedButton {
   togglePause(): void;
   /** Set the button graphic from the current state without pushing to the loop (mount, strip re-bake). */
   syncGlyph(): void;
+  state(): GameSpeedControl;
+  restore(control: GameSpeedControl): void;
 }
 
 export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
@@ -90,5 +92,10 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
       applySpeed('pause-toggle');
     },
     syncGlyph: () => applySpeed(null),
+    state: () => speedControl,
+    restore: (control) => {
+      speedControl = control;
+      applySpeed(null);
+    },
   };
 }

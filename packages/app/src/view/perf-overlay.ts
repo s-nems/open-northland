@@ -10,6 +10,8 @@ import { messages } from '../i18n/index.js';
 export interface PerfOverlayHandle {
   /** Call once per frame. */
   update(report: FrameStatsReport): void;
+  setLeft(leftPx: number): void;
+  dispose(): void;
 }
 
 const PANEL_STYLE = [
@@ -81,5 +83,9 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
 
       panel.textContent = `${simState}\n${perf}`;
     },
+    setLeft(leftPx): void {
+      panel.style.left = `${leftPx}px`;
+    },
+    dispose: () => panel.remove(),
   };
 }
