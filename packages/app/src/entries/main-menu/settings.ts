@@ -40,7 +40,7 @@ const PLACEHOLDER_SCROLL_SPEED = 1;
 const PLACEHOLDER_STEP = 0.05;
 const VOLUME_MIN = 0;
 const VOLUME_MAX = 1;
-const VOLUME_STEP = 0.05;
+const VOLUME_STEP = 0.01;
 const SCROLL_SPEED_MIN = 0.5;
 const SCROLL_SPEED_MAX = 2;
 
