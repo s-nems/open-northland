@@ -53,7 +53,8 @@ export const DEFAULT_MASTER_GAIN = 0.8;
 /** Default game-sounds volume - the owned install's `opt_game.ini` `fx_volume 100`. The linear
  *  0..1 map of the original 0-100 scale onto Web Audio gain is an approximation. */
 export const DEFAULT_SFX_VOLUME = 1;
-/** Default music volume - the owned install's `opt_game.ini` `dm_volume 70`. */
+/** Default music volume - the owned install's `opt_game.ini` `dm_volume 70`, which is that install's
+ *  saved player preference rather than a value the game shipped with. */
 export const DEFAULT_MUSIC_VOLUME = 0.7;
 /** A user volume change ramps over this many seconds - long enough to avoid a zipper click. */
 export const VOLUME_RAMP_S = 0.05;
@@ -61,6 +62,8 @@ export const VOLUME_RAMP_S = 0.05;
 export const ONE_SHOT_COOLDOWN_S = 0.12;
 /** Prune the one-shot cooldown map when it grows past this many entries (keys are per-entity, never reused). */
 export const COOLDOWN_PRUNE_SIZE = 512;
+/** Shared empty rotation, so re-asserting a single track every frame allocates nothing. */
+const EMPTY_ROTATION: readonly MusicTrack[] = [];
 
 export class WebAudioEngine {
   private readonly baseUrl: string;
@@ -82,7 +85,7 @@ export class WebAudioEngine {
   /** The track that should be playing - re-asserted when a resume/unmute brings playback back. */
   private desiredMusic: MusicTrack | null = null;
   /** The rotation that should be playing instead; non-empty wins over {@link desiredMusic}. */
-  private desiredRotation: readonly MusicTrack[] = [];
+  private desiredRotation: readonly MusicTrack[] = EMPTY_ROTATION;
   private enabled = true;
   /** one-shot key → last play time (audio clock seconds) for cooldown debounce. */
   private readonly lastPlayed = new Map<string, number>();
@@ -153,7 +156,7 @@ export class WebAudioEngine {
   /** Which music track should be playing (null = none); takes effect once playback is live. */
   setMusic(track: MusicTrack | null): void {
     this.desiredMusic = track;
-    this.desiredRotation = [];
+    this.desiredRotation = EMPTY_ROTATION;
     if (this.canPlay()) this.music?.set(track);
   }
 

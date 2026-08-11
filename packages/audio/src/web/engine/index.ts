@@ -1,8 +1,3 @@
-/**
- * The Web Audio playback engine: the {@link import('./audio-engine.js').WebAudioEngine} coordinator
- * over its two units - {@link import('./sample-cache.js').SampleCache} (fetch+decode, failure-memoising)
- * and {@link import('./ambient-mixer.js').AmbientMixer} (looping-bed reconciliation).
- */
 export { AMBIENT_FADE_S } from './ambient-mixer.js';
 export {
   type AudioEngineOptions,
@@ -19,5 +14,6 @@ export {
   GAME_MUSIC_TIMING,
   MENU_MUSIC_TIMING,
   MUSIC_STOP_FADE_S,
+  MUSIC_SWITCH_TIMING,
   type MusicTiming,
 } from './music-player.js';
