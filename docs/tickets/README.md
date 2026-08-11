@@ -5,8 +5,8 @@ invalidating a task means deleting its ticket, not moving it to a `done` folder.
 
 `features/` is the project owner's curated gameplay backlog. Agents do not add feature ideas, visual
 polish, parity surveys, or acceptance scenes there unless the owner explicitly asks. Technical work
-discovered while implementing a feature belongs in the owning area (`sim/`, `render/`, `app/`,
-`pipeline/`, `audio/`, `data/`, or `tooling/`) only when it passes the admission rules below.
+discovered while implementing a feature belongs in the folder of its owning area only when it passes
+the admission rules below.
 
 ## Admission rules
 

@@ -1,4 +1,5 @@
 import { type ReadableVfs, readText, vjoin } from '@open-northland/vfs';
+import { byCodeUnit, fileNamesIn } from './dir-listing.js';
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from './wire.js';
 
 /** The sidecar's `[multiplayer]` lobby table, read tolerantly off the parsed JSON. */
@@ -57,12 +58,19 @@ function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPl
   };
 }
 
+/** One maps directory: its listing is read once, so sidecar existence never costs a `stat`. */
+interface MapsDir {
+  readonly fs: ReadableVfs;
+  readonly root: string;
+  readonly names: ReadonlySet<string>;
+}
+
 /** Undefined when `<id><suffix>` is absent or unparsable; an unparsable sidecar warns, never throws. */
-async function readSidecar(fs: ReadableVfs, mapsRoot: string, id: string, suffix: string): Promise<unknown> {
-  const file = vjoin(mapsRoot, `${id}${suffix}`);
-  if ((await fs.stat(file))?.kind !== 'file') return undefined;
+async function readSidecar(dir: MapsDir, id: string, suffix: string): Promise<unknown> {
+  const name = `${id}${suffix}`;
+  if (!dir.names.has(name)) return undefined;
   try {
-    return JSON.parse(await readText(fs, file));
+    return JSON.parse(await readText(dir.fs, vjoin(dir.root, name)));
   } catch (err) {
     console.warn(`[content-resolver] maps-index: ${id}${suffix} unreadable: ${(err as Error).message}`);
     return undefined;
@@ -71,11 +79,10 @@ async function readSidecar(fs: ReadableVfs, mapsRoot: string, id: string, suffix
 
 /** Display strings from `<id>.meta.json`; a wrong-typed field is dropped without a warning. */
 async function metaOf(
-  fs: ReadableVfs,
-  mapsRoot: string,
+  dir: MapsDir,
   id: string,
 ): Promise<{ readonly name?: string; readonly description?: string }> {
-  const parsed = await readSidecar(fs, mapsRoot, id, '.meta.json');
+  const parsed = await readSidecar(dir, id, '.meta.json');
   if (parsed === undefined) return {};
   if (typeof parsed !== 'object' || parsed === null) {
     console.warn(`[content-resolver] maps-index: ${id}.meta.json is not an object; serving the bare id`);
@@ -90,8 +97,7 @@ async function metaOf(
 
 /** Undefined when `<id>.script.json` is absent, malformed, or carries no readable slot. */
 async function playersOf(
-  fs: ReadableVfs,
-  mapsRoot: string,
+  dir: MapsDir,
   id: string,
 ): Promise<
   | {
@@ -101,7 +107,7 @@ async function playersOf(
     }
   | undefined
 > {
-  const parsed = await readSidecar(fs, mapsRoot, id, '.script.json');
+  const parsed = await readSidecar(dir, id, '.script.json');
   if (typeof parsed !== 'object' || parsed === null) return undefined;
   const { players, multiplayer } = parsed as Record<string, unknown>;
   if (!Array.isArray(players)) return undefined;
@@ -122,24 +128,21 @@ async function playersOf(
  * caller guards.
  */
 export async function buildMapsIndexEntries(fs: ReadableVfs, mapsRoot: string): Promise<MapsIndexEntry[]> {
-  const ids = (await fs.readdir(mapsRoot))
+  const dir: MapsDir = { fs, root: mapsRoot, names: await fileNamesIn(fs, mapsRoot) };
+  const ids = [...dir.names]
     .filter(
-      (e) =>
-        e.kind === 'file' &&
-        e.name.endsWith('.json') &&
-        !e.name.endsWith('.meta.json') &&
-        !e.name.endsWith('.script.json'),
+      (name) => name.endsWith('.json') && !name.endsWith('.meta.json') && !name.endsWith('.script.json'),
     )
-    .map((e) => e.name.slice(0, -'.json'.length))
-    .sort();
+    .map((name) => name.slice(0, -'.json'.length))
+    .sort(byCodeUnit);
   const entries: MapsIndexEntry[] = [];
   for (const id of ids) {
-    const meta = await metaOf(fs, mapsRoot, id);
-    const players = await playersOf(fs, mapsRoot, id);
+    const meta = await metaOf(dir, id);
+    const players = await playersOf(dir, id);
     entries.push({
       id,
       ...meta,
-      minimap: (await fs.stat(vjoin(mapsRoot, `${id}.png`)))?.kind === 'file',
+      minimap: dir.names.has(`${id}.png`),
       ...(players !== undefined ? { players: players.slots } : {}),
       ...(players?.fixedColors ? { fixedColors: true } : {}),
       ...(players?.multiplayer ? { multiplayer: true } : {}),

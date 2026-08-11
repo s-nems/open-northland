@@ -1,6 +1,6 @@
 /**
- * Path helpers for `/`-separated {@link Vfs} paths. Backslashes are treated as separators too, so a
- * native Windows root handed to the Node adapter and an archive-borne `data\...` member both parse.
+ * Path helpers for `/`-separated {@link Vfs} paths. Backslashes are separators here too, so an
+ * archive-borne `data\...` member parses; the Node adapter hands paths to `node:fs` untouched.
  */
 
 const SEPARATORS = /[\\/]+/;

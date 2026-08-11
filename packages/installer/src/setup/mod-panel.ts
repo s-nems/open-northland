@@ -1,5 +1,5 @@
 import { formatMessage, localeTag, messages } from '../i18n/index.js';
-import type { ModEvent, ModInstallApi } from '../shell-api.js';
+import type { ModDelivery, ModEvent, ModInstallApi } from '../shell-api.js';
 import { el } from './dom.js';
 
 /** Whole megabytes; the caller appends the unit. */
@@ -43,41 +43,48 @@ function renderModEvent(event: ModEvent): void {
   }
 }
 
-export function createModPanel(api: ModInstallApi, onModRoot: (root: string) => void): ModPanelView {
+export function createModPanel(
+  api: ModInstallApi,
+  onModRoot: (root: string) => void,
+  delivery: () => ModDelivery,
+): ModPanelView {
   const panel = el('mod-panel');
   const progress = el('mod-progress');
   const note = el('mod-note');
-  el('mod-download').addEventListener('click', async () => {
+
+  const fallbackNote = (): string =>
+    delivery() === 'origin-archive'
+      ? messages().setup.mod.fallbackArchive
+      : messages().setup.mod.fallbackFolder;
+
+  /** Either button runs the same long install, so both are held for its whole duration. */
+  function setBusy(busy: boolean): void {
+    progress.classList.toggle('hidden', !busy);
+    el<HTMLButtonElement>('mod-download').disabled = busy;
+    el<HTMLButtonElement>('mod-pick').disabled = busy;
+  }
+
+  async function install(run: () => Promise<string | null>): Promise<void> {
     const copy = messages().setup.mod;
-    progress.classList.remove('hidden');
+    setBusy(true);
     note.textContent = '';
-    el<HTMLButtonElement>('mod-download').disabled = true;
     try {
-      onModRoot(await api.downloadMod());
+      const root = await run();
+      if (root !== null) onModRoot(root);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // A user Cancel surfaces as an AbortError riding the IPC rejection, not as a failure.
       note.textContent = /abort/i.test(message)
         ? copy.cancelled
-        : formatMessage(copy.downloadFailed, { message, fallback: copy.fallbackNote });
+        : formatMessage(copy.downloadFailed, { message, fallback: fallbackNote() });
     } finally {
-      progress.classList.add('hidden');
-      el<HTMLButtonElement>('mod-download').disabled = false;
+      setBusy(false);
     }
-  });
+  }
+
+  el('mod-download').addEventListener('click', () => void install(() => api.downloadMod()));
   el('mod-cancel').addEventListener('click', () => void api.cancelModDownload());
-  el('mod-pick').addEventListener('click', async () => {
-    const copy = messages().setup.mod;
-    try {
-      const picked = await api.pickModFolder();
-      if (picked === null) return;
-      note.textContent = '';
-      onModRoot(picked);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      note.textContent = formatMessage(copy.pickFailed, { message, fallback: copy.fallbackNote });
-    }
-  });
+  el('mod-pick').addEventListener('click', () => void install(() => api.pickModFolder()));
 
   return {
     handleEvent: renderModEvent,
@@ -86,7 +93,8 @@ export function createModPanel(api: ModInstallApi, onModRoot: (root: string) => 
     },
     applyLabels(): void {
       const copy = messages().setup.mod;
-      el('mod-required-note').innerHTML = copy.requiredHtml;
+      el('mod-required-note').innerHTML =
+        delivery() === 'origin-archive' ? copy.requiredOriginHtml : copy.requiredUpstreamHtml;
       el('mod-download').textContent = copy.download;
       el('mod-pick').textContent = copy.haveIt;
       el('mod-cancel').textContent = messages().setup.cancel;

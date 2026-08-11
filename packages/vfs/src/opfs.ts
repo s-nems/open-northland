@@ -45,8 +45,14 @@ export function opfsVfs(root: FileSystemDirectoryHandle): Vfs {
       try {
         // A SharedArrayBuffer-backed view is not a BlobPart; copying also detaches nothing.
         await writable.write(Uint8Array.from(data));
-      } finally {
         await writable.close();
+      } catch (error) {
+        // Closing an errored stream rejects with a TypeError of its own, which would hide the quota
+        // failure the caller words for the visitor. Opening the handle already created the file, so
+        // a failed write leaves an empty one behind.
+        await writable.abort().catch(() => {});
+        await fs.rm(path).catch(() => {});
+        throw error;
       }
     },
 
@@ -64,7 +70,12 @@ export function opfsVfs(root: FileSystemDirectoryHandle): Vfs {
     },
 
     async stat(path: string): Promise<VfsStat | undefined> {
-      const segments = segmentsOf(path);
+      let segments: string[];
+      try {
+        segments = segmentsOf(path);
+      } catch {
+        return undefined;
+      }
       const name = segments.pop();
       let parent: FileSystemDirectoryHandle;
       try {
@@ -96,11 +107,18 @@ export function opfsVfs(root: FileSystemDirectoryHandle): Vfs {
         }
         return;
       }
+      let parent: FileSystemDirectoryHandle;
       try {
-        const parent = await dirOf(segments, false);
-        await parent.removeEntry(name, { recursive: true });
+        parent = await dirOf(segments, false);
       } catch {
-        // rm -rf semantics: an absent path or parent is a no-op.
+        return;
+      }
+      try {
+        await parent.removeEntry(name, { recursive: true });
+      } catch (error) {
+        // `rm -rf` ignores absence; a browser refusing the delete is a failure the caller needs,
+        // because reclaiming storage before a retry is the reason this is called at all.
+        if (!(error instanceof DOMException && error.name === 'NotFoundError')) throw error;
       }
     },
   };

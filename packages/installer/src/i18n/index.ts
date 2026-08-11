@@ -19,7 +19,7 @@ export type Locale = keyof typeof LOCALES;
 export type LocaleTag = (typeof LOCALES)[Locale]['tag'];
 
 const DEFAULT_LOCALE: Locale = 'eng';
-/** The main process and the setup renderer each hold their own copy, synced over IPC. */
+/** One active locale per realm; a shell with more than one realm keeps them in step itself. */
 let activeLocale: Locale = DEFAULT_LOCALE;
 
 export const LOCALE_CODES = Object.keys(LOCALES) as readonly Locale[];

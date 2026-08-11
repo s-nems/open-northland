@@ -34,7 +34,8 @@ describe('zip reader', () => {
   });
 
   it('caps deflate output at the declared uncompressed size', async () => {
-    const bomb = new Uint8Array(1 << 16);
+    // Well past the 32 KiB deflate window, so a cap that only holds within one window would fail.
+    const bomb = new Uint8Array(1 << 20);
     const source = await sourceOf([{ name: 'bomb', data: bomb, deflate: true }]);
     const [entry] = await readZipEntries(source);
     if (entry === undefined) throw new Error('expected one entry');

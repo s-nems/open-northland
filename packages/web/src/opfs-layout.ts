@@ -7,6 +7,10 @@ export const DATA_DIR = 'open-northland';
 export const CONTENT_DIR = vjoin(DATA_DIR, 'content');
 export const MODS_DIR = vjoin(DATA_DIR, 'mods');
 
+/** Written inside the content tree for as long as a conversion is running. A closed tab leaves it
+ *  behind, which is the only signal that the tree is a half-run rather than an old complete one. */
+export const CONTENT_RUNNING_MARKER = '.incomplete';
+
 /** The whole origin-private file system as a Vfs; layout paths above are relative to it. */
 export async function opfsRoot(): Promise<Vfs> {
   return opfsVfs(await navigator.storage.getDirectory());

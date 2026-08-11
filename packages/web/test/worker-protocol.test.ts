@@ -7,8 +7,7 @@ describe('pipelineArgsOf', () => {
     const noMod = pipelineArgsOf({ kind: 'run', game: new Map(), modRoot: undefined, locale: 'eng' });
     expect(noMod).toEqual({ game: '/game', out: `/data/${CONTENT_DIR}`, modRoot: undefined });
 
-    // The shell hands OPFS-root-relative roots (`open-northland/mods/…`); losing the data-dir
-    // prefix here once cost every external-mod conversion.
+    // Mod roots stay OPFS-root-relative (`open-northland/mods/…`) until the worker re-roots them.
     const withMod = pipelineArgsOf({
       kind: 'run',
       game: new Map(),

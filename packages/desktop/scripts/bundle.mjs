@@ -1,6 +1,6 @@
 /**
- * electron-builder ships only `dist/**` and `package.json`, so the workspace-symlinked pipeline and
- * content-resolver dependencies must be inlined here; `tsc` emits declarations only.
+ * electron-builder ships only `dist/**` and `package.json`, so every workspace-symlinked dependency
+ * must be inlined here; `tsc` emits declarations only.
  */
 
 import { cp, mkdir } from 'node:fs/promises';

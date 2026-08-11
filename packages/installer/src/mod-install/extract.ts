@@ -54,10 +54,15 @@ export function modLayoutOf(entries: readonly ZipEntry[]): ModArchiveLayout | un
 
 export interface ModExtraction {
   readonly source: ZipSource;
-  /** File members of the archive; directory members carry no bytes and are created implicitly. */
   readonly entries: readonly ZipEntry[];
   readonly layout: ModArchiveLayout;
   readonly destDir: string;
+}
+
+/** Directory members carry no bytes and are created implicitly. Both separators end one, and
+ *  `normalizeRelPath` drops the trailing one, so this has to run on the raw name. */
+function isDirectoryMember(entry: ZipEntry): boolean {
+  return /[\\/]$/.test(entry.name);
 }
 
 /** Writes every member under the layout's prefix into `destDir`, prefix stripped, and returns the
@@ -72,6 +77,7 @@ export async function extractModEntries(
   const prefix = layout.prefix === '' ? '' : `${layout.prefix}/`;
   const members: { readonly entry: ZipEntry; readonly rel: string }[] = [];
   for (const entry of entries) {
+    if (isDirectoryMember(entry)) continue;
     const rel = zipMemberRelPath(entry.name);
     if (rel === undefined) {
       onEvent({ kind: 'mod-warning', message: `skipped unsafe zip member "${entry.name}"` });

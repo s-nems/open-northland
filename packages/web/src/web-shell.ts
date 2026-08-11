@@ -15,55 +15,26 @@ import type { Locale } from '@open-northland/installer/i18n';
 import { messages } from '@open-northland/installer/i18n';
 import { discoverInstalledMod, installCnMod, isFinalModEvent } from '@open-northland/installer/mod-install';
 import { vjoin } from '@open-northland/vfs';
-import { fileMapVfs } from '@open-northland/vfs/opfs';
+import { fileMapVfs, opfsVfs } from '@open-northland/vfs/opfs';
 import { effectiveLocale, storeLocale } from './locale.js';
-import { CONTENT_DIR, MODS_DIR, opfsRoot } from './opfs-layout.js';
-import { assertRoomForConversion, requestPersistentStorage, storageFullMessage } from './storage.js';
+import { acquireOriginLock } from './locks.js';
+import { pickedArchiveDownload, siteArchiveDownload } from './mod-transport.js';
+import { CONTENT_DIR, CONTENT_RUNNING_MARKER, MODS_DIR, opfsRoot } from './opfs-layout.js';
+import { pickDirectoryFiles, pickZipFile } from './pickers.js';
+import {
+  assertRoomForConversion,
+  hasRoomForConversion,
+  requestPersistentStorage,
+  storageFullMessage,
+} from './storage.js';
 import type { PipelineWorkerMessage, RunPipelineRequest } from './worker/protocol.js';
 
-/** Web Locks name guarding the one conversion this origin may run at a time. */
+/** Web Locks names: one conversion and one mod install per origin, whatever the tab count. */
 const PIPELINE_LOCK = 'open-northland.pipeline';
-
-/** Where the site hosts the CnMod archive, beside the installer page (same origin, no CORS). */
-const CNMOD_ARCHIVE_URL = new URL('cnmod.zip', document.baseURI);
+const MOD_INSTALL_LOCK = 'open-northland.mod-install';
 
 /** The playable app, served under the site base with the shared content routes beneath it. */
 const PLAY_URL = 'play/';
-
-/** Streams `response` into an OPFS file chunk by chunk - the ~600 MB archive must never sit in
- *  memory whole. Resolves to undefined: the web transport has no streaming hash, and the archive
- *  comes from this site anyway. */
-async function streamToOpfsFile(
-  destZip: string,
-  response: Response,
-  onEvent: (event: ModEvent) => void,
-  signal: AbortSignal | undefined,
-): Promise<undefined> {
-  if (response.body === null) throw new Error('mod download: empty response body');
-  const lengthHeader = response.headers.get('content-length');
-  const total = lengthHeader === null ? undefined : Number.parseInt(lengthHeader, 10);
-  let dir = await navigator.storage.getDirectory();
-  const segments = destZip.split('/');
-  const name = segments.pop();
-  if (name === undefined || name === '') throw new Error(`mod download: unusable path ${destZip}`);
-  for (const segment of segments) dir = await dir.getDirectoryHandle(segment, { create: true });
-  const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
-  const reader = response.body.getReader();
-  let received = 0;
-  try {
-    for (;;) {
-      signal?.throwIfAborted();
-      const { done, value } = await reader.read();
-      if (done) break;
-      await writable.write(value);
-      received += value.length;
-      onEvent({ kind: 'mod-download', received, ...(total !== undefined ? { total } : {}) });
-    }
-  } finally {
-    await writable.close();
-  }
-  return undefined;
-}
 
 /** Storage exhaustion would otherwise reach the mod panel as a raw DOMException. */
 async function withStorageMessage<T>(run: () => Promise<T>): Promise<T> {
@@ -90,7 +61,7 @@ export function createWebShellApi(): ShellApi {
   let releasePipelineLock: (() => void) | undefined;
   const pipelineListeners: ((event: PipelineEvent) => void)[] = [];
   const modListeners: ((event: ModEvent) => void)[] = [];
-  let modDownload: AbortController | undefined;
+  let modInstall: AbortController | undefined;
 
   const modEvents = createEventThrottle();
   const forwardModEvent = (event: ModEvent): void => {
@@ -103,6 +74,17 @@ export function createWebShellApi(): ShellApi {
     return { path: folder.name, probe: await probeGameFolder(fileMapVfs(folder.files), '') };
   }
 
+  /**
+   * Probes the handle itself, which is a bounded scan, and walks the tree only once the folder has
+   * proven to hold the game. Snapshotting first would charge a mistaken pick - a home directory, a
+   * drive root - a full recursive walk before anything could tell the visitor it was the wrong one.
+   */
+  async function candidateOfHandle(handle: FileSystemDirectoryHandle): Promise<GameFolderCandidate> {
+    const probe = await probeGameFolder(opfsVfs(handle), '');
+    if (!probe.hasArchives) return { path: handle.name, probe };
+    return candidateOf(await snapshotDirectoryHandle(handle));
+  }
+
   /** OPFS-root-relative, exactly as the worker's data mount and the setup page both consume it. */
   async function availableModRoot(): Promise<string | undefined> {
     const fs = await opfsRoot();
@@ -111,37 +93,56 @@ export function createWebShellApi(): ShellApi {
 
   async function contentStatus(): Promise<ShellSetupState['contentStatus']> {
     const fs = await opfsRoot();
+    // A run that never finished leaves a tree that would otherwise read as merely out of date, and
+    // the page would offer to play it.
+    if ((await fs.stat(vjoin(CONTENT_DIR, CONTENT_RUNNING_MARKER))) !== undefined) return 'missing';
     const stored = await readPipelineManifest(fs, CONTENT_DIR);
     const irExists = (await fs.stat(vjoin(CONTENT_DIR, 'ir.json')))?.kind === 'file';
     return classifyContent(stored, CURRENT_MANIFEST, irExists);
   }
 
+  /**
+   * The browser's estimate counts the visitor's own leftovers, and both jobs begin by deleting the
+   * tree they are about to rewrite. Freeing it before asking is what keeps a run that once ran out
+   * of storage from refusing every retry, with nothing on screen that could clear it.
+   */
+  async function ensureRoomFor(tree: string): Promise<void> {
+    await requestPersistentStorage();
+    if (await hasRoomForConversion()) return;
+    await (await opfsRoot()).rm(tree);
+    await assertRoomForConversion();
+  }
+
+  /** Closing the tab mid-conversion throws away every minute of it, so the browser is asked to
+   *  confirm. Nothing else on the page warrants a prompt, so the handler lives only that long. */
+  const confirmUnload = (event: BeforeUnloadEvent): void => event.preventDefault();
+
   function stopWorker(): void {
+    window.removeEventListener('beforeunload', confirmUnload);
     worker?.terminate();
     worker = undefined;
     releasePipelineLock?.();
     releasePipelineLock = undefined;
   }
 
-  /**
-   * One conversion per origin: two tabs writing into the same content tree would interleave, and
-   * whichever finished last would stamp the mixture as ready. The lock is held for as long as the
-   * worker runs, so it is released from {@link stopWorker} rather than by awaiting the callback.
-   */
-  async function holdPipelineLock(): Promise<boolean> {
-    if (navigator.locks === undefined) return true;
-    return new Promise<boolean>((resolve) => {
-      void navigator.locks.request(PIPELINE_LOCK, { ifAvailable: true }, (lock) => {
-        if (lock === null) {
-          resolve(false);
-          return Promise.resolve();
-        }
-        resolve(true);
-        return new Promise<void>((release) => {
-          releasePipelineLock = release;
-        });
-      });
-    });
+  /** One install per origin: two of them write the same archive path and the same target tree, and
+   *  whichever finished last would mark the mixture complete. */
+  async function runModInstall(download: Parameters<typeof installCnMod>[2]): Promise<string> {
+    if (modInstall !== undefined) throw new Error(messages().errors.modDownloadRunning);
+    const release = await acquireOriginLock(MOD_INSTALL_LOCK);
+    if (release === undefined) throw new Error(messages().errors.modInstallElsewhere);
+    await ensureRoomFor(MODS_DIR);
+    modInstall = new AbortController();
+    const { signal } = modInstall;
+    try {
+      const fs = await opfsRoot();
+      return await withStorageMessage(() =>
+        installCnMod(fs, MODS_DIR, download, forwardModEvent, { signal }),
+      );
+    } finally {
+      modInstall = undefined;
+      release();
+    }
   }
 
   const api: WebShellApi = {
@@ -151,6 +152,7 @@ export function createWebShellApi(): ShellApi {
         portable: false,
         locale: effectiveLocale(),
         contentStatus: await contentStatus(),
+        modDelivery: 'origin-archive',
         ...(modRoot !== undefined ? { modRoot } : {}),
       };
     },
@@ -165,12 +167,13 @@ export function createWebShellApi(): ShellApi {
           if (err instanceof DOMException && err.name === 'AbortError') return null;
           throw err; // a permission or read failure is not a cancel and must surface
         }
-        return candidateOf(await snapshotDirectoryHandle(handle));
+        return candidateOfHandle(handle);
       }
       const files = await pickDirectoryFiles();
       if (files === null) return null;
       const folder = snapshotFileList(files);
-      return folder === undefined ? null : candidateOf(folder);
+      if (folder === undefined) throw new Error(messages().errors.notAFolder);
+      return candidateOf(folder);
     },
 
     async adoptFolder(folder: PickedFolder): Promise<GameFolderCandidate | null> {
@@ -178,8 +181,8 @@ export function createWebShellApi(): ShellApi {
     },
 
     async runPipeline(gamePath: string): Promise<void> {
-      if (worker !== undefined) throw new Error('pipeline already running');
-      if (modDownload !== undefined) throw new Error(messages().errors.modStillDownloading);
+      if (worker !== undefined) throw new Error(messages().errors.pipelineRunning);
+      if (modInstall !== undefined) throw new Error(messages().errors.modStillDownloading);
       const folder = picked;
       if (folder === undefined || folder.name !== gamePath) {
         throw new Error(messages().errors.noArchives);
@@ -188,30 +191,39 @@ export function createWebShellApi(): ShellApi {
       if (!probe.hasArchives) throw new Error(messages().errors.noArchives);
       const modRoot = probe.hasMod ? undefined : await availableModRoot();
       if (!probe.hasMod && modRoot === undefined) throw new Error(messages().errors.modRequired);
-      await requestPersistentStorage();
-      await assertRoomForConversion();
-      if (!(await holdPipelineLock())) throw new Error(messages().errors.conversionElsewhere);
+      await ensureRoomFor(CONTENT_DIR);
+      const release = await acquireOriginLock(PIPELINE_LOCK);
+      if (release === undefined) throw new Error(messages().errors.conversionElsewhere);
+      releasePipelineLock = release;
 
-      const spawned = new Worker(new URL('pipeline-worker.js', document.baseURI));
-      worker = spawned;
-      spawned.onmessage = (event: MessageEvent) => {
-        const message = event.data as PipelineWorkerMessage;
-        if (message.kind === 'done' || message.kind === 'error') stopWorker();
-        for (const listener of pipelineListeners) listener(message);
-      };
-      spawned.onerror = (event: ErrorEvent) => {
+      try {
+        const spawned = new Worker(new URL('pipeline-worker.js', document.baseURI));
+        worker = spawned;
+        spawned.onmessage = (event: MessageEvent<PipelineWorkerMessage>) => {
+          const message = event.data;
+          if (message.kind === 'done' || message.kind === 'error') stopWorker();
+          for (const listener of pipelineListeners) listener(message);
+        };
+        spawned.onerror = () => {
+          stopWorker();
+          for (const listener of pipelineListeners) {
+            listener({ kind: 'error', message: messages().errors.pipelineWorkerCrashed });
+          }
+        };
+        const request: RunPipelineRequest = {
+          kind: 'run',
+          game: folder.files,
+          modRoot,
+          locale: effectiveLocale(),
+        };
+        spawned.postMessage(request);
+        window.addEventListener('beforeunload', confirmUnload);
+      } catch (error) {
+        // Nothing is running, so the lock must not outlive the failed spawn: this tab would then
+        // report its own held lock as another tab's conversion.
         stopWorker();
-        for (const listener of pipelineListeners) {
-          listener({ kind: 'error', message: event.message || 'pipeline worker crashed' });
-        }
-      };
-      const request: RunPipelineRequest = {
-        kind: 'run',
-        game: folder.files,
-        modRoot,
-        locale: effectiveLocale(),
-      };
-      spawned.postMessage(request);
+        throw error;
+      }
     },
 
     async stopPipeline(): Promise<void> {
@@ -223,53 +235,17 @@ export function createWebShellApi(): ShellApi {
     },
 
     async downloadMod(): Promise<string> {
-      if (modDownload !== undefined) throw new Error(messages().errors.modDownloadRunning);
-      // The archive and the tree it unpacks to are the bulk of what a visitor must fit; refusing
-      // here beats failing after 600 MB of download.
-      await requestPersistentStorage();
-      await assertRoomForConversion();
-      modDownload = new AbortController();
-      const { signal } = modDownload;
-      try {
-        const fs = await opfsRoot();
-        return await withStorageMessage(() =>
-          installCnMod(
-            fs,
-            MODS_DIR,
-            async (destZip, onEvent, downloadSignal) => {
-              const response = await fetch(CNMOD_ARCHIVE_URL, { signal: downloadSignal ?? null });
-              if (!response.ok) {
-                throw new Error(`mod download: ${CNMOD_ARCHIVE_URL.pathname} answered ${response.status}`);
-              }
-              return streamToOpfsFile(destZip, response, onEvent, downloadSignal);
-            },
-            forwardModEvent,
-            { signal },
-          ),
-        );
-      } finally {
-        modDownload = undefined;
-      }
+      return runModInstall(siteArchiveDownload());
     },
 
     async cancelModDownload(): Promise<void> {
-      modDownload?.abort();
+      modInstall?.abort();
     },
 
     async pickModFolder(): Promise<string | null> {
       const file = await pickZipFile();
       if (file === null) return null;
-      await requestPersistentStorage();
-      await assertRoomForConversion();
-      const fs = await opfsRoot();
-      return withStorageMessage(() =>
-        installCnMod(
-          fs,
-          MODS_DIR,
-          (destZip, onEvent, signal) => streamToOpfsFile(destZip, new Response(file), onEvent, signal),
-          forwardModEvent,
-        ),
-      );
+      return runModInstall(pickedArchiveDownload(file));
     },
 
     onModEvent(listener: (event: ModEvent) => void): void {
@@ -277,10 +253,11 @@ export function createWebShellApi(): ShellApi {
     },
 
     async startGame(): Promise<void> {
-      // Re-checked here, not only in the setup UI: incompatible content must never boot.
-      if ((await contentStatus()) === 'stale-schema') {
-        throw new Error(messages().errors.incompatibleSchema);
-      }
+      // Re-checked here, not only in the setup UI: a tree this page wiped or never finished must
+      // never boot as if it were content.
+      const status = await contentStatus();
+      if (status === 'stale-schema') throw new Error(messages().errors.incompatibleSchema);
+      if (status === 'missing') throw new Error(messages().errors.contentMissing);
       location.assign(`${PLAY_URL}?lang=${effectiveLocale()}`);
     },
 
@@ -289,28 +266,4 @@ export function createWebShellApi(): ShellApi {
     },
   };
   return api;
-}
-
-/** A one-shot hidden file input; the "I already have it" affordance takes the mod zip itself. */
-function pickZipFile(): Promise<File | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.zip,application/zip';
-    input.addEventListener('change', () => resolve(input.files?.[0] ?? null));
-    input.addEventListener('cancel', () => resolve(null));
-    input.click();
-  });
-}
-
-/** Folder picking without `showDirectoryPicker`: a one-shot `webkitdirectory` input. */
-function pickDirectoryFiles(): Promise<FileList | null> {
-  return new Promise((resolve) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.webkitdirectory = true;
-    input.addEventListener('change', () => resolve(input.files));
-    input.addEventListener('cancel', () => resolve(null));
-    input.click();
-  });
 }

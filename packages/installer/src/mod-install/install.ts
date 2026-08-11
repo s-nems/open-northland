@@ -53,10 +53,9 @@ export async function installCnMod(
     target = vjoin(modsDir, layout.name);
     await fs.rm(target);
     await markIncomplete(fs, target);
-    const entries = all.filter((entry) => !entry.name.endsWith('/'));
     const files = await extractModEntries(
       fs,
-      { source, entries, layout, destDir: target },
+      { source, entries: all, layout, destDir: target },
       onEvent,
       options?.signal,
     );

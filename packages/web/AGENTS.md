@@ -7,9 +7,9 @@ applies.
 
 ## Boundaries
 
-- The web app stays shell-agnostic and never imports web-shell code. The service worker serves
-  `packages/app`'s build and generated content through `@open-northland/content-resolver`, the same
-  route table as Vite and the desktop protocol.
+- The web app stays shell-agnostic and never imports web-shell code. The service worker answers the
+  generated-content routes through `@open-northland/content-resolver`, the same route table as Vite
+  and the desktop protocol; everything else, `packages/app`'s own build included, is the host's.
 - The site ships no game content. Every visitor converts their own copy; picked or dropped game
   folders are read-only inputs and their bytes never leave the browser. `scripts/bundle.mjs` fails
   the build if the assembled site carries a single original-game file extension.
@@ -17,8 +17,9 @@ applies.
   `ShellApi` implementation. Import shell constants from a package's leaf subpath, never from a
   barrel that also exports the conversion: the installer page is the first thing a visitor
   downloads.
-- Everything the shell stores lives under the one OPFS directory in `src/opfs-layout.ts` plus the
-  locale key in `localStorage`; the rest of the origin's storage is not this package's.
+- Everything the shell stores lives under the one OPFS directory in `src/opfs-layout.ts`, plus the
+  locale key in `localStorage` and the boot's reload guard in `sessionStorage`; the rest of the
+  origin's storage is not this package's.
 - The page addresses its own files relatively, and the service worker derives the app prefix from
   where `sw.js` was served, so the site works under any mount point. Only the app's build base is
   absolute. Keep it that way: an absolute URL added here pins the deployment to one path.

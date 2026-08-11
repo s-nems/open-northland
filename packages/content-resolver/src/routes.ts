@@ -75,6 +75,13 @@ const INDEX_ROUTES: readonly IndexRoute[] = [
   { pathname: '/backdrops-index', root: BACKDROPS_ROOT, build: buildBackdropsIndexEntries },
 ];
 
+/** One claimed pathname per route, so a host can prove it serves a static file at none of them. */
+export const CONTENT_ROUTE_PROBES: readonly string[] = [
+  IR_PATHNAME,
+  ...INDEX_ROUTES.map((route) => route.pathname),
+  ...FILE_ROUTES.map((route) => `${route.prefix}probe${route.extensions[0] ?? '.json'}`),
+];
+
 /** The longest allowed extension matching `file`, so `.atlas.json` wins over `.json`. */
 function servedExtension(file: string, allowed: readonly ServedExtension[]): ServedExtension | undefined {
   let best: ServedExtension | undefined;

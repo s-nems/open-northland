@@ -11,7 +11,11 @@ one conversion codebase runs over Node and over browser storage. The root
 - `ReadableVfs` is the whole interface a picked game folder can satisfy. Take it wherever a consumer
   only reads, so a read-only adapter fits by type instead of rejecting at call time.
 - Keep the interface minimal: a new method must have two real platform implementations and a caller.
-  A method one caller needs is that caller's job - moving a directory cost the browser a full copy of
-  the tree, and was removed rather than implemented twice.
+  A method one caller needs is that caller's job, and a method the browser can only emulate by
+  copying a whole tree belongs nowhere near this seam.
+- Adapters must not diverge where a caller can see it: the same call answers the same way, and a
+  refusal is reported rather than swallowed. `stat` is the exception that has to be total, returning
+  `undefined` for anything it cannot address, because callers branch on it instead of guarding it.
 - Adapter behavior is pinned by the shared contract suite in `test/adapters.test.ts`; every adapter
-  joins it, the OPFS one through the faked file-system handles in `test/support/fake-opfs.ts`.
+  joins it, the read-only ones through its read half, the OPFS one through the faked file-system
+  handles in `test/support/fake-opfs.ts`.

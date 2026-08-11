@@ -8,6 +8,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
+import { CONTENT_ROUTES } from './contract-routes.mjs';
 
 const image = process.argv[2] ?? 'open-northland-web';
 
@@ -20,9 +21,9 @@ const CHECKS = [
   { path: '/healthz', status: 200 },
   // The proxy in front of the container serves the mod archive; the image must not pretend to.
   { path: '/cnmod.zip', status: 404 },
-  // Content routes are the service worker's, answered from origin-private storage. A static file
-  // at one of them would shadow the route and hide the clash.
-  { path: '/play/maps-index', status: 404 },
+  // Every content route belongs to the service worker, answered from origin-private storage. A
+  // static file at one of them would shadow the route and hide the clash.
+  ...CONTENT_ROUTES.map((route) => ({ path: `/play${route}`, status: 404 })),
   { path: '/no-such-file', status: 404 },
 ];
 

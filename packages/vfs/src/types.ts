@@ -1,11 +1,3 @@
-/**
- * The file-system seam shared by the asset pipeline, the content routes, and the installers, so one
- * conversion codebase runs over Node (desktop, CLI) and OPFS plus picked folders (browser).
- *
- * Paths are `/`-separated. Each adapter defines its root form: the Node adapter takes native
- * absolute paths, the browser adapters take paths relative to their root handle.
- */
-
 export interface VfsEntry {
   readonly name: string;
   readonly kind: 'file' | 'dir';
@@ -16,8 +8,8 @@ export interface VfsStat {
   readonly size: number;
 }
 
-/** What a picked game folder can offer. Consumers that never write take this, so a read-only
- *  adapter satisfies them by type rather than by rejecting at runtime. */
+/** Consumers that never write take this, so a read-only adapter satisfies them by type rather than
+ *  by rejecting at runtime. */
 export interface ReadableVfs {
   /** Rejects when the file is absent. */
   readFile(path: string): Promise<Uint8Array>;
@@ -25,7 +17,7 @@ export interface ReadableVfs {
   readFileSlice(path: string, offset: number, length: number): Promise<Uint8Array>;
   /** Rejects when the directory is absent. */
   readdir(path: string): Promise<VfsEntry[]>;
-  /** `undefined` when nothing exists at `path`. */
+  /** `undefined` when nothing exists at `path`, including a path this adapter cannot address. */
   stat(path: string): Promise<VfsStat | undefined>;
 }
 

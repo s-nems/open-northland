@@ -26,9 +26,13 @@ asset-pipeline -> generated content -> content-resolver -> app / desktop
 - `packages/render` turns simulation snapshots into a PixiJS scene. It does not mutate the sim.
 - `packages/audio` chooses sounds from snapshots and events, then plays them through Web Audio.
 - `packages/app` owns browser input, menus, HUD, the fixed-timestep loop, and package wiring.
-- `packages/content-resolver` maps content URLs to the generated directory for both web and desktop
-  hosts.
+- `packages/content-resolver` maps content URLs onto the generated directory for every host.
+- `packages/vfs` is the file-system seam the pipeline, the content routes, and the installers share,
+  so one codebase runs over Node and over browser storage.
+- `packages/installer` owns the first-run setup page both shells present, and the mod install.
 - `packages/desktop` serves the browser build through Electron and runs first-use content setup.
+- `packages/web` hosts the same app in a plain browser: the installer page, the pipeline in a worker,
+  and a service worker answering the content routes from origin-private storage.
 - `tools/asset-pipeline` converts an owned game installation into local, validated content.
 
 The app owns runtime orchestration: it advances the sim and hands snapshots and events to the sinks.

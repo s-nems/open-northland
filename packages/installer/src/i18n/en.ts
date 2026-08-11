@@ -11,6 +11,7 @@ export const en = {
     dropPrompt: 'Drop your Cultures 8th Wonder folder here',
     browserStorage: "this browser's private storage",
     browse: 'Browse…',
+    readingFolder: 'Reading the folder…',
     detected: 'Found on this computer:',
     install: 'Install game content',
     regenerate: 'Regenerate game content',
@@ -23,7 +24,7 @@ export const en = {
       'Your original game files are only read, never modified. The converted data stays on this ' +
       'computer in <code id="data-root"></code>.',
     probe: {
-      withMod: 'Game found (with the culturesnation mod).',
+      withMod: 'Game found (with the CulturesNation mod).',
       externalMod: 'Game found. Using the CulturesNation mod from {path}.',
       noMod: 'Game found - but the CulturesNation mod is missing.',
       noArchives: 'No game archives (.lib) found there - pick the folder that contains Game.exe and DataX.',
@@ -55,11 +56,15 @@ export const en = {
       maps: 'Decoding maps',
     },
     mod: {
-      requiredHtml:
+      requiredUpstreamHtml:
         'The free community mod <strong>CulturesNation</strong> is required to play, and your game ' +
         'folder does not have it. Open Northland can download it for you (~600 MB, from ' +
         "<code>culturesnation.pl</code>'s Google Drive link) into its data folder - your game folder " +
         'stays untouched.',
+      requiredOriginHtml:
+        'The free community mod <strong>CulturesNation</strong> is required to play, and your game ' +
+        'folder does not have it. Open Northland can download it for you (~600 MB, from this site) ' +
+        "into this browser's storage - your game folder stays untouched.",
       download: 'Download the mod',
       haveIt: 'I already have it…',
       downloading: 'Downloading the mod…',
@@ -67,9 +72,12 @@ export const en = {
       cancelled: 'Download cancelled.',
       downloadFailed: 'Downloading the mod failed: {message} - {fallback}',
       pickFailed: '{message} - {fallback}',
-      fallbackNote:
+      fallbackFolder:
         'You can download the mod yourself from culturesnation.pl (news page → CnMod), unpack the zip, ' +
         'and point "I already have it…" at the unpacked folder.',
+      fallbackArchive:
+        'You can download the mod yourself from culturesnation.pl (news page → CnMod) and point ' +
+        '"I already have it…" at the downloaded zip file.',
     },
     language: {
       english: 'English',
@@ -96,10 +104,11 @@ export const en = {
     modStillDownloading: 'the mod is still downloading - wait for it to finish',
     noArchives: 'no game archives (.lib) found under the selected folder',
     modRequired:
-      'the culturesnation mod is required - download it below, or point the wizard at an unpacked copy',
+      'the CulturesNation mod is required - download it below, or point the wizard at an unpacked copy',
     modDownloadRunning: 'mod download already running',
     noDataCnmd: 'no DataCnmd/ found there - pick the unpacked mod folder (download it from {url})',
     incompatibleSchema: 'content was generated for an incompatible schema - regenerate it first',
+    contentMissing: 'there is no converted game content yet - install it first',
     noServiceWorker:
       'this browser will not run a service worker for this site, so the converted game content ' +
       'cannot be served. Private and incognito windows usually block it - try a normal window.',
@@ -113,6 +122,11 @@ export const en = {
       'the conversion needs about {needed} GB of browser storage and only {available} GB is ' +
       'available for this site. Free some disk space and reload.',
     conversionElsewhere: 'another tab of this site is already converting - finish or close it first',
+    modInstallElsewhere: 'the mod is already being installed - finish that first',
+    modArchiveUnavailable: 'this site did not serve the mod archive ({status})',
+    pipelineRunning: 'a conversion is already running',
+    pipelineWorkerCrashed: 'the converter stopped unexpectedly - reload the page and try again',
+    notAFolder: 'that is a file, not a folder - drop the folder your game is installed in',
     setupFailed: 'the installer could not start: {message}',
   },
 } as const;

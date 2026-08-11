@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { basename, extname } from 'node:path';
-import { forbiddenGameExtensions } from './game-asset-policy.mjs';
+import { extname } from 'node:path';
+import { isForbiddenGameFile } from './game-asset-policy.mjs';
 
 const reviewedBinaryAssets = new Set([
   'docs/images/logo.webp',
@@ -48,7 +48,7 @@ for (const file of tracked) {
   if (lower.startsWith('content/')) {
     errors.push(`${file}: generated content must stay untracked`);
   }
-  if (forbiddenGameExtensions.has(extension) || basename(lower) === 'map.dat') {
+  if (isForbiddenGameFile(file)) {
     errors.push(`${file}: original or decoded game-file type is not allowed`);
   }
   if (reviewRequiredExtensions.has(extension) && !reviewedBinaryAssets.has(file)) {

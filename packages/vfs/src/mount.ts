@@ -1,5 +1,5 @@
 import type { ReadableVfs, Vfs, VfsEntry, VfsStat } from './types.js';
-import { toPosix } from './vpath.js';
+import { normalizeRelPath, toPosix } from './vpath.js';
 
 /**
  * Routes by first path segment(s) into root-relative sub-filesystems, e.g.
@@ -17,11 +17,16 @@ export function mountVfs(mounts: Readonly<Record<string, ReadableVfs>>): Vfs {
     readonly rel: string;
   }
 
+  /** Collapsed before the prefix scan, so `/data/../game/x` cannot be charged to the `/data` mount. */
   function route(path: string): Routed {
-    const posix = `/${toPosix(path).replace(/^\/+/, '')}`;
-    for (const { prefix, fs } of table) {
-      if (posix === prefix) return { fs, rel: '' };
-      if (posix.startsWith(`${prefix}/`)) return { fs, rel: posix.slice(prefix.length + 1) };
+    const stripped = toPosix(path).replace(/^\/+/, '');
+    const normalized = stripped === '' ? '' : normalizeRelPath(stripped);
+    if (normalized !== undefined) {
+      const posix = `/${normalized}`;
+      for (const { prefix, fs } of table) {
+        if (posix === prefix) return { fs, rel: '' };
+        if (posix.startsWith(`${prefix}/`)) return { fs, rel: posix.slice(prefix.length + 1) };
+      }
     }
     throw new Error(`mount vfs: ${path} is outside every mount`);
   }
@@ -58,8 +63,14 @@ export function mountVfs(mounts: Readonly<Record<string, ReadableVfs>>): Vfs {
       return fs.readdir(rel);
     },
     async stat(path: string): Promise<VfsStat | undefined> {
-      const { fs, rel } = route(path);
-      return fs.stat(rel);
+      let routed: Routed;
+      try {
+        routed = route(path);
+      } catch {
+        // Nothing exists outside every mount, and callers branch on `stat` rather than guard it.
+        return undefined;
+      }
+      return routed.fs.stat(routed.rel);
     },
     async rm(path: string): Promise<void> {
       const { fs, rel } = routeWritable(path);

@@ -54,6 +54,18 @@ export function initSetup(api: ShellApi): void {
     langSwitch.applyLabels();
   }
 
+  /**
+   * A conversion clears the content tree before it writes, so the status the pick panel is holding
+   * is wrong the moment a run starts. Anything that returns to that panel re-reads it first, or the
+   * page would keep offering Play for content that is no longer there.
+   */
+  async function refreshState(): Promise<void> {
+    const state = await api.getState();
+    dataRootLabel = state.dataRootLabel;
+    pick.applyState(state);
+    renderAll();
+  }
+
   async function boot(): Promise<void> {
     const state = await api.getState();
     setActiveLocale(state.locale);
@@ -61,16 +73,23 @@ export function initSetup(api: ShellApi): void {
     pick.applyState(state);
     renderAll();
 
-    api.onPipelineEvent((event) => progress.handleEvent(event));
+    api.onPipelineEvent((event) => {
+      progress.handleEvent(event);
+      if (event.kind === 'done' || event.kind === 'error') void refreshState();
+    });
     api.onModEvent((event) => pick.handleModEvent(event));
 
     el('cancel').addEventListener('click', async () => {
       // Awaited so a late error event cannot flip the page to the failed phase.
       await api.stopPipeline();
+      await refreshState();
       showPhase('pick');
     });
     el('play').addEventListener('click', () => void api.startGame());
-    el('retry').addEventListener('click', () => showPhase('pick'));
+    el('retry').addEventListener('click', async () => {
+      await refreshState();
+      showPhase('pick');
+    });
 
     await pick.start(state.gamePath);
   }

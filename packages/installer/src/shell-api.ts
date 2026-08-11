@@ -5,11 +5,11 @@ import type { ContentStatus } from './content-state.js';
 import type { Locale } from './i18n/index.js';
 
 /**
- * The seam between the shared first-run setup page and its hosting shell. The desktop shell
- * implements it over Electron IPC with native paths; the web shell over OPFS and a pipeline worker.
- * Optional members double as capability flags: an absent `probeGamePath` hides the typed-path input,
- * an absent `detectGameFolders` the detected-installs list, an absent `adoptFolder` the drop zone.
+ * Where this shell gets the mod and what "I already have it" takes, which the page has to word for
+ * the visitor: the desktop shell downloads from the mod's own site and adopts an unpacked folder,
+ * the web shell fetches the archive its own origin hosts and adopts that zip.
  */
+export type ModDelivery = 'upstream-folder' | 'origin-archive';
 
 /** What the setup page needs to render its first screen. */
 export interface ShellSetupState {
@@ -21,6 +21,7 @@ export interface ShellSetupState {
   readonly locale: Locale;
   /** How the installed content compares to this shell's pipeline. */
   readonly contentStatus: ContentStatus;
+  readonly modDelivery: ModDelivery;
   /** The game folder remembered from a previous run, to prefill the picker. */
   readonly gamePath?: string;
   /** A usable culturesnation mod root outside the game folder, if any. */

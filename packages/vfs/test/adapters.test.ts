@@ -6,33 +6,81 @@ import { memoryVfs } from '../src/memory.js';
 import { mountVfs } from '../src/mount.js';
 import { nodeVfs } from '../src/node.js';
 import { fileMapVfs, opfsVfs } from '../src/opfs.js';
-import { readText, type Vfs, writeText } from '../src/types.js';
+import { type ReadableVfs, readText, type Vfs, writeText } from '../src/types.js';
 import { vjoin } from '../src/vpath.js';
 import { fakeOpfsRoot } from './support/fake-opfs.js';
 
-/** The shared adapter contract, run against a root prepared by each adapter's harness. */
-function adapterContract(makeFs: () => Promise<{ fs: Vfs; root: string }>): void {
-  it('round-trips files, creating parents', async () => {
+interface Harness<T extends ReadableVfs> {
+  readonly fs: T;
+  readonly root: string;
+}
+
+/** What every harness holds before the read contract runs. */
+const SEED: Readonly<Record<string, readonly number[]>> = {
+  'top.bin': [1, 2, 3, 4],
+  'nest/inner.bin': [9],
+};
+
+/** The read half of the contract, which the read-only snapshot adapter joins too. */
+function readableContract(makeFs: () => Promise<Harness<ReadableVfs>>): void {
+  it('reads whole files and byte ranges', async () => {
     const { fs, root } = await makeFs();
-    const path = vjoin(root, 'a/b/file.bin');
-    await fs.writeFile(path, Uint8Array.from([1, 2, 3, 4]));
-    expect([...(await fs.readFile(path))]).toEqual([1, 2, 3, 4]);
-    expect([...(await fs.readFileSlice(path, 1, 2))]).toEqual([2, 3]);
-    expect(await fs.stat(path)).toEqual({ kind: 'file', size: 4 });
-    expect(await fs.stat(vjoin(root, 'a/b'))).toEqual({ kind: 'dir', size: 0 });
+    expect([...(await fs.readFile(vjoin(root, 'top.bin')))]).toEqual([1, 2, 3, 4]);
+    expect([...(await fs.readFileSlice(vjoin(root, 'top.bin'), 1, 2))]).toEqual([2, 3]);
+  });
+
+  it('stats files, directories, and absence', async () => {
+    const { fs, root } = await makeFs();
+    expect(await fs.stat(vjoin(root, 'top.bin'))).toEqual({ kind: 'file', size: 4 });
+    expect(await fs.stat(vjoin(root, 'nest'))).toEqual({ kind: 'dir', size: 0 });
     expect(await fs.stat(vjoin(root, 'missing'))).toBeUndefined();
   });
 
-  it('lists directories with entry kinds', async () => {
+  it('lists a directory with entry kinds', async () => {
+    const { fs, root } = await makeFs();
+    const entries = (await fs.readdir(vjoin(root, ''))).sort((a, b) => (a.name < b.name ? -1 : 1));
+    expect(entries).toEqual([
+      { name: 'nest', kind: 'dir' },
+      { name: 'top.bin', kind: 'file' },
+    ]);
+    expect(await fs.readdir(vjoin(root, 'nest'))).toEqual([{ name: 'inner.bin', kind: 'file' }]);
+  });
+
+  it('rejects reads of what is not there', async () => {
+    const { fs, root } = await makeFs();
+    await expect(fs.readFile(vjoin(root, 'missing'))).rejects.toThrow();
+    await expect(fs.readdir(vjoin(root, 'missing'))).rejects.toThrow();
+    await expect(fs.readdir(vjoin(root, 'top.bin'))).rejects.toThrow();
+  });
+}
+
+/** The whole contract for a writable adapter, seeded through its own `writeFile`. */
+function adapterContract(makeFs: () => Promise<Harness<Vfs>>): void {
+  readableContract(async () => {
+    const { fs, root } = await makeFs();
+    for (const [rel, bytes] of Object.entries(SEED)) {
+      await fs.writeFile(vjoin(root, rel), Uint8Array.from(bytes));
+    }
+    return { fs, root };
+  });
+
+  it('creates missing parents on write', async () => {
+    const { fs, root } = await makeFs();
+    const path = vjoin(root, 'a/b/file.bin');
+    await fs.writeFile(path, Uint8Array.from([1, 2, 3, 4]));
+    expect(await fs.stat(path)).toEqual({ kind: 'file', size: 4 });
+    expect(await fs.stat(vjoin(root, 'a/b'))).toEqual({ kind: 'dir', size: 0 });
+  });
+
+  it('lists a directory made by mkdir', async () => {
     const { fs, root } = await makeFs();
     await fs.writeFile(vjoin(root, 'd/one.txt'), Uint8Array.of(1));
     await fs.mkdir(vjoin(root, 'd/sub'));
-    const entries = (await fs.readdir(vjoin(root, 'd'))).sort((a, b) => a.name.localeCompare(b.name));
+    const entries = (await fs.readdir(vjoin(root, 'd'))).sort((a, b) => (a.name < b.name ? -1 : 1));
     expect(entries).toEqual([
       { name: 'one.txt', kind: 'file' },
       { name: 'sub', kind: 'dir' },
     ]);
-    await expect(fs.readdir(vjoin(root, 'nope'))).rejects.toThrow();
   });
 
   it('removes recursively and tolerates absence', async () => {
@@ -47,6 +95,26 @@ function adapterContract(makeFs: () => Promise<{ fs: Vfs; root: string }>): void
     const { fs, root } = await makeFs();
     await writeText(fs, vjoin(root, 'notes/a.txt'), 'payload');
     expect(await readText(fs, vjoin(root, 'notes/a.txt'))).toBe('payload');
+  });
+
+  it('overwrites rather than appends', async () => {
+    const { fs, root } = await makeFs();
+    const path = vjoin(root, 'again.bin');
+    await fs.writeFile(path, Uint8Array.from([1, 2, 3]));
+    await fs.writeFile(path, Uint8Array.of(9));
+    expect([...(await fs.readFile(path))]).toEqual([9]);
+  });
+
+  it('refuses to mix a file and a directory at one path', async () => {
+    const { fs, root } = await makeFs();
+    const file = vjoin(root, 'clash');
+    await fs.writeFile(file, Uint8Array.of(1));
+    await expect(fs.writeFile(vjoin(root, 'clash/under.bin'), Uint8Array.of(2))).rejects.toThrow();
+    await expect(fs.mkdir(file)).rejects.toThrow();
+
+    const dir = vjoin(root, 'holder');
+    await fs.mkdir(dir);
+    await expect(fs.writeFile(dir, Uint8Array.of(3))).rejects.toThrow();
   });
 }
 
@@ -65,34 +133,58 @@ describe('nodeVfs', () => {
     cleanups.push(root);
     return { fs: nodeVfs(), root };
   });
+
+  it('classifies a symlinked entry by its target', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'vfs-link-'));
+    cleanups.push(root);
+    const fs = nodeVfs();
+    await fs.writeFile(join(root, 'real/Data/x.bin'), Uint8Array.of(1));
+    const { symlink } = await import('node:fs/promises');
+    await symlink(join(root, 'real/Data'), join(root, 'Data'), 'dir');
+    const entries = (await fs.readdir(root)).sort((a, b) => (a.name < b.name ? -1 : 1));
+    expect(entries).toEqual([
+      { name: 'Data', kind: 'dir' },
+      { name: 'real', kind: 'dir' },
+    ]);
+  });
 });
 
 describe('opfsVfs over faked handles', () => {
   adapterContract(() => Promise.resolve({ fs: opfsVfs(fakeOpfsRoot()), root: '' }));
+
+  it('reports the write failure, not the failure to close after it, and drops the empty file', async () => {
+    const fs = opfsVfs(fakeOpfsRoot({ quotaAfterWrites: 0 }));
+    await expect(fs.writeFile('a/b.bin', Uint8Array.of(1))).rejects.toMatchObject({
+      name: 'QuotaExceededError',
+    });
+    expect(await fs.stat('a/b.bin')).toBeUndefined();
+  });
+
+  it('propagates a refused delete and stays quiet about an absent one', async () => {
+    const root = fakeOpfsRoot();
+    await opfsVfs(root).rm('never-existed');
+    const refusing = {
+      ...root,
+      removeEntry: () => Promise.reject(new DOMException('locked', 'NoModificationAllowedError')),
+    } as unknown as FileSystemDirectoryHandle;
+    await expect(opfsVfs(refusing).rm('doomed.bin')).rejects.toThrow(/locked/);
+  });
 });
 
 describe('fileMapVfs', () => {
-  const files = new Map<string, File>([
-    ['Game.exe', new File([Uint8Array.of(1, 2)], 'Game.exe')],
-    ['DataX/Libs/data0001.lib', new File([Uint8Array.of(3)], 'data0001.lib')],
-  ]);
-
-  it('reads and lists the snapshot, deriving directories from keys', async () => {
-    const fs = fileMapVfs(files);
-    expect([...(await fs.readFile('Game.exe'))]).toEqual([1, 2]);
-    expect([...(await fs.readFileSlice('Game.exe', 1, 1))]).toEqual([2]);
-    expect(await fs.stat('DataX')).toEqual({ kind: 'dir', size: 0 });
-    expect(await fs.stat('DataX/Libs')).toEqual({ kind: 'dir', size: 0 });
-    expect(await fs.stat('DataX/Libs/data0001.lib')).toEqual({ kind: 'file', size: 1 });
-    expect(await fs.stat('missing')).toBeUndefined();
-    const top = (await fs.readdir('')).sort((a, b) => a.name.localeCompare(b.name));
-    expect(top).toEqual([
-      { name: 'DataX', kind: 'dir' },
-      { name: 'Game.exe', kind: 'file' },
-    ]);
-    expect(await fs.readdir('DataX')).toEqual([{ name: 'Libs', kind: 'dir' }]);
-    await expect(fs.readdir('DataX/nope')).rejects.toThrow(/no directory/);
-  });
+  readableContract(() =>
+    Promise.resolve({
+      fs: fileMapVfs(
+        new Map(
+          Object.entries(SEED).map(([rel, bytes]) => [
+            rel,
+            new File([Uint8Array.from(bytes) as unknown as BlobPart], rel),
+          ]),
+        ),
+      ),
+      root: '',
+    }),
+  );
 
   it('resolves handle-backed entries only when their bytes or size are asked for', async () => {
     let materialized = 0;
@@ -133,4 +225,17 @@ describe('mountVfs', () => {
     await expect(fs.writeFile('/game/Game.exe', Uint8Array.of(2))).rejects.toThrow(/read-only mount/);
     await expect(fs.rm('/game/Game.exe')).rejects.toThrow(/read-only mount/);
   });
+
+  it('collapses a climbing path before choosing a mount', async () => {
+    const game = fileMapVfs(new Map([['Game.exe', new File([Uint8Array.of(1)], 'Game.exe')]]));
+    const fs = mountVfs({ '/game': game, '/data': memoryVfs() });
+    expect([...(await fs.readFile('/data/../game/Game.exe'))]).toEqual([1]);
+    await expect(fs.readFile('/game/../escape')).rejects.toThrow(/outside every mount/);
+  });
+});
+
+it('answers stat with undefined for a path no adapter can address', async () => {
+  expect(await memoryVfs().stat('../escape')).toBeUndefined();
+  expect(await opfsVfs(fakeOpfsRoot()).stat('../escape')).toBeUndefined();
+  expect(await mountVfs({ '/data': memoryVfs() }).stat('/elsewhere/x')).toBeUndefined();
 });
