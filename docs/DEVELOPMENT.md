@@ -166,9 +166,9 @@ npm run web:site
 npm run web:serve
 ```
 
-`web:site` assembles the static deployment for `opennorthland.org/game` under
+`web:site` assembles the static deployment for `game.opennorthland.org` under
 `packages/web/dist/site`: the installer page, the pipeline worker, the service worker, and the app
-built for the `/game/play` base. `web:serve` serves that layout locally on port 8788 (`PORT`
-overrides); set `OPEN_NORTHLAND_CNMOD_ZIP=<path>` to also serve a local mod archive at
-`/cnmod/cnmod.zip`. Visitors convert their own game copy in the browser; the site ships no game
-content and the converted data stays in each browser's origin-private storage.
+built for the `/play` base. `web:serve` serves that layout locally on port 8788 (`PORT` overrides);
+set `OPEN_NORTHLAND_CNMOD_ZIP=<path>` to also serve a local mod archive at `/cnmod.zip`. Visitors
+convert their own game copy in the browser; the site ships no game content and the converted data
+stays in each browser's origin-private storage.

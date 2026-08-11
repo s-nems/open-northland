@@ -5,7 +5,7 @@ import { assertStorageAvailable } from './storage.js';
 import { createWebShellApi } from './web-shell.js';
 
 /**
- * Boot for opennorthland.org/game: make sure the service worker serves the content routes, then
+ * Boot for game.opennorthland.org: make sure the service worker serves the content routes, then
  * either jump straight into the game or run the shared first-run installer. `?setup` forces the
  * installer, the web counterpart of the desktop menu's reinstall entry.
  */

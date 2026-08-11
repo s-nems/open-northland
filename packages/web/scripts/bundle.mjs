@@ -1,6 +1,6 @@
 /**
  * Assembles the deployable site under dist/site: the installer page, service worker, and pipeline
- * worker as self-contained browser bundles, plus the app built for the /game/play base.
+ * worker as self-contained browser bundles, plus the app built for the /play base.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -16,7 +16,7 @@ const installerSetup = join(packageRoot, '../installer/src/setup');
 const site = join(packageRoot, 'dist/site');
 
 /** The public URL prefix the deployment contract fixes; the app bakes it into its asset URLs. */
-const BASE_PATH = '/game/play';
+const BASE_PATH = '/play';
 
 const browserBundle = {
   bundle: true,

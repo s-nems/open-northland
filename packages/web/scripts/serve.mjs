@@ -1,7 +1,7 @@
 /**
- * Local verification server for the assembled site: serves dist/site at /game, redirects / there,
- * and optionally serves a local mod archive at /cnmod/cnmod.zip (OPEN_NORTHLAND_CNMOD_ZIP=<path>).
- * Production hosting is a static server with the same layout; this script never deploys anything.
+ * Local verification server for the assembled site: serves dist/site at the origin root, and
+ * optionally the mod archive at /cnmod.zip (OPEN_NORTHLAND_CNMOD_ZIP=<path>). Production hosting is
+ * a static server with the same layout; this script never deploys anything.
  */
 
 import { createReadStream, existsSync, statSync } from 'node:fs';
@@ -12,6 +12,9 @@ import { fileURLToPath } from 'node:url';
 const site = join(dirname(dirname(fileURLToPath(import.meta.url))), 'dist/site');
 const port = Number.parseInt(process.env.PORT ?? '8788', 10);
 const cnmodZip = process.env.OPEN_NORTHLAND_CNMOD_ZIP;
+
+/** Where the deployment contract puts the mod archive, beside the site rather than inside it. */
+const CNMOD_PATHNAME = '/cnmod.zip';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -44,13 +47,7 @@ function serveFile(res, file) {
 
 createServer((req, res) => {
   const pathname = decodeURIComponent((req.url ?? '/').split('?')[0]);
-  if (pathname === '/' || pathname === '/game') {
-    res.statusCode = 302;
-    res.setHeader('location', '/game/');
-    res.end();
-    return;
-  }
-  if (pathname === '/cnmod/cnmod.zip') {
+  if (pathname === CNMOD_PATHNAME) {
     if (cnmodZip === undefined || !existsSync(cnmodZip)) {
       send(res, 404, 'set OPEN_NORTHLAND_CNMOD_ZIP=<path to CnMod zip> to serve the mod locally');
       return;
@@ -58,12 +55,8 @@ createServer((req, res) => {
     serveFile(res, cnmodZip);
     return;
   }
-  if (!pathname.startsWith('/game/')) {
-    send(res, 404, 'not found');
-    return;
-  }
-  const rel = normalize(pathname.slice('/game/'.length)).replace(/^([/\\]|\.\.)+/, '');
-  let file = join(site, rel === '' ? 'index.html' : rel);
+  const rel = normalize(pathname).replace(/^([/\\]|\.\.)+/, '');
+  let file = join(site, rel);
   if (!file.startsWith(site)) {
     send(res, 404, 'not found');
     return;
@@ -75,6 +68,6 @@ createServer((req, res) => {
   }
   serveFile(res, file);
 }).listen(port, '127.0.0.1', () => {
-  console.log(`[web] serving dist/site at http://127.0.0.1:${port}/game/`);
-  if (cnmodZip !== undefined) console.log(`[web] serving ${cnmodZip} at /cnmod/cnmod.zip`);
+  console.log(`[web] serving dist/site at http://127.0.0.1:${port}/`);
+  if (cnmodZip !== undefined) console.log(`[web] serving ${cnmodZip} at ${CNMOD_PATHNAME}`);
 });

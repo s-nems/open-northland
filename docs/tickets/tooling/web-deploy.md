@@ -1,4 +1,4 @@
-# Deploy the web shell to opennorthland.org/game
+# Deploy the web shell to game.opennorthland.org
 
 **Area:** web · **Priority:** P2
 
@@ -8,15 +8,16 @@ ships the site.
 
 The layout, cache rules, and route ownership the host must respect are the deployment contract in
 [`packages/web/AGENTS.md`](../../../packages/web/AGENTS.md); the permission to rehost the mod
-archive is recorded in [`docs/LEGAL.md`](../../LEGAL.md). HTTPS is required - service workers and
-OPFS do not run on plain HTTP.
+archive is recorded in [`docs/LEGAL.md`](../../LEGAL.md).
 
 ## Scope
 
-- A container or static-hosting job that runs `npm run web:site` and publishes `dist/site`.
-- Upload the verified CnMod archive to `/cnmod/cnmod.zip`. A ~600 MB same-origin file rules out
-  hosts with a per-file cap in the low hundreds of MB.
-- Cache headers per the deployment contract: `sw.js` never immutable, hashed `play/assets/*` may be.
+- A container or static-hosting job that runs `npm run web:site` and publishes `dist/site` at the
+  origin root, with a TLS certificate for the subdomain.
+- Upload the verified CnMod archive to `/cnmod.zip`. A ~600 MB same-origin file rules out hosts with
+  a per-file cap in the low hundreds of MB.
+- Cache headers per the deployment contract: hashed `play/assets/*` may be immutable, every other
+  file must not be.
 
 ## Verify
 
