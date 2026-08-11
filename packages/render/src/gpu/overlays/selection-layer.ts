@@ -43,7 +43,7 @@ interface RingSpec {
 
 export interface SelectionFrame {
   readonly snapshot: WorldSnapshot;
-  /** The pool's drawn sprites - glide a ring with the interpolated bob and size a building ring to its
+  /** The pool's drawn sprites - move a ring with the drawn bob and size a building ring to its
    *  real footprint. */
   readonly drawn?: DrawnGeometry;
   /** The terrain height field - lifts a ring onto sloped ground. Absent → no lift (flat). */

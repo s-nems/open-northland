@@ -169,9 +169,9 @@ export class WorldRenderer {
       lifeHearts = NO_HEARTS,
       flagged = NO_REFS,
     } = frame;
-    const camera = this.viewSmoothing
-      ? snapCameraToDevicePixels(frame.camera, this.app.renderer.resolution)
-      : frame.camera;
+    const snapResolution = this.viewSmoothing ? this.app.renderer.resolution : undefined;
+    const camera =
+      snapResolution === undefined ? frame.camera : snapCameraToDevicePixels(frame.camera, snapResolution);
     if (this.viewSmoothing) this.chrome.applyWorldSampling(camera.scale ?? 1);
     this.worldLayer.scale.set(camera.scale ?? 1);
     this.worldLayer.position.set(camera.offsetX, camera.offsetY);
@@ -197,6 +197,7 @@ export class WorldRenderer {
       screenH: this.app.screen.height,
       elevation: this.elevation,
       alpha,
+      snapResolution,
       ...fogFrame,
       ...(this.highlight.size > 0 ? { highlight: this.highlight } : {}),
       ...(portraitRef !== null ? { portraitRef } : {}),

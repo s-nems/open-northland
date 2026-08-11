@@ -31,11 +31,11 @@ export interface MarkAnchorFrame {
 }
 
 /**
- * Where a mark floats over `entity`: the pool's lerped sprite-bounds top-centre, else the feet anchor
+ * Where a mark floats over `entity`: the pool's drawn sprite-bounds top-centre, else the feet anchor
  * raised by `riseAboveFeet` world px. `undefined` means culled and the caller draws nothing.
  *
  * The cull runs on the raw projection first, so an off-screen entity pays no pool lookup or terrain
- * lift. The viewport's sprite-cull margin covers the raw-vs-lerped anchor gap and the rise.
+ * lift. The viewport's sprite-cull margin covers the raw-vs-drawn anchor gap and the rise.
  */
 export function markAnchor(
   frame: MarkAnchorFrame,

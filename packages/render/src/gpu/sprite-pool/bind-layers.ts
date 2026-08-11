@@ -1,6 +1,6 @@
 import { Graphics, Sprite, type Texture } from 'pixi.js';
 import { FOG_GHOST_TINT } from '../../data/fog/index.js';
-import { cameraScreenX, cameraScreenY } from '../../data/projection/index.js';
+import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
@@ -17,7 +17,7 @@ import {
 import type { ResolvedLayer } from './resolved-layer.js';
 import type { PoolFrame } from './sprite-pool.js';
 
-export type BindFrame = Pick<PoolFrame, 'camera' | 'screenW' | 'screenH' | 'highlight'>;
+export type BindFrame = Pick<PoolFrame, 'camera' | 'screenW' | 'screenH' | 'highlight' | 'snapResolution'>;
 
 /** Assign-mode candidate-building tints, pale so they wash over the building art rather than
  *  repaint it. */
@@ -74,8 +74,9 @@ export class LayerBinder {
     // UBO unbound), so it self-places in screen space from this camera-applied feet anchor. Unused on
     // the plain path.
     const camScale = frame.camera.scale ?? 1;
-    const originX = cameraScreenX(frame.camera, drawX);
-    const originY = cameraScreenY(frame.camera, drawY);
+    const snap = frame.snapResolution;
+    const originX = snapToDevicePixels(cameraScreenX(frame.camera, drawX), snap);
+    const originY = snapToDevicePixels(cameraScreenY(frame.camera, drawY), snap);
     // The (armor tier, player) LUT row - worn armor recolours the clothing bands. Unused on the plain path.
     const playerRow = pe.paletted ? paletteLutRow(pe.palette, item.player, item.armorGood) : 0;
     const tint = entityTint(item.ref, item.ghost === true, frame.highlight); // constant per entity

@@ -60,6 +60,8 @@ const FRAMES_FIRST: Viewport = {
 };
 // Frames every entity whatever its tile, so a generated pool attaches without hand-fitting a box to it.
 const FRAMES_EVERYTHING: Viewport = { minX: -1e9, maxX: 1e9, minY: -1e9, maxY: 1e9 };
+/** Frames nothing any spec places, so an entity stays live and pooled while it is not drawn. */
+const FRAMES_NOTHING: Viewport = { minX: 1e9, maxX: 1e9 + 1, minY: 1e9, maxY: 1e9 + 1 };
 
 describe('SpritePool - reconcile scans track the screen, not the pool', () => {
   it('attaches only the visible entities and keeps culled ones pooled', () => {
@@ -158,6 +160,11 @@ function settler(
   return entity(id, col, row, { Settler: { tribe: 0 }, ...extra });
 }
 
+/** `Projectile` + `Position` is all the scene collector needs to classify a projectile. */
+function projectile(id: number, col: number, row: number): ReturnType<typeof entity> {
+  return entity(id, col, row, { Projectile: {} });
+}
+
 function anchorAt(pool: SpritePool, ref: number): { x: number; y: number } {
   const anchor = pool.anchorOf(ref);
   if (anchor === undefined) throw new Error(`entity ${ref} was not drawn this frame`);
@@ -165,53 +172,50 @@ function anchorAt(pool: SpritePool, ref: number): { x: number; y: number } {
 }
 
 /**
- * A pooled entity keeps its motion track while it is not drawn (indoors, fogged, culled), and
- * `trackMotion`'s own SNAP_DISTANCE only catches gaps wider than 128 px, so the pool must reset the track
- * at re-entry without disturbing anything drawn continuously.
+ * A pooled entity keeps its motion track while it is not drawn (indoors, fogged, culled), so the pool
+ * must reset the track at re-entry without disturbing anything drawn continuously. An arrow is the
+ * subject because it is the kind whose drawn anchor still shows the difference: a walker draws its tick
+ * anchor either way, and an arrow's own snap band is infinite, so only this reset can catch its gap.
  */
 describe('SpritePool - motion track across a gap in the draw list', () => {
-  it('snaps a settler re-entering the draw set instead of gliding from its stale anchor', () => {
+  it('snaps an arrow re-entering the draw set instead of gliding from its stale anchor', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
-    const inside = { Resting: { at: 99 } }; // the workplace marker - live and pooled, but not drawn
 
-    // A first sighting snaps, so this is the door anchor.
-    pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0)]), FRAMES_ALL), tick: 0 });
-    const door = anchorAt(pool, 1);
+    // A first sighting snaps, so this is the anchor it leaves the screen on.
+    pool.reconcile({ ...poolFrame(snapshotOf([projectile(1, 0, 0)]), FRAMES_EVERYTHING), tick: 0 });
+    const left = anchorAt(pool, 1);
 
-    // Three frames indoors: not drawn, but pooled, so the track goes stale where it stood.
+    // Three frames off-screen: not drawn, but pooled, so the track goes stale where it stood.
     for (let tick = 1; tick <= 3; tick++) {
-      pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0, inside)]), FRAMES_ALL), tick });
+      pool.reconcile({ ...poolFrame(snapshotOf([projectile(1, 0, 1)]), FRAMES_NOTHING), tick });
       expect(pool.anchorOf(1)).toBeUndefined();
     }
     expect(pool.stats().pooled).toBe(1); // a re-mint would snap for the wrong reason
 
-    // Back out one tile on. Settler 2 is the oracle: first sighted here, so it snaps onto this tile's
+    // Back in view one tile on. Arrow 2 is the oracle: first sighted here, so it snaps onto this tile's
     // anchor.
     pool.reconcile({
-      ...poolFrame(snapshotOf([settler(1, 0, 1), settler(2, 0, 1)]), FRAMES_ALL),
+      ...poolFrame(snapshotOf([projectile(1, 0, 1), projectile(2, 0, 1)]), FRAMES_EVERYTHING),
       tick: 4,
-      alpha: 0.5, // mid-tick: a track resumed from the door would draw halfway back toward it
+      alpha: 0.5, // mid-tick: a track resumed from the old anchor would draw halfway back toward it
     });
-    const emerged = anchorAt(pool, 1);
-    // Guards the setup: a gap wider than SNAP_DISTANCE would make trackMotion snap on its own and pass
-    // the assertions below without any re-entry reset. Per-axis, like trackMotion.
-    expect(Math.max(Math.abs(emerged.x - door.x), Math.abs(emerged.y - door.y))).toBeLessThan(SNAP_DISTANCE);
-    expect(emerged).not.toEqual(door); // it did move - the assertion below is not vacuous
-    expect(emerged).toEqual(anchorAt(pool, 2));
+    const returned = anchorAt(pool, 1);
+    expect(returned).not.toEqual(left); // it did move - the assertion below is not vacuous
+    expect(returned).toEqual(anchorAt(pool, 2));
   });
 
-  it('interpolates a settler drawn on consecutive frames - the reset must not fire on every frame', () => {
+  it('interpolates an arrow drawn on consecutive frames - the reset must not fire on every frame', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
 
-    pool.reconcile({ ...poolFrame(snapshotOf([settler(1, 0, 0)]), FRAMES_ALL), tick: 0 });
+    pool.reconcile({ ...poolFrame(snapshotOf([projectile(1, 0, 0)]), FRAMES_EVERYTHING), tick: 0 });
     const from = anchorAt(pool, 1);
 
-    // Drawn again the next frame, one tile on. Settler 2 is first sighted here, so it marks the
+    // Drawn again the next frame, one tile on. Arrow 2 is first sighted here, so it marks the
     // destination anchor.
     pool.reconcile({
-      ...poolFrame(snapshotOf([settler(1, 0, 1), settler(2, 0, 1)]), FRAMES_ALL),
+      ...poolFrame(snapshotOf([projectile(1, 0, 1), projectile(2, 0, 1)]), FRAMES_EVERYTHING),
       tick: 1,
       alpha: 0.5,
     });
@@ -226,22 +230,16 @@ describe('SpritePool - motion track across a gap in the draw list', () => {
  * Every kind shares one `updatePooled` path, so only the pool proves a projectile's track is born under
  * the projectile band; `motion.test.ts` owns what the bands themselves do.
  */
-describe('SpritePool - a projectile glides where a walker snaps', () => {
-  /** `Projectile` + `Position` is all the scene collector needs to classify a projectile. */
-  function projectile(id: number, col: number, row: number): ReturnType<typeof entity> {
-    return entity(id, col, row, { Projectile: {} });
-  }
-
+describe('SpritePool - a projectile glides across a catch-up frame', () => {
   const CATCH_UP_TICKS = 3;
   const TILES_FLOWN = 3; // a tile a tick, the pace of a bow shot
 
-  it('interpolates a catch-up frame the walker policy snaps', () => {
+  it('interpolates travel wider than the snap band every other kind is born under', () => {
     const layer = new Container();
     const pool = new SpritePool(layer, new TextureCache(), undefined);
 
-    // Settler 3 makes the identical jump - the walker-policy oracle.
     pool.reconcile({
-      ...poolFrame(snapshotOf([projectile(1, 0, 0), settler(3, 0, 0)]), FRAMES_EVERYTHING),
+      ...poolFrame(snapshotOf([projectile(1, 0, 0)]), FRAMES_EVERYTHING),
       tick: 0,
     });
     const from = anchorAt(pool, 1);
@@ -250,20 +248,42 @@ describe('SpritePool - a projectile glides where a walker snaps', () => {
     // first sighted at the destination, so its anchor marks where the travel ends.
     pool.reconcile({
       ...poolFrame(
-        snapshotOf([
-          projectile(1, TILES_FLOWN, 0),
-          projectile(2, TILES_FLOWN, 0),
-          settler(3, TILES_FLOWN, 0),
-        ]),
+        snapshotOf([projectile(1, TILES_FLOWN, 0), projectile(2, TILES_FLOWN, 0)]),
         FRAMES_EVERYTHING,
       ),
       tick: CATCH_UP_TICKS,
       alpha: 0.5,
     });
     const to = anchorAt(pool, 2);
-    expect(Math.abs(to.x - from.x)).toBeGreaterThan(SNAP_DISTANCE); // travel the walker band rejects
-    expect(anchorAt(pool, 3)).toEqual(to);
+    expect(Math.abs(to.x - from.x)).toBeGreaterThan(SNAP_DISTANCE); // travel the default band rejects
     expect(anchorAt(pool, 1)).toEqual({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
+  });
+});
+
+/**
+ * A gait-clocked body steps once per tick so its position moves in the same step its pose does, which
+ * is settlers and the wildlife sharing their kind. A projectile has no pose to step with, so stepping
+ * one would only quantize an ordinary flight to the tick rate.
+ */
+describe('SpritePool - a walker steps where an arrow glides', () => {
+  it('draws a walker on the tick anchor mid-tick while an arrow sits half way', () => {
+    const layer = new Container();
+    const pool = new SpritePool(layer, new TextureCache(), undefined);
+    const start = [settler(1, 0, 0), projectile(2, 0, 0)];
+
+    pool.reconcile({ ...poolFrame(snapshotOf(start), FRAMES_EVERYTHING), tick: 0 });
+    const from = anchorAt(pool, 1);
+
+    // Settler 3 is first sighted at the destination, so its anchor marks where the tick ends.
+    pool.reconcile({
+      ...poolFrame(snapshotOf([settler(1, 0, 1), projectile(2, 0, 1), settler(3, 0, 1)]), FRAMES_EVERYTHING),
+      tick: 1,
+      alpha: 0.5,
+    });
+    const to = anchorAt(pool, 3);
+    expect(to).not.toEqual(from); // a still tick would draw both at one place and prove nothing
+    expect(anchorAt(pool, 1)).toEqual(to);
+    expect(anchorAt(pool, 2)).toEqual({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
   });
 });
 

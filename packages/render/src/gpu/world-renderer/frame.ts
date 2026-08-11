@@ -15,9 +15,9 @@ export interface WorldRendererOptions {
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;
   /**
-   * Snap the camera pan to whole device pixels and minify the world atlases linear below zoom 1, killing
-   * the shimmer of nearest-sampled art. The `?shot` entry omits it, so its capture stays comparable
-   * across machines.
+   * Snap the camera pan and the self-placing sprite origins to whole device pixels, and minify the world
+   * atlases linear below zoom 1, killing the shimmer of nearest-sampled art. The `?shot` entry omits it,
+   * so its capture stays comparable across machines.
    */
   readonly viewSmoothing?: boolean | undefined;
   /** The world post pass: a warm-graded vignette multiply over the world, under the HUD. An enhancement

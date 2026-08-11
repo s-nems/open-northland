@@ -14,6 +14,7 @@ export {
   rowStagger,
   screenToCell,
   snapCameraToDevicePixels,
+  snapToDevicePixels,
   TILE_HALF_H,
   TILE_HALF_W,
   tileToScreen,
