@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
-import { type DiplomacySimView, diplomacyPanelRows } from '../src/view/projections/diplomacy-rows.js';
+import {
+  type DiplomacySimView,
+  diplomacyPanelRows,
+  harshestStance,
+} from '../src/view/projections/diplomacy-rows.js';
 
 /** A sim stub over explicit met pairs and stances; unset pairs read the sim's `enemy` default. */
 function simView(
@@ -65,5 +69,42 @@ describe('diplomacyPanelRows', () => {
         (r) => r.player,
       ),
     ).toEqual([1, 2]);
+  });
+});
+
+describe('harshestStance', () => {
+  const roster = { localPlayer: 0, rosterPlayers: [0, 1, 2], observer: false };
+  const both = (a: number, b: number, state: 'friend' | 'neutral' | 'enemy') =>
+    [
+      [a, b, state],
+      [b, a, state],
+    ] as [number, number, 'friend' | 'neutral' | 'enemy'][];
+
+  it('reads enemy when either direction of any met pair is hostile', () => {
+    const sim = simView(
+      [
+        [0, 1],
+        [0, 2],
+      ],
+      [...both(0, 1, 'friend'), [0, 2, 'friend'], [2, 0, 'enemy']],
+    );
+    expect(harshestStance(sim, roster)).toBe('enemy');
+  });
+
+  it('reads friend only when every met player is friendly both ways', () => {
+    const met: [number, number][] = [
+      [0, 1],
+      [0, 2],
+    ];
+    expect(harshestStance(simView(met, [...both(0, 1, 'friend'), ...both(0, 2, 'friend')]), roster)).toBe(
+      'friend',
+    );
+    expect(harshestStance(simView(met, [...both(0, 1, 'friend'), ...both(0, 2, 'neutral')]), roster)).toBe(
+      'neutral',
+    );
+  });
+
+  it('reads neutral when nobody has been met, whatever the table says', () => {
+    expect(harshestStance(simView([], both(0, 1, 'enemy')), roster)).toBe('neutral');
   });
 });

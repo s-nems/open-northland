@@ -1,4 +1,11 @@
-import { buildHud, fogTileVisible, type HudLayout, layoutHud, ONE } from '@open-northland/render';
+import {
+  buildHud,
+  fogTileVisible,
+  type HudLayout,
+  type HudModel,
+  layoutHud,
+  ONE,
+} from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import { computeConstructionSigns } from './construction-signs.js';
@@ -49,14 +56,18 @@ export function createSnapshotProjections(
   hearts: HeartProjectionInputs,
   seatNameOf?: (player: number) => string | undefined,
 ): {
+  /** The panel's own aggregates, shared with any consumer needing a figure rather than its layout. */
+  readonly hudModelFor: (snapshot: WorldSnapshot) => HudModel;
   readonly hudFor: (snapshot: WorldSnapshot) => HudLayout;
   readonly doorBadgesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
   readonly constructionSignsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeConstructionSigns>;
   readonly settlerBubblesFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   readonly lifeHeartsFor: (snapshot: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
 } {
+  const hudModelFor = memoBySnapshot((snapshot: WorldSnapshot) => buildHud(snapshot, localPlayer));
   return {
-    hudFor: memoBySnapshot((snapshot) => layoutHud(buildHud(snapshot, localPlayer), hudLabels(seatNameOf))),
+    hudModelFor,
+    hudFor: memoBySnapshot((snapshot) => layoutHud(hudModelFor(snapshot), hudLabels(seatNameOf))),
     doorBadgesFor: memoBySnapshot((snapshot) => {
       const badges = computeDoorBadges(snapshot, buildingsByType, roleOf);
       const fog = fogGates.current();

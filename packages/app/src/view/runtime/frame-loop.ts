@@ -1,4 +1,4 @@
-import type { HudLayout } from '@open-northland/render';
+import type { HudLayout, HudModel } from '@open-northland/render';
 import type { FixedTimestep, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
@@ -8,13 +8,14 @@ import type { GameToolPanelHandle, LoopSpeedControl } from '../game-tool-panel.j
 import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
-import type {
-  computeConstructionSigns,
-  computeDoorBadges,
-  computeLifeHearts,
-  computeSettlerBubbles,
-  FogGates,
-  GeometryDebugOverlay,
+import {
+  type computeConstructionSigns,
+  type computeDoorBadges,
+  type computeLifeHearts,
+  type computeSettlerBubbles,
+  type FogGates,
+  type GeometryDebugOverlay,
+  harshestStance,
 } from '../projections/index.js';
 import type { FpsLimit } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
@@ -40,6 +41,8 @@ export interface FrameLoopDeps {
   readonly signpostOverlayFrame: ReturnType<typeof makeSignpostOverlaySource>;
   /** Memoized by snapshot identity, so it rebuilds per tick rather than per RAF. */
   readonly hudFor: (snap: WorldSnapshot) => HudLayout;
+  /** The same per-tick aggregation behind {@link hudFor}, for its figures rather than its layout. */
+  readonly hudModelFor: (snap: WorldSnapshot) => HudModel;
   /** Memoized by snapshot identity and fog-filtered. */
   readonly doorBadgesFor: (snap: WorldSnapshot) => ReturnType<typeof computeDoorBadges>;
   /** One stand per site door; memoized by snapshot identity and fog-filtered. */
@@ -76,6 +79,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     overlayFrame,
     signpostOverlayFrame,
     hudFor,
+    hudModelFor,
     doorBadgesFor,
     constructionSignsFor,
     settlerBubblesFor,
@@ -98,6 +102,12 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // Every step's events, not just the last tick's: a frame may advance several ticks and each step
   // clears the sim's buffer.
   const frameEvents: SimEvent[] = [];
+  // The roster the music's mood reads our standing against; fixed for the session.
+  const musicRoster = {
+    localPlayer,
+    rosterPlayers: deps.rosterPlayers ?? [],
+    observer: deps.observer === true,
+  };
   // Bound once, so a frame never mints a fresh pair of closures.
   const buildingOverlay = (buildingType: number) =>
     overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height);
@@ -218,6 +228,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         // A settler's authored action cues locate their emitter off the snapshot, not off events, so
         // they need their own fog gate: a hidden enemy must not natter or hammer out of empty black.
         visibleTile: fogGates.visibleTile,
+        // Which mood variant of the map's music plays: our head-count and how we stand with the roster.
+        standing: { population: hudModelFor(snap).population, stance: harshestStance(sim, musicRoster) },
       });
     }
     const cpuMs = performance.now() - cpu0;

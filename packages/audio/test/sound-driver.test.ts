@@ -117,4 +117,46 @@ describe('SoundDriver', () => {
     await flush();
     expect(fetched).toHaveLength(0);
   });
+
+  it('plays the map music, then crossfades to its Danger variant once we are struck', async () => {
+    const MISSION_ARABS1 = 17;
+    const { driver, fetched } = makeDriver();
+    await driver.resume();
+    driver.setMusicMap({
+      musicType: MISSION_ARABS1,
+      manifest: {
+        tracks: {
+          mission_arabs1_standard: { file: 'mission_arabs1_standard.ogg' },
+          mission_arabs1_danger: { file: 'mission_arabs1_danger.ogg' },
+        },
+      },
+    });
+    // Its own snapshot: the struck building must carry an Owner for the blow to count as ours.
+    const owned: WorldSnapshot = {
+      tick: 1,
+      entities: [{ id: 7, components: { Owner: { player: 1 }, Building: {} } }],
+      events: [],
+    };
+    const ours = {
+      ...baseInput,
+      snapshot: owned,
+      localPlayer: 1,
+      standing: { population: 0, stance: 'neutral' },
+    } as const;
+    driver.update({ ...ours, events: [] });
+    await flush();
+    expect(fetched).toEqual(['/music/mission_arabs1_standard.ogg']);
+
+    // Re-asking for the same track every frame must not re-fetch it.
+    driver.update({ ...ours, events: [] });
+    await flush();
+    expect(fetched).toHaveLength(1);
+
+    const struck: readonly SimEvent[] = [
+      { kind: 'combatHit', attacker: 9 as Entity, target: 7 as Entity, at: { hx: 5, hy: 5 } },
+    ];
+    driver.update({ ...ours, events: struck });
+    await flush();
+    expect(fetched).toEqual(['/music/mission_arabs1_standard.ogg', '/music/mission_arabs1_danger.ogg']);
+  });
 });

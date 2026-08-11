@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CALM_MOOD,
   DEFAULT_MUSIC_VOLUME,
   MUSIC_FADE_S,
-  musicTrackForType,
+  musicTrackFor,
   parseMusicManifest,
   WebAudioEngine,
 } from '../src/index.js';
 import { FakeContext, type FakeGain, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**
- * The music path end to end minus the browser: the pure manifest/type selection, and the engine's
- * music bus + player (intro-then-loop source setup, crossfade on change, rotation advance,
- * mute/resume reconciliation, memoised failed load, volume ramps).
+ * The music path end to end minus the browser: the manifest parse, and the engine's music bus +
+ * player (intro-then-loop source setup, crossfade on change, rotation advance, mute/resume
+ * reconciliation, memoised failed load, volume ramps). Mood selection is covered in `music-mood`.
  */
 
 const MANIFEST = parseMusicManifest({
@@ -22,15 +23,17 @@ const MANIFEST = parseMusicManifest({
 });
 
 describe('music selection', () => {
-  it('maps a musictype code through the manifest to a track', () => {
-    expect(musicTrackForType(2, MANIFEST)).toEqual({ file: 'theme_viking_neutral.ogg', loopStartS: 8.5 });
-    expect(musicTrackForType(9, MANIFEST)).toEqual({ file: 'attack_arabs.ogg' });
+  it('resolves a rendered stem through the manifest, keeping its loop point', () => {
+    const THEME_VIKING = 2;
+    expect(musicTrackFor(THEME_VIKING, 'neutral', CALM_MOOD, 0, MANIFEST)).toEqual({
+      file: 'theme_viking_neutral.ogg',
+      loopStartS: 8.5,
+    });
   });
 
-  it('returns null for an unrendered stem, a jingle code, and no manifest', () => {
-    expect(musicTrackForType(10, MANIFEST)).toBeNull(); // known code, not rendered
-    expect(musicTrackForType(22, MANIFEST)).toBeNull(); // jingle codes are wav one-shots
-    expect(musicTrackForType(2, null)).toBeNull();
+  it('has no track for a known code whose stem was never rendered', () => {
+    const MISSION_VIKING1 = 10;
+    expect(musicTrackFor(MISSION_VIKING1, 'neutral', CALM_MOOD, 0, MANIFEST)).toBeNull();
   });
 
   it('parses tolerantly: junk entries drop, junk roots are null', () => {

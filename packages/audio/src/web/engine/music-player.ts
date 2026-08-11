@@ -1,4 +1,4 @@
-import type { MusicTrack } from '../../data/music.js';
+import type { MusicTrack } from '../../data/music/index.js';
 import type { FetchBytes } from '../platform.js';
 
 /**
