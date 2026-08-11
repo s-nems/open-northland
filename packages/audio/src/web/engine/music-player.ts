@@ -28,6 +28,9 @@ interface StartOptions {
   readonly fadeIn: boolean;
 }
 
+/** What a caller decides; whether the track fades in follows from what it interrupts. */
+type TrackMode = Omit<StartOptions, 'fadeIn'>;
+
 export class MusicPlayer {
   private current: PlayingTrack | null = null;
   /** The file the latest {@link set} asked for. */
@@ -65,7 +68,7 @@ export class MusicPlayer {
       return;
     }
     if (!wasRotating && this.desiredFile === track.file) return; // playing or already loading
-    this.startTrack(track, { loop: true, fadeIn: true });
+    this.startTrack(track, { loop: true });
   }
 
   /** Reconcile playback to `tracks` in order; a running rotation of the same tracks keeps going. */
@@ -76,7 +79,7 @@ export class MusicPlayer {
     if (unchanged && this.desiredFile !== null) return; // already rotating these
     if (!unchanged) this.rotationAt = 0;
     this.rotation = tracks;
-    this.playRotationEntry(true);
+    this.playRotationEntry();
   }
 
   /** Fade out and drop the running track (mute / teardown); the desired track is forgotten. */
@@ -89,10 +92,10 @@ export class MusicPlayer {
   /** Move to the next rotation entry, wrapping at the end. */
   private advance(): void {
     this.rotationAt += 1;
-    this.playRotationEntry(false);
+    this.playRotationEntry();
   }
 
-  private playRotationEntry(fadeIn: boolean): void {
+  private playRotationEntry(): void {
     if (this.rotation.length === 0) {
       this.stop();
       return;
@@ -100,14 +103,17 @@ export class MusicPlayer {
     this.rotationAt %= this.rotation.length;
     const track = this.rotation[this.rotationAt];
     if (track === undefined) this.stop();
-    else this.startTrack(track, { loop: false, fadeIn });
+    else this.startTrack(track, { loop: false });
   }
 
-  private startTrack(track: MusicTrack, options: StartOptions): void {
+  private startTrack(track: MusicTrack, mode: TrackMode): void {
     this.desiredFile = track.file;
     this.generation++;
+    // Only a track that has to cover an outgoing one fades in; anything else opens at full gain
+    // rather than creeping in from silence over the fade.
+    const fadeIn = this.current !== null;
     this.fadeOutCurrent();
-    this.start(track, this.generation, options);
+    this.start(track, this.generation, { ...mode, fadeIn });
   }
 
   private fadeOutCurrent(): void {
@@ -155,7 +161,7 @@ export class MusicPlayer {
         if (this.rotation.length > 0) {
           // A track that cannot load leaves the rotation, so the retry cannot spin between failures.
           this.rotation = this.rotation.filter((entry) => entry.file !== track.file);
-          this.playRotationEntry(options.fadeIn);
+          this.playRotationEntry();
         }
         return;
       }
