@@ -20,12 +20,23 @@ export {
   SFX_GAIN,
 } from './data/director/index.js';
 export {
-  DEFAULT_MUSIC_STEMS,
+  CALM_MOOD,
+  CONFLICT_HOLD_TICKS,
+  type MissionMood,
+  MUSIC_VARIANTS,
   type MusicManifest,
+  type MusicMoodInput,
+  type MusicMoodState,
+  type MusicStanding,
   type MusicTrack,
-  musicTrackForType,
+  type MusicVariants,
+  musicTrackFor,
+  nextMusicMood,
   parseMusicManifest,
-} from './data/music.js';
+  type ThemeMood,
+  WEALTHY_POPULATION,
+  WEALTHY_POPULATION_DROP,
+} from './data/music/index.js';
 export {
   CULL_MARGIN_PX,
   computeSpatial,
@@ -59,4 +70,9 @@ export {
 // Impure Web Audio sink (browser-only). The default-tuning constants stay exported as the documented
 // knobs behind the options; the platform function types are the injectable test seams.
 export type { ContextFactory, FetchBytes, RandomFn } from './web/platform.js';
-export { SoundDriver, type SoundDriverOptions, type SoundFrameInput } from './web/sound-driver.js';
+export {
+  type MusicMap,
+  SoundDriver,
+  type SoundDriverOptions,
+  type SoundFrameInput,
+} from './web/sound-driver.js';

@@ -6,9 +6,9 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { groupFiles } from '../bank.js';
+import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
-import { entityOwner, entityTile, type TilePoint } from './snapshot.js';
 
 /**
  * Sim events → one-shots: resolve each frame event through the {@link SoundBindings}, locate the

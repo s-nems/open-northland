@@ -2,7 +2,15 @@ import type { Camera } from '@open-northland/render/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
-import type { MusicTrack } from '../data/music.js';
+import {
+  CALM_MOOD,
+  type MusicManifest,
+  type MusicMoodState,
+  type MusicStanding,
+  type MusicTrack,
+  musicTrackFor,
+  nextMusicMood,
+} from '../data/music/index.js';
 import type { AudioTerrain, SoundBindings } from '../data/types.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
 
@@ -22,7 +30,19 @@ export interface SoundFrameInput {
   /** The viewer's fog-of-war visibility at a fractional tile - gates the settler animation cues (a
    *  settler hidden by the fog must not natter or hammer out of empty black). Omit → no fog. */
   readonly visibleTile?: (col: number, row: number) => boolean;
+  /** The local settlement's standing, picking the mood variant of the map's music. Omit → the calm
+   *  variant, which only a fight then moves. */
+  readonly standing?: MusicStanding;
 }
+
+/** The music a map authored: its `musictype` and what the pipeline rendered for it. */
+export interface MusicMap {
+  readonly musicType: number;
+  readonly manifest: MusicManifest;
+}
+
+/** Standing for a frame that supplied none: no settlers counted, nobody hostile. */
+const UNKNOWN_STANDING: MusicStanding = { population: 0, stance: 'neutral' };
 
 /** {@link SoundDriver} construction options - the engine's platform/tuning seams. */
 export interface SoundDriverOptions extends AudioEngineOptions {}
@@ -37,6 +57,8 @@ export interface SoundDriverOptions extends AudioEngineOptions {}
  */
 export class SoundDriver {
   private readonly engine: WebAudioEngine;
+  private musicMap: MusicMap | null = null;
+  private mood: MusicMoodState = CALM_MOOD;
 
   constructor(
     private readonly index: SoundIndex,
@@ -64,6 +86,13 @@ export class SoundDriver {
   /** Which music track should be playing (null = none); starts once audio is unlocked. */
   setMusic(track: MusicTrack | null): void {
     this.engine.setMusic(track);
+  }
+
+  /** Hand over the map's music, after which each frame picks its mood variant. Null stops choosing,
+   *  leaving whatever {@link setMusic} last asked for. */
+  setMusicMap(map: MusicMap | null): void {
+    this.musicMap = map;
+    this.mood = CALM_MOOD;
   }
 
   /** Set the game-sounds volume (0..1). */
@@ -95,5 +124,23 @@ export class SoundDriver {
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
     });
     this.engine.apply(frame);
+    this.updateMusic(input);
+  }
+
+  /** Re-decide the map's mood variant. The player reconciles by file, so re-asking for the track
+   *  already playing every frame is free. */
+  private updateMusic(input: SoundFrameInput): void {
+    const map = this.musicMap;
+    if (map === null) return;
+    const standing = input.standing ?? UNKNOWN_STANDING;
+    this.mood = nextMusicMood(this.mood, {
+      events: input.events,
+      snapshot: input.snapshot,
+      standing,
+      ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
+    });
+    this.engine.setMusic(
+      musicTrackFor(map.musicType, standing.stance, this.mood, input.snapshot.tick, map.manifest),
+    );
   }
 }

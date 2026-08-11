@@ -19,6 +19,29 @@ export interface DiplomacyRosterOptions {
   readonly playerColourOf?: (player: number) => number;
 }
 
+/**
+ * The harshest stance standing between the viewer and the roster players it has met, either
+ * direction: `enemy` if anyone is hostile, `friend` only if everyone met is friendly, else `neutral`.
+ * A viewer that has met nobody stands `neutral`.
+ */
+export function harshestStance(
+  sim: DiplomacySimView,
+  opts: Pick<DiplomacyRosterOptions, 'localPlayer' | 'rosterPlayers' | 'observer'>,
+): DiplomacyState {
+  let met = 0;
+  let friendly = 0;
+  for (const other of opts.rosterPlayers) {
+    if (other === opts.localPlayer) continue;
+    if (opts.observer !== true && !sim.hasMetPlayer(opts.localPlayer, other)) continue;
+    met++;
+    const ours = sim.diplomacyStance(opts.localPlayer, other);
+    const theirs = sim.diplomacyStance(other, opts.localPlayer);
+    if (ours === 'enemy' || theirs === 'enemy') return 'enemy';
+    if (ours === 'friend' && theirs === 'friend') friendly++;
+  }
+  return met > 0 && friendly === met ? 'friend' : 'neutral';
+}
+
 /** One diplomacy-window row per roster player the viewer has discovered, the viewer itself excluded. */
 export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterOptions): DiplomacyPanelRow[] {
   const colourOf = opts.playerColourOf ?? ((player: number): number => player);
