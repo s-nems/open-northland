@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  drawAlphaForKind,
   isStalled,
   type MotionTrack,
   SNAP_DISTANCE,
@@ -41,6 +42,17 @@ function drawnAt(
   trackMotion(m, tick, x, y, alpha);
   return { x: m.drawX, y: m.drawY };
 }
+
+describe('drawAlphaForKind - who steps and who glides', () => {
+  it('draws a gait-clocked body on its tick anchor whatever the frame carries', () => {
+    for (const frameAlpha of [0, 0.25, 0.99]) expect(drawAlphaForKind('settler', frameAlpha)).toBe(1);
+  });
+
+  it('leaves every other kind on the frame fraction', () => {
+    expect(drawAlphaForKind('projectile', 0.25)).toBe(0.25);
+    expect(drawAlphaForKind('building', 0.25)).toBe(0.25);
+  });
+});
 
 describe('trackMotion - the inter-tick interpolation decision', () => {
   it('snaps both anchors on first sight (no glide in from the origin)', () => {
@@ -90,7 +102,7 @@ describe('projectile snap policy', () => {
   /** Travel the walker band rejects outright, as a few ticks of any real flight would. */
   const OVER_BAND_PX = SNAP_DISTANCE * 2;
 
-  it('gives a projectile a wider band than a walker (the pool wiring is pinned in pool.test.ts)', () => {
+  it('gives a projectile a wider band than a walker', () => {
     expect(snapDistanceForKind('projectile')).toBeGreaterThan(snapDistanceForKind('settler'));
   });
 

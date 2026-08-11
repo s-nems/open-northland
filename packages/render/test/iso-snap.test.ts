@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { snapCameraToDevicePixels } from '../src/data/projection/index.js';
+import { snapCameraToDevicePixels, snapToDevicePixels } from '../src/data/projection/index.js';
 
 describe('snapCameraToDevicePixels', () => {
   it('rounds pan offsets to whole device pixels at resolution 1', () => {
@@ -20,5 +20,16 @@ describe('snapCameraToDevicePixels', () => {
 
   it('treats a non-positive resolution as 1 (defensive)', () => {
     expect(snapCameraToDevicePixels({ offsetX: 1.5, offsetY: 0 }, 0).offsetX).toBe(2);
+  });
+});
+
+describe('snapToDevicePixels', () => {
+  it('leaves the coordinate fractional when no resolution is given', () => {
+    expect(snapToDevicePixels(10.4, undefined)).toBe(10.4);
+  });
+
+  it('rounds to the device grid, which is finer than the CSS grid on a DPR-2 canvas', () => {
+    expect(snapToDevicePixels(10.4, 1)).toBe(10);
+    expect(snapToDevicePixels(10.4, 2)).toBeCloseTo(10.5);
   });
 });

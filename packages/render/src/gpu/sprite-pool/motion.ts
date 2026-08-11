@@ -1,4 +1,4 @@
-/** Inter-tick interpolation for pooled sprites: 12 Hz sim steps drawn as continuous frame-rate motion. */
+/** How a pooled sprite is drawn between two 12 Hz sim steps: per-kind anchors, snap bands, and gait. */
 import { WALK_TICKS_PER_CELL } from '@open-northland/sim';
 import { clamp01, lerp } from '../../data/math.js';
 import { TILE_HALF_W } from '../../data/projection/index.js';
@@ -25,6 +25,15 @@ export const SNAP_DISTANCE = 128;
  */
 export function snapDistanceForKind(kind: SpriteKind): number {
   return kind === 'projectile' ? Number.POSITIVE_INFINITY : SNAP_DISTANCE;
+}
+
+/**
+ * The fraction a kind is drawn at, given the frame's own. A gait-clocked body takes 1 - its tick anchor
+ * - so it steps once per tick, in the same step its pose does. Approximation: the original's sub-tick
+ * placement is unknown, and gliding a body between its poses reads as motion on rails.
+ */
+export function drawAlphaForKind(kind: SpriteKind, frameAlpha: number): number {
+  return kind === 'settler' ? 1 : frameAlpha;
 }
 
 /** World px the feet cover per authored walk frame - one cell (`2·TILE_HALF_W`) over the 12-frame cycle.

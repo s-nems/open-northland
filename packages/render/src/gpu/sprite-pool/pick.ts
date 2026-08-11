@@ -8,8 +8,8 @@ import type { EntityBounds, PooledEntity } from './pooled-entity.js';
  */
 
 /**
- * The drawn (inter-tick lerped, terrain-lifted) sprite geometry, implemented by the pool. An overlay
- * riding it must draw after the pool's reconcile and must not hold the answers past the frame.
+ * The drawn, terrain-lifted sprite geometry, implemented by the pool. An overlay riding it must draw
+ * after the pool's reconcile and must not hold the answers past the frame.
  */
 export interface DrawnGeometry {
   readonly boundsOf: (ref: number) => EntityBounds | undefined;
@@ -67,10 +67,8 @@ export function pixelHit(
   return sampledEveryLayer ? false : undefined;
 }
 
-/**
- * The anchor an entity was drawn at this frame - the inter-tick lerped feet position, not the raw
- * snapshot tile. An overlay reading it glides with the drawn sprite instead of stepping at the tick rate.
- */
+/** The feet position an entity was drawn at this frame, not its raw snapshot tile, so an overlay reading
+ *  it moves exactly as the sprite does. */
 export function anchorOf(
   pe: PooledEntity | undefined,
   frameId: number,

@@ -1,7 +1,13 @@
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { FogGhost } from '../../data/fog/index.js';
-import { type Camera, cameraScreenX, cameraScreenY, type Viewport } from '../../data/projection/index.js';
+import {
+  type Camera,
+  cameraScreenX,
+  cameraScreenY,
+  snapToDevicePixels,
+  type Viewport,
+} from '../../data/projection/index.js';
 import {
   collectSpriteScene,
   type DrawItem,
@@ -15,7 +21,7 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { LayerBinder } from './bind-layers.js';
-import { trackMotion } from './motion.js';
+import { drawAlphaForKind, trackMotion } from './motion.js';
 import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
@@ -46,8 +52,11 @@ export interface PoolFrame {
   readonly screenH: number;
   readonly elevation: ElevationField;
   /** Fixed-timestep interpolation fraction [0,1] between an entity's last two tick anchors; `1` draws
-   *  raw tick positions. */
+   *  raw tick positions, which is what a gait-clocked walker draws whatever this carries. */
   readonly alpha: number;
+  /** Device px per screen px the self-placing paletted meshes round their origin to; absent draws them
+   *  at their fractional origin, as the `?shot` capture does. */
+  readonly snapResolution?: number | undefined;
   /** Entities the retained static map-object layer draws instead; the scene build skips them, so the
    *  pool never touches them. */
   readonly staticRefs?: ReadonlySet<number>;
@@ -89,6 +98,9 @@ export class SpritePool {
   private readonly damaged: DamagedBuilding[] = [];
   private readonly portrait: PortraitSubject;
   private readonly binder: LayerBinder;
+  /** Last {@link reconcile}'s device grid, so the portrait pass re-places the meshes the way it drew
+   *  them. */
+  private snapResolution: number | undefined;
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer, also holding the tall map objects.
@@ -112,6 +124,7 @@ export class SpritePool {
   reconcile(frame: PoolFrame): void {
     const scene = this.sceneFor(frame);
     this.frameId++;
+    this.snapResolution = frame.snapResolution;
     this.portrait.release();
     this.damaged.length = 0;
     for (let i = 0; i < scene.items.length; i++) {
@@ -126,8 +139,9 @@ export class SpritePool {
         this.pool.set(item.ref, pe);
       }
       // An entity absent from last frame's draw list holds the motion track from whenever it was last
-      // drawn, so resuming the lerp would glide it in from that stale anchor. Reset to first-sighting and
-      // let trackMotion snap. Reads `lastSeen` before the stamp below overwrites it.
+      // drawn: resuming from it would glide an arrow in from that stale anchor, and would run a walker's
+      // gait and stall clocks over the whole gap. Reset to first-sighting and let trackMotion snap.
+      // Reads `lastSeen` before the stamp below overwrites it.
       if (pe.lastSeen !== this.frameId - 1) pe.motion.tick = -1;
       this.updatePooled(pe, item, frame);
       // Depth is the feet-anchor screen y plus a small deterministic x tiebreak, the same key the tall map
@@ -253,10 +267,11 @@ export class SpritePool {
    *  mirror the {@link LayerBinder}'s placement exactly. */
   private placePaletted(camera: Camera, resWidth: number, resHeight: number): void {
     const camScale = camera.scale ?? 1;
+    const snap = this.snapResolution;
     for (const pe of this.attached) {
       if (!pe.paletted) continue;
-      const originX = cameraScreenX(camera, pe.motion.drawX);
-      const originY = cameraScreenY(camera, pe.motion.drawY);
+      const originX = snapToDevicePixels(cameraScreenX(camera, pe.motion.drawX), snap);
+      const originY = snapToDevicePixels(cameraScreenY(camera, pe.motion.drawY), snap);
       for (const spr of pe.sprites) {
         if (!spr.visible) continue;
         spr.place(originX, originY, camScale * spr.artScale, resWidth, resHeight);
@@ -277,7 +292,8 @@ export class SpritePool {
   }
 
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), frame.alpha);
+    const alpha = drawAlphaForKind(pe.kind, frame.alpha);
+    trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), alpha);
     pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
     if (item.facing !== undefined) pe.lastFacing = item.facing;
     // `upgradePct` and `builtPct` are mutually exclusive by construction, so an upgrade site rides the

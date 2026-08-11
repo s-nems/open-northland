@@ -88,11 +88,17 @@ export interface Camera {
  * allocates nothing.
  */
 export function snapCameraToDevicePixels(camera: Camera, resolution: number): Camera {
-  const r = resolution > 0 ? resolution : 1;
-  const offsetX = Math.round(camera.offsetX * r) / r;
-  const offsetY = Math.round(camera.offsetY * r) / r;
+  const offsetX = snapToDevicePixels(camera.offsetX, resolution);
+  const offsetY = snapToDevicePixels(camera.offsetY, resolution);
   if (offsetX === camera.offsetX && offsetY === camera.offsetY) return camera;
   return { ...camera, offsetX, offsetY };
+}
+
+/** Round a screen-space coordinate to a whole device pixel; `undefined` leaves it fractional. */
+export function snapToDevicePixels(value: number, resolution: number | undefined): number {
+  if (resolution === undefined) return value;
+  const r = resolution > 0 ? resolution : 1;
+  return Math.round(value * r) / r;
 }
 
 /**

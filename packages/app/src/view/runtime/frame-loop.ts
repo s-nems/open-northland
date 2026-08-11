@@ -92,8 +92,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // Frame phases join the sim instrument's per-system slices in one `?debug=perf` / `?debug=trace` recording.
   const emitPhase = framePhaseEmitter(deps.params);
   let lastMs = performance.now();
-  // Interpolation fraction for the renderer's entity anchors; a pause freezes it, so units hold their
-  // drawn spot mid-leg.
+  // Interpolation fraction for the renderer's entity anchors; a pause freezes it, so an arrow holds its
+  // drawn spot mid-flight.
   let renderAlpha = 1;
   // Every step's events, not just the last tick's: a frame may advance several ticks and each step
   // clears the sim's buffer.
