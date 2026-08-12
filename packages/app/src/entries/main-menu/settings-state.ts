@@ -7,33 +7,6 @@ import { type MenuSettings, persistSettings, readStoredSettings } from '../../vi
  * the graphics settings are read from the store directly and never enter the URL.
  */
 
-export type SettingsTab = 'graphics' | 'audio' | 'gameplay' | 'controls';
-
-export interface SettingsTabItem {
-  readonly id: SettingsTab;
-  /** `comingSoon` renders a badge and takes no input. */
-  readonly kind: 'open' | 'comingSoon';
-}
-
-export const SETTINGS_TABS: readonly SettingsTabItem[] = [
-  { id: 'graphics', kind: 'open' },
-  { id: 'audio', kind: 'open' },
-  { id: 'gameplay', kind: 'open' },
-  { id: 'controls', kind: 'open' },
-];
-
-/** Active settings tab; outlives the screen so a language re-render returns to the same tab. */
-export interface SettingsMemory {
-  tab: SettingsTab;
-}
-
-export function initialSettingsMemory(): SettingsMemory {
-  return { tab: 'graphics' };
-}
-
-/** Quarter steps: 50%, 75%, … 200%; finer render-scale grades are indistinguishable in play. */
-export const RENDER_SCALE_STEP = 0.25;
-
 export interface CarriedSettingParam {
   readonly key: keyof MenuSettings;
   readonly param: string;

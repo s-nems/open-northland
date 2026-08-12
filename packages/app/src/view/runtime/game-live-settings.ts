@@ -3,6 +3,7 @@ import { diag } from '../../diag/index.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { buildToolPanelLayout } from '../../hud/tool-panel/layout.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
+import { defaultLocale, localeParam } from '../../i18n/index.js';
 import type { CameraController } from '../camera/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
@@ -59,19 +60,18 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     requestUiScale: hudScale.request,
   });
   const initialSoundEnabled = gameSoundEnabled(deps.params, deps.stored.soundEnabled);
-  const syncSoundParam = (enabled: boolean): void => {
-    if (enabled) deps.params.delete('sound');
-    else deps.params.set('sound', 'off');
+  const syncCarriedParam = (param: string, value: string | null): void => {
+    if (value === null) deps.params.delete(param);
+    else deps.params.set(param, value);
     const url = new URL(window.location.href);
     url.search = deps.params.toString();
     window.history.replaceState(window.history.state, '', url);
   };
   const settings = createGameSettingsRuntime({
     initial: {
-      uiScaleFactor: deps.stored.uiScaleFactor,
+      ...deps.stored,
       soundEnabled: initialSoundEnabled,
-      soundVolume: deps.stored.soundVolume,
-      musicVolume: deps.stored.musicVolume,
+      language: localeParam(deps.params),
     },
     pinnedUiScale: deps.pinnedUiScale,
     effectiveUiScaleFor: (factor) => deps.pinnedUiScale ?? uiScaleFor(deps.screen.height, factor),
@@ -80,11 +80,14 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     },
     setUiScaleFactor: viewport.setUiScaleFactor,
     setSoundEnabled: (enabled) => {
-      syncSoundParam(enabled);
+      syncCarriedParam('sound', enabled ? null : 'off');
       deps.sound?.setEnabled(enabled);
     },
     setSfxVolume: (volume) => deps.sound?.setSfxVolume(volume),
     setMusicVolume: (volume) => deps.sound?.setMusicVolume(volume),
+    setLanguage: (language) => {
+      syncCarriedParam('lang', language === defaultLocale() ? null : language);
+    },
   });
 
   return {

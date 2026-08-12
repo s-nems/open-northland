@@ -47,6 +47,7 @@ const MODAL_BUTTON_STYLE = [
 
 /** The in-game system menu and its save, load, and live-settings panels. */
 export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
+  const scope = new AbortController();
   const allCopy = messages();
   const copy = allCopy.hud;
 
@@ -83,12 +84,14 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   };
 
   const panels: SavePanelView[] = [];
+  let returnFocus: HTMLButtonElement | null = null;
   const hidePanels = (): void => {
     for (const view of panels) view.el.style.display = 'none';
   };
   const showMenu = (): void => {
     hidePanels();
     panel.style.display = 'flex';
+    returnFocus?.focus();
   };
   const panelDeps = {
     saveLoad: deps.saveLoad,
@@ -96,34 +99,40 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     panelStyle: MODAL_PANEL_STYLE,
     buttonStyle: MODAL_BUTTON_STYLE,
   };
+  let relabel = (): void => undefined;
   const savePanel = buildSavePanel(panelDeps);
   const loadPanel = buildLoadPanel(panelDeps);
   const settingsPanel = buildSystemSettingsPanel({
     settings: deps.settings,
     showMenu,
     panelStyle: MODAL_PANEL_STYLE,
-    buttonStyle: MODAL_BUTTON_STYLE,
+    signal: scope.signal,
+    onLanguageChange: () => relabel(),
   });
   panels.push(savePanel, loadPanel, settingsPanel);
   hidePanels();
 
-  const showPanel = (view: SavePanelView): void => {
+  const showPanel = (view: SavePanelView, trigger: HTMLButtonElement): void => {
+    returnFocus = trigger;
     panel.style.display = 'none';
     hidePanels();
     view.el.style.display = 'flex';
     view.open();
+    if (!view.el.contains(document.activeElement))
+      view.el.querySelector<HTMLButtonElement>('button')?.focus();
   };
 
-  const save = button(copy.saveGame, () => showPanel(savePanel));
-  const load = button(copy.loadGame, () => showPanel(loadPanel));
-  const settings = button(allCopy.mainMenu.items.settings, () => showPanel(settingsPanel));
+  const save = button(copy.saveGame, () => showPanel(savePanel, save));
+  const load = button(copy.loadGame, () => showPanel(loadPanel, load));
+  const settings = button(allCopy.mainMenu.items.settings, () => showPanel(settingsPanel, settings));
 
   // Quitting throws away everything since the last save, so it asks like the save flows do.
   const quit = button(copy.returnToMenu, () => {
+    const liveCopy = messages().hud;
     void confirmDialog({
-      message: copy.quitConfirm,
-      confirmLabel: copy.quitConfirmYes,
-      cancelLabel: copy.quitConfirmNo,
+      message: liveCopy.quitConfirm,
+      confirmLabel: liveCopy.quitConfirmYes,
+      cancelLabel: liveCopy.quitConfirmNo,
     }).then((confirmed) => {
       if (confirmed) deps.onQuit();
     });
@@ -135,11 +144,26 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   // Present only while a `?debug=trace` recording is live.
   const trace = isTraceRecording() ? button(copy.downloadTrace, () => downloadTraceFile()) : null;
 
+  relabel = (): void => {
+    const next = messages();
+    const hud = next.hud;
+    title.textContent = hud.systemMenu;
+    panel.setAttribute('aria-label', hud.systemMenu);
+    save.textContent = hud.saveGame;
+    load.textContent = hud.loadGame;
+    settings.textContent = next.mainMenu.items.settings;
+    quit.textContent = hud.returnToMenu;
+    diagnostics.textContent = hud.downloadDiagnostics;
+    if (trace !== null) trace.textContent = hud.downloadTrace;
+    close.textContent = hud.closeMenu;
+  };
+
   const hide = (): void => {
     backdrop.style.display = 'none';
     deps.setCameraSuspended(false);
     deps.saveLoad.releaseForcedPause();
-    showMenu();
+    hidePanels();
+    panel.style.display = 'flex';
   };
   const close = button(copy.closeMenu, hide);
   backdrop.addEventListener('click', (event) => {
@@ -168,6 +192,10 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
         deps.saveLoad.forcePause();
         deps.setCameraSuspended(true);
         backdrop.style.display = 'grid';
+        (returnFocus ?? save).focus();
+        requestAnimationFrame(() => {
+          if (backdrop.style.display !== 'none') (returnFocus ?? save).focus();
+        });
       } else {
         hide();
       }
@@ -175,6 +203,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
     isOpen: () => backdrop.style.display !== 'none',
     dispose(): void {
       deps.setCameraSuspended(false);
+      scope.abort();
       document.removeEventListener('keydown', onKey);
       backdrop.remove();
     },

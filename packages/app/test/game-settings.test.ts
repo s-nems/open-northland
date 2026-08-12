@@ -7,6 +7,7 @@ import {
   gameSoundEnabled,
 } from '../src/view/runtime/game-settings.js';
 import { createGameViewportCoordinator } from '../src/view/runtime/game-viewport.js';
+import { defaultSettings } from '../src/view/settings-store.js';
 
 function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const persist = vi.fn();
@@ -14,9 +15,10 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setSoundEnabled = vi.fn();
   const setSfxVolume = vi.fn();
   const setMusicVolume = vi.fn();
+  const setLanguage = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
-      uiScaleFactor: 1,
+      ...defaultSettings(),
       soundEnabled: true,
       soundVolume: 1,
       musicVolume: 0.7,
@@ -28,9 +30,18 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setSoundEnabled,
     setSfxVolume,
     setMusicVolume,
+    setLanguage,
     ...overrides,
   });
-  return { settings, persist, setUiScaleFactor, setSoundEnabled, setSfxVolume, setMusicVolume };
+  return {
+    settings,
+    persist,
+    setUiScaleFactor,
+    setSoundEnabled,
+    setSfxVolume,
+    setMusicVolume,
+    setLanguage,
+  };
 }
 
 describe('createGameSettingsRuntime', () => {
@@ -42,7 +53,7 @@ describe('createGameSettingsRuntime', () => {
     await h.settings.update({ soundVolume: 0.35 });
     await h.settings.update({ musicVolume: 0.45 });
 
-    expect(h.settings.current()).toEqual({
+    expect(h.settings.current()).toMatchObject({
       uiScaleFactor: 1.2,
       soundEnabled: false,
       soundVolume: 0.35,
@@ -60,6 +71,43 @@ describe('createGameSettingsRuntime', () => {
     expect(h.setMusicVolume).toHaveBeenCalledWith(0.45);
   });
 
+  it('persists the complete settings model and projects the next-game language choice', async () => {
+    const h = harness();
+
+    await h.settings.update({ renderScale: 0.75, fpsLimit: 30, language: 'eng' });
+
+    expect(h.settings.current()).toMatchObject({ renderScale: 0.75, fpsLimit: 30, language: 'eng' });
+    expect(h.persist).toHaveBeenCalledWith({ renderScale: 0.75, fpsLimit: 30, language: 'eng' });
+    expect(h.setLanguage).toHaveBeenCalledWith('eng');
+  });
+
+  it('commits later edits after an older settings patch finishes rebuilding the HUD', async () => {
+    let finishScale = (_applied: boolean): void => undefined;
+    const scaleResult = new Promise<boolean>((resolve) => {
+      finishScale = resolve;
+    });
+    const h = harness({ setUiScaleFactor: vi.fn(() => scaleResult) });
+
+    const restore = h.settings.update({ uiScaleFactor: 1.2, soundVolume: 0.2, displayMode: 'window' });
+    const laterVolume = h.settings.update({ soundVolume: 0.9, displayMode: 'fullscreen' });
+    await Promise.resolve();
+
+    expect(h.persist).toHaveBeenCalledWith({ soundVolume: 0.9, displayMode: 'fullscreen' });
+    expect(h.setSfxVolume).toHaveBeenCalledWith(0.9);
+    finishScale(true);
+    await expect(Promise.all([restore, laterVolume])).resolves.toEqual([true, true]);
+
+    expect(h.settings.current()).toMatchObject({
+      uiScaleFactor: 1.2,
+      soundVolume: 0.9,
+      displayMode: 'fullscreen',
+    });
+    expect(h.persist.mock.calls).toEqual([
+      [{ soundVolume: 0.9, displayMode: 'fullscreen' }],
+      [{ uiScaleFactor: 1.2 }],
+    ]);
+  });
+
   it('keeps the previous value out of memory and storage when a scale replacement fails', async () => {
     const h = harness({ setUiScaleFactor: async () => false });
 
@@ -67,6 +115,44 @@ describe('createGameSettingsRuntime', () => {
 
     expect(h.settings.current().uiScaleFactor).toBe(1);
     expect(h.persist).not.toHaveBeenCalled();
+  });
+
+  it('keeps a successful scale when the next queued scale fails', async () => {
+    const setUiScaleFactor = vi
+      .fn<(factor: number) => Promise<boolean>>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const h = harness({ setUiScaleFactor });
+
+    const first = h.settings.update({ uiScaleFactor: 1.2 });
+    const second = h.settings.update({ uiScaleFactor: 1.3 });
+
+    await expect(first).resolves.toBe(true);
+    await expect(second).resolves.toBe(false);
+    expect(h.settings.current().uiScaleFactor).toBe(1.2);
+    expect(h.persist).toHaveBeenCalledTimes(1);
+    expect(h.persist).toHaveBeenCalledWith({ uiScaleFactor: 1.2 });
+  });
+
+  it('commits every field from a successful full patch when the next full patch fails', async () => {
+    const setUiScaleFactor = vi
+      .fn<(factor: number) => Promise<boolean>>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const h = harness({ setUiScaleFactor });
+
+    const first = h.settings.update({ uiScaleFactor: 1.2, soundVolume: 0.2, language: 'pol' });
+    const second = h.settings.update({ uiScaleFactor: 1.3, soundVolume: 0.4, language: 'eng' });
+
+    await expect(first).resolves.toBe(true);
+    await expect(second).resolves.toBe(false);
+    expect(h.settings.current()).toMatchObject({ uiScaleFactor: 1.2, soundVolume: 0.2, language: 'pol' });
+    expect(h.persist).toHaveBeenCalledTimes(1);
+    expect(h.persist).toHaveBeenCalledWith({
+      uiScaleFactor: 1.2,
+      soundVolume: 0.2,
+      language: 'pol',
+    });
   });
 
   it('rolls a failed settings-to-viewport-to-HUD update back at every layer', async () => {

@@ -1,6 +1,13 @@
 /* Settings: category nav on the left, rows panel on the right, autosave note and
    restore in the footer. Scaffold, header, seg/toggle/ghost/badge live in menu.css. */
 
+.main-menu__settings-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .main-menu__settings-body {
   flex: 1;
   min-height: 0;
@@ -239,6 +246,17 @@ button.main-menu__settings-key:focus-visible {
   align-items: center;
   gap: calc(var(--u) * 28);
   padding-top: calc(var(--u) * 32);
+}
+
+.main-menu__settings-status {
+  flex: 1;
+  min-height: 1.2em;
+  margin: 0;
+  font:
+    400 calc(var(--u) * 21) / 1.2 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--danger-text, #e8a58a);
 }
 
 .main-menu__settings-autosave {
