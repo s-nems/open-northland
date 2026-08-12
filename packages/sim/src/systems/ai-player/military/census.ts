@@ -32,9 +32,9 @@ export interface WeaponMix {
 }
 
 /**
- * Sort the seat's fighters. A man chasing an {@link AttackOrder} focus or trading blows ({@link Engagement})
- * lands in neither list, so a wave that has left is out of the seat's hands until its objective falls, and
- * no march order needs a "same focus already" check.
+ * Sort the seat's fighters. A man trading blows ({@link Engagement}) or chasing a focus he was given
+ * ({@link AttackOrder}) lands in neither list, so no order of the seat's own can pull a man out of a fight.
+ * A man merely walking an order out is still counted here; the muster drops him itself (`errand.ts`).
  *
  * A man holding a tower post leaves the army too. {@link towerPostFor}'s entitlement is the test rather
  * than the garrison marker, so an archer still walking to his tower is already gone from the muster.

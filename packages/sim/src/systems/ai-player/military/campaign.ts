@@ -23,9 +23,9 @@ const SIEGE_TIERS: readonly BuildingCombatClass[] = ['hq', 'tower', 'other'];
  * What the seat's army marches on: the nearest enemy headquarters to its muster point (authored), with
  * the lower {@link SIEGE_TIERS} behind it so a wave never stalls for want of an HQ. Distance is Manhattan
  * over half-cell nodes from `rally` to the candidate's approach node. A candidate must belong to another
- * player, stand on ground connected to the rally, and hold a live `Health` pool, because an `attackUnit`
- * order aimed at a hitpoint-less building is dropped and leaves the wave benched. A construction site
- * holds a pool from its first hitpoint, so it is a candidate like any other building.
+ * player, stand on ground connected to the rally, and hold a live `Health` pool, because a wave sent at a
+ * hitpoint-less building could never resolve its objective. A construction site holds a pool from its
+ * first hitpoint, so it is a candidate like any other building.
  */
 export function campaignTarget(
   world: World,

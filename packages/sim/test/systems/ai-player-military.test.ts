@@ -5,9 +5,10 @@ import {
   AttackOrder,
   Building,
   Engagement,
-  Health,
   MoveGoal,
+  MusterPlan,
   Owner,
+  PlayerOrder,
   Settler,
   Stance,
   setDiplomacyStance,
@@ -19,11 +20,13 @@ import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, Rng, replay, Simulation, type TerrainMap } from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
+  ASSAULT_RING_RADIUS_NODES,
   campaignTarget,
   militaryModule,
   RALLY_HOLD_RADIUS_NODES,
   takeCensus,
   WAVE_FULL_SOLDIERS,
+  WAVE_GATHER_TICKS,
   WAVE_MIN_SOLDIERS,
   weaponMix,
 } from '../../src/systems/ai-player/index.js';
@@ -60,25 +63,29 @@ const CIVILIST = 6;
 const BARRACKS = { x: 30, y: 30 };
 /** The enemy seat, far enough that no objective ever falls inside the seat's own muster ring. */
 const FOE_HQ = { x: 110, y: 70 };
-/** The launch roll's band: `int(WAVE_BAND) <= strength over the minimum`. */
+/** The wave-size draw's band: `WAVE_MIN_SOLDIERS + int(WAVE_BAND)`. */
 const WAVE_BAND = WAVE_FULL_SOLDIERS - WAVE_MIN_SOLDIERS + 1;
-/** A full band with no doubt about the launch roll: this many march on any draw. */
+/** A full band, which satisfies any draw: this many march as soon as they are formed up. */
 const CERTAIN_WAVE = WAVE_FULL_SOLDIERS;
 
-/** A seed whose first `int(WAVE_BAND)` draw is 0 - a bare-minimum group marches. */
+/** A seed whose wave-size draw is the bottom of the band - a bare-minimum group marches. */
 const EAGER_SEED = 7;
-/** A seed whose first draw is the top of the band - that same group waits. */
+/** A seed whose draw is the top of the band - that same group is held for a full one. */
 const PATIENT_SEED = 43;
+/** A seed drawing a size inside the band, for the cases that grow a muster up to its draw. */
+const MIDDLE_SEED = 110;
+/** The size {@link MIDDLE_SEED} draws. */
+const HELD_WAVE = 10;
 
 function aiSim(map: TerrainMap = grassNodeMap(128, 96)): Simulation {
   return new Simulation({ seed: 1, content: aiContent(), map });
 }
 
-function ctxOf(sim: Simulation, seed = EAGER_SEED): SystemContext {
+function ctxOf(sim: Simulation, seed = EAGER_SEED, tick = 0): SystemContext {
   return {
     content: aiContent(),
     rng: new Rng(seed),
-    tick: 0,
+    tick,
     events: new EventBuffer(),
     commands: new CommandQueue(),
     ...(sim.terrain !== undefined ? { terrain: sim.terrain } : {}),
@@ -154,28 +161,40 @@ function rallyOf(sim: Simulation): { node: NodeId; x: number; y: number } {
   return { node, ...terrain.coordsOf(node) };
 }
 
-function run(sim: Simulation, seed = EAGER_SEED): Command[] {
-  return [...militaryModule.run(sim.world, ctxOf(sim, seed), SEAT)];
+function run(sim: Simulation, seed = EAGER_SEED, tick = 0): Command[] {
+  return [...militaryModule.run(sim.world, ctxOf(sim, seed, tick), SEAT)];
 }
 
-function attackTargets(commands: readonly Command[]): Entity[] {
-  return commands.flatMap((c) => (c.kind === 'attackUnit' ? [c.target] : []));
-}
-
-/** Where the recall sends men. It walks them under an attack-move, so a man crossing contested ground
- *  can still answer what shoots at him. */
-function recalls(commands: readonly Command[]): { entity: Entity; x: number; y: number }[] {
+/** Every walk the module orders. The recall and the march are both attack-moves - a man crossing contested
+ *  ground can answer what shoots at him either way - so where they lead is what tells them apart. */
+function walks(commands: readonly Command[]): { entity: Entity; x: number; y: number }[] {
   return commands.flatMap((c) => (c.kind === 'attackMoveUnit' ? [{ entity: c.entity, x: c.x, y: c.y }] : []));
 }
 
-/** How many of `commands` walk a man to his own spot in the hold ring around `rally` - the band gathers
- *  spread out, so no destination is the rally node itself for everyone. */
-function gatheringAt(sim: Simulation, commands: readonly Command[], rally: { x: number; y: number }): number {
+/** The men `commands` walk to their own spot in the ring of `radius` around `centre` - a body spreads out,
+ *  so no destination is the centre node itself for everyone. */
+function walksInto(
+  sim: Simulation,
+  commands: readonly Command[],
+  centre: { x: number; y: number },
+  radius: number,
+): Entity[] {
   const terrain = terrainOf(sim);
-  const centre = terrain.nodeAtClamped(rally.x, rally.y);
-  return recalls(commands).filter(
-    (d) => manhattan(terrain, terrain.nodeAtClamped(d.x, d.y), centre) <= RALLY_HOLD_RADIUS_NODES,
-  ).length;
+  const node = terrain.nodeAtClamped(centre.x, centre.y);
+  return walks(commands)
+    .filter((d) => manhattan(terrain, terrain.nodeAtClamped(d.x, d.y), node) <= radius)
+    .map((d) => d.entity);
+}
+
+function gatheringAt(sim: Simulation, commands: readonly Command[], rally: { x: number; y: number }): number {
+  return walksInto(sim, commands, rally, RALLY_HOLD_RADIUS_NODES).length;
+}
+
+/** The men `commands` send in on `target` - each onto his own spot in the ring around its door. */
+function assaulting(sim: Simulation, commands: readonly Command[], target: Entity): Entity[] {
+  const terrain = terrainOf(sim);
+  const door = terrain.coordsOf(interactionCell(sim.world, ctxOf(sim), terrain, target));
+  return walksInto(sim, commands, door, ASSAULT_RING_RADIUS_NODES);
 }
 
 function stanceModes(commands: readonly Command[]): number[] {
@@ -201,9 +220,10 @@ describe('military module - the muster', () => {
     expect(run(sim)).toEqual([]);
   });
 
-  it('pins the launch-roll seeds to the draws the wave cases assume', () => {
-    expect(new Rng(EAGER_SEED).int(WAVE_BAND)).toBe(0);
-    expect(new Rng(PATIENT_SEED).int(WAVE_BAND)).toBe(WAVE_BAND - 1);
+  it('pins the seeds to the wave sizes the cases assume', () => {
+    expect(WAVE_MIN_SOLDIERS + new Rng(EAGER_SEED).int(WAVE_BAND)).toBe(WAVE_MIN_SOLDIERS);
+    expect(WAVE_MIN_SOLDIERS + new Rng(PATIENT_SEED).int(WAVE_BAND)).toBe(WAVE_FULL_SOLDIERS);
+    expect(WAVE_MIN_SOLDIERS + new Rng(MIDDLE_SEED).int(WAVE_BAND)).toBe(HELD_WAVE);
   });
 
   it('calls an idle soldier inside the settlement in to the barracks door', () => {
@@ -214,7 +234,7 @@ describe('military module - the muster', () => {
     if (stray === undefined) throw new Error('setup: no soldier');
 
     const commands = run(sim);
-    expect(recalls(commands)).toHaveLength(1);
+    expect(walks(commands)).toHaveLength(1);
     expect(gatheringAt(sim, commands, rally)).toBe(1);
     expect(commands.some((c) => c.kind === 'attackMoveUnit' && c.entity === stray)).toBe(true);
   });
@@ -298,7 +318,7 @@ describe('military module - the muster', () => {
 
     // The armed men march; he is called in to the barracks to be armed.
     const commands = run(sim);
-    expect(attackTargets(commands)).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(assaulting(sim, commands, buildingOfType(sim, HQ_TYPE, FOE))).toHaveLength(WAVE_MIN_SOLDIERS);
     expect(commands.some((c) => c.kind === 'attackMoveUnit' && c.entity === waiting)).toBe(true);
     expect(gatheringAt(sim, commands, rally)).toBe(1);
   });
@@ -327,24 +347,97 @@ describe('military module - the campaign', () => {
     return [...sim.world.query(Settler, Owner)].filter((e) => sim.world.get(e, Owner).player === SEAT);
   }
 
-  it('sends the formed band from the barracks straight at the enemy seat', () => {
+  it('sends the formed band in on the enemy seat, each man onto his own spot around its door', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
     const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
 
-    // No forming-up point on the way: the whole pause happened at home, so the wave leaves in one order
-    // and walks the map under it.
+    // The whole pause happened at home, so the wave leaves in one order - and it leaves under an
+    // attack-move rather than a focus on the house, which would walk it past everything in between.
     const commands = run(sim);
-    expect(attackTargets(commands)).toEqual(new Array(WAVE_MIN_SOLDIERS).fill(foeHq));
-    expect(recalls(commands)).toEqual([]);
+    expect(assaulting(sim, commands, foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(walks(commands)).toHaveLength(WAVE_MIN_SOLDIERS); // nobody recalled
+    expect(commands.some((c) => c.kind === 'attackUnit')).toBe(false);
   });
 
-  it('holds the band at its own door until the launch roll comes up', () => {
+  it('spreads the wave over the ring instead of walking it onto one node', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const goals = new Set(walks(run(sim)).map((d) => `${d.x},${d.y}`));
 
-    // Formed up at home on the fighter default, so a lost roll costs the seat nothing to say: they wait
-    // where the settlement can use them.
+    expect(goals.size).toBeGreaterThan(1);
+  });
+
+  it('holds the band at its own door until the muster reaches the size this wave was drawn to', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const rally = rallyOf(sim);
+
+    // The size is drawn once and held, so a band short of it stays home decision after decision instead of
+    // leaving the moment a fresh draw comes up small - which is how a seat ends up trickling out fives.
+    expect(run(sim, MIDDLE_SEED)).toEqual([]);
+    for (let i = 0; i < 20; i++) expect(run(sim, EAGER_SEED)).toEqual([]);
+
+    // And once the muster is the size this wave was drawn to, it goes in as one body.
+    pack(sim, HELD_WAVE - WAVE_MIN_SOLDIERS, { x: rally.x + 2, y: rally.y + 2 });
+    expect(assaulting(sim, run(sim), buildingOfType(sim, HQ_TYPE, FOE))).toHaveLength(HELD_WAVE);
+  });
+
+  it('draws a fresh size for the wave after the one that just left', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const rally = rallyOf(sim);
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+
+    expect(run(sim, MIDDLE_SEED)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(true); // the wave being gathered
+    pack(sim, HELD_WAVE - WAVE_MIN_SOLDIERS, { x: rally.x + 2, y: rally.y + 2 });
+    run(sim);
+
+    expect(sim.world.has(barracks, MusterPlan)).toBe(false);
+  });
+
+  it('marches with what it has once the gathering window is up', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+
     expect(run(sim, PATIENT_SEED)).toEqual([]);
-    expect(attackTargets(run(sim, EAGER_SEED))).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS - 1)).toEqual([]);
+
+    // The window is absolute: keyed on reinforcements, a seat that keeps drafting would gather for the rest
+    // of the game and never attack at all.
+    expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+  });
+
+  it('marches on the window even while the seat keeps drafting', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const rally = rallyOf(sim);
+
+    // Reinforcements must not postpone the wave: a seat that keeps raising men would otherwise gather for
+    // the rest of the game and never attack at all.
+    for (let joined = 0; joined * 600 < WAVE_GATHER_TICKS; joined++) {
+      expect(run(sim, PATIENT_SEED, joined * 600)).toEqual([]);
+      pack(sim, 1, { x: rally.x + joined, y: rally.y + 2 });
+    }
+
+    expect(
+      assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), buildingOfType(sim, HQ_TYPE, FOE)),
+    ).not.toEqual([]);
+  });
+
+  it('drops the plan when the door falls under a wave, so the next band is not sent by a spent window', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    const [lost] = seatBand(sim);
+    if (lost === undefined) throw new Error('setup: no soldier');
+    expect(run(sim, PATIENT_SEED)).toEqual([]);
+
+    sim.world.destroy(lost);
+    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(false);
+
+    // The band raised after the loss gathers its own window rather than inheriting the dead wave's.
+    pack(sim, 1, { x: rallyOf(sim).x, y: rallyOf(sim).y + 2 });
+    const raised = 2 * WAVE_GATHER_TICKS;
+    expect(run(sim, PATIENT_SEED, raised)).toEqual([]);
+    expect(run(sim, PATIENT_SEED, raised + WAVE_GATHER_TICKS - 1)).toEqual([]);
+    expect(run(sim, PATIENT_SEED, raised + WAVE_GATHER_TICKS)).not.toEqual([]);
   });
 
   it('puts a man off the fighter default back on the attack for the march', () => {
@@ -352,7 +445,7 @@ describe('military module - the campaign', () => {
     for (const e of seatBand(sim)) sim.world.add(e, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: null });
 
     const commands = run(sim);
-    expect(attackTargets(commands)).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(assaulting(sim, commands, buildingOfType(sim, HQ_TYPE, FOE))).toHaveLength(WAVE_MIN_SOLDIERS);
     expect(stanceModes(commands)).toEqual(new Array(WAVE_MIN_SOLDIERS).fill(MILITARY_MODE.ATTACK));
   });
 
@@ -360,15 +453,15 @@ describe('military module - the campaign', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS + 1);
     const [drilling] = seatBand(sim);
     if (drilling === undefined) throw new Error('setup: no soldier');
-    // `attackUnit` does not clear a drill or an equip run, so a man the recall refuses to walk six nodes
-    // must not be sent the whole way to the enemy either - and the roll must be taken without him.
+    // A walk order clears a drill or an equip run, so a man the recall refuses to walk six nodes must not
+    // be sent the whole way to the enemy either - and the wave must be measured without him.
     sim.world.add(drilling, TrainingOrder, {
       house: buildingOfType(sim, BARRACKS_TYPE, SEAT),
       drillTicksLeft: 100,
     });
 
     const commands = run(sim);
-    expect(attackTargets(commands)).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(assaulting(sim, commands, buildingOfType(sim, HQ_TYPE, FOE))).toHaveLength(WAVE_MIN_SOLDIERS);
     expect(commands.some((c) => 'entity' in c && c.entity === drilling)).toBe(false);
   });
 
@@ -379,10 +472,10 @@ describe('military module - the campaign', () => {
     // but out of sight of it, so they are the module's to order rather than already engaged.
     spawn(sim, WAVE_MIN_SOLDIERS, { x: FOE_HQ.x - 30, y: FOE_HQ.y });
 
-    // A lost roll must not walk them back across the ground they hold; they go in whatever it says.
+    // A muster still short of its draw must not walk them back across the ground they hold; they go in.
     const commands = run(sim, PATIENT_SEED);
-    expect(attackTargets(commands)).toEqual(new Array(WAVE_MIN_SOLDIERS).fill(foeHq));
-    expect(recalls(commands)).toEqual([]);
+    expect(assaulting(sim, commands, foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(walks(commands)).toHaveLength(WAVE_MIN_SOLDIERS); // nobody recalled
   });
 
   it('calls survivors too few to be a wave home rather than feeding them to the objective', () => {
@@ -394,7 +487,7 @@ describe('military module - the campaign', () => {
     // Forward of the halfway mark, but a handful is not a wave: the size floor is about who the seat
     // sends anywhere, not about where the last fight happened to leave them.
     const commands = run(sim, PATIENT_SEED);
-    expect(attackTargets(commands)).toEqual([]);
+    expect(assaulting(sim, commands, buildingOfType(sim, HQ_TYPE, FOE))).toEqual([]);
     expect(gatheringAt(sim, commands, rally)).toBe(WAVE_MIN_SOLDIERS - 1);
   });
 
@@ -405,8 +498,8 @@ describe('military module - the campaign', () => {
     // Manhattan-nearer the enemy seat than the barracks, but across the water from both.
     spawn(sim, WAVE_MIN_SOLDIERS, { x: 70, y: 70 });
 
-    // An attack order aimed over the water would never resolve: he would leave the census for good and
-    // be re-issued the same dead order every decision.
+    // A walk aimed over the water would never route: he would be re-issued the same dead order every
+    // decision, so he is neither marched nor called in.
     expect(run(sim)).toEqual([]);
   });
 
@@ -415,36 +508,42 @@ describe('military module - the campaign', () => {
     const rally = rallyOf(sim);
 
     const commands = run(sim);
-    expect(attackTargets(commands)).toEqual([]);
-    expect(recalls(commands).length).toBeGreaterThan(0);
-    expect(gatheringAt(sim, commands, rally)).toBe(recalls(commands).length);
+    expect(assaulting(sim, commands, buildingOfType(sim, HQ_TYPE, FOE))).toEqual([]);
+    expect(walks(commands).length).toBeGreaterThan(0);
+    expect(gatheringAt(sim, commands, rally)).toBe(walks(commands).length);
   });
 
   it('varies the wave: the same band leaves in one game and waits in another', () => {
-    const sim = bandSim(WAVE_MIN_SOLDIERS);
-    expect(attackTargets(run(sim, EAGER_SEED))).toHaveLength(WAVE_MIN_SOLDIERS);
-    expect(attackTargets(run(sim, PATIENT_SEED))).toEqual([]);
+    const foeHqOf = (sim: Simulation): Entity => buildingOfType(sim, HQ_TYPE, FOE);
+    const eager = bandSim(WAVE_MIN_SOLDIERS);
+    const patient = bandSim(WAVE_MIN_SOLDIERS);
 
-    // A full band leaves whatever the draw.
-    expect(attackTargets(run(bandSim(CERTAIN_WAVE), PATIENT_SEED))).toHaveLength(CERTAIN_WAVE);
+    expect(assaulting(eager, run(eager, EAGER_SEED), foeHqOf(eager))).toHaveLength(WAVE_MIN_SOLDIERS);
+    expect(assaulting(patient, run(patient, PATIENT_SEED), foeHqOf(patient))).toEqual([]);
+
+    // A full band satisfies the top of the band, so it leaves whatever the draw.
+    const full = bandSim(CERTAIN_WAVE);
+    expect(assaulting(full, run(full, PATIENT_SEED), foeHqOf(full))).toHaveLength(CERTAIN_WAVE);
   });
 
   it('never marches a shooting line while the seat still owns somebody to lead it', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS, BOWMAN);
     const rally = rallyOf(sim);
+    const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
     // The one spearman is still walking in, so the seat HAS a front rank - it just is not formed up yet.
     spawn(sim, 1, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 2, y: rally.y }, SPEARMAN);
-    expect(attackTargets(run(sim))).toEqual([]);
+    expect(assaulting(sim, run(sim), foeHq)).toEqual([]);
 
     // And once one of them stands with the band, the band goes in.
     spawn(sim, 1, { x: rally.x + RALLY_HOLD_RADIUS_NODES - 1, y: rally.y }, SPEARMAN);
-    expect(attackTargets(run(sim))).toHaveLength(WAVE_MIN_SOLDIERS + 1);
+    expect(assaulting(sim, run(sim), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS + 1);
   });
 
   it('sends an all-archer army rather than benching it for a swordsman it will never own', () => {
     // Nobody in the whole army fights in reach, so the melee core is waived: holding out for a front
     // rank the seat cannot raise would bench its army for the rest of the game.
-    expect(attackTargets(run(bandSim(CERTAIN_WAVE, BOWMAN)))).toHaveLength(CERTAIN_WAVE);
+    const sim = bandSim(CERTAIN_WAVE, BOWMAN);
+    expect(assaulting(sim, run(sim), buildingOfType(sim, HQ_TYPE, FOE))).toHaveLength(CERTAIN_WAVE);
   });
 
   it('walks a lone survivor home instead of sending him at the enemy', () => {
@@ -456,8 +555,8 @@ describe('military module - the campaign', () => {
     // One man is no wave: he comes back to the barracks, where the army waits on the attack so it meets
     // whatever comes to the door.
     const commands = run(sim);
-    expect(attackTargets(commands)).toEqual([]);
-    expect(recalls(commands)).toHaveLength(1);
+    expect(assaulting(sim, commands, buildingOfType(sim, HQ_TYPE, FOE))).toEqual([]);
+    expect(walks(commands)).toHaveLength(1);
     expect(gatheringAt(sim, commands, rally)).toBe(1);
     expect(commands.some((c) => c.kind === 'attackMoveUnit' && c.entity === survivor)).toBe(true);
     expect(stanceModes(commands)).toEqual([]); // a fighter already defaults to ATTACK - nothing to restate
@@ -467,16 +566,19 @@ describe('military module - the campaign', () => {
     const sim = armedSim(0);
     const rally = rallyOf(sim);
     const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
-    // The wave that just left carries its attack orders, so the census no longer counts it.
-    for (const e of spawn(sim, WAVE_MIN_SOLDIERS, { x: rally.x + 40, y: rally.y })) {
-      sim.world.add(e, AttackOrder, { target: foeHq });
-    }
     pack(sim, WAVE_MIN_SOLDIERS - 1, rally); // one short of a wave of their own
+    // The wave that just left is walking its march out, so the muster is not the seat's to re-order. The
+    // goal rides along with the order, which retires the tick its walk is done.
+    const objective = interactionCell(sim.world, ctxOf(sim), terrainOf(sim), foeHq);
+    for (const e of spawn(sim, WAVE_MIN_SOLDIERS, { x: rally.x + 40, y: rally.y })) {
+      sim.world.add(e, MoveGoal, { cell: objective });
+      sim.world.add(e, PlayerOrder, { attackMove: { goal: objective, resume: false, blockedUntil: 0 } });
+    }
 
     // Too few to leave, and the men already out are no help to them: they hold the door.
     expect(run(sim)).toEqual([]);
-    pack(sim, 1, { x: rally.x, y: rally.y + 1 });
-    expect(attackTargets(run(sim))).toHaveLength(WAVE_MIN_SOLDIERS);
+    pack(sim, 1, { x: rally.x, y: rally.y + 2 });
+    expect(assaulting(sim, run(sim), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
   });
 
   it('leaves a fighter already chasing its focus alone', () => {
@@ -509,7 +611,7 @@ describe('military module - the campaign', () => {
     if (survivor === undefined) throw new Error('setup: no soldier');
 
     const commands = run(sim);
-    expect(recalls(commands)).toHaveLength(1);
+    expect(walks(commands)).toHaveLength(1);
     expect(gatheringAt(sim, commands, rally)).toBe(1);
     expect(commands.some((c) => c.kind === 'attackMoveUnit' && c.entity === survivor)).toBe(true);
   });
@@ -607,14 +709,13 @@ describe('military module - the objective', () => {
   });
 });
 
-// These three drive the real tick schedule for a full march, so they share the CPU with the whole suite -
-// the explicit timeout keeps a loaded machine from flaking them (the convention in ai-player-modules).
+// These drive the real tick schedule for a full march, so they share the CPU with the whole suite - the
+// explicit timeout keeps a loaded machine from flaking them (the convention in ai-player-modules).
 describe('military module - the live seat', { timeout: 60_000 }, () => {
-  /** Ticks to watch a wave: the seat calls its men in to the barracks door, rolls, and marches them the
-   *  whole way from there. */
-  const MARCH_TICKS = 1200;
-  /** Enough men that the launch rolls come up well inside {@link MARCH_TICKS}, cheap enough to run the
-   *  whole schedule three times for the replay case. */
+  /** Ticks to watch a wave: the seat calls its men in to the barracks door, holds them there for the size
+   *  it drew or the patience window, and marches them the whole way from there. */
+  const MARCH_TICKS = 4000;
+  /** A band cheap enough to run the whole schedule three times for the replay case. */
   const WAR_BAND = 12;
 
   /** An AI-driven seat with a barracks and a wave, and an enemy seat within marching reach. */
@@ -646,19 +747,25 @@ describe('military module - the live seat', { timeout: 60_000 }, () => {
     const start = closestApproach(sim, foeHq);
     sim.run(MARCH_TICKS);
 
-    // Every man ends up on the objective, and each wave left as one body from the barracks.
-    const marching = [...sim.world.query(AttackOrder)];
-    expect(marching).toHaveLength(WAR_BAND);
-    expect(marching.every((e) => sim.world.get(e, AttackOrder).target === foeHq)).toBe(true);
-    expect(sim.commands.log.some((c) => c.command.kind === 'attackUnit')).toBe(true);
-    expect(closestApproach(sim, foeHq)).toBeLessThan(start);
-    expect(sim.world.get(foeHq, Health).hitpoints).toBeGreaterThan(0); // still standing, just besieged
+    // The band walks under attack-moves, never under a focus on the house - which would resolve ahead of
+    // its own sight and carry it past everything in between.
+    expect(sim.commands.log.some((c) => c.command.kind === 'attackMoveUnit')).toBe(true);
+    expect(sim.commands.log.some((c) => c.command.kind === 'attackUnit')).toBe(false);
+    expect(start).toBeGreaterThan(ASSAULT_RING_RADIUS_NODES);
+    expect(closestApproach(sim, foeHq)).toBeLessThanOrEqual(ASSAULT_RING_RADIUS_NODES);
+
+    // And they are fighting the house rather than standing beside it: the march carries no focus, so the
+    // siege is theirs to acquire by sight once they arrive.
+    const besieging = [...sim.world.query(Settler, Owner)].filter(
+      (e) => sim.world.get(e, Owner).player === SEAT && sim.world.has(e, Engagement),
+    );
+    expect(besieging.length).toBeGreaterThan(0);
   });
 
   it('stays out of the war when the seat has its military module switched off', () => {
     const sim = warSim({ military: false });
     sim.run(MARCH_TICKS);
-    expect([...sim.world.query(AttackOrder)]).toEqual([]);
+    expect(sim.commands.log.some((c) => c.command.kind === 'attackMoveUnit')).toBe(false);
   });
 
   it('reaches the same state twice from one seed, and the log replays it', () => {
