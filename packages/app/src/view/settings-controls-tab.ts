@@ -4,29 +4,30 @@ import {
   KEYBINDING_ACTIONS,
   type KeybindingAction,
   keyDisplayLabel,
-} from '../../hud/keybindings.js';
-import { messages } from '../../i18n/index.js';
-import { menuSettings, updateSettings } from './settings-state.js';
+} from '../hud/keybindings.js';
+import { messages } from '../i18n/index.js';
+import type { MenuSettings } from './settings-store.js';
 
 export interface ControlsTab {
   rows(): HTMLElement[];
-  /** Disarm an in-progress capture; the screen calls it before every panel rebuild. */
   disarm(): void;
 }
 
-/** The Controls tab: a rebind chip per action plus the fixed-shortcut reference rows. */
 export function createControlsTab(opts: {
-  /** The screen's shared label+control row builder. */
-  settingRow: (label: string, control: HTMLElement, options?: { readonly tip?: string }) => HTMLDivElement;
-  /** Rebuild the whole panel after a successful bind; a takeover may have unbound another row. */
-  repaintPanel: () => void;
+  readonly current: () => MenuSettings;
+  readonly update: (patch: Partial<MenuSettings>) => Promise<boolean>;
+  readonly settingRow: (
+    label: string,
+    control: HTMLElement,
+    options?: { readonly tip?: string },
+  ) => HTMLDivElement;
+  readonly repaintPanel: (focusKey?: string) => void;
+  readonly deferredTip?: string;
 }): ControlsTab {
-  const text = messages().mainMenu.settings;
-
-  // One key capture at a time; arming a chip disarms the previous one.
   let cancelCapture: (() => void) | null = null;
 
   const paintKeyChip = (chip: HTMLElement, code: string | null): void => {
+    const text = messages().mainMenu.settings;
     chip.classList.remove('is-capturing');
     chip.classList.toggle('is-unassigned', code === null);
     chip.textContent =
@@ -35,6 +36,7 @@ export function createControlsTab(opts: {
 
   const startCapture = (action: KeybindingAction, chip: HTMLButtonElement): void => {
     cancelCapture?.();
+    const text = messages().mainMenu.settings;
     chip.classList.add('is-capturing');
     chip.textContent = text.bindingPrompt;
     const stop = (): void => {
@@ -42,31 +44,29 @@ export function createControlsTab(opts: {
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('mousedown', onPress, true);
       window.removeEventListener('blur', stop);
-      paintKeyChip(chip, menuSettings().keyBindings[action]);
+      paintKeyChip(chip, opts.current().keyBindings[action]);
     };
-    const onKey = (e: KeyboardEvent): void => {
+    const onKey = (event: KeyboardEvent): void => {
       if (!chip.isConnected) {
-        // The screen was rebuilt under the capture without a mousedown or blur (e.g. history
-        // navigation); release the key untouched.
         stop();
         return;
       }
-      // Modifier combos stay with the browser; a bound combo could never fire (hotkeys are plain-only).
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // Captured before the menu's own handlers, so Esc cancels the capture instead of navigating back.
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.code === 'Escape') {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.code === 'Escape') {
         stop();
         return;
       }
-      if (!isBindableCode(e.code)) return;
-      updateSettings({ keyBindings: assignBinding(menuSettings().keyBindings, action, e.code) });
-      stop();
-      opts.repaintPanel();
+      if (!isBindableCode(event.code)) return;
+      const next = assignBinding(opts.current().keyBindings, action, event.code);
+      void opts.update({ keyBindings: next }).then((applied) => {
+        stop();
+        if (applied) opts.repaintPanel(`binding:${action}`);
+      });
     };
-    const onPress = (e: MouseEvent): void => {
-      if (e.target !== chip) stop(); // clicking away disarms
+    const onPress = (event: MouseEvent): void => {
+      if (event.target !== chip) stop();
     };
     cancelCapture = stop;
     window.addEventListener('keydown', onKey, true);
@@ -75,14 +75,21 @@ export function createControlsTab(opts: {
   };
 
   const rows = (): HTMLElement[] => {
-    const bindings = menuSettings().keyBindings;
+    const text = messages().mainMenu.settings;
+    const bindings = opts.current().keyBindings;
     const rebindable = KEYBINDING_ACTIONS.map((action) => {
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'main-menu__settings-key';
+      chip.dataset.settingsFocus = `binding:${action}`;
       paintKeyChip(chip, bindings[action]);
       chip.addEventListener('click', () => startCapture(action, chip));
-      return opts.settingRow(text.bindings[action], chip, { tip: text.bindingRebindTip });
+      return opts.settingRow(text.bindings[action], chip, {
+        tip:
+          opts.deferredTip === undefined
+            ? text.bindingRebindTip
+            : `${text.bindingRebindTip} ${opts.deferredTip}`,
+      });
     });
     const fixedRow = (label: string, keys: string): HTMLDivElement => {
       const chip = document.createElement('span');

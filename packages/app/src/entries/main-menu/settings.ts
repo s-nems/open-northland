@@ -1,274 +1,49 @@
-import {
-  UI_SCALE_FACTOR_MAX,
-  UI_SCALE_FACTOR_MIN,
-  UI_SCALE_FACTOR_STEP,
-  uiScaleFor,
-} from '../../hud/ui-scale.js';
-import { currentLocale, type Locale, messages } from '../../i18n/index.js';
-import { enterFullscreen, isFullscreen, leaveFullscreen } from '../../view/fullscreen.js';
-import {
-  type SegHandle,
-  segControl,
-  settingRow,
-  sliderControl,
-  togglePill,
-} from '../../view/settings-controls.js';
-import {
-  defaultSettings,
-  type FpsLimit,
-  type MenuSettings,
-  RENDER_SCALE_MAX,
-  RENDER_SCALE_MIN,
-} from '../../view/settings-store.js';
+import { uiScaleFor } from '../../hud/ui-scale.js';
+import { messages } from '../../i18n/index.js';
+import { createSettingsPage, type SettingsMemory, type SettingsPageStore } from '../../view/settings-page.js';
 import type { MenuScreen } from './model.js';
 import { screenHead } from './screen-head.js';
-import { createControlsTab } from './settings-controls.js';
-import {
-  menuSettings,
-  RENDER_SCALE_STEP,
-  SETTINGS_TABS,
-  type SettingsMemory,
-  type SettingsTab,
-  updateSettings,
-} from './settings-state.js';
+import { menuSettings, updateSettings } from './settings-state.js';
 
-type DisplayMode = MenuSettings['displayMode'];
+export type { SettingsMemory } from '../../view/settings-page.js';
 
-/** Seg-control ids for the drawn-frame cap; `screen` is the display's own refresh rate. */
-type FpsChoice = 'fps30' | 'fps60' | 'screen';
+export interface SettingsScreenHandle {
+  readonly el: HTMLElement;
+  dispose(): void;
+}
 
-const fpsChoiceOf = (limit: FpsLimit): FpsChoice =>
-  limit === 30 ? 'fps30' : limit === 60 ? 'fps60' : 'screen';
-const fpsLimitOf = (choice: FpsChoice): FpsLimit =>
-  choice === 'fps30' ? 30 : choice === 'fps60' ? 60 : null;
-
-/** In-menu language choices, in display order. */
-const LANGUAGE_CHOICES: readonly Locale[] = ['pol', 'eng'];
-
-/** Resting position of the disabled scroll-speed slider: the camera tuning's current 1x. */
-const PLACEHOLDER_SCROLL_SPEED = 1;
-const PLACEHOLDER_STEP = 0.05;
-const VOLUME_MIN = 0;
-const VOLUME_MAX = 1;
-const VOLUME_STEP = 0.01;
-const SCROLL_SPEED_MIN = 0.5;
-const SCROLL_SPEED_MAX = 2;
-
-/** Every live control applies and persists immediately; controls without an engine seam sit
- *  disabled behind "coming soon" badges. */
 export function settingsScreen(
   open: (screen: MenuScreen) => void,
   memory: SettingsMemory,
   signal: AbortSignal,
-): HTMLElement {
-  const copy = messages().mainMenu;
-  const text = copy.settings;
-  const soon = { badge: copy.comingSoon, tip: copy.comingSoonTip };
-
+  onLanguageChange: () => void,
+): SettingsScreenHandle {
   const section = document.createElement('section');
   section.className = 'main-menu__screen main-menu__settings';
+  const settings: SettingsPageStore = {
+    current: menuSettings,
+    update: async (patch) => {
+      updateSettings(patch);
+      return true;
+    },
+    pinnedUiScale: null,
+    effectiveUiScaleFor: (factor) => uiScaleFor(window.innerHeight, factor),
+  };
   const head = screenHead('settings', open);
-
-  const nav = document.createElement('nav');
-  nav.className = 'main-menu__settings-nav';
-  const panel = document.createElement('div');
-  panel.className = 'main-menu__settings-panel';
-  const tabButtons = new Map<SettingsTab, HTMLButtonElement>();
-  const paintTabs = (): void => {
-    for (const [id, button] of tabButtons) {
-      button.classList.toggle('is-active', id === memory.tab);
-      button.setAttribute('aria-pressed', String(id === memory.tab));
-    }
+  const relabel = (): void => {
+    const copy = messages().mainMenu;
+    const back = head.querySelector<HTMLButtonElement>('.main-menu__back');
+    const title = head.querySelector<HTMLElement>('.main-menu__screen-title');
+    if (back !== null) back.textContent = `← ${copy.backLabels.main}`;
+    if (title !== null) title.textContent = copy.screenTitles.settings;
+    onLanguageChange();
   };
-  for (const tab of SETTINGS_TABS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'main-menu__settings-tab';
-    button.append(text.tabs[tab.id]);
-    if (tab.kind === 'comingSoon') {
-      // aria-disabled instead of `disabled`: hover must survive for the tooltip.
-      button.classList.add('is-coming-soon');
-      button.setAttribute('aria-disabled', 'true');
-      button.title = copy.comingSoonTip;
-      const badge = document.createElement('span');
-      badge.className = 'main-menu__badge';
-      badge.textContent = copy.comingSoon;
-      button.append(badge);
-    } else {
-      button.addEventListener('click', () => {
-        memory.tab = tab.id;
-        paintTabs();
-        renderPanel();
-      });
-    }
-    tabButtons.set(tab.id, button);
-    nav.append(button);
-  }
-
-  // Fullscreen also leaves via Esc, and a resize can arrive from the OS, both outside any control of
-  // ours; either changes the height behind the display segment and the effective-scale readout, so
-  // both viewport events rebuild the panel.
-  let displaySeg: SegHandle<DisplayMode> | null = null;
-  const liveDisplayMode = (): DisplayMode => (isFullscreen() ? 'fullscreen' : 'window');
-  const onViewportChange = (): void => {
-    if (!section.isConnected) {
-      unhookViewport();
-      return;
-    }
-    renderPanel();
-  };
-  const unhookViewport = (): void => {
-    document.removeEventListener('fullscreenchange', onViewportChange);
-    window.removeEventListener('resize', onViewportChange);
-  };
-  document.addEventListener('fullscreenchange', onViewportChange, { signal });
-  window.addEventListener('resize', onViewportChange, { signal });
-  head.querySelector('.main-menu__back')?.addEventListener('click', unhookViewport);
-
-  const graphicsRows = (): HTMLElement[] => {
-    const settings = menuSettings();
-    displaySeg = segControl<DisplayMode>(
-      [
-        { id: 'fullscreen', label: text.displayFullscreen },
-        { id: 'window', label: text.displayWindow },
-      ],
-      liveDisplayMode(),
-      (mode) => {
-        // The store follows the window itself, so a denied request records nothing and only the
-        // segment has to fall back to the mode the window is actually in.
-        void (mode === 'fullscreen' ? enterFullscreen() : leaveFullscreen()).then(() =>
-          displaySeg?.setActive(liveDisplayMode()),
-        );
-      },
-    );
-    // 100% is the viewport-derived base; the label also shows the effective in-game multiplier,
-    // because either bound can swallow a step the player just moved.
-    const uiScale = sliderControl(text.uiScale, {
-      min: UI_SCALE_FACTOR_MIN,
-      max: UI_SCALE_FACTOR_MAX,
-      step: UI_SCALE_FACTOR_STEP,
-      value: settings.uiScaleFactor,
-      onCommit: (value) => updateSettings({ uiScaleFactor: value }),
-      format: (value) => `${Math.round(value * 100)}% (×${uiScaleFor(window.innerHeight, value).toFixed(2)})`,
-    });
-    const renderScale = sliderControl(text.renderScale, {
-      min: RENDER_SCALE_MIN,
-      max: RENDER_SCALE_MAX,
-      step: RENDER_SCALE_STEP,
-      value: settings.renderScale,
-      onCommit: (value) => updateSettings({ renderScale: value }),
-    });
-    const fpsSeg = segControl<FpsChoice>(
-      [
-        { id: 'fps30', label: '30 FPS' },
-        { id: 'fps60', label: '60 FPS' },
-        { id: 'screen', label: text.fpsLimitScreen },
-      ],
-      fpsChoiceOf(settings.fpsLimit),
-      (choice) => {
-        updateSettings({ fpsLimit: fpsLimitOf(choice) });
-        fpsSeg.setActive(choice);
-      },
-    );
-    const postFx = togglePill(settings.postFxEnabled, (on) => updateSettings({ postFxEnabled: on }));
-    postFx.setAttribute('aria-label', text.postFx);
-    return [
-      settingRow(text.displayMode, displaySeg.root),
-      settingRow(text.uiScale, uiScale, { tip: text.uiScaleTip }),
-      settingRow(text.renderScale, renderScale, { tip: text.renderScaleTip }),
-      settingRow(text.fpsLimit, fpsSeg.root, { tip: text.fpsLimitTip }),
-      settingRow(text.postFx, postFx, { tip: text.postFxTip }),
-    ];
-  };
-
-  const audioRows = (): HTMLElement[] => {
-    const settings = menuSettings();
-    const sound = togglePill(settings.soundEnabled, (on) => updateSettings({ soundEnabled: on }));
-    sound.setAttribute('aria-label', text.soundEnabled);
-    const volume = (label: string, value: number, commit: (value: number) => void): HTMLDivElement =>
-      sliderControl(label, {
-        min: VOLUME_MIN,
-        max: VOLUME_MAX,
-        step: VOLUME_STEP,
-        value,
-        onCommit: commit,
-        live: true,
-      });
-    return [
-      settingRow(text.soundEnabled, sound),
-      settingRow(
-        text.sfxVolume,
-        volume(text.sfxVolume, settings.soundVolume, (value) => updateSettings({ soundVolume: value })),
-      ),
-      settingRow(
-        text.musicVolume,
-        volume(text.musicVolume, settings.musicVolume, (value) => updateSettings({ musicVolume: value })),
-      ),
-    ];
-  };
-
-  const gameplayRows = (): HTMLElement[] => {
-    const language = segControl(
-      LANGUAGE_CHOICES.map((locale) => ({ id: locale, label: text.languageNames[locale] })),
-      currentLocale(),
-      (locale) => {
-        if (locale === currentLocale()) return;
-        updateSettings({ language: locale }); // activates the locale too
-        open('settings'); // rebuild the screen in the new language
-      },
-    );
-    const scrollSpeed = sliderControl(text.scrollSpeed, {
-      min: SCROLL_SPEED_MIN,
-      max: SCROLL_SPEED_MAX,
-      step: PLACEHOLDER_STEP,
-      value: PLACEHOLDER_SCROLL_SPEED,
-    });
-    const edgeScroll = togglePill(true, () => undefined);
-    return [
-      settingRow(text.language, language.root),
-      settingRow(text.scrollSpeed, scrollSpeed, { soon }),
-      settingRow(text.edgeScroll, edgeScroll, { soon }),
-    ];
-  };
-
-  const controls = createControlsTab({
-    settingRow,
-    repaintPanel: () => renderPanel(),
+  const page = createSettingsPage({
+    settings,
+    memory,
+    signal,
+    onLanguageChange: relabel,
   });
-
-  const rowsFor: Record<SettingsTab, () => HTMLElement[]> = {
-    graphics: graphicsRows,
-    audio: audioRows,
-    gameplay: gameplayRows,
-    controls: controls.rows,
-  };
-  const renderPanel = (): void => {
-    controls.disarm(); // a rebuild discards a capturing chip
-    panel.replaceChildren(...rowsFor[memory.tab]());
-  };
-  paintTabs();
-  renderPanel();
-
-  const body = document.createElement('div');
-  body.className = 'main-menu__settings-body';
-  body.append(nav, panel);
-
-  const foot = document.createElement('div');
-  foot.className = 'main-menu__settings-foot';
-  const autosave = document.createElement('span');
-  autosave.className = 'main-menu__settings-autosave';
-  autosave.textContent = text.autosaveNote;
-  const restore = document.createElement('button');
-  restore.type = 'button';
-  restore.className = 'main-menu__ghost';
-  restore.textContent = text.restoreDefaults;
-  restore.addEventListener('click', () => {
-    updateSettings(defaultSettings());
-    void leaveFullscreen();
-    open('settings');
-  });
-  foot.append(autosave, restore);
-
-  section.append(head, body, foot);
-  return section;
+  section.append(head, page.el);
+  return { el: section, dispose: page.dispose };
 }

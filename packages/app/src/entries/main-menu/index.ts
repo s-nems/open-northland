@@ -2,6 +2,7 @@ import { messages } from '../../i18n/index.js';
 import { type LaunchEntry, swapToEntry } from '../../launch.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
 import { clearPendingLoad } from '../../view/runtime/save-load/pending-store.js';
+import { initialSettingsMemory } from '../../view/settings-page.js';
 import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
 import { mountFullscreenPrompt } from './fullscreen-prompt.js';
@@ -15,7 +16,7 @@ import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VER
 import { startMenuMusic } from './music.js';
 import { screenHead } from './screen-head.js';
 import { settingsScreen } from './settings.js';
-import { adoptStoredSettings, initialSettingsMemory, updateSettings } from './settings-state.js';
+import { adoptStoredSettings, updateSettings } from './settings-state.js';
 
 type SubScreen = Exclude<MenuScreen, 'main'>;
 
@@ -122,8 +123,10 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   void startBackdropRotation(sceneLayer, scope.signal);
   startMenuMusic(scope.signal);
   const fullscreenPrompt = mountFullscreenPrompt(root, params, scope.signal);
+  let disposeScreen = (): void => undefined;
 
   const closeMenu = (): void => {
+    disposeScreen();
     scope.abort();
     root.remove();
     canvas.hidden = false;
@@ -163,12 +166,18 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby, launch);
     if (next === 'load') return loadSelectScreen(show, launch);
     if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters, launch);
-    if (next === 'settings') return settingsScreen(show, settingsMemory, scope.signal);
+    if (next === 'settings') {
+      const mounted = settingsScreen(show, settingsMemory, scope.signal, fullscreenPrompt.relabel);
+      disposeScreen = mounted.dispose;
+      return mounted.el;
+    }
     if (next === 'credits') return creditsScreen(show);
     return placeholderScreen(next, show);
   };
   const show = (next: MenuScreen): void => {
     if (launching) return;
+    disposeScreen();
+    disposeScreen = (): void => undefined;
     screen = next;
     root.classList.toggle('is-sub', next !== 'main');
     content.replaceChildren(screenFor(next));

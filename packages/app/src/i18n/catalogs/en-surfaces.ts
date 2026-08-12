@@ -171,6 +171,7 @@ export const enSurfaces = {
       bindingRebindTip: 'Click, then press the new key. Esc cancels.',
       autosaveNote: 'Changes are saved immediately.',
       restoreDefaults: 'Restore defaults',
+      nextGameTip: 'Takes effect when the next game starts.',
     },
     credits: {
       intro:
