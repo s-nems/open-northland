@@ -20,7 +20,13 @@ export {
   TOWER_GARRISON_ARCHERS,
   threatWatchNodes,
 } from './defence/index.js';
-export { RALLY_HOLD_RADIUS_NODES, WAVE_FULL_SOLDIERS, WAVE_MIN_SOLDIERS } from './muster.js';
+export {
+  ASSAULT_RING_RADIUS_NODES,
+  RALLY_HOLD_RADIUS_NODES,
+  WAVE_FULL_SOLDIERS,
+  WAVE_MIN_SOLDIERS,
+} from './muster.js';
+export { WAVE_GATHER_TICKS } from './plan.js';
 
 /**
  * One strategic decision for the seat's fighting men, home before abroad: the towers take their garrison
