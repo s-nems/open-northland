@@ -8,12 +8,15 @@ import {
   PlayerOrder,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { findPath } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { dynamicBlockOverlay } from '../footprint/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { closer, manhattan, nearestCell } from '../spatial/metric.js';
 import type { CombatantStance, EngageSpec } from './engagement.js';
 import type { MeleeSlots, WeaponBand } from './melee-slots.js';
+import { noteUnreachableTarget } from './unreachable-targets.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser
 // a distinct contact cell so a converging mass forms ranks rather than a pile, and respect the DEFEND leash.
@@ -36,6 +39,14 @@ type DefendPost = EngageSpec['defend'];
  */
 export const REPATH_CADENCE = 8;
 
+/**
+ * How many chase cadences in a row routing may refuse a route to the same target before the chase asks
+ * whether buildings and resources alone seal it and, if so, gives it up as unreachable. A seal of standing
+ * bodies is re-asked at the cadence for as long as it stands. Approximation: the original's rule is not
+ * readable.
+ */
+export const SEALED_TARGET_ROUTE_FAILURES = 3;
+
 /** Send a DEFEND unit back to its anchor when no enemy is in its defend radius. The {@link Engagement} always
  *  drops here, or the planner's Engagement gate would bench the guard for good; the walk home defers to a live
  *  equip errand, whose end re-holds the unchanged anchor. */
@@ -55,13 +66,33 @@ export function breakOff(world: World, e: Entity, here: NodeId, defend: DefendPo
   else disengage(world, e);
 }
 
+/** Whether routing delivered `e`'s last route: the request is gone and its goal or path stands. A refused
+ *  request stays until the chase clears it, and a hold issues nothing. */
+function routeDelivered(world: World, e: Entity): boolean {
+  return !world.has(e, PathRequest) && isTravelling(world, e);
+}
+
+/** Whether buildings and resources alone refuse every route from `from` to `goal`: the seal no standing body
+ *  can lift. `from` is the request's own start, the walkable bracket node routing used; a mid-stride unit's
+ *  truncated node may not be walkable at all. One search, so the chase asks only from the release threshold
+ *  on. */
+function sealedByStructures(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  from: NodeId,
+  goal: NodeId,
+): boolean {
+  return findPath(terrain, from, goal, dynamicBlockOverlay(world, ctx, terrain)) === null;
+}
+
 /**
  * Advance an owned combatant on `target` it can't yet reach. It keeps an {@link Engagement} marker so the
  * PlannerSystem leaves the unit to combat, and re-issues a {@link MoveGoal} toward an {@link approachCell} at
  * most every {@link REPATH_CADENCE} ticks; between repaths it follows its live route and the distance-based
- * swing check catches it the instant it steps into reach. A dead route is dropped so it re-issues, and an
- * ordered unit whose route cannot resolve gives the order up. A building target's wall list lets a chaser
- * whose nearest face is fully manned encircle to a free slot on another face.
+ * swing check catches it the instant it steps into reach. A refused route is stood out for a cadence; an
+ * ordered unit whose route cannot resolve gives the order up at once. A building target's wall list lets a
+ * chaser whose nearest face is fully manned encircle to a free slot on another face.
  *
  * Returns whether it gave the target up this tick.
  */
@@ -77,8 +108,12 @@ export function chase(
   stance: CombatantStance,
   defend: DefendPost,
 ): boolean {
+  const prior = world.tryGet(e, Engagement);
+  // A stall is about one target and ends the moment a route is delivered.
+  const stall = prior?.stall?.target === target.entity && !routeDelivered(world, e) ? prior.stall : undefined;
   const engagement = world.add(e, Engagement, {
-    repathAt: world.tryGet(e, Engagement)?.repathAt ?? ctx.tick, // repath now on first engagement
+    repathAt: prior?.repathAt ?? ctx.tick, // repath now on first engagement
+    ...(stall === undefined ? {} : { stall }),
   });
 
   const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
@@ -86,7 +121,8 @@ export function chase(
   // A failed chase route ends an explicit attack order. An attack-move march instead rests its aggression
   // and walks on: without the rest, an enemy visible across a river holds the marcher in a failing search
   // every tick and the order can never complete.
-  if (world.tryGet(e, PathRequest)?.failed) {
+  const request = world.tryGet(e, PathRequest);
+  if (request?.failed) {
     clearNavState(world, e);
     if (commanded) {
       world.remove(e, AttackOrder);
@@ -97,10 +133,25 @@ export function chase(
       }
       return true;
     }
+    // Stand the refused route out for a cadence and count it; from the threshold on, only a refusal that
+    // buildings and resources alone explain releases the target.
+    const routes = (engagement.stall?.routes ?? 0) + 1;
+    if (
+      routes >= SEALED_TARGET_ROUTE_FAILURES &&
+      sealedByStructures(world, ctx, terrain, request.start, request.goal)
+    ) {
+      noteUnreachableTarget(world, ctx, e, target.entity);
+      breakOff(world, e, here, defend);
+      return true;
+    }
+    engagement.stall = { target: target.entity, routes };
+    engagement.repathAt = ctx.tick + REPATH_CADENCE;
+    return false;
   }
 
   const travelling = isTravelling(world, e);
-  if (travelling && ctx.tick < engagement.repathAt) return false; // still closing on a live route - don't re-path
+  // Still closing on a live route, or standing out a refused one's cadence: don't re-path.
+  if (ctx.tick < engagement.repathAt && (travelling || engagement.stall !== undefined)) return false;
 
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
   // Only a cell in the chaser's own static walk component can be walked to, so the far bank is never asked
@@ -121,9 +172,10 @@ export function chase(
   }
   if (dest === null) {
     // Every cell of the target's reach band on our own bank is a taken slot: stand fast as a second rank and
-    // re-ask at the chase cadence, which admits the unit the moment a front-liner falls or steps off.
+    // re-ask each tick, which admits the unit the moment a front-liner falls or steps off. Routing was not
+    // asked, so no refusal stands against the target.
     clearNavState(world, e);
-    engagement.repathAt = ctx.tick + REPATH_CADENCE;
+    delete engagement.stall;
     return false;
   }
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand

@@ -20,6 +20,7 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import { isManningPost } from '../../conflict/tower-post.js';
+import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
@@ -117,6 +118,7 @@ export function releaseStaleIntent(
 ): boolean {
   reconcileYardRoute(world, e);
   pruneUnreachableGoals(world, ctx, e);
+  pruneUnreachableTargets(world, ctx, e);
   // A garrison that no longer mans its tower gives the post up above the busy and travel early-outs:
   // the marker hides it from the render, so waiting for it to fall idle would march an invisible
   // settler across the map.

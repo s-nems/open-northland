@@ -13,7 +13,9 @@ unreachable cell and re-issues the same request until the threat moves. Same sha
 drive against its scare node.
 
 This is the pattern the chase drive just answered (`chase.ts` refuses a contact cell in another static
-walk component before asking for a route); the same connectivity read is available to both callers.
+walk component before asking for a route); the same connectivity read is available to both callers. The
+cadence hold over a refused route is in place there too: `chase.ts` stands the refused route out until
+`repathAt` instead of re-aiming on the failure tick, the shape to copy.
 
 ## Scope
 

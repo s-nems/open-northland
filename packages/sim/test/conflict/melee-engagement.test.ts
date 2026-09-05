@@ -4,3 +4,4 @@ import './melee-engagement/attack-order.cases.js';
 import './melee-engagement/economy-gate.cases.js';
 import './melee-engagement/move-order.cases.js';
 import './melee-engagement/needs-gate.cases.js';
+import './melee-engagement/sealed-target.cases.js';

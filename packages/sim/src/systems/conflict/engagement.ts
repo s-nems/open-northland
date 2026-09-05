@@ -18,6 +18,7 @@ import { hunterEngageSpec } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
 import { combatTargetNode, reachableTargetGate } from './target-node.js';
 import { ANIMAL_AGGRO_RADIUS_NODES, isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
+import { givenUpTargetVeto } from './unreachable-targets.js';
 
 // Re-exported so the combat modules keep one import site for the stance ladder.
 export { stanceMode };
@@ -82,8 +83,8 @@ export function engageSpec(
     viewer === undefined || playerSeesEntity(world, ctx.fog, viewer.player, t);
   // Probed last, behind the cheap hostility and fog reads: it can walk a candidate's whole reach band.
   const reachable = reachableTargetGate(world, ctx, terrain, here, weapon);
-  const generalAccept = (t: Entity): boolean =>
-    isValidTarget(world, ctx, e, attacker, t) && seesTarget(t) && reachable(t);
+  const hostileInSight = (t: Entity): boolean => isValidTarget(world, ctx, e, attacker, t) && seesTarget(t);
+  const generalAccept = (t: Entity): boolean => hostileInSight(t) && reachable(t);
   // The default deprioritized tier: plain buildings fall behind units and high-value structures.
   const lowPriorityBuildings = (t: Entity): boolean => isLowPriorityBuildingTarget(world, ctx, t);
   const minDist = weapon.minRange;
@@ -113,12 +114,24 @@ export function engageSpec(
     };
   }
 
+  // An advancing seeker also skips the enemies its chase gave up as sealed off, unless one stands inside its
+  // band: only the walk is refused, so the swing lands the moment a defender steps out of its compound.
+  const givenUp = givenUpTargetVeto(world, ctx, e);
+  const inBand = (t: Entity): boolean => {
+    const dist = manhattan(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
+    return dist >= weapon.minRange && dist <= weapon.maxRange;
+  };
+  const advanceAccept =
+    givenUp === undefined
+      ? generalAccept
+      : (t: Entity): boolean => hostileInSight(t) && (!givenUp(t) || inBand(t)) && reachable(t);
+
   if (owned && !ordered && stance.mode === MILITARY_MODE.DEFEND) {
     const anchor = defendAnchor(world, e, here);
-    // The radius clause leads: it is a subtraction, while `generalAccept` ends in a walk of the candidate's
+    // The radius clause leads: it is a subtraction, while `advanceAccept` ends in a walk of the candidate's
     // reach band.
     const accept = (t: Entity): boolean =>
-      manhattan(terrain, anchor, entityNode(world, terrain, t)) <= DEFEND_RADIUS_NODES && generalAccept(t);
+      manhattan(terrain, anchor, entityNode(world, terrain, t)) <= DEFEND_RADIUS_NODES && advanceAccept(t);
     return {
       accept,
       minDist,
@@ -145,6 +158,7 @@ export function engageSpec(
       here,
       attacker.jobType,
       seesTarget,
+      givenUp,
       minDist,
       sight,
     );
@@ -154,7 +168,7 @@ export function engageSpec(
   // combatant (a scenario civ) swings in place, its search capped at weapon reach.
   const animalSeeker = !owned && isAnimalTribe(ctx.content, attacker.tribe);
   return {
-    accept: generalAccept,
+    accept: advanceAccept,
     minDist,
     searchRadius: owned
       ? sight

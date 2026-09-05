@@ -148,7 +148,8 @@ export function combatTargetNode(
  * candidate whose whole band lies across a terrain seam can never be closed on, and an ungated nearest-first
  * search re-picks it every tick instead of reaching a candidate farther out. A besieger encircles, so any one
  * wall answers for a building's whole body. Static terrain only, a superset of what the chase accepts: a band
- * cell the block overlay covers still admits here, and the chase releases it a tick later.
+ * cell the block overlay covers still admits here, and a candidate the overlay seals off is given up by the
+ * chase.
  *
  * A seeker on an unlabelled node (unwalkable, truncated onto it mid-stride) admits everything, as the chase
  * does. The ring walk is the melee case alone - a candidate inside the seeker's own band answers in O(1), so

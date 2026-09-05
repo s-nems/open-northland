@@ -50,9 +50,28 @@ export const HuntFocus = defineComponent<{ target: Entity }>('HuntFocus');
 
 /**
  * Present while a unit chases an enemy, and while an owned one trades blows - the marker the planner's
- * ownership gate reads to leave it to combat. `repathAt` is the tick throttling the chase's re-path.
+ * ownership gate reads to leave it to combat. `repathAt` is the tick throttling the chase's re-path. `stall`
+ * counts consecutive refused routes toward one target, absent (never null) so a stall-free engagement keeps
+ * its serialized shape.
  */
-export const Engagement = defineComponent<{ repathAt: number }>('Engagement');
+export const Engagement = defineComponent<{
+  repathAt: number;
+  stall?: { target: Entity; routes: number };
+}>('Engagement');
+
+/** One given-up enemy: the entity, and the tick it stops being skipped. */
+export interface UnreachableTarget {
+  readonly target: Entity;
+  readonly until: number;
+}
+
+/**
+ * The enemies this combatant's chase gave up as sealed off by buildings, skipped by its target acquisition
+ * until they lapse. A bounded FIFO like the economy's `UnreachableGoals`.
+ */
+export const UnreachableTargets = defineComponent<{ entries: readonly UnreachableTarget[] }>(
+  'UnreachableTargets',
+);
 
 /**
  * A combatant's military stance - the {@link MilitaryMode} the CombatSystem reads to decide
