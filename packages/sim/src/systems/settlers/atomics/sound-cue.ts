@@ -55,7 +55,8 @@ export function atomicClipSounds(
   atomic: SoundingAtomic,
 ): boolean {
   const anim = soundingClip(world, ctx, settler, atomic);
-  return anim !== undefined && anim.events.some((e) => isPlaceableCue(e, anim));
+  if (anim === undefined) return false;
+  return anim.events.some((e) => isPlaceableCue(e, anim));
 }
 
 /**
