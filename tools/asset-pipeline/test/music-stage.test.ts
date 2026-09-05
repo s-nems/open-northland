@@ -1,7 +1,7 @@
 import { memoryVfs } from '@open-northland/vfs/memory';
 import { describe, expect, it } from 'vitest';
 import { MUSIC_DIR, MUSIC_MANIFEST_NAME, renderMusicStage } from '../src/stages/music/index.js';
-import { segment, sequenceTrack, tempoTrack } from './segment-fixture.js';
+import { bandTrack, segment, sequenceTrack, tempoTrack } from './segment-fixture.js';
 
 /**
  * The stage's incremental identity: the manifest it writes has to be the thing that decides whether
@@ -14,8 +14,11 @@ const DM2 = '/game/DataX/DM2';
 const ROOTS = { game: '/game', mod: undefined } as const;
 
 function shortSegment(padding = 0): Uint8Array {
+  // The band matters: the interpreter's frame clock (and so the loop points) only advances while a
+  // performance channel exists, exactly like every real segment's.
   const bytes = segment(1, 96, [
     tempoTrack([{ time: 0, bpm: 120 }]),
+    bandTrack([{ time: 0, instruments: [{ patch: 0, pChannel: 1, pan: 63, volume: 127 }] }]),
     sequenceTrack([{ time: 0, duration: 24, pChannel: 1, status: 0x90, byte1: 60, byte2: 90 }]),
   ]);
   if (padding === 0) return bytes;
@@ -42,9 +45,24 @@ describe('music stage incremental identity', () => {
     const first = await renderMusicStage(fs, ROOTS, OUT);
     expect(first.rendered).toBe(1);
     expect(first.kept).toBe(0);
+    const row = (await storedManifest(fs)).tracks as Record<string, Record<string, unknown>>;
 
     const second = await renderMusicStage(fs, ROOTS, OUT);
     expect(second).toMatchObject({ rendered: 0, kept: 1, failed: 0 });
+    // The kept path re-uses the stored row, loop points included.
+    expect(((await storedManifest(fs)).tracks as Record<string, unknown>).one).toEqual(row.one);
+  });
+
+  it('publishes the loop region from the interpreter’s own pass ends', async () => {
+    // One 96-tick pass at 120 bpm: DMUS_PPQ 768 ticks/quarter → 0.0625 s per pass.
+    const fs = await stageWith(shortSegment());
+    await renderMusicStage(fs, ROOTS, OUT);
+    const one = ((await storedManifest(fs)).tracks as Record<string, Record<string, unknown>>).one;
+    expect(one).toBeDefined();
+    const { loopStartS, loopEndS } = one as { loopStartS: number; loopEndS: number };
+    expect(loopStartS).toBeCloseTo(0.0625, 3);
+    expect(loopEndS).toBeCloseTo(0.125, 3);
+    expect(loopEndS).toBeGreaterThan(loopStartS);
   });
 
   it('re-renders when an input changes size, which is all the identity can see', async () => {

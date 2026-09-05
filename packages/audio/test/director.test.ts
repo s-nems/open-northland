@@ -129,6 +129,8 @@ describe('directAudio one-shots', () => {
     expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
     expect(frame.oneShots[0]?.pan).toBe(0);
     expect(frame.oneShots[0]?.key).toBe('buildingFinished:7');
+    // The house-built hold from the original's per-MusicType duck table.
+    expect(frame.oneShots[0]?.duckMusicMs).toBe(3300);
   });
 
   it('positions an authored cue at the working settler, resolved by its logicSoundType', () => {
@@ -368,6 +370,7 @@ describe('directAudio screen-gated jingles', () => {
     });
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['jingles/jingles_civildefense.wav']);
+    expect(frame.oneShots[0]?.duckMusicMs).toBe(5000);
     expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
   });
 });

@@ -15,11 +15,13 @@ const ALLPASS_DELAYS = [556, 441, 341, 225] as const;
 const STEREO_SPREAD = 23;
 const ALLPASS_FEEDBACK = 0.5;
 /**
- * Comb feedback lowpass. Approximation: no segment authors `fHighFreqRTRatio`, so this stands in for
- * the DMO default of 0.001, which would decay high frequencies far faster than the value chosen here.
- * The resulting wet path is not flat: measured octave gains span about 5 dB, and above 2 kHz the tail
- * is gone within ~150 ms while below 200 Hz it runs the authored RT60. The coefficient is the one
- * tuning here that does not scale with `sampleRate`, so it only holds at the stage's publish rate.
+ * Comb feedback lowpass. Deviation: every segment authors `fHighFreqRTRatio` at the DMO default
+ * 0.001 (byte evidence), but the Waves Reverb DMO's response to that parameter is unpublished and
+ * its binary is no part of the owned copy, so how dark 0.001 really sounded cannot be derived -
+ * only heard. This coefficient keeps a tail that is dark but not gone: measured octave gains span
+ * about 5 dB, and above 2 kHz the tail is gone within ~150 ms while below 200 Hz it runs the
+ * authored RT60. The coefficient is the one tuning here that does not scale with `sampleRate`, so
+ * it only holds at the stage's publish rate.
  */
 const DAMPING = 0.95;
 /** Comb-bank input level putting sustained wet output near the dry level at 0 dB mix. */

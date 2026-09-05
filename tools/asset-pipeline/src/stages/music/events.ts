@@ -29,4 +29,7 @@ export interface SegmentEvents {
   readonly instances: readonly EventInstance[];
   /** In emission order, which is chronological. */
   readonly events: readonly TimedEvent[];
+  /** Frame at which each segment-end boundary executed, one entry per completed pass. This is the
+   *  performance's own clock, so a trim or loop point taken from it cannot drift from the events. */
+  readonly segmentEndFrames: readonly number[];
 }

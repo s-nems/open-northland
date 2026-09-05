@@ -7,6 +7,8 @@ import type { EventSound, SoundBindings } from './types.js';
  */
 
 // --- Jingle MusicType ids, straight from soundfx.cif's SoundFXJingle records ---
+/** `MusicType` of the marriage jingle (`jingles_marriage.wav`). */
+export const JINGLE_MARRIAGE = 22;
 /** `MusicType` of the birth jingle (`jingles_birth.wav`). */
 export const JINGLE_BIRTH = 23;
 /** `MusicType` of the civil-defence jingle (`jingles_civildefense.wav`) - the alarm bells a player rings
@@ -16,6 +18,31 @@ export const JINGLE_CIVIL_DEFENSE = 24;
 export const JINGLE_DEATH = 25;
 /** `MusicType` of the house-built jingle (`jingles_housebuilt.wav`). */
 export const JINGLE_HOUSE_BUILT = 26;
+/** `MusicType` of the mission-won jingle (`jingles_won.wav`). */
+export const JINGLE_WON = 27;
+/** `MusicType` of the mission-lost jingle (`jingles_lost.wav`). */
+export const JINGLE_LOST = 28;
+/** `MusicType` of the technology jingle (`jingles_technology.wav`). */
+export const JINGLE_TECHNOLOGY = 29;
+/** `MusicType` of the open-chest jingle (`jingles_openchest.wav`). */
+export const JINGLE_OPEN_CHEST = 30;
+
+/**
+ * Milliseconds the map music stays ducked while each jingle `MusicType` rings, from the engine's
+ * per-type hold table (byte evidence: `GameMp.exe`, the dword table its jingle path indexes by
+ * `MusicType`). The duck depth and fade live with the engine's playback constants.
+ */
+export const JINGLE_DUCK_HOLD_MS: ReadonlyMap<number, number> = new Map([
+  [JINGLE_MARRIAGE, 2800],
+  [JINGLE_BIRTH, 3700],
+  [JINGLE_CIVIL_DEFENSE, 5000],
+  [JINGLE_DEATH, 3200],
+  [JINGLE_HOUSE_BUILT, 3300],
+  [JINGLE_WON, 8200],
+  [JINGLE_LOST, 8000],
+  [JINGLE_TECHNOLOGY, 2800],
+  [JINGLE_OPEN_CHEST, 3000],
+]);
 
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
 /** Construction hammering - placed at a newly-sited building/boat. */

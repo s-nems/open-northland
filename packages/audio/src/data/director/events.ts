@@ -6,6 +6,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { groupFiles } from '../bank.js';
+import { JINGLE_DUCK_HOLD_MS } from '../bindings.js';
 import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
@@ -48,6 +49,14 @@ function eventKey(ev: SimEvent): string {
   const emitter = eventEntity(ev) ?? '?';
   if (ev.kind === 'atomicSound') return `${ev.kind}:${ev.soundType}:${emitter}`;
   return `${ev.kind}:${emitter}`;
+}
+
+/** A jingle's one-shot: full gain, centred, carrying the music duck its `MusicType` holds for. */
+function jingleShot(files: readonly string[], key: string, musicType: number): OneShot {
+  const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(musicType);
+  return duckMusicMs === undefined
+    ? { files, gain: JINGLE_GAIN, pan: 0, key }
+    : { files, gain: JINGLE_GAIN, pan: 0, key, duckMusicMs };
 }
 
 /** Which sound a given event triggers, per the bindings (a melee `combatHit` keys on its weapon class with
@@ -95,6 +104,7 @@ type Pending =
       /** The entity whose snapshot `Owner` must equal the local player, or null when the event's own
        *  `player` field already decided ownership. */
       readonly ownerEntity: number | null;
+      readonly musicType: number;
     });
 
 interface EmitterFacts {
@@ -148,7 +158,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       if (sound.localPlayerOnly && 'player' in ev && !firesForLocalPlayer(ev, localPlayer)) continue;
       if (sound.screenGated !== true) {
         if (sound.localPlayerOnly && !('player' in ev)) continue; // no owner path for a map-wide jingle
-        shots.push({ files, gain: JINGLE_GAIN, pan: 0, key: eventKey(ev) });
+        shots.push(jingleShot(files, eventKey(ev), sound.musicType));
         continue;
       }
       const node = eventNode(ev);
@@ -160,7 +170,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       }
       if (node === null && id === undefined) continue; // nowhere to anchor → silent under the gate
       if (id !== undefined && (node === null || ownerEntity !== null)) neededIds.add(id);
-      pending.push({ kind: 'stinger', ev, files, node, entity: id, ownerEntity });
+      pending.push({ kind: 'stinger', ev, files, node, entity: id, ownerEntity, musicType: sound.musicType });
       continue;
     }
     const files = groupFiles(index, sound.group);
@@ -189,7 +199,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     }
     if (spatial === null) continue; // off screen → silent
     if (p.kind === 'stinger') {
-      shots.push({ files: p.files, gain: JINGLE_GAIN, pan: 0, key: eventKey(p.ev) });
+      shots.push(jingleShot(p.files, eventKey(p.ev), p.musicType));
     } else {
       shots.push({ files: p.files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key: eventKey(p.ev) });
     }

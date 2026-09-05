@@ -17,6 +17,9 @@ export interface OneShot {
   readonly pan: number;
   /** Emitter identity for debounce/dedup (e.g. `"atomicSound:9:42"`). */
   readonly key: string;
+  /** Milliseconds the music should stay ducked under this shot - set on a jingle, from its
+   *  per-`MusicType` hold ({@link import('./bindings.js').JINGLE_DUCK_HOLD_MS}). */
+  readonly duckMusicMs?: number;
 }
 
 /**

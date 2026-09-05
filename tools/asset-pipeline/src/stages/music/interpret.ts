@@ -330,6 +330,7 @@ interface PerformanceState {
   readonly channels: Map<number, number | undefined>;
   queue: LibcxxPriorityQueue<Message>;
   readonly events: TimedEvent[];
+  readonly segmentEndFrames: number[];
 }
 
 /** Rebuilds the queue for one segment pass: initial tempo first, then every prepared message. */
@@ -353,6 +354,7 @@ function execute(state: PerformanceState, prepared: PreparedSegment, message: Me
       // Contributes only its queue-boundary timing (why: the sgt-tracks chord decoder).
       break;
     case 'segmentEnd':
+      state.segmentEndFrames.push(state.frames);
       enqueueSegment(state, prepared);
       break;
     default:
@@ -443,6 +445,7 @@ export function interpretSegment(bytes: Uint8Array, options: InterpretOptions): 
     channels: new Map(),
     queue: new LibcxxPriorityQueue(messageLess),
     events: [],
+    segmentEndFrames: [],
   };
   enqueueSegment(state, prepared);
   // The reference loop renders one sampleRate-sized block of interleaved samples per iteration.
@@ -450,5 +453,5 @@ export function interpretSegment(bytes: Uint8Array, options: InterpretOptions): 
   for (let block = 0; block < blocks; block++) {
     renderAudio(state, prepared, options.sampleRate, options.sampleRate, options.audioChannels);
   }
-  return { instances: prepared.instances, events: state.events };
+  return { instances: prepared.instances, events: state.events, segmentEndFrames: state.segmentEndFrames };
 }
