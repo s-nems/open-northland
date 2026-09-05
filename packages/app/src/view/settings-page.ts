@@ -59,6 +59,8 @@ export function createSettingsPage(opts: {
   readonly memory: SettingsMemory;
   readonly signal: AbortSignal;
   readonly onLanguageChange?: () => void;
+  /** False while the host keeps the page mounted but hidden; viewport changes then skip re-rendering. */
+  readonly visible?: () => boolean;
 }): SettingsPageHandle {
   const root = document.createElement('div');
   root.className = 'main-menu__settings-page';
@@ -74,7 +76,6 @@ export function createSettingsPage(opts: {
   let controls: ReturnType<typeof createControlsTab> | null = null;
   let renderVersion = 0;
   let uiScaleCommit = 0;
-  let uiScaleInput: HTMLInputElement | null = null;
 
   const focusKeyOf = (element: Element | null): string | null =>
     element instanceof HTMLElement ? (element.dataset.settingsFocus ?? null) : null;
@@ -185,7 +186,7 @@ export function createSettingsPage(opts: {
             ? `${Math.round(value * 100)}% (×${opts.settings.effectiveUiScaleFor(value).toFixed(2)})`
             : `×${opts.settings.pinnedUiScale.toFixed(2)}`,
       });
-      uiScaleInput = uiScale.querySelector<HTMLInputElement>('input[type="range"]');
+      const uiScaleInput = uiScale.querySelector<HTMLInputElement>('input[type="range"]');
       if (uiScaleInput !== null) uiScaleInput.dataset.settingsFocus = 'ui-scale';
       const renderScale = sliderControl(text.renderScale, {
         min: RENDER_SCALE_MIN,
@@ -345,7 +346,7 @@ export function createSettingsPage(opts: {
           displayReset.cancel();
           render();
           const liveStatus = root.querySelector<HTMLElement>('.main-menu__settings-status');
-          if (liveStatus !== null) liveStatus.textContent = messages().mainMenu.settings.uiScaleApplyFailed;
+          if (liveStatus !== null) liveStatus.textContent = messages().mainMenu.settings.restoreFailed;
           return;
         }
         displayReset.apply();
@@ -359,11 +360,7 @@ export function createSettingsPage(opts: {
   };
 
   const onViewportChange = (): void => {
-    if (!root.isConnected) {
-      document.removeEventListener('fullscreenchange', onViewportChange);
-      window.removeEventListener('resize', onViewportChange);
-      return;
-    }
+    if (!root.isConnected || opts.visible?.() === false) return;
     if (opts.memory.tab === 'graphics') render();
   };
   document.addEventListener('fullscreenchange', onViewportChange, { signal: scope.signal });

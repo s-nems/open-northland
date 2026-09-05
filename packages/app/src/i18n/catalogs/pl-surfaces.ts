@@ -168,6 +168,7 @@ export const plSurfaces = {
       bindingRebindTip: 'Kliknij, potem naciśnij nowy klawisz. Esc anuluje.',
       autosaveNote: 'Zmiany zapisują się od razu.',
       restoreDefaults: 'Przywróć domyślne',
+      restoreFailed: 'Nie udało się przywrócić ustawień domyślnych. Nic nie zostało zmienione.',
       nextGameTip: 'Zadziała po uruchomieniu następnej gry.',
     },
     credits: {

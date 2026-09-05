@@ -4,6 +4,8 @@ export interface DisposableMount {
 
 export interface ReplaceableMount<T extends DisposableMount> {
   current(): T;
+  /** Resolves without applying when a newer request supersedes this one or the mount is disposed;
+   *  a caller that must know what applied re-checks `current()`. */
   replace(key: number): Promise<void>;
   dispose(): void;
 }

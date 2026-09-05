@@ -46,8 +46,9 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     if (e.button === 2) {
       if (anyHeld()) {
         e.preventDefault();
-        // Cancelling clears the pointer claim, so unit controls would read the press as a world move
-        // order; this handler is registered first, so stopping the event here wins.
+        // Order-independent with unit controls: when it runs first the still-held claim makes it
+        // defer; when it runs later, stopping the event keeps the now-clear claim from reading the
+        // press as a world move order.
         e.stopImmediatePropagation();
         for (const mode of held) mode.cancel();
         return;

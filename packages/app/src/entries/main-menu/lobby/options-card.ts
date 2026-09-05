@@ -1,5 +1,5 @@
 import { messages } from '../../../i18n/index.js';
-import { segControl, togglePill } from '../controls.js';
+import { segControl, togglePill } from '../../../view/settings-controls.js';
 import { LOBBY_FOG_MODES, type LobbyOptions } from './model.js';
 
 /** A labelled on/off row; the pill carries the label as its accessible name, its state as the title. */
