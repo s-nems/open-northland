@@ -1,4 +1,5 @@
 import { type UnreachableGoal, UnreachableGoals } from '../../components/index.js';
+import { liveEntries, remember } from '../../core/expiring-list.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
@@ -23,26 +24,17 @@ export const UNREACHABLE_GOAL_MEMO_TICKS = 30 * TICKS_PER_SECOND;
  */
 export const UNREACHABLE_GOAL_MEMO_SIZE = 8;
 
-/** Drop expired entries, returning the stored array untouched when none expired, so the common path does
- *  not allocate. Sound because deadlines ascend along the array: entries are appended with a constant
- *  lifetime and a re-noted cell moves to the tail. */
-function live(entries: readonly UnreachableGoal[], tick: number): readonly UnreachableGoal[] {
-  const oldest = entries[0];
-  if (oldest === undefined || oldest.until > tick) return entries;
-  return entries.filter((e) => e.until > tick);
-}
-
 /** Record that `cell` could not be routed to, so the next target pick skips it. Re-noting a remembered
  *  cell refreshes its deadline rather than adding a duplicate. */
 export function noteUnreachableGoal(world: World, ctx: SystemContext, e: Entity, cell: NodeId): void {
-  const until = ctx.tick + UNREACHABLE_GOAL_MEMO_TICKS;
   const memo = world.tryGet(e, UnreachableGoals);
-  const kept = [
-    ...live(memo?.entries ?? [], ctx.tick).filter((entry) => entry.cell !== cell),
-    { cell, until },
-  ];
-  // Oldest-first eviction: the array is append-ordered, so the head is the least recent failure.
-  const entries = kept.slice(Math.max(0, kept.length - UNREACHABLE_GOAL_MEMO_SIZE));
+  const entries = remember(
+    memo?.entries ?? [],
+    ctx.tick,
+    { cell, until: ctx.tick + UNREACHABLE_GOAL_MEMO_TICKS },
+    (entry) => entry.cell === cell,
+    UNREACHABLE_GOAL_MEMO_SIZE,
+  );
   if (memo === undefined) world.add(e, UnreachableGoals, { entries });
   else world.mut(e, UnreachableGoals).entries = entries;
 }
@@ -54,7 +46,7 @@ export function noteUnreachableGoal(world: World, ctx: SystemContext, e: Entity,
 export function pruneUnreachableGoals(world: World, ctx: SystemContext, e: Entity): void {
   const memo = world.tryGet(e, UnreachableGoals);
   if (memo === undefined) return;
-  const entries = live(memo.entries, ctx.tick);
+  const entries = liveEntries(memo.entries, ctx.tick);
   if (entries.length === 0) world.remove(e, UnreachableGoals);
   else if (entries.length !== memo.entries.length) world.mut(e, UnreachableGoals).entries = entries;
 }
@@ -70,7 +62,7 @@ export function unreachableGoals(
 ): readonly UnreachableGoal[] | null {
   const memo = world.tryGet(e, UnreachableGoals);
   if (memo === undefined) return null;
-  const entries = live(memo.entries, ctx.tick);
+  const entries = liveEntries(memo.entries, ctx.tick);
   return entries.length === 0 ? null : entries;
 }
 

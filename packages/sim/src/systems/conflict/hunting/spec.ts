@@ -37,6 +37,7 @@ export function hunterEngageSpec(
   hereNode: NodeId,
   jobType: number | null,
   seesTarget: (t: Entity) => boolean,
+  givenUp: ((t: Entity) => boolean) | undefined,
   minDist: number,
   sight: number,
 ): EngageSpec {
@@ -53,7 +54,8 @@ export function hunterEngageSpec(
   const reachablePrey = (t: Entity): boolean =>
     isHuntTarget(world, ctx, t, jobType) &&
     terrain.componentOf(entityNode(world, terrain, t)) === hunterComponent;
-  const acceptPrey = (t: Entity): boolean => reachablePrey(t) && !heldByColleague(t) && seesTarget(t);
+  const acceptPrey = (t: Entity): boolean =>
+    reachablePrey(t) && !heldByColleague(t) && seesTarget(t) && (givenUp === undefined || !givenUp(t));
   const lastResortLivestock = (t: Entity): boolean => {
     const s = world.tryGet(t, Settler);
     return s !== undefined && isLastResortPrey(ctx.content, s.tribe);
