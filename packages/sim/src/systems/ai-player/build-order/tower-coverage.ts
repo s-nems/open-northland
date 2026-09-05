@@ -69,6 +69,7 @@ export function towerPlacementSpot(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  player: number,
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
@@ -78,7 +79,7 @@ export function towerPlacementSpot(
   if (targetNode === null) return null;
   const centroid = anchorCentroid(world, owned) ?? targetNode;
   const seed = outwardNode(centroid, targetNode, TOWER_OUTSKIRTS_PUSH_NODES);
-  const accept = buildingSpotAccept(world, ctx, terrain, type.typeId);
+  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId);
   return firstRingNode(seed.hx, seed.hy, 2 * BUILD_SEARCH_MAX_RADIUS_NODES, (x, y) => {
     if (Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy) > BUILD_SEARCH_MAX_RADIUS_NODES) return false;
     if (!withinNodeRadius(x, y, targetNode.hx, targetNode.hy, TOWER_DEFENCE_RADIUS_NODES)) return false;

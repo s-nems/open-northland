@@ -17,6 +17,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { fx, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
+import { seatPlacementProbe } from '../conflict/contested-ground.js';
 import type { SystemContext } from '../context.js';
 import { destroyBerryBushesInReserved } from '../economy/berries.js';
 import { destroyFieldsUnderBuilding } from '../economy/fields.js';
@@ -24,7 +25,6 @@ import { evictLooseGoodsFromFootprint } from '../economy/goods-evict.js';
 import { releaseEmployment } from '../economy/jobs/index.js';
 import { destroyStumpsInReserved } from '../economy/stumps.js';
 import { evictWorkFlagsFromFootprint } from '../economy/work-flag.js';
-import { canPlaceBuilding } from '../footprint/index.js';
 import { evictSettlersFromFootprint } from '../movement/evict.js';
 import { buildingEnabled, tribeShipsUnlocked } from '../progression/index.js';
 import { upgradeTierOf } from '../stores/index.js';
@@ -56,10 +56,17 @@ export function placeBuilding(
   if (command.force !== true) {
     if (!buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
 
-    // Ground-collision gate, the original's free placement rule; a mapless sim validates trivially.
+    // The seat's placement rule; a mapless sim validates trivially.
     if (
       ctx.terrain !== undefined &&
-      !canPlaceBuilding(world, ctx, ctx.terrain, command.buildingType, command.x, command.y)
+      !seatPlacementProbe(
+        world,
+        ctx.content,
+        ctx.terrain,
+        ctx.fog,
+        command.buildingType,
+        command.owner,
+      ).canPlace(command.x, command.y)
     ) {
       return;
     }

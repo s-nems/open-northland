@@ -1,5 +1,6 @@
 import './ai-player/build-order-execution.cases.js';
 import './ai-player/build-order-placement.cases.js';
+import './ai-player/contested-rebuild.cases.js';
 import './ai-player/garrison-and-craft.cases.js';
 import './ai-player/livestock-round-up.cases.js';
 import './ai-player/loss-recovery.cases.js';

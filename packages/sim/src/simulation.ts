@@ -23,11 +23,11 @@ import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
 import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
+import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 import type { SystemContext } from './systems/context.js';
 import {
   type ConstructionPlot,
   constructionSitePlots,
-  type PlacementProbe,
   placementBlockerVersion,
   workFlagBlockerVersion,
 } from './systems/footprint/index.js';
@@ -191,12 +191,13 @@ export class Simulation {
   }
 
   /**
-   * A buildability test for one building type, reading the same rule the `placeBuilding` command gates on.
+   * A buildability test for one building type, reading the same rules the `placeBuilding` command gates on.
    * Obstacle sets are memoized per {@link placementBlockerVersion}, so probing a viewport costs O(visible
-   * tiles). Null for a mapless sim.
+   * tiles); with a `player` the probe also refuses the ground a hostile army the seat can see contests.
+   * Null for a mapless sim.
    */
-  placementProbe(buildingType: number): PlacementProbe | null {
-    return placementProbeFor(this.world, this.content, this.terrain, buildingType);
+  placementProbe(buildingType: number, player?: number): PlayerPlacementProbe | null {
+    return placementProbeFor(this.world, this.content, this.terrain, this.fog, buildingType, player);
   }
 
   /**
