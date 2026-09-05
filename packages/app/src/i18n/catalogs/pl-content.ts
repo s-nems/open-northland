@@ -176,6 +176,11 @@ export const plContent = {
       summary:
         'Pierwszy kontakt pod mgłą: sojusznik obok jest znany od razu, jednostronny agresor zdradza się własnym ciosem i zmienia Twoje nastawienie na wrogie, a nigdy niewidziane plemię nie trafia do okna dyplomacji.',
     },
+    victory: {
+      title: 'Zwycięstwo i porażka',
+      summary:
+        'Potyczka do ostatniego mężczyzny: Twoja drużyna wycina wrogą osadę, symulacja uznaje ją za martwą przy najbliższej kontroli i przyznaje Ci wygraną, z oknem werdyktu i jinglem.',
+    },
     'goods-catalog': {
       title: 'Katalog towarów',
       summary: 'Wszystkie towary i odpowiadające im miejsca w magazynie w jednej scenie.',

@@ -79,6 +79,8 @@ export const MapMission = z.strictObject({
   debugName: z.string().optional(),
   /** `description <stringId>` - the goal text shown to the player (`-1` = none). */
   descriptionStringId: z.number().int().optional(),
+  /** That goal text, resolved against the map's string table when the id names a string. */
+  description: z.string().optional(),
   active: z.boolean().optional(),
   visible: z.boolean().optional(),
   /** `successfullif <n>` - how many of the trigger's goals must hold. */

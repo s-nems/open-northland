@@ -7,12 +7,14 @@ import {
   type GuiStrings,
   loadGuiBitmap,
   loadGuiStrings,
+  type UiString,
   uiStringLookup,
 } from '../../content/gui-gfx.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
+import type { MissionBrief } from '../../game/mission-brief.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
-import { makeUiTextRun } from '../ui-text.js';
+import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
 import type { PanelBitmaps, PanelContext } from './context.js';
@@ -69,9 +71,17 @@ export interface ToolPanelOptions {
   /** That same overlay's box, which the pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
+  /** The mission window's content, read on each open; absent opens an empty sheet. */
+  readonly missionBrief?: () => MissionBrief | null;
+  /** Fires as the mission window opens and closes, so the host can hold game time behind it. */
+  readonly onLargeWindow?: (open: boolean) => void;
 }
 
 export interface ToolPanelController {
+  /** The decoded UI string lookup the panel resolved for its language, shared with sibling overlays. */
+  readonly uiString: UiString;
+  /** Open the mission window (the map's briefing and goals), as the session start does. */
+  openMission(): void;
   /** True when a client point should be claimed by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
@@ -159,6 +169,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       layout,
       scale,
       makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, scale, px),
+      makeParagraph: (text, color, px, wrapWidth, align) =>
+        makeUiParagraph(uiFont.family, text, color, scale, px, wrapWidth, align),
       bitmaps,
       uiString: uiStringLookup(strings),
       screen: () => app.screen,
@@ -192,6 +204,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       grants: opts.grants,
       counters: opts.counters,
       diplomacyRows: opts.diplomacyRows,
+      art,
+      missionBrief: opts.missionBrief ?? ((): null => null),
+      ...(opts.onLargeWindow !== undefined ? { onLargeWindow: opts.onLargeWindow } : {}),
       onPickBuilding: (typeId) => placement.enter(typeId),
       onPickGood: (goodType) => goodsDrop.enter(goodType),
     });
@@ -250,6 +265,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     };
 
     return {
+      uiString: ctx.uiString,
+      openMission: () => {
+        if (!windows.byId.mission.isOpen()) activateButton('mission');
+      },
       claimsPointer,
       claimsWheel,
       placementType: () => placement.activeType(),

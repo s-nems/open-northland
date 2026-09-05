@@ -46,7 +46,8 @@ export async function resolveMapScript(
       script = extractMapScript(sections, { file: `${mapDir}/${read.join('+')}` });
     }
   }
-  return script === undefined ? undefined : attachPlayerNames(script, strings);
+  if (script === undefined) return undefined;
+  return attachMissionDescriptions(attachPlayerNames(script, strings), strings);
 }
 
 /**
@@ -73,4 +74,21 @@ function attachPlayerNames(script: MapScript, strings: Record<number, string> | 
       return name === undefined ? p : { ...p, name };
     }),
   };
+}
+
+/** Resolves each trigger's `description <stringId>` to its text; `-1` and an unknown id stay textless. */
+function attachMissionDescriptions(
+  script: MapScript,
+  strings: Record<number, string> | undefined,
+): MapScript {
+  if (strings === undefined || script.missions.length === 0) return script;
+  let changed = false;
+  const missions = script.missions.map((mission) => {
+    const id = mission.descriptionStringId;
+    const description = id === undefined || id < 0 ? undefined : strings[id];
+    if (description === undefined) return mission;
+    changed = true;
+    return { ...mission, description };
+  });
+  return changed ? { ...script, missions } : script;
 }

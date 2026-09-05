@@ -1,4 +1,5 @@
 import { type AiModuleId, AiPlayer } from '../../components/ai-player.js';
+import { isPlayerDead } from '../../components/match.js';
 import { aiCommand, type PlayerCommand } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
@@ -60,6 +61,8 @@ export function runAiPlayerModules(
   seats.sort((a, b) => a.player - b.player);
   for (const seat of seats) {
     if (ctx.tick % AI_DECISION_INTERVAL_TICKS !== seat.player % AI_DECISION_INTERVAL_TICKS) continue;
+    // The authority gate would refuse a dead seat's orders anyway; skipping keeps them out of the log.
+    if (isPlayerDead(world, seat.player)) continue;
     for (const module of modules) {
       if (!seat.modules[module.id]) continue;
       for (const command of module.run(world, ctx, seat.player)) {

@@ -710,6 +710,10 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     home: PREAMBLE_HOME_NODE,
     workplace: PREAMBLE_HOME_NODE,
   });
+  // The match over the two valid owner slots plus the invalid one: the MatchRules singleton rides the
+  // hash and the save round trip under the stream. Declared last, so the pinned attached id above holds;
+  // the run ends before the first death check, so nobody is refused.
+  sim.enqueueSetup({ kind: 'setMatchParticipants', players: [...OWNERS] });
   // Loose food outside the home - the source the housed women's hoard rung and a child order's haul
   // stage draw from.
   sim.enqueueSetup({ kind: 'dropGood', good: FOOD_GOOD, x: 14, y: 10, amount: 5 });

@@ -1,3 +1,4 @@
+import { isPlayerDead } from '../../components/match.js';
 import { isValidPlayer, ownerOf, ownersCompatible } from '../../components/ownership.js';
 import type {
   Command,
@@ -27,6 +28,8 @@ function ownerFieldsValid(command: Command): boolean {
 
 function seatMayIssue(world: World, seat: number, command: PlayerCommand): boolean {
   if (COMMAND_ISSUER[command.kind] !== 'seat') return false;
+  // A seat that died in the match keeps watching but never commands again.
+  if (isPlayerDead(world, seat)) return false;
   if (command.kind === 'placeBuilding' && hasAuthoredOptions(command)) return false;
   if ('player' in command && command.player !== seat) return false;
   if ('owner' in command && command.owner !== seat) return false;

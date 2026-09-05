@@ -4,7 +4,6 @@ import { createSoundDriver } from '../../content/audio.js';
 import { loadSettlerBubbleGfx } from '../../content/bubbles.js';
 import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
-import { loadMapMusicType } from '../../content/map-loader.js';
 import { loadMusicManifest } from '../../content/music.js';
 import { loadCombatBones } from '../../content/objects.js';
 import { readStoredSettings } from '../settings-store.js';
@@ -12,10 +11,10 @@ import { startSound } from '../sound-start.js';
 import { gameSoundEnabled } from './game-settings.js';
 
 /** Hand the driver the map's `musictype` and the rendered-music manifest, after which each frame picks
- *  the mood variant; playback starts once audio is unlocked. Both fetches degrade to "no music". */
-async function startMapMusic(sound: SoundDriver, mapId: string): Promise<void> {
-  const [musicType, manifest] = await Promise.all([loadMapMusicType(mapId), loadMusicManifest()]);
-  if (musicType === null || manifest === null) return;
+ *  the mood variant; playback starts once audio is unlocked. A missing manifest degrades to "no music". */
+async function startMapMusic(sound: SoundDriver, musicType: number): Promise<void> {
+  const manifest = await loadMusicManifest();
+  if (manifest === null) return;
   sound.setMusicMap({ musicType, manifest });
 }
 
@@ -24,6 +23,8 @@ async function startMapMusic(sound: SoundDriver, mapId: string): Promise<void> {
 export async function mountGamePresentation(
   params: URLSearchParams,
   renderer: WorldRenderer,
+  /** The map's `[misc_music]` code; null for a world that plays no music. */
+  musicType: number | null,
 ): Promise<ReturnType<typeof createSoundDriver> | null> {
   const ir = await loadIr();
   const sound = createSoundDriver(ir);
@@ -33,8 +34,7 @@ export async function mountGamePresentation(
     sound.setSfxVolume(settings.soundVolume);
     sound.setMusicVolume(settings.musicVolume);
     startSound(sound);
-    const mapId = params.get('map');
-    if (mapId !== null) void startMapMusic(sound, mapId);
+    if (musicType !== null) void startMapMusic(sound, musicType);
   }
   renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
   renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());

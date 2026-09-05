@@ -1,3 +1,4 @@
+import type { MapMeta } from '@open-northland/data';
 import type { Vfs } from '@open-northland/vfs';
 import {
   decodeCifStringTable,
@@ -11,14 +12,7 @@ import { findPathCaseInsensitiveInDirs } from '../../roots.js';
 import { STRING_TABLE_DIR } from './info.js';
 
 /** The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing strings and music binding. */
-export interface MapMetaFile {
-  /** The map's display name (the string at the header's `mapnamestringid`). */
-  readonly name?: string;
-  /** The map's flavor/mission description (the string at `mapdescriptionstringid`). */
-  readonly description?: string;
-  /** The `[misc_music]` `musictype` code (`DM_MUSIC_TYPE_*`, 0-38). */
-  readonly musicType?: number;
-}
+export type MapMetaFile = MapMeta;
 
 /** The menu shows one language, and the culturesnation mod is Polish-authored, so `pol` wins. */
 const MAP_TEXT_LANGS = ['pol', 'eng'] as const;

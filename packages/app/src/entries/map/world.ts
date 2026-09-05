@@ -45,6 +45,8 @@ export interface MapWorldOptions extends SessionRuleOverrides {
   readonly aiSeats: readonly number[];
   /** Seats whose chest-window assistant grants start on. */
   readonly assistantSeats: readonly number[];
+  /** The seats that can win or lose the skirmish; omitted or empty runs no match. */
+  readonly matchParticipants?: readonly number[];
   /** The map script's authored `diplomacy` rows; omitted or empty keeps every player pair hostile. */
   readonly diplomacy?: readonly MapDiplomacy[];
   /** Owner of the demo strip's entities, reached only when no map decodes; omitted leaves them neutral. */
@@ -111,6 +113,9 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: seat, enabled: true });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
+  if (options.matchParticipants !== undefined && options.matchParticipants.length > 0) {
+    sim.enqueueSetup({ kind: 'setMatchParticipants', players: options.matchParticipants });
+  }
 }
 
 /** The world-build inputs a restore reuses: identity only, since placements, session rules, AI seats

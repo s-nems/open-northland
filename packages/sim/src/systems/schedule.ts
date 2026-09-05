@@ -21,6 +21,7 @@ import {
   livestockRegenSystem,
   livestockVisitSystem,
 } from './livestock/index.js';
+import { matchSystem } from './match/index.js';
 import { animalWanderSystem } from './movement/animal-wander.js';
 import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
@@ -88,6 +89,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'projectile', system: projectileSystem },
   { name: 'growth', system: growthSystem },
   { name: 'cleanup', system: cleanupSystem },
+  // After cleanup, so a man reaped this tick is already gone when the death check counts, and before
+  // the AI, so a seat that just died issues nothing.
+  { name: 'match', system: matchSystem },
   // Last, after cleanup, so its decisions read the settled world with no reaped-this-tick targets; its
   // enqueued commands apply on next tick's command pass.
   { name: 'aiPlayer', system: aiPlayerSystem },

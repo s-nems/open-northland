@@ -1,0 +1,31 @@
+import { describe, expect, it } from 'vitest';
+import { createPauseHolds } from '../src/view/runtime/pause-holds.js';
+
+describe('createPauseHolds', () => {
+  it('forces the seam on the first hold and releases it on the last, whichever owner leaves', () => {
+    const calls: string[] = [];
+    const holds = createPauseHolds({
+      forcePause: () => calls.push('force'),
+      releaseForcedPause: () => calls.push('release'),
+    });
+    holds.hold('mission');
+    holds.hold('menu');
+    holds.release('menu');
+    expect(calls).toEqual(['force']);
+    holds.release('mission');
+    expect(calls).toEqual(['force', 'release']);
+  });
+
+  it('ignores a release without a hold and a repeated hold by the same owner', () => {
+    const calls: string[] = [];
+    const holds = createPauseHolds({
+      forcePause: () => calls.push('force'),
+      releaseForcedPause: () => calls.push('release'),
+    });
+    holds.release('ghost');
+    holds.hold('menu');
+    holds.hold('menu');
+    holds.release('menu');
+    expect(calls).toEqual(['force', 'release']);
+  });
+});

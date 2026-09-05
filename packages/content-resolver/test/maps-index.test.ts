@@ -30,6 +30,7 @@ describe('buildMapsIndexEntries', () => {
 
   it('never lists a .meta.json sidecar as a map of its own', async () => {
     await writeFile(join(mapsRoot, 'lonely.meta.json'), '{"name":"ghost"}');
+    await writeFile(join(mapsRoot, 'lonely.briefing.json'), '{"texts":{}}');
     expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([]);
   });
 

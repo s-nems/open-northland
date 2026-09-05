@@ -130,9 +130,7 @@ async function playersOf(
 export async function buildMapsIndexEntries(fs: ReadableVfs, mapsRoot: string): Promise<MapsIndexEntry[]> {
   const dir: MapsDir = { fs, root: mapsRoot, names: await fileNamesIn(fs, mapsRoot) };
   const ids = [...dir.names]
-    .filter(
-      (name) => name.endsWith('.json') && !name.endsWith('.meta.json') && !name.endsWith('.script.json'),
-    )
+    .filter(isMapGridFile)
     .map((name) => name.slice(0, -'.json'.length))
     .sort(byCodeUnit);
   const entries: MapsIndexEntry[] = [];
@@ -149,4 +147,10 @@ export async function buildMapsIndexEntries(fs: ReadableVfs, mapsRoot: string): 
     });
   }
   return entries;
+}
+
+/** A map id is a dotless slug, so a dotted stem (`<id>.meta.json`, `.script.json`, `.briefing.json`)
+ *  is a sidecar, never a grid of its own. */
+function isMapGridFile(name: string): boolean {
+  return name.endsWith('.json') && !name.slice(0, -'.json'.length).includes('.');
 }

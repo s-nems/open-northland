@@ -1,4 +1,4 @@
-import { MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import { MapBriefing, MapMeta, MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
 import { withBaseUrl } from '../base-url.js';
 import { diag } from '../diag/index.js';
 
@@ -50,22 +50,39 @@ export async function loadTerrainMap(
 }
 
 /**
- * The `musicType` code from a decoded map's meta sidecar, or null when the sidecar or key is absent
- * or malformed (the map then plays no music).
+ * A decoded map's meta sidecar, or null when it is absent or malformed (the map then plays no music
+ * and the mission window falls back to the roster and goals alone).
  */
-export async function loadMapMusicType(id: string, fetchImpl: typeof fetch = fetch): Promise<number | null> {
+export async function loadMapMeta(id: string, fetchImpl: typeof fetch = fetch): Promise<MapMeta | null> {
   const safe = safeMapId(id);
   if (safe === null) return null;
   try {
     const res = await fetchImpl(withBaseUrl(`/maps/${safe}.meta.json`));
     if (!res.ok) return null;
-    const meta: unknown = await res.json();
-    if (typeof meta !== 'object' || meta === null) return null;
-    const { musicType } = meta as Record<string, unknown>;
-    return typeof musicType === 'number' && Number.isInteger(musicType) ? musicType : null;
+    return MapMeta.parse(await res.json());
   } catch (err) {
-    // Otherwise a corrupt sidecar is indistinguishable from a map that authored no music.
-    diag.warn('content', `loadMapMusicType: malformed /maps/${safe}.meta.json (${String(err)})`);
+    // Otherwise a corrupt sidecar is indistinguishable from a map that authored nothing.
+    diag.warn('content', `loadMapMeta: malformed /maps/${safe}.meta.json (${String(err)})`);
+    return null;
+  }
+}
+
+/**
+ * A decoded map's briefing sidecar: the mission-window pages per language and cutscene id. A 404 is
+ * normal absence (a map without briefings) and returns null silently; a malformed file warns.
+ */
+export async function loadMapBriefing(
+  id: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MapBriefing | null> {
+  const safe = safeMapId(id);
+  if (safe === null) return null;
+  try {
+    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.briefing.json`));
+    if (!res.ok) return null;
+    return MapBriefing.parse(await res.json());
+  } catch (err) {
+    diag.warn('content', `loadMapBriefing: malformed /maps/${safe}.briefing.json (${String(err)})`);
     return null;
   }
 }

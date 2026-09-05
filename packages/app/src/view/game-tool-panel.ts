@@ -3,6 +3,7 @@ import type { Command, PlayerCommand } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../catalog/buildings.js';
+import type { MissionBrief } from '../game/mission-brief.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
 import { createReplaceableMount } from '../hud/replaceable-mount.js';
@@ -56,6 +57,10 @@ export interface GameToolPanelDeps {
   /** That overlay's screen-px box, which the panel's pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
+  /** The mission window's content, read on each open. */
+  readonly missionBrief?: () => MissionBrief | null;
+  /** Fires as the mission window opens and closes, so the entry can hold game time behind it. */
+  readonly onLargeWindow?: (open: boolean) => void;
 }
 
 export interface GameToolPanelHandle {
@@ -151,6 +156,8 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.deferToOverlay !== undefined ? { deferToOverlay: deps.deferToOverlay } : {}),
       ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),
       ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
+      ...(deps.missionBrief !== undefined ? { missionBrief: deps.missionBrief } : {}),
+      ...(deps.onLargeWindow !== undefined ? { onLargeWindow: deps.onLargeWindow } : {}),
     });
 
   const mounts = createReplaceableMount(

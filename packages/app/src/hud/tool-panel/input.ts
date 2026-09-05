@@ -95,13 +95,20 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   };
 
   const onKeyDown = (e: KeyboardEvent): void => {
+    // The mission sheet holds the game paused and covers the middle of the screen, so Escape dismisses
+    // it first and the pause hotkey waits until it is gone.
+    const sheet = windows.byId.mission;
     if (e.code === 'Escape') {
+      if (sheet.isOpen()) {
+        sheet.close();
+        return;
+      }
       for (const mode of held) {
         if (mode.isActive()) mode.cancel();
       }
     }
     // Each pause toggle re-rasterizes the strip, so key repeat must not flicker it.
-    if (isActionHotkey(e, deps.bindings, 'pauseToggle')) deps.togglePause();
+    if (isActionHotkey(e, deps.bindings, 'pauseToggle') && !sheet.isOpen()) deps.togglePause();
   };
 
   canvas.addEventListener('mousedown', onMouseDown);

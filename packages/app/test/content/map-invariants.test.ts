@@ -21,11 +21,11 @@ function mapsDir(): string {
   return resolve(contentDir(), 'maps');
 }
 
-/** Decoded map files (`.meta.json`/`.script.json` sidecars carry menu text and the player/mission
- *  script, not terrain - excluded). */
+/** Decoded map grids: a map id is a dotless slug, so a dotted stem is a sidecar (`.meta.json`,
+ *  `.script.json`, `.briefing.json` carry menu text, the script and the briefing, not terrain). */
 function mapFiles(): string[] {
   return readdirSync(mapsDir())
-    .filter((f) => f.endsWith('.json') && !f.endsWith('.meta.json') && !f.endsWith('.script.json'))
+    .filter((f) => f.endsWith('.json') && !f.slice(0, -'.json'.length).includes('.'))
     .sort();
 }
 

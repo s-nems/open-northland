@@ -89,6 +89,7 @@ export const COMMAND_ISSUER: {
   setFogMode: 'trusted',
   setGatherGood: 'seat',
   setJob: 'seat',
+  setMatchParticipants: 'trusted',
   setNeedsEnabled: 'trusted',
   setPlayerAi: 'trusted',
   setProfessionProgression: 'trusted',

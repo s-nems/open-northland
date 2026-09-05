@@ -15,6 +15,7 @@ import {
   rootsInOrder,
   type SourceRoots,
 } from '../../roots.js';
+import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
 import { excludeStringTableCopies, mapIdFromPath } from './info.js';
 import { loadMapStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
@@ -37,6 +38,8 @@ export interface MapDatConversion {
   readonly minimapSynthesized: boolean;
   /** Whether a `maps/<id>.script.json` roster/mission sidecar was emitted. */
   readonly script: boolean;
+  /** Whether a `maps/<id>.briefing.json` mission-window text sidecar was emitted. */
+  readonly briefing: boolean;
 }
 
 /**
@@ -112,9 +115,11 @@ export async function convertMapDatTree(
     const metaPath = vjoin(outDir, 'maps', `${id}.meta.json`);
     const pngPath = vjoin(outDir, 'maps', `${id}.png`);
     const scriptPath = vjoin(outDir, 'maps', `${id}.script.json`);
+    const briefingPath = vjoin(outDir, 'maps', `${id}.briefing.json`);
     await fs.rm(metaPath);
     await fs.rm(pngPath);
     await fs.rm(scriptPath);
+    await fs.rm(briefingPath);
     const strings = await loadMapStringTable(fs, mapDirs, rel);
     const metaFile = await resolveMapMeta(fs, mapDirs, rel, cifSections, strings);
     if (metaFile !== undefined) {
@@ -129,6 +134,14 @@ export async function convertMapDatTree(
     }
     if (scriptFile !== undefined) {
       await writeText(fs, scriptPath, `${JSON.stringify(scriptFile)}\n`);
+    }
+    let briefing = false;
+    if (scriptFile !== undefined) {
+      const briefingFile = await resolveMapBriefing(fs, mapDirs, rel, cutsceneIdsOf(scriptFile));
+      if (briefingFile !== undefined) {
+        await writeText(fs, briefingPath, `${JSON.stringify(briefingFile)}\n`);
+        briefing = true;
+      }
     }
     let minimap = false;
     let minimapSynthesized = false;
@@ -164,6 +177,7 @@ export async function convertMapDatTree(
       minimap,
       minimapSynthesized,
       script: scriptFile !== undefined,
+      briefing,
     });
   }
   return done;
