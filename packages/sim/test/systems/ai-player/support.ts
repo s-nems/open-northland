@@ -27,7 +27,7 @@ import { grassNodeMap } from '../../fixtures/terrain.js';
 /**
  * The shared world builder for the strategic-AI suites: the synthetic content sets, the fixture ids,
  * and the "place an HQ, spawn men, drop resources" helpers every case file assembles a hand-built
- * world from. Module runs are pure, so a case inspects the returned command list against that world.
+ * world from. A case runs a module against that world and inspects the command list it returns.
  */
 
 export const VIKING = 1;

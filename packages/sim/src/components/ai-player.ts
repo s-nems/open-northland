@@ -41,16 +41,20 @@ export const AiPlayer = defineComponent<{
   modules: AiModuleEnables;
 }>('AiPlayer');
 
-/**
- * The wave one seat's barracks is gathering, held between decisions. Carried by the muster barracks itself,
- * so it dies with the door the band forms up at and a seat with no barracks holds no plan.
- */
-export const MusterPlan = defineComponent<{
+export interface MusterPlanState {
   /** Soldiers to gather before the wave marches. */
   waveSize: number;
   /** The tick this wave was drawn - the gathering window runs from here. */
   drawnAt: number;
-}>('MusterPlan');
+}
+
+/**
+ * The wave one seat's barracks is gathering, held between decisions on the muster barracks itself, so it
+ * dies with the door. The military decision mints it when a worthy band first stands there and retires it
+ * when the wave marches, the army falls under a wave, or the campaign has no objective; a disabled military
+ * leaves it in place, window and all.
+ */
+export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan');
 
 /** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. The lowest-id
  *  carrier wins should more than one ever exist. */
