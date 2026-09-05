@@ -10,6 +10,7 @@ import {
   Position,
   Resting,
   Settler,
+  Sheltering,
   Stockpile,
   TrainingOrder,
 } from '../../src/components/index.js';
@@ -26,7 +27,7 @@ import { ctxOf, grassMap } from './needs/support.js';
 /**
  * The barracks drill: a colonist sent to a training house walks to its door, drills inside for
  * {@link BARRACKS_DRILL_TICKS}, and steps back out a soldier. The served term IS the qualification -
- * the drill banks no experience stat and flips the trade directly (user rule 2026-08-02), while the
+ * the drill banks no experience stat and flips the trade directly (authored rule), while the
  * class's requirement rows read tracks nothing accrues, keeping every other door onto the trade shut.
  *
  * The fixture mirrors the extracted shape at fixture scale: a `training` house, the civilist's exercise
@@ -71,6 +72,9 @@ function barracksContent(): ContentSet {
         id: 'barracks',
         kind: 'training',
         workers: [{ jobType: CARRIER_JOB, count: 4 }],
+        // Flagged `logicCanEnableDefenceMode` like the real one; the single seat is fixture scale.
+        canEnableDefenceMode: true,
+        shelterCapacity: 1,
       },
     ],
     atomicAnimations: [
@@ -184,7 +188,7 @@ describe('trainSoldier - the barracks drill', () => {
     run(sim, RUN_TICKS);
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
     // The flip is the drill's whole product: nothing banked, so the XP-gate stays closed even for
-    // him - the barracks remains the only route onto the trade (user rule 2026-08-02).
+    // him - the barracks remains the only route onto the trade (authored rule).
     expect(qualifiesAsSoldier(sim, recruit)).toBe(false);
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
     expect(sim.world.has(recruit, Resting)).toBe(false); // back outside
@@ -212,7 +216,7 @@ describe('trainSoldier - the barracks drill', () => {
 
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
     // The clip's TRAINING event is dead data: no "Wyszkolenie" counter may ever appear on a drilled
-    // settler (user rule 2026-08-02).
+    // settler (authored rule).
     expect(sim.world.get(recruit, Settler).experience.size).toBe(0);
   });
 
@@ -286,6 +290,34 @@ describe('trainSoldier - the barracks drill', () => {
 
     expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
     expect(jobOf(sim, recruit)).toBe(CARRIER_JOB);
+  });
+
+  it('pauses the drill while the barracks stands on alarm, and resumes it on stand-down', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 3, 3);
+    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
+
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    run(sim, 3 * EXERCISE_CLIP_TICKS + 1);
+    const served = sim.world.get(recruit, TrainingOrder).drillTicksLeft;
+    expect(served).toBeLessThan(BARRACKS_DRILL_TICKS);
+
+    // The alarm outranks the errand: once the repetition in flight plays out, the recruit takes a seat in
+    // the house it was drilling in, and its clock stands still for as long as the alarm holds.
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: house, enabled: true });
+    run(sim, EXERCISE_CLIP_TICKS + 2);
+    expect(sim.world.get(recruit, Sheltering).shelter).toBe(house);
+    expect(sim.world.tryGet(recruit, Resting)?.at).toBe(house);
+    const paused = sim.world.get(recruit, TrainingOrder).drillTicksLeft;
+    expect(paused).toBeLessThanOrEqual(served);
+    run(sim, 3 * EXERCISE_CLIP_TICKS);
+    expect(sim.world.get(recruit, TrainingOrder).drillTicksLeft).toBe(paused);
+
+    // Stand-down frees the seat; the errand survives the detour and finishes.
+    sim.enqueueSetup({ kind: 'setDefenceMode', building: house, enabled: false });
+    run(sim, RUN_TICKS);
+    expect(sim.world.has(recruit, Sheltering)).toBe(false);
+    expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
   });
 
   it('abandons the errand at its next planning when the house is gone', () => {

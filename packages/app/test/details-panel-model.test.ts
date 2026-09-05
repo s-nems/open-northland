@@ -12,6 +12,7 @@ import {
 import { STOCK_TAB_COUNT } from '../src/content/gui-atlas-map.js';
 import {
   BUILDING_ANIMAL_FARM,
+  BUILDING_BARRACKS,
   BUILDING_FARM,
   BUILDING_HEADQUARTERS,
   BUILDING_HOME_00,
@@ -966,15 +967,21 @@ describe('the animal farm panel - fed-animal tokens stay internal', () => {
     const snapshot = snapshotOf([
       buildingEntity(1, BUILDING_WATCHTOWER),
       buildingEntity(2, BUILDING_JOINERY),
+      buildingEntity(3, BUILDING_BARRACKS),
     ]);
     const ctx = ctxOf(sim);
 
     const tower = buildUnitPanelModel(snapshot, new Set([1]), ctx);
     const workshop = buildUnitPanelModel(snapshot, new Set([2]), ctx);
+    const barracks = buildUnitPanelModel(snapshot, new Set([3]), ctx);
 
-    if (tower.kind !== 'building' || workshop.kind !== 'building') throw new Error('expected buildings');
+    if (tower.kind !== 'building' || workshop.kind !== 'building' || barracks.kind !== 'building') {
+      throw new Error('expected buildings');
+    }
     expect(tower.showDefense).toBe(true);
     expect(workshop.showDefense).toBe(false);
+    // The barracks carries the source flag too (`houses.ini` logictype 39), so it raises the alarm.
+    expect(barracks.showDefense).toBe(true);
   });
 
   it('reports the raised alarm and how full the garrison is', () => {

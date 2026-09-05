@@ -15,6 +15,7 @@ describe('extractBuildings', () => {
         id: 'wardenhall',
         kind: 'storage', // logicmaintype 1
         homeSize: 0,
+        canEnableDefenceMode: true, // logicCanEnableDefenceMode 1
         workers: [{ jobType: 51, count: 3 }],
         stock: [
           { goodType: 20, capacity: 90, initial: 0 },
@@ -23,7 +24,7 @@ describe('extractBuildings', () => {
         produces: [],
         recipes: [],
         construction: [], // build cost is overlaid from the graphics table, not the logic table
-        shelterCapacity: 0, // the defence-mode garrison is authored balance, overlaid at the app boundary
+        shelterCapacity: 0, // the garrison size is authored balance, overlaid at the app boundary
         source: src,
       },
       {
@@ -31,6 +32,7 @@ describe('extractBuildings', () => {
         id: 'burrow_nest_00',
         kind: 'home', // logicmaintype 2
         homeSize: 1, // logichomesize
+        canEnableDefenceMode: false,
         workers: [],
         stock: [{ goodType: 20, capacity: 4, initial: 1 }],
         produces: [],
@@ -44,6 +46,7 @@ describe('extractBuildings', () => {
         id: 'grind_lodge_00',
         kind: 'workplace', // logicmaintype 3
         homeSize: 0,
+        canEnableDefenceMode: false,
         workers: [{ jobType: 51, count: 1 }],
         stock: [],
         produces: [22, 20], // logicproduction output good ids, in file order

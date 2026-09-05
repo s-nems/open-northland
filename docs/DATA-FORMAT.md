@@ -130,7 +130,8 @@ For a schema or pipeline change:
 3. update consumers without adding a second interpretation of the same field;
 4. run `npm run test:pipeline` against the owned game copy;
 5. run `npm run test:content` when existing local content consumers changed;
-6. bump `IR_VERSION` for a breaking shape change.
+6. bump `IR_VERSION` for a breaking shape change, or for an addition generated content must carry
+   for real rather than by default.
 
 Generated output stays local. Commit schemas, decoder code, synthetic fixtures, and concise format
 notes only.

@@ -1,8 +1,7 @@
 /**
- * The defence-mode balance: how many civilians each garrison building shelters while its alarm is up.
- * The source flags which buildings may raise the mode (`BuildingType.shelterCapacity`) but carries no
- * garrison size, so these numbers are authored, and until that flag is extracted the table doubles as
- * the eligibility set. The barracks is absent on purpose: it trains soldiers rather than hiding civilians.
+ * The defence-mode balance: how many civilians a garrison building shelters while its alarm is up. Which
+ * types may raise the mode is the extracted `logicCanEnableDefenceMode` flag; the source carries no
+ * garrison size, so these numbers are authored.
  *
  * A shelter seat is separate from a tower's employed `logicworker` post, so a full garrison of archers
  * takes nothing from the room the townspeople run into. Keyed by `ir.json` id-slug, so one table serves
@@ -10,13 +9,25 @@
  */
 export const SHELTER_CAPACITY_BY_ID: Readonly<Record<string, number>> = {
   headquarters: 30,
+  barracks: 10, // kept under the small tower; `logicSchoolSize 25` counts drill places, not cover
   tower_00: 15,
   tower_01: 20,
 };
 
-/** The garrison `shelterCapacity` for a building id, or 0 for a type that takes none. */
+/** The garrison of a flagged type the table does not name, such as a mod's own defence house. */
+export const DEFAULT_SHELTER_CAPACITY = 10;
+
+/** The garrison `shelterCapacity` a defence-capable building of this id takes. */
 export function shelterCapacityById(id: string): number {
-  return SHELTER_CAPACITY_BY_ID[id] ?? 0;
+  return SHELTER_CAPACITY_BY_ID[id] ?? DEFAULT_SHELTER_CAPACITY;
+}
+
+/** The garrison a building type takes: authored for a flagged type, none for the rest. */
+export function shelterCapacityFor(building: {
+  readonly id: string;
+  readonly canEnableDefenceMode?: boolean;
+}): number {
+  return building.canEnableDefenceMode ? shelterCapacityById(building.id) : 0;
 }
 
 /**

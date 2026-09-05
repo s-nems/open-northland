@@ -94,11 +94,12 @@ export const BuildingType = z.strictObject({
    * {@link construction}. Absent when the graphics table has no record for the type.
    */
   footprint: BuildingFootprint.optional(),
+  /** Extracted `houses.ini` `logicCanEnableDefenceMode`: whether the player may raise defence mode on it. */
+  canEnableDefenceMode: z.boolean().default(false),
   /**
-   * How many civilians may shelter inside during defence mode, each shooting the house bow from cover;
-   * `0` means the type has no defence mode. The mode itself is extracted (`houses.ini`
-   * `logicCanEnableDefenceMode`), but no readable record carries a garrison size, so this number is
-   * authored balance overlaid onto the extracted table at the app boundary.
+   * How many civilians shelter inside during defence mode, each shooting the house bow from cover; `0`
+   * for a type that offers no mode. No readable record carries a garrison size, so this is authored
+   * balance, overlaid at the app boundary onto the types the flag admits.
    */
   shelterCapacity: z.number().int().nonnegative().default(0),
   source: Provenance.optional(),

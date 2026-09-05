@@ -2,7 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { flatTileColour } from '@open-northland/render';
 import { buildTerrainGraph, halfCellMapFromCells } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { shelterCapacityById } from '../src/catalog/defence.js';
+import { DEFAULT_SHELTER_CAPACITY, shelterCapacityById } from '../src/catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../src/catalog/farming.js';
 import { WOOD_CHOPS_TO_FELL, WOOD_YIELD_PER_NODE } from '../src/catalog/felling.js';
 import { MINE_LEVELS, STONE_DEPOSIT_UNITS } from '../src/catalog/mining.js';
@@ -76,10 +76,13 @@ function rawRealLike(): ContentSet {
     const { equip: _equip, ...rest } = g;
     return rest;
   };
+  // Real ir.json carries the defence flag but no garrison size - strip the sandbox's so the merge has to
+  // overlay it back.
+  const stripShelter = (b: ContentSet['buildings'][number]) => ({ ...b, shelterCapacity: 0 });
   return parseContentSet({
     ...base,
     goods: [...base.goods.map((g) => stripEquip(stripFarming(zeroGathering(g)))), unbalanced, unfarmed],
-    buildings: [...base.buildings, uncataloged],
+    buildings: [...base.buildings, uncataloged].map(stripShelter),
   });
 }
 
@@ -129,15 +132,29 @@ describe('mergeRealContent', () => {
     expect(goodById(content, 'wood').equip).toBeUndefined(); // a non-equippable stays bare
   });
 
-  it('overlays the authored garrison capacity onto the buildings that take one, and nothing else', () => {
+  it('overlays the authored garrison capacity onto the buildings the extracted flag admits, and nothing else', () => {
     const { content } = mergeRealContent(rawRealLike());
     const capacityOf = (id: string) => content.buildings.find((b) => b.id === id)?.shelterCapacity;
 
     expect(capacityOf('headquarters')).toBe(shelterCapacityById('headquarters'));
+    expect(capacityOf('barracks')).toBe(shelterCapacityById('barracks'));
     expect(capacityOf('tower_00')).toBe(shelterCapacityById('tower_00'));
     expect(capacityOf('tower_01')).toBe(shelterCapacityById('tower_01'));
-    // A workplace takes no garrison, so it never offers the mode (the panel and the order read this).
+    // A flagged house the balance table does not name (a mod's own) takes the default garrison.
+    expect(capacityOf('wonder_test')).toBe(DEFAULT_SHELTER_CAPACITY);
+    // A workplace carries no flag, so it never offers the mode (the panel and the order read this).
     expect(capacityOf('work_mill_00')).toBe(0);
+  });
+
+  it('zeroes the garrison of an unflagged type whatever its row arrived with', () => {
+    const raw = rawRealLike();
+    const unflagged = raw.buildings.map((b) =>
+      b.id === 'tower_00'
+        ? { ...b, canEnableDefenceMode: false, shelterCapacity: shelterCapacityById('tower_00') }
+        : b,
+    );
+    const { content } = mergeRealContent(parseContentSet({ ...raw, buildings: unflagged }));
+    expect(content.buildings.find((b) => b.id === 'tower_00')?.shelterCapacity).toBe(0);
   });
 
   it('reins the civilian bows in under the soldier short bow on EVERY damage column', () => {
