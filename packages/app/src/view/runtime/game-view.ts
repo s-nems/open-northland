@@ -144,8 +144,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   };
 
   const storedSettings = readStoredSettings();
-  const pinnedUiScale = floatParam(params, 'uiscale', 0) || null;
-  // `?uiscale` pins an absolute HUD scale for reproducible diagnostics.
+  // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
+  const uiScaleParam = floatParam(params, 'uiscale', 0);
+  const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
   const uiscale = pinnedUiScale ?? uiScaleFor(deps.initialViewport.height, storedSettings.uiScaleFactor);
 
   const lang = currentLocale();
@@ -407,7 +408,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     perf,
     pointer: pointerAt,
     syncViewport: liveSettings.syncViewport,
-    systemMenuOpen: () => systemMenu?.isOpen() ?? false,
   });
 
   return { destroy };

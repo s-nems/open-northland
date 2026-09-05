@@ -46,6 +46,9 @@ export interface SettlerActions {
   close(): void;
   /** True when a client point is over a visible menu button; the input router asks before world picking. */
   claimsPointer(clientX: number, clientY: number): boolean;
+  /** Consume Escape while the job list is open: closes it back to the ring and keeps the selection.
+   *  unit-controls consults this before its own Escape fallback, so listener order never matters. */
+  handleEscape(): boolean;
   state(): SettlerActionsState;
   restore(state: SettlerActionsState): void;
   dispose(): void;

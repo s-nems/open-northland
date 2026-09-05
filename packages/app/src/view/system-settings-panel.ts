@@ -43,6 +43,9 @@ export function buildSystemSettingsPanel(deps: SystemSettingsPanelDeps): SavePan
       relabel();
       deps.onLanguageChange();
     },
+    // The panel stays mounted (hidden) for the whole game; without this every window resize during
+    // play would rebuild the invisible page DOM.
+    visible: () => panel.style.display !== 'none',
   });
   panel.append(head, page.el);
 

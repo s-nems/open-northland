@@ -116,21 +116,11 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     tooltip.style.display = 'block';
   };
 
-  // unit-controls also listens for Escape on `window` to clear the selection, and this listener is
-  // registered first, so stopping propagation keeps the unit selected while stepping back to the ring.
-  const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && ctx.getMode() === 'jobs') {
-      e.stopImmediatePropagation();
-      ctx.closeJobWindow();
-    }
-  };
-
   // `mouseleave` clears a highlight the cursor would otherwise strand: leaving the canvas over a button
   // fires no further `mousemove`.
   canvas.addEventListener('mousedown', onMouseDown);
   canvas.addEventListener('mousemove', onMouseMove);
   canvas.addEventListener('mouseleave', ctx.hideTransient);
-  window.addEventListener('keydown', onKeyDown);
 
   return {
     claimsPointer,
@@ -138,7 +128,6 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseleave', ctx.hideTransient);
-      window.removeEventListener('keydown', onKeyDown);
     },
   };
 };

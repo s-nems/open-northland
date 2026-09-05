@@ -125,6 +125,8 @@ function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
     bitmaps: { bg, button, buttonHilite, headline },
   }));
   assetsByLanguage.set(lang, assets);
+  // A rejected load would otherwise pin every later rebuild to the one transient failure.
+  void assets.catch(() => assetsByLanguage.delete(lang));
   return assets;
 }
 

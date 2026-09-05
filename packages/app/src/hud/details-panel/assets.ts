@@ -146,6 +146,8 @@ export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanel
       barRamp,
     }));
     assetsByLanguage.set(lang, assets);
+    // A rejected load would otherwise pin every later rebuild to the one transient failure.
+    void assets.catch(() => assetsByLanguage.delete(lang));
   }
   return assets;
 }

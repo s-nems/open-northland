@@ -162,8 +162,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     } else if (isActionHotkey(e, opts.bindings, 'attackMove')) {
       armAttackMove();
     } else if (e.code === 'Escape') {
-      if (pickMode.isArmed())
-        pickMode.cancel(); // Esc backs out of a pick mode first, keeping the selection
+      // Escape steps back one level: job list, then an armed pick mode, then the selection itself.
+      if (chrome.actions().handleEscape()) return;
+      if (pickMode.isArmed()) pickMode.cancel();
       else applySelection([], false);
     }
   };

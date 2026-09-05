@@ -187,7 +187,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       root.visible = true;
     };
 
-    // Registered before unit-controls' listeners, so a menu click wins.
+    // Click routing is order-independent: unit-controls asks `claimsPointer` before world picking.
     const input = createActionRingInput({
       canvas,
       scale,
@@ -220,6 +220,11 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       open: openMenu,
       close: closeMenu,
       claimsPointer: input.claimsPointer,
+      handleEscape: (): boolean => {
+        if (mode !== 'jobs') return false;
+        closeJobWindow();
+        return true;
+      },
       state: () => ({ mode, anchor, pickerScrollTop: picker.scrollTop() }),
       restore: (state): void => {
         picker.hide();

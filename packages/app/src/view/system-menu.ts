@@ -8,7 +8,6 @@ import { buildSystemSettingsPanel } from './system-settings-panel.js';
 
 export interface SystemMenu {
   toggle(): void;
-  isOpen(): boolean;
   dispose(): void;
 }
 
@@ -200,7 +199,6 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
         hide();
       }
     },
-    isOpen: () => backdrop.style.display !== 'none',
     dispose(): void {
       deps.setCameraSuspended(false);
       scope.abort();
