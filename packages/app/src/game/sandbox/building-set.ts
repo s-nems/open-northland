@@ -1,6 +1,6 @@
 import { type BuildingFootprint, DEFAULT_RECIPE_TICKS } from '@open-northland/data';
 import { VIKING_BUILDINGS, type VikingBuilding } from '../../catalog/buildings.js';
-import { shelterCapacityById } from '../../catalog/defence.js';
+import { shelterCapacityFor } from '../../catalog/defence.js';
 import { approximateFootprint } from '../../catalog/footprints.js';
 import { STORABLE_EXTENDED_GOODS } from '../../catalog/goods.js';
 import { JOB_COLLECTOR } from '../../catalog/jobs.js';
@@ -118,6 +118,7 @@ export interface SandboxBuildingRow {
   workers?: readonly { jobType: number; count: number }[];
   footprint?: BuildingFootprint;
   upgradeTarget?: number;
+  canEnableDefenceMode?: boolean;
   /** How many civilians the building shelters in defence mode. */
   shelterCapacity?: number;
 }
@@ -271,7 +272,6 @@ function homeRow(b: VikingBuilding): Partial<SandboxBuildingRow> {
 function buildingRow(b: VikingBuilding): SandboxBuildingRow {
   const slots = workerSlotsFor(b.typeId);
   const upgradeTarget = buildingUpgradeTarget(b.typeId);
-  const shelterCapacity = shelterCapacityById(b.id);
   return {
     typeId: b.typeId,
     id: b.id,
@@ -279,7 +279,7 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     construction: buildingConstructionCost(b),
     hitpoints: buildingHitpoints(b.kind),
     ...(upgradeTarget !== undefined ? { upgradeTarget } : {}),
-    ...(shelterCapacity > 0 ? { shelterCapacity } : {}),
+    ...(b.canEnableDefenceMode ? { canEnableDefenceMode: true, shelterCapacity: shelterCapacityFor(b) } : {}),
     ...(slots !== undefined ? { workers: slots } : {}),
     ...(b.kind === 'home' ? homeRow(b) : {}),
     ...BUILDING_OVERRIDES[b.typeId],

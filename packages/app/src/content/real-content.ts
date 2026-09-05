@@ -8,7 +8,7 @@ import {
 } from '@open-northland/data';
 import { HARVEST_CADAVER_ATOMIC } from '../catalog/atomics.js';
 import { VIKING_BUILDINGS } from '../catalog/buildings.js';
-import { HOUSE_BOW_DAMAGE, shelterCapacityById } from '../catalog/defence.js';
+import { HOUSE_BOW_DAMAGE, shelterCapacityFor } from '../catalog/defence.js';
 import { FARMING_BALANCE_BY_ID } from '../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../catalog/gathering.js';
 import { HUNTER_BOW_BALANCE, huntPreyRows } from '../catalog/hunting.js';
@@ -91,11 +91,10 @@ function withWoolCarcassHarvest(good: GoodType): GoodType {
   return { ...good, atomics: { ...good.atomics, harvest: HARVEST_CADAVER_ATOMIC } };
 }
 
-/** Overlay the authored defence-mode garrison size, which doubles as the eligibility set until the
- *  source's own `logicCanEnableDefenceMode` is extracted. A type with none keeps its 0. */
+/** Overlay the authored garrison size: the flag decides who offers the mode, so an unflagged row is
+ *  zeroed whatever it arrived with. */
 function withShelterCapacity(building: BuildingType): BuildingType {
-  const shelterCapacity = shelterCapacityById(building.id);
-  return shelterCapacity === 0 ? building : { ...building, shelterCapacity };
+  return { ...building, shelterCapacity: shelterCapacityFor(building) };
 }
 
 /** Rein the two civilian bows in under the soldier's short bow: a design override of the extracted rows,
