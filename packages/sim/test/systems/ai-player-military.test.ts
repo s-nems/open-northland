@@ -17,7 +17,17 @@ import {
 import { CommandQueue } from '../../src/core/command-queue.js';
 import type { Command } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { EventBuffer, Rng, replay, Simulation, type TerrainMap } from '../../src/index.js';
+import {
+  EventBuffer,
+  exportSaveGame,
+  parseSaveGame,
+  Rng,
+  replay,
+  restoreSimulation,
+  Simulation,
+  serializeSaveGame,
+  type TerrainMap,
+} from '../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import {
   ASSAULT_RING_RADIUS_NODES,
@@ -440,6 +450,61 @@ describe('military module - the campaign', () => {
     expect(run(sim, PATIENT_SEED, raised + WAVE_GATHER_TICKS)).not.toEqual([]);
   });
 
+  it('keeps the wave through a lull with no band at all, so the window is not restarted', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    expect(run(sim, PATIENT_SEED)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(true);
+
+    // A raid at the gates hands the offensive nobody (`military/index.ts`). Restarting the window on every
+    // such decision would keep a seat raided more often than the window from ever attacking.
+    for (const e of seatBand(sim)) sim.world.destroy(e);
+    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS / 2)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(true);
+
+    // The band raised after the lull marches on the window drawn before it.
+    pack(sim, WAVE_MIN_SOLDIERS, rallyOf(sim));
+    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS - 1)).toEqual([]);
+    expect(
+      assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), buildingOfType(sim, HQ_TYPE, FOE)),
+    ).toHaveLength(WAVE_MIN_SOLDIERS);
+  });
+
+  it('keeps the plan while a man of the band is off on an errand, retiring it only for a loss', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    const [errand] = seatBand(sim);
+    if (errand === undefined) throw new Error('setup: no soldier');
+    expect(run(sim, PATIENT_SEED)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(true);
+
+    // A drill sits him out for a decision: four at the door, five in the army. Retiring the plan here would
+    // hand the next decision a fresh draw, and an eager one marches the band at the minimum.
+    sim.world.add(errand, TrainingOrder, { house: barracks, drillTicksLeft: 100 });
+    expect(run(sim, EAGER_SEED)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(true);
+    sim.world.remove(errand, TrainingOrder);
+    expect(run(sim, EAGER_SEED)).toEqual([]); // still the patient draw, not a fresh eager one
+  });
+
+  it('gives up the wave while the campaign has no objective to march on', () => {
+    const sim = bandSim(WAVE_MIN_SOLDIERS);
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    expect(run(sim, PATIENT_SEED)).toEqual([]);
+
+    sim.world.destroy(buildingOfType(sim, HQ_TYPE, FOE));
+    expect(run(sim, PATIENT_SEED, WAVE_GATHER_TICKS)).toEqual([]);
+    expect(sim.world.has(barracks, MusterPlan)).toBe(false);
+
+    // A seat the enemy left nothing to attack gathers afresh once there is somewhere to go, rather than
+    // spending the wait on the objective it never had.
+    const rebuilt = 2 * WAVE_GATHER_TICKS;
+    place(sim, HQ_TYPE, FOE_HQ, FOE);
+    expect(run(sim, PATIENT_SEED, rebuilt)).toEqual([]);
+    expect(run(sim, PATIENT_SEED, rebuilt + WAVE_GATHER_TICKS - 1)).toEqual([]);
+    expect(run(sim, PATIENT_SEED, rebuilt + WAVE_GATHER_TICKS)).not.toEqual([]);
+  });
+
   it('puts a man off the fighter default back on the attack for the march', () => {
     const sim = bandSim(WAVE_MIN_SOLDIERS);
     for (const e of seatBand(sim)) sim.world.add(e, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: null });
@@ -760,6 +825,28 @@ describe('military module - the live seat', { timeout: 60_000 }, () => {
       (e) => sim.world.get(e, Owner).player === SEAT && sim.world.has(e, Engagement),
     );
     expect(besieging.length).toBeGreaterThan(0);
+  });
+
+  it('carries the wave being gathered through a save, and the restored seat marches identically', () => {
+    const sim = warSim();
+    const barracks = buildingOfType(sim, BARRACKS_TYPE, SEAT);
+    while (!sim.world.has(barracks, MusterPlan)) {
+      if (sim.tick > MARCH_TICKS) throw new Error('setup: no wave was ever drawn');
+      sim.step();
+    }
+
+    const bytes = serializeSaveGame(exportSaveGame(sim));
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+      content: aiContent(),
+      map: grassNodeMap(128, 96),
+    }).sim;
+    expect(restored.hashState()).toBe(sim.hashState());
+    expect(serializeSaveGame(exportSaveGame(restored))).toBe(bytes);
+
+    sim.run(MARCH_TICKS);
+    restored.run(MARCH_TICKS);
+    expect(restored.hashState()).toBe(sim.hashState());
+    expect(sim.commands.log.some((c) => c.command.kind === 'attackMoveUnit')).toBe(true);
   });
 
   it('stays out of the war when the seat has its military module switched off', () => {

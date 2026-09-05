@@ -25,9 +25,7 @@ export * from './workforce/index.js';
  */
 
 /** One strategic concern of the AI player (see {@link AiModuleId} - the HAI toggle decomposition).
- *  `run` returns the commands the seat issues this decision; the system enqueues them. A module may also
- *  carry decision state of its own on the world, which then hashes, saves and replays with everything
- *  else - it runs inside `step()`, like any system. */
+ *  `run` returns the commands the seat issues this decision; the system enqueues them. */
 export interface AiPlayerModule {
   readonly id: AiModuleId;
   readonly run: (world: World, ctx: SystemContext, player: number) => readonly PlayerCommand[];

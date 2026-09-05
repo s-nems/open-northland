@@ -8,7 +8,7 @@ import { campaignTarget, objectiveNode } from './campaign.js';
 import { weaponMix } from './census.js';
 import { spokenFor } from './errand.js';
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, waveWorthy } from './muster.js';
-import { decideWave } from './plan.js';
+import { abandonWave, decideWave } from './plan.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
  *  already out of `army`, and `awaitingWeapon` is only ever called home. */
@@ -37,7 +37,10 @@ export function runOffensive(
   if (barracks === null) return [];
   const home = interactionCell(world, ctx, terrain, barracks);
   const target = campaignTarget(world, ctx, terrain, player, home);
-  if (target === null) return gatherAt(world, terrain, [...army, ...awaitingWeapon], home);
+  if (target === null) {
+    abandonWave(world, barracks);
+    return gatherAt(world, terrain, [...army, ...awaitingWeapon], home);
+  }
 
   // Sorted over the men this decision may actually order, so a wave is never measured at a strength the
   // march cannot fill. A man in transit sits out one decision and is read again once he arrives.
@@ -47,7 +50,7 @@ export function runOffensive(
   // Measured over the men this decision could order, not the whole army, so a wave already marching cannot
   // bench the band still at home for the front rank it took with it.
   const core = meleeCoreFor(weaponMix(world, ctx, free));
-  const charges = decideWave(world, ctx, barracks, weaponMix(world, ctx, formed), core);
+  const charges = decideWave(world, ctx, barracks, weaponMix(world, ctx, formed), army.length, core);
   // Forward men go in with a launching wave or as a band of their own; too few for either and they come
   // home, since the size floor governs who the seat sends anywhere, not where the last fight left him.
   const pressOn = charges || waveWorthy(weaponMix(world, ctx, forward), core);

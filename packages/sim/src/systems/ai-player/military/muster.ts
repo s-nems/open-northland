@@ -8,7 +8,7 @@ import { entityNode } from '../../spatial/nodes.js';
 import type { WeaponMix } from './census.js';
 import { spokenFor } from './errand.js';
 
-// Where the army gathers and when it leaves. The autonomous HAI exposes only `HAI_DisableMilitary`, so
+// Where the army gathers. The autonomous HAI exposes only `HAI_DisableMilitary`, so
 // every size and radius here is an approximation.
 
 /** How close to the barracks door (Manhattan half-cell nodes) counts as formed up; an idle fighter
