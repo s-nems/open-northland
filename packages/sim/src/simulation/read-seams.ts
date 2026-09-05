@@ -6,7 +6,7 @@ import type { ContentSet } from '@open-northland/data';
 import { FOG_MODE, type FogMode, fogMode } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
-import { type PlacementProbe, placementProbe } from '../systems/footprint/index.js';
+import { type PlayerPlacementProbe, seatPlacementProbe } from '../systems/conflict/contested-ground.js';
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
 import { effectiveFogState, type FogState } from '../systems/vision/index.js';
 
@@ -27,10 +27,12 @@ export function placementProbeFor(
   world: World,
   content: ContentSet,
   terrain: TerrainGraph | undefined,
+  fog: FogState | undefined,
   buildingType: number,
-): PlacementProbe | null {
+  player?: number,
+): PlayerPlacementProbe | null {
   if (terrain === undefined) return null;
-  return placementProbe(world, content, terrain, buildingType);
+  return seatPlacementProbe(world, content, terrain, fog, buildingType, player);
 }
 
 /** Null for a mapless sim. */

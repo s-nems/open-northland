@@ -65,7 +65,7 @@ function runBuildOrder(
       case 'place': {
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
-        const spot = placementSpot(world, ctx, terrain, owned, anchor, type, entry);
+        const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
       case 'upgrade': {
@@ -82,7 +82,7 @@ function runBuildOrder(
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         const target = firstUncoveredBuilding(world, ctx, player, owned);
         if (target === null) return []; // status said unmet - defensive
-        const spot = towerPlacementSpot(world, ctx, terrain, owned, anchor, type, target);
+        const spot = towerPlacementSpot(world, ctx, terrain, player, owned, anchor, type, target);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
     }
@@ -121,7 +121,7 @@ function replaceMissingBase(
   if (tribeSource === undefined || centre === null) return [];
   const type = buildingTypeByContentId(ctx.content, BASE_REPLACEMENT_ENTRY.building);
   if (type === undefined) return []; // content without the warehouse expresses no replacement
-  const spot = placementSpot(world, ctx, terrain, owned, centre, type, BASE_REPLACEMENT_ENTRY);
+  const spot = placementSpot(world, ctx, terrain, player, owned, centre, type, BASE_REPLACEMENT_ENTRY);
   if (spot === null) return [];
   return [siteCommand(type, spot, world.get(tribeSource, Building).tribe, player)];
 }

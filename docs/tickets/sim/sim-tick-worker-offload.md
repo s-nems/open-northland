@@ -16,8 +16,9 @@ the copy fits the frame. If the clone costs several ms on a developed map, the b
 spike with a smaller per-tick one instead of removing it.
 
 The runtime also reaches into the live `Simulation` outside the snapshot. Beyond scene and sandbox
-setup the live reads are: `fogView` and `constructionPlots` in `frame-loop.ts`; `placementProbe`,
-`signpostProbe`, and their blocker versions in `placement-gates.ts` and `placement-overlay.ts`;
+setup the live reads are: `fogView` and `constructionPlots` in `frame-loop.ts`; `placementProbe`
+(which also scans the seat's visible hostile fighters), `signpostProbe`, and their blocker versions in
+`placement-gates.ts` and `placement-overlay.ts`;
 `diplomacyStance` and `hasMetPlayer` in `diplomacy-rows.ts` and `game-view.ts`; `equipPickList` in
 `game-view.ts`; `assistantGrants` and `assistantCounters` in their view modules; `needsEnabled` and
 `fogMode` in `debug-mounts.ts`; `hashState`, `commands.log`, and `setInstrument` under `diag/`; and

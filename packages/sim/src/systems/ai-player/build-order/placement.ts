@@ -5,9 +5,9 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
-import { placementProbe } from '../../footprint/index.js';
 import { goodTypeByContentId, tiersAtOrAbove } from '../content-lookup.js';
 import { nearestLiveResource } from '../live-resources.js';
 import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../node-geometry.js';
@@ -155,13 +155,14 @@ function groundAccepted(
 
 /**
  * Shared legality test for a spot search: in-bounds buildable ground, off every existing building's
- * anchor (explicit, so a footprint-less synthetic type never stacks), and accepted by the placement
+ * anchor (explicit, so a footprint-less synthetic type never stacks), and accepted by the seat's placement
  * probe. It scans the occupied set once per call, so build the closure per search, not per candidate.
  */
 export function buildingSpotAccept(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  player: number,
   buildingTypeId: number,
 ): (x: number, y: number) => boolean {
   const occupied = new Set<string>();
@@ -169,7 +170,7 @@ export function buildingSpotAccept(
     const node = anchorNodeOf(world, e);
     if (node !== null) occupied.add(`${node.hx},${node.hy}`);
   }
-  const probe = placementProbe(world, ctx.content, terrain, buildingTypeId);
+  const probe = seatPlacementProbe(world, ctx.content, terrain, ctx.fog, buildingTypeId, player);
   return (x, y) => {
     if (!terrain.inBounds(x, y) || !terrain.isBuildable(terrain.nodeAt(x, y))) return false;
     if (occupied.has(`${x},${y}`)) return false;
@@ -208,12 +209,13 @@ export function placementSpot(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
+  player: number,
   owned: readonly Entity[],
   anchor: HalfCellNode,
   type: BuildingType,
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): HalfCellNode | null {
-  const accept = buildingSpotAccept(world, ctx, terrain, type.typeId);
+  const accept = buildingSpotAccept(world, ctx, terrain, player, type.typeId);
   const sameKindAnchors = entry.apart === true ? kindSpacingAnchors(world, ctx, owned, type) : [];
   const centre = searchCentre(world, ctx, terrain, owned, anchor, type, sameKindAnchors, entry);
   const search = (veto: readonly HalfCellNode[]): HalfCellNode | null =>

@@ -19,7 +19,7 @@ export function createPlacementGates(
 ): PlacementGates {
   return {
     canPlaceAt: (typeId, col, row) =>
-      fogGates.seesNode(col, row) && (sim.placementProbe(typeId)?.canPlace(col, row) ?? true),
+      fogGates.seesNode(col, row) && (sim.placementProbe(typeId, localPlayer)?.canPlace(col, row) ?? true),
     canPlaceSignpostAt: (col, row) =>
       fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false),
   };
