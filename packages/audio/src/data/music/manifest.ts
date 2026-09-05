@@ -7,6 +7,11 @@
 export interface MusicTrack {
   /** The audio file, relative to the music root (e.g. `theme_viking_neutral.ogg`). */
   readonly file: string;
+  /** Seconds into the file the loop region opens. Absent in an older manifest; the player then
+   *  loops the whole file. */
+  readonly loopStartS?: number;
+  /** Seconds into the file the loop region closes. */
+  readonly loopEndS?: number;
 }
 
 /** The pipeline's `music/manifest.json`: rendered tracks keyed by lower-cased segment stem. */
@@ -22,9 +27,20 @@ export function parseMusicManifest(raw: unknown): MusicManifest | null {
   const parsed: Record<string, MusicTrack> = {};
   for (const [stem, entry] of Object.entries(tracks)) {
     if (typeof entry !== 'object' || entry === null) continue;
-    const { file } = entry as Record<string, unknown>;
+    const { file, loopStartS, loopEndS } = entry as Record<string, unknown>;
     if (typeof file !== 'string' || file.length === 0) continue;
-    parsed[stem] = { file };
+    if (
+      typeof loopStartS === 'number' &&
+      typeof loopEndS === 'number' &&
+      Number.isFinite(loopStartS) &&
+      Number.isFinite(loopEndS) &&
+      loopStartS >= 0 &&
+      loopStartS < loopEndS
+    ) {
+      parsed[stem] = { file, loopStartS, loopEndS };
+    } else {
+      parsed[stem] = { file };
+    }
   }
   return { tracks: parsed };
 }

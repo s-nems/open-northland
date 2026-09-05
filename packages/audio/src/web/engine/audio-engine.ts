@@ -50,14 +50,45 @@ export const DEFAULT_SOUNDS_BASE_URL = '/sounds/';
 export const DEFAULT_MUSIC_BASE_URL = '/music/';
 /** Default overall output gain. */
 export const DEFAULT_MASTER_GAIN = 0.8;
-/** Default game-sounds volume - the owned install's `opt_game.ini` `fx_volume 100`. The linear
- *  0..1 map of the original 0-100 scale onto Web Audio gain is an approximation. */
+/** Default game-sounds volume - the owned install's `opt_game.ini` `fx_volume 100`, as the 0..1
+ *  slider position ({@link sfxBusGain} maps it onto gain). */
 export const DEFAULT_SFX_VOLUME = 1;
 /** Default music volume - the owned install's `opt_game.ini` `dm_volume 70`, which is that install's
  *  saved player preference rather than a value the game shipped with. */
 export const DEFAULT_MUSIC_VOLUME = 0.7;
 /** A user volume change ramps over this many seconds - long enough to avoid a zipper click. */
 export const VOLUME_RAMP_S = 0.05;
+
+/** The original music master's fixed offset: `dm_volume` percent becomes
+ *  `-500 + 2000*log10(percent/100)` hundredths of dB, i.e. a linear-amplitude curve offset by
+ *  -5 dB (byte evidence: the master-volume conversion in `the original`). */
+const MUSIC_MASTER_OFFSET_DB = -5;
+/** Clip headroom the music stage bakes into the rendered files (its `MASTER_GAIN`, -3 dB). The
+ *  original chain has no counterpart for it, so the bus adds it back; the two must move together. */
+const RENDERED_MUSIC_HEADROOM_DB = 3;
+
+/** Music-slider position (0..1) to music bus gain: the original's linear-amplitude curve, with the
+ *  file headroom undone. */
+export function musicBusGain(volume: number): number {
+  return clampVolume(volume) * 10 ** ((MUSIC_MASTER_OFFSET_DB + RENDERED_MUSIC_HEADROOM_DB) / 20);
+}
+
+/**
+ * SFX-slider position (0..1) to game-sounds bus gain. The original maps `fx_volume` percent
+ * linearly in dB over a 20 dB range: `(percent - 100) * 20` hundredths of dB (byte evidence: the
+ * fx-volume conversion in `the original`). Deviation: 0 mutes fully, where the original floors at
+ * -20 dB.
+ */
+export function sfxBusGain(volume: number): number {
+  const v = clampVolume(volume);
+  return v <= 0 ? 0 : 10 ** (v - 1);
+}
+
+/** Jingle duck depth on the music bus: -2000 hundredths of dB (byte evidence: the jingle path in
+ *  `the original` fades the music audiopath by that much while a jingle rings). */
+export const MUSIC_DUCK_GAIN = 10 ** (-20 / 20);
+/** The duck's fade time each way: 0x12C ms in the same jingle path. */
+export const MUSIC_DUCK_RAMP_S = 0.3;
 /** An identical one-shot key retriggers no sooner than this many seconds apart (anti machine-gun). */
 export const ONE_SHOT_COOLDOWN_S = 0.12;
 /** Prune the one-shot cooldown map when it grows past this many entries (keys are per-entity, never reused). */
@@ -76,6 +107,9 @@ export class WebAudioEngine {
   private master: GainNode | null = null;
   private sfxBus: GainNode | null = null;
   private musicBus: GainNode | null = null;
+  private musicDuck: GainNode | null = null;
+  /** Audio-clock time the running jingle duck may lift at; null while the music is not ducked. */
+  private duckedUntil: number | null = null;
   private samples: SampleCache | null = null;
   private mixer: AmbientMixer | null = null;
   private music: MusicPlayer | null = null;
@@ -167,24 +201,42 @@ export class WebAudioEngine {
     if (this.canPlay()) this.music?.setRotation(tracks);
   }
 
-  /** Set the game-sounds bus volume (0..1), ramped to avoid a zipper click. */
+  /** Set the game-sounds slider (0..1); the bus ramps to {@link sfxBusGain} to avoid a zipper click. */
   setSfxVolume(volume: number): void {
     this.sfxVolume = clampVolume(volume);
-    if (this.sfxBus !== null && this.ctx !== null) rampTo(this.ctx, this.sfxBus, this.sfxVolume);
+    if (this.sfxBus !== null && this.ctx !== null) rampTo(this.ctx, this.sfxBus, sfxBusGain(this.sfxVolume));
   }
 
-  /** Set the music bus volume (0..1), ramped to avoid a zipper click. */
+  /** Set the music slider (0..1); the bus ramps to {@link musicBusGain} to avoid a zipper click. */
   setMusicVolume(volume: number): void {
     this.musicVolume = clampVolume(volume);
-    if (this.musicBus !== null && this.ctx !== null) rampTo(this.ctx, this.musicBus, this.musicVolume);
+    if (this.musicBus !== null && this.ctx !== null) {
+      rampTo(this.ctx, this.musicBus, musicBusGain(this.musicVolume));
+    }
   }
 
-  /** Apply one decided frame: fire its one-shots and reconcile its ambient loops. */
+  /** Apply one decided frame: fire its one-shots, reconcile its ambient loops, settle the duck. */
   apply(frame: AudioFrame): void {
     const ctx = this.ctx;
     if (!this.canPlay() || ctx === null || this.samples === null || this.mixer === null) return;
     for (const shot of frame.oneShots) this.playOneShot(ctx, this.samples, shot);
     this.mixer.reconcile(frame.ambient);
+    this.updateMusicDuck(ctx);
+  }
+
+  /** Duck the music under a ringing jingle, extending the hold a running duck already has. */
+  private duckMusic(ctx: AudioContext, holdMs: number): void {
+    if (this.musicDuck === null) return;
+    if (this.duckedUntil === null) rampDuck(ctx, this.musicDuck, MUSIC_DUCK_GAIN);
+    this.duckedUntil = Math.max(this.duckedUntil ?? 0, ctx.currentTime + holdMs / 1000);
+  }
+
+  /** Restore a run-out duck; checked every applied frame, like the original's per-frame update. */
+  private updateMusicDuck(ctx: AudioContext): void {
+    if (this.duckedUntil === null || this.musicDuck === null) return;
+    if (ctx.currentTime < this.duckedUntil) return;
+    rampDuck(ctx, this.musicDuck, 1);
+    this.duckedUntil = null;
   }
 
   private assertMusic(): void {
@@ -206,15 +258,20 @@ export class WebAudioEngine {
     master.gain.value = this.masterGainValue;
     master.connect(ctx.destination);
     const sfxBus = ctx.createGain();
-    sfxBus.gain.value = this.sfxVolume;
+    sfxBus.gain.value = sfxBusGain(this.sfxVolume);
     sfxBus.connect(master);
     const musicBus = ctx.createGain();
-    musicBus.gain.value = this.musicVolume;
-    musicBus.connect(master);
+    musicBus.gain.value = musicBusGain(this.musicVolume);
+    // The duck sits behind the volume bus so a slider move and a running duck compose.
+    const musicDuck = ctx.createGain();
+    musicDuck.gain.value = 1;
+    musicBus.connect(musicDuck);
+    musicDuck.connect(master);
     this.ctx = ctx;
     this.master = master;
     this.sfxBus = sfxBus;
     this.musicBus = musicBus;
+    this.musicDuck = musicDuck;
     this.samples = new SampleCache(this.baseUrl, this.fetchBytes, (bytes) => ctx.decodeAudioData(bytes));
     this.mixer = new AmbientMixer(ctx, sfxBus, this.samples, () => this.canPlay());
     this.music = new MusicPlayer(ctx, musicBus, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
@@ -232,6 +289,8 @@ export class WebAudioEngine {
     const file = pickRandom(shot.files, this.random);
     void samples.get(file).then((buffer) => {
       if (buffer === null || !this.canPlay() || this.sfxBus === null) return;
+      // The duck follows the shots that actually ring: a missing or undecodable wav dims nothing.
+      if (shot.duckMusicMs !== undefined) this.duckMusic(ctx, shot.duckMusicMs);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       const gain = ctx.createGain();
@@ -263,4 +322,14 @@ function rampTo(ctx: AudioContext, bus: GainNode, target: number): void {
   bus.gain.cancelScheduledValues(now);
   bus.gain.setValueAtTime(bus.gain.value, now);
   bus.gain.linearRampToValueAtTime(target, now + VOLUME_RAMP_S);
+}
+
+/** The duck's fade, exponential because the original ramps the audiopath volume linearly in dB. */
+function rampDuck(ctx: AudioContext, bus: GainNode, target: number): void {
+  const now = ctx.currentTime;
+  // An exponential ramp needs a nonzero anchor; the duck only ever moves between 1 and its depth.
+  const from = Math.max(bus.gain.value, MUSIC_DUCK_GAIN);
+  bus.gain.cancelScheduledValues(now);
+  bus.gain.setValueAtTime(from, now);
+  bus.gain.exponentialRampToValueAtTime(target, now + MUSIC_DUCK_RAMP_S);
 }

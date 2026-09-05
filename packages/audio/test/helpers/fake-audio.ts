@@ -32,6 +32,9 @@ export class FakeParam {
     this.events.push({ kind: 'ramp', value, time });
     this.value = value;
   }
+  exponentialRampToValueAtTime(value: number, time: number): void {
+    this.linearRampToValueAtTime(value, time);
+  }
 }
 
 export class FakeNode {
@@ -59,6 +62,8 @@ export class FakePanner extends FakeNode {
 export class FakeSource extends FakeNode {
   buffer: unknown = null;
   loop = false;
+  loopStart = 0;
+  loopEnd = 0;
   started = false;
   /** Context time the source was scheduled to open at, so a test can assert a silent gap. */
   startedAt = 0;

@@ -30,7 +30,7 @@ function oneNoteSegment(): Uint8Array {
 
 describe('interpretSegment', () => {
   it('schedules a pattern note, loops the segment, and stamps exact frames', () => {
-    const { instances, events } = interpretSegment(oneNoteSegment(), OPTIONS);
+    const { instances, events, segmentEndFrames } = interpretSegment(oneNoteSegment(), OPTIONS);
     expect(instances).toEqual([
       { id: 1, dls: 'test.dls', bankLo: 0, bankHi: 0, patch: 0, vol: 1, pan: 0, transpose: 0 },
     ]);
@@ -40,6 +40,8 @@ describe('interpretSegment', () => {
       { e: 'on', t: 4 * HALF_SECOND_FRAMES, id: 1, note: 36, vel: 100 },
       { e: 'off', t: 5 * HALF_SECOND_FRAMES, id: 1, note: 36 },
     ]);
+    // The one pass end inside the 3 s window, on the same frame clock the events carry.
+    expect(segmentEndFrames).toEqual([4 * HALF_SECOND_FRAMES]);
   });
 
   it('keeps GM-preset instruments silent and off the instance list', () => {

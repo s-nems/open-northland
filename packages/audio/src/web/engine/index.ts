@@ -6,12 +6,15 @@ export {
   DEFAULT_MUSIC_VOLUME,
   DEFAULT_SFX_VOLUME,
   DEFAULT_SOUNDS_BASE_URL,
+  MUSIC_DUCK_GAIN,
+  MUSIC_DUCK_RAMP_S,
+  musicBusGain,
   ONE_SHOT_COOLDOWN_S,
+  sfxBusGain,
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './audio-engine.js';
 export {
-  GAME_MUSIC_TIMING,
   MENU_MUSIC_TIMING,
   MUSIC_STOP_FADE_S,
   MUSIC_SWITCH_TIMING,
