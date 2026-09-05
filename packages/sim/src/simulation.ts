@@ -10,6 +10,8 @@ import {
   diplomacyStance,
   type FogMode,
   fogMode,
+  type MatchOutcome,
+  matchOutcome,
   needsEnabled,
   professionProgressionEnabled,
 } from './components/index.js';
@@ -275,6 +277,11 @@ export class Simulation {
    *  command sets; a pair never set reads `enemy`. */
   diplomacyStance(from: number, to: number): DiplomacyState {
     return diplomacyStance(this.world, from, to);
+  }
+
+  /** `player`'s standing in the match the MatchSystem drives; `undecided` for a non-participant too. */
+  matchOutcome(player: number): MatchOutcome {
+    return matchOutcome(this.world, player);
   }
 
   /** Whether `viewer` has discovered `other`: true with fog off or absent (everything is in plain

@@ -6,9 +6,12 @@ import { loadIr } from '../content/ir/load.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
+import type { MissionBrief } from '../game/mission-brief.js';
 import { applySessionRuleOverrides, sessionRuleOverrides } from '../game/session-rules.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
+import { messages, sceneCopy } from '../i18n/index.js';
 import { createSceneSim, getScene, restoreSceneSim, SCENES } from '../scenes/index.js';
+import type { SceneDefinition } from '../scenes/types.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
@@ -165,6 +168,17 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     worldToken,
     restored: stagedSave !== null,
+    missionBrief: sceneMissionBrief(scene),
   });
   await boot.finish();
+}
+
+/** The mission sheet for a scene: its menu title and summary, and the skirmish goal when it runs a match. */
+function sceneMissionBrief(scene: SceneDefinition): MissionBrief {
+  const entry = sceneCopy(scene.id);
+  return {
+    title: entry?.title ?? scene.id,
+    paragraphs: entry === undefined ? [] : [{ style: 'body', text: entry.summary }],
+    goals: scene.participants === undefined ? [] : [messages().hud.skirmishGoal],
+  };
 }

@@ -47,6 +47,14 @@ export type RulesCommand =
       readonly from: number;
       readonly to: number;
       readonly state: DiplomacyState;
+    }
+  | {
+      /**
+       * Declare the seats that play the skirmish match (`MatchRules`), replacing any earlier set. An
+       * invalid slot is dropped. A world that never declares one runs no match: nobody dies or wins.
+       */
+      readonly kind: 'setMatchParticipants';
+      readonly players: readonly number[];
     };
 
 /**

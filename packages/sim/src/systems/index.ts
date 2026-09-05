@@ -18,6 +18,7 @@ export * from './lifecycle/ageclass.js';
 export * from './lifecycle/cleanup.js';
 export * from './lifecycle/needs.js';
 export * from './livestock/index.js';
+export * from './match/index.js';
 export * from './movement/animal-wander.js';
 export * from './movement/collision/index.js';
 export * from './movement/evict.js';

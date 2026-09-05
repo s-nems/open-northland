@@ -25,6 +25,13 @@ function stubContext(): { ctx: PanelContext; texts: string[] } {
       texts.push(text);
       return { container: new Container(), width: 0, place: () => undefined, destroy: () => undefined };
     },
+    makeParagraph: () => ({
+      container: new Container(),
+      width: 0,
+      height: 0,
+      place: () => undefined,
+      destroy: () => undefined,
+    }),
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,

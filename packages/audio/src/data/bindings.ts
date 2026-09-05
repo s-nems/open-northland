@@ -112,6 +112,9 @@ export function defaultBindings(): SoundBindings {
       settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH, localPlayerOnly: true, screenGated: true },
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true, screenGated: true },
       defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
+      // The match verdicts are map-wide too: the player's own seat is what decided them.
+      playerWon: { kind: 'jingle', musicType: JINGLE_WON, localPlayerOnly: true },
+      playerDefeated: { kind: 'jingle', musicType: JINGLE_LOST, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
       combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },
       // No release entry: `projectileLaunched` fires whether or not the clip sounds, so binding it would

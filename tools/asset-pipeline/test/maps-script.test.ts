@@ -33,9 +33,12 @@ describe('resolveMapScript', () => {
     );
     await writeFile(
       join(dir, 'mission.inc'),
-      '[MissionData]\ndebuginfo "Start"\nactive 1\ngoal "True"\nresult "Exit"\n',
+      '[MissionData]\ndebuginfo "Start"\ndescription -1\nactive 1\ngoal "True"\nresult "Exit"\n' +
+        '[MissionData]\ndebuginfo "Win"\ndescription 30\ngoal "PlayerDied" 1\nresult "MissionWon" 0\n' +
+        '[MissionData]\ndebuginfo "Untexted"\ndescription 31\ngoal "True"\n',
     );
     const script = await resolveMapScript(fs, [dir], 'x/map.dat', undefined, {
+      30: 'Defeat the Franks',
       50: 'Ragnar',
       51: 'Rurik',
     });
@@ -43,7 +46,9 @@ describe('resolveMapScript', () => {
       { player: 0, type: 'human', tribeId: 1, colorId: 0, name: 'Ragnar' },
       { player: 1, type: 'ai', tribeId: 2, colorId: 1, name: 'Rurik' },
     ]);
-    expect(script?.missions).toHaveLength(1);
+    expect(script?.missions).toHaveLength(3);
+    // `-1` and an id the table lacks stay textless; a resolvable id carries its goal text.
+    expect(script?.missions.map((m) => m.description)).toEqual([undefined, 'Defeat the Franks', undefined]);
     expect(script?.source?.file).toBe('x/player.inc+mission.inc');
   });
 

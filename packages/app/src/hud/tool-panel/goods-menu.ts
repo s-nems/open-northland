@@ -31,7 +31,7 @@ export function goodsInCategory(
 export function goodsTabbedList(entries: readonly MenuGoodEntry[]): TabbedListSource<number, MenuGoodEntry> {
   return {
     title: () => messages().hud.resources,
-    anchor: 'mission',
+    anchor: 'help',
     tabColumns: TABS_PER_ROW,
     tabs: () => stockTabLabels().map((label, index) => ({ id: index, label })),
     initialTab: DEFAULT_CATEGORY,

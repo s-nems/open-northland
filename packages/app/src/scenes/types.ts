@@ -20,6 +20,8 @@ export interface SceneWorld {
 
   /** `false` staffs every civilian trade from zero XP; omit for the sim default of gated progression. */
   readonly progression?: boolean;
+  /** The seats that can win or lose the skirmish; omit for a scene that decides nothing. */
+  readonly participants?: readonly number[];
 }
 
 /**

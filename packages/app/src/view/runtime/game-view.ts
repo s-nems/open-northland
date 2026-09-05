@@ -19,6 +19,7 @@ import {
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
+import type { MissionBrief } from '../../game/mission-brief.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -35,6 +36,7 @@ import {
   mountGameToolPanel,
 } from '../game-tool-panel.js';
 import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
+import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { createFogGates, diplomacyPanelRows } from '../projections/index.js';
@@ -47,6 +49,7 @@ import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
 import { createLiveGameSettings, perfLeftForUiScale } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
+import { createPauseHolds } from './pause-holds.js';
 import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
@@ -100,12 +103,24 @@ export interface GameViewDeps {
   /** True when the world came from a save: the session opens paused, so the player reads the board
    *  they loaded before it moves. */
   readonly restored?: boolean;
+  /** The mission window's content, behind the strip's mission button; absent, the button opens an
+   *  empty sheet. */
+  readonly missionBrief?: MissionBrief;
+  /** Open the mission window as the session starts, the original's mission briefing; the entry decides
+   *  (a fresh world, and no `?intro=off`). */
+  readonly introAtStart?: boolean;
+  /** The map's `[misc_music]` code; omitted or null, the world plays no music. */
+  readonly musicType?: number | null;
 }
 
 export interface GameSession {
   /** Stop the frame loop and remove this session's HUD overlays. Idempotent. */
   destroy(): void;
 }
+
+const PAUSE_HOLDER_MENU = 'menu';
+const PAUSE_HOLDER_MISSION = 'mission';
+const PAUSE_HOLDER_VERDICT = 'verdict';
 
 /** Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
@@ -119,6 +134,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   let loop: RafLoop | null = null;
   let systemMenu: ReturnType<typeof createSystemMenu> | null = null;
   let disposeHud = (): void => undefined;
+  let verdict: MatchResultOverlay | null = null;
   let destroyed = false;
   const saveLoad = createSaveLoadSession({
     sim,
@@ -129,12 +145,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     },
     isPaused: () => control.paused,
   });
+  // Three overlays hold the sim paused - the menu, the mission sheet and the verdict - so each holds
+  // under its own key and none can release another's.
+  const pauseHolds = createPauseHolds(saveLoad);
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;
     loop?.stop();
     systemMenu?.dispose();
     disposeHud();
+    verdict?.dispose();
     // Leaving the debug seam set would pin this sim, renderer and stats for the document's lifetime.
     delete window.__opennorthland;
   };
@@ -158,7 +178,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const frameStats = new FrameStats();
 
   // A checkout without a decoded sound bank degrades to silence.
-  const soundDriver = await mountGamePresentation(params, renderer);
+  const soundDriver = await mountGamePresentation(params, renderer, deps.musicType ?? null);
 
   // The left inset clears the tool-panel strip, so the readout and the build menu never overlap.
   const perf = mountPerfOverlay(perfLeftForUiScale(uiscale));
@@ -217,7 +237,29 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
     overlayReserve: () => minimap?.panelRect() ?? null,
     onSystemMenu: () => systemMenu?.toggle(),
+    missionBrief: () => deps.missionBrief ?? null,
+    // The original stops game time behind its large windows.
+    onLargeWindow: (open) => {
+      if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);
+      else pauseHolds.release(PAUSE_HOLDER_MISSION);
+    },
   });
+
+  // The verdict panel rides the same event stream the entry's own hook does; a spectator seat has no
+  // verdict to hear.
+  if (deps.observer !== true) {
+    verdict = createMatchResultOverlay({
+      localPlayer,
+      uiString: toolPanel.controller.uiString,
+      pause: () => pauseHolds.hold(PAUSE_HOLDER_VERDICT),
+      resume: () => pauseHolds.release(PAUSE_HOLDER_VERDICT),
+      onQuit: quitToMenu,
+    });
+  }
+  const onEvents = (events: readonly SimEvent[]): void => {
+    deps.onEvents?.(events);
+    verdict?.onEvents(events);
+  };
 
   // Injected rather than imported: `hud/` never imports `view/`.
   const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
@@ -357,7 +399,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   });
   systemMenu = createSystemMenu({
     onQuit: quitToMenu,
-    saveLoad,
+    saveLoad: {
+      ...saveLoad,
+      forcePause: () => pauseHolds.hold(PAUSE_HOLDER_MENU),
+      releaseForcedPause: () => pauseHolds.release(PAUSE_HOLDER_MENU),
+    },
     settings: liveSettings.settings,
     setCameraSuspended: cameraCtl.setSuspended,
   });
@@ -383,7 +429,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
 
   // This mount owns construction; the loop owns the pinned per-frame order.
   loop = startFrameLoop({
-    deps,
+    deps: { ...deps, onEvents },
     fpsLimit: storedSettings.fpsLimit,
     control,
     timestep,
@@ -409,6 +455,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     pointer: pointerAt,
     syncViewport: liveSettings.syncViewport,
   });
+
+  if (deps.introAtStart === true) toolPanel.controller.openMission();
+  // A restored save of a decided match says so at once, since no event will repeat the verdict.
+  verdict?.announce(sim.matchOutcome(localPlayer));
 
   return { destroy };
 }

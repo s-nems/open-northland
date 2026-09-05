@@ -32,6 +32,8 @@ export {
 export { EAT_HUNGER_RESTORE, SLEEP_FATIGUE_RESTORE } from './lifecycle/needs.js';
 // The herding ring bound, asserted by the livestock scene.
 export { LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
+// The match cadence, so an acceptance scene can run past the first verdict without restating it.
+export { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from './match/index.js';
 export {
   experienceBonus,
   experienceRepeats,

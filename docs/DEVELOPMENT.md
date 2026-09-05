@@ -71,7 +71,8 @@ art stands in. Direct entries are useful during focused work:
 | `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
 
 Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, `sound=off`,
-and `fullscreen=off`. Without `lang` the language follows the browser, and English stands in for a
+`intro=off` (skip the mission sheet a fresh world opens on), and `fullscreen=off`. Without `lang`
+the language follows the browser, and English stands in for a
 browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides
 the stored post-fx choice for that entry, so captures stay reproducible whatever the machine's

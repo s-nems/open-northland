@@ -36,6 +36,9 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
   if (scene.fog !== undefined && scene.fog !== 'off') {
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE_BY_NAME[scene.fog] });
   }
+  if (scene.participants !== undefined) {
+    sim.enqueueSetup({ kind: 'setMatchParticipants', players: scene.participants });
+  }
   return sim;
 }
 

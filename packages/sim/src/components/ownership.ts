@@ -2,7 +2,8 @@ import { defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /**
  * The number of player slots the sim supports; player ids are the half-open range `[0, MAX_PLAYERS)`.
- * Authored: a revisable ceiling, not a fidelity constant.
+ * Authored: a revisable ceiling, not a fidelity constant, but it stays below 32 so a per-player set
+ * (`PlayerContacts`, `MatchRules`) fits one integer bitmask.
  */
 export const MAX_PLAYERS = 16;
 

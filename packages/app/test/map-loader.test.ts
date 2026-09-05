@@ -1,6 +1,6 @@
 import { buildScene, terrainMapToScene } from '@open-northland/render';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadTerrainMap } from '../src/content/map-loader.js';
+import { loadMapBriefing, loadMapMeta, loadTerrainMap } from '../src/content/map-loader.js';
 import { EMPTY_SNAPSHOT } from './support/snapshot.js';
 
 /**
@@ -64,5 +64,34 @@ describe('loadTerrainMap', () => {
     const fetchImpl = vi.fn(async () => jsonResponse(bad));
 
     expect(await loadTerrainMap('truncated', fetchImpl as unknown as typeof fetch)).toBeNull();
+  });
+});
+
+describe('loadMapMeta and loadMapBriefing', () => {
+  it('reads the meta sidecar fields and derives nothing from a 404', async () => {
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ name: 'Wody Nilu', description: 'Opis', musicType: 18, bogus: 1 }),
+    );
+    expect(await loadMapMeta('wody_nilu', fetchImpl as unknown as typeof fetch)).toEqual({
+      name: 'Wody Nilu',
+      description: 'Opis',
+      musicType: 18,
+    });
+    const missing = vi.fn(async () => jsonResponse(null, false, 404));
+    expect(await loadMapMeta('wody_nilu', missing as unknown as typeof fetch)).toBeNull();
+    expect(await loadMapMeta('../etc', fetchImpl as unknown as typeof fetch)).toBeNull();
+  });
+
+  it('validates the briefing sidecar and degrades a malformed one to null', async () => {
+    const good = { texts: { pol: { '500': [{ style: 'title', text: 'BURZA' }] } } };
+    const fetchImpl = vi.fn(async (_url: string) => jsonResponse(good));
+    expect(await loadMapBriefing('burza_piaskowa', fetchImpl as unknown as typeof fetch)).toEqual(good);
+    expect(fetchImpl.mock.calls[0]?.[0]).toContain('/maps/burza_piaskowa.briefing.json');
+    const malformed = vi.fn(async () =>
+      jsonResponse({ texts: { pol: { '500': [{ style: 'bold', text: 'x' }] } } }),
+    );
+    expect(await loadMapBriefing('burza_piaskowa', malformed as unknown as typeof fetch)).toBeNull();
+    const missing = vi.fn(async () => jsonResponse(null, false, 404));
+    expect(await loadMapBriefing('burza_piaskowa', missing as unknown as typeof fetch)).toBeNull();
   });
 });

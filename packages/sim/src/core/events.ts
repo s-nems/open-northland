@@ -201,6 +201,20 @@ export type SimEvent =
       readonly kind: 'berryBushRazed';
       readonly bush: Entity;
       readonly at: HalfCellNode;
+    }
+  | {
+      /**
+       * A match participant died this tick: the MatchSystem found it without a living adult man. Emitted
+       * once per player; its commands are refused from now on.
+       */
+      readonly kind: 'playerDefeated';
+      readonly player: number;
+    }
+  | {
+      /** A match participant won this tick: every seat still standing is a mutual friend of the others.
+       *  Emitted once per winning player, all in the same tick. */
+      readonly kind: 'playerWon';
+      readonly player: number;
     };
 
 export type SimEventKind = SimEvent['kind'];

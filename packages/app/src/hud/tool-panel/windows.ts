@@ -1,11 +1,14 @@
 import type { HudLayout } from '@open-northland/render';
 import type { Container } from 'pixi.js';
+import type { GuiArt } from '../../content/gui-art.js';
+import type { MissionBrief } from '../../game/mission-brief.js';
 import { type BuildingCategory, buildingTabbedList, type MenuBuildingEntry } from './building-menu.js';
 import type { PanelContext } from './context.js';
 import { createDiplomacyWindow, type DiplomacyPanelRow } from './diplomacy/index.js';
 import type { ExtrasTab } from './extras-menu.js';
 import { createExtrasWindow, type ExtrasCountersSeam, type ExtrasGrantsSeam } from './extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
+import { createMissionWindow } from './mission/index.js';
 import { createStatsWindow } from './stats-window.js';
 import {
   createTabbedListWindow,
@@ -15,7 +18,7 @@ import {
 import type { ClickModifiers, ToolWindow } from './window-shell.js';
 
 /** The pop-ups in mount order, which is their draw order. */
-const MOUNT_ORDER = ['menu', 'goods', 'extras', 'stats', 'diplomacy'] as const;
+const MOUNT_ORDER = ['menu', 'goods', 'extras', 'stats', 'diplomacy', 'mission'] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
 
@@ -34,6 +37,12 @@ export interface ToolWindowsDeps {
   readonly counters: ExtrasCountersSeam;
   /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
+  /** The decoded GUI sheet the mission window draws its papyrus from; null degrades to flat chrome. */
+  readonly art: GuiArt | null;
+  /** The mission window's content, read on each open. */
+  readonly missionBrief: () => MissionBrief | null;
+  /** Fires as the mission window opens and closes, so the host can hold game time behind it. */
+  readonly onLargeWindow?: (open: boolean) => void;
   readonly onPickBuilding: (typeId: number) => void;
   readonly onPickGood: (goodType: number) => void;
 }
@@ -78,6 +87,13 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const extras = createExtrasWindow({ ctx, container, grants: deps.grants, counters: deps.counters });
   const stats = createStatsWindow({ ctx, container });
   const diplomacy = createDiplomacyWindow({ ctx, container, rows: deps.diplomacyRows });
+  const mission = createMissionWindow({
+    ctx,
+    container,
+    art: deps.art,
+    brief: deps.missionBrief,
+    ...(deps.onLargeWindow !== undefined ? { onOpenChange: deps.onLargeWindow } : {}),
+  });
 
   /** The pop-ups that own a scrollable, hoverable list. */
   const lists: readonly TabbedListWindow<BuildingCategory | number>[] = [menu, goods];
@@ -88,6 +104,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     extras: { window: extras, perFrame: () => extras.refresh() },
     stats: { window: stats, perFrame: (hudFor) => stats.refresh(hudFor) },
     diplomacy: { window: diplomacy, perFrame: () => diplomacy.refresh() },
+    mission: { window: mission, perFrame: () => mission.refresh() },
   };
   const mounted = MOUNT_ORDER.map((id) => entries[id]);
   // Reverse mount order is top-drawn first, so overlapping pop-ups route pointer input to the visible one.
@@ -97,12 +114,13 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     probed.find((e) => e.window.claims(x, y))?.window ?? null;
 
   return {
-    byId: { menu, goods, extras, stats, diplomacy },
+    byId: { menu, goods, extras, stats, diplomacy, mission },
     claims: (x, y) => topAt(x, y) !== null,
     handleClick: (x, y, mods): boolean => topAt(x, y)?.handleClick(x, y, mods) ?? false,
     handleWheel: (x, y, deltaY): boolean => {
       const top = topAt(x, y);
       if (top === null) return false;
+      if (top === mission) return mission.handleWheel(x, y, deltaY);
       for (const list of lists) {
         if (list === top) list.handleWheel(x, y, deltaY);
       }

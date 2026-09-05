@@ -51,7 +51,7 @@ tick runs these phases:
 1. apply commands and update needs, jobs, orders, family, and social state;
 2. plan settler work, then route, move, and separate units;
 3. advance atomics and economy systems, including production, growth, and construction;
-4. update vision, combat, projectiles, ageing, and cleanup;
+4. update vision, combat, projectiles, ageing, and cleanup, then judge the skirmish match;
 5. let the strategic AI inspect the settled world and queue commands for the next tick.
 
 Order is part of behavior. If a change depends on moving a system, add a focused test that explains

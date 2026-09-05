@@ -7,13 +7,15 @@ import {
 import type { Entity, SaveGame, Simulation } from '@open-northland/sim';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
-import { loadMapScript, loadTerrainMap } from '../content/map-loader.js';
+import { loadMapBriefing, loadMapMeta, loadMapScript, loadTerrainMap } from '../content/map-loader.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { mapStartFocus } from '../game/map-start.js';
+import { matchParticipants, neverDiesSeats } from '../game/match-participants.js';
+import { mapMissionBrief } from '../game/mission-brief.js';
 import {
   colorOverridesParam,
   localPlayerParam,
@@ -26,11 +28,12 @@ import {
 import { harvestablePlacementOrdinals, sandboxGoods } from '../game/sandbox/index.js';
 import { sessionRuleOverrides } from '../game/session-rules.js';
 import { terrainSceneFor } from '../game/world/index.js';
+import { currentLocale, messages } from '../i18n/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { bindHarvestableHandover, retireStaticHarvestables } from '../view/harvestable-handover.js';
-import { aiSeatsParam } from '../view/params.js';
+import { aiSeatsParam, introParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { takeStagedSave } from '../view/runtime/save-load/index.js';
 import {
@@ -94,7 +97,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   await boot.begin('map');
   const loaded = mapId !== null ? await loadTerrainMap(mapId) : null;
   // A roster-less map keeps the defaults: seat 0, and colour = slot id.
-  const script = mapId !== null ? await loadMapScript(mapId) : null;
+  const [script, meta, briefing] = await Promise.all([
+    mapId !== null ? loadMapScript(mapId) : null,
+    mapId !== null ? loadMapMeta(mapId) : null,
+    mapId !== null ? loadMapBriefing(mapId) : null,
+  ]);
   const localPlayer = localPlayerParam(params);
   const playerColourOf = playerColourMap(script, colorOverridesParam(params));
   diag.info('boot', 'game start', {
@@ -149,6 +156,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // A read-only spectator drives no seat, so it takes no chest-window grants. The chest window edits
   // only `localPlayer`, so an overseer cannot switch an AI seat's grants back off.
   const controlled = readOnlyObserverParam(params) ? [] : [localPlayer];
+  // A spectator of either kind plays no seat in the match; the overseer's grants still start on.
+  const participants = matchParticipants({
+    controlled: observerParam(params) ? [] : [localPlayer],
+    aiSeats,
+    neverDies: script === null ? [] : neverDiesSeats(script),
+  });
   // The render layers read the raw map; the sim runs on the collision resolution of the same map.
   const worldOptions = {
     map: loaded,
@@ -181,6 +194,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       seed: WORLD_SEED,
       aiSeats,
       assistantSeats: [...controlled, ...aiSeats],
+      matchParticipants: participants,
       diplomacy: script?.diplomacy ?? [],
       ...sessionRuleOverrides(params),
     });
@@ -253,6 +267,17 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     ...(harvestableHandover !== null ? { onEvents: harvestableHandover } : {}),
     worldToken: mapId,
     restored: stagedSave !== null,
+    introAtStart: stagedSave === null && introParam(params),
+    musicType: meta?.musicType ?? null,
+    missionBrief: mapMissionBrief({
+      script,
+      briefing,
+      lang: currentLocale(),
+      name: meta?.name,
+      description: meta?.description,
+      skirmishGoal: messages().hud.skirmishGoal,
+      matchDeclared: participants.length >= 2,
+    }),
   });
   await boot.finish();
 }

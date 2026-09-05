@@ -52,6 +52,13 @@ function stubContext(overlayReserve?: () => Rect | null): { ctx: PanelContext; m
       made.push(text);
       return { container: new Container(), width: 0, place: () => undefined, destroy: () => undefined };
     },
+    makeParagraph: () => ({
+      container: new Container(),
+      width: 0,
+      height: 0,
+      place: () => undefined,
+      destroy: () => undefined,
+    }),
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
@@ -365,12 +372,12 @@ describe('tabbed-list window controller (goods palette)', () => {
     expect(goods.isOpen()).toBe(true);
   });
 
-  it('drops from the mission button that opens it, not from the strip top', () => {
+  it('drops from the help button that opens it, not from the strip top', () => {
     const { ctx } = stubContext();
     const goods = goodsWindow(ctx, () => undefined);
     goods.toggle();
     const x = ctx.layout.width + WIN_PAD * ctx.scale + 1;
-    expect(goods.claims(x, anchorY(ctx, 'mission') + 1)).toBe(true);
+    expect(goods.claims(x, anchorY(ctx, 'help') + 1)).toBe(true);
     // Where the palette used to open: above its button, so nothing of it may reach up there.
     expect(goods.claims(x, ctx.layout.strip.y + 1)).toBe(false);
   });
@@ -458,7 +465,7 @@ describe('tool windows registry', () => {
   };
   /** `windows.ts`'s mount order: each pop-up's child index in the panel's window container, which is the
    *  order they draw in. */
-  const MOUNT_INDEX = { menu: 0, goods: 1, extras: 2, stats: 3, diplomacy: 4 } as const;
+  const MOUNT_INDEX = { menu: 0, goods: 1, extras: 2, stats: 3, diplomacy: 4, mission: 5 } as const;
 
   function mountWindows(buildings: readonly MenuBuildingEntry[] = BUILDINGS) {
     const { ctx: base } = stubContext();
@@ -482,6 +489,8 @@ describe('tool windows registry', () => {
       grants: GRANTS,
       counters: stubCountersSeam().seam,
       diplomacyRows: () => [],
+      art: null,
+      missionBrief: () => null,
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
     });

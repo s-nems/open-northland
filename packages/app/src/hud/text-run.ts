@@ -10,3 +10,14 @@ export interface TextRun {
   place(x: number, y: number, scale: number, resWidth: number, resHeight: number): void;
   destroy(): void;
 }
+
+/** A retained, word-wrapped block of HUD text; sizes are in native (design) px, screen = native × scale. */
+export interface ParagraphRun {
+  readonly container: Container;
+  /** The widest line's advance. */
+  readonly width: number;
+  readonly height: number;
+  /** Anchor the block's top-left at screen `(x, y)`. */
+  place(x: number, y: number): void;
+  destroy(): void;
+}

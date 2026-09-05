@@ -24,6 +24,7 @@ import { towerDefenceScene } from './tower-defence.js';
 import { towerGarrisonScene } from './tower-garrison.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
+import { victoryScene } from './victory.js';
 import { warehouseScene } from './warehouse.js';
 import { wildlifeScene } from './wildlife.js';
 
@@ -60,6 +61,7 @@ export const SCENES: readonly SceneDefinition[] = [
   towerGarrisonScene,
   aiDefenceScene,
   deathLootScene,
+  victoryScene,
 ];
 
 export function getScene(id: string): SceneDefinition | undefined {

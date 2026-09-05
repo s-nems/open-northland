@@ -61,6 +61,15 @@ export function messages(locale: Locale = currentLocale()): Messages {
   return LOCALES[locale];
 }
 
+/** The menu title and summary of scene `id`, or undefined for an id the catalog does not know. */
+export function sceneCopy(
+  id: string,
+  locale: Locale = currentLocale(),
+): Messages['scene'][keyof Messages['scene']] | undefined {
+  const scenes = LOCALES[locale].scene;
+  return Object.hasOwn(scenes, id) ? scenes[id as keyof typeof scenes] : undefined;
+}
+
 export function formatMessage(template: string, values: Readonly<Record<string, string | number>>): string {
   return template.replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (match, key: string) =>
     Object.hasOwn(values, key) ? String(values[key]) : match,

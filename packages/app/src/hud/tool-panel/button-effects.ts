@@ -16,31 +16,38 @@ export type ToolButtonEffect =
   | { readonly kind: 'speed' }
   | { readonly kind: 'systemMenu' };
 
-/** `help` has no window yet, so it stands in for statistics. An informational window drops only the
- *  chest window and leaves the pickers open, so reading stats never cancels a pick in progress. */
+/** An informational window drops only the chest window and leaves the pickers open, so reading stats
+ *  never cancels a pick in progress. */
 const STATISTICS_EFFECT: ToolButtonEffect = {
   kind: 'window',
   toggles: 'stats',
-  closes: ['extras'],
+  closes: ['extras', 'mission'],
   cancelsHeld: false,
 };
 
 const EFFECTS: Readonly<Record<ToolButtonId, ToolButtonEffect | null>> = {
   speed: { kind: 'speed' },
   options: { kind: 'systemMenu' },
-  buildings: { kind: 'window', toggles: 'menu', closes: ['goods', 'extras'], cancelsHeld: true },
+  buildings: { kind: 'window', toggles: 'menu', closes: ['goods', 'extras', 'mission'], cancelsHeld: true },
   extras: {
     kind: 'window',
     toggles: 'extras',
-    closes: ['menu', 'goods', 'stats', 'diplomacy'],
+    closes: ['menu', 'goods', 'stats', 'diplomacy', 'mission'],
     cancelsHeld: true,
   },
-  /** The goods drop palette is the mission button's tenant until the mission window exists. */
-  mission: { kind: 'window', toggles: 'goods', closes: ['menu', 'extras'], cancelsHeld: true },
+  /** The mission sheet covers the screen's middle and holds the game paused, so it never shares the
+   *  screen with another pop-up in either direction. */
+  mission: {
+    kind: 'window',
+    toggles: 'mission',
+    closes: ['menu', 'goods', 'extras', 'stats', 'diplomacy'],
+    cancelsHeld: true,
+  },
   statistics: STATISTICS_EFFECT,
-  help: STATISTICS_EFFECT,
+  /** The goods drop palette is the help button's tenant until a help window exists. */
+  help: { kind: 'window', toggles: 'goods', closes: ['menu', 'extras', 'mission'], cancelsHeld: true },
   /** Informational like statistics. */
-  diplomacy: { kind: 'window', toggles: 'diplomacy', closes: ['extras'], cancelsHeld: false },
+  diplomacy: { kind: 'window', toggles: 'diplomacy', closes: ['extras', 'mission'], cancelsHeld: false },
   population: null,
   tech_tree: null,
 };
