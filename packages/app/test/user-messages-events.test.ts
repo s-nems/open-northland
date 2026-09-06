@@ -1,6 +1,7 @@
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { type MessageNaming, messagesFromEvents } from '../src/hud/tool-panel/messages/from-events.js';
+import { messagesFromEvents } from '../src/hud/tool-panel/messages/from-events.js';
+import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 
 const LOCAL = 0;

@@ -11,9 +11,11 @@ import { contains } from '../../geometry.js';
 import type { TooltipSurface } from '../../tooltip-surface.js';
 import type { PanelContext } from '../context.js';
 import { createMessageFeed, type MessageFeedState } from './feed.js';
-import { type MessageNaming, messagesFromEvents } from './from-events.js';
+import { messagesFromEvents } from './from-events.js';
+import { createSnapshotMessageSource } from './from-snapshot.js';
 import { hitTestNotes } from './layout.js';
 import { MESSAGE_LEVEL_FACE } from './priority.js';
+import type { MessageNaming } from './raise.js';
 import { createMessageStrip } from './strip.js';
 import { composeMessageText } from './text.js';
 import type { MessagePriorityLevel, UserMessage } from './types.js';
@@ -50,7 +52,8 @@ export interface MessageCenterDeps {
 
 /** The message centre: the feed, its notes along the top edge, and the window a note opens. */
 export interface MessageCenter {
-  /** Per frame: raise this frame's events as notes, retire the stale ones, redraw. */
+  /** Per frame: raise this frame's events and a due snapshot sweep as notes, retire the stale ones,
+   *  redraw. */
   present(snapshot: WorldSnapshot, events: readonly SimEvent[]): void;
   level(): MessagePriorityLevel;
   cycleLevel(): MessagePriorityLevel;
@@ -116,6 +119,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const { ctx } = deps;
   let feed = createMessageFeed(deps.initial);
   const naming = makeNaming(deps);
+  const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
   const strip = createMessageStrip({
     ctx,
     app: deps.app,
@@ -159,6 +163,9 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
           for (const raised of messagesFromEvents(events, snapshot, previous, deps.localPlayer, naming)) {
             feed.add(raised.pending, snapshot.tick, raised.compose);
           }
+        }
+        for (const raised of snapshotSource.sweep(snapshot, naming)) {
+          feed.add(raised.pending, snapshot.tick, raised.compose);
         }
         feed.expire(snapshot.tick, (subject) => entityById(snapshot, subject.entity) !== undefined);
         previous = snapshot;
