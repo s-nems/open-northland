@@ -5,8 +5,9 @@ import { atOrWalk } from './atomics/start.js';
 
 /**
  * Walk `e` to `door`, then step it inside `building` on arrival and run `then`. The `Resting` marker it
- * sets means "inside, and the render must not draw it"; a re-plan sheds it unless a family duty, a
- * livestock visit, a manned post, or an alarm still holds the settler in.
+ * sets means "inside", which the render draws only through the workplace's own craft choreography; a
+ * re-plan sheds it unless a family duty, a livestock visit, a manned post, or an alarm still holds the
+ * settler in.
  */
 export function enterBuilding(
   world: World,

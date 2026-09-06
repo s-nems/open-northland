@@ -14,6 +14,7 @@ import {
   extractConstructionCosts,
   extractConstructionLayers,
   extractGfxAnimAtomics,
+  extractGfxInHousePrograms,
   extractGfxWalkAtomics,
   extractGoods,
   extractHouseHitpoints,
@@ -55,6 +56,7 @@ export async function extractIniTables(fs: Vfs, sources: readonly IniSource[]) {
   const bobSequences = [];
   const gfxAtomics = [];
   const gfxWalkAtomics = [];
+  const gfxInHousePrograms = [];
   const buildingBobs = [];
   const constructionLayers = [];
   const buildingOverlays = [];
@@ -84,6 +86,7 @@ export async function extractIniTables(fs: Vfs, sources: readonly IniSource[]) {
     bobSequences.push(...extractBobSequences(sections, src));
     gfxAtomics.push(...extractGfxAnimAtomics(sections, src));
     gfxWalkAtomics.push(...extractGfxWalkAtomics(sections, src));
+    gfxInHousePrograms.push(...extractGfxInHousePrograms(sections, src));
     buildingBobs.push(...extractBuildingBobs(sections, src));
     constructionLayers.push(...extractConstructionLayers(sections, src));
     buildingOverlays.push(...extractBuildingOverlays(sections, src));
@@ -110,6 +113,7 @@ export async function extractIniTables(fs: Vfs, sources: readonly IniSource[]) {
     bobSequences,
     gfxAtomics,
     gfxWalkAtomics,
+    gfxInHousePrograms,
     buildingBobs,
     constructionLayers,
     buildingOverlays,

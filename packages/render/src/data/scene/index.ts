@@ -1,6 +1,7 @@
 /** The pure scene-building layer: no Pixi, no canvas, no GPU. */
 export { SHADOW_DEPTH_EPS, SIGN_DEPTH_EPS, screenDepth } from './depth.js';
 export type { DrawItem, DrawKind, SpriteDrawItem, SpriteKind, SpriteState } from './draw-item.js';
+export type { InHouseProgramLookup } from './in-house.js';
 export {
   COVER_LAUNCH_HEIGHT_PX,
   PROJECTILE_ARC_PEAK_FRACTION,

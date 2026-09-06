@@ -2,8 +2,8 @@
 
 **Area:** app · **Priority:** P3
 
-Every atomic with an extracted `[gfxanimatomic]` program now plays its authored frame lists, and the
-warrior eat/sleep clips are bound. One verified gap remains: the source authors **no eat program
+The warrior eat/sleep clips are bound, and the craft trades play their in-house programs. One verified
+gap of a different kind remains: the source authors **no eat program
 (action 9/10) for the woman or either child body** - checked against the mod's
 `mapmoveableanimations/animations.ini`, which carries only their sleep rows (action 8). So
 `human_woman_generic_eat`, `human_child_boy_generic_eat` and `human_child_girl_generic_eat` play the

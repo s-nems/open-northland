@@ -32,6 +32,26 @@ export function readStoreExchangeRef(components: Readonly<Record<string, unknown
   return null;
 }
 
+export interface CraftPerformance {
+  readonly workplace: number;
+  readonly elapsed: number;
+  readonly duration: number;
+}
+
+/** A settler's running craft: the workplace it is inside and the clip clock an in-house program reads,
+ *  or `null` when its atomic is anything else. */
+export function readCraftPerformance(components: Readonly<Record<string, unknown>>): CraftPerformance | null {
+  const a = components.CurrentAtomic as
+    | { effect?: { kind?: unknown }; targetEntity?: unknown; elapsed?: unknown; duration?: unknown }
+    | undefined;
+  if (a?.effect?.kind !== 'produce') return null;
+  const { targetEntity, elapsed, duration } = a;
+  if (typeof targetEntity !== 'number' || typeof elapsed !== 'number' || typeof duration !== 'number') {
+    return null;
+  }
+  return { workplace: targetEntity, elapsed, duration };
+}
+
 /** Whether a settler carries the `Engagement` marker (advancing on or fighting an enemy). Presence is
  *  the whole signal; the marker's `repathAt` field stays sim-internal. */
 export function readEngaged(components: Readonly<Record<string, unknown>>): boolean {

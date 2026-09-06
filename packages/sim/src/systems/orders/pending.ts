@@ -1,12 +1,8 @@
-import {
-  CurrentAtomic,
-  type DeferrableOrderCommand,
-  DeferredOrder,
-  Settler,
-} from '../../components/index.js';
+import { type DeferrableOrderCommand, DeferredOrder, Settler } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
+import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { attackMoveUnit, moveUnit } from './movement.js';
 import { placeSignpost } from './signposts.js';
 import { setJob } from './work/index.js';
@@ -22,7 +18,7 @@ import { setJob } from './work/index.js';
 export const deferredOrderSystem: System = (world, ctx) => {
   // Re-dispatch follows the DeferredOrder store's insertion order - park order, mirroring command FIFO.
   for (const e of world.query(Settler, DeferredOrder)) {
-    if (world.has(e, CurrentAtomic)) continue; // still acting - the order stays parked
+    if (atomicHoldsSettler(world, e)) continue; // still acting - the order stays parked
     const parked = world.get(e, DeferredOrder).command;
     world.remove(e, DeferredOrder);
     applyDeferredOrder(world, ctx, parked);

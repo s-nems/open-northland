@@ -89,3 +89,56 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
 
 /** The carried subset the general-goods store set is drawn from. */
 export const STORABLE_EXTENDED_GOODS: readonly CatalogGood[] = EXTENDED_GOODS.filter((g) => g.storable);
+
+/**
+ * `goodtypes.ini atomicForProduction` per good id, transcribed from the extracted `content/ir.json`: the
+ * atomic a worker performs to make that ware, which is also the `setatomic` join key its trade's craft
+ * animation hangs on. `coin` (51) and `sausage` (49) are omitted with the goods themselves.
+ */
+export const PRODUCE_ATOMIC_BY_GOOD_ID: Readonly<Record<string, number>> = {
+  flour: 46,
+  honey: 45,
+  holy_oil: 71,
+  bread: 47,
+  candy: 48,
+  meat: 49,
+  mead: 50,
+  tool_wooden: 59,
+  tool_iron: 59,
+  brick: 52,
+  tile: 53,
+  pillar: 54,
+  ornament: 55,
+  crockery: 56,
+  furniture: 57,
+  shoes: 58,
+  armor_wool: 61,
+  armor_leather: 62,
+  armor_chain: 63,
+  armor_plate: 64,
+  bow_short: 65,
+  bow_long: 66,
+  spear_wooden: 65,
+  spear_iron: 68,
+  sword_shord: 69,
+  sword_long: 70,
+  potion_food_small: 72,
+  potion_food_big: 73,
+  potion_stamina_small: 74,
+  potion_stamina_big: 75,
+  potion_heal_small: 76,
+  potion_heal_big: 77,
+  amulet_food: 51,
+  amulet_stamina: 51,
+  amulet_strength: 51,
+  amulet_defense: 51,
+  amulet_crithit: 51,
+  amulet_speed: 51,
+  sheep: 85,
+  cattle: 86,
+  handcart: 39,
+  oxcart: 39,
+  ship_small: 39,
+  ship_big: 39,
+  catapult: 39,
+};

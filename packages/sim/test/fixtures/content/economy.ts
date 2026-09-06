@@ -56,7 +56,9 @@ export const economyContent = {
     // A DISH (`readviews/food.ts`): stocked only in the kitchen that makes it - it becomes
     // `food_simple` the moment a carrier lifts it out, exactly like the original's bread, and counts
     // as food only on that kitchen's own shelf. Nothing in the golden slice produces it.
-    { typeId: 7, id: 'bread', weight: 1 },
+    // `atomicForProduction` on the kitchen's ware, so the craft-clip tests have a product whose making
+    // is an atomic. The golden slice's own goods deliberately declare none, so its trace stays put.
+    { typeId: 7, id: 'bread', weight: 1, atomics: { produce: 47 } },
     // Two equippables for the equip-errand tests: a WEARING boots good and a permanent weapon good
     // (the two `equip.wears` shapes the slot mechanics distinguish). Effect/wear numbers mirror the
     // app catalog's balance (goods.ts EQUIP_GOODS) so the effect tests exercise the shipped shapes.

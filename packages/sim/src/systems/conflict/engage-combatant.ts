@@ -2,7 +2,6 @@ import {
   AttackOrder,
   Building,
   Carrying,
-  CurrentAtomic,
   Engagement,
   Fleeing,
   Health,
@@ -32,6 +31,7 @@ import {
   type MilitaryMode,
   weaponDamageVsMaterial,
 } from '../readviews/index.js';
+import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { entityNode } from '../spatial/nodes.js';
 import { breakOff, type ChaseTarget, chase, disengage } from './chase.js';
 import type { CombatIndex } from './combat-index.js';
@@ -182,7 +182,7 @@ function wieldedWeaponTypeId(
 
 /** Mid-atomic (a swing or a need plays out), or felled and not yet reaped: no swing from beyond the grave. */
 function busyOrFelled(world: World, e: Entity): boolean {
-  return world.has(e, CurrentAtomic) || world.get(e, Health).hitpoints <= 0;
+  return atomicHoldsSettler(world, e) || world.get(e, Health).hitpoints <= 0;
 }
 
 /** A live player move order suppresses all auto-behavior en route, engage and flee alike; it dies on

@@ -2,7 +2,6 @@ import {
   Carrying,
   CHILD_FOOD_UNITS,
   ChildOrder,
-  CurrentAtomic,
   Engagement,
   FamilyDuty,
   Fleeing,
@@ -21,6 +20,7 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFood } from '../../readviews/index.js';
+import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { startDrop } from '../../settlers/atomics/start.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
@@ -176,7 +176,7 @@ function claimDuty(world: World, e: Entity, pass: ChildOrderPass): void {
  *  drives that outrank family duty. */
 function isDrivable(world: World, e: Entity): boolean {
   return (
-    !world.has(e, CurrentAtomic) &&
+    !atomicHoldsSettler(world, e) &&
     !isTravelling(world, e) &&
     !world.has(e, PlayerOrder) &&
     !world.has(e, Engagement) &&

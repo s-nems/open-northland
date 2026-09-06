@@ -16,6 +16,7 @@ import {
   BuildingFlagPoint,
   BuildingOverlay,
 } from '../graphics/building-bobs.js';
+import { GfxInHouseProgram } from '../graphics/inhouse-anims.js';
 import { GfxWalkAtomic } from '../graphics/walk-anims.js';
 import { LandscapeGfx, LandscapeType } from '../landscape/objects.js';
 import { GatheringPipeline, TerrainPattern } from '../landscape/resolved.js';
@@ -73,6 +74,8 @@ export const ContentSet = z.strictObject({
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
   /** `[gfxwalkatomic]` good → loaded-gait bindings. */
   gfxWalkAtomics: z.array(GfxWalkAtomic).default([]),
+  /** `[gfxanimatomic]` `gfxanimmode 2` records: the indoor choreography per `(tribe, job, action)`. */
+  gfxInHousePrograms: z.array(GfxInHouseProgram).default([]),
   buildingBobs: z.array(BuildingBob).default([]),
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
   /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays, such as the mill rotor. */

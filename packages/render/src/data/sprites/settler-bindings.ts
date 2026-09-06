@@ -52,6 +52,9 @@ export interface SettlerStateBinding {
   readonly acting?: SpriteFrameRef;
   /** Per-atomic override for the `acting` state (the `setatomic` join). */
   readonly byAtomic?: Readonly<Record<number, SpriteFrameRef>>;
+  /** The clips an in-house craft program plays, keyed by `subClipKey(action, subId)`. Each is stretched
+   *  over its window rather than clocked, so one play fills the window whatever its length. */
+  readonly bySubClip?: Readonly<Record<string, SpriteFrameRef>>;
   /**
    * The loaded gait in effect while the item hauls a good. Each slot falls back to its un-loaded
    * counterpart. A bound atomic still wins, since a settler only carries after harvesting empty-handed.

@@ -8,6 +8,7 @@ export type {
 export {
   extractBobSequences,
   extractGfxAnimAtomics,
+  extractGfxInHousePrograms,
   extractGfxWalkAtomics,
   extractGraphicsBindings,
   extractJobBaseGraphics,

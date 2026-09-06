@@ -1,5 +1,6 @@
 import type {
   BuildingFootprint,
+  GfxInHouseProgram,
   GfxPattern,
   GfxPatternTransition,
   LandscapeBlockArea,
@@ -27,6 +28,8 @@ export interface GfxAnimAtomicRow {
   readonly dirFrames: readonly (readonly number[])[];
   /** `gfxanimmode` - `1` marks a body's looping base wait; `0` is a one-shot motion. */
   readonly mode?: number;
+  /** `logicinhouseatomicsubid` - the sub-clip slot an in-house program plays this record from. */
+  readonly subId?: number;
 }
 
 /** One `[gfxwalkatomic]` row - the loaded-gait table: `(tribe, job, goodType)` → the `bodySeq` bobseq a
@@ -167,6 +170,8 @@ export interface ContentIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];
   readonly gfxAtomics?: readonly GfxAnimAtomicRow[];
   readonly gfxWalkAtomics?: readonly GfxWalkAtomicRow[];
+  /** The `gfxanimmode 2` indoor choreography rows, one per `(tribe, job, action)`. */
+  readonly gfxInHousePrograms?: readonly GfxInHouseProgram[];
   readonly goods?: readonly IrGoodRow[];
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];

@@ -1,5 +1,6 @@
 import type { AtomicAnimation, AtomicEvent } from '@open-northland/data';
 import { isWildlife, Settler } from '../../../components/index.js';
+import type { AtomicEffect } from '../../../core/atomic-effect.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import {
@@ -9,11 +10,13 @@ import {
   boundAtomicAnimation,
 } from '../../readviews/animations.js';
 
-/** The running atomic a cue lookup reads - its join key and the clock it is being played against. */
+/** The running atomic a cue lookup reads - its join key, the clock it is being played against, and the
+ *  effect that tells a real swing from a craft clip. */
 export interface SoundingAtomic {
   readonly atomicId: number;
   readonly elapsed: number;
   readonly duration: number;
+  readonly effect?: { readonly kind: AtomicEffect['kind'] };
 }
 
 /**
@@ -32,6 +35,9 @@ function soundingClip(
 ): AtomicAnimation | undefined {
   const s = world.tryGet(settler, Settler);
   if (s === undefined) return undefined;
+  // A craft clip is stretched over its workplace's batch, so its authored cue frames do not line up with
+  // the batch clock below and a workshop stays silent rather than sounding early.
+  if (atomic.effect?.kind === 'produce') return undefined;
   const name = isWildlife(world, settler)
     ? boundAtomicAnimation(ctx.content, s, atomic.atomicId)
     : atomicClipName(ctx.content, s, atomic.atomicId);

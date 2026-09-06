@@ -8,6 +8,22 @@ import type { ByJobTable, SettlerStateBinding, SpriteFrameRef } from './settler-
  */
 export const DEFAULT_FACING = 5;
 
+/**
+ * The source's `<dir>` index (`gfxanimframelistdir`, `gfxinhousewalk`, `gfxinhouseanim`) → the render
+ * facing. The `CR_Hum_Body` strip-block order is `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` (source
+ * basis "Settler facing"); the source's `<dir>` space is the engine's movement-direction ring, `0 E,
+ * 1 SE, 2 SW, 3 W, 4 NW, 5 NE` plus the row-crossing verticals `6 N, 7 S`. Data-pinned twice: in every
+ * extracted human-body `[gfxanimatomic]` record with a uniform ×8 strip, each dir-`d` frame list indexes
+ * exclusively into strip block `GFX_DIR_TO_FACING[d]`; and each in-house walk's own pixel delta runs the
+ * way its `<dir>` names. The animal tables ride the same remap by analogy.
+ */
+export const GFX_DIR_TO_FACING = [4, 5, 0, 1, 2, 3, 7, 6] as const;
+
+/** {@link GFX_DIR_TO_FACING} as a total function; an out-of-range dir keeps {@link DEFAULT_FACING}. */
+export function gfxDirToFacing(dir: number): number {
+  return GFX_DIR_TO_FACING[dir] ?? DEFAULT_FACING;
+}
+
 /** Non-negative modulo (JS `%` keeps the sign), so a negative facing/tick still indexes in range. */
 function wrap(n: number, m: number): number {
   return ((n % m) + m) % m;
@@ -37,6 +53,33 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   return ref.start + dir * ref.stride + phase;
 }
 
+/** The `bySubClip` key of one in-house sub-clip; `subId` 0 names the job's own record for the action. */
+export function subClipKey(action: number, subId: number): string {
+  return `${action}/${subId}`;
+}
+
+/**
+ * The frame of a clip stretched over a window: `progress` runs 0..1 across the whole clip rather than one
+ * frame per tick, so one play fills the window whatever its length, and the last frame holds at the end
+ * instead of wrapping. Approximation: the authored clip lengths and window lengths agree on no cadence,
+ * so the data does not settle the engine's own rule.
+ */
+function stretchedFrame(ref: SpriteFrameRef, facing: number, progress: number): number {
+  if (typeof ref === 'number') return ref;
+  const at = (count: number): number => Math.min(count - 1, Math.max(0, Math.floor(progress * count)));
+  if ('frameLists' in ref) {
+    const lists = ref.frameLists;
+    if (lists.length === 0) return ref.start;
+    const list = lists[wrap(facing, lists.length)];
+    if (list === undefined || list.length === 0) return ref.start;
+    return ref.start + (list[at(list.length)] ?? 0);
+  }
+  const dir = wrap(facing, ref.dirs);
+  const cycle = ref.frames ?? ref.stride;
+  if (cycle <= 0) return ref.start + dir * ref.stride;
+  return ref.start + dir * ref.stride + at(cycle);
+}
+
 /** The state pick runs a fixed fallback chain so a sparse table is always total. */
 export function resolveSettlerBobId(
   binding: number | SettlerStateBinding,
@@ -56,6 +99,15 @@ export function resolveSettlerBobId(
       : { idle: byGood?.idle ?? carrying.idle, moving: byGood?.moving ?? carrying.moving };
   const engaged = item.engaged ? binding.engaged : undefined;
   if (state === 'acting') {
+    // An in-house program names its own clip and drives it by window progress, not by the atomic clock.
+    const craft = item.craftClip;
+    if (craft !== undefined) {
+      const ref =
+        binding.bySubClip?.[subClipKey(craft.action, craft.subId)] ??
+        (craft.subId === 0 ? binding.byAtomic?.[craft.action] : undefined);
+      if (ref === undefined) return frameOf(binding.idle, facing, tick); // an unbound clip just stands
+      return stretchedFrame(ref, facing, craft.progress);
+    }
     // An action runs on the atomic's own clock, rebased to 0 so frame 0 shows on its first tick.
     const clock = Math.max(0, (item.elapsed ?? 1) - 1);
     const byAtomic = binding.byAtomic;

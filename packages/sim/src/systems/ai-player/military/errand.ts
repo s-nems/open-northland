@@ -1,6 +1,7 @@
-import { CurrentAtomic, EquipOrder, TrainingOrder } from '../../../components/index.js';
+import { EquipOrder, TrainingOrder } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { isTravelling } from '../../movement/nav-state.js';
+import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { anotherSystemOwns } from '../../settlers/planner/replan.js';
 
 /** Whether another drive owns `e`, or he is on an errand an order would throw away: a walk order or an
@@ -11,7 +12,7 @@ export function spokenFor(world: World, e: Entity): boolean {
     anotherSystemOwns(world, e) ||
     world.has(e, TrainingOrder) ||
     world.has(e, EquipOrder) ||
-    world.has(e, CurrentAtomic) ||
+    atomicHoldsSettler(world, e) ||
     isTravelling(world, e)
   );
 }

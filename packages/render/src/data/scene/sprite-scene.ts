@@ -1,3 +1,4 @@
+import { UNLOADED_GOOD_TYPE } from '@open-northland/data';
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import type { FogGhost } from '../fog/index.js';
 import { isVisible, ONE, tileToScreen, type Viewport } from '../projection/index.js';
@@ -5,8 +6,9 @@ import type { ElevationField } from '../terrain/index.js';
 import { pushGhostItems } from './collect-fields.js';
 import type { MutableSpriteDrawItem, SpriteDrawItem } from './draw-item.js';
 import { emitEntities } from './entity-source.js';
+import type { InHousePose, InHouseProgramLookup } from './in-house.js';
 import { assembleItem, type SceneBuild } from './item-assembly.js';
-import { STANDING_POSE, settlerPose } from './settler-pose.js';
+import { craftAnchorOf, inHouseDrawAt, STANDING_POSE, settlerPose } from './settler-pose.js';
 import { isIndoorSettler, targetPositionsOf } from './snapshot-index.js';
 import { classify, readPosition } from './snapshot-readers/index.js';
 import type { SpriteSpatialIndex } from './spatial-index.js';
@@ -57,6 +59,9 @@ export interface SpriteSceneOptions {
   /** Owner slot → team-colour slot, when a map's roster recolours players away from the slot-id
    *  default. Absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
+  /** The indoor craft choreography. A worker whose `(tribe, job, action)` it does not choreograph - or
+   *  every worker, when it is absent - stays hidden inside its house. */
+  readonly inHousePrograms?: InHouseProgramLookup | undefined;
 }
 
 /**
@@ -95,6 +100,7 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     keepIndoorSettlers,
     portraitRef,
     playerColourOf,
+    inHousePrograms,
   } = opts;
   const items: MutableSpriteDrawItem[] = [];
   const collected = new Set<number>();
@@ -111,11 +117,16 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     if (pos === null) return;
     const isPortrait = portraitRef !== undefined && entity.id === portraitRef;
     collected.add(entity.id);
-    // An indoor settler stays live and pooled but draws nothing, unless kept or forced here.
+    // An indoor settler stays live and pooled but draws nothing, unless kept or forced here - or unless
+    // it is performing a craft the content choreographs, which the house then shows it doing. The portrait
+    // subject resolves its craft too, or selecting a craftsman would empty his workshop. Only the anchor is
+    // resolved here; the choreography itself waits until the cull below has kept the worker.
     const indoorSettler = kind === 'settler' && isIndoorSettler(snapshot, components);
-    if (indoorSettler && keepIndoorSettlers !== true && !isPortrait) return;
-    const tileX = pos.x / ONE;
-    const tileY = pos.y / ONE;
+    const hiddenIndoors = indoorSettler && keepIndoorSettlers !== true;
+    const craft = hiddenIndoors ? craftAnchorOf(components, posByRef) : undefined;
+    if (hiddenIndoors && craft === undefined && !isPortrait) return;
+    const tileX = craft?.tileX ?? pos.x / ONE;
+    const tileY = craft?.tileY ?? pos.y / ONE;
     const screen = tileToScreen(tileX, tileY);
     // Culls on the drawn anchor; the caller pre-inflates the box to cover a tall sprite's extent, so a
     // building straddling the edge still draws.
@@ -126,12 +137,21 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
     const fogged = fogVisible !== undefined && !fogVisible(tileX, tileY);
     if (fogged && !isPortrait) return;
 
+    const inHouse = craft !== undefined ? inHouseDrawAt(craft, inHousePrograms) : undefined;
+    if (craft !== undefined && inHouse === undefined && !isPortrait) return;
     const pose =
-      kind === 'settler' && !indoorSettler ? settlerPose(components, tileX, tileY, posByRef) : STANDING_POSE;
+      inHouse?.pose ??
+      (kind === 'settler' && !indoorSettler
+        ? settlerPose(components, tileX, tileY, posByRef)
+        : STANDING_POSE);
     const item = assembleItem(build, entity, kind, tileX, tileY, screen, pose);
-    if (isPortrait && (offscreen || fogged || indoorSettler)) item.portraitOnly = true;
-    // Only a kept or forced settler gets this far indoors.
-    if (indoorSettler) item.frozen = true;
+    // Being choreographed excuses only the indoor hiding: the portrait frames the worker at his craft
+    // instead of soloing a hidden sprite, but an offscreen or fogged subject still draws for it alone.
+    if (isPortrait && (offscreen || fogged || (indoorSettler && inHouse === undefined)))
+      item.portraitOnly = true;
+    if (inHouse !== undefined) applyInHousePose(item, inHouse.inHouse);
+    // Only a kept or forced settler gets this far indoors without a craft to show.
+    else if (indoorSettler) item.frozen = true;
     items.push(item);
   };
 
@@ -140,4 +160,16 @@ function collectScene(snapshot: WorldSnapshot, opts: DrawListOptions): SpriteSce
   // `depth` carries the feet anchor plus the per-kind paint bias; id breaks a remaining exact tie.
   items.sort((a, b) => a.depth - b.depth || a.ref - b.ref);
   return { items, liveRefs };
+}
+
+/** Offset a choreographed worker from its house's anchor and give it the pose its program calls for. The
+ *  program is the authority on the load indoors, overriding what the settler walked in holding. */
+function applyInHousePose(item: MutableSpriteDrawItem, pose: InHousePose): void {
+  item.inHouse = true;
+  item.x += pose.dx;
+  item.y += pose.dy;
+  item.carrying = pose.goodType !== UNLOADED_GOOD_TYPE;
+  if (pose.goodType !== UNLOADED_GOOD_TYPE) item.carryGood = pose.goodType;
+  else delete item.carryGood;
+  if (pose.clip !== undefined) item.craftClip = pose.clip;
 }
