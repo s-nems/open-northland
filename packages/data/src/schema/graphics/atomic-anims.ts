@@ -29,9 +29,12 @@ export const GfxAnimAtomic = z.strictObject({
    * facing-locked list.
    */
   dirFrames: z.array(z.array(z.number().int().nonnegative())),
-  /** `gfxanimmode` - `1` marks a body's looping base wait, `0` a one-shot motion (`2`, the in-house
-   *  records, never carries a body and is not extracted). Optional so an older IR still loads. */
+  /** `gfxanimmode` - `1` marks a body's looping base wait, `0` a one-shot motion. The body-less mode
+   *  `2` records are the {@link GfxInHouseProgram} lane instead. */
   mode: z.number().int().nonnegative().optional(),
+  /** `logicinhouseatomicsubid` - a sub-clip an in-house program plays by `(action, subId)`, never the
+   *  action's own clip; absent on the plain records. */
+  subId: z.number().int().positive().optional(),
   source: Provenance.optional(),
 });
 export type GfxAnimAtomic = z.infer<typeof GfxAnimAtomic>;

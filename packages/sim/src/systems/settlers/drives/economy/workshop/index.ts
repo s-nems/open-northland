@@ -12,6 +12,7 @@ import { interactionCell } from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 import { loiterCell } from '../../spacing.js';
 import { deliverableGoodProbe } from '../delivery-targets.js';
+import { startCraftAtomic } from './craft.js';
 import {
   type MissingInputSource,
   nearestMissingInputSource,
@@ -20,8 +21,17 @@ import {
   workSeatCount,
 } from './supply.js';
 
-/** Work seats already claimed at each workplace during the canonical planner sweep. */
-export type WorkSeatClaims = Map<Entity, number>;
+/**
+ * One workplace's tally over the canonical planner sweep: seats handed out, and how many of their holders
+ * already stand inside. Production advances one batch per operator present, so the indoor count - not the
+ * claim order - is the index a craft clip may follow without freezing behind a claimant still walking.
+ */
+export interface WorkSeats {
+  claimed: number;
+  performing: number;
+}
+
+export type WorkSeatClaims = Map<Entity, WorkSeats>;
 
 /**
  * Run the self-service producer loop: claim an available batch seat, ship the good whose full slot stopped
@@ -43,10 +53,14 @@ export function planProducer(
   if (recipe === undefined) return;
 
   const own = operatorRecipes(world, ctx, workplace, plan.entity);
-  const claimed = seatClaims.get(workplace) ?? 0;
-  if (claimed < workSeatCount(world, ctx, workplace, own)) {
-    seatClaims.set(workplace, claimed + 1);
-    holdInsideWorkplace(plan, workplace);
+  let seats = seatClaims.get(workplace);
+  if (seats === undefined) {
+    seats = { claimed: 0, performing: 0 };
+    seatClaims.set(workplace, seats);
+  }
+  if (seats.claimed < workSeatCount(world, ctx, workplace, own)) {
+    seats.claimed += 1;
+    holdInsideWorkplace(plan, workplace, seats);
     return;
   }
 
@@ -146,10 +160,19 @@ function routeToInputSource(
   );
 }
 
-/** Stand on the workplace's door and step inside; that door presence is what drives the production gate. */
-function holdInsideWorkplace(plan: PlannerContext, workplace: Entity): void {
+/**
+ * Stand on the workplace's door and step inside; that door presence is what drives the production gate.
+ * An operator that arrives takes the next indoor seat's craft clip, which is what the render draws it
+ * performing. Without `seats` - an idle shop, or a bound carrier that merely keeps the presence gate fed -
+ * it waits inside with nothing to show.
+ */
+function holdInsideWorkplace(plan: PlannerContext, workplace: Entity, seats?: WorkSeats): void {
   const { world, ctx, terrain, entity, here } = plan;
-  enterBuilding(world, entity, workplace, here, interactionCell(world, ctx, terrain, workplace, here));
+  enterBuilding(world, entity, workplace, here, interactionCell(world, ctx, terrain, workplace, here), () => {
+    if (seats === undefined) return;
+    startCraftAtomic(world, ctx, entity, workplace, seats.performing);
+    seats.performing += 1;
+  });
 }
 
 /** Loiter beside the workplace door rather than on it, so a bound worker with nothing to do neither runs

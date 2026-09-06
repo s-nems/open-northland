@@ -43,7 +43,9 @@ export function walkPose(
   motion: Readonly<MotionTrack>,
   lastFacing: number | undefined,
 ): DrawItem {
-  if (kind !== 'settler' || item.state !== 'moving') return item;
+  // An in-house walk is authored, not tracked: its slow shuffle would read as stalled and freeze the
+  // worker mid-stride, and its facing comes from the program rather than from a heading.
+  if (kind !== 'settler' || item.state !== 'moving' || item.inHouse === true) return item;
   if (isStalled(motion)) return { ...item, state: 'idle' };
   if (item.facing === undefined && lastFacing !== undefined) return { ...item, facing: lastFacing };
   return item;

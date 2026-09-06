@@ -4,6 +4,7 @@ import {
   cifLinesToSections,
   extractBobSequences,
   extractGfxAnimAtomics,
+  extractGfxInHousePrograms,
   extractGfxWalkAtomics,
   extractGraphicsBindings,
   extractJobBaseGraphics,
@@ -256,6 +257,42 @@ describe('extractGfxAnimAtomics', () => {
     ]);
   });
 
+  it('keeps the in-house sub-clip id and leaves the mode-2 programs to their own extractor', () => {
+    const records = extractGfxAnimAtomics(
+      parseIniSections(
+        [
+          '[gfxanimatomic]', // a sub-clip: same (job, action) as the program below, told apart by subid
+          'logictribe 1',
+          'logicjob 20',
+          'logicinhouseatomicsubid 2',
+          'logicatomicaction 47',
+          'gfxanimmode 0',
+          'gfxbobseqbody "human_man_Baker_shovel"',
+          'gfxanimframelist 0 1 2',
+          '[gfxanimatomic]', // the mode-2 program - body-less, so this extractor must not emit it
+          'logictribe 1',
+          'logicjob 20',
+          'logicatomicaction 47',
+          'gfxanimmode 2',
+          'gfxinhouseanim 47 2 5 30 60',
+        ].join('\n'),
+      ),
+      src,
+    );
+    expect(records).toEqual([
+      {
+        tribe: 1,
+        job: 20,
+        action: 47,
+        bodySeq: 'human_man_Baker_shovel',
+        dirFrames: [[0, 1, 2]],
+        mode: 0,
+        subId: 2,
+        source: { file: 'animations.ini', block: 'gfxanimatomic', layer: 'mod' },
+      },
+    ]);
+  });
+
   it('captures the optional head bobseq when the record overlays a separate head', () => {
     const [rec] = extractGfxAnimAtomics(
       parseIniSections(
@@ -324,6 +361,77 @@ describe('extractGfxWalkAtomics', () => {
         bodySeq: 'animal_bear_walk',
         source: { file: 'animations.ini', block: 'gfxwalkatomic', layer: 'mod' },
       },
+    ]);
+  });
+});
+
+describe('extractGfxInHousePrograms', () => {
+  // Mirrors the real `gfxanimmode 2` grammar (the viking baker's action 47, trimmed): four line kinds
+  // with percent windows, whose file order decides whether an overlay draws behind or in front of the
+  // worker. A walk carries a good type; a clip names a `(action, subid)` record on the same job.
+  const src = { file: 'animations.ini', layer: 'mod' as const };
+  const sections = parseIniSections(
+    [
+      '[gfxanimatomic]',
+      'logictribe 1',
+      'logicjob 20',
+      'logicatomicaction 47',
+      'gfxanimmode 2',
+      'gfxinhouseoverlaylandscape "fx fire small" -61 -2 12 28',
+      'gfxinhousewalk 3 11 75 29 0 0',
+      'gfxinhouseanim 47 1 5 9 25',
+      'gfxinhouseoverlaybob 4 0 0 25 30',
+      'gfxinhousewalk 5 19 75 29 95 100',
+      'gfxinhousewalk 5 19 75',
+      '[gfxanimatomic]', // mode 0 -> the plain clip extractor's, never a program
+      'logictribe 1',
+      'logicjob 20',
+      'logicatomicaction 47',
+      'gfxanimmode 0',
+      'gfxbobseqbody "human_man_Baker_knead"',
+      'gfxanimframelist 0 1 2',
+      '[gfxanimatomic]', // mode 2 but scripts nothing -> dropped
+      'logictribe 1',
+      'logicjob 19',
+      'logicatomicaction 46',
+      'gfxanimmode 2',
+    ].join('\n'),
+  );
+
+  it('reads the four line kinds in file order and drops a malformed line', () => {
+    expect(extractGfxInHousePrograms(sections, src)).toEqual([
+      {
+        tribe: 1,
+        job: 20,
+        action: 47,
+        entries: [
+          { kind: 'landscape', name: 'fx fire small', x: -61, y: -2, from: 12, to: 28 },
+          { kind: 'walk', dir: 3, goodType: 11, x: 75, y: 29, from: 0, to: 0 },
+          { kind: 'clip', action: 47, subId: 1, dir: 5, from: 9, to: 25 },
+          { kind: 'houseBob', layer: 4, x: 0, y: 0, from: 25, to: 30 },
+          { kind: 'walk', dir: 5, goodType: 19, x: 75, y: 29, from: 95, to: 100 },
+        ],
+        source: { file: 'animations.ini', block: 'gfxanimatomic', layer: 'mod' },
+      },
+    ]);
+  });
+
+  it('drops a line whose values are out of range rather than failing the whole run', () => {
+    const outOfRange = parseIniSections(
+      [
+        '[gfxanimatomic]',
+        'logictribe 1',
+        'logicjob 13',
+        'logicatomicaction 69',
+        'gfxanimmode 2',
+        'gfxinhousewalk 8 40 -43 4 0 20', // dir past the 8-direction ring
+        'gfxinhouseanim 69 1 4 20 101', // window past 100%
+        'gfxinhousewalk 4 40 -43 4 20 60',
+      ].join('\n'),
+    );
+    const [program] = extractGfxInHousePrograms(outOfRange, src);
+    expect(program?.entries).toEqual([
+      { kind: 'walk', dir: 4, goodType: 40, x: -43, y: 4, from: 20, to: 60 },
     ]);
   });
 });

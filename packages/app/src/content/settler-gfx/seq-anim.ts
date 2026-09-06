@@ -1,4 +1,4 @@
-import type { DirectionalAnim } from '@open-northland/render';
+import { type DirectionalAnim, GFX_DIR_TO_FACING } from '@open-northland/render';
 import type { BobSeqRow } from '../ir/rows.js';
 import { DIRS } from './sequences.js';
 
@@ -70,16 +70,6 @@ function blockAnimFromLists(
 }
 
 /**
- * `gfxanimframelistdir <dir>` index → the render facing. The `CR_Hum_Body` strip-block order is
- * `0 SW, 1 W, 2 NW, 3 NE, 4 E, 5 SE, 6 S, 7 N` (source basis "Settler facing"); the source's `<dir>` space
- * is the engine's movement-direction ring, `0 E, 1 SE, 2 SW, 3 W, 4 NW, 5 NE` plus the row-crossing
- * verticals `6 N, 7 S`. Data-pinned: in every extracted human-body `[gfxanimatomic]` record with a uniform
- * ×8 strip, each dir-`d` frame list indexes exclusively into strip block `GFX_DIR_TO_BLOCK[d]`. The animal
- * tables ride the same remap by analogy.
- */
-const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
-
-/**
  * Reorder a `[gfxanimatomic]` per-`<dir>` frame-list table into the render's per-facing order. A single-list
  * table is a bare `gfxanimframelist` and plays verbatim on every facing; a sparsely authored dir leaves an
  * empty list rather than borrowing a neighbour's swing.
@@ -87,7 +77,7 @@ const GFX_DIR_TO_BLOCK = [4, 5, 0, 1, 2, 3, 7, 6] as const;
 export function frameListsByFacing(dirLists: readonly (readonly number[])[]): readonly (readonly number[])[] {
   if (dirLists.length === 1) return dirLists;
   const byFacing: (readonly number[])[] = new Array(DIRS).fill([]);
-  GFX_DIR_TO_BLOCK.forEach((facing, dir) => {
+  GFX_DIR_TO_FACING.forEach((facing, dir) => {
     byFacing[facing] = dirLists[dir] ?? [];
   });
   return byFacing;

@@ -191,6 +191,7 @@ export class SpritePool {
       index: this.spatial,
       fogVisible: frame.fogVisible,
       ghosts: frame.ghosts,
+      ...(this.sheet?.inHousePrograms !== undefined ? { inHousePrograms: this.sheet.inHousePrograms } : {}),
       ...(frame.portraitRef !== undefined ? { portraitRef: frame.portraitRef } : {}),
       ...(this.playerColourOf !== undefined ? { playerColourOf: this.playerColourOf } : {}),
     });
@@ -299,11 +300,13 @@ export class SpritePool {
     // `upgradePct` and `builtPct` are mutually exclusive by construction, so an upgrade site rides the
     // same eased reveal as a from-scratch one.
     pe.reveal = easeReveal(pe.reveal, item.builtPct ?? item.upgradePct);
+    // Approximation: an in-house walk is a few px of shuffle per tick, so its cadence rides the free
+    // tick rather than ground covered, which would barely turn the legs over.
     const layers = resolveLayers(
       this.sheet,
       revealedItem(walkPose(item, pe.kind, pe.motion, pe.lastFacing), pe.reveal),
       animationClock(item, frame.tick),
-      Math.floor(pe.motion.gaitPhase),
+      item.inHouse === true ? frame.tick : Math.floor(pe.motion.gaitPhase),
     );
     this.binder.bind(pe, item, layers, frame, this.frameId);
   }

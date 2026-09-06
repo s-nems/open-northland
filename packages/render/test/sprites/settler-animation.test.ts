@@ -2,17 +2,20 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_FACING,
   indexAtlasFrames,
+  resolveSettlerBobId,
   resolveSpriteBobId,
   resolveSpriteFrame,
+  subClipKey,
 } from '../../src/data/sprites/index.js';
 import type {
   DirectionalAnim,
+  DrawItem,
   FrameListAnim,
   SettlerStateBinding,
   SpriteAtlas,
   SpriteBindings,
 } from '../../src/index.js';
-import { settlerItem } from '../support/fixtures.js';
+import { drawItem, settlerItem } from '../support/fixtures.js';
 
 describe('resolveSpriteFrame - per-state settler binding', () => {
   /** An atlas with a distinct frame per state bob: idle=10, moving=11, acting=12, chop=13. */
@@ -229,5 +232,35 @@ describe('resolveSpriteBobId - FrameListAnim (explicit per-direction attack layo
     expect(at(1)).toBe(4000 + 5); // entry 1 mid-list, same as one-shot
     expect(at(3)).toBe(4000 + 0); // 3 % 3 == 0, so the cycle restarts
     expect(at(4)).toBe(4000 + 5); // one-shot would show entry 0 here
+  });
+});
+
+describe('resolveSettlerBobId - an in-house craft sub-clip', () => {
+  const KNEAD: FrameListAnim = { start: 500, frameLists: [[0, 1, 2, 3]] };
+  const IDLE_STAND = 900;
+  const MAKE_BREAD = 47;
+  const WAIT_ACTION = 5;
+  const binding: SettlerStateBinding = {
+    idle: IDLE_STAND,
+    byAtomic: { [WAIT_ACTION]: 950 },
+    bySubClip: { [subClipKey(MAKE_BREAD, 1)]: KNEAD },
+  };
+  const crafting = (action: number, subId: number, progress: number): DrawItem =>
+    drawItem('settler', { state: 'acting', facing: 0, craftClip: { action, subId, progress } });
+
+  it('stretches the clip across its window instead of running a frame per tick', () => {
+    // Four frames over the whole window, so the quarters land on successive entries whatever the length.
+    expect(resolveSettlerBobId(binding, crafting(MAKE_BREAD, 1, 0), 0)).toBe(500);
+    expect(resolveSettlerBobId(binding, crafting(MAKE_BREAD, 1, 0.5), 0)).toBe(502);
+    expect(resolveSettlerBobId(binding, crafting(MAKE_BREAD, 1, 1), 0)).toBe(503); // holds the last frame
+  });
+
+  it('reads a sub-clip 0 as the job’s own record for that action', () => {
+    expect(resolveSettlerBobId(binding, crafting(WAIT_ACTION, 0, 0.5), 0)).toBe(950);
+  });
+
+  it('stands rather than borrowing another clip when the body binds none', () => {
+    expect(resolveSettlerBobId(binding, crafting(MAKE_BREAD, 9, 0.5), 0)).toBe(IDLE_STAND);
+    expect(resolveSettlerBobId(binding, crafting(99, 0, 0.5), 0)).toBe(IDLE_STAND);
   });
 });

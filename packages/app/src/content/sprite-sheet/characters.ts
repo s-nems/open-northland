@@ -129,6 +129,10 @@ export async function loadCharacters(
   }
   const waitBySeq = gfxWaitProgramsBySeq(ir, VIKING_ANIM_TRIBE);
   const walkLists = gfxWalkFrameLists(ir, VIKING_ANIM_TRIBE);
+  // The indoor craft clips of the whole tribe; each body keeps the ones its own atlas holds sequences for.
+  const subClips = (ir.gfxAtomics ?? []).filter(
+    (row) => row.tribe === VIKING_ANIM_TRIBE && row.subId !== undefined,
+  );
 
   const bySpec = new Map<string, SettlerCharacter>();
   for (const [specId, spec] of CHARACTER_SPEC_ENTRIES) {
@@ -142,6 +146,7 @@ export async function loadCharacters(
       programsByAction,
       waitBySeq,
       walkLists,
+      subClips,
     });
     if (binding === null) continue;
     const heads = (spec.headBmds ?? roster.headBmds)

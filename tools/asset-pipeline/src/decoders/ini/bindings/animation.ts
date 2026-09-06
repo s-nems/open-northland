@@ -8,6 +8,7 @@ import { BobSequenceSet, GfxAnimAtomic, GfxWalkAtomic } from '@open-northland/da
 import type { RuleSection } from '../grammar.js';
 import { makeSource, normalizeAssetPath, normalizeOptionalPath, type SourceRef } from '../ir-fields.js';
 import { findProps, getInt, getStr } from '../props.js';
+import { GFX_ANIM_MODE_IN_HOUSE } from './animation-inhouse.js';
 
 /**
  * Extracts the `[bobseq]` records from `animation/mapmoveableanimations/animations.ini` into one
@@ -75,12 +76,15 @@ function dirIndexedFrameLists(sec: RuleSection, key: string): number[][] | undef
  * {@link GfxAnimAtomic} rows, reading the `gfxanimframelistdir <dir> <idx…>` lines that lay an animation
  * out per facing. One `(job, action)` may carry several records (the unarmed soldier's punch variants)
  * and all are emitted, so a consumer resolves by `(tribe, job, action)` or by `bodySeq` name. A record
- * missing its tribe/job/action/body-seq or carrying no frame list is skipped, never thrown.
+ * missing its tribe/job/action/body-seq or carrying no frame list is skipped, never thrown; the
+ * body-less `gfxanimmode 2` records are `extractGfxInHousePrograms`'s.
  */
 export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: SourceRef): GfxAnimAtomic[] {
   const out: GfxAnimAtomic[] = [];
   for (const sec of sections) {
     if (sec.name !== 'gfxanimatomic') continue;
+    const mode = getInt(sec, 'gfxanimmode');
+    if (mode === GFX_ANIM_MODE_IN_HOUSE) continue;
     const tribe = getInt(sec, 'logictribe');
     const job = getInt(sec, 'logicjob');
     const action = getInt(sec, 'logicatomicaction');
@@ -104,7 +108,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
       dirFrames = [ids];
     }
     if (dirFrames.every((list) => list.length === 0)) continue; // nothing to draw
-    const mode = getInt(sec, 'gfxanimmode');
+    const subId = getInt(sec, 'logicinhouseatomicsubid');
     out.push(
       GfxAnimAtomic.parse({
         tribe,
@@ -114,6 +118,7 @@ export function extractGfxAnimAtomics(sections: readonly RuleSection[], src: Sou
         ...(headSeq !== undefined && headSeq.trim() !== '' ? { headSeq } : {}),
         dirFrames,
         ...(mode !== undefined && mode >= 0 ? { mode } : {}),
+        ...(subId !== undefined && subId > 0 ? { subId } : {}),
         source: makeSource(src, 'gfxanimatomic'),
       }),
     );

@@ -1,4 +1,5 @@
 export * from './animation.js';
+export * from './animation-inhouse.js';
 export * from './bmd-palette.js';
 export * from './job.js';
 export * from './landscape.js';

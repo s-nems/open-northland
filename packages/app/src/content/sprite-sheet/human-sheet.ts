@@ -18,7 +18,7 @@ import {
   VIKING_TRIBE,
 } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
-import { sequencesFor, servedAtlasStem, servedShadowStem } from '../ir/joins.js';
+import { inHouseProgramLookup, sequencesFor, servedAtlasStem, servedShadowStem } from '../ir/joins.js';
 import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
 import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
 import {
@@ -243,6 +243,8 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     // below; resource/stockpile families draw native.
     families,
     kindScales: { building: BUILDING_SCALE },
+    // What a worker performs inside its workplace; an unchoreographed trade stays hidden in there.
+    inHousePrograms: inHouseProgramLookup(ir, goods),
     ...(characters !== undefined ? { characters } : {}),
     // Team-colour LUT: present ⇒ the characters are the indexed atlas and the pool paints each per its
     // player; absent ⇒ the baked characters draw as plain sprites. The armor recolor axis rides along.

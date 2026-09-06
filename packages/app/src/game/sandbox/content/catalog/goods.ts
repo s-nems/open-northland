@@ -12,7 +12,7 @@ import {
 } from '../../../../catalog/atomics.js';
 import { FARMING_BALANCE_BY_ID } from '../../../../catalog/farming.js';
 import { GATHERING_BALANCE_BY_ID } from '../../../../catalog/gathering.js';
-import { EXTENDED_GOODS } from '../../../../catalog/goods.js';
+import { EXTENDED_GOODS, PRODUCE_ATOMIC_BY_GOOD_ID } from '../../../../catalog/goods.js';
 import { CARCASS_GOOD_SLUGS } from '../../../../catalog/hunting.js';
 import { EQUIP_CLASS_BY_TYPE } from '../../combat.js';
 import {
@@ -91,23 +91,22 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       const equip = EQUIP_CLASS_BY_TYPE.get(good.typeId);
       // The extracted leather/meat rows carry this harvest atomic; wool's is a named approximation.
       const carcassGood = (CARCASS_GOOD_SLUGS as readonly string[]).includes(good.id);
+      const produce = PRODUCE_ATOMIC_BY_GOOD_ID[good.id];
+      const atomics = {
+        ...(carcassGood ? { harvest: HARVEST_CADAVER_ATOMIC } : {}),
+        ...(good.typeId === GOOD_WHEAT
+          ? { harvest: WHEAT_HARVEST_ATOMIC, cultivate: CULTIVATE_ATOMIC, plant: PLANT_ATOMIC }
+          : {}),
+        ...(produce !== undefined ? { produce } : {}),
+      };
       return {
         typeId: good.typeId,
         id: good.id,
         name: extras.goodNames?.get(good.id) ?? good.name,
         weight: 1,
         ...(equip !== undefined ? { equip } : {}),
-        ...(carcassGood ? { atomics: { harvest: HARVEST_CADAVER_ATOMIC } } : {}),
-        ...(good.typeId === GOOD_WHEAT
-          ? {
-              atomics: {
-                harvest: WHEAT_HARVEST_ATOMIC,
-                cultivate: CULTIVATE_ATOMIC,
-                plant: PLANT_ATOMIC,
-              },
-              farming: FARMING_BALANCE_BY_ID.wheat,
-            }
-          : {}),
+        ...(Object.keys(atomics).length > 0 ? { atomics } : {}),
+        ...(good.typeId === GOOD_WHEAT ? { farming: FARMING_BALANCE_BY_ID.wheat } : {}),
       };
     }),
   ];

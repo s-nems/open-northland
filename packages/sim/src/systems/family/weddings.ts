@@ -1,12 +1,4 @@
-import {
-  CurrentAtomic,
-  Marriage,
-  Position,
-  Residence,
-  Settler,
-  Sheltering,
-  Wedding,
-} from '../../components/index.js';
+import { Marriage, Position, Residence, Settler, Sheltering, Wedding } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../nav/halfcell.js';
@@ -14,6 +6,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { atomicDuration } from '../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../rendezvous.js';
+import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 
 /** The paired kiss atomic ids - `logicdefines.inc` `KISS = 20` / `KISSED = 21`, bound per tribe in
  *  `tribetypes.ini` (`setatomic 5 20 "..._woman_kiss"` / `setatomic 6 21 "..._civilist_kissed"`). */
@@ -74,8 +67,8 @@ function drivePair(
   }
   const wa = world.mut(a, Wedding);
   const wb = world.mut(b, Wedding);
-  const busyA = world.has(a, CurrentAtomic);
-  const busyB = world.has(b, CurrentAtomic);
+  const busyA = atomicHoldsSettler(world, a);
+  const busyB = atomicHoldsSettler(world, b);
   if (wa.kissing) {
     // The planner leaves a Wedding settler alone, so the kiss atomics run to completion.
     if (busyA || busyB) return;

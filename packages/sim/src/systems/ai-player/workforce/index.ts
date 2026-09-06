@@ -10,6 +10,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried } from '../../family/eligibility.js';
 import { scoutJobType } from '../../readviews/index.js';
+import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { seatBaseOf } from '../base.js';
 import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
 import type { AiPlayerModule } from '../index.js';
@@ -101,7 +102,7 @@ function rebuildCrew(
 function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[] {
   const { pool, genericCollectors, scouts } = classifyWorkforce(world, ctx, player, []);
   const posted = ownedSettlers(world, player).filter(
-    (e) => world.has(e, JobAssignment) && !world.has(e, CurrentAtomic) && isAllocatableMan(world, ctx, e),
+    (e) => world.has(e, JobAssignment) && !atomicHoldsSettler(world, e) && isAllocatableMan(world, ctx, e),
   );
   return [...pool, ...scouts, ...genericCollectors, ...posted];
 }

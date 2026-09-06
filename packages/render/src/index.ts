@@ -32,6 +32,7 @@ export {
   buildScene,
   buildSpriteScene,
   type DrawItem,
+  type InHouseProgramLookup,
   isIndoorSettler,
   type SceneGround,
   type SceneTerrain,
@@ -49,6 +50,7 @@ export {
   type ConstructionLayerRef,
   type DirectionalAnim,
   type FrameListAnim,
+  GFX_DIR_TO_FACING,
   indexAtlasFrames,
   type LayeredBobRef,
   type ResourceTypeBinding,
@@ -59,6 +61,7 @@ export {
   type SpriteBindings,
   type SpriteFrameRef,
   type StockpileBinding,
+  subClipKey,
 } from './data/sprites/index.js';
 export {
   averagePatternColour,

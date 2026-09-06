@@ -1,6 +1,14 @@
-import { type BuildingFootprint, fullStateBlockAreaCells } from '@open-northland/data';
+import {
+  type BuildingFootprint,
+  fullStateBlockAreaCells,
+  type GfxInHouseProgram,
+  UNLOADED_GOOD_TYPE,
+} from '@open-northland/data';
+import type { InHouseProgramLookup } from '@open-northland/render';
 import { DOOR_SHIFTS } from '../../catalog/building-tweaks.js';
 import { diag } from '../../diag/index.js';
+import { canonicalJobType } from '../../game/sandbox/ids/index.js';
+import type { GoodRef } from '../settler-gfx/index.js';
 import type { BobSeqRow, ContentIr, LandscapeGfxRow } from './rows.js';
 
 /** The served `/bobs/` atlas stem (`<bmd-basename-minus-.bmd>.<palette>`, the pipeline's naming) for a
@@ -147,6 +155,44 @@ export function gfxWaitProgramsBySeq(ir: ContentIr | null, tribe: number): Map<s
   return bySeq;
 }
 
+/**
+ * The indoor choreography as the scene asks for it: `(tribe, job, action)` → its `gfxanimmode 2`
+ * program, first record winning. `tribe` is the `logictribe` the rows carry, which the sim's tribe
+ * typeId matches for the viking (both 1). The job arrives in whichever space the running set uses and is
+ * read back into the source's, the space the rows are keyed in.
+ *
+ * A walk's `goodType` is rewritten from the source's id space into `goods`, the running content set's,
+ * because that is the space the carry-gait table is keyed in. Joined by slug, the one id that survives
+ * between them; a good the running set does not name draws no load at all.
+ */
+export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodRef[]): InHouseProgramLookup {
+  const runningBySlug = new Map(goods.map((g) => [g.id, g.typeId]));
+  const slugBySourceType = new Map((ir?.goods ?? []).map((g) => [g.typeId, g.id]));
+  const runningGoodType = (sourceType: number): number => {
+    const slug = slugBySourceType.get(sourceType);
+    return (slug === undefined ? undefined : runningBySlug.get(slug)) ?? UNLOADED_GOOD_TYPE;
+  };
+  const byTribe = new Map<number, Map<string, GfxInHouseProgram>>();
+  for (const row of ir?.gfxInHousePrograms ?? []) {
+    let byJobAction = byTribe.get(row.tribe);
+    if (byJobAction === undefined) {
+      byJobAction = new Map();
+      byTribe.set(row.tribe, byJobAction);
+    }
+    const key = `${row.job}/${row.action}`;
+    if (byJobAction.has(key)) continue;
+    byJobAction.set(key, {
+      ...row,
+      entries: row.entries.map((entry) =>
+        entry.kind === 'walk' && entry.goodType !== UNLOADED_GOOD_TYPE
+          ? { ...entry, goodType: runningGoodType(entry.goodType) }
+          : entry,
+      ),
+    });
+  }
+  return (tribe, job, action) => byTribe.get(tribe)?.get(`${canonicalJobType(job)}/${action}`);
+}
+
 /** One tribe's `gfxwalkframelist` per-`<dir>` lists, indexed by walk bobseq name (first record wins). */
 export function gfxWalkFrameLists(
   ir: ContentIr | null,
@@ -159,9 +205,6 @@ export function gfxWalkFrameLists(
   }
   return byName;
 }
-
-/** `logicgoodtype 0` in the `[gfxwalkatomic]` table - the job's unloaded walk, not a carry look. */
-const UNLOADED_GOOD_TYPE = 0;
 
 /**
  * The `[gfxwalkatomic]` loaded-gait table for one `(tribe, job)`, as good id-slug → body bobseq name (honey

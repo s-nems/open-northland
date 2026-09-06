@@ -1,14 +1,15 @@
-import type {
-  CarryingBinding,
-  DirectionalAnim,
-  FrameListAnim,
-  SettlerStateBinding,
-  SpriteAtlas,
-  SpriteFrameRef,
+import {
+  type CarryingBinding,
+  type DirectionalAnim,
+  type FrameListAnim,
+  type SettlerStateBinding,
+  type SpriteAtlas,
+  type SpriteFrameRef,
+  subClipKey,
 } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram } from '../ir/joins.js';
-import type { BobSeqRow } from '../ir/rows.js';
+import type { BobSeqRow, GfxAnimAtomicRow } from '../ir/rows.js';
 import type { CharacterSpec } from './character-specs.js';
 import { eightDirAnim, frameListsByFacing, type GoodRef, singleDirAnim } from './seq-anim.js';
 import { DIRS } from './sequences.js';
@@ -24,6 +25,8 @@ export interface CharacterGfx {
   readonly waitBySeq?: ReadonlyMap<string, GfxAtomicProgram>;
   /** The `gfxwalkframelist` lists per walk bobseq name. */
   readonly walkLists?: ReadonlyMap<string, readonly (readonly number[])[]>;
+  /** The tribe's `logicinhouseatomicsubid` records - the clips an indoor craft program plays. */
+  readonly subClips?: readonly GfxAnimAtomicRow[];
 }
 
 /**
@@ -66,6 +69,28 @@ function waitListAnim(
 }
 
 /**
+ * The indoor craft clips this body carries, keyed by `(action, subId)`. A record naming a sequence some
+ * other body owns is skipped, which is what scopes the tribe-wide table to each character. The key omits
+ * the job because the source gives each trade its own production actions, so no two collide.
+ */
+function subClipAnims(
+  subClips: readonly GfxAnimAtomicRow[],
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+): Record<string, SpriteFrameRef> {
+  const out: Record<string, SpriteFrameRef> = {};
+  for (const row of subClips) {
+    if (row.subId === undefined) continue;
+    const seq = seqByName.get(row.bodySeq);
+    if (seq === undefined || seq.length <= 0) continue;
+    out[subClipKey(row.action, row.subId)] = {
+      start: seq.start,
+      frameLists: frameListsByFacing(row.dirFrames),
+    };
+  }
+  return out;
+}
+
+/**
  * Build one character's binding from its spec, its body's decoded `[bobseq]` rows, and the extracted
  * animation tables. Every slot prefers the authored program, whose frame lists carry holds, facings, and
  * cuts a bare bobseq range cannot encode, and falls back to the raw strip when the IR carries none.
@@ -78,7 +103,7 @@ export function characterBinding(
   goods: readonly GoodRef[],
   gfx: CharacterGfx = {},
 ): SettlerStateBinding | null {
-  const { carrySeqBySlug, programsByAction, waitBySeq, walkLists } = gfx;
+  const { carrySeqBySlug, programsByAction, waitBySeq, walkLists, subClips } = gfx;
   const walk = eightDirAnim(seqByName, spec.walkSeq, walkLists);
   const idle: SpriteFrameRef | null =
     waitListAnim(spec.waitSeq, seqByName, waitBySeq) ??
@@ -156,10 +181,13 @@ export function characterBinding(
         }
       : undefined;
 
+  const bySubClip = subClips !== undefined ? subClipAnims(subClips, seqByName) : {};
+
   return {
     idle,
     ...(walk !== undefined ? { moving: walk } : {}),
     ...(Object.keys(byAtomic).length > 0 ? { byAtomic } : {}),
+    ...(Object.keys(bySubClip).length > 0 ? { bySubClip } : {}),
     ...(carrying !== undefined ? { carrying } : {}),
     ...(engaged !== undefined ? { engaged } : {}),
   };

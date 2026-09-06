@@ -1,3 +1,5 @@
+import type { InHouseClip } from './in-house.js';
+
 export type DrawKind =
   | 'tile'
   | 'building'
@@ -137,6 +139,12 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** Freeze this settler's animation clock to a fixed standing frame rather than the breathing idle
    *  loop. Set on every settler drawn while inside a building. */
   readonly frozen?: boolean;
+  /** This settler is drawn inside its workplace by an in-house craft program: its anchor is the house's,
+   *  offset by the program, and its gait runs on the free tick rather than on ground covered. */
+  readonly inHouse?: boolean;
+  /** For an {@link inHouse} settler mid-motion: the sub-clip it performs and how far through it. Absent
+   *  while the program has it crossing the room. */
+  readonly craftClip?: InHouseClip;
 }
 
 /** The mutable twin of {@link DrawItem}, used only while one item is being assembled: fields are

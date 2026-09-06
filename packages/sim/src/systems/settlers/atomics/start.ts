@@ -17,6 +17,7 @@ import { clearNavState } from '../../movement/nav-state.js';
 import { atomicDuration, needAtomicDuration } from '../../readviews/animations.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
+import { atomicHoldsSettler } from './busy.js';
 
 // An atomic id is only a content cross-reference and animation join key, pinned to the original's
 // `setatomic` bindings; the typed {@link AtomicEffect} carries the behavior the AtomicSystem applies.
@@ -82,7 +83,7 @@ export const DROP_ATOMIC_ID = PICKUP_ATOMIC_ID;
  * standstill: a settler interrupted mid-walk halts and sets the load down instead of dropping on the move.
  */
 export function startDrop(world: World, ctx: SystemContext, settler: Entity): void {
-  if (world.has(settler, CurrentAtomic)) return;
+  if (atomicHoldsSettler(world, settler)) return;
   const s = world.tryGet(settler, Settler);
   if (s === undefined || !world.has(settler, Carrying)) return;
   clearNavState(world, settler);

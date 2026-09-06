@@ -24,6 +24,7 @@ import { pruneUnreachableTargets } from '../../conflict/unreachable-targets.js';
 import type { SystemContext } from '../../context.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
+import { atomicHoldsSettler } from '../atomics/busy.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
 import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
 import { answerNeedInPlace } from '../drives/needs.js';
@@ -123,7 +124,7 @@ export function releaseStaleIntent(
   // the marker hides it from the render, so waiting for it to fall idle would march an invisible
   // settler across the map.
   if (world.has(e, Garrison) && !isManningPost(world, ctx, e)) stepOut(world, e);
-  if (world.has(e, CurrentAtomic)) return false;
+  if (atomicHoldsSettler(world, e)) return false;
   // Fresh read - reconcileYardRoute may have cleared the request.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed === true && !ownsFailedRoute(world, e)) {
@@ -153,6 +154,9 @@ export function releaseStaleIntent(
   ) {
     stepOut(world, e);
   }
+  // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer
+  // drive below re-derives a craft clip from its workplace's own batch clock in this same pass.
+  world.remove(e, CurrentAtomic);
   // Releasing through the tally keeps the inbound count in lockstep with the store.
   releaseSupplyRun(world, e, inbound);
   return true;

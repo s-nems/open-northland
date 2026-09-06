@@ -3,6 +3,7 @@ import {
   readActingAtomic,
   readAtomicTargetEntity,
   readBuiltPct,
+  readCraftPerformance,
   readPosition,
   readProjectileTarget,
   readStoreExchangeRef,
@@ -123,6 +124,9 @@ function sceneIndexOf(snapshot: WorldSnapshot): SceneIndex {
       const target = readProjectileTarget(components);
       if (target !== null) wanted.add(target);
     }
+    // A worker performing its craft is drawn against its workplace's own anchor, not its doorstep.
+    const craft = readCraftPerformance(components);
+    if (craft !== null) wanted.add(craft.workplace);
     if ('Signpost' in components) signposts.push(entity);
   }
   const index: SceneIndex = {

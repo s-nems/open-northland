@@ -1,4 +1,5 @@
 import type { TextureSource } from 'pixi.js';
+import type { InHouseProgramLookup } from '../data/scene/index.js';
 import type {
   BuildTimeSheet,
   ByJobTable,
@@ -104,4 +105,6 @@ export interface SpriteSheet {
    *  atlases are the recolourable indexed variant (palette index in red): one indexed atlas plus one LUT
    *  serve all `colours` players. */
   readonly palette?: PlayerColourLut;
+  /** The indoor craft choreography the scene draws a working craftsman from. */
+  readonly inHousePrograms?: InHouseProgramLookup;
 }

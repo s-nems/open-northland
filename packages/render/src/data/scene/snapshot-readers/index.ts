@@ -24,6 +24,7 @@ export {
   readAtomicElapsed,
   readAtomicTargetEntity,
   readCarrying,
+  readCraftPerformance,
   readEngaged,
   readEquipmentArmorGood,
   readEquipmentWeaponGood,
