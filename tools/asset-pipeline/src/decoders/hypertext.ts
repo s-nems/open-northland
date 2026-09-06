@@ -14,7 +14,7 @@ import type {
  */
 
 const BLOCK_START = /^\[blockstart:([^\]]+)\]\s*$/;
-const BLOCK_END = /^\[blockend:([^\]]+)\]\s*$/;
+const BLOCK_END = /^\[blockend:[^\]]+\]\s*$/;
 const TAG = /<([a-z]+):([^>]*)>/gi;
 const TAG_LINE = /^\s*(?:<[a-z]+:[^>]*>\s*)+$/i;
 /** The literal two characters `\n` inside a page: an explicit line or paragraph break. */

@@ -10,6 +10,7 @@ import { TEXTURES_DIR } from './stages/content-tree.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
+import { HYPERTEXT_PICTURES_DIR } from './stages/gui/paths.js';
 import { writeIr } from './stages/ir/index.js';
 import { unpackLibTree } from './stages/lib.js';
 import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
@@ -83,6 +84,9 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   );
 
   progress?.stage?.('gui');
+  // The history book and every map briefing write content-addressed pictures here, so the reset
+  // belongs to the run: neither stage owns the directory alone.
+  await fs.rm(vjoin(args.out, HYPERTEXT_PICTURES_DIR));
   const gui = await convertGuiStage(fs, roots, args.out);
   console.log(
     `[pipeline] gui: ${gui.atlases} atlas(es) (${gui.frames} frames), ${gui.palettes}-palette LUT, ` +
