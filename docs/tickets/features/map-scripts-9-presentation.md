@@ -7,9 +7,9 @@ Map-scripts epic, stage 9 of 10. Reference: [`docs/formats/MISSIONS.md`](../../f
 "Briefings and the mission window", "On-screen info lines". Depends on the mission window and the
 `.briefing.json` sidecar from the victory-defeat branch being on `main`.
 
-The sim emits presentation events for `PlayCutscene` (1,400 lines), `PlaySound` (558),
-`SetCameraPosition` (209), `InfoClear` and `InfoShowString` (314), `SetHumanName` (146),
-`SetWeather` (164), `StartEarthquake` (122), `SelectHuman` (79), and the markers. Nothing consumes
+The sim emits presentation events for `PlayCutscene` (1,450 lines), `PlaySound` (498),
+`SetCameraPosition` (197), `InfoClear` and `InfoShowString` (314), `SetHumanName` (138),
+`SetWeather` (207), `StartEarthQuake` (122), `SelectHuman` (7), and the markers. Nothing consumes
 them yet, and the app still opens the intro briefing by guessing the first `PlayCutscene` from the
 raw script instead of listening to the sim.
 
@@ -35,7 +35,8 @@ raw script instead of listening to the sim.
 `packages/app/src/view/runtime/game-presentation.ts` and `game-view.ts` (how sim events reach the
 view), `packages/app/src/hud/tool-panel/mission/` and `packages/app/src/game/mission-brief.ts` once
 the victory-defeat branch lands, `packages/audio/src/data/bindings.ts`,
-`tools/asset-pipeline/src/stages/maps/script.ts` (`misc.inc` sections).
+`tools/asset-pipeline/src/stages/maps/script.ts` (`misc.inc` sections), and the map's own string
+table in `maps/<id>.strings.json` (per language, what `SetHumanName` and `InfoShowString` address).
 
 ## Verify
 

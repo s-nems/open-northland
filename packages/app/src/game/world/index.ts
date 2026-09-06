@@ -1,5 +1,6 @@
 export { authoredCatalogExtras } from './authored-catalog.js';
 export {
+  type AuthoredEntities,
   type AuthoredJoinRows,
   type AuthoredPlacement,
   houseBobKey,

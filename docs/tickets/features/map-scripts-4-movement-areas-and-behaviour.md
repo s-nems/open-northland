@@ -7,7 +7,7 @@ Map-scripts epic, stage 4 of 10. Reference: [`docs/formats/MISSIONS.md`](../../f
 "Human behaviour flags" and the range-test goals.
 
 Scripted units must walk somewhere and scripts must notice where the player is:
-`FindPosByPlayersMapMoveable` (1,023 goals) and `FindPosByHumans` (626) gate most story beats,
+`FindPosByPlayersMapMoveable` (1,135 goals) and `FindPosByHumans` (589) gate most story beats,
 `SendHuman` (705) and `MoveUnitsInArea` (346) move the actors. Behaviour flags make scripted units
 passive, immortal, or uncontrollable, which every ambush and escort depends on.
 

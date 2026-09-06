@@ -5,7 +5,7 @@
 
 Map-scripts epic, stage 6 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md).
 
-Scripts open passages and dress scenes by editing landscape objects: `SetLandscape` (761 lines),
+Scripts open passages and dress scenes by editing landscape objects: `SetLandscape` (760 lines),
 `RemoveLandscape` (439), `SetHouseBuildForbiddenArea` (158), and tint terrain with
 `SetVertexColor` (428).
 

@@ -12,6 +12,7 @@ content/
     <id>.json             decoded terrain
     <id>.meta.json        menu metadata and the map's provenance
     <id>.script.json      optional player and mission data
+    <id>.strings.json     optional per-language string table
     <id>.png              optional thumbnail
   Data/...                decoded atlases, palettes, fonts, and other runtime files
   gui/...                 decoded interface assets

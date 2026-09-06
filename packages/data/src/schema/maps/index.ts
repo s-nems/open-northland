@@ -4,4 +4,5 @@ export * from './info.js';
 export * from './meta.js';
 export * from './provenance.js';
 export * from './script.js';
+export * from './strings.js';
 export * from './terrain/index.js';

@@ -8,8 +8,8 @@ Map-scripts epic, stage 7 of 10. Reference: [`docs/formats/MISSIONS.md`](../../f
 `setMatchParticipants` command, and the mission window) from the victory-defeat branch being on
 `main`; check `git log` before starting.
 
-`SetDiplomacy` (698 lines) and `ExploreArea` (1,493) shape almost every map's opening;
-`MissionWon` and `MissionFailed` (224) are how authored maps end; `PlayerDied` (227 goals) and
+`SetDiplomacy` (632 lines) and `ExploreArea` (1,412) shape almost every map's opening;
+`MissionWon` and `MissionFailed` (230) are how authored maps end; `PlayerDied` (223 goals) and
 `PlayerSeen` (147) drive their turning points.
 
 ## Scope

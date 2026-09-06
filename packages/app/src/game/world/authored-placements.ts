@@ -64,6 +64,12 @@ export function tribeIdsByName(rows: AuthoredJoinRows): Map<string, number> {
   return byName;
 }
 
+/** The authored lanes this join reads; a decoded map's `entities` satisfies it. */
+export type AuthoredEntities = Pick<
+  NonNullable<TerrainMapFile['entities']>,
+  'buildings' | 'humans' | 'animals'
+>;
+
 /** One resolved authored placement, ready to enqueue. */
 export type AuthoredPlacement =
   | {
@@ -114,7 +120,7 @@ export type AuthoredPlacement =
  * employs. The first entry of each role wins; no corpus human authors two homes or two workplaces.
  */
 export function resolveAuthoredPlacements(
-  entities: NonNullable<TerrainMapFile['entities']>,
+  entities: AuthoredEntities,
   rows: AuthoredJoinRows,
   map: TerrainMap,
 ): {
@@ -243,8 +249,8 @@ export function resolveAuthoredPlacements(
     });
   }
   let skippedAnimals = 0;
-  // Approximation: `setanimal` also authors an adult/baby age column that the maps decoder drops, so
-  // every authored animal spawns adult with `hitpoints_adult`.
+  // Approximation: `setanimal` also names an animal type the maps decoder drops, so every authored
+  // animal spawns adult with `hitpoints_adult`, and its authored owner is not read yet.
   for (const a of entities.animals) {
     const tribe = speciesByKey.get(normalizeRoleKey(a.species));
     if (tribe === undefined || !inBounds(a.hx, a.hy)) {

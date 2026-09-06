@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type AuthoredJoinRows, resolveAuthoredPlacements } from '../src/game/world/index.js';
-import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
+import { AUTHORED_ENTITIES, AUTHORED_ROWS, WILD_ANIMAL_PLAYER } from './support/authored-entities.js';
 import { authoredMap } from './support/world-maps.js';
 
 /** The pure authored-entity join: a decoded map's `map.cif` StaticObjects → sim placements. */
@@ -80,13 +80,13 @@ describe('resolveAuthoredPlacements', () => {
       buildings: [],
       humans: [{ tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5 }],
       animals: [
-        { species: 'hares', hx: 1, hy: 1 },
-        { species: 'evil hares', hx: 2, hy: 1 }, // joins via the display NAME (id is evil_hares)
-        { species: 'cattle ', hx: 3, hy: 1 }, // the trailing-space variant maps really author
-        { species: 'deers', hx: 4, hy: 1 }, // no animals row → the sim would drop it: skip + count
-        { species: 'gryphons', hx: 5, hy: 1 }, // unknown species → skip + count
-        { species: 'hares', hx: 99, hy: 1 }, // out of bounds → skip + count
-        { species: 'butterflys', hx: 6, hy: 1 }, // hitpoints-0 swarm → spawns nothing: skip + count
+        { species: 'hares', player: WILD_ANIMAL_PLAYER, hx: 1, hy: 1 },
+        { species: 'evil hares', player: WILD_ANIMAL_PLAYER, hx: 2, hy: 1 }, // joins via the display NAME (id is evil_hares)
+        { species: 'cattle ', player: WILD_ANIMAL_PLAYER, hx: 3, hy: 1 }, // the trailing-space variant maps really author
+        { species: 'deers', player: WILD_ANIMAL_PLAYER, hx: 4, hy: 1 }, // no animals row → the sim would drop it: skip + count
+        { species: 'gryphons', player: WILD_ANIMAL_PLAYER, hx: 5, hy: 1 }, // unknown species → skip + count
+        { species: 'hares', player: WILD_ANIMAL_PLAYER, hx: 99, hy: 1 }, // out of bounds → skip + count
+        { species: 'butterflys', player: WILD_ANIMAL_PLAYER, hx: 6, hy: 1 }, // hitpoints-0 swarm → spawns nothing: skip + count
       ],
     };
     const { placements, skippedAnimals } = resolveAuthoredPlacements(entities, rows, authoredMap());

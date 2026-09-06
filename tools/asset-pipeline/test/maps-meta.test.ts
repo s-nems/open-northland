@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { describe, expect, it } from 'vitest';
 import { parseIniSections } from '../src/decoders/ini.js';
-import { resolveMapMeta } from '../src/stages/maps/meta.js';
+import { loadMapStringTables, preferredStringTable, resolveMapMeta } from '../src/stages/maps/meta.js';
 import { makeTempDir } from './support/game-tree.js';
 
 const fs = nodeVfs();
@@ -127,5 +127,32 @@ describe('resolveMapMeta', () => {
       name: 'Nazwa',
       musicType: 36,
     });
+  });
+});
+
+/** The `maps/<id>.strings.json` sidecar's source: mission `description`, `CreateTribute`,
+ *  `InfoShowString` and `SetHumanName` all address these ids at runtime. */
+describe('loadMapStringTables', () => {
+  it('keeps every language the folder ships, and picks Polish for the menu', async () => {
+    const dir = await mapFolder();
+    await writeStrings(dir, 'eng', 'stringn 7 "Pay the tribute"');
+    await writeStrings(dir, 'ger', 'stringn 7 "Zahle den Tribut"');
+    await writeStrings(dir, 'pol', 'stringn 7 "Zaplac danine"');
+    const tables = await loadMapStringTables(fs, [dir], 'x/map.dat');
+    expect(tables).toEqual({
+      eng: { 7: 'Pay the tribute' },
+      ger: { 7: 'Zahle den Tribut' },
+      pol: { 7: 'Zaplac danine' },
+    });
+    expect(preferredStringTable(tables)).toEqual({ 7: 'Zaplac danine' });
+  });
+
+  it('is empty for a folder with no table, and picks the only shipped language', async () => {
+    const bare = await mapFolder();
+    expect(await loadMapStringTables(fs, [bare], 'x/map.dat')).toEqual({});
+    expect(preferredStringTable({})).toBeUndefined();
+    const dir = await mapFolder();
+    await writeStrings(dir, 'rus', 'stringn 1 "Karta"');
+    expect(preferredStringTable(await loadMapStringTables(fs, [dir], 'x/map.dat'))).toEqual({ 1: 'Karta' });
   });
 });

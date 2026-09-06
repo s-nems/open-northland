@@ -1,4 +1,4 @@
-import type { MapScript } from '@open-northland/data';
+import { type MapScript, MapStrings } from '@open-northland/data';
 import { type Vfs, vdirname, vjoin, writeText } from '@open-northland/vfs';
 import {
   cifBytesToSections,
@@ -17,7 +17,7 @@ import {
 } from '../../roots.js';
 import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
 import { excludeStringTableCopies, mapIdFromPath } from './info.js';
-import { loadMapStringTable, resolveMapMeta } from './meta.js';
+import { loadMapStringTables, preferredStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
 import { mapProvenance } from './provenance.js';
 import { resolveMapScript } from './script.js';
@@ -39,6 +39,8 @@ export interface MapDatConversion {
   readonly script: boolean;
   /** Whether a `maps/<id>.briefing.json` mission-window text sidecar was emitted. */
   readonly briefing: boolean;
+  /** Whether a `maps/<id>.strings.json` per-language string table was emitted. */
+  readonly strings: boolean;
 }
 
 /**
@@ -115,11 +117,17 @@ export async function convertMapDatTree(
     const pngPath = vjoin(outDir, 'maps', `${id}.png`);
     const scriptPath = vjoin(outDir, 'maps', `${id}.script.json`);
     const briefingPath = vjoin(outDir, 'maps', `${id}.briefing.json`);
+    const stringsPath = vjoin(outDir, 'maps', `${id}.strings.json`);
     await fs.rm(metaPath);
     await fs.rm(pngPath);
     await fs.rm(scriptPath);
     await fs.rm(briefingPath);
-    const strings = await loadMapStringTable(fs, mapDirs, rel);
+    await fs.rm(stringsPath);
+    const stringTables = await loadMapStringTables(fs, mapDirs, rel);
+    if (Object.keys(stringTables).length > 0) {
+      await writeText(fs, stringsPath, `${JSON.stringify(MapStrings.parse(stringTables))}\n`);
+    }
+    const strings = preferredStringTable(stringTables);
     const metadata = await resolveMapMeta(fs, mapDirs, rel, cifSections, strings);
     const metaFile = { ...metadata, provenance: mapProvenance(roots, { rel, path }) };
     await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
@@ -175,6 +183,7 @@ export async function convertMapDatTree(
       minimapSynthesized,
       script: scriptFile !== undefined,
       briefing,
+      strings: Object.keys(stringTables).length > 0,
     });
   }
   return done;

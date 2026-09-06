@@ -1,10 +1,11 @@
 # Run mission scripts in the sim: scheduler, mission state, control-flow opcodes
 
 **Area:** sim, tooling · **Focus:** `systems/missions` · **Priority:** P2
-**Blocked by:** [map-scripts-1-typed-script-data.md](map-scripts-1-typed-script-data.md)
 
-Map-scripts epic, stage 2 of 10 (see stage 1 for the list). Reference:
-[`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md), section "Execution model".
+Map-scripts epic, stage 2 of 10. Stage 1 landed the typed opcode registry: `decodeMissionGoal` and
+`decodeMissionResult` in `@open-northland/data` turn one raw `MapScriptLine` into
+`{ opcode, ...named parameters }`, an unknown name into `True` or `None`, and report the warnings.
+Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md), section "Execution model".
 
 Nothing in `packages/sim` reads a map's missions. Campaign maps therefore never spawn their scripted
 waves, never unlock, and never end. This stage builds the engine that later stages fill with
@@ -18,6 +19,9 @@ opcodes, behind a rule flag so `main` stays unchanged for players until stage 10
 - A `MissionObjectId` component with an id-to-entities index for humans, houses, animals, and (when
   they exist) vehicles, populated from the placed entities' `missionId` fields and updated by spawn
   and removal. Ids are group names, not unique keys.
+- The app join still drops those fields: `resolveAuthoredPlacements` reads the `AuthoredEntities`
+  lanes only, so carry `missionId` (and the human `behaviourFlags`, opaque until stage 4) through
+  `AuthoredPlacement` into the spawned entities.
 - Mission state as hashed and saved world state: per mission the active flag, activation tick, per
   goal truth flags, the evaluated flag, the `RandomTimeGone` cache, and the visible flag. Bump
   `SAVE_FORMAT_VERSION` with a migration that leaves old worlds without missions.

@@ -59,14 +59,17 @@ describe('parseTerrainMap (the content/maps loader)', () => {
     const map = parseTerrainMap({
       ...JSON.parse(mapFileJson()),
       entities: {
-        buildings: [{ name: 'viking barracks', level: 0, player: 1, hx: 4, hy: 6, rot: 2 }],
+        buildings: [{ name: 'viking barracks', level: 0, player: 1, hx: 4, hy: 6, missionId: 2 }],
         humans: [{ tribe: 'viking', role: 'builder', player: 0, hx: 2, hy: 2 }],
-        // animals omitted - the schema defaults it to [] so consumers never branch on undefined
+        // animals, vehicles and guides omitted - the schema defaults them to [] so consumers never
+        // branch on undefined
       },
     });
     expect(map.entities?.buildings[0]?.name).toBe('viking barracks');
     expect(map.entities?.humans[0]?.role).toBe('builder');
     expect(map.entities?.animals).toEqual([]);
+    expect(map.entities?.vehicles).toEqual([]);
+    expect(map.entities?.guides).toEqual([]);
   });
 
   it('accepts the objects layer with the optional per-placement levels lane', () => {

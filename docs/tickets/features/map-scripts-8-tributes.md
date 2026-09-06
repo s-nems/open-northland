@@ -6,8 +6,8 @@
 Map-scripts epic, stage 8 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md),
 "Tributes".
 
-Tributes are the campaign's quest currency: `CreateTribute` 986 lines, `AddTributeGoods` 1,118,
-`ClearTribute` 821, and `PayTribute` 692 goals across more than 30 maps. Without them those maps
+Tributes are the campaign's quest currency: `CreateTribute` 995 lines, `AddTributeGoods` 1,135,
+`ClearTribute` 818, and `PayTribute` 702 goals across more than 30 maps. Without them those maps
 never advance.
 
 ## Scope
@@ -23,7 +23,8 @@ never advance.
 
 ## Where to look
 
-`packages/sim/src/core/commands/` (command union and admission), `systems/stores`,
+`packages/sim/src/core/commands/` (command union and admission), `systems/stores`, the map's own
+string table in `maps/<id>.strings.json` (per language, the ids `CreateTribute` carries),
 `packages/app/src/hud/tool-panel/windows.ts` and the existing window folders,
 `packages/app/src/i18n/`.
 

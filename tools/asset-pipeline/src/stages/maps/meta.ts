@@ -1,4 +1,4 @@
-import type { MapMeta } from '@open-northland/data';
+import { MAP_TEXT_LANGUAGES, type MapMeta, type MapTextLanguage } from '@open-northland/data';
 import type { Vfs } from '@open-northland/vfs';
 import {
   decodeCifStringTable,
@@ -16,8 +16,8 @@ import { STRING_TABLE_DIR } from './info.js';
 /** The emitted `maps/<id>.meta.json` sidecar: the map's menu-facing strings and music binding. */
 export type MapMetaFile = MapMeta;
 
-/** The menu shows one language, and the culturesnation mod is Polish-authored, so `pol` wins. */
-const MAP_TEXT_LANGS = ['pol', 'eng'] as const;
+/** One map folder's string tables, keyed by the language subfolder they were read from. */
+export type MapStringTables = Partial<Record<MapTextLanguage, Record<number, string>>>;
 
 /**
  * String-table ids of the map name/description when no header names them. Source basis: observed -
@@ -93,16 +93,17 @@ async function resolveMapHeader(
 }
 
 /**
- * Loads one map folder's string table (`<mapDir>/text/<lang>/strings.*`) as `{ <stringId>: <text> }`,
- * preferring the readable `strings.ini` over its encrypted `strings.cif` twin per language. An
- * unreadable or empty table falls through to the next form, then the next language.
+ * Loads every language a map folder ships (`<mapDir>/text/<lang>/strings.*`) as
+ * `{ <stringId>: <text> }`, preferring the readable `strings.ini` over its encrypted `strings.cif`
+ * twin. An unreadable or empty table falls through to the next form, then the next language.
  */
-export async function loadMapStringTable(
+export async function loadMapStringTables(
   fs: Vfs,
   mapDirs: readonly string[],
   rel: string,
-): Promise<Record<number, string> | undefined> {
-  for (const lang of MAP_TEXT_LANGS) {
+): Promise<MapStringTables> {
+  const tables: MapStringTables = {};
+  for (const lang of MAP_TEXT_LANGUAGES) {
     for (const form of ['strings.ini', 'strings.cif'] as const) {
       const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [STRING_TABLE_DIR, lang, form]);
       if (path === undefined) continue;
@@ -117,8 +118,21 @@ export async function loadMapStringTable(
         console.warn(`[pipeline] map ${rel}: text/${lang}/${form} undecodable: ${errorMessage(err)}`);
         continue;
       }
-      if (Object.keys(table).length > 0) return table;
+      if (Object.keys(table).length > 0) {
+        tables[lang] = table;
+        break;
+      }
     }
+  }
+  return tables;
+}
+
+/** The table the map's own menu strings and mission texts resolve through: the first language the
+ *  folder ships, in {@link MAP_TEXT_LANGUAGES} preference order. */
+export function preferredStringTable(tables: MapStringTables): Record<number, string> | undefined {
+  for (const lang of MAP_TEXT_LANGUAGES) {
+    const table = tables[lang];
+    if (table !== undefined) return table;
   }
   return undefined;
 }
@@ -136,7 +150,7 @@ export async function resolveMapMeta(
   cifSections: readonly RuleSection[] | undefined,
   strings?: Record<number, string>,
 ): Promise<MapMetaFile | undefined> {
-  strings ??= await loadMapStringTable(fs, mapDirs, rel);
+  strings ??= preferredStringTable(await loadMapStringTables(fs, mapDirs, rel));
   const { nameStringId, descriptionStringId, musicType, mapTypes } = await resolveMapHeader(
     fs,
     mapDirs,

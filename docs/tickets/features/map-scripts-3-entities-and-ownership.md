@@ -7,7 +7,7 @@ Map-scripts epic, stage 3 of 10. Reference: [`docs/formats/MISSIONS.md`](../../f
 goal and result tables and "Player state the goals read".
 
 Spawning and removing scripted units is the bulk of every campaign script: `SetHuman` and
-`SetHumanX` alone are 4,465 of 28,100 result lines, `HumansDied` 378 goals. Without them no map
+`SetHumanX` alone are 3,438 of the 26,148 result lines, `HumansDied` 326 goals. Without them no map
 produces its enemy waves or its rescue targets.
 
 ## Scope
@@ -27,6 +27,8 @@ produces its enemy waves or its rescue targets.
   `HumanAttachedToWorkHouse`.
 - The `behaviourFlags` mask is stored on spawned and placed humans as an opaque value in this stage;
   its bits are interpreted in stage 4.
+- Authored herds keep the owner their `setanimal` names (20 is the wild herd, but 466 corpus lines
+  name a real player): `resolveAuthoredPlacements` still spawns every animal ownerless.
 - An unresolvable name (a job the content lacks) warns and skips the line at world build.
 - Non-goals: movement, area queries, behaviour bits, vehicles.
 

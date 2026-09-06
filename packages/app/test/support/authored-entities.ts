@@ -1,5 +1,7 @@
-import type { TerrainMapFile } from '@open-northland/data';
-import type { AuthoredJoinRows } from '../../src/game/world/index.js';
+import type { AuthoredEntities, AuthoredJoinRows } from '../../src/game/world/index.js';
+
+/** `setanimal`'s wild owner: past the original's last player slot, so the herd belongs to nobody. */
+export const WILD_ANIMAL_PLAYER = 20;
 
 /** The authored-entity fixtures the join tests and the `runAuthoredMap` tests share: a decoded map's
  *  `StaticObjects` rows, and the narrow IR they resolve against. */
@@ -23,7 +25,7 @@ export const AUTHORED_ROWS: AuthoredJoinRows = {
   ],
 };
 
-export const AUTHORED_ENTITIES: NonNullable<TerrainMapFile['entities']> = {
+export const AUTHORED_ENTITIES: AuthoredEntities = {
   buildings: [
     // Resolves: editName+level → typeId 30; half-cell (8,4) passes VERBATIM; 0-based player 0 stays 0.
     // Its addgoods stock joins by good name ('wheat' → 4) or by the rare bare-typeId variant
@@ -34,7 +36,6 @@ export const AUTHORED_ENTITIES: NonNullable<TerrainMapFile['entities']> = {
       player: 0,
       hx: 8,
       hy: 4,
-      rot: 0,
       goods: [
         { name: 'wheat', count: 15 },
         { name: '9', count: 3 },
@@ -52,5 +53,5 @@ export const AUTHORED_ENTITIES: NonNullable<TerrainMapFile['entities']> = {
     { tribe: 'viking', role: 'mystery_role', player: 0, hx: 3, hy: 5 }, // unknown role → skipped
   ],
   // Unresolvable with these rows (no `animals` lane) → counted in `skippedAnimals`, never placed.
-  animals: [{ species: 'deer', hx: 1, hy: 1 }],
+  animals: [{ species: 'deer', player: WILD_ANIMAL_PLAYER, hx: 1, hy: 1 }],
 };

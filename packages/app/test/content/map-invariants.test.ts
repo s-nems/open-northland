@@ -22,7 +22,8 @@ function mapsDir(): string {
 }
 
 /** Decoded map grids: a map id is a dotless slug, so a dotted stem is a sidecar (`.meta.json`,
- *  `.script.json`, `.briefing.json` carry menu text, the script and the briefing, not terrain). */
+ *  `.script.json`, `.strings.json`, `.briefing.json` carry menu text, the script, the string table and
+ *  the briefing, not terrain). */
 function mapFiles(): string[] {
   return readdirSync(mapsDir())
     .filter((f) => f.endsWith('.json') && !f.slice(0, -'.json'.length).includes('.'))

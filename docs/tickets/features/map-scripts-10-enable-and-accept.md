@@ -21,7 +21,8 @@ confirms.
   [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md) and rewrite those readings as observations
   or corrections.
 - Vehicles, sub-missions, chests, guides, wall gates, campaign map unlocks, and the FMV opcode stay
-  unsupported and reported; file tickets for them only when their systems exist.
+  unsupported and reported; file tickets for them only when their systems exist. The authored
+  `vehicles` and `guides` lanes are already extracted and wait for those systems.
 
 ## Where to look
 

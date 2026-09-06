@@ -5,9 +5,9 @@
 
 Map-scripts epic, stage 5 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md).
 
-Scripts stock the player's buildings (`AddGoodsToHouses` 933 lines), drop goods on the ground
+Scripts stock the player's buildings (`AddGoodsToHouses` 459 lines), drop goods on the ground
 (`AddGoodsToMapArea` 368), unlock production (`EnableGood` 101, `EnableHouse` 52), and ask for
-economic milestones (`GoodProduceable` 139 goals, `NumberOfGoodsInArea` 262).
+economic milestones (`GoodProduceable` 150 goals, `NumberOfGoodsInArea` 113).
 
 ## Scope
 

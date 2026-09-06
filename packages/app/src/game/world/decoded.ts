@@ -1,9 +1,13 @@
-import type { MapDiplomacy, TerrainMapFile } from '@open-northland/data';
+import type { MapDiplomacy } from '@open-northland/data';
 import type { Simulation, TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { resolveWorldContent, type WorldContentOptions } from '../sandbox/index.js';
 import { authoredCatalogExtras } from './authored-catalog.js';
-import { type AuthoredJoinRows, resolveAuthoredPlacements } from './authored-placements.js';
+import {
+  type AuthoredEntities,
+  type AuthoredJoinRows,
+  resolveAuthoredPlacements,
+} from './authored-placements.js';
 import { enqueuePlacements, newWorldSim } from './build.js';
 
 /**
@@ -30,7 +34,7 @@ export function runAuthoredMap(
   seed: number,
   ticks: number,
   map: TerrainMap,
-  entities: NonNullable<TerrainMapFile['entities']>,
+  entities: AuthoredEntities,
   rows: AuthoredJoinRows,
   options: WorldContentOptions = {},
   diplomacy: readonly MapDiplomacy[] = [],

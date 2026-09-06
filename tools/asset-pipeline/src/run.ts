@@ -157,11 +157,12 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   const synthesized = terrains.filter((t) => t.minimapSynthesized).length;
   const scripts = terrains.filter((t) => t.script).length;
   const briefings = terrains.filter((t) => t.briefing).length;
+  const stringTables = terrains.filter((t) => t.strings).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
       `(${totalCells} cells total, ${minimaps} minimap(s) ` +
-      `of which ${synthesized} synthesized, ${scripts} script sidecar(s), ${briefings} briefing sidecar(s)) ` +
-      `into ${vjoin(args.out, 'maps')}`,
+      `of which ${synthesized} synthesized, ${scripts} script sidecar(s), ${stringTables} string ` +
+      `table(s), ${briefings} briefing sidecar(s)) into ${vjoin(args.out, 'maps')}`,
   );
 
   progress?.stage?.('music');

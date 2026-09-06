@@ -1,6 +1,7 @@
 import type { TerrainMapFile } from '@open-northland/data';
 import { halfCellMapFromCells, type TerrainMap } from '@open-northland/sim';
 import { GRASS } from '../../src/catalog/buildings.js';
+import type { AuthoredEntities } from '../../src/game/world/index.js';
 
 /** The synthetic maps the world-builder tests run over - the one place their grids are described. */
 
@@ -18,12 +19,13 @@ export function mixedGrid(width: number, height: number): TerrainMap {
 
 /** A 6×6 all-grass decoded map file, carrying `entities` when the case authors some. Its 12×12 node
  *  lattice is what the authored half-cell coords (0..11 per axis) bounds-check against. */
-export function authoredMapFile(entities?: TerrainMapFile['entities']): TerrainMapFile {
+export function authoredMapFile(entities?: AuthoredEntities): TerrainMapFile {
   return {
     width: 6,
     height: 6,
     typeIds: new Array(36).fill(GRASS),
-    ...(entities !== undefined ? { entities } : {}),
+    // The lanes a case does not author are what the loader's own defaults would give it.
+    ...(entities !== undefined ? { entities: { vehicles: [], guides: [], ...entities } } : {}),
   };
 }
 

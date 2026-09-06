@@ -179,6 +179,45 @@ describe('buildMapsIndexEntries', () => {
     ]);
   });
 
+  it('never lists a .strings.json sidecar as a map of its own', async () => {
+    await writeFile(join(mapsRoot, 'texts.json'), '{}');
+    await writeFile(join(mapsRoot, 'texts.strings.json'), '{"pol":{"0":"Mapa"}}');
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([{ id: 'texts', minimap: false }]);
+  });
+
+  it('warns and serves no roster when the [multiplayer] table cannot be read', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await writeFile(join(mapsRoot, 'lobby.json'), '{}');
+    await writeFile(
+      join(mapsRoot, 'lobby.script.json'),
+      JSON.stringify({
+        players: [{ player: 0, type: 'ai', tribeId: 1, colorId: 0 }],
+        multiplayer: { slotOptions: [{ player: 0, allowed: 'human' }] },
+      }),
+    );
+    // Serving the roster without the table would close a seat this map opens to a person.
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([{ id: 'lobby', minimap: false }]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unreadable [multiplayer] table'));
+    warn.mockRestore();
+  });
+
+  it('warns and serves no roster when a lobby row offers a value it cannot read', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await writeFile(join(mapsRoot, 'seats.json'), '{}');
+    await writeFile(
+      join(mapsRoot, 'seats.script.json'),
+      JSON.stringify({
+        players: [{ player: 0, type: 'ai', tribeId: 1, colorId: 0 }],
+        // "Human" is not a value the sidecar writes; reading it as neither human nor ai would close
+        // the seat and deny the AI in one step.
+        multiplayer: { slotOptions: [{ player: 0, allowed: ['Human'] }], hiddenSlots: ['1'] },
+      }),
+    );
+    expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([{ id: 'seats', minimap: false }]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unreadable [multiplayer] table'));
+    warn.mockRestore();
+  });
+
   it('degrades a malformed script sidecar to a roster-less entry', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await writeFile(join(mapsRoot, 'bad.json'), '{}');
@@ -192,7 +231,9 @@ describe('buildMapsIndexEntries', () => {
       { id: 'bad', minimap: false },
       { id: 'typ', minimap: false },
     ]);
-    expect(warn).toHaveBeenCalledTimes(1); // only the unparsable one warns; invalid rows drop silently
+    // Both the unparsable file and the invalid row say so: a silent drop looks like a map with no roster.
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('unreadable player row'));
     warn.mockRestore();
   });
 });
