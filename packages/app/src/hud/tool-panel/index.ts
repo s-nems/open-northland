@@ -73,9 +73,7 @@ export interface ToolPanelOptions {
   /** That same overlay's box, which the pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
-  /** The mission window's content, read on each open; absent opens an empty sheet. */
   readonly missionBrief?: () => MissionBrief | null;
-  /** Fires as the mission window opens and closes, so the host can hold game time behind it. */
   readonly onLargeWindow?: (open: boolean) => void;
 }
 

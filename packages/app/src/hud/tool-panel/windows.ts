@@ -40,11 +40,9 @@ export interface ToolWindowsDeps {
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** The decoded GUI sheet the mission window draws its papyrus from; null degrades to flat chrome. */
   readonly art: GuiArt | null;
-  /** The mission window's content, read on each open. */
   readonly missionBrief: () => MissionBrief | null;
   /** The mission window's history book; null shows the tab empty. */
   readonly history: HypertextBook | null;
-  /** Fires as the mission window opens and closes, so the host can hold game time behind it. */
   readonly onLargeWindow?: (open: boolean) => void;
   readonly onPickBuilding: (typeId: number) => void;
   readonly onPickGood: (goodType: number) => void;

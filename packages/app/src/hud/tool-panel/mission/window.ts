@@ -40,7 +40,6 @@ export interface MissionWindowDeps {
   readonly brief: () => MissionBrief | null;
   /** The history tab's book; null shows it empty. */
   readonly history: HypertextBook | null;
-  /** The original stops game time behind this large window; the host holds the pause. */
   readonly onOpenChange?: (open: boolean) => void;
   /** Page pictures; the default reads them off the content route. */
   readonly loadPicture?: PictureLoader;
@@ -163,7 +162,12 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
         fillTask(filled, deps.brief(), built.wrapWidth, copy.missionNoBriefing);
         break;
       case 'goals':
-        fillGoals(filled, deps.brief(), ctx.uiString('miscwindow', STRING_GOALS_HEADING, copy.missionGoals));
+        fillGoals(
+          filled,
+          deps.brief(),
+          ctx.uiString('miscwindow', STRING_GOALS_HEADING, copy.missionGoals),
+          built.wrapWidth,
+        );
         break;
       case 'history':
         fillHistory(filled, pageOf(deps.history, page), built.wrapWidth, copy.missionNoHistory);
@@ -200,19 +204,19 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     build();
   };
 
+  /** A link opens its page in the book, from whichever tab carried the link. */
   const openPage = (next: string): void => {
     if (pageOf(deps.history, next) === undefined) return;
     page = next;
+    tab = 'history';
     scroll = 0;
     creep = null;
     build();
   };
 
-  /** The linked run under a viewport point, on the history tab. */
+  /** The linked run under a viewport point. */
   const linkUnder = (x: number, y: number) =>
-    tab === 'history' && layout !== null && sink !== null
-      ? linkedRunAt(sink.placed, layout.viewport.w, x, y + scroll)
-      : null;
+    layout !== null && sink !== null ? linkedRunAt(sink.placed, layout.viewport.w, x, y + scroll) : null;
 
   /** The control under the pointer to light: a tab, a shown arrow, or a link's visible box. */
   const hoverRectAt = (x: number, y: number): Rect | null => {
@@ -273,7 +277,9 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     },
     handleWheel(x, y, deltaY): boolean {
       if (!shell.isOpen() || layout === null || !contains(layout.sheet, x, y)) return false;
-      scrollBy(Math.sign(deltaY) * WHEEL_STEP * layout.scale);
+      // A sideways swipe reaches here as a wheel with no vertical delta: it must not count as the
+      // player taking the scroll.
+      if (deltaY !== 0) scrollBy(Math.sign(deltaY) * WHEEL_STEP * layout.scale);
       return true;
     },
     handleHover(x, y): void {

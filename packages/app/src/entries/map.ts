@@ -14,7 +14,7 @@ import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { mapStartFocus } from '../game/map-start.js';
-import { matchParticipants, neverDiesSeats } from '../game/match-participants.js';
+import { matchIsContested, matchParticipants, neverDiesSeats } from '../game/match-participants.js';
 import { mapMissionBrief } from '../game/mission-brief.js';
 import {
   colorOverridesParam,
@@ -276,7 +276,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       name: meta?.name,
       description: meta?.description,
       skirmishGoal: messages().hud.skirmishGoal,
-      matchDeclared: participants.length >= 2,
+      matchDeclared: matchIsContested(participants) && participants.includes(localPlayer),
     }),
   });
   await boot.finish();

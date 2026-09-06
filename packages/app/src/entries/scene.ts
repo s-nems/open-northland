@@ -6,6 +6,7 @@ import { loadIr } from '../content/ir/load.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
+import { matchIsContested } from '../game/match-participants.js';
 import type { MissionBrief } from '../game/mission-brief.js';
 import { applySessionRuleOverrides, sessionRuleOverrides } from '../game/session-rules.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
@@ -179,9 +180,8 @@ function sceneMissionBrief(scene: SceneDefinition): MissionBrief {
   return {
     title: entry?.title ?? scene.id,
     blocks: entry === undefined ? [] : [{ kind: 'text', style: 'body', text: entry.summary }],
-    goals:
-      scene.participants === undefined
-        ? []
-        : [{ text: messages().hud.skirmishGoal, rule: 'skirmish', done: false }],
+    goals: matchIsContested(scene.participants ?? [])
+      ? [{ text: messages().hud.skirmishGoal, rule: 'skirmish', done: false }]
+      : [],
   };
 }
