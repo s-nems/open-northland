@@ -80,7 +80,7 @@ async function renderBook(
   const texts = new Map<string, string>();
   for (const entry of entries
     .filter((e) => PAGE_EXT.test(e.name))
-    .sort((a, b) => a.name.localeCompare(b.name))) {
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))) {
     texts.set(
       entry.name.replace(PAGE_EXT, '').toLowerCase(),
       decodeIni(await fs.readFile(vjoin(dir, entry.name))),
