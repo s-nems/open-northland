@@ -9,6 +9,7 @@ import type { PanelContext } from '../context.js';
 import { addRun, centreRun, clearFills, paintPlate, type WindowLayers } from '../window-family/index.js';
 import { createWindowShell, type ToolWindow } from '../window-shell.js';
 import { type ContentSink, createContentSink, fillGoals, fillHistory, fillTask, pageOf } from './content.js';
+import { type SheetCreep, startCreep } from './creep.js';
 import {
   BUTTON_SCROLL_STEP,
   clampScroll,
@@ -43,6 +44,8 @@ export interface MissionWindowDeps {
   readonly onOpenChange?: (open: boolean) => void;
   /** Page pictures; the default reads them off the content route. */
   readonly loadPicture?: PictureLoader;
+  /** Monotonic ms clock the creep is timed against. */
+  readonly now?: () => number;
 }
 
 /** The mission window: the briefing, the goal list, and the history book, one tab each. */
@@ -60,6 +63,7 @@ const sameRect = (a: Rect | null, b: Rect | null): boolean =>
 
 export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   const pictures = createPictureCache(deps.loadPicture);
+  const now = deps.now ?? (() => performance.now());
   const shell = createWindowShell(deps.container);
   const back = new Container();
   shell.container.addChildAt(back, 0);
@@ -77,6 +81,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   /** The Up/Down pair shows on the text tabs, and on the goals tab only once the list overflows. */
   let buttonsShown = false;
   let scroll = 0;
+  /** The opened sheet's own descent; null once the player takes the scroll. */
+  let creep: SheetCreep | null = null;
   let hovered: Rect | null = null;
   let screenKey = '';
 
@@ -108,6 +114,12 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     if (clamped === scroll) return;
     scroll = clamped;
     placeRuns();
+  };
+
+  /** A scroll the player asked for; the sheet stops creeping for as long as this view stays open. */
+  const scrollBy = (delta: number): void => {
+    creep = null;
+    scrollTo(scroll + delta);
   };
 
   const build = (): void => {
@@ -172,6 +184,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       tab = 'task';
       page = deps.history?.start ?? '';
       scroll = 0;
+      creep = startCreep(now());
       build();
     } else {
       clear();
@@ -183,6 +196,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     if (next === tab) return;
     tab = next;
     scroll = 0;
+    creep = null;
     build();
   };
 
@@ -190,6 +204,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     if (pageOf(deps.history, next) === undefined) return;
     page = next;
     scroll = 0;
+    creep = null;
     build();
   };
 
@@ -244,7 +259,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
           showTab(hit.tab);
           break;
         case 'scroll':
-          if (buttonsShown) scrollTo(scroll + hit.direction * BUTTON_SCROLL_STEP * layout.scale);
+          if (buttonsShown) scrollBy(hit.direction * BUTTON_SCROLL_STEP * layout.scale);
           break;
         case 'text': {
           const link = linkUnder(hit.x, hit.y)?.link ?? null;
@@ -258,7 +273,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     },
     handleWheel(x, y, deltaY): boolean {
       if (!shell.isOpen() || layout === null || !contains(layout.sheet, x, y)) return false;
-      scrollTo(scroll + Math.sign(deltaY) * WHEEL_STEP * layout.scale);
+      scrollBy(Math.sign(deltaY) * WHEEL_STEP * layout.scale);
       return true;
     },
     handleHover(x, y): void {
@@ -274,6 +289,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       if (!shell.isOpen()) return;
       const screen = deps.ctx.screen();
       if (`${screen.width}x${screen.height}` !== screenKey) build();
+      if (creep !== null && layout !== null) scrollTo(creep.advance(now(), layout.scale));
     },
   };
 }
