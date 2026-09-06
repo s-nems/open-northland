@@ -48,11 +48,13 @@ Local content gates:
 ```bash
 npm run test:content
 npm run test:pipeline
+npm run test:engines
 ```
 
 `test:content` checks consumers against an existing `content/` directory. `test:pipeline` performs a
 fresh conversion into a temporary directory and validates the result. It uses
-`CULTURES_GAME_DIR` and, when needed, `CULTURES_MOD_ROOT`.
+`CULTURES_GAME_DIR` and, when needed, `CULTURES_MOD_ROOT`. `test:engines` boots the app in Electron
+and the Playwright browsers and compares their state hashes with Node (see `TESTING.md`).
 
 ## Browser entries
 

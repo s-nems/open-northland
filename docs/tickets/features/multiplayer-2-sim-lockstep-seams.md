@@ -1,7 +1,6 @@
 # Give the sim its lockstep seams: tick-targeted commands, a per-tick sync digest, payload contracts, and a session seed
 
 **Area:** sim, app · **Focus:** core/commands, simulation/hash · **Priority:** P2
-**Blocked by:** [multiplayer-1-engine-determinism-spike.md](multiplayer-1-engine-determinism-spike.md)
 
 Four things the deterministic lockstep client needs are missing from the sim, and all four are
 behavior-preserving for single-player, so they land on `main` ahead of any network code.

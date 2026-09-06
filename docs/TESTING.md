@@ -75,6 +75,29 @@ commit; older layouts are not migrated, so nothing else is kept.
 The sim hygiene test rejects browser and I/O imports, nondeterministic globals, and other boundary
 violations in `packages/sim/src`.
 
+## Cross-engine determinism
+
+Every determinism proof above runs in one Node process. Lockstep multiplayer needs the same state
+from every JavaScript engine that ships the game, so this mode boots the app in each engine, pauses
+the session, steps the sim through the same `window.__opennorthland` handle the performance probes
+use, and compares the state-hash sequence with a Node run of the same world:
+
+```bash
+npm run test:engines                              # Electron, Chromium, WebKit, Firefox
+ON_ENGINES=electron,chromium npm run test:engines # a subset
+```
+
+It needs generated content (the browser entries halt without it), a built workspace (the runner
+builds it), and the Playwright browsers of the repository's Playwright version: `npx playwright
+install webkit firefox` fetches the two that `npm ci` does not. Electron and Chromium are gates, so a
+mismatch fails the run. WebKit and Firefox are informative: their verdict is printed, never asserted,
+and a divergence there is filed as a sim ticket naming the first diverging tick.
+
+The workloads are the `sandbox` scene over its acceptance run, hashed every 20 ticks, and 2000 ticks
+of `magiczny_las` with six AI seats, hashed every 100 because a full hash of that world is slow. A
+divergence names the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serves
+the checkout's `content/` only.
+
 ## Acceptance scenes
 
 Registered scenes use the same setup for a headless test and a browser run. Add one for a
@@ -146,4 +169,6 @@ See [`DEVELOPMENT.md`](DEVELOPMENT.md) for benchmark controls.
 - Sim behavior: standard gates plus a focused determinism or scenario test.
 - Pipeline or schema: standard gates plus `npm run test:pipeline`.
 - Real-content consumers: standard gates plus `npm run test:content` when local content exists.
+- Sort comparators, the local float allowance, or the state hash: standard gates plus
+  `npm run test:engines` when local content and the Playwright browsers exist.
 - Visual or audio work: matching automated checks plus a stated human review step.
