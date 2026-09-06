@@ -1,4 +1,4 @@
-import type { HypertextParagraph, MapBriefing, MapScript, MapScriptLine } from '@open-northland/data';
+import type { HypertextBlock, MapBriefing, MapScript, MapScriptLine } from '@open-northland/data';
 import type { MatchOutcome } from '@open-northland/sim';
 
 /**
@@ -14,8 +14,8 @@ export interface MissionGoal {
 
 export interface MissionBrief {
   readonly title: string;
-  /** The briefing text; a map without one reads its menu description, a scene its summary. */
-  readonly paragraphs: readonly HypertextParagraph[];
+  /** The briefing page; a map without one reads its menu description, a scene its summary. */
+  readonly blocks: readonly HypertextBlock[];
   readonly goals: readonly MissionGoal[];
 }
 
@@ -74,7 +74,7 @@ export function briefingPage(
   briefing: MapBriefing | null,
   lang: string,
   id: number | null,
-): readonly HypertextParagraph[] | null {
+): readonly HypertextBlock[] | null {
   if (briefing === null || id === null) return null;
   for (const candidate of [lang, ...BRIEFING_LANG_FALLBACKS]) {
     const page = briefing.texts[candidate]?.[String(id)];
@@ -112,13 +112,14 @@ export function mapMissionBrief(input: MapBriefInput): MissionBrief {
   if (page === null) {
     return {
       title: fallbackTitle,
-      paragraphs: input.description === undefined ? [] : [{ style: 'body', text: input.description }],
+      blocks:
+        input.description === undefined ? [] : [{ kind: 'text', style: 'body', text: input.description }],
       goals,
     };
   }
   const [first, ...rest] = page;
-  const headed = first !== undefined && first.style === 'title';
-  return { title: headed ? first.text : fallbackTitle, paragraphs: headed ? rest : page, goals };
+  const headed = first?.kind === 'text' && first.style === 'title';
+  return { title: headed ? first.text : fallbackTitle, blocks: headed ? rest : page, goals };
 }
 
 /** The brief with its skirmish goals ticked once the match is won; authored goals are never evaluated. */

@@ -1,8 +1,11 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { encodePcx } from '../src/decoders/pcx.js';
 import { convertGuiHistory } from '../src/stages/gui/history.js';
+import { HYPERTEXT_PICTURES_DIR } from '../src/stages/gui/paths.js';
+import { rampPalette } from './fixtures/palette.js';
 import { type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
 
 const fs = nodeVfs();
@@ -10,7 +13,8 @@ const fs = nodeVfs();
 /**
  * The history book stage (`stages/gui/history.ts`): every `.hlt` page of `Data/text/<lang>/hypertext/
  * history/` renders through the block files beside it into one `gui/history/<lang>.json` opened on
- * `index`, per language; a language without the start page emits nothing.
+ * `index`, with the pictures it names emitted beside it, per language; a language without the start
+ * page emits nothing.
  */
 
 const HISTORY_DIR = join('Data', 'text', 'eng', 'hypertext', 'history');
@@ -80,22 +84,43 @@ describe('convertGuiHistory', () => {
     await temp.write(join(HISTORY_DIR, 'Mythology.txt'), cp1250(BLOCKS));
     await temp.write(join(HISTORY_DIR, 'Index.hlt'), cp1250(INDEX));
     await temp.write(join(HISTORY_DIR, 'mythology_00.hlt'), cp1250(PAGE));
+    await temp.write(
+      join(HISTORY_DIR, 'Graphics', '01_00.pcx'),
+      encodePcx({ width: 4, height: 3, pixels: new Uint8Array(12).fill(7), palette: rampPalette() }),
+    );
 
     const done = await convertGuiHistory(fs, { game: temp.game, mod: undefined }, temp.out, ['eng', 'pol']);
     expect(done).toEqual([{ lang: 'eng', path: 'gui/history/eng.json', pages: 2 }]);
 
+    const pictures = await readdir(join(temp.out, HYPERTEXT_PICTURES_DIR));
     const book = JSON.parse(await readFile(join(temp.out, 'gui', 'history', 'eng.json'), 'utf8'));
+    expect(pictures).toHaveLength(1);
     expect(book).toEqual({
       start: 'index',
       pages: {
         index: [
-          { style: 'title', text: 'HISTORY TABLES', align: 'center' },
-          { style: 'body', text: 'SEVEN WONDERS', align: 'center', link: 'mythology_00' },
+          { kind: 'text', style: 'title', text: 'HISTORY TABLES', align: 'center' },
+          {
+            kind: 'text',
+            style: 'body',
+            text: 'SEVEN WONDERS',
+            align: 'center',
+            color: 'red',
+            link: 'mythology_00',
+          },
         ],
         mythology_00: [
-          { style: 'title', text: 'SEVEN WONDERS', align: 'center' },
-          { style: 'body', text: 'A list of seven.' },
-          { style: 'body', text: 'Back to index', align: 'center', link: 'index' },
+          { kind: 'text', style: 'title', text: 'SEVEN WONDERS', align: 'center' },
+          { kind: 'text', style: 'body', text: 'A list of seven.' },
+          { kind: 'picture', file: pictures[0], width: 4, height: 3, align: 'center' },
+          {
+            kind: 'text',
+            style: 'body',
+            text: 'Back to index',
+            align: 'center',
+            color: 'red',
+            link: 'index',
+          },
         ],
       },
     });

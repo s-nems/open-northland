@@ -23,6 +23,7 @@ import {
   WHEEL_STEP,
 } from './model.js';
 import { paintScrollButtons, paintSheet, sheetFrame } from './paint.js';
+import { createPictureCache, type PictureLoader } from './pictures.js';
 
 /** The decoded original strings (`miscwindow`) the window prefers over the catalog fallbacks. */
 const STRING_TITLE = 60;
@@ -40,6 +41,8 @@ export interface MissionWindowDeps {
   readonly history: HypertextBook | null;
   /** The original stops game time behind this large window; the host holds the pause. */
   readonly onOpenChange?: (open: boolean) => void;
+  /** Page pictures; the default reads them off the content route. */
+  readonly loadPicture?: PictureLoader;
 }
 
 /** The mission window: the briefing, the goal list, and the history book, one tab each. */
@@ -56,6 +59,7 @@ const sameRect = (a: Rect | null, b: Rect | null): boolean =>
   a === b || (a !== null && b !== null && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h);
 
 export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
+  const pictures = createPictureCache(deps.loadPicture);
   const shell = createWindowShell(deps.container);
   const back = new Container();
   shell.container.addChildAt(back, 0);
@@ -141,7 +145,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       centreRun(layers, addRun(layers, label, selected ? 'white' : 'dimmed', MISSION_TAB_PX), t.rect);
     }
 
-    const filled = createContentSink(ctx, content);
+    const filled = createContentSink(ctx, content, pictures);
     switch (tab) {
       case 'task':
         fillTask(filled, deps.brief(), built.wrapWidth, copy.missionNoBriefing);

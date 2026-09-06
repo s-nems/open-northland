@@ -178,7 +178,7 @@ function sceneMissionBrief(scene: SceneDefinition): MissionBrief {
   const entry = sceneCopy(scene.id);
   return {
     title: entry?.title ?? scene.id,
-    paragraphs: entry === undefined ? [] : [{ style: 'body', text: entry.summary }],
+    blocks: entry === undefined ? [] : [{ kind: 'text', style: 'body', text: entry.summary }],
     goals:
       scene.participants === undefined
         ? []

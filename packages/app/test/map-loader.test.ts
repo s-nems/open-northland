@@ -83,12 +83,12 @@ describe('loadMapMeta and loadMapBriefing', () => {
   });
 
   it('validates the briefing sidecar and degrades a malformed one to null', async () => {
-    const good = { texts: { pol: { '500': [{ style: 'title', text: 'BURZA' }] } } };
+    const good = { texts: { pol: { '500': [{ kind: 'text', style: 'title', text: 'BURZA' }] } } };
     const fetchImpl = vi.fn(async (_url: string) => jsonResponse(good));
     expect(await loadMapBriefing('burza_piaskowa', fetchImpl as unknown as typeof fetch)).toEqual(good);
     expect(fetchImpl.mock.calls[0]?.[0]).toContain('/maps/burza_piaskowa.briefing.json');
     const malformed = vi.fn(async () =>
-      jsonResponse({ texts: { pol: { '500': [{ style: 'bold', text: 'x' }] } } }),
+      jsonResponse({ texts: { pol: { '500': [{ kind: 'text', style: 'bold', text: 'x' }] } } }),
     );
     expect(await loadMapBriefing('burza_piaskowa', malformed as unknown as typeof fetch)).toBeNull();
     const missing = vi.fn(async () => jsonResponse(null, false, 404));

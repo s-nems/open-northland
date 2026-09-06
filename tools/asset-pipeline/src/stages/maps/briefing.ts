@@ -1,9 +1,10 @@
-import type { HypertextParagraph, MapBriefing, MapScript } from '@open-northland/data';
+import type { HypertextBlock, MapBriefing, MapScript } from '@open-northland/data';
 import type { Vfs } from '@open-northland/vfs';
 import { type IncludeResolver, parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
 import { decodeIni } from '../../decoders/ini/grammar.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from '../../roots.js';
+import { HYPERTEXT_GRAPHICS_DIR, resolvePagePictures } from '../hypertext-pictures.js';
 import { STRING_TABLE_DIR } from './info.js';
 
 /** Both menu languages, since the mission window follows the app's `?lang=`. */
@@ -30,19 +31,21 @@ export function cutsceneIdsOf(script: Pick<MapScript, 'missions'>): number[] {
 
 /**
  * Resolves one map folder's briefing sidecar: every cutscene id in `ids` rendered per language from
- * `<mapDir>/text/<lang>/briefings/`. A language folder without the file is skipped, an unreadable page
- * warns and is skipped, and a map resolving no page at all yields undefined.
+ * `<mapDir>/text/<lang>/briefings/`, with the pictures those pages name emitted under `outDir`. A
+ * language folder without the file is skipped, an unreadable page warns and is skipped, and a map
+ * resolving no page at all yields undefined.
  */
 export async function resolveMapBriefing(
   fs: Vfs,
   mapDirs: readonly string[],
+  outDir: string,
   rel: string,
   ids: readonly number[],
 ): Promise<MapBriefing | undefined> {
   if (ids.length === 0) return undefined;
-  const texts: Record<string, Record<string, HypertextParagraph[]>> = {};
+  const texts: Record<string, Record<string, HypertextBlock[]>> = {};
   for (const lang of BRIEFING_LANGS) {
-    const pages = await renderLanguage(fs, mapDirs, rel, lang, ids);
+    const pages = await renderLanguage(fs, mapDirs, outDir, rel, lang, ids);
     if (pages !== undefined) texts[lang] = pages;
   }
   return Object.keys(texts).length === 0 ? undefined : { texts };
@@ -51,10 +54,11 @@ export async function resolveMapBriefing(
 async function renderLanguage(
   fs: Vfs,
   mapDirs: readonly string[],
+  outDir: string,
   rel: string,
   lang: string,
   ids: readonly number[],
-): Promise<Record<string, HypertextParagraph[]> | undefined> {
+): Promise<Record<string, HypertextBlock[]> | undefined> {
   const dir = [STRING_TABLE_DIR, lang, BRIEFINGS_DIR];
   const blocksPath = await findPathCaseInsensitiveInDirs(fs, mapDirs, [...dir, BRIEFINGS_FILE]);
   if (blocksPath === undefined) return undefined;
@@ -68,27 +72,50 @@ async function renderLanguage(
     return undefined;
   }
   const include: IncludeResolver = (_file, label) => blocks.get(label);
-  const pages: Record<string, HypertextParagraph[]> = {};
+  const texts = new Map<number, string>();
   for (const id of ids) {
-    let page: string | undefined;
-    if (id >= FIRST_BLOCK_CUTSCENE_ID) {
-      page = blocks.get(String(id));
-    } else {
-      const file = `${String(id).padStart(HLT_PAGE_DIGITS, '0')}.hlt`;
-      const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [...dir, file]);
-      if (path === undefined) continue;
-      try {
-        page = decodeIni(await fs.readFile(path));
-      } catch (err) {
-        console.warn(
-          `[pipeline] map ${rel}: text/${lang}/${BRIEFINGS_DIR}/${file} unreadable: ${errorMessage(err)}`,
-        );
-        continue;
-      }
-    }
-    if (page === undefined) continue;
-    const paragraphs = renderHypertext(page, include);
-    if (paragraphs.length > 0) pages[String(id)] = paragraphs;
+    const page =
+      id >= FIRST_BLOCK_CUTSCENE_ID ? blocks.get(String(id)) : await readPage(fs, mapDirs, rel, lang, id);
+    if (page !== undefined) texts.set(id, page);
+  }
+  const picture = await resolvePagePictures(
+    fs,
+    outDir,
+    (name) => findPathCaseInsensitiveInDirs(fs, mapDirs, [...dir, HYPERTEXT_GRAPHICS_DIR, name]),
+    texts.values(),
+    include,
+    `map ${rel}`,
+  );
+  const pages: Record<string, HypertextBlock[]> = {};
+  for (const [id, page] of texts) {
+    const blocksOfPage = renderHypertext(page, { include, picture });
+    if (blocksOfPage.length > 0) pages[String(id)] = blocksOfPage;
   }
   return Object.keys(pages).length === 0 ? undefined : pages;
+}
+
+/** One `NNNN.hlt` page's text, or undefined when it is absent or unreadable. */
+async function readPage(
+  fs: Vfs,
+  mapDirs: readonly string[],
+  rel: string,
+  lang: string,
+  id: number,
+): Promise<string | undefined> {
+  const file = `${String(id).padStart(HLT_PAGE_DIGITS, '0')}.hlt`;
+  const path = await findPathCaseInsensitiveInDirs(fs, mapDirs, [
+    STRING_TABLE_DIR,
+    lang,
+    BRIEFINGS_DIR,
+    file,
+  ]);
+  if (path === undefined) return undefined;
+  try {
+    return decodeIni(await fs.readFile(path));
+  } catch (err) {
+    console.warn(
+      `[pipeline] map ${rel}: text/${lang}/${BRIEFINGS_DIR}/${file} unreadable: ${errorMessage(err)}`,
+    );
+    return undefined;
+  }
 }

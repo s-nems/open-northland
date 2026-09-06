@@ -11,8 +11,8 @@ function jsonResponse(body: unknown, ok = true): Response {
 const BOOK = {
   start: 'index',
   pages: {
-    index: [{ style: 'title', text: 'HISTORY', align: 'center' }],
-    mythology_00: [{ style: 'body', text: 'Back', link: 'index' }],
+    index: [{ kind: 'text', style: 'title', text: 'HISTORY', align: 'center' }],
+    mythology_00: [{ kind: 'text', style: 'body', text: 'Back', link: 'index' }],
   },
 };
 

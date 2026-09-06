@@ -27,12 +27,15 @@ export async function fetchJsonOrNull<T>(url: string, fetchImpl: typeof fetch = 
  * Load a texture if the server has it (HEAD probe), else `undefined` so the caller degrades. Never
  * rejects: `undefined` is the only failure signal its callers read.
  */
-export async function loadTextureIfPresent(url: string): Promise<TextureSource | undefined> {
+export async function loadTextureIfPresent(
+  url: string,
+  scaleMode: 'nearest' | 'linear' = 'nearest',
+): Promise<TextureSource | undefined> {
   try {
     const resolvedUrl = withBaseUrl(url);
     const res = await fetch(resolvedUrl, { method: 'HEAD' });
     if (!res.ok) return undefined;
-    return await loadAtlasSource(resolvedUrl);
+    return await loadAtlasSource(resolvedUrl, scaleMode);
   } catch (err) {
     diag.warn('content', `net: optional texture ${url} failed to load; its caller falls back`, err);
     return undefined;
