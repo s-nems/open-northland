@@ -1,6 +1,11 @@
 import type { Graphics } from 'pixi.js';
-import { type ActionRingLayout, hitTestActionRing } from '../../../hud/action-ring-layout.js';
-import { type Messages, messages } from '../../../i18n/index.js';
+import {
+  type ActionOrderId,
+  type ActionRingLayout,
+  hitTestActionRing,
+  isPendingAction,
+} from '../../../hud/action-ring/index.js';
+import { messages } from '../../../i18n/index.js';
 import type { MenuMode } from './types.js';
 
 const HOVER_TINT = 0xffffff;
@@ -25,16 +30,10 @@ export interface ActionRingInputContext {
   readonly getTargets: () => readonly number[];
   /** Clear the hover highlight and tooltip. */
   readonly hideTransient: () => void;
-  readonly onErectSignpost: (ids: readonly number[]) => void;
-  readonly onAttackMove: () => void;
-  readonly onMarry: (id: number) => void;
-  readonly onAssignHouse: (id: number) => void;
-  readonly onMakeChild: (id: number, sex: 'male' | 'female') => void;
+  readonly onCommand: (id: ActionOrderId, targets: readonly number[]) => void;
   readonly openJobWindow: () => void;
   /** Close both faces, list and ring. */
   readonly closeMenu: () => void;
-  /** Step back from the list to the ring. */
-  readonly closeJobWindow: () => void;
 }
 
 export interface ActionRingInput {
@@ -63,31 +62,16 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     const { x, y } = toCanvas(e.clientX, e.clientY);
     const hit = hitTestActionRing(ctx.getLayout(), x, y);
     if (hit === null) return;
-    // Stop the click reaching world picking, including on an inert placeholder button.
-    e.stopImmediatePropagation();
-    const targets = ctx.getTargets();
-    const single = targets.length === 1 ? targets[0] : undefined;
-    if (hit.kind === 'open-jobs') {
+    e.stopImmediatePropagation(); // the click is the ring's, never world picking's
+    if (hit.id === 'changeProfession') {
       ctx.openJobWindow();
-    } else if (hit.kind === 'erect-signpost') {
-      // The next world click places the signpost (the original's "Select place for signpost" flow).
-      const scouts = [...targets];
-      ctx.closeMenu();
-      ctx.onErectSignpost(scouts);
-    } else if (hit.kind === 'attack-move') {
-      ctx.closeMenu();
-      ctx.onAttackMove();
-    } else if (hit.kind === 'marry' && single !== undefined) {
-      ctx.onMarry(single);
-      ctx.closeMenu();
-    } else if (hit.kind === 'assign-house' && single !== undefined) {
-      ctx.onAssignHouse(single);
-      ctx.closeMenu();
-    } else if (hit.kind === 'make-child' && single !== undefined) {
-      ctx.onMakeChild(single, hit.sex);
-      ctx.closeMenu();
+      return;
     }
-    // The 'placeholder' kind is consumed above and carries no action.
+    if (isPendingAction(hit.id)) return; // drawn for fidelity, with no order behind it yet
+    // The targets are read before closing: closing is what ends the session they belong to.
+    const targets = ctx.getTargets();
+    ctx.closeMenu();
+    ctx.onCommand(hit.id, targets);
   };
 
   const onMouseMove = (e: MouseEvent): void => {
@@ -104,13 +88,14 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
       tooltip.style.display = 'none';
       return;
     }
-    const placed = layout.buttons.find((p) => p.button === hit);
+    const placed = layout.buttons.find((p) => p.command === hit);
     if (placed !== undefined) {
       hoverG
         .roundRect(placed.rect.x, placed.rect.y, placed.rect.w, placed.rect.h, Math.max(2, 3 * scale))
         .fill({ color: HOVER_TINT, alpha: HOVER_ALPHA });
     }
-    tooltip.textContent = messages().actionRing[hit.id as keyof Messages['actionRing']] ?? hit.id;
+    const label = messages().actionRing[hit.id];
+    tooltip.textContent = isPendingAction(hit.id) ? `${label} (${messages().actionRingPending})` : label;
     tooltip.style.left = `${e.clientX + 12}px`;
     tooltip.style.top = `${e.clientY - 22}px`;
     tooltip.style.display = 'block';

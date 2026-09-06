@@ -89,9 +89,9 @@ export {
   livestockMeatGoodOf,
   livestockTribeOfGood,
 } from './readviews/tribes/livestock.js';
-// The "can this trade raise a foundation" gate, so the app's right-click on a site cannot drift from the
-// rule assignBuilder and the builder drive ask.
-export { jobCanBuild } from './settlers/atomics/start.js';
+// jobCanBuild is the "can this trade raise a foundation" gate, so the app's right-click on a site cannot
+// drift from the rule assignBuilder and the builder drive ask; PRAY_ATOMIC_ID keys the app's pray gate.
+export { jobCanBuild, PRAY_ATOMIC_ID } from './settlers/atomics/start.js';
 export {
   canPlaceSignpost,
   type SignpostProbe,
@@ -99,6 +99,8 @@ export {
   signpostNetwork,
   signpostProbe,
 } from './signposts/index.js';
+// Keys the app's talk gate, the way PRAY_ATOMIC_ID keys its pray gate.
+export { TALK_ATOMIC_ID } from './social/gossip/drive.js';
 export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './spawn/index.js';
 export { isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
 export { cellOfNode } from './vision/gates.js';

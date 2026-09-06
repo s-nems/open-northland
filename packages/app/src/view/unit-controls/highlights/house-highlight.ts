@@ -1,13 +1,12 @@
 import type { BuildingHighlightItem } from '@open-northland/render';
-import { entityById, ONE, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import {
   buildingTribeOf,
   buildingTypeOf,
-  builtFractionOf,
   familiesByHome,
   type HomeFamily,
   isAdult,
-  isBuilding,
+  isFinishedBuilding,
   isSettler,
   marriageOf,
   ownerPlayerOf,
@@ -37,9 +36,7 @@ export function familyIdsOf(snapshot: WorldSnapshot, settlerId: number): number[
 }
 
 function isBuiltHome(e: SnapshotEntity, housesByType: ReadonlyMap<number, HouseInfo>): boolean {
-  if (!isBuilding(e) || e.components.UnderConstruction !== undefined) return false;
-  const built = builtFractionOf(e);
-  if (built === undefined || built < ONE) return false;
+  if (!isFinishedBuilding(e)) return false;
   const typeId = buildingTypeOf(e);
   return typeId !== undefined && housesByType.get(typeId)?.kind === 'home';
 }

@@ -17,7 +17,7 @@ import {
 import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
-import type { UnitTargets } from './unit-targets.js';
+import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
 export interface UnitOrderDeps {
   readonly selected: () => ReadonlySet<number>;
@@ -37,7 +37,10 @@ export interface UnitOrderController {
    *  (a garrison flag hangs far above the tower it stands for). */
   issueRightClick(event: MouseEvent, onBuilding?: number | null): void;
   issueSetWorkFlag(event: MouseEvent): void;
+  issueMoveTo(event: MouseEvent): void;
   issueAttackMove(event: MouseEvent): void;
+  /** Strike one enemy of `kind` under the cursor; a click that hits none of them orders nothing. */
+  issueAttackTarget(event: MouseEvent, kind: UnitTargetKind): void;
 }
 
 type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['kind'];
@@ -90,9 +93,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     const commanded = deps.targets.ownedSettlersIn(selected);
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
     if (enemy !== null) {
-      for (const target of commanded) {
-        deps.enqueue({ kind: 'attackUnit', entity: target.ref as Entity, target: enemy as Entity });
-      }
+      strike(commanded, enemy);
       return;
     }
     const building = onBuilding ?? pickTopAt(deps.targets.owned('building'), world.x, world.y);
@@ -146,6 +147,27 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     issueWalkOrder(event, commanded, selected, 'moveUnit');
   };
 
+  const strike = (commanded: readonly FormationUnit[], enemy: number): void => {
+    for (const unit of commanded) {
+      deps.enqueue({ kind: 'attackUnit', entity: unit.ref as Entity, target: enemy as Entity });
+    }
+  };
+
+  const issueAttackTarget = (event: MouseEvent, kind: UnitTargetKind): void => {
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const enemy = pickTopAt(
+      deps.targets.enemies().filter((p) => p.kind === kind),
+      world.x,
+      world.y,
+    );
+    if (enemy !== null) strike(deps.targets.ownedSettlersIn(deps.selected()), enemy);
+  };
+
+  const issueMoveTo = (event: MouseEvent): void => {
+    const selected = deps.selected();
+    issueWalkOrder(event, deps.targets.ownedSettlersIn(selected), selected, 'moveUnit');
+  };
+
   const issueAttackMove = (event: MouseEvent): void => {
     const selected = deps.selected();
     issueWalkOrder(event, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
@@ -167,5 +189,5 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     }
   };
 
-  return { issueRightClick, issueSetWorkFlag, issueAttackMove };
+  return { issueRightClick, issueSetWorkFlag, issueMoveTo, issueAttackMove, issueAttackTarget };
 }

@@ -15,6 +15,7 @@ import {
   progressionGatesSettler,
   residenceHomeOf,
   shelterClaimCount,
+  stanceModeOf,
   surnameSourceOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
@@ -193,8 +194,7 @@ export function buildUnitPanelModel(
     if (ent === undefined) return { kind: 'empty' };
     const comps = ent.components as Comp;
     const s = (ent.components.Settler ?? {}) as Comp;
-    const stance = ent.components.Stance as { mode?: unknown } | undefined;
-    const stanceMode = num(stance?.mode);
+    const stanceMode = stanceModeOf(ent);
     const stanceSuffix =
       stanceMode !== undefined
         ? formatMessage(messages().hud.stance, { stance: stanceLabel(stanceMode) })

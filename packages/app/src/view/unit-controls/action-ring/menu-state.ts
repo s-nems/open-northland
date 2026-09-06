@@ -1,6 +1,8 @@
 import type { ContentSet } from '@open-northland/data';
-import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, harvestJobsOf, jobAllowsAtomic, systems, type WorldSnapshot } from '@open-northland/sim';
+import { JOB_IDLE } from '../../../catalog/jobs.js';
 import {
+  buildSiteOf,
   childOrderOf,
   hasEligiblePartner,
   isAdult,
@@ -9,45 +11,165 @@ import {
   isMarrying,
   isSettler,
   marriageOf,
+  residenceHomeOf,
+  type SnapshotEntity,
   settlerJobType,
+  stanceModeOf,
+  trainingHouseOf,
+  workplaceOf,
 } from '../../../game/snapshot.js';
-import { DEFAULT_MENU_STATE, type SettlerMenuState } from '../../../hud/action-ring-menu.js';
+import { ACTION_COMMANDS, type ActionCommandId } from '../../../hud/action-ring/index.js';
 
 /**
- * Which per-state buttons the ring shows. Family orders are per-settler, so they surface only when
- * exactly one settler anchors the ring; the scout swap keys on the selection's uniform jobType and
- * survives a multi-scout selection, though only `ids[0]` erects.
+ * Which orders a selection may issue. Every selected settler must allow an order for the ring to draw
+ * it, as the original intersects its selection, and a selection of several drops the single-settler
+ * orders entirely. Each gate follows the original's row as far as the simulation honours it, and
+ * otherwise what the command accepts, so a lit button never issues an order the next tick sheds.
  */
-export const menuStateFor = (
+export function allowedActions(
   content: ContentSet,
   snapshot: WorldSnapshot,
   ids: readonly number[],
-  uniformJobType: number | undefined,
-): SettlerMenuState => {
-  const erectSignpost = systems.isScoutJob(content, uniformJobType ?? null);
-  if (ids.length !== 1 || ids[0] === undefined) return { ...DEFAULT_MENU_STATE, erectSignpost };
-  const e = entityById(snapshot, ids[0]);
-  if (e === undefined || !isSettler(e)) return { ...DEFAULT_MENU_STATE, erectSignpost };
-  // A child's stage belongs to the GrowthSystem, so it offers no profession or family buttons.
-  if (!isAdult(e)) return { ...DEFAULT_MENU_STATE, canChangeJob: false, erectSignpost };
-  const married = marriageOf(e);
-  const spouseAlive = married !== undefined && entityById(snapshot, married.spouse) !== undefined;
-  const onMission = systems.isOnMission(content, settlerJobType(e) ?? null);
-  // The one-child limit: a living, still-growing child blocks a fresh order.
-  const child = married?.child ?? null;
-  const childEntity = child !== null ? entityById(snapshot, child) : undefined;
-  const raisingChild = childEntity !== undefined && !isAdult(childEntity);
-  return {
-    canChangeJob: !isFemale(e), // women keep the woman role for life; the sim guards setJob too
-    // isBoundByMarriage mirrors the widowing rule: a widow is free again once her child grows up.
-    canMarry:
-      !isBoundByMarriage(snapshot, e) &&
-      !isMarrying(e) &&
-      !onMission &&
-      hasEligiblePartner(content, snapshot, e),
-    canAssignHouse: true,
-    // The spouse must be alive: a widow's stale marriage does not light the button.
-    canOrderChild: spouseAlive && isFemale(e) && !raisingChild && childOrderOf(e) === undefined,
-    erectSignpost,
-  };
-};
+): ReadonlySet<ActionCommandId> {
+  const settlers: SnapshotEntity[] = [];
+  for (const id of ids) {
+    const e = entityById(snapshot, id);
+    if (e !== undefined && isSettler(e)) settlers.push(e);
+  }
+  const allowed = new Set<ActionCommandId>();
+  if (settlers.length === 0) return allowed;
+  const several = settlers.length > 1;
+  for (const command of ACTION_COMMANDS) {
+    if (several && !command.multi) continue;
+    if (settlers.every((e) => allows(content, snapshot, e, command.id, several))) allowed.add(command.id);
+  }
+  return allowed;
+}
+
+/** A settler the player may re-trade or post: the simulation refuses both for a child and for a woman. */
+function tradeAssignable(e: SnapshotEntity): boolean {
+  return isAdult(e) && !isFemale(e);
+}
+
+/** A married woman may order a child while her husband lives and no child of hers is still growing. */
+function canOrderChild(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
+  if (!isAdult(e) || !isFemale(e) || childOrderOf(e) !== undefined) return false;
+  const marriage = marriageOf(e);
+  if (marriage === undefined || entityById(snapshot, marriage.spouse) === undefined) return false;
+  const child = marriage.child !== null ? entityById(snapshot, marriage.child) : undefined;
+  return child === undefined || isAdult(child);
+}
+
+/** Men, and heroes of either sex: whom the original offers every strike past the one at a settler. */
+function strikesAnyTarget(content: ContentSet, e: SnapshotEntity, job: number | null): boolean {
+  return !isFemale(e) || systems.isHeroJob(content, job);
+}
+
+/** A lone fighter is offered the modes it is not in; a group is offered all three, as in the original. */
+function offersMode(
+  content: ContentSet,
+  e: SnapshotEntity,
+  job: number | null,
+  mode: number,
+  several: boolean,
+): boolean {
+  return systems.isFighterJob(content, job) && (several || stanceModeOf(e) !== mode);
+}
+
+/** The trades that work a harvest area from a workplace or a flag. */
+function worksAnArea(content: ContentSet, e: SnapshotEntity, job: number | null): boolean {
+  return tradeAssignable(e) && job !== null && harvestJobsOf(content).has(job);
+}
+
+function allows(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  e: SnapshotEntity,
+  id: ActionCommandId,
+  several: boolean,
+): boolean {
+  const job = settlerJobType(e) ?? null;
+  switch (id) {
+    case 'goTo':
+    case 'assignVehicle':
+      return true;
+    case 'eat':
+    case 'sleep':
+      return !systems.isHeroJob(content, job);
+    case 'talk':
+      return !systems.isHeroJob(content, job) && jobAllowsAtomic(content, job, systems.TALK_ATOMIC_ID);
+    case 'pray':
+      return !systems.isHeroJob(content, job) && jobAllowsAtomic(content, job, systems.PRAY_ATOMIC_ID);
+    case 'marry':
+      return (
+        isAdult(e) &&
+        !isBoundByMarriage(snapshot, e) &&
+        !isMarrying(e) &&
+        trainingHouseOf(e) === undefined &&
+        !systems.isOnMission(content, job) &&
+        hasEligiblePartner(content, snapshot, e)
+      );
+    case 'haveBoy':
+    case 'haveGirl':
+      return canOrderChild(snapshot, e);
+    case 'changeProfession':
+      return tradeAssignable(e);
+    case 'changeEquipment':
+      // Approximation: the original keys this on a per-settler equipment flag the snapshot does not carry.
+      return isAdult(e) && !systems.isHeroJob(content, job);
+    case 'assignWorkArea':
+    case 'showWorkArea':
+      return worksAnArea(content, e, job);
+    case 'erectSignpost':
+    case 'explore':
+      return systems.isScoutJob(content, job);
+    case 'removeBuildingSite':
+      return (
+        tradeAssignable(e) &&
+        job !== null &&
+        systems.jobCanBuild(content, job) &&
+        buildSiteOf(e) !== undefined
+      );
+    case 'assignBuildingSite':
+      return tradeAssignable(e) && job !== null && systems.jobCanBuild(content, job);
+    case 'removeLearningPlace':
+      return trainingHouseOf(e) !== undefined;
+    case 'assignLearningPlace':
+      return tradeAssignable(e);
+    case 'removeWorkPlace':
+      return tradeAssignable(e) && workplaceOf(e) !== undefined;
+    case 'assignWorkPlace':
+      // A settler with no trade has nothing to place; the trade itself is what a workplace employs.
+      return tradeAssignable(e) && job !== null && job !== JOB_IDLE;
+    case 'removeHome':
+      return isAdult(e) && residenceHomeOf(e) !== undefined;
+    case 'assignHome':
+      return isAdult(e);
+    case 'attackInhabitants':
+      // Observation: the original sends any adult at another settler, armed or not - an unarmed striker
+      // chases and lands nothing, which is what the combat pass does with the order here too.
+      return isAdult(e);
+    case 'attackBuilding':
+    case 'attackAnimal':
+    case 'attackVehicle':
+      return isAdult(e) && strikesAnyTarget(content, e, job);
+    case 'attackPosition':
+      return isAdult(e) && strikesAnyTarget(content, e, job) && systems.isFighterJob(content, job);
+    case 'attackMode':
+      return offersMode(content, e, job, systems.MILITARY_MODE.ATTACK, several);
+    case 'defenceMode':
+      return offersMode(content, e, job, systems.MILITARY_MODE.DEFEND, several);
+    case 'ignorantMode':
+      return offersMode(content, e, job, systems.MILITARY_MODE.IGNORE, several);
+    case 'allowRegeneration':
+      // The original's group ring lists both regeneration toggles; a lone soldier sees only the one
+      // that flips its state, and regeneration is never prohibited here.
+      return several && systems.isSoldierJob(content, job);
+    case 'prohibitRegeneration':
+      return systems.isSoldierJob(content, job);
+    default: {
+      const unreachable: never = id;
+      throw new Error(`unhandled action command: ${String(unreachable)}`);
+    }
+  }
+}

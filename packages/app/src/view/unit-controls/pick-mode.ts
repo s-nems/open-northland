@@ -1,4 +1,4 @@
-import { type ContentSet, lastByTypeId } from '@open-northland/data';
+import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
 import type { BuildingHighlightItem, ElevationField } from '@open-northland/render';
 import type { Entity, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
 import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
@@ -7,18 +7,94 @@ import {
   assignableJobForBuilding,
   computeAssignHighlight,
   computeHouseHighlight,
+  drillPick,
   houseAssignableAt,
+  sitePick,
 } from './highlights/index.js';
+import type { UnitOrderController } from './orders.js';
 import type { UnitTargets } from './unit-targets.js';
 
 /**
- * Arming one mode replaces whatever was armed; a red-building or terrain click, a right-click, Esc, or
- * a selection change cancels the armed one.
+ * Arming one mode replaces whatever was armed; a click of any kind, a right-click, Esc, or a selection
+ * change resolves or cancels it. Modes that name one settler carry it, because the selection may change
+ * before the click lands.
  */
-type PickMode =
-  | { readonly kind: 'workplace' | 'home'; readonly settler: number }
-  | { readonly kind: 'signpost'; readonly scouts: readonly number[] }
-  | { readonly kind: 'attack-move' };
+export type PickMode =
+  | { readonly kind: BuildingPickKind; readonly settler: number }
+  | { readonly kind: 'signpost'; readonly scout: number }
+  | { readonly kind: GroundPickKind };
+
+/** The orders that resolve by clicking one of the player's own buildings. */
+export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learning-place';
+
+/** The orders that resolve against the world under the cursor and apply to the whole selection. */
+type GroundPickKind = 'destination' | 'work-area' | 'attack-move' | 'attack-settler' | 'attack-building';
+
+interface BuildingPick {
+  readonly highlight: (
+    snapshot: WorldSnapshot,
+    settler: number,
+    byType: ReadonlyMap<number, BuildingType>,
+  ) => BuildingHighlightItem[];
+  /** The order a click on `building` issues, or null when that building refuses this settler. */
+  readonly order: (
+    snapshot: WorldSnapshot,
+    settler: number,
+    building: number,
+    byType: ReadonlyMap<number, BuildingType>,
+  ) => PlayerCommand | null;
+}
+
+const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
+  workplace: {
+    highlight: computeAssignHighlight,
+    // This mode places the settler's current trade only; it never re-trades.
+    order: (snapshot, settler, building, byType) => {
+      const job = assignableJobForBuilding(snapshot, building, settler, byType);
+      return job === null
+        ? null
+        : {
+            kind: 'assignWorker',
+            entity: settler as Entity,
+            building: building as Entity,
+            jobPriority: [job],
+          };
+    },
+  },
+  home: {
+    highlight: computeHouseHighlight,
+    order: (snapshot, settler, building, byType) =>
+      houseAssignableAt(snapshot, building, settler, byType)
+        ? { kind: 'assignHouse', entity: settler as Entity, house: building as Entity }
+        : null,
+  },
+  'building-site': {
+    highlight: sitePick.highlight,
+    order: (snapshot, settler, building, byType) =>
+      sitePick.assignableAt(snapshot, building, settler, byType)
+        ? { kind: 'assignBuilder', entity: settler as Entity, site: building as Entity }
+        : null,
+  },
+  'learning-place': {
+    highlight: drillPick.highlight,
+    order: (snapshot, settler, building, byType) =>
+      drillPick.assignableAt(snapshot, building, settler, byType)
+        ? { kind: 'trainSoldier', entity: settler as Entity, house: building as Entity }
+        : null,
+  },
+};
+
+const isBuildingPick = (mode: PickMode): mode is Extract<PickMode, { readonly settler: number }> =>
+  'settler' in mode;
+
+/** Modes whose target is a point or a unit rather than a lit building, so the cursor carries the prompt. */
+const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<GroundPickKind>([
+  'destination',
+  'work-area',
+  'attack-move',
+  'attack-settler',
+  'attack-building',
+]);
 
 export interface PickModeDeps {
   readonly snapshot: () => WorldSnapshot;
@@ -28,19 +104,16 @@ export interface PickModeDeps {
   readonly elevation?: ElevationField;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
   readonly enqueue: (command: PlayerCommand) => void;
-  /** The order controller owns the attack-move so both walks fan a group out through the same formation
-   *  spread. */
-  readonly issueAttackMove: (event: MouseEvent) => void;
-  /** Only attack-move uses the armed crosshair. Named addition: the original signals an armed mode with
-   *  prompt text (`misc/31`), not a cursor. */
+  /** The order controller owns every selection-wide order, so a walk fans a group out through the same
+   *  formation spread whether it was armed here or right-clicked. Read at click time: it is built after
+   *  this controller. */
+  readonly orders: () => UnitOrderController;
+  /** Named addition: the original signals an armed mode with prompt text, not a cursor. */
   readonly setArmedCursor: (armed: boolean) => void;
 }
 
 export interface PickModeController {
-  armWorkplace(settler: number): void;
-  armHome(settler: number): void;
-  armSignpost(scouts: readonly number[]): void;
-  armAttackMove(): void;
+  arm(mode: PickMode): void;
   cancel(): void;
   isArmed(): boolean;
   signpostActive(): boolean;
@@ -57,66 +130,58 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   const setMode = (next: PickMode | null): void => {
     pickMode = next;
     pickVersion++;
-    deps.setArmedCursor(next?.kind === 'attack-move');
+    deps.setArmedCursor(next !== null && CROSSHAIR_MODES.has(next.kind));
   };
   const cancel = (): void => setMode(null);
 
-  const resolveAssign = (event: MouseEvent, settlerId: number): void => {
-    cancel();
+  const resolveBuilding = (event: MouseEvent, kind: BuildingPickKind, settler: number): void => {
     const w = deps.toWorld(event.clientX, event.clientY);
     const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
     if (building === null) return;
-    const snapshot = deps.snapshot();
-    // This mode places the settler's current trade only; it never re-trades.
-    const job = assignableJobForBuilding(snapshot, building, settlerId, buildingsByType);
-    if (job === null) return;
-    deps.enqueue({
-      kind: 'assignWorker',
-      entity: settlerId as Entity,
-      building: building as Entity,
-      jobPriority: [job],
-    });
+    const order = BUILDING_PICKS[kind].order(deps.snapshot(), settler, building, buildingsByType);
+    if (order !== null) deps.enqueue(order);
   };
 
-  const resolveHouseAssign = (event: MouseEvent, settlerId: number): void => {
-    cancel();
+  // Named deviation from the observed original, which erects with a right-click on lit ground: this
+  // places with a left-click and dims blocked ground, matching build placement.
+  const resolveSignpost = (event: MouseEvent, scout: number): void => {
+    const { width, height } = nodeBounds(deps.mapSize);
     const w = deps.toWorld(event.clientX, event.clientY);
-    const building = pickTopAt(deps.targets.owned('building'), w.x, w.y);
-    if (building === null) return;
-    if (!houseAssignableAt(deps.snapshot(), building, settlerId, buildingsByType)) return;
-    deps.enqueue({ kind: 'assignHouse', entity: settlerId as Entity, house: building as Entity });
+    const target = clampTile(worldToTile(w.x, w.y, deps.elevation), width, height);
+    deps.enqueue({ kind: 'placeSignpost', entity: scout as Entity, x: target.col, y: target.row });
   };
 
   const handleMouseDown = (event: MouseEvent): boolean => {
-    if (pickMode === null) return false;
     const mode = pickMode;
+    if (mode === null) return false;
+    // A selection change cancels any armed mode, so the selection read at click time is still the one
+    // this mode was armed for.
+    cancel();
+    if (event.button !== 0) return true; // any other button just calls the mode off
     switch (mode.kind) {
       case 'workplace':
-        if (event.button === 0) resolveAssign(event, mode.settler);
-        else cancel();
-        return true;
       case 'home':
-        if (event.button === 0) resolveHouseAssign(event, mode.settler);
-        else cancel();
+      case 'building-site':
+      case 'learning-place':
+        resolveBuilding(event, mode.kind, mode.settler);
         return true;
-      // Named deviation from the observed original, which erects with a right-click on lit ground: this
-      // places with a left-click and dims blocked ground, matching build placement.
-      case 'signpost': {
-        const scout = mode.scouts[0];
-        cancel();
-        if (event.button === 0 && scout !== undefined) {
-          const { width, height } = nodeBounds(deps.mapSize);
-          const w = deps.toWorld(event.clientX, event.clientY);
-          const target = clampTile(worldToTile(w.x, w.y, deps.elevation), width, height);
-          deps.enqueue({ kind: 'placeSignpost', entity: scout as Entity, x: target.col, y: target.row });
-        }
+      case 'signpost':
+        resolveSignpost(event, mode.scout);
         return true;
-      }
-      // A selection change cancels any armed mode, so the selection read at click time is still the one
-      // this mode was armed for.
+      case 'destination':
+        deps.orders().issueMoveTo(event);
+        return true;
+      case 'work-area':
+        deps.orders().issueSetWorkFlag(event);
+        return true;
       case 'attack-move':
-        cancel();
-        if (event.button === 0) deps.issueAttackMove(event);
+        deps.orders().issueAttackMove(event);
+        return true;
+      case 'attack-settler':
+        deps.orders().issueAttackTarget(event, 'settler');
+        return true;
+      case 'attack-building':
+        deps.orders().issueAttackTarget(event, 'building');
         return true;
       default: {
         const unreachable: never = mode;
@@ -129,36 +194,20 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
    *  plus `pickVersion`, which every arm and cancel bumps. */
   const highlightFor = memoBySnapshot(
     (snapshot: WorldSnapshot) => {
-      if (pickMode === null) return null;
-      switch (pickMode.kind) {
-        case 'workplace':
-          return computeAssignHighlight(snapshot, pickMode.settler, buildingsByType);
-        case 'home':
-          return computeHouseHighlight(snapshot, pickMode.settler, buildingsByType);
-        case 'signpost':
-          return null; // the erect mode washes the ground, not the buildings
-        case 'attack-move':
-          return null; // the attack-move mode shows on the cursor, not on the buildings
-        default: {
-          const unreachable: never = pickMode;
-          return unreachable;
-        }
-      }
+      const mode = pickMode;
+      // Only the building picks light targets up; the rest show on the ground or the cursor.
+      if (mode === null || !isBuildingPick(mode)) return null;
+      return BUILDING_PICKS[mode.kind].highlight(snapshot, mode.settler, buildingsByType);
     },
     () => pickVersion,
   );
 
-  const highlight = (): readonly BuildingHighlightItem[] | null => highlightFor(deps.snapshot());
-
   return {
-    armWorkplace: (settler) => setMode({ kind: 'workplace', settler }),
-    armHome: (settler) => setMode({ kind: 'home', settler }),
-    armSignpost: (scouts) => setMode({ kind: 'signpost', scouts }),
-    armAttackMove: () => setMode({ kind: 'attack-move' }),
+    arm: setMode,
     cancel,
     isArmed: () => pickMode !== null,
     signpostActive: () => pickMode?.kind === 'signpost',
     handleMouseDown,
-    highlight,
+    highlight: () => highlightFor(deps.snapshot()),
   };
 }

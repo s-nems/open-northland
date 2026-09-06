@@ -4,17 +4,18 @@ import { Container, Graphics } from 'pixi.js';
 import { loadGuiArt } from '../../../content/gui-art.js';
 import { loadUiFont } from '../../../content/ui-font.js';
 import {
-  type ActionButton,
+  ACTION_COMMANDS,
+  type ActionGroup,
   type ActionRingLayout,
+  actionRingMenu,
   actionRingScale,
   layoutActionRing,
-} from '../../../hud/action-ring-layout.js';
-import { ALL_MENU_BUTTONS, menuForSettler } from '../../../hud/action-ring-menu.js';
+} from '../../../hud/action-ring/index.js';
 import { clientToScreen } from '../../camera/index.js';
 import { el } from '../../overlay.js';
 import { createActionRingVisuals } from './action-ring-visuals.js';
 import { createActionRingInput } from './input.js';
-import { menuStateFor } from './menu-state.js';
+import { allowedActions } from './menu-state.js';
 import { createProfessionPicker } from './profession-picker.js';
 import type { MenuMode, SettlerActions, SettlerActionsOptions } from './types.js';
 
@@ -57,10 +58,6 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
 
   const [art, uiFont] = await Promise.all([loadGuiArt(), loadUiFont()]);
 
-  // The union of every menu state's buttons: the visuals bake once, and each frame's layout places only
-  // the active state's subset.
-  const allButtons: readonly ActionButton[] = ALL_MENU_BUTTONS;
-
   const root = new Container();
   const cleanup: Array<() => void> = [() => root.destroy({ children: true })];
   try {
@@ -75,12 +72,12 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     document.body.append(tooltip);
     cleanup.push(() => tooltip.remove());
 
-    // Built once and placed each frame by the layout.
+    // Every order bakes once; each frame's layout places only the subset the selection allows.
     const visuals = createActionRingVisuals({
       app,
       art,
       scale,
-      buttons: allButtons,
+      commands: ACTION_COMMANDS,
       container: buttonContainer,
     });
     cleanup.push(() => visuals.dispose());
@@ -89,14 +86,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     let layout: ActionRingLayout = EMPTY_LAYOUT;
     /** The settler ids a click's command applies to, refreshed in `update`. */
     let actionTargets: readonly number[] = [];
-    /**
-     * Where the menu is pinned, in screen (canvas) px, captured once when it opens so neither the settler
-     * walking on nor a camera pan moves it. Source basis: the original stores the cursor at bring-up and
-     * rebuilds the box at those desktop coords without reprojecting (`Selection_ActionButtons_BringUp` to
-     * `_selectionActionButtonsMouseX/Y`, consumed by `SRectangle(x-0x74, y-0x74, 0xE8, 0xE8)` +
-     * `PlaceInside(desktop)`).
-     */
+    /** Where the menu is pinned, in screen (canvas) px, captured once when it opens so neither the settler
+     *  walking on nor a camera pan moves it. Observation: the original keeps its ring on the cursor
+     *  position it opened at. */
     let anchor: { readonly x: number; readonly y: number } | null = null;
+    /** The arms of the open session, rebuilt only when the selection changes. Observation: the original
+     *  builds its ring once at bring-up, so a gate flipping under an open ring does not reflow the arms. */
+    let menu: { readonly ids: readonly number[]; readonly groups: readonly ActionGroup[] } | null = null;
     let restoredJobs = false;
     let restoredPickerScrollTop = 0;
 
@@ -134,6 +130,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       picker.hide();
       mode = 'closed';
       anchor = null; // no anchor means no open session, and this is the only place `closed` is entered
+      menu = null;
       root.visible = false;
       hideTransient();
     };
@@ -146,7 +143,11 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       closeJobWindow(); // a fresh open shows the default arms, never a stale list
       mode = 'menu';
       anchor = atClient === undefined ? null : toCanvas(atClient.x, atClient.y);
+      menu = null;
     };
+
+    const sameIds = (a: readonly number[], b: readonly number[]): boolean =>
+      a.length === b.length && a.every((id, i) => id === b[i]);
 
     const update = (camera: Camera, snapshot: WorldSnapshot): void => {
       const centre = mode === 'closed' ? null : opts.selectionCentre(snapshot);
@@ -155,6 +156,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         layout = EMPTY_LAYOUT;
         actionTargets = [];
         anchor = null;
+        menu = null;
         visuals.hideAll();
         if (mode === 'jobs') closeJobWindow();
         return;
@@ -175,14 +177,13 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       // Space opens with no cursor to pin to. Approximation: the selection's centroid stands in, projected
       // on the session's first frame and then frozen like any other anchor.
       anchor ??= { x: cameraScreenX(camera, centre.x), y: cameraScreenY(camera, centre.y) };
-      layout = layoutActionRing(
-        menuForSettler(menuStateFor(opts.content, snapshot, centre.ids, centre.jobType)),
-        anchor.x,
-        anchor.y,
-        scale,
-        app.screen.width,
-        app.screen.height,
-      );
+      if (menu === null || !sameIds(menu.ids, centre.ids)) {
+        menu = {
+          ids: centre.ids,
+          groups: actionRingMenu(allowedActions(opts.content, snapshot, centre.ids)),
+        };
+      }
+      layout = layoutActionRing(menu.groups, anchor.x, anchor.y, scale, app.screen.width, app.screen.height);
       visuals.placeLayout(layout);
       root.visible = true;
     };
@@ -199,14 +200,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       getLayout: () => layout,
       getTargets: () => actionTargets,
       hideTransient,
-      onErectSignpost: opts.onErectSignpost,
-      onAttackMove: opts.onAttackMove,
-      onMarry: opts.onMarry,
-      onAssignHouse: opts.onAssignHouse,
-      onMakeChild: opts.onMakeChild,
+      onCommand: opts.onCommand,
       openJobWindow,
       closeMenu,
-      closeJobWindow,
     });
     cleanup.push(() => input.dispose());
 
@@ -230,6 +226,7 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
         picker.hide();
         mode = state.mode;
         anchor = state.anchor;
+        menu = null;
         restoredJobs = mode === 'jobs';
         restoredPickerScrollTop = state.pickerScrollTop;
         root.visible = false;

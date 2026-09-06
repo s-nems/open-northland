@@ -1,15 +1,24 @@
 import { type Application, type Container, Graphics } from 'pixi.js';
 import { type GuiArt, type GuiSprite, makeGuiSprite } from '../../../content/gui-art.js';
-import { guiFrameIndex } from '../../../content/gui-atlas-map.js';
-import type { ActionButton, ActionIconFrame, ActionRingLayout } from '../../../hud/action-ring-layout.js';
+import { type GuiFrameName, guiFrameIndex } from '../../../content/gui-atlas-map.js';
+import {
+  type ActionCommand,
+  type ActionRingLayout,
+  isPendingAction,
+} from '../../../hud/action-ring/index.js';
 import { type BakedIcon, bakeRoundIcon, placeBakedIcon } from '../../../hud/icon-texture.js';
 
 /** Disc colours for the flat fallback drawn only when the decoded GUI art is absent. */
 const FALLBACK_FILL = 0x6b4f2a;
 const FALLBACK_RIM = 0x2a1d0e;
+/** A pending order draws dimmed so it reads as inert: a deviation from the original, which draws every
+ *  order at full strength. */
+const PENDING_ALPHA = 0.55;
+
+const buttonAlpha = (command: ActionCommand): number => (isPendingAction(command.id) ? PENDING_ALPHA : 1);
 
 interface ButtonVisual {
-  readonly button: ActionButton;
+  readonly command: ActionCommand;
   /** Mutable: a live DPR change replaces the bake at the new density. */
   icon: BakedIcon | null;
   readonly fallback: Graphics | null;
@@ -21,7 +30,7 @@ export interface ActionRingVisualsDeps {
   readonly art: GuiArt | null;
   /** Effective ring scale: uiscale × ring factor. */
   readonly scale: number;
-  readonly buttons: readonly ActionButton[];
+  readonly commands: readonly ActionCommand[];
   readonly container: Container;
 }
 
@@ -36,26 +45,29 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
 
   // The 'round' colour key hard-clips outside the inscribed disc, because the original draws no square
   // behind the glyph. That clip aliases unless supersampled, so every icon goes through `bakeRoundIcon`.
-  const iconSprite = (frameName: ActionIconFrame): GuiSprite | null =>
+  const iconSprite = (frameName: GuiFrameName): GuiSprite | null =>
     art === null
       ? null
       : makeGuiSprite(art, guiFrameIndex(frameName), { defaultPalette: 'context', colorKey: 'round' });
 
-  // Keyed by the button object, so placement stays correct for a face that shows only a subset.
+  // Keyed by the command row, so placement stays correct for a face that shows only a subset.
   const visuals: ButtonVisual[] = [];
-  const visualByButton = new Map<ActionButton, ButtonVisual>();
+  const visualByCommand = new Map<ActionCommand, ButtonVisual>();
   try {
-    for (const button of deps.buttons) {
-      const sprite = iconSprite(button.icon);
+    for (const command of deps.commands) {
+      const sprite = iconSprite(command.icon);
       let icon: BakedIcon | null = null;
       let fallback: Graphics | null = null;
       if (sprite === null) fallback = new Graphics();
       else icon = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
-      const v: ButtonVisual = { button, icon, fallback };
+      const v: ButtonVisual = { command, icon, fallback };
       visuals.push(v);
-      visualByButton.set(button, v);
-      if (fallback !== null) container.addChild(fallback);
-      else if (icon !== null) container.addChild(icon.display);
+      visualByCommand.set(command, v);
+      const display = fallback ?? icon?.display;
+      if (display !== undefined) {
+        display.alpha = buttonAlpha(command);
+        container.addChild(display);
+      }
     }
   } catch (error: unknown) {
     for (const v of visuals) {
@@ -72,9 +84,10 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
     bakedResolution = app.renderer.resolution;
     for (const v of visuals) {
       if (v.icon === null) continue;
-      const sprite = iconSprite(v.button.icon);
+      const sprite = iconSprite(v.command.icon);
       if (sprite === null) continue;
       const next = bakeRoundIcon({ app, sprite: sprite.sprite, frame: sprite.frame, scale });
+      next.display.alpha = buttonAlpha(v.command);
       try {
         container.addChild(next.display);
       } catch (error: unknown) {
@@ -88,7 +101,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
     }
   };
 
-  /** Centre one button's visual in its layout rect (the original's `SetCenterGraphicsFlag`). */
+  /** Centre one button's visual in its layout rect, as the original centres its order glyphs. */
   const placeVisual = (v: ButtonVisual, rect: { x: number; y: number; w: number; h: number }): void => {
     if (v.icon !== null) {
       placeBakedIcon(v.icon, rect);
@@ -114,7 +127,7 @@ export function createActionRingVisuals(deps: ActionRingVisualsDeps): ActionRing
       if (app.renderer.resolution !== bakedResolution) rebakeIcons();
       hideAll();
       for (const placed of layout.buttons) {
-        const v = visualByButton.get(placed.button);
+        const v = visualByCommand.get(placed.command);
         if (v === undefined) continue;
         if (v.icon !== null) v.icon.display.visible = true;
         if (v.fallback !== null) v.fallback.visible = true;
