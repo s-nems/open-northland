@@ -166,7 +166,9 @@ describe('pick-mode highlight cost', () => {
       mapSize: { width: 8, height: 8 },
       toWorld: () => ({ x: 0, y: 0 }),
       enqueue: () => undefined,
-      issueAttackMove: () => undefined,
+      orders: () => {
+        throw new Error('no order controller in this test');
+      },
       setArmedCursor: () => undefined,
     });
   }
@@ -189,7 +191,7 @@ describe('pick-mode highlight cost', () => {
     let current: WorldSnapshot = first.snapshot;
     const pick = pickController(() => current, sim.content);
 
-    pick.armWorkplace(settler.id);
+    pick.arm({ kind: 'workplace', settler: settler.id });
     const frame = (): readonly BuildingHighlightItem[] | null => pick.highlight();
     const wash = frame();
     const afterFirst = first.scans();
@@ -201,7 +203,7 @@ describe('pick-mode highlight cost', () => {
     expect(first.scans()).toBe(afterFirst);
 
     // A new arm re-colours for the newly armed settler, on the same snapshot.
-    pick.armWorkplace(other.id);
+    pick.arm({ kind: 'workplace', settler: other.id });
     expect(frame()).toEqual(computeAssignHighlight(source, other.id, buildingsByType));
     expect(first.scans()).toBeGreaterThan(afterFirst);
 

@@ -1,6 +1,14 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { workerRoleOf } from '../../game/sandbox/index.js';
-import { actorsOf, isSettler, num, shelterOf } from '../../game/snapshot.js';
+import {
+  actorsOf,
+  buildSiteOf,
+  isSettler,
+  num,
+  shelterOf,
+  trainingHouseOf,
+  workplaceOf,
+} from '../../game/snapshot.js';
 
 /** Cap on the settler sprites drawn in one field; the field squeezes its cells to fit them. */
 export const MAX_WORKERS = 8;
@@ -74,19 +82,16 @@ export function boundWorkers(snapshot: WorldSnapshot, buildingId: number, siteCr
   for (const e of actorsOf(snapshot)) {
     if (garrison.length >= MAX_WORKERS) break;
     if (!isSettler(e)) continue;
-    const assignment = e.components.JobAssignment as { workplace?: unknown } | undefined;
     const atomic = e.components.CurrentAtomic as { targetEntity?: unknown } | undefined;
     const supply = e.components.SupplyRun as { site?: unknown } | undefined;
-    const site = e.components.SiteAssignment as { site?: unknown } | undefined;
-    const drill = e.components.TrainingOrder as { house?: unknown } | undefined;
     const raising =
       siteCrew &&
-      (num(site?.site) === buildingId ||
+      (buildSiteOf(e) === buildingId ||
         num(atomic?.targetEntity) === buildingId ||
         num(supply?.site) === buildingId);
-    if (num(assignment?.workplace) === buildingId) push(mansAPost(e) ? garrison : posted, e.id);
+    if (workplaceOf(e) === buildingId) push(mansAPost(e) ? garrison : posted, e.id);
     else if (raising) push(crew, e.id);
-    else if (num(drill?.house) === buildingId) push(drilling, e.id);
+    else if (trainingHouseOf(e) === buildingId) push(drilling, e.id);
   }
   return [...garrison, ...posted, ...crew, ...drilling].slice(0, MAX_WORKERS);
 }

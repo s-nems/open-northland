@@ -17,20 +17,18 @@ const standing = (id: number, x: number, y: number, jobType = JOB_COLLECTOR): En
 const world = snapshotOf([standing(1, 2, 2), standing(2, 6, 2), standing(3, 20, 20, JOB_SCOUT)]);
 
 describe('selectionCentre', () => {
-  it('averages the selected settlers and reports their shared trade', () => {
+  it('averages the selected settlers', () => {
     const two = selectionCentre(world, new Set([1, 2]));
     const one = selectionCentre(world, new Set([1]));
     if (two === null || one === null) throw new Error('expected a centre for a live selection');
 
     expect(two.ids).toEqual([1, 2]);
-    expect(two.jobType).toBe(JOB_COLLECTOR);
     // Two settlers on the same row: the centroid sits between them, on that row.
     expect(two.y).toBe(one.y);
     expect(two.x).toBeGreaterThan(one.x);
   });
 
-  it('reports no shared trade for a mixed selection, and nothing at all for an empty one', () => {
-    expect(selectionCentre(world, new Set([1, 3]))?.jobType).toBeUndefined();
+  it('reports nothing for an empty selection', () => {
     expect(selectionCentre(world, new Set())).toBeNull();
     expect(selectionCentre(world, new Set([99]))).toBeNull();
   });

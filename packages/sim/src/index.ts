@@ -19,7 +19,11 @@ export {
   setupCommand,
 } from './core/commands/index.js';
 export { parseCommandEnvelope, parseCommandLog } from './core/commands/parse.js';
-export { constructionBillForType, harvestJobsOf } from './core/content-index.js';
+export {
+  constructionBillForType,
+  harvestJobsOf,
+  jobAllowsAtomic,
+} from './core/content-index.js';
 export { EventBuffer, eventNode, type SimEvent, type SimEventKind } from './core/events.js';
 export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';

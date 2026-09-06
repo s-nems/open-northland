@@ -1,12 +1,14 @@
 import { isActionHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen } from '../camera/index.js';
 import { pickInRect, screenToWorld } from '../picking.js';
+import { allowedActions } from './action-ring/menu-state.js';
 import { createUnitChrome } from './chrome.js';
 import { createClickHits } from './click-hits.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
 import { createPickModeController } from './pick-mode.js';
+import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
@@ -31,12 +33,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           goods: opts.content.goods,
           enqueue: opts.enqueue,
         });
+  // `pickMode` is built below; the arrows defer the reads to click time.
   const chrome = await createUnitChrome(opts, selection, equipPicker, {
-    assignWorkplace: (id) => pickMode.armWorkplace(id),
-    assignHome: (id) => pickMode.armHome(id),
+    assignWorkplace: (id) => pickMode.arm({ kind: 'workplace', settler: id }),
+    assignHome: (id) => pickMode.arm({ kind: 'home', settler: id }),
     selectEntity: (id) => applySelection([id], false),
-    erectSignpost: (ids) => pickMode.armSignpost(ids),
-    attackMove: () => armAttackMove(),
+    ringCommand: (id, targets) => issueRingCommand(id, targets, { enqueue: opts.enqueue, pickMode }),
   });
 
   const marquee = createSelectionMarquee();
@@ -73,18 +75,17 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
     toWorld,
     enqueue: opts.enqueue,
-    // `orders` is built below, so the arrow defers the read to click time.
-    issueAttackMove: (event) => orders.issueAttackMove(event),
+    orders: () => orders,
     setArmedCursor: (armed) => {
       canvas.style.cursor = armed ? 'crosshair' : '';
     },
   });
 
-  /** Refused when the selection holds no settler to send, so the mode never arms into a click that does nothing. */
+  /** The hotkey obeys the ring's own gate, so both ways of arming the order agree on who may take it. */
   const armAttackMove = (): void => {
-    if (unitTargets.ownedSettlersIn(selection.ids()).length === 0) return;
+    if (!allowedActions(opts.content, opts.snapshot(), [...selection.ids()]).has('attackPosition')) return;
     chrome.actions().close();
-    pickMode.armAttackMove();
+    pickMode.arm({ kind: 'attack-move' });
   };
 
   const applySelection = (ids: Iterable<number>, add: boolean): void => {

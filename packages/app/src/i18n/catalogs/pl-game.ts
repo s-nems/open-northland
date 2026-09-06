@@ -201,31 +201,44 @@ export const plGame = {
       good: 'towar {goodType}',
     },
   },
+  // Ring tooltips: the decoded `misclogic` gui strings, by id, from `content/gui/strings/pol.json`.
   actionRing: {
-    changeProfession: 'Zmiana zawodu',
-    build: 'Budowa',
-    alert: 'Alarm',
-    query: 'Informacja',
-    // Named deviation: the mod's Polish gui string mistranslates this slot ("Wyburz drogowskaz").
+    haveGirl: 'Miej dziewczynkę', // 16
+    haveBoy: 'Miej chłopca', // 15
+    marry: 'Ożeń się', // 14
+    goTo: 'Idź do', // 1
+    changeProfession: 'Zmień zawód', // 19
+    assignWorkArea: 'Przydziel obszar pracy', // 33
+    // Named deviation: the mod's Polish table mistranslates 36 as "Wyburz drogowskaz".
     erectSignpost: 'Postaw drogowskaz',
-    attack: 'Zaatakuj pozycję', // decoded original: gui strings misclogic 48
-    assign_house: 'Przydziel dom',
-    animal: 'Zwierzę',
-    vehicle: 'Pojazd',
-    // Family labels: decoded originals from `content/gui/strings/pol.json` humanwindow 21/23/24/28.
-    marry: 'Ożeń',
-    make_son: 'Niech ma Chłopca',
-    make_daughter: 'Niech ma Dziewczynkę',
-    pray: 'Modlitwa',
-    talk: 'Rozmowa',
-    sleep: 'Sen',
-    eat: 'Jedzenie',
-    bottom_last: 'Niedostępne',
-    house_a: 'Przydział domu',
-    house_b: 'Przydział domu',
-    house_c: 'Przydział domu',
-    house_d: 'Przydział domu',
+    assignBuildingSite: 'Przydziel miejsce budowy', // 27
+    assignLearningPlace: 'Przydziel miejsce nauki', // 25
+    removeWorkPlace: 'Usuń miejsce pracy', // 24
+    assignWorkPlace: 'Przydziel miejsce pracy', // 23
+    removeHome: 'Usuń dom', // 18
+    assignHome: 'Przydziel dom', // 17
+    attackInhabitants: 'Zaatakuj mieszkańców', // 44
+    attackBuilding: 'Zaatakuj budynek', // 45
+    attackPosition: 'Zaatakuj pozycję', // 48
+    attackMode: 'Tryb ataku żołnierza', // 38
+    defenceMode: 'Tryb obrony żołnierza', // 39, spelled out where the table drops a letter
+    ignorantMode: 'Tryb ignorowania żołnierza', // 40
+    eat: 'Jedz', // 4
+    sleep: 'Śpij', // 6
+    talk: 'Rozmawiaj', // 8
+    pray: 'Módl się', // 10
+    changeEquipment: 'Zmień ekwipunek', // 21
+    showWorkArea: 'Pokaż obszar pracy', // 34
+    explore: 'Badaj', // 37
+    removeBuildingSite: 'Usuń miejsce budowy', // 28
+    removeLearningPlace: 'Usuń miejsce nauki', // 26
+    assignVehicle: 'Przydziel wehikuł', // 31
+    attackAnimal: 'Zaatakuj zwierzę', // 46
+    attackVehicle: 'Zaatakuj wehikuł', // 47
+    allowRegeneration: 'Zezwól na regenerację', // 42
+    prohibitRegeneration: 'Zabroń regeneracji', // 43
   },
+  actionRingPending: 'wkrótce',
   // Non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by content job slug.
   lifeStage: {
     baby_female: 'Niemowlę (dziewczynka)',

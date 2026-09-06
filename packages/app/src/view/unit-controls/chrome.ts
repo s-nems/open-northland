@@ -1,5 +1,6 @@
 import { type Entity, systems } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
+import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
 import { screenScale } from '../camera/index.js';
@@ -19,8 +20,7 @@ export interface UnitChromeCallbacks {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly selectEntity: (id: number) => void;
-  readonly erectSignpost: (ids: readonly number[]) => void;
-  readonly attackMove: () => void;
+  readonly ringCommand: (id: ActionOrderId, targets: readonly number[]) => void;
 }
 
 export interface UnitChromeHandle {
@@ -96,11 +96,7 @@ export async function createUnitChrome(
       onSetJob: (ids, jobType) => {
         for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
       },
-      onErectSignpost: callbacks.erectSignpost,
-      onAttackMove: callbacks.attackMove,
-      onMarry: (id) => opts.enqueue({ kind: 'marry', entity: id as Entity }),
-      onAssignHouse: callbacks.assignHome,
-      onMakeChild: (id, sex) => opts.enqueue({ kind: 'makeChild', entity: id as Entity, child: sex }),
+      onCommand: callbacks.ringCommand,
     });
 
   const mount = async (uiscale: number): Promise<MountedUnitChrome> => {

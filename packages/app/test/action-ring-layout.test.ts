@@ -1,25 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { guiFrameIndex } from '../src/content/gui-atlas-map.js';
 import {
   ACTION_ARM_PX,
+  ACTION_COMMANDS,
   ACTION_RING_UI_FACTOR,
-  type ActionButton,
+  type ActionArm,
+  type ActionCommand,
+  type ActionCommandId,
   type ActionGroup,
+  type ActionRingLayout,
+  actionRingMenu,
   actionRingScale,
   BOTTOM_ARM,
   hitTestActionRing,
   layoutActionRing,
-  type PlacedActionButton,
+  type PlacedActionCommand,
+  RIGHT_ARM,
   TOP_ARM,
-} from '../src/hud/action-ring-layout.js';
-import { HUMAN_DEFAULT_MENU } from '../src/hud/action-ring-menu.js';
+} from '../src/hud/action-ring/index.js';
 import { MIN_UI_SCALE } from '../src/hud/ui-scale.js';
 
 /**
- * Headless tests for the settler ACTION MENU's pure logic - the radial arm footprint transcribed from the
- * original engine, the hit-test that turns a click into a command, and the (approximated) button→icon
- * assignment. The agent self-validates these; the browser `?scene=sandbox` view is where a human judges
- * the pixels (round buttons in original art, sensible glyphs) + the profession list window. See docs/SCENES.md.
+ * Headless tests for the settler action menu's pure geometry: the radial arm footprint and the hit-test
+ * that turns a click into an order. The browser `?scene=sandbox` view is where a human judges the pixels.
  */
 
 /** Non-null array access - throws (a test bug) rather than reaching for a forbidden `!`. */
@@ -28,17 +30,36 @@ function nth<T>(arr: readonly T[], i: number): T {
   if (v === undefined) throw new Error(`no element at index ${i}`);
   return v;
 }
-const centre = (p: PlacedActionButton): { x: number; y: number } => ({
+const centre = (p: PlacedActionCommand): { x: number; y: number } => ({
   x: p.rect.x + p.rect.w / 2,
   y: p.rect.y + p.rect.h / 2,
 });
-/** An inert placeholder button (the default menu is mostly these). */
-const ph = (id: string): ActionButton => ({ kind: 'placeholder', id, icon: 'order_build' });
+function command(id: ActionCommandId): ActionCommand {
+  const found = ACTION_COMMANDS.find((c) => c.id === id);
+  if (found === undefined) throw new Error(`no command ${id}`);
+  return found;
+}
+/** A group of any three commands on `arm`; the geometry does not care which orders they are. */
+const trio = (
+  arm: ActionArm,
+  ids: readonly [ActionCommandId, ActionCommandId, ActionCommandId],
+): ActionGroup => ({
+  arm,
+  commands: ids.map(command),
+});
+const BOTTOM_TRIO = ['haveGirl', 'haveBoy', 'marry'] as const;
+const TOP_TRIO = ['changeProfession', 'assignWorkArea', 'erectSignpost'] as const;
+function placed(l: ActionRingLayout, id: ActionCommandId): PlacedActionCommand {
+  const p = l.buttons.find((b) => b.command.id === id);
+  if (p === undefined) throw new Error(`no button for ${id}`);
+  return p;
+}
+const xOf = (l: ActionRingLayout, id: ActionCommandId): number => centre(placed(l, id)).x;
+const yOf = (l: ActionRingLayout, id: ActionCommandId): number => centre(placed(l, id)).y;
 
-describe('action-ring-layout - arm footprint (transcribed from BuildHumanActionButtons)', () => {
-  it('places a group as a horizontal row centred under the settler (bottom arm), in reading order', () => {
-    const group: ActionGroup = { group: BOTTOM_ARM, buttons: [ph('a'), ph('b'), ph('c')] };
-    const l = layoutActionRing([group], 500, 400, 1, 2000, 2000);
+describe('action-ring-layout - arm footprint', () => {
+  it('places a bottom arm as a horizontal row centred under the settler, in drawn order', () => {
+    const l = layoutActionRing([trio(BOTTOM_ARM, BOTTOM_TRIO)], 500, 400, 1, 2000, 2000);
     expect(l.buttons).toHaveLength(3);
     const centres = l.buttons.map(centre);
     // Middle button sits exactly on the arm: centre.x = settler.x, centre.y = settler.y + 100 (no nudge).
@@ -46,31 +67,29 @@ describe('action-ring-layout - arm footprint (transcribed from BuildHumanActionB
     // The row is centred on the settler (first/last average back to settler.x), stepped 32 px apart.
     expect((nth(centres, 0).x + nth(centres, 2).x) / 2).toBe(500);
     expect(nth(centres, 2).x - nth(centres, 1).x).toBe(32);
-    // Reading order: button 'a' is the left-most, 'c' the right-most.
-    expect(nth(l.buttons, 0).button).toEqual(ph('a'));
+    // Drawn order: the first command is the left-most, the last the right-most.
+    expect(nth(l.buttons, 0).command.id).toBe('haveGirl');
     expect(nth(centres, 0).x).toBeLessThan(nth(centres, 2).x);
     // First + last get the −5 corner nudge in y (bottom arm), the middle does not.
     expect(nth(centres, 0).y).toBe(400 + ACTION_ARM_PX - 5);
     expect(nth(centres, 1).y).toBe(400 + ACTION_ARM_PX);
   });
 
-  it('places the top arm on the OPPOSITE side, so bottom and top rows never overlap', () => {
-    const bottom: ActionGroup = { group: BOTTOM_ARM, buttons: [ph('a'), ph('b')] };
-    const top: ActionGroup = { group: TOP_ARM, buttons: [ph('c'), ph('d')] };
-    const l = layoutActionRing([bottom, top], 500, 400, 1, 2000, 2000);
-    const yOf = (id: string): number =>
-      centre(
-        nth(
-          l.buttons.filter((p) => p.button.kind === 'placeholder' && p.button.id === id),
-          0,
-        ),
-      ).y;
-    expect(Math.min(yOf('a'), yOf('b'))).toBeGreaterThan(400); // bottom
-    expect(Math.max(yOf('c'), yOf('d'))).toBeLessThan(400); // top
+  it('places the top arm on the opposite side, so bottom and top rows never overlap', () => {
+    const l = layoutActionRing(
+      [trio(BOTTOM_ARM, BOTTOM_TRIO), trio(TOP_ARM, TOP_TRIO)],
+      500,
+      400,
+      1,
+      2000,
+      2000,
+    );
+    for (const id of BOTTOM_TRIO) expect(yOf(l, id)).toBeGreaterThan(400);
+    for (const id of TOP_TRIO) expect(yOf(l, id)).toBeLessThan(400);
   });
 
   it('scales the whole menu by the given scale (sub-1 values included - the ring runs shrunk)', () => {
-    const group: ActionGroup = { group: BOTTOM_ARM, buttons: [ph('a'), ph('b'), ph('c')] };
+    const group = trio(BOTTOM_ARM, BOTTOM_TRIO);
     const l1 = layoutActionRing([group], 500, 400, 1, 4000, 4000);
     const l2 = layoutActionRing([group], 500, 400, 2, 4000, 4000);
     const l075 = layoutActionRing([group], 500, 400, 0.75, 4000, 4000);
@@ -93,52 +112,71 @@ describe('action-ring-layout - arm footprint (transcribed from BuildHumanActionB
 
   it('clamps the whole menu on-screen when it would spill past an edge', () => {
     // Settler near the top edge: the top arm would place buttons at negative y.
-    const bottom: ActionGroup = { group: BOTTOM_ARM, buttons: [ph('a'), ph('b'), ph('c')] };
-    const top: ActionGroup = { group: TOP_ARM, buttons: [ph('d'), ph('e'), ph('f')] };
-    const l = layoutActionRing([bottom, top], 500, 40, 1, 1000, 800);
+    const l = layoutActionRing(
+      [trio(BOTTOM_ARM, BOTTOM_TRIO), trio(TOP_ARM, TOP_TRIO)],
+      500,
+      40,
+      1,
+      1000,
+      800,
+    );
     for (const p of l.buttons) expect(p.rect.y).toBeGreaterThanOrEqual(0);
     // The whole menu shifted as a rigid body - relative spacing is preserved (bottom row still 32 apart).
-    const c = l.buttons
-      .filter((p) => p.button.kind === 'placeholder' && ['a', 'b', 'c'].includes(p.button.id))
-      .map((p) => centre(p).x)
-      .sort((a, b) => a - b);
-    expect(nth(c, 1) - nth(c, 0)).toBe(32);
+    expect(xOf(l, 'haveBoy') - xOf(l, 'haveGirl')).toBe(32);
   });
 });
 
-describe('action-ring-layout - hit-test (a click → the right behaviour)', () => {
-  it('returns the button under a click and null off the menu', () => {
-    const l = layoutActionRing(HUMAN_DEFAULT_MENU, 500, 400, 1, 2000, 2000);
-    // The "change profession" button (open-jobs) is present and hit-testable.
-    const openP = l.buttons.find((p) => p.button.kind === 'open-jobs');
-    if (openP === undefined) throw new Error('missing open-jobs button');
-    expect(hitTestActionRing(l, centre(openP).x, centre(openP).y)?.kind).toBe('open-jobs');
-    // The "attack" button (attack-move) is hit-testable from its very corner pixel.
-    const attackP = l.buttons.find((p) => p.button.kind === 'attack-move');
-    if (attackP === undefined) throw new Error('missing attack-move button');
-    expect(hitTestActionRing(l, attackP.rect.x + 1, attackP.rect.y + 1)?.kind).toBe('attack-move');
-    // A default-menu placeholder hit returns that inert button (its id is preserved).
-    const animalP = l.buttons.find((p) => p.button.kind === 'placeholder' && p.button.id === 'animal');
-    if (animalP === undefined) throw new Error('missing animal placeholder');
-    const hit = hitTestActionRing(l, centre(animalP).x, centre(animalP).y);
-    expect(hit?.kind).toBe('placeholder');
-    expect(hit?.kind === 'placeholder' && hit.id).toBe('animal');
+describe('action-ring-layout - hit-test (a click → the right order)', () => {
+  const everything = actionRingMenu(new Set(ACTION_COMMANDS.map((c) => c.id)));
+
+  it('returns the command under a click and null off the menu', () => {
+    const l = layoutActionRing(everything, 500, 400, 1, 2000, 2000);
+    const openP = l.buttons.find((p) => p.command.id === 'changeProfession');
+    if (openP === undefined) throw new Error('missing change-profession button');
+    expect(hitTestActionRing(l, centre(openP).x, centre(openP).y)?.id).toBe('changeProfession');
+    // A button is hit-testable from its very corner pixel.
+    const attackP = l.buttons.find((p) => p.command.id === 'attackPosition');
+    if (attackP === undefined) throw new Error('missing attack-position button');
+    expect(hitTestActionRing(l, attackP.rect.x + 1, attackP.rect.y + 1)?.id).toBe('attackPosition');
     // Dead centre (over the settler, between the arms) hits nothing.
     expect(hitTestActionRing(l, 500, 400)).toBeNull();
     // An empty menu has no hittable button.
     expect(hitTestActionRing(layoutActionRing([], 500, 400, 1, 2000, 2000), 500, 400)).toBeNull();
   });
-});
 
-describe('action-ring-layout - icon assignment (approximated, but every name must resolve)', () => {
-  it('every icon the default menu draws is a real GUI-atlas frame (a typo would throw here)', () => {
-    for (const g of HUMAN_DEFAULT_MENU) {
-      for (const b of g.buttons) expect(() => guiFrameIndex(b.icon)).not.toThrow();
+  it('never overlaps two buttons of one arm, nor the two rows', () => {
+    const l = layoutActionRing(everything, 500, 400, 1, 2000, 2000);
+    const rows = l.buttons.filter((p) => p.command.arm === BOTTOM_ARM || p.command.arm === TOP_ARM);
+    for (const a of rows) {
+      for (const b of rows) {
+        if (a === b) continue;
+        const apart =
+          a.rect.x + a.rect.w <= b.rect.x ||
+          b.rect.x + b.rect.w <= a.rect.x ||
+          a.rect.y + a.rect.h <= b.rect.y ||
+          b.rect.y + b.rect.h <= a.rect.y;
+        expect(apart, `${a.command.id} overlaps ${b.command.id}`).toBe(true);
+      }
     }
   });
 
-  it('has exactly one live "change profession" button in the default menu', () => {
-    const open = HUMAN_DEFAULT_MENU.flatMap((g) => g.buttons).filter((b) => b.kind === 'open-jobs');
-    expect(open).toHaveLength(1);
+  it('lets a long row and a long column share a corner, where the later-drawn column wins the click', () => {
+    // With every order drawn at the approximated offsets, the walk order ending the bottom row runs under
+    // the lower buttons of the right column.
+    const l = layoutActionRing(everything, 500, 400, 1, 2000, 2000);
+    const walk = placed(l, 'goTo').rect;
+    const under = l.buttons.filter(
+      (p) =>
+        p.command.arm === RIGHT_ARM &&
+        p.rect.x < walk.x + walk.w &&
+        walk.x < p.rect.x + p.rect.w &&
+        p.rect.y < walk.y + walk.h &&
+        walk.y < p.rect.y + p.rect.h,
+    );
+    expect(under.map((p) => p.command.id)).toEqual(['assignVehicle', 'removeHome']);
+    const home = placed(l, 'removeHome').rect;
+    const x = (Math.max(walk.x, home.x) + Math.min(walk.x + walk.w, home.x + home.w)) / 2;
+    const y = (Math.max(walk.y, home.y) + Math.min(walk.y + walk.h, home.y + home.h)) / 2;
+    expect(hitTestActionRing(l, x, y)?.id).toBe('removeHome');
   });
 });

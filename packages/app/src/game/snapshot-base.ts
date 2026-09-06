@@ -1,4 +1,4 @@
-import type { Fixed, WorldSnapshot } from '@open-northland/sim';
+import { type Fixed, ONE, type WorldSnapshot } from '@open-northland/sim';
 
 // Typed read helpers over the frozen WorldSnapshot, never over live component stores. Every read returns
 // `undefined` for a missing component or field, because a snapshot entity carries only the components it
@@ -144,6 +144,13 @@ export function builtFractionOf(e: SnapshotEntity): number | undefined {
   return num(b?.built);
 }
 
+/** A building that stands finished: its shell is complete and no construction is running on it. */
+export function isFinishedBuilding(e: SnapshotEntity): boolean {
+  if (!isBuilding(e) || e.components.UnderConstruction !== undefined) return false;
+  const built = builtFractionOf(e);
+  return built !== undefined && built >= ONE;
+}
+
 /** Undefined for a jobless settler, whose `jobType` is `null`, as well as for a non-settler. */
 export function settlerJobType(e: SnapshotEntity): number | undefined {
   const s = e.components.Settler as { jobType?: unknown } | undefined;
@@ -154,6 +161,24 @@ export function settlerJobType(e: SnapshotEntity): number | undefined {
 export function workplaceOf(e: SnapshotEntity): number | undefined {
   const a = e.components.JobAssignment as { workplace?: unknown } | undefined;
   return num(a?.workplace);
+}
+
+/** The unit's military mode, or undefined before the simulation has stamped one. */
+export function stanceModeOf(e: SnapshotEntity): number | undefined {
+  const stance = e.components.Stance as { mode?: unknown } | undefined;
+  return num(stance?.mode);
+}
+
+/** The foundation a builder is assigned to. */
+export function buildSiteOf(e: SnapshotEntity): number | undefined {
+  const a = e.components.SiteAssignment as { site?: unknown } | undefined;
+  return num(a?.site);
+}
+
+/** The training house a settler walks to or drills at. */
+export function trainingHouseOf(e: SnapshotEntity): number | undefined {
+  const order = e.components.TrainingOrder as { house?: unknown } | undefined;
+  return num(order?.house);
 }
 
 /** The drop-off flag entity a gatherer carries. */

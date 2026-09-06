@@ -210,30 +210,44 @@ export const enGame = {
       good: 'good {goodType}',
     },
   },
+  // Ring tooltips: the decoded `misclogic` gui strings, by id, from `content/gui/strings/eng.json`.
   actionRing: {
-    changeProfession: 'Change profession',
-    build: 'Build',
-    alert: 'Alert',
-    query: 'Information',
-    erectSignpost: 'Erect Signpost', // decoded original: gui strings misclogic
-    attack: 'Attack Position', // decoded original: gui strings misclogic 48
-    assign_house: 'Assign home',
-    animal: 'Animal',
-    vehicle: 'Vehicle',
-    // Family labels: decoded originals from `content/gui/strings/eng.json` humanwindow 21/23/24/28.
-    marry: 'Marry',
-    make_son: 'Have a Boy',
-    make_daughter: 'Have a Girl',
-    pray: 'Pray',
-    talk: 'Talk',
-    sleep: 'Sleep',
-    eat: 'Eat',
-    bottom_last: 'Unavailable',
-    house_a: 'Home assignment',
-    house_b: 'Home assignment',
-    house_c: 'Home assignment',
-    house_d: 'Home assignment',
+    haveGirl: 'Have a Girl', // 16
+    haveBoy: 'Have a Boy', // 15
+    marry: 'Marry', // 14
+    goTo: 'Go To', // 1
+    changeProfession: 'Change Profession', // 19
+    assignWorkArea: 'Assign Work Area', // 33
+    erectSignpost: 'Erect Signpost', // 36
+    assignBuildingSite: 'Assign Building Site', // 27
+    assignLearningPlace: 'Assign Learning Place', // 25
+    removeWorkPlace: 'Remove Work Place', // 24
+    assignWorkPlace: 'Assign Work Place', // 23
+    removeHome: 'Remove Home', // 18
+    assignHome: 'Assign Home', // 17
+    attackInhabitants: 'Attack Inhabitants', // 44
+    attackBuilding: 'Attack Building', // 45
+    attackPosition: 'Attack Position', // 48
+    attackMode: 'Soldier Attack Mode', // 38
+    defenceMode: 'Soldier Defence Mode', // 39
+    ignorantMode: 'Soldier Ignorant Mode', // 40
+    eat: 'Eat', // 4
+    sleep: 'Sleep', // 6
+    talk: 'Talk', // 8
+    pray: 'Pray', // 10
+    changeEquipment: 'Change Equipment', // 21
+    showWorkArea: 'Show Work Area', // 34
+    explore: 'Explore', // 37
+    removeBuildingSite: 'Remove Building Site', // 28
+    removeLearningPlace: 'Remove Learning Place', // 26
+    assignVehicle: 'Assign Vehicle', // 31
+    attackAnimal: 'Attack Animal', // 46
+    attackVehicle: 'Attack Vehicle', // 47
+    allowRegeneration: 'Allow Regeneration', // 42
+    prohibitRegeneration: 'Prohibit Regeneration', // 43
   },
+  /** Tooltip suffix on a ring order the simulation cannot carry out yet. */
+  actionRingPending: 'coming soon',
   // Non-trade life-stage roles (`jobtypes.ini` 1..6), keyed by content job slug.
   lifeStage: {
     baby_female: 'Baby (girl)',

@@ -42,6 +42,11 @@ export function harvestJobsOf(content: ContentSet): ReadonlySet<number> {
   return contentIndex(content).harvestJobs;
 }
 
+/** Whether `jobType` may run the atomic, its `baseJob` chain and `forbiddenAtomics` resolved. */
+export function jobAllowsAtomic(content: ContentSet, jobType: number | null, atomicId: number): boolean {
+  return jobType !== null && (contentIndex(content).atomicsByJob.get(jobType)?.has(atomicId) ?? false);
+}
+
 /**
  * O(1) lookup maps over a {@link ContentSet}'s arrays, keyed the way per-tick code queries them. Pure
  * derived data over immutable content, never hashed and never mutated, so it is determinism-neutral. A
