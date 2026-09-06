@@ -4,8 +4,8 @@
 **Blocked by:** [multiplayer-5-electron-net-client.md](multiplayer-5-electron-net-client.md)
 
 Web is an addition to desktop, not a requirement. It joins only on engines that passed the
-cross-engine determinism check; a browser that did not is refused in the lobby by its engine
-fingerprint rather than allowed to desync.
+cross-engine determinism check recorded by the first multiplayer ticket; a browser that did not is
+refused in the lobby by its engine fingerprint rather than allowed to desync.
 
 Two web-specific behaviors matter. A page served over `https://` must connect over `wss://`, which
 the server deployment already provides. A hidden tab stops `requestAnimationFrame`, so the session

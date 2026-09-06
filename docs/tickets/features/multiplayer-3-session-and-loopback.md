@@ -1,6 +1,6 @@
 # Run every game through a session descriptor and a lockstep driver with a loopback transport
 
-**Area:** app · **Focus:** view/runtime, entries/map · **Priority:** P2
+**Area:** app · **Focus:** new package packages/lockstep, view/runtime, entries/map · **Priority:** P2
 **Blocked by:** [multiplayer-2-sim-lockstep-seams.md](multiplayer-2-sim-lockstep-seams.md)
 
 A networked game needs one serializable description of what is being played and a loop that advances
@@ -21,20 +21,31 @@ Single-player must go through the same path with an in-process transport, the wa
 OpenTTD play locally against a built-in server. One loop, tested by every scene and every headless
 scenario, instead of a network mode exercised only when two people meet.
 
+The driver cannot live in `packages/app`: the server's headless test clients run in Node with the
+real sim, and the web shell needs the same code, while `packages/app` is a browser bundle with no
+library exports. It cannot live in `packages/sim` either, whose contract excludes transports.
+
 ## Scope
 
-- A `GameSession` descriptor: seed, map id and map fingerprint (or scene id), roster with per-seat
-  mode (human, ai, idle, closed), colours, teams or diplomacy rows, rule flags (fog, progression,
-  needs), and the starting speed. The lobby produces it, the map entry builds the world from it, and
-  the URL becomes one adapter that parses into and serializes from the descriptor. Existing URLs keep
-  working and produce byte-identical worlds.
-- A lockstep driver between the frame loop and the sim: it owns the session clock (speed, pause), asks
-  a transport for the next authorized tick's command frame, enqueues those envelopes with their
-  assigned tick and sequence, and steps the sim only through authorized ticks. `FixedTimestep` keeps
-  producing the render alpha; the driver decides how many ticks may run this frame.
-- A transport interface with one method to submit an envelope and one stream of tick frames, plus the
-  loopback implementation: assigns each submitted envelope to the next tick with a delay of one, so
-  single-player timing is exactly today's next-tick behavior.
+- A new workspace package `packages/lockstep`: DOM-free, no I/O, depending on `sim` only. It holds
+  the `GameSession` descriptor with its JSON serialization, the driver, the transport interface, and
+  the loopback transport, with its own `AGENTS.md`. Register `lockstep` in the ticket area lists of
+  `docs/tickets/README.md` and `scripts/check-docs.mjs`.
+- The `GameSession` descriptor: seed, map id and map fingerprint (or scene id), roster with a mode per
+  seat, colours, teams or diplomacy rows, rule flags (fog, progression, needs), and the starting speed.
+  Seat modes are the ones the roster supports today: a human seat, and `VacantMode` idle or ai for a
+  vacant one; Script and Closed belong to `vacant-seat-ai-player.md` and are not part of this ticket,
+  but the mode field is a string union they can extend without a format change. The lobby produces the
+  descriptor, the map entry builds the world from it, and the URL becomes one adapter that parses into
+  and serializes from it. Existing URLs keep working and produce byte-identical worlds. A restored game
+  rebuilds its descriptor from the save header and the entry's roster; the save format does not change.
+- The driver: owns the session clock (speed, pause), asks the transport for the next authorized
+  tick's command frame, enqueues those envelopes with their assigned tick and sequence, and steps the
+  sim only through authorized ticks. `FixedTimestep` keeps producing the render alpha; the driver
+  decides how many ticks may run this frame.
+- The transport interface: submit an envelope, receive tick frames, plus the loopback implementation
+  that assigns each submitted envelope to the next tick with a delay of one, so single-player timing
+  is exactly today's next-tick behavior.
 - Tempo and pause become session clock operations routed through the driver; the tool panel, the
   system menu, and `?speed=` call the driver instead of writing the control fields.
 - Non-goals: no WebSocket, no server, no lobby UI, no worker. The sixteen runtime modules that read
@@ -49,5 +60,7 @@ scenario, instead of a network mode exercised only when two people meet.
 - Pause and speed changes go through the driver and the perf overlay reports the requested speed.
 - Descriptor round trip: URL to descriptor to URL is stable for every current parameter, and a
   descriptor serializes to plain JSON.
+- The `lockstep` package passes the sim hygiene rules for nondeterminism (no wall clock, no
+  `Math.random`) and imports nothing from `app`, `render`, or the DOM.
 - `npm run check`, `npm run build`, `npm test`, `npm run test:content` where content exists, plus a
   browser pass over one scene and one map start.

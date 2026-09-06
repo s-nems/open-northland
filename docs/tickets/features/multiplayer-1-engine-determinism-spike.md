@@ -23,17 +23,20 @@ mismatch there narrows the web client to Chromium rather than blocking the chain
 
 ## Scope
 
-- A Playwright-driven check that boots the app in a browser, runs a fixed workload, and reports the
-  `hashState()` value on the `HASH_TRACE_EVERY_TICKS` cadence from `packages/app/src/diag/session.ts`
-  through the `window.__opennorthland` debug seam or an equivalent read-only hook. Do not add a
-  browser-only sim path: the workload is the same scene and real-map world the headless harness
-  already builds.
+- A Playwright-driven check that boots the app in a browser, runs a fixed workload, and reads the
+  hash sequence. No new seam is needed: the debug handle installed by
+  `packages/app/src/view/runtime/debug-handle.ts` exposes the live `sim` on `window.__opennorthland`,
+  so `page.evaluate` can call `sim.run(n)` and `sim.hashState()` on the
+  `HASH_TRACE_EVERY_TICKS` cadence from `packages/app/src/diag/session.ts`. Boot through the dev
+  server or the built site with `content/` present, the way the screenshot harness in
+  `docs/DEVELOPMENT.md` does. Do not add a browser-only sim path: the workload is the same scene and
+  real-map world the headless harness already builds.
 - Two workloads: a registered scene golden, and 2000 ticks of `magiczny_las` with six AI seats under
   `npm run test:content` conditions (skipped cleanly without `content/`).
 - A Node run of the same workloads is the reference. Compare per-cadence hashes, not only the final
   one, so a divergence names its first tick.
-- Report the result per engine. Chromium is a gate; WebKit and Firefox are informative and their
-  result is recorded in the completing commit message.
+- Report the result per engine. Chromium is a gate; WebKit and Firefox are informative (they need
+  `npx playwright install`) and their result is recorded in the completing commit message.
 - On a Chromium mismatch, localize with `HashTrace.divergedFrom` and `localizeDivergence`, fix the
   cause in the sim, and extend the hygiene test when the cause is a scannable pattern.
 - Document the check and how to run it in `docs/TESTING.md`.
