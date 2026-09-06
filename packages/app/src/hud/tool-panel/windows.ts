@@ -1,3 +1,4 @@
+import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout } from '@open-northland/render';
 import type { Container } from 'pixi.js';
 import type { GuiArt } from '../../content/gui-art.js';
@@ -41,6 +42,8 @@ export interface ToolWindowsDeps {
   readonly art: GuiArt | null;
   /** The mission window's content, read on each open. */
   readonly missionBrief: () => MissionBrief | null;
+  /** The mission window's history book; null shows the tab empty. */
+  readonly history: HypertextBook | null;
   /** Fires as the mission window opens and closes, so the host can hold game time behind it. */
   readonly onLargeWindow?: (open: boolean) => void;
   readonly onPickBuilding: (typeId: number) => void;
@@ -92,6 +95,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     container,
     art: deps.art,
     brief: deps.missionBrief,
+    history: deps.history,
     ...(deps.onLargeWindow !== undefined ? { onOpenChange: deps.onLargeWindow } : {}),
   });
 
@@ -132,6 +136,8 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
         if (list === top) list.handleHover(x, y);
         else list.clearHover(); // no row highlight under a window that would take the press instead
       }
+      if (top === mission) mission.handleHover(x, y);
+      else mission.clearHover();
     },
     refresh: (hudFor): void => {
       for (const e of mounted) e.perFrame(hudFor);

@@ -1,3 +1,4 @@
+import type { HypertextBook } from '@open-northland/data';
 import type { HudLayout } from '@open-northland/render';
 import type { Command, PlayerCommand } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
@@ -6,6 +7,7 @@ import {
   type GuiBitmapName,
   type GuiStrings,
   loadGuiBitmap,
+  loadGuiHistory,
   loadGuiStrings,
   type UiString,
   uiStringLookup,
@@ -109,6 +111,7 @@ interface ToolPanelAssets {
   readonly strings: GuiStrings | null;
   readonly uiFont: UiFont;
   readonly bitmaps: PanelBitmaps;
+  readonly history: HypertextBook | null;
 }
 
 const assetsByLanguage = new Map<string, Promise<ToolPanelAssets>>();
@@ -123,16 +126,18 @@ function loadToolPanelAssets(lang: string): Promise<ToolPanelAssets> {
   assets = Promise.all([
     loadGuiArt(),
     loadGuiStrings(lang),
+    loadGuiHistory(lang),
     loadUiFont(),
     loadBitmap('bg'),
     loadBitmap('bg_button'),
     loadBitmap('bg_button_hilite'),
     loadBitmap('bg_headline'),
-  ]).then(([art, strings, uiFont, bg, button, buttonHilite, headline]) => ({
+  ]).then(([art, strings, history, uiFont, bg, button, buttonHilite, headline]) => ({
     art,
     strings,
     uiFont,
     bitmaps: { bg, button, buttonHilite, headline },
+    history,
   }));
   assetsByLanguage.set(lang, assets);
   // A rejected load would otherwise pin every later rebuild to the one transient failure.
@@ -146,7 +151,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const layout = buildToolPanelLayout(opts.uiscale);
   const scale = layout.scale;
 
-  const { art, strings, uiFont, bitmaps } = await loadToolPanelAssets(opts.lang);
+  const { art, strings, uiFont, bitmaps, history } = await loadToolPanelAssets(opts.lang);
 
   const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
 
@@ -165,17 +170,20 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     stripSurface = createStripSurface({ app, container: stripContainer, layout, art });
     const mountedStrip = stripSurface;
 
-    const ctx: PanelContext = {
+    const uiString = uiStringLookup(strings);
+    const contextAt = (at: number): PanelContext => ({
       layout,
-      scale,
-      makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, scale, px),
+      scale: at,
+      makeText: (text, color, px) => makeUiTextRun(uiFont.family, text, color, at, px),
       makeParagraph: (text, color, px, wrapWidth, align) =>
-        makeUiParagraph(uiFont.family, text, color, scale, px, wrapWidth, align),
+        makeUiParagraph(uiFont.family, text, color, at, px, wrapWidth, align),
       bitmaps,
-      uiString: uiStringLookup(strings),
+      uiString,
       screen: () => app.screen,
       ...(opts.overlayReserve !== undefined ? { overlayReserve: opts.overlayReserve } : {}),
-    };
+      atScale: contextAt,
+    });
+    const ctx = contextAt(scale);
 
     const placement = createPlacementController({
       ctx,
@@ -206,6 +214,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       diplomacyRows: opts.diplomacyRows,
       art,
       missionBrief: opts.missionBrief ?? ((): null => null),
+      history,
       ...(opts.onLargeWindow !== undefined ? { onLargeWindow: opts.onLargeWindow } : {}),
       onPickBuilding: (typeId) => placement.enter(typeId),
       onPickGood: (goodType) => goodsDrop.enter(goodType),

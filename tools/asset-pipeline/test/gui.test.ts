@@ -202,6 +202,7 @@ describe('gui stage', () => {
     expect(manifest.paletteLut.names).toHaveLength(14);
     expect(manifest.strings.languages).toEqual(['eng', 'pol']);
     expect(manifest.strings.tables).toHaveLength(9);
+    expect(manifest.history.languages).toEqual([]); // no hypertext/history folder in this fixture
     expect(manifest.cursors).toHaveLength(3);
   });
 

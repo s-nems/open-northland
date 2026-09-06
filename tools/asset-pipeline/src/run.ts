@@ -87,6 +87,7 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   console.log(
     `[pipeline] gui: ${gui.atlases} atlas(es) (${gui.frames} frames), ${gui.palettes}-palette LUT, ` +
       `${gui.strings.map((s) => `${s.lang}:${s.tables}t/${s.strings}s`).join(' ') || 'no strings'}, ` +
+      `${gui.history.map((h) => `${h.lang}:${h.pages}p`).join(' ') || 'no history'}, ` +
       `${gui.cursors} cursor(s) into ${vjoin(args.out, 'gui')}`,
   );
 

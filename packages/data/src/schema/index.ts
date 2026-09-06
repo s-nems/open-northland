@@ -8,6 +8,7 @@ export * from './audio/index.js';
 export * from './content/index.js';
 export * from './economy/index.js';
 export * from './graphics/index.js';
+export * from './gui/index.js';
 export * from './landscape/index.js';
 export * from './maps/index.js';
 // The id primitives (`TypeId`/`AtomicId`/`ClassId`) stay internal: they all infer to bare `number`.
