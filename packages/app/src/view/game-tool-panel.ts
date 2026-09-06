@@ -57,9 +57,7 @@ export interface GameToolPanelDeps {
   /** That overlay's screen-px box, which the panel's pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
-  /** The mission window's content, read on each open. */
   readonly missionBrief?: () => MissionBrief | null;
-  /** Fires as the mission window opens and closes, so the entry can hold game time behind it. */
   readonly onLargeWindow?: (open: boolean) => void;
 }
 

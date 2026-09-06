@@ -4,8 +4,9 @@ import { uiScaleFor } from '../../ui-scale.js';
 /**
  * The mission window's geometry: a 500×420 window centred on the screen over the papyrus sheet, its
  * title bar and closer, three tabs, the text viewport, and the Up/Down buttons under it. The strings
- * (`miscwindow` 60-63, 66), the sheet and the history book come from the owned copy; the rects are an
- * approximation of the original's element layout, pending a side-by-side check against it.
+ * (`miscwindow` 60-63, 66), the sheet and the history book come from the owned copy; the rects follow
+ * a decompiler reading of the engine build's element construction, unconfirmed against the running
+ * original.
  */
 
 export const MISSION_WINDOW_W = 500;
@@ -19,11 +20,11 @@ const TITLE_BAR_RIGHT_INSET = 22;
 const CLOSE_RIGHT_INSET = 18;
 const CLOSE_W = 16;
 const CLOSE_H = 14;
-/** The three tabs share one row, each a third of it. */
+/** The three tabs share one row, each 164 wide. */
 const TAB_X = 4;
 const TAB_Y = 22;
 const TAB_H = 22;
-const TAB_ROW_W = 492;
+const TAB_W = 164;
 const TAB_GAP = 2;
 /** The content element under the tabs, shrunk by its inset to the text viewport. */
 const CONTENT_X = 4;
@@ -39,14 +40,13 @@ const BUTTON_H = 58;
 const SCROLL_UP_X = 212;
 const SCROLL_DOWN_X = 246;
 
-/** The goal list, in design px from the viewport origin: the heading, then a bullet and text wrapped
- *  to the viewport's right edge per goal. */
+/** The goal list's columns, in design px from the viewport origin; each wraps to the viewport's
+ *  right edge. */
 export const GOAL_LIST = {
   headingX: 11,
   listY: 23,
   bulletX: 11,
   textX: 31,
-  wrapWidth: 460,
   gap: 4,
 } as const;
 /** The original prints an open goal as `o` and a done one as `X`. */
@@ -130,14 +130,16 @@ export function layoutMissionWindow(screen: ScreenSize, sheet: SheetFrame | null
     h: px(dh),
   });
   const window: Rect = { x, y, w, h };
-  const tabW = Math.floor(TAB_ROW_W / MISSION_TABS.length);
   return {
     scale,
     window,
     sheet: sheet === null ? window : at(sheet.offsetX, sheet.offsetY, sheet.width, sheet.height),
     titleRect: at(TITLE_BAR_INSET, TITLE_BAR_INSET, MISSION_WINDOW_W - TITLE_BAR_RIGHT_INSET, TITLE_BAR_H),
     closeRect: at(MISSION_WINDOW_W - CLOSE_RIGHT_INSET, TITLE_BAR_INSET, CLOSE_W, CLOSE_H),
-    tabs: MISSION_TABS.map((tab, i) => ({ tab, rect: at(TAB_X + i * (tabW + TAB_GAP), TAB_Y, tabW, TAB_H) })),
+    tabs: MISSION_TABS.map((tab, i) => ({
+      tab,
+      rect: at(TAB_X + i * (TAB_W + TAB_GAP), TAB_Y, TAB_W, TAB_H),
+    })),
     viewport: at(
       CONTENT_X + CONTENT_INSET,
       CONTENT_Y + CONTENT_INSET,

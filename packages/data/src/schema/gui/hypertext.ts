@@ -23,7 +23,7 @@ export const HypertextPicture = z.strictObject({
   kind: z.literal('picture'),
   /** File name under the `/gui/hypertext/` route: the digest the pipeline names the picture by. */
   file: z.string().regex(/^[0-9a-f]+\.png$/),
-  /** The decoded picture's own size; the window fits it to the text column and keeps the ratio. */
+  /** The decoded picture's own size in px. */
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   align: z.enum(['center']).optional(),

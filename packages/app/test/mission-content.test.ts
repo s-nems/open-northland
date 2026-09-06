@@ -18,12 +18,16 @@ import { createPictureCache } from '../src/hud/tool-panel/mission/pictures.js';
 const SCALE = 2;
 /** Every stub paragraph is this tall (design px), so the stacking is arithmetic. */
 const LINE_H = 10;
+/** The window's text viewport in design px, which the goal columns wrap inside. */
+const VIEWPORT_W = 482;
 
 interface Made {
   readonly text: string;
   readonly px: number;
   readonly align: string;
   readonly color: string;
+  /** Design px the run wraps at, so a column that overruns the viewport fails here. */
+  readonly wrap: number;
 }
 
 function stubContext(): { ctx: PanelContext; made: Made[] } {
@@ -38,8 +42,8 @@ function stubContext(): { ctx: PanelContext; made: Made[] } {
     layout: buildToolPanelLayout(SCALE),
     scale: SCALE,
     makeText: () => run(),
-    makeParagraph: (text, color, px, _wrap, align = 'left') => {
-      made.push({ text, px, align, color });
+    makeParagraph: (text, color, px, wrap, align = 'left') => {
+      made.push({ text, px, align, color, wrap });
       return { ...run(), height: LINE_H };
     },
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
@@ -109,12 +113,21 @@ describe('fillGoals', () => {
         ],
       },
       'Objectives',
+      VIEWPORT_W,
     );
     expect(made.map((m) => m.text)).toEqual(['Objectives', 'o', 'Build a temple', 'X', 'Defeat everyone']);
     const [heading, bullet, goal, bullet2, goal2] = sink.placed;
     expect(heading?.x).toBe(GOAL_LIST.headingX * SCALE);
     expect(bullet?.x).toBe(GOAL_LIST.bulletX * SCALE);
     expect(goal?.x).toBe(GOAL_LIST.textX * SCALE);
+    // The heading and the goal text end at the viewport's right edge; a wider wrap would draw under
+    // the content mask.
+    const [headingWrap, , goalWrap, , goal2Wrap] = made.map((m) => m.wrap);
+    expect([headingWrap, goalWrap, goal2Wrap]).toEqual([
+      VIEWPORT_W - GOAL_LIST.headingX,
+      VIEWPORT_W - GOAL_LIST.textX,
+      VIEWPORT_W - GOAL_LIST.textX,
+    ]);
     // The bullet sits on the goal's line and takes no room of its own.
     expect(bullet?.y).toBe(GOAL_LIST.listY * SCALE);
     expect(goal?.y).toBe(GOAL_LIST.listY * SCALE);

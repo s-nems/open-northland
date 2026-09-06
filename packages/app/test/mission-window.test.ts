@@ -175,6 +175,10 @@ describe('createMissionWindow', () => {
     expect(placedY.get('P0')).toBe(top);
     frames(2000);
     expect(placedY.get('P0')).toBeCloseTo(top - 2 * AUTO_SCROLL_PX_PER_S * layout.scale, 5);
+    // A sideways swipe reaches the window as a wheel with no vertical delta, which is not a scroll.
+    window.handleWheel(...middle(layout.window), 0);
+    frames(1000);
+    expect(placedY.get('P0')).toBeCloseTo(top - 3 * AUTO_SCROLL_PX_PER_S * layout.scale, 5);
     window.handleWheel(...middle(layout.window), 1);
     const taken = placedY.get('P0');
     frames(4000);

@@ -103,8 +103,6 @@ export interface GameViewDeps {
   /** True when the world came from a save: the session opens paused, so the player reads the board
    *  they loaded before it moves. */
   readonly restored?: boolean;
-  /** The mission window's content, behind the strip's mission button; absent, the button opens an
-   *  empty sheet. */
   readonly missionBrief?: MissionBrief;
   /** Open the mission window as the session starts, the original's mission briefing; the entry decides
    *  (a fresh world, and no `?intro=off`). */

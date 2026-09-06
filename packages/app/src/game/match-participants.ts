@@ -17,6 +17,12 @@ export function neverDiesSeats(script: Pick<MapScript, 'misc'>): number[] {
  * The seats that play the match: the controlled seat and the AI seats, minus the never-dying ones.
  * A read-only observer controls no seat, so only the AI seats play. Ascending, deduplicated.
  */
+/** Whether a declared list makes a match at all: with one seat there is nobody to beat, so the rule
+ *  decides nothing and the sheet promises no skirmish goal. */
+export function matchIsContested(participants: readonly number[]): boolean {
+  return new Set(participants).size >= 2;
+}
+
 export function matchParticipants(input: {
   readonly controlled: readonly number[];
   readonly aiSeats: readonly number[];

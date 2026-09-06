@@ -173,12 +173,17 @@ export function fillTask(
 }
 
 /** The goals tab: the heading, then one `o`/`X` bullet and wrapped text per goal, as the original prints them. */
-export function fillGoals(sink: ContentSink, brief: MissionBrief | null, heading: string): void {
-  sink.heading(heading, GOAL_LIST.headingX, GOAL_LIST.wrapWidth);
+export function fillGoals(
+  sink: ContentSink,
+  brief: MissionBrief | null,
+  heading: string,
+  wrapWidth: number,
+): void {
+  sink.heading(heading, GOAL_LIST.headingX, wrapWidth - GOAL_LIST.headingX);
   sink.skipTo(GOAL_LIST.listY);
   for (const goal of brief?.goals ?? []) {
     sink.glyph(goal.done ? GOAL_DONE_BULLET : GOAL_OPEN_BULLET, GOAL_LIST.bulletX, MISSION_BODY_PX);
-    sink.paragraph(bodyParagraph(goal.text), GOAL_LIST.textX, GOAL_LIST.wrapWidth, GOAL_LIST.gap);
+    sink.paragraph(bodyParagraph(goal.text), GOAL_LIST.textX, wrapWidth - GOAL_LIST.textX, GOAL_LIST.gap);
   }
 }
 
