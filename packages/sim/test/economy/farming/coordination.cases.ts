@@ -16,9 +16,11 @@ import {
   fieldAt,
   granaryAt,
   grassMap,
+  LOOP_CLOSES_TICKS,
   mapWithBarren,
   Position,
   REAP_ATOMIC,
+  RING_AROUND_FARM,
   STAGES,
   Stockpile,
   WHEAT,
@@ -30,6 +32,7 @@ describe('work division - two farmers never share a target', () => {
     const farm = farmAt(sim, 4, 4);
     const near = fieldAt(sim, farm, 4, 4, { stage: STAGES }); // underfoot - the first farmer's pick
     fieldAt(sim, farm, 2, 2, { stage: STAGES }); // the second-nearest ripe field
+    for (const [x, y] of RING_AROUND_FARM.slice(0, FIELD_CAP - 2)) fieldAt(sim, farm, x, y); // plot at cap
     const f1 = farmerAt(sim, 4, 4, farm);
     const f2 = farmerAt(sim, 4, 4, farm);
 
@@ -51,6 +54,7 @@ describe('work division - two farmers never share a target', () => {
     const farm = farmAt(sim, 5, 5);
     fieldAt(sim, farm, 4, 4, { stage: STAGES }); // nearer to the door
     fieldAt(sim, farm, 8, 8, { stage: STAGES }); // farther
+    for (const [x, y] of RING_AROUND_FARM.slice(0, FIELD_CAP - 2)) fieldAt(sim, farm, x, y); // plot at cap
     const f1 = farmerAt(sim, 5, 5, farm);
     plannerSystem(sim.world, ctxOf(sim)); // tick 1: f1 sets off toward the near field (MoveGoal + FarmTask)
     expect(sim.world.tryGet(f1, components.MoveGoal)).toBeDefined();
@@ -83,7 +87,7 @@ describe('work division - two farmers never share a target', () => {
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });
       const farm = farmAt(sim, 5, 5);
       for (let i = 0; i < farmers; i++) farmerAt(sim, 5, 5, farm);
-      sim.run(450);
+      sim.run(LOOP_CLOSES_TICKS);
       return sim.world.get(farm, Stockpile).amounts.get(WHEAT) ?? 0;
     };
 
@@ -210,9 +214,7 @@ describe('end-to-end - the loop closes', () => {
       const sim = new Simulation({ seed: 7, content: testContent(), map: grassMap(10, 10) });
       const farm = farmAt(sim, 5, 5);
       farmerAt(sim, 5, 5, farm);
-      // Sow (walk + 3 ticks) → grow (≤ 50 ticks unwatered, less once watered) → reap → carry: 400
-      // ticks is comfortably past several full cycles.
-      sim.run(400);
+      sim.run(LOOP_CLOSES_TICKS);
       return { wheat: sim.world.get(farm, Stockpile).amounts.get(WHEAT) ?? 0, hash: sim.hashState() };
     };
 

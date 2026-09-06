@@ -69,6 +69,19 @@ const GRANARY = 6;
 /** The fixture farm's wheat-slot ceiling (`stock` capacity 25 - keep in sync with fixtures/content.ts). */
 export const FARM_WHEAT_CAP = 25;
 
+/** Ticks past which a lone fixture farmer has banked its first sheaves: the plot fills before the can
+ *  starts, and the first ripe field lands at tick ~340 (seed 7) to ~420 (seed 1). */
+export const LOOP_CLOSES_TICKS = 600;
+
+/** The five cells that, with one more at the farm's own (4, 4), fill a fixture plot to {@link FIELD_CAP}. */
+export const RING_AROUND_FARM = [
+  [3, 3],
+  [5, 3],
+  [3, 5],
+  [2, 4],
+  [6, 4],
+] as const;
+
 /** A `width`×`height` CELL square of grass, upsampled to the half-cell navigation lattice. */
 
 export function farmerAt(sim: Simulation, x: number, y: number, boundTo?: Entity): Entity {
@@ -120,6 +133,20 @@ export function fieldAt(
     yieldUnits: 1,
   });
   return e;
+}
+
+/** A plot at its cap around a farm at (4, 4), the ring watered, with the one field of interest underfoot
+ *  at the farm's own cell - so the scythe or the can, never the sow branch, is the drive's pick. */
+export function plotAtCap(
+  sim: Simulation,
+  underfoot: { stage?: number; watered?: boolean },
+): { farm: Entity; field: Entity; farmer: Entity } {
+  if (RING_AROUND_FARM.length + 1 !== FIELD_CAP) throw new Error('the ring no longer fills the plot');
+  const farm = farmAt(sim, 4, 4);
+  const field = fieldAt(sim, farm, 4, 4, underfoot);
+  for (const [x, y] of RING_AROUND_FARM) fieldAt(sim, farm, x, y, { watered: true });
+  const farmer = farmerAt(sim, 4, 4, farm);
+  return { farm, field, farmer };
 }
 
 /** {@link fieldAt} addressed by half-cell NODE instead of tile - for the nodes a building's walls cover

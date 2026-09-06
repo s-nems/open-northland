@@ -2,9 +2,11 @@ import type { GoodFarming } from '@open-northland/data';
 
 /**
  * The farm's field-cultivation calibration: the one global source for the wheat sow, water, grow and reap
- * loop, so its pace cannot drift per scene. Every value below is calibration observed against the running
- * original except where its own comment names its own basis; the readable original data carries no growth
- * timing, field radius, or per-field yield. The observed target is about 10 grain per farmer per 10 minutes.
+ * loop, so its pace cannot drift per scene. The vocabulary and the plot size are observed against the
+ * running original; the timings are approximations, since the readable original data carries no growth
+ * timing, field radius, or per-field yield. The observed target is about 10 grain per farmer per 10 minutes;
+ * with sowing and watering landing on one clip the values below run well above it, about double for a lone
+ * farmer.
  */
 
 /** Growth stages a sown field passes through before it is ripe (the `landscapetypes.ini` `wheat (growing)`
@@ -24,8 +26,8 @@ export const WHEAT_GROWTH_SPREAD_PERCENT = 40;
 /** Units a ripe field drops as its cut sheaf when reaped. */
 export const WHEAT_YIELD_PER_FIELD = 1;
 
-/** Strokes a farmer plays per field action, transcribed from `humanjobexperiencetypes.ini` type 46
- *  "farmer wheat" `baserepeatcounter 2`. */
+/** Strokes a farmer plays per reaped field, transcribed from `humanjobexperiencetypes.ini` type 46
+ *  "farmer wheat" `baserepeatcounter 2`; sowing and watering land on their first clip. */
 export const WHEAT_WORK_REPEATS = 2;
 
 /** How far from the farm's anchor its farmers sow, in half-cell nodes (16 nodes ≈ 8 tiles). */
