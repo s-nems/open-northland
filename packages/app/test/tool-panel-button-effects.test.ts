@@ -20,7 +20,7 @@ const GOOD_WOOD = 10;
 
 function stubContext(): PanelContext {
   const layout = buildToolPanelLayout(1);
-  return {
+  const ctx: PanelContext = {
     layout,
     scale: layout.scale,
     makeText: (): TextRun => ({
@@ -39,7 +39,9 @@ function stubContext(): PanelContext {
     bitmaps: { bg: undefined, button: undefined, buttonHilite: undefined, headline: undefined },
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
+    atScale: (scale) => ({ ...ctx, scale }),
   };
+  return ctx;
 }
 
 /** The pop-up window layer plus the two held modes the mount wires, over a stubbed context (no Pixi text). */
@@ -79,6 +81,7 @@ function mountSurfaces() {
     diplomacyRows: () => [],
     art: null,
     missionBrief: () => null,
+    history: null,
     onPickBuilding: (typeId) => placement.enter(typeId),
     onPickGood: (goodType) => goodsDrop.enter(goodType),
   });

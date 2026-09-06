@@ -4,7 +4,7 @@ import { errorMessage } from '../../errors.js';
 import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { readSourceFile } from '../source-files.js';
-import { GUI_CONTENT_DIR } from './paths.js';
+import { GUI_CONTENT_DIR, GUI_LANGS } from './paths.js';
 
 /** The nine in-game GUI string tables (files are `ingamegui<table>.cif` under `Data/text/<lang>/strings/ingamegui/`). */
 export const STRING_TABLES = [
@@ -18,8 +18,6 @@ export const STRING_TABLES = [
   'housewindow',
   'vehiclewindow',
 ] as const;
-
-const STRING_LANGS = ['eng', 'pol'] as const;
 
 export interface GuiStringsResult {
   readonly lang: string;
@@ -38,7 +36,7 @@ export async function convertGuiStrings(
   fs: Vfs,
   roots: SourceRoots,
   outDir: string,
-  langs: readonly string[] = STRING_LANGS,
+  langs: readonly string[] = GUI_LANGS,
 ): Promise<GuiStringsResult[]> {
   const done: GuiStringsResult[] = [];
   for (const lang of langs) {

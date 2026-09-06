@@ -29,6 +29,8 @@ export interface PanelContext {
     wrapWidth: number,
     align?: 'left' | 'center',
   ) => ParagraphRun;
+  /** The same context re-based to `scale`, for a window sized by something other than the HUD. */
+  readonly atScale: (scale: number) => PanelContext;
   readonly bitmaps: PanelBitmaps;
   /** Prefer the decoded UI string for `(table, id)`, else the pinned fallback label. */
   readonly uiString: UiString;

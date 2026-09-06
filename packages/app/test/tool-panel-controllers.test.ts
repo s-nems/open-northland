@@ -63,6 +63,7 @@ function stubContext(overlayReserve?: () => Rect | null): { ctx: PanelContext; m
     uiString: (_table, _id, fallback) => fallback,
     screen: () => SCREEN,
     ...(overlayReserve !== undefined ? { overlayReserve } : {}),
+    atScale: (scale) => ({ ...ctx, scale }),
   };
   return { ctx, made };
 }
@@ -491,6 +492,7 @@ describe('tool windows registry', () => {
       diplomacyRows: () => [],
       art: null,
       missionBrief: () => null,
+      history: null,
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
     });

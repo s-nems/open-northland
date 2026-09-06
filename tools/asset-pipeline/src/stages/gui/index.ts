@@ -3,6 +3,7 @@ import type { SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 import { convertCursors, type GuiCursorResult } from './cursors.js';
+import { convertGuiHistory, type GuiHistoryResult } from './history.js';
 import { convertGuiPaletteLut } from './palette-lut.js';
 import { GUI_CONTENT_DIR } from './paths.js';
 import { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strings.js';
@@ -15,6 +16,7 @@ import { convertWindowBitmaps } from './window-bitmaps.js';
 
 export { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 export { convertCursors, type GuiCursorResult } from './cursors.js';
+export { convertGuiHistory, type GuiHistoryResult } from './history.js';
 export { convertGuiPaletteLut, GUI_PALETTE_LUT_STEM } from './palette-lut.js';
 export { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strings.js';
 export { BODY_SHADOW_MIN_LUMA, convertWindowBitmaps, liftPaletteShadows } from './window-bitmaps.js';
@@ -24,6 +26,7 @@ export interface GuiManifest {
   readonly atlases: GuiAtlasResult[];
   readonly paletteLut: { readonly stem: string; readonly names: string[] };
   readonly strings: { readonly languages: string[]; readonly tables: readonly string[] };
+  readonly history: { readonly languages: string[] };
   readonly cursors: GuiCursorResult[];
 }
 
@@ -33,6 +36,7 @@ export interface GuiStageSummary {
   readonly frames: number;
   readonly palettes: number;
   readonly strings: GuiStringsResult[];
+  readonly history: GuiHistoryResult[];
   readonly cursors: number;
 }
 
@@ -45,12 +49,14 @@ export async function convertGuiStage(fs: Vfs, roots: SourceRoots, outDir: strin
   const atlases = await convertGuiAtlases(fs, roots, outDir, palettes.byName);
   await convertWindowBitmaps(fs, roots, outDir, palettes.byName);
   const strings = await convertGuiStrings(fs, roots, outDir);
+  const history = await convertGuiHistory(fs, roots, outDir);
   const cursors = await convertCursors(fs, roots, outDir);
 
   const manifest: GuiManifest = {
     atlases,
     paletteLut: { stem: palettes.stem, names: palettes.names },
     strings: { languages: strings.map((s) => s.lang), tables: STRING_TABLES },
+    history: { languages: history.map((h) => h.lang) },
     cursors,
   };
   await writeJsonFile(fs, outDir, vjoin(GUI_CONTENT_DIR, 'manifest.json'), manifest);
@@ -60,6 +66,7 @@ export async function convertGuiStage(fs: Vfs, roots: SourceRoots, outDir: strin
     frames: atlases.reduce((sum, a) => sum + a.frames, 0),
     palettes: palettes.names.length,
     strings,
+    history,
     cursors: cursors.length,
   };
 }

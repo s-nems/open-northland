@@ -19,7 +19,7 @@ import {
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
-import type { MissionBrief } from '../../game/mission-brief.js';
+import { briefAtOutcome, type MissionBrief } from '../../game/mission-brief.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -237,7 +237,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
     overlayReserve: () => minimap?.panelRect() ?? null,
     onSystemMenu: () => systemMenu?.toggle(),
-    missionBrief: () => deps.missionBrief ?? null,
+    missionBrief: () =>
+      deps.missionBrief === undefined
+        ? null
+        : briefAtOutcome(deps.missionBrief, sim.matchOutcome(localPlayer)),
     // The original stops game time behind its large windows.
     onLargeWindow: (open) => {
       if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);

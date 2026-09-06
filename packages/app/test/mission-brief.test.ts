@@ -1,6 +1,12 @@
 import type { MapBriefing, MapScript } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { briefingPage, introCutsceneId, mapMissionBrief, missionGoals } from '../src/game/mission-brief.js';
+import {
+  briefAtOutcome,
+  briefingPage,
+  introCutsceneId,
+  mapMissionBrief,
+  missionGoals,
+} from '../src/game/mission-brief.js';
 
 /** The pure joins behind the mission window: which cutscene opens the map, which goals show, and how
  *  the brief falls back when a map ships no briefing. */
@@ -65,6 +71,14 @@ describe('missionGoals', () => {
     ];
     expect(missionGoals(script({ missions }))).toEqual(['Pokonaj saracenów']);
   });
+
+  it('drops the emphasis mark the corpus prefixes some goals with', () => {
+    const missions = [
+      { ...WIN, description: '@Skolonizuj krainę!' },
+      { ...WIN, description: 'Zbuduj świątynię' },
+    ];
+    expect(missionGoals(script({ missions }))).toEqual(['Skolonizuj krainę!', 'Zbuduj świątynię']);
+  });
 });
 
 describe('briefingPage and mapMissionBrief', () => {
@@ -99,12 +113,12 @@ describe('briefingPage and mapMissionBrief', () => {
     expect(mapMissionBrief({ ...input, matchDeclared: false })).toEqual({
       title: 'BURZA PIASKOWA',
       paragraphs: [{ style: 'body', text: 'Wikingowie rozpoczęli oblężenie.' }],
-      goals: ['Pokonaj saracenów'],
+      goals: [{ text: 'Pokonaj saracenów', rule: 'authored', done: false }],
     });
     // The authored goals are informational; with a match declared the rule that decides is listed too.
     expect(mapMissionBrief({ ...input, matchDeclared: true }).goals).toEqual([
-      'Pokonaj saracenów',
-      'Pokonaj wszystkich.',
+      { text: 'Pokonaj saracenów', rule: 'authored', done: false },
+      { text: 'Pokonaj wszystkich.', rule: 'skirmish', done: false },
     ]);
   });
 
@@ -121,7 +135,7 @@ describe('briefingPage and mapMissionBrief', () => {
     expect(brief).toEqual({
       title: 'Wody Nilu',
       paragraphs: [{ style: 'body', text: 'Mapa wolnej gry.' }],
-      goals: ['Pokonaj wszystkich.'],
+      goals: [{ text: 'Pokonaj wszystkich.', rule: 'skirmish', done: false }],
     });
     expect(
       mapMissionBrief({
@@ -148,5 +162,25 @@ describe('briefingPage and mapMissionBrief', () => {
     });
     expect(brief.title).toBe('Sandstorm');
     expect(brief.paragraphs).toEqual([{ style: 'body', text: 'The vikings laid siege.' }]);
+  });
+});
+
+describe('briefAtOutcome', () => {
+  const brief = {
+    title: 'x',
+    paragraphs: [],
+    goals: [
+      { text: 'Build a temple', rule: 'authored' as const, done: false },
+      { text: 'Defeat everyone', rule: 'skirmish' as const, done: false },
+    ],
+  };
+
+  it('ticks the skirmish goal on victory and leaves the authored ones open', () => {
+    expect(briefAtOutcome(brief, 'victory').goals.map((g) => g.done)).toEqual([false, true]);
+  });
+
+  it('returns the brief itself while the match is undecided or lost', () => {
+    expect(briefAtOutcome(brief, 'undecided')).toBe(brief);
+    expect(briefAtOutcome(brief, 'defeat')).toBe(brief);
   });
 });

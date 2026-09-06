@@ -1,4 +1,6 @@
+import { HypertextBook } from '@open-northland/data';
 import type { SpriteLayer, TextureSource } from '@open-northland/render';
+import { diag } from '../diag/index.js';
 import { loadLayer } from './ir/load.js';
 import { fetchImageData, fetchJsonOrNull, loadTextureIfPresent } from './net.js';
 
@@ -130,4 +132,19 @@ export function loadGuiBitmap(name: GuiBitmapName): Promise<TextureSource | unde
  */
 export function loadGuiStrings(lang: string): Promise<GuiStrings | null> {
   return fetchJsonOrNull<GuiStrings>(`${GUI_ROOT}/strings/${lang}.json`);
+}
+
+/** Load one language's rendered history book (the mission window's third tab), or `null` without it. */
+export async function loadGuiHistory(
+  lang: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<HypertextBook | null> {
+  const raw = await fetchJsonOrNull<unknown>(`${GUI_ROOT}/history/${lang}.json`, fetchImpl);
+  if (raw === null) return null;
+  const parsed = HypertextBook.safeParse(raw);
+  if (!parsed.success) {
+    diag.warn('content', `loadGuiHistory: rejected /gui/history/${lang}.json (${parsed.error.message})`);
+    return null;
+  }
+  return parsed.data;
 }

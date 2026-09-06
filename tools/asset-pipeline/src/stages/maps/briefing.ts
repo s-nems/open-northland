@@ -1,6 +1,6 @@
-import type { BriefingParagraph, MapBriefing, MapScript } from '@open-northland/data';
+import type { HypertextParagraph, MapBriefing, MapScript } from '@open-northland/data';
 import type { Vfs } from '@open-northland/vfs';
-import { parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
+import { type IncludeResolver, parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
 import { decodeIni } from '../../decoders/ini/grammar.js';
 import { errorMessage } from '../../errors.js';
 import { findPathCaseInsensitiveInDirs } from '../../roots.js';
@@ -40,7 +40,7 @@ export async function resolveMapBriefing(
   ids: readonly number[],
 ): Promise<MapBriefing | undefined> {
   if (ids.length === 0) return undefined;
-  const texts: Record<string, Record<string, BriefingParagraph[]>> = {};
+  const texts: Record<string, Record<string, HypertextParagraph[]>> = {};
   for (const lang of BRIEFING_LANGS) {
     const pages = await renderLanguage(fs, mapDirs, rel, lang, ids);
     if (pages !== undefined) texts[lang] = pages;
@@ -54,7 +54,7 @@ async function renderLanguage(
   rel: string,
   lang: string,
   ids: readonly number[],
-): Promise<Record<string, BriefingParagraph[]> | undefined> {
+): Promise<Record<string, HypertextParagraph[]> | undefined> {
   const dir = [STRING_TABLE_DIR, lang, BRIEFINGS_DIR];
   const blocksPath = await findPathCaseInsensitiveInDirs(fs, mapDirs, [...dir, BRIEFINGS_FILE]);
   if (blocksPath === undefined) return undefined;
@@ -67,8 +67,8 @@ async function renderLanguage(
     );
     return undefined;
   }
-  const include = (label: string): string | undefined => blocks.get(label);
-  const pages: Record<string, BriefingParagraph[]> = {};
+  const include: IncludeResolver = (_file, label) => blocks.get(label);
+  const pages: Record<string, HypertextParagraph[]> = {};
   for (const id of ids) {
     let page: string | undefined;
     if (id >= FIRST_BLOCK_CUTSCENE_ID) {

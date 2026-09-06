@@ -179,6 +179,9 @@ function sceneMissionBrief(scene: SceneDefinition): MissionBrief {
   return {
     title: entry?.title ?? scene.id,
     paragraphs: entry === undefined ? [] : [{ style: 'body', text: entry.summary }],
-    goals: scene.participants === undefined ? [] : [messages().hud.skirmishGoal],
+    goals:
+      scene.participants === undefined
+        ? []
+        : [{ text: messages().hud.skirmishGoal, rule: 'skirmish', done: false }],
   };
 }
