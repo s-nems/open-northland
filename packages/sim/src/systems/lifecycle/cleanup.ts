@@ -53,6 +53,7 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
     entity: e,
     player: owner?.player ?? null,
     buildingType: building.buildingType,
+    tribe: building.tribe,
     built: building.built,
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });

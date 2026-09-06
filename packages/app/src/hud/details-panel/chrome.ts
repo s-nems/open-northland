@@ -72,8 +72,8 @@ export interface Chrome extends TextKit, GlyphKit {
   bar(r: Rect, pct: number, style?: 'progress' | 'gauge'): void;
   /** A stock amount's recessed numeric field: a subtle dark inset on the wood. */
   stockField(r: Rect): void;
-  /** The selected building's own world bob, fitted into `r`; false when no preview art is bound. */
-  buildingPreview(typeId: number, r: Rect): boolean;
+  /** The selected building's own world bob for its tribe, fitted into `r`; false when none is bound. */
+  buildingPreview(typeId: number, tribe: number | undefined, r: Rect): boolean;
 }
 
 export function createChrome(
@@ -262,8 +262,8 @@ export function createChrome(
       .stroke({ color: INNER_BOX_LIGHT, width: line, alpha: 0.5 });
   };
 
-  const buildingPreview = (typeId: number, r: Rect): boolean => {
-    const preview = assets.previews.get(typeId);
+  const buildingPreview = (typeId: number, tribe: number | undefined, r: Rect): boolean => {
+    const preview = assets.previews.get(typeId, tribe);
     if (preview === undefined) return false;
     const sprite = new Sprite(preview.texture);
     const fit = Math.min(r.w / preview.width, r.h / preview.height);

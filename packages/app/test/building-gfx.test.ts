@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BUILDING_FAMILIES,
+  type BuildingFamily,
+  type BuildingRefScope,
   buildingBobRefsByType,
+  buildingFamiliesFor,
   buildingOverlayRefsByType,
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
   OVERLAY_TICKS_PER_FRAME,
+  preferredPaletteFor,
 } from '../src/content/building-gfx/index.js';
 import type { BuildingBobRow } from '../src/content/ir/rows.js';
 
@@ -41,6 +44,25 @@ const FAMILIES = [
 const VIKING2_BMD = 'data/x/ls_houses_viking2.bmd';
 const VIKING4_BMD = 'data/x/ls_houses_viking4.bmd';
 
+/** One tribe's reduction scope over a hand-built family list. */
+const scope = (tribeId: number, families: readonly BuildingFamily[]): BuildingRefScope => ({
+  tribeId,
+  preferredPalette: DEFAULT_FAMILY.paletteName,
+  defaultFamily: DEFAULT_FAMILY,
+  families,
+});
+
+/** The scope the sheet builds for real rows: the families and preferred skin both derived from them. */
+const realScope = (
+  tribeId: number,
+  rows: readonly { tribeId: number; bmd: string; paletteName: string }[],
+): BuildingRefScope => ({
+  tribeId,
+  preferredPalette: preferredPaletteFor(rows, tribeId),
+  defaultFamily: DEFAULT_BUILDING_FAMILY,
+  families: buildingFamiliesFor(rows, [tribeId], DEFAULT_BUILDING_FAMILY),
+});
+
 describe('buildingBobRefsByType', () => {
   // A slice of the real content/ir.json buildingBobs lane (extractBuildingBobs over houses.ini): the
   // viking home growth chain is distinct typeIds 2..6 (one bob each), the well carries a duplicate
@@ -66,7 +88,7 @@ describe('buildingBobRefsByType', () => {
   ];
 
   it('emits bare ids for the default family and a layer-qualified ref for a loaded named family (HQ)', () => {
-    expect(buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+    expect(buildingBobRefsByType(rows, scope(1, FAMILIES))).toEqual({
       1: { layer: 'ls_houses_viking4.house01', bob: 34 },
       2: 1,
       6: 41,
@@ -79,20 +101,20 @@ describe('buildingBobRefsByType', () => {
   it('drops a type whose family is loaded by neither the default nor a named family (constant backs it)', () => {
     // typeId 20 is the viking2 family (not loaded) → absent from the output, NOT a wrong bob drawn from
     // the default layer. With viking2 added to FAMILIES it would resolve to its layer ref instead.
-    const out = buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES);
+    const out = buildingBobRefsByType(rows, scope(1, FAMILIES));
     expect(out[20]).toBeUndefined();
     const withViking2 = [
       ...FAMILIES,
       { bmdBasename: 'ls_houses_viking2.bmd', paletteName: 'house01', layer: 'ls_houses_viking2.house01' },
     ];
-    expect(buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, withViking2)[20]).toEqual({
+    expect(buildingBobRefsByType(rows, scope(1, withViking2))[20]).toEqual({
       layer: 'ls_houses_viking2.house01',
       bob: 10,
     });
   });
 
   it('filters by tribe (a frank row never lands in the viking table)', () => {
-    expect(buildingBobRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)[6]).toBe(41); // viking, not the frank 888
+    expect(buildingBobRefsByType(rows, scope(1, FAMILIES))[6]).toBe(41); // viking, not the frank 888
   });
 
   it('disambiguates a multi-bob typeId by canonical editName even over a lower bobId', () => {
@@ -102,7 +124,7 @@ describe('buildingBobRefsByType', () => {
       bobRow(1, 7, { bmd: VIKING4_BMD, editName: 'viking headquarters house' }),
       bobRow(1, 9, { bmd: VIKING4_BMD, editName: 'viking headquarters' }),
     ];
-    expect(buildingBobRefsByType(flipped, 1, DEFAULT_FAMILY, FAMILIES)[1]).toEqual({
+    expect(buildingBobRefsByType(flipped, scope(1, FAMILIES))[1]).toEqual({
       layer: 'ls_houses_viking4.house01',
       bob: 9,
     });
@@ -110,15 +132,15 @@ describe('buildingBobRefsByType', () => {
 
   it('prefers the default palette when a typeId spans recolour skins', () => {
     const skins = [bobRow(12, 999, { paletteName: 'house02' }), bobRow(12, 60)];
-    expect(buildingBobRefsByType(skins, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 12: 60 });
+    expect(buildingBobRefsByType(skins, scope(1, FAMILIES))).toEqual({ 12: 60 });
   });
 
   it('picks the highest level then the lowest bobId, insertion-order-independent', () => {
     const multi = [bobRow(6, 21, { level: 2 }), bobRow(6, 41, { level: 4 }), bobRow(6, 1, { level: 0 })];
-    expect(buildingBobRefsByType(multi, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 6: 41 });
+    expect(buildingBobRefsByType(multi, scope(1, FAMILIES))).toEqual({ 6: 41 });
     const tie = [bobRow(7, 70, { level: 1 }), bobRow(7, 50, { level: 1 })];
-    expect(buildingBobRefsByType(tie, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 7: 50 });
-    expect(buildingBobRefsByType([...tie].reverse(), 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 7: 50 });
+    expect(buildingBobRefsByType(tie, scope(1, FAMILIES))).toEqual({ 7: 50 });
+    expect(buildingBobRefsByType([...tie].reverse(), scope(1, FAMILIES))).toEqual({ 7: 50 });
   });
 
   it('anchors the bmd match to a path separator (no basename-concat false positive)', () => {
@@ -127,20 +149,19 @@ describe('buildingBobRefsByType', () => {
       // ends with the default basename string but NOT after a `/` - must NOT match the default family.
       bobRow(2, 9, { bmd: 'data/x/evil_ls_houses_viking.bmd' }),
     ];
-    expect(buildingBobRefsByType(tricky, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({ 1: 5 });
+    expect(buildingBobRefsByType(tricky, scope(1, FAMILIES))).toEqual({ 1: 5 });
   });
 
   it('returns {} when nothing matches the tribe (caller then uses the constant fallback)', () => {
-    expect(buildingBobRefsByType(rows, 99, DEFAULT_FAMILY, FAMILIES)).toEqual({});
-    expect(buildingBobRefsByType([], 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
+    expect(buildingBobRefsByType(rows, scope(99, FAMILIES))).toEqual({});
+    expect(buildingBobRefsByType([], scope(1, FAMILIES))).toEqual({});
   });
 
-  // The PRODUCTION families list (the seven viking families loaded in loadHumanSpriteSheet). Drives the
-  // reducer with the real BUILDING_FAMILIES so the rung's claim - "EVERY viking building draws its own
-  // bob" - is pinned without a browser: each family's representative type routes to its OWN atlas layer,
-  // including the two house02 families that close the set (stock / brewery / coin mint), and the default
-  // stays a bare id. No viking [GfxHouse] type is dropped any more.
-  describe('with the production BUILDING_FAMILIES (all seven viking families loaded)', () => {
+  // The families derived from the rows themselves, as the sheet derives them. Pins the claim "EVERY
+  // viking building draws its own bob" without a browser: each family's representative type routes to
+  // its OWN atlas layer, including the two house02 families (stock / brewery / coin mint), and the
+  // default stays a bare id.
+  describe('with the families derived from the rows', () => {
     // One representative row per family, transcribed from content/ir.json's buildingBobs (LogicTribeType
     // 1). The (bmd, palette) PAIR is what each family entry matches on: the miller and house02 both share
     // ls_houses_viking.bmd with the default but recolour it `housemiller01` / `house02`.
@@ -157,7 +178,7 @@ describe('buildingBobRefsByType', () => {
     ];
 
     it('routes each viking type to its own loaded family layer (the rung is render-only, data already there)', () => {
-      expect(buildingBobRefsByType(real, 1, DEFAULT_BUILDING_FAMILY, BUILDING_FAMILIES)).toEqual({
+      expect(buildingBobRefsByType(real, realScope(1, real))).toEqual({
         6: 41, // default building layer - a bare id
         13: { layer: 'ls_houses_viking.housemiller01', bob: 70 },
         31: { layer: 'ls_houses_viking2.house01', bob: 150 },
@@ -174,10 +195,9 @@ describe('buildingBobRefsByType', () => {
     it('keeps the loaded set and the emittable set in lockstep (every family layer is fetchable)', () => {
       // Each family's `layer` is the served atlas stem loadHumanSpriteSheet fetches; a ref the reducer
       // emits must name one of these, else it would fall through to the default layer and draw a WRONG bob.
-      const loadedLayers = new Set(BUILDING_FAMILIES.map((f) => f.layer));
-      for (const ref of Object.values(
-        buildingBobRefsByType(real, 1, DEFAULT_BUILDING_FAMILY, BUILDING_FAMILIES),
-      )) {
+      const derived = buildingFamiliesFor(real, [1], DEFAULT_BUILDING_FAMILY);
+      const loadedLayers = new Set(derived.map((f) => f.layer));
+      for (const ref of Object.values(buildingBobRefsByType(real, realScope(1, real)))) {
         if (typeof ref !== 'number') expect(loadedLayers.has(ref.layer)).toBe(true);
       }
     });
@@ -207,7 +227,7 @@ describe('constructionRefsByType', () => {
       row({ stackIdx: 3, bobId: 11, upgrade: true }), // the `1` row - not a from-scratch stage
       row({ stackIdx: 1, bobId: 2, toPct: 50 }),
     ];
-    expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+    expect(constructionRefsByType(rows, scope(1, FAMILIES))).toEqual({
       2: [
         { bob: 3, fromPct: 10, toPct: 70 },
         { bob: 2, fromPct: 0, toPct: 50 },
@@ -221,7 +241,7 @@ describe('constructionRefsByType', () => {
       row({ bmd: 'data/x/ls_houses_viking4.bmd', bobId: 34 }),
       row({ paletteName: 'house02', bobId: 999 }), // the other skin - ignored while house01 rows exist
     ];
-    expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({
+    expect(constructionRefsByType(rows, scope(1, FAMILIES))).toEqual({
       2: [{ layer: 'ls_houses_viking4.house01', bob: 34, fromPct: 0, toPct: 100 }],
     });
   });
@@ -232,7 +252,7 @@ describe('constructionRefsByType', () => {
       row({ stackIdx: 1, bmd: 'data/x/ls_houses_viking9.bmd', bobId: 2 }), // unloaded family
       row({ typeId: 7, tribeId: 2, bobId: 50 }), // another tribe
     ];
-    expect(constructionRefsByType(rows, 1, DEFAULT_FAMILY, FAMILIES)).toEqual({});
+    expect(constructionRefsByType(rows, scope(1, FAMILIES))).toEqual({});
   });
 
   it('never interleaves two records sharing one typeId - one (editName, level) group wins', () => {
@@ -245,18 +265,14 @@ describe('constructionRefsByType', () => {
       row({ editName: 'viking headquarters', bobId: 34, stackIdx: 1 }),
     ];
     // Lowest level ties → lexicographically smaller editName ('viking headquarters') wins whole.
-    expect(constructionRefsByType(variants, 1, DEFAULT_FAMILY, FAMILIES)[2]?.map((l) => l.bob)).toEqual([
-      36, 34,
-    ]);
+    expect(constructionRefsByType(variants, scope(1, FAMILIES))[2]?.map((l) => l.bob)).toEqual([36, 34]);
     const twoLevels = [
       row({ level: 2, bobId: 9, stackIdx: 0 }),
       row({ level: 1, bobId: 5, stackIdx: 0 }),
       row({ level: 1, bobId: 6, stackIdx: 1 }),
     ];
     // The lowest level (the base build stage) wins; level 2's stage is not mixed in.
-    expect(constructionRefsByType(twoLevels, 1, DEFAULT_FAMILY, FAMILIES)[2]?.map((l) => l.bob)).toEqual([
-      5, 6,
-    ]);
+    expect(constructionRefsByType(twoLevels, scope(1, FAMILIES))[2]?.map((l) => l.bob)).toEqual([5, 6]);
   });
 });
 
@@ -285,13 +301,13 @@ describe('buildingOverlayRefsByType - the type-4 GfxOverlay join (the mill rotor
   const millRows = [row({}), row({ state: 1, frames: SPIN })];
 
   it('joins the idle + working state rows of one type into a layer-qualified overlay ref', () => {
-    expect(buildingOverlayRefsByType(millRows, 1, DEFAULT_FAMILY, MILLER_FAMILIES)).toEqual({
+    expect(buildingOverlayRefsByType(millRows, scope(1, MILLER_FAMILIES))).toEqual({
       13: { layer: MILLER_LAYER, idle: 76, working: SPIN, ticksPerFrame: OVERLAY_TICKS_PER_FRAME },
     });
   });
 
   it('binds the mill overlay through the REAL loaded family list (the housemiller01 skin)', () => {
-    const out = buildingOverlayRefsByType(millRows, 1, DEFAULT_BUILDING_FAMILY, BUILDING_FAMILIES);
+    const out = buildingOverlayRefsByType(millRows, realScope(1, millRows));
     expect(out[13]).toMatchObject({ layer: MILLER_LAYER, idle: 76, working: SPIN });
   });
 
@@ -302,7 +318,7 @@ describe('buildingOverlayRefsByType - the type-4 GfxOverlay join (the mill rotor
       row({ typeId: 20, bmd: 'data/x/ls_houses_viking9.bmd' }), // unloaded family → dropped
       row({ level: 1, frames: [111] }), // a higher size level - the level-0 group wins
     ];
-    const out = buildingOverlayRefsByType(rows, 1, DEFAULT_FAMILY, MILLER_FAMILIES);
+    const out = buildingOverlayRefsByType(rows, scope(1, MILLER_FAMILIES));
     expect(Object.keys(out)).toEqual(['13']);
     expect(out[13]?.idle).toBe(76);
   });

@@ -143,7 +143,7 @@ export const plGame = {
       awaitingWorkplace: 'czeka na budowę',
       idle: 'bezczynny',
     },
-    playerTribe: 'Gracz #{player} · Plemię {tribe}{stance}',
+    playerTribe: 'Gracz #{player} · {tribe}{stance}',
     age: 'Wiek: {years}',
     stance: ' · {stance}',
     health: 'Zdrowie',

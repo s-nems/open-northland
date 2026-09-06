@@ -1,6 +1,6 @@
 import { withBaseUrl } from '../../base-url.js';
 import { playerSwatchHex } from '../../catalog/roster.js';
-import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
+import { bcp47Tag, formatMessage, messages, tribeName } from '../../i18n/index.js';
 import { generatedMapPreview } from './map-preview.js';
 import { type MapSelectItem, pluralForm } from './map-select-model.js';
 
@@ -35,7 +35,7 @@ function seatChip(tribeId: number, colorId: number): HTMLElement {
   dot.className = 'main-menu__seat-dot';
   dot.style.background = playerSwatchHex(colorId);
   const tribe = document.createElement('span');
-  tribe.textContent = messages().mainMenu.tribeNames[tribeId] ?? `#${tribeId}`;
+  tribe.textContent = tribeName(tribeId);
   chip.append(dot, tribe);
   return chip;
 }

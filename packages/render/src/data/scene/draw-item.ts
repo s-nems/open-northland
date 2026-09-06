@@ -18,8 +18,7 @@ export type SpriteKind = Exclude<DrawKind, 'tile'>;
  *  `tribetypes` `setatomic` maps an atomic to its animation). */
 export type SpriteState = 'idle' | 'moving' | 'acting';
 
-/** The subset of a building / resource / stump's draw fields a fog ghost keeps from its last
- *  sighting. */
+/** The draw fields a fog ghost keeps from its last sighting, shared by every sprite kind. */
 export interface StaticDrawFields {
   /** The type id a per-type binding picks its frame by: a tile's landscape typeId, or a building's
    *  `Building.buildingType` (the `[GfxHouse]` `LogicType`). Omitted for settler/resource. */
@@ -39,6 +38,9 @@ export interface StaticDrawFields {
   /** A resource node's `Resource.gfxIndex`: the exact `[GfxLandscape]` record it was spawned from, so a
    *  map keeps its species variety. Omitted for an admin/scene-spawned node. */
   gfxIndex?: number;
+  /** A settler's `Settler.tribe` or a building's `Building.tribe`: the key of the per-tribe look tables,
+   *  and for a wildlife entity (a settler of an animal tribe with a null `jobType`) the species key. */
+  tribe?: number;
 }
 
 /**
@@ -89,9 +91,6 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   /** For a settler: its `Settler.jobType`, the body/head look key (the original's `[jobbasegraphics]`
    *  job → body/head join). Omitted when the settler has no job. */
   readonly jobType?: number;
-  /** For a settler: its `Settler.tribe`, the species key for a wildlife entity - an animal is a settler
-   *  of an animal tribe with a null `jobType`. Unused by human bindings. */
-  readonly tribe?: number;
   /**
    * For a settler: the `typeId` of the good in its `Equipment.weapon` slot, so the drawn weapon follows
    * the slot rather than the job. `null` when the settler carries an `Equipment` whose weapon slot is

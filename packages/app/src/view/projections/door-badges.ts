@@ -15,6 +15,7 @@ import {
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import {
   actorsOf,
+  buildingTribeOf,
   buildingTypeOf,
   familiesByHome,
   type HomeFamily,
@@ -48,9 +49,16 @@ export interface BuildingDoorInfo {
   readonly mastPoint?: { readonly x: number; readonly y: number } | undefined;
 }
 
+/** A building's anchors by type and tribe: the anchors are per-skin pixel offsets, so the frank tower's
+ *  mast differs from the viking one on the same typeId. */
+export type BuildingDoorInfoOf = (
+  typeId: number | undefined,
+  tribe: number | undefined,
+) => BuildingDoorInfo | undefined;
+
 export function computeDoorBadges(
   snapshot: WorldSnapshot,
-  buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
+  buildingInfoOf: BuildingDoorInfoOf,
   roleOf: (jobType: number) => WorkerRole,
 ): DoorBadge[] {
   // Buckets follow the snapshot's ascending-id actor order, so each one is deterministic.
@@ -98,8 +106,7 @@ export function computeDoorBadges(
     const garrison = e.components.UnderConstruction === undefined ? (counts?.garrison ?? 0) : 0;
     const pos = positionOf(e);
     if (pos === undefined) continue;
-    const typeId = buildingTypeOf(e);
-    const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
+    const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e));
     const player = ownerPlayerOf(e);
 
     // Bottom to top: family banners, then worker discs, then the carrier pennants.

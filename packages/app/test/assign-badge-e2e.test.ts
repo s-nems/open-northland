@@ -68,7 +68,11 @@ describe('assignWorker → door badge, over sandbox content', () => {
     );
     expect(workplace).toBe(building.id);
     // … and a badge row appears at its door - never a gatherer (the right-click never assigns one).
-    const badge = computeDoorBadges(snap1, doorTable, workerRoleOf).find((b) => b.id === building.id);
+    const badge = computeDoorBadges(
+      snap1,
+      (typeId) => (typeId === undefined ? undefined : doorTable.get(typeId)),
+      workerRoleOf,
+    ).find((b) => b.id === building.id);
     expect(badge).toBeDefined();
     const roles = badge?.rows.map((r) => r.role) ?? [];
     expect(roles.some((r) => r === 'craftsman' || r === 'carrier')).toBe(true);

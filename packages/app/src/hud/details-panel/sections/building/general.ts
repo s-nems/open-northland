@@ -48,7 +48,7 @@ export function drawGeneralSection(
     h: layout.preview.h - previewInset * 2,
   };
   // A site or a failed portrait draw falls back to the neutral plate, never a misleading complete house.
-  if (model.construction !== null || !chrome.buildingPreview(model.typeId, previewArt)) {
+  if (model.construction !== null || !chrome.buildingPreview(model.typeId, model.tribeId, previewArt)) {
     chrome.guiCentered(GUI_FRAME.house_plate, layout.preview, 'magenta', 'bg_normal');
     chrome.guiCentered(GUI_FRAME.tool_button_buildings, layout.preview, 'full');
   }

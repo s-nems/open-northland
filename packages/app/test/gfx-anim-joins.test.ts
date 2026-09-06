@@ -3,6 +3,7 @@ import {
   gfxAtomicProgramsByAction,
   gfxWaitProgramsBySeq,
   gfxWalkFrameLists,
+  tribeJobSeqs,
 } from '../src/content/ir/joins.js';
 import type { ContentIr } from '../src/content/ir/rows.js';
 
@@ -78,5 +79,54 @@ describe('gfxWalkFrameLists', () => {
     ]);
     expect(lists.has('walk')).toBe(false);
     expect(lists.has('bear_walk')).toBe(false);
+  });
+});
+
+describe('tribeJobSeqs', () => {
+  const ATTACK_ACTION = 81;
+  const FIDGET_ACTION = 5;
+  const UNLOADED = 0;
+
+  const ir: ContentIr = {
+    gfxWalkAtomics: [
+      { tribe: VIKING, job: 41, goodType: UNLOADED, bodySeq: 'longbow_walk' },
+      { tribe: VIKING, job: 41, goodType: 3, bodySeq: 'longbow_walk_wood' },
+      { tribe: 2, job: 41, goodType: UNLOADED, bodySeq: 'frank_longbow_walk' },
+    ],
+    gfxAtomics: [
+      { tribe: VIKING, job: 41, action: FIDGET_ACTION, bodySeq: 'longbow_fidget', dirFrames: [[0]], mode: 0 },
+      {
+        tribe: VIKING,
+        job: 41,
+        action: BASE_WAIT_ACTION,
+        bodySeq: 'longbow_wait',
+        dirFrames: [[1]],
+        mode: 1,
+      },
+      { tribe: VIKING, job: 41, action: ATTACK_ACTION, bodySeq: 'longbow_attack', dirFrames: [[2]] },
+      { tribe: VIKING, job: 41, action: ATTACK_ACTION, bodySeq: 'longbow_attack_2', dirFrames: [[3]] },
+    ],
+  };
+
+  it('reads one job own unloaded gait, base wait and first attack', () => {
+    expect(tribeJobSeqs(ir, VIKING, 41)).toEqual({
+      walk: 'longbow_walk',
+      wait: 'longbow_wait',
+      attack: 'longbow_attack',
+    });
+  });
+
+  it('prefers the looping base wait over a fidget authored for the same job', () => {
+    // Order matters the other way round too: the fidget is read first and must still lose.
+    const fidgetOnly: ContentIr = { gfxAtomics: (ir.gfxAtomics ?? []).filter((r) => r.mode !== 1) };
+    expect(tribeJobSeqs(fidgetOnly, VIKING, 41).wait).toBe('longbow_fidget');
+  });
+
+  it('omits what the tribe does not author rather than borrowing another job or tribe', () => {
+    expect(tribeJobSeqs(ir, VIKING, 34)).toEqual({});
+    expect(tribeJobSeqs(ir, 3, 41)).toEqual({});
+    expect(tribeJobSeqs(null, VIKING, 41)).toEqual({});
+    // A loaded gait is not the job's walk: only the `logicgoodtype 0` row is.
+    expect(tribeJobSeqs(ir, 2, 41)).toEqual({ walk: 'frank_longbow_walk' });
   });
 });

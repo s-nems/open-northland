@@ -1,15 +1,16 @@
 export const plSurfaces = {
+  /** The `TRIBE_TYPE_HUMAN_*` civilizations, by their `logicdefines.inc` id. */
+  tribeNames: {
+    1: 'Wikingowie',
+    2: 'Frankowie',
+    3: 'Bizantyjczycy',
+    4: 'Saraceni',
+    5: 'Wężołaki',
+    6: 'Wilkołaki',
+    7: 'Egipcjanie',
+  } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: 'Dla fanów serii Cultures',
-    tribeNames: {
-      1: 'Wikingowie',
-      2: 'Frankowie',
-      3: 'Bizantyjczycy',
-      4: 'Saraceni',
-      5: 'Wężołaki',
-      6: 'Wilkołaki',
-      7: 'Egipcjanie',
-    } as Readonly<Record<number, string>>,
     items: {
       newGame: 'Nowa gra',
       load: 'Wczytaj grę',

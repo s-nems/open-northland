@@ -62,9 +62,12 @@ export interface SettlerCharacter {
   readonly headBinding?: SettlerStateBinding;
 }
 
-/** The render-side `[jobbasegraphics]` join: a settler's weapon, then its job and young flag, pick which
- *  body/heads/binding compose it. */
+/** The render-side `[jobbasegraphics]` join: a settler's tribe picks the table, then its weapon, job and
+ *  young flag pick which body/heads/binding compose it. The base table serves an item of no or an
+ *  unloaded tribe. */
 export interface SettlerCharacterSet extends ByJobTable<SettlerCharacter> {
+  /** The other loaded civilizations' looks, keyed by `Settler.tribe`. */
+  readonly byTribe?: Readonly<Record<number, ByJobTable<SettlerCharacter>>>;
   /**
    * The wildlife species looks keyed by the item's animal tribe - the render-side
    * `animals/jobgraphics.ini` join. A tribe listed in `tribes` resolves only here: bound draws its

@@ -28,7 +28,8 @@ export function resolveCharacterLayers(
     const shadow = shadowLayerFor(animal.body, bob, 1);
     return shadow === null ? [body] : [shadow, body];
   }
-  const char = pickByJob(characters, item.jobType, item.young === true, item.weaponGood);
+  const table = (item.tribe !== undefined ? characters.byTribe?.[item.tribe] : undefined) ?? characters;
+  const char = pickByJob(table, item.jobType, item.young === true, item.weaponGood);
   const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
   const layers: ResolvedLayer[] = [];
   const bodyFrame = lookupFrame(char.body.atlas, bob);

@@ -111,15 +111,19 @@ describe('buildScene - projection, depth order & classification', () => {
     expect(kinds.sort()).toEqual(['building', 'resource']);
   });
 
-  it('stamps a building draw item with its buildingType (so a per-type binding picks its bob)', () => {
+  it('stamps a building draw item with its buildingType and tribe (the per-tribe bob join)', () => {
+    const SARACEN = 4;
     const scene = buildScene(
       snapshotOf([
-        entity(1, 0, 0, { Building: { buildingType: 6 } }),
+        entity(1, 0, 0, { Building: { buildingType: 6, tribe: SARACEN } }),
         entity(2, 1, 1, { Resource: { goodType: 1 } }),
       ]),
       FLAT_3x2,
     );
-    expect(scene.find((d) => d.kind === 'building')?.typeId).toBe(6);
+    const house = scene.find((d) => d.kind === 'building');
+    expect(house?.typeId).toBe(6);
+    // The civilizations share the type space, so the tribe is what picks between their bodies.
+    expect(house?.tribe).toBe(SARACEN);
     // Only tiles and buildings carry a typeId.
     expect(scene.find((d) => d.kind === 'resource')?.typeId).toBeUndefined();
   });

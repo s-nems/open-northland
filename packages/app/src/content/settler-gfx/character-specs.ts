@@ -45,7 +45,6 @@ import {
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
 } from '../../catalog/jobs.js';
-import { CIVILIST_JOB_HEADS, SCOUT_JOB_HEADS } from '../../catalog/roster.js';
 import { WEAPON_GOOD_SLUG_BY_JOB } from '../../game/sandbox/ids/weapons.js';
 import {
   CHOP_PHASE_START,
@@ -68,10 +67,12 @@ import {
  * names are matched verbatim, and the source casing is mixed (`Warrior_Sword_Walk` vs `warrior_empty_walk`).
  */
 export interface CharacterSpec {
-  /** Key into the roster's `VIKING_CHARACTERS` for the body + default head stems. */
-  readonly rosterId: string;
-  /** Head look stems (without palette); defaults to the roster entry's full head list. */
-  readonly headBmds?: readonly string[];
+  /**
+   * The `[jobbasegraphics]` `logicjob`s whose record draws this look, best first: a tribe authors no
+   * record for every soldier class, so the chain ends at the class this look degrades to. A tribe with
+   * no record in the chain has no such look and its jobs draw the base tribe's.
+   */
+  readonly gfxJobs: readonly number[];
   /** The ×8 locomotion cycle; absent → the look stands its wait even while moving. */
   readonly walkSeq?: string;
   /** The standing-idle `[bobseq]`; absent → idle holds the walk's first frame per facing. */
@@ -112,9 +113,8 @@ export interface CharacterSpec {
  *  a typo'd spec id in a job table is a compile error rather than a silent fall-to-default. */
 export const CHARACTER_SPECS = {
   civilian: {
-    rosterId: 'civilian',
+    gfxJobs: [JOB_CIVILIST],
     logicJob: JOB_CIVILIST,
-    headBmds: CIVILIST_JOB_HEADS,
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',
@@ -146,10 +146,10 @@ export const CHARACTER_SPECS = {
     },
   },
   scout: {
-    // The generic man body under the hatted scout heads (`jobgraphics.ini` logicjob 27 binds
-    // `cr_hum_body_00` + heads 80..83). Its one trade action is the build-guide swing.
-    rosterId: 'civilian',
-    headBmds: SCOUT_JOB_HEADS,
+    // The hatted scout record (viking `logicjob 27` binds `cr_hum_body_00` + heads 80..83); a tribe
+    // authoring none falls to its civilist record, hat included, and its scouts read as civilians. Its one
+    // trade action is the build-guide swing.
+    gfxJobs: [JOB_SCOUT, JOB_CIVILIST],
     logicJob: JOB_CIVILIST,
     walkSeq: 'human_man_generic_walk',
     waitSeq: 'human_man_generic_wait',
@@ -167,10 +167,9 @@ export const CHARACTER_SPECS = {
     },
   },
   hunter: {
-    // The generic man body under the civilist heads: the mod's `jobgraphics.ini` carries no `logicjob 15`
-    // record, so the original falls to the civilist look too, with its own bow-in-hand clips.
-    rosterId: 'civilian',
-    headBmds: CIVILIST_JOB_HEADS,
+    // No tribe authors a `logicjob 15` record, so the hunter draws the civilian look with its own
+    // bow-in-hand clips.
+    gfxJobs: [JOB_HUNTER, JOB_CIVILIST],
     // Job 6 for the carry table: the job-15 walk lane authors only the unloaded (`logicgoodtype 0`) gait,
     // which the carry join drops.
     logicJob: JOB_CIVILIST,
@@ -191,7 +190,7 @@ export const CHARACTER_SPECS = {
     },
   },
   woman: {
-    rosterId: 'woman',
+    gfxJobs: [JOB_WOMAN],
     logicJob: JOB_WOMAN,
     walkSeq: 'human_woman_generic_walk',
     waitSeq: 'human_woman_generic_wait',
@@ -211,7 +210,7 @@ export const CHARACTER_SPECS = {
     },
   },
   boy: {
-    rosterId: 'boy',
+    gfxJobs: [JOB_CHILD_MALE],
     logicJob: JOB_CHILD_MALE,
     walkSeq: 'human_child_boy_generic_walk',
     waitSeq: 'human_child_boy_generic_wait',
@@ -223,7 +222,7 @@ export const CHARACTER_SPECS = {
     },
   },
   girl: {
-    rosterId: 'girl',
+    gfxJobs: [JOB_CHILD_FEMALE],
     logicJob: JOB_CHILD_FEMALE,
     walkSeq: 'human_child_girl_generic_walk',
     waitSeq: 'human_child_girl_generic_wait_1',
@@ -233,7 +232,7 @@ export const CHARACTER_SPECS = {
     },
   },
   baby: {
-    rosterId: 'baby',
+    gfxJobs: [JOB_BABY_MALE],
     logicJob: JOB_BABY_MALE,
     // The crawl is the baby's locomotion; its authored walk lists cut the cycle short of the block.
     walkSeq: 'human_child_baby_generic_crouch',
@@ -246,7 +245,7 @@ export const CHARACTER_SPECS = {
   // = 1) joins; their per-direction frame counts match the viking atomicanimation lengths (spear 27,
   // sword_long 29, bows 12/28). The unarmed body authors no `_agressive` gait.
   warrior: {
-    rosterId: 'warrior',
+    gfxJobs: [JOB_SOLDIER_UNARMED],
     logicJob: JOB_SOLDIER_UNARMED,
     walkSeq: 'human_man_warrior_empty_walk',
     waitSeq: 'human_man_warrior_empty_wait',
@@ -257,7 +256,7 @@ export const CHARACTER_SPECS = {
     },
   },
   'warrior-spear': {
-    rosterId: 'warrior',
+    gfxJobs: [JOB_SOLDIER_SPEAR_WOODEN, JOB_SOLDIER_UNARMED],
     logicJob: JOB_SOLDIER_SPEAR_WOODEN,
     walkSeq: 'human_man_Warrior_spear_walk',
     waitSeq: 'human_man_Warrior_spear_wait',
@@ -272,7 +271,7 @@ export const CHARACTER_SPECS = {
     },
   },
   'warrior-sword': {
-    rosterId: 'warrior',
+    gfxJobs: [JOB_SOLDIER_SWORD, JOB_SOLDIER_UNARMED],
     logicJob: JOB_SOLDIER_SWORD,
     walkSeq: 'human_man_Warrior_Sword_Walk',
     waitSeq: 'human_man_Warrior_Sword_Wait',
@@ -287,7 +286,7 @@ export const CHARACTER_SPECS = {
     },
   },
   'warrior-broadsword': {
-    rosterId: 'warrior',
+    gfxJobs: [JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_UNARMED],
     logicJob: JOB_SOLDIER_BROADSWORD,
     walkSeq: 'human_man_Warrior_Broadsword_walk',
     waitSeq: 'human_man_Warrior_Broadsword_wait',
@@ -302,7 +301,7 @@ export const CHARACTER_SPECS = {
     },
   },
   'warrior-shortbow': {
-    rosterId: 'warrior',
+    gfxJobs: [JOB_ARCHER, JOB_SOLDIER_UNARMED],
     logicJob: JOB_ARCHER,
     walkSeq: 'human_man_Warrior_Shortbow_walk',
     waitSeq: 'human_man_Warrior_Shortbow_wait',
@@ -319,7 +318,7 @@ export const CHARACTER_SPECS = {
     },
   },
   'warrior-longbow': {
-    rosterId: 'warrior',
+    gfxJobs: [JOB_ARCHER_LONG, JOB_SOLDIER_UNARMED],
     logicJob: JOB_ARCHER_LONG,
     walkSeq: 'human_man_Warrior_Longbow_walk',
     waitSeq: 'human_man_Warrior_Longbow_wait',

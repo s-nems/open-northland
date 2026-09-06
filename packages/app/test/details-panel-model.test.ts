@@ -440,6 +440,24 @@ describe('selection details panel model', () => {
     expect(adult.meta).not.toContain('Wiek');
   });
 
+  it('names each settler civilization instead of printing its tribe code', () => {
+    // A seat can field several tribes at once and tribe partitions the economy, so the panel has to
+    // say which one a settler belongs to rather than showing a bare number.
+    const snapshot: WorldSnapshot = {
+      tick: 0,
+      events: [],
+      entities: [
+        { id: 1, components: { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Owner: { player: 0 } } },
+        { id: 2, components: { Settler: { tribe: 4, jobType: JOB_COLLECTOR }, Owner: { player: 0 } } },
+      ],
+    };
+    const viking = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+    const saracen = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
+    if (viking.kind !== 'settler' || saracen.kind !== 'settler') throw new Error('expected settlers');
+    expect(viking.meta).toContain('Wikingowie');
+    expect(saracen.meta).toContain('Saraceni');
+  });
+
   it('hides the need bars for a cared-for baby (only Zdrowie), keeps them for a child', () => {
     const snapshot: WorldSnapshot = {
       tick: 0,

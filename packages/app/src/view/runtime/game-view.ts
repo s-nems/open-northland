@@ -21,6 +21,7 @@ import { pickerEntries } from '../../catalog/professions.js';
 import { FrameStats, installSessionInstruments } from '../../diag/index.js';
 import { briefAtOutcome, type MissionBrief } from '../../game/mission-brief.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
+import type { WorldTribes } from '../../game/world-tribes.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
@@ -83,6 +84,8 @@ export interface GameViewDeps {
   /** Owner slot to its roster tribe, stamping the buildings a seat places and the admin panel's spawns.
    *  Default {@link PRIMARY_TRIBE} for every seat. */
   readonly seatTribeOf?: (player: number) => number;
+  /** The civilizations this world fields - the tribes whose art the sheet loaded. */
+  readonly tribes?: WorldTribes;
   /** Spectator session: no fog view, and every player's entities are pickable as if owned. */
   readonly observer?: boolean;
   /** Read-only spectator: the interactive HUD's command seam is a no-op, so a selection can inspect but never re-task. */
@@ -346,6 +349,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     mapSize: deps.mapSize,
     localPlayer,
     fogGates,
+    tribes: deps.tribes ?? [PRIMARY_TRIBE],
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
     selection: { ids: controls.selectedIds, version: controls.selectionVersion },
@@ -451,6 +455,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     lifeHeartsFor,
     canPlaceAt,
     canPlaceSignpostAt,
+    placementTribe: seatTribeOf(localPlayer),
     soundDriver,
     perf,
     pointer: pointerAt,

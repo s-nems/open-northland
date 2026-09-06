@@ -28,6 +28,7 @@ import {
 import { harvestablePlacementOrdinals, sandboxGoods } from '../game/sandbox/index.js';
 import { sessionRuleOverrides } from '../game/session-rules.js';
 import { terrainSceneFor } from '../game/world/index.js';
+import { worldTribes } from '../game/world-tribes.js';
 import { currentLocale, messages } from '../i18n/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
@@ -117,11 +118,17 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // this instance lifts the map objects at load and drives elevation-aware picking.
   const elevation = makeElevationField(loaded?.elevation, loaded?.width ?? 0, loaded?.height ?? 0);
   await boot.begin('content');
+  // Started before the content await rather than after it: the sheet cannot pick its tribes until the
+  // IR lands, so serialising the two documents would push every atlas fetch back by one round trip.
+  const irLoad = loadIr();
   const { goodNames, realContent } = await loadLocalizedRealContent(params);
+  const ir = await irLoad;
+  // Every civilization the map fields brings its own building and settler pages, so the sheet loads
+  // exactly the seats' and the authored entities' tribes.
+  const tribes = worldTribes(script, loaded?.entities, ir ?? {});
   await boot.begin('sprites');
-  const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods());
+  const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods(), tribes);
   await boot.begin('terrain');
-  const ir = await loadIr();
   let terrain: TerrainTextureSet;
   try {
     terrain = await loadRealTerrain(ir);
@@ -258,6 +265,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     readOnly: readOnlyObserverParam(params),
     playerColourOf,
     seatTribeOf: (player) => playerTribe(script, player),
+    tribes,
     seatNameOf: playerNameMap(script),
     rosterPlayers: script?.players.map((p) => p.player) ?? [],
     ...terrainColourOption(terrain),

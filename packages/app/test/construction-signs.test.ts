@@ -2,7 +2,7 @@ import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { BuildingDoorInfo } from '../src/view/projections/index.js';
 import { computeConstructionSigns } from '../src/view/projections/index.js';
-import { type Ent, snapshotOf } from './support/snapshot.js';
+import { buildingInfoOf, type Ent, snapshotOf } from './support/snapshot.js';
 
 /**
  * computeConstructionSigns - one player-coloured construction stand per building carrying
@@ -28,7 +28,7 @@ describe('computeConstructionSigns', () => {
     const types = new Map<number, BuildingDoorInfo>([[7, { footprint: { door: { dx: 0, dy: 2 } } }]]);
     const snap = snapshotOf([site(1, 7, 4, 4, 3)]);
 
-    const signs = computeConstructionSigns(snap, types);
+    const signs = computeConstructionSigns(snap, buildingInfoOf(types));
 
     expect(signs).toHaveLength(1);
     const anchor = nodeOfPosition(fx.fromInt(4), fx.fromInt(4));
@@ -40,7 +40,7 @@ describe('computeConstructionSigns', () => {
     const types = new Map<number, BuildingDoorInfo>([
       [7, { footprint: { door: { dx: 0, dy: 2 } }, flagPoint: { x: -6, y: 29 } }],
     ]);
-    const signs = computeConstructionSigns(snapshotOf([site(1, 7, 4, 4, 3)]), types);
+    const signs = computeConstructionSigns(snapshotOf([site(1, 7, 4, 4, 3)]), buildingInfoOf(types));
     expect(signs).toEqual([{ id: 1, x: fx.fromInt(4), y: fx.fromInt(4), dx: -6, dy: 29, player: 3 }]);
   });
 
@@ -49,9 +49,9 @@ describe('computeConstructionSigns', () => {
       id: 1,
       components: { Building: { buildingType: 7 }, Position: { x: fx.fromInt(4), y: fx.fromInt(4) } },
     };
-    expect(computeConstructionSigns(snapshotOf([done]), new Map())).toEqual([]);
+    expect(computeConstructionSigns(snapshotOf([done]), buildingInfoOf(new Map()))).toEqual([]);
 
-    const signs = computeConstructionSigns(snapshotOf([site(2, 9, 6, 2)]), new Map());
+    const signs = computeConstructionSigns(snapshotOf([site(2, 9, 6, 2)]), buildingInfoOf(new Map()));
     const anchor = nodeOfPosition(fx.fromInt(6), fx.fromInt(2));
     const pos = positionOfNode(anchor.hx, anchor.hy);
     expect(signs).toEqual([{ id: 2, x: pos.x, y: pos.y }]);

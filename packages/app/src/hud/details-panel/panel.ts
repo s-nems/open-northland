@@ -3,7 +3,7 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
-import { loadDetailsPanelAssets } from './assets.js';
+import { buildingPreviews, loadDetailsPanelArt } from './assets.js';
 import { applyPanelClick, type PanelClickActions } from './click-actions.js';
 import { tooltipTextAt } from './hit-test.js';
 import { buildUnitPanelModel, type UnitPanelModel, type UnitPanelModelContext } from './model/index.js';
@@ -67,7 +67,7 @@ export interface UnitPanelState {
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
   const { app, canvas } = opts;
   const scale = Math.max(MIN_UI_SCALE, opts.uiscale ?? 1);
-  const assets = await loadDetailsPanelAssets(opts.lang);
+  const assets = { ...(await loadDetailsPanelArt(opts.lang)), previews: buildingPreviews(opts.sheet) };
   const stage = createPanelStage({ app, assets, scale });
   const workerField = createWorkerField({
     app,

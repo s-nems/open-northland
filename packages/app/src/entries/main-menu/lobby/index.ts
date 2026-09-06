@@ -1,6 +1,6 @@
 import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
 import { playerSwatchHex } from '../../../catalog/roster.js';
-import { formatMessage, messages } from '../../../i18n/index.js';
+import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { createMapDetailsCard } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
@@ -220,7 +220,7 @@ export function lobbyScreen(
         : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
     const sub = document.createElement('span');
     sub.className = 'main-menu__lobby-sub';
-    const tribe = copy.tribeNames[row.slot.tribeId] ?? `#${row.slot.tribeId}`;
+    const tribe = tribeName(row.slot.tribeId);
     const subText =
       row.kind === 'yours'
         ? lobby.yourSub

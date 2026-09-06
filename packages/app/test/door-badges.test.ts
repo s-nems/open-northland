@@ -9,7 +9,7 @@ import { fx, nodeOfPosition, positionOfNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { workerIconOffset } from '../src/catalog/building-tweaks.js';
 import { type BuildingDoorInfo, computeDoorBadges } from '../src/view/projections/index.js';
-import { building, type Ent, resident, settler, snapshotOf } from './support/snapshot.js';
+import { building, buildingInfoOf, type Ent, resident, settler, snapshotOf } from './support/snapshot.js';
 
 /**
  * computeDoorBadges - the pure snapshot→door-badge projection the render layer draws. It reads the sim's
@@ -68,7 +68,7 @@ describe('computeDoorBadges', () => {
       settler(5, GATHERER, 1),
     ]);
 
-    const badges = computeDoorBadges(snap, types, roleOf);
+    const badges = computeDoorBadges(snap, buildingInfoOf(types), roleOf);
 
     expect(badges).toHaveLength(1);
     const badge = badges[0];
@@ -98,7 +98,7 @@ describe('computeDoorBadges', () => {
     ]);
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
 
-    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    const badge = computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0];
     // The anchor is the building's own position (the sprite draw anchor)…
     expect(badge?.x).toBe(fx.fromInt(4));
     expect(badge?.y).toBe(fx.fromInt(4));
@@ -113,13 +113,13 @@ describe('computeDoorBadges', () => {
       settler(2, CRAFTSMAN, null), // unemployed / unbound - no badge
     ]);
 
-    expect(computeDoorBadges(snap, new Map(), roleOf)).toEqual([]);
+    expect(computeDoorBadges(snap, buildingInfoOf(new Map()), roleOf)).toEqual([]);
   });
 
   it('falls back to beside the anchor node when the building type declares no door', () => {
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
 
-    const badge = computeDoorBadges(snap, new Map(), roleOf)[0]; // type 7 absent → no door offset
+    const badge = computeDoorBadges(snap, buildingInfoOf(new Map()), roleOf)[0]; // type 7 absent → no door offset
     const pos = { x: fx.fromInt(4), y: fx.fromInt(4) };
     const anchor = nodeOfPosition(pos.x, pos.y);
     const icon = workerIconOffset(undefined);
@@ -137,7 +137,7 @@ describe('computeDoorBadges', () => {
     const types = new Map<number, BuildingDoorInfo>([[7, { footprint: { door: { dx: 1, dy: -3 } } }]]);
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
 
-    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    const badge = computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0];
     expect(badge?.x).toBe(fx.fromInt(4)); // the house, not the node behind it
     expect(badge?.y).toBe(fx.fromInt(4));
     expect(badge?.dy).toBeLessThan(0); // the post is drawn behind the anchor, by px offset alone
@@ -149,7 +149,7 @@ describe('computeDoorBadges', () => {
     ]);
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, CRAFTSMAN, 1)]);
 
-    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    const badge = computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0];
     const pos = { x: fx.fromInt(4), y: fx.fromInt(4) };
     const anchor = nodeOfPosition(pos.x, pos.y);
     // The literal committed override (two nodes right of the door), NOT read back through the table -
@@ -169,7 +169,7 @@ describe('computeDoorBadges', () => {
       { ...lodger, components: { ...lodger.components, JobAssignment: { workplace: 1 } } },
     ]);
 
-    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    const badge = computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0];
     expect(badge?.rows).toEqual([
       { role: 'single', settler: 2 }, // the banner at the base…
       { role: 'craftsman', settler: 2 }, // …then the worker disc above it
@@ -198,7 +198,7 @@ describe('computeDoorBadges', () => {
     ];
     const snap = snapshotOf([building(1, 7, 4, 4), ...couple(1, 2, 3), resident(9, CRAFTSMAN, 1)]);
 
-    const badge = computeDoorBadges(snap, new Map(), roleOf)[0];
+    const badge = computeDoorBadges(snap, buildingInfoOf(new Map()), roleOf)[0];
     expect(badge?.rows).toEqual([
       { role: 'couple', settler: 3 }, // the wife (adult female), not the lower-id husband
       { role: 'single', settler: 9 },
@@ -217,7 +217,7 @@ describe('computeDoorBadges', () => {
       settler(4, CARRIER, 1),
     ]);
 
-    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    const badge = computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0];
     // No worker disc per archer: two men, one flag with two stars, flown from the roof rather than the
     // sign post the hauler's pennant still stands on.
     expect(badge?.rows).toEqual([{ role: 'carrier', settler: 4 }]);
@@ -233,7 +233,7 @@ describe('computeDoorBadges', () => {
 
     // The big tower employs eight bows. Capping is the flag art's job (five stars is its ceiling); the
     // projection reports the post as it stands, so the layer never has to guess what it was told.
-    expect(computeDoorBadges(snap, types, roleOf)[0]?.garrison?.stars).toBe(8);
+    expect(computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0]?.garrison?.stars).toBe(8);
   });
 
   it('flies no flag over a tower still going up - the mast point is the finished tower’s', () => {
@@ -244,14 +244,14 @@ describe('computeDoorBadges', () => {
 
     // An archer can be posted to a foundation, but the sim refuses him the post until it stands, so a
     // banner 239 px up would hang over scaffolding for a garrison that cannot exist yet.
-    expect(computeDoorBadges(snap, types, roleOf)[0]?.garrison).toBeUndefined();
+    expect(computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0]?.garrison).toBeUndefined();
   });
 
   it('flies the flag beside the sign post when nobody authored the building a mast', () => {
     const types = new Map<number, BuildingDoorInfo>([[7, { flagPoint: { x: -6, y: 29 } }]]);
     const snap = snapshotOf([building(1, 7, 4, 4), settler(2, ARCHER, 1)]);
 
-    const badge = computeDoorBadges(snap, types, roleOf)[0];
+    const badge = computeDoorBadges(snap, buildingInfoOf(types), roleOf)[0];
     expect(badge?.rows).toEqual([]); // still no row - the flag is the garrison's whole marker
     expect(badge?.garrison).toEqual({ stars: 1, dx: -6 + GARRISON_MAST_FALLBACK_DX, dy: 29 });
     // Planted on the post the flag would hang over the chain, and a click on its cloth would answer
@@ -267,6 +267,6 @@ describe('computeDoorBadges', () => {
       settler(2, CRAFTSMAN, 1),
     ]);
 
-    expect(computeDoorBadges(snap, new Map(), roleOf)[0]?.player).toBe(4);
+    expect(computeDoorBadges(snap, buildingInfoOf(new Map()), roleOf)[0]?.player).toBe(4);
   });
 });

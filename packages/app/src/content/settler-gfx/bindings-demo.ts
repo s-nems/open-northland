@@ -1,7 +1,5 @@
 import type {
-  BuildingBobRef,
-  BuildingOverlayRef,
-  ConstructionLayerRef,
+  BuildingTypeBinding,
   DirectionalAnim,
   ResourceTypeBinding,
   SpriteBindings,
@@ -25,19 +23,19 @@ import {
 
 /**
  * The demo binding into the human atlases. `building` and `resource` resolve in their own per-kind layers,
- * so their ids index the house and tree bobs rather than the body's.
+ * so their ids index the house and tree bobs rather than the body's. Every layered binding is optional: an
+ * absent one degrades to the transcribed viking constant or the kind's own placeholder.
  */
 export function buildHumanBindings(
   seqByName: ReadonlyMap<string, BobSeqRow>,
-  houseBobsByType?: Readonly<Record<number, BuildingBobRef>>,
-  constructionByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>,
-  resourceBinding?: ResourceTypeBinding,
-  stockpileBinding?: StockpileBinding,
-  stumpBinding?: ResourceTypeBinding,
-  trunkBinding?: ResourceTypeBinding,
-  berryBushBinding?: ResourceTypeBinding,
-  overlayByType?: Readonly<Record<number, BuildingOverlayRef>>,
-  upgradeByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>,
+  layered: {
+    readonly building?: BuildingTypeBinding;
+    readonly resource?: ResourceTypeBinding;
+    readonly stockpile?: StockpileBinding;
+    readonly stump?: ResourceTypeBinding;
+    readonly trunk?: ResourceTypeBinding;
+    readonly berrybush?: ResourceTypeBinding;
+  } = {},
 ): SpriteBindings {
   const walk = directionalAnimFromSeq(seqByName, WALK_SEQ, {}, FALLBACK_WALK);
   const wait: DirectionalAnim = singleDirAnim(seqByName.get(WAIT_SEQ)) ?? FALLBACK_WAIT;
@@ -59,31 +57,19 @@ export function buildHumanBindings(
       // The data has no loaded wait loop, so loaded-idle holds a still standing pose.
       carrying: { idle: standWood, moving: walkWood },
     },
-    // Each viking building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join),
-    // the extracted `buildingBobs` overlaid onto the transcribed fallback.
-    building: {
-      byType: { ...VIKING_HOUSE01_BOBS, ...houseBobsByType },
-      default: HOUSE_BOB,
-      // The progress-gated stage stack an under-construction building draws (the
-      // `GfxBobConstructionLayer` join).
-      ...(constructionByType !== undefined && Object.keys(constructionByType).length > 0
-        ? { constructionByType }
-        : {}),
-      // The next tier's body revealing over the still-standing old one (the `upgrade === 1` rows).
-      ...(upgradeByType !== undefined && Object.keys(upgradeByType).length > 0 ? { upgradeByType } : {}),
-      // Animated state overlays (the type-4 `GfxOverlay` join): the mill's rotor over its bladeless body.
-      ...(overlayByType !== undefined && Object.keys(overlayByType).length > 0 ? { overlayByType } : {}),
-    },
+    // Each building type draws its own house bob (the `[GfxHouse]` `LogicType` → `GfxBobId` join), per
+    // tribe; without one the transcribed viking constant backs the types it covers.
+    building: layered.building ?? { byType: VIKING_HOUSE01_BOBS, default: HOUSE_BOB },
     // Each gathered good draws its own standing node (the `landscapeToHarvest` join), over the yew fallback.
-    resource: resourceBinding ?? TREE_BOB,
+    resource: layered.resource ?? TREE_BOB,
     // Dropped ground piles draw their good's own `ls_goods` heap, growing with the pile's contents; a bare
     // pile draws the delivery flag.
-    ...(stockpileBinding !== undefined ? { stockpile: stockpileBinding } : {}),
+    ...(layered.stockpile !== undefined ? { stockpile: layered.stockpile } : {}),
     // A felled tree's stump draws the dead-tree debris frame (`ls_trees_dead`).
-    ...(stumpBinding !== undefined ? { stump: stumpBinding } : {}),
+    ...(layered.stump !== undefined ? { stump: layered.stump } : {}),
     // A freshly-felled trunk draws its good's `landscapeToPickup` log, distinct from the delivered heap.
-    ...(trunkBinding !== undefined ? { trunk: trunkBinding } : {}),
+    ...(layered.trunk !== undefined ? { trunk: layered.trunk } : {}),
     // A wild berry bush draws its frame by `DrawItem.level` (3 = ripe, 1 = bare).
-    ...(berryBushBinding !== undefined ? { berrybush: berryBushBinding } : {}),
+    ...(layered.berrybush !== undefined ? { berrybush: layered.berrybush } : {}),
   };
 }

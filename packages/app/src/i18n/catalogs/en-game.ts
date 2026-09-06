@@ -143,7 +143,7 @@ export const enGame = {
       awaitingWorkplace: 'waiting for the building',
       idle: 'idle',
     },
-    playerTribe: 'Player #{player} · Tribe {tribe}{stance}',
+    playerTribe: 'Player #{player} · {tribe}{stance}',
     age: 'Age: {years}',
     stance: ' · {stance}',
     health: 'Health',

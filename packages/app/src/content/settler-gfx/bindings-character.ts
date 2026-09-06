@@ -8,7 +8,7 @@ import {
   subClipKey,
 } from '@open-northland/render';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
-import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram } from '../ir/joins.js';
+import { GFX_ANIM_MODE_LOOP, type GfxAtomicProgram, type TribeJobSeqs } from '../ir/joins.js';
 import type { BobSeqRow, GfxAnimAtomicRow } from '../ir/rows.js';
 import type { CharacterSpec } from './character-specs.js';
 import { eightDirAnim, frameListsByFacing, type GoodRef, singleDirAnim } from './seq-anim.js';
@@ -27,6 +27,25 @@ export interface CharacterGfx {
   readonly walkLists?: ReadonlyMap<string, readonly (readonly number[])[]>;
   /** The tribe's `logicinhouseatomicsubid` records - the clips an indoor craft program plays. */
   readonly subClips?: readonly GfxAnimAtomicRow[];
+  /** The clips this tribe's own records name for the spec's job, taken where the body does not draw the
+   *  transcribed viking one. */
+  readonly tribeSeqs?: TribeJobSeqs;
+  /** The body's own bob pool, consulted for a frame a program addresses past its `[bobseq]` row. */
+  readonly bodyAtlas?: SpriteAtlas;
+}
+
+/** The transcribed clip when this body draws it, else the one this tribe's own records name. Approximation:
+ *  the viking transcription wins because it separates the relaxed gait from the aggressive one, which a
+ *  single `[gfxwalkatomic]` row cannot, so a tribe whose own record names a different clip for a body that
+ *  draws both keeps the transcribed one (the saracen sword and spear looks). */
+function pickSeq(
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  transcribed: string | undefined,
+  authored: string | undefined,
+): string | undefined {
+  if (transcribed !== undefined && seqByName.has(transcribed)) return transcribed;
+  if (authored !== undefined && seqByName.has(authored)) return authored;
+  return transcribed;
 }
 
 /**
@@ -53,6 +72,29 @@ export function carryAnimsByGood(
 }
 
 /**
+ * Whether every frame a program addresses is a bob the body draws. An offset inside the row is drawable by
+ * construction, since the rows come from {@link playableSequences}; one past it has to be proven, because a
+ * program can outrun its row in either direction. Four human attack records lay out a full eight facings
+ * against a row declaring six and the extra frames are drawn, while a tribe naming a clip a shorter body
+ * carries runs off its pool into blank bobs, which the renderer draws as the missing-sprite placeholder.
+ */
+function drawsProgram(
+  program: GfxAtomicProgram | undefined,
+  row: BobSeqRow,
+  atlas: SpriteAtlas | undefined,
+): program is GfxAtomicProgram {
+  if (program === undefined || row.length <= 0) return false;
+  for (const list of program.dirFrames) {
+    for (const offset of list) {
+      if (offset < row.length) continue;
+      const frame = atlas?.frames.get(row.start + offset);
+      if (frame === undefined || frame.width === 0 || frame.height === 0) return false;
+    }
+  }
+  return true;
+}
+
+/**
  * A wait bobseq's authored standing program, looping. Approximation: a program without the `gfxanimmode 1`
  * mark is a one-shot fidget, looped anyway because freezing after one play would read as a stuck sprite.
  */
@@ -60,11 +102,12 @@ function waitListAnim(
   name: string | undefined,
   seqByName: ReadonlyMap<string, BobSeqRow>,
   waitBySeq: ReadonlyMap<string, GfxAtomicProgram> | undefined,
+  atlas: SpriteAtlas | undefined,
 ): FrameListAnim | undefined {
   if (name === undefined) return undefined;
   const program = waitBySeq?.get(name);
   const row = seqByName.get(name);
-  if (program === undefined || row === undefined || row.length <= 0) return undefined;
+  if (row === undefined || !drawsProgram(program, row, atlas)) return undefined;
   return { start: row.start, frameLists: frameListsByFacing(program.dirFrames), loop: true };
 }
 
@@ -103,11 +146,13 @@ export function characterBinding(
   goods: readonly GoodRef[],
   gfx: CharacterGfx = {},
 ): SettlerStateBinding | null {
-  const { carrySeqBySlug, programsByAction, waitBySeq, walkLists, subClips } = gfx;
-  const walk = eightDirAnim(seqByName, spec.walkSeq, walkLists);
+  const { carrySeqBySlug, programsByAction, waitBySeq, walkLists, tribeSeqs, bodyAtlas, subClips } = gfx;
+  const walkSeq = pickSeq(seqByName, spec.walkSeq, tribeSeqs?.walk);
+  const waitSeq = pickSeq(seqByName, spec.waitSeq, tribeSeqs?.wait);
+  const walk = eightDirAnim(seqByName, walkSeq, walkLists);
   const idle: SpriteFrameRef | null =
-    waitListAnim(spec.waitSeq, seqByName, waitBySeq) ??
-    singleDirAnim(spec.waitSeq !== undefined ? seqByName.get(spec.waitSeq) : undefined) ??
+    waitListAnim(waitSeq, seqByName, waitBySeq, bodyAtlas) ??
+    singleDirAnim(waitSeq !== undefined ? seqByName.get(waitSeq) : undefined) ??
     (walk !== undefined ? { ...walk, frames: 1 } : null);
   if (idle === null) return null;
 
@@ -116,7 +161,7 @@ export function characterBinding(
     const row = seqByName.get(action.seq);
     if (row === undefined || row.length <= 0) continue;
     const program = programsByAction?.get(Number(atomicId))?.get(action.seq);
-    if (program !== undefined) {
+    if (drawsProgram(program, row, bodyAtlas)) {
       byAtomic[Number(atomicId)] = {
         start: row.start,
         frameLists: frameListsByFacing(program.dirFrames),
@@ -140,10 +185,11 @@ export function characterBinding(
 
   // The attack swing binds only when both the `[bobseq]` row and the action-81 frame lists resolve, so a
   // body or IR missing either has no attack animation rather than a bogus uniform slice.
-  if (spec.attack !== undefined) {
-    const row = seqByName.get(spec.attack);
-    const program = programsByAction?.get(ATTACK_ATOMIC)?.get(spec.attack);
-    if (row !== undefined && row.length > 0 && program !== undefined) {
+  const attackSeq = pickSeq(seqByName, spec.attack, tribeSeqs?.attack);
+  if (attackSeq !== undefined) {
+    const row = seqByName.get(attackSeq);
+    const program = programsByAction?.get(ATTACK_ATOMIC)?.get(attackSeq);
+    if (row !== undefined && drawsProgram(program, row, bodyAtlas)) {
       const swing: FrameListAnim = { start: row.start, frameLists: frameListsByFacing(program.dirFrames) };
       byAtomic[ATTACK_ATOMIC] = swing;
     }
@@ -151,7 +197,7 @@ export function characterBinding(
 
   const engagedMoving = eightDirAnim(seqByName, spec.engaged?.moving, walkLists);
   const engagedIdle =
-    waitListAnim(spec.engaged?.idle, seqByName, waitBySeq) ??
+    waitListAnim(spec.engaged?.idle, seqByName, waitBySeq, bodyAtlas) ??
     singleDirAnim(spec.engaged?.idle !== undefined ? seqByName.get(spec.engaged.idle) : undefined);
   const engaged =
     engagedMoving !== undefined || engagedIdle !== undefined

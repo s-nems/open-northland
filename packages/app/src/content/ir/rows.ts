@@ -46,6 +46,17 @@ export interface GfxWalkAtomicRow {
   readonly walkSpeed?: number;
 }
 
+/** One `[jobbasegraphics]` row - the bob sets a `(tribe, job)` human draws. */
+export interface JobGraphicsRow {
+  readonly tribe: number;
+  readonly job: number;
+  readonly body: string;
+  readonly shadowBody?: string;
+  readonly heads: readonly string[];
+  readonly bodyPalette?: string;
+  readonly headPalette?: string;
+}
+
 /** One good, narrowed to the typeId→slug join the graphics lanes need. */
 export interface IrGoodRow {
   readonly typeId: number;
@@ -205,6 +216,8 @@ export interface ContentIr {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   /** `name` is a species join key too: a map's `setanimal` authors the display name (`evil hares`). */
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
+  /** The `[jobbasegraphics]` join: which bob sets each `(tribe, job)` human composes. */
+  readonly jobGraphics?: readonly JobGraphicsRow[];
   /** The `animaltypes.ini` records, narrowed to tribe membership and to whether the record is a living
    *  creature (`hitpointsAdult` > 0) or a decorative swarm the sim never spawns; behaviour fields stay
    *  sim-side. */

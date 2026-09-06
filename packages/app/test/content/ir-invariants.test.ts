@@ -251,7 +251,7 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
     // projection silently falls back to the derived door-side node for EVERY building (visibly wrong
     // on the tower). The viking tower's own values are byte-verified against the mod source.
     const ir = rawIrUnderTest() as ContentIr;
-    const points = flagPointByType(ir);
+    const points = flagPointByType(ir, VIKING_TRIBE);
     expect(points.get(BUILDING_WATCHTOWER)).toEqual({ x: -6, y: 29 });
     const vikingBobTypes = new Set(
       (ir.buildingBobs ?? []).filter((b) => b.tribeId === VIKING_TRIBE).map((b) => b.typeId),
@@ -265,11 +265,11 @@ describe.runIf(hasRealIr())('real IR invariants', () => {
   it('resolves the viking garrison mast, and only for the towers that declare one', () => {
     // `gfxsoldierflagpoint` is the source's own answer to where a manned post flies its flag; without
     // the lane the projection falls back to the sign post and the flag lands on the tower's doorstep.
-    const masts = soldierFlagPointByType(rawIrUnderTest() as ContentIr);
+    const masts = soldierFlagPointByType(rawIrUnderTest() as ContentIr, VIKING_TRIBE);
     expect(masts.get(BUILDING_WATCHTOWER)).toEqual({ x: -6, y: -239 }); // high above the anchor
     // The key is the tower's alone - the frank tower shares the typeIds with a different height, so a
     // broken tribe filter shows up as a wrong value, and a broken lane as an empty map.
     expect(masts.size).toBeGreaterThan(0);
-    expect(masts.size).toBeLessThan(flagPointByType(rawIrUnderTest() as ContentIr).size);
+    expect(masts.size).toBeLessThan(flagPointByType(rawIrUnderTest() as ContentIr, VIKING_TRIBE).size);
   });
 });

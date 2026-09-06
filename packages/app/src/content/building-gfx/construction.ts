@@ -1,7 +1,7 @@
 import type { ConstructionLayerRef } from '@open-northland/render';
 import type { ConstructionLayerRow } from '../ir/rows.js';
 import {
-  type BuildingFamily,
+  type BuildingRefScope,
   CANONICAL_EDIT_NAME,
   familyLayerFor,
   preferredPalettePool,
@@ -18,11 +18,9 @@ import {
  */
 export function constructionRefsByType(
   rows: readonly ConstructionLayerRow[],
-  tribeId: number,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
+  scope: BuildingRefScope,
 ): Record<number, ConstructionLayerRef[]> {
-  return stageRefsByType(rows, tribeId, defaultFamily, families, (r) => !r.upgrade);
+  return stageRefsByType(rows, scope, (r) => !r.upgrade);
 }
 
 /**
@@ -32,25 +30,21 @@ export function constructionRefsByType(
  */
 export function upgradeRefsByType(
   rows: readonly ConstructionLayerRow[],
-  tribeId: number,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
+  scope: BuildingRefScope,
 ): Record<number, ConstructionLayerRef[]> {
-  return stageRefsByType(rows, tribeId, defaultFamily, families, (r) => r.upgrade);
+  return stageRefsByType(rows, scope, (r) => r.upgrade);
 }
 
 /** The shared reduction behind the from-scratch and upgrade passes. */
 function stageRefsByType(
   rows: readonly ConstructionLayerRow[],
-  tribeId: number,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
+  scope: BuildingRefScope,
   pass: (r: ConstructionLayerRow) => boolean,
 ): Record<number, ConstructionLayerRef[]> {
-  const byType = rowsByType(rows, tribeId, pass);
+  const byType = rowsByType(rows, scope.tribeId, pass);
   const out: Record<number, ConstructionLayerRef[]> = {};
   for (const [typeId, list] of byType) {
-    const pool = preferredPalettePool(list, defaultFamily.paletteName);
+    const pool = preferredPalettePool(list, scope.preferredPalette);
     const groups = new Map<string, ConstructionLayerRow[]>();
     for (const r of pool) {
       const key = `${r.editName ?? ''}|${r.level}`;
@@ -83,7 +77,7 @@ function stageRefsByType(
     const refs: ConstructionLayerRef[] = [];
     let dropped = false;
     for (const r of candidates) {
-      const layer = familyLayerFor(r.bmd, r.paletteName, defaultFamily, families);
+      const layer = familyLayerFor(r.bmd, r.paletteName, scope.defaultFamily, scope.families);
       if (layer === null) {
         dropped = true;
         break;

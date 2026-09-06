@@ -9,7 +9,7 @@ import {
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { WorkerRole } from '../../game/sandbox/index.js';
 import { computeConstructionSigns } from './construction-signs.js';
-import { type BuildingDoorInfo, computeDoorBadges } from './door-badges.js';
+import { type BuildingDoorInfoOf, computeDoorBadges } from './door-badges.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
 import { computeLifeHearts, type LifeHeartInputs } from './life-hearts.js';
@@ -50,7 +50,7 @@ export interface HeartProjectionInputs extends Omit<LifeHeartInputs, 'selected'>
  *  seat the HUD aggregates count for, and `seatNameOf` names it in the panel header. */
 export function createSnapshotProjections(
   localPlayer: number,
-  buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
+  buildingInfoOf: BuildingDoorInfoOf,
   roleOf: (jobType: number) => WorkerRole,
   fogGates: FogGates,
   hearts: HeartProjectionInputs,
@@ -69,14 +69,14 @@ export function createSnapshotProjections(
     hudModelFor,
     hudFor: memoBySnapshot((snapshot) => layoutHud(hudModelFor(snapshot), hudLabels(seatNameOf))),
     doorBadgesFor: memoBySnapshot((snapshot) => {
-      const badges = computeDoorBadges(snapshot, buildingsByType, roleOf);
+      const badges = computeDoorBadges(snapshot, buildingInfoOf, roleOf);
       const fog = fogGates.current();
       return fog === null
         ? badges
         : badges.filter((badge) => fogTileVisible(fog, badge.x / ONE, badge.y / ONE));
     }),
     constructionSignsFor: memoBySnapshot((snapshot) => {
-      const signs = computeConstructionSigns(snapshot, buildingsByType);
+      const signs = computeConstructionSigns(snapshot, buildingInfoOf);
       const fog = fogGates.current();
       return fog === null ? signs : signs.filter((sign) => fogTileVisible(fog, sign.x / ONE, sign.y / ONE));
     }),

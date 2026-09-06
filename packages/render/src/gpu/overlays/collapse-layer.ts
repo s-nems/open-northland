@@ -88,6 +88,7 @@ export class CollapseLayer {
       y: 0,
       depth: 0,
       typeId: c.typeId,
+      tribe: c.tribe,
       ...(c.builtPct !== undefined ? { builtPct: c.builtPct } : {}),
     };
     const layers = resolveLayers(this.sheet, item, 0);

@@ -17,6 +17,7 @@ import {
   BuildingOverlay,
 } from '../graphics/building-bobs.js';
 import { GfxInHouseProgram } from '../graphics/inhouse-anims.js';
+import { JobGraphics } from '../graphics/job-graphics.js';
 import { GfxWalkAtomic } from '../graphics/walk-anims.js';
 import { LandscapeGfx, LandscapeType } from '../landscape/objects.js';
 import { GatheringPipeline, TerrainPattern } from '../landscape/resolved.js';
@@ -70,6 +71,8 @@ export const ContentSet = z.strictObject({
    *  map-collision join classes real ground by. */
   trianglePatternTypes: z.array(TrianglePatternType).default([]),
   bobSequences: z.array(BobSequenceSet).default([]),
+  /** `[jobbasegraphics]` `(tribe, job)` → body/head bob-set bindings. */
+  jobGraphics: z.array(JobGraphics).default([]),
   /** `[gfxanimatomic]` atomic-action → directional body-animation bindings. */
   gfxAtomics: z.array(GfxAnimAtomic).default([]),
   /** `[gfxwalkatomic]` good → loaded-gait bindings. */

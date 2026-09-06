@@ -90,7 +90,7 @@ export function readJobType(components: Readonly<Record<string, unknown>>): numb
   return readNumField(components, 'Settler', 'jobType');
 }
 
-/** A settler's `Settler.tribe`, the wildlife species join key. */
+/** A settler's `Settler.tribe`: its civilization's look table, or the species key for a wildlife entity. */
 export function readSettlerTribe(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Settler', 'tribe');
 }

@@ -1,15 +1,16 @@
 export const enSurfaces = {
+  /** The `TRIBE_TYPE_HUMAN_*` civilizations, by their `logicdefines.inc` id. */
+  tribeNames: {
+    1: 'Vikings',
+    2: 'Franks',
+    3: 'Byzantines',
+    4: 'Saracens',
+    5: 'Weresnakes',
+    6: 'Werewolves',
+    7: 'Egyptians',
+  } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: 'For fans of the Cultures franchise',
-    tribeNames: {
-      1: 'Vikings',
-      2: 'Franks',
-      3: 'Byzantines',
-      4: 'Saracens',
-      5: 'Weresnakes',
-      6: 'Werewolves',
-      7: 'Egyptians',
-    } as Readonly<Record<number, string>>,
     items: {
       newGame: 'New game',
       load: 'Load game',

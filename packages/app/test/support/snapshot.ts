@@ -1,4 +1,5 @@
 import { fx, type WorldSnapshot } from '@open-northland/sim';
+import type { BuildingDoorInfo, BuildingDoorInfoOf } from '../../src/view/projections/index.js';
 
 /**
  * Shared fixtures for the pure snapshot→view projections: small composable builders that shape a
@@ -86,4 +87,10 @@ export function visitCountingSnapshot(source: WorldSnapshot): {
     },
   });
   return { snapshot: { ...source, entities }, visits: () => visits };
+}
+
+/** The `(typeId, tribe)` lookup the door-badge and construction-sign projections read a building's
+ *  anchors through, from a per-type table: a case that does not vary the tribe passes its map here. */
+export function buildingInfoOf(types: ReadonlyMap<number, BuildingDoorInfo>): BuildingDoorInfoOf {
+  return (typeId) => (typeId === undefined ? undefined : types.get(typeId));
 }

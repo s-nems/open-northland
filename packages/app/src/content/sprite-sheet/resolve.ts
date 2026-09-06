@@ -5,6 +5,7 @@ import {
   syntheticAtlasFrames,
 } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
+import type { WorldTribes } from '../../game/world-tribes.js';
 import { MissingAtlasError } from '../ir/load.js';
 import type { GoodRef } from '../settler-gfx/index.js';
 import { loadHumanSpriteSheet } from './human-sheet.js';
@@ -26,9 +27,11 @@ export async function resolveSpriteSheet(
   /** The goods of the content set the sim will run - keys the per-good carry looks. The ids are
    *  content-relative, so only the entry that builds the sim knows them. */
   goods: readonly GoodRef[] = [],
+  /** The civilizations this world fields; each brings its own building and settler pages. */
+  tribes?: WorldTribes,
 ): Promise<SpriteSheet> {
   try {
-    return await loadHumanSpriteSheet(goods);
+    return await loadHumanSpriteSheet(goods, tribes);
   } catch (err) {
     if (!(err instanceof MissingAtlasError)) throw err;
     diag.warn(

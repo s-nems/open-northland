@@ -53,6 +53,8 @@ export interface FrameLoopDeps {
   /** Memoized by snapshot identity and the selection version, and fog-filtered. */
   readonly lifeHeartsFor: (snap: WorldSnapshot) => ReturnType<typeof computeLifeHearts>;
   readonly canPlaceAt: (typeId: number, col: number, row: number) => boolean;
+  /** The civilization the local seat builds as; the placement ghost previews its bodies. */
+  readonly placementTribe: number;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   readonly perf: PerfOverlayHandle;
@@ -89,6 +91,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     lifeHeartsFor,
     canPlaceAt,
     canPlaceSignpostAt,
+    placementTribe,
     soundDriver,
     perf,
     pointer: pointerAt,
@@ -184,6 +187,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       canPlaceAt,
       canPlaceSignpostAt,
       localPlayer,
+      placementTribe,
     });
     renderer.updatePlacementOverlay(cursor.overlay);
     renderer.updatePlacementGhost(cursor.ghost);

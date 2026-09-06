@@ -44,26 +44,10 @@ export const VIKING_HOUSE01_BOBS: Readonly<Record<number, number>> = {
   15: 105, // viking bakery
 };
 
-/** The `LogicTribeType` whose `buildingBobs` rows the render binds (viking 1). */
+/** The `LogicTribeType` of the default building family's skin, and the sheet's base tribe (viking 1). */
 export const VIKING_TRIBE = 1;
 
 export const DEFAULT_BUILDING_FAMILY = { bmdBasename: HOUSE_BMD, paletteName: HOUSE_PALETTE } as const;
-
-/**
- * The served atlas stems for the named viking building families loaded beside the default one. Three are
- * sibling `.bmd`s on the `house01` skin; two are a different palette on a shared `.bmd` (`housemiller01`
- * recolours `ls_houses_viking.bmd`, `housedruid01` recolours `ls_houses_viking4.bmd`), so the served stem
- * is `<bmd>.<palette>`.
- */
-const VIKING4_HOUSE01 = 'ls_houses_viking4.house01';
-const VIKING2_HOUSE01 = 'ls_houses_viking2.house01';
-const VIKING3_HOUSE01 = 'ls_houses_viking3.house01';
-const VIKING_MILLER01 = 'ls_houses_viking.housemiller01';
-const VIKING4_DRUID01 = 'ls_houses_viking4.housedruid01';
-// The `house02` skin - the last viking building types otherwise on the fallback house: stock (typeIds
-// 7/8/9) recolours `ls_houses_viking.bmd`, brewery (16) + coin mint (33) recolour `ls_houses_viking2.bmd`.
-const VIKING_HOUSE02 = 'ls_houses_viking.house02';
-const VIKING2_HOUSE02 = 'ls_houses_viking2.house02';
 
 export interface BuildingFamily {
   readonly bmdBasename: string;
@@ -73,21 +57,78 @@ export interface BuildingFamily {
   readonly layer: string;
 }
 
+/** What one tribe's building reducers resolve against: its rows, its preferred skin, and the atlas layers
+ *  the sheet actually loaded. */
+export interface BuildingRefScope {
+  readonly tribeId: number;
+  /** The skin preferred when a `typeId` carries rows in several - see {@link preferredPaletteFor}. */
+  readonly preferredPalette: string;
+  /** The sheet's shared building layer; a row in it binds a bare bob id rather than a named family. */
+  readonly defaultFamily: { readonly bmdBasename: string; readonly paletteName: string };
+  /** The named families the sheet loaded; see {@link familyLayerFor} for what a row in any other does. */
+  readonly families: readonly BuildingFamily[];
+}
+
+/** The `[GfxHouse]` rows every building reducer reads: each names the `.bmd` × palette it draws from. */
+interface FamilyRow {
+  readonly tribeId: number;
+  readonly bmd: string;
+  readonly paletteName: string;
+}
+
 /**
- * The named building-family atlases loaded beside the default one, each a separate decoded
- * `ls_houses_*.bmd` × palette PNG with its own frame-id space. A family must be both listed here and loaded
- * by the sheet loader for its types to draw their real bob. `bmdBasename` may repeat across entries, so the
+ * Every named building-family atlas the given tribes' `[GfxHouse]` rows reference, each a separate decoded
+ * `ls_houses_*.bmd` × palette PNG with its own frame-id space. The default family is excluded: a row in it
+ * binds a bare bob id in the shared building layer. `bmdBasename` repeats across entries, so the
  * `(bmdBasename, paletteName)` pair is what disambiguates a family.
  */
-export const BUILDING_FAMILIES: readonly BuildingFamily[] = [
-  { bmdBasename: 'ls_houses_viking4.bmd', paletteName: HOUSE_PALETTE, layer: VIKING4_HOUSE01 },
-  { bmdBasename: 'ls_houses_viking2.bmd', paletteName: HOUSE_PALETTE, layer: VIKING2_HOUSE01 },
-  { bmdBasename: 'ls_houses_viking3.bmd', paletteName: HOUSE_PALETTE, layer: VIKING3_HOUSE01 },
-  { bmdBasename: HOUSE_BMD, paletteName: 'housemiller01', layer: VIKING_MILLER01 },
-  { bmdBasename: 'ls_houses_viking4.bmd', paletteName: 'housedruid01', layer: VIKING4_DRUID01 },
-  { bmdBasename: HOUSE_BMD, paletteName: 'house02', layer: VIKING_HOUSE02 },
-  { bmdBasename: 'ls_houses_viking2.bmd', paletteName: 'house02', layer: VIKING2_HOUSE02 },
-];
+export function buildingFamiliesFor(
+  rows: readonly FamilyRow[],
+  tribeIds: readonly number[],
+  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
+): BuildingFamily[] {
+  const tribes = new Set(tribeIds);
+  const families = new Map<string, BuildingFamily>();
+  for (const row of rows) {
+    if (!tribes.has(row.tribeId)) continue;
+    const base = bmdBasename(row.bmd);
+    if (base === defaultFamily.bmdBasename && row.paletteName === defaultFamily.paletteName) continue;
+    const layer = `${base.replace(/\.bmd$/i, '')}.${row.paletteName}`;
+    if (!families.has(layer)) families.set(layer, { bmdBasename: base, paletteName: row.paletteName, layer });
+  }
+  return [...families.values()].sort((a, b) => byCodepoint(a.layer, b.layer));
+}
+
+/** Codepoint order, not `localeCompare`: ICU collation varies by environment, and these orders decide
+ *  which skin a tribe wears and which atlas pages load. */
+function byCodepoint(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * The palette a tribe's buildings are preferred in when one `typeId` carries rows in several skins. The
+ * base tribe keeps {@link HOUSE_PALETTE}, the skin the shared building layer and {@link VIKING_HOUSE01_BOBS}
+ * are built from - its two skins are near-evenly split (35 rows against 33), so a majority there would be
+ * one extraction away from reskinning half the settlement. Every other tribe takes its own most common
+ * skin, ties broken by name. An approximation either way: the original's skin choice is unextracted.
+ */
+export function preferredPaletteFor(rows: readonly FamilyRow[], tribeId: number): string {
+  if (tribeId === VIKING_TRIBE) return HOUSE_PALETTE;
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    if (row.tribeId !== tribeId) continue;
+    counts.set(row.paletteName, (counts.get(row.paletteName) ?? 0) + 1);
+  }
+  let best: string = HOUSE_PALETTE;
+  let bestCount = 0;
+  for (const [palette, count] of [...counts].sort((a, b) => byCodepoint(a[0], b[0]))) {
+    if (count > bestCount) {
+      best = palette;
+      bestCount = count;
+    }
+  }
+  return best;
+}
 
 /**
  * The pinned canonical `EditName` for a viking `typeId` whose `(tribe, typeId)` maps to several bobs that
@@ -181,16 +222,14 @@ export function familyLayerFor(
  */
 export function buildingBobRefsByType(
   rows: readonly BuildingBobRow[],
-  tribeId: number,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
+  scope: BuildingRefScope,
 ): Record<number, BuildingBobRef> {
-  const byType = rowsByType(rows, tribeId);
+  const byType = rowsByType(rows, scope.tribeId);
   const out: Record<number, BuildingBobRef> = {};
   for (const [typeId, list] of byType) {
-    const row = pickCanonicalBuildingRow(typeId, list, defaultFamily.paletteName);
+    const row = pickCanonicalBuildingRow(typeId, list, scope.preferredPalette);
     if (row === undefined) continue;
-    const layer = familyLayerFor(row.bmd, row.paletteName, defaultFamily, families);
+    const layer = familyLayerFor(row.bmd, row.paletteName, scope.defaultFamily, scope.families);
     if (layer === null) continue; // family not loaded → drop (the constant/default backs this typeId)
     out[typeId] = layer.layer === undefined ? row.bobId : { layer: layer.layer, bob: row.bobId };
   }

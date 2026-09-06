@@ -115,8 +115,9 @@ Map terrain is stored separately from `ir.json` because each map is loaded on de
 validated with `parseTerrainMap`; optional sidecars provide menu, lobby, and mission information.
 
 Graphics decoders turn palette-indexed source frames into atlases and manifests. IR tables such as
-`bobSequences`, `gfxAtomics`, and `buildingBobs` connect logical state to those files. The simulation
-does not load sprite data.
+`bobSequences`, `gfxAtomics`, `jobGraphics`, and `buildingBobs` connect logical state to those files.
+Several of them are keyed by tribe as well as by type: each civilization skins the same building and
+job ids with its own bob sets. The simulation does not load sprite data.
 
 The sound bank follows the same boundary. The IR describes available groups and bindings, while the
 audio package decides what to play and owns browser playback.

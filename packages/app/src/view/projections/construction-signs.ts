@@ -1,8 +1,15 @@
 import type { ConstructionSign } from '@open-northland/render';
 import { nodeOfPosition, positionOfNode, type WorldSnapshot } from '@open-northland/sim';
-import { actorsOf, buildingTypeOf, isBuilding, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
+import {
+  actorsOf,
+  buildingTribeOf,
+  buildingTypeOf,
+  isBuilding,
+  ownerPlayerOf,
+  positionOf,
+} from '../../game/snapshot.js';
 import { doorNode } from './building-points.js';
-import type { BuildingDoorInfo } from './door-badges.js';
+import type { BuildingDoorInfoOf } from './door-badges.js';
 
 /**
  * One player-coloured construction stand per building carrying `UnderConstruction`, planted at the
@@ -11,15 +18,14 @@ import type { BuildingDoorInfo } from './door-badges.js';
  */
 export function computeConstructionSigns(
   snapshot: WorldSnapshot,
-  buildingsByType: ReadonlyMap<number, BuildingDoorInfo>,
+  buildingInfoOf: BuildingDoorInfoOf,
 ): ConstructionSign[] {
   const out: ConstructionSign[] = [];
   for (const e of actorsOf(snapshot)) {
     if (!isBuilding(e) || e.components.UnderConstruction === undefined) continue;
     const pos = positionOf(e);
     if (pos === undefined) continue;
-    const typeId = buildingTypeOf(e);
-    const info = typeId !== undefined ? buildingsByType.get(typeId) : undefined;
+    const info = buildingInfoOf(buildingTypeOf(e), buildingTribeOf(e));
     const player = ownerPlayerOf(e);
     if (info?.flagPoint !== undefined) {
       out.push({
