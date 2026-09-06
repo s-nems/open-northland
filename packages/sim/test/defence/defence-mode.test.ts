@@ -109,17 +109,25 @@ function defenceContent(): ContentSet {
       {
         typeId: VIKING,
         id: 'viking',
+        // One `jobEnables` edge makes it a tribe with an economy behind it, which is what gives its
+        // settlers needs at all; the edge itself gates nothing these cases exercise.
+        jobEnables: [{ jobType: FARMER, kind: 'job', targetId: SOLDIER }],
         atomicBindings: [
           { jobType: FARMER, atomicId: 81, animation: 'viking_attack' },
           { jobType: HUNTER, atomicId: 81, animation: 'viking_attack' },
           { jobType: SOLDIER, atomicId: 81, animation: 'viking_attack' },
+          { jobType: FARMER, atomicId: 10, animation: 'viking_eat' },
         ],
       },
       { typeId: DEER, id: 'deer' },
     ],
     animals: [{ id: 'deer', tribeType: DEER, catchable: true, hitpointsAdult: 1000 }],
     huntPrey: [{ tribeType: DEER, yields: [{ goodType: VENISON, amount: 1 }] }],
-    atomicAnimations: [{ id: 'viking_attack', name: 'viking_attack', length: 4 }],
+    atomicAnimations: [
+      { id: 'viking_attack', name: 'viking_attack', length: 4 },
+      // The eat clip's single `event <at> 2 +4000`: what one ration is worth to the eater's hunger.
+      { id: 'viking_eat', name: 'viking_eat', length: 5, events: [{ at: 3, type: 2, value: 4000 }] },
+    ],
   });
 }
 

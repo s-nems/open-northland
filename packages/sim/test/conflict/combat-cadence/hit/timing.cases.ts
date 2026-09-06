@@ -83,11 +83,17 @@ describe('atomicSystem - repeating swings at the animation cadence', () => {
     const target = fighterAt(sim, 1, 0, OTHER, null, { hitpoints: 1_000_000 });
 
     const hitTicks: number[] = [];
+    // Damage is summed blow by blow rather than read off the end state: a fed settler heals between
+    // blows, so the pool climbs back between them.
+    let dealt = 0;
     let prevHp = sim.world.get(target, Health).hitpoints;
     for (let tick = 1; tick <= 60; tick++) {
       sim.step();
       const hp = sim.world.get(target, Health).hitpoints;
-      if (hp < prevHp) hitTicks.push(tick);
+      if (hp < prevHp) {
+        hitTicks.push(tick);
+        dealt += prevHp - hp;
+      }
       prevHp = hp;
     }
 
@@ -99,6 +105,6 @@ describe('atomicSystem - repeating swings at the animation cadence', () => {
     if (firstHit === undefined || secondHit === undefined) throw new Error('expected two hits');
     expect(secondHit - firstHit).toBe(27);
     // Each blow took a full spear-vs-unarmored column (3800) off the pool.
-    expect(1_000_000 - sim.world.get(target, Health).hitpoints).toBe(3800 * hitTicks.length);
+    expect(dealt).toBe(3800 * hitTicks.length);
   });
 });

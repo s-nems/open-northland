@@ -197,7 +197,7 @@ function ensureInside(
   e: Entity,
   home: Entity,
 ): boolean {
-  if (anyNeedPressing(world.get(e, Settler))) return false;
+  if (anyNeedPressing(ctx.content, world.get(e, Settler))) return false;
   if (isInside(world, e, home)) return true;
   enterHome(world, ctx, terrain, e, home);
   return false;

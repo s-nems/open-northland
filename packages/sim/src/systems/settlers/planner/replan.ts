@@ -7,12 +7,10 @@ import {
   Frightened,
   Garrison,
   HuntFocus,
-  LivestockVisit,
   PathRequest,
   PlayerOrder,
   Position,
   Settler,
-  Sheltering,
   Stranded,
   Wedding,
 } from '../../../components/index.js';
@@ -25,10 +23,11 @@ import type { SystemContext } from '../../context.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
 import { type InboundSupplyTally, releaseSupplyRun } from '../../stores/index.js';
 import { atomicHoldsSettler } from '../atomics/busy.js';
+import { topsUpAtHome } from '../drives/at-home.js';
 import { reconcileYardRoute } from '../drives/economy/index.js';
 import { type FarmClaims, releaseFarmTask } from '../drives/farming/index.js';
 import { answerNeedInPlace } from '../drives/needs.js';
-import { stepOut } from '../indoors.js';
+import { heldIndoors, stepOut } from '../indoors.js';
 import { noteUnreachableGoal, pruneUnreachableGoals } from '../unreachable-goals.js';
 
 /** How long a stranded walker parks before shedding its failed route and re-planning: long enough that
@@ -145,15 +144,9 @@ export function releaseStaleIntent(
   releaseFarmTask(world, e, farmClaims);
   // These holds keep their Resting through a re-plan because other systems own those exits: shedding a
   // sheltering settler's marker would pop it out of cover and back in every tick the alarm stands. A
-  // garrison still on its tower keeps it too; anything else already gave the post up above.
-  if (
-    !world.has(e, FamilyDuty) &&
-    !world.has(e, LivestockVisit) &&
-    !world.has(e, Garrison) &&
-    !world.has(e, Sheltering)
-  ) {
-    stepOut(world, e);
-  }
+  // settler mid-way through its at-home top-up keeps it too, so the chain runs its rounds indoors, and a
+  // garrison still on its tower keeps it because anything else already gave the post up above.
+  if (!heldIndoors(world, e) && !topsUpAtHome(world, ctx, e)) stepOut(world, e);
   // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer
   // drive below re-derives a craft clip from its workplace's own batch clock in this same pass.
   world.remove(e, CurrentAtomic);

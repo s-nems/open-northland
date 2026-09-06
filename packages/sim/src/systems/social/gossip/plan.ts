@@ -17,18 +17,14 @@ import {
   type SettlerIdentity,
   Wedding,
 } from '../../../components/index.js';
-import { type Fixed, fx } from '../../../core/fixed.js';
+import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, nodesAdjacent } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
+import { NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { isFighterJob } from '../../readviews/index.js';
-import { FATIGUE_SLEEP_THRESHOLD, HUNGER_EAT_THRESHOLD } from '../../settlers/drives/needs.js';
 import { canonicalById, NodeBuckets } from '../../spatial/nodes.js';
-
-/** Company deficit at or above which a working settler leaves its work to find a chat partner, ¾ of a full
- *  bar, mirroring the eat/sleep/pray triggers in `drives/needs.ts` on the same approximation basis. */
-const CHAT_SEEK_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
 
 /** How far in half-cell nodes a lonely working settler searches. Authored: a bounded ring search. */
 const CHAT_SEEK_RADIUS_NODES = 32;
@@ -99,7 +95,7 @@ function mayJoinChat(world: World, tick: number, e: Entity): boolean {
     return false;
   }
   const s = world.get(e, Settler);
-  return s.hunger < HUNGER_EAT_THRESHOLD && s.fatigue < FATIGUE_SLEEP_THRESHOLD;
+  return s.hunger < NEED_DRIVE_THRESHOLD && s.fatigue < NEED_DRIVE_THRESHOLD;
 }
 
 /** Stamp the mirrored {@link Chat} pair - the seeker (who walks, and whose refill ends the chat) speaks
@@ -125,7 +121,7 @@ function idlePartnerFilter(
 }
 
 /**
- * The working settler's company rung: at or above {@link CHAT_SEEK_THRESHOLD} it leaves its work and claims
+ * The working settler's company rung: at or above {@link NEED_DRIVE_THRESHOLD} it leaves its work and claims
  * the nearest same-owner chat-free settler, preferring an idle one over grabbing one mid-errand. Only
  * partners are gated on {@link Carrying}: a grabbed half needs its hands free, a desperate seeker chats with
  * its load still in hand.
@@ -139,7 +135,7 @@ export function planGossipSeek(
   hy: number,
   candidates: GossipCandidates,
 ): boolean {
-  if (settler.enjoyment < CHAT_SEEK_THRESHOLD) return false;
+  if (settler.enjoyment < NEED_DRIVE_THRESHOLD) return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   if (chatCooldownActive(world, ctx.tick, e)) return false;
   // Only owned settlers gossip, so unowned golden fixtures stay byte-identical, and partners must share

@@ -206,10 +206,16 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
     const a = fighterAt(sim, 2, 2, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
     const enemy = fighterAt(sim, 5, 2, VIKING, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 });
 
-    sim.run(200);
+    // The wound is read as it lands: a fed settler heals between blows, so a dummy this tough is back at
+    // its ceiling by the end of the run.
+    let lowest = 1_000_000;
+    for (let i = 0; i < 200; i++) {
+      sim.step();
+      lowest = Math.min(lowest, sim.world.get(enemy, Health).hitpoints);
+    }
 
     expect(sim.world.has(a, Engagement)).toBe(true);
-    expect(sim.world.get(enemy, Health).hitpoints).toBeLessThan(1_000_000); // it closed and struck
+    expect(lowest).toBeLessThan(1_000_000); // it closed and struck
   });
 
   it('advances into contact and lands blows through the real step() schedule', () => {
@@ -217,11 +223,16 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
     const a = fighterAt(sim, 0, 0, VIKING, WOODCUTTER, { owner: P0, hitpoints: 1_000_000 });
     const b = fighterAt(sim, 6, 0, VIKING, WOODCUTTER, { owner: P1, hitpoints: 1_000_000 }); // 12 nodes apart
 
-    for (let i = 0; i < 200; i++) sim.step();
+    // Blows are read as they land: a fed settler heals between them, so neither pool stays down.
+    let aHurt = false;
+    let bHurt = false;
+    for (let i = 0; i < 200; i++) {
+      sim.step();
+      aHurt ||= sim.world.get(a, Health).hitpoints < 1_000_000;
+      bHurt ||= sim.world.get(b, Health).hitpoints < 1_000_000;
+    }
 
-    // They closed the gap (both sides advanced) and are trading blows - at least one HP pool has fallen.
-    const aHurt = sim.world.get(a, Health).hitpoints < 1_000_000;
-    const bHurt = sim.world.get(b, Health).hitpoints < 1_000_000;
+    // They closed the gap (both sides advanced) and traded blows - at least one HP pool has fallen.
     expect(aHurt || bHurt).toBe(true);
   });
 });

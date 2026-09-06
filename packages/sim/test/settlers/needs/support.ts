@@ -1,4 +1,5 @@
 import { Position, Resource } from '../../../src/components/index.js';
+import { ULP } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, type Simulation } from '../../../src/index.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -10,13 +11,13 @@ export { ctxOf, grassMap };
 const WOOD = 1;
 const WOODCUTTER = 1;
 
-/** The ¾·ONE need level at which a survival drive (eat/sleep/pray/forage) fires - used bare as an
- *  exactly-at-threshold start. */
-export const NEED_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4));
+/** The one level every need drive fires at - used bare as an exactly-at-threshold start. */
+export { NEED_DRIVE_THRESHOLD } from '../../../src/systems/index.js';
 
-/** A need level one whole unit (`ONE`) past `v` - unambiguously over a drive threshold. */
+/** The smallest need level strictly past `v`, for a fixture that must clear a threshold rather than sit
+ *  on it. */
 export function justAbove(v: Fixed): Fixed {
-  return fx.add(v, fx.fromInt(1));
+  return fx.add(v, ULP);
 }
 
 export interface NeedLevels {
@@ -32,9 +33,15 @@ export function cellOf(sim: Simulation, x: number, y: number): NodeId | undefine
   return sim.terrain?.nodeAt(node.hx, node.hy);
 }
 
-/** A woodcutter with only the requested needs raised above their zero defaults. */
-export function needsSettlerAt(sim: Simulation, x: number, y: number, needs: NeedLevels): Entity {
-  return settlerAt(sim, { jobType: WOODCUTTER, needs, position: { x: fx.fromInt(x), y: fx.fromInt(y) } });
+/** A settler of `jobType` (a woodcutter by default) with only the requested needs raised above zero. */
+export function needsSettlerAt(
+  sim: Simulation,
+  x: number,
+  y: number,
+  needs: NeedLevels,
+  jobType: number = WOODCUTTER,
+): Entity {
+  return settlerAt(sim, { jobType, needs, position: { x: fx.fromInt(x), y: fx.fromInt(y) } });
 }
 
 /** A harvestable fixture tree used to prove that a need drive outranks ordinary work. */

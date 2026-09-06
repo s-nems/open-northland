@@ -8,6 +8,7 @@ import {
   Residence,
   Resting,
   Settler,
+  Stockpile,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
@@ -15,7 +16,7 @@ import { plannerSystem } from '../../src/systems/index.js';
 import { isSleepingAtHome } from '../../src/systems/settlers/drives/sleep-at-home.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
+import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
  * The SLEEP-AT-HOME rung: a settler with a built house walks to its door, goes inside (hidden by the
@@ -30,19 +31,40 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './ne
 
 const VIKING = 1;
 const HOME_TYPE = 90;
+const FOOD = 3; // the fixture's `food_simple`
 const OUTDOOR_SLEEP_TICKS = 6; // the fixture's "viking_sleep" length
 const HOME_SLEEP_TICKS = 2; // the fixture's "viking_sleep_home" length
-const TIRED: Fixed = justAbove(NEED_THRESHOLD);
+const TIRED: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
+/** Half a bar spent: under the drive trigger, over the level a served need sits at, so only the at-home
+ *  chain answers it. */
+const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
 
 /** The shared fixture plus a `home` building type and the at-home sleep clip the rung resolves by name. */
 function homeContent(): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
-    buildings: [...base.buildings, { typeId: HOME_TYPE, id: 'home_small', kind: 'home', homeSize: 2 }],
+    buildings: [
+      ...base.buildings,
+      // The larder slot is what lets the at-home chain feed the sleeper as well as rest it.
+      {
+        typeId: HOME_TYPE,
+        id: 'home_small',
+        kind: 'home',
+        homeSize: 2,
+        stock: [{ goodType: FOOD, capacity: 5 }],
+      },
+    ],
     atomicAnimations: [
       ...base.atomicAnimations,
-      { id: 'viking_sleep_home', name: 'viking_sleep_home', length: HOME_SLEEP_TICKS },
+      {
+        id: 'viking_sleep_home',
+        name: 'viking_sleep_home',
+        length: HOME_SLEEP_TICKS,
+        // The same two `event <at> 1 +4000` pulses the outdoor clip carries, packed into the shorter
+        // clock - and indoors none of it is halved, so a bed at home is worth two naps in the open.
+        events: [1, 2].map((at) => ({ at, type: 1, value: 4000 })),
+      },
     ],
   });
 }
@@ -224,5 +246,43 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
       return sim.hashState();
     };
     expect(run()).toBe(run());
+  });
+});
+
+describe('the at-home top-up - a settler home for one need serves the rest before it leaves', () => {
+  it('eats from the family larder after its nap, and only then steps back outside', () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
+    const home = homeAt(sim, 3, 2);
+    sim.world.add(settler, Residence, { home });
+    sim.world.add(home, Stockpile, { amounts: new Map([[FOOD, 2]]) });
+
+    let ateIndoors = false;
+    for (let i = 0; i < 60; i++) {
+      sim.step();
+      const atomic = sim.world.tryGet(settler, CurrentAtomic);
+      if (atomic?.effect.kind === 'eat' && sim.world.tryGet(settler, Resting)?.at === home) {
+        ateIndoors = true;
+      }
+    }
+
+    expect(ateIndoors).toBe(true);
+    expect(sim.world.get(home, Stockpile).amounts.get(FOOD)).toBe(1); // one unit off the family shelf
+    const fed = sim.world.get(settler, Settler);
+    expect(fed.hunger).toBeLessThan(HALF_SPENT); // and both bars came down before it left
+    expect(fed.fatigue).toBeLessThan(TIRED);
+    expect(sim.world.has(settler, Resting)).toBe(false);
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('leaves an empty larder alone and goes back out on its nap alone', () => {
+    const sim = simWithHomes();
+    const settler = needsSettlerAt(sim, 3, 2, { fatigue: TIRED, hunger: HALF_SPENT });
+    sim.world.add(settler, Residence, { home: homeAt(sim, 3, 2) });
+
+    for (let i = 0; i < 60; i++) sim.step();
+
+    expect(sim.world.get(settler, Settler).hunger).toBeGreaterThanOrEqual(HALF_SPENT); // nothing to eat
+    expect(sim.world.has(settler, Resting)).toBe(false); // and it did not wait indoors for food
   });
 });

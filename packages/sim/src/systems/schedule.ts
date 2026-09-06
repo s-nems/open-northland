@@ -14,7 +14,7 @@ import { productionSystem } from './economy/production.js';
 import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
 import { cleanupSystem } from './lifecycle/cleanup.js';
-import { needsSystem } from './lifecycle/needs.js';
+import { needsSystem } from './lifecycle/needs/index.js';
 import {
   livestockAssignmentSystem,
   livestockCaptureSystem,

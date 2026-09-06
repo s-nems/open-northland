@@ -146,8 +146,10 @@ export function combatCadenceContent(): ContentSet {
     jobs: [
       { typeId: 0, id: 'idle' },
       { typeId: WOMAN, id: 'woman' },
-      ...soldierJobs.map((typeId) => ({ typeId, id: `soldier_${typeId}` })),
-      { typeId: HERO, id: 'hero' },
+      // `jobtypes.ini` marks every soldier and hero `ignoresHomeHouseFlag 1`: they never go home, so
+      // what a swing costs their rest is not halved for being out in the field.
+      ...soldierJobs.map((typeId) => ({ typeId, id: `soldier_${typeId}`, ignoresHomeHouse: true })),
+      { typeId: HERO, id: 'hero', ignoresHomeHouse: true },
     ],
     buildings: [{ typeId: 1, id: 'headquarters', kind: 'storage' as const }],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],

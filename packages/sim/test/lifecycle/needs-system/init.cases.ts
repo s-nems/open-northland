@@ -3,7 +3,7 @@ import { Settler } from '../../../src/components/index.js';
 import { Rng } from '../../../src/core/rng.js';
 import { World } from '../../../src/ecs/world.js';
 import { fx, ONE } from '../../../src/index.js';
-import { NEED_INIT_MAX_DEFICIT_PERCENT, rollInitialNeed } from '../../../src/systems/index.js';
+import { NEED_INIT_SPREAD_UNITS, NEED_RESERVE_UNITS, rollInitialNeed } from '../../../src/systems/index.js';
 import { createSettler } from '../../../src/systems/spawn/index.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -34,7 +34,7 @@ describe('rollInitialNeed - seeded random starting needs (50–100% satisfaction
     const seen = new Set<number>();
     for (let i = 0; i < 500; i++) seen.add(rollInitialNeed(rng));
     expect(seen.size).toBeGreaterThan(10);
-    expect(NEED_INIT_MAX_DEFICIT_PERCENT).toBe(50);
+    expect(NEED_INIT_SPREAD_UNITS).toBe(NEED_RESERVE_UNITS / 2);
   });
 });
 

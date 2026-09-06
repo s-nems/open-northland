@@ -33,7 +33,7 @@ function bubbleKindOf(e: SnapshotEntity): SettlerBubbleKind | undefined {
   if (isMarrying(e)) return 'partner';
   const needs = settlerNeedsOf(e);
   if (needs === undefined) return undefined;
-  if (needs.hunger >= systems.HUNGER_BUBBLE_THRESHOLD) return 'hungry';
-  if (needs.fatigue >= systems.FATIGUE_BUBBLE_THRESHOLD) return 'sleepy';
+  if (needs.hunger >= systems.NEED_CRITICAL_THRESHOLD) return 'hungry';
+  if (needs.fatigue >= systems.NEED_CRITICAL_THRESHOLD) return 'sleepy';
   return undefined;
 }

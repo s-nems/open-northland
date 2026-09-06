@@ -39,9 +39,7 @@ export const WOMAN_TALK_ANIMATION = 'viking_woman_talk';
 export const WOMAN_LISTEN_ANIMATION = 'viking_woman_listen';
 export const WOMAN_TALK_LENGTH = 100;
 export const WOMAN_TALK_PULSE_FRAMES = [20, 40, 60, 80, 95] as const;
-// The `atomicanimations.ini` channel ids the pulses restore (`ATOMIC_ANIMATION_EVENT_TYPE_CHANGE_SOCIAL`,
-// logicdefines.inc l.722) and the two pulse magnitudes the extracted clips carry.
-export const CHANGE_SOCIAL_EVENT_TYPE = 3;
+// The two pulse magnitudes the extracted chat clips carry on the company channel.
 export const TALK_PULSE_VALUE = 800;
 export const LISTEN_QUIET_PULSE_VALUE = 100;
 // The recruit's drill repetition inside the barracks - the transcribed `viking_civilist_exercise`

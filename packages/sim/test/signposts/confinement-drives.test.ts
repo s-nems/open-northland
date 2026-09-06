@@ -15,7 +15,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
-import { justAbove, NEED_THRESHOLD } from '../settlers/needs/support.js';
+import { justAbove, NEED_DRIVE_THRESHOLD } from '../settlers/needs/support.js';
 
 /**
  * Signpost confinement over the AUTONOMOUS drives: with `setSignpostNavigation` on, every searched
@@ -31,6 +31,8 @@ import { justAbove, NEED_THRESHOLD } from '../settlers/needs/support.js';
 
 const VIKING = 1;
 const WOODCUTTER = 1;
+/** The fixture's `needsReligionFlag` trade - the only kind of settler that walks to a temple. */
+const SMITH = 13;
 const CARPENTER = 2; // the sawmill's worker job
 const CARRIER = 24; // the original's real carrier id (the golden fixture also declares one at 36)
 const HEADQUARTERS = 1; // passive store: food + plank slots, a carrier transport slot
@@ -40,8 +42,8 @@ const PLANK = 2;
 const FOOD = 3;
 const IN_AREA = 6;
 const OUT_OF_AREA = 40;
-// Just over the shared ¾·ONE needs threshold - enough to trigger the eat/pray drive on the next tick.
-const URGENT: Fixed = justAbove(NEED_THRESHOLD);
+// Just over the shared the drive threshold needs threshold - enough to trigger the eat/pray drive on the next tick.
+const URGENT: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 
 function confinedSim(): Simulation {
   const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(192, 8) });
@@ -120,7 +122,7 @@ describe('confinement gates the needs satisfiers', () => {
 
   it('a devout settler ignores an out-of-area temple but reaches an in-area one', () => {
     const sim = confinedSim();
-    const u = ownedSettler(sim, 2, 2, WOODCUTTER, { piety: URGENT });
+    const u = ownedSettler(sim, 2, 2, SMITH, { piety: URGENT });
     buildingAt(sim, TEMPLE_TYPE, OUT_OF_AREA, 2);
     sim.step();
     expect(acted(sim, u)).toBe(false);

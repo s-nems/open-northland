@@ -22,14 +22,14 @@ import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
 import {
   ADULT_AGE_TICKS,
   BABY_FEMALE,
-  EAT_HUNGER_RESTORE,
   familiesOf,
   familyOf,
   findPartnerFor,
-  HUNGER_RISE_PER_TICK,
   KISS_ATOMIC_ID,
   KISSED_ATOMIC_ID,
   mayMarry,
+  NEED_DRAIN_UNITS_PER_TICK,
+  needBar,
 } from '../../src/systems/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { TEST_MANIFEST } from '../fixtures/content.js';
@@ -56,6 +56,9 @@ const SOLDIER = 31;
 const HOME = 2;
 const WAREHOUSE = 7;
 const GRASS = 0;
+/** The eat slot (`setatomic <job> 10`), and the one `event 3 2 +4000` meal its clip pays out. */
+const EAT_ATOMIC = 10;
+const MEAL = needBar(4000);
 
 function familyContent(): ContentSet {
   return parseContentSet({
@@ -85,6 +88,23 @@ function familyContent(): ContentSet {
       },
       // A non-home food store (the settlement HQ): its stock feeds anyone, unlike a home larder.
       { typeId: WAREHOUSE, id: 'warehouse', kind: 'storage', stock: [{ goodType: FOOD, capacity: 99 }] },
+    ],
+    tribes: [
+      {
+        typeId: VIKING,
+        id: 'viking',
+        // One `jobEnables` edge makes it a tribe with an economy behind it, which is what gives its
+        // settlers needs at all; the edge itself gates nothing these cases exercise.
+        jobEnables: [{ jobType: CIVILIST, kind: 'job', targetId: SOLDIER }],
+        atomicBindings: [
+          { jobType: WOMAN, atomicId: EAT_ATOMIC, animation: 'viking_eat' },
+          { jobType: CIVILIST, atomicId: EAT_ATOMIC, animation: 'viking_eat' },
+        ],
+      },
+    ],
+    // The eat clip's single `event <at> 2 +4000`: what one meal is worth to the eater's hunger.
+    atomicAnimations: [
+      { id: 'viking_eat', name: 'viking_eat', length: 5, events: [{ at: 3, type: 2, value: 4000 }] },
     ],
   });
 }
@@ -473,7 +493,7 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.isAlive(woman)).toBe(true); // fed herself instead of starving in the loop
     // She ate at least one whole meal (the tick's own rise may land alongside it), not merely seeded < ONE.
     expect(minHunger).toBeLessThanOrEqual(
-      fx.sub(peakHunger, fx.sub(EAT_HUNGER_RESTORE, HUNGER_RISE_PER_TICK)),
+      fx.sub(peakHunger, fx.sub(MEAL, needBar(NEED_DRAIN_UNITS_PER_TICK))),
     );
     expect(sim.world.get(sim.world.get(woman, Marriage).child as Entity, Settler).jobType).toBe(BABY_FEMALE);
   });

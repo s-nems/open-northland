@@ -5,7 +5,7 @@
 `Settler` is the shared creature component: people and wildlife both carry it, and the `Person` marker
 (`components/settler.ts`) is what separates them. Five of its seven fields are human-only, though -
 `hunger`, `fatigue`, `piety`, `enjoyment`, `experience`. `addWildlife` writes them all as inert zeros,
-nothing raises them (`systems/lifecycle/needs.ts` sweeps `Person`), nothing reads them
+nothing raises them (`systems/lifecycle/needs/system.ts` sweeps `Person`), nothing reads them
 (`systems/progression/experience.ts` returns early on wildlife), and `hashSimState` mixes all five for
 every creature on the map. A monster-tribe person carries the same five inert fields: `needsSystem`
 skips a recorded tribe with no `jobEnables`, because no building can employ it.

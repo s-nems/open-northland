@@ -14,6 +14,8 @@ describe('extractJobs', () => {
         allowedAtomics: [12, 19],
         baseJob: 40,
         forbiddenAtomics: [88],
+        needsReligion: false,
+        ignoresHomeHouse: false,
         source: src,
       },
       // `&` and spaces slug to single underscores, matching extractLandscape's slug rules.
@@ -22,7 +24,10 @@ describe('extractJobs', () => {
         id: 'reed_moss_picker',
         name: 'reed & moss picker',
         allowedAtomics: [12],
+        baseJob: undefined,
         forbiddenAtomics: [],
+        needsReligion: false,
+        ignoresHomeHouse: false,
         source: src,
       },
     ]);

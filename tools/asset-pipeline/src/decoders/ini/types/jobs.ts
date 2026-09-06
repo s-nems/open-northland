@@ -26,6 +26,8 @@ export function extractJobs(sections: readonly RuleSection[], src: SourceRef): J
         allowedAtomics: getIntList(sec, 'allowatomic'),
         baseJob: getInt(sec, 'baseatomics'),
         forbiddenAtomics: getIntList(sec, 'forbidatomic'),
+        needsReligion: getInt(sec, 'needsReligionFlag') === 1,
+        ignoresHomeHouse: getInt(sec, 'ignoresHomeHouseFlag') === 1,
         source: makeSource(src, 'jobtype'),
       }),
     );

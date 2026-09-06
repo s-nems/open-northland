@@ -1,3 +1,15 @@
+/**
+ * The `event <at> 1 -100` / `<at> 2 -100` pair every work clip carries, scaled to this fixture's
+ * three-tick swings: the real clips spend 100 reserve units over roughly thirty ticks, so a swing a tenth
+ * as long costs a tenth as much and the per-tick work drain stays faithful.
+ */
+function workDrain(): { at: number; type: number; value: number }[] {
+  return [
+    { at: 1, type: 1, value: -10 },
+    { at: 1, type: 2, value: -10 },
+  ];
+}
+
 export const societyContent = {
   tribes: [
     {
@@ -15,6 +27,14 @@ export const societyContent = {
         { jobType: 5, atomicId: 25, animation: 'viking_mine' },
         { jobType: 1, atomicId: 10, animation: 'viking_eat' },
         { jobType: 1, atomicId: 8, animation: 'viking_sleep' },
+        // The civilist rows the original authors (`setatomic 6 8/10/12`); every trade with no row of
+        // its own resolves its meal, its rest and its prayer through them.
+        { jobType: 6, atomicId: 10, animation: 'viking_eat' },
+        { jobType: 6, atomicId: 8, animation: 'viking_sleep' },
+        { jobType: 6, atomicId: 12, animation: 'viking_pray' },
+        // The soldier swings the same work clip as the woodcutter, so the rule that a trade which never
+        // goes home spends its rest whole out in the field is observable on one clip.
+        { jobType: 31, atomicId: 24, animation: 'viking_chop' },
         // The pray atomic (12, the original's pray-slot id) binds to "viking_pray" - the planner
         // resolves its duration through this binding -> atomicAnimations length below.
         { jobType: 1, atomicId: 12, animation: 'viking_pray' },
@@ -210,12 +230,20 @@ export const societyContent = {
   atomicAnimations: [
     // The chop carries the original's mid-swing sound cue (`event <at> 34 9` - PLAY_SOUND_FX naming
     // the Woodcutter Axe `logicSoundType`), two thirds in like `viking_collector_harvest_tree`.
-    { id: 'viking_chop', name: 'viking_chop', length: 3, events: [{ at: 2, type: 34, value: 9 }] },
-    { id: 'viking_mine', name: 'viking_mine', length: 3 },
-    { id: 'viking_reap', name: 'viking_reap', length: 3 },
-    { id: 'viking_sow', name: 'viking_sow', length: 3 },
-    { id: 'viking_water', name: 'viking_water', length: 3 },
-    { id: 'viking_eat', name: 'viking_eat', length: 5 },
+    {
+      id: 'viking_chop',
+      name: 'viking_chop',
+      length: 3,
+      events: [{ at: 2, type: 34, value: 9 }, ...workDrain()],
+    },
+    { id: 'viking_mine', name: 'viking_mine', length: 3, events: workDrain() },
+    { id: 'viking_reap', name: 'viking_reap', length: 3, events: workDrain() },
+    { id: 'viking_sow', name: 'viking_sow', length: 3, events: workDrain() },
+    { id: 'viking_water', name: 'viking_water', length: 3, events: workDrain() },
+    // One meal, the original's single `event 30 2 +4000` on the eat clip, and the at-home twin the data
+    // authors beside it, worth half again as much (`viking_civilist_eat_athome`, `event 30 2 +6000`).
+    { id: 'viking_eat', name: 'viking_eat', length: 5, events: [{ at: 3, type: 2, value: 4000 }] },
+    { id: 'viking_eat_home', name: 'viking_eat_home', length: 5, events: [{ at: 3, type: 2, value: 6000 }] },
     // Interruptible like the original's outdoor sleep (`interruptable 1`) - a sleeper obeys an order at
     // once, while an unmarked clip (eat, the swings) defaults non-interruptible and parks orders.
     // Carries the outdoor clip's authored sound cue (`event <at> 34 35` - PLAY_SOUND_FX naming the Yawn
@@ -226,9 +254,20 @@ export const societyContent = {
       name: 'viking_sleep',
       length: 6,
       interruptible: true,
-      events: [{ at: 1, type: 34, value: 35 }],
+      events: [
+        { at: 1, type: 34, value: 35 },
+        // The outdoor civilist clip's two `event <at> 1 +4000` rest pulses, at this clip's own pace.
+        { at: 2, type: 1, value: 4000 },
+        { at: 5, type: 1, value: 4000 },
+      ],
     },
-    { id: 'viking_pray', name: 'viking_pray', length: 7 },
+    // The pray clip's five `event <at> 4 +800` pulses, at this clip's own pace.
+    {
+      id: 'viking_pray',
+      name: 'viking_pray',
+      length: 7,
+      events: [1, 2, 3, 4, 5].map((at) => ({ at, type: 4, value: 800 })),
+    },
     // The talk/listen clips carry the original's channel-3 refill shape (five `event <at> 3 +800`
     // pulses totalling the 4000-unit full bar - `viking_civilist_talk`), compressed to a short
     // fixture length so gossip tests run in a handful of ticks. They also carry the original's voice

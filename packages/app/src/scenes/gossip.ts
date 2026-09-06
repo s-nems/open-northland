@@ -30,15 +30,17 @@ const SLEEPY_SPOT = { x: 33, y: 8 } as const;
 
 /** The company bar spent whole: enjoyment `ONE` is fully lonely. */
 const LONELY_WHOLE: Fixed = ONE;
-/** Just under the ¾·ONE seek threshold, so the woodcutter works before he crosses it. */
-const ALMOST_LONELY: Fixed = fx.div(fx.fromInt(7), fx.fromInt(10));
-/** Over the ¾·ONE eat and sleep thresholds. */
-const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
+/** Five percent of a bar under the seek threshold, so the woodcutter works for the run's first minute
+ *  and crosses it with time left to walk over and chat. */
+const ALMOST_LONELY: Fixed = fx.sub(systems.NEED_DRIVE_THRESHOLD, fx.div(ONE, fx.fromInt(20)));
+/** Over the eat and sleep thresholds. */
+const PRESSING: Fixed = fx.div(fx.fromInt(19), fx.fromInt(20));
 /** End-of-run bound proving a settler chatted: without a chat the bar would sit pinned at ONE. */
 const REFILLED: Fixed = fx.div(ONE, fx.fromInt(4));
 
-/** Covers the woodcutter's ~400 ticks of chopping, his walk, and several 247-tick chat rounds. */
-const RUN_TICKS = 1500;
+/** Covers the woodcutter's chopping, his walk, and the several 247-tick rounds the circle needs: one
+ *  exchange is worth 40% of a company bar, so a settler that starts fully lonely takes three of them. */
+const RUN_TICKS = 2400;
 const INITIAL_ZOOM = 0.9;
 
 const { Settler } = components;
@@ -121,7 +123,7 @@ export const gossipScene: SceneDefinition = {
       predicate: (sim) => {
         for (const e of sim.world.query(Settler)) {
           const s = sim.world.get(e, Settler);
-          if (s.hunger >= systems.HUNGER_EAT_THRESHOLD || s.fatigue >= systems.FATIGUE_SLEEP_THRESHOLD)
+          if (s.hunger >= systems.NEED_DRIVE_THRESHOLD || s.fatigue >= systems.NEED_DRIVE_THRESHOLD)
             return false;
         }
         return true;

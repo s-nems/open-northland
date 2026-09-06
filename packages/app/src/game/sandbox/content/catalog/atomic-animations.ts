@@ -1,4 +1,5 @@
 import type { AtomicEvent } from '@open-northland/data';
+import { systems } from '@open-northland/sim';
 import {
   HUNTER_BOW_DRAW_LENGTH,
   HUNTER_BOW_RELEASE_FRAME,
@@ -21,13 +22,19 @@ import {
   SWORD_SWING_LENGTH,
 } from '../../combat.js';
 import { GATHERERS } from '../../ids/index.js';
+import {
+  NEED_CLIPS,
+  SOLDIER_SWING_DRAIN_VALUE,
+  swingDrainEvents,
+  WORK_DRAIN_VALUE,
+  workDrainEvents,
+} from '../../need-animations.js';
 import { soundCueEvents } from '../../sound-cues.js';
 import {
   BUILD_GUIDE_ANIMATION,
   BUILD_GUIDE_SWING_LENGTH,
   BUILD_HOUSE_ANIMATION,
   BUILD_HOUSE_SWING_LENGTH,
-  CHANGE_SOCIAL_EVENT_TYPE,
   CIVILIST_EXERCISE_ANIMATION,
   CIVILIST_EXERCISE_LENGTH,
   CIVILIST_EXERCISE_XP,
@@ -64,21 +71,34 @@ function clip(
   return { id: name, name, length, events: [...extra, ...soundCueEvents(name, length)] };
 }
 
-/** A clip restoring the company bar in channel-3 pulses of `value` at the extracted event `frames`. */
-function chatClip(
+/** A clip feeding one need bar in equal pulses at the extracted event `frames`. */
+function needClip(
   name: string,
   length: number,
+  channel: number,
   frames: readonly number[],
   value: number,
 ): { id: string; name: string; length: number; interruptible: true; events: object[] } {
-  const pulses = frames.map((at) => ({ at, type: CHANGE_SOCIAL_EVENT_TYPE, value }));
+  const pulses = frames.map((at) => ({ at, type: channel, value }));
   // `interruptable 1` in the source rows.
   return { ...clip(name, length, pulses), interruptible: true };
 }
 
+/** A clip whose swing costs its worker rest and food, on top of whatever else it carries. */
+function workClip(name: string, length: number, extra: readonly Omit<AtomicEvent, 'extended'>[] = []) {
+  return clip(name, length, [...workDrainEvents(length), ...extra]);
+}
+
+/** An attack clip: the frame its blow lands on, plus what that swing costs the fighter. */
+function swingClip(name: string, length: number, hitFrame: number, drain = SOLDIER_SWING_DRAIN_VALUE) {
+  return clip(name, length, [{ at: hitFrame, type: ATTACK_EVENT_TYPE }, ...swingDrainEvents(drain)]);
+}
+
+const SOCIAL = systems.ATOMIC_EVENT_CHANNEL.LEISURE;
+
 export function buildSandboxAtomicAnimations(): readonly object[] {
   return [
-    ...GATHERERS.map((gatherer) => clip(gatherer.animation, HARVEST_TICKS[gatherer.atomic] ?? 1)),
+    ...GATHERERS.map((gatherer) => workClip(gatherer.animation, HARVEST_TICKS[gatherer.atomic] ?? 1)),
     clip(STORE_PICKUP_ANIMATION, STORE_EXCHANGE_LENGTH),
     clip(STORE_PILEUP_ANIMATION, STORE_EXCHANGE_LENGTH),
     // Extracted lengths from the mod's `atomicanimations12/atomicanimations.ini`. The hearts phase runs
@@ -91,33 +111,45 @@ export function buildSandboxAtomicAnimations(): readonly object[] {
     clip('viking_civilist_make_love', 200),
     // Extracted lengths and channel-3 pulse rows. The woman restores little while listening because she
     // recovers on her talking turn, the pair alternating roles.
-    chatClip(CIVILIST_TALK_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
-    chatClip(CIVILIST_LISTEN_ANIMATION, CIVILIST_TALK_LENGTH, CIVILIST_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
-    chatClip(WOMAN_TALK_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
-    chatClip(WOMAN_LISTEN_ANIMATION, WOMAN_TALK_LENGTH, WOMAN_TALK_PULSE_FRAMES, LISTEN_QUIET_PULSE_VALUE),
-    clip('viking_fist_attack', FIST_SWING_LENGTH, [{ at: FIST_HIT_FRAME, type: ATTACK_EVENT_TYPE }]),
-    clip('viking_spear_attack', SPEAR_SWING_LENGTH, [{ at: SPEAR_HIT_FRAME, type: ATTACK_EVENT_TYPE }]),
-    clip('viking_sword_attack', SWORD_SWING_LENGTH, [{ at: SWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE }]),
-    clip('viking_broadsword_attack', BROADSWORD_SWING_LENGTH, [
-      { at: BROADSWORD_HIT_FRAME, type: ATTACK_EVENT_TYPE },
-    ]),
-    clip('viking_bow_attack', SHORT_BOW_DRAW_LENGTH, [
-      { at: SHORT_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
-    ]),
-    clip('viking_hunter_attack', HUNTER_BOW_DRAW_LENGTH, [
-      { at: HUNTER_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
-    ]),
-    clip('viking_hunter_harvest_cadaver', HUNTER_HARVEST_CADAVER_LENGTH),
-    clip('viking_bow_long_attack', LONG_BOW_DRAW_LENGTH, [
-      { at: LONG_BOW_RELEASE_FRAME, type: ATTACK_EVENT_TYPE },
-    ]),
-    clip(BUILD_HOUSE_ANIMATION, BUILD_HOUSE_SWING_LENGTH),
-    clip(BUILD_GUIDE_ANIMATION, BUILD_GUIDE_SWING_LENGTH),
+    needClip(
+      CIVILIST_TALK_ANIMATION,
+      CIVILIST_TALK_LENGTH,
+      SOCIAL,
+      CIVILIST_TALK_PULSE_FRAMES,
+      TALK_PULSE_VALUE,
+    ),
+    needClip(
+      CIVILIST_LISTEN_ANIMATION,
+      CIVILIST_TALK_LENGTH,
+      SOCIAL,
+      CIVILIST_TALK_PULSE_FRAMES,
+      TALK_PULSE_VALUE,
+    ),
+    needClip(WOMAN_TALK_ANIMATION, WOMAN_TALK_LENGTH, SOCIAL, WOMAN_TALK_PULSE_FRAMES, TALK_PULSE_VALUE),
+    needClip(
+      WOMAN_LISTEN_ANIMATION,
+      WOMAN_TALK_LENGTH,
+      SOCIAL,
+      WOMAN_TALK_PULSE_FRAMES,
+      LISTEN_QUIET_PULSE_VALUE,
+    ),
+    ...NEED_CLIPS.map((c) => needClip(c.name, c.length, c.channel, c.frames, c.value)),
+    swingClip('viking_fist_attack', FIST_SWING_LENGTH, FIST_HIT_FRAME),
+    swingClip('viking_spear_attack', SPEAR_SWING_LENGTH, SPEAR_HIT_FRAME),
+    swingClip('viking_sword_attack', SWORD_SWING_LENGTH, SWORD_HIT_FRAME),
+    swingClip('viking_broadsword_attack', BROADSWORD_SWING_LENGTH, BROADSWORD_HIT_FRAME),
+    swingClip('viking_bow_attack', SHORT_BOW_DRAW_LENGTH, SHORT_BOW_RELEASE_FRAME),
+    // The hunter is a civilian trade, so his shot costs him a civilian's swing.
+    swingClip('viking_hunter_attack', HUNTER_BOW_DRAW_LENGTH, HUNTER_BOW_RELEASE_FRAME, WORK_DRAIN_VALUE),
+    workClip('viking_hunter_harvest_cadaver', HUNTER_HARVEST_CADAVER_LENGTH),
+    swingClip('viking_bow_long_attack', LONG_BOW_DRAW_LENGTH, LONG_BOW_RELEASE_FRAME),
+    workClip(BUILD_HOUSE_ANIMATION, BUILD_HOUSE_SWING_LENGTH),
+    workClip(BUILD_GUIDE_ANIMATION, BUILD_GUIDE_SWING_LENGTH),
     clip(CIVILIST_EXERCISE_ANIMATION, CIVILIST_EXERCISE_LENGTH, [
       { at: CIVILIST_EXERCISE_XP_FRAME, type: TRAINING_EXPERIENCE_EVENT_TYPE, value: CIVILIST_EXERCISE_XP },
     ]),
-    clip(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH),
-    clip(FARMER_SOW_ANIMATION, FARMER_SOW_LENGTH),
-    clip(FARMER_WATER_ANIMATION, FARMER_WATER_LENGTH),
+    workClip(FARMER_REAP_ANIMATION, FARMER_REAP_LENGTH),
+    workClip(FARMER_SOW_ANIMATION, FARMER_SOW_LENGTH),
+    workClip(FARMER_WATER_ANIMATION, FARMER_WATER_LENGTH),
   ];
 }

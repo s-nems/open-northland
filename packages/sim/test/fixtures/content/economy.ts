@@ -132,6 +132,11 @@ export const economyContent = {
     // The civilist (the original's job 6 - the no-trade adult): assignable via setJob, employed by no
     // workplace, so a settler ordered into it stays jobless (the "Cywil" picker row).
     { typeId: 6, id: 'civilist' },
+    // The smith (job 13) is the fixture's `needsReligionFlag` trade - the only kind of settler
+    // that leaves its work to pray.
+    // It carries the wood atomic only so the pray cases can watch a praying trade fall through to
+    // ordinary work; the real smith forges at a workshop the fixture does not model.
+    { typeId: 13, id: 'smith', needsReligion: true, allowedAtomics: [24] },
     // The miner is permitted the stone harvest atomic (25) - it chips a `MineDeposit` deposit.
     { typeId: 5, id: 'miner', allowedAtomics: [25] },
     // A two-trade collector (wood 24 + stone 25) - what the employed-gatherer store-filter tests use
@@ -150,7 +155,9 @@ export const economyContent = {
     { typeId: 27, id: 'scout', allowedAtomics: [43] },
     // The fighter trades, at their real `jobtypes.ini` ids and slugs - the role is read off the slug
     // (`core/content-index/jobs.ts`), so a fixture soldier/hero must carry the real vocabulary.
-    { typeId: 31, id: 'soldier_unarmed' },
+    // `jobtypes.ini` marks every soldier `ignoresHomeHouseFlag 1`: they never go home, so nothing they
+    // spend out in the field is halved for being spent there.
+    { typeId: 31, id: 'soldier_unarmed', ignoresHomeHouse: true },
     { typeId: 45, id: 'hero_saber_hatschi' },
     // 36 is a second fixture carrier id; 24 is the original's real one (`logicworker 24`).
     { typeId: 36, id: 'carrier' },

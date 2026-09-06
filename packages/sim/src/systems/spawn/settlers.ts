@@ -25,7 +25,7 @@ import type { SystemContext } from '../context.js';
 import { jobCanHarvestGood, syncWorkFlagToJob } from '../economy/work-flag.js';
 import { isFemaleJobId } from '../family/eligibility.js';
 import { spawnAgeTicks } from '../lifecycle/ageclass.js';
-import { rollInitialNeed } from '../lifecycle/needs.js';
+import { rollInitialNeed } from '../lifecycle/needs/index.js';
 import { evictSettlerFromBlockedSpawn } from '../movement/evict.js';
 import { stampDefaultStance } from '../orders/index.js';
 import { isAnimalTribe, settlerHitpoints } from '../readviews/index.js';

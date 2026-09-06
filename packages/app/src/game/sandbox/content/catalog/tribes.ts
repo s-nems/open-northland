@@ -5,12 +5,15 @@ import {
   BUILD_GUIDE_ATOMIC,
   BUILD_HOUSE_ATOMIC,
   CULTIVATE_ATOMIC,
+  EAT_ATOMIC,
   EXERCISE_ATOMIC,
   HARVEST_CADAVER_ATOMIC,
   KISS_ATOMIC,
   KISSED_ATOMIC,
   LISTEN_ATOMIC,
   PLANT_ATOMIC,
+  PRAY_ATOMIC,
+  SLEEP_ATOMIC,
   STORE_PICKUP_ATOMIC,
   STORE_PILEUP_ATOMIC,
   TALK_ATOMIC,
@@ -32,6 +35,15 @@ import {
 import { HUMAN_HITPOINTS } from '../../../../catalog/units.js';
 import { PRIMARY_TRIBE } from '../../../rules.js';
 import { GATHERERS, JOB_FARMER_SLOT } from '../../ids/index.js';
+import {
+  CIVILIST_EAT_ANIMATION,
+  CIVILIST_PRAY_ANIMATION,
+  CIVILIST_SLEEP_ANIMATION,
+  SOLDIER_EAT_ANIMATION,
+  SOLDIER_SLEEP_ANIMATION,
+  WOMAN_EAT_ANIMATION,
+  WOMAN_SLEEP_ANIMATION,
+} from '../../need-animations.js';
 import {
   BUILD_GUIDE_ANIMATION,
   BUILD_HOUSE_ANIMATION,
@@ -111,6 +123,15 @@ export function buildSandboxTribes(
       { jobType: JOB_WOMAN, atomicId: LISTEN_ATOMIC, animation: WOMAN_LISTEN_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: TALK_ATOMIC, animation: CIVILIST_TALK_ANIMATION },
       { jobType: JOB_CIVILIST, atomicId: LISTEN_ATOMIC, animation: CIVILIST_LISTEN_ANIMATION },
+      // The need slots, the original's `setatomic 5/6/31 8/10/12` rows. Every working trade resolves its
+      // meal and its rest through the sim's civilist fallback, the original's `baseatomics 6` inheritance.
+      { jobType: JOB_WOMAN, atomicId: EAT_ATOMIC, animation: WOMAN_EAT_ANIMATION },
+      { jobType: JOB_WOMAN, atomicId: SLEEP_ATOMIC, animation: WOMAN_SLEEP_ANIMATION },
+      { jobType: JOB_CIVILIST, atomicId: EAT_ATOMIC, animation: CIVILIST_EAT_ANIMATION },
+      { jobType: JOB_CIVILIST, atomicId: SLEEP_ATOMIC, animation: CIVILIST_SLEEP_ANIMATION },
+      { jobType: JOB_CIVILIST, atomicId: PRAY_ATOMIC, animation: CIVILIST_PRAY_ANIMATION },
+      { jobType: JOB_SOLDIER_UNARMED, atomicId: EAT_ATOMIC, animation: SOLDIER_EAT_ANIMATION },
+      { jobType: JOB_SOLDIER_UNARMED, atomicId: SLEEP_ATOMIC, animation: SOLDIER_SLEEP_ANIMATION },
       // The original's `setatomic 6 89` row; any other trade sent to train falls back to the civilist.
       { jobType: JOB_CIVILIST, atomicId: EXERCISE_ATOMIC, animation: CIVILIST_EXERCISE_ANIMATION },
       { jobType: JOB_SOLDIER_UNARMED, atomicId: ATTACK_ATOMIC, animation: 'viking_fist_attack' },

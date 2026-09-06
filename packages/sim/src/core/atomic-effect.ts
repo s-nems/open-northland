@@ -29,18 +29,12 @@ export type AtomicEffect =
     }
   /** The settler drinks the draught in misc equipment slot `slot`, in place, on the eat animation. */
   | { readonly kind: 'drink'; readonly slot: number }
-  /** The settler sleeps: takes `SLEEP_FATIGUE_RESTORE` off its `fatigue` on completion. No goods are
-   *  consumed. */
+  /** The settler sleeps: its clip's `event <at> 1 <delta>` pulses take the rest off its `fatigue`. No
+   *  goods are consumed. */
   | { readonly kind: 'sleep' }
-  /** The settler prays: zeroes its `piety` on completion. The settler must stand on a temple to run it. */
+  /** The settler prays: its clip's `event <at> 4 <delta>` pulses take the prayer off its `piety`. It must
+   *  stand on a temple to run it. */
   | { readonly kind: 'pray' }
-  /** The settler enjoys itself: zeroes its `enjoyment` on completion (the `enjoy` atomic, id 17). No need
-   *  drive routes a settler to it, because `enjoy` has no readable building satisfier. */
-  | { readonly kind: 'enjoy' }
-  /** The settler makes love, which zeroes its `enjoyment` as well. The `make_love` atomic (id 78) is not
-   *  a separate need: `viking_civilist_make_love` restores the same channel 3 as `enjoy` through
-   *  `event <at> 3 +800` tuples, a bigger boost than enjoy's +100. */
-  | { readonly kind: 'make_love' }
   /** The settler runs one drill repetition inside a barracks, charged against the errand's remaining
    *  drill time. Nothing else accrues: the TRAINING bucket grants no experience. */
   | { readonly kind: 'exercise' }
@@ -81,9 +75,9 @@ export type AtomicEffect =
       readonly x: number;
       readonly y: number;
     }
-  /** A hungry settler forages a wild ripe `bush`: the bush flips ripe to bare and regrows, and the
-   *  eater's hunger drops by `EAT_HUNGER_RESTORE`. No stored or carried good is consumed and no job or
-   *  tool is needed; a bush already bare or gone consumes nothing but the meal still counts. */
+  /** A hungry settler forages a wild ripe `bush`: the bush flips ripe to bare and regrows, and the eat
+   *  clip's own events feed the forager. No stored or carried good is consumed and no job or tool is
+   *  needed; a bush already bare or gone consumes nothing but the meal still counts. */
   | { readonly kind: 'forage'; readonly bush: Entity }
   /** A farmer's watering (the original's cultivate atomic) marks the `crop` `watered`, which enables its
    *  growth; an unwatered field stalls at its sown stage. Approximation: the engine's watering semantics

@@ -71,3 +71,15 @@ export const JOB_HEROINE_BOW = 47; // heroine_bow_xena
 /** The `jobtypes.ini` soldier band: the unarmed base plus every weapon class. */
 export const SOLDIER_JOB_MIN = JOB_SOLDIER_UNARMED;
 export const SOLDIER_JOB_MAX = JOB_ARCHER_LONG;
+
+/** The trades `jobtypes.ini` marks `needsReligionFlag`: the only ones that walk to a temple. */
+export const RELIGION_JOBS: ReadonlySet<number> = new Set([JOB_JOINER, JOB_ARMORER, JOB_SMITH]);
+
+/** The trades `jobtypes.ini` marks `ignoresHomeHouseFlag`: the two that travel, plus every soldier and
+ *  hero. They never go home, so nothing they spend in the field is halved for being spent there. */
+export const HOMELESS_JOBS: ReadonlySet<number> = new Set([
+  JOB_TRADER,
+  JOB_SCOUT,
+  ...Array.from({ length: JOB_ARCHER_LONG - JOB_SOLDIER_UNARMED + 1 }, (_, i) => JOB_SOLDIER_UNARMED + i),
+  ...Array.from({ length: JOB_HEROINE_BOW - JOB_HERO_UNARMED + 1 }, (_, i) => JOB_HERO_UNARMED + i),
+]);

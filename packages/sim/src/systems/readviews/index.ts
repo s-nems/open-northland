@@ -63,6 +63,8 @@ export {
   isScoutJob,
   isSeaJob,
   isSoldierJob,
+  jobIgnoresHomeHouse,
+  jobNeedsReligion,
   scoutJobType,
   seaJobs,
 } from './jobs.js';

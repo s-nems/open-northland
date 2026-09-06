@@ -41,6 +41,14 @@ export const ATTACK_ATOMIC = 81;
 export const BUILD_HOUSE_ATOMIC = 39;
 
 /**
+ * The need slots (`logicdefines.inc` SLEEP 8 / EAT_SLOT_FOOD 10 / PRAY 12), bound per body class by
+ * `tribetypes.ini setatomic <job> 8/10/12`. Their clips carry what a rest, a meal and a prayer are worth.
+ */
+export const SLEEP_ATOMIC = 8;
+export const EAT_ATOMIC = 10;
+export const PRAY_ATOMIC = 12;
+
+/**
  * The wedding pair (`logicdefines.inc` KISS 20 / KISSED 21). Each body authors one kiss clip, so both
  * roles bind the same sequence.
  */

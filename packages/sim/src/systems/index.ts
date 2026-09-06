@@ -16,7 +16,7 @@ export * from './family/index.js';
 export * from './footprint/index.js';
 export * from './lifecycle/ageclass.js';
 export * from './lifecycle/cleanup.js';
-export * from './lifecycle/needs.js';
+export * from './lifecycle/needs/index.js';
 export * from './livestock/index.js';
 export * from './match/index.js';
 export * from './movement/animal-wander.js';

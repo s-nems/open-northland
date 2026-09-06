@@ -16,7 +16,7 @@ import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { nodeOfPosition, nodesAdjacent } from '../../src/nav/halfcell.js';
 import { CHAT_COOLDOWN_TICKS, gossipSystem, plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
+import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt, treeAt } from './needs/support.js';
 
 /**
  * Tests for the GOSSIP drive - the company need's self-satisfying loop: a lonely settler pairs up with
@@ -30,7 +30,7 @@ const TALK = 14;
 const LISTEN = 15;
 const PLAYER = 1;
 const SOLDIER_JOB = 31; // soldier_unarmed - isFighterJob band start
-const LONELY: Fixed = justAbove(NEED_THRESHOLD); // over the ¾·ONE chat-seek threshold
+const LONELY: Fixed = justAbove(NEED_DRIVE_THRESHOLD); // over the drive threshold every need fires at
 const MILD: Fixed = fx.div(ONE, fx.fromInt(2)); // half a bar - idle-chat eligible, seek-quiet
 
 function owned(sim: Simulation, e: Entity): Entity {
@@ -282,7 +282,7 @@ describe('gossip chat rounds (GossipSystem)', () => {
     plannerSystem(sim.world, ctxOf(sim));
     gossipSystem(sim.world, ctxOf(sim)); // the round starts
 
-    sim.world.mut(b, Settler).hunger = justAbove(NEED_THRESHOLD);
+    sim.world.mut(b, Settler).hunger = justAbove(NEED_DRIVE_THRESHOLD);
     gossipSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(a, Chat)).toBe(false);

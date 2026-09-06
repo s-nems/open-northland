@@ -14,7 +14,12 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { clearNavState } from '../../movement/nav-state.js';
-import { atomicDuration, needAtomicDuration } from '../../readviews/animations.js';
+import {
+  atomicClipNameAtHome,
+  atomicDuration,
+  atomicDurationForName,
+  needAtomicDuration,
+} from '../../readviews/animations.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell } from '../targets/index.js';
 import { atomicHoldsSettler } from './busy.js';
@@ -43,6 +48,12 @@ export function eatDuration(ctx: SystemContext, settler: SettlerIdentity): numbe
  * {@link needAtomicDuration}.
  */
 export const SLEEP_ATOMIC_ID = 8;
+
+/** How long `atomicId` takes indoors at home: the at-home twin's length where the data authors one, else
+ *  the same clip's length as anywhere else. */
+export function atHomeDuration(ctx: SystemContext, settler: SettlerIdentity, atomicId: number): number {
+  return atomicDurationForName(ctx.content, atomicClipNameAtHome(ctx.content, settler, atomicId));
+}
 
 /**
  * The original's `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_PRAY = 12`, bound `setatomic 6 12 "..._pray"` for the
