@@ -167,13 +167,18 @@ export function settlerTribeOf(e: SnapshotEntity): number | undefined {
   return num(settler?.tribe);
 }
 
-/** The settler's hunger/fatigue deficits, fixed-point 0..ONE where higher is worse. */
-export function settlerNeedsOf(e: SnapshotEntity): { hunger: Fixed; fatigue: Fixed } | undefined {
-  const settler = e.components.Settler as { hunger?: unknown; fatigue?: unknown } | undefined;
+/** The settler's need deficits, fixed-point 0..ONE where higher is worse. */
+export function settlerNeedsOf(
+  e: SnapshotEntity,
+): { hunger: Fixed; fatigue: Fixed; piety: Fixed } | undefined {
+  const settler = e.components.Settler as
+    | { hunger?: unknown; fatigue?: unknown; piety?: unknown }
+    | undefined;
   const hunger = num(settler?.hunger);
   const fatigue = num(settler?.fatigue);
-  return hunger !== undefined && fatigue !== undefined
-    ? { hunger: hunger as Fixed, fatigue: fatigue as Fixed }
+  const piety = num(settler?.piety);
+  return hunger !== undefined && fatigue !== undefined && piety !== undefined
+    ? { hunger: hunger as Fixed, fatigue: fatigue as Fixed, piety: piety as Fixed }
     : undefined;
 }
 
