@@ -9,7 +9,16 @@ import {
   playersOfBits,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { adminCommand, playerCommand, type SimEvent, Simulation } from '../../src/index.js';
+import {
+  adminCommand,
+  exportSaveGame,
+  parseSaveGame,
+  playerCommand,
+  restoreSimulation,
+  type SimEvent,
+  Simulation,
+  serializeSaveGame,
+} from '../../src/index.js';
 import { isAuthorized } from '../../src/systems/command/authority.js';
 import { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from '../../src/systems/match/index.js';
 import { SYSTEM_ORDER } from '../../src/systems/schedule.js';
@@ -253,6 +262,25 @@ describe('matchSystem - death and victory over the declared participants', () =>
     const liveOrder = playerCommand(P0, { kind: 'setStance', entity: winner, mode: 0 });
     expect(isAuthorized(sim.world, deadOrder)).toBe(false);
     expect(isAuthorized(sim.world, liveOrder)).toBe(true);
+  });
+
+  it('carries a decided match through the save round trip', () => {
+    const sim = fresh();
+    declare(sim, [P0, P1]);
+    personOf(sim, P0);
+    const doomed = personOf(sim, P1);
+    sim.enqueueSetup({ kind: 'debugKill', target: doomed });
+    runTo(sim, FIRST_CHECK_TICK);
+
+    const bytes = serializeSaveGame(exportSaveGame(sim));
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), { content: testContent() }).sim;
+    expect(restored.hashState()).toBe(sim.hashState());
+    expect(serializeSaveGame(exportSaveGame(restored))).toBe(bytes);
+    expect(restored.matchOutcome(P0)).toBe('victory');
+    expect(restored.matchOutcome(P1)).toBe('defeat');
+    // A restored winner keeps the win: the loaded match is decided, so no later check re-runs it.
+    expect(runTo(restored, FIRST_CHECK_TICK + 2 * MATCH_DEATH_CHECK_INTERVAL_TICKS)).toEqual([]);
+    expect(restored.matchOutcome(P0)).toBe('victory');
   });
 
   it('decides on the same tick for the same seed', () => {
