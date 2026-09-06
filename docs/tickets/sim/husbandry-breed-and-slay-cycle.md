@@ -75,7 +75,7 @@ Byte-level evidence from the owned copy's unencrypted `the original` (analysed i
 the original only (treat as approximation): atomic event 27 deposits the event's good into the work
 house stock with the amount scaled by the breeder's job efficiency.
 
-## Required outcome
+## Scope
 
 1. **Content and pipeline.** A producing building's `recipes` come from its `produces` list
    restricted to the goods its worker jobs enable (`tribes[].jobEnables` of kind `good`). That
