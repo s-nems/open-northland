@@ -1,8 +1,8 @@
 import type { ContentSet } from '@open-northland/data';
 import type { Command } from '../core/commands/index.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
-
 import { type Simulation, simFor } from '../simulation.js';
+import type { MissionScript } from '../systems/missions/index.js';
 import { CORE_INVARIANTS, checkInvariants, type Invariant } from './invariants.js';
 
 /** The outcome of a headless run: the sim it left behind plus every collected failure. */
@@ -27,13 +27,15 @@ export interface ScenarioOptions {
   seed?: number;
   /** A decoded terrain grid. Omit to run mapless. */
   map?: TerrainMap;
+  /** The mission script the MissionSystem runs, once `setMissionsEnabled` turns it on. */
+  missions?: MissionScript;
 }
 
 class Scenario {
   private readonly sim: Simulation;
 
-  constructor(content: ContentSet, { seed = 1, map }: ScenarioOptions = {}) {
-    this.sim = simFor({ content, seed, map });
+  constructor(content: ContentSet, { seed = 1, map, missions }: ScenarioOptions = {}) {
+    this.sim = simFor({ content, seed, map, missions });
   }
 
   /** Authored-setup commands enqueued before `run` apply on the first tick's CommandSystem pass. */

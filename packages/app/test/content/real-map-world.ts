@@ -7,7 +7,7 @@ import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
 import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
 import { sessionDiplomacy } from '../../src/game/session-diplomacy.js';
-import type { AuthoredJoinRows } from '../../src/game/world/index.js';
+import { type AuthoredJoinRows, mapScriptWorld } from '../../src/game/world/index.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
 /**
@@ -34,6 +34,8 @@ export interface RealMapWorldOptions {
   readonly rules?: SessionRules;
   /** Also spawn the map's berry bushes (the `?map=` entry does; a scenario that ignores food need not). */
   readonly berryBushes?: boolean;
+  /** Run the map's mission script (the `?missions=on` flag). Omitted leaves the sim's default, off. */
+  readonly missions?: boolean;
 }
 
 export interface RealMapWorld {
@@ -79,6 +81,8 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     content: { content: merge.content },
     aiSeats: options.aiSeats,
     playerRoster: script?.players ?? [],
+    script: mapScriptWorld(script, ir),
+    missions: options.missions ?? null,
     // Each played seat's assistant and each AI seat's, so a headless run measures an economy that
     // dresses itself like the browser's.
     assistantSeats: [...humanSeats, ...options.aiSeats],

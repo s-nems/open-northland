@@ -13,6 +13,7 @@ export * from './equipment.js';
 export * from './family.js';
 export * from './livestock.js';
 export * from './match.js';
+export * from './mission.js';
 export * from './movement.js';
 export * from './needs.js';
 export * from './ownership.js';

@@ -1,67 +1,9 @@
 import { BUILDING_KIND, type TerrainMapFile } from '@open-northland/data';
 import { components, type TerrainMap } from '@open-northland/sim';
-
-/**
- * The narrow `ir.json` row views the authored-entity joins read: structural picks over the raw fetched
- * IR, so an entry can join by name without the full zod `parseContentSet` over the multi-MB file.
- */
-export interface AuthoredJoinRows {
-  readonly buildingBobs?: readonly {
-    editName?: string;
-    level?: number;
-    typeId?: number;
-    tribeId?: number;
-  }[];
-  readonly buildings?: readonly { typeId?: number; id?: string; kind?: string }[];
-  readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
-  readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
-  readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
-  /** The `animaltypes` rows. A species places only when its tribe has a living record
-   *  (`hitpointsAdult` > 0); without one the sim would drop the spawn and leave the count dishonest. */
-  readonly animals?: readonly { tribeType?: number; hitpointsAdult?: number }[];
-}
-
-/**
- * Canonicalize an authored role or species name to its `.ini` slug: lowercase, punctuation and space
- * runs to `_`, edge underscores trimmed. Maps author freehand variants (`coin maker`, `herb & mush
- * guy`, `SOLDIER_UNARMED`) that an exact-string join drops (observed across `content/maps/*.json`).
- */
-function normalizeRoleKey(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
+import { type AuthoredJoinRows, contentJoins } from './content-joins.js';
 
 function anchorKey(hx: number, hy: number): string {
   return `${hx},${hy}`;
-}
-
-/** One authored `sethouse` record's join key: its `[GfxHouse]` `EditName` and growth level. NUL-separated,
- *  because a plain space would let `"foo 1" L0` collide with `"foo" L10`. */
-export function houseBobKey(editName: string, level: number): string {
-  return `${editName}\u0000${level}`;
-}
-
-/** The `[GfxHouse]` record each authored house name resolves to: its building type and the tribe whose
- *  skin it is. First record wins per key, matching the sim's lowest-id anchor lookup. */
-export function houseBobsByName(rows: AuthoredJoinRows): Map<string, { typeId: number; tribeId: number }> {
-  const byNameLevel = new Map<string, { typeId: number; tribeId: number }>();
-  for (const b of rows.buildingBobs ?? []) {
-    if (b.editName === undefined || b.typeId === undefined) continue;
-    const key = houseBobKey(b.editName, b.level ?? 0);
-    if (!byNameLevel.has(key)) byNameLevel.set(key, { typeId: b.typeId, tribeId: b.tribeId ?? 0 });
-  }
-  return byNameLevel;
-}
-
-/** Tribe slug (`ir.tribes[].id`) to its `TRIBE_TYPE_*` id - the key a `sethuman` names its tribe by. */
-export function tribeIdsByName(rows: AuthoredJoinRows): Map<string, number> {
-  const byName = new Map<string, number>();
-  for (const t of rows.tribes ?? []) {
-    if (t.id !== undefined && t.typeId !== undefined && !byName.has(t.id)) byName.set(t.id, t.typeId);
-  }
-  return byName;
 }
 
 /** The authored lanes this join reads; a decoded map's `entities` satisfies it. */
@@ -81,6 +23,8 @@ export type AuthoredPlacement =
       owner?: number;
       /** Authored starting stock (`addgoods`), good names resolved to good typeIds. */
       goods?: { good: number; amount: number }[];
+      /** The `sethouse` mission object id, the handle the map's script addresses this house by. */
+      missionId?: number;
     }
   | {
       kind: 'human';
@@ -96,6 +40,10 @@ export type AuthoredPlacement =
       home?: { x: number; y: number };
       /** The authored workplace (`attachtohouse` naming any other building), as its anchor half-cell. */
       workplace?: { x: number; y: number };
+      /** The `sethuman` mission object id, the handle the map's script addresses this settler by. */
+      missionId?: number;
+      /** The `sethuman` behaviour mask, carried verbatim; no system reads the bits yet. */
+      behaviourFlags?: number;
     }
   | {
       /** One `setanimal` record spawns one unowned creature at its authored half-cell, never a whole
@@ -104,6 +52,8 @@ export type AuthoredPlacement =
       tribe: number;
       x: number;
       y: number;
+      /** The `setanimal` mission object id. */
+      missionId?: number;
     };
 
 /**
@@ -131,48 +81,7 @@ export function resolveAuthoredPlacements(
   droppedAttachments: number;
   skippedAnimals: number;
 } {
-  const bobByNameLevel = houseBobsByName(rows);
-  const kindByType = new Map<number, string>();
-  for (const b of rows.buildings ?? []) {
-    if (b.typeId !== undefined && b.kind !== undefined) kindByType.set(b.typeId, b.kind);
-  }
-  const jobByName = new Map<string, number>();
-  for (const j of rows.jobs ?? []) {
-    const name = j.name ?? j.id;
-    if (name !== undefined && j.typeId !== undefined) {
-      const key = normalizeRoleKey(name);
-      if (!jobByName.has(key)) jobByName.set(key, j.typeId);
-    }
-  }
-  const tribeByName = tribeIdsByName(rows);
-  // `setanimal` authors either slug or display name, so both key the species join.
-  const animalTribes = new Set<number>();
-  for (const a of rows.animals ?? []) {
-    if (a.tribeType !== undefined && (a.hitpointsAdult ?? 0) > 0) animalTribes.add(a.tribeType);
-  }
-  const speciesByKey = new Map<string, number>();
-  for (const t of rows.tribes ?? []) {
-    if (t.typeId === undefined || !animalTribes.has(t.typeId)) continue;
-    for (const name of [t.id, t.name]) {
-      if (name === undefined) continue;
-      const key = normalizeRoleKey(name);
-      if (!speciesByKey.has(key)) speciesByKey.set(key, t.typeId);
-    }
-  }
-  const goodByName = new Map<string, number>();
-  const goodTypeIds = new Set<number>();
-  for (const g of rows.goods ?? []) {
-    const name = g.name ?? g.id;
-    if (name !== undefined && g.typeId !== undefined && !goodByName.has(name)) goodByName.set(name, g.typeId);
-    if (g.typeId !== undefined) goodTypeIds.add(g.typeId);
-  }
-  // A good is authored as a quoted name, or rarely as a bare goodtype typeId (`addgoods 49 1000`).
-  const resolveGood = (name: string): number | undefined => {
-    const byName = goodByName.get(name);
-    if (byName !== undefined) return byName;
-    const asId = /^\d+$/.test(name) ? Number.parseInt(name, 10) : Number.NaN;
-    return goodTypeIds.has(asId) ? asId : undefined;
-  };
+  const joins = contentJoins(rows);
   // `map` is the sim's half-cell grid, so authored half-cells bound-check against it directly.
   const inBounds = (hx: number, hy: number): boolean =>
     hx >= 0 && hy >= 0 && hx < map.width && hy < map.height;
@@ -186,14 +95,14 @@ export function resolveAuthoredPlacements(
   // placed buildings enter it, so an attachment naming a skipped house is dropped with it.
   const kindByAnchor = new Map<string, string>();
   for (const b of entities.buildings) {
-    const hit = bobByNameLevel.get(houseBobKey(b.name, b.level));
+    const hit = joins.buildingBob(b.name, b.level);
     if (hit === undefined || !inBounds(b.hx, b.hy)) {
       skipped++;
       continue;
     }
     // A missing good must not cost the map its house, so an unresolvable name is only counted.
     const goods = (b.goods ?? []).flatMap((g) => {
-      const good = resolveGood(g.name);
+      const good = joins.good(g.name);
       if (good === undefined) {
         droppedGoods++;
         return [];
@@ -208,22 +117,23 @@ export function resolveAuthoredPlacements(
       y: b.hy,
       ...(components.isValidPlayer(b.player) ? { owner: b.player } : {}),
       ...(goods.length > 0 ? { goods } : {}),
+      ...(b.missionId !== undefined ? { missionId: b.missionId } : {}),
     });
     // First placement wins, to agree with the sim's lowest-id anchor lookup as long as the sim accepts
     // that placement; no decoded map shares an anchor between two kinds.
-    const kind = kindByType.get(hit.typeId);
+    const kind = joins.buildingKind(hit.typeId);
     const key = anchorKey(b.hx, b.hy);
     if (kind !== undefined && !kindByAnchor.has(key)) kindByAnchor.set(key, kind);
   }
   for (const h of entities.humans) {
-    const jobType = jobByName.get(normalizeRoleKey(h.role));
-    const tribe = tribeByName.get(h.tribe);
+    const jobType = joins.job(h.role);
+    const tribe = joins.tribe(h.tribe);
     if (jobType === undefined || tribe === undefined || !inBounds(h.hx, h.hy)) {
       skipped++;
       continue;
     }
     // An unresolvable pick only counts: the settler still spawns on the gather-everything default.
-    const gatherGood = h.producedGood !== undefined ? resolveGood(h.producedGood) : undefined;
+    const gatherGood = h.producedGood !== undefined ? joins.good(h.producedGood) : undefined;
     if (h.producedGood !== undefined && gatherGood === undefined) droppedPicks++;
     let home: { x: number; y: number } | undefined;
     let workplace: { x: number; y: number } | undefined;
@@ -246,18 +156,26 @@ export function resolveAuthoredPlacements(
       ...(gatherGood !== undefined ? { gatherGood } : {}),
       ...(home !== undefined ? { home } : {}),
       ...(workplace !== undefined ? { workplace } : {}),
+      ...(h.missionId !== undefined ? { missionId: h.missionId } : {}),
+      ...(h.behaviourFlags !== undefined ? { behaviourFlags: h.behaviourFlags } : {}),
     });
   }
   let skippedAnimals = 0;
   // Approximation: `setanimal` also names an animal type the maps decoder drops, so every authored
   // animal spawns adult with `hitpoints_adult`, and its authored owner is not read yet.
   for (const a of entities.animals) {
-    const tribe = speciesByKey.get(normalizeRoleKey(a.species));
+    const tribe = joins.species(a.species);
     if (tribe === undefined || !inBounds(a.hx, a.hy)) {
       skippedAnimals++;
       continue;
     }
-    placements.push({ kind: 'animal', tribe, x: a.hx, y: a.hy });
+    placements.push({
+      kind: 'animal',
+      tribe,
+      x: a.hx,
+      y: a.hy,
+      ...(a.missionId !== undefined ? { missionId: a.missionId } : {}),
+    });
   }
   return { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals };
 }

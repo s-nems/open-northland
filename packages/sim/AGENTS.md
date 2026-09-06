@@ -78,7 +78,8 @@ The hygiene suite enforces the import and nondeterminism boundary. Normal change
 - `core/`: deterministic primitives, commands, events, RNG, and fixed point
 - `ecs/`: world and component storage
 - `components/`: plain component definitions
-- `systems/`: behavior grouped by domain, plus the schedule
+- `systems/`: behavior grouped by domain, plus the schedule; `systems/missions/AGENTS.md` adds the
+  mission engine's own rules
 - `nav/`: half-cell conversion, terrain graphs, and routing
 - `replay/`: command replay and divergence tools
 - `save/`: the persisted SaveGame format, its export, and its validated restore path

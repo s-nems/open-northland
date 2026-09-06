@@ -29,6 +29,7 @@ const BASE_OPTIONS = {
   fog: null,
   progression: null,
   needs: null,
+  missions: null,
 } as const;
 
 function exported(sim: Simulation, token: string): { save: SaveGame; bytes: string } {

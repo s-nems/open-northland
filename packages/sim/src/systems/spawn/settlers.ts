@@ -11,6 +11,8 @@ import {
   MoveSpeed,
   Owner,
   Position,
+  stampMissionBehaviour,
+  stampMissionId,
   stampOwner,
   Weapon,
   WorkFlag,
@@ -115,6 +117,8 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
     world.add(e, MoveSpeed, { perTick: fx.div(ONE, fx.fromInt(spec.moveSpeed)) });
   }
   stampOwner(world, e, spec.owner);
+  stampMissionId(world, e, spec.missionId);
+  stampMissionBehaviour(world, e, spec.behaviourFlags);
   // The default stance is owned-only, so an unowned or golden settler carries no Stance at all.
   if (world.has(e, Owner)) stampDefaultStance(world, content, e, spec.jobType);
   return e;

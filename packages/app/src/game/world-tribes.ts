@@ -1,6 +1,6 @@
 import type { MapScript, TerrainMapFile } from '@open-northland/data';
 import { PRIMARY_TRIBE } from './rules.js';
-import { type AuthoredJoinRows, houseBobKey, houseBobsByName, tribeIdsByName } from './world/index.js';
+import { type AuthoredJoinRows, contentJoins } from './world/index.js';
 
 /**
  * The civilizations one world draws, the first of which is the base: it backs a building type or a
@@ -32,11 +32,10 @@ export function worldTribes(
   for (const seat of script?.players ?? []) add(seat.tribeId);
   // The same joins the placements themselves resolve through, so the art loaded and the tribe the sim
   // stamps can never disagree.
-  const tribeByName = tribeIdsByName(rows);
-  for (const human of entities?.humans ?? []) add(tribeByName.get(human.tribe));
-  const houseBobs = houseBobsByName(rows);
+  const joins = contentJoins(rows);
+  for (const human of entities?.humans ?? []) add(joins.tribe(human.tribe));
   for (const building of entities?.buildings ?? []) {
-    add(houseBobs.get(houseBobKey(building.name, building.level))?.tribeId);
+    add(joins.buildingBob(building.name, building.level)?.tribeId);
   }
   return [PRIMARY_TRIBE, ...[...tribes].filter((t) => t !== PRIMARY_TRIBE).sort((a, b) => a - b)];
 }

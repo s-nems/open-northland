@@ -45,6 +45,14 @@ export type RulesCommand =
     }
   | {
       /**
+       * Toggle the map's mission script (`MissionRules`): while enabled the MissionSystem evaluates
+       * the script the world was built with. Default off, and inert in a world wired with no script.
+       */
+      readonly kind: 'setMissionsEnabled';
+      readonly enabled: boolean;
+    }
+  | {
+      /**
        * Set the directed diplomatic stance player `from` holds toward player `to`. Sets the
        * `DiplomacyRules` singleton (created on first use), so the table hashes and replays like any
        * other state.

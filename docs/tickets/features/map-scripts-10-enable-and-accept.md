@@ -6,13 +6,13 @@
 Map-scripts epic, stage 10 of 10. Also needs stages 5, 7, 8, and 9 merged; check the coverage report
 before starting.
 
-With the executors in place, `missionsEnabled` still defaults to `false`, so players never see a
-script run. This stage turns it on, proves a campaign map end to end, and records what the original
-confirms.
+With the executors in place, `MissionRules` still defaults to off and only `?missions=on` turns a
+script on, so players never see one run. This stage flips the default, proves a campaign map end to
+end, and records what the original confirms.
 
 ## Scope
 
-- Flip `WorldRules.missionsEnabled` to `true`; keep the flag for tests and the coverage tool.
+- Flip the `MissionRules` default to on; keep the flag and the `?missions=` override for tests.
 - Register an acceptance scene on a real campaign map (the CnMod `cn_1` or the base game's first
   mission) that lists fired missions and their tick, and update `docs/SCENES.md`.
 - Update golden hashes only where a scenario deliberately includes a scripted map; state every moved

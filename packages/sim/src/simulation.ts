@@ -37,6 +37,7 @@ import {
   placementBlockerVersion,
   workFlagBlockerVersion,
 } from './systems/footprint/index.js';
+import type { MissionScript } from './systems/missions/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
@@ -50,6 +51,8 @@ export interface SimOptions {
   content: ContentSet;
   /** Dimensions plus a row-major landscape-typeId grid. Omitted for a mapless sim. */
   map?: TerrainMap;
+  /** The map's decoded mission script. Omitted for a world that runs no script. */
+  missions?: MissionScript;
 }
 
 /** Wraps one system invocation for timing; observational only. */
@@ -75,6 +78,9 @@ export class Simulation {
    * gates read, so `hashState` mixes its bytes in after the components. Empty while the fog mode is OFF.
    */
   readonly fog?: FogState;
+  /** The map's mission script, the MissionSystem's content input; undefined for a world that runs
+   *  none. An immutable input like `content`, so `hashState` does not mix it in. */
+  readonly missions?: MissionScript;
   private readonly map?: TerrainMap;
   private mapFingerprintMemo?: string;
   /** Null until {@link setSyncDigest} turns the digest on; while set it is the world's mutation sink. */
@@ -98,6 +104,7 @@ export class Simulation {
     this.rng = new Rng(opts.seed);
     this.seed = opts.seed;
     this.content = opts.content;
+    if (opts.missions !== undefined) this.missions = opts.missions;
     if (opts.map !== undefined) {
       this.map = opts.map;
       this.terrain = buildTerrainGraph(opts.content, opts.map);
@@ -168,6 +175,7 @@ export class Simulation {
       // An absent optional resource must be omitted, not set to undefined.
       ...(this.terrain !== undefined ? { terrain: this.terrain } : {}),
       ...(this.fog !== undefined ? { fog: this.fog } : {}),
+      ...(this.missions !== undefined ? { missions: this.missions } : {}),
     };
     const instrument = this.instrument;
     for (const { name, system } of SYSTEM_ORDER) {
@@ -373,6 +381,7 @@ export interface SimInputs {
   readonly content: ContentSet;
   readonly seed: number;
   readonly map?: TerrainMap | undefined;
+  readonly missions?: MissionScript | undefined;
 }
 
 /**
@@ -380,6 +389,11 @@ export interface SimInputs {
  * `exactOptionalPropertyTypes` the key must be omitted, since Simulation builds its terrain graph iff the
  * key is present.
  */
-export function simFor({ content, seed, map }: SimInputs): Simulation {
-  return new Simulation({ seed, content, ...(map !== undefined ? { map } : {}) });
+export function simFor({ content, seed, map, missions }: SimInputs): Simulation {
+  return new Simulation({
+    seed,
+    content,
+    ...(map !== undefined ? { map } : {}),
+    ...(missions !== undefined ? { missions } : {}),
+  });
 }

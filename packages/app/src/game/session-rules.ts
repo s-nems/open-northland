@@ -11,11 +11,12 @@ export function onOffParam(params: URLSearchParams, name: string): boolean | nul
 }
 
 /** The `?fog=`, `?progression=` and `?needs=` flags as the session's rule overrides. */
-export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
+export function sessionRuleOverrides(params: URLSearchParams): SessionRules & { readonly missions: boolean | null } {
   return {
     fog: fogModeParam(params),
     progression: onOffParam(params, 'progression'),
     needs: onOffParam(params, 'needs'),
+    missions: onOffParam(params, 'missions'),
   };
 }
 
@@ -30,4 +31,7 @@ export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRul
     sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: overrides.progression });
   }
   if (overrides.needs !== null) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: overrides.needs });
+  if (overrides.missions !== null) {
+    sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: overrides.missions });
+  }
 }

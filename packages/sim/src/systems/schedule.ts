@@ -21,6 +21,7 @@ import {
   livestockVisitSystem,
 } from './livestock/index.js';
 import { matchSystem } from './match/index.js';
+import { missionSystem } from './missions/index.js';
 import { animalWanderSystem } from './movement/animal-wander.js';
 import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
@@ -47,6 +48,9 @@ interface ScheduledSystem {
 /** Canonical per-tick execution order. Engine wiring, not part of the public systems namespace. */
 export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'command', system: commandSystem },
+  // Directly after the commands that enable it, and at the head of the tick, so a mission judges the
+  // settled world the previous tick's cleanup left behind.
+  { name: 'mission', system: missionSystem },
   // After the orders that raise and lower alarms and before the planner, so a shelter that stopped
   // qualifying releases its civilians in time to claim another one on this same pass.
   { name: 'defence', system: defenceSystem },

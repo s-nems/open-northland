@@ -179,6 +179,42 @@ describe('resolveAuthoredPlacements', () => {
     expect(kinds.lastIndexOf('building')).toBeLessThan(kinds.indexOf('human'));
   });
 
+  it('reads a catalog name the map wrote in another case', () => {
+    // Tribe and good names are `.ini` ids, and maps vary only their case (`Byzantine`, `Leather`,
+    // the upper-case `logicdefines.inc` macro tails); the join folds case for both.
+    const entities = {
+      buildings: [
+        { name: 'viking barracks', level: 0, player: 0, hx: 8, hy: 4, goods: [{ name: 'WHEAT', count: 5 }] },
+      ],
+      humans: [{ tribe: 'Viking', role: 'builder', player: 0, hx: 3, hy: 5 }],
+      animals: [],
+    };
+    const { placements, droppedGoods } = resolveAuthoredPlacements(entities, AUTHORED_ROWS, authoredMap());
+    expect(droppedGoods).toBe(0);
+    expect(placements).toEqual([
+      { kind: 'building', typeId: 30, tribe: 1, x: 8, y: 4, owner: 0, goods: [{ good: 4, amount: 5 }] },
+      { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0 },
+    ]);
+  });
+
+  it('carries the mission ids and the behaviour mask through to the placements', () => {
+    const entities = {
+      buildings: [{ name: 'viking barracks', level: 0, player: 0, hx: 8, hy: 4, missionId: 1000 }],
+      humans: [
+        { tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5, missionId: 200, behaviourFlags: 8 },
+        // No id and no mask: a placement no mission addresses carries neither field.
+        { tribe: 'viking', role: 'builder', player: 0, hx: 4, hy: 5 },
+      ],
+      animals: [],
+    };
+    const { placements } = resolveAuthoredPlacements(entities, AUTHORED_ROWS, authoredMap());
+    expect(placements).toEqual([
+      { kind: 'building', typeId: 30, tribe: 1, x: 8, y: 4, owner: 0, missionId: 1000 },
+      { kind: 'human', jobType: 7, tribe: 1, x: 3, y: 5, owner: 0, missionId: 200, behaviourFlags: 8 },
+      { kind: 'human', jobType: 7, tribe: 1, x: 4, y: 5, owner: 0 },
+    ]);
+  });
+
   it('drops an attachment whose anchor carries no placed building', () => {
     const entities = {
       // Unresolvable name → skipped, so nothing stands on (2,2) for the attachment to find.

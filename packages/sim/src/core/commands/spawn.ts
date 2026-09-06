@@ -75,6 +75,10 @@ export type SpawnCommand =
        *  `attachtohouse`). Only its own trade's slot is taken, so a full or unrelated building leaves it
        *  unposted rather than demoting it to a hauler. */
       readonly workplace?: { readonly x: number; readonly y: number };
+      /** The {@link MissionObjectId} to stamp; omit for a settler no mission addresses. */
+      readonly missionId?: number;
+      /** The `sethuman` behaviour mask, stamped as a {@link MissionBehaviour}; omit (or 0) for none. */
+      readonly behaviourFlags?: number;
     }
   | {
       /**
@@ -90,4 +94,6 @@ export type SpawnCommand =
        *  `maximumgroupsize` - a decoded map's `setanimal` places one animal at its authored
        *  half-cell. Omit for the record's herd size. */
       readonly count?: number;
+      /** The {@link MissionObjectId} to stamp on every member of the herd. */
+      readonly missionId?: number;
     };

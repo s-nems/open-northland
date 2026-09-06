@@ -133,10 +133,12 @@ All of this section is a reading unless marked otherwise.
   set. That last flag is rewritten at every check and is not what `IsMissionDone` reads.
 - Activation records the current tick only on the inactive-to-active transition. Activating an
   already active mission does not restart its timer. A mission may re-activate itself from its own
-  results to loop (corpus: waves every N seconds).
-- `RandomTimeGone n` draws once per activation from the game's random generator, uniformly in
-  `[n/2, n)`, caches the draw in the goal record, and clears the cache when it fires, so the next
-  activation draws again. A reimplementation must draw from the simulation's seeded generator.
+  results to loop (corpus: waves every N seconds). A mission never activated carries activation tick
+  0, so a `CheckMission` probe of one reads its `TimeGone` as long since elapsed.
+- `RandomTimeGone n` draws from the game's random generator, uniformly in `[n/2, n)` under integer
+  division, and caches the draw in the goal record. The cache is cleared the moment the span elapses,
+  not when the mission fires, so a goal held back by a second goal redraws on every later check. A
+  reimplementation must draw from the simulation's seeded generator.
 - A mission with no goals holds at once under `successfullif` 0, 2, and 3, and never under 1.
 - `CheckMission n` evaluates mission `n`'s goals immediately (updating its goal flags) and reports its
   `successfullif` verdict without executing results. `IsMissionDone n` reads mission `n`'s stored goal

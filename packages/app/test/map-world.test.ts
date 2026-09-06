@@ -18,6 +18,7 @@ const NO_SESSION_FLAGS = {
   fog: null,
   progression: null,
   needs: null,
+  missions: null,
 } as const;
 
 /** The authored join rows as a served IR document. Sound for these fixtures: the assembly reads the
@@ -126,10 +127,12 @@ describe('buildMapWorld', () => {
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
-      diplomacy: [
-        { from: 0, to: 1, state: 'friend' },
-        { from: 1, to: 0, state: 'neutral' },
-      ],
+      script: {
+        diplomacy: [
+          { from: 0, to: 1, state: 'friend' },
+          { from: 1, to: 0, state: 'neutral' },
+        ],
+      },
     });
     expect(sim.diplomacyStance(0, 1)).toBe('friend');
     expect(sim.diplomacyStance(1, 0)).toBe('neutral');

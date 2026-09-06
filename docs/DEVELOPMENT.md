@@ -58,6 +58,10 @@ fresh conversion into a temporary directory and validates the result. It uses
 `CULTURES_GAME_DIR` and, when needed, `CULTURES_MOD_ROOT`. `test:engines` boots the app in Electron
 and the Playwright browsers and compares their state hashes with Node (see `TESTING.md`).
 
+`npm run missions:coverage` reports how much of that content's `[MissionData]` scripts this build can
+run, per opcode and (with `--per-map`) per map. Each stage of the map-scripts epic states its
+coverage delta with it.
+
 ## Browser entries
 
 `npm run dev` opens the main menu. With `content/backdrops/` present (see `npm run menu-backdrops`

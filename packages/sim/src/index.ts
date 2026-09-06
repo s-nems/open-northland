@@ -127,6 +127,13 @@ export {
   type SystemInstrument,
 } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
+export type {
+  MissionDefinition,
+  MissionGoalOp,
+  MissionResultOp,
+  MissionScript,
+  ResolvedOp,
+} from './systems/missions/index.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
 // independently without restating the sim's travel time.
 export { WALK_TICKS_PER_CELL } from './systems/movement/system.js';

@@ -62,6 +62,9 @@ interface AuthoredPlaceBuildingFields {
    *  whatever the default/`fillStock` seeding put in the stockpile. Ignored for an `underConstruction`
    *  site, like `fillStock`. */
   readonly initialGoods?: readonly { readonly good: number; readonly amount: number }[];
+  /** The {@link import('../../components/mission.js').MissionObjectId} to stamp; omit for a house no
+   *  mission addresses. */
+  readonly missionId?: number;
 }
 
 /** A `placeBuilding` a seat issues: the authored-setup options are unrepresentable. */

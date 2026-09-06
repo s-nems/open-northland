@@ -95,6 +95,7 @@ export const COMMAND_ISSUER: {
   setGatherGood: 'seat',
   setJob: 'seat',
   setMatchParticipants: 'trusted',
+  setMissionsEnabled: 'trusted',
   setNeedsEnabled: 'trusted',
   setPlayerAi: 'trusted',
   setPlayerPlacementTribes: 'trusted',

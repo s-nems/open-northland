@@ -1,10 +1,12 @@
 import type { ContentSet } from '@open-northland/data';
+import { missionRecords, missionStateExists } from '../components/index.js';
 import { assertNever } from '../core/brand.js';
 import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import { componentByName } from '../ecs/component.js';
 import type { Entity } from '../ecs/world.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
 import { Simulation } from '../simulation.js';
+import type { MissionScript } from '../systems/missions/index.js';
 import { FOG_STATE } from '../systems/vision/index.js';
 import { simContentFingerprint } from './content-fingerprint.js';
 import { type ComponentSection, type FogSection, SAVE_MAP_KEY, type SaveGame } from './format.js';
@@ -13,6 +15,9 @@ export interface RestoreOptions {
   content: ContentSet;
   /** The decoded map the save was taken on; required iff the save's header names a map fingerprint. */
   map?: TerrainMap;
+  /** The map's mission script; required iff the save carries mission records, and it must be the
+   *  script the run was saved on. */
+  missions?: MissionScript;
 }
 
 export interface RestoredSimulation {
@@ -46,6 +51,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
     seed: header.seed,
     content: opts.content,
     ...(opts.map !== undefined ? { map: opts.map } : {}),
+    ...(opts.missions !== undefined ? { missions: opts.missions } : {}),
   });
   const fingerprint = sim.mapFingerprint ?? null;
   if (fingerprint !== header.mapFingerprint) {
@@ -75,6 +81,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
     }
   }
   sim.restoreTick(header.tick);
+  assertMissionScriptMatches(sim, opts.missions);
   // Structural validation cannot see that a saved reference points at a settler with no marriage or a
   // building nobody owns. The core invariants can, and a save that fails them would otherwise throw
   // on every tick of a world the player already believes they loaded.
@@ -83,6 +90,22 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
     throw new Error(`save state violates the core invariants: ${violations.join('; ')}`);
   }
   return { sim, contentRevisionDiffers: header.contentRevision !== loaded.contentRevision };
+}
+
+/**
+ * Mission records are positional over the script's own order, and the script is not saved, so a
+ * restore handed another map's script - or none - would map every record to the wrong mission and
+ * run it. The `mapFingerprint` check covers the terrain, not the `.script.json` beside it.
+ */
+function assertMissionScriptMatches(sim: Simulation, missions: MissionScript | undefined): void {
+  if (!missionStateExists(sim.world)) return;
+  const saved = missionRecords(sim.world).length;
+  const wired = missions?.missions.length ?? 0;
+  if (saved !== wired) {
+    throw new Error(
+      `save.sections: the save carries ${saved} mission records, the restore target's script has ${wired}`,
+    );
+  }
 }
 
 function restoreStore(sim: Simulation, section: ComponentSection): void {

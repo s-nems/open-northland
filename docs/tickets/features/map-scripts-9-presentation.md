@@ -1,7 +1,6 @@
 # Present script events: cutscenes, sounds, camera, info lines, names, effects
 
 **Area:** app, audio, pipeline · **Focus:** mission events · **Priority:** P2
-**Blocked by:** [map-scripts-2-mission-system-core.md](map-scripts-2-mission-system-core.md)
 
 Map-scripts epic, stage 9 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md),
 "Briefings and the mission window", "On-screen info lines". Depends on the mission window and the
@@ -24,7 +23,14 @@ raw script instead of listening to the sim.
   where the HUD has room and the original's docs put them (top right).
 - `SetHumanName` from the map string table, and extract `[misc_humannames]` (`setname <humanId>
   <stringId>`) in the pipeline so placed humans get their names at build.
-- `SetVisible` and the evaluated flag feed the mission window's goal list.
+- `SetVisible` and the evaluated flag feed the mission window's goal list; the mission window also
+  needs each mission's `description <stringId>`, which the stage-2 script join drops because no
+  consumer read it. Carry it into `MissionDefinition` here.
+- Route the `missionUnsupported` event into `diag` so a player's log names what a map asked for and
+  did not get; today only tests read it.
+- `PlayCutscene` ends the evaluation pass it fires in (the original raises a stop flag the pass loop
+  checks after each mission). Stage 2 left the mechanism out because no opcode it implements raises
+  it; add it with this opcode and pin it with a two-mission test.
 - `SetWeather`, `StartEarthquake`, `SetMapAreaMarker*`, `SetImportLandscapeMarker` as events with a
   minimal visible reaction; richer effects can follow as their own tickets.
 - Split into two sessions if needed: cutscene, sound, camera, selection, names first; info lines and

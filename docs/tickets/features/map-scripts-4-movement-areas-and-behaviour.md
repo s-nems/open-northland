@@ -4,7 +4,8 @@
 **Blocked by:** [map-scripts-3-entities-and-ownership.md](map-scripts-3-entities-and-ownership.md)
 
 Map-scripts epic, stage 4 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md),
-"Human behaviour flags" and the range-test goals.
+"Human behaviour flags" and the range-test goals. Stage 2 already carries the mask onto placed
+settlers as `MissionBehaviour`; this stage is where its bits start meaning something.
 
 Scripted units must walk somewhere and scripts must notice where the player is:
 `FindPosByPlayersMapMoveable` (1,135 goals) and `FindPosByHumans` (589) gate most story beats,

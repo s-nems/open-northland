@@ -1,14 +1,10 @@
-import type { MapDiplomacy } from '@open-northland/data';
 import type { Simulation, TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { resolveWorldContent, type WorldContentOptions } from '../sandbox/index.js';
 import { authoredCatalogExtras } from './authored-catalog.js';
-import {
-  type AuthoredEntities,
-  type AuthoredJoinRows,
-  resolveAuthoredPlacements,
-} from './authored-placements.js';
-import { enqueuePlacements, newWorldSim } from './build.js';
+import { type AuthoredEntities, resolveAuthoredPlacements } from './authored-placements.js';
+import { enqueuePlacements, type MapScriptWorld, newWorldSim } from './build.js';
+import type { AuthoredJoinRows } from './content-joins.js';
 
 /**
  * A sim on a real decoded map with no placed entities, for an imported map carrying no authored
@@ -19,9 +15,9 @@ export function runBareMap(
   seed: number,
   map: TerrainMap,
   options: WorldContentOptions = {},
-  diplomacy: readonly MapDiplomacy[] = [],
+  script: MapScriptWorld = {},
 ): Simulation {
-  return newWorldSim(seed, map, resolveWorldContent(map, options), diplomacy);
+  return newWorldSim(seed, map, resolveWorldContent(map, options), script);
 }
 
 /**
@@ -37,7 +33,7 @@ export function runAuthoredMap(
   entities: AuthoredEntities,
   rows: AuthoredJoinRows,
   options: WorldContentOptions = {},
-  diplomacy: readonly MapDiplomacy[] = [],
+  script: MapScriptWorld = {},
 ): Simulation | null {
   const { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals } =
     resolveAuthoredPlacements(entities, rows, map);
@@ -50,7 +46,7 @@ export function runAuthoredMap(
   }
 
   const content = resolveWorldContent(map, options, authoredCatalogExtras(placements, rows));
-  const sim = newWorldSim(seed, map, content, diplomacy);
+  const sim = newWorldSim(seed, map, content, script);
   enqueuePlacements(sim, placements);
   sim.run(ticks);
   return sim;

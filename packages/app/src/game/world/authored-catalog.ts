@@ -1,6 +1,7 @@
 import { JOB_IDLE } from '../../catalog/jobs.js';
 import type { SandboxContentExtras } from '../sandbox/index.js';
-import type { AuthoredJoinRows, AuthoredPlacement } from './authored-placements.js';
+import type { AuthoredPlacement } from './authored-placements.js';
+import type { AuthoredJoinRows } from './content-joins.js';
 
 /**
  * The catalog rows an authored map's placements add to the sandbox content: every building, job and

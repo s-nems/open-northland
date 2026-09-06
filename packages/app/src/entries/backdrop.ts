@@ -72,11 +72,11 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
   };
   // One tick applies the authored placements (queued commands land on the first step). The script's
   // diplomacy rows ride along, so an ambient coop cast idles instead of fighting its allies.
-  const diplomacy = script?.diplomacy ?? [];
+  const world = { diplomacy: script?.diplomacy ?? [] };
   const sim =
     (loaded.entities !== undefined
-      ? runAuthoredMap(BACKDROP_SEED, 1, simMap, loaded.entities, ir, contentOptions, diplomacy)
-      : null) ?? runBareMap(BACKDROP_SEED, simMap, contentOptions, diplomacy);
+      ? runAuthoredMap(BACKDROP_SEED, 1, simMap, loaded.entities, ir, contentOptions, world)
+      : null) ?? runBareMap(BACKDROP_SEED, simMap, contentOptions, world);
   // A pre-roll turns needs off, like scene worlds: a foodless ambient world would otherwise starve its
   // cast while the extra ticks run.
   const ticks = intParam(params, 'ticks', 1);

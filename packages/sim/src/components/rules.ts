@@ -107,6 +107,27 @@ export function setProfessionProgression(world: World, enabled: boolean): void {
   });
 }
 
+const missionRules = defineWorldSingleton<{ enabled: boolean }>('MissionRules', () => ({
+  enabled: false,
+}));
+
+/**
+ * Whether the map's `[MissionData]` script runs (`systems/missions`). Off by default and off in every
+ * world that wires no script, so a world without missions keeps the state and hash it had before the
+ * mission system existed.
+ */
+export const MissionRules = missionRules.component;
+
+export function missionsEnabled(world: World): boolean {
+  return missionRules.read(world).enabled;
+}
+
+export function setMissionsEnabled(world: World, enabled: boolean): void {
+  missionRules.write(world, (rules) => {
+    rules.enabled = enabled;
+  });
+}
+
 /** A directed player-to-player stance, the values map `diplomacy <from> <to> <state>` rows author. */
 export const DIPLOMACY_STATES = ['friend', 'neutral', 'enemy'] as const;
 export type DiplomacyState = (typeof DIPLOMACY_STATES)[number];

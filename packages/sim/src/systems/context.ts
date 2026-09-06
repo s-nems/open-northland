@@ -4,6 +4,7 @@ import type { EventBuffer } from '../core/events.js';
 import type { Rng } from '../core/rng.js';
 import type { World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
+import type { MissionScript } from './missions/index.js';
 import type { FogState } from './vision/index.js';
 
 export interface SystemContext {
@@ -28,6 +29,9 @@ export interface SystemContext {
    * gates read. Optional like `terrain`, and present but inert while the fog mode is off.
    */
   readonly fog?: FogState;
+  /** The map's mission script. Absent for a world that runs none, which is every world whose builder
+   *  wires none. */
+  readonly missions?: MissionScript;
 }
 
 /**

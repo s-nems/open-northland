@@ -1,7 +1,6 @@
 # Execute the landscape, build-ban, and terrain-tint opcodes
 
 **Area:** sim, render · **Focus:** `systems/missions` · **Priority:** P3
-**Blocked by:** [map-scripts-2-mission-system-core.md](map-scripts-2-mission-system-core.md)
 
 Map-scripts epic, stage 6 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md).
 

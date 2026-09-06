@@ -1,8 +1,15 @@
 import type { ContentSet, MapDiplomacy } from '@open-northland/data';
-import { components, Simulation, type TerrainMap } from '@open-northland/sim';
+import { components, type MissionScript, Simulation, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
 import type { AuthoredPlacement } from './authored-placements.js';
+
+/** What a decoded map's script contributes to a fresh world: the `[playerdata]` stances and the
+ *  `[MissionData]` triggers. A world built without either runs the same as before both existed. */
+export interface MapScriptWorld {
+  readonly diplomacy?: readonly MapDiplomacy[];
+  readonly missions?: MissionScript;
+}
 
 /** Every playable world runs with signpost confinement on, so a civilian acts only within its local
  *  circle and its player's reachable network. Each builder enqueues it rather than the sim defaulting
@@ -13,9 +20,15 @@ export function newWorldSim(
   seed: number,
   map: TerrainMap,
   content: ContentSet,
-  diplomacy: readonly MapDiplomacy[] = [],
+  script: MapScriptWorld = {},
 ): Simulation {
-  const sim = new Simulation({ seed, content, map });
+  const diplomacy = script.diplomacy ?? [];
+  const sim = new Simulation({
+    seed,
+    content,
+    map,
+    ...(script.missions !== undefined ? { missions: script.missions } : {}),
+  });
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   for (const row of diplomacy) {
     sim.enqueueSetup({ kind: 'setDiplomacy', from: row.from, to: row.to, state: row.state });
@@ -43,7 +56,14 @@ export function newWorldSim(
 export function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
   for (const p of placements) {
     if (p.kind === 'animal') {
-      sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: p.tribe, x: p.x, y: p.y, count: 1 });
+      sim.enqueueSetup({
+        kind: 'spawnAnimalHerd',
+        tribe: p.tribe,
+        x: p.x,
+        y: p.y,
+        count: 1,
+        ...(p.missionId !== undefined ? { missionId: p.missionId } : {}),
+      });
       continue;
     }
     const own = p.owner !== undefined ? { owner: p.owner } : {};
@@ -57,6 +77,7 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         force: true,
         ...own,
         ...(p.goods !== undefined ? { initialGoods: p.goods } : {}),
+        ...(p.missionId !== undefined ? { missionId: p.missionId } : {}),
       });
     } else {
       // A warrior placement carries its class weapon in the equipment slot, so its drawn weapon and its
@@ -73,6 +94,8 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
         ...(p.home !== undefined ? { home: p.home } : {}),
         ...(p.workplace !== undefined ? { workplace: p.workplace } : {}),
+        ...(p.missionId !== undefined ? { missionId: p.missionId } : {}),
+        ...(p.behaviourFlags !== undefined ? { behaviourFlags: p.behaviourFlags } : {}),
       });
     }
   }

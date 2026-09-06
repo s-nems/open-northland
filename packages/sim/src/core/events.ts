@@ -250,6 +250,22 @@ export type SimEvent =
        *  Emitted once per winning player, all in the same tick. */
       readonly kind: 'playerWon';
       readonly player: number;
+    }
+  | {
+      /**
+       * The map script reached a goal or result opcode this build has no evaluator for. The mission
+       * keeps running with that opcode treated as "does not hold" or "does nothing". Emitted once per
+       * mission and opcode, as a diagnostic for the app's log rather than a per-pass stream.
+       */
+      readonly kind: 'missionUnsupported';
+      /** The mission's index in the map's script. */
+      readonly mission: number;
+      readonly opcode: string;
+    }
+  | {
+      /** An `Exit` result fired: the script asks to leave the map. The simulation itself does nothing. */
+      readonly kind: 'missionExit';
+      readonly mission: number;
     };
 
 export type SimEventKind = SimEvent['kind'];

@@ -19,6 +19,7 @@ export * from './lifecycle/cleanup.js';
 export * from './lifecycle/needs/index.js';
 export * from './livestock/index.js';
 export * from './match/index.js';
+export * from './missions/index.js';
 export * from './movement/animal-wander.js';
 export * from './movement/collision/index.js';
 export * from './movement/evict.js';

@@ -3,6 +3,7 @@ import {
   setDiplomacyStance,
   setFogMode,
   setMatchParticipants,
+  setMissionsEnabled,
   setNeedsEnabled,
   setPlayerPlacementTribes,
   setProfessionProgression,
@@ -195,6 +196,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setNeedsEnabled':
       setNeedsEnabled(world, command.enabled);
+      return;
+    case 'setMissionsEnabled':
+      setMissionsEnabled(world, command.enabled);
       return;
     case 'setFogMode':
       setFogMode(world, command.mode);

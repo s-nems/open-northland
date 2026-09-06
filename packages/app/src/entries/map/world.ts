@@ -1,6 +1,5 @@
 import type {
   ContentSet,
-  MapDiplomacy,
   MapScript,
   MapSpecialItem,
   TerrainMapFile,
@@ -30,6 +29,7 @@ import { grantStartingPapers } from '../../game/starting-papers.js';
 import {
   authoredCatalogExtras,
   demoWorldBase,
+  type MapScriptWorld,
   resolveAuthoredPlacements,
   runAuthoredMap,
   runBareMap,
@@ -58,10 +58,11 @@ export interface MapWorldOptions extends SessionRules {
   readonly assistantSeats: readonly number[];
   /** The seats that can win or lose the skirmish; omitted or empty runs no match. */
   readonly matchParticipants?: readonly number[];
-  /** The map script's authored `diplomacy` rows; omitted or empty keeps every player pair hostile. */
-  readonly diplomacy?: readonly MapDiplomacy[];
   /** The map script's authored `specialItems` rows, the papers each player starts with. */
   readonly specialItems?: readonly MapSpecialItem[];
+  /** What the map's script contributes: the authored `diplomacy` rows (omitted or empty keeps every
+   *  player pair hostile) and the resolved mission triggers, which run only under `?missions=on`. */
+  readonly script?: MapScriptWorld;
   /** Owner of the demo strip's entities, reached only when no map decodes; omitted leaves them neutral. */
   readonly demoOwner?: number;
   /** True as the entry runs it. The headless harness turns bushes off for scenarios that ignore food. */
@@ -108,20 +109,12 @@ function runWorld(
     const demo = { ...content, ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}) };
     return { sim: runDemoWorld(seed, PLACEMENT_DRAIN_TICKS, undefined, demo), kind: 'demo' };
   }
-  const diplomacy = options.diplomacy ?? [];
+  const script = options.script ?? {};
   if (map?.entities !== undefined && ir !== null) {
-    const authored = runAuthoredMap(
-      seed,
-      PLACEMENT_DRAIN_TICKS,
-      terrain,
-      map.entities,
-      ir,
-      content,
-      diplomacy,
-    );
+    const authored = runAuthoredMap(seed, PLACEMENT_DRAIN_TICKS, terrain, map.entities, ir, content, script);
     if (authored !== null) return { sim: authored, kind: 'authored' };
   }
-  return { sim: runBareMap(seed, terrain, content, diplomacy), kind: 'bare' };
+  return { sim: runBareMap(seed, terrain, content, script), kind: 'bare' };
 }
 
 function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
@@ -140,7 +133,7 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
  *  and harvestables are already in the saved state. */
 export type RestoreWorldOptions = Pick<
   MapWorldOptions,
-  'map' | 'ir' | 'content' | 'demoOwner' | 'playerRoster'
+  'map' | 'ir' | 'content' | 'demoOwner' | 'playerRoster' | 'script'
 >;
 
 export interface RestoredMapWorld {
@@ -170,6 +163,7 @@ export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): R
   const restored = restoreSimulation(save, {
     content: authored ?? resolveWorldContent(terrain, options.content),
     map: terrain,
+    ...(options.script?.missions !== undefined ? { missions: options.script.missions } : {}),
   });
   return { ...restored, kind: authored !== null ? 'authored' : 'bare' };
 }

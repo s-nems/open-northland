@@ -8,6 +8,7 @@ import {
   Position,
   Settler,
   Stockpile,
+  stampMissionId,
   stampOwner,
   stockpileEntries,
   takePaper,
@@ -128,6 +129,7 @@ export function placeBuilding(
   }
   world.add(e, Stockpile, { amounts });
   stampOwner(world, e, command.owner);
+  stampMissionId(world, e, command.missionId);
   // The plot is impassable from this tick. The placement gates ignore work flags and loose goods, so a house
   // may legally land on either; both are displaced outward rather than walled in.
   evictSettlersFromFootprint(world, ctx, e);

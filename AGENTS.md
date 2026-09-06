@@ -153,7 +153,7 @@ Commands and local tools are listed in `docs/DEVELOPMENT.md`. Test modes are exp
 Load the relevant file when working in that area:
 
 - `docs/art/AGENTS.md`
-- `packages/sim/AGENTS.md`
+- `packages/sim/AGENTS.md` (and `packages/sim/src/systems/missions/AGENTS.md`)
 - `packages/lockstep/AGENTS.md`
 - `packages/net-protocol/AGENTS.md`
 - `packages/net-client/AGENTS.md`

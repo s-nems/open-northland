@@ -1,0 +1,92 @@
+import {
+  type MissionRecord,
+  missionRecords,
+  missionStateExists,
+  missionsEnabled,
+  writeMissionState,
+} from '../../components/index.js';
+import type { World } from '../../ecs/world.js';
+import type { System, SystemContext } from '../context.js';
+import { checkMission } from './check.js';
+import type { MissionPass } from './pass.js';
+import type { MissionScript } from './script.js';
+
+/**
+ * Ticks between two evaluation passes: the original's mission manager runs on the per-tick callback
+ * and evaluates when the tick count is a multiple of this, 3 seconds at 12 ticks per second. A
+ * reading of the original, not yet timed against the running game.
+ */
+export const MISSION_EVALUATION_TICKS = 36;
+
+/**
+ * Which (mission, opcode) pairs already reported as unsupported, so a script reaching an opcode this
+ * build cannot run says so once instead of every pass. Diagnostic only - the events it gates are
+ * presentation - so it is world-keyed rather than saved state, and a restored run reports again.
+ */
+const reported = new WeakMap<World, Set<string>>();
+
+/**
+ * Runs the map's `[MissionData]` script: every {@link MISSION_EVALUATION_TICKS} it visits the active
+ * missions in index order and fires the results of each whose goals satisfy its `successfullif` rule.
+ * Inert without a script or with `MissionRules` off, which is every world that does not opt in.
+ */
+export const missionSystem: System = (world, ctx) => {
+  const script = ctx.missions;
+  if (script === undefined || script.missions.length === 0 || !missionsEnabled(world)) return;
+  if (!missionStateExists(world)) initMissionState(world, script, ctx.tick);
+  if (ctx.tick % MISSION_EVALUATION_TICKS !== 0) return;
+  // A script with nothing active has no pass to run, and taking the write seam anyway would dirty the
+  // world - and every cache derived from it - every three seconds for the rest of a finished map.
+  if (!missionRecords(world).some((record) => record.active)) return;
+  writeMissionState(world, (records) => {
+    runPass(world, ctx, script, records);
+  });
+};
+
+/** The script's records as the world first meets them: an authored-active mission counts this tick as
+ *  its activation, which is the load tick for a world built with a script. */
+function initMissionState(world: World, script: MissionScript, tick: number): void {
+  writeMissionState(world, (records) => {
+    for (const definition of script.missions) {
+      records.push({
+        active: definition.active,
+        visible: definition.visible,
+        activationTick: definition.active ? tick : 0,
+        goalsHeld: definition.goals.map(() => false),
+        randomSeconds: definition.goals.map(() => 0),
+        evaluated: false,
+      });
+    }
+  });
+}
+
+/**
+ * One pass in index order. A mission activated by an earlier mission's results is visited later in
+ * this same pass, exactly as the original's single forward walk does.
+ */
+function runPass(world: World, ctx: SystemContext, script: MissionScript, records: MissionRecord[]): void {
+  const pass: MissionPass = {
+    script,
+    records,
+    tick: ctx.tick,
+    rng: ctx.rng,
+    events: ctx.events,
+    report: (mission, opcode) => reportUnsupported(world, ctx, mission, opcode),
+    checking: new Set(),
+  };
+  for (let index = 0; index < records.length; index++) {
+    if (records[index]?.active === true) checkMission(pass, index, true);
+  }
+}
+
+function reportUnsupported(world: World, ctx: SystemContext, mission: number, opcode: string): void {
+  let seen = reported.get(world);
+  if (seen === undefined) {
+    seen = new Set<string>();
+    reported.set(world, seen);
+  }
+  const key = `${mission}:${opcode}`;
+  if (seen.has(key)) return;
+  seen.add(key);
+  ctx.events.emit({ kind: 'missionUnsupported', mission, opcode });
+}
