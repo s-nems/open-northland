@@ -1,4 +1,4 @@
-import type { MapBriefing, MapScript } from '@open-northland/data';
+import type { HypertextBlock, MapBriefing, MapScript } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   briefAtOutcome,
@@ -86,17 +86,23 @@ describe('briefingPage and mapMissionBrief', () => {
     texts: {
       pol: {
         '500': [
-          { style: 'title', text: 'BURZA PIASKOWA' },
-          { style: 'body', text: 'Wikingowie rozpoczęli oblężenie.' },
+          { kind: 'text', style: 'title', text: 'BURZA PIASKOWA' },
+          { kind: 'text', style: 'body', text: 'Wikingowie rozpoczęli oblężenie.' },
         ],
       },
-      eng: { '500': [{ style: 'body', text: 'The vikings laid siege.' }] },
+      eng: { '500': [{ kind: 'text', style: 'body', text: 'The vikings laid siege.' }] },
     },
   };
 
+  /** The first block of a page, when it is text: every fixture page here opens on a paragraph. */
+  const firstText = (page: readonly HypertextBlock[] | null): string | undefined => {
+    const first = page?.[0];
+    return first?.kind === 'text' ? first.text : undefined;
+  };
+
   it('prefers the app language and falls back through the authoring languages', () => {
-    expect(briefingPage(briefing, 'eng', 500)?.[0]?.text).toBe('The vikings laid siege.');
-    expect(briefingPage(briefing, 'ger', 500)?.[0]?.text).toBe('BURZA PIASKOWA');
+    expect(firstText(briefingPage(briefing, 'eng', 500))).toBe('The vikings laid siege.');
+    expect(firstText(briefingPage(briefing, 'ger', 500))).toBe('BURZA PIASKOWA');
     expect(briefingPage(briefing, 'pol', 7)).toBeNull();
     expect(briefingPage(null, 'pol', 500)).toBeNull();
   });
@@ -112,7 +118,7 @@ describe('briefingPage and mapMissionBrief', () => {
     };
     expect(mapMissionBrief({ ...input, matchDeclared: false })).toEqual({
       title: 'BURZA PIASKOWA',
-      paragraphs: [{ style: 'body', text: 'Wikingowie rozpoczęli oblężenie.' }],
+      blocks: [{ kind: 'text', style: 'body', text: 'Wikingowie rozpoczęli oblężenie.' }],
       goals: [{ text: 'Pokonaj saracenów', rule: 'authored', done: false }],
     });
     // The authored goals are informational; with a match declared the rule that decides is listed too.
@@ -134,7 +140,7 @@ describe('briefingPage and mapMissionBrief', () => {
     });
     expect(brief).toEqual({
       title: 'Wody Nilu',
-      paragraphs: [{ style: 'body', text: 'Mapa wolnej gry.' }],
+      blocks: [{ kind: 'text', style: 'body', text: 'Mapa wolnej gry.' }],
       goals: [{ text: 'Pokonaj wszystkich.', rule: 'skirmish', done: false }],
     });
     expect(
@@ -147,7 +153,7 @@ describe('briefingPage and mapMissionBrief', () => {
         skirmishGoal: 'x',
         matchDeclared: false,
       }),
-    ).toEqual({ title: '', paragraphs: [], goals: [] });
+    ).toEqual({ title: '', blocks: [], goals: [] });
   });
 
   it('keeps a page without a headline whole and titles it with the map name', () => {
@@ -161,14 +167,14 @@ describe('briefingPage and mapMissionBrief', () => {
       matchDeclared: false,
     });
     expect(brief.title).toBe('Sandstorm');
-    expect(brief.paragraphs).toEqual([{ style: 'body', text: 'The vikings laid siege.' }]);
+    expect(brief.blocks).toEqual([{ kind: 'text', style: 'body', text: 'The vikings laid siege.' }]);
   });
 });
 
 describe('briefAtOutcome', () => {
   const brief = {
     title: 'x',
-    paragraphs: [],
+    blocks: [],
     goals: [
       { text: 'Build a temple', rule: 'authored' as const, done: false },
       { text: 'Defeat everyone', rule: 'skirmish' as const, done: false },

@@ -137,7 +137,7 @@ export async function convertMapDatTree(
     }
     let briefing = false;
     if (scriptFile !== undefined) {
-      const briefingFile = await resolveMapBriefing(fs, mapDirs, rel, cutsceneIdsOf(scriptFile));
+      const briefingFile = await resolveMapBriefing(fs, mapDirs, outDir, rel, cutsceneIdsOf(scriptFile));
       if (briefingFile !== undefined) {
         await writeText(fs, briefingPath, `${JSON.stringify(briefingFile)}\n`);
         briefing = true;

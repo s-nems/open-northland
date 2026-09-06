@@ -51,19 +51,19 @@ const BOOK: HypertextBook = {
   start: 'index',
   pages: {
     index: [
-      { style: 'title', text: 'HISTORY', align: 'center' },
-      { style: 'body', text: 'Seven wonders', align: 'center', link: 'mythology_00' },
+      { kind: 'text', style: 'title', text: 'HISTORY', align: 'center' },
+      { kind: 'text', style: 'body', text: 'Seven wonders', align: 'center', link: 'mythology_00' },
     ],
     mythology_00: [
-      { style: 'title', text: 'SEVEN WONDERS', align: 'center' },
-      { style: 'body', text: 'Back', link: 'index' },
+      { kind: 'text', style: 'title', text: 'SEVEN WONDERS', align: 'center' },
+      { kind: 'text', style: 'body', text: 'Back', link: 'index' },
     ],
   },
 };
 
 const BRIEF: MissionBrief = {
   title: 'SANDSTORM',
-  paragraphs: [{ style: 'body', text: 'Body' }],
+  blocks: [{ kind: 'text', style: 'body', text: 'Body' }],
   goals: [{ text: 'Win', rule: 'skirmish', done: false }],
 };
 
@@ -133,8 +133,12 @@ describe('createMissionWindow', () => {
   });
 
   it('pages through overflowing content with the Down and Up buttons', () => {
-    const paragraphs = Array.from({ length: 30 }, (_, i) => ({ style: 'body' as const, text: `P${i}` }));
-    const { window, placedY, layout } = mount({ title: '', paragraphs, goals: [] });
+    const blocks = Array.from({ length: 30 }, (_, i) => ({
+      kind: 'text' as const,
+      style: 'body' as const,
+      text: `P${i}`,
+    }));
+    const { window, placedY, layout } = mount({ title: '', blocks, goals: [] });
     window.toggle();
     const { viewport } = layout;
     expect(placedY.get('P0')).toBe(viewport.y);

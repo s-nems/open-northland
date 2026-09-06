@@ -1,16 +1,20 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { describe, expect, it } from 'vitest';
+import { encodePcx } from '../src/decoders/pcx.js';
+import { HYPERTEXT_PICTURES_DIR } from '../src/stages/gui/paths.js';
 import { cutsceneIdsOf, resolveMapBriefing } from '../src/stages/maps/briefing.js';
+import { rampPalette } from './fixtures/palette.js';
 import { makeTempDir } from './support/game-tree.js';
 
 const fs = nodeVfs();
 
 /**
  * The per-folder briefing resolution (`stages/maps/briefing.ts`): a block id reads `briefings.txt`,
- * a page id reads `NNNN.hlt` with its includes, per language, and a folder without briefings yields
- * no sidecar. Fixtures are ASCII; the renderer itself is pinned in `hypertext.test.ts`.
+ * a page id reads `NNNN.hlt` with its includes, per language, the pictures those pages name are
+ * emitted once, and a folder without briefings yields no sidecar. Fixtures are ASCII; the renderer
+ * itself is pinned in `hypertext.test.ts`.
  */
 
 async function writeBriefings(dir: string, lang: string, files: Record<string, string>): Promise<void> {
@@ -52,26 +56,48 @@ describe('resolveMapBriefing', () => {
     await writeBriefings(dir, 'eng', {
       'briefings.txt': '[blockstart:500]\nTITLE\n[blockend:500]\n',
     });
-    const briefing = await resolveMapBriefing(fs, [dir], 'x/map.dat', [0, 500, 777]);
+    const { path: out } = await makeTempDir('map-briefing-out');
+    const briefing = await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [0, 500, 777]);
     expect(briefing).toEqual({
       texts: {
         pol: {
-          '0': [{ style: 'title', text: 'PROLOG' }],
+          '0': [{ kind: 'text', style: 'title', text: 'PROLOG' }],
           '500': [
-            { style: 'title', text: 'TYTUL' },
-            { style: 'body', text: 'Tresc' },
+            { kind: 'text', style: 'title', text: 'TYTUL' },
+            { kind: 'text', style: 'body', text: 'Tresc' },
           ],
         },
-        eng: { '500': [{ style: 'body', text: 'TITLE' }] },
+        eng: { '500': [{ kind: 'text', style: 'body', text: 'TITLE' }] },
       },
     });
   });
 
+  it('emits each named picture once and points both languages at the same file', async () => {
+    const { path: dir } = await makeTempDir('map-briefing-picture');
+    const { path: out } = await makeTempDir('map-briefing-picture-out');
+    const block = '[blockstart:500]\nOpis\n<picture:$local$\\graphics\\Map.pcx>\n[blockend:500]\n';
+    for (const lang of ['pol', 'eng']) {
+      await writeBriefings(dir, lang, { 'briefings.txt': block });
+      await mkdir(join(dir, 'text', lang, 'briefings', 'Graphics'), { recursive: true });
+      await writeFile(
+        join(dir, 'text', lang, 'briefings', 'Graphics', 'map.pcx'),
+        encodePcx({ width: 3, height: 2, pixels: new Uint8Array(6).fill(4), palette: rampPalette() }),
+      );
+    }
+    const briefing = await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [500]);
+    const pictures = await readdir(join(out, HYPERTEXT_PICTURES_DIR));
+    const [pol, eng] = [briefing?.texts.pol?.['500']?.[1], briefing?.texts.eng?.['500']?.[1]];
+    expect(pictures).toHaveLength(1);
+    expect(pol).toEqual({ kind: 'picture', file: pictures[0], width: 3, height: 2 });
+    expect(eng).toEqual(pol);
+  });
+
   it('yields undefined with no ids, no briefings folder, or no resolvable page', async () => {
     const { path: dir } = await makeTempDir('map-briefing-empty');
-    expect(await resolveMapBriefing(fs, [dir], 'x/map.dat', [])).toBeUndefined();
-    expect(await resolveMapBriefing(fs, [dir], 'x/map.dat', [500])).toBeUndefined();
+    const { path: out } = await makeTempDir('map-briefing-empty-out');
+    expect(await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [])).toBeUndefined();
+    expect(await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [500])).toBeUndefined();
     await writeBriefings(dir, 'pol', { 'briefings.txt': '[blockstart:1]\nx\n[blockend:1]\n' });
-    expect(await resolveMapBriefing(fs, [dir], 'x/map.dat', [500])).toBeUndefined();
+    expect(await resolveMapBriefing(fs, [dir], out, 'x/map.dat', [500])).toBeUndefined();
   });
 });

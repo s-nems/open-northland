@@ -1,10 +1,16 @@
-import type { HypertextBook, HypertextParagraph } from '@open-northland/data';
+import type { HypertextBlock, HypertextBook } from '@open-northland/data';
 import { type Vfs, vjoin } from '@open-northland/vfs';
 import { type IncludeResolver, parseBriefingBlocks, renderHypertext } from '../../decoders/hypertext.js';
 import { decodeIni } from '../../decoders/ini/grammar.js';
 import { errorMessage } from '../../errors.js';
-import { findPathCaseInsensitiveInDirs, rootsInOrder, type SourceRoots } from '../../roots.js';
+import {
+  findPathCaseInsensitive,
+  findPathCaseInsensitiveInDirs,
+  rootsInOrder,
+  type SourceRoots,
+} from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
+import { HYPERTEXT_GRAPHICS_DIR, resolvePagePictures } from '../hypertext-pictures.js';
 import { GUI_CONTENT_DIR, GUI_LANGS } from './paths.js';
 
 /** The owned copy ships the mission window's history book here, opened on `index.hlt`. */
@@ -38,7 +44,7 @@ export async function convertGuiHistory(
     if (dir === undefined) continue;
     let book: HypertextBook | undefined;
     try {
-      book = await renderBook(fs, dir);
+      book = await renderBook(fs, dir, outDir, lang);
     } catch (err) {
       console.warn(`[pipeline] gui: skipped history ${lang}: ${errorMessage(err)}`);
       continue;
@@ -54,7 +60,12 @@ export async function convertGuiHistory(
   return done;
 }
 
-async function renderBook(fs: Vfs, dir: string): Promise<HypertextBook | undefined> {
+async function renderBook(
+  fs: Vfs,
+  dir: string,
+  outDir: string,
+  lang: string,
+): Promise<HypertextBook | undefined> {
   const entries = (await fs.readdir(dir)).filter((e) => e.kind === 'file');
   const blocksByFile = new Map<string, Map<string, string>>();
   for (const entry of entries) {
@@ -66,13 +77,27 @@ async function renderBook(fs: Vfs, dir: string): Promise<HypertextBook | undefin
     const name = file.split(/[\\/]/).at(-1)?.toLowerCase() ?? '';
     return blocksByFile.get(name)?.get(label);
   };
-  const pages: Record<string, HypertextParagraph[]> = {};
+  const texts = new Map<string, string>();
   for (const entry of entries
     .filter((e) => PAGE_EXT.test(e.name))
     .sort((a, b) => a.name.localeCompare(b.name))) {
-    const id = entry.name.replace(PAGE_EXT, '').toLowerCase();
-    const paragraphs = renderHypertext(decodeIni(await fs.readFile(vjoin(dir, entry.name))), include);
-    if (paragraphs.length > 0) pages[id] = paragraphs;
+    texts.set(
+      entry.name.replace(PAGE_EXT, '').toLowerCase(),
+      decodeIni(await fs.readFile(vjoin(dir, entry.name))),
+    );
+  }
+  const picture = await resolvePagePictures(
+    fs,
+    outDir,
+    (name) => findPathCaseInsensitive(fs, dir, [HYPERTEXT_GRAPHICS_DIR, name]),
+    texts.values(),
+    include,
+    `gui: history ${lang}`,
+  );
+  const pages: Record<string, HypertextBlock[]> = {};
+  for (const [id, text] of texts) {
+    const blocks = renderHypertext(text, { include, picture });
+    if (blocks.length > 0) pages[id] = blocks;
   }
   return START_PAGE in pages ? { start: START_PAGE, pages } : undefined;
 }

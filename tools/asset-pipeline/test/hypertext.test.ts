@@ -8,8 +8,9 @@ import {
 
 /**
  * The hypertext decoder: block splitting and the page renderer's tag handling (font switches style,
- * block sets the alignment, include splices a block, globaljump links the next paragraph, everything
- * else is dropped), with blank lines and `\n` markers as paragraph breaks and inner line breaks kept.
+ * block sets the alignment, color the text colour, include splices a block, picture emits a picture
+ * block, globaljump links the next paragraph, everything else is dropped), with blank lines and `\n`
+ * markers as paragraph breaks and inner line breaks kept.
  */
 
 const BLOCKS = [
@@ -67,10 +68,10 @@ describe('renderHypertext', () => {
     file.endsWith('briefings.txt') ? blocks.get(label) : undefined;
 
   it('renders a block: headline font is the title style, blank lines break paragraphs', () => {
-    expect(renderHypertext(blocks.get('500') ?? '', include)).toEqual([
-      { style: 'title', text: 'SANDSTORM' },
-      { style: 'body', text: 'The vikings laid siege.\nAttacks come at:\n0:25\n0:45' },
-      { style: 'body', text: 'Good luck' },
+    expect(renderHypertext(blocks.get('500') ?? '', { include })).toEqual([
+      { kind: 'text', style: 'title', text: 'SANDSTORM' },
+      { kind: 'text', style: 'body', text: 'The vikings laid siege.\nAttacks come at:\n0:25\n0:45' },
+      { kind: 'text', style: 'body', text: 'Good luck' },
     ]);
   });
 
@@ -88,9 +89,9 @@ describe('renderHypertext', () => {
       '<include:$local$\\other.txt,00_title,1>',
       'Body <onscreencallback:1001,200,0>text<usericon:5> here  ',
     ].join('\n');
-    expect(renderHypertext(page, include)).toEqual([
-      { style: 'title', text: 'PROLOGUE', align: 'center' },
-      { style: 'body', text: 'Body text here' },
+    expect(renderHypertext(page, { include })).toEqual([
+      { kind: 'text', style: 'title', text: 'PROLOGUE', align: 'center' },
+      { kind: 'text', style: 'body', text: 'Body text here' },
     ]);
   });
 
@@ -112,23 +113,52 @@ describe('renderHypertext', () => {
       '<color:$local$\\palettes\\font_dark.pcx>\\n',
       'Not a link',
     ].join('\n');
-    expect(renderHypertext(page, include)).toEqual([
-      { style: 'title', text: 'SEVEN WONDERS', align: 'center' },
-      { style: 'body', text: 'First line\nsecond line' },
-      { style: 'body', text: 'Back to index', align: 'center', link: 'index' },
-      { style: 'body', text: 'Not a link', align: 'center' },
+    expect(renderHypertext(page, { include })).toEqual([
+      { kind: 'text', style: 'title', text: 'SEVEN WONDERS', align: 'center' },
+      { kind: 'text', style: 'body', text: 'First line\nsecond line' },
+      { kind: 'text', style: 'body', text: 'Back to index', align: 'center', color: 'red', link: 'index' },
+      { kind: 'text', style: 'body', text: 'Not a link', align: 'center' },
     ]);
   });
 
   it('survives a block that includes itself', () => {
     const loop: IncludeResolver = (_file, label) =>
       label === 'loop' ? 'again\n<include:$local$\\briefings.txt,loop,1>' : undefined;
-    const paragraphs = renderHypertext('<include:x,loop,1>', loop);
-    expect(paragraphs).toHaveLength(1);
-    expect(paragraphs[0]?.text.split('\n').every((line) => line === 'again')).toBe(true);
+    const blocksOut = renderHypertext('<include:x,loop,1>', { include: loop });
+    const first = blocksOut[0];
+    expect(blocksOut).toHaveLength(1);
+    expect(first?.kind === 'text' && first.text.split('\n').every((line) => line === 'again')).toBe(true);
+  });
+
+  it('emits a resolved picture as its own block and drops one the caller cannot resolve', () => {
+    const picture = (name: string) =>
+      name === 'map.pcx'
+        ? { kind: 'picture' as const, file: 'ab12.png', width: 320, height: 200 }
+        : undefined;
+    expect(renderHypertext(blocks.get('500') ?? '', { include, picture })).toEqual([
+      { kind: 'text', style: 'title', text: 'SANDSTORM' },
+      { kind: 'text', style: 'body', text: 'The vikings laid siege.\nAttacks come at:\n0:25\n0:45' },
+      { kind: 'picture', file: 'ab12.png', width: 320, height: 200 },
+      { kind: 'text', style: 'body', text: 'Good luck' },
+    ]);
+    expect(renderHypertext('<picture:$local$\\graphics\\gone.pcx>', { include, picture })).toEqual([]);
+  });
+
+  it('takes the colour from the page palette and leaves an unknown carrier at the body colour', () => {
+    const page = [
+      '<color:$local$\\palettes\\font_red.pcx>',
+      'Warning',
+      '',
+      '<color:$local$\\palettes\\font_blue.pcx>',
+      'Plain again',
+    ].join('\n');
+    expect(renderHypertext(page, { include })).toEqual([
+      { kind: 'text', style: 'body', text: 'Warning', color: 'red' },
+      { kind: 'text', style: 'body', text: 'Plain again' },
+    ]);
   });
 
   it('renders an empty page to no paragraphs', () => {
-    expect(renderHypertext('\n<font:a.fnt>\n\n\\n\n', include)).toEqual([]);
+    expect(renderHypertext('\n<font:a.fnt>\n\n\\n\n', { include })).toEqual([]);
   });
 });

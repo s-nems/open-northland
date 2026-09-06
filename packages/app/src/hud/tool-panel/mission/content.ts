@@ -1,5 +1,10 @@
-import type { HypertextBook, HypertextParagraph } from '@open-northland/data';
-import type { Container } from 'pixi.js';
+import type {
+  HypertextBlock,
+  HypertextBook,
+  HypertextParagraph,
+  HypertextPicture,
+} from '@open-northland/data';
+import { type Container, Sprite } from 'pixi.js';
 import type { FontColorName } from '../../../content/font-gfx.js';
 import type { MissionBrief } from '../../../game/mission-brief.js';
 import type { PanelContext } from '../context.js';
@@ -14,9 +19,12 @@ import {
   PARAGRAPH_GAP,
   type PlacedLink,
 } from './model.js';
+import type { PictureCache } from './pictures.js';
 
 /** A glyph never wraps; this width (design px) only has to clear one character. */
 const GLYPH_WRAP_WIDTH = 40;
+const DEFAULT_TEXT_COLOR: FontColorName = 'dark';
+const LINK_COLOR: FontColorName = 'red';
 
 /** One placed run of tab content: where it sits and the run it owns. */
 export interface PlacedRun extends PlacedLink {
@@ -29,14 +37,10 @@ export interface ContentSink {
   readonly placed: readonly PlacedRun[];
   /** The laid-out height so far, in screen px. */
   height(): number;
+  /** Queue one page block across the text column and advance past it. */
+  block(b: HypertextBlock, wrapWidth: number, gapAfter: number): void;
   /** Queue a wrapped paragraph at `x` design px from the viewport left and advance past it. */
-  paragraph(
-    p: HypertextParagraph,
-    x: number,
-    wrapWidth: number,
-    gapAfter: number,
-    color?: FontColorName,
-  ): void;
+  paragraph(p: HypertextParagraph, x: number, wrapWidth: number, gapAfter: number): void;
   /** Queue a section heading at `x`, a size up from the body, and advance past it. */
   heading(text: string, x: number, wrapWidth: number): void;
   /** Queue a single glyph at the current cursor without advancing (the goal bullets); set like a
@@ -46,11 +50,15 @@ export interface ContentSink {
   skipTo(y: number): void;
 }
 
-export function createContentSink(ctx: PanelContext, container: Container): ContentSink {
+export function createContentSink(
+  ctx: PanelContext,
+  container: Container,
+  pictures: PictureCache,
+): ContentSink {
   const { scale } = ctx;
   const placed: PlacedRun[] = [];
   let cursor = 0;
-  const block = (
+  const run = (
     text: string,
     px: number,
     x: number,
@@ -75,19 +83,55 @@ export function createContentSink(ctx: PanelContext, container: Container): Cont
     });
     cursor += h + Math.round(gapAfter * scale);
   };
+  const picture = (p: HypertextPicture, wrapWidth: number, gapAfter: number): void => {
+    // Only the width is fitted, as in the original: a picture taller than the viewport is scrolled.
+    const fit = Math.min(1, wrapWidth / p.width) * scale;
+    const w = Math.round(p.width * fit);
+    const h = Math.round(p.height * fit);
+    const sprite = new Sprite(pictures.ready(p.file));
+    sprite.setSize(w, h);
+    container.addChild(sprite);
+    let live = true;
+    void pictures.load(p.file).then((texture) => {
+      if (!live || texture === undefined || sprite.texture === texture) return;
+      sprite.texture = texture;
+      sprite.setSize(w, h);
+    });
+    placed.push({
+      x: 0,
+      y: cursor,
+      h,
+      width: w,
+      centred: p.align === 'center',
+      link: null,
+      place: (x, y) => sprite.position.set(Math.round(x), Math.round(y)),
+      destroy: () => {
+        live = false;
+        sprite.destroy();
+      },
+    });
+    cursor += h + Math.round(gapAfter * scale);
+  };
+  const paragraph = (p: HypertextParagraph, x: number, wrapWidth: number, gapAfter: number): void => {
+    const px = p.style === 'title' ? MISSION_HEADLINE_PX : MISSION_BODY_PX;
+    // A page that colours nothing still has to show which runs are links.
+    const color = p.color ?? (p.link === undefined ? DEFAULT_TEXT_COLOR : LINK_COLOR);
+    run(p.text, px, x, wrapWidth, gapAfter, color, p.align === 'center', p.link ?? null);
+  };
   return {
     placed,
     height: () => cursor,
-    paragraph(p, x, wrapWidth, gapAfter, color = 'dark') {
-      const px = p.style === 'title' ? MISSION_HEADLINE_PX : MISSION_BODY_PX;
-      block(p.text, px, x, wrapWidth, gapAfter, color, p.align === 'center', p.link ?? null);
+    block(b, wrapWidth, gapAfter) {
+      if (b.kind === 'picture') picture(b, wrapWidth, gapAfter);
+      else paragraph(b, 0, wrapWidth, gapAfter);
     },
+    paragraph,
     heading(text, x, wrapWidth) {
-      block(text, MISSION_HEADING_PX, x, wrapWidth, 0, 'dark', false, null);
+      run(text, MISSION_HEADING_PX, x, wrapWidth, 0, DEFAULT_TEXT_COLOR, false, null);
     },
     glyph(text, x, px) {
       const before = cursor;
-      block(text, px, x, GLYPH_WRAP_WIDTH, 0, 'dark', false, null);
+      run(text, px, x, GLYPH_WRAP_WIDTH, 0, DEFAULT_TEXT_COLOR, false, null);
       cursor = before;
     },
     skipTo(y) {
@@ -97,11 +141,16 @@ export function createContentSink(ctx: PanelContext, container: Container): Cont
 }
 
 /** The book's page `id`, or undefined when the book lacks it (a record lookup, so only own keys count). */
-export function pageOf(book: HypertextBook | null, id: string): readonly HypertextParagraph[] | undefined {
+export function pageOf(book: HypertextBook | null, id: string): readonly HypertextBlock[] | undefined {
   return book !== null && Object.hasOwn(book.pages, id) ? book.pages[id] : undefined;
 }
 
-/** The task tab: the brief's headline over its briefing paragraphs, or `emptyText` without a briefing. */
+/** A plain body paragraph the window writes itself, for text that is not a decoded page. */
+function bodyParagraph(text: string): HypertextParagraph {
+  return { kind: 'text', style: 'body', text };
+}
+
+/** The task tab: the brief's headline over its briefing page, or `emptyText` without a briefing. */
 export function fillTask(
   sink: ContentSink,
   brief: MissionBrief | null,
@@ -109,13 +158,18 @@ export function fillTask(
   emptyText: string,
 ): void {
   if (brief !== null && brief.title !== '') {
-    sink.paragraph({ style: 'title', text: brief.title, align: 'center' }, 0, wrapWidth, HEADLINE_GAP);
+    sink.paragraph(
+      { kind: 'text', style: 'title', text: brief.title, align: 'center' },
+      0,
+      wrapWidth,
+      HEADLINE_GAP,
+    );
   }
-  if (brief === null || brief.paragraphs.length === 0) {
-    sink.paragraph({ style: 'body', text: emptyText }, 0, wrapWidth, PARAGRAPH_GAP);
+  if (brief === null || brief.blocks.length === 0) {
+    sink.paragraph(bodyParagraph(emptyText), 0, wrapWidth, PARAGRAPH_GAP);
     return;
   }
-  for (const p of brief.paragraphs) sink.paragraph(p, 0, wrapWidth, PARAGRAPH_GAP);
+  for (const b of brief.blocks) sink.block(b, wrapWidth, PARAGRAPH_GAP);
 }
 
 /** The goals tab: the heading, then one `o`/`X` bullet and wrapped text per goal, as the original prints them. */
@@ -124,22 +178,20 @@ export function fillGoals(sink: ContentSink, brief: MissionBrief | null, heading
   sink.skipTo(GOAL_LIST.listY);
   for (const goal of brief?.goals ?? []) {
     sink.glyph(goal.done ? GOAL_DONE_BULLET : GOAL_OPEN_BULLET, GOAL_LIST.bulletX, MISSION_BODY_PX);
-    sink.paragraph({ style: 'body', text: goal.text }, GOAL_LIST.textX, GOAL_LIST.wrapWidth, GOAL_LIST.gap);
+    sink.paragraph(bodyParagraph(goal.text), GOAL_LIST.textX, GOAL_LIST.wrapWidth, GOAL_LIST.gap);
   }
 }
 
-/** The history tab: one page of the book, its links in red, or `emptyText` without the book. */
+/** The history tab: one page of the book, or `emptyText` without the book. */
 export function fillHistory(
   sink: ContentSink,
-  page: readonly HypertextParagraph[] | undefined,
+  page: readonly HypertextBlock[] | undefined,
   wrapWidth: number,
   emptyText: string,
 ): void {
   if (page === undefined) {
-    sink.paragraph({ style: 'body', text: emptyText }, 0, wrapWidth, PARAGRAPH_GAP);
+    sink.paragraph(bodyParagraph(emptyText), 0, wrapWidth, PARAGRAPH_GAP);
     return;
   }
-  for (const p of page) {
-    sink.paragraph(p, 0, wrapWidth, PARAGRAPH_GAP, p.link === undefined ? 'dark' : 'red');
-  }
+  for (const b of page) sink.block(b, wrapWidth, PARAGRAPH_GAP);
 }
