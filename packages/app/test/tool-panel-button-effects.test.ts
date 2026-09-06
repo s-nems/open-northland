@@ -94,6 +94,7 @@ function mountSurfaces() {
     },
     cycleSpeed: () => pressed.push('speed'),
     openSystemMenu: () => pressed.push('systemMenu'),
+    cycleMessagePriority: () => pressed.push('messagePriority'),
   };
   const press = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
   const open = (): Record<ToolWindowId, boolean> => ({

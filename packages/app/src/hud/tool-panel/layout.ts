@@ -17,7 +17,8 @@ export type ToolButtonId =
   | 'tech_tree'
   | 'options'
   | 'help'
-  | 'speed';
+  | 'speed'
+  | 'message_priority';
 
 /** A rect in the original design space (pre-scale), `left/top/width/height` exactly as the engine stores it. */
 export interface DesignRect {
@@ -31,6 +32,10 @@ export interface DesignRect {
 const TOOL_PANEL_STRIP_GFX = 0x33;
 export const TOOL_PANEL_STRIP: DesignRect = { x: 0, y: 10, w: 0x32, h: 0x1b1 };
 
+/** The plaque at the top edge the message-priority button sits on (`CBaseToolGfxElement _priorityFrame`). */
+const MESSAGE_PRIORITY_FRAME_GFX = 0x3f;
+export const MESSAGE_PRIORITY_FRAME: DesignRect = { x: 0x18, y: 0, w: 0x7e, h: 0x29 };
+
 export interface ToolButtonSpec {
   readonly id: ToolButtonId;
   readonly rect: DesignRect;
@@ -42,8 +47,9 @@ export interface ToolButtonSpec {
 
 /**
  * The nine tool buttons plus the speed button, in the engine's creation order (`Desktop_Open`), one row
- * per `CreateToolButton(SRectangle(x,y,w,h), gfxId, stringId, msgId, …)` call. The `options` and `help`
- * names for frames 47–48 remain provisional.
+ * per `CreateToolButton(SRectangle(x,y,w,h), gfxId, stringId, msgId, …)` call, then the message-priority
+ * button on its plaque (`_btnPriority`). The `options` and `help` names for frames 47–48 remain
+ * provisional.
  */
 export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
   { id: 'buildings', rect: { x: 0, y: 0x29, w: 0x28, h: 0x23 }, gfx: 0x2a, tooltipStringId: 2 },
@@ -56,6 +62,7 @@ export const TOOL_BUTTONS: readonly ToolButtonSpec[] = [
   { id: 'options', rect: { x: 0, y: 0x127, w: 0x28, h: 0x23 }, gfx: 0x2f, tooltipStringId: 1 },
   { id: 'help', rect: { x: 0, y: 0x149, w: 0x28, h: 0x23 }, gfx: 0x30, tooltipStringId: 0 },
   { id: 'speed', rect: { x: 0, y: 0x175, w: 0x28, h: 0x23 }, gfx: 0x31, tooltipStringId: 0x0d },
+  { id: 'message_priority', rect: { x: 0x6a, y: 3, w: 0x25, h: 0x1f }, gfx: 0x40, tooltipStringId: 0x0e },
 ];
 
 /** A rect placed in screen (canvas) pixels after top-left anchoring + uniform scaling. */
@@ -70,6 +77,9 @@ export interface ToolPanelLayout {
   readonly scale: number;
   readonly stripGfx: number;
   readonly strip: PlacedRect;
+  readonly frameGfx: number;
+  /** The message-priority plaque, part of the panel's claim region like the strip. */
+  readonly frame: PlacedRect;
   readonly buttons: readonly PlacedButton[];
   /** Width of the strip in screen px, which the rest of the HUD is shifted right by. */
   readonly width: number;
@@ -101,16 +111,19 @@ function unionDesign(rects: readonly DesignRect[]): DesignRect {
 export function buildToolPanelLayout(uiscale: number): ToolPanelLayout {
   const scale = Math.max(MIN_UI_SCALE, uiscale);
   const strip = scaleRect(TOOL_PANEL_STRIP, scale);
+  const frame = scaleRect(MESSAGE_PRIORITY_FRAME, scale);
   const buttons = TOOL_BUTTONS.map((spec) => ({ ...spec, placed: scaleRect(spec.rect, scale) }));
   return {
     scale,
     stripGfx: TOOL_PANEL_STRIP_GFX,
     strip,
+    frameGfx: MESSAGE_PRIORITY_FRAME_GFX,
+    frame,
     buttons,
     // The claim region spans from the canvas edge to the strip's right edge.
     width: strip.x + strip.w,
     height: strip.y + strip.h,
-    designBounds: unionDesign([TOOL_PANEL_STRIP, ...TOOL_BUTTONS.map((b) => b.rect)]),
+    designBounds: unionDesign([TOOL_PANEL_STRIP, MESSAGE_PRIORITY_FRAME, ...TOOL_BUTTONS.map((b) => b.rect)]),
   };
 }
 
@@ -122,7 +135,8 @@ export function hitTestToolPanel(layout: ToolPanelLayout, x: number, y: number):
   return null;
 }
 
-/** Whether a screen point lies over the panel strip: the claim predicate asked before world picking. */
+/** Whether a screen point lies over the panel strip or the priority plaque: the claim predicate asked
+ *  before world picking. */
 export function pointOverToolPanel(layout: ToolPanelLayout, x: number, y: number): boolean {
-  return contains(layout.strip, x, y);
+  return contains(layout.strip, x, y) || contains(layout.frame, x, y);
 }

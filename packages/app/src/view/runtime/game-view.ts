@@ -40,7 +40,7 @@ import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import { createFogGates, diplomacyPanelRows } from '../projections/index.js';
+import { createFogGates, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
 import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
@@ -48,7 +48,7 @@ import { createUnitControls } from '../unit-controls/index.js';
 import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
-import { createLiveGameSettings, perfLeftForUiScale } from './game-live-settings.js';
+import { createLiveGameSettings, perfCornerForUiScale } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
 import { createPauseHolds } from './pause-holds.js';
 import { createPlacementGates } from './placement-gates.js';
@@ -181,8 +181,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // A checkout without a decoded sound bank degrades to silence.
   const soundDriver = await mountGamePresentation(params, renderer, deps.musicType ?? null);
 
-  // The left inset clears the tool-panel strip, so the readout and the build menu never overlap.
-  const perf = mountPerfOverlay(perfLeftForUiScale(uiscale));
+  // Clears the tool-panel strip and the message notes, so the readout never covers either.
+  const perfCorner = perfCornerForUiScale(uiscale);
+  const perf = mountPerfOverlay(perfCorner.left, perfCorner.top);
 
   // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
   const fogGates = createFogGates();
@@ -213,6 +214,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     });
 
+  // The unit controls mount after the panel, so a note's Select reaches them through this slot.
+  let selectEntity: ((id: number) => void) | null = null;
+  // Its own chip: the pile and stock-row tooltips hide whenever the pointer is over the HUD.
+  const noteTooltip = createTooltip();
   const toolPanel = await mountGameToolPanel({
     app,
     canvas,
@@ -246,6 +251,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     onLargeWindow: (open) => {
       if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);
       else pauseHolds.release(PAUSE_HOLDER_MISSION);
+    },
+    ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
+    ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+    tooltip: noteTooltip,
+    onSelectMessageTarget: (target) => {
+      const at = messageTargetAnchor(sim.snapshot(), target, deps.elevation);
+      if (at !== null) jumpToWorld(at.x, at.y);
+      if (target.entity !== null) selectEntity?.(target.entity);
     },
   });
 
@@ -332,6 +345,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     // pointer is over the HUD - exactly when this one must stay shown.
     tooltip: createTooltip(),
   });
+  selectEntity = controls.selectEntity;
 
   const {
     goodLabel,
@@ -415,6 +429,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   disposeHud = (): void => {
     liveSettings.dispose();
     toolPanel.dispose();
+    noteTooltip.destroy();
     mountedMinimap.dispose();
     controls.dispose();
     perf.dispose();

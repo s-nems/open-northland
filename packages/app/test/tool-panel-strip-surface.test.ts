@@ -72,16 +72,17 @@ describe('tool strip without decoded GUI art', () => {
     const actions = drawn.context.instructions.map((i) => i.action);
 
     expect(actions.filter((a) => a === 'stroke')).toHaveLength(layout.buttons.length);
-    expect(actions.filter((a) => a === 'fill')).toHaveLength(layout.buttons.length + 1);
+    // One fill per button block plus the strip backdrop and the message-priority plaque.
+    expect(actions.filter((a) => a === 'fill')).toHaveLength(layout.buttons.length + 2);
   });
 
-  it('stays inside the strip rect the panel claims, at a fractional scale too', () => {
+  it('stays inside the strip and plaque rects the panel claims, at a fractional scale too', () => {
     const { layout, drawn } = flatStrip(1.75);
     const bounds = drawn.getLocalBounds();
 
     expect(bounds.minX).toBe(layout.strip.x);
-    expect(bounds.minY).toBe(layout.strip.y);
-    expect(bounds.maxX).toBeCloseTo(layout.strip.x + layout.strip.w);
+    expect(bounds.minY).toBe(layout.frame.y);
+    expect(bounds.maxX).toBeCloseTo(layout.frame.x + layout.frame.w);
     expect(bounds.maxY).toBeCloseTo(layout.strip.y + layout.strip.h);
   });
 
@@ -89,7 +90,7 @@ describe('tool strip without decoded GUI art', () => {
     const { surface } = flatStrip(1);
 
     expect(surface.current()).toBeNull();
-    expect(surface.speedSprites()).toHaveLength(0);
+    expect(() => surface.reframe('speed', 0x34)).not.toThrow();
     expect(surface.syncResolution()).toBe(false);
   });
 });

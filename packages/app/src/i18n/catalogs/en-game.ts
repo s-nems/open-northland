@@ -299,4 +299,25 @@ export const enGame = {
     },
     armorClasses: ['None', 'Class 1', 'Class 2', 'Class 3', 'Class 4'],
   },
+  userMessages: {
+    title: 'Message',
+    remove: 'Remove message',
+    select: 'Select',
+    /** The priority button's hover text per filter level; the `main` table rows 14-16 stand in front. */
+    levelTooltips: {
+      '0': 'Showing every message',
+      '1': 'Hiding the unimportant messages',
+      '2': 'Showing important messages only',
+    },
+    /** Stand-ins for the decoded `messages` rows the notes read, keyed by row id. */
+    rows: {
+      '50': 'was born',
+      '61': 'is under attack',
+      '90': 'has been completed',
+      '91': 'has been upgraded',
+      '92': 'is under attack',
+      '120': 'has died',
+      '121': 'An unknown hero has fallen',
+    },
+  },
 } as const;

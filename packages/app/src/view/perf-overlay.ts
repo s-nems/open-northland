@@ -10,13 +10,13 @@ import { messages } from '../i18n/index.js';
 export interface PerfOverlayHandle {
   /** Call once per frame. */
   update(report: FrameStatsReport): void;
-  setLeft(leftPx: number): void;
+  /** Re-anchor the readout's top-left corner, so it keeps clear of the HUD chrome at a new scale. */
+  place(leftPx: number, topPx: number): void;
   dispose(): void;
 }
 
 const PANEL_STYLE = [
   'position:fixed',
-  'top:12px',
   'box-sizing:border-box',
   'padding:6px 12px',
   // Lightly translucent so the tool-panel strip and map read through the bar.
@@ -51,11 +51,13 @@ function formatDeliveredSpeed(requested: number, recent: FrameRecent): string {
   return delivered === formatDelivered(requested) ? label : `${label}→${delivered}`;
 }
 
-/** Mount the debug readout pinned top-left, with its left edge at `leftPx` to clear the tool-panel strip. */
-export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
+/** Mount the debug readout pinned top-left, its corner at `(leftPx, topPx)` to clear the tool-panel strip
+ *  and the message notes along the top edge. */
+export function mountPerfOverlay(leftPx: number, topPx: number): PerfOverlayHandle {
   const panel = document.createElement('div');
   panel.style.cssText = PANEL_STYLE;
   panel.style.left = `${leftPx}px`;
+  panel.style.top = `${topPx}px`;
   panel.textContent = `${messages().performance.fps} -`;
   document.body.append(panel);
 
@@ -83,8 +85,9 @@ export function mountPerfOverlay(leftPx = 12): PerfOverlayHandle {
 
       panel.textContent = `${simState}\n${perf}`;
     },
-    setLeft(leftPx): void {
+    place(leftPx, topPx): void {
       panel.style.left = `${leftPx}px`;
+      panel.style.top = `${topPx}px`;
     },
     dispose: () => panel.remove(),
   };

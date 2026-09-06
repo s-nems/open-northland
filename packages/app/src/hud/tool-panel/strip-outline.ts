@@ -1,6 +1,6 @@
 import type { PalettedSprite } from '@open-northland/render';
 import { type GuiArt, makeGuiSprite } from '../../content/gui-art.js';
-import type { PlacedButton } from './layout.js';
+import type { PlacedButton, ToolButtonId } from './layout.js';
 import type { StripSpriteSpec } from './strip-texture.js';
 
 /**
@@ -23,12 +23,15 @@ const BUTTON_OUTLINE_OFFSETS: readonly (readonly [number, number])[] = [
   [1, 1],
 ];
 
+/** The buttons whose glyph follows a state, so their meshes are kept for re-framing after the bake. */
+const STATEFUL_BUTTONS: readonly ToolButtonId[] = ['speed', 'message_priority'];
+
 export interface OutlinedButtonSprites {
   /** All outline stamps first, then every real glyph, so a button's rim cannot stamp over a touching
    *  neighbour's art. */
   readonly specs: readonly StripSpriteSpec[];
-  /** The speed button's outline stamps and real glyph; a speed change re-frames all of them together. */
-  readonly speedSprites: readonly PalettedSprite[];
+  /** A stateful button's outline stamps and real glyph; a state change re-frames all of them together. */
+  readonly stateSprites: ReadonlyMap<ToolButtonId, readonly PalettedSprite[]>;
 }
 
 export function buildOutlinedButtonSpecs(
@@ -36,7 +39,7 @@ export function buildOutlinedButtonSpecs(
   buttons: readonly PlacedButton[],
 ): OutlinedButtonSprites {
   const specs: StripSpriteSpec[] = [];
-  const speedSprites: PalettedSprite[] = [];
+  const stateSprites = new Map<ToolButtonId, PalettedSprite[]>(STATEFUL_BUTTONS.map((id) => [id, []]));
   for (const b of buttons) {
     for (const [dx, dy] of BUTTON_OUTLINE_OFFSETS) {
       const os = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
@@ -46,14 +49,14 @@ export function buildOutlinedButtonSpecs(
         spr: os.sprite,
         design: { x: b.rect.x + dx, y: b.rect.y + dy, w: b.rect.w, h: b.rect.h },
       });
-      if (b.id === 'speed') speedSprites.push(os.sprite);
+      stateSprites.get(b.id)?.push(os.sprite);
     }
   }
   for (const b of buttons) {
     const gs = makeGuiSprite(art, b.gfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
     if (gs === null) continue;
     specs.push({ spr: gs.sprite, design: b.rect });
-    if (b.id === 'speed') speedSprites.push(gs.sprite);
+    stateSprites.get(b.id)?.push(gs.sprite);
   }
-  return { specs, speedSprites };
+  return { specs, stateSprites };
 }

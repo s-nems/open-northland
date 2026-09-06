@@ -166,7 +166,7 @@ describe('createGameSettingsRuntime', () => {
     const hud = createGameHudScaleCoordinator({
       initialScale,
       targets: [target],
-      setPerfLeft: perf,
+      placePerf: perf,
       onError: vi.fn(),
     });
     const viewport = createGameViewportCoordinator({

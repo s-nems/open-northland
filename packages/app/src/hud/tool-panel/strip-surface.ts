@@ -1,7 +1,12 @@
 import type { PalettedSprite } from '@open-northland/render';
 import { type Application, type Container, Graphics } from 'pixi.js';
 import { type GuiArt, makeGuiSprite } from '../../content/gui-art.js';
-import { TOOL_PANEL_STRIP, type ToolPanelLayout } from './layout.js';
+import {
+  MESSAGE_PRIORITY_FRAME,
+  TOOL_PANEL_STRIP,
+  type ToolButtonId,
+  type ToolPanelLayout,
+} from './layout.js';
 import { buildOutlinedButtonSpecs } from './strip-outline.js';
 import { createSupersampledStrip, type StripSpriteSpec, type SupersampledStrip } from './strip-texture.js';
 
@@ -12,12 +17,14 @@ const FALLBACK_BUTTON_BORDER = 0x8a744a;
 /** Inset of a flat button block inside its placed rect, on every side (screen px). */
 const FALLBACK_BUTTON_INSET = 2;
 
-const NO_SPEED_SPRITES: readonly PalettedSprite[] = [];
+const NO_SPRITES: readonly PalettedSprite[] = [];
 
-/** The strip's live bake, read through getters because a re-bake replaces both. */
+/** The strip's live bake, read through getters because a re-bake replaces it. */
 export interface StripBake {
   current(): SupersampledStrip | null;
-  speedSprites(): readonly PalettedSprite[];
+  /** Show atlas frame `gfx` on a stateful button: its outline stamps and glyph are re-framed together
+   *  and the bake redrawn. A no-op for the flat fallback or a stateless button. */
+  reframe(id: ToolButtonId, gfx: number): void;
 }
 
 export interface StripSurface extends StripBake {
@@ -39,14 +46,14 @@ export function createStripSurface(deps: StripSurfaceDeps): StripSurface {
     drawFlatStrip(container, layout);
     return {
       current: () => null,
-      speedSprites: () => NO_SPEED_SPRITES,
+      reframe: () => undefined,
       syncResolution: () => false,
       dispose: () => undefined,
     };
   }
 
   let bake: SupersampledStrip | null = null;
-  let speedSprites: readonly PalettedSprite[] = NO_SPEED_SPRITES;
+  let stateSprites: ReadonlyMap<ToolButtonId, readonly PalettedSprite[]> = new Map();
   let bakedResolution = app.renderer.resolution;
 
   const rebake = (): void => {
@@ -60,9 +67,11 @@ export function createStripSurface(deps: StripSurfaceDeps): StripSurface {
       colorKey: 'full',
     });
     if (backdrop !== null) specs.push({ spr: backdrop.sprite, design: TOOL_PANEL_STRIP });
+    const frame = makeGuiSprite(art, layout.frameGfx, { defaultPalette: 'iconsleft', colorKey: 'full' });
+    if (frame !== null) specs.push({ spr: frame.sprite, design: MESSAGE_PRIORITY_FRAME });
     const outlined = buildOutlinedButtonSpecs(art, layout.buttons);
     specs.push(...outlined.specs);
-    speedSprites = outlined.speedSprites;
+    stateSprites = outlined.stateSprites;
     bake = createSupersampledStrip({
       app,
       bounds: layout.designBounds,
@@ -76,7 +85,14 @@ export function createStripSurface(deps: StripSurfaceDeps): StripSurface {
 
   return {
     current: () => bake,
-    speedSprites: () => speedSprites,
+    reframe: (id, gfx): void => {
+      const frame = art.layer.atlas.frames.get(gfx);
+      const glyphs = stateSprites.get(id) ?? NO_SPRITES;
+      if (frame === undefined || glyphs.length === 0) return;
+      for (const s of glyphs)
+        s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
+      bake?.redraw();
+    },
     syncResolution: () => {
       if (app.renderer.resolution === bakedResolution) return false;
       rebake();
@@ -99,5 +115,6 @@ function drawFlatStrip(container: Container, layout: ToolPanelLayout): void {
       .fill(FALLBACK_BUTTON)
       .stroke({ color: FALLBACK_BUTTON_BORDER, width: 1 });
   }
+  g.rect(layout.frame.x, layout.frame.y, layout.frame.w, layout.frame.h).fill(FALLBACK_STRIP);
   container.addChild(g);
 }

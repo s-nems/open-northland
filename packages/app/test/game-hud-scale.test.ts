@@ -8,11 +8,11 @@ function target(apply: (scale: number) => Promise<void> = async () => undefined)
 describe('createGameHudScaleCoordinator', () => {
   it('moves every HUD target before advancing the perf offset', async () => {
     const targets = [target(), target(), target()];
-    const setPerfLeft = vi.fn();
+    const placePerf = vi.fn();
     const coordinator = createGameHudScaleCoordinator({
       initialScale: 1,
       targets,
-      setPerfLeft,
+      placePerf,
       onError: vi.fn(),
     });
 
@@ -20,7 +20,7 @@ describe('createGameHudScaleCoordinator', () => {
 
     for (const item of targets) expect(item.setUiScale).toHaveBeenCalledWith(1.25);
     expect(coordinator.currentScale()).toBe(1.25);
-    expect(setPerfLeft).toHaveBeenCalledWith(1.25);
+    expect(placePerf).toHaveBeenCalledWith(1.25);
   });
 
   it('rolls every target and the perf offset back when one replacement fails', async () => {
@@ -29,12 +29,12 @@ describe('createGameHudScaleCoordinator', () => {
       if (scale === 1.25) throw new Error('GPU allocation failed');
     });
     const last = target();
-    const setPerfLeft = vi.fn();
+    const placePerf = vi.fn();
     const onError = vi.fn();
     const coordinator = createGameHudScaleCoordinator({
       initialScale: 1,
       targets: [first, failing, last],
-      setPerfLeft,
+      placePerf,
       onError,
     });
 
@@ -45,7 +45,7 @@ describe('createGameHudScaleCoordinator', () => {
     expect(failing.setUiScale.mock.calls.map(([scale]) => scale)).toEqual([1.25, 1]);
     expect(last.setUiScale.mock.calls.map(([scale]) => scale)).toEqual([1]);
     expect(coordinator.currentScale()).toBe(1);
-    expect(setPerfLeft).toHaveBeenLastCalledWith(1);
+    expect(placePerf).toHaveBeenLastCalledWith(1);
     expect(onError).toHaveBeenCalledOnce();
   });
 
@@ -63,7 +63,7 @@ describe('createGameHudScaleCoordinator', () => {
     const coordinator = createGameHudScaleCoordinator({
       initialScale: 1,
       targets: [tracked('toolPanel'), tracked('minimap'), tracked('controls')],
-      setPerfLeft: vi.fn(),
+      placePerf: vi.fn(),
       onError: vi.fn(),
     });
 
@@ -81,7 +81,7 @@ describe('createGameHudScaleCoordinator', () => {
     const coordinator = createGameHudScaleCoordinator({
       initialScale: 1,
       targets: [sticky],
-      setPerfLeft: vi.fn(),
+      placePerf: vi.fn(),
       onError,
     });
 
@@ -106,7 +106,7 @@ describe('createGameHudScaleCoordinator', () => {
     const coordinator = createGameHudScaleCoordinator({
       initialScale: 1,
       targets: [slow],
-      setPerfLeft: vi.fn(),
+      placePerf: vi.fn(),
       onError: vi.fn(),
     });
 

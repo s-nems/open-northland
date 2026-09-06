@@ -1,4 +1,4 @@
-import type { Camera, ElevationField } from '@open-northland/render';
+import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
 import type { Command, PlayerCommand } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { localizedBuildingName } from '../catalog/building-i18n.js';
@@ -13,6 +13,8 @@ import type { ExtrasCountersSeam, ExtrasGrantsSeam } from '../hud/tool-panel/ext
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import type { MenuGoodEntry } from '../hud/tool-panel/goods-menu.js';
 import { mountToolPanel, type ToolPanelController } from '../hud/tool-panel/index.js';
+import type { MessageTarget } from '../hud/tool-panel/messages/index.js';
+import type { TooltipSurface } from '../hud/tooltip-surface.js';
 import { currentLocale } from '../i18n/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
 import { nodeBounds, screenToWorld, worldToTile } from './picking.js';
@@ -59,6 +61,13 @@ export interface GameToolPanelDeps {
   readonly onSystemMenu?: () => void;
   readonly missionBrief?: () => MissionBrief | null;
   readonly onLargeWindow?: (open: boolean) => void;
+  /** The map's sprite sheet for the note portraits; absent leaves the notes bare. */
+  readonly sheet?: SpriteSheet;
+  readonly playerColourOf?: (player: number) => number;
+  /** The cursor chip a hovered note shows its text in. */
+  readonly tooltip?: TooltipSurface;
+  /** A note's Select: centre the view on the target and select it. */
+  readonly onSelectMessageTarget?: (target: MessageTarget) => void;
 }
 
 export interface GameToolPanelHandle {
@@ -156,6 +165,12 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
       ...(deps.missionBrief !== undefined ? { missionBrief: deps.missionBrief } : {}),
       ...(deps.onLargeWindow !== undefined ? { onLargeWindow: deps.onLargeWindow } : {}),
+      ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
+      ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+      ...(deps.tooltip !== undefined ? { tooltip: deps.tooltip } : {}),
+      ...(deps.onSelectMessageTarget !== undefined
+        ? { onSelectMessageTarget: deps.onSelectMessageTarget }
+        : {}),
     });
 
   const mounts = createReplaceableMount(

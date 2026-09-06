@@ -16,12 +16,21 @@ export interface HeldMode {
   placeBanner(): void;
 }
 
+/** The message notes and their window: the window draws above every pop-up, the notes below them. */
+export interface NotesInput {
+  windowClaims(x: number, y: number): boolean;
+  handleWindowClick(x: number, y: number, button: number): boolean;
+  handleNoteClick(x: number, y: number, button: number, shift: boolean): boolean;
+  handleHover(x: number, y: number, clientX: number, clientY: number, covered: boolean): void;
+}
+
 export interface ToolPanelInputDeps {
   readonly canvas: HTMLCanvasElement;
   readonly container: Container;
   readonly layout: ToolPanelLayout;
   readonly toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
   readonly windows: ToolWindows;
+  readonly notes: NotesInput;
   readonly held: readonly HeldMode[];
   readonly bindings: KeyBindings;
   readonly activateButton: (id: ToolButtonId) => void;
@@ -41,16 +50,31 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
 
   const onMouseDown = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
+    const consume = (): void => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
 
+    // The message window is the topmost HUD surface, so either button lands in it before anything else.
+    if (deps.notes.windowClaims(x, y)) {
+      deps.notes.handleWindowClick(x, y, e.button);
+      consume();
+      return;
+    }
+    // A note under an open pop-up is covered, so the pop-up keeps the press.
+    const overPopup = windows.claims(x, y);
     // Right button cancels an active placement or good drop; otherwise it is a world order for unit controls.
     if (e.button === 2) {
       if (anyHeld()) {
-        e.preventDefault();
         // Order-independent with unit controls: when it runs first the still-held claim makes it
         // defer; when it runs later, stopping the event keeps the now-clear claim from reading the
         // press as a world move order.
-        e.stopImmediatePropagation();
+        consume();
         for (const mode of held) mode.cancel();
+        return;
+      }
+      if (!overPopup && deps.notes.handleNoteClick(x, y, e.button, e.shiftKey)) {
+        consume();
         return;
       }
       // macOS delivers Ctrl+left-click as button 2, so with nothing to cancel it falls through as the
@@ -65,6 +89,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
     let consumed = btn !== null;
     if (btn !== null) deps.activateButton(btn);
     else consumed = windows.handleClick(x, y, { bigStep: e.ctrlKey || e.metaKey });
+    if (!consumed && !overPopup) consumed = deps.notes.handleNoteClick(x, y, 0, e.shiftKey);
     for (const mode of held) {
       if (consumed) break;
       consumed = mode.handleClick(e.clientX, e.clientY);
@@ -75,6 +100,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   let hover: ToolButtonId | null = null;
   const onMouseMove = (e: MouseEvent): void => {
     const { x, y } = toCanvas(e.clientX, e.clientY);
+    deps.notes.handleHover(x, y, e.clientX, e.clientY, windows.claims(x, y));
     windows.handleHover(x, y);
     const next = hitTestToolPanel(layout, x, y);
     if (next === hover) return;

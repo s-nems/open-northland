@@ -1,22 +1,14 @@
 import {
   buildSpriteScene,
   type DrawItem,
-  PalettedSprite,
   paletteLutRow,
-  type ResolvedLayer,
   resolveLayers,
   type SpriteSheet,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import {
-  type Application,
-  Container,
-  type Container as PixiContainer,
-  Rectangle,
-  Sprite,
-  Texture,
-} from 'pixi.js';
+import { type Application, Container, type Container as PixiContainer } from 'pixi.js';
 import type { Rect } from '../geometry.js';
+import { SettlerSpritePool } from '../settler-sprite-pool.js';
 import { fieldWorkers, groupedWorkers } from './worker-selection.js';
 
 /**
@@ -45,18 +37,14 @@ interface WorkerHit {
 
 export class WorkerSpriteOverlay {
   private readonly container: PixiContainer = new Container();
-  /** One display object per (panel slot, layerIndex), keyed by slot rather than by entity so the pool
-   *  cannot grow past the field's slot count × the deepest layer stack. */
-  private readonly sprites = new Map<string, PalettedSprite | Sprite>();
-  /** Cached plain textures (the no-LUT fallback) keyed by atlas frame identity, so the fallback path
-   *  doesn't mint a Texture every frame. */
-  private readonly plainTextures = new Map<object, Texture>();
-  private readonly drawn = new Set<string>();
+  /** Keyed by (panel slot, layerIndex) rather than by entity, so the pool cannot grow past the field's
+   *  slot count × the deepest layer stack. */
+  private readonly pool: SettlerSpritePool;
   /** This frame's clickable worker boxes, rebuilt each update. */
   private hits: WorkerHit[] = [];
 
   constructor(
-    private readonly app: Application,
+    app: Application,
     private readonly sheet: SpriteSheet | undefined,
     zIndex: number,
     /** Owner slot → team-colour slot, matching the map's own sprites. */
@@ -65,6 +53,7 @@ export class WorkerSpriteOverlay {
     this.container.zIndex = zIndex;
     this.container.visible = false;
     app.stage.addChild(this.container);
+    this.pool = new SettlerSpritePool(app, sheet, this.container);
   }
 
   /**
@@ -81,10 +70,10 @@ export class WorkerSpriteOverlay {
     opts: { siteCrew?: boolean; groups?: readonly (readonly number[])[] } = {},
   ): void {
     const { siteCrew = false, groups } = opts;
-    this.drawn.clear();
+    this.pool.begin();
     this.hits = [];
     if (this.sheet === undefined || buildingId === null || field === null) {
-      this.hideRest();
+      this.pool.hideRest();
       this.container.visible = false;
       return;
     }
@@ -92,7 +81,7 @@ export class WorkerSpriteOverlay {
     const grouped = resident !== undefined && resident.ids.length > 0 ? resident : undefined;
     const workers = grouped?.ids ?? fieldWorkers(snapshot, buildingId, siteCrew);
     if (workers.length === 0) {
-      this.hideRest();
+      this.pool.hideRest();
       this.container.visible = false;
       return;
     }
@@ -149,12 +138,12 @@ export class WorkerSpriteOverlay {
       const row = lut === undefined ? 0 : paletteLutRow(lut, r.item.player, r.item.armorGood);
       for (let li = 0; li < r.layers.length; li++) {
         const layer = r.layers[li];
-        if (layer !== undefined) this.drawLayer(`${i}:${li}`, layer, feetX, feetY, zoom, row);
+        if (layer !== undefined) this.pool.drawLayer(`${i}:${li}`, layer, feetX, feetY, zoom, row);
       }
       this.hits.push({ id: r.id, x: cellX, y: inner.y, w: slotW, h: inner.h });
     });
 
-    this.hideRest();
+    this.pool.hideRest();
     this.container.visible = true;
   }
 
@@ -166,71 +155,7 @@ export class WorkerSpriteOverlay {
   }
 
   dispose(): void {
+    this.pool.dispose();
     this.container.destroy({ children: true });
-    this.sprites.clear();
-    for (const texture of this.plainTextures.values()) texture.destroy(false);
-    this.plainTextures.clear();
-  }
-
-  private drawLayer(
-    key: string,
-    layer: ResolvedLayer,
-    feetX: number,
-    feetY: number,
-    zoom: number,
-    playerRow: number,
-  ): void {
-    const lut = this.sheet?.palette;
-    if (lut !== undefined) {
-      let spr = this.sprites.get(key);
-      if (!(spr instanceof PalettedSprite)) {
-        spr?.destroy();
-        spr = new PalettedSprite(lut.source, lut.colours);
-        this.sprites.set(key, spr);
-        this.container.addChild(spr);
-      }
-      spr.setFrame(
-        layer.source,
-        layer.frame,
-        layer.atlasW ?? layer.frame.width,
-        layer.atlasH ?? layer.frame.height,
-      );
-      spr.place(feetX, feetY, zoom * layer.scale, this.app.screen.width, this.app.screen.height);
-      spr.player = playerRow;
-      spr.visible = true;
-    } else {
-      // No LUT (baked-palette sheet): a plain feet-anchored sprite.
-      let spr = this.sprites.get(key);
-      if (spr instanceof PalettedSprite || spr === undefined) {
-        spr?.destroy();
-        spr = new Sprite();
-        this.sprites.set(key, spr);
-        this.container.addChild(spr);
-      }
-      spr.texture = this.plainTexture(layer.source, layer.frame);
-      const w = layer.frame.width * zoom * layer.scale;
-      const h = layer.frame.height * zoom * layer.scale;
-      spr.width = w;
-      spr.height = h;
-      spr.position.set(
-        feetX + layer.frame.offsetX * zoom * layer.scale,
-        feetY + layer.frame.offsetY * zoom * layer.scale,
-      );
-      spr.visible = true;
-    }
-    this.drawn.add(key);
-  }
-
-  private plainTexture(source: ResolvedLayer['source'], frame: ResolvedLayer['frame']): Texture {
-    const cached = this.plainTextures.get(frame);
-    if (cached !== undefined) return cached;
-    const tex = new Texture({ source, frame: new Rectangle(frame.x, frame.y, frame.width, frame.height) });
-    this.plainTextures.set(frame, tex);
-    return tex;
-  }
-
-  /** Hide every pooled sprite not drawn this frame. */
-  private hideRest(): void {
-    for (const [key, spr] of this.sprites) if (!this.drawn.has(key)) spr.visible = false;
   }
 }

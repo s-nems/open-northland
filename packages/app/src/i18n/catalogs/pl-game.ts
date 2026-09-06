@@ -292,4 +292,23 @@ export const plGame = {
     },
     armorClasses: ['Brak', 'Klasa 1', 'Klasa 2', 'Klasa 3', 'Klasa 4'],
   },
+  userMessages: {
+    title: 'Wiadomość',
+    remove: 'Usuń wiadomość',
+    select: 'Wybierz',
+    levelTooltips: {
+      '0': 'Pokazuję wszystkie wiadomości',
+      '1': 'Ukrywam nieistotne wiadomości',
+      '2': 'Pokazuję tylko ważne wiadomości',
+    },
+    rows: {
+      '50': 'urodził się',
+      '61': '- zaatakowano',
+      '90': '- ukończono',
+      '91': '- ulepszono',
+      '92': '- zaatakowano',
+      '120': 'nie żyje',
+      '121': 'Nieznany bohater poległ',
+    },
+  },
 } as const;
