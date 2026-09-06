@@ -5,12 +5,17 @@ import type { MissionBrief } from '../src/game/mission-brief.js';
 import type { Rect } from '../src/hud/geometry.js';
 import type { PanelContext } from '../src/hud/tool-panel/context.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
+import {
+  AUTO_SCROLL_DELAY_MS,
+  AUTO_SCROLL_PX_PER_S,
+  MAX_CREEP_STEP_MS,
+} from '../src/hud/tool-panel/mission/creep.js';
 import { createMissionWindow, layoutMissionWindow } from '../src/hud/tool-panel/mission/index.js';
 
 /**
  * The mission window controller over a stubbed context (no Pixi text): it opens on the task tab and
  * holds the pause, its tabs switch content, a history link opens its page, the Up/Down buttons page
- * through overflow, and the closer dismisses it.
+ * through overflow, an unread page creeps down on its own, and the closer dismisses it.
  */
 
 const SCREEN = { width: 1024, height: 768 };
@@ -67,7 +72,7 @@ const BRIEF: MissionBrief = {
   goals: [{ text: 'Win', rule: 'skirmish', done: false }],
 };
 
-function mount(brief: MissionBrief = BRIEF) {
+function mount(brief: MissionBrief = BRIEF, now: () => number = () => 0) {
   const { ctx, made, placedY } = stubContext();
   const opened: boolean[] = [];
   const window = createMissionWindow({
@@ -77,6 +82,7 @@ function mount(brief: MissionBrief = BRIEF) {
     brief: () => brief,
     history: BOOK,
     onOpenChange: (open) => opened.push(open),
+    now,
   });
   const layout = layoutMissionWindow(SCREEN, null);
   return { window, made, placedY, opened, layout };
@@ -146,6 +152,33 @@ describe('createMissionWindow', () => {
     expect(placedY.get('P0')).toBe(viewport.y - 60);
     window.handleClick(...middle(layout.scrollUp));
     expect(placedY.get('P0')).toBe(viewport.y);
+  });
+
+  it('creeps down after the pause and stops for good once the player scrolls', () => {
+    const blocks = Array.from({ length: 30 }, (_, i) => ({
+      kind: 'text' as const,
+      style: 'body' as const,
+      text: `P${i}`,
+    }));
+    let ms = 0;
+    const { window, placedY, layout } = mount({ title: '', blocks, goals: [] }, () => ms);
+    /** The window only creeps by the time a frame reports, so the test hands it frames. */
+    const frames = (forMs: number): void => {
+      for (let done = 0; done < forMs; done += MAX_CREEP_STEP_MS) {
+        ms += MAX_CREEP_STEP_MS;
+        window.refresh();
+      }
+    };
+    window.toggle();
+    const top = layout.viewport.y;
+    frames(AUTO_SCROLL_DELAY_MS);
+    expect(placedY.get('P0')).toBe(top);
+    frames(2000);
+    expect(placedY.get('P0')).toBeCloseTo(top - 2 * AUTO_SCROLL_PX_PER_S * layout.scale, 5);
+    window.handleWheel(...middle(layout.window), 1);
+    const taken = placedY.get('P0');
+    frames(4000);
+    expect(placedY.get('P0')).toBe(taken);
   });
 
   it('keeps the arrows off a short goal list and reopens on the task tab', () => {
