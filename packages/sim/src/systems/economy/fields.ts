@@ -20,11 +20,12 @@ import { stockpilesAtNode } from '../spatial/stockpiles.js';
 // 27/28/29 with `maximumValency 5`); its timings and areas are the content `farming` block's calibration
 // constants, since no readable growth timing or field radius exists.
 
-// Watering is the growth fuel, so the farm's throughput is its farmers' labor rather than a wall-clock
-// timer. Calibrated against the original's observed ~10 grain per farmer per 10 minutes, up to the farm's
-// four slots, on a plot of ~24 plants per crew. Approximation: the cultivate atomic exists in the readable
-// data (id 35, the watering-can animation) but its engine-side effect is not decoded. An untended field
-// stands at its stage and deadlocks nothing.
+// Watering is the growth fuel: the cultivate clip fires the `GROW` cue (`atomicanimations.ini` `event 14 16`,
+// type 16 named in `logicdefines.inc`), so the farm's throughput is its farmers' labor rather than a
+// wall-clock timer. Sized against the original's observed ~10 grain per farmer per 10 minutes on a plot of
+// ~24 plants, which it overshoots - about double for a lone farmer - since sowing and watering land on one
+// clip. Approximation: the cue's reach and any clock period are not readable. An untended field stands at
+// its stage and deadlocks nothing.
 
 /** Distinct growth paces a field can be sown into, spread evenly across the good's `growthSpreadPercent`
  *  band. Approximation: enough to keep a plot of a couple of dozen fields visibly out of step. */

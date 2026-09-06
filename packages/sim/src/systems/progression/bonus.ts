@@ -132,17 +132,6 @@ export function workSpeedBonus(world: World, ctx: SystemContext, worker: Entity,
 }
 
 /**
- * A repeated-work count shrunk by a work-speed `bonus`, scaling as 1/(1 + bonus), so mastery halves it.
- * Authored: experience buys fewer swings, never faster animations. Round-half-up on the exact integer
- * ratio, never below one repetition.
- */
-export function scaledWorkRepeats(repeats: number, bonus: Fixed): number {
-  if (bonus <= ZERO) return repeats;
-  const denom = ONE + bonus;
-  return Math.max(1, Math.trunc((repeats * ONE + Math.trunc(denom / 2)) / denom));
-}
-
-/**
  * Hits at which a weapon class's damage bonus tops out. Authored: combat XP lands per successful hit, far
  * faster than production batches, so combat mastery sits 5x deeper than
  * {@link EXPERIENCE_MASTERY_REPEATS}.

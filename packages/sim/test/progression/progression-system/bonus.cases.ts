@@ -13,7 +13,6 @@ import {
   fightDamageBonus,
   operatorProductionBonus,
   SCOUT_VISION_BONUS_MAX_NODES,
-  scaledWorkRepeats,
   scoutVisionBonusNodes,
   WEAPON_MAIN_TYPE,
   withFightDamageBonus,
@@ -57,23 +56,6 @@ describe('scoutVisionBonusNodes - signpost craft widens the scout eye a little',
     expect(scoutVisionBonusNodes(0)).toBe(0);
     expect(scoutVisionBonusNodes(10)).toBe(4); // ~69% of the 6-node cap, truncated
     expect(scoutVisionBonusNodes(100)).toBe(SCOUT_VISION_BONUS_MAX_NODES); // mastery: the full cap
-  });
-});
-
-describe('scaledWorkRepeats - experience buys fewer repetitions, never faster ones', () => {
-  it('leaves the count whole at no bonus and halves it at mastery', () => {
-    expect(scaledWorkRepeats(15, ZERO)).toBe(15);
-    expect(scaledWorkRepeats(15, ONE)).toBe(8); // 15/2 rounded
-    expect(scaledWorkRepeats(4, ONE)).toBe(2);
-  });
-
-  it('never scales below one repetition', () => {
-    expect(scaledWorkRepeats(1, ONE)).toBe(1);
-  });
-
-  it('a mid-curve bonus shrinks proportionally (rounded, not truncated)', () => {
-    // bonus(10) ≈ 0.694: 15 / 1.694 ≈ 8.85 → 9 (truncation would give 8).
-    expect(scaledWorkRepeats(15, experienceBonus(10))).toBe(9);
   });
 });
 

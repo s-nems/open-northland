@@ -18,6 +18,7 @@ import {
   grassMap,
   PICKUP_ATOMIC,
   Position,
+  plotAtCap,
   REAP_ATOMIC,
   Settler,
   SOW_ATOMIC,
@@ -28,6 +29,29 @@ import {
   WATER_ATOMIC,
   WHEAT,
 } from './support.js';
+
+/** The grafted fixture farmer-wheat track id (the base fixture carries no farmer track at all). */
+const FARMER_WHEAT_TRACK = 90;
+
+/** The fixture plus a farmer-wheat track (rate 1) pinning `strokes` per reaped field. */
+function contentWithStrokes(strokes: number): ReturnType<typeof testContent> {
+  const base = testContent();
+  return {
+    ...base,
+    jobExperience: [
+      ...base.jobExperience,
+      {
+        typeId: FARMER_WHEAT_TRACK,
+        id: 'farmer_wheat',
+        name: 'farmer wheat',
+        jobType: FARMER,
+        goodType: WHEAT,
+        experienceFactor: 1,
+        baseRepeatCounter: strokes,
+      },
+    ],
+  };
+}
 
 describe('planFarmer - the drive ladder', () => {
   it('sows: an idle bound farmer with no fields starts the plant atomic (or walks to the node)', () => {
@@ -43,14 +67,21 @@ describe('planFarmer - the drive ladder', () => {
     expect(atomic?.atomicId === SOW_ATOMIC || goal !== undefined).toBe(true);
   });
 
-  /** The grafted fixture farmer-wheat track id (the base fixture carries no farmer track at all). */
-  const FARMER_WHEAT_TRACK = 90;
-
-  it('reaps a ripe field before sowing more', () => {
+  it('sows before reaping while the plot is under its cap - the plot fills before it turns over', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
-    const field = fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot
+    fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot - and still not the pick
     const farmer = farmerAt(sim, 4, 4, farm);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(farmer, components.FarmTask).sow).toBe(true);
+    expect(sim.world.tryGet(farmer, components.CurrentAtomic)?.atomicId).not.toBe(REAP_ATOMIC);
+  });
+
+  it('reaps a ripe field once the plot is at its cap', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
+    const { field, farmer } = plotAtCap(sim, { stage: STAGES });
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -59,80 +90,71 @@ describe('planFarmer - the drive ladder', () => {
     expect(atomic.effect).toEqual({ kind: 'harvest', resource: field, goodType: WHEAT });
   });
 
-  it("a field action lasts the track's baseRepeatCounter strokes - the farm's throughput dial", () => {
-    // Two content sets differing ONLY in the farmer-wheat track's stroke count (`workRepeatsFor`); the
-    // reap of an identical ripe field underfoot must take exactly twice as long at 2 strokes as at 1.
-    const reapTicks = (strokes: number): number => {
-      const base = testContent();
-      const content = {
-        ...base,
-        jobExperience: [
-          ...base.jobExperience,
-          {
-            typeId: FARMER_WHEAT_TRACK,
-            id: 'farmer_wheat',
-            name: 'farmer wheat',
-            jobType: FARMER,
-            goodType: WHEAT,
-            experienceFactor: 1,
-            baseRepeatCounter: strokes,
-          },
-        ],
-      };
-      const sim = new Simulation({ seed: 1, content, map: grassMap(8, 8) });
-      const farm = farmAt(sim, 4, 4);
-      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot - reaps on the spot
-      const farmer = farmerAt(sim, 4, 4, farm);
+  it("the field falls on the stroke that completes the track's count, never earlier", () => {
+    // Whether the field still stands after each successive full clip, at `strokes` per field.
+    const standsAfterClips = (strokes: number): boolean[] => {
+      const sim = new Simulation({ seed: 1, content: contentWithStrokes(strokes), map: grassMap(8, 8) });
+      const { field, farmer } = plotAtCap(sim, { stage: STAGES });
       plannerSystem(sim.world, ctxOf(sim));
-      return sim.world.get(farmer, components.CurrentAtomic).duration;
+      const clip = sim.world.get(farmer, components.CurrentAtomic).duration;
+      const stands: boolean[] = [];
+      for (let swing = 0; swing < 2; swing++) {
+        sim.run(clip);
+        stands.push(sim.world.has(field, Crop));
+      }
+      return stands;
     };
-    expect(reapTicks(2)).toBe(reapTicks(1) * 2);
+    expect(standsAfterClips(1)).toEqual([false, false]);
+    expect(standsAfterClips(2)).toEqual([true, false]);
   });
 
-  it('experience cuts the strokes per spot - a master reaps in half the strokes (scaledWorkRepeats wiring)', () => {
-    // The fixture carries no farmer track, so graft one (typeId 90, rate 1) pinning wheat at 4 strokes:
-    // 100 XP = 100 repeats = mastery, so the same reap must plan 2 strokes instead of 4.
-    const reapTicks = (xp: number): number => {
-      const base = testContent();
-      const content = {
-        ...base,
-        jobExperience: [
-          ...base.jobExperience,
-          {
-            typeId: FARMER_WHEAT_TRACK,
-            id: 'farmer_wheat',
-            name: 'farmer wheat',
-            jobType: FARMER,
-            goodType: WHEAT,
-            experienceFactor: 1,
-            baseRepeatCounter: 4,
-          },
-        ],
-      };
-      const sim = new Simulation({ seed: 1, content, map: grassMap(8, 8) });
-      const farm = farmAt(sim, 4, 4);
-      fieldAt(sim, farm, 4, 4, { stage: STAGES }); // ripe, underfoot - reaps on the spot
-      const farmer = farmerAt(sim, 4, 4, farm);
-      if (xp > 0) sim.world.mut(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, xp);
-      plannerSystem(sim.world, ctxOf(sim));
-      return sim.world.get(farmer, components.CurrentAtomic).duration;
-    };
-    expect(reapTicks(100)).toBe(reapTicks(0) / 2);
+  it('a two-stroke reap re-arms the same clip from zero after its first stroke', () => {
+    const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
+    const { farmer } = plotAtCap(sim, { stage: STAGES });
+    plannerSystem(sim.world, ctxOf(sim));
+    const clip = sim.world.get(farmer, components.CurrentAtomic).duration;
+
+    sim.run(clip);
+
+    const atomic = sim.world.get(farmer, components.CurrentAtomic);
+    expect(atomic.atomicId).toBe(REAP_ATOMIC);
+    expect(atomic.elapsed).toBe(0);
+    expect(atomic.duration).toBe(clip);
   });
 
-  it('waters a thirsty field once the roster is at its cap (the can circles between sowings)', () => {
+  it('the stroke count never stretches a clip: reap and water last one clip at any count', () => {
+    const clipTicks = (strokes: number): { reap: number; water: number } => {
+      const reaping = new Simulation({ seed: 1, content: contentWithStrokes(strokes), map: grassMap(8, 8) });
+      const reaper = plotAtCap(reaping, { stage: STAGES }).farmer;
+      plannerSystem(reaping.world, ctxOf(reaping));
+      const watering = new Simulation({ seed: 1, content: contentWithStrokes(strokes), map: grassMap(8, 8) });
+      const waterer = plotAtCap(watering, {}).farmer;
+      plannerSystem(watering.world, ctxOf(watering));
+      return {
+        reap: reaping.world.get(reaper, components.CurrentAtomic).duration,
+        water: watering.world.get(waterer, components.CurrentAtomic).duration,
+      };
+    };
+    expect(clipTicks(2)).toEqual(clipTicks(1));
+  });
+
+  it('a master reaps a two-stroke field in one swing - experience buys fewer strokes, never faster ones', () => {
+    const sim = new Simulation({ seed: 1, content: contentWithStrokes(2), map: grassMap(8, 8) });
+    const { field, farmer } = plotAtCap(sim, { stage: STAGES });
+    sim.world.mut(farmer, Settler).experience.set(FARMER_WHEAT_TRACK, 100); // 100 XP at rate 1 = mastery
+
+    plannerSystem(sim.world, ctxOf(sim));
+    sim.run(sim.world.get(farmer, components.CurrentAtomic).duration);
+
+    expect(sim.world.has(field, Crop)).toBe(false);
+  });
+
+  it('waters a thirsty field once the plot is at its cap (the can circles between sowings)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
-    const farm = farmAt(sim, 4, 4);
-    // A full one-farmer roster (cap 2 + 4 = 6), the underfoot field thirsty - the sow branch is
-    // closed, so the drive reaches for the can. (Under the cap it sows FIRST - per-stage watering
-    // keeps some field thirsty almost always, and a water-first farmer would never expand the plot.)
-    const field = fieldAt(sim, farm, 4, 4);
-    fieldAt(sim, farm, 3, 3, { watered: true });
-    fieldAt(sim, farm, 5, 3, { watered: true });
-    fieldAt(sim, farm, 3, 5, { watered: true });
-    fieldAt(sim, farm, 2, 4, { watered: true });
-    fieldAt(sim, farm, 6, 4, { watered: true });
-    const farmer = farmerAt(sim, 4, 4, farm);
+    // The sow branch is closed at the cap, so the drive reaches for the can. (Under the cap it sows FIRST -
+    // per-stage watering keeps some field thirsty almost always, and a water-first farmer would never
+    // expand the plot.)
+    const { field, farmer } = plotAtCap(sim, {});
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -141,13 +163,14 @@ describe('planFarmer - the drive ladder', () => {
     expect(atomic.effect).toEqual({ kind: 'water', crop: field });
   });
 
-  it('picks up a cut sheaf lying by the farm (then the delivery rung routes it home)', () => {
+  it('picks up a cut sheaf lying by the farm before anything else (then the delivery rung routes it home)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     const farm = farmAt(sim, 4, 4);
     const sheaf = sim.world.create();
     sim.world.add(sheaf, Position, { x: fx.fromInt(4), y: fx.fromInt(4) });
     sim.world.add(sheaf, Stockpile, { amounts: new Map([[WHEAT, 1]]) });
     sim.world.add(sheaf, GroundDrop, { goodType: WHEAT });
+    fieldAt(sim, farm, 3, 3, { stage: STAGES }); // a ripe field and an open plot both wait behind the sheaf
     const farmer = farmerAt(sim, 4, 4, farm);
 
     plannerSystem(sim.world, ctxOf(sim));

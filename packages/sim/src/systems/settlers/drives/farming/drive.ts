@@ -1,3 +1,7 @@
+// The field lifecycle itself (growth, the sow/water/reap effects) lives in ../../../economy/fields.ts; this
+// module decides what a farmer does next. The actions and their animations are the original's own farmer
+// atomics.
+
 import {
   Building,
   CARRY_CAPACITY,
@@ -13,12 +17,7 @@ import type { NodeId } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
 import { type FarmingSpec, farmWorkGood } from '../../../economy/fields.js';
 import { dynamicBlockOverlay } from '../../../footprint/index.js';
-import {
-  buildingEnabled,
-  scaledWorkRepeats,
-  workRepeatsFor,
-  workSpeedBonus,
-} from '../../../progression/index.js';
+import { buildingEnabled } from '../../../progression/index.js';
 import { atomicDuration } from '../../../readviews/animations.js';
 import { closer, manhattan } from '../../../spatial/metric.js';
 import { buildingWorkerJobs } from '../../../stores/index.js';
@@ -27,11 +26,6 @@ import { enterBuilding } from '../../indoors.js';
 import type { PlannerContext } from '../../planner/context.js';
 import { interactionCell, jobAtomics, unreachableWorkCell, type WorkCellGates } from '../../targets/index.js';
 import { unreachableGoals } from '../../unreachable-goals.js';
-
-// The field lifecycle itself (growth, the sow/water/reap effects) lives in ../../../economy/fields.ts; this
-// module decides what a farmer does next. The actions and their animations are the original's own farmer
-// atomics; approximation: their ordering is engine-side and not decoded.
-
 import type { FarmClaims } from './claims.js';
 import { nearestFarmSheaf, nextSowNode } from './targets.js';
 
@@ -64,12 +58,14 @@ function boundFarmTarget(
 }
 
 /**
- * The field-cultivation loop for a settler bound to a farm: reap, carry a sheaf home, sow, water, else wait
- * inside the farm. Returns false only for a settler that is not a field-farmer here.
+ * The field-cultivation loop for a settler bound to a farm: carry a cut sheaf home, sow while the plot is
+ * under its cap, reap a ripe field, water a thirsty field, else wait inside the farm. Returns false only
+ * for a settler that is not a field-farmer here.
  *
- * Approximation: the priority order has no decoded oracle. Sowing before watering is load-bearing, since
- * per-stage watering leaves something thirsty almost always and a water-first farmer would never expand the
- * plot. Reap and sheaf-carry pause while no store can take the crop; sowing and watering continue.
+ * Approximation: the rung order is not readable data. Sowing outranks the scythe and the can so a plot
+ * fills before it turns over; a water-first farmer would never expand it, since per-stage watering leaves
+ * something thirsty almost always. Reap and sheaf-carry pause while no store can take the crop; sowing
+ * and watering continue.
  */
 export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
@@ -81,15 +77,10 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const fn = nodeOfPosition(fp.x, fp.y);
   const anchor = terrain.nodeAtClamped(fn.hx, fn.hy);
 
-  // Strokes per spot: the crop's `baserepeatcounter`, cut by experience on its track. Approximation: the
-  // labor-gated farm loop, and with it the farm's output, approaches 2x at mastery.
-  const strokes = scaledWorkRepeats(
-    workRepeatsFor(ctx, settler.jobType, spec.goodType),
-    workSpeedBonus(world, ctx, e, spec.goodType),
-  );
-
-  /** One field action: the atomic's animation length replayed `strokes` times. */
-  const swingTicks = (atomic: number): number => atomicDuration(ctx.content, settler, atomic) * strokes;
+  /** One field action lasts its clip once: each farmer clip fires its cue (`PLANT` 15, `GROW` 16,
+   *  `TRANSFORM` 18 of `logicdefines.inc`) on one frame per play. The trade's `baserepeatcounter` reaches
+   *  the scythe alone, banked by the harvest effect; approximation: which action it gates is not readable. */
+  const clipTicks = (atomic: number): number => atomicDuration(ctx.content, settler, atomic);
 
   /** Claim `node` for this settler's next action, so colleagues planned later this tick skip it. */
   const take = (node: NodeId, sow: boolean): void => {
@@ -143,24 +134,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   // Any store that could take the crop: the farm's own slot, or a warehouse the delivery rung overflows to.
   const cropSinkExists = (): boolean => targets.sinks.has(spec.goodType);
 
-  // Reap the nearest ripe field; the yield drops as a sheaf where it stood.
-  if (ripe !== null && cropSinkExists()) {
-    const node = ripe;
-    take(ripeCell, false);
-    atOrWalk(world, e, here, ripeCell, () =>
-      startAtomic(
-        world,
-        e,
-        spec.harvestAtomic,
-        { kind: 'harvest', resource: node, goodType: spec.goodType },
-        swingTicks(spec.harvestAtomic),
-        node,
-      ),
-    );
-    return true;
-  }
-
-  // Carry a sheaf home; the delivery rung routes the load into the farm's own store, or overflows it to
+  // Carry a cut sheaf home; the delivery rung routes the load into the farm's own store, or overflows it to
   // the nearest warehouse with room.
   const sheaf = nearestFarmSheaf(plan, { anchor, spec, claims, gates });
   if (sheaf !== null && cropSinkExists()) {
@@ -186,12 +160,29 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
           e,
           spec.plantAtomic,
           { kind: 'sow', farm, goodType: spec.goodType, x: at.x, y: at.y },
-          swingTicks(spec.plantAtomic),
+          clipTicks(spec.plantAtomic),
           farm,
         ),
       );
       return true;
     }
+  }
+
+  // Reap the nearest ripe field; the yield drops as a sheaf where it stood.
+  if (ripe !== null && cropSinkExists()) {
+    const node = ripe;
+    take(ripeCell, false);
+    atOrWalk(world, e, here, ripeCell, () =>
+      startAtomic(
+        world,
+        e,
+        spec.harvestAtomic,
+        { kind: 'harvest', resource: node, goodType: spec.goodType },
+        clipTicks(spec.harvestAtomic),
+        node,
+      ),
+    );
+    return true;
   }
 
   // Water the nearest thirsty field; every growth stage consumes one watering.
@@ -204,7 +195,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
         e,
         spec.cultivateAtomic,
         { kind: 'water', crop },
-        swingTicks(spec.cultivateAtomic),
+        clipTicks(spec.cultivateAtomic),
         crop,
       ),
     );

@@ -27,9 +27,10 @@ const HARVEST_YIELD = 1;
 
 /**
  * Resolve one completed harvest swing. The node's marker components decide the shape, never its
- * goodType, so the lifecycle stays content-declared: a `Crop` field reaps its whole yield to the
- * ground, a `Felling` node drops a trunk on the chop that zeroes `chopsLeft`, a `MineDeposit` chips
- * ore piles until its last unit, and a bare node goes straight onto the settler's back.
+ * goodType, so the lifecycle stays content-declared: a `Crop` field falls on the stroke that completes the
+ * trade's count and reaps its whole yield to the ground, a `Felling` node drops a trunk on the chop that
+ * zeroes `chopsLeft`, a `MineDeposit` chips ore piles until its last unit, and a bare node goes straight
+ * onto the settler's back.
  *
  * `swings` is the whole work units the completed swing performs; a bare-node pluck stays one unit
  * because the pluck is itself the pickup. Returns the units extracted, the basis for per-unit work XP.
@@ -48,7 +49,8 @@ export function harvestFromNode(
   // the stale good while draining the new layer would transmute goods.
   if (res.goodType !== goodType) return 0;
   if (world.has(node, Crop)) {
-    return reapField(world, node, res);
+    if (res.remaining <= 0) return 0; // unripe: stands, and banks no stroke
+    return strokeCompletesCount(world, ctx, settler, node, res, swings) ? reapField(world, node, res) : 0;
   }
   const felling = world.tryGet(node, Felling);
   if (felling !== undefined) {
@@ -77,20 +79,7 @@ export function harvestFromNode(
     }
     dropMinedOre(world, settler, node, res.goodType, took);
   } else {
-    // A trade can need several strokes per plucked unit, from the extracted `baserepeatcounter`; only
-    // the stroke that completes the count plucks, earlier ones bank on the node's counter.
-    const repeats = workRepeatsFor(ctx, world.tryGet(settler, Settler)?.jobType ?? null, res.goodType);
-    if (repeats > 1) {
-      const advanced = (res.strikes ?? 0) + swings;
-      if (advanced < repeats) {
-        world.mut(node, Resource).strikes = advanced;
-        return 0;
-      }
-      const rest = advanced % repeats; // a multi-unit stroke's overshoot carries into the next unit
-      const r = world.mut(node, Resource);
-      if (rest === 0) delete r.strikes;
-      else r.strikes = rest;
-    }
+    if (!strokeCompletesCount(world, ctx, settler, node, res, swings)) return 0;
     addCarry(world, settler, goodType, took);
   }
   // Decrement only after the unit is dropped or carried, so a rejecting `addCarry` cannot lose it.
@@ -106,6 +95,33 @@ export function harvestFromNode(
   return took;
 }
 
+/**
+ * Bank a swing's `swings` strokes toward the trade's `baserepeatcounter` for the node's good, reporting
+ * whether the count completed. Only the completing stroke frees a unit; earlier ones sit on the node's
+ * counter, and on a node that stays standing a multi-unit stroke's overshoot carries into the next unit.
+ */
+function strokeCompletesCount(
+  world: World,
+  ctx: SystemContext,
+  settler: Entity,
+  node: Entity,
+  res: { readonly goodType: number; readonly strikes?: number },
+  swings: number,
+): boolean {
+  const repeats = workRepeatsFor(ctx, world.tryGet(settler, Settler)?.jobType ?? null, res.goodType);
+  if (repeats <= 1) return true;
+  const advanced = (res.strikes ?? 0) + swings;
+  if (advanced < repeats) {
+    world.mut(node, Resource).strikes = advanced;
+    return false;
+  }
+  const rest = advanced % repeats;
+  const r = world.mut(node, Resource);
+  if (rest === 0) delete r.strikes;
+  else r.strikes = rest;
+  return true;
+}
+
 /** Remove an exhausted resource node, unstamping its footprint through the incremental cache rather
  *  than a full overlay rebuild. */
 function removeResourceNode(world: World, node: Entity): void {
@@ -115,10 +131,9 @@ function removeResourceNode(world: World, node: Entity): void {
 
 /**
  * Reap a ripe {@link Crop} field: drop its whole yield as a ground pile and remove the field, freeing the
- * tile to sow again. An unripe field stays standing and yields nothing. The field leaves no stump.
+ * tile to sow again. The field leaves no stump.
  */
 function reapField(world: World, node: Entity, res: { goodType: number; remaining: number }): number {
-  if (res.remaining <= 0) return 0;
   const { x, y } = world.get(node, Position);
   dropGroundPile(world, x, y, res.goodType, res.remaining);
   removeResourceNode(world, node);

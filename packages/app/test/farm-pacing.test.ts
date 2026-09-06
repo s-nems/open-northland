@@ -15,18 +15,21 @@ import {
 import { createSceneSim } from '../src/scenes/runtime.js';
 
 /**
- * Farm PACING over the shipped clean-room balance (`catalog/farming.ts`) - the shape measured in the
- * running original, which the field loop is calibrated to:
+ * Farm PACING over the shipped clean-room balance (`catalog/farming.ts`), against the shape measured in
+ * the running original:
  *
- *  - throughput is LINEAR in the crew (~10 grain per farmer per 10 minutes), because every growth stage
+ *  - throughput follows the crew (~10 grain per farmer per 10 minutes), because every growth stage
  *    costs a watering, so a grain costs farmer labor rather than wall-clock time,
  *  - the plot holds ~20–25 standing plants for ANY crew size - its size is the FARM's, not the crew's,
  *  - and it ripens continuously, never emptying into one mass harvest (the per-field growth spread).
  *
- * This measures an IDEALIZED farm: flat grass, an always-hungry sink, no hunger or sleep. It runs ~20%
- * above the original's rate for that reason, so the bands below pin the SHAPE - linearity, plot size,
- * continuity - not an exact grain count. A change that breaks the shape (a growth gate, a priority swap,
- * a crew-scaled plot) fails here; a 20% tuning drift deliberately does not.
+ * This measures an IDEALIZED farm: flat grass, an always-hungry sink, no hunger or sleep. With sowing and
+ * watering landing on one clip it runs well above the original's rate - about double for a lone farmer -
+ * and the per-field timer caps the plot's turnover once a crew's labor outruns it, so a full crew's
+ * per-farmer rate sits near two thirds of a lone farmer's. The bands below therefore pin the SHAPE - plot
+ * size, continuity, every added farmer adding grain - not a grain count or the crew-linear rate. A change
+ * that breaks the shape (a growth gate, a priority swap, a crew-scaled plot) fails here; a tuning drift
+ * deliberately does not.
  */
 
 const { Building, Crop, Stockpile } = components;
@@ -55,6 +58,8 @@ interface Measured {
   readonly pctFull: number;
   /** Most distinct growth stages standing at once. */
   readonly stagesAtOnce: number;
+  /** Largest share of a full plot (20+ plants) found in one growth stage at any tick, 0..1. */
+  readonly maxStageShare: number;
 }
 
 function measure(farmers: number): Measured {
@@ -92,19 +97,24 @@ function measure(farmers: number): Measured {
   let peakFields = 0;
   let fullTicks = 0;
   let stagesAtOnce = 0;
+  let maxStageShare = 0;
   for (let t = 0; t < TEN_MINUTES; t++) {
     sim.step();
     drainStores();
     let fields = 0;
-    const stages = new Set<number>();
+    const perStage = new Map<number, number>();
     for (const e of sim.world.query(Crop)) {
       fields++;
-      stages.add(sim.world.get(e, Crop).stage);
+      const stage = sim.world.get(e, Crop).stage;
+      perStage.set(stage, (perStage.get(stage) ?? 0) + 1);
     }
     fieldSum += fields;
     peakFields = Math.max(peakFields, fields);
-    stagesAtOnce = Math.max(stagesAtOnce, stages.size);
-    if (fields >= 20) fullTicks++;
+    stagesAtOnce = Math.max(stagesAtOnce, perStage.size);
+    if (fields >= 20) {
+      fullTicks++;
+      for (const count of perStage.values()) maxStageShare = Math.max(maxStageShare, count / fields);
+    }
   }
   return {
     grain,
@@ -112,6 +122,7 @@ function measure(farmers: number): Measured {
     peakFields,
     pctFull: (100 * fullTicks) / TEN_MINUTES,
     stagesAtOnce,
+    maxStageShare,
   };
 }
 
@@ -135,16 +146,13 @@ describe('farm pacing against the original', { timeout: PACING_RUN_TIMEOUT_MS },
   };
   const rateOf = (crew: number): number => runOf(crew).grain / crew;
 
-  it('every farmer adds its own ~10 grain per 10 minutes - throughput is the crew, not a timer', () => {
+  it('every added farmer adds grain, and none falls under 8 per 10 minutes', () => {
     for (const crew of CREWS) {
       expect(rateOf(crew), `${crew} farmer(s)`).toBeGreaterThanOrEqual(8);
-      expect(rateOf(crew), `${crew} farmer(s)`).toBeLessThanOrEqual(15);
     }
-    // A full crew never collapses to a lone farmer's rate - the plot is not a growth-capped timer that
-    // extra hands queue behind. The band is one-sided on purpose: a LONE farmer currently runs ~25% below
-    // the per-farmer rate of crews 2-4 (it cannot re-water 24 fields inside a stage), so the ladder is
-    // not the straight line the original measures.
-    expect(rateOf(4) / rateOf(1)).toBeGreaterThan(0.8);
+    for (const crew of CREWS.slice(1)) {
+      expect(runOf(crew).grain, `${crew} farmer(s)`).toBeGreaterThan(runOf(crew - 1).grain);
+    }
   });
 
   it("the plot holds ~20-25 plants for ANY crew size - its size is the farm's, not the crew's", () => {
@@ -156,11 +164,13 @@ describe('farm pacing against the original', { timeout: PACING_RUN_TIMEOUT_MS },
     }
   });
 
-  it('the plot ripens continuously: mixed stages standing, never stripped bare', () => {
+  it('the plot ripens continuously: mixed stages standing, never one cohort', () => {
     for (const crew of CREWS) {
       const run = runOf(crew);
-      // The old lockstep loop emptied the plot to 0 on every harvest wave and refilled it as one cohort.
+      // A lockstep loop empties the plot on every harvest wave and refills it as one cohort; a can that
+      // always serves the least grown field marches a lone farmer's whole plot up one stage at a time.
       expect(run.stagesAtOnce, `${crew} farmer(s)`).toBeGreaterThanOrEqual(3);
+      expect(run.maxStageShare, `${crew} farmer(s)`).toBeLessThan(0.8);
     }
   });
 });

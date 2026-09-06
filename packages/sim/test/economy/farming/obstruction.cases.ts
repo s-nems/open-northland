@@ -17,6 +17,7 @@ import {
   fieldAtNode,
   grassMap,
   heapAtNode,
+  LOOP_CLOSES_TICKS,
   Position,
   STAGES,
   Stockpile,
@@ -116,7 +117,7 @@ describe('sowing against standing walls', () => {
     const farm = farmAt(sim, 4, 6);
     farmerAt(sim, 4, 6, farm);
 
-    sim.run(400);
+    sim.run(LOOP_CLOSES_TICKS);
 
     for (const e of sim.world.query(Crop, Position)) {
       expect(sim.world.get(e, Position).x).toBeLessThan(fx.fromInt(5));
