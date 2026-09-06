@@ -53,17 +53,7 @@ export function createSpeedButton(deps: SpeedButtonDeps): SpeedButton {
   // A null `cause` refreshes the glyph without pushing to the loop.
   const applySpeed = (cause: GameSpeedChangeCause | null): void => {
     const spec = effectiveGameSpeedSpec(speedControl);
-    const glyphs = bake.speedSprites();
-    if (glyphs.length > 0 && art !== null) {
-      const frame = art.layer.atlas.frames.get(spec.gfx);
-      if (frame !== undefined) {
-        // Outline stamps + real glyph share the frame, so the rim follows the new glyph's shape.
-        for (const s of glyphs) {
-          s.setFrame(art.layer.source, frame, art.layer.atlas.width, art.layer.atlas.height);
-        }
-        bake.current()?.redraw();
-      }
-    }
+    bake.reframe('speed', spec.gfx);
     if (art === null && speedBtnRect !== undefined) {
       speedRun?.destroy();
       speedRun = ctx.makeText(spec.state === 'paused' ? '||' : `x${spec.factor}`, 'white');

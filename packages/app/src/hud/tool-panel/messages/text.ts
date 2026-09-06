@@ -1,0 +1,159 @@
+import type { UiString } from '../../../content/gui-gfx.js';
+import { USER_MESSAGE_TYPE, type UserMessageType, type UserMessageTypeName } from './types.js';
+
+/** The ingamegui string table the message texts, window title and buttons read. */
+export const MESSAGE_STRINGS_TABLE = 'messages';
+export const MESSAGE_WINDOW_TITLE_STRING_ID = 0;
+export const MESSAGE_REMOVE_STRING_ID = 1;
+export const MESSAGE_SELECT_STRING_ID = 2;
+
+/**
+ * The `messages` row each type reads. The pairing follows the the original's message-string builder; the
+ * rows themselves are the owned copy's decoded `ingameguimessages.cif`.
+ */
+export const MESSAGE_STRING_ID: Readonly<Record<UserMessageTypeName, number>> = {
+  taskCompleted: 15,
+  taskFailed: 16,
+  lostWithoutSignposts: 18,
+  goodNotFound: 19,
+  buildMaterialNotFound: 20,
+  homeNotFound: 21,
+  targetPersonNotFound: 22,
+  workplaceNotFound: 23,
+  vehicleSiteNotFound: 24,
+  vehicleSiteOccupied: 25,
+  nothingToDo: 17,
+  waitingForGood: 26,
+  stockFull: 27,
+  noCoinsForTraining: 29,
+  noVehicleForWork: 30,
+  noTradeAgreement: 31,
+  cannotDamageTarget: 32,
+  experienceUnlocks: 33,
+  canProduceNewGood: 38,
+  canDoNewJob: 39,
+  canBuildNewHouse: 40,
+  canBuildNewVehicle: 41,
+  canEquipNewItem: 42,
+  producedOneGood: 43,
+  producedAllGoods: 44,
+  couldNotProduceOneGood: 45,
+  couldNotProduceAnyGoods: 46,
+  hungry: 10,
+  tired: 12,
+  bored: 13,
+  wantsToPray: 14,
+  starving: 11,
+  willDie: 47,
+  gaveBirthToSon: 48,
+  gaveBirthToDaughter: 49,
+  wasBorn: 50,
+  grewUp: 51,
+  cannotMarry: 52,
+  noOneToMarry: 53,
+  noWayToMarry: 54,
+  cannotAttachHouse: 55,
+  cannotDetachHouse: 56,
+  cannotEnterVehicle: 57,
+  equipmentNotFound: 58,
+  backpackFull: 58,
+  humanAttacked: 61,
+  houseFinished: 90,
+  houseUpgraded: 91,
+  houseAttacked: 92,
+  vehicleNoPath: 100,
+  vehicleNoCommander: 101,
+  vehicleAttacked: 102,
+  vehicleNoAnimal: 103,
+  vehicleNoPassengerRoom: 104,
+  cannotAttachVehicle: 105,
+  vehicleCannotNearShip: 106,
+  cannotLeaveVehicle: 107,
+  vehicleNoCarrier: 108,
+  humanDied: 120,
+  playerSighted: 131,
+  diplomacyChanged: 132,
+  playerDied: 133,
+  specialItemFound: 134,
+};
+
+/** Rows a composite text appends or substitutes. */
+const STOCK_FULL_NO_GOOD_STRING_ID = 28;
+const EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID = 59;
+const BACKPACK_FULL_DETAIL_STRING_ID = 60;
+const UNKNOWN_HERO_DIED_STRING_ID = 121;
+/** The placeholder the stock-full row carries for the good's name. */
+const GOOD_PLACEHOLDER = '%s';
+
+const TYPE_NAME_BY_ID: ReadonlyMap<UserMessageType, UserMessageTypeName> = new Map(
+  (Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]).map((name) => [USER_MESSAGE_TYPE[name], name]),
+);
+
+export function userMessageTypeName(type: UserMessageType): UserMessageTypeName {
+  const name = TYPE_NAME_BY_ID.get(type);
+  if (name === undefined) throw new Error(`user-messages: unknown message type ${type}`);
+  return name;
+}
+
+/** The rows whose text ends in the good it is about. */
+const GOOD_APPENDED: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
+  'goodNotFound',
+  'waitingForGood',
+  'canProduceNewGood',
+  'canEquipNewItem',
+  'producedOneGood',
+  'couldNotProduceOneGood',
+]);
+
+/** The rows that name a building rather than a settler, so no trade label follows the name. */
+const HOUSE_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
+  'houseFinished',
+  'houseUpgraded',
+  'houseAttacked',
+]);
+
+export interface MessageTextParts {
+  /** The subject's display name, or null when there is no subject left to name. */
+  readonly subjectName: string | null;
+  /** A settler subject's trade, shown in parentheses after the name; null when it has none to show. */
+  readonly jobLabel: string | null;
+  readonly goodName: string | null;
+}
+
+export interface MessageTextDeps {
+  readonly uiString: UiString;
+  /** The app catalog's stand-in for a `messages` row when the decoded strings are absent. */
+  readonly fallbackRow: (id: number) => string;
+}
+
+/** The note's full text, as the tooltip and the window show it. */
+export function composeMessageText(
+  type: UserMessageType,
+  parts: MessageTextParts,
+  deps: MessageTextDeps,
+): string {
+  const name = userMessageTypeName(type);
+  const row = (id: number): string => deps.uiString(MESSAGE_STRINGS_TABLE, id, deps.fallbackRow(id));
+  const base = row(MESSAGE_STRING_ID[name]);
+  const who =
+    parts.subjectName === null
+      ? null
+      : parts.jobLabel === null
+        ? parts.subjectName
+        : `${parts.subjectName} (${parts.jobLabel})`;
+  const lead = (text: string): string => (who === null ? text : `${who} ${text}`);
+
+  if (name === 'humanDied') return who === null ? row(UNKNOWN_HERO_DIED_STRING_ID) : `${who} ${base}`;
+  if (HOUSE_ROWS.has(name)) return parts.subjectName === null ? base : `${parts.subjectName} ${base}`;
+  if (name === 'stockFull') {
+    return lead(
+      parts.goodName === null
+        ? row(STOCK_FULL_NO_GOOD_STRING_ID)
+        : base.replace(GOOD_PLACEHOLDER, parts.goodName),
+    );
+  }
+  if (name === 'equipmentNotFound') return lead(`${base} ${row(EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID)}`);
+  if (name === 'backpackFull') return lead(`${base} ${row(BACKPACK_FULL_DETAIL_STRING_ID)}`);
+  if (GOOD_APPENDED.has(name) && parts.goodName !== null) return lead(`${base} ${parts.goodName}`);
+  return lead(base);
+}

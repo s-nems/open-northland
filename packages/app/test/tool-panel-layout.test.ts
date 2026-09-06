@@ -33,8 +33,9 @@ describe('tool-panel-layout', () => {
   });
 
   it('reports the design-space bounds the supersample texture must cover', () => {
-    expect(buildToolPanelLayout(1).designBounds).toEqual({ x: 0, y: 10, w: 50, h: 433 });
-    expect(buildToolPanelLayout(1.2).designBounds).toEqual({ x: 0, y: 10, w: 50, h: 433 });
+    // The strip's column plus the message-priority plaque along the top edge.
+    expect(buildToolPanelLayout(1).designBounds).toEqual({ x: 0, y: 0, w: 150, h: 443 });
+    expect(buildToolPanelLayout(1.2).designBounds).toEqual({ x: 0, y: 0, w: 150, h: 443 });
   });
 
   it('hit-tests the button under a point and returns null off the buttons', () => {
@@ -52,7 +53,11 @@ describe('tool-panel-layout', () => {
     const layout = buildToolPanelLayout(2);
     expect(pointOverToolPanel(layout, 10, 30)).toBe(true);
     expect(pointOverToolPanel(layout, 10, 5)).toBe(false);
-    expect(pointOverToolPanel(layout, 200, 30)).toBe(false);
+    expect(pointOverToolPanel(layout, 400, 30)).toBe(false);
+    // The message-priority plaque along the top edge is panel chrome too.
+    const plaque = layout.frame;
+    expect(pointOverToolPanel(layout, plaque.x + plaque.w - 1, plaque.y + 1)).toBe(true);
+    expect(pointOverToolPanel(layout, plaque.x + plaque.w - 1, plaque.y + plaque.h + 1)).toBe(false);
   });
 
   it('carries the pinned original gfx ids for every button', () => {
@@ -60,6 +65,7 @@ describe('tool-panel-layout', () => {
     expect(byId.get('buildings')).toBe(0x2a);
     expect(byId.get('statistics')).toBe(0x32);
     expect(byId.get('speed')).toBe(0x31);
+    expect(byId.get('message_priority')).toBe(0x40);
   });
 });
 

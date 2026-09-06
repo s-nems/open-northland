@@ -59,6 +59,8 @@ export interface UnitControlsOptions {
 export interface UnitControls {
   readonly selectedIds: () => ReadonlySet<number>;
   readonly selectionVersion: () => number;
+  /** Replace the selection with one entity, as a click on it would. */
+  readonly selectEntity: (id: number) => void;
   readonly portrait: () => PortraitBox | null;
   readonly flaggedFlagIds: () => ReadonlySet<number>;
   /** The green/red assignment wash for the render building-highlight layer, or null when no assign mode

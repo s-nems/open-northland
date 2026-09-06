@@ -1,6 +1,6 @@
 import type { HypertextBook } from '@open-northland/data';
-import type { HudLayout } from '@open-northland/render';
-import type { Command, PlayerCommand } from '@open-northland/sim';
+import type { HudLayout, SpriteSheet } from '@open-northland/render';
+import type { Command, PlayerCommand, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { type Application, Container, Texture } from 'pixi.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import {
@@ -16,6 +16,7 @@ import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 import type { MissionBrief } from '../../game/mission-brief.js';
 import { clientToCanvas, type Rect } from '../geometry.js';
 import type { KeyBindings } from '../keybindings.js';
+import type { TooltipSurface } from '../tooltip-surface.js';
 import { makeUiParagraph, makeUiTextRun } from '../ui-text.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import { applyToolButtonEffect, type ToolButtonSurfaces } from './button-effects.js';
@@ -27,6 +28,12 @@ import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout, pointOverToolPanel, type ToolButtonId } from './layout.js';
+import {
+  createMessageCenter,
+  MESSAGE_LEVEL_FACE,
+  type MessageFeedState,
+  type MessageTarget,
+} from './messages/index.js';
 import { createPlacementController } from './placement.js';
 import { createSpeedButton } from './speed-button.js';
 import { createStripSurface, type StripSurface } from './strip-surface.js';
@@ -75,6 +82,14 @@ export interface ToolPanelOptions {
   readonly onSystemMenu?: () => void;
   readonly missionBrief?: () => MissionBrief | null;
   readonly onLargeWindow?: (open: boolean) => void;
+  /** The map's sprite sheet, which draws a settler standing on its note; absent leaves the note bare. */
+  readonly sheet?: SpriteSheet;
+  /** Owner slot to team-colour slot for those portraits; absent means identity. */
+  readonly playerColourOf?: (player: number) => number;
+  /** The cursor chip a hovered note shows its text in; absent means no tooltip. */
+  readonly tooltip?: TooltipSurface;
+  /** A note's Select: centre the view on the target and select it. */
+  readonly onSelectMessageTarget?: (target: MessageTarget) => void;
 }
 
 export interface ToolPanelController {
@@ -92,6 +107,8 @@ export interface ToolPanelController {
   /** Per-frame hook; the HUD layout arrives as an accessor so a closed window never runs its
    *  `buildHud` scan. */
   update(hudFor: () => HudLayout): void;
+  /** Per-frame hook for the note strip: this frame's unfiltered sim events and the snapshot after them. */
+  presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[]): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
   dispose(): void;
@@ -102,6 +119,7 @@ export interface ToolPanelState {
   readonly windows: ToolWindowsState;
   readonly placementType: number | null;
   readonly goodType: number | null;
+  readonly messages: MessageFeedState;
 }
 
 interface ToolPanelAssets {
@@ -157,10 +175,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   root.zIndex = 1000;
   app.stage.addChild(root);
   const stripContainer = new Container();
+  const notesContainer = new Container();
   const hoverContainer = new Container();
   const windowContainer = new Container();
   const bannerContainer = new Container();
-  root.addChild(stripContainer, windowContainer, hoverContainer, bannerContainer);
+  root.addChild(stripContainer, notesContainer, windowContainer, hoverContainer, bannerContainer);
 
   let stripSurface: StripSurface | null = null;
   let input: ToolPanelInput | null = null;
@@ -229,6 +248,23 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       onSpeedChange: opts.onSpeedChange,
     });
 
+    const messageCenter = createMessageCenter({
+      ctx,
+      app,
+      art,
+      notesContainer,
+      windowContainer,
+      sheet: opts.sheet,
+      playerColourOf: opts.playerColourOf,
+      localPlayer: opts.owner,
+      buildingLabel: (typeId) => labelByType.get(typeId),
+      tooltip: opts.tooltip,
+      onSelect: (target) => opts.onSelectMessageTarget?.(target),
+    });
+    // The envelope loses a seal per level, re-framed inside the strip bake like the speed glyph.
+    const syncPriorityGlyph = (): void =>
+      mountedStrip.reframe('message_priority', MESSAGE_LEVEL_FACE[messageCenter.level()].gfx);
+
     const surfaces: ToolButtonSurfaces = {
       windows: windows.byId,
       cancelHeld: () => {
@@ -236,6 +272,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       },
       cycleSpeed: () => speedButton.cycle(),
       openSystemMenu: () => opts.onSystemMenu?.(),
+      cycleMessagePriority: () => {
+        messageCenter.cycleLevel();
+        syncPriorityGlyph();
+      },
     };
 
     const activateButton = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
@@ -249,6 +289,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       layout,
       toCanvas,
       windows,
+      notes: messageCenter,
       held,
       bindings: opts.bindings,
       activateButton,
@@ -260,15 +301,16 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const claimsPointer = (clientX: number, clientY: number): boolean => {
       const { x, y } = toCanvas(clientX, clientY);
       if (pointOverToolPanel(layout, x, y)) return true;
-      if (windows.claims(x, y)) return true;
+      if (windows.claims(x, y) || messageCenter.claims(x, y)) return true;
       return held.some((mode) => mode.isActive());
     };
 
     speedButton.syncGlyph();
+    syncPriorityGlyph();
 
     const claimsWheel = (clientX: number, clientY: number): boolean => {
       const { x, y } = toCanvas(clientX, clientY);
-      return windows.claims(x, y);
+      return windows.claims(x, y) || messageCenter.claims(x, y);
     };
 
     return {
@@ -280,24 +322,32 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       claimsWheel,
       placementType: () => placement.activeType(),
       update(hudFor): void {
-        if (mountedStrip.syncResolution()) speedButton.syncGlyph();
+        if (mountedStrip.syncResolution()) {
+          speedButton.syncGlyph();
+          syncPriorityGlyph();
+        }
         windows.refresh(hudFor);
         for (const mode of held) mode.placeBanner();
       },
+      presentMessages: (snapshot, events) => messageCenter.present(snapshot, events),
       state: () => ({
         speed: speedButton.state(),
         windows: windows.state(),
         placementType: placement.activeType(),
         goodType: goodsDrop.activeGood(),
+        messages: messageCenter.state(),
       }),
       restore(state): void {
         speedButton.restore(state.speed);
         windows.restore(state.windows);
         if (state.placementType !== null) placement.enter(state.placementType);
         if (state.goodType !== null) goodsDrop.enter(state.goodType);
+        messageCenter.restore(state.messages);
+        syncPriorityGlyph();
       },
       dispose(): void {
         mountedInput.dispose();
+        messageCenter.dispose();
         root.destroy({ children: true });
         mountedStrip.dispose();
       },

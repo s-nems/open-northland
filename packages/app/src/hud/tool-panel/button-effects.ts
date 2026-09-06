@@ -14,7 +14,8 @@ export type ToolButtonEffect =
       readonly cancelsHeld: boolean;
     }
   | { readonly kind: 'speed' }
-  | { readonly kind: 'systemMenu' };
+  | { readonly kind: 'systemMenu' }
+  | { readonly kind: 'messagePriority' };
 
 /** An informational window drops only the chest window and leaves the pickers open, so reading stats
  *  never cancels a pick in progress. */
@@ -50,6 +51,7 @@ const EFFECTS: Readonly<Record<ToolButtonId, ToolButtonEffect | null>> = {
   diplomacy: { kind: 'window', toggles: 'diplomacy', closes: ['extras', 'mission'], cancelsHeld: false },
   population: null,
   tech_tree: null,
+  message_priority: { kind: 'messagePriority' },
 };
 
 export const toolButtonEffect = (id: ToolButtonId): ToolButtonEffect | null => EFFECTS[id];
@@ -59,6 +61,7 @@ export interface ToolButtonSurfaces {
   readonly cancelHeld: () => void;
   readonly cycleSpeed: () => void;
   readonly openSystemMenu: () => void;
+  readonly cycleMessagePriority: () => void;
 }
 
 export function applyToolButtonEffect(surfaces: ToolButtonSurfaces, id: ToolButtonId): void {
@@ -70,6 +73,9 @@ export function applyToolButtonEffect(surfaces: ToolButtonSurfaces, id: ToolButt
       return;
     case 'systemMenu':
       surfaces.openSystemMenu();
+      return;
+    case 'messagePriority':
+      surfaces.cycleMessagePriority();
       return;
     case 'window': {
       if (effect.cancelsHeld) surfaces.cancelHeld();
