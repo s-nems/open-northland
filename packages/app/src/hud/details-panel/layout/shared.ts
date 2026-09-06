@@ -43,6 +43,11 @@ export function sectionAt(x: number, y: number, w: number, bodyH: number, s: num
   };
 }
 
+/** Screen px the panel and its margin take from the right edge, for HUD that must stop short of it. */
+export function panelSpanFromRight(s: number): number {
+  return Math.round(PANEL_W * s) + Math.round(PANEL_MARGIN * s);
+}
+
 export function panelRect(totalH: number, screen: { width: number; height: number }, s: number): Rect {
   const w = Math.round(PANEL_W * s);
   const margin = Math.round(PANEL_MARGIN * s);

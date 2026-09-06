@@ -1,9 +1,8 @@
 import type { SoundDriver } from '@open-northland/audio';
 import { diag } from '../../diag/index.js';
+import { panelSpanFromRight } from '../../hud/details-panel/layout/shared.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
-import { buildToolPanelLayout } from '../../hud/tool-panel/layout.js';
-import { NOTE_H } from '../../hud/tool-panel/messages/layout.js';
-import { standardWindowWidth } from '../../hud/tool-panel/window-family/index.js';
+import { minimapPanelWidth } from '../../hud/minimap/model.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { defaultLocale, localeParam } from '../../i18n/index.js';
 import { assetSetFor } from '../asset-settings.js';
@@ -16,15 +15,19 @@ import { createGameHudScaleCoordinator } from './game-hud-scale.js';
 import { createGameSettingsRuntime, type GameSettingsRuntime, gameSoundEnabled } from './game-settings.js';
 import { createGameViewportCoordinator } from './game-viewport.js';
 
-const PERF_STRIP_GAP = 8;
+const PERF_HUD_GAP = 8;
 
-/** The debug readout's corner: clear of the tool strip and its pop-up column, and below the message
- *  notes along the top edge. */
-export function perfCornerForUiScale(scale: number): { readonly left: number; readonly top: number } {
-  const layout = buildToolPanelLayout(scale);
+/** The debug readout's span along the bottom edge: from just right of the minimap window to just left of
+ *  where the details panel stands. */
+export function perfCornerForUiScale(scale: number): {
+  readonly left: number;
+  readonly right: number;
+  readonly bottom: number;
+} {
   return {
-    left: layout.width + standardWindowWidth(layout.scale) + PERF_STRIP_GAP,
-    top: NOTE_H * layout.scale + PERF_STRIP_GAP,
+    left: minimapPanelWidth(scale) + PERF_HUD_GAP,
+    right: panelSpanFromRight(scale) + PERF_HUD_GAP,
+    bottom: PERF_HUD_GAP,
   };
 }
 
@@ -57,7 +60,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     targets: [deps.toolPanel, deps.minimap, deps.controls],
     placePerf: (scale) => {
       const corner = perfCornerForUiScale(scale);
-      deps.perf.place(corner.left, corner.top);
+      deps.perf.place(corner.left, corner.right, corner.bottom);
     },
     onError: (error) => diag.warn('ui', `HUD scale rebuild failed: ${String(error)}`),
   });
