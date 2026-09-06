@@ -64,6 +64,9 @@ export type SimEvent =
       readonly entity: Entity;
       readonly player: number | null;
       readonly buildingType: number;
+      /** The owning civilization, so the collapse draws the body that stood there rather than the base
+       *  tribe's - the entity is gone by the time the effect resolves its sprite. */
+      readonly tribe: number;
       /** Build progress at destruction as a fixed-point fraction of ONE (65536 = finished), so an
        *  unfinished site collapses through its construction-stage body. */
       readonly built: number;

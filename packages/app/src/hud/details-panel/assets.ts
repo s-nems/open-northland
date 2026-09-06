@@ -1,12 +1,5 @@
-import type { SpriteLayer, TextureSource } from '@open-northland/render';
+import type { BuildingBobRef, SpriteBindings, SpriteSheet, TextureSource } from '@open-northland/render';
 import { Rectangle, Texture } from 'pixi.js';
-import {
-  BUILDING_FAMILIES,
-  buildingBobRefsByType,
-  DEFAULT_BUILDING_FAMILY,
-  HOUSE_ATLAS,
-  VIKING_TRIBE,
-} from '../../content/building-gfx/index.js';
 import { type GoodsArt, loadGoodsArt } from '../../content/goods-gfx.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
 import {
@@ -16,7 +9,6 @@ import {
   loadGuiBitmap,
   loadGuiStrings,
 } from '../../content/gui-gfx.js';
-import { loadIr, loadLayer, MissingAtlasError } from '../../content/ir/load.js';
 import { loadUiFont, type UiFont } from '../../content/ui-font.js';
 
 /**
@@ -60,72 +52,86 @@ export interface BuildingPreview {
   readonly height: number;
 }
 
-function previewOf(layer: SpriteLayer, bob: number): BuildingPreview | undefined {
-  const frame = layer.atlas.frames.get(bob);
-  if (frame === undefined) return undefined;
-  return {
-    texture: new Texture({
-      source: layer.source,
-      frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
-    }),
-    width: frame.width,
-    height: frame.height,
-  };
+/** The selected building's own world bob, resolved through the same per-tribe binding the map draws. */
+export interface BuildingPreviews {
+  get(typeId: number, tribe: number | undefined): BuildingPreview | undefined;
 }
 
-async function loadBuildingPreviews(): Promise<ReadonlyMap<number, BuildingPreview>> {
-  const ir = await loadIr();
-  if (ir?.buildingBobs === undefined || ir.buildingBobs.length === 0) return new Map();
+/** The bob a type is bound to for its own tribe, then for the sheet's base tribe; `undefined` when no
+ *  civilization skins it (the wonders and `work_murek`). */
+function boundRef(
+  binding: SpriteBindings['building'],
+  typeId: number,
+  tribe: number | undefined,
+): BuildingBobRef | undefined {
+  if (typeof binding === 'number') return binding;
+  const own = tribe !== undefined ? binding.byTribe?.[tribe] : undefined;
+  return own?.byType[typeId] ?? binding.byType[typeId];
+}
 
-  const [defaultLayer, familyEntries] = await Promise.all([
-    loadLayer(HOUSE_ATLAS).catch<SpriteLayer | null>((err) => {
-      if (err instanceof MissingAtlasError) return null;
-      throw err;
-    }),
-    Promise.all(
-      BUILDING_FAMILIES.map(async (family) => {
-        try {
-          return [family.layer, await loadLayer(family.layer)] as const;
-        } catch (err) {
-          if (err instanceof MissingAtlasError) return null;
-          throw err;
-        }
-      }),
-    ),
-  ]);
+/** Memoized per sheet, which outlives every panel mount: a `Texture` pins a resize listener on its shared
+ *  `TextureSource`, so re-minting one per remount would leak those wrappers on each HUD scale change. */
+const previewsBySheet = new WeakMap<SpriteSheet, BuildingPreviews>();
 
-  const layers = new Map<string, SpriteLayer>();
-  for (const entry of familyEntries) {
-    if (entry !== null) layers.set(entry[0], entry[1]);
-  }
-  const loadedFamilies = BUILDING_FAMILIES.filter((f) => layers.has(f.layer));
-  const refs = buildingBobRefsByType(ir.buildingBobs, VIKING_TRIBE, DEFAULT_BUILDING_FAMILY, loadedFamilies);
-  const previews = new Map<number, BuildingPreview>();
-  for (const [typeIdText, ref] of Object.entries(refs)) {
-    const typeId = Number(typeIdText);
-    const layer = typeof ref === 'number' ? (defaultLayer ?? undefined) : layers.get(ref.layer);
-    if (layer === undefined) continue;
-    const preview = previewOf(layer, typeof ref === 'number' ? ref : ref.bob);
-    if (preview !== undefined) previews.set(typeId, preview);
-  }
+/**
+ * Preview textures cut from the sheet's already-loaded building pages, so the panel shows each tribe its
+ * own body without fetching a second copy of any atlas.
+ */
+export function buildingPreviews(sheet: SpriteSheet | undefined): BuildingPreviews {
+  if (sheet === undefined) return { get: () => undefined };
+  const held = previewsBySheet.get(sheet);
+  if (held !== undefined) return held;
+  const cache = new Map<string, BuildingPreview | undefined>();
+  const previews: BuildingPreviews = {
+    get(typeId, tribe) {
+      // Only a bob this type is actually bound to: `resolveBuildingDraw` is total and would hand back the
+      // default house, and the general window promises a neutral plate over a misleading complete one.
+      const ref = boundRef(sheet.bindings.building, typeId, tribe);
+      if (ref === undefined) return undefined;
+      const draw = typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
+      const key = `${draw.layer ?? ''}:${draw.bob}`;
+      const hit = cache.get(key);
+      if (hit !== undefined || cache.has(key)) return hit;
+      const layer = draw.layer !== undefined ? sheet.families?.[draw.layer] : sheet.kindLayers?.building;
+      const frame = layer?.atlas.frames.get(draw.bob);
+      const preview =
+        layer === undefined || frame === undefined
+          ? undefined
+          : {
+              texture: new Texture({
+                source: layer.source,
+                frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
+              }),
+              width: frame.width,
+              height: frame.height,
+            };
+      cache.set(key, preview);
+      return preview;
+    },
+  };
+  previewsBySheet.set(sheet, previews);
   return previews;
 }
 
-export interface DetailsPanelAssets {
+export interface DetailsPanelArt {
   readonly art: GuiArt | null;
   /** The per-good resource icons from the recolourable `ls_goods` atlas. */
   readonly goods: GoodsArt | null;
   readonly uiFont: UiFont;
   readonly bitmaps: GuiBitmapSet;
   readonly strings: GuiStrings | null;
-  readonly previews: ReadonlyMap<number, BuildingPreview>;
   /** The decoded level-to-colour gauge ramp (`bar_hitpoints`). */
   readonly barRamp: GuiBarRamp | undefined;
 }
 
-const assetsByLanguage = new Map<string, Promise<DetailsPanelAssets>>();
+/** The panel's art plus the building previews, which come from the caller's loaded sprite sheet. */
+export interface DetailsPanelAssets extends DetailsPanelArt {
+  readonly previews: BuildingPreviews;
+}
 
-export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanelAssets> {
+const assetsByLanguage = new Map<string, Promise<DetailsPanelArt>>();
+
+export async function loadDetailsPanelArt(lang: string): Promise<DetailsPanelArt> {
   let assets = assetsByLanguage.get(lang);
   if (assets === undefined) {
     assets = Promise.all([
@@ -134,15 +140,13 @@ export async function loadDetailsPanelAssets(lang: string): Promise<DetailsPanel
       loadUiFont(),
       loadGuiBitmaps(),
       loadGuiStrings(lang),
-      loadBuildingPreviews(),
       loadGuiBarRamp(),
-    ]).then(([art, goods, uiFont, bitmaps, strings, previews, barRamp]) => ({
+    ]).then(([art, goods, uiFont, bitmaps, strings, barRamp]) => ({
       art,
       goods,
       uiFont,
       bitmaps,
       strings,
-      previews,
       barRamp,
     }));
     assetsByLanguage.set(lang, assets);

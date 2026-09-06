@@ -37,6 +37,33 @@ function anchorKey(hx: number, hy: number): string {
   return `${hx},${hy}`;
 }
 
+/** One authored `sethouse` record's join key: its `[GfxHouse]` `EditName` and growth level. NUL-separated,
+ *  because a plain space would let `"foo 1" L0` collide with `"foo" L10`. */
+export function houseBobKey(editName: string, level: number): string {
+  return `${editName}\u0000${level}`;
+}
+
+/** The `[GfxHouse]` record each authored house name resolves to: its building type and the tribe whose
+ *  skin it is. First record wins per key, matching the sim's lowest-id anchor lookup. */
+export function houseBobsByName(rows: AuthoredJoinRows): Map<string, { typeId: number; tribeId: number }> {
+  const byNameLevel = new Map<string, { typeId: number; tribeId: number }>();
+  for (const b of rows.buildingBobs ?? []) {
+    if (b.editName === undefined || b.typeId === undefined) continue;
+    const key = houseBobKey(b.editName, b.level ?? 0);
+    if (!byNameLevel.has(key)) byNameLevel.set(key, { typeId: b.typeId, tribeId: b.tribeId ?? 0 });
+  }
+  return byNameLevel;
+}
+
+/** Tribe slug (`ir.tribes[].id`) to its `TRIBE_TYPE_*` id - the key a `sethuman` names its tribe by. */
+export function tribeIdsByName(rows: AuthoredJoinRows): Map<string, number> {
+  const byName = new Map<string, number>();
+  for (const t of rows.tribes ?? []) {
+    if (t.id !== undefined && t.typeId !== undefined && !byName.has(t.id)) byName.set(t.id, t.typeId);
+  }
+  return byName;
+}
+
 /** One resolved authored placement, ready to enqueue. */
 export type AuthoredPlacement =
   | {
@@ -98,13 +125,7 @@ export function resolveAuthoredPlacements(
   droppedAttachments: number;
   skippedAnimals: number;
 } {
-  const bobByNameLevel = new Map<string, { typeId: number; tribeId: number }>();
-  for (const b of rows.buildingBobs ?? []) {
-    if (b.editName === undefined || b.typeId === undefined) continue;
-    // NUL-separated key: a plain space would let `"foo 1" L0` collide with `"foo" L10`.
-    const key = `${b.editName}\u0000${b.level ?? 0}`;
-    if (!bobByNameLevel.has(key)) bobByNameLevel.set(key, { typeId: b.typeId, tribeId: b.tribeId ?? 0 });
-  }
+  const bobByNameLevel = houseBobsByName(rows);
   const kindByType = new Map<number, string>();
   for (const b of rows.buildings ?? []) {
     if (b.typeId !== undefined && b.kind !== undefined) kindByType.set(b.typeId, b.kind);
@@ -117,11 +138,7 @@ export function resolveAuthoredPlacements(
       if (!jobByName.has(key)) jobByName.set(key, j.typeId);
     }
   }
-  const tribeByName = new Map<string, number>();
-  for (const t of rows.tribes ?? []) {
-    if (t.id !== undefined && t.typeId !== undefined && !tribeByName.has(t.id))
-      tribeByName.set(t.id, t.typeId);
-  }
+  const tribeByName = tribeIdsByName(rows);
   // `setanimal` authors either slug or display name, so both key the species join.
   const animalTribes = new Set<number>();
   for (const a of rows.animals ?? []) {
@@ -163,7 +180,7 @@ export function resolveAuthoredPlacements(
   // placed buildings enter it, so an attachment naming a skipped house is dropped with it.
   const kindByAnchor = new Map<string, string>();
   for (const b of entities.buildings) {
-    const hit = bobByNameLevel.get(`${b.name}\u0000${b.level}`);
+    const hit = bobByNameLevel.get(houseBobKey(b.name, b.level));
     if (hit === undefined || !inBounds(b.hx, b.hy)) {
       skipped++;
       continue;

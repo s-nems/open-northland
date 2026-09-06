@@ -1,6 +1,7 @@
 import type { DrawItem } from '../scene/index.js';
 import type {
   BuildingDraw,
+  BuildingTribeTables,
   BuildingTypeBinding,
   ConstructionLayerRef,
   LayeredBobRef,
@@ -25,15 +26,17 @@ function fillFrameIndex(fillOneBased: number, frameCount: number): number {
 const finishedKeyCache = new WeakMap<BuildingTypeBinding, ReadonlySet<string>>();
 
 /**
- * Every finished-building sprite a binding can draw, so the crop-path construction rise can drop a stage
- * that reuses another tier's finished-home bob. Memoized per binding, which is immutable for the sheet's
- * life.
+ * Every finished-building sprite a binding can draw, across every tribe skin, so the crop-path
+ * construction rise can drop a stage that reuses another tier's finished-home bob. Memoized per
+ * binding, which is immutable for the sheet's life.
  */
 export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlySet<string> {
   let keys = finishedKeyCache.get(binding);
   if (keys === undefined) {
     const set = new Set<string>();
-    for (const ref of Object.values(binding.byType)) set.add(bobKey(unwrapBobRef(ref)));
+    for (const tables of [binding, ...Object.values(binding.byTribe ?? {})]) {
+      for (const ref of Object.values(tables.byType)) set.add(bobKey(unwrapBobRef(ref)));
+    }
     set.add(bobKey(unwrapBobRef(binding.default)));
     keys = set;
     finishedKeyCache.set(binding, keys);
@@ -41,11 +44,25 @@ export function finishedBuildingBobKeys(binding: BuildingTypeBinding): ReadonlyS
   return keys;
 }
 
+/** The item's tribe skin, or the base tables for an item of no or an unloaded tribe. */
+function tablesFor(binding: BuildingTypeBinding, item: DrawItem): BuildingTribeTables {
+  return (item.tribe !== undefined ? binding.byTribe?.[item.tribe] : undefined) ?? binding;
+}
+
+/** The per-type table read: the tribe's own row, else the base tribe's, else `undefined`. */
+function byTypeFor<T>(
+  binding: BuildingTypeBinding,
+  item: DrawItem,
+  table: (tables: BuildingTribeTables) => Readonly<Record<number, T>> | undefined,
+): T | undefined {
+  if (item.typeId === undefined) return undefined;
+  return table(tablesFor(binding, item))?.[item.typeId] ?? table(binding)?.[item.typeId];
+}
+
 /** An unmapped or type-less item falls back to `default`, so a sparse table is always total. */
 export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item: DrawItem): BuildingDraw {
   if (typeof binding === 'number') return { bob: binding };
-  const ref = (item.typeId !== undefined ? binding.byType[item.typeId] : undefined) ?? binding.default;
-  return unwrapBobRef(ref);
+  return unwrapBobRef(byTypeFor(binding, item, (t) => t.byType) ?? binding.default);
 }
 
 export interface ConstructionDraw extends BuildingDraw {
@@ -64,7 +81,7 @@ export function resolveConstructionDraws(
   item: DrawItem,
 ): ConstructionDraw[] | null {
   if (typeof binding === 'number' || item.builtPct === undefined || item.typeId === undefined) return null;
-  const layers = binding.constructionByType?.[item.typeId];
+  const layers = byTypeFor(binding, item, (t) => t.constructionByType);
   if (layers === undefined || layers.length === 0) return null;
   const pct = item.builtPct;
   // Descending index is drawn-on-top first, so `coverTo` accumulates the max `toPct` above each layer.
@@ -102,7 +119,7 @@ export function resolveUpgradeDraws(
   item: DrawItem,
 ): ConstructionDraw[] | null {
   if (typeof binding === 'number' || item.upgradePct === undefined || item.typeId === undefined) return null;
-  const layers = binding.upgradeByType?.[item.typeId];
+  const layers = byTypeFor(binding, item, (t) => t.upgradeByType);
   if (layers === undefined || layers.length === 0) return null;
   const pct = item.upgradePct;
   const active = layers.filter((l) => pct >= l.fromPct && pct <= l.toPct);
@@ -134,7 +151,7 @@ export function resolveBuildingOverlayDraw(
 ): BuildingDraw | null {
   if (typeof binding === 'number' || item.typeId === undefined || item.builtPct !== undefined) return null;
   if (item.upgradePct !== undefined) return null;
-  const overlay = binding.overlayByType?.[item.typeId];
+  const overlay = byTypeFor(binding, item, (t) => t.overlayByType);
   if (overlay === undefined) return null;
   const spin = item.working === true ? overlay.working : undefined;
   if (spin !== undefined && spin.length > 0) {

@@ -1,7 +1,7 @@
 import type { BuildingOverlayRef } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
 import type { BuildingOverlayRow } from '../ir/rows.js';
-import { type BuildingFamily, familyLayerFor, preferredPalettePool, rowsByType } from './families.js';
+import { type BuildingRefScope, familyLayerFor, preferredPalettePool, rowsByType } from './families.js';
 
 /** The source's overlay-state discriminators (`GfxOverlay <sizeIdx> 4 <state> …`). */
 const OVERLAY_STATE_IDLE = 0;
@@ -21,14 +21,12 @@ export const OVERLAY_TICKS_PER_FRAME = 2;
  */
 export function buildingOverlayRefsByType(
   rows: readonly BuildingOverlayRow[],
-  tribeId: number,
-  defaultFamily: { readonly bmdBasename: string; readonly paletteName: string },
-  families: readonly BuildingFamily[],
+  scope: BuildingRefScope,
 ): Record<number, BuildingOverlayRef> {
-  const byType = rowsByType(rows, tribeId);
+  const byType = rowsByType(rows, scope.tribeId);
   const out: Record<number, BuildingOverlayRef> = {};
   for (const [typeId, list] of byType) {
-    const pool = preferredPalettePool(list, defaultFamily.paletteName);
+    const pool = preferredPalettePool(list, scope.preferredPalette);
     const lowestLevel = pool.reduce((lo, r) => Math.min(lo, r.level), Number.POSITIVE_INFINITY);
     const group = pool.filter((r) => r.level === lowestLevel);
     const idleRow = group.find((r) => r.state === OVERLAY_STATE_IDLE);
@@ -43,7 +41,7 @@ export function buildingOverlayRefsByType(
         `building overlay type ${typeId}: nonzero offset ${anchor.x},${anchor.y} ignored (not implemented)`,
       );
     }
-    const layer = familyLayerFor(anchor.bmd, anchor.paletteName, defaultFamily, families);
+    const layer = familyLayerFor(anchor.bmd, anchor.paletteName, scope.defaultFamily, scope.families);
     if (layer === null) continue; // family not loaded → no overlay (never a wrong-bob borrow)
     const idle = idleRow?.frames[0];
     const working = workingRow !== undefined && workingRow.frames.length > 0 ? workingRow.frames : undefined;

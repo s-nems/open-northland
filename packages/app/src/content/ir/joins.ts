@@ -4,7 +4,8 @@ import {
   type GfxInHouseProgram,
   UNLOADED_GOOD_TYPE,
 } from '@open-northland/data';
-import type { InHouseProgramLookup } from '@open-northland/render';
+import type { InHouseProgramLookup, SpriteAtlas } from '@open-northland/render';
+import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { DOOR_SHIFTS } from '../../catalog/building-tweaks.js';
 import { diag } from '../../diag/index.js';
 import { canonicalJobType } from '../../game/sandbox/ids/index.js';
@@ -91,6 +92,55 @@ export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string
   const set = (ir?.bobSequences ?? []).find((s) => s.imagelib === imagelib);
   for (const seq of set?.sequences ?? []) byName.set(seq.name, seq);
   return byName;
+}
+
+/**
+ * Every human `[bobseq]` row by name, across all the `cr_hum_*` body tables. The name space is global:
+ * a tribe's `[gfxanimatomic]` records name sequences that live in another body's table - only the viking
+ * soldier body ships a table of its own, and the other civilizations' rank-and-file bodies play from it -
+ * and no name is defined twice with a different range. A body plays only the subset its own bob pool
+ * covers - see {@link playableSequences}.
+ */
+export function humanSequences(ir: ContentIr | null): Map<string, BobSeqRow> {
+  const byName = new Map<string, BobSeqRow>();
+  for (const set of ir?.bobSequences ?? []) {
+    if (!set.imagelib.startsWith(HUMAN_IMAGELIB_PREFIX)) continue;
+    for (const seq of set.sequences ?? []) {
+      if (!byName.has(seq.name)) byName.set(seq.name, seq);
+    }
+  }
+  return byName;
+}
+
+/** The `cr_hum_*` bob sets: the human body/head libraries, as opposed to the animal and vehicle ones. */
+const HUMAN_IMAGELIB_PREFIX = 'cr_hum_';
+
+/**
+ * The sequences of `seqByName` that `atlas` can actually draw: every frame of the run must be a bob with
+ * pixels. Approximation: reading a filled range as "this body authors this clip" holds for 867 of the 892
+ * clip references the tribes' own records make, and dropping the rest is what lets a binding fall back to
+ * a gait the body does draw instead of resolving a blank frame, which the renderer draws as the
+ * missing-sprite placeholder. The non-viking bodies are the shorter ones, so the filter costs them the
+ * pray, talk, listen and kiss atomics, about half the per-good carry gaits, and every `_agressive` combat
+ * gait: those settlers walk their plain gait carrying nothing visible and never change stance.
+ */
+export function playableSequences(
+  seqByName: ReadonlyMap<string, BobSeqRow>,
+  atlas: SpriteAtlas,
+): Map<string, BobSeqRow> {
+  const out = new Map<string, BobSeqRow>();
+  for (const [name, row] of seqByName) {
+    if (row.length > 0 && drawsEveryFrame(atlas, row)) out.set(name, row);
+  }
+  return out;
+}
+
+function drawsEveryFrame(atlas: SpriteAtlas, row: BobSeqRow): boolean {
+  for (let bob = row.start; bob < row.start + row.length; bob++) {
+    const frame = atlas.frames.get(bob);
+    if (frame === undefined || frame.width === 0 || frame.height === 0) return false;
+  }
+  return true;
 }
 
 /** The `gfxanimmode` value marking a body's looping base wait. */
@@ -191,6 +241,48 @@ export function inHouseProgramLookup(ir: ContentIr | null, goods: readonly GoodR
     });
   }
   return (tribe, job, action) => byTribe.get(tribe)?.get(`${canonicalJobType(job)}/${action}`);
+}
+
+/** The clips one tribe's own records name for a job: which bobseq that civilization's `(tribe, job)`
+ *  walks, waits and strikes with. */
+export interface TribeJobSeqs {
+  readonly walk?: string;
+  readonly wait?: string;
+  readonly attack?: string;
+}
+
+/**
+ * One `(tribe, job)`'s own clip names, from the records that civilization authors: the unloaded
+ * `[gfxwalkatomic]` gait, the `[gfxanimatomic]` base wait (the `gfxanimmode 1` record where there is one)
+ * and the attack swing. The tribes disagree on which clip a job plays - the egyptian unarmed soldier is
+ * authored on the spear clips, the saracen longbowman on the shortbow's - so a look that cannot draw the
+ * transcribed viking clip takes the answer its own tribe gives.
+ */
+export function tribeJobSeqs(ir: ContentIr | null, tribe: number, job: number): TribeJobSeqs {
+  let walk: string | undefined;
+  for (const row of ir?.gfxWalkAtomics ?? []) {
+    if (row.tribe === tribe && row.job === job && row.goodType === UNLOADED_GOOD_TYPE) {
+      walk = row.bodySeq;
+      break;
+    }
+  }
+  let wait: string | undefined;
+  let waitIsBase = false;
+  let attack: string | undefined;
+  for (const row of ir?.gfxAtomics ?? []) {
+    if (row.tribe !== tribe || row.job !== job) continue;
+    if (row.action === ATTACK_ATOMIC) attack ??= row.bodySeq;
+    if (!WAIT_ACTIONS.has(row.action)) continue;
+    if (wait === undefined || (!waitIsBase && row.mode === GFX_ANIM_MODE_LOOP)) {
+      wait = row.bodySeq;
+      waitIsBase = row.mode === GFX_ANIM_MODE_LOOP;
+    }
+  }
+  return {
+    ...(walk !== undefined ? { walk } : {}),
+    ...(wait !== undefined ? { wait } : {}),
+    ...(attack !== undefined ? { attack } : {}),
+  };
 }
 
 /** One tribe's `gfxwalkframelist` per-`<dir>` lists, indexed by walk bobseq name (first record wins). */

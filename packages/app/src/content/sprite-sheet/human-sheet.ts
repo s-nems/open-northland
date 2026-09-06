@@ -1,22 +1,8 @@
 import type { SpriteLayer, SpriteSheet } from '@open-northland/render';
-import {
-  DEFAULT_CHARACTER_PALETTE,
-  INDEXED_CHARACTER_PALETTE,
-  PLAYER_COLOR_COUNT,
-} from '../../catalog/roster.js';
+import { INDEXED_CHARACTER_PALETTE, PLAYER_COLOR_COUNT } from '../../catalog/roster.js';
+import type { WorldTribes } from '../../game/world-tribes.js';
 import { loadAnimalCharacters } from '../animal-gfx/index.js';
-import {
-  BUILDING_FAMILIES,
-  BUILDING_SCALE,
-  buildingBobRefsByType,
-  buildingOverlayRefsByType,
-  constructionRefsByType,
-  DEFAULT_BUILDING_FAMILY,
-  HOUSE_ATLAS,
-  TREE_ATLAS,
-  upgradeRefsByType,
-  VIKING_TRIBE,
-} from '../building-gfx/index.js';
+import { BUILDING_SCALE, HOUSE_ATLAS, TREE_ATLAS, VIKING_TRIBE } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
 import { inHouseProgramLookup, sequencesFor, servedAtlasStem, servedShadowStem } from '../ir/joins.js';
 import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
@@ -34,6 +20,7 @@ import {
   resolveStumpRef,
 } from '../resource-gfx/index.js';
 import { buildHumanBindings, type GoodRef } from '../settler-gfx/index.js';
+import { loadBuildingSheet } from './buildings.js';
 import { loadCharacters } from './characters.js';
 
 // Assemble the real decoded SpriteSheet from the loaded atlases and binding reducers. Loads from the
@@ -97,7 +84,12 @@ export function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string
  * Load the real human {@link SpriteSheet}: the body layer as the base sheet, the head layer as an overlay
  * drawn on top at the same bob id.
  */
-export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Promise<SpriteSheet> {
+export async function loadHumanSpriteSheet(
+  goods: readonly GoodRef[] = [],
+  /** The civilizations this world fields; each brings its own building and settler pages, so only the
+   *  ones actually placed are loaded. */
+  tribes: WorldTribes = [VIKING_TRIBE],
+): Promise<SpriteSheet> {
   // Settlers draw shadow-less, so the body/head fetches start before the IR await; the tree/house/family
   // loads wait for the IR's body-stem → shadow-stem join to attach each atlas's cast-shadow twin.
   const bodyLoad = loadLayer(HUMAN_BODY_ATLAS);
@@ -107,61 +99,31 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   headLoad.catch(() => undefined);
   const ir = await loadIr();
   const shadowStems = shadowStemsByAtlasStem(ir);
-  const [body, head, tree, house, familyEntries] = await Promise.all([
+  const [body, head, tree, house, buildings] = await Promise.all([
     bodyLoad,
     headLoad,
     loadLayer(TREE_ATLAS, shadowStems.get(TREE_ATLAS)),
     loadLayer(HOUSE_ATLAS, shadowStems.get(HOUSE_ATLAS)),
-    Promise.all(
-      BUILDING_FAMILIES.map(
-        async (f) => [f.layer, await loadLayer(f.layer, shadowStems.get(f.layer))] as const,
-      ),
-    ),
+    loadBuildingSheet(ir, tribes, shadowStems),
   ]);
   // Player-colour LUT: when the pipeline emitted `/bobs/player-lut.png` the characters load as the
   // recolourable indexed atlas drawn through it per player; without it they fall back to the baked-palette
   // characters and draw single-coloured. One indexed atlas plus one LUT serve every player.
   const lut = await loadPlayerLut();
-  const characterPalette = lut !== undefined ? INDEXED_CHARACTER_PALETTE : DEFAULT_CHARACTER_PALETTE;
+  // With the LUT every body loads as the one recolourable atlas; without it each keeps its own authored
+  // skin, which for several tribe bodies is the only one decoded (`cr_hum_body_78.egypt_soldier`).
+  const characterPalette = lut !== undefined ? INDEXED_CHARACTER_PALETTE : undefined;
   // Per-job characters (the `[jobbasegraphics]` join): a missing extra body degrades per look, never
   // failing the sheet, and `undefined` keeps the legacy single-body settler path. The wildlife looks have
   // no resolution path without the human characters, so they attach only when that set built.
   const [humanCharacters, animalCharacters] = await Promise.all([
-    loadCharacters(ir, goods, characterPalette),
+    loadCharacters(ir, goods, characterPalette, tribes),
     loadAnimalCharacters(ir),
   ]);
   const characters =
     humanCharacters !== undefined && animalCharacters !== undefined
       ? { ...humanCharacters, animals: animalCharacters }
       : humanCharacters;
-  // Loading exactly the BUILDING_FAMILIES entries keeps the loaded set and the reducer's emitted set from
-  // drifting: a ref to an unloaded family would fall through to the default layer and draw a wrong bob.
-  const buildingFamilies = Object.fromEntries(familyEntries);
-  const houseBobs = buildingBobRefsByType(
-    ir?.buildingBobs ?? [],
-    VIKING_TRIBE,
-    DEFAULT_BUILDING_FAMILY,
-    BUILDING_FAMILIES,
-  );
-  const constructionRefs = constructionRefsByType(
-    ir?.constructionLayers ?? [],
-    VIKING_TRIBE,
-    DEFAULT_BUILDING_FAMILY,
-    BUILDING_FAMILIES,
-  );
-  const upgradeRefs = upgradeRefsByType(
-    ir?.constructionLayers ?? [],
-    VIKING_TRIBE,
-    DEFAULT_BUILDING_FAMILY,
-    BUILDING_FAMILIES,
-  );
-  // Empty when the IR predates the `GfxOverlay` lane.
-  const overlayRefs = buildingOverlayRefsByType(
-    ir?.buildingOverlays ?? [],
-    VIKING_TRIBE,
-    DEFAULT_BUILDING_FAMILY,
-    BUILDING_FAMILIES,
-  );
   // Gathering economy: the per-good bindings are built against exactly the families that loaded, the same
   // load-then-drop-unloaded contract the building families use. The default yew node stays the
   // `kindLayers.resource` layer, so it is excluded from the loaded families.
@@ -194,7 +156,7 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
   const trunkBinding = buildTrunkBinding(gatheringRefs, gatheringLoaded);
   // The building and gathering families merge into one map: their served stems are disjoint (`ls_houses_*`
   // vs `ls_ground`/`ls_goods`/`ls_temp`/`ls_mushrooms`), so the merge never collides.
-  const families = { ...buildingFamilies, ...gatheringFamilies };
+  const families = { ...buildings.families, ...gatheringFamilies };
   const guidepostFrames = (layer: string) => ({
     post: { layer, bob: GUIDEPOST_POST_BOB },
     boards: GUIDEPOST_BOARD_BOBS.map((bob) => ({ layer, bob })),
@@ -220,18 +182,14 @@ export async function loadHumanSpriteSheet(goods: readonly GoodRef[] = []): Prom
     source: body.source,
     atlas: body.atlas,
     bindings: {
-      ...buildHumanBindings(
-        sequencesFor(ir, BODY_IMAGELIB),
-        houseBobs,
-        constructionRefs,
-        resourceBinding,
-        stockpileBinding,
-        stumpBinding,
-        trunkBinding,
-        berryBushBinding,
-        overlayRefs,
-        upgradeRefs,
-      ),
+      ...buildHumanBindings(sequencesFor(ir, BODY_IMAGELIB), {
+        building: buildings.binding,
+        resource: resourceBinding,
+        ...(stockpileBinding !== undefined ? { stockpile: stockpileBinding } : {}),
+        ...(stumpBinding !== undefined ? { stump: stumpBinding } : {}),
+        ...(trunkBinding !== undefined ? { trunk: trunkBinding } : {}),
+        ...(berryBushBinding !== undefined ? { berrybush: berryBushBinding } : {}),
+      }),
       ...signpostBinding,
     },
     overlays: [head],

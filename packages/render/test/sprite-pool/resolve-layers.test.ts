@@ -153,6 +153,48 @@ describe('resolveLayers - wildlife species resolution', () => {
   });
 });
 
+describe('resolveLayers - the per-tribe civilization looks', () => {
+  const vikingSource = {} as TextureSource;
+  const frankSource = {} as TextureSource;
+  const VIKING_BOB = 3;
+  const FRANK_BOB = 4;
+  const vikingAtlas: SpriteAtlas = { width: 64, height: 10, frames: new Map([frame(VIKING_BOB)]) };
+  const frankAtlas: SpriteAtlas = { width: 64, height: 10, frames: new Map([frame(FRANK_BOB)]) };
+  const VIKING = 1;
+  const FRANK = 2;
+  const EGYPT = 7;
+  const viking = { body: { source: vikingSource, atlas: vikingAtlas }, binding: { idle: VIKING_BOB } };
+  const frank = { body: { source: frankSource, atlas: frankAtlas }, binding: { idle: FRANK_BOB } };
+  const sheet: SpriteSheet = {
+    source,
+    atlas: { width: 0, height: 0, frames: new Map() },
+    bindings: { settler: 1, resource: 1, building: 1 },
+    characters: {
+      byJob: {},
+      default: viking,
+      byTribe: { [VIKING]: { byJob: {}, default: viking }, [FRANK]: { byJob: {}, default: frank } },
+    },
+  };
+  const settler = (tribe?: number): DrawItem => ({
+    kind: 'settler',
+    ref: 1,
+    x: 0,
+    y: 0,
+    depth: 0,
+    ...(tribe !== undefined ? { tribe } : {}),
+  });
+
+  it('draws a settler from its own civilization table', () => {
+    expect(resolveLayers(sheet, settler(FRANK), 0)?.map((l) => l.frame.x)).toEqual([FRANK_BOB]);
+    expect(resolveLayers(sheet, settler(VIKING), 0)?.map((l) => l.frame.x)).toEqual([VIKING_BOB]);
+  });
+
+  it('falls back to the base table for a tribe whose looks were never loaded', () => {
+    expect(resolveLayers(sheet, settler(EGYPT), 0)?.map((l) => l.frame.x)).toEqual([VIKING_BOB]);
+    expect(resolveLayers(sheet, settler(), 0)?.map((l) => l.frame.x)).toEqual([VIKING_BOB]);
+  });
+});
+
 describe('resolveLayers - cast shadows draw under the body from the atlas shadow twin', () => {
   const atlas: SpriteAtlas = {
     width: 100,

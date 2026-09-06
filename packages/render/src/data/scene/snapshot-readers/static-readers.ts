@@ -7,6 +7,10 @@ function readBuildingType(components: Readonly<Record<string, unknown>>): number
   return readNumField(components, 'Building', 'buildingType');
 }
 
+function readBuildingTribe(components: Readonly<Record<string, unknown>>): number | undefined {
+  return readNumField(components, 'Building', 'tribe');
+}
+
 /**
  * An under-construction building's progress as a whole percent (0..99), or `undefined` when it is
  * finished, unreadable, or upgrading - an upgrade reads {@link readUpgradePct} instead, so the old-tier
@@ -129,7 +133,7 @@ export function readBerryBushGfxIndex(components: Readonly<Record<string, unknow
   return readNumField(components, 'BerryBush', 'gfxIndex');
 }
 
-const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'levels', 'gfxIndex'] as const;
+const STATIC_DRAW_KEYS = ['typeId', 'builtPct', 'goodType', 'level', 'levels', 'gfxIndex', 'tribe'] as const;
 // A key missing from STATIC_DRAW_KEYS makes _UncopiedKey non-never and fails to compile here, so a new
 // StaticDrawFields entry cannot be silently dropped by the hand copy below.
 type _UncopiedKey = Exclude<keyof StaticDrawFields, (typeof STATIC_DRAW_KEYS)[number]>;
@@ -159,6 +163,8 @@ export function assignStaticFields(
     case 'building': {
       const typeId = readBuildingType(components);
       if (typeId !== undefined) target.typeId = typeId;
+      const tribe = readBuildingTribe(components);
+      if (tribe !== undefined) target.tribe = tribe;
       const builtPct = readBuiltPct(components);
       if (builtPct !== undefined) target.builtPct = builtPct;
       return;

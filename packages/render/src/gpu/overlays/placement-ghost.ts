@@ -15,7 +15,15 @@ import { mintLayerSprite } from './layer-sprite.js';
 
 /** The hovered placement, with `col`/`row` as half-cell coordinates on the `2W×2H` lattice. */
 export type PlacementGhost =
-  | { readonly kind: 'building'; readonly col: number; readonly row: number; readonly buildingType: number }
+  | {
+      readonly kind: 'building';
+      readonly col: number;
+      readonly row: number;
+      readonly buildingType: number;
+      /** The civilization raising it, so the cursor previews the body the placement will actually put
+       *  down rather than the base tribe's. */
+      readonly tribe: number;
+    }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number };
 
 /** Tuned by eye against the original's translucent cursor house (no measurable oracle). */
@@ -40,7 +48,7 @@ export class PlacementGhostLayer {
       this.container.visible = false;
       return;
     }
-    const key = ghost.kind === 'building' ? `b:${ghost.buildingType}` : `s:${ghost.player}`;
+    const key = ghost.kind === 'building' ? `b:${ghost.tribe}:${ghost.buildingType}` : `s:${ghost.player}`;
     if (this.builtForKey !== key) {
       this.builtForKey = key;
       this.rebuild(ghost);
@@ -59,7 +67,7 @@ export class PlacementGhostLayer {
     // head-variation picks, which neither kind has.
     const item: DrawItem =
       ghost.kind === 'building'
-        ? { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: ghost.buildingType }
+        ? { kind: 'building', ref: -1, x: 0, y: 0, depth: 0, typeId: ghost.buildingType, tribe: ghost.tribe }
         : { kind: 'signpost', ref: -1, x: 0, y: 0, depth: 0, player: ghost.player };
     const layers = resolveLayers(this.sheet, item, 0);
     if (layers === null) {

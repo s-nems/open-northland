@@ -57,6 +57,13 @@ export function currentLocale(): Locale {
   return activeLocale ?? defaultLocale();
 }
 
+/** A civilization's localized name. Only the playable tribes are translated, so an animal species falls
+ *  back to `contentName`, the content's own untranslated id, and then to the bare tribe code. */
+export function tribeName(tribe: number | undefined, contentName?: string): string {
+  if (tribe === undefined) return '-';
+  return messages().tribeNames[tribe] ?? contentName ?? `#${tribe}`;
+}
+
 export function messages(locale: Locale = currentLocale()): Messages {
   return LOCALES[locale];
 }

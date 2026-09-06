@@ -87,6 +87,50 @@ describe('resolveBuildingDraw - layer-qualified (multi-.bmd) building binding', 
   });
 });
 
+describe('resolveBuildingDraw - the per-tribe skins', () => {
+  const building = (typeId: number, tribe?: number): DrawItem =>
+    drawItem('building', tribe === undefined ? { typeId } : { typeId, tribe });
+
+  // The same `typeId` recurs per tribe with its own bob: a saracen mill and a viking mill share the type
+  // and must not share the body. The base tables are the sheet's base tribe (viking).
+  const binding: BuildingTypeBinding = {
+    byType: { 13: 70, 6: 41 },
+    default: 11,
+    byTribe: {
+      1: { byType: { 13: 70, 6: 41 } },
+      4: { byType: { 13: { layer: 'saracen', bob: 12 } } },
+    },
+  };
+
+  it('draws each tribe its own bob for the shared type', () => {
+    expect(resolveBuildingDraw(binding, building(13, 1))).toEqual({ bob: 70 });
+    expect(resolveBuildingDraw(binding, building(13, 4))).toEqual({ bob: 12, layer: 'saracen' });
+  });
+
+  it('falls back to the base tribe for a type the drawing tribe does not skin', () => {
+    // Every civilization shares the typeId space but skins only part of it; the base body beats the
+    // generic default house, which carries no building identity at all.
+    expect(resolveBuildingDraw(binding, building(6, 4))).toEqual({ bob: 41 });
+  });
+
+  it('falls back to the base tables for a tribe whose art was never loaded, and for a tribe-less item', () => {
+    expect(resolveBuildingDraw(binding, building(13, 7))).toEqual({ bob: 70 });
+    expect(resolveBuildingDraw(binding, building(13))).toEqual({ bob: 70 });
+  });
+
+  it('still lands on the default for a type no tribe skins', () => {
+    expect(resolveBuildingDraw(binding, building(999, 4))).toEqual({ bob: 11 });
+  });
+
+  it('counts every tribe skin as a finished-building sprite', () => {
+    // The construction rise drops a stage that reuses a finished body; missing a tribe's bobs there
+    // would let a saracen mill creep up as a half-built cottage.
+    const keys = finishedBuildingBobKeys(binding);
+    expect(keys.has(bobKey({ bob: 12, layer: 'saracen' }))).toBe(true);
+    expect(keys.has(bobKey({ bob: 70 }))).toBe(true);
+  });
+});
+
 describe('resolveConstructionDraws - construction-stage stack for an under-construction building', () => {
   /** Omitting `builtPct` makes a finished building. */
   function site(typeId: number, builtPct?: number): DrawItem {

@@ -15,6 +15,7 @@ import { applyBuildingGraphicsOverlays } from './building-overlays.js';
 import { fillBuildingRecipes, stripVehicleGoods } from './building-recipes.js';
 import { loadCifTable } from './cif-tables.js';
 import { buildGatheringPipeline } from './gathering-pipeline.js';
+import { loadJobGraphics } from './job-graphics.js';
 import { resolveIniSources } from './sources.js';
 import { extractIniTables } from './tables.js';
 import { buildTerrainPatterns } from './terrain-patterns.js';
@@ -46,6 +47,7 @@ export async function buildIr(fs: Vfs, roots: SourceRoots): Promise<ContentSet> 
     buildingSoldierFlagPoints,
     buildingGraphicsOverlays,
   } = await extractIniTables(fs, await resolveIniSources(fs, roots));
+  const jobGraphics = await loadJobGraphics(fs, roots);
   const maps = await decodeMapTree(fs, roots);
   const patternFile = vjoin('Data', 'engine2d', 'inis', 'patterns', 'pattern.cif');
   const gfxPatterns = await loadCifTable(fs, roots, patternFile, extractPatterns, []);
@@ -91,6 +93,7 @@ export async function buildIr(fs: Vfs, roots: SourceRoots): Promise<ContentSet> 
     terrainPatterns,
     trianglePatternTypes: triangleTypes,
     bobSequences,
+    jobGraphics,
     gfxAtomics,
     gfxWalkAtomics,
     gfxInHousePrograms,

@@ -18,7 +18,7 @@ import {
   surnameSourceOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
-import { formatMessage, messages } from '../../../i18n/index.js';
+import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { healthBar, pct } from './bars.js';
 import {
   type BuildingPanelModel,
@@ -92,6 +92,14 @@ export type UnitPanelModel =
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
+/** The content's own name for a tribe the locale catalogs do not translate, so a selected animal reads as
+ *  its species rather than a bare id. */
+function contentTribeName(ctx: UnitPanelModelContext, tribe: number | undefined): string | undefined {
+  if (tribe === undefined) return undefined;
+  const row = ctx.tribes.find((t) => t.typeId === tribe);
+  return row?.name ?? row?.id;
+}
+
 export function buildUnitPanelModel(
   snapshot: WorldSnapshot,
   selected: ReadonlySet<number>,
@@ -148,7 +156,8 @@ export function buildUnitPanelModel(
       title: buildingTitle(ctx, rawType),
       category,
       owner: `#${ownerPlayerOf(ent) ?? '-'}`,
-      tribe: `${num(b.tribe) ?? '-'}`,
+      tribe: tribeName(num(b.tribe), contentTribeName(ctx, num(b.tribe))),
+      tribeId: num(b.tribe),
       level: num(b.level) ?? 0,
       builtPct: pct(num(b.built)),
       health: healthBar(ent),
@@ -192,7 +201,7 @@ export function buildUnitPanelModel(
         : '';
     const meta = formatMessage(messages().hud.playerTribe, {
       player: ownerPlayerOf(ent) ?? '-',
-      tribe: num(s.tribe) ?? '-',
+      tribe: tribeName(num(s.tribe), contentTribeName(ctx, num(s.tribe))),
       stance: stanceSuffix,
     });
     const young = comps.Age !== undefined;

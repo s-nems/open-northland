@@ -21,7 +21,10 @@ export interface BuildingPanelModel {
   readonly title: string;
   readonly category: string;
   readonly owner: string;
+  /** The building's civilization, named for the player. */
   readonly tribe: string;
+  /** The same civilization as the `Building.tribe` code, the per-tribe art join key. */
+  readonly tribeId: number | undefined;
   readonly level: number;
   readonly builtPct: number;
   /** Null for a type declaring no hitpoints (`work_murek`); the slot under the name then stays empty. */

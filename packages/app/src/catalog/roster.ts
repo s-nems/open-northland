@@ -1,5 +1,6 @@
 import { clipDirs, GALLERY_DIRS } from '@open-northland/render';
 import type { BobSeqRow } from '../content/ir/rows.js';
+import { lookStem } from '../content/settler-gfx/index.js';
 import { formatMessage, type Messages, messages } from '../i18n/index.js';
 
 /**
@@ -78,25 +79,13 @@ export function playerSwatchHex(colorId: number): string {
   return `#${(PLAYER_SWATCH_COLORS[colorId] ?? 0).toString(16).padStart(6, '0')}`;
 }
 
-/** The civilist-job (`logicjob 6`) head looks `head_00..03`. */
-export const CIVILIST_JOB_HEADS = [
+/** Every look bound to `cr_hum_body_00`: civilist (`head_00..03`), scout (`head_80..83`) and druid
+ *  (`head_90..93`). */
+const CIVILIAN_LOOKS = [
   'cr_hum_head_00',
   'cr_hum_head_01',
   'cr_hum_head_02',
   'cr_hum_head_03',
-] as const;
-
-/** The scout-job (`logicjob 27`) head looks `head_80..83`, bound to the same generic man body. */
-export const SCOUT_JOB_HEADS = [
-  'cr_hum_head_80',
-  'cr_hum_head_81',
-  'cr_hum_head_82',
-  'cr_hum_head_83',
-] as const;
-
-/** Every look bound to `cr_hum_body_00`: civilist, scout (`head_80..83`) and druid (`head_90..93`). */
-const CIVILIAN_LOOKS = [
-  ...CIVILIST_JOB_HEADS,
   'cr_hum_head_80',
   'cr_hum_head_81',
   'cr_hum_head_82',
@@ -162,9 +151,9 @@ export function findCharacter(id: string | null): VikingCharacter {
   return VIKING_CHARACTERS.find((c) => c.id === id) ?? DEFAULT_CHARACTER;
 }
 
-/** The served atlas stem for a roster body/head bmd: `<bmd>.<palette>`. */
+/** The served atlas stem for a roster body/head bmd, at the roster's own default palette. */
 export function characterStem(bmd: string, palette: string = DEFAULT_CHARACTER_PALETTE): string {
-  return `${bmd}.${palette}`;
+  return lookStem(bmd, palette);
 }
 
 /** The body and head atlas stems for a character at a palette; `headStems[0]` is the default look. */

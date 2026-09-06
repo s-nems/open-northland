@@ -19,6 +19,8 @@ export interface PlacementCursorInput {
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   /** Owner slot for a signpost ghost - the renderer applies the session colour mapping. */
   readonly localPlayer: number;
+  /** The civilization this seat raises buildings as, the same one `placeBuilding` stamps. */
+  readonly placementTribe: number;
 }
 
 /**
@@ -35,7 +37,16 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   if (tile === null) return { overlay, ghost: null };
   if (placementType !== null) {
     return input.canPlaceAt(placementType, tile.col, tile.row)
-      ? { overlay, ghost: { kind: 'building', col: tile.col, row: tile.row, buildingType: placementType } }
+      ? {
+          overlay,
+          ghost: {
+            kind: 'building',
+            col: tile.col,
+            row: tile.row,
+            buildingType: placementType,
+            tribe: input.placementTribe,
+          },
+        }
       : { overlay, ghost: null };
   }
   return input.canPlaceSignpostAt(tile.col, tile.row)

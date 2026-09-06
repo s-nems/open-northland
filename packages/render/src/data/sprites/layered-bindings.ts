@@ -11,9 +11,9 @@ export interface BuildingDraw {
   readonly layer?: string;
 }
 
-export interface BuildingTypeBinding {
+/** The per-type building tables of one tribe skin. */
+export interface BuildingTribeTables {
   readonly byType: Readonly<Record<number, BuildingBobRef>>;
-  readonly default: BuildingBobRef;
   /**
    * The `[GfxHouse]` `GfxBobConstructionLayer` from-scratch rows, in the source's stacking (file)
    * order. A type absent here keeps its finished-body draw at every progress.
@@ -27,6 +27,16 @@ export interface BuildingTypeBinding {
   /** The `[GfxHouse]` type-4 `GfxOverlay` table. The original lists overlays only for the finished body,
    *  so a building under construction draws none. */
   readonly overlayByType?: Readonly<Record<number, BuildingOverlayRef>>;
+}
+
+/**
+ * The building binding: the base tribe's tables plus the other loaded tribes' under `byTribe`, keyed by
+ * the drawing item's `tribe`. A tribe absent from `byTribe`, and a type absent from a tribe's own table,
+ * resolves through the base tables, and a type absent everywhere draws `default`.
+ */
+export interface BuildingTypeBinding extends BuildingTribeTables {
+  readonly default: BuildingBobRef;
+  readonly byTribe?: Readonly<Record<number, BuildingTribeTables>>;
 }
 
 export interface BuildingOverlayRef {

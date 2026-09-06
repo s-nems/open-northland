@@ -8,6 +8,7 @@ const SIGNPOST_WASH: PlacementOverlayFrame = { minCol: 1, maxCol: 9, minRow: 1, 
 
 const HOUSE = 7;
 const LOCAL_PLAYER = 2;
+const SARACEN = 4;
 const TILE = { col: 4, row: 9 };
 
 /** A frame with nothing held: each case turns on what it is about. The probe counters let a case prove
@@ -30,6 +31,7 @@ function frame(over: Partial<PlacementCursorInput> = {}) {
     canPlaceAt: () => true,
     canPlaceSignpostAt: () => true,
     localPlayer: LOCAL_PLAYER,
+    placementTribe: SARACEN,
     ...over,
   };
   return {
@@ -52,7 +54,7 @@ describe('placement cursor', () => {
 
     expect(f.cursor()).toEqual({
       overlay: BUILDING_WASH,
-      ghost: { kind: 'building', col: TILE.col, row: TILE.row, buildingType: HOUSE },
+      ghost: { kind: 'building', col: TILE.col, row: TILE.row, buildingType: HOUSE, tribe: SARACEN },
     });
   });
 
@@ -88,7 +90,7 @@ describe('placement cursor', () => {
 
     expect(f.cursor()).toEqual({
       overlay: BUILDING_WASH,
-      ghost: { kind: 'building', col: TILE.col, row: TILE.row, buildingType: HOUSE },
+      ghost: { kind: 'building', col: TILE.col, row: TILE.row, buildingType: HOUSE, tribe: SARACEN },
     });
     expect(f.signpostProbes()).toBe(0);
   });
@@ -98,7 +100,7 @@ describe('placement cursor', () => {
 
     expect(f.cursor()).toEqual({
       overlay: null,
-      ghost: { kind: 'building', col: TILE.col, row: TILE.row, buildingType: HOUSE },
+      ghost: { kind: 'building', col: TILE.col, row: TILE.row, buildingType: HOUSE, tribe: SARACEN },
     });
   });
 

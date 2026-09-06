@@ -23,3 +23,4 @@ export {
   MUSHROOM_PLUCK_FRAMES,
   MUSHROOM_PLUCKS_PER_PICK,
 } from './sequences.js';
+export { lookStem, type TribeLook, tribeLooks } from './tribe-looks.js';

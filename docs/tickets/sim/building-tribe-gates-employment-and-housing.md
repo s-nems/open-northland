@@ -40,5 +40,5 @@ tower garrison posts and 3 civilians, concentrated in the mixed-tribe maps.
 today). One browser pass on `tale_of_six_sons_multiplayer` player 6, whose town is the mixed-art case.
 
 Related: `docs/tickets/app/tribe-partition-is-invisible.md` covers showing the partition to the player
-and presumes this rule is real; `docs/tickets/app/building-bobs-ignore-tribe.md` covers the graphics
-join, which does not read this field today.
+and presumes this rule is real. The graphics join now reads the field: every civilization draws its own
+buildings and settlers, so a refused cross-tribe attachment is visible on the map rather than silent.

@@ -17,6 +17,8 @@ export interface BuildingCollapse {
   /** The content building type - the entity leaves the snapshot the tick it dies, so the body sprite
    *  is re-resolved from this. */
   readonly typeId: number;
+  /** The owning civilization, the key of the per-tribe building look tables. */
+  readonly tribe: number;
   /** Construction progress at destruction, whole percent 0..99; undefined for a finished building. */
   readonly builtPct?: number;
   /** Half-cell node of the building's anchor. */
@@ -109,6 +111,7 @@ export function foldBuildingCollapses(
     next.push({
       entity: ev.entity,
       typeId: ev.buildingType,
+      tribe: ev.tribe,
       ...(builtPct !== undefined ? { builtPct } : {}),
       hx: ev.at.hx,
       hy: ev.at.hy,

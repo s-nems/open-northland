@@ -11,6 +11,7 @@ import { mapStartFocus } from '../game/map-start.js';
 import { colorOverridesParam, playerColourMap } from '../game/player-session.js';
 import { sandboxGoods } from '../game/sandbox/index.js';
 import { runAuthoredMap, runBareMap, terrainSceneFor } from '../game/world/index.js';
+import { worldTribes } from '../game/world-tribes.js';
 import { cameraCenteredOnTile } from '../view/camera/index.js';
 import { floatParam, intParam, postFxParam } from '../view/params.js';
 import { createWorldRenderer, loadLocalizedRealContent } from '../view/runtime/world-bootstrap.js';
@@ -36,9 +37,10 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
   if (loaded === null) throw new Error(`backdrop: map "${mapId}" unavailable (content/ missing?)`);
   const script = await loadMapScript(mapId);
   const { goodNames, realContent } = await loadLocalizedRealContent(params);
-  const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods());
   const ir = await loadIr();
   if (ir === null) throw new Error('backdrop: ir.json unavailable (content/ missing?)');
+  const tribes = worldTribes(script, loaded.entities, ir);
+  const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods(), tribes);
   const terrain: TerrainTextureSet = await loadRealTerrain(ir);
 
   // Deliberately no stored render scale, and post-fx pinned on unless the URL overrides it: a
