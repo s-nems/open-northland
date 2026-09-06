@@ -34,6 +34,16 @@ export const FRAME_NATIVE = {
  */
 export const MINIMAP_ART_SCALE = 1.5;
 
+/** Drawn px per native frame px at a UI scale; a scale under the floor draws as the floor. */
+function minimapArtScale(uiscale: number): number {
+  return MINIMAP_ART_SCALE * Math.max(MIN_UI_SCALE, uiscale);
+}
+
+/** The framed window's width in screen px, for HUD that sits beside it along the bottom edge. */
+export function minimapPanelWidth(uiscale: number): number {
+  return FRAME_NATIVE.w * minimapArtScale(uiscale);
+}
+
 /** The minimap window's screen layout, all rects in absolute screen px. */
 export interface MinimapLayout {
   /** The whole framed window (the braided frame's outer box), pinned to the bottom-left corner. */
@@ -54,7 +64,7 @@ export interface MinimapLayout {
  * matters, and it is recomputed per frame rather than through a resize listener.
  */
 export function minimapLayout(bounds: WorldBounds, screenH: number, uiscale: number): MinimapLayout {
-  const artScale = MINIMAP_ART_SCALE * Math.max(MIN_UI_SCALE, uiscale);
+  const artScale = minimapArtScale(uiscale);
   const panel: Rect = {
     x: 0,
     y: screenH - FRAME_NATIVE.h * artScale,

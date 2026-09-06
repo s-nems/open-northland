@@ -11,6 +11,7 @@ import {
   FRAME_NATIVE,
   fillFogAlpha,
   minimapLayout,
+  minimapPanelWidth,
   minimapToWorld,
   pointOverMinimap,
   pointOverMinimapHole,
@@ -32,6 +33,12 @@ describe('minimapLayout', () => {
     expect(layout.panel.y + layout.panel.h).toBe(800);
     expect(layout.panel.w / layout.panel.h).toBeCloseTo(FRAME_NATIVE.w / FRAME_NATIVE.h);
     expect(layout.panel.w).toBeCloseTo(FRAME_NATIVE.w * layout.artScale);
+  });
+
+  it('reports the framed window width the bottom-edge HUD keeps clear of', () => {
+    const layout = minimapLayout(bounds, 800, UISCALE);
+    expect(minimapPanelWidth(UISCALE)).toBe(layout.panel.w);
+    expect(minimapPanelWidth(MIN_UI_SCALE / 2)).toBe(minimapPanelWidth(MIN_UI_SCALE));
   });
 
   it('letterboxes a non-square map inside the hole, aspect preserved and centred', () => {

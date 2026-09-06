@@ -181,9 +181,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // A checkout without a decoded sound bank degrades to silence.
   const soundDriver = await mountGamePresentation(params, renderer, deps.musicType ?? null);
 
-  // Clears the tool-panel strip and the message notes, so the readout never covers either.
+  // Along the bottom edge between the minimap and the details panel, clear of the notes up top.
   const perfCorner = perfCornerForUiScale(uiscale);
-  const perf = mountPerfOverlay(perfCorner.left, perfCorner.top);
+  const perf = mountPerfOverlay(perfCorner.left, perfCorner.right, perfCorner.bottom);
 
   // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
   const fogGates = createFogGates();

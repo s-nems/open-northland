@@ -10,8 +10,8 @@ import { messages } from '../i18n/index.js';
 export interface PerfOverlayHandle {
   /** Call once per frame. */
   update(report: FrameStatsReport): void;
-  /** Re-anchor the readout's top-left corner, so it keeps clear of the HUD chrome at a new scale. */
-  place(leftPx: number, topPx: number): void;
+  /** Re-anchor the readout along the bottom edge between the minimap and the details panel. */
+  place(leftPx: number, rightPx: number, bottomPx: number): void;
   dispose(): void;
 }
 
@@ -26,6 +26,8 @@ const PANEL_STYLE = [
   'border:1px solid rgba(74,90,54,0.6)',
   'border-radius:6px',
   'z-index:50',
+  // Clipped rather than wrapped, so a narrow window loses the tail of a line instead of covering the panel.
+  'overflow:hidden',
   'white-space:pre',
   'pointer-events:none',
 ].join(';');
@@ -51,13 +53,14 @@ function formatDeliveredSpeed(requested: number, recent: FrameRecent): string {
   return delivered === formatDelivered(requested) ? label : `${label}→${delivered}`;
 }
 
-/** Mount the debug readout pinned top-left, its corner at `(leftPx, topPx)` to clear the tool-panel strip
- *  and the message notes along the top edge. */
-export function mountPerfOverlay(leftPx: number, topPx: number): PerfOverlayHandle {
+/** Mount the debug readout along the bottom edge, spanning from `leftPx` (clear of the minimap) to
+ *  `rightPx` from the right edge (clear of the details panel), `bottomPx` up. */
+export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: number): PerfOverlayHandle {
   const panel = document.createElement('div');
   panel.style.cssText = PANEL_STYLE;
   panel.style.left = `${leftPx}px`;
-  panel.style.top = `${topPx}px`;
+  panel.style.right = `${rightPx}px`;
+  panel.style.bottom = `${bottomPx}px`;
   panel.textContent = `${messages().performance.fps} -`;
   document.body.append(panel);
 
@@ -85,9 +88,10 @@ export function mountPerfOverlay(leftPx: number, topPx: number): PerfOverlayHand
 
       panel.textContent = `${simState}\n${perf}`;
     },
-    place(leftPx, topPx): void {
+    place(leftPx, rightPx, bottomPx): void {
       panel.style.left = `${leftPx}px`;
-      panel.style.top = `${topPx}px`;
+      panel.style.right = `${rightPx}px`;
+      panel.style.bottom = `${bottomPx}px`;
     },
     dispose: () => panel.remove(),
   };
