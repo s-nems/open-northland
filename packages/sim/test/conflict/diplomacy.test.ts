@@ -133,14 +133,20 @@ describe('diplomacy in combat targeting (owner axis, full step() schedule)', () 
     sim.enqueueSetup({ kind: 'setDiplomacy', from: P0, to: P1, state: 'enemy' });
     sim.enqueueSetup({ kind: 'setDiplomacy', from: P1, to: P0, state: 'friend' });
 
-    for (let i = 0; i < TICKS; i++) sim.step();
+    // Both blows are read as they land: a fed settler heals between them, so neither pool is still down
+    // at the end of the run.
+    let lowestAggressor = sim.world.get(aggressor, Health).hitpoints;
+    let lowestPacified = sim.world.get(pacified, Health).hitpoints;
+    for (let i = 0; i < TICKS; i++) {
+      sim.step();
+      lowestAggressor = Math.min(lowestAggressor, sim.world.get(aggressor, Health).hitpoints);
+      lowestPacified = Math.min(lowestPacified, sim.world.get(pacified, Health).hitpoints);
+    }
 
     // The first landed blow flipped the victim's stance, so the war became mutual.
     expect(diplomacyStance(sim.world, P1, P0)).toBe('enemy');
-    const aggressorHealth = sim.world.get(aggressor, Health);
-    const pacifiedHealth = sim.world.get(pacified, Health);
-    expect(pacifiedHealth.hitpoints).toBeLessThan(pacifiedHealth.max); // the enemy stance struck first
-    expect(aggressorHealth.hitpoints).toBeLessThan(aggressorHealth.max); // and the struck side hit back
+    expect(lowestPacified).toBeLessThan(sim.world.get(pacified, Health).max); // the enemy stance struck first
+    expect(lowestAggressor).toBeLessThan(sim.world.get(aggressor, Health).max); // and the struck side hit back
   });
 
   it('an explicit attack order on a friend is skipped like any other invalid target', () => {

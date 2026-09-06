@@ -34,7 +34,7 @@ describe('integration: deterministic over many ticks', () => {
   });
 
   it('the seed reaches component state, not just the hashed RNG word', () => {
-    // A settler's starting needs are rolled off the RNG (`NEED_INIT_MAX_DEFICIT_PERCENT`), so spawning
+    // A settler's starting needs are rolled off the RNG (`NEED_INIT_SPREAD_UNITS`), so spawning
     // one is what makes a run consume the stream at all - a bare sim never draws, and `hashState` mixes
     // the RNG word in, so comparing seeds without a draw only ever compares the seeds themselves.
     const runWithSeed = (seed: number): Simulation => {

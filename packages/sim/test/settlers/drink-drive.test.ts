@@ -17,7 +17,7 @@ import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import { atomicSystem, needsSystem, plannerSystem } from '../../src/systems/index.js';
 import { resolveAttackHit } from '../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
+import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /** The fixture's attack swing (`setatomic 1 81 "viking_attack"`, length 4) at its landing frame - the
  *  shape `resolveAttackHit` reads to decide whether the clip announces the swing itself. */
@@ -40,7 +40,7 @@ const POTION_HEAL = 16;
 const EAT_ATOMIC = 10;
 const HEADQUARTERS = 1;
 const VIKING = 1;
-const PRESSING: Fixed = justAbove(NEED_THRESHOLD);
+const PRESSING: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 const HALF: Fixed = fx.div(ONE, fx.fromInt(2));
 const RESTORE_40: Fixed = fx.div(fx.fromInt(40), fx.fromInt(100));
 

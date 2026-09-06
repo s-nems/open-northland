@@ -19,7 +19,7 @@ const LONE_BARE_BUSH = { x: 14, y: 9, bloomAtTick: 300 } as const;
 const RUN_TICKS = 1500;
 /** Not 1, so `cameraFor` centres on the settlers instead of keeping the fixed origin offset. */
 const INITIAL_ZOOM = 1.2;
-/** Clearly over the ¾·ONE eat threshold - these settlers seek food before anything else. */
+/** Clearly over the drive threshold - these settlers seek food before anything else. */
 const HUNGRY = fx.div(fx.fromInt(9), fx.fromInt(10));
 
 const { BerryBush, Settler } = components;
@@ -47,6 +47,9 @@ export const berriesScene: SceneDefinition = {
   seed: 7,
   terrain: berriesTerrain(),
   build,
+  // The foragers have to actually get hungry and actually be fed by the berry, so this scene runs the
+  // needs mechanic rather than the frozen-bar default.
+  needs: true,
   runTicks: RUN_TICKS,
   initialZoom: INITIAL_ZOOM,
   checks: [
@@ -63,12 +66,11 @@ export const berriesScene: SceneDefinition = {
       predicate: (sim) => {
         let fed = 0;
         let total = 0;
-        // One berry is a partial meal, not a reset: with needs frozen the bar ends exactly one
-        // EAT_HUNGER_RESTORE below HUNGRY, under the eat threshold.
-        const afterOneBerry = fx.sub(HUNGRY, systems.EAT_HUNGER_RESTORE);
+        // A berry is a partial meal, not a reset: each forager started past the drive threshold and only
+        // the berry's own event could have brought it back under.
         for (const e of sim.world.query(Settler)) {
           total++;
-          if (sim.world.get(e, Settler).hunger === afterOneBerry) fed++;
+          if (sim.world.get(e, Settler).hunger < systems.NEED_DRIVE_THRESHOLD) fed++;
         }
         return total === STATIONS && fed === STATIONS;
       },

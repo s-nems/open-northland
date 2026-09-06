@@ -7,8 +7,9 @@ import {
   BABY_MALE,
   CHILD_AGE_TICKS,
   CHILD_MALE,
+  HEAL_STEPS_TO_FULL,
+  HEALTH_STEP_INTERVAL_TICKS,
   STARVATION_BITES_TO_DIE,
-  STARVATION_DAMAGE_INTERVAL_TICKS,
 } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { settlerWithHunger } from './support.js';
@@ -32,8 +33,9 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     const fed = settlerWithHunger(sim, fx.fromInt(0));
     sim.world.add(fed, Health, { hitpoints: 300, max: 300 });
 
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 3; i++) sim.step();
-    // 300/240 truncates to 1 → the 1-damage floor, one bite per interval; the fed settler is untouched.
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 3; i++) sim.step();
+    // 300/240 truncates to 1 → the 1-damage floor, one bite per interval; the fed settler is at its
+    // ceiling already, so it neither starves nor heals.
     expect(sim.world.get(starving, Health).hitpoints).toBe(300 - 3);
     expect(sim.world.get(fed, Health).hitpoints).toBe(300);
     expect(sim.checkInvariants()).toEqual([]);
@@ -42,7 +44,7 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
   it('scales the bite with the pool so any pool empties in ~STARVATION_BITES_TO_DIE intervals', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 2400);
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS; i++) sim.step();
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(2400 - 2400 / STARVATION_BITES_TO_DIE);
   });
 
@@ -50,7 +52,7 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 2); // two bites to die (fast-forward the death without 2400 ticks)
     let died = false;
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2 + 1 && !died; i++) {
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 2 + 1 && !died; i++) {
       sim.step();
       died = sim.events.current().some((ev) => ev.kind === 'settlerDied' && ev.entity === e);
     }
@@ -62,7 +64,7 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 300);
     setSettlerJob(sim.world, e, null);
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });
 
@@ -72,39 +74,83 @@ describe('needsSystem - starvation (a pinned hunger drains hitpoints)', () => {
     // other half of the exemption: an already-pinned one still takes no bite.
     const e = settlerWithHunger(sim, ONE, { tribe: MONSTER_TRIBE, jobType: MONSTER_JOB });
     sim.world.add(e, Health, { hitpoints: 300, max: 300 });
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
   });
 
-  it('exempts a growing baby (Age carrier in a baby stage) - a cared-for newborn cannot self-feed', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    // A baby's jobType is an age-class id (non-null), so Age + a baby stage marks it as cared-for;
-    // the AI planner runs no needs-drives for it, so without this exemption every borne baby would die
-    // of hunger before its CHILD_AGE_TICKS boundary and reproduction would be a death loop. Age matters:
-    // an adult fixture whose synthetic job id collides with BABY_MALE must still starve.
-    const e = starvingSettler(sim, 300);
-    setSettlerJob(sim.world, e, BABY_MALE);
-    sim.world.add(e, components.Age, { ticks: 0 });
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
-    expect(sim.world.get(e, Health).hitpoints).toBe(300);
-  });
-
-  it('starves a pinned child (Age carrier in a child stage) - it self-feeds, so it bites like an adult', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    // A child runs the planner's eat drive (the drive ladder); with no food anywhere its hunger pins and the
-    // starvation bite applies - only the baby stage keeps the cared-for exemption.
-    const e = starvingSettler(sim, 300);
-    setSettlerJob(sim.world, e, CHILD_MALE);
-    sim.world.add(e, components.Age, { ticks: CHILD_AGE_TICKS });
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
-    expect(sim.world.get(e, Health).hitpoints).toBe(300 - 2);
-  });
+  for (const [stage, jobType, ageTicks] of [
+    ['baby', BABY_MALE, 0],
+    ['child', CHILD_MALE, CHILD_AGE_TICKS],
+  ] as const) {
+    it(`exempts a growing settler in the ${stage} stage - it carries no needs to starve on`, () => {
+      const sim = new Simulation({ seed: 1, content: testContent() });
+      // An authored pinned bar is the only way a growing settler reaches one: nothing in play moves it.
+      // Age matters - an adult fixture whose synthetic job id collides with an age class must still starve.
+      const e = starvingSettler(sim, 300);
+      setSettlerJob(sim.world, e, jobType);
+      sim.world.add(e, components.Age, { ticks: ageTicks });
+      for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 2; i++) sim.step();
+      expect(sim.world.get(e, Health).hitpoints).toBe(300);
+    });
+  }
 
   it('stops starving while needs are disabled', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = starvingSettler(sim, 300);
     sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
-    for (let i = 0; i < STARVATION_DAMAGE_INTERVAL_TICKS * 2; i++) sim.step();
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 2; i++) sim.step();
     expect(sim.world.get(e, Health).hitpoints).toBe(300);
+  });
+});
+
+describe('needsSystem - healing (a fed settler regains hitpoints)', () => {
+  /** A settler whose hunger is pinned at ONE, carrying an explicit Health pool. */
+  function starvingSettler(sim: Simulation, hitpoints: number): Entity {
+    const e = settlerWithHunger(sim, ONE);
+    sim.world.add(e, Health, { hitpoints, max: hitpoints });
+    return e;
+  }
+
+  it('heals a wounded fed settler one step per interval, up to its own ceiling', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.add(e, Health, { hitpoints: 100, max: 300 });
+
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 3; i++) sim.step();
+    // 300/480 truncates to 0 → the 1-hitpoint floor, one step per interval.
+    expect(sim.world.get(e, Health).hitpoints).toBe(103);
+    expect(sim.checkInvariants()).toEqual([]);
+  });
+
+  it('scales the step with the pool, at half the rate starvation drains it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.add(e, Health, { hitpoints: 1, max: 4800 });
+
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS; i++) sim.step();
+    expect(sim.world.get(e, Health).hitpoints).toBe(1 + 4800 / HEAL_STEPS_TO_FULL);
+    expect(HEAL_STEPS_TO_FULL).toBe(STARVATION_BITES_TO_DIE * 2);
+  });
+
+  it('never heals a starving settler, and never past the ceiling', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const starving = starvingSettler(sim, 300);
+    sim.world.mut(starving, Health).hitpoints = 100;
+    const whole = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.add(whole, Health, { hitpoints: 300, max: 300 });
+
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 3; i++) sim.step();
+    expect(sim.world.get(starving, Health).hitpoints).toBe(100 - 3);
+    expect(sim.world.get(whole, Health).hitpoints).toBe(300);
+  });
+
+  it('heals nothing while needs are disabled', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const e = settlerWithHunger(sim, fx.fromInt(0));
+    sim.world.add(e, Health, { hitpoints: 100, max: 300 });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+
+    for (let i = 0; i < HEALTH_STEP_INTERVAL_TICKS * 2; i++) sim.step();
+    expect(sim.world.get(e, Health).hitpoints).toBe(100);
   });
 });

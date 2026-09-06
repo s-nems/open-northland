@@ -2,13 +2,9 @@ import { CurrentAtomic, DeferredOrder } from '../../../components/index.js';
 import { fx } from '../../../core/fixed.js';
 import type { System } from '../../context.js';
 import { applyEffect } from './effects/apply.js';
-import {
-  applyPendingStaggers,
-  type PendingStagger,
-  paySwingNeedCost,
-  resolveAttackHit,
-} from './effects/combat/index.js';
+import { applyPendingStaggers, type PendingStagger, resolveAttackHit } from './effects/combat/index.js';
 import { beginRestTail, continuesHarvest, endRestTail } from './effects/goods/index.js';
+import { applyAtomicNeedEvents } from './effects/need-events.js';
 import { emitAtomicSoundCues } from './sound-cue.js';
 
 /** Advance every running `CurrentAtomic` and apply its effect on completion. */
@@ -31,6 +27,7 @@ export const atomicSystem: System = (world, ctx) => {
       }
     }
 
+    applyAtomicNeedEvents(world, ctx, e, atomic);
     emitAtomicSoundCues(world, ctx, e, atomic);
 
     if (atomic.elapsed < duration) continue;
@@ -53,9 +50,6 @@ export const atomicSystem: System = (world, ctx) => {
     }
 
     const extracted = applyEffect(world, ctx, e, atomic);
-    // The attacker pays the swing's need cost here rather than in `applyEffect`: it resolves the animation
-    // that just played through the atomic's own id, which the effect does not carry.
-    if (atomic.effect.kind === 'attack') paySwingNeedCost(world, ctx, e, atomic.atomicId);
     ctx.events.emit({ kind: 'atomicCompleted', entity: e, atomicId: atomic.atomicId });
     // A multi-swing harvest holds the settler across swings, re-arming in place so this iteration stays
     // safe; only the swing that extracts hands it back to the planner. "Non-interruptible" protects the

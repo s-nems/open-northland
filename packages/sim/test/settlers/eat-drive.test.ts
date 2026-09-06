@@ -5,6 +5,7 @@ import {
   Carrying,
   CurrentAtomic,
   MoveGoal,
+  Owner,
   PathFollow,
   PathRequest,
   Position,
@@ -20,14 +21,15 @@ import {
   CHILD_AGE_TICKS,
   CHILD_FEMALE,
   CHILD_MALE,
-  EAT_HUNGER_RESTORE,
-  HUNGER_RISE_PER_TICK,
+  NEED_DRAIN_UNITS_PER_TICK,
+  NEED_SATED_THRESHOLD,
+  needBar,
   plannerSystem,
 } from '../../src/systems/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
 import { settlerAt as fixtureSettlerAt } from '../fixtures/settler.js';
-import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
+import { cellOf, ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the EAT DRIVE - the planner choosing an `eat` atomic (id 10, the
@@ -37,7 +39,7 @@ import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } fr
  * Fixture food: good 3 = `food_simple` (recognised by the `food` id prefix, isFood); the viking tribe
  * binds eat atomic 10 → "viking_eat" (length 5); the headquarters (building 1) declares a food stock
  * slot, so it can be the larder a settler eats from. The eat atomic id (10) is pinned to the original
- * `setatomic <job> 10 "..._eat_slot_food"` bindings; the ¾·ONE threshold + "which good is food"
+ * `setatomic <job> 10 "..._eat_slot_food"` bindings; the drive threshold + "which good is food"
  * (slug-inferred) are approximated (source basis).
  */
 
@@ -49,11 +51,12 @@ const KITCHEN = 21;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
-// The sleep slot (`setatomic <job> 8`) - the age-class cases prove a tired child reaches the ladder's
-// sleep rung too.
-const SLEEP_ATOMIC = 8;
-// Just over the ¾·ONE eat threshold - a settler this hungry seeks food before any work.
-const HUNGRY: Fixed = justAbove(NEED_THRESHOLD);
+/** The fixture eat clip's length, and the one `event 3 2 +4000` meal it pays out. */
+const EAT_CLIP_TICKS = 5;
+const MEAL: Fixed = needBar(4000);
+const DRAIN: Fixed = needBar(NEED_DRAIN_UNITS_PER_TICK);
+// Just over the drive threshold - a settler this hungry seeks food before any work.
+const HUNGRY: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 // Comfortably below the threshold - a fed settler ignores the eat drive and works as normal.
 const FED: Fixed = fx.div(ONE, fx.fromInt(2));
 
@@ -171,6 +174,23 @@ describe('eatDrive - the planner choosing to eat', () => {
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 
+  it('tops a computer seat settler back up when nothing can feed it, and a human seat one not at all', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    const AI_SEAT = 1;
+    const HUMAN_SEAT = 0;
+    const computer = settlerAt(sim, 0, 0, HUNGRY);
+    const human = settlerAt(sim, 2, 0, HUNGRY);
+    sim.world.add(computer, Owner, { player: AI_SEAT });
+    sim.world.add(human, Owner, { player: HUMAN_SEAT });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.step(); // the seat flag lands, and the planner finds no food for either
+
+    // The computer seat's settlement cannot be left to starve on an unreachable larder; the human
+    // player's settler keeps the bar it earned.
+    expect(sim.world.get(computer, Settler).hunger).toBe(NEED_SATED_THRESHOLD);
+    expect(sim.world.get(human, Settler).hunger).toBeGreaterThan(HUNGRY);
+  });
+
   it('falls through to work when hungry but no food is reachable', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const settler = settlerAt(sim, 0, 0, HUNGRY);
@@ -194,17 +214,17 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       atomicId: EAT_ATOMIC,
       elapsed: 0,
       progress: fx.fromInt(0),
-      duration: 1, // completes the first tick
+      duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: store },
       targetEntity: store,
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(store, Stockpile).amounts.get(FOOD)).toBe(2); // one unit eaten
     // One meal is a partial refill, not a reset - the eater is left hungry enough to come back.
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 
@@ -216,16 +236,16 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       atomicId: EAT_ATOMIC,
       elapsed: 0,
       progress: fx.fromInt(0),
-      duration: 1,
+      duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: null },
       targetEntity: settler,
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(settler, Carrying)).toBe(false); // last carried unit eaten
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
   });
 
   it('reaps a loose ground heap eaten down to zero (no dead pile entity lingers)', () => {
@@ -239,16 +259,16 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       atomicId: EAT_ATOMIC,
       elapsed: 0,
       progress: fx.fromInt(0),
-      duration: 1,
+      duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: heap },
       targetEntity: heap,
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.isAlive(heap)).toBe(false); // emptied heap vanished, no zero-stock artifact
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
   });
 
   it('keeps a building store alive after its last food unit is eaten (only loose piles reap)', () => {
@@ -259,13 +279,13 @@ describe('eat atomic - consuming food + relieving hunger (AtomicSystem)', () => 
       atomicId: EAT_ATOMIC,
       elapsed: 0,
       progress: fx.fromInt(0),
-      duration: 1,
+      duration: EAT_CLIP_TICKS,
       effect: { kind: 'eat', goodType: FOOD, from: store },
       targetEntity: store,
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.isAlive(store)).toBe(true); // the warehouse persists empty
     expect(sim.world.get(store, Stockpile).amounts.get(FOOD) ?? 0).toBe(0);
@@ -276,7 +296,7 @@ describe('eat drive - closing the rise→eat→relief loop through the real sche
   it('a settler beside a larder gets hungry, walks over, eats, and a meal comes off its bar', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
     // Start the settler already near the threshold so it crosses within a short headless run.
-    const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
+    const settler = settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
     const FOOD_START = 10;
     const larder = storeAt(sim, 1, 0, FOOD_START); // one tile over
 
@@ -291,7 +311,7 @@ describe('eat drive - closing the rise→eat→relief loop through the real sche
 
     // The loop closed: hunger rose to the threshold, the settler ate, and a meal's worth came off the
     // bar - allowing for the tick's own rise landing alongside the meal.
-    const oneMealBelowPeak = fx.sub(peakHunger, fx.sub(EAT_HUNGER_RESTORE, HUNGER_RISE_PER_TICK));
+    const oneMealBelowPeak = fx.sub(peakHunger, fx.sub(MEAL, DRAIN));
     expect(troughHunger).toBeLessThanOrEqual(oneMealBelowPeak);
     expect(troughHunger).toBeGreaterThan(fx.fromInt(0)); // a meal is a partial refill, never a reset
     expect(peakHunger).toBeLessThanOrEqual(ONE); // never breached the hungerInRange ceiling
@@ -303,7 +323,7 @@ describe('eat drive - closing the rise→eat→relief loop through the real sche
   it('is byte-identical across two same-seed runs (determinism)', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(3, 1) });
-      settlerAt(sim, 0, 0, NEED_THRESHOLD);
+      settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
       storeAt(sim, 1, 0, 10);
       for (let i = 0; i < 200; i++) sim.step();
       return sim.hashState();
@@ -391,9 +411,9 @@ describe('eat drive - unreachable larders (the componentOf gate + the failed-goa
   });
 });
 
-describe('eat drive - age classes (a child self-feeds, a baby is cared for)', () => {
+describe('eat drive - age classes (a growing settler is cared for, never self-feeding)', () => {
   /** A born-young settler: the given age-class jobType plus the Age the GrowthSystem stamps at birth.
-   *  Hungry unless other needs are passed. */
+   *  Authored hungry unless other needs are passed - nothing in play would raise its bars. */
   function youngAt(
     sim: Simulation,
     x: number,
@@ -411,19 +431,22 @@ describe('eat drive - age classes (a child self-feeds, a baby is cared for)', ()
     return e;
   }
 
-  it('a hungry child standing on a food store starts the eat atomic (the original binds child eat clips)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const child = youngAt(sim, 2, 0, CHILD_FEMALE, CHILD_AGE_TICKS);
-    const store = storeAt(sim, 2, 0, 3);
+  for (const [stage, jobType, ageTicks] of [
+    ['child', CHILD_FEMALE, CHILD_AGE_TICKS],
+    ['baby', BABY_FEMALE, 0],
+  ] as const) {
+    it(`a hungry ${stage} standing on a food store ignores it - its family feeds it`, () => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+      const young = youngAt(sim, 2, 0, jobType, ageTicks);
+      storeAt(sim, 2, 0, 3); // food right under it, still ignored
 
-    plannerSystem(sim.world, ctxOf(sim));
+      plannerSystem(sim.world, ctxOf(sim));
 
-    const atomic = sim.world.get(child, CurrentAtomic);
-    expect(atomic.atomicId).toBe(EAT_ATOMIC);
-    expect(atomic.effect).toEqual({ kind: 'eat', goodType: FOOD, from: store });
-  });
+      expect(sim.world.has(young, CurrentAtomic)).toBe(false);
+    });
+  }
 
-  it('a hungry child away from food walks to the nearest store like an adult', () => {
+  it('a hungry child away from food never walks to a store', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const child = youngAt(sim, 0, 0, CHILD_MALE, CHILD_AGE_TICKS);
     storeAt(sim, 3, 0, 2);
@@ -431,26 +454,15 @@ describe('eat drive - age classes (a child self-feeds, a baby is cared for)', ()
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.has(child, CurrentAtomic)).toBe(false);
-    expect(sim.world.get(child, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
+    expect(sim.world.has(child, MoveGoal)).toBe(false);
   });
 
-  it('a hungry baby never seeks food - it is cared for, not self-feeding', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
-    const baby = youngAt(sim, 2, 0, BABY_FEMALE, 0);
-    storeAt(sim, 2, 0, 3); // food right under it, still ignored
-
-    plannerSystem(sim.world, ctxOf(sim));
-
-    expect(sim.world.has(baby, CurrentAtomic)).toBe(false);
-  });
-
-  it('a tired (not hungry) child starts the sleep atomic in place (the original binds child sleep clips)', () => {
+  it('a tired child never beds down either - no needs rung runs while it is growing', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     const child = youngAt(sim, 2, 0, CHILD_MALE, CHILD_AGE_TICKS, { fatigue: HUNGRY });
 
     plannerSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.has(child, MoveGoal)).toBe(false); // sleep is in place - no walk
-    expect(sim.world.get(child, CurrentAtomic).atomicId).toBe(SLEEP_ATOMIC);
+    expect(sim.world.has(child, CurrentAtomic)).toBe(false);
   });
 });

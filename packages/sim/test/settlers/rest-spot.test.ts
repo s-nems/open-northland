@@ -9,7 +9,7 @@ import { PlannerSpacing } from '../../src/systems/settlers/planner/spacing.js';
 import { collectTargets } from '../../src/systems/settlers/targets/index.js';
 import { NodeBuckets } from '../../src/systems/spatial/nodes.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
+import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
  * The REST SPOT rule - where a tired settler beds down. The original's settlers step off the workplace
@@ -20,7 +20,7 @@ import { ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './ne
  * footprints: the rule under test is "which node is a bed", not how the walk-block is derived.
  */
 
-const TIRED: Fixed = justAbove(NEED_THRESHOLD);
+const TIRED: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 const MAP_W = 8;
 const MAP_H = 6;
 

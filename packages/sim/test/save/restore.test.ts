@@ -13,6 +13,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
+import { NEED_OVERFILL_FLOOR } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -260,7 +261,8 @@ describe('restoreSimulation rejection', () => {
     if (settlers === undefined) throw new Error('exported save must hold the settler store');
     const entry = (settlers.entries as Array<[number, Record<string, unknown>]>)[0];
     if (entry === undefined) throw new Error('exported save must hold a settler');
-    entry[1] = { ...entry[1], hunger: -1 }; // past the needs clamp, which no live tick can produce
+    // Past the overfill floor the needs clamp holds, which no live tick can produce.
+    entry[1] = { ...entry[1], hunger: NEED_OVERFILL_FLOOR - 1 };
     expect(() => restoredFromDoc(doc, 'mapped')).toThrow(/violates the core invariants/);
   });
 

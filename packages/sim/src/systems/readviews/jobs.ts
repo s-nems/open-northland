@@ -43,6 +43,22 @@ export function isFighterJobRow(job: Pick<JobType, 'id'>): boolean {
   return isFighterRole(jobRoleOfId(job.id));
 }
 
+/**
+ * Whether the trade serves a piety need (`jobtypes.ini` `needsReligionFlag`: joiner, armorer, smith). Every
+ * other trade's piety bar is inert, even the sewer's, whose armour clips drain it.
+ */
+export function jobNeedsReligion(content: ContentSet, jobType: number | null): boolean {
+  return jobType !== null && contentIndex(content).jobs.get(jobType)?.needsReligion === true;
+}
+
+/**
+ * Whether the trade never goes home (`jobtypes.ini` `ignoresHomeHouseFlag`: trader, scout, every soldier
+ * and hero), so nothing it spends out in the field is halved for being spent there.
+ */
+export function jobIgnoresHomeHouse(content: ContentSet, jobType: number | null): boolean {
+  return jobType !== null && contentIndex(content).jobs.get(jobType)?.ignoresHomeHouse === true;
+}
+
 /** The transport trade, for the same row-holding callers as {@link isFighterJobRow}. */
 export function isCarrierJobRow(job: Pick<JobType, 'id'>): boolean {
   return isCarrierJobId(job.id);

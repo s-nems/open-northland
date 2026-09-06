@@ -9,9 +9,14 @@ import {
   Stockpile,
 } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { atomicSystem, EAT_HUNGER_RESTORE } from '../../../src/systems/index.js';
+import { atomicSystem, needBar } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
+
+/** The eat slot, its fixture clip's length, and the one `event 3 2 +4000` meal that clip pays out. */
+const EAT_ATOMIC = 10;
+const EAT_CLIP_TICKS = 5;
+const MEAL = needBar(4000);
 
 describe('atomicSystem - effects', () => {
   it('harvest grants one unit onto the settler AND depletes the node by one', () => {
@@ -118,45 +123,9 @@ describe('atomicSystem - effects', () => {
       enjoyment: fx.fromInt(0),
       experience: new Map(),
     });
-    startAtomic(sim, settler, { kind: 'eat', goodType: WOOD, from: null }, 1);
-    atomicSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(ONE, EAT_HUNGER_RESTORE));
-  });
-
-  it('enjoy clears the settler enjoyment (no goods consumed)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const settler = sim.world.create();
-    addPerson(sim.world, settler, {
-      tribe: 1,
-      jobType: null,
-      hunger: fx.fromInt(0),
-      fatigue: fx.fromInt(0),
-      piety: fx.fromInt(0),
-      enjoyment: ONE, // fully due for recreation
-      experience: new Map(),
-    });
-    startAtomic(sim, settler, { kind: 'enjoy' }, 1, 17); // atomic 17 = the original's enjoy slot
-    atomicSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Settler).enjoyment).toBe(0); // leisure reset
-    expect(sim.world.has(settler, Carrying)).toBe(false); // nothing consumed/produced
-  });
-
-  it('make_love clears the settler enjoyment (same leisure channel as enjoy, no goods consumed)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const settler = sim.world.create();
-    addPerson(sim.world, settler, {
-      tribe: 1,
-      jobType: null,
-      hunger: fx.fromInt(0),
-      fatigue: fx.fromInt(0),
-      piety: fx.fromInt(0),
-      enjoyment: ONE, // fully due for recreation
-      experience: new Map(),
-    });
-    startAtomic(sim, settler, { kind: 'make_love' }, 1, 78); // atomic 78 = the original's make_love slot
-    atomicSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(settler, Settler).enjoyment).toBe(0); // leisure reset (channel 3, like enjoy)
-    expect(sim.world.has(settler, Carrying)).toBe(false); // nothing consumed/produced
+    startAtomic(sim, settler, { kind: 'eat', goodType: WOOD, from: null }, EAT_CLIP_TICKS, EAT_ATOMIC);
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(ONE, MEAL));
   });
 
   it('attack drains the resolved net damage from the target hitpoints', () => {

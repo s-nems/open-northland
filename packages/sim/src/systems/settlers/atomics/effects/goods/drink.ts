@@ -1,9 +1,9 @@
 import { Equipment, Health, Settler } from '../../../../../components/index.js';
-import { ONE } from '../../../../../core/fixed.js';
+import { fx, ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
 import { applyEquipWear, draughtRestores, wearStepOf } from '../../../../equipment/index.js';
-import { relieveNeed } from '../../../../lifecycle/needs.js';
+import { clampNeed } from '../../../../lifecycle/needs/index.js';
 
 /**
  * Apply one completed `drink`: a slot emptied or spent since the drive chose it restores nothing, since
@@ -18,8 +18,8 @@ export function drinkDraught(world: World, ctx: SystemContext, settler: Entity, 
   const { hunger, fatigue, healthMaxPct } = draughtRestores(ctx, held.goodType);
   if ((hunger !== undefined || fatigue !== undefined) && world.has(settler, Settler)) {
     const s = world.mut(settler, Settler);
-    if (hunger !== undefined) s.hunger = relieveNeed(s.hunger, hunger);
-    if (fatigue !== undefined) s.fatigue = relieveNeed(s.fatigue, fatigue);
+    if (hunger !== undefined) s.hunger = clampNeed(fx.sub(s.hunger, hunger));
+    if (fatigue !== undefined) s.fatigue = clampNeed(fx.sub(s.fatigue, fatigue));
   }
   if (healthMaxPct !== undefined && world.has(settler, Health)) {
     const h = world.mut(settler, Health);

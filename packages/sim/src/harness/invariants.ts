@@ -10,6 +10,7 @@ import {
 } from '../components/index.js';
 import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
+import { NEED_OVERFILL_FLOOR } from '../systems/lifecycle/needs/index.js';
 import { isAnimalTribe } from '../systems/readviews/index.js';
 
 /**
@@ -27,7 +28,8 @@ const IMPLAUSIBLE_STOCK = 0x7fffffff;
  */
 const MAX_HOME_LEVEL = 4;
 
-/** The settler needs the NeedsSystem clamps into [0, ONE]; the invariant catches a leak past the clamp. */
+/** The settler needs clamped into `[NEED_OVERFILL_FLOOR, ONE]`; the invariant catches a leak past the
+ *  clamp, at either end. */
 const CLAMPED_NEEDS = ['hunger', 'fatigue', 'piety', 'enjoyment'] as const;
 
 /** No stock amount is negative or implausibly large (catches over/underflow in production/transport). */
@@ -42,14 +44,14 @@ const stockNonNegative: Invariant = (world) => {
   return out;
 };
 
-/** Every {@link CLAMPED_NEEDS} need stays within [0, ONE]. */
+/** Every {@link CLAMPED_NEEDS} need stays within `[NEED_OVERFILL_FLOOR, ONE]`. */
 const needsInRange: Invariant = (world) => {
   const out: string[] = [];
   for (const e of world.query(Settler)) {
     const s = world.get(e, Settler);
     for (const need of CLAMPED_NEEDS) {
       const v = s[need];
-      if (v < 0 || v > ONE) out.push(`entity ${e}: ${need} out of range (${v})`);
+      if (v < NEED_OVERFILL_FLOOR || v > ONE) out.push(`entity ${e}: ${need} out of range (${v})`);
     }
   }
   return out;

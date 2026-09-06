@@ -17,12 +17,12 @@ import {
   BERRY_REGROW_TICKS,
   BERRY_STAGE_TICKS,
   berryGrowthSystem,
-  EAT_HUNGER_RESTORE,
-  HUNGER_RISE_PER_TICK,
+  NEED_DRAIN_UNITS_PER_TICK,
+  needBar,
   plannerSystem,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
-import { cellOf, ctxOf, grassMap, justAbove, NEED_THRESHOLD, needsSettlerAt } from './needs/support.js';
+import { cellOf, ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
 
 /**
  * Unit + integration tests for the FORAGE DRIVE - a hungry settler eating a wild {@link BerryBush} as the
@@ -38,8 +38,12 @@ const FOOD = 3;
 const VIKING = 1;
 const HEADQUARTERS = 1;
 const EAT_ATOMIC = 10;
-// Just over the ¾·ONE eat threshold - a settler this hungry seeks food before any work.
-const HUNGRY: Fixed = justAbove(NEED_THRESHOLD);
+/** The fixture eat clip's length, and the one `event 3 2 +4000` meal it pays out. */
+const EAT_CLIP_TICKS = 5;
+const MEAL: Fixed = needBar(4000);
+const DRAIN: Fixed = needBar(NEED_DRAIN_UNITS_PER_TICK);
+// Just over the drive threshold - a settler this hungry seeks food before any work.
+const HUNGRY: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 
 function settlerAt(sim: Simulation, x: number, y: number, hunger: Fixed): Entity {
   return needsSettlerAt(sim, x, y, { hunger });
@@ -161,19 +165,19 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
       atomicId: EAT_ATOMIC,
       elapsed: 0,
       progress: fx.fromInt(0),
-      duration: 1, // completes the first tick
+      duration: EAT_CLIP_TICKS,
       effect: { kind: 'forage', bush },
       targetEntity: bush,
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < EAT_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
 
     const b = sim.world.get(bush, BerryBush);
     expect(b.stage).toBe('bare'); // one serving eaten
     expect(b.nextStageAtTick).toBe(sim.tick + BERRY_STAGE_TICKS); // first regrow step (bloom) scheduled
     // One berry is a partial meal, worth the same as a stored one (observed original).
-    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, EAT_HUNGER_RESTORE));
+    expect(sim.world.get(settler, Settler).hunger).toBe(fx.sub(HUNGRY, MEAL));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
     expect(sim.events.current().some((e) => e.kind === 'berryForaged')).toBe(true);
   });
@@ -201,7 +205,7 @@ describe('forage atomic + regrow (AtomicSystem, BerryGrowthSystem)', () => {
 describe('forage drive - closing the rise→forage→relief loop through the real schedule', () => {
   it('a settler beside a bush gets hungry, forages, a meal comes off its bar, and the bush regrows', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(3, 1) });
-    const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
+    const settler = settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
     const bush = bushAt(sim, 1, 0); // one tile over
 
     let wentBare = false;
@@ -217,7 +221,7 @@ describe('forage drive - closing the rise→forage→relief loop through the rea
 
     // The loop closed: hunger rose, the settler foraged, and a berry's worth came off the bar (the
     // tick's own rise may land alongside the meal).
-    const oneMealBelowPeak = fx.sub(peakHunger, fx.sub(EAT_HUNGER_RESTORE, HUNGER_RISE_PER_TICK));
+    const oneMealBelowPeak = fx.sub(peakHunger, fx.sub(MEAL, DRAIN));
     expect(troughHunger).toBeLessThanOrEqual(oneMealBelowPeak);
     expect(troughHunger).toBeGreaterThan(fx.fromInt(0)); // a berry is a partial refill, never a reset
     expect(wentBare).toBe(true); // the bush was actually eaten off (not conjured food)
@@ -227,7 +231,7 @@ describe('forage drive - closing the rise→forage→relief loop through the rea
   it('is byte-identical across two same-seed runs (determinism)', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(5, 1) });
-      settlerAt(sim, 0, 0, NEED_THRESHOLD);
+      settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
       bushAt(sim, 2, 0);
       for (let i = 0; i < 300; i++) sim.step();
       return sim.hashState();

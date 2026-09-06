@@ -1,4 +1,12 @@
-import { Garrison, Position, Resting } from '../../components/index.js';
+import {
+  FamilyDuty,
+  Garrison,
+  LivestockVisit,
+  Position,
+  Residence,
+  Resting,
+  Sheltering,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId } from '../../nav/terrain/index.js';
 import { atOrWalk } from './atomics/start.js';
@@ -29,6 +37,25 @@ export function stepIn(world: World, e: Entity, building: Entity): void {
 
 export function isInside(world: World, e: Entity, building: Entity): boolean {
   return world.tryGet(e, Resting)?.at === building;
+}
+
+/**
+ * Whether a system outside the drive ladder is holding `e` indoors, so a re-plan leaves its `Resting`
+ * marker alone: shedding it would pop the settler out of cover and back in every tick.
+ */
+export function heldIndoors(world: World, e: Entity): boolean {
+  return (
+    world.has(e, FamilyDuty) ||
+    world.has(e, LivestockVisit) ||
+    world.has(e, Garrison) ||
+    world.has(e, Sheltering)
+  );
+}
+
+/** Whether `e` is indoors in its own house - the state the at-home need rules key on. */
+export function isInsideOwnHome(world: World, e: Entity): boolean {
+  const home = world.tryGet(e, Residence)?.home;
+  return home !== undefined && isInside(world, e, home);
 }
 
 export function stepOut(world: World, e: Entity): void {

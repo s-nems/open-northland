@@ -482,16 +482,13 @@ describe('selection details panel model', () => {
       ],
     };
 
-    // A baby's needs never accumulate (the NeedsSystem skips it whole), so its bars would always read
-    // 100% - the panel hides them and shows only the real Health pool.
-    const baby = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
-    if (baby.kind !== 'settler') throw new Error('expected a settler model');
-    expect(baby.bars.map((b) => b.label)).toEqual(['Zdrowie']);
-
-    // A child self-feeds/rests, so its needs are live state - the full bar set stays.
-    const child = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
-    if (child.kind !== 'settler') throw new Error('expected a settler model');
-    expect(child.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Głód', 'Sen', 'Towarzystwo', 'Religia']);
+    // No settler still growing carries needs (the NeedsSystem skips every one), so their bars would
+    // always read the same - the panel hides them and shows only the real Health pool.
+    for (const id of [1, 2]) {
+      const young = buildUnitPanelModel(snapshot, new Set([id]), sandboxCtx());
+      if (young.kind !== 'settler') throw new Error('expected a settler model');
+      expect(young.bars.map((b) => b.label)).toEqual(['Zdrowie']);
+    }
   });
 
   it('offers remove-from-home only to a housed adult (not the homeless, not a child)', () => {

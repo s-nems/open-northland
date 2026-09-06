@@ -1,10 +1,12 @@
-import { Carrying, ownerOf, type SettlerIdentity } from '../../../components/index.js';
-import { type Fixed, fx } from '../../../core/fixed.js';
+import type { ContentSet } from '@open-northland/data';
+import { Carrying, isAiPlayer, ownerOf, Settler, type SettlerIdentity } from '../../../components/index.js';
+import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { NEED_DRIVE_THRESHOLD, NEED_SATED_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { needAtomicDuration } from '../../readviews/animations.js';
-import { isFood } from '../../readviews/index.js';
+import { isFood, jobNeedsReligion } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
 import {
   atOrWalk,
@@ -23,52 +25,22 @@ import { sleepAtHome } from './sleep-at-home.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
 
 // The needs drives: the highest-priority rungs of the planner ladder. Eat outranks sleep outranks pray,
-// and an unsatisfiable need falls through to normal work rather than freezing the settler.
-
-/**
- * Hunger (fixed-point, in [0, ONE]) at or above which a settler stops working to eat, at ¾ of a full bar.
- * Approximation: the original drives eating off per-animation hunger events (`event 30 2 <delta>`, where
- * the eat clip's +4000 maps to a full bar) with no single readable "go eat at X" threshold.
- */
-export const HUNGER_EAT_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
-
-/**
- * Hunger at or above which the HUD floats the hunger bubble. The gap above the eat trigger means the icon
- * marks a settler that cannot feed itself where it stands - out of reach of food, or engaged and out of
- * rations - rather than one merely due a meal. Source basis: observation of the original, where the icon
- * appears when settlers have trouble finding food; the fraction itself is an approximation.
- */
-export const HUNGER_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
-
-/**
- * Fatigue at or above which a settler stops working to sleep, at ¾ of a full bar. Approximation on the same
- * basis as `HUNGER_EAT_THRESHOLD`: the original drives sleeping off per-animation rest events
- * (`event <at> 1 <delta>`) with no single readable threshold.
- */
-export const FATIGUE_SLEEP_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
-
-/**
- * Fatigue at or above which the HUD floats the sleepy bubble. Settlers cross the ¾ sleep trigger often
- * enough that keying the icon on it would leave a large share of the map permanently bubbling; past this,
- * the settler has been unable to bed down at all.
- */
-export const FATIGUE_BUBBLE_THRESHOLD: Fixed = fx.div(fx.fromInt(95), fx.fromInt(100));
-
-/**
- * Piety at or above which a settler stops working to pray, at ¾ of a full bar. Only a smith's piety rises,
- * so in practice only smiths reach it. Approximation on the same basis as the eat and sleep triggers.
- */
-const PIETY_PRAY_THRESHOLD: Fixed = fx.div(fx.fromInt(3), fx.fromInt(4)); // ¾·ONE
+// and an unsatisfiable need falls through to normal work rather than freezing the settler. Every rung
+// fires at the one shared NEED_DRIVE_THRESHOLD, the level a settler leaves its work at.
 
 /**
  * Whether any needs rung would fire, so a caller can skip `planNeeds`'s target and limit setup for a sated
- * settler. The ladder re-checks each threshold, so this elides only provably-null work.
+ * settler. The ladder re-checks each threshold, so this elides only provably-null work. Piety counts only
+ * for a trade that prays: every other trade's bar can pin with nothing able to serve it.
  */
-export function anyNeedPressing(needs: { hunger: Fixed; fatigue: Fixed; piety: Fixed }): boolean {
+export function anyNeedPressing(
+  content: ContentSet,
+  settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed; piety: Fixed },
+): boolean {
   return (
-    needs.hunger >= HUNGER_EAT_THRESHOLD ||
-    needs.fatigue >= FATIGUE_SLEEP_THRESHOLD ||
-    needs.piety >= PIETY_PRAY_THRESHOLD
+    settler.hunger >= NEED_DRIVE_THRESHOLD ||
+    settler.fatigue >= NEED_DRIVE_THRESHOLD ||
+    (settler.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(content, settler.jobType))
   );
 }
 
@@ -82,7 +54,7 @@ export function answerNeedInPlace(
   e: Entity,
   settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
 ): boolean {
-  if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
+  if (settler.hunger >= NEED_DRIVE_THRESHOLD) {
     if (eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
     const draught = draughtSlotFor(world, ctx, e, 'hunger');
     if (draught !== null) {
@@ -91,7 +63,7 @@ export function answerNeedInPlace(
     }
     if (eatAtPost(world, ctx, e, settler)) return true;
   }
-  if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
+  if (settler.fatigue >= NEED_DRIVE_THRESHOLD) {
     const draught = draughtSlotFor(world, ctx, e, 'fatigue');
     if (draught !== null) {
       startDrink(world, ctx, e, settler, draught);
@@ -142,7 +114,7 @@ export function planNeeds(
   spacing: PlannerSpacing,
 ): boolean {
   const gate = limit ?? undefined;
-  if (settler.hunger >= HUNGER_EAT_THRESHOLD) {
+  if (settler.hunger >= NEED_DRIVE_THRESHOLD) {
     if (eatCarried(world, ctx, e, settler, load)) return true;
     // A carried draught is drunk in place, replacing the walk to food, which is what the manual sells it
     // as: "cover longer distances without needing food". It ranks below food in hand, which is free.
@@ -168,9 +140,10 @@ export function planNeeds(
     }
     // Hungry with no reachable food: fall through to work while hunger stays clamped at ONE and the
     // starvation bite drains the pool until food appears.
+    topUpUnservedNeedForAi(world, e, 'hunger');
   }
 
-  if (settler.fatigue >= FATIGUE_SLEEP_THRESHOLD) {
+  if (settler.fatigue >= NEED_DRIVE_THRESHOLD) {
     // A stamina draught is drunk in place, replacing the walk to a bed: the manual's "remain awake and
     // ready longer".
     const draught = draughtSlotFor(world, ctx, e, 'fatigue');
@@ -193,7 +166,7 @@ export function planNeeds(
     return true;
   }
 
-  if (settler.piety >= PIETY_PRAY_THRESHOLD) {
+  if (settler.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(ctx.content, settler.jobType)) {
     const temple = nearestTemple(
       targets.bands,
       world,
@@ -216,7 +189,20 @@ export function planNeeds(
       return true;
     }
     // No temple reachable: fall through to work with piety pinned at ONE.
+    topUpUnservedNeedForAi(world, e, 'piety');
   }
 
   return false;
+}
+
+/**
+ * A computer seat's answer to a need its settlement cannot serve: the bar goes back to the level a served
+ * need sits at instead of pinning, so a walled-off larder cannot starve a whole AI settlement. A human
+ * player's settlers take the consequences instead. Approximation: no readable source states the rule.
+ */
+function topUpUnservedNeedForAi(world: World, e: Entity, need: 'hunger' | 'piety'): void {
+  if (world.get(e, Settler)[need] <= NEED_SATED_THRESHOLD) return;
+  const player = ownerOf(world, e);
+  if (player === undefined || !isAiPlayer(world, player)) return;
+  world.mut(e, Settler)[need] = NEED_SATED_THRESHOLD;
 }

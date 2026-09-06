@@ -4,7 +4,6 @@ import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
 import { planChildWander } from '../../family/wander.js';
-import { isChild } from '../../lifecycle/ageclass.js';
 import { MILITARY_MODE } from '../../readviews/index.js';
 import { navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
@@ -14,6 +13,7 @@ import type { PlannerContext } from '../planner/context.js';
 import type { PlannerPass } from '../planner/pass.js';
 import { anotherSystemOwns, combatOwnsFeet } from '../planner/replan.js';
 import { boundWorkplaceTarget } from '../targets/index.js';
+import { planHomeTopUp } from './at-home.js';
 import {
   planBuilder,
   planCarrierHaul,
@@ -26,7 +26,7 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
-import { answerNeedInPlace, anyNeedPressing, planNeeds } from './needs.js';
+import { answerNeedInPlace, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { deStackIdle } from './spacing.js';
@@ -37,24 +37,18 @@ import { planTraining } from './training.js';
 // the settler for the tick, and the rung order is a behavior contract the state goldens cover.
 
 /**
- * Plan a growing settler: shelter first, then the needs ladder for a child, else a stroll. Only a child
- * runs needs, on the source basis that the data binds child eat and sleep clips (`setatomic 3/4` on
- * `..._child_*_eat_slot_food` and `..._sleep`) while a baby has no eat clip bound.
+ * Plan a growing settler: shelter first, else a stroll. It carries no needs of its own (approximation, see
+ * `lifecycle/needs/system.ts`), so no needs rung runs for it. It still runs for cover like anyone else,
+ * though it never mans the walls (`defence/manning.ts`).
  */
 export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): void {
   const { world, ctx, terrain } = pass;
-  // A child runs for cover like anyone else but never mans the walls (`defence/manning.ts`).
-  const needy = isChild(settler.jobType) && anyNeedPressing(settler);
-  if (pass.shelters.size > 0 || needy) {
+  if (pass.shelters.size > 0) {
     const p = world.get(e, Position);
     const hereNode = nodeOfPosition(p.x, p.y);
     const here = terrain.nodeAtClamped(hereNode.hx, hereNode.hy);
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
-    const load = world.tryGet(e, Carrying);
-    if (needy && planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
-      return;
-    }
   }
   planChildWander(world, ctx, terrain, e, pass.spacing);
 }
@@ -79,6 +73,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
     answerNeedInPlace(world, ctx, e, settler);
     return;
   }
+
+  // Already home for one need: top the others up before stepping back out, rather than walking the whole
+  // errand again for each bar.
+  if (planHomeTopUp(world, ctx, e, settler)) return;
 
   if (planNeeds(world, ctx, terrain, e, settler, here, load, pass.targets, limit, pass.spacing)) {
     // A needs drive pulled the settler away, so it is no longer inside whatever it was waiting in -

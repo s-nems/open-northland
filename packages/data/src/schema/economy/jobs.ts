@@ -13,6 +13,10 @@ export const JobType = z.strictObject({
   /** Atomic ids explicitly denied to this job (`jobtypes` `forbidatomic`) - a hard exclusion that also
    *  overrides what {@link baseJob} passes down. */
   forbiddenAtomics: z.array(AtomicId).default([]),
+  /** `needsReligionFlag`; the behaviour it gates is `readviews/jobs.ts`'s. */
+  needsReligion: z.boolean().optional(),
+  /** `ignoresHomeHouseFlag`; the behaviour it gates is `readviews/jobs.ts`'s. */
+  ignoresHomeHouse: z.boolean().optional(),
   source: Provenance.optional(),
 });
 export type JobType = z.infer<typeof JobType>;

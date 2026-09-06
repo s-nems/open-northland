@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { Building, CurrentAtomic, MoveGoal, Position, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import { atomicSystem, plannerSystem } from '../../src/systems/index.js';
+import { atomicSystem, needBar, plannerSystem } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import {
   cellOf,
   ctxOf,
   grassMap,
   justAbove,
-  NEED_THRESHOLD,
+  NEED_DRIVE_THRESHOLD,
   needsSettlerAt,
   treeAt,
 } from './needs/support.js';
@@ -22,15 +22,23 @@ import {
  *
  * The viking tribe binds pray atomic 12 → "viking_pray" (length 7); the pray atomic id (12) is pinned
  * to the original `setatomic 6 12 "..._pray"` bindings + the `HOUSE_TYPE_WORK_TEMPLE` (logictype 37,
- * logicmaintype 3, no workers/stock/production) temple signature `isTemple` recognises; the ¾·ONE
- * threshold + the temple→pray-need inference are approximated (source basis).
+ * logicmaintype 3, no workers/stock/production) temple signature `isTemple` recognises; the drive threshold
+ * and the temple->pray-need inference are approximations.
  */
 
 const VIKING = 1;
 const TEMPLE_TYPE = 3;
+/** The fixture's `needsReligionFlag` trade: only such a settler leaves its work to pray. */
+const SMITH = 13;
+/** A trade with no religion need, which the fixture also lets fell wood. */
+const WOODCUTTER = 1;
+/** The fixture pray clip's length, and what its five `event <at> 4 +800` pulses are worth. Each pulse
+ *  converts to the bar on its own frame, so the prayer is five conversions, not one of their sum. */
+const PRAY_CLIP_TICKS = 7;
+const PRAYER: Fixed = fx.mul(needBar(800), fx.fromInt(5));
 const PRAY_ATOMIC = 12;
-// Just over the ¾·ONE pray threshold - a settler this devout-overdue prays before any work.
-const DEVOUT: Fixed = justAbove(NEED_THRESHOLD);
+// Just over the drive threshold - a settler this devout-overdue prays before any work.
+const DEVOUT: Fixed = justAbove(NEED_DRIVE_THRESHOLD);
 // Comfortably below the threshold - a piety-satisfied settler ignores the pray drive and works.
 const PIOUS: Fixed = fx.div(ONE, fx.fromInt(2));
 
@@ -42,7 +50,7 @@ function settlerAt(
   fatigue = fx.fromInt(0),
   hunger = fx.fromInt(0),
 ): Entity {
-  return needsSettlerAt(sim, x, y, { hunger, fatigue, piety });
+  return needsSettlerAt(sim, x, y, { hunger, fatigue, piety }, SMITH);
 }
 
 function templeAt(sim: Simulation, x: number, y: number): Entity {
@@ -110,6 +118,19 @@ describe('prayDrive - the planner choosing to pray (target-bound: walk to a temp
     expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0));
   });
 
+  it('leaves a trade with no religion need at its work, however overdue its piety bar', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
+    // A woodcutter carries the same bar and can even spend it forging, but `jobtypes.ini` marks only the
+    // joiner, armorer and smith `needsReligionFlag`, so no temple is ever an errand for him.
+    const settler = needsSettlerAt(sim, 0, 0, { piety: DEVOUT }, WOODCUTTER);
+    templeAt(sim, 4, 0);
+    treeAt(sim, 3, 0);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(cellOf(sim, 3, 0)); // headed for the wood
+  });
+
   it('sleeps before praying when both needs are over the threshold (sleep outranks pray)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(5, 1) });
     // Both devout AND tired; sleep is in place, so it resolves on the spot.
@@ -124,45 +145,46 @@ describe('prayDrive - the planner choosing to pray (target-bound: walk to a temp
   });
 });
 
-describe('pray atomic - zeroing piety on completion (AtomicSystem)', () => {
-  it('clears piety and consumes no goods', () => {
+describe('pray atomic - taking one prayer off piety (AtomicSystem)', () => {
+  it('takes one prayer off piety and consumes no goods', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(3, 1) });
     const settler = settlerAt(sim, 0, 0, DEVOUT);
     sim.world.add(settler, CurrentAtomic, {
       atomicId: PRAY_ATOMIC,
       elapsed: 0,
       progress: fx.fromInt(0),
-      duration: 1, // completes the first tick
+      duration: PRAY_CLIP_TICKS,
       effect: { kind: 'pray' },
       targetEntity: settler,
       targetTile: null,
     });
 
-    atomicSystem(sim.world, ctxOf(sim));
+    for (let i = 0; i < PRAY_CLIP_TICKS; i++) atomicSystem(sim.world, ctxOf(sim));
 
-    expect(sim.world.get(settler, Settler).piety).toBe(fx.fromInt(0)); // piety reset
+    // A prayer is a partial refill, not a reset: a smith comes back to the temple every few items.
+    expect(sim.world.get(settler, Settler).piety).toBe(fx.sub(DEVOUT, PRAYER));
     expect(sim.world.has(settler, CurrentAtomic)).toBe(false); // atomic done
   });
 });
 
-describe('pray drive - closing the rise→pray→reset loop through the real schedule', () => {
-  it('a settler grows devout, walks to the temple, prays, and its piety resets', () => {
+describe('pray drive - closing the forge→pray→relief loop through the real schedule', () => {
+  it('a devout settler walks to the temple and a prayer comes off its piety', () => {
     const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(4, 1) });
     // Start near the threshold so it crosses within a short headless run; temple a couple cells away.
-    const settler = settlerAt(sim, 0, 0, NEED_THRESHOLD);
+    const settler = settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
     templeAt(sim, 3, 0);
 
-    let prayedAtLeastOnce = false;
-    let peakPiety = sim.world.get(settler, Settler).piety;
+    const peakPiety = sim.world.get(settler, Settler).piety;
+    let troughPiety = peakPiety;
     for (let i = 0; i < 400; i++) {
       sim.step();
       const p = sim.world.get(settler, Settler).piety;
-      if (p > peakPiety) peakPiety = p;
-      // A reset to (near) zero after having been devout is the pray→reset signal.
-      if (p < fx.div(ONE, fx.fromInt(4))) prayedAtLeastOnce = true;
+      if (p < troughPiety) troughPiety = p;
     }
 
-    expect(prayedAtLeastOnce).toBe(true); // the loop closed: piety rose, the settler prayed, it reset
+    // The loop closed: the settler walked to the temple and one prayer came off the bar. Piety never
+    // rises on its own, so the peak is where it started.
+    expect(troughPiety).toBe(fx.sub(peakPiety, PRAYER));
     expect(peakPiety).toBeLessThanOrEqual(ONE); // never breached the pietyInRange ceiling
     expect(sim.checkInvariants()).toEqual([]);
   });
@@ -170,7 +192,7 @@ describe('pray drive - closing the rise→pray→reset loop through the real sch
   it('is byte-identical across two same-seed runs (determinism)', () => {
     const run = (): string => {
       const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(4, 1) });
-      settlerAt(sim, 0, 0, NEED_THRESHOLD);
+      settlerAt(sim, 0, 0, NEED_DRIVE_THRESHOLD);
       templeAt(sim, 3, 0);
       for (let i = 0; i < 400; i++) sim.step();
       return sim.hashState();

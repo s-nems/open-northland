@@ -1,11 +1,9 @@
-import { type CurrentAtomic, ownerOf, Settler } from '../../../../components/index.js';
+import { type CurrentAtomic, ownerOf } from '../../../../components/index.js';
 import { assertNever } from '../../../../core/brand.js';
-import { fx } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { advanceConstructionLabor } from '../../../economy/construction.js';
 import { applySow, applyWater } from '../../../economy/fields.js';
-import { EAT_HUNGER_RESTORE, relieveNeed, SLEEP_FATIGUE_RESTORE } from '../../../lifecycle/needs.js';
 import {
   grantCarryExperience,
   grantScoutExperience,
@@ -63,28 +61,16 @@ export function applyEffect(
     case 'pileup':
       if (pileupIntoStore(world, ctx, settler, effect.store) > 0) grantCarryExperience(world, ctx, settler);
       return;
+    // The meal itself was paid out at the clip's own event frame; the unit leaves the shelf here. The eat
+    // clips carry no `interruptable`, so an order parks behind one rather than splitting the two halves.
     case 'eat':
       consumeFood(world, settler, effect.from, effect.goodType);
-      relieveHunger(world, settler);
       return;
     case 'forage':
       forageBerry(world, ctx, effect.bush);
-      relieveHunger(world, settler);
       return;
     case 'drink':
       drinkDraught(world, ctx, settler, effect.slot);
-      return;
-    case 'sleep': {
-      const s = world.tryMut(settler, Settler);
-      if (s !== undefined) s.fatigue = relieveNeed(s.fatigue, SLEEP_FATIGUE_RESTORE);
-      return;
-    }
-    case 'pray':
-      clearNeed(world, settler, 'piety');
-      return;
-    case 'enjoy':
-    case 'make_love':
-      clearNeed(world, settler, 'enjoyment');
       return;
     case 'exercise':
       serveDrillRepetition(world, settler, atomic.duration);
@@ -116,25 +102,16 @@ export function applyEffect(
       unequipWornGood(world, ctx, settler, effect.group, effect.slot, effect.sink);
       return;
     // Nothing lands on completion: movement belongs to the navigation layer, an `attack` already landed at
-    // its hit frame, and crafting cycles advance from the workplace, never from a worker's atomic.
+    // its hit frame, crafting cycles advance from the workplace, never from a worker's atomic, and the
+    // needs the rest of these serve were paid out frame by frame from the clip's own events.
     case 'move':
     case 'idle':
     case 'attack':
     case 'produce':
+    case 'sleep':
+    case 'pray':
       return;
     default:
       assertNever(effect);
   }
-}
-
-/** Credit one meal to the eater's hunger bar; `eat` and `forage` feed identically. */
-function relieveHunger(world: World, settler: Entity): void {
-  const s = world.tryMut(settler, Settler);
-  if (s !== undefined) s.hunger = relieveNeed(s.hunger, EAT_HUNGER_RESTORE);
-}
-
-/** Zero a need the satisfying act clears outright, unlike the partial refill `eat` and `sleep` give. */
-function clearNeed(world: World, settler: Entity, need: 'piety' | 'enjoyment'): void {
-  const s = world.tryMut(settler, Settler);
-  if (s !== undefined) s[need] = fx.fromInt(0);
 }

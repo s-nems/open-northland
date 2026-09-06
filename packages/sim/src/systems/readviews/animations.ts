@@ -83,6 +83,34 @@ export function atomicClipName(
   );
 }
 
+/**
+ * The names the data gives a clip's at-home twin, which no `setatomic` binds: `<clip>_home` for the sleep
+ * clip, and `<body>_eat_athome` beside the eat slot's `<body>_eat_slot_food`.
+ */
+function atHomeTwinNames(outdoor: string): string[] {
+  const EAT_SLOT_TAIL = '_eat_slot_food';
+  const names = [`${outdoor}${'_home'}`];
+  if (outdoor.endsWith(EAT_SLOT_TAIL)) {
+    names.push(`${outdoor.slice(0, -EAT_SLOT_TAIL.length)}_eat_athome`);
+  }
+  return names;
+}
+
+/** The clip a settler indoors at home plays for `atomicId`: the at-home twin where the data authors one,
+ *  else the same clip it plays anywhere else. */
+export function atomicClipNameAtHome(
+  content: ContentSet,
+  settler: SettlerIdentity,
+  atomicId: number,
+): string | undefined {
+  const outdoor = atomicClipName(content, settler, atomicId);
+  if (outdoor === undefined) return undefined;
+  for (const twin of atHomeTwinNames(outdoor)) {
+    if (atomicAnimationByName(content, twin) !== undefined) return twin;
+  }
+  return outdoor;
+}
+
 /** The duration in ticks of a named animation - its `atomicanimations.ini` `length`, or
  *  {@link DEFAULT_ATOMIC_DURATION} when the name is undefined, unresolved, or zero-length. */
 export function atomicDurationForName(content: ContentSet, animation: string | undefined): number {

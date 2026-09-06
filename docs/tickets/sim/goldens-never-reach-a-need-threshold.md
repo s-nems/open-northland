@@ -8,12 +8,11 @@ eat or sleep trigger**, so none of the needs *drives* is covered by a golden at 
 
 The arithmetic, from the slice's own constants:
 
-- starting deficits are seeded in `[0, NEED_INIT_MAX_DEFICIT_PERCENT]` = 0–50% of a bar
-  (`systems/lifecycle/needs.ts` `rollInitialNeed`);
-- the bar rises `1 / (80 × 10 × 12)` = 1/9600 per tick, so the slice's `TICKS = 1000` window adds
-  `0.104`;
-- worst case a settler ends at `0.604`, under the `¾` `HUNGER_EAT_THRESHOLD` /
-  `FATIGUE_SLEEP_THRESHOLD`.
+- starting deficits are seeded over `NEED_INIT_SPREAD_UNITS` = 0–50% of a bar
+  (`systems/lifecycle/needs/system.ts` `rollInitialNeed`);
+- a bar drains one reserve unit per tick plus whatever the swing clips spend, so the slice's
+  `TICKS = 1000` window adds well under half a bar for its one woodcutter;
+- worst case a settler still ends under `NEED_DRIVE_THRESHOLD`, so no drive ever fires.
 
 The needs *rise* is hashed (the bars are component state), but eating, foraging, sleeping, the
 rest-spot walk-aside and the sleep-at-home rung are all invisible to it.

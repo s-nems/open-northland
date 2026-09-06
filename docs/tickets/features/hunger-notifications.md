@@ -8,14 +8,18 @@ is selected. The decoded `messages` string table ships (`content/gui/strings/pol
 only the `housewindow`/`humanwindow` tables (`content/gui-gfx.ts`), and no notification/toast
 surface exists (the only banner is build-placement).
 
-**Source basis:** messages ids 10/11 are the original's own hunger notifications. Sim triggers are
-already exposed: `Settler.hunger`, `HUNGER_EAT_THRESHOLD` (¾ bar,
-`packages/sim/src/systems/settlers/drives/needs.ts`), hunger pins at `ONE` before starvation.
+**Source basis:** messages ids 10/11 are the original's own hunger notifications. Byte evidence from the
+owned copy: it raises the hungry message while food sits below 1001 and the starving message once food
+reaches 0, re-reading both every twelfth tick, and raises sibling messages for rest and, on a praying
+trade, for piety. Sim triggers are already exposed: `Settler.hunger`, `NEED_CRITICAL_THRESHOLD` and
+`NEED_DRIVE_THRESHOLD` (`packages/sim/src/systems/lifecycle/needs/scale.ts`), hunger pins at `ONE`
+before starvation.
 
 ## Scope
 
 - A HUD notification seam (new `hud/` surface + bitmap text) wired to the `messages` table.
-- Emit "jest głodny" on crossing `HUNGER_EAT_THRESHOLD`, "głoduje" when hunger pins at `ONE`.
+- Emit "jest głodny" on crossing `NEED_CRITICAL_THRESHOLD`, the level the settler bubble already
+  marks, and "głoduje" when hunger pins at `ONE`.
 - Signal path: prefer a snapshot-side derivation in app (a new sim event would move goldens - only
   add one deliberately if the derivation proves too awkward).
 

@@ -8,6 +8,7 @@ import {
   WHEAT_HARVEST_ATOMIC,
 } from '../../../../catalog/atomics.js';
 import {
+  HOMELESS_JOBS,
   JOB_ARCHER,
   JOB_ARCHER_LONG,
   JOB_BABY_FEMALE,
@@ -26,6 +27,7 @@ import {
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
+  RELIGION_JOBS,
 } from '../../../../catalog/jobs.js';
 import { PROFESSIONS } from '../../../../catalog/professions.js';
 import { messages, professionLabel } from '../../../../i18n/index.js';
@@ -38,6 +40,9 @@ export interface SandboxJob {
   readonly id: string;
   readonly name?: string;
   readonly allowedAtomics?: number[];
+  /** `jobtypes.ini` `needsReligionFlag` / `ignoresHomeHouseFlag`, stamped from the catalog's own sets. */
+  readonly needsReligion?: boolean;
+  readonly ignoresHomeHouse?: boolean;
 }
 
 /** Extracted `jobtypes.ini` 15 `allowatomic 33/81`; the rebase-exempt hunter slot shares it by identity. */
@@ -124,6 +129,12 @@ export function buildSandboxJobs(extras: SandboxContentExtras): Map<number, Sand
   }
   for (const job of extras.jobs ?? []) {
     if (!jobs.has(job.typeId)) jobs.set(job.typeId, job);
+  }
+  // The two `jobtypes.ini` flags the needs rules read, stamped last so every row above gets them.
+  for (const [typeId, job] of jobs) {
+    const needsReligion = RELIGION_JOBS.has(typeId);
+    const ignoresHomeHouse = HOMELESS_JOBS.has(typeId);
+    if (needsReligion || ignoresHomeHouse) jobs.set(typeId, { ...job, needsReligion, ignoresHomeHouse });
   }
   return jobs;
 }

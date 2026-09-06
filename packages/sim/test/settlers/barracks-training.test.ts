@@ -50,7 +50,7 @@ const SCHOOLING_REPEATS = 5;
 const HEADQUARTERS_TYPE = 1;
 const FOOD_GOOD = 3;
 const LARDER_FOOD = 5;
-/** Well over the ¾ eat threshold - this recruit seeks food before anything else. */
+/** Well over the drive threshold - this recruit seeks food before anything else. */
 const STARVING = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** The four-cell walk to the door at the fixture's gait, with slack. */
 const WALK_TICKS = 100;

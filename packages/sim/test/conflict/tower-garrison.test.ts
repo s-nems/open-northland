@@ -51,9 +51,9 @@ const FOOD_GOOD = 3;
  *  (4 + {@link TOWER_RANGE_BONUS_NODES} = 12) - the bonus, not the bow, is what lands the shot. */
 const GARRISON_BOW_RANGE = 4;
 const ARROW_MUNITION = 1;
-/** Well over the ¾ eat threshold - a garrison this hungry leaves the tower for the larder. */
+/** Well over the drive threshold - a garrison this hungry leaves the tower for the larder. */
 const STARVING = fx.div(fx.fromInt(9), fx.fromInt(10));
-/** Over the ¾ sleep threshold, with hunger left at zero so the sleep rung is the one that fires. */
+/** Over the drive threshold, with hunger left at zero so the sleep rung is the one that fires. */
 const EXHAUSTED = fx.div(fx.fromInt(9), fx.fromInt(10));
 /** Long enough for the walk to the door plus the step inside. */
 const WALK_TICKS = 120;
@@ -156,6 +156,17 @@ const TOUGH = 1_000_000;
 
 function run(sim: Simulation, ticks: number): void {
   for (let i = 0; i < ticks; i++) sim.step();
+}
+
+/** The lowest `hitpoints` of `e` over `ticks` ticks. A fed settler heals between volleys, so the wound is
+ *  read as it lands rather than off the end state. */
+function lowestHitpoints(sim: Simulation, ticks: number, e: Entity): number {
+  let lowest = sim.world.get(e, Health).hitpoints;
+  for (let i = 0; i < ticks; i++) {
+    sim.step();
+    lowest = Math.min(lowest, sim.world.get(e, Health).hitpoints);
+  }
+  return lowest;
 }
 
 /** Post `soldier` to `tower` and run until he is up there (or the walk budget runs out). */
@@ -402,11 +413,9 @@ describe('the tower garrison - shooting from cover', () => {
     const post = tileOf(sim, garrison);
     const shotAt = standingTarget(sim, ENEMY_X);
 
-    run(sim, 200);
-
     // The target sits GARRISON_BOW_RANGE cells - twice that many nodes - from the tower, so the plain
     // band cannot cover it. Standing still throughout is what proves the reach did, not a step forward.
-    expect(sim.world.get(shotAt, Health).hitpoints).toBeLessThan(TOUGH);
+    expect(lowestHitpoints(sim, 200, shotAt)).toBeLessThan(TOUGH);
     expect(tileOf(sim, garrison)).toEqual(post);
   });
 
@@ -439,9 +448,7 @@ describe('the tower garrison - shooting from cover', () => {
       const post = tileOf(sim, garrison);
       const shotAt = standingTarget(sim, ENEMY_X);
 
-      run(sim, 200);
-
-      expect(sim.world.get(shotAt, Health).hitpoints).toBeLessThan(TOUGH);
+      expect(lowestHitpoints(sim, 200, shotAt)).toBeLessThan(TOUGH);
       expect(tileOf(sim, garrison)).toEqual(post); // and a FLEE garrison did not bolt
     }
   });

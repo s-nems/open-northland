@@ -1,4 +1,4 @@
-import { entityById, fx, systems, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, type Fixed, fx, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
 import { num, type SnapshotEntity, settlerExperienceOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
@@ -57,12 +57,16 @@ export interface SettlerPanelModel {
 
 function needBar(label: string, deficit: number | undefined): PanelBar {
   const level = 100 - pct(deficit);
-  return { label, pct: level, hover: `${level}%` };
+  // A bar can hold reserve above full (`NEED_OVERFILL_FLOOR`), which the gauge cannot show: a settler
+  // fresh from a meal at home would otherwise read a flat 100% for minutes with nothing moving.
+  const stored = deficit === undefined || deficit >= 0 ? 0 : Math.round(fx.toFloat(deficit as Fixed) * -100);
+  return { label, pct: level, hover: stored > 0 ? `${level}% +${stored}%` : `${level}%` };
 }
 
 /**
  * The Ogólne stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier) while the
- * original's window shows the satisfaction level, so each need bar is `100 - need`. The labels
+ * original's window shows the satisfaction level, so each need bar is `100 - need`; an overfilled bar
+ * reads full rather than over. The labels
  * deliberately diverge from the decoded `humanwindow` 11-15 strings: each bar is named after the need it
  * shows (Głód←hunger, Sen←fatigue, Towarzystwo←enjoyment), which the original's stat names do not map
  * onto 1:1.
@@ -75,7 +79,9 @@ export function satisfactionBars(ent: SnapshotEntity, needsEnabled: boolean): Pa
   const health = healthBar(ent);
   if (health !== null) bars.push(health);
   if (!needsEnabled) return bars;
-  if (comps.Age !== undefined && systems.isBaby(num(s.jobType) ?? null)) return bars;
+  // A settler still growing carries no needs at all (`lifecycle/needs/system.ts`), so it shows its health
+  // and nothing else.
+  if (comps.Age !== undefined) return bars;
   bars.push(needBar(hud.hunger, num(s.hunger)));
   bars.push(needBar(hud.sleep, num(s.fatigue)));
   bars.push(needBar(hud.company, num(s.enjoyment)));

@@ -3,14 +3,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { builtHomeType } from '../../family/households.js';
-import {
-  atomicAnimationByName,
-  atomicClipName,
-  atomicDurationForName,
-  needAtomicDuration,
-} from '../../readviews/animations.js';
 import type { NavigationLimit } from '../../signposts/index.js';
-import { SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
+import { atHomeDuration, SLEEP_ATOMIC_ID, startAtomic } from '../atomics/start.js';
 import { enterBuilding, isInside } from '../indoors.js';
 import { interactionCell } from '../targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
@@ -21,19 +15,12 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
 // Source basis: each tribe authors one at-home sleep clip, the civilist's - `viking_civilist_sleep_home`
 // (length 50) against the outdoor `viking_civilist_sleep` (length 237). Both pulse the rest channel twice
 // at `+4000` (`event <at> 1 +4000`), so for that body a bed indoors buys the same rest in a fifth of the
-// time; the other six outdoor clips have no twin and sleep indoors at their outdoor pace. The
-// approximation is the trigger, not the clip: this rung fires whenever the settler is housed, with no
-// distance or time-of-day gate.
+// time, and outdoors only half of it counts; the other six outdoor clips have no twin and sleep indoors at
+// their outdoor pace. The approximation is the trigger, not the clip: this rung fires whenever the settler
+// is housed, with no distance or time-of-day gate.
 //
 // The render knows only SLEEP_ATOMIC and would play the outdoor list against this 50-tick atomic; that is
 // invisible only because `Resting` hides the sleeper.
-
-/**
- * The suffix that turns a tribe's bound sleep clip into its at-home twin; the data names the pair `<clip>`
- * / `<clip>_home` in every tribe. No `setatomic` binds the home clip, so it is resolved by name rather than
- * through the binding table.
- */
-const HOME_SLEEP_SUFFIX = '_home';
 
 /**
  * Send `e` to bed in its own house: walk to the home's door, step inside and run the sleep atomic there.
@@ -58,7 +45,14 @@ export function sleepAtHome(
   // fatigue bar forever.
   if (isUnreachableGoal(unreachableGoals(world, ctx, e), door)) return false;
   enterBuilding(world, e, home, here, door, () =>
-    startAtomic(world, e, SLEEP_ATOMIC_ID, { kind: 'sleep' }, homeSleepDuration(ctx, settler), e),
+    startAtomic(
+      world,
+      e,
+      SLEEP_ATOMIC_ID,
+      { kind: 'sleep' },
+      atHomeDuration(ctx, settler, SLEEP_ATOMIC_ID),
+      e,
+    ),
   );
   return true;
 }
@@ -73,16 +67,4 @@ export function isSleepingAtHome(world: World, e: Entity): boolean {
   return (
     home !== undefined && isInside(world, e, home) && world.tryGet(e, CurrentAtomic)?.effect.kind === 'sleep'
   );
-}
-
-/** How long one sleep indoors takes: the settler's `<clip>_home` length, or its outdoor sleep length when
- *  its body has no home clip. */
-function homeSleepDuration(ctx: SystemContext, settler: SettlerIdentity): number {
-  const outdoor = atomicClipName(ctx.content, settler, SLEEP_ATOMIC_ID);
-  if (outdoor === undefined) return needAtomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID);
-  const atHome = `${outdoor}${HOME_SLEEP_SUFFIX}`;
-  // Resolve the home name explicitly: a body with no home clip must sleep at its own outdoor pace, not at
-  // the unresolved-name default.
-  const resolved = atomicAnimationByName(ctx.content, atHome) !== undefined ? atHome : outdoor;
-  return atomicDurationForName(ctx.content, resolved);
 }

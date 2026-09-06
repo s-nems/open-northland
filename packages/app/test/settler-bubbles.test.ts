@@ -55,14 +55,14 @@ describe('computeSettlerBubbles', () => {
   });
 
   it('shows no hungry bubble at the EAT threshold - a settler that far along just goes and eats', () => {
-    const sated = fx.div(ONE, fx.fromInt(2)); // below the ¾·ONE sleep trigger - no sleepy bubble
+    const sated = fx.div(ONE, fx.fromInt(2)); // below the sleep trigger - no sleepy bubble
     const snap = snapshotOf([
       {
         // Over the eat trigger, so the drive is already taking it to a meal. This is the case that
         // used to light up half the map.
         id: 1,
         components: {
-          Settler: { jobType: MAN, hunger: systems.HUNGER_EAT_THRESHOLD, fatigue: sated },
+          Settler: { jobType: MAN, hunger: systems.NEED_DRIVE_THRESHOLD, fatigue: sated },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
         },
       },
@@ -70,7 +70,7 @@ describe('computeSettlerBubbles', () => {
         // Still climbing well past the eat trigger - it has been looking for food and not finding it.
         id: 2,
         components: {
-          Settler: { jobType: MAN, hunger: systems.HUNGER_BUBBLE_THRESHOLD, fatigue: sated },
+          Settler: { jobType: MAN, hunger: systems.NEED_CRITICAL_THRESHOLD, fatigue: sated },
           Position: { x: fx.fromInt(2), y: fx.fromInt(1) },
         },
       },
@@ -79,9 +79,8 @@ describe('computeSettlerBubbles', () => {
     expect(computeSettlerBubbles(snap).map((b) => [b.id, b.kind])).toEqual([[2, 'hungry']]);
   });
 
-  it('keeps both bubble triggers above their drive triggers, so acting always comes first', () => {
-    expect(systems.HUNGER_BUBBLE_THRESHOLD).toBeGreaterThan(systems.HUNGER_EAT_THRESHOLD);
-    expect(systems.FATIGUE_BUBBLE_THRESHOLD).toBeGreaterThan(systems.FATIGUE_SLEEP_THRESHOLD);
+  it('keeps the bubble trigger above the drive trigger, so acting always comes first', () => {
+    expect(systems.NEED_CRITICAL_THRESHOLD).toBeGreaterThan(systems.NEED_DRIVE_THRESHOLD);
   });
 
   it('shows no sleepy bubble at the SLEEP threshold - a settler that far along just goes to bed', () => {
@@ -92,7 +91,7 @@ describe('computeSettlerBubbles', () => {
           Settler: {
             jobType: MAN,
             hunger: fx.div(ONE, fx.fromInt(2)),
-            fatigue: systems.FATIGUE_SLEEP_THRESHOLD,
+            fatigue: systems.NEED_DRIVE_THRESHOLD,
           },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
         },
@@ -108,7 +107,7 @@ describe('computeSettlerBubbles', () => {
       {
         id: 1,
         components: {
-          Settler: { jobType: MAN, hunger: sated, fatigue: systems.FATIGUE_BUBBLE_THRESHOLD },
+          Settler: { jobType: MAN, hunger: sated, fatigue: systems.NEED_CRITICAL_THRESHOLD },
           Position: { x: fx.fromInt(1), y: fx.fromInt(1) },
         },
       },

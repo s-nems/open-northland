@@ -30,7 +30,7 @@ const FOOD = 3;
 const MEAD = 13;
 const EAT_ATOMIC = 10;
 const HEADQUARTERS = 1;
-/** Over the ¾·ONE eat trigger and still inside the bar, so `needsSystem`'s clamp cannot mask a relief. */
+/** Over the the drive threshold eat trigger and still inside the bar, so `needsSystem`'s clamp cannot mask a relief. */
 const PRESSING: Fixed = fx.div(fx.fromInt(9), fx.fromInt(10));
 
 function hungryFighterAt(sim: Simulation, x: number, y: number): Entity {
@@ -173,12 +173,18 @@ describe('an engaged unit answers a need in place, never by walking', () => {
     larderAt(sim, 0, 0);
 
     sim.enqueueSetup({ kind: 'attackUnit', entity: attacker, target: enemy });
-    for (let i = 0; i < 240; i++) sim.step();
+    // The wound is read as it lands: a fed settler heals between blows, so this dummy is back at its
+    // ceiling by the end of the run.
+    let lowestEnemy = 1_000_000;
+    for (let i = 0; i < 240; i++) {
+      sim.step();
+      lowestEnemy = Math.min(lowestEnemy, sim.world.get(enemy, Health).hitpoints);
+    }
 
     expect(sim.world.get(attacker, Equipment).misc[0]?.degreeOfUse).toBeGreaterThan(fx.fromInt(0));
     expect(sim.world.get(attacker, Settler).hunger).toBeLessThan(PRESSING); // and the bar actually fell
     expect(sim.world.has(attacker, AttackOrder)).toBe(true); // the order survived the sip
-    expect(sim.world.get(enemy, Health).hitpoints).toBeLessThan(1_000_000); // it closed and struck
+    expect(lowestEnemy).toBeLessThan(1_000_000); // it closed and struck
   });
 
   it('a hungry besieger issues no route across a running siege', () => {

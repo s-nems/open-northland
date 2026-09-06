@@ -22,14 +22,14 @@ export {
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
 export { createResourceNode, resourceFootprintForGood } from './footprint/resources.js';
+export { ADULT_AGE_TICKS, CHILD_AGE_TICKS, isChild, TICKS_PER_AGE_YEAR } from './lifecycle/ageclass.js';
+// The need levels the HUD marks its bars and bubbles against, so presentation cannot drift from the
+// level the drives fire at.
 export {
-  ADULT_AGE_TICKS,
-  CHILD_AGE_TICKS,
-  isBaby,
-  isChild,
-  TICKS_PER_AGE_YEAR,
-} from './lifecycle/ageclass.js';
-export { EAT_HUNGER_RESTORE, SLEEP_FATIGUE_RESTORE } from './lifecycle/needs.js';
+  NEED_CRITICAL_THRESHOLD,
+  NEED_DRIVE_THRESHOLD,
+  NEED_OVERFILL_FLOOR,
+} from './lifecycle/needs/index.js';
 // The herding ring bound, asserted by the livestock scene.
 export { LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
 // The match cadence, so an acceptance scene can run past the first verdict without restating it.
@@ -51,10 +51,16 @@ export {
 export { schoolingMet } from './progression/unlocks.js';
 // The atomic clip resolution, exported so the real-content suite can pin the joins against the served IR
 // rather than a fixture, and the sandbox catalog can author its cues on the same event type.
+// The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the
+// joins against the served IR rather than a fixture, and the committed catalog can author its cues and its
+// need clips on the same ids the sim reads back.
 export {
+  ATOMIC_EVENT_CHANNEL,
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   atomicClipName,
+  atomicClipNameAtHome,
   atomicDurationForName,
+  atomicEventChannelDelta,
   needAtomicDuration,
 } from './readviews/animations.js';
 export { HEADQUARTERS_BUILDING_ID, isBarracksType } from './readviews/buildings.js';
@@ -86,12 +92,6 @@ export {
 // The "can this trade raise a foundation" gate, so the app's right-click on a site cannot drift from the
 // rule assignBuilder and the builder drive ask.
 export { jobCanBuild } from './settlers/atomics/start.js';
-export {
-  FATIGUE_BUBBLE_THRESHOLD,
-  FATIGUE_SLEEP_THRESHOLD,
-  HUNGER_BUBBLE_THRESHOLD,
-  HUNGER_EAT_THRESHOLD,
-} from './settlers/drives/needs.js';
 export {
   canPlaceSignpost,
   type SignpostProbe,
