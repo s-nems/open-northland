@@ -35,6 +35,13 @@ format and the execution semantics live in [`docs/formats/MISSIONS.md`](../../..
 - Two goals write as well as read: `BuildHumans` and `BuildHouses` stamp the object id on what they
   counted, which is why they collect and sort where the other counting goals do not.
 
+## The behaviour mask
+
+Each bit is read by the system that owns its mechanic: a result writes the mask and the needs,
+planner, combat, command, trade and movement systems decide what it means. An evaluator here reads a
+bit only for a mechanic that is the script's own - script damage checks the indestructible house bit,
+because no other system deals that damage. Anything else would put one mechanic in two places.
+
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes

@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { MapScript } from '@open-northland/data';
+import type { Entity } from '@open-northland/sim';
 import { components, Simulation, systems, TICKS_PER_SECOND } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
@@ -46,6 +47,8 @@ const WAVE_SECONDS = 30;
 const WAVE_PLAYER = 2;
 const WAVE_SIZE = 13;
 const WAVE_HERO_IDS = [133, 134];
+/** The mask every line of the wave carries: needs frozen (bit 0) and not player-controllable (5). */
+const WAVE_BEHAVIOUR = 33;
 
 function mapsDir(): string {
   return resolve(contentDir(), 'maps');
@@ -67,9 +70,12 @@ function resolvedName(value: unknown): boolean {
   return true;
 }
 
+function humansEntitiesOf(sim: Simulation, player: number): Entity[] {
+  return [...sim.world.query(components.Person)].filter((e) => components.ownerOf(sim.world, e) === player);
+}
+
 function humansOf(sim: Simulation, player: number): number {
-  return [...sim.world.query(components.Person)].filter((e) => components.ownerOf(sim.world, e) === player)
-    .length;
+  return humansEntitiesOf(sim, player).length;
 }
 
 function scriptOf(file: string): MapScript {
@@ -160,6 +166,12 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))(
         for (const id of WAVE_HERO_IDS) {
           expect(`${id}: ${systems.missionObjects(sim.world, id).length}`).toBe(`${id}: 1`);
         }
+        // And every one of them arrives under the mask its line wrote, which this map uses to put the
+        // wave beyond the player's orders and off the needs ladder.
+        const masked = humansEntitiesOf(sim, WAVE_PLAYER).filter(
+          (e) => sim.world.tryGet(e, components.MissionBehaviour)?.flags === WAVE_BEHAVIOUR,
+        );
+        expect(masked.length).toBe(WAVE_SIZE);
       },
       REAL_MAP_TIMEOUT_MS,
     );

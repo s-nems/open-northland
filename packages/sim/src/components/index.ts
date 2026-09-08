@@ -5,6 +5,7 @@
 
 export * from './ai-player.js';
 export * from './assistant.js';
+export * from './behaviour.js';
 export * from './chest.js';
 export * from './combat.js';
 export * from './defence.js';

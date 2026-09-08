@@ -67,9 +67,9 @@ export function stepOut(world: World, e: Entity): void {
  * Take the post inside `building`: stand on its own tile and remember the doorstep to come back to. This is
  * the extra move a garrison makes, so its shot leaves the tower instead of its doorstep.
  *
- * This and `standDownFromPost` are the only writes to a settler's `Position` outside the movement system,
- * and they land it on a building's own walk-blocked node, so a settler-position-keyed spatial index would
- * have to account for them.
+ * This, `standDownFromPost` and a script's teleport results are the only writes to a settler's `Position`
+ * outside the movement system, and the two here land it on a building's own walk-blocked node, so a
+ * settler-position-keyed spatial index would have to account for them.
  */
 export function takePost(world: World, e: Entity, building: Entity): void {
   const at = world.tryGet(building, Position);

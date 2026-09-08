@@ -117,6 +117,7 @@ export interface SpawnSpec {
   readonly job?: number;
   readonly at?: { hx: number; hy: number };
   readonly missionId?: number;
+  readonly behaviourFlags?: number;
   readonly home?: { readonly x: number; readonly y: number };
   readonly workplace?: { readonly x: number; readonly y: number };
 }
@@ -131,6 +132,7 @@ export function spawn(sim: Simulation, spec: SpawnSpec): void {
     y: at.hy,
     ...(spec.player !== undefined ? { owner: spec.player } : {}),
     ...(spec.missionId !== undefined ? { missionId: spec.missionId } : {}),
+    ...(spec.behaviourFlags !== undefined ? { behaviourFlags: spec.behaviourFlags } : {}),
     ...(spec.home !== undefined ? { home: spec.home } : {}),
     ...(spec.workplace !== undefined ? { workplace: spec.workplace } : {}),
   });

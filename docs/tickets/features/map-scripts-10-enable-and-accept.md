@@ -1,9 +1,9 @@
 # Enable mission scripts by default and accept them on a real map
 
 **Area:** sim, app · **Focus:** acceptance · **Priority:** P2
-**Blocked by:** [map-scripts-4-movement-areas-and-behaviour.md](map-scripts-4-movement-areas-and-behaviour.md)
+**Blocked by:** [map-scripts-5-economy-and-tech.md](map-scripts-5-economy-and-tech.md)
 
-Map-scripts epic, stage 10 of 10. Also needs stages 5, 7, 8, and 9 merged; check the coverage report
+Map-scripts epic, stage 10 of 10. Also needs stages 7, 8, and 9 merged; check the coverage report
 before starting.
 
 With the executors in place, `MissionRules` still defaults to off and only `?missions=on` turns a

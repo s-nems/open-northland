@@ -16,6 +16,8 @@ import { testContent } from '../fixtures/content.js';
 type SupportedGoal = (typeof SUPPORTED_GOALS)[number];
 type SupportedResult = (typeof SUPPORTED_RESULTS)[number];
 
+const POINT = { hx: 4, hy: 4 };
+
 /** One well-formed line per listed opcode; the mapped type is what forces an entry for each. */
 const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }> } = {
   True: { opcode: 'True' },
@@ -37,9 +39,47 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
   HumansWithHome: { opcode: 'HumansWithHome', player: 0, amount: 1 },
   CheckHumanJob: { opcode: 'CheckHumanJob', humanId: 7, job: 1 },
   HumanAttachedToWorkHouse: { opcode: 'HumanAttachedToWorkHouse', player: 0, job: 1, amount: 1 },
+  FindPosByHumans: { opcode: 'FindPosByHumans', humanId: 7, point: POINT, range: 3 },
+  FindPosByPlayersMapMoveable: {
+    opcode: 'FindPosByPlayersMapMoveable',
+    player: 0,
+    point: POINT,
+    range: 3,
+  },
+  FindHumansByHumans: { opcode: 'FindHumansByHumans', humanId: 7, otherHumanId: 8, range: 3 },
+  FindHumansByPlayersMM: { opcode: 'FindHumansByPlayersMM', humanId: 7, player: 0, range: 3 },
+  FindHousesByHumans: { opcode: 'FindHousesByHumans', humanId: 7, objectId: 8, range: 3 },
+  NumberOfSoldiersNearPos: {
+    opcode: 'NumberOfSoldiersNearPos',
+    player: 0,
+    point: POINT,
+    range: 3,
+    amount: 1,
+  },
+  NumberOfCivilainsNearPos: {
+    opcode: 'NumberOfCivilainsNearPos',
+    player: 0,
+    point: POINT,
+    range: 3,
+    amount: 1,
+  },
+  NumberOfHousesInArea: {
+    opcode: 'NumberOfHousesInArea',
+    player: 0,
+    houseType: 1,
+    amount: 1,
+    point: POINT,
+    range: 3,
+  },
+  NumberOfAnimalsInArea: {
+    opcode: 'NumberOfAnimalsInArea',
+    player: 0,
+    tribe: 1,
+    amount: 1,
+    point: POINT,
+    range: 3,
+  },
 };
-
-const POINT = { hx: 4, hy: 4 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
   None: { opcode: 'None' },
@@ -100,6 +140,38 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
     point: POINT,
     range: 4,
   },
+  SendHuman: { opcode: 'SendHuman', humanId: 7, point: POINT },
+  MoveHuman: { opcode: 'MoveHuman', humanId: 7, point: POINT },
+  MoveUnitsInArea: {
+    opcode: 'MoveUnitsInArea',
+    player: 0,
+    point: POINT,
+    range: 2,
+    index: 20,
+    extra: 20,
+  },
+  StopHumanByPlayerId: { opcode: 'StopHumanByPlayerId', player: 0 },
+  RemoveHumansNearPos: { opcode: 'RemoveHumansNearPos', point: POINT, range: 2 },
+  HealHumansInArea: { opcode: 'HealHumansInArea', point: POINT, range: 2 },
+  RemoveHPsOfHousesInArea: {
+    opcode: 'RemoveHPsOfHousesInArea',
+    player: 0,
+    point: POINT,
+    range: 2,
+    amount: 1,
+  },
+  RemoveHPsOfHousesInAreaX: {
+    opcode: 'RemoveHPsOfHousesInAreaX',
+    player: 0,
+    point: POINT,
+    range: 2,
+    amount: 1,
+    objectId: 7,
+  },
+  SetHumanBehaviourFlag: { opcode: 'SetHumanBehaviourFlag', humanId: 7, amount: 1, flag: true },
+  SetPlayerBehaviourFlag: { opcode: 'SetPlayerBehaviourFlag', player: 0, amount: 1, flag: true },
+  SetImportHumanFlag: { opcode: 'SetImportHumanFlag', humanId: 7, flag: true },
+  SetHouseBehaviourFlag: { opcode: 'SetHouseBehaviourFlag', objectId: 7, index: 0, flag: true },
   ChangeHumanObjectIdInArea: {
     opcode: 'ChangeHumanObjectIdInArea',
     player: 0,

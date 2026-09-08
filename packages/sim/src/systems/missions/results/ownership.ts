@@ -1,19 +1,11 @@
-import {
-  isValidPlayer,
-  Owner,
-  ownerOf,
-  Person,
-  Position,
-  Residence,
-  Settler,
-} from '../../../components/index.js';
+import { isValidPlayer, Owner, Person, Position, Residence, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { releaseEmployment } from '../../economy/jobs/binding.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
-import { missionHouses, missionHumans, ownedInRange, withinRange } from '../targets.js';
+import { missionHouses, missionHumans, ownedBy, ownedInRange, withinRange } from '../targets.js';
 
 /** How many animals one `ChangeAnimalPlayerIdInArea` may take, whatever it asks for (reading). */
 const ANIMAL_HANDOVER_CAP = 50;
@@ -73,13 +65,6 @@ export function handAnimalsToPlayer(
     handOver(world, e, op.otherPlayer);
     taken++;
   }
-}
-
-/** Whether `e` belongs to the script's `player`: a slot the sim does not know - the wild one above
- *  all - names what it leaves ownerless. */
-function ownedBy(world: World, e: Entity, player: number): boolean {
-  const owner = ownerOf(world, e);
-  return isValidPlayer(player) ? owner === player : owner === undefined;
 }
 
 /** Hand one entity to `player`. An invalid slot leaves the entity where it was. */

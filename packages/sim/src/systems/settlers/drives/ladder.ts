@@ -2,12 +2,14 @@ import {
   Carrying,
   Chat,
   Female,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   ownerOf,
   Position,
   type SettlerView,
   Stance,
 } from '../../../components/index.js';
-import type { Entity } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
 import { planWomanHoard } from '../../family/hoard.js';
@@ -58,6 +60,7 @@ export function planChild(pass: PlannerPass, e: Entity, settler: SettlerView): v
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
     if (planShelter(world, ctx, terrain, e, settler, here, hereNode, limit, pass.shelters)) return;
   }
+  if (staysPut(world, e)) return;
   planChildWander(world, ctx, terrain, e, pass.spacing);
 }
 
@@ -123,7 +126,10 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   if (world.tryGet(e, Stance)?.mode === MILITARY_MODE.DEFEND) return;
   // The company rung: a lonely settler leaves its work to find a partner, above the economy rungs on
   // purpose - the "worker downs tools to socialize" beat.
-  if (planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates)) {
+  if (
+    !staysPut(world, e) &&
+    planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates)
+  ) {
     return;
   }
   // The housewife rung: a woman takes no trade - her work is stocking the family larder. Above the
@@ -195,10 +201,17 @@ function planEconomy(
   if (planGatherer(plan, pass.harvestClaims)) return;
   if (planPorter(plan)) return;
 
-  // A settler the haul rung also refuses is genuinely idle. One already chatting keeps its chat; the rest
-  // step off a shared tile first so an idle crowd spreads out, then chat with a nearby idle neighbour.
-  if (planCarrierHaul(plan, pass.anyHaulable) || world.has(e, Chat)) return;
+  // A settler the haul rung also refuses is genuinely idle. One already chatting keeps its chat, and one
+  // a script pinned stays where it is; the rest step off a shared tile first so an idle crowd spreads
+  // out, then chat with a nearby idle neighbour.
+  if (planCarrierHaul(plan, pass.anyHaulable) || world.has(e, Chat) || staysPut(world, e)) return;
   if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
     planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates);
   }
+}
+
+/** A script may pin a settler where it was left: it still works, shelters and answers its needs, but
+ *  takes none of the rungs whose only purpose is to drift (`MISSIONS.md`, behaviour bit 1). */
+function staysPut(world: World, e: Entity): boolean {
+  return hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.STAYS_PUT);
 }

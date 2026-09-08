@@ -218,7 +218,7 @@ kinds in order.
 | 49 | `HumanIsOnContinent` | 10, 16, 17 | any human with the id stands on the continent of the point | 0 |
 | 50 | `IsMissionDone` | 21 | mission `n`'s stored goal flags satisfy its rule | 325 |
 | 51 | `NumberOfSoldiersNearPos` | 1, 16, 17, 9, 7 | at least `amount` non-hero soldiers of the player within `range`, vehicle crews included | 24 |
-| 52 | `NumberOfCivilainsNearPos` | 1, 16, 17, 9, 7 | as above for civilians | 14 |
+| 52 | `NumberOfCivilainsNearPos` | 1, 16, 17, 9, 7 | as above for civilians; a hero counts in neither | 14 |
 | 53 | `ChestNearPos` | 16, 17, 9 | a chest landscape lies within `range` of the point | 6 |
 | 54 | `NumberOfGoodsInArea` | 1, 6, 7, 16, 17, 9 | goods on the ground plus goods in the player's finished houses within `range` reach `amount` | 113 |
 | 55 | `NumberOfHousesInArea` | 1, 15, 7, 16, 17, 9 | the player has at least `amount` finished houses of the type within `range` | 33 |
@@ -370,12 +370,13 @@ the encoding). Bits with a located reader (reading; each is a hypothesis to conf
 | 0 | 1 | needs never grow and are never serviced (the engine sets it on player 0 in one game mode) |
 | 1 | 2 | stays put when idle instead of drifting back to its anchor |
 | 2 | 4 | passive: a soldier does not retaliate when hit, a civilian does not flee |
-| 3 | 8 | invulnerable: hit points neither drop nor regenerate; animals ignore the human |
+| 3 | 8 | invulnerable: a hit-point event that would take life off is refused while healing still lands; animals ignore the human |
 | 4 | 16 | user messages about the human are suppressed |
 | 5 | 32 | not player-controllable: no command set, ignored by send-to; the AI treats such humans as its own |
 | 6 | 64 | cannot change job |
 | 7 | 128 | import marker (drawn on the human) |
 | 9 | 512 | walks at half speed |
+| 11 | 2048 | earns no job experience |
 | 12 | 4096 | stamina does not drain while walking |
 | 13 | 8192 | aggressive target search; also hidden from animal aggression |
 | 14 | 16384 | leaves no cadaver |
@@ -383,7 +384,10 @@ the encoding). Bits with a located reader (reading; each is a hypothesis to conf
 | 16 | 65536 | for the two non-settler tribes: alert military mode instead of the default |
 | 17 | 131072 | walks faster |
 
-Bits 8, 10, 11, 18, and 19 appear in the corpus (masks 548897, 524328, 272507) without a located
+Bit 0 is read twice: the urgent-needs check skips such a human, and the animation-event applier
+refuses every change to its four need bars, so they neither fall nor refill.
+
+Bits 8, 10, 18, and 19 appear in the corpus (masks 548897, 524328, 272507) without a located
 reader. The engine sets 0x1800 plus bits 0 and 6, and bit 7 for one tribe, on the special soldier jobs
 it spawns. Corpus masks: `sethuman` mostly 0, then 272507, 8315, 64; `SetPlayerBehaviourFlag` mostly
 512, 131200, 16384, 8192; `SetHumanBehaviourFlag` mostly 32, 512, 33, 128, 8.
@@ -466,6 +470,6 @@ an inhabitant or soldier count, type 4 wins when `MissionWon` fires for the play
 - Confirm on the running original: the 3-second check period, `TimeGone` in whole seconds from
   activation, and the `[n/2, n)` range of `RandomTimeGone`.
 - What sets a player's "seen" flag toward another player.
-- Behaviour bits 8, 10, 11, 18, 19 and the animal behaviour value.
+- Behaviour bits 8, 10, 18, 19 and the animal behaviour value.
 - The mission window's listing rule and done marker.
 - The loader's `description` default of 0 against the corpus convention of -1.

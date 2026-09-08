@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { Age, Health, needsEnabled, Person, Settler, type SettlerView } from '../../../components/index.js';
+import { hasMissionBehaviour, MISSION_BEHAVIOUR, Age, Health, needsEnabled, Person, Settler, type SettlerView } from '../../../components/index.js';
 import { type Fixed, ONE } from '../../../core/fixed.js';
 import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -20,7 +20,7 @@ export function rollInitialNeed(rng: Rng): Fixed {
 /** Move a settler's piety by `units` of the reserve, the sign the data writes: a forge clip's `-1500` or
  *  `-3000` spends it, a prayer's `+800` pulses serve it. */
 export function chargeMilitaryPiety(world: World, settler: Entity, units: number): void {
-  if (units === 0 || !needsEnabled(world)) return;
+  if (units === 0 || !needsEnabled(world) || hasMissionBehaviour(world, settler, MISSION_BEHAVIOUR.NEEDS_FROZEN)) return;
   if (!world.has(settler, Settler)) return;
   const s = world.mut(settler, Settler);
   s.piety = applyNeedUnits(s.piety, units);
@@ -60,6 +60,7 @@ function poolStepAt(max: number, span: number, tick: number): number {
 export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
   for (const e of world.query(Person)) {
+    if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN)) continue;
     const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);
   }
@@ -68,7 +69,7 @@ export const needsSystem: System = (world, ctx) => {
 /** Whether `e`'s bars move at all - the one gate the drain and the clip events share. */
 export function carriesNeeds(world: World, content: ContentSet, e: Entity): boolean {
   const settler = world.tryGet(e, Settler);
-  return settler !== undefined && !world.has(e, Age) && !declaresNoTrades(content, settler.tribe);
+  return !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN) && settler !== undefined && !world.has(e, Age) && !declaresNoTrades(content, settler.tribe);
 }
 
 /** Drain one tick off the three needs time alone moves, and hand back the drained bars so the hitpoint
@@ -92,6 +93,7 @@ function stepHealth(world: World, ctx: SystemContext, e: Entity, settler: Settle
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0) return;
   if (settler !== undefined && settler.hunger === ONE && settler.jobType !== null) {
+    if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.INVULNERABLE)) return;
     const bite = poolStepAt(health.max, STARVATION_TICKS_TO_DIE, ctx.tick);
     if (bite === 0) return;
     // The healing draught's death-save may answer a lethal bite.

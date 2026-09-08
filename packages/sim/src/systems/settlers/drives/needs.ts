@@ -1,5 +1,7 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   Carrying,
   isAiPlayer,
   type NeedKind,
@@ -149,6 +151,9 @@ export function planNeeds(
   /** The planner-tick occupancy state the sleep rung picks a resting spot out of. */
   spacing: PlannerSpacing,
 ): boolean {
+  // A script may freeze a unit's needs: they neither rise nor get answered, so it never leaves its post
+  // to eat, sleep or pray (`MISSIONS.md`, behaviour bit 0).
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN)) return false;
   const gate = limit ?? undefined;
   const ordered = orderedNeed(world, e);
   if (pressing(settler.hunger, ordered, 'hunger')) {

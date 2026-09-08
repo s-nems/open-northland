@@ -1,3 +1,4 @@
+import { hasMissionBehaviour, MISSION_BEHAVIOUR } from '../../components/behaviour.js';
 import { isPlayerDead } from '../../components/match.js';
 import { isValidPlayer, ownerOf, ownersCompatible } from '../../components/ownership.js';
 import { playerPlacementTribes } from '../../components/player-placement.js';
@@ -17,6 +18,9 @@ import type { Entity, World } from '../../ecs/world.js';
 export function isAuthorized(world: World, envelope: CommandEnvelope): boolean {
   if (!ownerFieldsValid(envelope.command)) return false;
   if (envelope.origin === 'setup' || envelope.origin === 'admin') return true;
+  // A script may put one of a seat's own units beyond the player's reach while the seat's AI keeps
+  // commanding it (`MISSIONS.md`, behaviour bit 5).
+  if (envelope.origin === 'player' && beyondPlayerControl(world, envelope.command)) return false;
   return seatMayIssue(world, envelope.player, envelope.command);
 }
 
@@ -25,6 +29,12 @@ export function isAuthorized(world: World, envelope: CommandEnvelope): boolean {
 function ownerFieldsValid(command: Command): boolean {
   if ('owner' in command && command.owner !== undefined && !isValidPlayer(command.owner)) return false;
   return !('player' in command) || isValidPlayer(command.player);
+}
+
+function beyondPlayerControl(world: World, command: PlayerCommand): boolean {
+  return (
+    'entity' in command && hasMissionBehaviour(world, command.entity, MISSION_BEHAVIOUR.NOT_CONTROLLABLE)
+  );
 }
 
 function seatMayIssue(world: World, seat: number, command: PlayerCommand): boolean {

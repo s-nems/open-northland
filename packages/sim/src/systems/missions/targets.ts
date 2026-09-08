@@ -1,4 +1,12 @@
-import { Building, isWildlife, Owner, Person, Position } from '../../components/index.js';
+import {
+  Building,
+  isValidPlayer,
+  isWildlife,
+  Owner,
+  ownerOf,
+  Person,
+  Position,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfcell.js';
 import { canonicalById } from '../spatial/nodes.js';
@@ -47,4 +55,17 @@ export function ownedInRange(world: World, player: number, point: HalfCellNode, 
 export function withinRange(world: World, e: Entity, point: HalfCellNode, range: number): boolean {
   const at = entityPoint(world, e);
   return at !== undefined && hexDistance(at, point) <= range;
+}
+
+/** Whether two entities stand within `range` map points of each other. */
+export function withinRangeOfEach(world: World, a: Entity, b: Entity, range: number): boolean {
+  const at = entityPoint(world, a);
+  return at !== undefined && withinRange(world, b, at, range);
+}
+
+/** Whether `e` belongs to the script's `player`: a slot the sim does not know - the wild one above
+ *  all - names what it leaves ownerless. */
+export function ownedBy(world: World, e: Entity, player: number): boolean {
+  const owner = ownerOf(world, e);
+  return isValidPlayer(player) ? owner === player : owner === undefined;
 }

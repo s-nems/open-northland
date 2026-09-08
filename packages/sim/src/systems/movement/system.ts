@@ -1,6 +1,13 @@
-import { MoveSpeed, PathFollow, Position, Velocity } from '../../components/index.js';
+import {
+  MISSION_BEHAVIOUR,
+  MissionBehaviour,
+  MoveSpeed,
+  PathFollow,
+  Position,
+  Velocity,
+} from '../../components/index.js';
 import { type Fixed, fx, ONE, ULP, ZERO } from '../../core/fixed.js';
-import type { Entity } from '../../ecs/world.js';
+import type { Entity, World } from '../../ecs/world.js';
 import { worldDistance } from '../../nav/world-metric.js';
 import type { System } from '../context.js';
 import { bootsSpeedBonus, wearWornBoots } from '../equipment/index.js';
@@ -33,6 +40,16 @@ const BRAKE_HORIZON_TICKS = 2;
  */
 export const ARRIVAL_SPEED_DIV = 2;
 
+/** The script slow bit halves the gait, which is exactly what doubling the original's per-step cost
+ *  does. */
+const SCRIPT_SLOW_DIVISOR = 2;
+
+/** The script fast bit as a fraction of the ordinary gait. Approximation: the original takes 2 ticks
+ *  off a per-step cost whose unencumbered civilian value is about 6 (reading), landing near a half
+ *  again as fast. */
+const SCRIPT_FAST_NUMERATOR = 3;
+const SCRIPT_FAST_DIVISOR = 2;
+
 /**
  * Advances entity positions one tick. A {@link PathFollow} takes precedence over any {@link Velocity}, and
  * dropping it at the last waypoint is what the planner reads as arrived.
@@ -59,7 +76,7 @@ export const movementSystem: System = (world, ctx) => {
     // can walk much faster"; the magnitude is an approximation). The > ZERO guard keeps every bootless
     // walker's arithmetic byte-identical.
     const bootBonus = bootsSpeedBonus(world, ctx, e);
-    const gait = bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored;
+    const gait = scriptedPace(world, e, bootBonus > ZERO ? fx.mul(floored, fx.add(ONE, bootBonus)) : floored);
     const p = world.mut(e, Position);
 
     // The tick's target speed: the cruise gait, capped on the last leg so the approach eases out.
@@ -111,3 +128,19 @@ export const movementSystem: System = (world, ctx) => {
     p.y = fx.add(p.y, v.y);
   }
 };
+
+/** Apply a script's pace bits to the cruise gait. Both bits set compound, as they do in the original's
+ *  cost arithmetic; neither set leaves the gait byte-identical. */
+function scriptedPace(world: World, e: Entity, gait: Fixed): Fixed {
+  const flags = world.tryGet(e, MissionBehaviour)?.flags ?? 0;
+  if (flags === 0) return gait; // every ordinary walker's arithmetic stays byte-identical
+  let paced = gait;
+  if ((flags & MISSION_BEHAVIOUR.WALKS_SLOWLY) !== 0) {
+    paced = fx.div(paced, fx.fromInt(SCRIPT_SLOW_DIVISOR));
+  }
+  if ((flags & MISSION_BEHAVIOUR.WALKS_FAST) !== 0) {
+    paced = fx.mulDiv(paced, fx.fromInt(SCRIPT_FAST_NUMERATOR), fx.fromInt(SCRIPT_FAST_DIVISOR));
+  }
+  // Re-floored because halving truncates: a gait of zero ulps would never finish its path.
+  return paced > ULP ? paced : ULP;
+}

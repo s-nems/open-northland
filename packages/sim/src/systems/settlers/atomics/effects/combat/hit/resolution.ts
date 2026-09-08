@@ -1,6 +1,10 @@
 import {
   Building,
   Health,
+  HOUSE_BEHAVIOUR,
+  hasHouseBehaviour,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   ownerOf,
   Person,
   Position,
@@ -127,7 +131,9 @@ export function resolveCombatHit(
   }
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience.
   const dealtDamage = damage > 0;
-  const dealt = Math.max(0, damage); // a malformed negative hit must not heal the target
+  // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
+  // spared. Nothing regenerates a human here, so the flag's whole effect is this zero.
+  const dealt = shieldedByScript(world, target) ? 0 : Math.max(0, damage);
   // The carcass spawns only on the alive-to-dead transition, so a second blow landing this tick on an
   // already-felled target never mints a second carcass.
   const wasAlive = health.hitpoints > 0;
@@ -147,4 +153,13 @@ export function resolveCombatHit(
   } else {
     collectStagger(world, ctx, target, pendingStaggers); // applied after the caller's loop
   }
+}
+
+/** Whether a script has made this target unharmable - a human's invulnerable bit or a house's
+ *  indestructible one. */
+function shieldedByScript(world: World, target: Entity): boolean {
+  return (
+    hasMissionBehaviour(world, target, MISSION_BEHAVIOUR.INVULNERABLE) ||
+    hasHouseBehaviour(world, target, HOUSE_BEHAVIOUR.INDESTRUCTIBLE)
+  );
 }

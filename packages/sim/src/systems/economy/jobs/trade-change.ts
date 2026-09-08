@@ -2,6 +2,8 @@ import {
   Armor,
   AssistantRecruit,
   AttackOrder,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   Carrying,
   CraftSelection,
   Engagement,
@@ -44,6 +46,9 @@ import { syncWorkFlagToJob } from '../work-flag.js';
  * setting or dropping the workplace binding, stay the calling path's own steps.
  */
 export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
+  // A script may fix a unit's trade (`MISSIONS.md`, behaviour bit 6). It holds against every player
+  // order, drill and equipment promotion; growing out of an age class still reclasses the settler.
+  if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED)) return;
   setSettlerJob(world, e, jobType);
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand
   world.remove(e, NeedOrder); // and any need the player ordered the old trade to answer

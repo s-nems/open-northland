@@ -6,6 +6,8 @@ import {
   Fleeing,
   Health,
   HuntFocus,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
   PlayerOrder,
@@ -92,6 +94,12 @@ export function engageCombatant(
     shelter: manned === null ? null : { building: manned, seat: seats.get(e) ?? 0 },
   };
 
+  // A script-passive unit neither picks a fight nor runs from one: it stands and takes it, unless a
+  // standing attack order names its target (`MISSIONS.md`, behaviour bit 2).
+  if (!manning && !ordered && hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.PASSIVE)) {
+    disengage(world, e);
+    return;
+  }
   // A manned post is itself the order to hold and shoot, so neither passive stance applies under one.
   if (!manning) {
     if (resolveFleeState(world, ctx, terrain, index, e, attacker, stance)) return;

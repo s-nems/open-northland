@@ -24,6 +24,15 @@ export const SUPPORTED_GOALS = [
   'HumansWithHome',
   'CheckHumanJob',
   'HumanAttachedToWorkHouse',
+  'FindPosByHumans',
+  'FindPosByPlayersMapMoveable',
+  'FindHumansByHumans',
+  'FindHumansByPlayersMM',
+  'FindHousesByHumans',
+  'NumberOfSoldiersNearPos',
+  'NumberOfCivilainsNearPos',
+  'NumberOfHousesInArea',
+  'NumberOfAnimalsInArea',
 ] as const satisfies readonly MissionGoalOp['opcode'][];
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
@@ -50,4 +59,16 @@ export const SUPPORTED_RESULTS = [
   'ChangeMissionIdOfPlayer',
   'ChangeMissionIdOfHumanInRange',
   'ChangeHumanObjectIdInArea',
+  'SendHuman',
+  'MoveHuman',
+  'MoveUnitsInArea',
+  'StopHumanByPlayerId',
+  'RemoveHumansNearPos',
+  'HealHumansInArea',
+  'RemoveHPsOfHousesInArea',
+  'RemoveHPsOfHousesInAreaX',
+  'SetHumanBehaviourFlag',
+  'SetPlayerBehaviourFlag',
+  'SetImportHumanFlag',
+  'SetHouseBehaviourFlag',
 ] as const satisfies readonly MissionResultOp['opcode'][];

@@ -1,5 +1,5 @@
 import type { ContentSet, HumanJobExperienceType } from '@open-northland/data';
-import { isWildlife, Settler } from '../../components/index.js';
+import { hasMissionBehaviour, isWildlife, MISSION_BEHAVIOUR, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -60,6 +60,8 @@ export function grantWorkExperience(
   if (units <= 0) return;
   const s = world.tryGet(settler, Settler);
   if (s === undefined || s.jobType === null) return;
+  // A script may bar a unit from ever getting better at its trade (`MISSIONS.md`, behaviour bit 11).
+  if (hasMissionBehaviour(world, settler, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE)) return;
   const track = trackFor(ctx, s.jobType, goodType);
   if (track === undefined) return;
   accrueExperience(world, settler, track.typeId, track.experienceFactor * units);

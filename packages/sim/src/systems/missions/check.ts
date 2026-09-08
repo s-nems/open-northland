@@ -17,6 +17,17 @@ import {
   populationHolds,
   soldierCountHolds,
 } from './goals/population.js';
+import {
+  animalsInArea,
+  civiliansNearPoint,
+  housesInArea,
+  humansNearHouses,
+  humansNearHumans,
+  humansNearPoint,
+  playerNearHumans,
+  playerNearPoint,
+  soldiersNearPoint,
+} from './goals/proximity.js';
 import type { MissionPass } from './pass.js';
 import { setMissionActive } from './pass.js';
 import { executeResult } from './results/index.js';
@@ -100,6 +111,24 @@ function goalHolds(
       return humanJobHolds(pass.world, op.humanId, op.job);
     case 'HumanAttachedToWorkHouse':
       return attachedToWorkHouseHolds(pass.world, op);
+    case 'FindPosByHumans':
+      return humansNearPoint(pass.world, op);
+    case 'FindPosByPlayersMapMoveable':
+      return playerNearPoint(pass.world, op);
+    case 'FindHumansByHumans':
+      return humansNearHumans(pass.world, op);
+    case 'FindHumansByPlayersMM':
+      return playerNearHumans(pass.world, op);
+    case 'FindHousesByHumans':
+      return humansNearHouses(pass.world, op);
+    case 'NumberOfSoldiersNearPos':
+      return soldiersNearPoint(pass, op);
+    case 'NumberOfCivilainsNearPos':
+      return civiliansNearPoint(pass, op);
+    case 'NumberOfHousesInArea':
+      return housesInArea(pass.world, op);
+    case 'NumberOfAnimalsInArea':
+      return animalsInArea(pass.world, op);
     default:
       pass.report(index, op.opcode);
       // An opcode this build cannot judge holds nowhere, so its mission waits rather than firing on

@@ -8,17 +8,9 @@ import { defineWorldSingleton } from '../ecs/world-singleton.js';
  */
 export const MissionObjectId = defineComponent<{ id: number }>('MissionObjectId');
 
-/** The `sethuman` behaviour mask a placed settler carries, stored verbatim (`MISSIONS.md`, "Human
- *  behaviour flags"). No system reads the bits yet. */
-export const MissionBehaviour = defineComponent<{ flags: number }>('MissionBehaviour');
-
 /** Stamps nothing for 0, the value the placement columns and the script both write for "no id". */
 export function stampMissionId(world: World, e: Entity, id: number | undefined): void {
   if (id !== undefined && id !== 0) world.add(e, MissionObjectId, { id });
-}
-
-export function stampMissionBehaviour(world: World, e: Entity, flags: number | undefined): void {
-  if (flags !== undefined && flags !== 0) world.add(e, MissionBehaviour, { flags });
 }
 
 /**

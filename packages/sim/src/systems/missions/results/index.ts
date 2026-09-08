@@ -1,6 +1,14 @@
 import { type MissionPass, setMissionActive } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
+import {
+  setHousesBehaviourBit,
+  setHumansBehaviour,
+  setImportMarker,
+  setPlayerBehaviour,
+} from './behaviour.js';
+import { damageHousesInArea, healHumansInArea } from './health.js';
 import { placeScriptedHouse, setScriptedHouseLevel } from './houses.js';
+import { moveUnitsInArea, sendScriptedHumans, stopPlayerHumans, teleportScriptedHumans } from './movement.js';
 import { stampHumansInRange, stampPlayerHumans } from './object-id.js';
 import {
   handAnimalsToPlayer,
@@ -9,7 +17,12 @@ import {
   handHumansToPlayer,
   handPlayerToPlayer,
 } from './ownership.js';
-import { removeScriptedAnimals, removeScriptedHouses, removeScriptedHumans } from './remove.js';
+import {
+  removeHumansNearPoint,
+  removeScriptedAnimals,
+  removeScriptedHouses,
+  removeScriptedHumans,
+} from './remove.js';
 import { spawnScriptedAnimal, spawnScriptedHumans } from './spawn.js';
 
 /** Execute one result of mission `index`. An opcode with no executor is reported and does nothing;
@@ -76,6 +89,40 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       return;
     case 'ChangeMissionIdOfPlayer':
       stampPlayerHumans(pass, result.player, result.humanId);
+      return;
+    case 'SendHuman':
+      sendScriptedHumans(pass, result.humanId, result.point);
+      return;
+    case 'MoveHuman':
+      teleportScriptedHumans(pass, result.humanId, result.point);
+      return;
+    case 'MoveUnitsInArea':
+      moveUnitsInArea(pass, result);
+      return;
+    case 'StopHumanByPlayerId':
+      stopPlayerHumans(pass, result.player);
+      return;
+    case 'RemoveHumansNearPos':
+      removeHumansNearPoint(pass, result.point, result.range);
+      return;
+    case 'HealHumansInArea':
+      healHumansInArea(pass, result.point, result.range);
+      return;
+    case 'RemoveHPsOfHousesInArea':
+    case 'RemoveHPsOfHousesInAreaX':
+      damageHousesInArea(pass, result);
+      return;
+    case 'SetHumanBehaviourFlag':
+      setHumansBehaviour(pass, result.humanId, result.amount, result.flag);
+      return;
+    case 'SetPlayerBehaviourFlag':
+      setPlayerBehaviour(pass, result.player, result.amount, result.flag);
+      return;
+    case 'SetImportHumanFlag':
+      setImportMarker(pass, result.humanId, result.flag);
+      return;
+    case 'SetHouseBehaviourFlag':
+      setHousesBehaviourBit(pass, result.objectId, result.index, result.flag);
       return;
     case 'ChangeMissionIdOfHumanInRange':
     case 'ChangeHumanObjectIdInArea':

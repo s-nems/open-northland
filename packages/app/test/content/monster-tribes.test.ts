@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr, rawIrUnderTest } from './helpers.js';
 import { realMapPath, realMapWorld } from './real-map-world.js';
 
-const { Person, Settler } = components;
+const { MissionBehaviour, Person, Settler } = components;
 
 /** A decoded map whose `sethuman` records are 400 weresnakes on one seat and two saracen heroes on
  *  another - the monster placement the synthetic fixtures can only approximate. */
@@ -27,6 +27,11 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('the monster trib
     expect(monsterTribes).toHaveLength(2);
     for (const tribe of monsterTribes) expect(tribe.jobEnables ?? []).toHaveLength(0);
     const monsterTypes = new Set(monsterTribes.map((t) => t.typeId));
+
+    // Every placement on this map carries the script's needs-frozen behaviour bit, monsters and
+    // saracens alike. That is a second mechanic with the same visible effect, so it is stripped here
+    // to leave the tribe rule under test on its own.
+    for (const e of [...sim.world.query(MissionBehaviour)]) sim.world.remove(e, MissionBehaviour);
 
     const hungerByEntity = new Map<Entity, { tribe: number; hunger: number }>();
     for (const e of sim.world.query(Settler)) {
