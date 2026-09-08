@@ -130,6 +130,9 @@ export function chase(
       if (marching) {
         const order = world.mut(e, PlayerOrder);
         if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
+      } else {
+        // Only the dropped attack order is worth a note; the march above keeps walking.
+        ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
       }
       return true;
     }
@@ -141,6 +144,7 @@ export function chase(
       sealedByStructures(world, ctx, terrain, request.start, request.goal)
     ) {
       noteUnreachableTarget(world, ctx, e, target.entity);
+      ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
       breakOff(world, e, here, defend);
       return true;
     }

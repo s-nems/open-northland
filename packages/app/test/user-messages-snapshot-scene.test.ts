@@ -23,6 +23,7 @@ const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
   player: () => 'Gracz',
+  stance: (state) => state,
   text: (type) => String(type),
 };
 

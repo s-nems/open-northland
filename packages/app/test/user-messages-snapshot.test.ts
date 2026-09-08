@@ -28,6 +28,8 @@ interface Actor {
   /** Hitpoints left of a 300-point pool; absent leaves the settler without a Health component. */
   readonly hitpoints?: number;
   readonly workplace?: number;
+  /** A gatherer's flag yard, which stands in for a workplace. */
+  readonly workFlag?: number;
   readonly doing?: Doing;
   /** A `jobType` of null: the adult nobody plans or feeds. */
   readonly jobless?: boolean;
@@ -77,6 +79,7 @@ function components(a: Actor): Record<string, unknown> {
     ...(kind === 'animal' ? {} : { Person: { person: true } }),
     ...(kind === 'child' ? { Age: { ticks: 40 } } : {}),
     ...(a.workplace === undefined ? {} : { JobAssignment: { workplace: a.workplace } }),
+    ...(a.workFlag === undefined ? {} : { WorkFlag: { flag: a.workFlag } }),
     ...doingComponents(a.doing ?? 'nothing'),
   };
 }
@@ -89,10 +92,13 @@ function snapshot(tick: number, actors: readonly Actor[], needsEnabled = true): 
   return { tick, events: [], entities };
 }
 
+const FLAG = 92;
+
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
   player: () => 'Gracz',
+  stance: (state) => state,
   text: (type, parts) => `${parts.subjectName ?? '?'}:${type}`,
 };
 
@@ -249,7 +255,7 @@ describe('user messages read off the snapshot', () => {
       expect(run(source, ['work', ...mostly], 2 * mostly.length + 5).flat()).toEqual([]);
     });
 
-    it('never for a guard, an ordered unit, one indoors, one waiting on its site, or one without a workplace', () => {
+    it('never for a guard, an ordered unit, one indoors, or one waiting on its site', () => {
       const source = createSnapshotMessageSource(LOCAL);
       const idle = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE }, () => null);
       const actors: Actor[] = [
@@ -259,13 +265,47 @@ describe('user messages read off the snapshot', () => {
         { id: 2, workplace: WORKPLACE, doing: 'ordered' },
         { id: 3, workplace: WORKPLACE, doing: 'indoors' },
         { id: 4, workplace: SITE },
-        { id: 5 },
         { id: 6, workplace: WORKPLACE },
       ];
       const out = idle.map((_, i) =>
         sweep(source, snapshot((i + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS, actors)),
       );
       expect(out.flat()).toEqual([[USER_MESSAGE_TYPE.nothingToDo, 6]]);
+    });
+
+    it('has nowhere to work once a post it held is gone, never for a trade that never had one', () => {
+      const source = createSnapshotMessageSource(LOCAL);
+      const crew: Actor[] = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4, jobless: true }];
+      const atWork = crew.map((a) => ({ ...a, workplace: WORKPLACE, doing: 'work' as Doing }));
+      // One sweep with the whole crew at its post, then the workshop is gone from under three of them.
+      sweep(
+        source,
+        snapshot(SNAPSHOT_SWEEP_INTERVAL_TICKS, [building, ...atWork.slice(0, 3), crew[3] as Actor]),
+      );
+      const after: Actor[] = [
+        building,
+        { id: 1 },
+        { id: 2, workFlag: FLAG },
+        { id: 3, workplace: WORKPLACE },
+        { id: 4, jobless: true },
+      ];
+      const out = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE }, (_, i) =>
+        sweep(source, snapshot((i + 2) * SNAPSHOT_SWEEP_INTERVAL_TICKS, after)),
+      );
+      expect(out.flat()).toEqual([
+        [USER_MESSAGE_TYPE.workplaceNotFound, 1],
+        [USER_MESSAGE_TYPE.nothingToDo, 3],
+      ]);
+    });
+
+    it('starts the idle run over when a post is taken, so a new hire is not reported on arrival', () => {
+      const source = createSnapshotMessageSource(LOCAL);
+      for (let i = 0; i < IDLE_SWEEPS_BEFORE_MESSAGE; i++) {
+        sweep(source, snapshot((i + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS, [building, { id: 1 }]));
+      }
+      const hired: Actor[] = [building, { id: 1, workplace: WORKPLACE, doing: 'walk' }];
+      const from = IDLE_SWEEPS_BEFORE_MESSAGE + 1;
+      expect(sweep(source, snapshot(from * SNAPSHOT_SWEEP_INTERVAL_TICKS, hired))).toEqual([]);
     });
   });
 });

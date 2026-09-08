@@ -65,7 +65,8 @@ export interface ToolPanelOptions {
   readonly grants: ExtrasGrantsSeam;
   /** The chest window's counter seam (reads the sim's assistant queues, sets one). */
   readonly counters: ExtrasCountersSeam;
-  /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
+  /** The roster of discovered players, one row each: read by the diplomacy window while it is open,
+   *  and once a tick by the message centre. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A seat's roster name, which the diplomacy rows withhold for the viewer's own and unmet seats. */
   readonly seatNameOf?: (player: number) => string | undefined;
@@ -262,6 +263,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       buildingLabel: (typeId) => labelByType.get(typeId),
       playerLabel: (player) =>
         opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
+      metSeats: opts.diplomacyRows,
       tooltip: opts.tooltip,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
     });

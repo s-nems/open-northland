@@ -1,4 +1,6 @@
 import type { DiplomacyState } from '@open-northland/sim';
+import type { UiString } from '../../../content/gui-gfx.js';
+import { messages } from '../../../i18n/index.js';
 import { contains, type Rect } from '../../geometry.js';
 import { MIN_UI_SCALE } from '../../ui-scale.js';
 import {
@@ -21,6 +23,18 @@ import {
 const TAB_COLUMNS = 2;
 /** Readout cards under the tabs: identity, then one card per stance direction. */
 const BODY_LINES = 3;
+
+/** The decoded `misclogic` rows naming each stance. */
+const STANCE_STRING_ID: Readonly<Record<DiplomacyState, number>> = {
+  friend: 200,
+  neutral: 201,
+  enemy: 202,
+};
+
+/** A stance in the player's language. */
+export function diplomacyStanceText(uiString: UiString, state: DiplomacyState): string {
+  return uiString('misclogic', STANCE_STRING_ID[state], messages().hud.diplomacyStances[state]);
+}
 
 /** One discovered player as the window lists it. */
 export interface DiplomacyPanelRow {

@@ -10,7 +10,9 @@ import { messages, professionLabel } from '../../../i18n/index.js';
 import { contains } from '../../geometry.js';
 import type { TooltipSurface } from '../../tooltip-surface.js';
 import type { PanelContext } from '../context.js';
+import { diplomacyStanceText } from '../diplomacy/model.js';
 import { createMessageFeed, type MessageFeedState } from './feed.js';
+import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
 import { messagesFromEvents } from './from-events.js';
 import { createSnapshotMessageSource } from './from-snapshot.js';
 import { hitTestNotes } from './layout.js';
@@ -46,6 +48,9 @@ export interface MessageCenterDeps {
   /** A building type's menu label, which names a building in its note. */
   readonly buildingLabel: (typeId: number) => string | undefined;
   readonly playerLabel: (player: number) => string | null;
+  /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
+   *  changed its stance toward this one each become a note. Read once per tick. */
+  readonly metSeats: () => readonly MetSeat[];
   readonly tooltip?: TooltipSurface | undefined;
   readonly onSelect: (target: MessageTarget) => void;
   readonly initial?: MessageFeedState | undefined;
@@ -113,6 +118,7 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       return typeId === undefined ? null : (deps.buildingLabel(typeId) ?? null);
     },
     player: (player) => deps.playerLabel(player),
+    stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
     text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
   };
 }
@@ -122,6 +128,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   let feed = createMessageFeed(deps.initial);
   const naming = makeNaming(deps);
   const snapshotSource = createSnapshotMessageSource(deps.localPlayer);
+  const diplomacySource = createDiplomacyMessageSource(deps.metSeats);
   const strip = createMessageStrip({
     ctx,
     app: deps.app,
@@ -167,6 +174,9 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
           }
         }
         for (const raised of snapshotSource.sweep(snapshot, naming)) {
+          feed.add(raised.pending, snapshot.tick, raised.compose);
+        }
+        for (const raised of diplomacySource.poll(naming)) {
           feed.add(raised.pending, snapshot.tick, raised.compose);
         }
         feed.expire(snapshot.tick, (subject) => entityById(snapshot, subject.entity) !== undefined);

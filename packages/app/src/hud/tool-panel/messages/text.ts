@@ -105,6 +105,12 @@ const GOOD_APPENDED: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeN
   'couldNotProduceOneGood',
 ]);
 
+/** The rows that end on a colon or a lead-in for the diplomatic stance they are about. */
+const STANCE_APPENDED: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
+  'playerSighted',
+  'diplomacyChanged',
+]);
+
 /** The rows that name a building rather than a settler, so no trade label follows the name. */
 const HOUSE_ROWS: ReadonlySet<UserMessageTypeName> = new Set<UserMessageTypeName>([
   'houseFinished',
@@ -118,6 +124,8 @@ export interface MessageTextParts {
   /** A settler subject's trade, shown in parentheses after the name; null when it has none to show. */
   readonly jobLabel: string | null;
   readonly goodName: string | null;
+  /** The stance the row about another seat reports; null for every row that names none. */
+  readonly stanceName: string | null;
 }
 
 export interface MessageTextDeps {
@@ -155,5 +163,6 @@ export function composeMessageText(
   if (name === 'equipmentNotFound') return lead(`${base} ${row(EQUIPMENT_NOT_FOUND_DETAIL_STRING_ID)}`);
   if (name === 'backpackFull') return lead(`${base} ${row(BACKPACK_FULL_DETAIL_STRING_ID)}`);
   if (GOOD_APPENDED.has(name) && parts.goodName !== null) return lead(`${base} ${parts.goodName}`);
+  if (STANCE_APPENDED.has(name) && parts.stanceName !== null) return lead(`${base} ${parts.stanceName}`);
   return lead(base);
 }

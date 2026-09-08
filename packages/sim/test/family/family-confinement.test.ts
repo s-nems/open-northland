@@ -150,6 +150,9 @@ describe('confinement gates the marry partner pick', () => {
     sim.enqueueSetup({ kind: 'marry', entity: woman });
     sim.step();
     expect(sim.world.has(woman, Wedding)).toBe(false); // the only match is out of reach - auto-cancel
+    expect(sim.events.current().filter((ev) => ev.kind === 'marriageUnmatched')).toEqual([
+      { kind: 'marriageUnmatched', entity: woman },
+    ]);
 
     adultAt(sim, IN_AREA, 2, CIVILIST, false);
     sim.enqueueSetup({ kind: 'marry', entity: woman });

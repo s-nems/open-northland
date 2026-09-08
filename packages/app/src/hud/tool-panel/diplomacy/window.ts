@@ -21,6 +21,7 @@ import { createWindowShell, type ToolWindow } from '../window-shell.js';
 import {
   type DiplomacyPanelRow,
   type DiplomacyWindowLayout,
+  diplomacyStanceText,
   hitTestDiplomacyWindow,
   layoutDiplomacyWindow,
   resolveSelectedPlayer,
@@ -36,11 +37,6 @@ const TITLE_STRING_ID = 350; // miscwindow 'Diplomacy'
 const THEIR_STANCE_STRING_ID = 358; // miscwindow 'Relationship to your tribe is'
 const YOUR_STANCE_STRING_ID = 359; // miscwindow 'Your relation to the other tribe'
 const PLAYER_STRING_ID = 361; // miscwindow 'Player'
-const STANCE_STRING_ID: Readonly<Record<DiplomacyState, number>> = {
-  friend: 200, // misclogic 'friendly'
-  neutral: 201,
-  enemy: 202,
-};
 
 export interface DiplomacyWindowDeps {
   readonly ctx: PanelContext;
@@ -97,8 +93,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     run.place(Math.round(x), Math.round(y), scale, rw, rh);
   };
 
-  const stanceText = (state: DiplomacyState): string =>
-    ctx.uiString('misclogic', STANCE_STRING_ID[state], messages().hud.diplomacyStances[state]);
+  const stanceText = (state: DiplomacyState): string => diplomacyStanceText(ctx.uiString, state);
 
   const paintBody = (built: DiplomacyWindowLayout, row: DiplomacyPanelRow): void => {
     const [identity, theirLine, yourLine] = built.bodyLines;
