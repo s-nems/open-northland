@@ -72,6 +72,24 @@ export function messagesFromEvents(
         if (e !== undefined) raiser.building(USER_MESSAGE_TYPE.houseUpgraded, e);
         break;
       }
+      case 'settlerGrewUp': {
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.grewUp, e);
+        break;
+      }
+      case 'playerDefeated':
+        // Every seat hears an elimination: the original broadcasts it rather than addressing a player.
+        raiser.raise(
+          `${USER_MESSAGE_TYPE.playerDied}|player:${ev.player}`,
+          { type: USER_MESSAGE_TYPE.playerDied, subject: null, at: null, goodType: null, jobType: null },
+          () =>
+            naming.text(USER_MESSAGE_TYPE.playerDied, {
+              subjectName: naming.player(ev.player),
+              jobLabel: null,
+              goodName: null,
+            }),
+        );
+        break;
       case 'settlerBorn': {
         const e = ownedPerson(ev.entity);
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.wasBorn, e);

@@ -13,6 +13,7 @@ const ENEMY = 1;
 const WORKPLACE = 90;
 const SITE = 91;
 const WORKER_JOB = 7;
+const HEALTH_POOL = 300;
 
 /** What a synthetic settler is doing, mapped onto the components the source reads. */
 type Doing = 'nothing' | 'work' | 'chat' | 'walk' | 'ordered' | 'guard' | 'indoors';
@@ -24,6 +25,9 @@ interface Actor {
   readonly hunger?: number;
   readonly fatigue?: number;
   readonly piety?: number;
+  /** Hitpoints left of a 300-point pool; absent leaves the settler without a Health component. */
+  readonly hitpoints?: number;
+  readonly female?: boolean;
   readonly workplace?: number;
   readonly doing?: Doing;
   /** A `jobType` of null: the adult nobody plans or feeds. */
@@ -70,6 +74,8 @@ function components(a: Actor): Record<string, unknown> {
       piety: a.piety ?? 0,
     },
     Stance: { mode: systems.MILITARY_MODE.NONE, anchorCell: null },
+    ...(a.hitpoints === undefined ? {} : { Health: { hitpoints: a.hitpoints, max: HEALTH_POOL } }),
+    ...(a.female === true ? { Female: { female: true } } : {}),
     ...(kind === 'animal' ? {} : { Person: { person: true } }),
     ...(kind === 'child' ? { Age: { ticks: 40 } } : {}),
     ...(a.workplace === undefined ? {} : { JobAssignment: { workplace: a.workplace } }),
@@ -88,6 +94,7 @@ function snapshot(tick: number, actors: readonly Actor[], needsEnabled = true): 
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
+  player: () => 'Gracz',
   text: (type, parts) => `${parts.subjectName ?? '?'}:${type}`,
 };
 
@@ -114,6 +121,28 @@ describe('user messages read off the snapshot', () => {
     );
     expect(out).toEqual([
       [USER_MESSAGE_TYPE.hungry, 2],
+      [USER_MESSAGE_TYPE.hungry, 3],
+      [USER_MESSAGE_TYPE.starving, 3],
+    ]);
+  });
+
+  it('warns that a starving settler will die once its pool has nearly run out', () => {
+    const source = createSnapshotMessageSource(LOCAL);
+    const out = sweep(
+      source,
+      snapshot(100, [
+        { id: 1, hunger: ONE, hitpoints: HEALTH_POOL },
+        { id: 2, hunger: ONE, hitpoints: HEALTH_POOL / 10 },
+        { id: 3, hunger: ONE, hitpoints: 0 },
+        { id: 4, hunger: belowBubble, hitpoints: 1 },
+      ]),
+    );
+    expect(out).toEqual([
+      [USER_MESSAGE_TYPE.hungry, 1],
+      [USER_MESSAGE_TYPE.starving, 1],
+      [USER_MESSAGE_TYPE.hungry, 2],
+      [USER_MESSAGE_TYPE.starving, 2],
+      [USER_MESSAGE_TYPE.willDie, 2],
       [USER_MESSAGE_TYPE.hungry, 3],
       [USER_MESSAGE_TYPE.starving, 3],
     ]);
@@ -208,6 +237,20 @@ describe('user messages read off the snapshot', () => {
         USER_MESSAGE_TYPE.nothingToDo,
       ]);
       expect(run(source, ['work', ...mostly], 2 * mostly.length + 5).flat()).toEqual([]);
+    });
+
+    it('never for a woman, whose work is the household rather than a trade', () => {
+      const source = createSnapshotMessageSource(LOCAL);
+      const idle = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE }, () => null);
+      const actors: Actor[] = [
+        building,
+        { id: 1, workplace: WORKPLACE, female: true },
+        { id: 2, workplace: WORKPLACE },
+      ];
+      const out = idle.map((_, i) =>
+        sweep(source, snapshot((i + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS, actors)),
+      );
+      expect(out.flat()).toEqual([[USER_MESSAGE_TYPE.nothingToDo, 2]]);
     });
 
     it('never for a guard, an ordered unit, one indoors, one waiting on its site, or one without a workplace', () => {

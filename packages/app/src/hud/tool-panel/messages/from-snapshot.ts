@@ -9,6 +9,7 @@ import {
 } from '@open-northland/sim';
 import {
   actorsOf,
+  isFemale,
   needsRuleEnabled,
   num,
   ownerPlayerOf,
@@ -31,6 +32,11 @@ const NO_MESSAGES: readonly RaisedMessage[] = [];
 
 /** Hunger pinned at the top of the bar is starvation. */
 const STARVING_HUNGER: number = ONE;
+
+/** Share of the hitpoint pool at or below which a starving settler is close enough to death to warn
+ *  about. Approximation on the starvation model's own beat: the bites left are worth about twenty
+ *  seconds at 1x. */
+const DYING_HEALTH_FRACTION = 10;
 
 /** Atomics that occupy a settler without being work: a paired chat or a stagger. */
 const EFFECTLESS_ATOMICS: ReadonlySet<AtomicEffect['kind']> = new Set<AtomicEffect['kind']>(['idle']);
@@ -106,6 +112,22 @@ class IdleStreaks {
   }
 }
 
+/** Hitpoints left of the pool, or undefined for a settler carrying none. */
+function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } | undefined {
+  const health = e.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
+  const hitpoints = num(health?.hitpoints);
+  const max = num(health?.max);
+  return hitpoints === undefined || max === undefined ? undefined : { hitpoints, max };
+}
+
+/** A starving settler whose pool has nearly run out; the sim bites it every few ticks until it dies. */
+function isDying(e: SnapshotEntity): boolean {
+  const health = healthOf(e);
+  return (
+    health !== undefined && health.hitpoints > 0 && health.hitpoints * DYING_HEALTH_FRACTION <= health.max
+  );
+}
+
 /** A jobless adult is never planned, so nothing feeds it and its bars pin without consequence. */
 function isJobless(e: SnapshotEntity): boolean {
   return settlerJobType(e) === undefined;
@@ -118,7 +140,10 @@ function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity): void {
   if (needs === undefined || isJobless(e)) return;
   const alert = systems.NEED_CRITICAL_THRESHOLD;
   if (needs.hunger >= alert) raiser.settler(USER_MESSAGE_TYPE.hungry, e);
-  if (needs.hunger >= STARVING_HUNGER) raiser.settler(USER_MESSAGE_TYPE.starving, e);
+  if (needs.hunger >= STARVING_HUNGER) {
+    raiser.settler(USER_MESSAGE_TYPE.starving, e);
+    if (isDying(e)) raiser.settler(USER_MESSAGE_TYPE.willDie, e);
+  }
   if (needs.fatigue >= alert) raiser.settler(USER_MESSAGE_TYPE.tired, e);
   if (needs.piety >= alert) raiser.settler(USER_MESSAGE_TYPE.wantsToPray, e);
 }
@@ -129,7 +154,8 @@ function raiseNothingToDo(
   e: SnapshotEntity,
   streaks: IdleStreaks,
 ): void {
-  if (holdsPost(e) || !hasWorkplaceToWorkAt(snapshot, e)) return;
+  // The original drops this note for a woman, whose work is the household rather than a trade.
+  if (isFemale(e) || holdsPost(e) || !hasWorkplaceToWorkAt(snapshot, e)) return;
   const occupation = occupationOf(snapshot, e);
   if (occupation === 'busy') return;
   if (streaks.advance(e.id, occupation) >= IDLE_SWEEPS_BEFORE_MESSAGE) {
