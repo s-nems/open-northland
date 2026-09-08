@@ -6,12 +6,10 @@ import { guiFrameIndex } from '../../../content/gui-atlas-map.js';
 import type { Rect } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
 import { NOTE_BACKDROP, noteIcon } from './icons.js';
-import { layoutMessageNotes, NOTE_W } from './layout.js';
+import { layoutMessageNotes } from './layout.js';
 import { NotePortraits, PORTRAIT_FEET_X, PORTRAIT_FEET_Y } from './portrait.js';
 import type { MessagePriorityLevel, UserMessage } from './types.js';
 
-/** Top of a stone token on the note (design px); approximation, the original's offset is not read. */
-const TOKEN_TOP_Y = 16;
 /** Flat fallback when the decoded GUI art is absent: parchment with a coloured pin. */
 const FALLBACK_PARCHMENT = 0xd9c79c;
 const FALLBACK_PARCHMENT_EDGE = 0x8a744a;
@@ -51,8 +49,8 @@ export interface MessageStrip {
 /** One note's GUI meshes, kept across redraws since a message's priority and icon never change. */
 interface NoteSprites {
   readonly backdrop: PalettedSprite | null;
+  /** A stone token carries the offset that seats it on the parchment, so it shares the note's origin. */
   readonly token: PalettedSprite | null;
-  readonly tokenWidth: number;
 }
 
 export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
@@ -73,7 +71,7 @@ export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
   let drawnHeight = -1;
 
   const mint = (m: UserMessage): NoteSprites => {
-    if (art === null) return { backdrop: null, token: null, tokenWidth: 0 };
+    if (art === null) return { backdrop: null, token: null };
     const backdrop = makeGuiSprite(art, guiFrameIndex(NOTE_BACKDROP[m.priority]), {
       defaultPalette: 'iconsleft',
       colorKey: 'magenta',
@@ -85,11 +83,7 @@ export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
         ? makeGuiSprite(art, guiFrameIndex(icon.name), { defaultPalette: 'iconsleft', colorKey: 'magenta' })
         : null;
     if (token !== null) tokens.addChild(token.sprite);
-    return {
-      backdrop: backdrop?.sprite ?? null,
-      token: token?.sprite ?? null,
-      tokenWidth: token?.frame.width ?? 0,
-    };
+    return { backdrop: backdrop?.sprite ?? null, token: token?.sprite ?? null };
   };
 
   const release = (s: NoteSprites): void => {
@@ -132,13 +126,7 @@ export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
         }
         if (sprites.backdrop === null) drawFallback(m, r);
         else sprites.backdrop.place(r.x, r.y, scale, screen.width, screen.height);
-        sprites.token?.place(
-          r.x + ((NOTE_W - sprites.tokenWidth) / 2) * scale,
-          r.y + TOKEN_TOP_Y * scale,
-          scale,
-          screen.width,
-          screen.height,
-        );
+        sprites.token?.place(r.x, r.y, scale, screen.width, screen.height);
         if (m.subject?.kind === 'settler' && noteIcon(m.type, m.subject)?.kind === 'portrait') {
           standing.push({
             entity: m.subject.entity,
