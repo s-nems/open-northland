@@ -129,6 +129,24 @@ describe('GrowthSystem - non-working settlers mature into workers', () => {
     expect(sim.world.has(he, Residence)).toBe(false);
   });
 
+  it('announces each graduation once, so the HUD can note a child reaching adulthood', () => {
+    const sim = new Simulation({ seed: 1, content: growthContent() });
+    const she = bornSettler(sim, BABY_FEMALE, 0);
+    const he = bornSettler(sim, BABY_MALE, 0);
+
+    run(sim, ADULT_AGE_TICKS - 1);
+    expect(sim.events.current().filter((ev) => ev.kind === 'settlerGrewUp')).toEqual([]);
+
+    run(sim, 1);
+    expect(sim.events.current().filter((ev) => ev.kind === 'settlerGrewUp')).toEqual([
+      { kind: 'settlerGrewUp', entity: she },
+      { kind: 'settlerGrewUp', entity: he },
+    ]);
+
+    run(sim, 1); // grown settlers carry no Age, so nothing repeats
+    expect(sim.events.current().filter((ev) => ev.kind === 'settlerGrewUp')).toHaveLength(2);
+  });
+
   it("grows a child's childhood health pool into its tribe's adult one", () => {
     const sim = new Simulation({ seed: 1, content: growthContent(ADULT_HP) });
     const he = bornSettler(sim, BABY_MALE, 0);

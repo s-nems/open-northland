@@ -30,6 +30,11 @@ export type SimEvent =
   | { readonly kind: 'buildingUpgraded'; readonly entity: Entity; readonly level: number }
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
   | {
+      /** A child reached adulthood this tick and took its first grown-up trade. */
+      readonly kind: 'settlerGrewUp';
+      readonly entity: Entity;
+    }
+  | {
       /**
        * Two settlers became spouses this tick. `at` is the kiss node, for the marriage jingle
        * (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`, `logicdefines.inc`).

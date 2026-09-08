@@ -258,6 +258,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       playerColourOf: opts.playerColourOf,
       localPlayer: opts.owner,
       buildingLabel: (typeId) => labelByType.get(typeId),
+      playerLabel: (player) => opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       tooltip: opts.tooltip,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
     });

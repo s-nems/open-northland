@@ -45,6 +45,8 @@ export interface MessageCenterDeps {
   readonly localPlayer: number;
   /** A building type's menu label, which names a building in its note. */
   readonly buildingLabel: (typeId: number) => string | undefined;
+  /** A seat's roster name, which names the player in an elimination note. */
+  readonly playerLabel: (player: number) => string | null;
   readonly tooltip?: TooltipSurface | undefined;
   readonly onSelect: (target: MessageTarget) => void;
   readonly initial?: MessageFeedState | undefined;
@@ -111,6 +113,7 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       const typeId = num((e.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
       return typeId === undefined ? null : (deps.buildingLabel(typeId) ?? null);
     },
+    player: (player) => deps.playerLabel(player),
     text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
   };
 }

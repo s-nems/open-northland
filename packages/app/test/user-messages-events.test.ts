@@ -39,6 +39,7 @@ function snapshot(tick: number, actors: readonly Actor[]): WorldSnapshot {
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
+  player: () => 'Gracz',
   text: (type, parts) => `${parts.subjectName ?? '?'}:${type}`,
 };
 
@@ -169,6 +170,36 @@ describe('user messages from sim events', () => {
     expect(raised).toHaveLength(1);
     expect(composed).toBe(0);
     expect(raised[0]?.compose()).toBe(`0:S1:${USER_MESSAGE_TYPE.humanAttacked}`);
+  });
+
+  it("announces the seat's own child reaching adulthood", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: ENEMY, kind: 'person' },
+    ]);
+    const out = run(
+      [
+        { kind: 'settlerGrewUp', entity: e(1) },
+        { kind: 'settlerGrewUp', entity: e(2) },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.grewUp, 1]]);
+  });
+
+  it('announces an eliminated seat to everyone, naming the player rather than an entity', () => {
+    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
+    const out = run([{ kind: 'playerDefeated', player: ENEMY }], snap);
+    expect(out).toEqual([
+      {
+        type: USER_MESSAGE_TYPE.playerDied,
+        subject: null,
+        at: null,
+        goodType: null,
+        jobType: null,
+        text: `Gracz:${USER_MESSAGE_TYPE.playerDied}`,
+      },
+    ]);
   });
 
   it('ignores events with no message in the original', () => {

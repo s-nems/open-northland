@@ -22,6 +22,7 @@ import type { SceneWorld } from '../src/scenes/types.js';
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
+  player: () => 'Gracz',
   text: (type) => String(type),
 };
 
