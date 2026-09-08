@@ -124,6 +124,7 @@ export {
   type SettlerBubbleGfx,
   type SettlerBubbleKind,
   signRowAt,
+  type WorkAreaRing,
 } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
 export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';

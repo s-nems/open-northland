@@ -41,6 +41,8 @@ export interface UnitOrderController {
   issueAttackMove(event: MouseEvent): void;
   /** Strike one enemy of `kind` under the cursor; a click that hits none of them orders nothing. */
   issueAttackTarget(event: MouseEvent, kind: UnitTargetKind): void;
+  /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
+  issueAttackAnimal(event: MouseEvent): void;
 }
 
 type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['kind'];
@@ -163,6 +165,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     if (enemy !== null) strike(deps.targets.ownedSettlersIn(deps.selected()), enemy);
   };
 
+  const issueAttackAnimal = (event: MouseEvent): void => {
+    const world = deps.toWorld(event.clientX, event.clientY);
+    const prey = pickTopAt(deps.targets.wildlife(), world.x, world.y);
+    if (prey !== null) strike(deps.targets.ownedSettlersIn(deps.selected()), prey);
+  };
+
   const issueMoveTo = (event: MouseEvent): void => {
     const selected = deps.selected();
     issueWalkOrder(event, deps.targets.ownedSettlersIn(selected), selected, 'moveUnit');
@@ -189,5 +197,12 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     }
   };
 
-  return { issueRightClick, issueSetWorkFlag, issueMoveTo, issueAttackMove, issueAttackTarget };
+  return {
+    issueRightClick,
+    issueSetWorkFlag,
+    issueMoveTo,
+    issueAttackMove,
+    issueAttackTarget,
+    issueAttackAnimal,
+  };
 }

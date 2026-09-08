@@ -1,5 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
-import { Carrying, isAiPlayer, ownerOf, Settler, type SettlerIdentity } from '../../../components/index.js';
+import {
+  Carrying,
+  isAiPlayer,
+  type NeedKind,
+  NeedOrder,
+  NoRegeneration,
+  ownerOf,
+  Settler,
+  type SettlerIdentity,
+} from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -31,17 +40,42 @@ import { eatAtPost, sleepAtPost } from './tower-post.js';
 /**
  * Whether any needs rung would fire, so a caller can skip `planNeeds`'s target and limit setup for a sated
  * settler. The ladder re-checks each threshold, so this elides only provably-null work. Piety counts only
- * for a trade that prays: every other trade's bar can pin with nothing able to serve it.
+ * for a trade that prays: every other trade's bar can pin with nothing able to serve it. `ordered` is the
+ * need the player told this settler to answer, which fires its rung whatever the bar reads.
  */
 export function anyNeedPressing(
   content: ContentSet,
   settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed; piety: Fixed },
+  ordered?: NeedKind,
 ): boolean {
   return (
+    ordered !== undefined ||
     settler.hunger >= NEED_DRIVE_THRESHOLD ||
     settler.fatigue >= NEED_DRIVE_THRESHOLD ||
     (settler.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(content, settler.jobType))
   );
+}
+
+/** The need the player ordered this settler to answer now, or undefined. */
+export function orderedNeed(world: World, e: Entity): NeedKind | undefined {
+  return world.tryGet(e, NeedOrder)?.need;
+}
+
+/**
+ * Whether `need`'s rung fires at all: the bar is over its threshold, or the player ordered that need
+ * answered.
+ */
+function pressing(level: Fixed, ordered: NeedKind | undefined, need: NeedKind): boolean {
+  return ordered === need || level >= NEED_DRIVE_THRESHOLD;
+}
+
+/**
+ * Whether the settler may go looking for what `need` wants rather than answer it from what it carries.
+ * A soldier whose regeneration the player prohibited may not, and an explicit order overrides that -
+ * which is how the original gates its own need task on the refresh-in-world flag.
+ */
+function maySeek(world: World, e: Entity, ordered: NeedKind | undefined, need: NeedKind): boolean {
+  return ordered === need || !world.has(e, NoRegeneration);
 }
 
 /**
@@ -54,22 +88,24 @@ export function answerNeedInPlace(
   e: Entity,
   settler: SettlerIdentity & { hunger: Fixed; fatigue: Fixed },
 ): boolean {
-  if (settler.hunger >= NEED_DRIVE_THRESHOLD) {
-    if (eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
+  const ordered = orderedNeed(world, e);
+  if (pressing(settler.hunger, ordered, 'hunger')) {
+    const seek = maySeek(world, e, ordered, 'hunger');
+    if (seek && eatCarried(world, ctx, e, settler, world.tryGet(e, Carrying))) return true;
     const draught = draughtSlotFor(world, ctx, e, 'hunger');
     if (draught !== null) {
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    if (eatAtPost(world, ctx, e, settler)) return true;
+    if (seek && eatAtPost(world, ctx, e, settler)) return true;
   }
-  if (settler.fatigue >= NEED_DRIVE_THRESHOLD) {
+  if (pressing(settler.fatigue, ordered, 'fatigue')) {
     const draught = draughtSlotFor(world, ctx, e, 'fatigue');
     if (draught !== null) {
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    if (sleepAtPost(world, ctx, e, settler)) return true;
+    if (maySeek(world, e, ordered, 'fatigue') && sleepAtPost(world, ctx, e, settler)) return true;
   }
   return false;
 }
@@ -114,19 +150,22 @@ export function planNeeds(
   spacing: PlannerSpacing,
 ): boolean {
   const gate = limit ?? undefined;
-  if (settler.hunger >= NEED_DRIVE_THRESHOLD) {
-    if (eatCarried(world, ctx, e, settler, load)) return true;
+  const ordered = orderedNeed(world, e);
+  if (pressing(settler.hunger, ordered, 'hunger')) {
+    const seek = maySeek(world, e, ordered, 'hunger');
+    if (seek && eatCarried(world, ctx, e, settler, load)) return true;
     // A carried draught is drunk in place, replacing the walk to food, which is what the manual sells it
     // as: "cover longer distances without needing food". It ranks below food in hand, which is free.
-    const draught = draughtSlotFor(world, ctx, e, 'hunger');
+    // Kept on the bar rather than the order, so an ordered meal drains no flask the settler does not need.
+    const draught = settler.hunger >= NEED_DRIVE_THRESHOLD ? draughtSlotFor(world, ctx, e, 'hunger') : null;
     if (draught !== null) {
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    if (eatAtPost(world, ctx, e, settler)) return true;
+    if (seek && eatAtPost(world, ctx, e, settler)) return true;
     // A larder and a wild berry bush share the eat animation; only the completion effect differs, so the
     // walk-or-act tail below is identical for both.
-    const food = nearestFood(targets, world, ctx, terrain, here, e, gate);
+    const food = seek ? nearestFood(targets, world, ctx, terrain, here, e, gate) : null;
     if (food !== null) {
       const target = food.kind === 'store' ? food.store : food.bush;
       const effect =
@@ -143,30 +182,37 @@ export function planNeeds(
     topUpUnservedNeedForAi(world, e, 'hunger');
   }
 
-  if (settler.fatigue >= NEED_DRIVE_THRESHOLD) {
+  if (pressing(settler.fatigue, ordered, 'fatigue')) {
     // A stamina draught is drunk in place, replacing the walk to a bed: the manual's "remain awake and
-    // ready longer".
-    const draught = draughtSlotFor(world, ctx, e, 'fatigue');
+    // ready longer". Kept on the bar rather than the order, as with the hunger flask above.
+    const draught = settler.fatigue >= NEED_DRIVE_THRESHOLD ? draughtSlotFor(world, ctx, e, 'fatigue') : null;
     if (draught !== null) {
       startDrink(world, ctx, e, settler, draught);
       return true;
     }
-    if (sleepAtPost(world, ctx, e, settler)) return true;
-    if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
-    atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
-      startAtomic(
-        world,
-        e,
-        SLEEP_ATOMIC_ID,
-        { kind: 'sleep' },
-        needAtomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
-        e,
-      ),
-    );
-    return true;
+    if (maySeek(world, e, ordered, 'fatigue')) {
+      if (sleepAtPost(world, ctx, e, settler)) return true;
+      if (sleepAtHome(world, ctx, terrain, e, settler, here, limit)) return true;
+      atOrWalk(world, e, here, restingCell(world, ctx, terrain, e, here, spacing, limit), () =>
+        startAtomic(
+          world,
+          e,
+          SLEEP_ATOMIC_ID,
+          { kind: 'sleep' },
+          needAtomicDuration(ctx.content, settler, SLEEP_ATOMIC_ID),
+          e,
+        ),
+      );
+      return true;
+    }
   }
 
-  if (settler.piety >= NEED_DRIVE_THRESHOLD && jobNeedsReligion(ctx.content, settler.jobType)) {
+  // A trade that does not pray has no prayer rung of its own; a player's order gives it one.
+  const prays =
+    pressing(settler.piety, ordered, 'piety') &&
+    (ordered === 'piety' || jobNeedsReligion(ctx.content, settler.jobType)) &&
+    maySeek(world, e, ordered, 'piety');
+  if (prays) {
     const temple = nearestTemple(
       targets.bands,
       world,

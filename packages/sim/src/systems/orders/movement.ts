@@ -7,9 +7,11 @@ import {
   Engagement,
   EquipOrder,
   ErectSignpostOrder,
+  ExploreOrder,
   Fleeing,
   HuntFocus,
   MoveGoal,
+  NeedOrder,
   Owner,
   PathRequest,
   PlayerOrder,
@@ -118,6 +120,8 @@ function startPlayerWalk(
   // the walk and drag the settler back to its stale pre-order return spot.
   world.remove(e, EquipOrder);
   world.remove(e, TrainingOrder); // likewise the player's only way to call a barracks drill off
+  world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer the walk supersedes
+  world.remove(e, ExploreOrder); // an ordered walk ends a scout's sweep
   // Likewise a tower posting; no other kind of worker is unemployed by a walk order.
   releaseTowerPost(world, ctx, e);
   // A move order relocates a DEFEND unit's post, or the arrived-hold combat pass would march the guard back

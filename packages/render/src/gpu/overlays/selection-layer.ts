@@ -31,8 +31,21 @@ const RING_WIDTH = 2;
  *  under the flag's own sprite. */
 const FLAG_RING_COLOR = 0xffc020;
 const FLAG_RING_WIDTH = 3;
+/** The work-area circle: the flag's amber, thinner and barely filled, since it spans a whole harvest
+ *  radius rather than one sprite. */
+const AREA_RING_WIDTH = 2;
+const AREA_RING_FILL_ALPHA = 0.05;
+/** World px one half-cell node spans east-west, the unit a work radius is carried in. */
+const NODE_WIDTH_PX = TILE_HALF_W;
 
 const NO_IDS: ReadonlySet<number> = new Set();
+const NO_AREAS: readonly WorkAreaRing[] = [];
+
+/** One work-area circle: the flag entity it centres on and its radius in half-cell nodes. */
+export interface WorkAreaRing {
+  readonly entity: number;
+  readonly radiusNodes: number;
+}
 
 /** One ring's half-extents and centre offset in feet-local world pixels. */
 interface RingSpec {
@@ -56,16 +69,54 @@ export class SelectionLayer {
   private readonly rings = new Map<number, Graphics>();
   /** One persistent ring per selected gatherer's flag entity id (amber). */
   private readonly flagRings = new Map<number, Graphics>();
+  /** One persistent work-area circle per shown flag entity id, keyed with the radius it was authored at
+   *  so a re-sized area redraws rather than keeping a stale circle. */
+  private readonly areaRings = new Map<number, { g: Graphics; radiusNodes: number }>();
+  private readonly seenAreas = new Set<number>();
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
   private readonly seenFlags = new Set<number>();
   private readonly specs = new WeakMap<Graphics, RingSpec>();
 
-  /** Reconcile both pools: a green ring under every `selected` entity, an amber one under every
-   *  `flagged` id (the work flags of the selected gatherers). */
-  draw(frame: SelectionFrame, selected: ReadonlySet<number>, flagged: ReadonlySet<number> = NO_IDS): void {
+  /** Reconcile the three pools: a green ring under every `selected` entity, an amber one under every
+   *  `flagged` id (the work flags of the selected gatherers), and a work-area circle per `workAreas`
+   *  entry. */
+  draw(
+    frame: SelectionFrame,
+    selected: ReadonlySet<number>,
+    flagged: ReadonlySet<number> = NO_IDS,
+    workAreas: readonly WorkAreaRing[] = NO_AREAS,
+  ): void {
     this.reconcile(this.rings, this.seen, selected, RING_COLOR, RING_WIDTH, frame);
     this.reconcile(this.flagRings, this.seenFlags, flagged, FLAG_RING_COLOR, FLAG_RING_WIDTH, frame);
+    this.reconcileAreas(workAreas, frame);
+  }
+
+  /** Reconcile the work-area circles: one flat ground ellipse per shown area, retiring the rest. */
+  private reconcileAreas(areas: readonly WorkAreaRing[], frame: SelectionFrame): void {
+    this.seenAreas.clear();
+    for (const area of areas) {
+      const ent = entityById(frame.snapshot, area.entity);
+      if (ent === undefined) continue;
+      const pos = readPosition(ent.components);
+      if (pos === null) continue;
+      const s = feetAnchor(frame.drawn, area.entity, pos, frame.elevation);
+      let held = this.areaRings.get(area.entity);
+      if (held === undefined || held.radiusNodes !== area.radiusNodes) {
+        held?.g.destroy();
+        const rx = area.radiusNodes * NODE_WIDTH_PX;
+        const g = new Graphics();
+        g.ellipse(0, 0, rx, rx * ISO_RATIO)
+          .fill({ color: FLAG_RING_COLOR, alpha: AREA_RING_FILL_ALPHA })
+          .stroke({ width: AREA_RING_WIDTH, color: FLAG_RING_COLOR, alpha: 0.7 });
+        this.container.addChild(g);
+        held = { g, radiusNodes: area.radiusNodes };
+        this.areaRings.set(area.entity, held);
+      }
+      held.g.position.set(s.x, s.y);
+      this.seenAreas.add(area.entity);
+    }
+    retireUndrawn(this.areaRings, this.seenAreas, (held) => held.g.destroy());
   }
 
   /** Reconcile one ring pool to `ids` in `color`: place/move a ring under each present entity, retire the rest. */
@@ -120,6 +171,7 @@ export class SelectionLayer {
     this.container.destroy({ children: true });
     this.rings.clear();
     this.flagRings.clear();
+    this.areaRings.clear();
   }
 }
 

@@ -13,6 +13,9 @@ export const HARVEST_ATOMIC = 24;
 export const VIKING = 1;
 export const FRANK = 2;
 export const BEAR = 10;
+/** The decorative-fauna tribe (`cannotbeattacked`) and the catchable prey a hunter alone may pick. */
+export const BEE = 11;
+export const COW = 13;
 export const WOODCUTTER = 1;
 /** The fixture's bow-armed job (`test_spear`) - the ranged reach these cases need. */
 export const HUNTER = 15;

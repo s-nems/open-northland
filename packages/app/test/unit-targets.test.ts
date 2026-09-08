@@ -136,6 +136,29 @@ describe('unit-controls targets over the renderer frame', () => {
     expect(targets.ownedSettlersIn(new Set([animal.id]))).toEqual([]);
   });
 
+  it('picks wild game for the strike but never a person or claimed livestock', () => {
+    // Wildlife shares the Settler model and carries no `Person` and no owner: it is the only thing the
+    // "attack animal" order may reach.
+    const deer = {
+      id: 90_010,
+      components: { Settler: {}, Position: { x: 6 * ONE, y: 8 * ONE } },
+    };
+    const cow = {
+      id: 90_011,
+      components: {
+        Settler: {},
+        Livestock: {},
+        Owner: { player: HUMAN_PLAYER },
+        Position: { x: 7 * ONE, y: 8 * ONE },
+      },
+    };
+    snapshot = { ...snapshot, entities: [...snapshot.entities, deer, cow] };
+    const template = firstDrawn('settler', HUMAN_PLAYER);
+    const targets = targetsOver([...fullScene, { ...template, ref: deer.id }, { ...template, ref: cow.id }]);
+
+    expect(targets.wildlife().map((t) => t.ref)).toEqual([deer.id]);
+  });
+
   it('orders a settler the frame never draws, such as one standing inside a building', () => {
     // Indoor settlers (the `Resting` marker, or mid-exchange in a store) are deliberately not drawn, so
     // the frame cannot supply them - the order set reads the snapshot instead and still reaches them.

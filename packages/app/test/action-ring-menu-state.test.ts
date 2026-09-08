@@ -30,6 +30,7 @@ const HOME = 50;
 const WORKSHOP = 51;
 const BARRACKS = 52;
 const SITE = 53;
+const FLAG = 54;
 interface Opts {
   readonly female?: boolean;
   readonly child?: boolean;
@@ -40,6 +41,8 @@ interface Opts {
   readonly stance?: number;
   readonly drilling?: boolean;
   readonly site?: boolean;
+  readonly workFlag?: boolean;
+  readonly noRegeneration?: boolean;
   readonly tribe?: number;
   readonly unplaced?: boolean;
 }
@@ -60,6 +63,8 @@ function settler(id: number, jobType: number, opts: Opts = {}): Ent {
       ...(opts.stance !== undefined ? { Stance: { mode: opts.stance, anchorCell: null } } : {}),
       ...(opts.drilling === true ? { TrainingOrder: { house: BARRACKS, drillTicksLeft: 10 } } : {}),
       ...(opts.site === true ? { SiteAssignment: { site: SITE, pinned: true } } : {}),
+      ...(opts.workFlag === true ? { WorkFlag: { flag: FLAG, radius: 24 } } : {}),
+      ...(opts.noRegeneration === true ? { NoRegeneration: { prohibited: true } } : {}),
     },
   };
 }
@@ -90,7 +95,6 @@ describe('allowedActions - one settler', () => {
         'changeProfession',
         'eat',
         'goTo',
-        'showWorkArea',
         'sleep',
       ].sort(),
     );
@@ -171,6 +175,27 @@ describe('allowedActions - one settler', () => {
   it('gives a growing child the walk, the vehicle and the needs alone', () => {
     const snapshot = snapshotOf([settler(1, JOB_CHILD_MALE, { child: true })]);
     expect(allowed(snapshot, [1])).toEqual(['assignVehicle', 'eat', 'goTo', 'sleep']);
+  });
+
+  it('shows the work area only once the gatherer carries a flag to draw it around', () => {
+    const bare = allowedActions(content, snapshotOf([settler(1, JOB_COLLECTOR)]), [1]);
+    expect(bare.has('assignWorkArea')).toBe(true);
+    expect(bare.has('showWorkArea')).toBe(false);
+    const flagged = allowedActions(content, snapshotOf([settler(1, JOB_COLLECTOR, { workFlag: true })]), [1]);
+    expect(flagged.has('showWorkArea')).toBe(true);
+  });
+
+  it('offers a soldier the regeneration toggle that flips the state it is in', () => {
+    const allowing = allowedActions(content, snapshotOf([settler(1, JOB_SOLDIER)]), [1]);
+    expect(allowing.has('prohibitRegeneration')).toBe(true);
+    expect(allowing.has('allowRegeneration')).toBe(false);
+    const held = allowedActions(
+      content,
+      snapshotOf([settler(1, JOB_SOLDIER, { noRegeneration: true })]),
+      [1],
+    );
+    expect(held.has('allowRegeneration')).toBe(true);
+    expect(held.has('prohibitRegeneration')).toBe(false);
   });
 
   it('swaps the work area for the building site on a builder and adds the scout orders on a scout', () => {
@@ -271,7 +296,6 @@ describe('allowedActions - several settlers', () => {
         'attackMode',
         'attackPosition',
         'attackVehicle',
-        'changeEquipment',
         'changeProfession',
         'defenceMode',
         'eat',

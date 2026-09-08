@@ -242,6 +242,25 @@ describe('trainSoldier - the barracks drill', () => {
     expect(jobOf(sim, recruit)).toBe(SOLDIER_JOB);
   });
 
+  it('lets the player call the drill off outright, keeping the settler where it stands', () => {
+    const sim = simWithBarracks();
+    const house = barracksAt(sim, 3, 3);
+    const recruit = settlerAt(sim, CIVILIST_JOB, 3, 3);
+
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    run(sim, 3 * EXERCISE_CLIP_TICKS + 1);
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(true);
+
+    sim.enqueueSetup({ kind: 'cancelTraining', entity: recruit });
+    sim.step();
+
+    expect(sim.world.has(recruit, TrainingOrder)).toBe(false);
+    // The drill served is lost: sent back, the recruit takes the full term again.
+    sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house });
+    sim.step();
+    expect(sim.world.get(recruit, TrainingOrder).drillTicksLeft).toBe(BARRACKS_DRILL_TICKS);
+  });
+
   it('is a no-op when re-issued for the house the settler is already drilling at', () => {
     const sim = simWithBarracks();
     const house = barracksAt(sim, 3, 3);

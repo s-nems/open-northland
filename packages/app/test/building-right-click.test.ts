@@ -72,6 +72,7 @@ function rightClick(
     enemies: () => [],
     flags: () => [],
     signposts: () => [],
+    wildlife: () => [],
     ownedSettlersIn: () => [{ ref: settler, x: 0, y: 0 }],
   };
   createUnitOrderController({

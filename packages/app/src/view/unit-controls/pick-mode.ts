@@ -21,14 +21,23 @@ import type { UnitTargets } from './unit-targets.js';
  */
 export type PickMode =
   | { readonly kind: BuildingPickKind; readonly settler: number }
-  | { readonly kind: 'signpost'; readonly scout: number }
+  | { readonly kind: ScoutPickKind; readonly scout: number }
   | { readonly kind: GroundPickKind };
+
+/** The orders one scout resolves by clicking a spot on the map. */
+type ScoutPickKind = 'signpost' | 'explore';
 
 /** The orders that resolve by clicking one of the player's own buildings. */
 export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learning-place';
 
 /** The orders that resolve against the world under the cursor and apply to the whole selection. */
-type GroundPickKind = 'destination' | 'work-area' | 'attack-move' | 'attack-settler' | 'attack-building';
+type GroundPickKind =
+  | 'destination'
+  | 'work-area'
+  | 'attack-move'
+  | 'attack-settler'
+  | 'attack-building'
+  | 'attack-animal';
 
 interface BuildingPick {
   readonly highlight: (
@@ -88,12 +97,14 @@ const isBuildingPick = (mode: PickMode): mode is Extract<PickMode, { readonly se
   'settler' in mode;
 
 /** Modes whose target is a point or a unit rather than a lit building, so the cursor carries the prompt. */
-const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<GroundPickKind>([
+const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<GroundPickKind | ScoutPickKind>([
   'destination',
   'work-area',
   'attack-move',
   'attack-settler',
   'attack-building',
+  'attack-animal',
+  'explore',
 ]);
 
 export interface PickModeDeps {
@@ -145,10 +156,20 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
   // Named deviation from the observed original, which erects with a right-click on lit ground: this
   // places with a left-click and dims blocked ground, matching build placement.
   const resolveSignpost = (event: MouseEvent, scout: number): void => {
+    deps.enqueue({ kind: 'placeSignpost', entity: scout as Entity, ...clickedNode(event) });
+  };
+
+  /** The explore order centres the scout's sweep on the clicked spot, as the original does. */
+  const resolveExplore = (event: MouseEvent, scout: number): void => {
+    deps.enqueue({ kind: 'exploreArea', entity: scout as Entity, ...clickedNode(event) });
+  };
+
+  /** The clicked point as an on-map half-cell node. */
+  const clickedNode = (event: MouseEvent): { x: number; y: number } => {
     const { width, height } = nodeBounds(deps.mapSize);
     const w = deps.toWorld(event.clientX, event.clientY);
     const target = clampTile(worldToTile(w.x, w.y, deps.elevation), width, height);
-    deps.enqueue({ kind: 'placeSignpost', entity: scout as Entity, x: target.col, y: target.row });
+    return { x: target.col, y: target.row };
   };
 
   const handleMouseDown = (event: MouseEvent): boolean => {
@@ -168,6 +189,9 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       case 'signpost':
         resolveSignpost(event, mode.scout);
         return true;
+      case 'explore':
+        resolveExplore(event, mode.scout);
+        return true;
       case 'destination':
         deps.orders().issueMoveTo(event);
         return true;
@@ -182,6 +206,9 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return true;
       case 'attack-building':
         deps.orders().issueAttackTarget(event, 'building');
+        return true;
+      case 'attack-animal':
+        deps.orders().issueAttackAnimal(event);
         return true;
       default: {
         const unreachable: never = mode;

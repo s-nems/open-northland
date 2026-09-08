@@ -62,6 +62,7 @@ export const plGame = {
     swapSlotHint: 'Rozkaż osadnikowi wymienić ten przedmiot na inny.',
     unequipSlotHint: 'Rozkaż osadnikowi zdjąć ten przedmiot.',
     usedItemDiscardHint: 'Używany przedmiot przepada, nie wraca do magazynu.',
+    equipSlotFree: 'puste',
     equipPickEmpty: 'Brak dostępnych przedmiotów w pobliżu.',
     defenseGarrison: 'Załoga',
     defenseStopped: 'Obrona zatrzymana',

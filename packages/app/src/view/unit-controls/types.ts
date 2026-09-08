@@ -7,6 +7,7 @@ import type {
   ElevationField,
   EntityBounds,
   SpriteSheet,
+  WorkAreaRing,
 } from '@open-northland/render';
 import type { EquipPickEntry, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
@@ -63,6 +64,8 @@ export interface UnitControls {
   readonly selectEntity: (id: number) => void;
   readonly portrait: () => PortraitBox | null;
   readonly flaggedFlagIds: () => ReadonlySet<number>;
+  /** The work-area circles the "Show Work Area" order has switched on. */
+  readonly workAreaRings: () => readonly WorkAreaRing[];
   /** The green/red assignment wash for the render building-highlight layer, or null when no assign mode
    *  is armed. */
   readonly assignHighlight: () => readonly BuildingHighlightItem[] | null;

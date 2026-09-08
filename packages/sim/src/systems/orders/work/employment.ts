@@ -163,6 +163,20 @@ export function assignBuilder(
   cancelActionAndRoute(world, e);
 }
 
+/**
+ * Unpin one owned builder from the site {@link assignBuilder} bound it to - see the command doc. Only the
+ * pin goes: the builder keeps its trade, its load and any workplace, and its next planning pass falls back
+ * to the nearest-site rung. An unpinned crew membership is the builder drive's own bookkeeping, re-stamped
+ * every pass, so removing the whole component would be undone the same tick.
+ */
+export function unassignBuilder(world: World, command: Extract<Command, { kind: 'unassignBuilder' }>): void {
+  const e = command.entity;
+  if (!isOrderableSettler(world, e)) return;
+  if (world.tryGet(e, SiteAssignment)?.pinned !== true) return; // never pinned - nothing to release
+  world.remove(e, SiteAssignment);
+  cancelActionAndRoute(world, e);
+}
+
 /** Stop what the settler's current employment had it doing and hand it back to the economy, leaving its
  *  trade, load and gear alone. */
 function cancelActionAndRoute(world: World, e: Entity): void {

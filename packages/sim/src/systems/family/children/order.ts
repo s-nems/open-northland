@@ -22,7 +22,7 @@ import { isTravelling } from '../../movement/nav-state.js';
 import { isFood } from '../../readviews/index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { startDrop } from '../../settlers/atomics/start.js';
-import { anyNeedPressing } from '../../settlers/drives/needs.js';
+import { anyNeedPressing, orderedNeed } from '../../settlers/drives/needs.js';
 import { enterBuilding, isInside, stepIn, stepOut } from '../../settlers/indoors.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { unreachableGoalVeto } from '../../settlers/unreachable-goals.js';
@@ -197,7 +197,7 @@ function ensureInside(
   e: Entity,
   home: Entity,
 ): boolean {
-  if (anyNeedPressing(ctx.content, world.get(e, Settler))) return false;
+  if (anyNeedPressing(ctx.content, world.get(e, Settler), orderedNeed(world, e))) return false;
   if (isInside(world, e, home)) return true;
   enterHome(world, ctx, terrain, e, home);
   return false;

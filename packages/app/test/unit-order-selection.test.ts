@@ -58,6 +58,7 @@ const targets: UnitTargets = {
   enemies: () => [],
   flags: () => [],
   signposts: () => [],
+  wildlife: () => [],
   ownedSettlersIn: (refs) =>
     UNITS.filter((u) => refs.has(u.id)).map((u) => {
       const node = nodeUnder(u.cell);

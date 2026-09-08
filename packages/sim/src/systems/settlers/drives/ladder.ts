@@ -26,7 +26,7 @@ import {
 } from './economy/index.js';
 import { planEquipOrder } from './equip-order.js';
 import { planFarmer } from './farming/index.js';
-import { answerNeedInPlace, planNeeds } from './needs.js';
+import { answerNeedInPlace, orderedNeed, planNeeds } from './needs.js';
 import { planShelter } from './shelter.js';
 import { isSleepingAtHome } from './sleep-at-home.js';
 import { deStackIdle } from './spacing.js';
@@ -71,6 +71,15 @@ export function planAdult(pass: PlannerPass, e: Entity, settler: SettlerView, jo
   // only for sleeping at home, so leaving an unprovisioned fighter to go without is a deliberate choice.
   if (combatOwnsFeet(world, e)) {
     answerNeedInPlace(world, ctx, e, settler);
+    return;
+  }
+
+  // A player "talk" order ranks with the other need orders rather than with the idle chatter below: the
+  // original answers all four needs through one task.
+  if (
+    orderedNeed(world, e) === 'enjoyment' &&
+    planGossipSeek(world, ctx, e, settler, hereNode.hx, hereNode.hy, pass.gossipCandidates, true)
+  ) {
     return;
   }
 

@@ -2,7 +2,6 @@ import type { ContentSet } from '@open-northland/data';
 import { entityById, harvestJobsOf, jobAllowsAtomic, systems, type WorldSnapshot } from '@open-northland/sim';
 import { JOB_IDLE } from '../../../catalog/jobs.js';
 import {
-  buildSiteOf,
   childOrderOf,
   hasEligiblePartner,
   isAdult,
@@ -11,11 +10,14 @@ import {
   isMarrying,
   isSettler,
   marriageOf,
+  pinnedSiteOf,
+  regeneratesInWorld,
   residenceHomeOf,
   type SnapshotEntity,
   settlerJobType,
   stanceModeOf,
   trainingHouseOf,
+  workAreaOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
 import { ACTION_COMMANDS, type ActionCommandId } from '../../../hud/action-ring/index.js';
@@ -97,7 +99,9 @@ function allows(
     case 'sleep':
       return !systems.isHeroJob(content, job);
     case 'talk':
-      return !systems.isHeroJob(content, job) && jobAllowsAtomic(content, job, systems.TALK_ATOMIC_ID);
+      // The chat drive leaves the fighter trades out, so the button follows it rather than the original's
+      // wider "is able to talk" test.
+      return !systems.isFighterJob(content, job) && jobAllowsAtomic(content, job, systems.TALK_ATOMIC_ID);
     case 'pray':
       return !systems.isHeroJob(content, job) && jobAllowsAtomic(content, job, systems.PRAY_ATOMIC_ID);
     case 'marry':
@@ -118,8 +122,11 @@ function allows(
       // Approximation: the original keys this on a per-settler equipment flag the snapshot does not carry.
       return isAdult(e) && !systems.isHeroJob(content, job);
     case 'assignWorkArea':
-    case 'showWorkArea':
       return worksAnArea(content, e, job);
+    case 'showWorkArea':
+      // There is a circle to draw only around a work flag: an employed gatherer roams for the nearest
+      // node instead of working a bounded area.
+      return worksAnArea(content, e, job) && workAreaOf(e) !== undefined;
     case 'erectSignpost':
     case 'explore':
       return systems.isScoutJob(content, job);
@@ -128,7 +135,7 @@ function allows(
         tradeAssignable(e) &&
         job !== null &&
         systems.jobCanBuild(content, job) &&
-        buildSiteOf(e) !== undefined
+        pinnedSiteOf(e) !== undefined
       );
     case 'assignBuildingSite':
       return tradeAssignable(e) && job !== null && systems.jobCanBuild(content, job);
@@ -161,12 +168,12 @@ function allows(
       return offersMode(content, e, job, systems.MILITARY_MODE.DEFEND, several);
     case 'ignorantMode':
       return offersMode(content, e, job, systems.MILITARY_MODE.IGNORE, several);
+    // The original's group ring lists both regeneration toggles; a lone soldier sees only the one that
+    // flips the state it is in.
     case 'allowRegeneration':
-      // The original's group ring lists both regeneration toggles; a lone soldier sees only the one
-      // that flips its state, and regeneration is never prohibited here.
-      return several && systems.isSoldierJob(content, job);
+      return systems.isSoldierJob(content, job) && (several || !regeneratesInWorld(e));
     case 'prohibitRegeneration':
-      return systems.isSoldierJob(content, job);
+      return systems.isSoldierJob(content, job) && (several || regeneratesInWorld(e));
     default: {
       const unreachable: never = id;
       throw new Error(`unhandled action command: ${String(unreachable)}`);

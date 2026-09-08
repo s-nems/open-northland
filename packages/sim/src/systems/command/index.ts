@@ -21,10 +21,13 @@ import {
   assignWorker,
   attackMoveUnit,
   attackUnit,
+  cancelTraining,
   equipGood,
+  exploreArea,
   makeChild,
   marry,
   moveUnit,
+  orderNeed,
   placeSignpost,
   setAssistantCounter,
   setAssistantGrant,
@@ -32,9 +35,11 @@ import {
   setDefenceMode,
   setGatherGood,
   setJob,
+  setRegeneration,
   setStance,
   setWorkFlag,
   trainSoldier,
+  unassignBuilder,
   unassignHouse,
   unassignWorker,
   unequipGood,
@@ -113,8 +118,23 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
     case 'assignBuilder':
       assignBuilder(world, ctx, command);
       return;
+    case 'unassignBuilder':
+      unassignBuilder(world, command);
+      return;
     case 'trainSoldier':
       trainSoldier(world, ctx, command);
+      return;
+    case 'cancelTraining':
+      cancelTraining(world, command);
+      return;
+    case 'orderNeed':
+      orderNeed(world, command);
+      return;
+    case 'setRegeneration':
+      setRegeneration(world, command);
+      return;
+    case 'exploreArea':
+      exploreArea(world, ctx, command);
       return;
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);

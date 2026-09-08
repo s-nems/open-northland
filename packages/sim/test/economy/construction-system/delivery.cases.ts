@@ -7,6 +7,7 @@ import {
   MoveGoal,
   Owner,
   Position,
+  Settler,
   SiteAssignment,
   Stockpile,
   SupplyRun,
@@ -390,6 +391,28 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     }
     expect(nearLaborWhenFarFinished).toBe(0);
     expect(sim.world.get(far, Building).built).toBe(ONE);
+  });
+
+  it('unassignBuilder drops the pin and hands the builder back to the nearest site', () => {
+    const sim = new Simulation({ seed: 6, content: constructionContent(), map: grassMap(10, 4) });
+    const near = siteAt(sim, HOUSE, 2, 1);
+    const far = siteAt(sim, HOUSE, 8, 1);
+    for (const site of [near, far]) {
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
+    }
+    const builder = builderAt(sim, 1, 2);
+    sim.world.add(builder, Owner, { player: 0 });
+    sim.enqueueSetup({ kind: 'assignBuilder', entity: builder, site: far });
+    sim.step();
+    expect(sim.world.get(builder, SiteAssignment).pinned).toBe(true);
+
+    sim.enqueueSetup({ kind: 'unassignBuilder', entity: builder });
+    sim.step();
+    // The trade survives the release, and the next planning pass re-crews it on the nearer site.
+    expect(sim.world.get(builder, Settler).jobType).toBe(BUILDER);
+    for (let i = 0; i < 20 && sim.world.tryGet(builder, SiteAssignment)?.site !== near; i++) sim.step();
+    expect(sim.world.get(builder, SiteAssignment)).toEqual({ site: near, pinned: false });
   });
 
   it('a PINNED builder routes its load to a site beyond the signpost area - the bound-site sink', () => {

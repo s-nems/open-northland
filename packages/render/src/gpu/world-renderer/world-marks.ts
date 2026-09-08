@@ -19,6 +19,7 @@ import {
   type SettlerBubble,
   type SettlerBubbleGfx,
   SettlerBubbleLayer,
+  type WorkAreaRing,
 } from '../overlays/index.js';
 import type { DamagedBuilding, DrawnGeometry } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
@@ -53,6 +54,7 @@ export interface WorldMarksFrame {
   readonly damaged: readonly DamagedBuilding[];
   readonly selection: ReadonlySet<number>;
   readonly flagged: ReadonlySet<number>;
+  readonly workAreas: readonly WorkAreaRing[];
   readonly doorBadges: readonly DoorBadge[];
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
@@ -128,7 +130,12 @@ export class WorldMarks {
 
   draw(frame: WorldMarksFrame): void {
     const { drawn, elevation, viewport, renderTime } = frame;
-    this.selection.draw({ snapshot: frame.snapshot, drawn, elevation }, frame.selection, frame.flagged);
+    this.selection.draw(
+      { snapshot: frame.snapshot, drawn, elevation },
+      frame.selection,
+      frame.flagged,
+      frame.workAreas,
+    );
     this.effects.draw(elevation, viewport, renderTime);
     this.collapses.draw(elevation, viewport, renderTime);
     this.damageSmoke.draw(frame.damaged, drawn, renderTime);

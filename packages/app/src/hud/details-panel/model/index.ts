@@ -62,7 +62,7 @@ export type {
 export type { UnitPanelModelContext } from './context.js';
 export { HUMANWINDOW } from './humanwindow.js';
 export type { SettlerPanelModel } from './settler.js';
-export type { EquipGroup, EquipRow, EquipSlotModel } from './settler-equipment.js';
+export { type EquipGroup, type EquipRow, type EquipSlotModel, equipmentRows } from './settler-equipment.js';
 export type { UnlockProgressRowModel } from './settler-unlocks.js';
 
 export interface MultiSettlerPanelModel {

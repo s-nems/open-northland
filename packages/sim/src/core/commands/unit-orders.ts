@@ -1,4 +1,5 @@
 import type { EquipCategory } from '@open-northland/data';
+import type { NeedKind } from '../../components/needs.js';
 import type { Entity } from '../../ecs/world.js';
 
 /** Commands that direct existing settlers and their work. Coordinates are half-cell nodes. */
@@ -63,6 +64,53 @@ export type UnitOrderCommand =
       /** Ordered candidate worker jobs to try (highest preference first); the first one open for this
        *  settler wins. Entries only filter candidates - each still passes the sim's staffing gate. */
       readonly jobPriority: readonly number[];
+    }
+  | {
+      /**
+       * Send one owned settler to answer `need` now, whatever its bar reads - the original's eat, sleep,
+       * talk and pray buttons. The drive ladder runs that need's rung as if it were pressing until the
+       * answering atomic lands, and the order outranks a prohibited regeneration.
+       */
+      readonly kind: 'orderNeed';
+      readonly entity: Entity;
+      readonly need: NeedKind;
+    }
+  | {
+      /**
+       * Allow or prohibit one owned soldier's regeneration. A soldier that may not regenerate answers a
+       * need only from what it carries and never walks off to food, a bed, or a temple; an explicit
+       * `orderNeed` still moves it. Every settler starts allowed, and a trade change restores that.
+       */
+      readonly kind: 'setRegeneration';
+      readonly entity: Entity;
+      readonly enabled: boolean;
+    }
+  | {
+      /**
+       * Unpin one owned builder from the site an `assignBuilder` order bound it to - the original's
+       * "Remove Building Site". The builder keeps its trade and any workplace, and falls back to the
+       * nearest-site pick.
+       */
+      readonly kind: 'unassignBuilder';
+      readonly entity: Entity;
+    }
+  | {
+      /**
+       * Call off one owned settler's barracks drill - the original's "Remove Learning Place". The drill
+       * already served is lost, since nothing banks a part-finished course.
+       */
+      readonly kind: 'cancelTraining';
+      readonly entity: Entity;
+    }
+  | {
+      /**
+       * Send one owned scout to explore around (x,y): it walks to unexplored ground within
+       * `EXPLORE_RADIUS_NODES` of that centre, one point at a time, until nothing there is left unseen.
+       */
+      readonly kind: 'exploreArea';
+      readonly entity: Entity;
+      readonly x: number;
+      readonly y: number;
     }
   | {
       /**
