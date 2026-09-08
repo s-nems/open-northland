@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { Age, Health, needsEnabled, Person, Settler } from '../../../components/index.js';
+import { Age, Health, needsEnabled, Person, Settler, type SettlerView } from '../../../components/index.js';
 import { type Fixed, ONE } from '../../../core/fixed.js';
 import type { Rng } from '../../../core/rng.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -27,21 +27,22 @@ export function chargeMilitaryPiety(world: World, settler: Entity, units: number
 }
 
 /**
- * Ticks between the hitpoint steps starvation and healing take. The beat keeps each step a meaningful
- * integer across `Health.max` pools spanning 170..20000.
+ * Ticks a pinned hunger takes to empty a full `Health` pool, and ticks a fed settler takes to refill an
+ * empty one. Byte evidence: the owned copy's `the original` gives a human a flat 5000-point pool, spends 2 a
+ * tick while its food sits at zero and returns 1 a tick below the pool. Approximation: reading those two
+ * spans against `Health.max` carries them to the pools authored here, where the original has only the one.
  */
-export const HEALTH_STEP_INTERVAL_TICKS = 10;
+export const STARVATION_TICKS_TO_DIE = 2500;
+export const HEALING_TICKS_TO_FULL = STARVATION_TICKS_TO_DIE * 2;
 
 /**
- * Starvation steps to empty a full `Health` pool, each `max(1, trunc(max/240))`, so the default 300-HP
- * pool dies after 3000 ticks. Approximation: the original starves an unfed settler to death, but the rate
- * is authored.
+ * The whole hitpoints a pool of `max` moves on `tick` when it spends itself over `span` ticks. Differencing
+ * a running total is exact for any integer pool without a remainder in component state, and cannot drift:
+ * the total between two ticks depends on those ticks alone.
  */
-export const STARVATION_BITES_TO_DIE = 240;
-
-/** Healing steps to refill an empty pool: a fed settler recovers at half the rate an unfed one wastes.
- *  Approximation, on {@link STARVATION_BITES_TO_DIE}' basis. */
-export const HEAL_STEPS_TO_FULL = STARVATION_BITES_TO_DIE * 2;
+function poolStepAt(max: number, span: number, tick: number): number {
+  return Math.trunc(((tick + 1) * max) / span) - Math.trunc((tick * max) / span);
+}
 
 /**
  * The rise half of settler needs, plus the hitpoint step. `piety` is not touched here: it climbs only
@@ -53,16 +54,14 @@ export const HEAL_STEPS_TO_FULL = STARVATION_BITES_TO_DIE * 2;
  * it seeks. A person of a recorded tribe with no `jobEnables` is skipped on an approximation: the maps place
  * the monster tribes as a seat's soldiers no building can employ, so their bars would only ever pin.
  *
- * Hitpoints move on their own beat for everyone, fed or not: a settler whose hunger has pinned loses them
- * until it eats or the pool empties, and any other wounded settler regains them.
+ * Hitpoints move for everyone, fed or not: a settler whose hunger has pinned loses them until it eats or
+ * the pool empties, and any other wounded settler regains them.
  */
 export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
-  const healthBeat = ctx.tick % HEALTH_STEP_INTERVAL_TICKS === 0;
   for (const e of world.query(Person)) {
-    const bars = carriesNeeds(world, ctx.content, e);
-    if (bars) drainNeeds(world, ctx, e);
-    if (healthBeat) stepHealth(world, ctx, e, bars);
+    const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
+    stepHealth(world, ctx, e, settler);
   }
 };
 
@@ -72,14 +71,16 @@ export function carriesNeeds(world: World, content: ContentSet, e: Entity): bool
   return settler !== undefined && !world.has(e, Age) && !declaresNoTrades(content, settler.tribe);
 }
 
-/** Drain one tick off the three needs time alone moves; a fighter's company need is frozen instead. */
-function drainNeeds(world: World, ctx: SystemContext, e: Entity): void {
+/** Drain one tick off the three needs time alone moves, and hand back the drained bars so the hitpoint
+ *  step reads them without a second lookup; a fighter's company need is frozen instead. */
+function drainNeeds(world: World, ctx: SystemContext, e: Entity): SettlerView {
   const settler = world.mut(e, Settler);
   settler.hunger = applyNeedUnits(settler.hunger, -NEED_DRAIN_UNITS_PER_TICK);
   settler.fatigue = applyNeedUnits(settler.fatigue, -NEED_DRAIN_UNITS_PER_TICK);
   if (!isFighterJob(ctx.content, settler.jobType)) {
     settler.enjoyment = applyNeedUnits(settler.enjoyment, -NEED_DRAIN_UNITS_PER_TICK);
   }
+  return settler;
 }
 
 /**
@@ -87,18 +88,19 @@ function drainNeeds(world: World, ctx: SystemContext, e: Entity): void {
  * a full pool. A jobless settler never starves: the eat drive lives in the job planner, which skips it, so
  * nothing could feed it. The 0-HP reap is CleanupSystem's.
  */
-function stepHealth(world: World, ctx: SystemContext, e: Entity, bars: boolean): void {
+function stepHealth(world: World, ctx: SystemContext, e: Entity, settler: SettlerView | undefined): void {
   const health = world.tryGet(e, Health);
   if (health === undefined || health.hitpoints <= 0) return;
-  const settler = world.get(e, Settler);
-  if (bars && settler.hunger === ONE && settler.jobType !== null) {
-    const bite = Math.max(1, Math.trunc(health.max / STARVATION_BITES_TO_DIE));
+  if (settler !== undefined && settler.hunger === ONE && settler.jobType !== null) {
+    const bite = poolStepAt(health.max, STARVATION_TICKS_TO_DIE, ctx.tick);
+    if (bite === 0) return;
     // The healing draught's death-save may answer a lethal bite.
     if (health.hitpoints - bite <= 0 && tryDeathSaveDraught(world, ctx, e)) return;
     world.mut(e, Health).hitpoints = Math.max(0, health.hitpoints - bite);
     return;
   }
   if (health.hitpoints >= health.max) return;
-  const heal = Math.max(1, Math.trunc(health.max / HEAL_STEPS_TO_FULL));
+  const heal = poolStepAt(health.max, HEALING_TICKS_TO_FULL, ctx.tick);
+  if (heal === 0) return;
   world.mut(e, Health).hitpoints = Math.min(health.max, health.hitpoints + heal);
 }

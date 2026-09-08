@@ -14,7 +14,12 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
-import { atomicSystem, needsSystem, plannerSystem } from '../../src/systems/index.js';
+import {
+  atomicSystem,
+  needsSystem,
+  plannerSystem,
+  STARVATION_TICKS_TO_DIE,
+} from '../../src/systems/index.js';
 import { resolveAttackHit } from '../../src/systems/settlers/atomics/effects/combat/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -150,9 +155,17 @@ describe('drink drive - hunger and fatigue draughts', () => {
 describe('healing draught - the death-save', () => {
   const HP_MAX = 300;
 
-  function woundedBearer(sim: Simulation, hitpoints: number, misc: ReadonlyArray<EquipmentSlot | null>) {
+  /** A pool the size of the starvation span, which loses one whole hitpoint on every tick. */
+  const WHOLE_STEP_POOL = STARVATION_TICKS_TO_DIE;
+
+  function woundedBearer(
+    sim: Simulation,
+    hitpoints: number,
+    misc: ReadonlyArray<EquipmentSlot | null>,
+    max = HP_MAX,
+  ) {
     const settler = needsSettlerAt(sim, 0, 0, {});
-    sim.world.add(settler, Health, { hitpoints, max: HP_MAX });
+    sim.world.add(settler, Health, { hitpoints, max });
     carryDraughts(sim, settler, misc);
     return settler;
   }
@@ -214,10 +227,10 @@ describe('healing draught - the death-save', () => {
 
   it('the starvation bite that would finish a bearer is saved too', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(4, 1) });
-    const settler = woundedBearer(sim, 1, [fresh(POTION_HEAL)]);
-    sim.world.mut(settler, Settler).hunger = ONE; // starving, and the bite (max/240 >= 1) is lethal
-    needsSystem(sim.world, ctxOf(sim)); // tick 0 is a starvation beat
-    expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX / 2);
+    const settler = woundedBearer(sim, 1, [fresh(POTION_HEAL)], WHOLE_STEP_POOL);
+    sim.world.mut(settler, Settler).hunger = ONE; // starving, and this tick's whole-point bite is lethal
+    needsSystem(sim.world, ctxOf(sim));
+    expect(sim.world.get(settler, Health).hitpoints).toBe(WHOLE_STEP_POOL / 2);
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
   });
 

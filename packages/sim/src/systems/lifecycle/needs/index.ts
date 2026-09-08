@@ -12,10 +12,9 @@ export {
 export {
   carriesNeeds,
   chargeMilitaryPiety,
-  HEAL_STEPS_TO_FULL,
-  HEALTH_STEP_INTERVAL_TICKS,
+  HEALING_TICKS_TO_FULL,
   NEED_INIT_SPREAD_UNITS,
   needsSystem,
   rollInitialNeed,
-  STARVATION_BITES_TO_DIE,
+  STARVATION_TICKS_TO_DIE,
 } from './system.js';
