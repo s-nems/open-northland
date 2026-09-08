@@ -1,4 +1,5 @@
 import type { MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
+import type { LocalSeat } from '@open-northland/lockstep';
 
 /**
  * Pure roster state behind the lobby screen: seats, colours and vacant modes over the slots
@@ -11,13 +12,10 @@ export type MapPlayerSlot = MapsIndexPlayerSlot;
 /** What a free claimable seat does once the game starts: nothing, or the strategic AI plays it. */
 export type VacantMode = 'idle' | 'ai';
 
-/** `?player=observer`: watch and inspect the match without controlling a slot or issuing a command. */
-export const OBSERVER_SEAT = 'observer';
+export { OBSERVER_SEAT, OVERSEER_SEAT } from '@open-northland/lockstep';
 
-/** `?player=overseer`: the observer's whole-map view, but commanding every seat. */
-export const OVERSEER_SEAT = 'overseer';
-
-export type SeatChoice = number | typeof OBSERVER_SEAT | typeof OVERSEER_SEAT;
+/** What the lobby lets a person claim, which is what the session then plays. */
+export type SeatChoice = LocalSeat;
 
 /** An `ai` slot auto-plays when the lobby allows AI at all; a `human` one idles. */
 export function authoredVacantMode(slot: MapPlayerSlot): VacantMode {
@@ -87,24 +85,4 @@ export function aiSeats(state: RosterState, players: readonly MapPlayerSlot[]): 
         (state.vacantModes.get(p.player) ?? authoredVacantMode(p)) === 'ai',
     )
     .map((p) => p.player);
-}
-
-/**
- * The start-URL params for the roster choices. `colors=<slot>:<colorId>,…` carries only slots
- * recoloured away from the authored colour, while `ai=<slot>,…` carries the full seat list, because
- * the `?map=` entry consumes it with no roster knowledge of its own. Empty until a seat is claimed.
- */
-export function rosterStartParams(
-  state: RosterState,
-  players: readonly MapPlayerSlot[],
-): readonly (readonly [string, string])[] {
-  if (state.seat === null) return [];
-  const params: (readonly [string, string])[] = [['player', String(state.seat)]];
-  const recoloured = players
-    .filter((p) => state.colors.get(p.player) !== undefined && state.colors.get(p.player) !== p.colorId)
-    .map((p) => `${p.player}:${state.colors.get(p.player)}`);
-  if (recoloured.length > 0) params.push(['colors', recoloured.join(',')]);
-  const ai = aiSeats(state, players);
-  if (ai.length > 0) params.push(['ai', ai.join(',')]);
-  return params;
 }

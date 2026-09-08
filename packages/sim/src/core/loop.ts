@@ -36,10 +36,27 @@ export class FixedTimestep {
    * Returns the interpolation alpha in [0,1) for the renderer to blend prev->current state.
    */
   advance(elapsedMs: number, step: () => void): number {
+    return this.advanceWhile(elapsedMs, () => {
+      step();
+      return true;
+    });
+  }
+
+  /**
+   * {@link advance} for a caller that may refuse a tick, such as a session waiting for the inputs of
+   * the tick it is about to run. A refusal holds the owed time at one frame's worth of ticks: a short
+   * wait is made up over the following frames, while a long one does not bank minutes of wall clock
+   * that would then be spent as a sprint or written off as dropped ticks. The alpha is clamped to one
+   * tick, so a held frame draws the last tick's state rather than extrapolating past it.
+   */
+  advanceWhile(elapsedMs: number, step: () => boolean): number {
     this.accumulatorMs += elapsedMs;
     let steps = 0;
     while (this.accumulatorMs >= MS_PER_TICK && steps < this.maxStepsPerFrame) {
-      step();
+      if (!step()) {
+        this.accumulatorMs = Math.min(this.accumulatorMs, this.maxStepsPerFrame * MS_PER_TICK);
+        break;
+      }
       this.accumulatorMs -= MS_PER_TICK;
       steps++;
     }
@@ -49,6 +66,6 @@ export class FixedTimestep {
       this.dropped += Math.round(this.accumulatorMs / MS_PER_TICK);
       this.accumulatorMs = 0;
     }
-    return this.accumulatorMs / MS_PER_TICK;
+    return Math.min(this.accumulatorMs / MS_PER_TICK, 1);
   }
 }

@@ -13,6 +13,7 @@
   "dependencies": {
     "@open-northland/audio": "*",
     "@open-northland/data": "*",
+    "@open-northland/lockstep": "*",
     "@open-northland/render": "*",
     "@open-northland/sim": "*",
     "@open-northland/art-contracts": "*"

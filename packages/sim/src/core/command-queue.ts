@@ -79,16 +79,17 @@ export class CommandQueue {
   }
 
   /**
-   * Take the commands due at `tick` and clear them from the queue: the targeted ones stamped for it, in
-   * assigned order, then the untargeted ones in enqueue order. A stamp for a later tick stays; one for a
+   * Take the commands due at `tick` and clear them from the queue: the untargeted ones in enqueue order
+   * first - the world's own emissions and authored setup, which belong to the tick's starting state -
+   * then the ones stamped for this tick, in assigned order. A stamp for a later tick stays; one for a
    * tick that has already passed is dropped and counted, never applied late and never logged, so the log
    * stays a record of what this run acted on and replays back to the same state. CommandSystem is the one
    * per-tick caller and records each returned envelope via {@link record}.
    */
   drain(tick: number): readonly CommandEnvelope[] {
-    const out = this.scheduled.length === 0 ? [] : this.dueScheduled(tick);
-    for (const envelope of this.pending) out.push(envelope);
+    const out = this.pending;
     this.pending = [];
+    if (this.scheduled.length > 0) out.push(...this.dueScheduled(tick));
     return out;
   }
 

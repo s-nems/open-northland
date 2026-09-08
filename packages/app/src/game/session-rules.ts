@@ -1,3 +1,4 @@
+import type { SessionRules } from '@open-northland/lockstep';
 import type { Simulation } from '@open-northland/sim';
 import { fogModeParam } from './fog.js';
 
@@ -9,16 +10,8 @@ export function onOffParam(params: URLSearchParams, name: string): boolean | nul
   return null;
 }
 
-/** The world rules a URL flag reshapes; null keeps whatever the world set for itself. */
-export interface SessionRuleOverrides {
-  readonly fog: number | null;
-  /** `?progression=` sets `ProgressionRules.professionProgressionEnabled`, which defines its reach. */
-  readonly progression: boolean | null;
-  /** `?needs=` sets the world's `WorldRules.needsEnabled`, which defines what the rule covers. */
-  readonly needs: boolean | null;
-}
-
-export function sessionRuleOverrides(params: URLSearchParams): SessionRuleOverrides {
+/** The `?fog=`, `?progression=` and `?needs=` flags as the session's rule overrides. */
+export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
   return {
     fog: fogModeParam(params),
     progression: onOffParam(params, 'progression'),
@@ -31,7 +24,7 @@ export function sessionRuleOverrides(params: URLSearchParams): SessionRuleOverri
  * rules, so a flag wins in either direction; an absent flag enqueues nothing, keeping the command
  * stream byte-identical.
  */
-export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRuleOverrides): void {
+export function applySessionRuleOverrides(sim: Simulation, overrides: SessionRules): void {
   if (overrides.fog !== null) sim.enqueueSetup({ kind: 'setFogMode', mode: overrides.fog });
   if (overrides.progression !== null) {
     sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: overrides.progression });

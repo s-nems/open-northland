@@ -1,4 +1,5 @@
 import type { ContentSet, MapDiplomacy, TerrainMapFile } from '@open-northland/data';
+import type { SessionRules } from '@open-northland/lockstep';
 import {
   type Entity,
   halfCellMapFromCells,
@@ -16,7 +17,7 @@ import {
   spawnMapResources,
   type WorldContentOptions,
 } from '../../game/sandbox/index.js';
-import { applySessionRuleOverrides, type SessionRuleOverrides } from '../../game/session-rules.js';
+import { applySessionRuleOverrides } from '../../game/session-rules.js';
 import {
   authoredCatalogExtras,
   demoWorldBase,
@@ -34,7 +35,7 @@ import { grantAssistantDefaults } from '../../view/assistant-grants.js';
 
 export type MapWorldKind = 'authored' | 'bare' | 'demo';
 
-export interface MapWorldOptions extends SessionRuleOverrides {
+export interface MapWorldOptions extends SessionRules {
   readonly seed: number;
   /** The decoded `content/maps/<id>.json` grid, or null when no map id resolved. */
   readonly map: TerrainMapFile | null;

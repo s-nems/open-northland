@@ -1,11 +1,12 @@
 import type { MusicStanding } from '@open-northland/audio';
+import type { LockstepDriver } from '@open-northland/lockstep';
 import type { HudLayout, HudModel } from '@open-northland/render';
-import type { FixedTimestep, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
 import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/index.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
-import type { GameToolPanelHandle, LoopSpeedControl } from '../game-tool-panel.js';
+import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
@@ -28,8 +29,8 @@ import { type RafLoop, startRafLoop } from './raf-loop.js';
 export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
   readonly fpsLimit: FpsLimit;
-  readonly control: LoopSpeedControl;
-  readonly timestep: FixedTimestep;
+  /** The session clock: it decides how many ticks this frame may run and holds the render alpha. */
+  readonly driver: LockstepDriver;
   readonly frameStats: FrameStats;
   readonly fogGates: FogGates;
   readonly toolPanel: GameToolPanelHandle;
@@ -65,15 +66,14 @@ export interface FrameLoopDeps {
 }
 
 /**
- * Start the fixed-timestep RAF loop. The per-frame order is pinned here: sim steps, camera, one shared
- * snapshot, then the tool panel and unit controls before `renderer.update`, so screen-space HUD meshes
- * carry this frame's canvas resolution and the baked panel matches the frame drawn over it.
+ * Start the RAF loop over a session driver. The per-frame order is pinned here: sim steps, camera, one
+ * shared snapshot, then the tool panel and unit controls before `renderer.update`, so screen-space HUD
+ * meshes carry this frame's canvas resolution and the baked panel matches the frame drawn over it.
  */
 export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const {
     deps,
-    control,
-    timestep,
+    driver,
     frameStats,
     fogGates,
     toolPanel,
@@ -103,9 +103,6 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // Frame phases join the sim instrument's per-system slices in one `?debug=perf` / `?debug=trace` recording.
   const emitPhase = framePhaseEmitter(deps.params);
   let lastMs = performance.now();
-  // Interpolation fraction for the renderer's entity anchors; a pause freezes it, so an arrow holds its
-  // drawn spot mid-flight.
-  let renderAlpha = 1;
   // Every step's events, not just the last tick's: a frame may advance several ticks and each step
   // clears the sim's buffer.
   const frameEvents: SimEvent[] = [];
@@ -115,8 +112,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     rosterPlayers: deps.rosterPlayers ?? [],
     observer: deps.observer === true,
   };
-  // Bound once and pulled by the driver only once a map has handed over its music, so a scene, a muted
-  // session, or a map without music never pays the head-count's O(entities) tally.
+  // Bound once and pulled by the sound driver only once a map has handed over its music, so a scene, a
+  // muted session, or a map without music never pays the head-count's O(entities) tally.
   const musicStanding = (snap: WorldSnapshot): MusicStanding => ({
     population: hudModelFor(snap).population,
     stance: harshestStance(sim, musicRoster),
@@ -125,8 +122,10 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const buildingOverlay = (buildingType: number) =>
     overlayFrame(buildingType, cameraCtl.camera(), app.screen.width, app.screen.height);
   const signpostOverlay = () => signpostOverlayFrame(cameraCtl.camera(), app.screen.width, app.screen.height);
+  // A frame may advance several ticks; `steps` is read back after the driver returns.
+  let steps = 0;
   const collect = (): void => {
-    sim.step();
+    steps++;
     recordDiagHash(sim);
     for (const ev of sim.events.current()) frameEvents.push(ev);
   };
@@ -140,18 +139,13 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const cpu0 = performance.now();
     frameEvents.length = 0;
     // A persistently high step count is the sim falling behind wall-clock.
-    let steps = 0;
-    if (!control.paused) {
-      renderAlpha = timestep.advance(elapsed * control.speed, () => {
-        collect();
-        steps++;
-      });
-    }
+    steps = 0;
+    const renderAlpha = driver.advance(elapsed, collect);
     const simMs = performance.now() - cpu0;
     cameraCtl.update(elapsed); // a no-op while the system menu holds the camera suspended
     // Idempotent: the sepia wash mirrors the pause flag every frame rather than on transitions, so a
     // pauser never has to know about the renderer.
-    renderer.setPaused(control.paused);
+    renderer.setPaused(driver.paused);
     // Before anything draws: the map entry's resource handover must release a first-worked node in the
     // same frame the pool starts drawing it.
     if (frameEvents.length > 0) deps.onEvents?.(frameEvents);
@@ -264,9 +258,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       tick: snap.tick,
       steps,
       // A monotonic session total; the fold derives the per-window delta from it.
-      droppedTicks: timestep.droppedTicks,
-      speed: control.speed,
-      paused: control.paused,
+      droppedTicks: driver.droppedTicks,
+      speed: driver.speed,
+      paused: driver.paused,
       entities: snap.entities.length,
       cpuMs,
       simMs,

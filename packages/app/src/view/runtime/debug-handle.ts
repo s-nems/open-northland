@@ -1,12 +1,12 @@
 /** The machine-readable debug seam both playable entries expose, installed by `startGameView`. */
+import type { LockstepDriver } from '@open-northland/lockstep';
 import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
-import { type FixedTimestep, type Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
+import { type Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
 import type { FrameStats, FrameStatsReport } from '../../diag/frame-stats.js';
 import { heapMb } from '../../diag/heap.js';
 import type { SystemProfile, SystemProfileRow } from '../../diag/system-profile.js';
 import { recordedTraceEvents, type TraceEvent } from '../../diag/trace.js';
 import type { CameraController } from '../camera/index.js';
-import type { LoopSpeedControl } from '../game-tool-panel.js';
 
 declare global {
   interface Window {
@@ -78,8 +78,8 @@ export interface OpenNorthlandDebug {
   perf(): PerfReport;
   /** Open a fresh measurement window for {@link perf}. */
   resetPerf(): void;
-  /** Writes the loop's speed control directly, reaching multipliers the tool panel's button cannot;
-   *  the panel glyph does not follow. */
+  /** Sets the session's speed directly, reaching multipliers the tool panel's button cannot; the panel
+   *  glyph does not follow, and a multiplier of zero or less is refused - `setPaused` stops the clock. */
   setSpeed(multiplier: number): void;
   setPaused(paused: boolean): void;
   /** The `?debug=trace` ring (a bounded tail), or null when not recording. */
@@ -146,8 +146,7 @@ export interface DebugHandleDeps {
   readonly sheet: SpriteSheet | undefined;
   readonly cameraCtl: CameraController;
   readonly canvas: HTMLCanvasElement;
-  readonly control: LoopSpeedControl;
-  readonly timestep: FixedTimestep;
+  readonly driver: LockstepDriver;
   readonly frameStats: FrameStats;
   /** Null unless `?debug=profile` asked for a running per-system profile. */
   readonly profile: SystemProfile | null;
@@ -170,10 +169,10 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
     perf: () =>
       buildPerfReport({
         frame: deps.frameStats.report(),
-        requestedSpeed: deps.control.speed,
-        paused: deps.control.paused,
-        maxStepsPerFrame: deps.timestep.maxSteps,
-        droppedTicksTotal: deps.timestep.droppedTicks,
+        requestedSpeed: deps.driver.speed,
+        paused: deps.driver.paused,
+        maxStepsPerFrame: deps.driver.maxStepsPerFrame,
+        droppedTicksTotal: deps.driver.droppedTicks,
         profiling: deps.profile !== null,
         systems: deps.profile?.rows() ?? [],
         sampling: sampling(),
@@ -182,12 +181,8 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
       deps.frameStats.reset();
       deps.profile?.reset();
     },
-    setSpeed: (multiplier) => {
-      deps.control.speed = multiplier;
-    },
-    setPaused: (paused) => {
-      deps.control.paused = paused;
-    },
+    setSpeed: (multiplier) => deps.driver.setSpeed(multiplier),
+    setPaused: (paused) => deps.driver.setPaused(paused),
     trace: () => recordedTraceEvents(),
   };
 }

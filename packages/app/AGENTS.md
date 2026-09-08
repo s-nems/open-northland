@@ -1,7 +1,8 @@
 # App package contract
 
-`packages/app` is the browser shell. It translates input into sim commands, runs the fixed-timestep
-loop, and gives snapshots and events to render, audio, and the HUD. It is the only package allowed to
+`packages/app` is the browser shell. It translates input into sim commands, runs the frame loop over
+a `@open-northland/lockstep` session driver, and gives snapshots and events to render, audio, and the
+HUD. It is the only package allowed to
 own both a live simulation and a renderer. Audio may use the pure `@open-northland/render/data`
 projection helpers.
 
@@ -10,8 +11,9 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
 ## Boundaries
 
 - Browser APIs, I/O, wall-clock time, and presentation floats belong here, not in sim.
-- Submit external state changes through `sim.enqueue()` in a seat or admin envelope, and world
-  assembly through `sim.enqueueSetup()`. Do not mutate live component stores from UI or renderer glue.
+- Submit a running session's state changes through `LockstepDriver.submit()` in a seat or admin
+  envelope, and pre-tick world assembly through `sim.enqueueSetup()`. Tempo and pause are session clock
+  operations, not loop fields. Do not mutate live component stores from UI or renderer glue.
 - Read the world through snapshots and explicit simulation probes.
 - Load generated content through the shared network/resolver seams. A checkout without `content/`
   must still boot using synthetic fallback content or a clear unavailable state.

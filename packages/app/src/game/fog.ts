@@ -27,3 +27,9 @@ export function fogModeParam(params: URLSearchParams): number | null {
   // Object.hasOwn, not `in`: `?fog=toString` matches the prototype chain and would index `undefined`.
   return Object.hasOwn(FOG_MODE_BY_NAME, name) ? FOG_MODE_BY_NAME[name as FogModeName] : null;
 }
+
+/** `FOG_MODE` id → the name the URL spells it with; null for an id no name covers. */
+export function fogModeName(mode: number): FogModeName | null {
+  const names = Object.keys(FOG_MODE_BY_NAME) as FogModeName[];
+  return names.find((name) => FOG_MODE_BY_NAME[name] === mode) ?? null;
+}

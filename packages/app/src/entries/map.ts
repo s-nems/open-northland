@@ -1,4 +1,13 @@
 import {
+  aiSeatsOf,
+  isReadOnlySpectator,
+  isSpectator,
+  LockstepDriver,
+  LoopbackTransport,
+  localPlayerOf,
+  seatColourOf,
+} from '@open-northland/lockstep';
+import {
   type Camera,
   createWindowPixiApp,
   makeElevationField,
@@ -16,20 +25,12 @@ import { loadOwnTerrain } from '../content/own-assets/terrain.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
+import { playerNameMap, playerTribe } from '../game/map-roster.js';
 import { mapStartFocus } from '../game/map-start.js';
 import { matchIsContested, matchParticipants, neverDiesSeats } from '../game/match-participants.js';
 import { mapMissionBrief } from '../game/mission-brief.js';
-import {
-  colorOverridesParam,
-  localPlayerParam,
-  observerParam,
-  playerColourMap,
-  playerNameMap,
-  playerTribe,
-  readOnlyObserverParam,
-} from '../game/player-session.js';
 import { harvestablePlacementOrdinals, sandboxGoods } from '../game/sandbox/index.js';
-import { sessionRuleOverrides } from '../game/session-rules.js';
+import { mapIdParam, mapSession } from '../game/session-url.js';
 import { terrainSceneFor } from '../game/world/index.js';
 import { worldTribes } from '../game/world-tribes.js';
 import { currentLocale, messages } from '../i18n/index.js';
@@ -38,7 +39,7 @@ import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { mapZoomParam } from '../view/camera/map-zoom.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
-import { aiSeatsParam, intParam, introParam } from '../view/params.js';
+import { introParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { takeStagedSave } from '../view/runtime/save-load/index.js';
 import {
@@ -59,9 +60,6 @@ import { buildMapWorld, restoreMapWorld } from './map/world.js';
  * unknown or undecodable map id falls back to the synthetic grass strip; a checkout without served
  * `content/` halts at the terrain step.
  */
-
-/** The seed a `?map=` session runs on when its URL names none; a networked session carries its own. */
-const DEFAULT_WORLD_SEED = 7;
 
 export const MAP_BOOT_PHASES = [
   'graphics',
@@ -90,7 +88,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   bindDisplayMode(params);
   const boot = mountBootProgress(MAP_BOOT_PHASES);
   await boot.begin('graphics');
-  const mapId = params.get('map');
+  const mapId = mapIdParam(params);
   const ownAssets = assetSetFor(params) === 'own';
   // Consumed before any other boot work: a staged save that fails from here on halts the boot rather
   // than silently starting a fresh world.
@@ -110,17 +108,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     mapId !== null ? loadMapMeta(mapId) : null,
     mapId !== null ? loadMapBriefing(mapId) : null,
   ]);
-  const seed = intParam(params, 'seed', DEFAULT_WORLD_SEED);
-  const localPlayer = localPlayerParam(params);
-  const playerColourOf = playerColourMap(script, colorOverridesParam(params));
-  diag.info('boot', 'game start', {
-    entry: 'map',
-    mapId,
-    decodedMap: loaded !== null,
-    seed,
-    localPlayer,
-    rosterSize: script?.players.length ?? 0,
-  });
+  const session = mapSession(params, script?.players ?? []);
+  const localPlayer = localPlayerOf(session);
+  const playerColourOf = seatColourOf(session);
+  diag.info('boot', 'game start', { entry: 'map', decodedMap: loaded !== null, session });
   const terrainGrid = terrainSceneFor(loaded ?? undefined);
   // Flat when the map carries no `lmhe` lane. The renderer builds its own field for the ground mesh;
   // this instance lifts the map objects at load and drives elevation-aware picking.
@@ -170,14 +161,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   }
   await boot.begin('world');
   const footprints = buildingFootprints(ir);
-  // `?ai=<seat>[,…]` flags seats for the strategic AI player.
-  const aiSeats = aiSeatsParam(params);
+  const aiSeats = aiSeatsOf(session);
   // A read-only spectator drives no seat, so it takes no chest-window grants. The chest window edits
   // only `localPlayer`, so an overseer cannot switch an AI seat's grants back off.
-  const controlled = readOnlyObserverParam(params) ? [] : [localPlayer];
+  const controlled = isReadOnlySpectator(session) ? [] : [localPlayer];
   // A spectator of either kind plays no seat in the match; the overseer's grants still start on.
   const participants = matchParticipants({
-    controlled: observerParam(params) ? [] : [localPlayer],
+    controlled: isSpectator(session) ? [] : [localPlayer],
     aiSeats,
     neverDies: script === null ? [] : neverDiesSeats(script),
   });
@@ -210,12 +200,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   } else {
     const world = buildMapWorld({
       ...worldOptions,
-      seed,
+      seed: session.seed,
       aiSeats,
       assistantSeats: [...controlled, ...aiSeats],
       matchParticipants: participants,
       diplomacy: script?.diplomacy ?? [],
-      ...sessionRuleOverrides(params),
+      ...session.rules,
     });
     sim = world.sim;
     harvestablePlacements = world.harvestablePlacements;
@@ -227,6 +217,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     restoredAtTick: stagedSave !== null ? sim.tick : null,
     sim,
     hashTrace: hashTraceFor(params),
+  });
+  const driver = new LockstepDriver({
+    sim,
+    transport: new LoopbackTransport(),
+    speed: session.speed,
+    paused: stagedSave !== null,
   });
 
   const staticLayer =
@@ -269,11 +265,12 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     renderer,
     sheet,
     sim,
+    driver,
     cameraCtl,
     terrainGrid,
     localPlayer,
-    observer: observerParam(params),
-    readOnly: readOnlyObserverParam(params),
+    observer: isSpectator(session),
+    readOnly: isReadOnlySpectator(session),
     playerColourOf,
     seatTribeOf: (player) => playerTribe(script, player),
     tribes,
@@ -285,7 +282,6 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     ...(staticLayer !== null ? { onEvents: staticLayer } : {}),
     worldToken: mapId,
-    restored: stagedSave !== null,
     introAtStart: stagedSave === null && introParam(params),
     musicType: meta?.musicType ?? null,
     missionBrief: mapMissionBrief({

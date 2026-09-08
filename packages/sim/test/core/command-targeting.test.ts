@@ -68,16 +68,19 @@ describe('tick-targeted commands', () => {
     ]);
   });
 
-  it('applies targeted envelopes before the untargeted ones of the same tick', () => {
+  it('applies the untargeted envelopes of a tick before the ones stamped for it', () => {
+    // A session stamps its seats' orders; the world's own emissions - an AI seat's commands, authored
+    // setup - stay untargeted, so keeping them first leaves a stamped order landing exactly where the
+    // same order landed before it was stamped.
     const s = sim();
     s.enqueue(setNeeds(true));
     s.enqueueAt(setNeeds(false), 1, 0);
     s.step();
 
-    expect(s.needsEnabled()).toBe(true); // the untargeted one landed last
+    expect(s.needsEnabled()).toBe(false); // the stamped one landed last
     expect(s.commands.log.map((e) => e.command)).toEqual([
-      { kind: 'setNeedsEnabled', enabled: false },
       { kind: 'setNeedsEnabled', enabled: true },
+      { kind: 'setNeedsEnabled', enabled: false },
     ]);
   });
 

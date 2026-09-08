@@ -10,6 +10,7 @@
   "references": [
     { "path": "../data" },
     { "path": "../sim" },
+    { "path": "../lockstep" },
     { "path": "../render" },
     { "path": "../audio" },
     { "path": "../content-resolver" },

@@ -1,7 +1,6 @@
 # Build the relay server core and the lockstep wire protocol
 
 **Area:** web, desktop · **Focus:** new package packages/net-server · **Priority:** P2
-**Blocked by:** [multiplayer-3-session-and-loopback.md](multiplayer-3-session-and-loopback.md)
 
 There is no server and no network code in the repository. The chosen model is server-paced
 deterministic lockstep with a relay: the server is the authority for time (the tick clock), order

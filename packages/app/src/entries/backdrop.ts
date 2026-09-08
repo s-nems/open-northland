@@ -1,3 +1,4 @@
+import { seatColourOf } from '@open-northland/lockstep';
 import { createWindowPixiApp, makeElevationField, type TerrainTextureSet } from '@open-northland/render';
 import { buildCollisionTerrain } from '../content/collision.js';
 import { buildingFootprints } from '../content/ir/joins.js';
@@ -8,8 +9,8 @@ import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain } from '../content/terrain.js';
 import { diag } from '../diag/index.js';
 import { mapStartFocus } from '../game/map-start.js';
-import { colorOverridesParam, playerColourMap } from '../game/player-session.js';
 import { sandboxGoods } from '../game/sandbox/index.js';
+import { mapSession } from '../game/session-url.js';
 import { runAuthoredMap, runBareMap, terrainSceneFor } from '../game/world/index.js';
 import { worldTribes } from '../game/world-tribes.js';
 import { cameraCenteredOnTile } from '../view/camera/index.js';
@@ -47,12 +48,8 @@ export async function renderBackdrop(canvas: HTMLCanvasElement, params: URLSearc
   // capture's pixel output must not vary with machine settings.
   const app = await createWindowPixiApp(canvas);
   if (postFxParam(params) === null) params.set('postfx', 'on');
-  const renderer = createWorldRenderer(
-    app,
-    params,
-    sheet,
-    playerColourMap(script, colorOverridesParam(params)),
-  );
+  const session = mapSession(params, script?.players ?? []);
+  const renderer = createWorldRenderer(app, params, sheet, seatColourOf(session));
   const terrainGrid = terrainSceneFor(loaded);
   renderer.setTerrain(terrainGrid, terrain);
   const elevation = makeElevationField(loaded.elevation, loaded.width, loaded.height);

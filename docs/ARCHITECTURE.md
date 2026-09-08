@@ -25,7 +25,10 @@ asset-pipeline -> generated content -> content-resolver -> app / desktop
 - `packages/data` owns the validated content schemas and loaders.
 - `packages/render` turns simulation snapshots into a PixiJS scene. It does not mutate the sim.
 - `packages/audio` chooses sounds from snapshots and events, then plays them through Web Audio.
-- `packages/app` owns browser input, menus, HUD, the fixed-timestep loop, and package wiring.
+- `packages/lockstep` describes a session as serializable data and drives one client of it: it
+  decides when a tick may run and which command envelopes it carries. It depends on `sim` alone, so
+  the same driver runs in a browser, in Electron, and in a headless Node client.
+- `packages/app` owns browser input, menus, HUD, the frame loop, and package wiring.
 - `packages/content-resolver` maps content URLs onto the generated directory for every host.
 - `packages/vfs` is the file-system seam the pipeline, the content routes, and the installers share,
   so one codebase runs over Node and over browser storage.
@@ -43,9 +46,13 @@ renderer or mutate the sim.
 
 External intent enters the simulation as serializable command envelopes. An envelope names the
 authority it acts under - a human seat, an AI seat, authored setup, or the admin channel - and a seat
-envelope can only carry the commands that seat may issue. The app calls `sim.enqueue(envelope)`, then
-`sim.step()` admits each queued command its origin is entitled to, applies it, and runs the fixed
-system schedule. Systems mutate their own world during the tick. Authored world assembly uses
+envelope can only carry the commands that seat may issue. The HUD hands an envelope to the session
+driver, which submits it to a transport; the transport decides which tick it applies at and where it
+sits in that tick, and the driver runs a tick only once that tick's inputs are complete. `sim.step()`
+admits each queued command its origin is entitled to, applies it, and runs the fixed system schedule.
+A tick applies the world's own untargeted emissions first - an AI seat's commands, authored setup -
+then the session's stamped input. Single-player runs the same driver over an in-process loopback
+transport. Systems mutate their own world during the tick. Authored world assembly uses
 `sim.enqueueSetup(command)`; `parseCommandLog` is the validator an importer of untrusted replay or
 diagnostics JSON has to run before that log drives a sim.
 

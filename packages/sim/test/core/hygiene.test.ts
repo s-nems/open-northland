@@ -4,11 +4,15 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Encodes the determinism anti-patterns (AGENTS.md) as a TEST, not just a doc: the sim must contain
- * no ambient nondeterminism. An LLM agent will reach for Math.random/Date.now reflexively; this
- * turns "the agent read the rule" into "the build fails". Scans packages/sim/src only (not tests).
+ * Encodes the determinism anti-patterns (AGENTS.md) as a TEST, not just a doc: the packages whose
+ * output must be byte-identical on every engine contain no ambient nondeterminism. An LLM agent will
+ * reach for Math.random/Date.now reflexively; this turns "the agent read the rule" into "the build
+ * fails". Scans production sources only, not tests.
  */
-const SIM_SRC = fileURLToPath(new URL('../../src', import.meta.url));
+const DETERMINISTIC_SRC = [
+  fileURLToPath(new URL('../../src', import.meta.url)),
+  fileURLToPath(new URL('../../../lockstep/src', import.meta.url)),
+];
 
 const FORBIDDEN: Array<{ pattern: RegExp; why: string; allowFile?: RegExp }> = [
   { pattern: /\bMath\.random\b/, why: 'use world.rng (seeded) - Math.random is nondeterministic' },
@@ -53,9 +57,9 @@ function stripComments(line: string): string {
 }
 
 describe('determinism hygiene', () => {
-  it('packages/sim/src contains no nondeterministic globals', () => {
+  it('the deterministic packages contain no nondeterministic globals', () => {
     const violations: string[] = [];
-    for (const file of tsFiles(SIM_SRC)) {
+    for (const file of DETERMINISTIC_SRC.flatMap(tsFiles)) {
       // Exemption is a per-file fact - resolve it once, not per line × pattern.
       const rules = FORBIDDEN.filter(({ allowFile }) => !allowFile?.test(file));
       const lines = readFileSync(file, 'utf8').split('\n');

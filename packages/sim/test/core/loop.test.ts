@@ -48,4 +48,33 @@ describe('FixedTimestep', () => {
     loop.advance(MS_PER_TICK * 10, () => {});
     expect(loop.droppedTicks).toBe(10);
   });
+
+  it('holds a refused run at one frame of owed ticks, and blames the frame rate for none of it', () => {
+    const loop = new FixedTimestep(5);
+    let accepted = false;
+    const step = () => {
+      if (!accepted) return false;
+      ran++;
+      return true;
+    };
+    let ran = 0;
+
+    // A whole minute of frames while the session waits: nothing runs, and waiting is not a dropped tick.
+    for (let frame = 0; frame < 3600; frame++) loop.advanceWhile(1000 / 60, step);
+    expect(ran).toBe(0);
+    expect(loop.droppedTicks).toBe(0);
+
+    // The wait is made up over the following frames rather than banked and spent as a sprint.
+    accepted = true;
+    loop.advanceWhile(0, step);
+    expect(ran).toBe(loop.maxSteps);
+    loop.advanceWhile(0, step);
+    expect(ran).toBe(loop.maxSteps);
+    expect(loop.droppedTicks).toBe(0);
+  });
+
+  it('holds the alpha at one tick while a run is refused, so nothing extrapolates past it', () => {
+    const loop = new FixedTimestep();
+    expect(loop.advanceWhile(MS_PER_TICK * 4, () => false)).toBe(1);
+  });
 });

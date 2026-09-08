@@ -1,3 +1,4 @@
+import type { LockstepDriver } from '@open-northland/lockstep';
 import type {
   DoorBadge,
   ElevationField,
@@ -9,7 +10,6 @@ import {
   adminCommand,
   type Command,
   type Entity,
-  FixedTimestep,
   type PlayerCommand,
   playerCommand,
   type SimEvent,
@@ -69,6 +69,8 @@ export interface GameViewDeps {
   /** Absent in a checkout without decoded content, which leaves the animated worker field empty. */
   readonly sheet?: SpriteSheet;
   readonly sim: Simulation;
+  /** The session this client runs: it owns tempo and pause, and is where every HUD command goes. */
+  readonly driver: LockstepDriver;
   readonly cameraCtl: CameraController;
   readonly terrainGrid: SceneTerrain;
   /** typeId to minimap ground colour; without it the minimap keeps its flat-tint default. */
@@ -103,9 +105,6 @@ export interface GameViewDeps {
   /** The entry's world identity for save headers: the decoded map id, or `scene:<id>`. Omitted, saves
    *  carry no world token and only load back into another tokenless world. */
   readonly worldToken?: string | null;
-  /** True when the world came from a save: the session opens paused, so the player reads the board
-   *  they loaded before it moves. */
-  readonly restored?: boolean;
   readonly missionBrief?: MissionBrief;
   /** Open the mission window as the session starts, the original's mission briefing; the entry decides
    *  (a fresh world, and no `?intro=off`). */
@@ -114,7 +113,7 @@ export interface GameViewDeps {
   readonly musicType?: number | null;
 }
 
-export interface GameSession {
+export interface GameViewHandle {
   /** Stop the frame loop and remove this session's HUD overlays. Idempotent. */
   destroy(): void;
 }
@@ -123,9 +122,9 @@ const PAUSE_HOLDER_MENU = 'menu';
 const PAUSE_HOLDER_MISSION = 'mission';
 const PAUSE_HOLDER_VERDICT = 'verdict';
 
-/** Mount the standard in-game HUD over the assembled world and start the fixed-timestep loop. */
-export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
-  const { app, canvas, params, renderer, sim, cameraCtl } = deps;
+/** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
+export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
+  const { app, canvas, params, renderer, sim, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
   const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
 
@@ -140,11 +139,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   const saveLoad = createSaveLoadSession({
     sim,
     worldToken: deps.worldToken ?? null,
-    // `control` is assembled below; the flows only read it once a menu button fires.
-    setPaused: (paused) => {
-      control.paused = paused;
-    },
-    isPaused: () => control.paused,
+    setPaused: (paused) => driver.setPaused(paused),
+    isPaused: () => driver.paused,
   });
   // Three overlays hold the sim paused - the menu, the mission sheet and the verdict - so each holds
   // under its own key and none can release another's.
@@ -172,10 +168,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
 
   const lang = currentLocale();
   const keyBindings = storedSettings.keyBindings;
-  // `?speed=` seeds the wall-clock multiplier; the tool panel's speed button then drives it live.
-  const control = { paused: deps.restored === true, speed: floatParam(params, 'speed', 1) };
-  // Owned here rather than by the loop, so the dropped-tick tally spans the whole session.
-  const timestep = new FixedTimestep();
   const frameStats = new FrameStats();
 
   // A checkout without a decoded sound bank degrades to silence.
@@ -199,10 +191,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   // seat reaching into another's units.
   const readOnly = deps.readOnly === true;
   const overseer = deps.observer === true && !readOnly;
-  const issueTrusted = (command: Command): void => sim.enqueue(adminCommand(command));
+  const issueTrusted = (command: Command): void => driver.submit(adminCommand(command));
   const issueCommand = (command: PlayerCommand): void => {
     if (readOnly) return;
-    sim.enqueue(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
+    driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
   };
 
   const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
@@ -241,7 +233,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     bindings: keyBindings,
     tribe: seatTribeOf(localPlayer),
     owner: localPlayer,
-    onSpeed: (spec, cause) => applyGameSpeed(control, spec, cause),
+    onSpeed: (spec, cause) => applyGameSpeed(driver, spec, cause),
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
     overlayReserve: () => minimap?.panelRect() ?? null,
     onSystemMenu: () => systemMenu?.toggle(),
@@ -446,8 +438,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     sheet: deps.sheet,
     cameraCtl,
     canvas,
-    control,
-    timestep,
+    driver,
     frameStats,
     profile,
   });
@@ -456,8 +447,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
   loop = startFrameLoop({
     deps: { ...deps, onEvents },
     fpsLimit: storedSettings.fpsLimit,
-    control,
-    timestep,
+    driver,
     frameStats,
     fogGates,
     toolPanel,

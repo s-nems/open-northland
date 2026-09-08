@@ -20,6 +20,7 @@ const ticketAreas = new Set([
   'data',
   'desktop',
   'installer',
+  'lockstep',
   'pipeline',
   'render',
   'sim',

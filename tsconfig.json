@@ -4,6 +4,7 @@
     { "path": "packages/vfs" },
     { "path": "packages/data" },
     { "path": "packages/sim" },
+    { "path": "packages/lockstep" },
     { "path": "packages/render" },
     { "path": "packages/audio" },
     { "path": "packages/app" },

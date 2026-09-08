@@ -1,12 +1,20 @@
-import type { FogModeName } from '../../../game/fog.js';
+import { DEFAULT_LOCAL_PLAYER, type GameSession, orderedSeats } from '@open-northland/lockstep';
+import { FOG_MODE_BY_NAME, type FogModeName } from '../../../game/fog.js';
 import { onOffParam } from '../../../game/session-rules.js';
-import type { MapPlayerSlot } from './roster-state.js';
 import {
+  DEFAULT_SESSION_SEED,
+  DEFAULT_SESSION_SPEED,
+  seatMode,
+  sessionSearch,
+} from '../../../game/session-url.js';
+import { formatSearch } from '../../../view/params.js';
+import type { MapPlayerSlot, SeatChoice } from './roster-state.js';
+import {
+  aiSeats,
   authoredVacantMode,
   claimSeat,
   initialRosterState,
   type RosterState,
-  rosterStartParams,
   type VacantMode,
 } from './roster-state.js';
 
@@ -64,18 +72,55 @@ export function lobbySlotRows(
     }));
 }
 
-/** The `?map=` entry Start navigates to; every option is written explicitly so it overrides a stale
- *  carried param. */
+/**
+ * The session Start launches. Every rule is set rather than left to the world, so a stale carried param
+ * cannot leak into the next map. A roster with no claimable seat starts seatless: nothing is claimed
+ * and no seat auto-plays.
+ */
+export function lobbySession(
+  mapId: string,
+  state: RosterState,
+  players: readonly MapPlayerSlot[],
+  options: LobbyOptions,
+): GameSession {
+  const ai = new Set(state.seat === null ? [] : aiSeats(state, players));
+  const localSeat = state.seat ?? DEFAULT_LOCAL_PLAYER;
+  return {
+    world: { kind: 'map', mapId },
+    seed: DEFAULT_SESSION_SEED,
+    seats: orderedSeats(
+      lobbySeats(players, localSeat).map((slot) => ({
+        player: slot.player,
+        mode: seatMode(slot.player, localSeat, ai),
+        color: state.colors.get(slot.player) ?? slot.colorId,
+      })),
+    ),
+    localSeat,
+    rules: {
+      fog: FOG_MODE_BY_NAME[options.fog],
+      progression: options.professionProgression,
+      needs: options.settlerNeeds,
+    },
+    speed: DEFAULT_SESSION_SPEED,
+  };
+}
+
+/** The listed slots plus the seat a seatless roster falls back to, which the launched game plays and
+ *  the launch URL therefore has to carry. */
+function lobbySeats(
+  players: readonly MapPlayerSlot[],
+  localSeat: SeatChoice,
+): readonly { player: number; colorId: number }[] {
+  if (typeof localSeat !== 'number' || players.some((slot) => slot.player === localSeat)) return players;
+  return [...players, { player: localSeat, colorId: localSeat }];
+}
+
+/** The `?map=` entry Start navigates to: {@link lobbySession} as a URL. */
 export function lobbyStartEntry(
   mapId: string,
   state: RosterState,
   players: readonly MapPlayerSlot[],
   options: LobbyOptions,
 ): string {
-  const params = new URLSearchParams({ map: mapId });
-  for (const [key, value] of rosterStartParams(state, players)) params.set(key, value);
-  params.set('fog', options.fog);
-  params.set('progression', options.professionProgression ? 'on' : 'off');
-  params.set('needs', options.settlerNeeds ? 'on' : 'off');
-  return `?${params.toString()}`;
+  return formatSearch(sessionSearch(lobbySession(mapId, state, players, options), players));
 }

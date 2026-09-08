@@ -1,3 +1,4 @@
+import type { SessionClock } from '@open-northland/lockstep';
 import { describe, expect, it } from 'vitest';
 import {
   cycleGameSpeed,
@@ -8,7 +9,27 @@ import {
   gameSpeedSpec,
   toggleGameSpeedPause,
 } from '../src/hud/tool-panel/game-speed.js';
-import { applyGameSpeed, type LoopSpeedControl } from '../src/view/game-tool-panel.js';
+import { applyGameSpeed } from '../src/view/game-tool-panel.js';
+
+/** A session clock that only records what the speed button asks of it. */
+function testClock(speed: number): SessionClock & { readonly state: { paused: boolean; speed: number } } {
+  const state = { paused: false, speed };
+  return {
+    state,
+    get paused() {
+      return state.paused;
+    },
+    get speed() {
+      return state.speed;
+    },
+    setPaused: (paused) => {
+      state.paused = paused;
+    },
+    setSpeed: (next) => {
+      state.speed = next;
+    },
+  };
+}
 
 describe('game-speed', () => {
   it('clicks cycle the running speeds only', () => {
@@ -39,26 +60,26 @@ describe('game-speed', () => {
   });
 
   it('a click-resume reports pause-toggle, so a fractional seed survives', () => {
-    const loop: LoopSpeedControl = { paused: false, speed: 0.5 };
+    const loop = testClock(0.5);
     let control = toggleGameSpeedPause(DEFAULT_GAME_SPEED_CONTROL);
     applyGameSpeed(loop, effectiveGameSpeedSpec(control), 'pause-toggle');
-    expect(loop).toEqual({ paused: true, speed: 0.5 });
+    expect(loop.state).toEqual({ paused: true, speed: 0.5 });
     const cause = gameSpeedClickCause(control);
     expect(cause).toBe('pause-toggle');
     control = cycleGameSpeed(control);
     applyGameSpeed(loop, effectiveGameSpeedSpec(control), cause);
-    expect(loop).toEqual({ paused: false, speed: 0.5 });
+    expect(loop.state).toEqual({ paused: false, speed: 0.5 });
     expect(gameSpeedClickCause(control)).toBe('cycle');
   });
 
   it('a pause toggle never overwrites the loop multiplier', () => {
-    const control: LoopSpeedControl = { paused: false, speed: 0.5 };
-    applyGameSpeed(control, gameSpeedSpec('paused'), 'pause-toggle');
-    expect(control).toEqual({ paused: true, speed: 0.5 });
-    applyGameSpeed(control, gameSpeedSpec('normal'), 'pause-toggle');
-    expect(control).toEqual({ paused: false, speed: 0.5 });
-    applyGameSpeed(control, gameSpeedSpec('fast'), 'cycle');
-    expect(control).toEqual({ paused: false, speed: 2 });
+    const clock = testClock(0.5);
+    applyGameSpeed(clock, gameSpeedSpec('paused'), 'pause-toggle');
+    expect(clock.state).toEqual({ paused: true, speed: 0.5 });
+    applyGameSpeed(clock, gameSpeedSpec('normal'), 'pause-toggle');
+    expect(clock.state).toEqual({ paused: false, speed: 0.5 });
+    applyGameSpeed(clock, gameSpeedSpec('fast'), 'cycle');
+    expect(clock.state).toEqual({ paused: false, speed: 2 });
   });
 
   it('maps each state to the pinned gfx family and tick multiplier', () => {

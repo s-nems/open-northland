@@ -1,3 +1,4 @@
+import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
 import type { TerrainTextureSet } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
 import type { SaveGame, Simulation } from '@open-northland/sim';
@@ -11,7 +12,8 @@ import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { matchIsContested } from '../game/match-participants.js';
 import type { MissionBrief } from '../game/mission-brief.js';
-import { applySessionRuleOverrides, sessionRuleOverrides } from '../game/session-rules.js';
+import { applySessionRuleOverrides } from '../game/session-rules.js';
+import { sceneSession } from '../game/session-url.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
 import { messages, sceneCopy } from '../i18n/index.js';
 import { createSceneSim, getScene, restoreSceneSim, SCENES } from '../scenes/index.js';
@@ -70,7 +72,8 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
 
-  diag.info('boot', 'game start', { entry: 'scene', sceneId, seed: scene.seed });
+  const session = sceneSession(params, sceneId, scene.seed);
+  diag.info('boot', 'game start', { entry: 'scene', session });
   bindDisplayMode(params);
   const boot = mountBootProgress(SCENE_BOOT_PHASES);
   await boot.begin('graphics');
@@ -116,7 +119,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   });
   // The session rule flags override the scene's own rules: a named divergence from the headless twin,
   // requested by the human watching it. A restored world keeps the saved rules instead.
-  if (stagedSave === null) applySessionRuleOverrides(sim, sessionRuleOverrides(params));
+  if (stagedSave === null) applySessionRuleOverrides(sim, session.rules);
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
   const ownAssets = assetSetFor(params) === 'own';
@@ -136,10 +139,18 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   const renderer = createWorldRenderer(app, params, sheet);
   renderer.setTerrain(terrainGrid, terrain);
 
+  const driver = new LockstepDriver({
+    sim,
+    transport: new LoopbackTransport(),
+    speed: session.speed,
+    paused: stagedSave !== null,
+  });
+
   // Framed on the first tick's snapshot: a scene's settler spawns run as tick-1 commands, so the tick-0
   // centroid is empty and `cameraFor` would fall back to the tile origin. The browser view therefore
-  // runs one tick more than the headless twin. A restored world stands at its saved tick already.
-  if (stagedSave === null) sim.step();
+  // runs one tick more than the headless twin. Through the driver, so the session takes every tick's
+  // frame in order. A restored world stands at its saved tick already.
+  if (stagedSave === null) driver.runTick();
   const snapshot = sim.snapshot();
   const initialViewport = { width: app.screen.width, height: app.screen.height };
   const cameraCtl = createCameraController(
@@ -169,13 +180,13 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     renderer,
     sheet,
     sim,
+    driver,
     cameraCtl,
     terrainGrid,
     rosterPlayers,
     ...terrainColourOption(terrain),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     worldToken,
-    restored: stagedSave !== null,
     missionBrief: sceneMissionBrief(scene),
   });
   await boot.finish();

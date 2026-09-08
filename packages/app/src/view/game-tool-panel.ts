@@ -1,3 +1,4 @@
+import type { SessionClock } from '@open-northland/lockstep';
 import type { Camera, ElevationField, SpriteSheet } from '@open-northland/render';
 import type { Command, PlayerCommand } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
@@ -84,23 +85,18 @@ export interface GameToolPanelHandle {
   dispose(): void;
 }
 
-export interface LoopSpeedControl {
-  paused: boolean;
-  speed: number;
-}
-
 /**
- * Apply the panel's game-speed spec to an entry's loop control. A `'cycle'` sets the multiplier and
+ * Apply the panel's game-speed spec to the session clock. A `'cycle'` sets the multiplier and
  * un-pauses; a `'pause-toggle'` flips only the pause flag, since writing the multiplier would replace a
  * fractional `?speed=` seed with the button's discrete steps.
  */
 export function applyGameSpeed(
-  control: LoopSpeedControl,
+  clock: SessionClock,
   spec: GameSpeedStateSpec,
   cause: GameSpeedChangeCause,
 ): void {
-  control.paused = spec.state === 'paused';
-  if (cause === 'cycle' && spec.state !== 'paused') control.speed = spec.tickMultiplier;
+  clock.setPaused(spec.state === 'paused');
+  if (cause === 'cycle' && spec.state !== 'paused') clock.setSpeed(spec.tickMultiplier);
 }
 
 /**
