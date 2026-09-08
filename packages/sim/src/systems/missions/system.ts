@@ -19,8 +19,8 @@ import type { MissionScript } from './script.js';
 export const MISSION_EVALUATION_TICKS = 36;
 
 /**
- * Which (mission, opcode) pairs already reported as unsupported, so a script reaching an opcode this
- * build cannot run says so once instead of every pass. Diagnostic only - the events it gates are
+ * Which (mission, opcode, kind) triples already reported, so a script reaching an opcode this build
+ * cannot run says so once instead of every pass. Diagnostic only - the events it gates are
  * presentation - so it is world-keyed rather than saved state, and a restored run reports again.
  */
 const reported = new WeakMap<World, Set<string>>();
@@ -66,12 +66,13 @@ function initMissionState(world: World, script: MissionScript, tick: number): vo
  */
 function runPass(world: World, ctx: SystemContext, script: MissionScript, records: MissionRecord[]): void {
   const pass: MissionPass = {
+    world,
+    ctx,
     script,
     records,
     tick: ctx.tick,
-    rng: ctx.rng,
-    events: ctx.events,
-    report: (mission, opcode) => reportUnsupported(world, ctx, mission, opcode),
+    report: (mission, opcode) => report(world, ctx, 'missionUnsupported', mission, opcode),
+    reportFailed: (mission, opcode) => report(world, ctx, 'missionResultFailed', mission, opcode),
     checking: new Set(),
   };
   for (let index = 0; index < records.length; index++) {
@@ -79,14 +80,20 @@ function runPass(world: World, ctx: SystemContext, script: MissionScript, record
   }
 }
 
-function reportUnsupported(world: World, ctx: SystemContext, mission: number, opcode: string): void {
+function report(
+  world: World,
+  ctx: SystemContext,
+  kind: 'missionUnsupported' | 'missionResultFailed',
+  mission: number,
+  opcode: string,
+): void {
   let seen = reported.get(world);
   if (seen === undefined) {
     seen = new Set<string>();
     reported.set(world, seen);
   }
-  const key = `${mission}:${opcode}`;
+  const key = `${kind}:${mission}:${opcode}`;
   if (seen.has(key)) return;
   seen.add(key);
-  ctx.events.emit({ kind: 'missionUnsupported', mission, opcode });
+  ctx.events.emit({ kind, mission, opcode });
 }

@@ -1,10 +1,33 @@
 import type { MissionGoal, MissionNameRef, MissionResult } from '@open-northland/data';
 
 /**
+ * The house-instance name kind, the one content name a line writes as plain text instead of a name
+ * reference. The load-time join resolves it with the line's own level column; the app imports this
+ * name so the two halves of that join cannot drift apart.
+ */
+export const MISSION_HOUSE_NAME_FIELD = 'houseName';
+
+/**
+ * A resolved house-instance name. One building typeId recurs across civilizations - 45 of the 54
+ * shipped types belong to five tribes each - so the type alone never says whose house it is, and the
+ * join hands the pair down rather than letting a placement guess.
+ */
+export interface MissionHouseRef {
+  readonly typeId: number;
+  readonly tribe: number;
+}
+
+/**
  * The decoded script as the simulation takes it: every content name a line wrote is already a numeric
  * typeId, so nothing in here joins against `ir.json` by name.
  */
-type Resolved<T> = { readonly [K in keyof T]: T[K] extends MissionNameRef ? number : T[K] };
+type Resolved<T> = {
+  readonly [K in keyof T]: T[K] extends MissionNameRef
+    ? number
+    : K extends typeof MISSION_HOUSE_NAME_FIELD
+      ? MissionHouseRef
+      : T[K];
+};
 
 /** One decoded opcode with its name arguments replaced by content ids. Distributes over the opcode
  *  union, so each member keeps its own `opcode` literal. */

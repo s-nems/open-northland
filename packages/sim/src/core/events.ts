@@ -263,6 +263,16 @@ export type SimEvent =
       readonly opcode: string;
     }
   | {
+      /**
+       * A result this build does run could not act on the world - a `SetHouse` with no buildable spot
+       * in reach. Emitted once per mission and opcode like the unsupported report above, and kept
+       * apart from it because the cause is the map's data, not a missing evaluator.
+       */
+      readonly kind: 'missionResultFailed';
+      readonly mission: number;
+      readonly opcode: string;
+    }
+  | {
       /** An `Exit` result fired: the script asks to leave the map. The simulation itself does nothing. */
       readonly kind: 'missionExit';
       readonly mission: number;

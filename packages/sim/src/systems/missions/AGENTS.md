@@ -23,11 +23,25 @@ format and the execution semantics live in [`docs/formats/MISSIONS.md`](../../..
   fire on the same ticks.
 - An opcode with no evaluator reports through the `missionUnsupported` event and never throws. A goal
   that cannot be judged does not hold, so its mission waits instead of firing on an answer nobody
-  computed.
+  computed. A result that does run but cannot act on the world reports `missionResultFailed`, which is
+  the map's data being wrong rather than this build being incomplete.
+
+## Changing the world
+
+- A result goes through the seam a command handler would: `spawnSettler`, `spawnAnimalHerd`,
+  `placeBuilding`. It never assembles an entity of its own, so a scripted unit and a placed one carry
+  the same components in the same order.
+- A script removal is not a death: only a drained life pool reaches the reaper and the player tallies.
+- Two goals write as well as read: `BuildHumans` and `BuildHouses` stamp the object id on what they
+  counted, which is why they collect and sort where the other counting goals do not.
 
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes
-through `missionObjects`, never a walk over every entity. A mission probed by several `CheckMission`
-goals is evaluated once per probe, which also redraws its `RandomTimeGone` spans; the original does
-the same, so do not add a per-pass memo without saying what it does to the RNG stream.
+through `missionObjects`, never a walk over every entity. A goal that only counts what a player has
+standing walks the population once per check and allocates nothing; keep it that way rather than
+sorting or collecting to count. A goal that stamps what it counted must leave an id already held
+alone, or it rebuilds the object index and re-clones its matches every pass. A mission probed by
+several `CheckMission` goals is evaluated once per probe, which also redraws its `RandomTimeGone`
+spans; the original does the same, so do not add a per-pass memo without saying what it does to the
+RNG stream.

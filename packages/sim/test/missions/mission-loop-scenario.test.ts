@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { missionRecords } from '../../src/components/index.js';
+import { Health, missionRecords, playerTally } from '../../src/components/index.js';
+import type { Simulation } from '../../src/index.js';
 import {
   exportSaveGame,
   parseSaveGame,
@@ -7,9 +8,10 @@ import {
   scenario,
   serializeSaveGame,
 } from '../../src/index.js';
-import type { MissionScript } from '../../src/systems/missions/index.js';
-import { MISSION_EVALUATION_TICKS } from '../../src/systems/missions/index.js';
+import type { MissionResultOp, MissionScript } from '../../src/systems/missions/index.js';
+import { MISSION_EVALUATION_TICKS, missionObjects } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
  * A headless run of the script shape the corpus uses for timed waves: a mission that re-activates
@@ -18,6 +20,9 @@ import { testContent } from '../fixtures/content.js';
  */
 
 const RUN_TICKS = MISSION_EVALUATION_TICKS * 40;
+
+/** Where the wave script below puts its group - a plain grass node well inside its map. */
+const WAVE_POINT = { hx: 12, hy: 12 };
 
 /** Mission 0 loops on a random timer and flips mission 1's visibility, so the pass writes state a
  *  hash and a save both have to carry. */
@@ -96,5 +101,81 @@ describe('a self-re-activating mission on a random timer', () => {
     expect(() =>
       restoreSimulation(save, { content: testContent(), missions: { missions: LOOP.missions.slice(1) } }),
     ).toThrow(/mission records/);
+  });
+});
+
+/** The other shape the corpus uses: a wave that spawns a group, counts it, numbers what it counted
+ *  and clears it away again - every seam this stage added to the pass, in one script. */
+const SPAWN_GROUP: MissionResultOp = {
+  opcode: 'SetHumanX',
+  player: 2,
+  tribe: 1,
+  job: 1,
+  point: WAVE_POINT,
+  humanId: 50,
+  behaviour: 0,
+  amount: 4,
+};
+
+const WAVE: MissionScript = {
+  missions: [
+    {
+      successfullIf: 0,
+      active: true,
+      visible: false,
+      goals: [],
+      results: [SPAWN_GROUP, { opcode: 'ActivateMission', missionIndex: 1 }],
+    },
+    {
+      successfullIf: 0,
+      active: false,
+      visible: false,
+      goals: [{ opcode: 'BuildHumans', player: 2, job: 1, amount: 4, humanId: 51 }],
+      results: [{ opcode: 'RemoveHumans', humanId: 51 }],
+    },
+  ],
+};
+
+/** The lattice the wave runs on; the restore has to be handed the same one. */
+const WAVE_MAP = grassNodeMap(32, 32);
+
+/** The wave's first half alone, so the group is still standing when the test kills one of them. */
+const SPAWN_ONLY: MissionScript = {
+  missions: [{ successfullIf: 0, active: true, visible: false, goals: [], results: [SPAWN_GROUP] }],
+};
+
+function waveSim(seed: number, missions: MissionScript): Simulation {
+  return scenario(testContent(), { seed, map: WAVE_MAP, missions })
+    .command({ kind: 'setMissionsEnabled', enabled: true })
+    .run(MISSION_EVALUATION_TICKS).sim;
+}
+
+describe('a wave that spawns, numbers and clears a group', () => {
+  it('reaches the same state twice on the same seed', () => {
+    const first = waveSim(3, WAVE);
+    const second = waveSim(3, WAVE);
+    expect(first.hashState()).toBe(second.hashState());
+    // The whole script really ran: the group was spawned, re-numbered by the goal, then removed.
+    expect(missionObjects(first.world, 50)).toHaveLength(0);
+    expect(missionObjects(first.world, 51)).toHaveLength(0);
+  });
+
+  it('carries the player tallies through a save and restore', () => {
+    const live = waveSim(3, SPAWN_ONLY);
+    // A death the script did not cause, so the tallies hold something a save has to carry.
+    const victim = missionObjects(live.world, 50)[0];
+    if (victim === undefined) throw new Error('the wave spawned nobody');
+    live.world.mut(victim, Health).hitpoints = 0;
+    live.run(1);
+    expect(playerTally(live.world, 2).humansDied).toBe(1);
+
+    const bytes = serializeSaveGame(exportSaveGame(live, { mapId: 'mission-wave' }));
+    const { sim: restored } = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+      content: testContent(),
+      map: WAVE_MAP,
+      missions: SPAWN_ONLY,
+    });
+    expect(playerTally(restored.world, 2)).toEqual(playerTally(live.world, 2));
+    expect(restored.hashState()).toBe(live.hashState());
   });
 });

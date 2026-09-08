@@ -1,8 +1,25 @@
 import type { MissionRecord } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
+import {
+  animalsGone,
+  housesGone,
+  humansDiedHolds,
+  humansGone,
+  humansKilledHolds,
+  soldiersDiedHolds,
+} from './goals/casualties.js';
+import {
+  attachedToWorkHouseHolds,
+  buildHousesHolds,
+  buildHumansHolds,
+  humanJobHolds,
+  humansWithHomeHolds,
+  populationHolds,
+  soldierCountHolds,
+} from './goals/population.js';
 import type { MissionPass } from './pass.js';
 import { setMissionActive } from './pass.js';
-import { executeResult } from './results.js';
+import { executeResult } from './results/index.js';
 import { type MissionGoalOp, ruleSatisfied } from './script.js';
 
 /**
@@ -57,6 +74,32 @@ function goalHolds(
       return checkMission(pass, op.missionIndex, false);
     case 'IsMissionDone':
       return missionDone(pass, op.missionIndex);
+    case 'BuildHumans':
+      return buildHumansHolds(pass, op);
+    case 'BuildHouses':
+      return buildHousesHolds(pass, op);
+    case 'HumansDied':
+      return humansGone(pass.world, op.humanId);
+    case 'HousesDied':
+      return housesGone(pass.world, op.objectId);
+    case 'AnimalsDied':
+      return animalsGone(pass.world, op.objectId);
+    case 'NumberOfHumansDied':
+      return humansDiedHolds(pass.world, op.player, op.amount);
+    case 'SoldiersDied':
+      return soldiersDiedHolds(pass.world, op.player, op.amount);
+    case 'NumberOfHumansKilled':
+      return humansKilledHolds(pass.world, op.player, op.amount);
+    case 'Population':
+      return populationHolds(pass.world, op.player, op.amount);
+    case 'NumberOfSoldiers':
+      return soldierCountHolds(pass, op.player, op.amount);
+    case 'HumansWithHome':
+      return humansWithHomeHolds(pass.world, op.player, op.amount);
+    case 'CheckHumanJob':
+      return humanJobHolds(pass.world, op.humanId, op.job);
+    case 'HumanAttachedToWorkHouse':
+      return attachedToWorkHouseHolds(pass.world, op);
     default:
       pass.report(index, op.opcode);
       // An opcode this build cannot judge holds nowhere, so its mission waits rather than firing on
@@ -83,7 +126,7 @@ function randomTimeGone(pass: MissionPass, record: MissionRecord, goal: number, 
   let drawn = record.randomSeconds[goal] ?? 0;
   if (drawn === 0) {
     const half = Math.floor(seconds / 2);
-    drawn = half > 0 ? half + pass.rng.int(half) : 0;
+    drawn = half > 0 ? half + pass.ctx.rng.int(half) : 0;
     record.randomSeconds[goal] = drawn;
   }
   if (!elapsed(pass, record, drawn)) return false;

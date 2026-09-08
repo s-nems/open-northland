@@ -83,7 +83,12 @@ descriptions match the docs.
 
 Coordinates are map points of the original's grid, the same unit as `staticobjects.inc`: the
 half-cell nodes of the `2W x 2H` lattice that `TerrainEntities` already stores as `hx` and `hy`
-(corpus, pipeline). Range tests use the original's hexagonal distance on that lattice.
+(corpus, pipeline). Range tests use the original's hexagonal map-point distance: one step per row,
+with a diagonal walk carrying one column per two rows for free, so the distance is
+`rows + max(0, columns - floor(rows / 2))`. Over an odd row span one further column step is free, in
+the direction the destination row's parity picks, which makes the selected region lean to one side
+(reading, from the engine's own hexagon-direction distance, which every range test calls; the lean is
+unconfirmed against the running game).
 
 ## Mission object ids
 

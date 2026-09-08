@@ -62,6 +62,8 @@ export interface ContentIndex {
   readonly vehicles: ReadonlyMap<number, VehicleType>;
   /** Command-boundary building lookup - last-wins on a duplicate typeId, unlike {@link buildings}. */
   readonly commandBuildings: ReadonlyMap<number, BuildingType>;
+  /** The building type one level below each chained type - `upgradeTarget` inverted. */
+  readonly buildingLevelBelow: ReadonlyMap<number, number>;
   /** Command-boundary job lookup - last-wins on a duplicate typeId, unlike {@link jobs}. */
   readonly commandJobs: ReadonlyMap<number, JobType>;
   /** Armor types by their armor-class `typeId`. */
@@ -199,6 +201,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     enablingJobsByTribe: enablingJobTables(tribes),
     vehicles: byKey(content.vehicles, (v) => v.typeId),
     commandBuildings: lastByTypeId(content.buildings),
+    buildingLevelBelow: levelBelowTypes(content),
     commandJobs: lastByTypeId(content.jobs),
     armor: byKey(content.armor, (a) => a.typeId),
     armorByGoodType: byOptionalKey(content.armor, (a) => a.goodType),
@@ -279,3 +282,13 @@ function buildIndex(content: ContentSet): ContentIndex {
 
 /** The stable `weapons.ini` id of the wall bow. */
 const HOUSE_BOW_WEAPON_ID = 'house_bow';
+
+/** The building type one level below each chained type, inverting `upgradeTarget`. */
+function levelBelowTypes(content: ContentSet): ReadonlyMap<number, number> {
+  const out = new Map<number, number>();
+  for (const building of content.buildings) {
+    const above = building.upgradeTarget;
+    if (above !== undefined && !out.has(above)) out.set(above, building.typeId);
+  }
+  return out;
+}

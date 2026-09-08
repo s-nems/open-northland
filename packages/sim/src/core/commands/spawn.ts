@@ -96,4 +96,7 @@ export type SpawnCommand =
       readonly count?: number;
       /** The {@link MissionObjectId} to stamp on every member of the herd. */
       readonly missionId?: number;
+      /** The player that owns the herd (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit, or
+       *  name the wild slot a `setanimal` writes, for creatures nobody owns. */
+      readonly owner?: number;
     };

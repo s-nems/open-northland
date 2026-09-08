@@ -1,4 +1,11 @@
-import { Building, Health, Position } from '../../../../../../components/index.js';
+import {
+  Building,
+  Health,
+  ownerOf,
+  Person,
+  Position,
+  recordHumanKill,
+} from '../../../../../../components/index.js';
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
 import type { Entity, World } from '../../../../../../ecs/world.js';
@@ -132,7 +139,11 @@ export function resolveCombatHit(
   provokeHostility(world, ctx, attacker, target);
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);
   if (health.hitpoints <= 0) {
-    if (wasAlive) spawnCarcasses(world, ctx, attacker, target);
+    if (wasAlive) {
+      spawnCarcasses(world, ctx, attacker, target);
+      // Only humans are counted: a hunted animal and a razed house belong to no kill tally a goal reads.
+      if (world.has(target, Person)) recordHumanKill(world, ownerOf(world, attacker));
+    }
   } else {
     collectStagger(world, ctx, target, pendingStaggers); // applied after the caller's loop
   }

@@ -92,3 +92,23 @@ const HEX_NEIGHBOUR_CELLS: readonly FootprintCell[] = [
 export function hexNeighboursOf(hx: number, hy: number): HalfCellNode[] {
   return HEX_NEIGHBOUR_CELLS.map((c) => ({ hx: hx + footprintCellDx(hy, c), hy: hy + c.dy }));
 }
+
+/**
+ * The map-point distance a script's `range` parameter is measured in: one step per row, with a
+ * diagonal walk covering one column per two rows for free. Over an odd row span one further column
+ * step is free, in the direction the destination row's parity picks, so the region a range selects
+ * leans to one side instead of being symmetric about its centre.
+ *
+ * The six nodes this makes adjacent are not the eight a unit walks (`nav/terrain/edges.ts`), and the
+ * lean is not this lattice's geometry, which carries no stagger: both belong to the original's own
+ * map-point grid. Source basis: a reading of the engine's hexagon-direction distance, which every
+ * range test calls (`docs/formats/MISSIONS.md`, "Tokens and parameter kinds"). The lean is faithful
+ * to that reading and unconfirmed against the running game.
+ */
+export function hexDistance(a: HalfCellNode, b: HalfCellNode): number {
+  const dx = b.hx - a.hx;
+  const rows = Math.abs(b.hy - a.hy);
+  let columns = Math.abs(dx);
+  if (rows % 2 !== 0 && (b.hy % 2 === 0 ? dx > 0 : dx < 0)) columns--;
+  return rows + Math.max(0, columns - Math.floor(rows / 2));
+}

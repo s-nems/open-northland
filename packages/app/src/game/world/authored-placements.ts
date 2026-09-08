@@ -46,12 +46,14 @@ export type AuthoredPlacement =
       behaviourFlags?: number;
     }
   | {
-      /** One `setanimal` record spawns one unowned creature at its authored half-cell, never a whole
+      /** One `setanimal` record spawns one creature at its authored half-cell, never a whole
        *  `maximumgroupsize` herd, which would multiply the map's population. */
       kind: 'animal';
       tribe: number;
       x: number;
       y: number;
+      /** The `setanimal` player column, absent for the wild slot the corpus writes for game. */
+      owner?: number;
       /** The `setanimal` mission object id. */
       missionId?: number;
     };
@@ -162,7 +164,7 @@ export function resolveAuthoredPlacements(
   }
   let skippedAnimals = 0;
   // Approximation: `setanimal` also names an animal type the maps decoder drops, so every authored
-  // animal spawns adult with `hitpoints_adult`, and its authored owner is not read yet.
+  // animal spawns adult with `hitpoints_adult`.
   for (const a of entities.animals) {
     const tribe = joins.species(a.species);
     if (tribe === undefined || !inBounds(a.hx, a.hy)) {
@@ -174,6 +176,7 @@ export function resolveAuthoredPlacements(
       tribe,
       x: a.hx,
       y: a.hy,
+      ...(components.isValidPlayer(a.player) ? { owner: a.player } : {}),
       ...(a.missionId !== undefined ? { missionId: a.missionId } : {}),
     });
   }

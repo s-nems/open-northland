@@ -5,6 +5,7 @@ import {
   Marriage,
   Owner,
   Position,
+  recordHumanDeath,
   Settler,
   Wedding,
 } from '../../components/index.js';
@@ -17,6 +18,7 @@ import { droppedEquipmentOf, scatterSpilledStock, spilledStockOf } from '../econ
 import { removeWorkFlag } from '../economy/work-flag.js';
 import { isMinor } from '../family/households.js';
 import { releaseWidowedParentsOf, settleWidowhood } from '../family/widowhood.js';
+import { isSoldierJob } from '../readviews/index.js';
 
 /**
  * Destroy every entity whose {@link Health} pool has been drained to 0 and announce it with a
@@ -63,8 +65,9 @@ export function razeBuilding(world: World, ctx: SystemContext, e: Entity): void 
   scatterSpilledStock(world, ctx, spill);
 }
 
-/** Announce a combatant's death, remove it from the world, and leave its gear on the ground where it
- *  fell. The event is emitted before the destroy so its `Owner` and `Position` are still readable. */
+/** Announce a combatant's death, count it against its owner, remove it from the world, and leave its
+ *  gear on the ground where it fell. The event is emitted before the destroy so its `Owner` and
+ *  `Position` are still readable. */
 function reap(world: World, ctx: SystemContext, e: Entity): void {
   const owner = world.tryGet(e, Owner);
   const pos = world.tryGet(e, Position);
@@ -78,13 +81,20 @@ function reap(world: World, ctx: SystemContext, e: Entity): void {
     ...(animal ? { animal: true } : {}),
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
+  if (!animal) recordHumanDeath(world, owner?.player, isSoldierJob(ctx.content, settler?.jobType ?? null));
+  const loot = droppedEquipmentOf(world, e);
+  removeSettlerSilently(world, e);
+  scatterSpilledStock(world, ctx, loot);
+}
+
+/** Destroy a settler and settle every binding it leaves dangling. The reaper layers the death event,
+ *  the statistics and the dropped gear on top of this. */
+export function removeSettlerSilently(world: World, e: Entity): void {
   removeWorkFlag(world, e); // a work flag has no owner once its gatherer is gone
   const marriage = world.tryGet(e, Marriage);
   const wedding = world.tryGet(e, Wedding);
   const wasMinor = isMinor(world, e);
-  const loot = droppedEquipmentOf(world, e);
   world.destroy(e);
-  scatterSpilledStock(world, ctx, loot);
   // The widowing rule needs the decedent already dead, so it settles after the destroy; a dying minor
   // is the other trigger that expires a widowed parent's carve-out.
   if (marriage !== undefined && world.isAlive(marriage.spouse)) settleWidowhood(world, marriage.spouse);

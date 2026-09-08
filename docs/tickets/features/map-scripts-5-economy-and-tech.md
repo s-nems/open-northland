@@ -1,7 +1,6 @@
 # Execute the goods, stock, and technology opcodes
 
 **Area:** sim · **Focus:** `systems/missions` · **Priority:** P2
-**Blocked by:** [map-scripts-3-entities-and-ownership.md](map-scripts-3-entities-and-ownership.md)
 
 Map-scripts epic, stage 5 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md).
 

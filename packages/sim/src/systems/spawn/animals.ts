@@ -7,6 +7,7 @@ import {
   Position,
   StayPoint,
   stampMissionId,
+  stampOwner,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { fx, ONE } from '../../core/fixed.js';
@@ -76,6 +77,9 @@ export function spawnAnimalHerd(
     if (isCatchableAnimal(ctx.content, command.tribe)) world.add(e, Livestock, {});
     // Every member of an authored herd answers to the same id: an id names a group, not one creature.
     stampMissionId(world, e, command.missionId);
+    // A `setanimal` names the wild slot for game and a real player for a tended herd; only the latter
+    // is a valid sim owner, so wildlife stays neutral.
+    stampOwner(world, e, command.owner);
     if (movePace !== null) world.add(e, MoveSpeed, { perTick: movePace });
     // The birth point or a scatter offset may name blocked or already-taken ground, and no drive ever
     // re-tasks an idle animal off a blocked cell, so the push has to happen here.

@@ -8,7 +8,12 @@ import { type AuthoredJoinRows, resolveMissionScript } from '../src/game/world/i
  */
 
 const ROWS: AuthoredJoinRows = {
-  buildingBobs: [{ editName: 'viking home', level: 0, typeId: 12, tribeId: 1 }],
+  // The same typeId under two civilizations and two levels, the shape the shipped house table has.
+  buildingBobs: [
+    { editName: 'viking home', level: 0, typeId: 12, tribeId: 1 },
+    { editName: 'viking home', level: 1, typeId: 13, tribeId: 1 },
+    { editName: 'frank home', level: 0, typeId: 12, tribeId: 2 },
+  ],
   buildings: [{ typeId: 12, id: 'home', kind: 'home' }],
   jobs: [{ typeId: 7, id: 'builder', name: 'builder' }],
   tribes: [
@@ -77,6 +82,47 @@ describe('resolveMissionScript', () => {
       { opcode: 'AddGoodsToHouses', objectId: 900, good: 4, amount: 40 },
       { opcode: 'EnableHouse', player: 0, tribe: 1, houseType: 12 },
     ]);
+  });
+
+  it('resolves a house-instance name with the line`s own level, tribe and all', () => {
+    const { script, unresolvedNames } = resolveMissionScript(
+      resultsOf(
+        ['SetHouse', '1', 'viking home', '1', '0', '30', '40', '9'],
+        ['SetHouse', '2', 'frank home', '0', '0', '31', '41', '9'],
+      ),
+      ROWS,
+    );
+    expect(unresolvedNames).toEqual([]);
+    // The second line takes the same name's other civilization: one typeId belongs to both.
+    expect(script.missions[0]?.results).toEqual([
+      {
+        opcode: 'SetHouse',
+        player: 1,
+        houseName: { typeId: 13, tribe: 1 },
+        level: 1,
+        asSite: false,
+        point: { hx: 30, hy: 40 },
+        objectId: 9,
+      },
+      {
+        opcode: 'SetHouse',
+        player: 2,
+        houseName: { typeId: 12, tribe: 2 },
+        level: 0,
+        asSite: false,
+        point: { hx: 31, hy: 41 },
+        objectId: 9,
+      },
+    ]);
+  });
+
+  it('counts a house name no level of the catalog carries', () => {
+    const { script, unresolvedNames } = resolveMissionScript(
+      resultsOf(['SetHouse', '1', 'viking home', '4', '0', '30', '40', '9']),
+      ROWS,
+    );
+    expect(unresolvedNames).toEqual(['viking home']);
+    expect(script.missions[0]?.results[0]).toMatchObject({ houseName: { typeId: -1, tribe: -1 } });
   });
 
   it('reads an animal species through the same tribe field', () => {

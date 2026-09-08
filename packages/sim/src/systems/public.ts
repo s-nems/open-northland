@@ -51,6 +51,7 @@ export { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from './mat
 export {
   MISSION_EVALUATION_TICKS,
   missionObjectIds,
+  missionObjects,
   SUPPORTED_GOALS,
   SUPPORTED_RESULTS,
 } from './missions/index.js';
