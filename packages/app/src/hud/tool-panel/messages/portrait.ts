@@ -6,7 +6,7 @@ import {
   type SpriteSheet,
 } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
-import { type Application, Container } from 'pixi.js';
+import type { Application, Container } from 'pixi.js';
 import { SettlerSpritePool } from '../../settler-sprite-pool.js';
 
 /** The standing pose: the idle sequence's first frame, so a note never animates. */
@@ -21,6 +21,8 @@ export interface NotePortraitEntry {
   /** Feet anchor in screen px. */
   readonly feetX: number;
   readonly feetY: number;
+  /** Stacking order of this note's body among the strip's children. */
+  readonly zIndex: number;
 }
 
 /**
@@ -28,7 +30,6 @@ export interface NotePortraitEntry {
  * sprite sheet it draws nothing and the notes still work.
  */
 export class NotePortraits {
-  private readonly container = new Container();
   private readonly pool: SettlerSpritePool;
 
   constructor(
@@ -37,8 +38,7 @@ export class NotePortraits {
     parent: Container,
     private readonly playerColourOf?: (player: number) => number,
   ) {
-    parent.addChild(this.container);
-    this.pool = new SettlerSpritePool(app, sheet, this.container);
+    this.pool = new SettlerSpritePool(app, sheet, parent);
   }
 
   /** `scale` is the design-px multiplier the note art is drawn at; bodies keep their native size in it. */
@@ -63,7 +63,7 @@ export class NotePortraits {
       if (layers === null) return;
       const row = lut === undefined ? 0 : paletteLutRow(lut, item.player, item.armorGood);
       for (const [li, layer] of layers.entries()) {
-        this.pool.drawLayer(`${i}:${li}`, layer, entry.feetX, entry.feetY, scale, row);
+        this.pool.drawLayer(`${i}:${li}`, layer, entry.feetX, entry.feetY, scale, row, entry.zIndex);
       }
     });
     this.pool.hideRest();
@@ -71,6 +71,5 @@ export class NotePortraits {
 
   dispose(): void {
     this.pool.dispose();
-    this.container.destroy({ children: true });
   }
 }
