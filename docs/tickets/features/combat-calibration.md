@@ -8,7 +8,12 @@ Every approximated combat constant is greppable in code (`calibration`/`APPROXIM
 session swaps them for observed values while the user runs the original (`../Cultures 8th Wonder`)
 side by side and answers probes.
 
-**The unreadable set (why observation is the only source):** human base HP / stamina pool / sight
+Human base HP has since left that set: the owned copy's `GameMp.exe` gives an adult a flat 5000-point
+pool, which `packages/sim/src/systems/lifecycle/needs/system.ts` already reads the starve and heal spans
+against. What stays open is the child ratio below and whether `DEFAULT_SETTLER_HITPOINTS` and the tribe
+records should carry 5000 rather than 300, which moves every damage constant with it.
+
+**The unreadable set (why observation is the only source):** human stamina pool and sight
 radius; the child-to-adult HP ratio; the XP→level curve and per-level bonuses; the exact role of
 `blockingValue` and hit-vs-miss; heal/potion/amulet magnitudes; damage dealt TO a building (its pool
 is readable - `logichitpoints`, extracted for 54 of 55 types - but swings-to-raze is not); projectile
