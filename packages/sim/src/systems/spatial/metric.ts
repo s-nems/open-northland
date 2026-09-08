@@ -19,9 +19,10 @@ export function manhattan(terrain: TerrainGraph, a: NodeId, b: NodeId): number {
 // columns `dx = ±(radius − |dy|)` tracing the diamond; radius 0 is `(0, 0)` alone. No bounds check and no
 // pick - each caller keeps its own. Addressed by index rather than handed to a callback because every ring
 // search accumulates a winner across the ring, and a callback would heap-allocate a closure per call to
-// capture it. Offsets come ascending `(dy, dx)`, ascending node id on the row-major grid, but every current
-// pick is order-independent (a min-id or a sort), so that order is pinned for reading, not load-bearing.
-// The single-column rows take the two end indices, which is what leaves every pair starting at an odd `i`.
+// capture it. Offsets come ascending `(dy, dx)`, ascending node id on the row-major grid: the farm's sow
+// draw takes the first candidates as the canonical nearest, so that order is load-bearing and pinned by
+// its test. The single-column rows take the two end indices, which is what leaves every pair starting at
+// an odd `i`.
 
 export function ringOffsetCount(radius: number): number {
   return radius === 0 ? 1 : 4 * radius;

@@ -34,11 +34,11 @@ export const {
 
 /**
  * FIELD FARMING (`systems/economy/fields.ts` + `settlers/drives/farming`): the farm's
- * sow→grow→water→reap→carry loop. Fixture: good 6 = wheat (atomics plant 34 / cultivate 35 / harvest 29
- * - the original's own ids; farming: 5 stages × 10 nominal ticks, yield 1, radius 8, 6 fields),
- * job 18 = farmer, building 5 = farm (4 farmer slots, wheat-only store cap 25, produces wheat, NO recipe).
- * Unit tests pin the growth/effect mechanics; planner passes pin each drive decision; the end-to-end
- * run proves wheat lands in the farm's own store, deterministically.
+ * sow→water→reap→carry loop. Fixture: good 6 = wheat (atomics plant 34 / cultivate 35 / harvest 29 - the
+ * original's own ids; farming: 5 stages, yield 1, radius 8, 6 fields), job 18 = farmer, building 5 = farm
+ * (4 farmer slots, wheat-only store cap 25, produces wheat, NO recipe). Unit tests pin the growth/effect
+ * mechanics; planner passes pin each drive decision; the end-to-end run proves wheat lands in the farm's
+ * own store, deterministically.
  */
 
 export const GRASS = 0;
@@ -57,7 +57,6 @@ export const REAP_ATOMIC = 29;
 export const PICKUP_ATOMIC = 22;
 // The fixture's farming block (keep in sync with fixtures/content.ts).
 export const STAGES = 5;
-export const TICKS_PER_STAGE = 10;
 /** The fixture farm's plot size - flat, whatever the crew (keep in sync with fixtures/content.ts). */
 export const FIELD_CAP = 6;
 const BARREN = 2;
@@ -70,16 +69,18 @@ const GRANARY = 6;
 export const FARM_WHEAT_CAP = 25;
 
 /** Ticks past which a lone fixture farmer has banked its first sheaves: the plot fills before the can
- *  starts, and the first ripe field lands at tick ~340 (seed 7) to ~420 (seed 1). */
+ *  starts, and the first sheaf lands at tick ~250 (seed 7) to ~380 (the river case). */
 export const LOOP_CLOSES_TICKS = 600;
 
-/** The five cells that, with one more at the farm's own (4, 4), fill a fixture plot to {@link FIELD_CAP}. */
+/** The five cells that, with one more at the farm's own (4, 4), fill a fixture plot to {@link FIELD_CAP}.
+ *  Four nodes apart on the half-cell lattice, so none stands in another's or the farm cell's watering
+ *  ring. */
 export const RING_AROUND_FARM = [
-  [3, 3],
-  [5, 3],
-  [3, 5],
   [2, 4],
   [6, 4],
+  [4, 2],
+  [4, 6],
+  [2, 2],
 ] as const;
 
 /** A `width`×`height` CELL square of grass, upsampled to the half-cell navigation lattice. */
@@ -108,43 +109,30 @@ export function farmAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
-/** Plant a field directly at tile (x, y) - the sow effect's output shape, for mid-lifecycle fixtures. */
+/** Plant a field directly at tile (x, y)'s centre node - the sow effect's output shape, for mid-lifecycle
+ *  fixtures. */
 export function fieldAt(
   sim: Simulation,
   farm: Entity,
   x: number,
   y: number,
-  opts: { stage?: number; watered?: boolean } = {},
+  opts: { stage?: number } = {},
 ): Entity {
-  const stage = opts.stage ?? 1;
-  const ripe = stage >= STAGES;
-  const e = sim.world.create();
-  sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
-  sim.world.add(e, Resource, { goodType: WHEAT, remaining: ripe ? 1 : 0, harvestAtomic: REAP_ATOMIC });
-  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint()); // the shape applySow produces
-  sim.world.add(e, Crop, {
-    goodType: WHEAT,
-    farm,
-    stage,
-    stages: STAGES,
-    growth: 0,
-    ticksPerStage: TICKS_PER_STAGE,
-    watered: opts.watered ?? false,
-    yieldUnits: 1,
-  });
-  return e;
+  const node = cellAnchorNode(x, y);
+  return fieldAtNode(sim, farm, node.hx, node.hy, opts);
 }
 
-/** A plot at its cap around a farm at (4, 4), the ring watered, with the one field of interest underfoot
- *  at the farm's own cell - so the scythe or the can, never the sow branch, is the drive's pick. */
+/** A plot at its cap around a farm at (4, 4), the ring one stage ahead of a fresh sowing, with the one
+ *  field of interest underfoot at the farm's own cell - so the scythe or the can, never the sow branch,
+ *  is the drive's pick, and a fresh underfoot field is the least grown. */
 export function plotAtCap(
   sim: Simulation,
-  underfoot: { stage?: number; watered?: boolean },
+  underfoot: { stage?: number },
 ): { farm: Entity; field: Entity; farmer: Entity } {
   if (RING_AROUND_FARM.length + 1 !== FIELD_CAP) throw new Error('the ring no longer fills the plot');
   const farm = farmAt(sim, 4, 4);
   const field = fieldAt(sim, farm, 4, 4, underfoot);
-  for (const [x, y] of RING_AROUND_FARM) fieldAt(sim, farm, x, y, { watered: true });
+  for (const [x, y] of RING_AROUND_FARM) fieldAt(sim, farm, x, y, { stage: 2 });
   const farmer = farmerAt(sim, 4, 4, farm);
   return { farm, field, farmer };
 }
@@ -156,7 +144,7 @@ export function fieldAtNode(
   farm: Entity,
   hx: number,
   hy: number,
-  opts: { stage?: number; watered?: boolean } = {},
+  opts: { stage?: number } = {},
 ): Entity {
   const stage = opts.stage ?? 1;
   const e = sim.world.create();
@@ -167,16 +155,7 @@ export function fieldAtNode(
     harvestAtomic: REAP_ATOMIC,
   });
   stampResourceFootprintData(sim.world, e, anchorOnlyFootprint()); // the shape applySow produces
-  sim.world.add(e, Crop, {
-    goodType: WHEAT,
-    farm,
-    stage,
-    stages: STAGES,
-    growth: 0,
-    ticksPerStage: TICKS_PER_STAGE,
-    watered: opts.watered ?? false,
-    yieldUnits: 1,
-  });
+  sim.world.add(e, Crop, { goodType: WHEAT, farm, stage, stages: STAGES, yieldUnits: 1 });
   return e;
 }
 

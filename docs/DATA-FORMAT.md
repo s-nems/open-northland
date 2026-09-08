@@ -186,7 +186,7 @@ newer build, one below `OLDEST_SUPPORTED_SAVE_VERSION` is rejected outright, and
 runs through pure vN to vN+1 document transforms before validation. The registry must hold one step
 per supported older version - a load-time check fails the build otherwise, so a version bump either
 lands its migration or raises the oldest supported version in the same commit. The committed
-current-format fixture (`packages/sim/test/fixtures/save-v2.golden`) freezes the exact bytes of a
+current-format fixture (`packages/sim/test/fixtures/save-v3.golden`) freezes the exact bytes of a
 small populated world as the layout's tripwire, and superseded layouts stay committed beside it as
 historical parse-and-restore fixtures; the regeneration workflow lives in
 [`TESTING.md`](TESTING.md).

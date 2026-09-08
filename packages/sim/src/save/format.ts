@@ -4,7 +4,7 @@ import type { CommandEnvelope } from '../core/commands/index.js';
 export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. */
-export const SAVE_FORMAT_VERSION = 2;
+export const SAVE_FORMAT_VERSION = 3;
 
 /** The oldest formatVersion this build still migrates; anything older is rejected, never silently
  *  parsed. */

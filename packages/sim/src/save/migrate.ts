@@ -1,4 +1,4 @@
-import { asInteger, asRecord } from '../core/untrusted.js';
+import { asInteger, asRecord, typeName } from '../core/untrusted.js';
 import { OLDEST_SUPPORTED_SAVE_VERSION, SAVE_FORMAT_VERSION, SAVE_KIND } from './format.js';
 
 /** A pure transform lifting a whole decoded version-v document to v+1, header stamp included. */
@@ -13,6 +13,35 @@ MIGRATIONS.set(1, (document) => ({
   ...document,
   header: { ...asRecord(document.header, 'save.header'), formatVersion: 2, entry: null },
 }));
+
+// v3 dropped the field growth timer: a `Crop` entry no longer carries `growth`, `ticksPerStage` or
+// `watered`. Everything else in the entry stays, in its order.
+const V2_CROP_TIMER_KEYS: ReadonlySet<string> = new Set(['growth', 'ticksPerStage', 'watered']);
+MIGRATIONS.set(2, (document) => {
+  const sections = document.sections;
+  if (!Array.isArray(sections))
+    throw new Error(`save.sections: expected an array, got ${typeName(sections)}`);
+  return {
+    ...document,
+    header: { ...asRecord(document.header, 'save.header'), formatVersion: 3 },
+    sections: sections.map((section: unknown, i) => {
+      const raw = asRecord(section, `save.sections[${i}]`);
+      if (raw.id !== 'component' || raw.name !== 'Crop' || !Array.isArray(raw.entries)) return section;
+      return {
+        ...raw,
+        entries: raw.entries.map((entry: unknown, j) => {
+          if (!Array.isArray(entry) || entry.length !== 2) return entry;
+          const id: unknown = entry[0];
+          const value = asRecord(entry[1], `save.sections[${i}].entries[${j}][1]`);
+          return [
+            id,
+            Object.fromEntries(Object.entries(value).filter(([key]) => !V2_CROP_TIMER_KEYS.has(key))),
+          ];
+        }),
+      };
+    }),
+  };
+});
 
 /** The versions the chain can lift, for the test that pins the registry against the format's own
  *  supported range. */

@@ -13,7 +13,7 @@ import { TERRAIN_OPEN } from '../../src/catalog/terrain.js';
 import { hasRealIr, loadContentUnderTest } from './helpers.js';
 
 /**
- * The field-farming loop (sow → water → grow → reap → bank) over the MERGED REAL content - the twin
+ * The field-farming loop (sow → water → reap → bank) over the MERGED REAL content - the twin
  * of the sim fixture's end-to-end run (`packages/sim/test/economy/farming/coordination.cases.ts`),
  * with the wheat good, the farmer trade, the farm building, and the tribe all resolved from the
  * pipeline's output. The farm/farmer are built component-directly exactly like that proven sim e2e
@@ -27,11 +27,10 @@ const SEED = 7;
 const MAP_CELLS = 10;
 /** Farm anchor in CELL coords (the fixture e2e's centre-of-map placement). */
 const FARM_AT = { x: 5, y: 5 } as const;
-/** Wheat farms at ~500 ticks/stage × 5 stages on the clean-room balance (`catalog/farming.ts`). A lone
- *  farmer ploughs the whole 24-field plot before it starts watering, so the first sheaf lands well past
- *  one growth cycle. Which field ripens first moves with the sown node set, since a field's pace is a
- *  hash of its node, so this budget leaves room for that swing. */
-const FARM_TICKS = 12_000;
+/** A lone farmer ploughs the whole 24-field plot and levels it with the can before anything ripens, so
+ *  the first sheaf lands near tick 2300 on the shipped balance (`catalog/farming.ts`); the sown node set
+ *  moves with the seeded draw, so this budget leaves room for that swing. */
+const FARM_TICKS = 6_000;
 
 function grassMap(cells: number) {
   return halfCellMapFromCells({

@@ -45,8 +45,6 @@ export const economyContent = {
       atomics: { harvest: 29, cultivate: 35, plant: 34 },
       farming: {
         stages: 5,
-        ticksPerStage: 10,
-        growthSpreadPercent: 40,
         yieldPerField: 1,
         fieldRadius: 8,
         // A flat per-farm plot - the cap does not move with crew size.

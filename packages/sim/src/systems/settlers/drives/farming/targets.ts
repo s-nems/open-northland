@@ -1,11 +1,10 @@
 import { Position, Stockpile } from '../../../../components/index.js';
-import { coordHash } from '../../../../core/coord-hash.js';
 import type { Entity } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
 import { type FarmingSpec, sowNodeOccupied } from '../../../economy/fields.js';
 import { dynamicBlockOverlay } from '../../../footprint/index.js';
-import { closer, manhattan } from '../../../spatial/metric.js';
+import { manhattan, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { lowestStockedGood } from '../../../stores/index.js';
 import type { PlannerContext } from '../../planner/context.js';
 import {
@@ -54,23 +53,18 @@ export function nearestFarmSheaf(
  *  cell from its entity's anchor, so the prefilter never drops a sheaf the exact check would accept. */
 const SHEAF_PREFILTER_SLACK = 2;
 
-/** Base sow-lattice pitch in half-cell nodes, one field per cell before jitter. Observation: the original's
- *  packed but not hex-stacked wheat spread. */
-const FIELD_LATTICE_STEP = 2;
-
-/** The deterministic 0/+1-node jitter of one base lattice point, so the sowing pattern is byte-stable
- *  across runs and replays. */
-function sowJitter(bx: number, by: number): { dx: number; dy: number } {
-  const h = coordHash(bx, by);
-  return { dx: h & 1, dy: (h >>> 1) & 1 };
-}
+/** Free nodes nearest the anchor a sow draws among, uniformly. Approximation: neither the draw nor the
+ *  packing onto every lattice node is readable; a plot then grows as a compact patch with a ragged edge,
+ *  its plants a node apart, which is what puts them in one another's watering ring. */
+const SOW_CANDIDATES = 5;
 
 /**
- * The node the farm should sow next: the free jittered-lattice node nearest the farm's anchor, so fields
- * grow outward from the farm, or null when the whole radius is taken. A candidate must be on the map,
- * walkable (the farmer stands on the field to work it), plantable ground (the original's `biocanplanton`
- * triangle flag, carried only by grass and land), clear of the walk-block overlays, unoccupied, and
- * unclaimed by another farmer's in-flight action.
+ * The node the farm should sow next: the spot this farmer already set out for while it stays sowable, else
+ * one of the {@link SOW_CANDIDATES} free nodes nearest the farm's anchor, so fields pack outward from the
+ * farm; null when the whole radius is taken. A sowable node is on the map, walkable (the farmer stands on
+ * the field to work it), plantable ground (the original's `biocanplanton` triangle flag, carried only by
+ * grass and land), clear of the walk-block overlays, unoccupied, and unclaimed by another farmer's
+ * in-flight action.
  */
 export function nextSowNode(
   plan: PlannerContext,
@@ -81,37 +75,41 @@ export function nextSowNode(
     readonly gates: WorkCellGates;
   },
 ): NodeId | null {
-  const { world, ctx, terrain, here } = plan;
+  const { world, ctx, terrain, here, entity } = plan;
   const { anchor, spec, claims, gates } = opts;
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const radius = spec.farming.fieldRadius;
+
+  const sowable = (node: NodeId, hx: number, hy: number): boolean =>
+    terrain.isWalkable(node) &&
+    !blocked.has(node) && // water, walls, standing bodies
+    terrain.isPlantable(node) &&
+    !claims.nodes.has(node) &&
+    !sowNodeOccupied(world, hx, hy) &&
+    // The sow node is the walk goal, so without this the farmer re-picks the same unreachable spot every
+    // replan and its whole plot goes untended behind it.
+    !unreachableWorkCell(gates, here, node);
+
+  const intent = claims.sowIntent.get(entity);
+  if (intent !== undefined && manhattan(terrain, anchor, intent) <= radius) {
+    const at = terrain.coordsOf(intent);
+    if (sowable(intent, at.x, at.y)) return intent;
+  }
 
   const at = terrain.coordsOf(anchor);
-  const radius = spec.farming.fieldRadius;
-  const first = (v: number): number => Math.floor((v - radius) / FIELD_LATTICE_STEP) * FIELD_LATTICE_STEP;
-  let best: NodeId | null = null;
-  let bestDist = Number.POSITIVE_INFINITY;
-  let bestCell = Number.POSITIVE_INFINITY;
-  for (let by = first(at.y); by <= at.y + radius; by += FIELD_LATTICE_STEP) {
-    for (let bx = first(at.x); bx <= at.x + radius; bx += FIELD_LATTICE_STEP) {
-      const j = sowJitter(bx, by);
-      const hx = bx + j.dx;
-      const hy = by + j.dy;
+  const candidates: NodeId[] = [];
+  // Ring by ring outward, stopping at the first ring that completes the set: offsets ascend by node id
+  // within a ring, so the first entries are the canonical (distance, id) nearest.
+  for (let r = 0; r <= radius && candidates.length < SOW_CANDIDATES; r++) {
+    const count = ringOffsetCount(r);
+    for (let i = 0; i < count && candidates.length < SOW_CANDIDATES; i++) {
+      const hx = at.x + ringOffsetDx(r, i);
+      const hy = at.y + ringOffsetDy(r, i);
       if (!terrain.inBounds(hx, hy)) continue;
       const node = terrain.nodeAt(hx, hy);
-      const dist = manhattan(terrain, anchor, node);
-      if (dist > radius) continue;
-      if (!terrain.isWalkable(node) || blocked.has(node)) continue; // water, walls, standing bodies
-      if (!terrain.isPlantable(node)) continue;
-      if (claims.nodes.has(node) || sowNodeOccupied(world, hx, hy)) continue;
-      // The sow node is the walk goal, so without this the farmer re-picks the same unreachable spot every
-      // replan and its whole plot goes untended behind it.
-      if (unreachableWorkCell(gates, here, node)) continue;
-      if (closer(dist, node, bestDist, bestCell)) {
-        best = node;
-        bestDist = dist;
-        bestCell = node;
-      }
+      if (sowable(node, hx, hy)) candidates.push(node);
     }
   }
-  return best;
+  if (candidates.length === 0) return null;
+  return candidates[ctx.rng.int(candidates.length)] ?? null;
 }
