@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { Building, JobAssignment, Settler, Sheltering } from '../../src/components/index.js';
+import { COMMAND_ISSUER } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
   CORE_INVARIANTS,
@@ -8,12 +9,16 @@ import {
   checkInvariants,
   exportSaveGame,
   type LoggedCommand,
+  type PlayerCommand,
+  parseCommandEnvelope,
   parseSaveGame,
+  playerCommand,
   Rng,
   replay,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
+  setupCommand,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -188,6 +193,9 @@ const EQUIP_ORDER_GOODS = [
 /** Owner slots: two valid players + one out-of-range (rejects the whole command) - exercises the
  *  command system's owner-field check. */
 const OWNERS = [0, 1, 99] as const;
+/** The seat the stream's player envelopes claim - the preamble's owner, so a share of them reach the
+ *  gate's ACCEPT branch instead of only its refusals. */
+const FUZZ_SEAT = 0;
 /** The first tick the harness raises its scripted alarms on, and how often it puts them back up. Raising
  *  once is not enough: the stream's own alarm flips (case 43) and a seat handed to the strategic AI - which
  *  stands its town back up when it sees no enemy (`ai-player/military/defence/alarm.ts`) - both take a
@@ -649,6 +657,22 @@ function nextCommand(rng: Rng): Command {
   }
 }
 
+function issuableBySeat(command: Command): command is PlayerCommand {
+  return COMMAND_ISSUER[command.kind] === 'seat';
+}
+
+/**
+ * Submit one generated command the way an untrusted one arrives: JSON round-tripped and parsed, so the
+ * per-kind payload contract is fuzzed alongside the handlers. A coin flip decides between a player
+ * envelope, which also fuzzes the authority gate's seat branch, and trusted setup, without which the
+ * authored-only placement options and the other-owner commands would stop reaching their handlers.
+ */
+function submit(sim: Simulation, gen: Rng, command: Command): void {
+  const seat = gen.int(2) === 0 && issuableBySeat(command);
+  const envelope = seat ? playerCommand(FUZZ_SEAT, command) : setupCommand(command);
+  sim.enqueue(parseCommandEnvelope(JSON.parse(JSON.stringify(envelope))));
+}
+
 interface FuzzRun {
   readonly finalHash: string;
   /** `hashState()` at every CHECKPOINT_EVERY-th tick - localizes a run-twice divergence. */
@@ -761,7 +785,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       }
       sim.enqueueSetup({ kind: 'setDefenceMode', building: 1 as Entity, enabled: true });
     }
-    if (gen.int(COMMAND_EVERY) === 0) sim.enqueueSetup(nextCommand(gen));
+    if (gen.int(COMMAND_EVERY) === 0) submit(sim, gen, nextCommand(gen));
     sim.step();
     // A per-tick snapshot populates the clone cache, arming the cachesCoherent invariant's stale-clone
     // verifier against any system write that bypassed the tracked seam. A pure read: hashes unaffected.

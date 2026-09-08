@@ -4,6 +4,7 @@ import { type ContentSet, MapScript } from '@open-northland/data';
 import type { FOG_MODE, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld } from '../../src/entries/map/world.js';
+import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
 import type { AuthoredJoinRows } from '../../src/game/world/index.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
@@ -72,6 +73,14 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // browser's. The entry also grants to the seat the person controls; a headless run has none.
     assistantSeats: options.aiSeats,
     diplomacy: script?.diplomacy ?? [],
+    // The entry declares the match from the same three inputs; an observer controls no seat, which is
+    // the session this world stands in for. Left out, the headless world would run without the match
+    // rules the browser plays under.
+    matchParticipants: matchParticipants({
+      controlled: [],
+      aiSeats: options.aiSeats,
+      neverDies: script === null ? [] : neverDiesSeats(script),
+    }),
     fog: options.fog ?? null,
     progression: null,
     needs: null,

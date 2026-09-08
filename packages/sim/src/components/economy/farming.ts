@@ -23,7 +23,7 @@ export const Crop = defineComponent<{
   stages: number;
   /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
   yieldUnits: number;
-}>('Crop');
+}>('Crop', 'economy');
 
 /**
  * A farmer's in-flight field intent - which node its current farm action (reap / sheaf pickup / sow / water)
@@ -38,7 +38,7 @@ export const FarmTask = defineComponent<{
   node: NodeId;
   /** True for a sow intent - it reserves one of the farm's crew-scaled field slots while in flight. */
   sow: boolean;
-}>('FarmTask');
+}>('FarmTask', 'economy');
 
 /**
  * A {@link Crop} field cut off from its farm - no work stance is both unblocked and routable from the farm's
@@ -48,7 +48,7 @@ export const FarmTask = defineComponent<{
 export const StrandedField = defineComponent<{
   /** Tick the sweep first observed the field cut off; cleared the moment a route exists again. */
   since: number;
-}>('StrandedField');
+}>('StrandedField', 'economy');
 
 /**
  * A settler that has stepped inside a building, shed the moment nothing holds it in. Mostly a render fact -
@@ -59,4 +59,4 @@ export const StrandedField = defineComponent<{
 export const Resting = defineComponent<{
   /** The completed building the settler is inside. */
   at: Entity;
-}>('Resting');
+}>('Resting', 'settlers');

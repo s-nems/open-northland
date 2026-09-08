@@ -9,7 +9,7 @@ import { driveMirroredPairs } from '../../src/systems/rendezvous.js';
  * `onOrphaned` instead of being driven against a vanished partner.
  */
 
-const Pair = defineComponent<{ partner: Entity }>('TestPair');
+const Pair = defineComponent<{ partner: Entity }>('TestPair', 'economy');
 
 function pairUp(world: World, a: Entity, b: Entity): void {
   world.add(a, Pair, { partner: b });

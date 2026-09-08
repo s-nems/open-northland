@@ -13,7 +13,10 @@ import type { NodeId } from '../../nav/terrain/index.js';
  *
  * A gatherer without the component roams for the nearest node anywhere and hauls to the nearest store.
  */
-export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number }>('WorkFlag');
+export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType?: number }>(
+  'WorkFlag',
+  'economy',
+);
 
 /**
  * A building-employed gatherer's single-good harvest pick - the flag-less sibling of {@link WorkFlag}'s
@@ -21,7 +24,7 @@ export const WorkFlag = defineComponent<{ flag: Entity; radius: number; goodType
  * set to one. Absent means every stored good. Removed on any employment change, since a new workplace stores
  * a different set.
  */
-export const GatherSelection = defineComponent<{ goodType: number }>('GatherSelection');
+export const GatherSelection = defineComponent<{ goodType: number }>('GatherSelection', 'economy');
 
 /**
  * Marks a positioned entity as a designated delivery flag - a gatherer's collection point, and a pure
@@ -29,7 +32,7 @@ export const GatherSelection = defineComponent<{ goodType: number }>('GatherSele
  * `Stockpile + Position` heaps, so relocating the flag moves only the marker, never the goods already
  * dropped. The render keys the flag graphic, drawn on top of any co-located heap, on its presence.
  */
-export const DeliveryFlag = defineComponent<Record<string, never>>('DeliveryFlag');
+export const DeliveryFlag = defineComponent<Record<string, never>>('DeliveryFlag', 'economy');
 
 /** A flag gatherer's typed navigation intent for its current yard candidate. `failed` is set only when the
  * matching budgeted PathRequest fails, so the next delivery plan resumes after `goal` instead of mistaking
@@ -39,7 +42,7 @@ export const YardDeliveryRoute = defineComponent<{
   goodType: number;
   goal: NodeId;
   failed: boolean;
-}>('YardDeliveryRoute');
+}>('YardDeliveryRoute', 'economy');
 
 /**
  * The default work radius a newly placed gatherer flag gets: 24 half-cell nodes, about 12 tiles. A named

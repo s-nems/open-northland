@@ -138,7 +138,7 @@ describe('restoreSimulation continuation', () => {
 
   it('restores per-store insertion order exactly, where an ascending-id rebuild would not', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const Tag = defineComponent<{ n: number }>('RestoreOrderProbe');
+    const Tag = defineComponent<{ n: number }>('RestoreOrderProbe', 'economy');
     const [a, b, c] = [sim.world.create(), sim.world.create(), sim.world.create()];
     for (const e of [a, b, c]) sim.world.add(e, Tag, { n: e });
     sim.world.remove(b, Tag);
@@ -151,7 +151,7 @@ describe('restoreSimulation continuation', () => {
 
   it('rebuilds a Map component field as a live Map in its saved insertion order', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const Amounts = defineComponent<{ amounts: Map<number, number> }>('RestoreMapProbe');
+    const Amounts = defineComponent<{ amounts: Map<number, number> }>('RestoreMapProbe', 'economy');
     const amounts = new Map<number, number>();
     for (const key of [3, 1, 2]) amounts.set(key, key * 10);
     const e = sim.world.create();
@@ -199,7 +199,7 @@ describe('restoreSimulation rejection', () => {
 
   it('rejects an unknown component identifier by name', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.world.add(sim.world.create(), defineComponent<{ n: number }>('RenamedProbe'), { n: 1 });
+    sim.world.add(sim.world.create(), defineComponent<{ n: number }>('RenamedProbe', 'economy'), { n: 1 });
     const doc = docOf(sim);
     const section = doc.sections.find((s) => s.id === 'component');
     if (section === undefined) throw new Error('exported save must hold the probe store');
@@ -209,9 +209,13 @@ describe('restoreSimulation rejection', () => {
 
   it('rejects a malformed $map wrapper naming the entry path', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.world.add(sim.world.create(), defineComponent<{ m: Map<number, number> }>('MalformedMapProbe'), {
-      m: new Map([[1, 2]]),
-    });
+    sim.world.add(
+      sim.world.create(),
+      defineComponent<{ m: Map<number, number> }>('MalformedMapProbe', 'economy'),
+      {
+        m: new Map([[1, 2]]),
+      },
+    );
     const doc = docOf(sim);
     const section = doc.sections.find((s) => s.id === 'component');
     if (section === undefined) throw new Error('exported save must hold the probe store');
@@ -239,7 +243,7 @@ describe('restoreSimulation rejection', () => {
 
   it('rejects an injected __proto__ key rather than restoring a value nothing can read', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.world.add(sim.world.create(), defineComponent<{ n: number }>('ProtoProbe'), { n: 1 });
+    sim.world.add(sim.world.create(), defineComponent<{ n: number }>('ProtoProbe', 'economy'), { n: 1 });
     const doc = docOf(sim);
     const section = doc.sections.find((s) => s.id === 'component');
     if (section === undefined) throw new Error('exported save must hold the probe store');

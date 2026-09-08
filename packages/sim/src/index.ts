@@ -30,8 +30,8 @@ export { EventBuffer, eventNode, type SimEvent, type SimEventKind } from './core
 export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';
 export { Rng } from './core/rng.js';
-export type { Component, Entity } from './ecs/world.js';
-export { World } from './ecs/world.js';
+export type { Component, Entity, MutationSink, SyncDomain } from './ecs/world.js';
+export { SYNC_DOMAINS, World } from './ecs/world.js';
 export { CORE_INVARIANTS, checkInvariants, type Invariant } from './harness/invariants.js';
 export { type SeedAnimalsOptions, seedAnimalHerds } from './harness/populate.js';
 export {
@@ -114,7 +114,13 @@ export {
 } from './save/index.js';
 // The idle-adult job key of the HUD population tally: a façade read view, not a system.
 export { IDLE_JOB } from './simulation/hud.js';
-export { type FogView, type SimOptions, Simulation, type SystemInstrument } from './simulation.js';
+export {
+  type FogView,
+  type SimOptions,
+  Simulation,
+  type SyncDigest,
+  type SystemInstrument,
+} from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
 // independently without restating the sim's travel time.

@@ -14,6 +14,19 @@ import { TouchedLog } from './touched-log.js';
 export type { CacheVerifier } from './cache-verifier.js';
 export type { Component, DeepReadonly, Entity } from './component.js';
 export { defineComponent } from './component.js';
+export { SYNC_DOMAINS, type SyncDomain } from './sync-domain.js';
+
+/**
+ * The per-tick mutation feed a sync digest folds. `World` reports through it and reads nothing back, so
+ * an installed sink cannot change what the world does; a run that installs none pays one null check per
+ * mutation.
+ */
+export interface MutationSink {
+  /** `component`'s stored value for `entity` was added, acquired through {@link World.mut}, or removed. */
+  componentWritten(component: Component<unknown>, entity: Entity): void;
+  /** `entity` entered or left the alive set. */
+  allocationChanged(entity: Entity): void;
+}
 
 export class World {
   private nextId = 1;
@@ -38,6 +51,7 @@ export class World {
   private readonly journals = new MembershipJournals();
   private readonly touched = new TouchedLog();
   private readonly cacheVerifiers = new CacheVerifiers();
+  private mutations: MutationSink | null = null;
   /** Memoized ascending-id list from {@link canonicalEntities}, invalidated only by {@link create} and
    *  {@link destroy} since component add/remove cannot change the alive set. */
   private canonicalCache: readonly Entity[] | null = null;
@@ -49,6 +63,7 @@ export class World {
     // A snapshot emits one entry per alive id, so even a component-less `create` must bump the version, or
     // the per-tick memo serves a view missing the new entity.
     this.touched.record(id);
+    this.mutations?.allocationChanged(id);
     return id;
   }
 
@@ -60,6 +75,7 @@ export class World {
         if (c !== undefined && this.stores.get(c)?.delete(entity) === true) {
           this.componentRevisions.remove(c, entity);
           this.bumpComponentGeneration(c, entity);
+          this.mutations?.componentWritten(c, entity);
         }
       }
       this.memberships.delete(entity);
@@ -67,6 +83,7 @@ export class World {
     this.alive.delete(entity);
     this.canonicalCache = null;
     this.touched.record(entity);
+    this.mutations?.allocationChanged(entity);
   }
 
   isAlive(entity: Entity): boolean {
@@ -89,6 +106,7 @@ export class World {
       // Revision removal and the touch jointly prevent a removed component's cached clone from surviving.
       this.componentRevisions.remove(component as Component<unknown>, entity);
       this.touched.record(entity);
+      this.mutations?.componentWritten(component as Component<unknown>, entity);
     }
   }
 
@@ -166,6 +184,7 @@ export class World {
 
   private recordComponentWrite(component: Component<unknown>, entity: Entity): void {
     this.componentRevisions.record(component, entity, this.touched.record(entity));
+    this.mutations?.componentWritten(component, entity);
   }
 
   /** In-place value writes seen by `component`'s store so far. A cache over stored VALUES memoizes against
@@ -178,6 +197,11 @@ export class World {
    *  previous snapshot be reused?" key for `Simulation.snapshot`'s per-tick memo. */
   get mutationVersion(): number {
     return this.touched.mutationCount;
+  }
+
+  /** Install (or clear) the {@link MutationSink} a sync digest folds from. */
+  setMutationSink(sink: MutationSink | null): void {
+    this.mutations = sink;
   }
 
   drainTouched(consume: (entity: Entity) => void): boolean {

@@ -46,7 +46,7 @@ export const AssistantGrants = defineComponent<{
   player: number;
   /** Granted good type ids, ascending - canonical for hashing and for a deterministic scan order. */
   goods: readonly number[];
-}>('AssistantGrants');
+}>('AssistantGrants', 'players');
 
 /** The {@link AssistantGrants} carrier for `player`, or null when nothing is granted. The lowest-id
  *  carrier wins should more than one ever exist. */
@@ -76,7 +76,7 @@ export const AssistantCounters = defineComponent<{
   /** The player slot the counters belong to (`[0, MAX_PLAYERS)`). */
   player: number;
   counters: AssistantCounterValues;
-}>('AssistantCounters');
+}>('AssistantCounters', 'players');
 
 export function defaultAssistantCounters(): AssistantCounterValues {
   const zero = (): AssistantCounterState => ({ value: 0, infinite: false });
@@ -133,7 +133,10 @@ export function consumeAssistantCounter(
  * the birth pays the right counter and player or AI `makeChild` orders never do. Removed at the birth, by
  * a superseding player `makeChild`, or by the assistant's stale sweep.
  */
-export const AssistantChildOrder = defineComponent<{ sex: 'female' | 'male' }>('AssistantChildOrder');
+export const AssistantChildOrder = defineComponent<{ sex: 'female' | 'male' }>(
+  'AssistantChildOrder',
+  'players',
+);
 
 /** The training-counter kinds a recruit booking can carry; the three class kinds also arm the recruit. */
 export const ASSISTANT_RECRUIT_INTENTS = [
@@ -152,4 +155,4 @@ export type AssistantRecruitIntent = (typeof ASSISTANT_RECRUIT_INTENTS)[number];
 export const AssistantRecruit = defineComponent<{
   intent: AssistantRecruitIntent;
   armed: boolean;
-}>('AssistantRecruit');
+}>('AssistantRecruit', 'players');

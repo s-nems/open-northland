@@ -100,7 +100,7 @@ describe('exportSaveGame sections', () => {
 
   it('preserves per-store insertion order after a remove and re-add', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const Tag = defineComponent<{ n: number }>('OrderProbe');
+    const Tag = defineComponent<{ n: number }>('OrderProbe', 'economy');
     const [a, b, c] = [sim.world.create(), sim.world.create(), sim.world.create()];
     for (const e of [a, b, c]) sim.world.add(e, Tag, { n: e });
     sim.world.remove(b, Tag);
@@ -111,7 +111,7 @@ describe('exportSaveGame sections', () => {
 
   it('keeps a registered store that emptied, because registration order is hashed state', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const Tag = defineComponent<{ n: number }>('EmptiedProbe');
+    const Tag = defineComponent<{ n: number }>('EmptiedProbe', 'economy');
     const e = sim.world.create();
     sim.world.add(e, Tag, { n: 1 });
     sim.world.remove(e, Tag);
@@ -124,7 +124,7 @@ describe('exportSaveGame sections', () => {
 
   it('serializes a Map component field as a $map wrapper keeping insertion order', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const Amounts = defineComponent<{ amounts: Map<number, number> }>('MapProbe');
+    const Amounts = defineComponent<{ amounts: Map<number, number> }>('MapProbe', 'economy');
     const amounts = new Map<number, number>();
     for (const key of [3, 1, 2]) amounts.set(key, key * 10);
     sim.world.add(sim.world.create(), Amounts, { amounts });
@@ -205,13 +205,13 @@ describe('exportSaveGame canonical bytes', () => {
 describe('exportSaveGame rejection', () => {
   it('throws naming the component for a value shape JSON cannot carry', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.world.add(sim.world.create(), defineComponent<unknown>('SetProbe'), { bag: new Set([1]) });
+    sim.world.add(sim.world.create(), defineComponent<unknown>('SetProbe', 'economy'), { bag: new Set([1]) });
     expect(() => exportSaveGame(sim)).toThrow(/component:SetProbe\/1\.bag: unsaveable value shape Set/);
   });
 
   it('throws naming the path for a record using the reserved $map key', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.world.add(sim.world.create(), defineComponent<unknown>('ReservedProbe'), {
+    sim.world.add(sim.world.create(), defineComponent<unknown>('ReservedProbe', 'economy'), {
       bag: { [SAVE_MAP_KEY]: [] },
     });
     expect(() => exportSaveGame(sim)).toThrow(/component:ReservedProbe\/1\.bag: the key '\$map' is reserved/);
@@ -221,7 +221,7 @@ describe('exportSaveGame rejection', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const cyclic: { self?: unknown } = {};
     cyclic.self = cyclic;
-    sim.world.add(sim.world.create(), defineComponent<unknown>('CycleProbe'), { bag: cyclic });
+    sim.world.add(sim.world.create(), defineComponent<unknown>('CycleProbe', 'economy'), { bag: cyclic });
     expect(() => exportSaveGame(sim)).toThrow(
       /component:CycleProbe\/1\.bag\.self: object already saved at component:CycleProbe\/1\.bag/,
     );
@@ -229,7 +229,7 @@ describe('exportSaveGame rejection', () => {
 
   it('throws naming both paths for an object shared between two entities', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const Probe = defineComponent<unknown>('AliasProbe');
+    const Probe = defineComponent<unknown>('AliasProbe', 'economy');
     const shared = { n: 1 };
     sim.world.add(sim.world.create(), Probe, { bag: shared });
     sim.world.add(sim.world.create(), Probe, { bag: shared });
@@ -240,10 +240,10 @@ describe('exportSaveGame rejection', () => {
 
   it('throws naming the path for a non-finite number and for undefined', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    sim.world.add(sim.world.create(), defineComponent<unknown>('NanProbe'), { hp: Number.NaN });
+    sim.world.add(sim.world.create(), defineComponent<unknown>('NanProbe', 'economy'), { hp: Number.NaN });
     expect(() => exportSaveGame(sim)).toThrow(/component:NanProbe\/1\.hp: non-finite number/);
     const sim2 = new Simulation({ seed: 1, content: testContent() });
-    sim2.world.add(sim2.world.create(), defineComponent<unknown>('HoleProbe'), { gap: undefined });
+    sim2.world.add(sim2.world.create(), defineComponent<unknown>('HoleProbe', 'economy'), { gap: undefined });
     expect(() => exportSaveGame(sim2)).toThrow(
       /component:HoleProbe\/1\.gap: unsaveable value shape undefined/,
     );

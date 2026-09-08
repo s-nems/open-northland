@@ -21,7 +21,7 @@ export interface ProductionCycle {
 export const Production = defineComponent<{
   /** The independent in-flight batches, oldest first (advanced FIFO; completed ones are removed). */
   cycles: ProductionCycle[];
-}>('Production');
+}>('Production', 'economy');
 
 /**
  * A craft worker's product order - which of its workplace's products it crafts, set by the `setCraftGoods`
@@ -35,7 +35,7 @@ export const CraftSelection = defineComponent<{
   goods: number[];
   /** Rotation position into the effective product list (`>= 0`; consumers take it modulo the list). */
   cursor: number;
-}>('CraftSelection');
+}>('CraftSelection', 'economy');
 
 /**
  * A workplace's fractional experience-bonus output - the decimal part of "an experienced baker bakes 1.5
@@ -46,4 +46,4 @@ export const CraftSelection = defineComponent<{
 export const ProductionBonus = defineComponent<{
   /** goodType → the accumulated fractional bonus output (`Fixed`), pending its next whole unit. */
   remainders: Map<number, Fixed>;
-}>('ProductionBonus');
+}>('ProductionBonus', 'economy');

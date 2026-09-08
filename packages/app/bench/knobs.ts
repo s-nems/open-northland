@@ -13,6 +13,14 @@ export function intEnv(name: string, fallback: number, min: number): number {
   return value;
 }
 
+/** An on/off env knob: `on` or `1` enable it, `off`, `0` and unset leave it off. */
+export function boolEnv(name: string): boolean {
+  const raw = process.env[name]?.trim();
+  if (raw === undefined || raw === '' || raw === 'off' || raw === '0') return false;
+  if (raw === 'on' || raw === '1') return true;
+  throw new Error(`${name} must be on/1 or off/0, got '${raw}'`);
+}
+
 /** A non-empty string env knob, or `fallback` when unset/blank. */
 export function stringEnv(name: string, fallback: string): string {
   const raw = process.env[name]?.trim();

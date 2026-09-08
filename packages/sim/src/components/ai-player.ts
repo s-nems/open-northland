@@ -39,7 +39,7 @@ export const AiPlayer = defineComponent<{
   /** The player slot this brain drives (`[0, MAX_PLAYERS)`). */
   player: number;
   modules: AiModuleEnables;
-}>('AiPlayer');
+}>('AiPlayer', 'players');
 
 export interface MusterPlanState {
   /** Soldiers to gather before the wave marches. */
@@ -54,7 +54,7 @@ export interface MusterPlanState {
  * when the wave marches, the army falls under a wave, or the campaign has no objective; a disabled military
  * leaves it in place, window and all.
  */
-export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan');
+export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan', 'players');
 
 /** The {@link AiPlayer} carrier for `player`, or null when the seat is not AI-driven. The lowest-id
  *  carrier wins should more than one ever exist. */

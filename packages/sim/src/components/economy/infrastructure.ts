@@ -7,7 +7,7 @@ export const Building = defineComponent<{
   tribe: number;
   built: Fixed; // 0..ONE construction progress
   level: number; // houses level up (home level 00..04 -> population capacity)
-}>('Building');
+}>('Building', 'economy');
 
 /**
  * A goods store attached to a building: goodType -> amount, with per-good capacity from the building type.
@@ -15,7 +15,7 @@ export const Building = defineComponent<{
  * history-dependent; use {@link stockpileEntries}. The one tolerated raw read is an order-free fold
  * such as a min over entries.
  */
-export const Stockpile = defineComponent<{ amounts: Map<number, number> }>('Stockpile');
+export const Stockpile = defineComponent<{ amounts: Map<number, number> }>('Stockpile', 'economy');
 
 /** Canonical ascending-goodType view of a stockpile - the only order a game decision may read. */
 export function stockpileEntries(s: { amounts: ReadonlyMap<number, number> }): Array<[number, number]> {
@@ -69,7 +69,7 @@ export function consumeGoods(world: World, store: Entity, cost: readonly GoodsLi
  * faithful; the builder-driven pace is an approximation, since the original offers no oracle for
  * construction speed.
  */
-export const UnderConstruction = defineComponent<{ labor: Fixed }>('UnderConstruction');
+export const UnderConstruction = defineComponent<{ labor: Fixed }>('UnderConstruction', 'economy');
 
 /**
  * Marks a {@link Building} being upgraded into its type's `upgradeTarget` level. It rides beside
@@ -88,7 +88,7 @@ export const Upgrading = defineComponent<{
   /** Bill goods the building already held, seeded into the build hold instead; a cancel returns these
    *  amounts to the inventory. */
   seeded: Map<number, number>;
-}>('Upgrading');
+}>('Upgrading', 'economy');
 
 /**
  * A placed vehicle hull - a ship put on the map as a movable stockpile rather than a static building. It
@@ -96,4 +96,4 @@ export const Upgrading = defineComponent<{
  * {@link Building} does, so a hull hashes and is queried exactly like one. Only an unlocked ship type is
  * ever stamped, so a `Vehicle` always references a ship its tribe may field.
  */
-export const Vehicle = defineComponent<{ vehicleType: number; tribe: number }>('Vehicle');
+export const Vehicle = defineComponent<{ vehicleType: number; tribe: number }>('Vehicle', 'economy');

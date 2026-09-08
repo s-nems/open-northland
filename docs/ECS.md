@@ -12,6 +12,9 @@ kept local so iteration, ownership, and mutation rules remain explicit.
 - `World.get`/`tryGet` return read-only views. An in-place mutation acquires the value through
   `World.mut`/`tryMut`, which records the entity in the touched log and bumps the component's value
   generation - the channels snapshot clone caching and derived caches invalidate from.
+- The same seam feeds an optional mutation sink, which `Simulation.setSyncDigest` installs to fold a
+  per-tick digest of what changed. Every component declares which digest domain it belongs to, so a
+  mismatch between two clients of one session names the area that drifted.
 - `Simulation` owns the world, seeded RNG, content, command queue, events, and system schedule.
 
 Many simulations can exist in one process. Creating a new `Simulation` or `World` is a complete

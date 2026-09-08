@@ -2,6 +2,9 @@ import type { EquipCategory } from '@open-northland/data';
 import type { NeedKind } from '../../components/needs.js';
 import type { Entity } from '../../ecs/world.js';
 
+/** The sexes a `makeChild` order may ask for. */
+export const CHILD_SEXES = ['female', 'male'] as const;
+
 /** Commands that direct existing settlers and their work. Coordinates are half-cell nodes. */
 export type UnitOrderCommand =
   | {
@@ -236,7 +239,7 @@ export type UnitOrderCommand =
        */
       readonly kind: 'makeChild';
       readonly entity: Entity;
-      readonly child: 'female' | 'male';
+      readonly child: (typeof CHILD_SEXES)[number];
     }
   | {
       /**

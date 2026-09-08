@@ -127,7 +127,7 @@ describe('stampVision - the world-metric ellipse', () => {
     const w = 16;
     const h = 20;
     const mask = new Uint8Array(w * h);
-    stampVision(mask, w, h, 6, 9, 8); // a fixed 8-node radius = 272 px (pins the ellipse metric)
+    stampVision(mask, w, h, 6, 9, 8, null); // a fixed 8-node radius = 272 px (pins the ellipse metric)
     const at = (c: number, r: number): number => mask[r * w + c] ?? 0;
     expect(at(6, 9)).toBe(FOG_STATE.VISIBLE);
     expect(at(10, 9)).toBe(FOG_STATE.VISIBLE); // 4 cells east = 272 px - on the rim, inclusive

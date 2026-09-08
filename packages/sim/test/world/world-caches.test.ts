@@ -13,8 +13,8 @@ import { defineComponent, World } from '../../src/ecs/world.js';
  *    `cachesCoherent`), not later as an unexplained golden/hash divergence.
  */
 // Component names are unique per process, so the cases share these two rather than redefining them.
-const A = defineComponent<{ n: number }>('A');
-const B = defineComponent<{ n: number }>('B');
+const A = defineComponent<{ n: number }>('A', 'economy');
+const B = defineComponent<{ n: number }>('B', 'economy');
 
 describe('World cache coherence', () => {
   it('canonicalEntities returns a frozen array - in-place mutation throws at the offender', () => {

@@ -3,23 +3,23 @@ import { defineComponent, type Entity } from '../ecs/world.js';
 import type { NodeId } from '../nav/terrain/index.js';
 
 /** World position in fixed-point tile units. */
-export const Position = defineComponent<{ x: Fixed; y: Fixed }>('Position');
+export const Position = defineComponent<{ x: Fixed; y: Fixed }>('Position', 'movement');
 
 /** Per-tick movement delta in fixed-point tile units. */
-export const Velocity = defineComponent<{ x: Fixed; y: Fixed }>('Velocity');
+export const Velocity = defineComponent<{ x: Fixed; y: Fixed }>('Velocity', 'movement');
 
 /**
  * A herd membership: the {@link Entity} leading the pack this animal belongs to, stamped on every member of
  * a herd whose `animaltypes.ini` record sets `searchforleader`. The herd's lowest-id member is the leader
  * and points at itself, so a self-referential `HerdMember` marks a leader without a second flag.
  */
-export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember');
+export const HerdMember = defineComponent<{ leader: Entity }>('HerdMember', 'movement');
 
 /**
  * An animal's territory anchor: the node the grazing drive leashes its roaming to. Only a creature
  * `spawnAnimalHerd` placed on a map carries one, so it doubles as the roaming-wildlife marker.
  */
-export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint');
+export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint', 'movement');
 
 /**
  * How far this entity advances toward its current {@link PathFollow} waypoint each tick, in fixed-point
@@ -29,7 +29,7 @@ export const StayPoint = defineComponent<{ cell: NodeId }>('StayPoint');
  * pace: no run/sprint gait is modelled, and the `animaltypes.ini` `runspeed` param stays extracted but
  * unconsumed.
  */
-export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed');
+export const MoveSpeed = defineComponent<{ perTick: Fixed }>('MoveSpeed', 'movement');
 
 /**
  * A path the entity is following: fixed-point waypoints and index, plus the follower's live gait state.
@@ -45,7 +45,7 @@ export const PathFollow = defineComponent<{
   speed: Fixed;
   hx: Fixed;
   hy: Fixed;
-}>('PathFollow');
+}>('PathFollow', 'movement');
 
 /**
  * A navigation goal: the destination cell an entity wants to reach, kept separate from the transient
@@ -56,7 +56,7 @@ export const PathFollow = defineComponent<{
  * the walk. A non-collider's goal is never re-aimed - the economy's node-coincidence checks rely on it
  * arriving verbatim.
  */
-export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal');
+export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal', 'movement');
 
 /**
  * A pending navigation request, drained under a per-tick budget: it either replaces the entity's
@@ -64,14 +64,17 @@ export const MoveGoal = defineComponent<{ cell: NodeId }>('MoveGoal');
  * dead query every tick. `start`/`goal` are branded row-major node ids (`y*width + x`); the brand is
  * compile-time only, so the component stays plain-number serializable.
  */
-export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>('PathRequest');
+export const PathRequest = defineComponent<{ start: NodeId; goal: NodeId; failed: boolean }>(
+  'PathRequest',
+  'movement',
+);
 
 /**
  * A stranded walker's retry pacing: its route failed and no drive with its own failure protocol owns it, so
  * the planner parks the dead nav state until tick `retryAt`, then sheds it and re-plans. Cleared with the
  * rest of the nav state, so an authoritative cancel restarts the walk at once.
  */
-export const Stranded = defineComponent<{ retryAt: number }>('Stranded');
+export const Stranded = defineComponent<{ retryAt: number }>('Stranded', 'movement');
 
 /** One remembered route failure: the goal node, and the tick it stops being excluded. */
 export interface UnreachableGoal {
@@ -85,7 +88,10 @@ export interface UnreachableGoal {
  * than one cell, so a settler ringed by several walled-off targets cannot cycle between them; provably
  * sealed goals are the route-region memo's job.
  */
-export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableGoal[] }>('UnreachableGoals');
+export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableGoal[] }>(
+  'UnreachableGoals',
+  'movement',
+);
 
 /**
  * A walker's grind-window among unit bodies: blockage is judged by progress, not push direction. `x`/`y`
@@ -96,4 +102,5 @@ export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableG
  */
 export const Obstructed = defineComponent<{ ticks: number; reroutes: number; x: Fixed; y: Fixed }>(
   'Obstructed',
+  'movement',
 );

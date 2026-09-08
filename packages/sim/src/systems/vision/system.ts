@@ -18,7 +18,7 @@ import type { System } from '../context.js';
 import { SCOUT_EXPERIENCE_TYPE, scoutVisionBonusNodes } from '../progression/index.js';
 import { isFighterJob, isHunterJob, isScoutJob } from '../readviews/index.js';
 import { cellOfNode } from './gates.js';
-import { FOG_STATE } from './state.js';
+import { FOG_STATE, type FogFold, foldCellChange } from './state.js';
 
 /**
  * Ticks between visibility-mask rebuilds. Positions move every tick but the masks refresh on this cadence,
@@ -92,7 +92,15 @@ export const visionSystem: System = (world, ctx) => {
     const n = nodeOfPosition(p.x, p.y);
     const { cx, cy } = cellOfNode(n.hx, n.hy);
     const player = world.get(e, Owner).player;
-    const rect = stampVision(fog.maskFor(player), fog.cellsWide, fog.cellsHigh, cx, cy, radius);
+    const rect = stampVision(
+      fog.maskFor(player),
+      fog.cellsWide,
+      fog.cellsHigh,
+      cx,
+      cy,
+      radius,
+      fog.foldFor(player),
+    );
     if (rect !== null) fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
   }
 
@@ -148,7 +156,8 @@ function visionRadiusOf(world: World, content: ContentSet, e: Entity): number | 
  * Write {@link FOG_STATE.VISIBLE} over the world-metric ellipse of `radiusNodes` around cell (cx, cy): a
  * cell (dc, dr) away is inside iff `(68·dc)² + (38·dr)² ≤ (34·R)²`, exact integer math clamped to the grid.
  * Approximation: the per-row stagger's ±half-cell wobble is ignored, a fringe on a soft fog edge.
- * Returns the clamped cell rect the stamp touched, or null when it fell fully off-grid.
+ * Returns the clamped cell rect the stamp touched, or null when it fell fully off-grid. A `fold` is
+ * updated for the cells this stamp actually flips.
  */
 export function stampVision(
   mask: Uint8Array,
@@ -157,6 +166,7 @@ export function stampVision(
   cx: number,
   cy: number,
   radiusNodes: number,
+  fold: FogFold | null,
 ): { minC: number; maxC: number; minR: number; maxR: number } | null {
   const radiusPx = radiusNodes * NODE_STEP_PX;
   const radiusSq = radiusPx * radiusPx;
@@ -173,7 +183,12 @@ export function stampVision(
     const base = r * cellsWide;
     for (let c = cLo; c <= cHi; c++) {
       const dxPx = (c - cx) * CELL_STEP_PX;
-      if (dxPx * dxPx + dySq <= radiusSq) mask[base + c] = FOG_STATE.VISIBLE;
+      if (dxPx * dxPx + dySq > radiusSq) continue;
+      const index = base + c;
+      const previous = mask[index] ?? FOG_STATE.UNEXPLORED;
+      if (previous === FOG_STATE.VISIBLE) continue;
+      mask[index] = FOG_STATE.VISIBLE;
+      if (fold !== null) foldCellChange(fold, index, previous, FOG_STATE.VISIBLE);
     }
   }
   return { minC: cLo, maxC: cHi, minR: rLo, maxR: rHi };

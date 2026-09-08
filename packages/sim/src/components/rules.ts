@@ -6,7 +6,7 @@ const worldRules = defineWorldSingleton<{
   /** Whether the needs mechanic runs: the hunger, fatigue and enjoyment rise, the per-swing combat need
    *  cost, the forge's piety charge, and starvation. */
   needsEnabled: boolean;
-}>('WorldRules', () => ({ needsEnabled: true }));
+}>('WorldRules', 'players', () => ({ needsEnabled: true }));
 
 /** Global gameplay toggles that are part of simulated, hashed state, which a plain `Simulation` field
  *  would escape. */
@@ -43,7 +43,7 @@ export function isFogMode(mode: number): mode is FogMode {
   return mode === FOG_MODE.OFF || mode === FOG_MODE.REVEAL || mode === FOG_MODE.RECON;
 }
 
-const fogRules = defineWorldSingleton<{ mode: FogMode }>('FogRules', () => ({ mode: FOG_MODE.OFF }));
+const fogRules = defineWorldSingleton<{ mode: FogMode }>('FogRules', 'fog', () => ({ mode: FOG_MODE.OFF }));
 
 /** The {@link FOG_MODE} the VisionSystem runs under, kept apart from {@link WorldRules} so setting one
  *  rule never materializes the other. The masks the mode drives live outside the ECS, in `Simulation.fog`,
@@ -61,9 +61,13 @@ export function setFogMode(world: World, mode: number): void {
   });
 }
 
-const signpostRules = defineWorldSingleton<{ navigationEnabled: boolean }>('SignpostRules', () => ({
-  navigationEnabled: false,
-}));
+const signpostRules = defineWorldSingleton<{ navigationEnabled: boolean }>(
+  'SignpostRules',
+  'players',
+  () => ({
+    navigationEnabled: false,
+  }),
+);
 
 /** Whether civilian settlers are confined to the signpost work-area network (`systems/signposts/`). Off by
  *  default, an approximation: the original always confines, but maps and scenes here opt in through the
@@ -82,6 +86,7 @@ export function setSignpostNavigation(world: World, enabled: boolean): void {
 
 const progressionRules = defineWorldSingleton<{ professionProgressionEnabled: boolean }>(
   'ProgressionRules',
+  'players',
   () => ({ professionProgressionEnabled: true }),
 );
 
@@ -103,17 +108,18 @@ export function setProfessionProgression(world: World, enabled: boolean): void {
 }
 
 /** A directed player-to-player stance, the values map `diplomacy <from> <to> <state>` rows author. */
-export type DiplomacyState = 'friend' | 'neutral' | 'enemy';
+export const DIPLOMACY_STATES = ['friend', 'neutral', 'enemy'] as const;
+export type DiplomacyState = (typeof DIPLOMACY_STATES)[number];
 
 /** The `setDiplomacy` validity gate: an unknown state string is a recoverable bad input, skipped. */
 export function isDiplomacyState(state: string): state is DiplomacyState {
-  return state === 'friend' || state === 'neutral' || state === 'enemy';
+  return (DIPLOMACY_STATES as readonly string[]).includes(state);
 }
 
 const diplomacyRules = defineWorldSingleton<{
   /** Stances keyed `from * MAX_PLAYERS + to` - directed, so the two directions of a pair can differ. */
   stances: Map<number, DiplomacyState>;
-}>('DiplomacyRules', () => ({ stances: new Map() }));
+}>('DiplomacyRules', 'players', () => ({ stances: new Map() }));
 
 /** The directed stance table combat hostility consults when both sides are player-owned. */
 export const DiplomacyRules = diplomacyRules.component;
@@ -139,7 +145,7 @@ export function setDiplomacyStance(world: World, from: number, to: number, state
 const playerContacts = defineWorldSingleton<{
   /** viewer player → bitmask of player slots seen (fits one integer: slots are < {@link MAX_PLAYERS}). */
   met: Map<number, number>;
-}>('PlayerContacts', () => ({ met: new Map() }));
+}>('PlayerContacts', 'players', () => ({ met: new Map() }));
 
 /**
  * Which players each player has ever seen an entity of. The vision system records a contact when an owned

@@ -1,7 +1,7 @@
 import { FOG_MODE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { realMapWorld } from '../test/content/real-map-world.js';
-import { intEnv, stringEnv } from './knobs.js';
+import { boolEnv, intEnv, stringEnv } from './knobs.js';
 import { measureWindows } from './measure.js';
 import type { BenchWindow } from './report/index.js';
 import { publishReport, reportFrom } from './run.js';
@@ -17,7 +17,8 @@ import { publishReport, reportFrom } from './run.js';
  * run that measured nothing cannot be mistaken for a clean one.
  *
  * Knobs (env, all optional): `ON_BENCH_MAP`, `ON_BENCH_SEATS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`,
- * `ON_BENCH_WINDOWS`, `ON_BENCH_JSON=<path>` (write the machine-readable report).
+ * `ON_BENCH_WINDOWS`, `ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, the lockstep session's
+ * cost), `ON_BENCH_JSON=<path>` (write the machine-readable report).
  */
 
 const DEFAULT_MAP_ID = 'magiczny_las';
@@ -51,6 +52,7 @@ describe('map per-system benchmark', () => {
     const warmupTicks = intEnv('ON_BENCH_WARMUP', DEFAULT_WARMUP_TICKS, 0);
     const measuredTicks = intEnv('ON_BENCH_TICKS', DEFAULT_MEASURED_TICKS, 1);
     const windows = intEnv('ON_BENCH_WINDOWS', DEFAULT_WINDOWS, 1);
+    const syncDigest = boolEnv('ON_BENCH_SYNC_DIGEST');
 
     const startedAtMs = Date.now();
     const startMs = performance.now();
@@ -60,6 +62,7 @@ describe('map per-system benchmark', () => {
       fog: FOG_MODE.REVEAL,
       berryBushes: true,
     });
+    sim.setSyncDigest(syncDigest);
 
     const measurement = measureWindows(sim, {
       warmupTicks,
@@ -86,6 +89,7 @@ describe('map per-system benchmark', () => {
         ON_BENCH_TICKS: `${measuredTicks}`,
         ON_BENCH_WARMUP: `${warmupTicks}`,
         ON_BENCH_WINDOWS: `${windows}`,
+        ON_BENCH_SYNC_DIGEST: syncDigest ? 'on' : 'off',
       },
       ticks: { warmup: warmupTicks, measured: measuredTicks },
       stateHash: sim.hashState(),

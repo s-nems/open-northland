@@ -8,7 +8,7 @@ import type { NodeId } from '../nav/terrain/index.js';
  * its group; `spacingRadius` is the circle no second same-player signpost may be erected inside. Both are
  * integer node-distances on the world metric, carried per signpost rather than read from a constant.
  */
-export const Signpost = defineComponent<{ navRadius: number; spacingRadius: number }>('Signpost');
+export const Signpost = defineComponent<{ navRadius: number; spacingRadius: number }>('Signpost', 'economy');
 
 /**
  * The scout's pending "erect a signpost here" order - the `placeSignpost` command's en-route marker. The
@@ -16,7 +16,7 @@ export const Signpost = defineComponent<{ navRadius: number; spacingRadius: numb
  * effect spawns the post. Dropped when the walk fails, a need interrupts it, or the spot became illegal
  * meanwhile.
  */
-export const ErectSignpostOrder = defineComponent<{ goal: NodeId }>('ErectSignpostOrder');
+export const ErectSignpostOrder = defineComponent<{ goal: NodeId }>('ErectSignpostOrder', 'settlers');
 
 /**
  * A scout's standing "explore around here" order: it walks to unexplored ground within

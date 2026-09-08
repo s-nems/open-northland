@@ -25,6 +25,7 @@ import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
 import { type FogView, fogViewFor, placementProbeFor, signpostProbeFor } from './simulation/read-seams.js';
+import { type SyncDigest, SyncDigestRecorder } from './simulation/sync-digest.js';
 import type { PlayerPlacementProbe } from './systems/conflict/contested-ground.js';
 import type { SystemContext } from './systems/context.js';
 import {
@@ -39,6 +40,7 @@ import type { SignpostProbe } from './systems/signposts/index.js';
 import { FogState, playerHasMet } from './systems/vision/index.js';
 
 export type { FogView } from './simulation/read-seams.js';
+export type { SyncDigest } from './simulation/sync-digest.js';
 
 export interface SimOptions {
   seed: number;
@@ -72,6 +74,9 @@ export class Simulation {
   readonly fog?: FogState;
   private readonly map?: TerrainMap;
   private mapFingerprintMemo?: string;
+  /** Null until {@link setSyncDigest} turns the digest on; while set it is the world's mutation sink. */
+  private digest: SyncDigestRecorder | null = null;
+  private lastDigest: SyncDigest | null = null;
   /** One-shot events produced during the current tick (drained by render/audio). */
   readonly events = new EventBuffer();
   /** The serializable external-input queue, drained and logged each tick for replay. */
@@ -136,6 +141,11 @@ export class Simulation {
     this.commands.enqueue(envelope);
   }
 
+  /** {@link enqueue} for a named tick, ordered within it by `sequence`; see `CommandQueue.enqueueAt`. */
+  enqueueAt(envelope: CommandEnvelope, applyTick: number, sequence: number): void {
+    this.commands.enqueueAt(envelope, applyTick, sequence);
+  }
+
   /** {@link enqueue} under the trusted `setup` origin: authored pre-run assembly. */
   enqueueSetup(command: Command): void {
     this.commands.enqueue(setupCommand(command));
@@ -145,6 +155,7 @@ export class Simulation {
   step(): void {
     this.currentTick++;
     this.events.clear(); // events for tick N are a pure function of this tick's systems
+    this.digest?.beginTick();
     const ctx: SystemContext = {
       content: this.content,
       rng: this.rng,
@@ -168,6 +179,9 @@ export class Simulation {
         });
         if (runs !== 1) throw new Error(`instrument ran system '${name}' ${runs} times (must be exactly 1)`);
       }
+    }
+    if (this.digest !== null) {
+      this.lastDigest = this.digest.seal(this.world, this.currentTick, this.rng.getState(), this.fog);
     }
   }
 
@@ -310,6 +324,33 @@ export class Simulation {
   /** A canonical hash of all simulation state, for determinism golden tests. */
   hashState(): string {
     return hashSimState(this.world, this.currentTick, this.rng.getState(), this.fog);
+  }
+
+  /**
+   * Turn the per-tick {@link SyncDigest} on or off. Off by default, so a run that never asks does no
+   * digest work at all. Turning it on mid-run costs one walk of the fog masks, and the first digest it
+   * seals covers the tick it was turned on for.
+   */
+  setSyncDigest(enabled: boolean): void {
+    if (enabled === (this.digest !== null)) return;
+    this.lastDigest = null;
+    if (!enabled) {
+      this.digest = null;
+      this.world.setMutationSink(null);
+      this.fog?.stopFolding();
+      return;
+    }
+    this.digest = new SyncDigestRecorder();
+    this.world.setMutationSink(this.digest);
+    this.fog?.startFolding();
+  }
+
+  /**
+   * What the last {@link step} changed, folded per domain - the cheap per-tick check two clients of one
+   * session compare. Null while the digest is off, and until the first step after turning it on.
+   */
+  syncDigest(): SyncDigest | null {
+    return this.lastDigest;
   }
 }
 

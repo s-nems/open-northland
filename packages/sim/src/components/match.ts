@@ -10,7 +10,7 @@ const matchRules = defineWorldSingleton<{
   dead: number;
   /** Participants that won; set once, when the standing seats are all mutual friends. */
   won: number;
-}>('MatchRules', () => ({ participants: 0, dead: 0, won: 0 }));
+}>('MatchRules', 'players', () => ({ participants: 0, dead: 0, won: 0 }));
 
 /**
  * The skirmish match state the `setMatchParticipants` command opens and the MatchSystem drives. Kept

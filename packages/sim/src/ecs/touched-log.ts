@@ -2,7 +2,7 @@ import type { Entity } from './component.js';
 
 /** Log size past which the whole log is dropped rather than grown forever. Only reachable when nothing
  *  drains it (a snapshot-less headless benchmark); one full cache rebuild is the entire cost. */
-const OVERFLOW_LIMIT = 65536;
+export const TOUCHED_LOG_OVERFLOW_LIMIT = 65536;
 
 /**
  * The entities whose components changed since the last {@link drain}: the invalidation feed for
@@ -23,7 +23,7 @@ export class TouchedLog {
   /** Record an entity mutation and return its unique monotonic revision. */
   record(entity: Entity): number {
     this.mutations++;
-    if (this.entities.size >= OVERFLOW_LIMIT) {
+    if (this.entities.size >= TOUCHED_LOG_OVERFLOW_LIMIT) {
       this.entities.clear();
       this.overflowed = true;
     }

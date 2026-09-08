@@ -8,7 +8,7 @@ import { defineWorldSingleton } from '../../src/ecs/world-singleton.js';
  * the hashed value never depends on which carrier was added first.
  */
 
-const Toggle = defineWorldSingleton<{ on: boolean; seen: Map<number, number> }>('Toggle', () => ({
+const Toggle = defineWorldSingleton<{ on: boolean; seen: Map<number, number> }>('Toggle', 'players', () => ({
   on: true,
   seen: new Map(),
 }));

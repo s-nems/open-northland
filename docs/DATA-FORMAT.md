@@ -162,7 +162,8 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   whole mulberry32 state), `fog` (present exactly when the header names a map fingerprint:
   per-player masks ascending by player, one visibility digit per cell, plus the rebuild-cadence
   fields), and `commands` (pending envelopes plus the next sequence number). The applied command
-  log is replay history and stays out.
+  log is replay history and stays out, and so are the envelopes stamped for a later tick: the saved
+  tick plus the session's own command stream after it reconstruct what was in flight.
 - The encoding is canonical: object keys keep construction order, a `Map` component field becomes a
   single-key `{"$map": [[key, value], ...]}` wrapper holding its live insertion order (raw Map order
   is observable sim state a restore must reproduce; the `$map` key is reserved, and export rejects a

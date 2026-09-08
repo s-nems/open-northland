@@ -55,9 +55,9 @@ describe('hashState string values', () => {
  *  let two diverging runs hash identically. */
 describe('hashState unhashable value shapes', () => {
   // One component per case: a name registers globally, so a shared probe would collide.
-  const UnhashableSet = defineComponent<unknown>('UnhashableSetProbe');
-  const UnhashableBigint = defineComponent<unknown>('UnhashableBigintProbe');
-  const UnhashableInstance = defineComponent<unknown>('UnhashableInstanceProbe');
+  const UnhashableSet = defineComponent<unknown>('UnhashableSetProbe', 'economy');
+  const UnhashableBigint = defineComponent<unknown>('UnhashableBigintProbe', 'economy');
+  const UnhashableInstance = defineComponent<unknown>('UnhashableInstanceProbe', 'economy');
 
   function simWithComponentValue(component: typeof UnhashableSet, value: unknown): Simulation {
     const sim = new Simulation({ seed: 1, content: testContent() });

@@ -1,3 +1,4 @@
+import type { SyncDomain } from './sync-domain.js';
 import { type Component, type DeepReadonly, defineComponent, type Entity, type World } from './world.js';
 
 /**
@@ -12,8 +13,12 @@ export interface WorldSingleton<T extends object> {
   write(world: World, apply: (value: T) => void): void;
 }
 
-export function defineWorldSingleton<T extends object>(name: string, defaults: () => T): WorldSingleton<T> {
-  const component = defineComponent<T>(name);
+export function defineWorldSingleton<T extends object>(
+  name: string,
+  domain: SyncDomain,
+  defaults: () => T,
+): WorldSingleton<T> {
+  const component = defineComponent<T>(name, domain);
   // One instance answers every carrier-less read, so the default path allocates nothing. Every World in
   // the process shares it, so a write defeating the read-only view corrupts all of them at once.
   const absent = Object.freeze(defaults()) as DeepReadonly<T>;

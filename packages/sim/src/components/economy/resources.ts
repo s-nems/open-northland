@@ -16,7 +16,7 @@ export const Resource = defineComponent<{
    *  plays several strokes per unit (`workRepeatsFor`, the extracted `baserepeatcounter`). Absent until
    *  first advanced and deleted when a unit frees. */
   strikes?: number;
-}>('Resource');
+}>('Resource', 'economy');
 
 /**
  * The still-buried yields of a multi-good {@link Resource} node, in extraction order: when the current good
@@ -31,7 +31,7 @@ export interface ResourceLayer {
   gfxIndex?: number;
 }
 
-export const ResourceLayers = defineComponent<{ layers: ResourceLayer[] }>('ResourceLayers');
+export const ResourceLayers = defineComponent<{ layers: ResourceLayer[] }>('ResourceLayers', 'economy');
 
 /** One integer cell offset relative to a placed resource node's anchor tile. */
 export interface ResourceFootprintCell {
@@ -55,7 +55,7 @@ export interface ResourceFootprintData {
   readonly sourceGfxIndex?: number;
 }
 
-export const ResourceFootprint = defineComponent<ResourceFootprintData>('ResourceFootprint');
+export const ResourceFootprint = defineComponent<ResourceFootprintData>('ResourceFootprint', 'economy');
 
 /**
  * Marks a {@link Resource} node that is felled rather than gathered unit-by-unit, faithful to the original's
@@ -63,7 +63,7 @@ export const ResourceFootprint = defineComponent<ResourceFootprintData>('Resourc
  * `chopsLeft` counts the chops still needed, each yielding nothing onto the settler's back; the node falls
  * at 0, dropping its whole `Resource.remaining` at its cell as a {@link GroundDrop} trunk pile.
  */
-export const Felling = defineComponent<{ chopsLeft: number }>('Felling');
+export const Felling = defineComponent<{ chopsLeft: number }>('Felling', 'economy');
 
 /**
  * Marks a {@link Resource} node that is mined one unit at a time, faithful to the original's
@@ -83,14 +83,14 @@ export const MineDeposit = defineComponent<{
   strikesPerUnit: number;
   /** Progress toward the next unit (0..strikesPerUnit-1), reset on each chipped unit. */
   strikes: number;
-}>('MineDeposit');
+}>('MineDeposit', 'economy');
 
 /**
  * A stump/debris decor entity left where a {@link Felling} node fell (`ls_trees_dead.bmd` "tree debris",
  * `landscapetype` logic 1: pure decor, non-blocking, not harvestable). It takes part in no sim decision;
  * `goodType` records which resource it is the remains of.
  */
-export const Stump = defineComponent<{ goodType: number }>('Stump');
+export const Stump = defineComponent<{ goodType: number }>('Stump', 'economy');
 
 /**
  * Marks a bare `Stockpile` that is a dropped resource pile, riding on the plain `Stockpile + Position`
@@ -98,17 +98,17 @@ export const Stump = defineComponent<{ goodType: number }>('Stump');
  * drive scans for, and what keeps the pile out of the yard-heap set, so it is neither a delivery sink nor a
  * heap another drop stacks onto. `goodType` is for legibility; its presence is what the sim keys on.
  */
-export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop');
+export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop', 'economy');
 
 /**
  * Names the settler whose harvest made this {@link GroundDrop}, stamped only for a flag-bound gatherer (one
  * carrying a `WorkFlag`). Its collect drive reclaims a drop only when `by` is its own entity. Entity ids are
  * never reused, so a dead owner's id cannot re-alias a live settler.
  */
-export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy');
+export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy', 'economy');
 
 /** Names the hunter whose shot left this carcass {@link Resource}; absent on a node not shot into being. */
-export const KilledBy = defineComponent<{ by: Entity }>('KilledBy');
+export const KilledBy = defineComponent<{ by: Entity }>('KilledBy', 'economy');
 
 /**
  * A wild berry bush a hungry settler forages directly (the `forage` atomic), no job or tool needed, and
@@ -128,4 +128,4 @@ export const BerryBush = defineComponent<{
   nextStageAtTick: number;
   /** Opaque render-variant tag. */
   gfxIndex?: number;
-}>('BerryBush');
+}>('BerryBush', 'economy');

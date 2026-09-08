@@ -74,7 +74,7 @@ describe('snapshot is structured-cloneable (Web-Worker boundary)', () => {
    * gone, so the clone rejects the shapes it cannot lower instead of emitting a lossy snapshot.
    */
   it('throws on a component shape it cannot lower to plain data', () => {
-    const probe = defineComponent<unknown>('UncloneableProbe');
+    const probe = defineComponent<unknown>('UncloneableProbe', 'economy');
     const withSet = new Simulation({ seed: 1, content: testContent() });
     withSet.world.add(withSet.world.create(), probe, { ids: new Set([1, 2]) });
     expect(() => withSet.snapshot()).toThrow(/uncloneable value shape Set/);

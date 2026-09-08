@@ -75,7 +75,9 @@ art stands in. Direct entries are useful during focused work:
 | `?backdrop=<id>` | one ambient-settlement frame of a decoded map, used by the menu-backdrop harness |
 
 Common modifiers include `lang=<pol|eng>`, `fog=<...>`, `player=<...>`, `ai=<...>`, `sound=off`,
-`intro=off` (skip the mission sheet a fresh world opens on), and `fullscreen=off`. Without `lang`
+`intro=off` (skip the mission sheet a fresh world opens on), and `fullscreen=off`. `seed=<n>` picks
+the world seed a `?map=` session runs on, so two clients of one session start from the same world;
+without it the map entry keeps its fixed default. Without `lang`
 the language follows the browser, and English stands in for a
 browser language with no shipped catalog. The graphics settings (render scale, frame-rate limit,
 post-processing) live in the stored settings and never enter the URL; `postfx=<on|off>` overrides
@@ -150,7 +152,8 @@ Run the synthetic simulation benchmark with `npm run bench:sim`. Its main contro
 and `ON_BENCH_JSON`.
 
 Run the real-map benchmark with `npm run bench:map`. It needs generated content and its controls are
-`ON_BENCH_MAP`, `ON_BENCH_SEATS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`, and
+`ON_BENCH_MAP`, `ON_BENCH_SEATS`, `ON_BENCH_TICKS`, `ON_BENCH_WARMUP`, `ON_BENCH_WINDOWS`,
+`ON_BENCH_SYNC_DIGEST` (fold the per-tick sync digest, what a networked session pays), and
 `ON_BENCH_JSON`. `ON_CONTENT_DIR` points it at a content directory outside the checkout. The default
 run is 20k ticks; `ON_BENCH_TICKS=50000` covers a full AI build-out.
 

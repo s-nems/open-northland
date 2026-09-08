@@ -7,12 +7,13 @@ import {
   type PlayerCommand,
 } from './envelope.js';
 import type { Command } from './index.js';
+import { checkCommandPayload } from './payload.js';
 
 /**
- * Validate an envelope decoded from untrusted JSON (an imported replay or a diagnostics bundle): its
- * version, origin, seat id, and whether that origin may issue the command kind at all. Payload fields
- * are unchecked, so a field of the wrong primitive type reaches its handler as written; the returned
- * value still references the caller's payload, which `CommandQueue.enqueue` copies.
+ * Validate an envelope decoded from untrusted JSON (an imported replay, a diagnostics bundle, another
+ * player's command): its version, origin, seat id, whether that origin may issue the command kind, and
+ * the kind's own field contract. The returned value still references the caller's payload, which
+ * `CommandQueue.enqueue` copies.
  */
 export function parseCommandEnvelope(value: unknown, at = 'envelope'): CommandEnvelope {
   const raw = asRecord(value, at);
@@ -20,10 +21,25 @@ export function parseCommandEnvelope(value: unknown, at = 'envelope'): CommandEn
     throw new Error(`${at}: unsupported version ${String(raw.v)}, expected ${COMMAND_ENVELOPE_VERSION}`);
   }
   const command = asRecord(raw.command, `${at}.command`);
-  const kind = command.kind;
-  if (typeof kind !== 'string' || !Object.hasOwn(COMMAND_ISSUER, kind)) {
-    throw new Error(`${at}.command: unknown kind ${JSON.stringify(kind)}`);
+  const rawKind = command.kind;
+  if (typeof rawKind !== 'string' || !Object.hasOwn(COMMAND_ISSUER, rawKind)) {
+    throw new Error(`${at}.command: unknown kind ${JSON.stringify(rawKind)}`);
   }
+  const kind = rawKind as Command['kind'];
+  // Authority first, then the payload: who may send this is the coarser question, and its message is
+  // the more useful one when both are wrong.
+  const envelope = parseAuthority(raw, command, kind, at);
+  checkCommandPayload(command, kind, `${at}.command`);
+  return envelope;
+}
+
+/** The envelope's origin half: which authority it claims, and whether that authority may issue `kind`. */
+function parseAuthority(
+  raw: Record<string, unknown>,
+  command: Record<string, unknown>,
+  kind: Command['kind'],
+  at: string,
+): CommandEnvelope {
   const origin = raw.origin;
   if (origin === 'setup' || origin === 'admin') {
     return { v: COMMAND_ENVELOPE_VERSION, origin, command: command as unknown as Command };
@@ -35,7 +51,7 @@ export function parseCommandEnvelope(value: unknown, at = 'envelope'): CommandEn
   if (typeof player !== 'number' || !Number.isInteger(player)) {
     throw new Error(`${at}: a ${origin} envelope needs an integer player, got ${JSON.stringify(player)}`);
   }
-  if (COMMAND_ISSUER[kind as Command['kind']] !== 'seat') {
+  if (COMMAND_ISSUER[kind] !== 'seat') {
     throw new Error(`${at}: a ${origin} envelope may not issue '${kind}'`);
   }
   return {

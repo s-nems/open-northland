@@ -79,7 +79,7 @@ describe('parseCommandLog', () => {
     const queue = new CommandQueue();
     queue.enqueue(setupCommand({ kind: 'setNeedsEnabled', enabled: false }));
     queue.enqueue(playerCommand(SEAT, { kind: 'marry', entity: UNIT }));
-    for (const queued of queue.drain()) queue.record(1, queued);
+    for (const queued of queue.drain(1)) queue.record(1, queued);
 
     const log = wire(queue.log) as unknown[];
     expect(parseCommandLog(log)).toHaveLength(2);
@@ -99,7 +99,7 @@ describe('CommandQueue', () => {
     queue.enqueue(playerCommand(SEAT, mutable));
     mutable.goods.push(3);
 
-    expect(queue.drain()[0]?.command).toEqual(source);
+    expect(queue.drain(1)[0]?.command).toEqual(source);
   });
 
   it('refuses a payload that is not plain serializable data', () => {
@@ -118,7 +118,7 @@ describe('CommandQueue', () => {
     ) as PlayerCommand;
     queue.enqueue(playerCommand(SEAT, forged));
 
-    const command = queue.drain()[0]?.command as Record<string, unknown>;
+    const command = queue.drain(1)[0]?.command as Record<string, unknown>;
     expect('owner' in command).toBe(false);
     expect('player' in command).toBe(false);
   });
@@ -130,7 +130,7 @@ describe('CommandQueue', () => {
     queue.enqueue(adminCommand({ kind: 'setNeedsEnabled', enabled: false }));
     queue.discardPending();
     queue.enqueue(adminCommand({ kind: 'setNeedsEnabled', enabled: true }));
-    for (const envelope of queue.drain()) queue.record(1, envelope);
+    for (const queued of queue.drain(1)) queue.record(1, queued);
 
     expect(queue.log.map((e) => [e.applyTick, e.sequence])).toEqual([[1, 0]]);
   });

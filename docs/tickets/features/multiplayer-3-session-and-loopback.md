@@ -1,7 +1,6 @@
 # Run every game through a session descriptor and a lockstep driver with a loopback transport
 
 **Area:** app · **Focus:** new package packages/lockstep, view/runtime, entries/map · **Priority:** P2
-**Blocked by:** [multiplayer-2-sim-lockstep-seams.md](multiplayer-2-sim-lockstep-seams.md)
 
 A networked game needs one serializable description of what is being played and a loop that advances
 the sim only through ticks whose inputs are complete. Today neither exists:

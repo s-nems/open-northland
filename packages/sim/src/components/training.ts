@@ -9,4 +9,4 @@ import { defineComponent, type Entity } from '../ecs/world.js';
 export const TrainingOrder = defineComponent<{
   house: Entity;
   drillTicksLeft: number;
-}>('TrainingOrder');
+}>('TrainingOrder', 'settlers');

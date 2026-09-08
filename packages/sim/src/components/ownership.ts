@@ -16,7 +16,7 @@ export function isValidPlayer(player: number): boolean {
  * carries: `tribe` decides look, rules and tech, and two players can both field vikings, so `tribe` alone
  * cannot tell them apart. An entity carrying no `Owner` is neutral.
  */
-export const Owner = defineComponent<{ player: number }>('Owner');
+export const Owner = defineComponent<{ player: number }>('Owner', 'players');
 
 export function ownerOf(world: World, e: Entity): number | undefined {
   return world.tryGet(e, Owner)?.player;

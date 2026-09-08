@@ -36,7 +36,7 @@ export interface EquipmentData {
   misc: ReadonlyArray<EquipmentSlot | null>;
 }
 
-export const Equipment = defineComponent<EquipmentData>('Equipment');
+export const Equipment = defineComponent<EquipmentData>('Equipment', 'settlers');
 
 /** The good worn in one addressed equipment slot, or null when the slot is empty / out of range. */
 export function equipSlotValue(eq: EquipmentData, group: EquipCategory, slot: number): EquipmentSlot | null {
@@ -74,4 +74,4 @@ export const EquipOrder = defineComponent<{
   /** The player's click or the assistant's hand-out: a player order sets a carried load down mid-errand,
    *  the assistant's drops it. */
   issuer: 'player' | 'assistant';
-}>('EquipOrder');
+}>('EquipOrder', 'settlers');

@@ -5,7 +5,7 @@ import { defineComponent, type Entity } from '../ecs/world.js';
  * and processable at an animal farm. Stamped at spawn from the immutable species flag, so the husbandry
  * systems query this small store instead of scanning every settler. The claim itself is {@link Owner}.
  */
-export const Livestock = defineComponent<Record<string, never>>('Livestock');
+export const Livestock = defineComponent<Record<string, never>>('Livestock', 'economy');
 
 /**
  * A processing visit in flight on a booked animal. `systems/livestock/processing.ts` owns the lifecycle,
@@ -14,4 +14,4 @@ export const Livestock = defineComponent<Record<string, never>>('Livestock');
 export const LivestockVisit = defineComponent<{
   /** The workplace whose batch booked this animal. */
   at: Entity;
-}>('LivestockVisit');
+}>('LivestockVisit', 'economy');

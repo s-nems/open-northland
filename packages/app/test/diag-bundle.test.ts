@@ -64,7 +64,7 @@ describe('diagnostics bundle', () => {
     // The builder enqueued its setup commands again, but the log already carries them (every applied
     // command is logged) - drop the pending duplicates and let the log supply ALL commands in their
     // original apply order.
-    replayed.commands.drain();
+    replayed.commands.discardPending();
     stepReplaying(replayed, importedLog, game.tick);
     expect(replayed.hashState()).toBe(game.finalHash);
     expect(replayed.hashState()).toBe(game.hashes?.at(-1)?.hash);

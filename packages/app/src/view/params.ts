@@ -38,7 +38,7 @@ export function menuSearch(current = new URLSearchParams(window.location.search)
 
 /** The world and seat selection a save records so a menu load can relaunch the session; carried
  *  settings and diagnostic pins stay out, so a relaunch takes those from the player's own session. */
-const ENTRY_PARAMS = ['map', 'scene', 'player', 'colors', 'ai'] as const;
+const ENTRY_PARAMS = ['map', 'scene', 'player', 'colors', 'ai', 'seed'] as const;
 
 export function entrySearch(current = new URLSearchParams(window.location.search)): string | null {
   const target = new URLSearchParams();

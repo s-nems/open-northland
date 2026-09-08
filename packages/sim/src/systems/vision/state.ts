@@ -10,6 +10,38 @@ export const FOG_STATE = {
   VISIBLE: 2,
 } as const;
 
+/** The number of distinct {@link FOG_STATE} values, the stride that keeps one cell's fold contributions
+ *  apart from its neighbours'. */
+const FOG_STATE_COUNT = 3;
+
+/**
+ * One player's mask fold: the XOR of every non-UNEXPLORED cell's {@link cellFold}. Boxed so a stamp
+ * updates it without a per-cell lookup, and order-independent, so it is a pure function of the mask's
+ * bytes however they were written.
+ */
+export interface FogFold {
+  value: number;
+}
+
+/** One cell's contribution to its player's fold. UNEXPLORED contributes nothing, so a freshly allocated
+ *  mask folds to 0. The splitmix32 finalizer avalanches the index, or two cells trading states would
+ *  cancel out. */
+function cellFold(index: number, state: number): number {
+  if (state === FOG_STATE.UNEXPLORED) return 0;
+  let h = (index * FOG_STATE_COUNT + state) >>> 0;
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x7feb352d);
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x846ca68b);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
+/** Fold `index`'s move from `from` to `to` into `fold`; XOR is its own inverse, so the old contribution
+ *  cancels and the new one lands. */
+export function foldCellChange(fold: FogFold, index: number, from: number, to: number): void {
+  fold.value = (fold.value ^ cellFold(index, from) ^ cellFold(index, to)) >>> 0;
+}
+
 /**
  * The per-player fog masks, a `Simulation`-owned world resource rather than a component: one lazily
  * allocated `W×H` array of {@link FOG_STATE} bytes per player that ever owned a positioned entity.
@@ -38,6 +70,9 @@ export class FogState {
   activeMode: number = FOG_MODE.OFF;
   /** Tick of the last rebuild, -1 before the first. */
   lastRebuildTick = -1;
+  /** player → mask fold, maintained only while a sync digest is on; the masks are far too large to
+   *  fold from scratch each tick. */
+  private folds: Map<number, FogFold> | null = null;
 
   constructor(terrain: TerrainGraph, world: World) {
     // The terrain graph is the 2W×2H half-cell lattice; cells quarter it (ceil for odd safety).
@@ -46,6 +81,51 @@ export class FogState {
     // The may-hold-VISIBLE boxes are incrementally maintained, so the verifier registers here for the
     // fuzz harness's `cachesCoherent` invariant.
     world.registerCacheVerifier('fogVisibleBounds', () => this.verifyVisibleBounds());
+  }
+
+  /** Start maintaining the mask folds, seeded from the masks as they stand: one walk, so a session that
+   *  turns the digest on mid-run does not carry an empty fold. Idempotent. */
+  startFolding(): void {
+    if (this.folds !== null) return;
+    this.folds = new Map<number, FogFold>();
+    for (const player of this.playersWithMasks()) {
+      const mask = this.masks.get(player);
+      if (mask === undefined) continue; // unreachable - playersWithMasks lists only allocated masks
+      const fold = { value: 0 };
+      for (let i = 0; i < mask.length; i++) {
+        foldCellChange(fold, i, FOG_STATE.UNEXPLORED, mask[i] ?? FOG_STATE.UNEXPLORED);
+      }
+      this.folds.set(player, fold);
+    }
+  }
+
+  /** Stop maintaining the folds; a later {@link startFolding} rebuilds them from the masks. */
+  stopFolding(): void {
+    this.folds = null;
+  }
+
+  /** `player`'s mask fold to update while writing its cells, or null while no digest folds the fog. An
+   *  all-UNEXPLORED mask folds to 0, so a fresh box needs no walk. */
+  foldFor(player: number): FogFold | null {
+    if (this.folds === null) return null;
+    let fold = this.folds.get(player);
+    if (fold === undefined) {
+      fold = { value: 0 };
+      this.folds.set(player, fold);
+    }
+    return fold;
+  }
+
+  /** Mix the fold of every player's mask, ascending, plus the two cadence fields, which {@link hashInto}
+   *  leaves out - the digest is the stricter of the two here. The mask bytes themselves stay out: they
+   *  are what the folds stand in for. */
+  syncFoldInto(mix: (n: number) => void): void {
+    mix(this.activeMode);
+    mix(this.lastRebuildTick);
+    for (const player of this.playersWithMasks()) {
+      mix(player);
+      mix(this.folds?.get(player)?.value ?? 0);
+    }
   }
 
   /** The mask for `player`, allocated (all UNEXPLORED) on first use. */
@@ -76,11 +156,14 @@ export class FogState {
       throw new Error(`fog mask for player ${player} holds ${mask.length} bytes, the grid ${cells} cells`);
     }
     this.masks.set(player, mask);
+    const fold = this.foldFor(player);
+    if (fold !== null) fold.value = 0;
     for (let r = 0; r < this.cellsHigh; r++) {
       for (let c = 0; c < this.cellsWide; c++) {
-        if (mask[r * this.cellsWide + c] === FOG_STATE.VISIBLE) {
-          this.mergeVisibleBounds(player, c, c, r, r);
-        }
+        const index = r * this.cellsWide + c;
+        const state = mask[index] ?? FOG_STATE.UNEXPLORED;
+        if (fold !== null) foldCellChange(fold, index, FOG_STATE.UNEXPLORED, state);
+        if (state === FOG_STATE.VISIBLE) this.mergeVisibleBounds(player, c, c, r, r);
       }
     }
   }
@@ -90,6 +173,7 @@ export class FogState {
     if (this.masks.size === 0) return;
     this.masks.clear();
     this.visibleBounds.clear();
+    this.folds?.clear();
     this.generation++;
   }
 
@@ -113,10 +197,13 @@ export class FogState {
     if (b === undefined) return;
     const mask = this.masks.get(player);
     if (mask !== undefined) {
+      const fold = this.foldFor(player);
       for (let r = b.minR; r <= b.maxR; r++) {
         const base = r * this.cellsWide;
         for (let c = b.minC; c <= b.maxC; c++) {
-          if (mask[base + c] === FOG_STATE.VISIBLE) mask[base + c] = FOG_STATE.EXPLORED;
+          if (mask[base + c] !== FOG_STATE.VISIBLE) continue;
+          mask[base + c] = FOG_STATE.EXPLORED;
+          if (fold !== null) foldCellChange(fold, base + c, FOG_STATE.VISIBLE, FOG_STATE.EXPLORED);
         }
       }
     }

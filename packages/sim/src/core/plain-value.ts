@@ -18,6 +18,23 @@ export function sortedMapEntries<K, V>(map: ReadonlyMap<K, V>): Array<[K, V]> {
   return [...map.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
 }
 
+/**
+ * A record's own keys in ascending order - the canonical field order the state hash and the sync
+ * digest both walk. Insertion sort, not `Array.prototype.sort`: a component record holds a handful of
+ * fields, where the built-in's generic setup costs several times the comparisons themselves, and the
+ * digest sorts thousands of records a tick.
+ */
+export function sortedKeys(value: Record<string, unknown>): string[] {
+  const keys = Object.keys(value);
+  for (let i = 1; i < keys.length; i++) {
+    const key = keys[i] as string;
+    let j = i - 1;
+    for (; j >= 0 && (keys[j] as string) > key; j--) keys[j + 1] = keys[j] as string;
+    keys[j + 1] = key;
+  }
+  return keys;
+}
+
 /** A short shape name for a rejected value, for the walks' throw messages. */
 export function valueShapeName(value: unknown): string {
   if (value === null || typeof value !== 'object') return typeof value;

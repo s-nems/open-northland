@@ -38,7 +38,7 @@ import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { mapZoomParam } from '../view/camera/map-zoom.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
-import { aiSeatsParam, introParam } from '../view/params.js';
+import { aiSeatsParam, intParam, introParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { takeStagedSave } from '../view/runtime/save-load/index.js';
 import {
@@ -60,7 +60,8 @@ import { buildMapWorld, restoreMapWorld } from './map/world.js';
  * `content/` halts at the terrain step.
  */
 
-const WORLD_SEED = 7;
+/** The seed a `?map=` session runs on when its URL names none; a networked session carries its own. */
+const DEFAULT_WORLD_SEED = 7;
 
 export const MAP_BOOT_PHASES = [
   'graphics',
@@ -109,13 +110,14 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     mapId !== null ? loadMapMeta(mapId) : null,
     mapId !== null ? loadMapBriefing(mapId) : null,
   ]);
+  const seed = intParam(params, 'seed', DEFAULT_WORLD_SEED);
   const localPlayer = localPlayerParam(params);
   const playerColourOf = playerColourMap(script, colorOverridesParam(params));
   diag.info('boot', 'game start', {
     entry: 'map',
     mapId,
     decodedMap: loaded !== null,
-    seed: WORLD_SEED,
+    seed,
     localPlayer,
     rosterSize: script?.players.length ?? 0,
   });
@@ -208,7 +210,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   } else {
     const world = buildMapWorld({
       ...worldOptions,
-      seed: WORLD_SEED,
+      seed,
       aiSeats,
       assistantSeats: [...controlled, ...aiSeats],
       matchParticipants: participants,

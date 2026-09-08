@@ -8,9 +8,9 @@ import { defineComponent, type Entity, World } from '../../src/ecs/world.js';
  * correctly by spread/for-of, safe under nesting (each call is its own iterator) and early break.
  */
 
-const A = defineComponent<number>('A');
-const B = defineComponent<number>('B');
-const C = defineComponent<number>('C');
+const A = defineComponent<number>('A', 'economy');
+const B = defineComponent<number>('B', 'economy');
+const C = defineComponent<number>('C', 'economy');
 
 describe('World.query', () => {
   it('yields the intersection in smallest-store insertion order', () => {

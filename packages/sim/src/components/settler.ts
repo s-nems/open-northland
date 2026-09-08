@@ -31,7 +31,7 @@ export const Settler = defineComponent<{
   enjoyment: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */
   experience: Map<number, number>;
-}>('Settler');
+}>('Settler', 'settlers');
 
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;
 
@@ -40,7 +40,7 @@ export type SettlerView = DeepReadonly<SettlerState>;
 
 /** Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. Never
  *  removed, so `query(Person, …)` is a human-only system's filter. */
-export const Person = defineComponent<{ readonly person: true }>('Person');
+export const Person = defineComponent<{ readonly person: true }>('Person', 'settlers');
 
 /** Add a person: a {@link Settler} carrying the {@link Person} marker. The only path that mints one. */
 export function addPerson(world: World, entity: Entity, state: SettlerState): void {
@@ -100,10 +100,10 @@ export const CurrentAtomic = defineComponent<{
   swingsSinceRest?: number;
   /** Fractional work credit banked across a multi-swing harvest, in [0, ONE); absent while whole. */
   workCredit?: Fixed;
-}>('CurrentAtomic');
+}>('CurrentAtomic', 'settlers');
 
 /** Goods a settler is physically hauling; goods never teleport to a global bank. */
-export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying');
+export const Carrying = defineComponent<{ goodType: number; amount: number }>('Carrying', 'settlers');
 
 /** The most units a settler picks up in one lift. Observation: a person carries one good unit at a time. */
 export const CARRY_CAPACITY = 1;
@@ -113,27 +113,33 @@ export const CARRY_CAPACITY = 1;
  * it survives a wait for material, a detour, or a meal. `pinned` marks the `assignBuilder` order's site,
  * which wins over the nearest-site pick while that site still stands.
  */
-export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>('SiteAssignment');
+export const SiteAssignment = defineComponent<{ site: Entity; pinned: boolean }>(
+  'SiteAssignment',
+  'settlers',
+);
 
 /**
  * A settler's live construction-supply errand, cleared and re-stamped at the top of its own next planning
  * pass. Settlers planned later subtract these from a site's outstanding need, so two builders don't race
  * for the same last unit.
  */
-export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>('SupplyRun');
+export const SupplyRun = defineComponent<{ site: Entity; goodType: number; amount: number }>(
+  'SupplyRun',
+  'settlers',
+);
 
 /**
  * The specific `Building` a settler is employed at, so two same-type workplaces staff independently.
  * Only the `assignWorker` order stamps it; nothing else employs a settler.
  */
-export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment');
+export const JobAssignment = defineComponent<{ workplace: Entity }>('JobAssignment', 'settlers');
 
 /**
  * A settler's age in whole ticks while it is still a non-working life stage. The GrowthSystem promotes the
  * age-class `jobType` at each stage boundary and removes the component at adult-eligibility, so an adult
  * carries none.
  */
-export const Age = defineComponent<{ ticks: number }>('Age');
+export const Age = defineComponent<{ ticks: number }>('Age', 'settlers');
 
 /**
  * A player move order in flight on a settler: the planner's economy branch and the combat auto-drives leave
@@ -143,7 +149,7 @@ export const Age = defineComponent<{ ticks: number }>('Age');
 export const PlayerOrder = defineComponent<{
   pendingGoal?: NodeId;
   attackMove?: AttackMoveMarch;
-}>('PlayerOrder');
+}>('PlayerOrder', 'settlers');
 
 /**
  * The march an attack-move order walks out - the original's "Attack Position" (`misclogic/48`). Unlike a
@@ -172,4 +178,7 @@ export type DeferrableOrderCommand = Extract<
  * re-dispatches it once the atomic completes. One slot per settler, latest-order-wins - an approximation,
  * since the original's queueing depth under back-to-back orders is unobserved.
  */
-export const DeferredOrder = defineComponent<{ command: DeferrableOrderCommand }>('DeferredOrder');
+export const DeferredOrder = defineComponent<{ command: DeferrableOrderCommand }>(
+  'DeferredOrder',
+  'settlers',
+);

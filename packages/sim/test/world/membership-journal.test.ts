@@ -16,7 +16,7 @@ interface Tag {
 describe('World membership journal', () => {
   it('answers null for an unjournaled component, and replays adds/removes/destroys once journaled', () => {
     const w = new World();
-    const C = defineComponent<Tag>('JournalTag');
+    const C = defineComponent<Tag>('JournalTag', 'economy');
     expect(w.membershipDeltasSince(C, 0)).toBeNull();
 
     w.journalMembership(C);
@@ -34,7 +34,7 @@ describe('World membership journal', () => {
 
   it('journals a value-overwriting re-add (the consumer must re-read the stored value)', () => {
     const w = new World();
-    const C = defineComponent<Tag>('JournalOverwrite');
+    const C = defineComponent<Tag>('JournalOverwrite', 'economy');
     w.journalMembership(C);
     const a = w.create();
     w.add(a, C, { n: 1 });
@@ -45,7 +45,7 @@ describe('World membership journal', () => {
 
   it('drops the oldest span at the cap - a consumer left behind gets null and must rebuild', () => {
     const w = new World();
-    const C = defineComponent<Tag>('JournalCap');
+    const C = defineComponent<Tag>('JournalCap', 'economy');
     w.journalMembership(C);
     const before = w.componentGeneration(C);
     const e = w.create();

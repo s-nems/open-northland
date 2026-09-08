@@ -11,7 +11,7 @@ export const Chat = defineComponent<{
   seeker: boolean;
   talking: boolean;
   speaks: boolean;
-}>('Chat');
+}>('Chat', 'settlers');
 
 /**
  * A short post-chat breather stamped on both halves when a chat ends: until tick `until` the settler
@@ -19,4 +19,4 @@ export const Chat = defineComponent<{
  * re-grabbed in the very planner pass that freed it. The stamp expires in place, overwritten by the next
  * chat rather than removed.
  */
-export const ChatCooldown = defineComponent<{ until: number }>('ChatCooldown');
+export const ChatCooldown = defineComponent<{ until: number }>('ChatCooldown', 'settlers');
