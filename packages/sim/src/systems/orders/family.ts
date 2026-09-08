@@ -27,7 +27,10 @@ export function marry(world: World, ctx: SystemContext, command: Extract<Command
   const terrain = ctx.terrain;
   const limit = terrain !== undefined ? navigationLimitFor(world, ctx.content, terrain, e) : null;
   const partner = findPartnerFor(world, ctx.content, e, terrain, limit);
-  if (partner === null) return;
+  if (partner === null) {
+    ctx.events.emit({ kind: 'marriageUnmatched', entity: e });
+    return;
+  }
   startWedding(world, e, partner);
 }
 

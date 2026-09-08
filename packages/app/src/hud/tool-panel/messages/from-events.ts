@@ -55,6 +55,7 @@ export function messagesFromEvents(
           subjectName: named?.name ?? null,
           jobLabel: named?.jobLabel ?? null,
           goodName: null,
+          stanceName: null,
         });
       },
     );
@@ -70,6 +71,16 @@ export function messagesFromEvents(
       case 'buildingUpgraded': {
         const e = ownedBuilding(ev.entity);
         if (e !== undefined) raiser.building(USER_MESSAGE_TYPE.houseUpgraded, e);
+        break;
+      }
+      case 'settlerGoalUnreachable': {
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.lostWithoutSignposts, e);
+        break;
+      }
+      case 'marriageUnmatched': {
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.noOneToMarry, e);
         break;
       }
       case 'settlerGrewUp': {
@@ -95,6 +106,7 @@ export function messagesFromEvents(
               subjectName: naming.player(ev.player),
               jobLabel: null,
               goodName: null,
+              stanceName: null,
             }),
         );
         break;

@@ -29,7 +29,8 @@ const compose = (
   subjectName: string | null,
   jobLabel: string | null = null,
   goodName: string | null = null,
-) => composeMessageText(type, { subjectName, jobLabel, goodName }, deps);
+  stanceName: string | null = null,
+) => composeMessageText(type, { subjectName, jobLabel, goodName, stanceName }, deps);
 
 describe('user message text', () => {
   it('maps every type to a messages row', () => {
@@ -62,6 +63,15 @@ describe('user message text', () => {
     expect(compose(USER_MESSAGE_TYPE.backpackFull, 'Leif')).toBe('Leif row58 row60');
   });
 
+  it('appends the stance to the rows about another seat, which end on a lead-in', () => {
+    expect(compose(USER_MESSAGE_TYPE.playerSighted, 'Gracz 2', null, null, 'wrogi')).toBe(
+      'Gracz 2 <131> wrogi',
+    );
+    expect(compose(USER_MESSAGE_TYPE.diplomacyChanged, 'Gracz 2', null, null, 'przyjazny')).toBe(
+      'Gracz 2 <132> przyjazny',
+    );
+  });
+
   it('falls back to the catalog row when the decoded strings are absent', () => {
     const bare: MessageTextDeps = {
       uiString: (_t, _i, fallback) => fallback,
@@ -70,7 +80,7 @@ describe('user message text', () => {
     expect(
       composeMessageText(
         USER_MESSAGE_TYPE.houseUpgraded,
-        { subjectName: 'Dom', jobLabel: null, goodName: null },
+        { subjectName: 'Dom', jobLabel: null, goodName: null, stanceName: null },
         bare,
       ),
     ).toBe('Dom <91>');

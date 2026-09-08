@@ -17,6 +17,7 @@ import {
   type SnapshotEntity,
   settlerJobType,
   settlerNeedsOf,
+  workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
 import { type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
@@ -91,25 +92,56 @@ function isLocalPerson(e: SnapshotEntity, localPlayer: number): boolean {
   return e.components.Person !== undefined && ownerPlayerOf(e) === localPlayer;
 }
 
-/** Consecutive sweeps each employed worker has spent without work. */
+/** One worker's run of workless sweeps, and the post it held while running it up. */
+interface IdleStreak {
+  readonly count: number;
+  readonly atPost: boolean;
+}
+
+/** Consecutive sweeps each worker has spent without work. */
 class IdleStreaks {
-  private counts = new Map<number, number>();
-  private next = new Map<number, number>();
+  private counts = new Map<number, IdleStreak>();
+  private next = new Map<number, IdleStreak>();
 
   begin(): void {
     this.next = new Map();
   }
 
-  /** An idle sweep adds one, a walk keeps the count; returns the count after this sweep. */
-  advance(entity: number, occupation: 'idle' | 'walking'): number {
-    const count = (this.counts.get(entity) ?? 0) + (occupation === 'idle' ? 1 : 0);
-    this.next.set(entity, count);
+  /** An idle sweep adds one and a walk keeps the count, but taking or losing a post starts the run
+   *  over: the two notes this feeds ask different questions. Returns the count after this sweep. */
+  advance(entity: number, occupation: 'idle' | 'walking', atPost: boolean): number {
+    const before = this.counts.get(entity);
+    const kept = before !== undefined && before.atPost === atPost ? before.count : 0;
+    const count = kept + (occupation === 'idle' ? 1 : 0);
+    this.next.set(entity, { count, atPost });
     return count;
   }
 
   /** A worker not advanced this sweep, busy or gone, starts over. */
   end(): void {
     this.counts = this.next;
+  }
+}
+
+/** Which of this seat's settlers have ever held a workplace, so the note about losing one can tell a
+ *  razed post from a trade no workplace employs in the first place. */
+class PostHistory {
+  private employed = new Set<number>();
+  private seen = new Set<number>();
+
+  /** Records this sweep's employment; returns whether the settler has held a post at some point. */
+  track(entity: number, atPost: boolean): boolean {
+    this.seen.add(entity);
+    if (atPost) this.employed.add(entity);
+    return this.employed.has(entity);
+  }
+
+  /** Forget the settlers gone from the world, so the set follows the seat's population. */
+  end(): void {
+    for (const entity of this.employed) {
+      if (!this.seen.has(entity)) this.employed.delete(entity);
+    }
+    this.seen = new Set();
   }
 }
 
@@ -147,28 +179,46 @@ function raiseDying(raiser: MessageRaiser, e: SnapshotEntity): void {
   if (isDying(e)) raiser.settler(USER_MESSAGE_TYPE.willDie, e);
 }
 
-function raiseNothingToDo(
+/**
+ * A settler that held a workplace once and holds none now, with no flag yard standing in for it: what a
+ * razed or released post leaves behind. Reading the loss rather than the bare absence keeps the note off
+ * everyone no workplace ever employed, since the sim stamps every grown woman and civilian with a trade.
+ * Approximation: the original raises this from a task that went looking for a work point and found none.
+ * One note per settler, so razing a whole district fills the strip with the crews it put out of work.
+ */
+function lostItsWorkplace(e: SnapshotEntity, everEmployed: boolean): boolean {
+  return everEmployed && workplaceOf(e) === undefined && workFlagOf(e) === undefined;
+}
+
+/** The note an idle adult earns: with a post to work at it has nothing to do, having lost one it has
+ *  nowhere to go. */
+function raiseIdleNote(
   raiser: MessageRaiser,
   snapshot: WorldSnapshot,
   e: SnapshotEntity,
   streaks: IdleStreaks,
+  posts: PostHistory,
 ): void {
-  if (holdsPost(e) || !hasWorkplaceToWorkAt(snapshot, e)) return;
+  const atPost = workplaceOf(e) !== undefined;
+  // Tracked ahead of the early-outs, since a settler is at its post precisely while it looks busy.
+  const everEmployed = posts.track(e.id, atPost);
+  if (holdsPost(e)) return;
   const occupation = occupationOf(snapshot, e);
   if (occupation === 'busy') return;
-  if (streaks.advance(e.id, occupation) >= IDLE_SWEEPS_BEFORE_MESSAGE) {
-    raiser.settler(USER_MESSAGE_TYPE.nothingToDo, e);
-  }
+  if (streaks.advance(e.id, occupation, atPost) < IDLE_SWEEPS_BEFORE_MESSAGE) return;
+  if (hasWorkplaceToWorkAt(snapshot, e)) raiser.settler(USER_MESSAGE_TYPE.nothingToDo, e);
+  else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
 }
 
 /**
- * The local player's messages read off the snapshot itself: pressing needs and a worker with nothing to
- * do. One pass over the world's actors per sweep interval, filtering to the seat inside the loop, so the
- * cost follows the actor count and the cadence rather than the frame rate.
+ * The local player's messages read off the snapshot itself: pressing needs, a settler near death, and an
+ * idle worker. One pass over the world's actors per sweep interval, filtering to the seat inside the
+ * loop, so the cost follows the actor count and the cadence rather than the frame rate.
  */
 export function createSnapshotMessageSource(localPlayer: number): SnapshotMessageSource {
   let lastSweepTick: number | null = null;
   const streaks = new IdleStreaks();
+  const posts = new PostHistory();
   return {
     sweep: (snapshot, naming) => {
       const since = lastSweepTick === null ? null : snapshot.tick - lastSweepTick;
@@ -183,9 +233,10 @@ export function createSnapshotMessageSource(localPlayer: number): SnapshotMessag
         if (needsOn) raiseNeeds(raiser, e);
         raiseDying(raiser, e);
         // The original gates only this note on age, alongside its player-type and vehicle checks.
-        if (isAdult(e)) raiseNothingToDo(raiser, snapshot, e, streaks);
+        if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, streaks, posts);
       }
       streaks.end();
+      posts.end();
       return raiser.out;
     },
   };

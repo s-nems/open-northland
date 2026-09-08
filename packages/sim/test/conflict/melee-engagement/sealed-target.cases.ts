@@ -227,6 +227,18 @@ describe('a chase whose target is walled in by buildings', () => {
     expect(memo).toEqual([scene.enemy]);
   });
 
+  it('announces the give-up once per stand-off, not once per refused route', () => {
+    const scene = siege();
+    const raised: Entity[] = [];
+    for (let i = 0; i < RELEASED_BY + REPATH_CADENCE; i++) {
+      scene.sim.step();
+      for (const ev of scene.sim.events.current()) {
+        if (ev.kind === 'settlerGoalUnreachable') raised.push(ev.entity);
+      }
+    }
+    expect(raised).toEqual([scene.besieger]);
+  });
+
   it('hands the besieger back to the economy and keeps it there', () => {
     const scene = siege();
     const wood = scene.sim.world.create();

@@ -118,6 +118,25 @@ describe('the gatherer re-plan after a failed route', () => {
     expect(s.world.has(e, Stranded)).toBe(false);
   });
 
+  it('announces the goal it gave up, so the player can be told the settler lost its way', () => {
+    const s = sim();
+    const e = ownedWoodcutter(s, 0, 0);
+    woodAt(s, 3, 0);
+
+    stepUntil(s, 20, () => s.world.has(e, MoveGoal));
+    const doomed = s.world.get(e, MoveGoal).cell;
+    s.world.add(e, PathRequest, { start: doomed, goal: doomed, failed: true });
+
+    const raised: Entity[] = [];
+    for (let i = 0; i < 100 && raised.length === 0; i++) {
+      s.step();
+      for (const ev of s.events.current()) {
+        if (ev.kind === 'settlerGoalUnreachable') raised.push(ev.entity);
+      }
+    }
+    expect(raised).toEqual([e]);
+  });
+
   it('takes the skipped target back once the memo expires', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);

@@ -35,6 +35,16 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
+      /** A settler gave the place it was heading for up as unreachable, its route retries spent. */
+      readonly kind: 'settlerGoalUnreachable';
+      readonly entity: Entity;
+    }
+  | {
+      /** A marry order found nobody eligible to wed inside the issuer's allowed area. */
+      readonly kind: 'marriageUnmatched';
+      readonly entity: Entity;
+    }
+  | {
       /**
        * Two settlers became spouses this tick. `at` is the kiss node, for the marriage jingle
        * (`DM_MUSIC_TYPE_JINGLE_MARRIAGE`, `logicdefines.inc`).

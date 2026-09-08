@@ -40,6 +40,7 @@ const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null }),
   building: () => 'Dom',
   player: () => 'Gracz',
+  stance: (state) => state,
   text: (type, parts) => `${parts.subjectName ?? '?'}:${type}`,
 };
 
@@ -201,6 +202,29 @@ describe('user messages from sim events', () => {
         text: `Gracz:${USER_MESSAGE_TYPE.playerDied}`,
       },
     ]);
+  });
+
+  it("notes this seat's settler that gave its goal up, and no one else's", () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: ENEMY, kind: 'person' },
+    ]);
+    const out = run(
+      [
+        { kind: 'settlerGoalUnreachable', entity: e(1) },
+        { kind: 'settlerGoalUnreachable', entity: e(2) },
+      ],
+      snap,
+    );
+    expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([
+      [USER_MESSAGE_TYPE.lostWithoutSignposts, 1],
+    ]);
+  });
+
+  it('notes a marry order that found nobody', () => {
+    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'person' }]);
+    const out = run([{ kind: 'marriageUnmatched', entity: e(1) }], snap);
+    expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.noOneToMarry, 1]]);
   });
 
   it('ignores events with no message in the original', () => {

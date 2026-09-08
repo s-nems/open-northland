@@ -1,4 +1,4 @@
-import { nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
+import { type DiplomacyState, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import type { MessageTextParts } from './text.js';
 import type { MessageSubject, PendingMessage, UserMessageType } from './types.js';
@@ -13,6 +13,8 @@ export interface MessageNaming {
   building(e: SnapshotEntity): string | null;
   /** A seat's roster name, for the messages whose subject is a player rather than an entity. */
   player(player: number): string | null;
+  /** A diplomatic stance in the player's language, for the rows that report one. */
+  stance(state: DiplomacyState): string;
   text(type: UserMessageType, parts: MessageTextParts): string;
 }
 
@@ -48,7 +50,12 @@ export class MessageRaiser {
       { type, subject, at: nodeOf(e), about: null, goodType: null, jobType: jobTypeOf(e) },
       () => {
         const named = this.naming.settler(e, this.snapshot);
-        return this.naming.text(type, { subjectName: named.name, jobLabel: named.jobLabel, goodName: null });
+        return this.naming.text(type, {
+          subjectName: named.name,
+          jobLabel: named.jobLabel,
+          goodName: null,
+          stanceName: null,
+        });
       },
     );
   }
@@ -58,7 +65,13 @@ export class MessageRaiser {
     this.raise(
       `${type}|building:${e.id}`,
       { type, subject, at: nodeOf(e), about: null, goodType: null, jobType: null },
-      () => this.naming.text(type, { subjectName: this.naming.building(e), jobLabel: null, goodName: null }),
+      () =>
+        this.naming.text(type, {
+          subjectName: this.naming.building(e),
+          jobLabel: null,
+          goodName: null,
+          stanceName: null,
+        }),
     );
   }
 

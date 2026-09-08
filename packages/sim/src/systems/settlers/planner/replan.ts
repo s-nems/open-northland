@@ -136,6 +136,7 @@ export function releaseStaleIntent(
     // Remember what failed before shedding the route: the re-plan runs the same deterministic
     // nearest-first pick, so without the memo it re-chooses this very goal and loops forever.
     noteUnreachableGoal(world, ctx, e, request.goal);
+    ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
     clearNavState(world, e); // sheds Stranded with the route - fall through and re-plan this tick
   } else if (isTravelling(world, e)) {
     feedOnTheMarch(world, ctx, e, request?.failed === true);
