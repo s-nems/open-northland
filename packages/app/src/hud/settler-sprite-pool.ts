@@ -22,6 +22,8 @@ export class SettlerSpritePool {
     this.drawn.clear();
   }
 
+  /** `zIndex` orders the layer against its container's other children, for a caller whose sprites
+   *  interleave with art it does not own; omit it to keep insertion order. */
   drawLayer(
     key: string,
     layer: ResolvedLayer,
@@ -29,6 +31,7 @@ export class SettlerSpritePool {
     feetY: number,
     zoom: number,
     playerRow: number,
+    zIndex?: number,
   ): void {
     const lut = this.sheet?.palette;
     if (lut !== undefined) {
@@ -63,6 +66,8 @@ export class SettlerSpritePool {
       spr.position.set(feetX + layer.frame.offsetX * s, feetY + layer.frame.offsetY * s);
       spr.visible = true;
     }
+    const spr = this.sprites.get(key);
+    if (spr !== undefined && zIndex !== undefined) spr.zIndex = zIndex;
     this.drawn.add(key);
   }
 

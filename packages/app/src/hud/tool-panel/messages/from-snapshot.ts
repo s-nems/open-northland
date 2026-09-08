@@ -10,6 +10,7 @@ import {
 import {
   actorsOf,
   healthOf,
+  isAdult,
   needsRuleEnabled,
   num,
   ownerPlayerOf,
@@ -37,7 +38,7 @@ const STARVING_HUNGER: number = ONE;
  *  Approximation on the sim's own starvation beat, which leaves about twenty seconds from there. */
 const DYING_HEALTH_DIVISOR = 10;
 
-/** Atomics that occupy a settler without being work: a paired chat or a stagger. */
+/** Atomics that occupy a settler without being work, such as a paired chat. */
 const EFFECTLESS_ATOMICS: ReadonlySet<AtomicEffect['kind']> = new Set<AtomicEffect['kind']>(['idle']);
 
 /** What a settler is doing, as far as the note about having no work is concerned. */
@@ -68,13 +69,16 @@ function occupationOf(snapshot: WorldSnapshot, e: SnapshotEntity): Occupation {
   return 'idle';
 }
 
-/** A unit on a DEFEND stance stands still on purpose. */
+/** A unit on a DEFEND stance stands still on purpose. Added here: the original raises this note from a
+ *  failed job attempt rather than from a poll, so it never has to tell standing still from idleness. */
 function holdsPost(e: SnapshotEntity): boolean {
   const stance = e.components.Stance as { mode?: unknown } | undefined;
   return num(stance?.mode) === systems.MILITARY_MODE.DEFEND;
 }
 
-/** True for a settler employed at a standing building; waiting for one still going up is by design. */
+/** True for a settler employed at a finished building; one waiting on a site still going up is working
+ *  to plan. Quieter than the original, which asks only that the worker's house is not mid-upgrade and
+ *  says nothing about employment. */
 function hasWorkplaceToWorkAt(snapshot: WorldSnapshot, e: SnapshotEntity): boolean {
   const workplace = workplaceOf(e);
   if (workplace === undefined) return false;
@@ -82,11 +86,9 @@ function hasWorkplaceToWorkAt(snapshot: WorldSnapshot, e: SnapshotEntity): boole
   return building !== undefined && building.components.UnderConstruction === undefined;
 }
 
-/** Adults only; a child's needs never raise a note. */
-function isLocalAdult(e: SnapshotEntity, localPlayer: number): boolean {
-  return (
-    e.components.Person !== undefined && e.components.Age === undefined && ownerPlayerOf(e) === localPlayer
-  );
+/** One of this seat's people; a child among them, since the sim starves children too. */
+function isLocalPerson(e: SnapshotEntity, localPlayer: number): boolean {
+  return e.components.Person !== undefined && ownerPlayerOf(e) === localPlayer;
 }
 
 /** Consecutive sweeps each employed worker has spent without work. */
@@ -131,12 +133,18 @@ function raiseNeeds(raiser: MessageRaiser, e: SnapshotEntity): void {
   if (needs === undefined || isJobless(e)) return;
   const alert = systems.NEED_CRITICAL_THRESHOLD;
   if (needs.hunger >= alert) raiser.settler(USER_MESSAGE_TYPE.hungry, e);
-  if (needs.hunger >= STARVING_HUNGER) {
-    raiser.settler(USER_MESSAGE_TYPE.starving, e);
-    if (isDying(e)) raiser.settler(USER_MESSAGE_TYPE.willDie, e);
-  }
+  if (needs.hunger >= STARVING_HUNGER) raiser.settler(USER_MESSAGE_TYPE.starving, e);
   if (needs.fatigue >= alert) raiser.settler(USER_MESSAGE_TYPE.tired, e);
   if (needs.piety >= alert) raiser.settler(USER_MESSAGE_TYPE.wantsToPray, e);
+}
+
+/**
+ * A settler close to death, whatever brought it there. The original reads the hitpoint margin alone, so
+ * a wounded fighter is warned about as loudly as a starving one. Approximation: it also asks whether the
+ * settler has food on it to save itself with, which this sim gives no inventory slot for.
+ */
+function raiseDying(raiser: MessageRaiser, e: SnapshotEntity): void {
+  if (isDying(e)) raiser.settler(USER_MESSAGE_TYPE.willDie, e);
 }
 
 function raiseNothingToDo(
@@ -163,16 +171,19 @@ export function createSnapshotMessageSource(localPlayer: number): SnapshotMessag
   const streaks = new IdleStreaks();
   return {
     sweep: (snapshot, naming) => {
-      if (lastSweepTick !== null && snapshot.tick - lastSweepTick < SNAPSHOT_SWEEP_INTERVAL_TICKS)
-        return NO_MESSAGES;
+      const since = lastSweepTick === null ? null : snapshot.tick - lastSweepTick;
+      // A tick that moved backwards (a reload behind the same source) sweeps rather than waiting forever.
+      if (since !== null && since >= 0 && since < SNAPSHOT_SWEEP_INTERVAL_TICKS) return NO_MESSAGES;
       lastSweepTick = snapshot.tick;
       const raiser = new MessageRaiser(snapshot, naming);
       const needsOn = needsRuleEnabled(snapshot);
       streaks.begin();
       for (const e of actorsOf(snapshot)) {
-        if (!isLocalAdult(e, localPlayer)) continue;
+        if (!isLocalPerson(e, localPlayer)) continue;
         if (needsOn) raiseNeeds(raiser, e);
-        raiseNothingToDo(raiser, snapshot, e, streaks);
+        raiseDying(raiser, e);
+        // The original gates only this note on age, alongside its player-type and vehicle checks.
+        if (isAdult(e)) raiseNothingToDo(raiser, snapshot, e, streaks);
       }
       streaks.end();
       return raiser.out;

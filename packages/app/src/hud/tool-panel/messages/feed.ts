@@ -66,7 +66,8 @@ export function defaultMessageFeedState(): MessageFeedState {
   return { level: DEFAULT_MESSAGE_LEVEL, nextId: 1, displayed: [], history: [] };
 }
 
-/** The original's whole-record comparison, minus the stamp fields the feed assigns. */
+/** The original's whole-record comparison, minus the stamp fields the feed assigns and minus the
+ *  position: a settler that walked between two raises still repeats one message, not two. */
 function identityKey(m: PendingMessage): string {
   const subject = m.subject === null ? `about:${m.about ?? ''}` : `${m.subject.kind}:${m.subject.entity}`;
   return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}`;

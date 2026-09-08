@@ -10,6 +10,10 @@ import { layoutMessageNotes } from './layout.js';
 import { NotePortraits, PORTRAIT_FEET_X, PORTRAIT_FEET_Y } from './portrait.js';
 import type { MessagePriorityLevel, UserMessage } from './types.js';
 
+/** Stacking slots each note owns: its parchment, then the token or settler standing on it. Notes pack
+ *  tighter than they are wide, so a note must cover its predecessor whole, art and icon together. */
+const NOTE_Z_SLOTS = 2;
+
 /** Flat fallback when the decoded GUI art is absent: parchment with a coloured pin. */
 const FALLBACK_PARCHMENT = 0xd9c79c;
 const FALLBACK_PARCHMENT_EDGE = 0x8a744a;
@@ -58,11 +62,12 @@ export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
   const { ctx, app, art } = deps;
   const { scale } = ctx;
   const root = new Container();
+  root.sortableChildren = true;
   deps.container.addChild(root);
-  const backdrops = new Container();
   const fallback = new Graphics();
-  const tokens = new Container();
-  root.addChild(backdrops, fallback, tokens);
+  // One shared shape for every flat parchment, so it can only sit under the art it stands in for.
+  fallback.zIndex = -1;
+  root.addChild(fallback);
   const portraits = new NotePortraits(app, deps.sheet, root, deps.playerColourOf);
 
   const byId = new Map<number, NoteSprites>();
@@ -77,13 +82,13 @@ export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
       defaultPalette: 'iconsleft',
       colorKey: 'magenta',
     });
-    if (backdrop !== null) backdrops.addChild(backdrop.sprite);
+    if (backdrop !== null) root.addChild(backdrop.sprite);
     const icon = noteIcon(m.type, m.subject);
     const token =
       icon?.kind === 'frame'
         ? makeGuiSprite(art, guiFrameIndex(icon.name), { defaultPalette: 'iconsleft', colorKey: 'magenta' })
         : null;
-    if (token !== null) tokens.addChild(token.sprite);
+    if (token !== null) root.addChild(token.sprite);
     return { backdrop: backdrop?.sprite ?? null, token: token?.sprite ?? null };
   };
 
@@ -114,7 +119,7 @@ export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
       const rects = layoutMessageNotes(displayed.length, scale);
       slots = [];
       const seen = new Set<number>();
-      const standing: { entity: number; feetX: number; feetY: number }[] = [];
+      const standing: { entity: number; feetX: number; feetY: number; zIndex: number }[] = [];
       displayed.forEach((m, i) => {
         const r = rects[i];
         if (r === undefined) return;
@@ -125,14 +130,22 @@ export function createMessageStrip(deps: MessageStripDeps): MessageStrip {
           sprites = mint(m);
           byId.set(m.id, sprites);
         }
+        const z = i * NOTE_Z_SLOTS;
         if (sprites.backdrop === null) drawFallback(m, r);
-        else sprites.backdrop.place(r.x, r.y, scale, screen.width, screen.height);
-        sprites.token?.place(r.x, r.y, scale, screen.width, screen.height);
+        else {
+          sprites.backdrop.zIndex = z;
+          sprites.backdrop.place(r.x, r.y, scale, screen.width, screen.height);
+        }
+        if (sprites.token !== null) {
+          sprites.token.zIndex = z + 1;
+          sprites.token.place(r.x, r.y, scale, screen.width, screen.height);
+        }
         if (m.subject?.kind === 'settler' && noteIcon(m.type, m.subject)?.kind === 'portrait') {
           standing.push({
             entity: m.subject.entity,
             feetX: r.x + PORTRAIT_FEET_X * scale,
             feetY: r.y + PORTRAIT_FEET_Y * scale,
+            zIndex: z + 1,
           });
         }
       });

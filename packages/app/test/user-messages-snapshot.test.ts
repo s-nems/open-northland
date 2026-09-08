@@ -124,7 +124,7 @@ describe('user messages read off the snapshot', () => {
     ]);
   });
 
-  it('warns that a starving settler will die once its pool has nearly run out', () => {
+  it('warns about any settler whose pool has nearly run out, fed or wounded', () => {
     const source = createSnapshotMessageSource(LOCAL);
     const out = sweep(
       source,
@@ -132,7 +132,7 @@ describe('user messages read off the snapshot', () => {
         { id: 1, hunger: ONE, hitpoints: HEALTH_POOL },
         { id: 2, hunger: ONE, hitpoints: HEALTH_POOL / 10 },
         { id: 3, hunger: ONE, hitpoints: 0 },
-        { id: 4, hunger: belowBubble, hitpoints: 1 },
+        { id: 4, hitpoints: 1 },
       ]),
     );
     expect(out).toEqual([
@@ -143,7 +143,14 @@ describe('user messages read off the snapshot', () => {
       [USER_MESSAGE_TYPE.willDie, 2],
       [USER_MESSAGE_TYPE.hungry, 3],
       [USER_MESSAGE_TYPE.starving, 3],
+      [USER_MESSAGE_TYPE.willDie, 4],
     ]);
+  });
+
+  it('warns about a wounded settler even where the needs rule is off', () => {
+    const source = createSnapshotMessageSource(LOCAL);
+    const out = sweep(source, snapshot(100, [{ id: 1, hunger: ONE, hitpoints: 1 }], false));
+    expect(out).toEqual([[USER_MESSAGE_TYPE.willDie, 1]]);
   });
 
   it('raises tired and wants-to-pray from the fatigue and piety bars', () => {
@@ -162,7 +169,7 @@ describe('user messages read off the snapshot', () => {
     ]);
   });
 
-  it("ignores children, wildlife and other seats' settlers", () => {
+  it("warns about a starving child, but ignores wildlife and other seats' settlers", () => {
     const source = createSnapshotMessageSource(LOCAL);
     const out = sweep(
       source,
@@ -173,7 +180,12 @@ describe('user messages read off the snapshot', () => {
         { id: 4, hunger: ONE },
       ]),
     );
-    expect(out.map(([, entity]) => entity)).toEqual([4, 4]);
+    expect(out).toEqual([
+      [USER_MESSAGE_TYPE.hungry, 1],
+      [USER_MESSAGE_TYPE.starving, 1],
+      [USER_MESSAGE_TYPE.hungry, 4],
+      [USER_MESSAGE_TYPE.starving, 4],
+    ]);
   });
 
   it('leaves a jobless adult alone, whose pinned bars the sim never acts on', () => {
