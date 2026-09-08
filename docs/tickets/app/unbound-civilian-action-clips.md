@@ -18,16 +18,9 @@ is not the civilist's:
 Consequence: the actions the sim already runs draw nothing of their own. A herb picker plays no
 gathering motion, and `enjoy` has a clip while the settler just stands.
 
-The in-house programs hit the same fallback from the other side: 12 `gfxinhouseanim` lines call
-`(job, action, subId 0)` triples their own job does not define - potter action 22 x3, baker action 5 x2,
-druid action 4 x7. Actions 4, 5 and 22 exist only under the civilist and woman job lists, so the original
-resolves them off a generic body. Those windows are motionless today.
-
 ## Scope
 
 - Bind the actions whose mechanic the sim runs today: produce honey, eat map, enjoy, jest, harvest herb.
-- Give the in-house clip lookup the same generic-body fallback, so a program's action 4, 5 or 22 window
-  plays the civilist's clip instead of standing.
 - Leave fishing, open chest and the road/wall swings out: no sim mechanic drives them yet.
 
 ## Verify
