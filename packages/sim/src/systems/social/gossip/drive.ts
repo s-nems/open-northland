@@ -2,6 +2,7 @@ import {
   Chat,
   ChatCooldown,
   CurrentAtomic,
+  clearNeedOrder,
   Engagement,
   FamilyDuty,
   Fleeing,
@@ -44,8 +45,10 @@ function endChat(world: World, tick: number, e: Entity): void {
     world.remove(c.partner, Chat);
     interruptChatAtomic(world, c.partner);
     world.add(c.partner, ChatCooldown, { until: tick + CHAT_COOLDOWN_TICKS });
+    clearNeedOrder(world, c.partner, 'enjoyment');
   }
   world.remove(e, Chat);
+  clearNeedOrder(world, e, 'enjoyment'); // a chat is what a player "talk" order asked for
   interruptChatAtomic(world, e);
   world.add(e, ChatCooldown, { until: tick + CHAT_COOLDOWN_TICKS });
 }

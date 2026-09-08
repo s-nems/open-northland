@@ -17,7 +17,7 @@ import { isBarracks } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { isTradeAssignable } from './guards.js';
+import { isOrderableSettler, isTradeAssignable } from './guards.js';
 
 /**
  * Send one owned settler to drill at a barracks - see the command doc. Validates and stamps the
@@ -62,5 +62,19 @@ export function startDrill(world: World, e: Entity, house: Entity, drillTicks: n
   world.remove(e, PlayerOrder);
   world.remove(e, EquipOrder); // and any equip errand, whose return spot this walk would invalidate
   world.remove(e, SiteAssignment); // a builder pulled to drill leaves its foundation's crew
+  clearNavState(world, e);
+}
+
+/**
+ * Call off one owned settler's barracks drill - see the command doc. The drill rung reads
+ * {@link TrainingOrder} alone, so dropping it hands the settler straight back to its trade; the ticks
+ * already served are lost, since nothing banks a part-finished course.
+ */
+export function cancelTraining(world: World, command: Extract<Command, { kind: 'cancelTraining' }>): void {
+  const e = command.entity;
+  if (!isOrderableSettler(world, e)) return;
+  if (!world.has(e, TrainingOrder)) return;
+  world.remove(e, TrainingOrder);
+  world.remove(e, CurrentAtomic); // the exercise clip it may be mid-way through
   clearNavState(world, e);
 }

@@ -40,7 +40,7 @@ import { fleeDrive } from './flee.js';
 import { holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
 import type { CombatPass } from './pass.js';
 import { buildingBodyNodes, combatTargetNode } from './target-node.js';
-import { hostileAnimalNow, isValidTarget } from './targeting.js';
+import { hostileAnimalNow, isValidOrderedTarget } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import { attackerWeapon, startAttack, targetMaterial } from './weapons.js';
 
@@ -208,7 +208,7 @@ function actingMode(
  *  left standing, its stale spec re-acquires ATTACK-style whatever the unit's actual stance says. */
 function liveAttackOrder(world: World, ctx: SystemContext, e: Entity, attacker: SettlerIdentity): boolean {
   if (!world.has(e, AttackOrder)) return false;
-  if (isValidTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) return true;
+  if (isValidOrderedTarget(world, ctx, e, attacker, world.get(e, AttackOrder).target)) return true;
   world.remove(e, AttackOrder);
   return false;
 }

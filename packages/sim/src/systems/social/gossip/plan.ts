@@ -134,8 +134,10 @@ export function planGossipSeek(
   hx: number,
   hy: number,
   candidates: GossipCandidates,
+  /** A player "talk" order, which seeks a partner whatever the company bar reads. */
+  ordered = false,
 ): boolean {
-  if (settler.enjoyment < NEED_DRIVE_THRESHOLD) return false;
+  if (!ordered && settler.enjoyment < NEED_DRIVE_THRESHOLD) return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
   if (chatCooldownActive(world, ctx.tick, e)) return false;
   // Only owned settlers gossip, so unowned golden fixtures stay byte-identical, and partners must share

@@ -2,6 +2,8 @@ export * as components from './components/index.js';
 // Fog-of-war mode ids and the diplomacy stance union, flattened to the package root for render and
 // app consumers.
 export type { MatchOutcome } from './components/match.js';
+/** The four need bars, the vocabulary the `orderNeed` command addresses one by. */
+export type { NeedKind } from './components/needs.js';
 export { type DiplomacyState, FOG_MODE, type FogMode } from './components/rules.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';

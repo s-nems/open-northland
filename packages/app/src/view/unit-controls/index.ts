@@ -12,6 +12,7 @@ import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
+import { createWorkAreaOverlay } from './work-area.js';
 
 export type { UnitControls, UnitControlsOptions } from './types.js';
 
@@ -30,15 +31,23 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       ? null
       : await mountEquipPicker({
           pickList: opts.equipPickList,
-          goods: opts.content.goods,
+          content: opts.content,
+          snapshot: opts.snapshot,
           enqueue: opts.enqueue,
         });
+  const workArea = createWorkAreaOverlay();
   // `pickMode` is built below; the arrows defer the reads to click time.
   const chrome = await createUnitChrome(opts, selection, equipPicker, {
     assignWorkplace: (id) => pickMode.arm({ kind: 'workplace', settler: id }),
     assignHome: (id) => pickMode.arm({ kind: 'home', settler: id }),
     selectEntity: (id) => applySelection([id], false),
-    ringCommand: (id, targets) => issueRingCommand(id, targets, { enqueue: opts.enqueue, pickMode }),
+    ringCommand: (id, targets) =>
+      issueRingCommand(id, targets, {
+        enqueue: opts.enqueue,
+        pickMode,
+        openEquipment: (settler) => equipPicker?.openAll(settler),
+        toggleWorkArea: workArea.toggle,
+      }),
   });
 
   const marquee = createSelectionMarquee();
@@ -182,6 +191,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectEntity: (id) => applySelection([id], false),
     portrait: () => chrome.panel().portrait(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
+    workAreaRings: () => workArea.rings(opts.snapshot()),
     assignHighlight: pickMode.highlight,
     signpostPlacementActive: pickMode.signpostActive,
     // Includes the details panel, so a consumer gating on this treats a point over the panel as HUD

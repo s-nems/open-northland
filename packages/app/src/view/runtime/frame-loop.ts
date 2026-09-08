@@ -230,6 +230,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       settlerBubbles,
       lifeHearts,
       flagged: controls.flaggedFlagIds(),
+      workAreas: controls.workAreaRings(),
     });
     pileTooltip.update(snap); // after controls, so the pointer-claim state is current
     deps.onFrame?.(snap);

@@ -31,6 +31,7 @@ import {
   NO_HEARTS,
   NO_REFS,
   NO_SIGNS,
+  NO_WORK_AREAS,
   SPRITE_CULL_MARGIN,
   type WorldFrame,
   type WorldRendererOptions,
@@ -168,6 +169,7 @@ export class WorldRenderer {
       settlerBubbles = NO_BUBBLES,
       lifeHearts = NO_HEARTS,
       flagged = NO_REFS,
+      workAreas = NO_WORK_AREAS,
     } = frame;
     const snapResolution = this.viewSmoothing ? this.app.renderer.resolution : undefined;
     const camera =
@@ -211,6 +213,7 @@ export class WorldRenderer {
       damaged: this.pool.damagedBuildings(),
       selection,
       flagged,
+      workAreas,
       doorBadges,
       constructionSigns: signItems,
       settlerBubbles,

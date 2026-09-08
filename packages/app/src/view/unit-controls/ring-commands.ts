@@ -1,11 +1,23 @@
-import { type Entity, type PlayerCommand, systems } from '@open-northland/sim';
+import { type Entity, type NeedKind, type PlayerCommand, systems } from '@open-northland/sim';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
 import type { PickModeController } from './pick-mode.js';
 
 export interface RingCommandDeps {
   readonly enqueue: (command: PlayerCommand) => void;
   readonly pickMode: PickModeController;
+  /** Open the settler's equipment window - the app's stand-in for the original's equipment page. */
+  readonly openEquipment: (settler: number) => void;
+  /** Show or hide the work-area circle of every settler in the selection that carries a work flag. */
+  readonly toggleWorkArea: (targets: readonly number[]) => void;
 }
+
+/** Which need bar each of the original's four need buttons orders answered. */
+const NEED_OF: Readonly<Record<'eat' | 'sleep' | 'talk' | 'pray', NeedKind>> = {
+  eat: 'hunger',
+  sleep: 'fatigue',
+  talk: 'enjoyment',
+  pray: 'piety',
+};
 
 /**
  * Turn one action-ring click into simulation orders for `targets`: an order that needs a world click
@@ -20,6 +32,21 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
   switch (id) {
     case 'goTo':
       deps.pickMode.arm({ kind: 'destination' });
+      return;
+    case 'eat':
+    case 'sleep':
+    case 'talk':
+    case 'pray':
+      each((entity) => ({ kind: 'orderNeed', entity, need: NEED_OF[id] }));
+      return;
+    case 'changeEquipment':
+      if (single !== undefined) deps.openEquipment(single);
+      return;
+    case 'showWorkArea':
+      deps.toggleWorkArea(targets);
+      return;
+    case 'explore':
+      if (single !== undefined) deps.pickMode.arm({ kind: 'explore', scout: single });
       return;
     case 'marry':
       each((entity) => ({ kind: 'marry', entity }));
@@ -38,6 +65,12 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       return;
     case 'assignBuildingSite':
       if (single !== undefined) deps.pickMode.arm({ kind: 'building-site', settler: single });
+      return;
+    case 'removeBuildingSite':
+      each((entity) => ({ kind: 'unassignBuilder', entity }));
+      return;
+    case 'removeLearningPlace':
+      each((entity) => ({ kind: 'cancelTraining', entity }));
       return;
     case 'assignLearningPlace':
       if (single !== undefined) deps.pickMode.arm({ kind: 'learning-place', settler: single });
@@ -60,6 +93,9 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
     case 'attackBuilding':
       deps.pickMode.arm({ kind: 'attack-building' });
       return;
+    case 'attackAnimal':
+      deps.pickMode.arm({ kind: 'attack-animal' });
+      return;
     case 'attackPosition':
       deps.pickMode.arm({ kind: 'attack-move' });
       return;
@@ -71,6 +107,12 @@ export function issueRingCommand(id: ActionOrderId, targets: readonly number[], 
       return;
     case 'ignorantMode':
       each((entity) => ({ kind: 'setStance', entity, mode: systems.MILITARY_MODE.IGNORE }));
+      return;
+    case 'allowRegeneration':
+      each((entity) => ({ kind: 'setRegeneration', entity, enabled: true }));
+      return;
+    case 'prohibitRegeneration':
+      each((entity) => ({ kind: 'setRegeneration', entity, enabled: false }));
       return;
     default: {
       const unreachable: never = id;

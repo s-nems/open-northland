@@ -13,9 +13,18 @@ export type ActionOrderId =
   | 'haveBoy'
   | 'marry'
   | 'goTo'
+  | 'eat'
+  | 'sleep'
+  | 'talk'
+  | 'pray'
+  | 'changeEquipment'
   | 'assignWorkArea'
+  | 'showWorkArea'
   | 'erectSignpost'
+  | 'explore'
+  | 'removeBuildingSite'
   | 'assignBuildingSite'
+  | 'removeLearningPlace'
   | 'assignLearningPlace'
   | 'removeWorkPlace'
   | 'assignWorkPlace'
@@ -23,29 +32,17 @@ export type ActionOrderId =
   | 'assignHome'
   | 'attackInhabitants'
   | 'attackBuilding'
+  | 'attackAnimal'
   | 'attackPosition'
   | 'attackMode'
   | 'defenceMode'
-  | 'ignorantMode';
+  | 'ignorantMode'
+  | 'allowRegeneration'
+  | 'prohibitRegeneration';
 
 /** Orders the original offers that the simulation has no mechanic for: drawn where the original draws
- *  them, and inert when clicked. */
-const PENDING_ACTION_IDS = [
-  'eat',
-  'sleep',
-  'talk',
-  'pray',
-  'changeEquipment',
-  'showWorkArea',
-  'explore',
-  'removeBuildingSite',
-  'removeLearningPlace',
-  'assignVehicle',
-  'attackAnimal',
-  'attackVehicle',
-  'allowRegeneration',
-  'prohibitRegeneration',
-] as const;
+ *  them, and inert when clicked. The simulation has no vehicles, so its two orders are all that is left. */
+const PENDING_ACTION_IDS = ['assignVehicle', 'attackVehicle'] as const;
 
 export type PendingActionId = (typeof PENDING_ACTION_IDS)[number];
 
@@ -75,7 +72,7 @@ export const ACTION_COMMANDS: readonly ActionCommand[] = [
   { id: 'goTo', arm: BOTTOM_ARM, icon: 'order_go_to', multi: false },
 
   { id: 'changeProfession', arm: TOP_ARM, icon: 'order_change_profession', multi: true },
-  { id: 'changeEquipment', arm: TOP_ARM, icon: 'order_change_equipment', multi: true },
+  { id: 'changeEquipment', arm: TOP_ARM, icon: 'order_change_equipment', multi: false },
   { id: 'assignWorkArea', arm: TOP_ARM, icon: 'order_assign_work_area', multi: false },
   { id: 'showWorkArea', arm: TOP_ARM, icon: 'order_show_work_area', multi: false },
   { id: 'erectSignpost', arm: TOP_ARM, icon: 'order_erect_signpost', multi: false },

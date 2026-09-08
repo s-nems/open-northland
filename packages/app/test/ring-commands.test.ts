@@ -7,11 +7,17 @@ import { issueRingCommand } from '../src/view/unit-controls/ring-commands.js';
 function harness(): {
   issued: PlayerCommand[];
   armed: PickMode[];
+  equipmentFor: number[];
+  workAreaFor: number[][];
   pickMode: PickModeController;
   enqueue: (command: PlayerCommand) => void;
+  openEquipment: (settler: number) => void;
+  toggleWorkArea: (targets: readonly number[]) => void;
 } {
   const issued: PlayerCommand[] = [];
   const armed: PickMode[] = [];
+  const equipmentFor: number[] = [];
+  const workAreaFor: number[][] = [];
   const pickMode: PickModeController = {
     arm: (mode) => {
       armed.push(mode);
@@ -22,7 +28,16 @@ function harness(): {
     handleMouseDown: () => false,
     highlight: () => null,
   };
-  return { issued, armed, pickMode, enqueue: (command) => issued.push(command) };
+  return {
+    issued,
+    armed,
+    equipmentFor,
+    workAreaFor,
+    pickMode,
+    enqueue: (command) => issued.push(command),
+    openEquipment: (settler) => equipmentFor.push(settler),
+    toggleWorkArea: (targets) => workAreaFor.push([...targets]),
+  };
 }
 
 describe('issueRingCommand', () => {
@@ -56,7 +71,53 @@ describe('issueRingCommand', () => {
     const h = harness();
     issueRingCommand('goTo', [4, 9], h);
     issueRingCommand('attackBuilding', [4, 9], h);
+    issueRingCommand('attackAnimal', [4, 9], h);
     issueRingCommand('attackPosition', [4, 9], h);
-    expect(h.armed.map((m) => m.kind)).toEqual(['destination', 'attack-building', 'attack-move']);
+    expect(h.armed.map((m) => m.kind)).toEqual([
+      'destination',
+      'attack-building',
+      'attack-animal',
+      'attack-move',
+    ]);
+  });
+
+  it('orders each of the four needs by the bar it answers', () => {
+    const h = harness();
+    issueRingCommand('eat', [4], h);
+    issueRingCommand('sleep', [4], h);
+    issueRingCommand('talk', [4], h);
+    issueRingCommand('pray', [4], h);
+    expect(h.issued).toEqual([
+      { kind: 'orderNeed', entity: 4, need: 'hunger' },
+      { kind: 'orderNeed', entity: 4, need: 'fatigue' },
+      { kind: 'orderNeed', entity: 4, need: 'enjoyment' },
+      { kind: 'orderNeed', entity: 4, need: 'piety' },
+    ]);
+  });
+
+  it('flips regeneration and releases a site or a drill', () => {
+    const h = harness();
+    issueRingCommand('prohibitRegeneration', [4, 9], h);
+    issueRingCommand('allowRegeneration', [4], h);
+    issueRingCommand('removeBuildingSite', [4], h);
+    issueRingCommand('removeLearningPlace', [4], h);
+    expect(h.issued).toEqual([
+      { kind: 'setRegeneration', entity: 4, enabled: false },
+      { kind: 'setRegeneration', entity: 9, enabled: false },
+      { kind: 'setRegeneration', entity: 4, enabled: true },
+      { kind: 'unassignBuilder', entity: 4 },
+      { kind: 'cancelTraining', entity: 4 },
+    ]);
+  });
+
+  it('routes the two view-only orders to their own seams', () => {
+    const h = harness();
+    issueRingCommand('changeEquipment', [4], h);
+    issueRingCommand('showWorkArea', [4], h);
+    issueRingCommand('explore', [7], h);
+    expect(h.equipmentFor).toEqual([4]);
+    expect(h.workAreaFor).toEqual([[4]]);
+    expect(h.armed).toEqual([{ kind: 'explore', scout: 7 }]);
+    expect(h.issued).toEqual([]);
   });
 });

@@ -175,6 +175,22 @@ export function buildSiteOf(e: SnapshotEntity): number | undefined {
   return num(a?.site);
 }
 
+/** The foundation an `assignBuilder` order pinned a builder to - the one the player can take back. */
+export function pinnedSiteOf(e: SnapshotEntity): number | undefined {
+  const a = e.components.SiteAssignment as { site?: unknown; pinned?: unknown } | undefined;
+  return a?.pinned === true ? num(a.site) : undefined;
+}
+
+/** Whether the settler still leaves what it is doing to answer a need, the original's regeneration flag. */
+export function regeneratesInWorld(e: SnapshotEntity): boolean {
+  return e.components.NoRegeneration === undefined;
+}
+
+/** A creature rather than a person: the {@link Settler} model covers both, only people carry `Person`. */
+export function isWildlife(e: SnapshotEntity): boolean {
+  return isSettler(e) && e.components.Person === undefined;
+}
+
 /** The training house a settler walks to or drills at. */
 export function trainingHouseOf(e: SnapshotEntity): number | undefined {
   const order = e.components.TrainingOrder as { house?: unknown } | undefined;
@@ -185,6 +201,14 @@ export function trainingHouseOf(e: SnapshotEntity): number | undefined {
 export function workFlagOf(e: SnapshotEntity): number | undefined {
   const wf = e.components.WorkFlag as { flag?: unknown } | undefined;
   return num(wf?.flag);
+}
+
+/** A gatherer's work-area binding: the flag it works around and that area's radius in half-cell nodes. */
+export function workAreaOf(e: SnapshotEntity): { flag: number; radius: number } | undefined {
+  const wf = e.components.WorkFlag as { flag?: unknown; radius?: unknown } | undefined;
+  const flag = num(wf?.flag);
+  const radius = num(wf?.radius);
+  return flag !== undefined && radius !== undefined ? { flag, radius } : undefined;
 }
 
 export function settlerTribeOf(e: SnapshotEntity): number | undefined {

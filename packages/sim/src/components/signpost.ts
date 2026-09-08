@@ -19,6 +19,26 @@ export const Signpost = defineComponent<{ navRadius: number; spacingRadius: numb
 export const ErectSignpostOrder = defineComponent<{ goal: NodeId }>('ErectSignpostOrder');
 
 /**
+ * A scout's standing "explore around here" order: it walks to unexplored ground within
+ * {@link EXPLORE_RADIUS_NODES} of `centre`, one point at a time, and the order ends once nothing inside
+ * that circle is still unseen. A walk order, a trade change, or the scout's death calls it off.
+ *
+ * `leg` is the last leg issued - where the scout stood and where it was sent. Re-picking that same pair
+ * means the walk never started, so the sweep gives up rather than re-issuing it every tick.
+ */
+export const ExploreOrder = defineComponent<{
+  centre: NodeId;
+  leg: { from: NodeId; to: NodeId } | null;
+}>('ExploreOrder');
+
+/**
+ * How far from its explore centre a scout will walk to reveal ground, in half-cell nodes on the world
+ * metric. Approximation, sized to the signpost work circle: the original searches a fixed box around the
+ * scout's work centre, whose unit is not readable here.
+ */
+export const EXPLORE_RADIUS_NODES = 40;
+
+/**
  * The signpost circle radii, in half-cell nodes on the world metric (one node = 34 px E/W).
  * Approximations: no plaintext or `.cif` data carries the original's guidepost ranges (`landscapes.cif`
  * and `logicdefines.inc` checked), so these are tunable, calibrated against the running original by eye.

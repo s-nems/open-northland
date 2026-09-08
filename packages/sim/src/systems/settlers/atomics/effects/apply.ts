@@ -1,4 +1,4 @@
-import { type CurrentAtomic, ownerOf } from '../../../../components/index.js';
+import { type CurrentAtomic, clearNeedOrder, ownerOf } from '../../../../components/index.js';
 import { assertNever } from '../../../../core/brand.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
@@ -65,9 +65,11 @@ export function applyEffect(
     // clips carry no `interruptable`, so an order parks behind one rather than splitting the two halves.
     case 'eat':
       consumeFood(world, settler, effect.from, effect.goodType);
+      clearNeedOrder(world, settler, 'hunger');
       return;
     case 'forage':
       forageBerry(world, ctx, effect.bush);
+      clearNeedOrder(world, settler, 'hunger');
       return;
     case 'drink':
       drinkDraught(world, ctx, settler, effect.slot);
@@ -101,15 +103,20 @@ export function applyEffect(
     case 'unequip':
       unequipWornGood(world, ctx, settler, effect.group, effect.slot, effect.sink);
       return;
+    // The bars these serve were paid out frame by frame from the clip's own events; finishing the clip is
+    // what answers a player's need order.
+    case 'sleep':
+      clearNeedOrder(world, settler, 'fatigue');
+      return;
+    case 'pray':
+      clearNeedOrder(world, settler, 'piety');
+      return;
     // Nothing lands on completion: movement belongs to the navigation layer, an `attack` already landed at
-    // its hit frame, crafting cycles advance from the workplace, never from a worker's atomic, and the
-    // needs the rest of these serve were paid out frame by frame from the clip's own events.
+    // its hit frame, and crafting cycles advance from the workplace, never from a worker's atomic.
     case 'move':
     case 'idle':
     case 'attack':
     case 'produce':
-    case 'sleep':
-    case 'pray':
       return;
     default:
       assertNever(effect);

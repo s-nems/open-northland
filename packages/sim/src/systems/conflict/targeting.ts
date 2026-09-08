@@ -3,6 +3,7 @@ import {
   Building,
   diplomacyStance,
   Health,
+  isWildlife,
   Owner,
   Position,
   Settler,
@@ -11,7 +12,13 @@ import {
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { isManningShelter } from '../defence/index.js';
-import { isAggressiveAnimal, isAnimalTribe, mayAttack, mayHunt } from '../readviews/index.js';
+import {
+  animalCannotBeAttacked,
+  isAggressiveAnimal,
+  isAnimalTribe,
+  mayAttack,
+  mayHunt,
+} from '../readviews/index.js';
 import { standsAtPost } from './tower-post.js';
 
 // The combat targeting relations: who may fight whom, and how far a combatant spots an enemy. A leaf of
@@ -61,6 +68,29 @@ export function isValidTarget(
     return false;
   }
   return !isManningShelter(world, t);
+}
+
+/**
+ * Whether `t` is a target an explicit player attack order may keep swinging at: {@link isValidTarget},
+ * widened by the wild creature any ordered striker may go for. Source basis: the original offers its
+ * "attack animal" order to every adult man and to heroes, not only to a hunter, so the predation rule that
+ * gates autonomous engagement must not drop an ordered one. Claimed livestock carries an owner and stays
+ * property, decided by the rule above.
+ */
+export function isValidOrderedTarget(
+  world: World,
+  ctx: SystemContext,
+  self: Entity,
+  attacker: SettlerIdentity,
+  t: Entity,
+): boolean {
+  if (isValidTarget(world, ctx, self, attacker, t)) return true;
+  if (!world.has(self, Owner) || !isWildlife(world, t) || world.has(t, Owner)) return false;
+  if (!world.has(t, Health) || !world.has(t, Position)) return false;
+  if (world.get(t, Health).hitpoints <= 0) return false;
+  // The decorative-fauna exemption still holds: `cannotbeattacked` is a property of the creature, not
+  // of who is swinging at it.
+  return !animalCannotBeAttacked(ctx.content, world.get(t, Settler).tribe);
 }
 
 /**

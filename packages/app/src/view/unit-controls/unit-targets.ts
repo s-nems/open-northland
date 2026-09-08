@@ -1,6 +1,6 @@
 import { type DrawItem, type EntityBounds, ONE, tileToScreen } from '@open-northland/render';
-import type { WorldSnapshot } from '@open-northland/sim';
-import { gathererByFlag, isSettler, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
+import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { gathererByFlag, isSettler, isWildlife, ownerPlayerOf, positionOf } from '../../game/snapshot.js';
 import { isHitTarget, type Pickable } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import type { FormationUnit } from './formation.js';
@@ -38,6 +38,12 @@ export interface UnitTargets {
   flags(): Pickable[];
   /** The human's standing signposts - direct-click targets only (a marquee never grabs a post). */
   signposts(): Pickable[];
+  /**
+   * The wild creatures on screen - the "attack animal" order's targets. Claimed livestock carries an
+   * owner and is property rather than game, so it stays out, exactly as the sim's ordered-target rule
+   * reads it.
+   */
+  wildlife(): Pickable[];
   /**
    * The owned settlers among `refs`, in draw order. Bound to the selection rather than the screen, so it
    * survives the camera panning away and reaches a settler standing inside a building.
@@ -128,6 +134,20 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets {
         const gatherer = gathererOf.get(it.ref);
         if (gatherer === undefined) continue; // an unbound / non-human flag - not a selection proxy
         out.push({ ref: gatherer, x: it.x, y: it.y, kind: 'settler' });
+      }
+      return out;
+    },
+
+    wildlife(): Pickable[] {
+      const snapshot = deps.snapshot();
+      const { ownerOf } = ownersOf(snapshot);
+      const out: Pickable[] = [];
+      for (const it of deps.drawnItems()) {
+        if (it.kind !== 'settler' || !isHitTarget(it)) continue;
+        if (ownerOf.has(it.ref)) continue; // owned - a person or someone's livestock, not game
+        const e = entityById(snapshot, it.ref);
+        if (e === undefined || !isWildlife(e)) continue;
+        out.push(hitTarget(it, 'settler'));
       }
       return out;
     },

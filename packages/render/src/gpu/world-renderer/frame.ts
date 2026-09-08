@@ -2,7 +2,14 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import type { TextureSource } from 'pixi.js';
 import type { Camera } from '../../data/projection/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
-import type { ConstructionSign, DoorBadge, HudFrame, LifeHeart, SettlerBubble } from '../overlays/index.js';
+import type {
+  ConstructionSign,
+  DoorBadge,
+  HudFrame,
+  LifeHeart,
+  SettlerBubble,
+  WorkAreaRing,
+} from '../overlays/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 
 /** One candidate building's workplace-assignment verdict: `ok` = the selected settler can take a slot there. */
@@ -41,6 +48,7 @@ export const NO_BADGES: readonly DoorBadge[] = [];
 export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
+export const NO_WORK_AREAS: readonly WorkAreaRing[] = [];
 
 export interface WorldFrame {
   readonly snapshot: WorldSnapshot;
@@ -60,6 +68,8 @@ export interface WorldFrame {
   readonly lifeHearts?: readonly LifeHeart[] | undefined;
   /** Ids of gatherers carrying a work flag; their feet rings draw the flagged variant (default none). */
   readonly flagged?: ReadonlySet<number> | undefined;
+  /** Work-area circles the player switched on with the ring's "Show Work Area" order (default none). */
+  readonly workAreas?: readonly WorkAreaRing[] | undefined;
 }
 
 /**

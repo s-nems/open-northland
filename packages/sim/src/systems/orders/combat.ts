@@ -5,9 +5,11 @@ import {
   CurrentAtomic,
   DeferredOrder,
   Engagement,
+  ExploreOrder,
   Fleeing,
   Health,
   HuntFocus,
+  NeedOrder,
   Owner,
   PlayerOrder,
   Position,
@@ -94,6 +96,8 @@ export function attackUnit(
   world.remove(e, PlayerOrder);
   world.remove(e, Fleeing); // an explicit attack order overrides the flee mode - stop running, fight
   world.remove(e, HuntFocus); // and supersedes a hunter's self-committed prey, like a move order does
+  world.remove(e, NeedOrder); // and an ordered meal, nap, chat or prayer
+  world.remove(e, ExploreOrder); // and a scout's sweep
   world.add(e, AttackOrder, { target });
   // Stamped up front so plannerSystem skips economy for this unit on the tick the order lands rather than
   // leaking one tick; `repathAt = tick` makes the CombatSystem re-path the chase on its first pass.

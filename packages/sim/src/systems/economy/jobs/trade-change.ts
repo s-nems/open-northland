@@ -7,10 +7,13 @@ import {
   Engagement,
   Equipment,
   EquipOrder,
+  ExploreOrder,
   Fleeing,
   GatherSelection,
   HuntFocus,
   HuntRest,
+  NeedOrder,
+  NoRegeneration,
   Owner,
   Position,
   SiteAssignment,
@@ -42,6 +45,9 @@ import { syncWorkFlagToJob } from '../work-flag.js';
 export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jobType: number): void {
   setSettlerJob(world, e, jobType);
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand
+  world.remove(e, NeedOrder); // and any need the player ordered the old trade to answer
+  world.remove(e, NoRegeneration); // regeneration goes back to allowed, as the original re-sets its flag
+  world.remove(e, ExploreOrder); // a settler that is no longer a scout stops sweeping
   if (isFighterJob(ctx.content, jobType)) shedToolOnEnlist(world, e);
   world.remove(e, SiteAssignment);
   // The site must stop counting the abandoned fetch as inbound; the planner's tally re-seeds from live

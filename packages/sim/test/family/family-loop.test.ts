@@ -498,6 +498,46 @@ describe('e2e: marriage → household → child (full step schedule)', () => {
     expect(sim.world.get(sim.world.get(woman, Marriage).child as Entity, Settler).jobType).toBe(BABY_FEMALE);
   });
 
+  it('a player meal order outranks the child errand, which resumes after the meal', () => {
+    const sim = new Simulation({ seed: 4, content: familyContent(), map: grassMap(40, 4) });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME, x: 10, y: 0, tribe: VIKING });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOMAN, x: 10, y: 1, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 11, y: 1, tribe: VIKING, owner: PLAYER });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: WAREHOUSE, x: 24, y: 2, tribe: VIKING });
+    sim.step();
+    const settlers = [...sim.world.query(Settler)].sort((a, b) => a - b);
+    const woman = settlers.find((e) => sim.world.get(e, Settler).jobType === WOMAN) as Entity;
+    const man = settlers.find((e) => sim.world.get(e, Settler).jobType === CIVILIST) as Entity;
+    const home = homeOf(sim);
+    const warehouse = [...sim.world.query(Building)].find(
+      (e) => sim.world.get(e, Building).buildingType === WAREHOUSE,
+    ) as Entity;
+
+    sim.world.add(woman, Marriage, { spouse: man, child: null });
+    sim.world.add(man, Marriage, { spouse: woman, child: null });
+    sim.enqueueSetup({ kind: 'assignHouse', entity: woman, house: home });
+    sim.step();
+    sim.world.mut(warehouse, Stockpile).amounts.set(FOOD, 50);
+    sim.world.mut(home, Stockpile).amounts.set(FOOD, 3);
+    // She is not hungry: only the order sends her out, and the child errand would otherwise hold her home.
+    sim.enqueueSetup({ kind: 'makeChild', entity: woman, child: 'female' });
+    sim.enqueueSetup({ kind: 'orderNeed', entity: woman, need: 'hunger' });
+    sim.step();
+
+    const ate = runUntil(
+      sim,
+      () => {
+        const atomic = sim.world.tryGet(woman, CurrentAtomic);
+        return atomic?.effect.kind === 'eat';
+      },
+      600,
+      'ordered meal during the child errand',
+    );
+    expect(ate).toBeDefined();
+    expect(sim.world.get(woman, ChildOrder).child).toBe('female'); // the errand only waited
+    runUntil(sim, () => sim.world.get(woman, Marriage).child !== null, 4000, 'child after the meal');
+  });
+
   it('homeSize caps FAMILIES: singles fill the slots, the family past the last slot is refused', () => {
     const { sim, woman, man, home } = familySim(13);
     // Two unrelated singles = two families, in a homeSize-3 home: both fit.

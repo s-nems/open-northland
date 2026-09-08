@@ -26,7 +26,12 @@ import { separationSystem } from './movement/collision/index.js';
 import { herdingSystem } from './movement/herding.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { movementSystem } from './movement/system.js';
-import { deferredOrderSystem, playerOrderSystem, signpostOrderSystem } from './orders/index.js';
+import {
+  deferredOrderSystem,
+  exploreOrderSystem,
+  playerOrderSystem,
+  signpostOrderSystem,
+} from './orders/index.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
@@ -54,6 +59,8 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // After playerOrderSystem retires the walk and before the planner could re-task the scout, so an
   // arrived erect order starts its hammer swing this same tick.
   { name: 'signpostOrder', system: signpostOrderSystem },
+  // Beside the erect order and for the same reason: an arrived explore leg starts its next one at once.
+  { name: 'exploreOrder', system: exploreOrderSystem },
   // The assistant dispatches before family and the planner, so a fresh child order is driven and a
   // fresh drill routed the same tick it was booked.
   { name: 'assistant', system: assistantSystem },
