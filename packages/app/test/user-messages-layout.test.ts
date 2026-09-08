@@ -9,8 +9,10 @@ import {
   NOTE_W,
   noteSpacing,
 } from '../src/hud/tool-panel/messages/layout.js';
+import type { UserMessage } from '../src/hud/tool-panel/messages/types.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
 import {
+  canSelect,
   layoutMessageWindow,
   MESSAGE_WINDOW_H,
   MESSAGE_WINDOW_W,
@@ -76,5 +78,25 @@ describe('message window layout', () => {
     expect(l.removePlate.y + l.removePlate.h).toBeLessThanOrEqual(l.window.y + l.window.h);
     expect(l.body.y).toBeGreaterThan(l.titleRect.y + l.titleRect.h);
     expect(l.body.y + l.body.h).toBeLessThanOrEqual(l.selectPlate.y);
+  });
+
+  it('offers Select only for a note that has somewhere to send the view', () => {
+    const note = (over: Partial<UserMessage>): UserMessage =>
+      ({
+        id: 1,
+        type: USER_MESSAGE_TYPE.humanDied,
+        subject: null,
+        at: null,
+        about: null,
+        goodType: null,
+        jobType: null,
+        priority: 0,
+        tick: 0,
+        text: '',
+        ...over,
+      }) as UserMessage;
+    expect(canSelect(note({ subject: { kind: 'settler', entity: 4 } }))).toBe(true);
+    expect(canSelect(note({ at: { hx: 2, hy: 4 } }))).toBe(true);
+    expect(canSelect(note({ about: 2 }))).toBe(false);
   });
 });

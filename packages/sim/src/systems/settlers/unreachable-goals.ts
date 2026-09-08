@@ -24,10 +24,14 @@ export const UNREACHABLE_GOAL_MEMO_TICKS = 30 * TICKS_PER_SECOND;
  */
 export const UNREACHABLE_GOAL_MEMO_SIZE = 8;
 
-/** Record that `cell` could not be routed to, so the next target pick skips it. Re-noting a remembered
- *  cell refreshes its deadline rather than adding a duplicate. */
-export function noteUnreachableGoal(world: World, ctx: SystemContext, e: Entity, cell: NodeId): void {
+/**
+ * Record that `cell` could not be routed to, so the next target pick skips it. Re-noting a remembered
+ * cell refreshes its deadline rather than adding a duplicate. Returns whether this is a goal the settler
+ * had not already given up, which is the difference between one give-up and its retries.
+ */
+export function noteUnreachableGoal(world: World, ctx: SystemContext, e: Entity, cell: NodeId): boolean {
   const memo = world.tryGet(e, UnreachableGoals);
+  const fresh = memo === undefined || !memo.entries.some((entry) => entry.cell === cell);
   const entries = remember(
     memo?.entries ?? [],
     ctx.tick,
@@ -37,6 +41,7 @@ export function noteUnreachableGoal(world: World, ctx: SystemContext, e: Entity,
   );
   if (memo === undefined) world.add(e, UnreachableGoals, { entries });
   else world.mut(e, UnreachableGoals).entries = entries;
+  return fresh;
 }
 
 /**

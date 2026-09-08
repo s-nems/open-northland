@@ -11,8 +11,8 @@ export interface MessageNaming {
     snapshot: WorldSnapshot,
   ): { readonly name: string; readonly jobLabel: string | null };
   building(e: SnapshotEntity): string | null;
-  /** A seat's roster name, for the messages whose subject is a player rather than an entity. */
-  player(player: number): string | null;
+  /** A seat's name, for the messages whose subject is a player rather than an entity. */
+  player(player: number): string;
   /** A diplomatic stance in the player's language, for the rows that report one. */
   stance(state: DiplomacyState): string;
   text(type: UserMessageType, parts: MessageTextParts): string;

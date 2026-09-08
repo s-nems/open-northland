@@ -29,6 +29,9 @@ export { MESSAGE_LEVEL_FACE } from './priority.js';
 /** The ingamegui table the priority button's tooltip rows live in. */
 const LEVEL_TOOLTIP_TABLE = 'main';
 
+/** The `miscwindow` row heading an unnamed seat, ahead of its slot number. */
+const PLAYER_STRING_ID = 361;
+
 /** Where a note's Select centres the view: the subject while it lives, else the spot it was raised at. */
 export interface MessageTarget {
   readonly entity: number | null;
@@ -117,7 +120,11 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       const typeId = num((e.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
       return typeId === undefined ? null : (deps.buildingLabel(typeId) ?? null);
     },
-    player: (player) => deps.playerLabel(player),
+    // An authored roster name, else the numbered fallback the diplomacy window renders: many maps leave
+    // a slot unnamed, and a note about a nameless seat would lose its subject entirely.
+    player: (player) =>
+      deps.playerLabel(player) ??
+      `${deps.ctx.uiString('miscwindow', PLAYER_STRING_ID, messages().hud.player)} ${player}`,
     stance: (state) => diplomacyStanceText(deps.ctx.uiString, state),
     text: (type, parts) => composeMessageText(type, parts, { uiString: deps.ctx.uiString, fallbackRow }),
   };
