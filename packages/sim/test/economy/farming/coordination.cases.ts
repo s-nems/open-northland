@@ -163,7 +163,7 @@ describe('store-full pause and overflow', () => {
 
   it('with every wheat sink full the farmer waits INSIDE - ripe fields stand, nothing is reaped', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
-    const { farmer } = fullFarmWorld(sim);
+    const { farm, farmer } = fullFarmWorld(sim);
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -172,6 +172,12 @@ describe('store-full pause and overflow', () => {
     expect(sim.world.tryGet(farmer, components.MoveGoal)).toBeUndefined();
     expect(sim.world.has(farmer, components.Resting)).toBe(true);
     expect([...sim.world.query(Crop)]).toHaveLength(FIELD_CAP); // the fields stand ripe, unreaped
+
+    // Room frees (the player spends a unit) → the very next plan leaves the house for the scythe.
+    sim.world.mut(farm, Stockpile).amounts.set(WHEAT, FARM_WHEAT_CAP - 1);
+    plannerSystem(sim.world, ctxOf(sim));
+    expect(sim.world.has(farmer, components.Resting)).toBe(false);
+    expect(sim.world.get(farmer, components.CurrentAtomic).atomicId).toBe(REAP_ATOMIC);
   });
 
   it('a farmer stuck with a load (every sink full) waits INSIDE the farm holding it, then deposits', () => {

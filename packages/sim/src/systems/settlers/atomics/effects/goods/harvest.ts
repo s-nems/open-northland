@@ -28,7 +28,8 @@ const HARVEST_YIELD = 1;
 /**
  * Resolve one completed harvest swing. The node's marker components decide the shape, never its
  * goodType, so the lifecycle stays content-declared: a `Crop` field falls on the stroke that completes the
- * trade's count and reaps its whole yield to the ground, a `Felling` node drops a trunk on the chop that
+ * trade's count (approximation: which field action the count gates is not readable) and reaps its whole
+ * yield to the ground, a `Felling` node drops a trunk on the chop that
  * zeroes `chopsLeft`, a `MineDeposit` chips ore piles until its last unit, and a bare node goes straight
  * onto the settler's back.
  *

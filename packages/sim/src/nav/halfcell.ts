@@ -4,6 +4,7 @@
  * world space and carries no stagger of its own. Every integer grid coordinate inside the sim is a
  * half-cell coordinate.
  */
+import { type FootprintCell, footprintCellDx } from '@open-northland/data';
 import { type Fixed, fx } from '../core/fixed.js';
 import { staggerShift, worldX } from './world-metric.js';
 
@@ -73,4 +74,21 @@ export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number;
  */
 export function nodesAdjacent(a: HalfCellNode, b: HalfCellNode): boolean {
   return Math.abs(a.hx - b.hx) <= 1 && Math.abs(a.hy - b.hy) <= 1;
+}
+
+/** Even-row-frame offsets of a node's six lattice neighbours: E, W and the four in the adjacent rows,
+ *  which the odd-row parity shift (`footprintCellDx`) places for an odd-row node. */
+const HEX_NEIGHBOUR_CELLS: readonly FootprintCell[] = [
+  { dx: 1, dy: 0 },
+  { dx: -1, dy: 0 },
+  { dx: -1, dy: -1 },
+  { dx: 0, dy: -1 },
+  { dx: -1, dy: 1 },
+  { dx: 0, dy: 1 },
+];
+
+/** The six nearest lattice nodes of `(hx, hy)`, a landscape point's ring under the half-node stagger of
+ *  odd rows (docs/formats/MAPDAT.md); unclamped, and not the pathfinder's 8-step relation. */
+export function hexNeighboursOf(hx: number, hy: number): HalfCellNode[] {
+  return HEX_NEIGHBOUR_CELLS.map((c) => ({ hx: hx + footprintCellDx(hy, c), hy: hy + c.dy }));
 }

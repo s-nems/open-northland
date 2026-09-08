@@ -81,30 +81,21 @@ export const GoodGathering = z.strictObject({
 export type GoodGathering = z.infer<typeof GoodGathering>;
 
 /**
- * A field-farmed good's sow→grow→water→reap parameters (wheat), distinct from {@link GoodGathering}.
+ * A field-farmed good's sow, water and reap parameters (wheat), distinct from {@link GoodGathering}.
  * The original wires the loop's vocabulary in readable data (`goodtypes.ini` wheat
  * `atomicForPlanting 34`/`atomicForCultivating 35`/`atomicForHarvesting 29`, `landscapetypes.ini`
- * 27/28/29 = growing/harvested/pile) but not its timings or field area, so every number except
- * {@link stages} is an observed calibration constant.
+ * 27/28/29 = growing/harvested/pile) but not its field area, so every number except {@link stages} is a
+ * calibration constant.
  */
 export const GoodFarming = z.strictObject({
-  /**
-   * Growth stages a sown field passes before ripe. Extracted, not observed: `landscapetypes.ini`
-   * wheat (growing) `maximumValency 5`, matching the `[GfxLandscape]` record's 5 growth frames.
-   */
+  /** Growth stages a sown field passes before ripe. Extracted, not observed: `landscapetypes.ini` wheat
+   *  (growing) `maximumValency 5`, matching the `[GfxLandscape]` record's 5 growth frames. */
   stages: z.number().int().positive(),
-  /** Observed - nominal ticks a watered field takes to advance one growth stage; each field's own pace
-   *  is drawn around it by {@link growthSpreadPercent}. */
-  ticksPerStage: z.number().int().positive(),
-  /** Observed - how far a single field's stage length may sit either side of {@link ticksPerStage}, as a
-   *  percentage. `0` puts a burst-sown plot in permanent lockstep: one mass harvest, then a bare field. */
-  growthSpreadPercent: z.number().int().nonnegative().max(99).default(0),
-  /** Observed - units a ripe field drops (as a ground sheaf) when reaped. */
+  /** Units a ripe field drops (as a ground sheaf) when reaped. */
   yieldPerField: z.number().int().positive(),
-  /** Observed - how far from the farm's anchor its workers sow, in half-cell nodes (no radius in data). */
+  /** How far from the farm's anchor its workers sow, in half-cell nodes. */
   fieldRadius: z.number().int().positive(),
-  /** Observed - fields one farm keeps standing at once. A property of the farm, not of its crew: the
-   *  original's plot holds the same number of plants whether one farmer or four work it. */
+  /** Fields one farm keeps standing at once, whatever its crew size. */
   maxFields: z.number().int().positive(),
 });
 export type GoodFarming = z.infer<typeof GoodFarming>;

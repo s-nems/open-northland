@@ -35,11 +35,12 @@ const MILLERS = 2;
 const BAKERS = 1;
 const WELL_CARRIERS = 1;
 
-/** Covers the serial cold start plus margin for the 18-tick-per-cell walks between workshops. */
-const RUN_TICKS = 12000;
+/** Covers the serial cold start (the first bread lands near tick 2600) plus margin for the 18-tick-per-cell
+ *  walks between workshops. */
+const RUN_TICKS = 6000;
 
-/** Slack the sown-fields check may step past `RUN_TICKS`, since fields ripen at spread paces. */
-const RESOW_WINDOW_TICKS = 1600;
+/** Slack the sown-fields check may step past `RUN_TICKS`: a reaped node stands empty until its resow. */
+const RESOW_WINDOW_TICKS = 600;
 /** Not 1, so `cameraFor` centres on the settlers. */
 const INITIAL_ZOOM = 0.7;
 
@@ -85,8 +86,7 @@ export const chainScene: SceneDefinition = {
   checks: [
     {
       label: 'the farm field-farms wheat (fields sown on the grass)',
-      // A bare end-tick sample is luck: fields ripen at spread paces, so the count dips when several
-      // land together.
+      // A bare end-tick sample is luck: a reap empties its node until the resow, so the count dips.
       predicate: (sim) =>
         cropFields(sim) > 0 ||
         holdsSometimeDuring(chainScene, RUN_TICKS + RESOW_WINDOW_TICKS, (s) => cropFields(s) > 0),

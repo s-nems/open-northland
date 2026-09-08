@@ -63,6 +63,7 @@ export {
   cellAnchorNode,
   cellOfAnchorNode,
   type HalfCellNode,
+  hexNeighboursOf,
   nodeOfPosition,
   positionOfNode,
 } from './nav/halfcell.js';

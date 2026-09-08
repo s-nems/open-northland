@@ -9,7 +9,6 @@ import { defenceSystem } from './defence/index.js';
 import { berryGrowthSystem } from './economy/berries.js';
 import { constructionSystem } from './economy/construction.js';
 import { fieldReclaimSystem } from './economy/field-reclaim.js';
-import { cropGrowthSystem } from './economy/fields.js';
 import { productionSystem } from './economy/production.js';
 import { familySystem } from './family/index.js';
 import { growthSystem } from './lifecycle/ageclass.js';
@@ -79,7 +78,6 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   // that atomic completes, before any drive could see the freed settler.
   { name: 'deferredOrder', system: deferredOrderSystem },
   { name: 'production', system: productionSystem },
-  { name: 'cropGrowth', system: cropGrowthSystem },
   { name: 'fieldReclaim', system: fieldReclaimSystem },
   { name: 'berryGrowth', system: berryGrowthSystem },
   { name: 'construction', system: constructionSystem },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { fx, Simulation } from '../../../src/index.js';
+import { cellAnchorNode, fx, positionOfNode, Simulation } from '../../../src/index.js';
 import { plannerSystem } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
@@ -20,11 +20,11 @@ import {
   Position,
   plotAtCap,
   REAP_ATOMIC,
+  RING_AROUND_FARM,
   Settler,
   SOW_ATOMIC,
   STAGES,
   Stockpile,
-  TICKS_PER_STAGE,
   VIKING,
   WATER_ATOMIC,
   WHEAT,
@@ -65,6 +65,35 @@ describe('planFarmer - the drive ladder', () => {
     const atomic = sim.world.tryGet(farmer, components.CurrentAtomic);
     const goal = sim.world.tryGet(farmer, components.MoveGoal);
     expect(atomic?.atomicId === SOW_ATOMIC || goal !== undefined).toBe(true);
+  });
+
+  it('a farmer keeps the sow spot it set out for: arriving there sows instead of drawing a fresh one', () => {
+    // The arrival replan re-picks; without the kept intent it would draw among the five nearest again and
+    // walk off four times in five. Four seeds, so a lucky redraw cannot pass this on its own.
+    for (const seed of [1, 2, 3, 4]) {
+      const sim = new Simulation({ seed, content: testContent(), map: grassMap(8, 8) });
+      const farm = farmAt(sim, 4, 4);
+      const farmer = farmerAt(sim, 4, 4, farm);
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('scene sim has terrain');
+      plannerSystem(sim.world, ctxOf(sim));
+      const spot = terrain.coordsOf(sim.world.get(farmer, components.FarmTask).node);
+      expect(sim.world.tryGet(farmer, components.MoveGoal)).toBeDefined(); // the store holds the anchor
+
+      // Stand the farmer on its spot with the walk over: the state the arrival replan sees.
+      const stand = positionOfNode(spot.x, spot.y);
+      const p = sim.world.mut(farmer, Position);
+      p.x = stand.x;
+      p.y = stand.y;
+      sim.world.remove(farmer, components.MoveGoal);
+      if (sim.world.has(farmer, components.PathRequest)) sim.world.remove(farmer, components.PathRequest);
+      if (sim.world.has(farmer, components.PathFollow)) sim.world.remove(farmer, components.PathFollow);
+      plannerSystem(sim.world, ctxOf(sim));
+
+      const atomic = sim.world.get(farmer, components.CurrentAtomic);
+      expect(atomic.atomicId, `seed ${seed}`).toBe(SOW_ATOMIC);
+      expect(atomic.effect).toMatchObject({ kind: 'sow', x: spot.x, y: spot.y });
+    }
   });
 
   it('sows before reaping while the plot is under its cap - the plot fills before it turns over', () => {
@@ -149,11 +178,10 @@ describe('planFarmer - the drive ladder', () => {
     expect(sim.world.has(field, Crop)).toBe(false);
   });
 
-  it('waters a thirsty field once the plot is at its cap (the can circles between sowings)', () => {
+  it('waters the least-grown field once the plot is at its cap (the can circles between sowings)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
     // The sow branch is closed at the cap, so the drive reaches for the can. (Under the cap it sows FIRST -
-    // per-stage watering keeps some field thirsty almost always, and a water-first farmer would never
-    // expand the plot.)
+    // every field below its top stage is thirsty, and a water-first farmer would never expand the plot.)
     const { field, farmer } = plotAtCap(sim, {});
 
     plannerSystem(sim.world, ctxOf(sim));
@@ -161,6 +189,24 @@ describe('planFarmer - the drive ladder', () => {
     const atomic = sim.world.get(farmer, components.CurrentAtomic);
     expect(atomic.atomicId).toBe(WATER_ATOMIC);
     expect(atomic.effect).toEqual({ kind: 'water', crop: field });
+  });
+
+  it('the can passes a nearer field for a less grown one farther away', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
+    const farm = farmAt(sim, 4, 4);
+    fieldAt(sim, farm, 4, 4, { stage: 3 }); // underfoot, but ahead
+    const laggard = fieldAt(sim, farm, 1, 1, { stage: 2 });
+    for (const [x, y] of RING_AROUND_FARM.slice(0, FIELD_CAP - 2)) fieldAt(sim, farm, x, y, { stage: 3 });
+    const farmer = farmerAt(sim, 4, 4, farm);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const task = sim.world.get(farmer, components.FarmTask);
+    const at = cellAnchorNode(1, 1);
+    expect(task.node).toBe(sim.terrain?.nodeAt(at.hx, at.hy));
+    expect(sim.world.tryGet(farmer, components.MoveGoal)).toBeDefined(); // walking to the laggard
+    expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
+    expect(sim.world.has(laggard, Crop)).toBe(true);
   });
 
   it('picks up a cut sheaf lying by the farm before anything else (then the delivery rung routes it home)', () => {
@@ -195,19 +241,18 @@ describe('planFarmer - the drive ladder', () => {
   it('never sows past the farm plot cap', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(10, 10) });
     farmerAt(sim, 5, 5, farmAt(sim, 5, 5));
-    // Growth is slow (10 ticks/stage × 5 stages) relative to this window, so nothing ripens and the
-    // count below is the standing-roster max, not a harvested-and-resown churn.
-    sim.run(TICKS_PER_STAGE * STAGES - 1);
-
-    const fields = [...sim.world.query(Crop)];
-    expect(fields.length).toBeGreaterThan(0);
-    expect(fields.length).toBeLessThanOrEqual(FIELD_CAP);
+    let peak = 0;
+    for (let t = 0; t < 400; t++) {
+      sim.run(1);
+      peak = Math.max(peak, [...sim.world.query(Crop)].length);
+    }
+    expect(peak).toBe(FIELD_CAP);
   });
 
   it("the plot cap is the FARM's, not the crew's: a second farmer does not enlarge it", () => {
     // Measured in the original: a farm holds the same ~24 plants whether one farmer or four work it -
     // extra hands turn the plot over faster, they never widen it. Track the PEAK standing-field count,
-    // since per-stage watering keeps the roster churning below the cap.
+    // since the reap-and-resow churn keeps the roster dipping below the cap.
     const peakFields = (crew: number): number => {
       const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 12) });
       const farm = farmAt(sim, 6, 6);
@@ -250,31 +295,5 @@ describe('planFarmer - the drive ladder', () => {
     const atomic = sim.world.tryGet(farmer, components.CurrentAtomic)?.atomicId;
     expect([SOW_ATOMIC, WATER_ATOMIC, REAP_ATOMIC]).not.toContain(atomic);
     expect([...sim.world.query(Crop)]).toHaveLength(0);
-  });
-
-  it('an idle farmer waits INSIDE the farm (Resting) and steps back out when a field thirsts', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 8) });
-    const farm = farmAt(sim, 4, 4);
-    // Every slot taken: a full watered roster (nothing to reap/carry/water/sow for a crew of ONE).
-    const fields = [
-      fieldAt(sim, farm, 3, 3, { watered: true }),
-      fieldAt(sim, farm, 5, 3, { watered: true }),
-      fieldAt(sim, farm, 3, 5, { watered: true }),
-      fieldAt(sim, farm, 5, 5, { watered: true }),
-      fieldAt(sim, farm, 2, 4, { watered: true }),
-      fieldAt(sim, farm, 6, 4, { watered: true }),
-    ];
-    const farmer = farmerAt(sim, 4, 4, farm); // standing at the farm's own cell (the door)
-    plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(farmer, components.Resting)).toBe(true); // went inside - no loitering
-    expect(sim.world.tryGet(farmer, components.CurrentAtomic)).toBeUndefined();
-
-    // A field turns thirsty → the very next plan leaves the house for the can.
-    sim.world.mut(fields[0] as Entity, Crop).watered = false;
-    plannerSystem(sim.world, ctxOf(sim));
-    expect(sim.world.has(farmer, components.Resting)).toBe(false);
-    const atomic = sim.world.tryGet(farmer, components.CurrentAtomic);
-    const goal = sim.world.tryGet(farmer, components.MoveGoal);
-    expect(atomic?.atomicId === WATER_ATOMIC || goal !== undefined).toBe(true);
   });
 });

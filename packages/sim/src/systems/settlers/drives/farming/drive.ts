@@ -59,13 +59,13 @@ function boundFarmTarget(
 
 /**
  * The field-cultivation loop for a settler bound to a farm: carry a cut sheaf home, sow while the plot is
- * under its cap, reap a ripe field, water a thirsty field, else wait inside the farm. Returns false only
- * for a settler that is not a field-farmer here.
+ * under its cap, reap a ripe field, water the least-grown field, else wait inside the farm. Returns false
+ * only for a settler that is not a field-farmer here.
  *
  * Approximation: the rung order is not readable data. Sowing outranks the scythe and the can so a plot
- * fills before it turns over; a water-first farmer would never expand it, since per-stage watering leaves
- * something thirsty almost always. Reap and sheaf-carry pause while no store can take the crop; sowing
- * and watering continue.
+ * fills before it turns over; a water-first farmer would never expand it, since every field below its top
+ * stage is thirsty. Reap and sheaf-carry pause while no store can take the crop; sowing and watering
+ * continue.
  */
 export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
@@ -78,8 +78,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
   const anchor = terrain.nodeAtClamped(fn.hx, fn.hy);
 
   /** One field action lasts its clip once: each farmer clip fires its cue (`PLANT` 15, `GROW` 16,
-   *  `TRANSFORM` 18 of `logicdefines.inc`) on one frame per play. The trade's `baserepeatcounter` reaches
-   *  the scythe alone, banked by the harvest effect; approximation: which action it gates is not readable. */
+   *  `TRANSFORM` 18 of `logicdefines.inc`) on one frame per play. */
   const clipTicks = (atomic: number): number => atomicDuration(ctx.content, settler, atomic);
 
   /** Claim `node` for this settler's next action, so colleagues planned later this tick skip it. */
@@ -98,13 +97,16 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     memo: unreachableGoals(world, ctx, e),
   };
 
-  // One pass over this farm's fields serves both the plot cap and the nearest unclaimed ripe and thirsty
-  // pick, by (distance, cell) over the canonical list.
+  // One pass over this farm's fields serves the plot cap and both picks over the canonical list: the
+  // nearest unclaimed ripe field by (distance, cell), and the least-grown thirsty field, nearest among
+  // equals. Approximation: the can serving the laggards is what keeps a ring-watered plot ripening a few
+  // fields at a time instead of as one cohort.
   let fields = 0;
   let ripe: Entity | null = null;
   let ripeCell = 0 as NodeId;
   let ripeDist = Number.POSITIVE_INFINITY;
   let thirsty: Entity | null = null;
+  let thirstyStage = Number.POSITIVE_INFINITY;
   let thirstyCell = 0 as NodeId;
   let thirstyDist = Number.POSITIVE_INFINITY;
   for (const c of targets.cropsByFarm.get(farm) ?? []) {
@@ -122,12 +124,14 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
         ripeDist = dist;
         ripeCell = cell;
       }
-    } else if (!crop.watered) {
-      if (closer(dist, cell, thirstyDist, thirstyCell)) {
-        thirsty = c;
-        thirstyDist = dist;
-        thirstyCell = cell;
-      }
+    } else if (
+      crop.stage < thirstyStage ||
+      (crop.stage === thirstyStage && closer(dist, cell, thirstyDist, thirstyCell))
+    ) {
+      thirsty = c;
+      thirstyStage = crop.stage;
+      thirstyDist = dist;
+      thirstyCell = cell;
     }
   }
 
@@ -185,7 +189,7 @@ export function planFarmer(plan: PlannerContext, claims: FarmClaims): boolean {
     return true;
   }
 
-  // Water the nearest thirsty field; every growth stage consumes one watering.
+  // Water the least-grown field; every growth stage costs a watering, which reaches the ring around it.
   if (thirsty !== null) {
     const crop = thirsty;
     take(thirstyCell, false);

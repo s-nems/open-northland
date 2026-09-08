@@ -8,7 +8,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
  * `maximumValency 5`). Sown at `stage` 1 with `Resource.remaining` 0 - that gate is what keeps every
  * generic harvest scan off an unripe field - and ripe at the top stage, where `Resource.remaining` becomes
  * `yieldUnits` so the reap swing drops the whole yield as a {@link GroundDrop} sheaf pile and removes the
- * field. Only the farm that sowed a field waters and reaps it.
+ * field. A field below its top stage is thirsty. Only the farm that sowed a field waters and reaps it.
  *
  * A field blocks neither walking nor building - it carries a {@link ResourceFootprint} declaring empty
  * walk/build areas, which is how the original's wheat landscape reads (`allowedonland 1`, no block areas).
@@ -17,17 +17,10 @@ export const Crop = defineComponent<{
   goodType: number;
   /** The farm workplace this field belongs to (a cross-reference id; ids are never reused). */
   farm: Entity;
-  /** Current growth stage, 1..`stages`; ripe at the top stage. */
+  /** Current growth stage, 1..`stages`; a watering steps it once, and only a watering does. */
   stage: number;
   /** Total growth stages (the content `farming.stages`, snapshotted at sow). */
   stages: number;
-  /** Whole ticks accumulated toward the next stage (exact integer compare, like CurrentAtomic). */
-  growth: number;
-  /** This field's ticks per growth stage, drawn at sow from the content's nominal rate and its
-   *  `growthSpreadPercent` band by a hash of the node, so fields planted together ripen apart. */
-  ticksPerStage: number;
-  /** Whether the field holds a live watering: only a watered field grows, and a stage step consumes it. */
-  watered: boolean;
   /** Units the ripe field releases (the content `farming.yieldPerField`, snapshotted at sow). */
   yieldUnits: number;
 }>('Crop');

@@ -1,10 +1,9 @@
 import type { GoodFarming } from '@open-northland/data';
 import { Building, Crop, Position, Resource } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import { coordHash } from '../../core/coord-hash.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { System, SystemContext } from '../context.js';
+import { hexNeighboursOf, nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
+import type { SystemContext } from '../context.js';
 import { buildingFootprintOf, translatedCells } from '../footprint/geometry.js';
 import {
   buildingBlockedCells,
@@ -15,36 +14,15 @@ import {
 import { resourcesAtNode } from '../spatial/resources.js';
 import { stockpilesAtNode } from '../spatial/stockpiles.js';
 
-// Source basis for the farm's sow, water, grow and reap loop: its vocabulary is readable original data
+// Source basis for the farm's sow, water and reap loop: its vocabulary is readable original data
 // (`goodtypes.ini` wheat atomics 34/35/29 plus `isProducedOnMapFlag`, `landscapetypes.ini` wheat lanes
-// 27/28/29 with `maximumValency 5`); its timings and areas are the content `farming` block's calibration
-// constants, since no readable growth timing or field radius exists.
+// 27/28/29 with `maximumValency 5`); its plot size and radius are the content `farming` block's calibration.
 
-// Watering is the growth fuel: the cultivate clip fires the `GROW` cue (`atomicanimations.ini` `event 14 16`,
-// type 16 named in `logicdefines.inc`), so the farm's throughput is its farmers' labor rather than a
-// wall-clock timer. Sized against the original's observed ~10 grain per farmer per 10 minutes on a plot of
-// ~24 plants, which it overshoots - about double for a lone farmer - since sowing and watering land on one
-// clip. Approximation: the cue's reach and any clock period are not readable. An untended field stands at
-// its stage and deadlocks nothing.
-
-/** Distinct growth paces a field can be sown into, spread evenly across the good's `growthSpreadPercent`
- *  band. Approximation: enough to keep a plot of a couple of dozen fields visibly out of step. */
-const GROWTH_BANDS = 8;
-
-/**
- * The per-stage growth time of a field sown at half-cell node `(x, y)`: the good's nominal `ticksPerStage`
- * shifted into one of {@link GROWTH_BANDS} paces spanning ±`growthSpreadPercent`, clamped to at least one
- * tick. A pure coordinate hash rather than a draw from the seeded `ctx.rng`, so a field's pace is identical
- * in every run and replay. Approximation: the spread keeps a burst-sown plot from ripening in one mass
- * harvest, matching the mixed heights the original shows, whose per-plant timing is not decoded.
- */
-function stageTicksAt(farming: GoodFarming, x: number, y: number): number {
-  const spread = farming.growthSpreadPercent;
-  if (spread === 0) return farming.ticksPerStage;
-  const band = coordHash(x, y) % GROWTH_BANDS;
-  const percent = -spread + Math.floor((2 * spread * band) / (GROWTH_BANDS - 1)); // -spread..+spread
-  return Math.max(1, Math.floor((farming.ticksPerStage * (100 + percent)) / 100));
-}
+// Watering is the only growth: the cultivate clip fires the `GROW` cue (`atomicanimations.ini` `event 14 16`,
+// `ATOMIC_ANIMATION_EVENT_TYPE_GROW` in `logicdefines.inc`) and `wheat (growing)` answers the transition of
+// the same name with one valency step (`transition 7 27 2 +1 0`: `LANDSCAPE_TRANSITION_GROW`, modifier
+// `DELTA`, +1) up to `maximumValency 5`. Approximation: no clock steps a field, which the data leaves
+// open - a bush carries a `GROW` transition too and something other than a can fires it there.
 
 /** A field-farmed good's resolved loop parameters: its content `farming` block plus the
  *  `atomicForPlanting` / `atomicForCultivating` / `atomicForHarvesting` ids. */
@@ -132,18 +110,33 @@ export function applySow(
     farm: effect.farm,
     stage: 1,
     stages: spec.farming.stages,
-    growth: 0,
-    ticksPerStage: stageTicksAt(spec.farming, effect.x, effect.y),
-    watered: false,
     yieldUnits: spec.farming.yieldPerField,
   });
 }
 
-/** Apply a completed `water` (cultivate) swing: mark the field `watered`, fueling one stage of growth. */
+/**
+ * Apply a completed `water` (cultivate) swing at `crop`: one growth step for that field and for every field
+ * on its six lattice neighbours. Approximation: the cue's reach is not readable; the ring is the lattice's
+ * six nearest nodes under its odd-row stagger. A target reaped or razed since the planner chose it waters
+ * nothing.
+ */
 export function applyWater(world: World, crop: Entity): void {
-  const c = world.tryGet(crop, Crop);
-  if (c === undefined || c.watered || c.stage >= c.stages) return;
-  world.mut(crop, Crop).watered = true;
+  const p = world.tryGet(crop, Position);
+  if (p === undefined || !world.has(crop, Crop)) return;
+  const { hx, hy } = nodeOfPosition(p.x, p.y);
+  growFieldsAt(world, hx, hy);
+  for (const n of hexNeighboursOf(hx, hy)) growFieldsAt(world, n.hx, n.hy);
+}
+
+/** Step every field standing on node `(hx, hy)` one stage; a ripe one stands as it is. */
+function growFieldsAt(world: World, hx: number, hy: number): void {
+  for (const e of resourcesAtNode(world, hx, hy)) {
+    const crop = world.tryGet(e, Crop);
+    if (crop === undefined || crop.stage >= crop.stages) continue;
+    const grown = world.mut(e, Crop);
+    grown.stage += 1;
+    if (grown.stage >= grown.stages) world.mut(e, Resource).remaining = grown.yieldUnits;
+  }
 }
 
 /**
@@ -175,29 +168,3 @@ export function destroyFieldsUnderBuilding(world: World, ctx: SystemContext, bui
     }
   }
 }
-
-/**
- * Advance every watered field's integer growth counter and step its stage, on the exact compare
- * `growth >= ticksPerStage` rather than an accumulated fraction. Per-field independent integer mutation with
- * no cross-entity pick, so store-order iteration is fine.
- */
-export const cropGrowthSystem: System = (world) => {
-  for (const e of world.query(Crop)) {
-    const crop = world.get(e, Crop);
-    if (crop.stage >= crop.stages) continue; // ripe - waiting for the scythe
-    if (!crop.watered) continue;
-    let ripened = false;
-    const c = world.mut(e, Crop);
-    c.growth += 1;
-    if (c.growth >= c.ticksPerStage) {
-      c.growth -= c.ticksPerStage;
-      c.stage += 1;
-      c.watered = false;
-      ripened = c.stage >= c.stages;
-      if (ripened) c.growth = 0; // frozen so the display is stable
-    }
-    if (ripened && world.has(e, Resource)) {
-      world.mut(e, Resource).remaining = crop.yieldUnits;
-    }
-  }
-};

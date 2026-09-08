@@ -79,9 +79,9 @@ export type AtomicEffect =
    *  clip's own events feed the forager. No stored or carried good is consumed and no job or tool is
    *  needed; a bush already bare or gone consumes nothing but the meal still counts. */
   | { readonly kind: 'forage'; readonly bush: Entity }
-  /** A farmer's watering (the original's cultivate atomic) marks the `crop` `watered`, which enables its
-   *  growth; an unwatered field stalls at its sown stage. Approximation: the engine's watering semantics
-   *  are not decoded. A field already reaped, ripe, or gone is a no-op. */
+  /** A farmer's watering (the original's cultivate atomic) steps `crop` and every field on its six lattice
+   *  neighbours one growth stage; nothing else grows a field. Approximation: the reach is not readable. A
+   *  target already reaped or gone waters nothing; a ripe field in reach stands. */
   | { readonly kind: 'water'; readonly crop: Entity }
   /** The settler sets its whole carried load down on its own tile, spilling any remainder over the
    *  `MAX_GROUND_STACK` cap onto the nearest free walkable nodes. No good is lost. */

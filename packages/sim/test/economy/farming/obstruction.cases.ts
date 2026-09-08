@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
-import { nodeOfPosition } from '../../../src/nav/halfcell.js';
-import { applySow } from '../../../src/systems/index.js';
+import { type HalfCellNode, nodeOfPosition } from '../../../src/nav/halfcell.js';
+import { applySow, nodeKey } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 import {
@@ -11,6 +11,7 @@ import {
   Crop,
   cellMap,
   ctxOf,
+  FIELD_CAP,
   farmAt,
   farmerAt,
   fieldAt,
@@ -127,42 +128,48 @@ describe('sowing against standing walls', () => {
 });
 
 describe('sowing around bodies that stand without blocking', () => {
-  // The occupancy half of the lattice filter, the one the walk-block overlay cannot answer: a loose heap or
-  // a footprint-less scenery node is walkable, so only the standing-entity check keeps a plant off it. The
+  // The occupancy half of the sow filter, the one the walk-block overlay cannot answer: a loose heap or a
+  // footprint-less scenery node is walkable, so only the standing-entity check keeps a plant off it. The
   // planner and `applySow` share that check, so a node the planner rejects is never one the swing accepts.
-  const SOW_TICKS = 120;
+  /** Long enough for a lone farmer to fill the fixture plot whichever spots the seeded draw hands it. */
+  const SOW_TICKS = 400;
 
-  function sowingSim(): Simulation {
+  /** Run a lone farmer's farm for {@link SOW_TICKS} over `prepare`d ground: every half-cell node a plant
+   *  ever stood on, keyed `hx,hy`, and the most standing at once. */
+  function sowingRun(prepare: (sim: Simulation) => void): { sown: Map<string, HalfCellNode>; peak: number } {
     const sim = new Simulation({ seed: 5, content: testContent(), map: grassMap(14, 14) });
     const farm = farmAt(sim, 7, 7);
     farmerAt(sim, 7, 7, farm);
-    return sim;
-  }
-
-  /** The half-cell nodes this world's plants stand on. */
-  function cropNodes(sim: Simulation): { hx: number; hy: number }[] {
-    return [...sim.world.query(Crop, Position)].map((e) => {
-      const p = sim.world.get(e, Position);
-      return nodeOfPosition(p.x, p.y);
-    });
+    prepare(sim);
+    const sown = new Map<string, HalfCellNode>();
+    let peak = 0;
+    for (let t = 0; t < SOW_TICKS; t++) {
+      sim.run(1);
+      let standing = 0;
+      for (const e of sim.world.query(Crop, Position)) {
+        standing++;
+        const p = sim.world.get(e, Position);
+        const n = nodeOfPosition(p.x, p.y);
+        sown.set(nodeKey(n.hx, n.hy), n);
+      }
+      peak = Math.max(peak, standing);
+    }
+    return { sown, peak };
   }
 
   it('never plants on a node a heap or a scenery node already holds', () => {
-    const baseline = sowingSim();
-    baseline.run(SOW_TICKS);
-    const sown = cropNodes(baseline);
-    const [heap, scenery] = sown; // two nodes this farm provably reaches for
+    const baseline = sowingRun(() => {});
+    expect(baseline.peak).toBe(FIELD_CAP);
+    const [heap, scenery] = [...baseline.sown.values()]; // two nodes this farm provably reaches for
     if (heap === undefined || scenery === undefined) throw new Error('the baseline farm sowed too little');
 
-    const sim = sowingSim();
-    heapAtNode(sim, heap.hx, heap.hy);
-    sceneryAtNode(sim, scenery.hx, scenery.hy);
-    sim.run(SOW_TICKS);
+    const run = sowingRun((sim) => {
+      heapAtNode(sim, heap.hx, heap.hy);
+      sceneryAtNode(sim, scenery.hx, scenery.hy);
+    });
 
-    const replanted = cropNodes(sim);
-    expect(replanted).not.toContainEqual(heap);
-    expect(replanted).not.toContainEqual(scenery);
-    // Not vacuous: it filled the same number of fields, just on other ground.
-    expect(replanted).toHaveLength(sown.length);
+    expect(run.sown.has(nodeKey(heap.hx, heap.hy))).toBe(false);
+    expect(run.sown.has(nodeKey(scenery.hx, scenery.hy))).toBe(false);
+    expect(run.peak).toBe(FIELD_CAP); // not vacuous: it still filled the plot, just on other ground
   });
 });
