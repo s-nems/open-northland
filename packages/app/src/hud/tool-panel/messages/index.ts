@@ -45,7 +45,6 @@ export interface MessageCenterDeps {
   readonly localPlayer: number;
   /** A building type's menu label, which names a building in its note. */
   readonly buildingLabel: (typeId: number) => string | undefined;
-  /** A seat's roster name, which names the player in an elimination note. */
   readonly playerLabel: (player: number) => string | null;
   readonly tooltip?: TooltipSurface | undefined;
   readonly onSelect: (target: MessageTarget) => void;

@@ -89,6 +89,9 @@ export interface PendingMessage {
   readonly subject: MessageSubject | null;
   /** Where the note's Select jumps when there is no subject left to centre on (a death). */
   readonly at: HalfCellNode | null;
+  /** Who a message with no live subject is about: the reaped settler's id, or the seat number for a
+   *  player-scoped note. Part of the identity, so two deaths inside one lifetime stay two notes. */
+  readonly about: number | null;
   readonly goodType: number | null;
   /** The subject settler's trade when the message was raised; the priority rule for a missing good
    *  reads it. */

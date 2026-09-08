@@ -45,7 +45,7 @@ export class MessageRaiser {
     const subject: MessageSubject = { kind: 'settler', entity: e.id };
     this.raise(
       `${type}|settler:${e.id}`,
-      { type, subject, at: nodeOf(e), goodType: null, jobType: jobTypeOf(e) },
+      { type, subject, at: nodeOf(e), about: null, goodType: null, jobType: jobTypeOf(e) },
       () => {
         const named = this.naming.settler(e, this.snapshot);
         return this.naming.text(type, { subjectName: named.name, jobLabel: named.jobLabel, goodName: null });
@@ -57,7 +57,7 @@ export class MessageRaiser {
     const subject: MessageSubject = { kind: 'building', entity: e.id };
     this.raise(
       `${type}|building:${e.id}`,
-      { type, subject, at: nodeOf(e), goodType: null, jobType: null },
+      { type, subject, at: nodeOf(e), about: null, goodType: null, jobType: null },
       () => this.naming.text(type, { subjectName: this.naming.building(e), jobLabel: null, goodName: null }),
     );
   }

@@ -67,6 +67,8 @@ export interface ToolPanelOptions {
   readonly counters: ExtrasCountersSeam;
   /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
+  /** A seat's roster name, which the diplomacy rows withhold for the viewer's own and unmet seats. */
+  readonly seatNameOf?: (player: number) => string | undefined;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
@@ -258,7 +260,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       playerColourOf: opts.playerColourOf,
       localPlayer: opts.owner,
       buildingLabel: (typeId) => labelByType.get(typeId),
-      playerLabel: (player) => opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
+      playerLabel: (player) =>
+        opts.seatNameOf?.(player) ?? opts.diplomacyRows().find((r) => r.player === player)?.name ?? null,
       tooltip: opts.tooltip,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
     });

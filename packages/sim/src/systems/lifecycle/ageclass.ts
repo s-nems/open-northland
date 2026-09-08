@@ -103,7 +103,9 @@ export const growthSystem: System = (world, ctx) => {
     if (target !== settler.jobType) setSettlerJob(world, e, target);
   }
   for (const e of graduated) {
-    ctx.events.emit({ kind: 'settlerGrewUp', entity: e });
+    // A child killed earlier this tick still crosses the age line before CleanupSystem reaps it, and a
+    // corpse has no birthday to announce.
+    if ((world.tryGet(e, Health)?.hitpoints ?? 1) > 0) ctx.events.emit({ kind: 'settlerGrewUp', entity: e });
     world.remove(e, Age);
     // Authored: a grown child moves out instead of counting as a second family against its parents'
     // `homeSize`. The Age removal above also expires a widowed parent's carve-out.

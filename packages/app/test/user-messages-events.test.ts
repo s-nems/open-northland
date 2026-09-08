@@ -195,6 +195,7 @@ describe('user messages from sim events', () => {
         type: USER_MESSAGE_TYPE.playerDied,
         subject: null,
         at: null,
+        about: ENEMY,
         goodType: null,
         jobType: null,
         text: `Gracz:${USER_MESSAGE_TYPE.playerDied}`,

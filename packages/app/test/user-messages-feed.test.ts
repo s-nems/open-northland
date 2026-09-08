@@ -21,7 +21,7 @@ function pending(
   subject: MessageSubject | null = { kind: 'settler', entity: 7 },
   extra: Partial<PendingMessage> = {},
 ): PendingMessage {
-  return { type, subject, at: null, goodType: null, jobType: null, ...extra };
+  return { type, subject, at: null, about: null, goodType: null, jobType: null, ...extra };
 }
 
 describe('message feed', () => {
@@ -53,6 +53,21 @@ describe('message feed', () => {
     expect(
       feed.add(pending(USER_MESSAGE_TYPE.humanAttacked, { kind: 'settler', entity: 8 }), TICK + 10, TEXT),
     ).toBe('accepted');
+  });
+
+  it('keeps subject-less messages apart by who they are about', () => {
+    const feed = createMessageFeed();
+    const death = (entity: number): PendingMessage =>
+      pending(USER_MESSAGE_TYPE.humanDied, null, { about: entity });
+    const lost = (player: number): PendingMessage =>
+      pending(USER_MESSAGE_TYPE.playerDied, null, { about: player });
+    expect(feed.add(death(11), TICK, TEXT)).toBe('accepted');
+    expect(feed.add(death(12), TICK, TEXT)).toBe('accepted');
+    expect(feed.add(death(11), TICK + 40, TEXT)).toBe('duplicate');
+    expect(feed.add(lost(2), TICK, TEXT)).toBe('accepted');
+    expect(feed.add(lost(3), TICK, TEXT)).toBe('accepted');
+    expect(feed.add(lost(2), TICK, TEXT)).toBe('duplicate');
+    expect(feed.displayed()).toHaveLength(4);
   });
 
   it('forgets a dismissed message after its lifetime, so it can be raised again', () => {
