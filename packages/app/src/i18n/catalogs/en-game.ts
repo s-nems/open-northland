@@ -325,7 +325,7 @@ export const enGame = {
       '92': 'is under attack',
       '120': 'is dead',
       '121': 'An unknown hero has fallen',
-      '133': 'has been defeated',
+      '133': 'out of the game',
     },
   },
 } as const;

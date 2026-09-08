@@ -9,7 +9,7 @@ import {
 } from '@open-northland/sim';
 import {
   actorsOf,
-  isFemale,
+  healthOf,
   needsRuleEnabled,
   num,
   ownerPlayerOf,
@@ -33,10 +33,9 @@ const NO_MESSAGES: readonly RaisedMessage[] = [];
 /** Hunger pinned at the top of the bar is starvation. */
 const STARVING_HUNGER: number = ONE;
 
-/** Share of the hitpoint pool at or below which a starving settler is close enough to death to warn
- *  about. Approximation on the starvation model's own beat: the bites left are worth about twenty
- *  seconds at 1x. */
-const DYING_HEALTH_FRACTION = 10;
+/** The starving settler is close enough to death to warn about once its pool is down to a tenth.
+ *  Approximation on the sim's own starvation beat, which leaves about twenty seconds from there. */
+const DYING_HEALTH_DIVISOR = 10;
 
 /** Atomics that occupy a settler without being work: a paired chat or a stagger. */
 const EFFECTLESS_ATOMICS: ReadonlySet<AtomicEffect['kind']> = new Set<AtomicEffect['kind']>(['idle']);
@@ -112,19 +111,11 @@ class IdleStreaks {
   }
 }
 
-/** Hitpoints left of the pool, or undefined for a settler carrying none. */
-function healthOf(e: SnapshotEntity): { hitpoints: number; max: number } | undefined {
-  const health = e.components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
-  const hitpoints = num(health?.hitpoints);
-  const max = num(health?.max);
-  return hitpoints === undefined || max === undefined ? undefined : { hitpoints, max };
-}
-
 /** A starving settler whose pool has nearly run out; the sim bites it every few ticks until it dies. */
 function isDying(e: SnapshotEntity): boolean {
   const health = healthOf(e);
   return (
-    health !== undefined && health.hitpoints > 0 && health.hitpoints * DYING_HEALTH_FRACTION <= health.max
+    health !== undefined && health.hitpoints > 0 && health.hitpoints * DYING_HEALTH_DIVISOR <= health.max
   );
 }
 
@@ -154,8 +145,7 @@ function raiseNothingToDo(
   e: SnapshotEntity,
   streaks: IdleStreaks,
 ): void {
-  // The original drops this note for a woman, whose work is the household rather than a trade.
-  if (isFemale(e) || holdsPost(e) || !hasWorkplaceToWorkAt(snapshot, e)) return;
+  if (holdsPost(e) || !hasWorkplaceToWorkAt(snapshot, e)) return;
   const occupation = occupationOf(snapshot, e);
   if (occupation === 'busy') return;
   if (streaks.advance(e.id, occupation) >= IDLE_SWEEPS_BEFORE_MESSAGE) {
@@ -165,8 +155,8 @@ function raiseNothingToDo(
 
 /**
  * The local player's messages read off the snapshot itself: pressing needs and a worker with nothing to
- * do. One pass over the actors per sweep interval, so the cost is bounded by the seat's population and
- * the cadence, not by the frame rate.
+ * do. One pass over the world's actors per sweep interval, filtering to the seat inside the loop, so the
+ * cost follows the actor count and the cadence rather than the frame rate.
  */
 export function createSnapshotMessageSource(localPlayer: number): SnapshotMessageSource {
   let lastSweepTick: number | null = null;

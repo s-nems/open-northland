@@ -68,7 +68,7 @@ export function defaultMessageFeedState(): MessageFeedState {
 
 /** The original's whole-record comparison, minus the stamp fields the feed assigns. */
 function identityKey(m: PendingMessage): string {
-  const subject = m.subject === null ? '' : `${m.subject.kind}:${m.subject.entity}`;
+  const subject = m.subject === null ? `about:${m.about ?? ''}` : `${m.subject.kind}:${m.subject.entity}`;
   return `${m.type}|${subject}|${m.goodType ?? ''}|${m.jobType ?? ''}`;
 }
 

@@ -243,6 +243,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     deferToOverlay: (clientX, clientY) => minimap?.claimsPointer(clientX, clientY) ?? false,
     overlayReserve: () => minimap?.panelRect() ?? null,
     onSystemMenu: () => systemMenu?.toggle(),
+    ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
     missionBrief: () =>
       deps.missionBrief === undefined
         ? null

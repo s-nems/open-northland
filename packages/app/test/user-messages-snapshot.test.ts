@@ -27,7 +27,6 @@ interface Actor {
   readonly piety?: number;
   /** Hitpoints left of a 300-point pool; absent leaves the settler without a Health component. */
   readonly hitpoints?: number;
-  readonly female?: boolean;
   readonly workplace?: number;
   readonly doing?: Doing;
   /** A `jobType` of null: the adult nobody plans or feeds. */
@@ -75,7 +74,6 @@ function components(a: Actor): Record<string, unknown> {
     },
     Stance: { mode: systems.MILITARY_MODE.NONE, anchorCell: null },
     ...(a.hitpoints === undefined ? {} : { Health: { hitpoints: a.hitpoints, max: HEALTH_POOL } }),
-    ...(a.female === true ? { Female: { female: true } } : {}),
     ...(kind === 'animal' ? {} : { Person: { person: true } }),
     ...(kind === 'child' ? { Age: { ticks: 40 } } : {}),
     ...(a.workplace === undefined ? {} : { JobAssignment: { workplace: a.workplace } }),
@@ -237,20 +235,6 @@ describe('user messages read off the snapshot', () => {
         USER_MESSAGE_TYPE.nothingToDo,
       ]);
       expect(run(source, ['work', ...mostly], 2 * mostly.length + 5).flat()).toEqual([]);
-    });
-
-    it('never for a woman, whose work is the household rather than a trade', () => {
-      const source = createSnapshotMessageSource(LOCAL);
-      const idle = Array.from({ length: IDLE_SWEEPS_BEFORE_MESSAGE }, () => null);
-      const actors: Actor[] = [
-        building,
-        { id: 1, workplace: WORKPLACE, female: true },
-        { id: 2, workplace: WORKPLACE },
-      ];
-      const out = idle.map((_, i) =>
-        sweep(source, snapshot((i + 1) * SNAPSHOT_SWEEP_INTERVAL_TICKS, actors)),
-      );
-      expect(out.flat()).toEqual([[USER_MESSAGE_TYPE.nothingToDo, 2]]);
     });
 
     it('never for a guard, an ordered unit, one indoors, one waiting on its site, or one without a workplace', () => {

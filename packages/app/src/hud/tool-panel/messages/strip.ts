@@ -49,7 +49,8 @@ export interface MessageStrip {
 /** One note's GUI meshes, kept across redraws since a message's priority and icon never change. */
 interface NoteSprites {
   readonly backdrop: PalettedSprite | null;
-  /** A stone token carries the offset that seats it on the parchment, so it shares the note's origin. */
+  /** Placed at the note's own origin: the parchment frame starts there and the token frame carries the
+   *  offset that seats it on top. */
   readonly token: PalettedSprite | null;
 }
 

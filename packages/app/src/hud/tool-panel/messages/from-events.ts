@@ -44,7 +44,7 @@ export function messagesFromEvents(
     // Deaths have no subject left to key on, so the reaped id stands in.
     raiser.raise(
       `${USER_MESSAGE_TYPE.humanDied}|dead:${entity}`,
-      { type: USER_MESSAGE_TYPE.humanDied, subject: null, at, goodType: null, jobType: null },
+      { type: USER_MESSAGE_TYPE.humanDied, subject: null, at, about: entity, goodType: null, jobType: null },
       () => {
         let named: { readonly name: string; readonly jobLabel: string | null } | null = null;
         if (previous !== null) {
@@ -78,10 +78,18 @@ export function messagesFromEvents(
         break;
       }
       case 'playerDefeated':
-        // Every seat hears an elimination: the original broadcasts it rather than addressing a player.
+        // Every seat hears an elimination: the original's own record carries the broadcast player id
+        // rather than one seat's (the original symbols).
         raiser.raise(
           `${USER_MESSAGE_TYPE.playerDied}|player:${ev.player}`,
-          { type: USER_MESSAGE_TYPE.playerDied, subject: null, at: null, goodType: null, jobType: null },
+          {
+            type: USER_MESSAGE_TYPE.playerDied,
+            subject: null,
+            at: null,
+            about: ev.player,
+            goodType: null,
+            jobType: null,
+          },
           () =>
             naming.text(USER_MESSAGE_TYPE.playerDied, {
               subjectName: naming.player(ev.player),
