@@ -124,7 +124,8 @@ class IdleStreaks {
 }
 
 /** Which of this seat's settlers have ever held a workplace, so the note about losing one can tell a
- *  razed post from a trade no workplace employs in the first place. */
+ *  razed post from a trade no workplace employs in the first place. Scoped to this mount, so a reload
+ *  or a HUD rescale starts the history over and the note waits for the next post a settler loses. */
 class PostHistory {
   private employed = new Set<number>();
   private seen = new Set<number>();

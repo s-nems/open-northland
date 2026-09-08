@@ -31,6 +31,12 @@ import type { UserMessage } from './types.js';
  *  chrome is the HUD family's rather than the original's papyrus backdrop. */
 export const MESSAGE_WINDOW_W = 0x1b8;
 export const MESSAGE_WINDOW_H = 0xf0;
+/** A note whose subject is gone and that kept no spot to jump to has nowhere to send the view, so it
+ *  shows no Select plate rather than one that does nothing. */
+export function canSelect(m: UserMessage): boolean {
+  return m.subject !== null || m.at !== null;
+}
+
 /** Body text line pitch (design px). */
 const BODY_LINE_H = 14;
 /** The two bottom plates (design px). */
@@ -161,12 +167,14 @@ export function createMessageWindow(deps: MessageWindowDeps): MessageWindow {
           rh,
         );
       });
-    paintPlate(layers, built.selectPlate, false);
-    centreRun(
-      layers,
-      addRun(layers, uiText(MESSAGE_SELECT_STRING_ID, labels.select), 'white', ROW_PX),
-      built.selectPlate,
-    );
+    if (canSelect(m)) {
+      paintPlate(layers, built.selectPlate, false);
+      centreRun(
+        layers,
+        addRun(layers, uiText(MESSAGE_SELECT_STRING_ID, labels.select), 'white', ROW_PX),
+        built.selectPlate,
+      );
+    }
     paintPlate(layers, built.removePlate, false);
     centreRun(
       layers,
@@ -196,7 +204,7 @@ export function createMessageWindow(deps: MessageWindowDeps): MessageWindow {
       if (shown === null || layout === null || !shell.claims(layout.window, x, y)) return false;
       const id = shown.id;
       if (contains(layout.closeRect, x, y)) close();
-      else if (contains(layout.selectPlate, x, y)) {
+      else if (canSelect(shown) && contains(layout.selectPlate, x, y)) {
         // Closing first keeps the window off the spot the view is about to centre on (approximation).
         close();
         deps.onSelect(id);

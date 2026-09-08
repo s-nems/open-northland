@@ -128,11 +128,24 @@ describe('the gatherer re-plan after a failed route', () => {
     s.world.add(e, PathRequest, { start: doomed, goal: doomed, failed: true });
 
     const raised: Entity[] = [];
-    for (let i = 0; i < 100 && raised.length === 0; i++) {
-      s.step();
+    const collect = (): void => {
       for (const ev of s.events.current()) {
         if (ev.kind === 'settlerGoalUnreachable') raised.push(ev.entity);
       }
+    };
+    for (let i = 0; i < 100 && raised.length === 0; i++) {
+      s.step();
+      collect();
+    }
+    expect(raised).toEqual([e]);
+
+    // Refusing the same goal again is the same give-up, so the settler says nothing more about it.
+    if (!s.world.has(e, PathRequest)) {
+      s.world.add(e, PathRequest, { start: doomed, goal: doomed, failed: true });
+    }
+    for (let i = 0; i < 100; i++) {
+      s.step();
+      collect();
     }
     expect(raised).toEqual([e]);
   });
