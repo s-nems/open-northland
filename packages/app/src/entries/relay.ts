@@ -137,7 +137,12 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       }
     },
     onClosed: (reason) => {
-      if (!out) hud?.link('closed', reason);
+      if (out) return;
+      // With no HUD to carry the notice, the lobby card gives way to it and a way back.
+      if (hud === null) {
+        card.dismiss();
+        leave(formatMessage(copy.closed, { reason }));
+      } else hud.link('closed', reason);
     },
     onRetry: () => hud?.link('reconnecting'),
   });

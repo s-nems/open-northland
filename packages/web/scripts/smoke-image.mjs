@@ -6,8 +6,7 @@
  * Usage: node packages/web/scripts/smoke-image.mjs [image reference]
  */
 
-import { execFileSync } from 'node:child_process';
-import { createServer } from 'node:net';
+import { docker, finish, freePort, waitForHealth } from '../../../scripts/smoke-image-support.mjs';
 import { CONTENT_ROUTES } from './contract-routes.mjs';
 
 const image = process.argv[2] ?? 'open-northland-web';
@@ -26,35 +25,6 @@ const CHECKS = [
   ...CONTENT_ROUTES.map((route) => ({ path: `/play${route}`, status: 404 })),
   { path: '/no-such-file', status: 404 },
 ];
-
-function docker(...args) {
-  return execFileSync('docker', args, { encoding: 'utf8' }).trim();
-}
-
-function freePort() {
-  return new Promise((resolve, reject) => {
-    const probe = createServer();
-    probe.on('error', reject);
-    probe.listen(0, '127.0.0.1', () => {
-      const { port } = probe.address();
-      probe.close(() => {
-        resolve(port);
-      });
-    });
-  });
-}
-
-async function waitForHealth(base) {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    try {
-      if ((await fetch(`${base}/healthz`)).ok) return;
-    } catch {
-      // nginx is not listening yet
-    }
-    await new Promise((resume) => setTimeout(resume, 250));
-  }
-  throw new Error(`${image} never answered /healthz`);
-}
 
 /** The one asset name the app build hashes, taken from the page that actually references it. */
 async function hashedAsset(base) {
@@ -82,7 +52,7 @@ const base = `http://127.0.0.1:${port}`;
 const container = docker('run', '--detach', '--publish', `127.0.0.1:${port}:80`, image);
 let passed = false;
 try {
-  await waitForHealth(base);
+  await waitForHealth(base, image);
   const asset = await hashedAsset(base);
   const checks = [...CHECKS, { path: asset, status: 200, cache: /immutable/ }];
   const results = [];
@@ -93,5 +63,4 @@ try {
   docker('rm', '--force', container);
 }
 
-console.log(passed ? `\n${image} serves the contract` : `\n${image} does not serve the contract`);
-process.exit(passed ? 0 : 1);
+finish(image, passed);

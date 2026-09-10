@@ -1,11 +1,13 @@
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import {
   CLOSE_PROTOCOL_ERROR,
   CLOSE_REPLACED,
   MAX_BLOB_MESSAGE_BYTES,
+  PROTOCOL_VERSION,
   type ServerMessage,
 } from '@open-northland/net-protocol';
 import { type RawData, WebSocketServer } from 'ws';
-import { type Connection, Relay, type RelayLog } from '../relay/relay.js';
+import { type Connection, DEFAULT_MAX_ROOMS, Relay, type RelayLog } from '../relay/relay.js';
 
 /** How often the relay clock is polled; a small fraction of a frame at the highest speed. */
 const POLL_INTERVAL_MS = 5;
@@ -15,17 +17,34 @@ const CLOSE_INTERNAL_ERROR = 1011;
  *  throws on it and the `error` message already carried the detail. */
 const MAX_CLOSE_REASON_BYTES = 123;
 const CLOSE_REASON_FALLBACK = 'protocol violation';
+export const HEALTH_PATH = '/healthz';
+const MS_PER_SECOND = 1000;
 
 export interface RelayHostOptions {
   /** 0 picks a free port; read it back from the host. */
   readonly port: number;
-  readonly host?: string;
+  readonly host?: string | null;
   readonly log?: RelayLog;
+  readonly maxRooms?: number;
+  readonly publicUrl?: string | null;
+  readonly build?: string | null;
+}
+
+/** The health endpoint's body: the relay is up, what it speaks, and how busy it is. */
+export interface RelayHealth {
+  readonly ok: true;
+  readonly protocol: number;
+  readonly build: string | null;
+  readonly url: string | null;
+  readonly rooms: number;
+  readonly clients: number;
+  readonly uptimeSeconds: number;
 }
 
 export interface RelayHost {
   readonly port: number;
   readonly relay: Relay;
+  health(): RelayHealth;
   close(): Promise<void>;
 }
 
@@ -34,10 +53,42 @@ function byteLength(data: RawData): number {
   return data instanceof ArrayBuffer ? data.byteLength : data.length;
 }
 
-/** Serve the relay over WebSockets with JSON text frames. */
+/** The request target up to its query, taken as text: a URL parser would refuse targets the HTTP
+ *  parser accepts, and nothing here needs more than the path. */
+function pathOf(request: IncomingMessage): string {
+  return (request.url ?? '/').split('?', 1)[0] ?? '/';
+}
+
+/** Plain HTTP beside the WebSocket upgrade: the health check, and a miss for everything else. */
+function serveHttp(request: IncomingMessage, response: ServerResponse, health: () => RelayHealth): void {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    response.writeHead(405, { allow: 'GET, HEAD' }).end();
+    return;
+  }
+  if (pathOf(request) === HEALTH_PATH) {
+    response.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+    response.end(JSON.stringify(health()));
+    return;
+  }
+  response.writeHead(404, { 'content-type': 'text/plain' });
+  response.end('not found\n');
+}
+
+/** Serve the relay over WebSockets with JSON text frames, and its health over plain HTTP. */
 export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
   const log = options.log ?? (() => undefined);
-  const relay = new Relay({ log });
+  const maxRooms = options.maxRooms ?? DEFAULT_MAX_ROOMS;
+  const relay = new Relay({ log, maxRooms });
+  const startedAt = performance.now();
+  const health = (): RelayHealth => ({
+    ok: true,
+    protocol: PROTOCOL_VERSION,
+    build: options.build ?? null,
+    url: options.publicUrl ?? null,
+    rooms: relay.roomCount,
+    clients: relay.clientCount,
+    uptimeSeconds: Math.floor((performance.now() - startedAt) / MS_PER_SECOND),
+  });
   // A broadcast hands every member the same object; it is serialised once.
   const encoded = new WeakMap<ServerMessage, string>();
   const encode = (message: ServerMessage): string => {
@@ -47,12 +98,18 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     encoded.set(message, text);
     return text;
   };
-  const server = new WebSocketServer({
-    port: options.port,
-    ...(options.host !== undefined ? { host: options.host } : {}),
-    maxPayload: MAX_BLOB_MESSAGE_BYTES,
+  const server = createServer((request, response) => {
+    // A fault in one request costs that request, never the rooms.
+    try {
+      serveHttp(request, response, health);
+    } catch (err) {
+      log('request failed', { error: String(err) });
+      if (!response.headersSent) response.writeHead(500);
+      response.end();
+    }
   });
-  server.on('connection', (socket) => {
+  const sockets = new WebSocketServer({ server, maxPayload: MAX_BLOB_MESSAGE_BYTES });
+  sockets.on('connection', (socket) => {
     const connection: Connection = {
       send: (message) => {
         if (socket.readyState === socket.OPEN) socket.send(encode(message));
@@ -107,16 +164,27 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         return;
       }
       const port = address.port;
-      log('listening', { port });
+      log('listening', {
+        port,
+        url: options.publicUrl ?? null,
+        protocol: PROTOCOL_VERSION,
+        build: options.build ?? null,
+        maxRooms,
+      });
       resolve({
         port,
         relay,
+        health,
         close: () => {
           clearInterval(poll);
-          for (const socket of server.clients) socket.terminate();
+          for (const socket of sockets.clients) socket.terminate();
+          sockets.close();
+          server.closeAllConnections();
           return new Promise((done, fail) => server.close((err) => (err ? fail(err) : done())));
         },
       });
     });
+    if (options.host === undefined || options.host === null) server.listen(options.port);
+    else server.listen(options.port, options.host);
   });
 }

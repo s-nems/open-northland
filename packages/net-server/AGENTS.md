@@ -19,6 +19,9 @@ seats, identities), and session settings (speed, pause), and for nothing else. T
 - `Relay` is transport-free and clock-free: the host feeds it connections, messages, and `advance`
   calls on a poll, and a test feeds it the same from a virtual clock and an in-memory network. Keep
   new behavior in `relay/`, not in the WebSocket host.
+- The host owns what a deployment sees: the environment in `host/config.ts`, the health check beside
+  the WebSocket upgrade, and one JSON record per log line. `Dockerfile` ships the compiled relay and
+  protocol packages with `ws` and nothing else; `scripts/smoke-image.mjs` holds a built image to that.
 
 ## Verification
 

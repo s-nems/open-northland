@@ -5,6 +5,7 @@ import {
   PROTOCOL_VERSION,
   TICK_MS,
 } from '@open-northland/net-protocol';
+import { HELLO_TIMEOUT_MS, Relay } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
 import {
   SEATS,
@@ -35,6 +36,19 @@ describe('relay identity', () => {
     expect(s.relay.clientCount).toBe(0);
   });
 
+  it('closes a connection that never introduces itself', () => {
+    const s = stage();
+    const idle = s.peer();
+    s.advance(HELLO_TIMEOUT_MS - 1);
+    expect(idle.closed()).toBeNull();
+    s.advance(1);
+    expect(idle.closed()).toBe('hello overdue');
+    expect(s.relay.clientCount).toBe(0);
+    const introduced = s.introduce(TOKEN_A, 'Ania');
+    s.advance(HELLO_TIMEOUT_MS * 2);
+    expect(introduced.closed()).toBeNull();
+  });
+
   it('replaces an older connection of the same token', () => {
     const s = stage();
     const first = s.introduce(TOKEN_A, 'Ania');
@@ -57,6 +71,26 @@ describe('relay identity', () => {
 });
 
 describe('relay rooms', () => {
+  it('holds as many rooms as it was configured for', () => {
+    const time = { ms: 0 };
+    const relay = new Relay({ now: () => time.ms, maxRooms: 1 });
+    const sent: unknown[] = [];
+    const client = relay.connect({ send: (message) => sent.push(message), close: () => undefined });
+    relay.receive(client, { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN_A, nick: 'Ania' });
+    relay.receive(client, { kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    relay.receive(client, { kind: 'leaveRoom' });
+    relay.receive(client, { kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    expect(relay.roomCount).toBe(1);
+    const other = relay.connect({ send: (message) => sent.push(message), close: () => undefined });
+    relay.receive(other, { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN_B, nick: 'Bartek' });
+    relay.receive(other, { kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    expect(sent.at(-1)).toEqual({
+      kind: 'rejected',
+      of: 'createRoom',
+      reason: 'the relay is full at 1 rooms',
+    });
+  });
+
   it('lists rooms, and drops one when its last member leaves', () => {
     const s = stage();
     const a = s.introduce(TOKEN_A, 'Ania');

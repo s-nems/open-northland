@@ -1,25 +1,19 @@
+import { relayConfigFromEnvironment } from './host/config.js';
 import { startRelayHost } from './host/ws-host.js';
 
-const DEFAULT_PORT = 8765;
-
-function portFromEnvironment(): number {
-  const raw = process.env.PORT;
-  if (raw === undefined || raw === '') return DEFAULT_PORT;
-  const port = Number.parseInt(raw, 10);
-  if (!Number.isInteger(port) || port < 0) throw new Error(`PORT must be a port number, got ${raw}`);
-  return port;
+/** One JSON line per event, for a log collector to read as a record. */
+function logLine(event: string, fields?: Record<string, unknown>): void {
+  console.log(JSON.stringify({ time: new Date().toISOString(), event, ...fields }));
 }
 
-const host = await startRelayHost({
-  port: portFromEnvironment(),
-  log: (event, fields) => console.log(JSON.stringify({ time: new Date().toISOString(), event, ...fields })),
-});
+const host = await startRelayHost({ ...relayConfigFromEnvironment(process.env), log: logLine });
 
-const stop = (): void => {
+const stop = (signal: string): void => {
+  logLine('stopping', { signal });
   host.close().then(
     () => process.exit(0),
     () => process.exit(1),
   );
 };
-process.on('SIGINT', stop);
-process.on('SIGTERM', stop);
+process.on('SIGINT', () => stop('SIGINT'));
+process.on('SIGTERM', () => stop('SIGTERM'));

@@ -1,0 +1,16 @@
+# The relay on the project owner's machine: one container, published to this host only, so the
+# reverse proxy beside it is the one way in. RELAY_PUBLIC_URL is the address that proxy exposes.
+services:
+  relay:
+    image: ghcr.io/s-nems/open-northland-relay:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      RELAY_PUBLIC_URL: wss://relay.opennorthland.org
+      RELAY_MAX_ROOMS: "64"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

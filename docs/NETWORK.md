@@ -28,7 +28,10 @@ followed by a close.
 
 The first message on a connection is `hello { protocol, token, nick }`. The `token` is a secret the
 client generated and stored (16 to 128 URL-safe characters); it is the identity, and it is never
-shown to other clients. The `nick` is display only. The relay answers `welcome { protocol, nick }`.
+shown to other clients. The `nick` is display only. The relay answers `welcome { protocol, nick }`,
+or `error { reason }` naming both versions when it speaks another, and closes. The shapes of `hello`,
+`welcome` and `error` hold across versions, so a mismatch reads the same on any pair. A connection
+that has not said `hello` within `HELLO_TIMEOUT_MS` (10 s) is closed.
 
 A `hello` with a token already connected replaces that connection: the older one gets
 `error "replaced by a newer connection"` and is closed, and its room membership carries over. A token
@@ -226,7 +229,8 @@ replaces the client's world, and the frames that follow are applied through the 
 | `MAX_ENVELOPE_BYTES` | 1 KiB |
 | `MAX_SEATS` (seat indices) | 16, the sim's `MAX_PLAYERS` |
 | `MAX_MEMBERS` per room | 12 |
-| rooms per relay | 64 |
+| rooms per relay | `RELAY_MAX_ROOMS`, 64 by default |
+| `HELLO_TIMEOUT_MS` | 10 s |
 | empty room kept for reconnects | 10 minutes |
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
 | `PAUSE_BUDGET` per member per game | 3 |
@@ -249,7 +253,14 @@ the connection and reopens it on the same token after a drop; a connection the r
 refused stays closed. The desktop and browser app plays through the `?relay=` entry, the headless
 test client through an in-memory network.
 
+## Operations
+
+Beside the WebSocket upgrade the relay serves one plain HTTP path, `GET /healthz`, answering
+`{ ok, protocol, build, url, rooms, clients, uptimeSeconds }`: the version it speaks, the build it
+came from, the `RELAY_PUBLIC_URL` it was given, and how busy it is. Every other path is a 404. The
+image, its environment and the reverse proxy are described in
+[`deploy/relay/README.md`](../deploy/relay/README.md).
+
 ## What is not here yet
 
-Joining a running room and the end of a game are the save, join and endgame ticket. Version
-reporting for deployment and the health endpoint are the operations ticket.
+Joining a running room and the end of a game are the save, join and endgame ticket.

@@ -25,11 +25,15 @@ export interface RelayOptions {
   /** Monotonic milliseconds; the host's clock, or a test's. */
   readonly now?: () => number;
   readonly log?: RelayLog;
+  /** Rooms held at once; `createRoom` is refused past it. */
+  readonly maxRooms?: number;
 }
 
 /** A room with nobody connected is kept this long for reconnects, then dropped. */
 const EMPTY_ROOM_TTL_MS = 10 * 60 * 1000;
-const MAX_ROOMS = 64;
+export const DEFAULT_MAX_ROOMS = 64;
+/** A connection that has not introduced itself by then is closed, so an idle socket holds nothing. */
+export const HELLO_TIMEOUT_MS = 10_000;
 const ROOM_ID_BYTES = 4;
 
 /** One connection as the relay sees it. Identity arrives with `hello`; before it, nothing else may. */
@@ -42,9 +46,9 @@ class Client {
 
   constructor(
     readonly connection: Connection,
-    now: number,
+    readonly connectedAt: number,
   ) {
-    this.probe = new LatencyProbe(now);
+    this.probe = new LatencyProbe(connectedAt);
   }
 }
 
@@ -61,11 +65,13 @@ export class Relay {
   private readonly emptySince = new Map<Room, number>();
   private readonly now: () => number;
   private readonly log: RelayLog;
+  private readonly maxRooms: number;
   private lastAdvanceAt: number;
 
   constructor(options: RelayOptions = {}) {
     this.now = options.now ?? (() => performance.now());
     this.log = options.log ?? (() => undefined);
+    this.maxRooms = options.maxRooms ?? DEFAULT_MAX_ROOMS;
     this.lastAdvanceAt = this.now();
   }
 
@@ -127,13 +133,17 @@ export class Relay {
     const elapsed = now - this.lastAdvanceAt;
     this.lastAdvanceAt = now;
     for (const room of this.rooms.values()) room.advance(elapsed, now);
-    this.pingDue(now);
+    this.pollClients(now);
     this.expireEmptyRooms(now);
   }
 
-  private pingDue(now: number): void {
+  /** An introduced client is pinged on its cadence; one that never introduced itself is closed. */
+  private pollClients(now: number): void {
     for (const client of this.clients) {
-      if (client.token === null) continue;
+      if (client.token === null) {
+        if (now - client.connectedAt >= HELLO_TIMEOUT_MS) this.fail(client, 'hello overdue');
+        continue;
+      }
       const stamp = client.probe.pingDue(now);
       if (stamp !== null) {
         client.connection.send({ kind: 'ping', t: stamp, roundTripMs: client.probe.delay.roundTripMs });
@@ -197,7 +207,7 @@ export class Relay {
         return null;
       case 'createRoom': {
         if (client.room !== null) return 'already in a room';
-        if (this.rooms.size >= MAX_ROOMS) return `the relay is full at ${MAX_ROOMS} rooms`;
+        if (this.rooms.size >= this.maxRooms) return `the relay is full at ${this.maxRooms} rooms`;
         const member = this.newMember(client, client.nick);
         const room = new Room(this.newRoomId(), member, message.settings, message.seats, this.hooks);
         this.rooms.set(room.id, room);

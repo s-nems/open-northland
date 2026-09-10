@@ -171,10 +171,17 @@ npm run relay
 PORT=9000 npm run relay
 ```
 
-Builds the workspace and serves the multiplayer relay over WebSockets on `PORT`. It loads no
-content and runs no simulation; the protocol it speaks is [`NETWORK.md`](NETWORK.md). Every
-message it handles is exercised by the tests under `packages/net-server/test`, and the
-decoded-map run in `npm run test:content` plays real sessions through it in memory.
+Builds the workspace and serves the multiplayer relay over WebSockets on `PORT`, with its health
+check at `/healthz` on the same port. It loads no content and runs no simulation; the protocol it
+speaks is [`NETWORK.md`](NETWORK.md). `HOST` binds one address, `RELAY_MAX_ROOMS` caps the rooms,
+and `RELAY_PUBLIC_URL` and `RELAY_BUILD` are what the health check reports as the address and the
+build; the log is one JSON record per line. Every message it handles is exercised by the tests under
+`packages/net-server/test`, and the decoded-map run in `npm run test:content` plays real sessions
+through it in memory. `ON_RELAY_URL=wss://…` points the socket test at a deployed relay instead:
+
+```bash
+ON_RELAY_URL=wss://relay.opennorthland.org npx vitest run --project core packages/net-server/test/ws-host.test.ts
+```
 
 To play through it, open the developer entry in two windows of one dev server. The first creates
 the room and waits for `players` people; it rewrites its URL to the room's id, which the others
@@ -261,3 +268,22 @@ See [own asset runtime](art/OWN-ASSET-RUNTIME.md) for exports, markers and curre
 
 Use `npm run art -- list` and follow [the art pipeline](art/PIPELINE.md) for candidate builds, review,
 approval and publication. This workshop is independent of `npm run pipeline`, which decodes the owned game.
+
+## Relay image
+
+The same workflow publishes the relay as `ghcr.io/s-nems/open-northland-relay`, tagged and promoted
+the same way. The image is built from `packages/net-server/Dockerfile`: the relay and protocol
+packages compiled once, then only those two and `ws` in a Node image, so it carries neither the
+simulation nor a content directory. It starts on environment variables alone; the variables, the
+compose file and the reverse proxy with TLS are in [`deploy/relay/README.md`](../deploy/relay/README.md).
+
+To build and check the same image locally:
+
+```bash
+npm run relay:image
+node packages/net-server/scripts/smoke-image.mjs open-northland-relay
+```
+
+The smoke check runs the image with a public address and a room cap, reads them back from
+`/healthz`, has the relay refuse another protocol version by name and welcome its own, and lists
+the image's packages to prove the boundary.

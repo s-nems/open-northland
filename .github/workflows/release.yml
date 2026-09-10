@@ -105,8 +105,46 @@ jobs:
           docker pull --platform linux/amd64 "$image"
           node packages/web/scripts/smoke-image.mjs "$image"
 
+  # The relay a networked game runs through, from the same commit as the clients that speak its
+  # protocol; deploy/relay/ pulls it.
+  relay-image:
+    needs: guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: packages/net-server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}-relay:sha-${{ needs.guard.outputs.short }}
+          build-args: RELAY_BUILD=${{ needs.guard.outputs.short }}
+          cache-from: type=gha,scope=relay
+          cache-to: type=gha,mode=max,scope=relay
+      # The smoke check opens a WebSocket from Node itself, which needs the runtime the workspace pins.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Check the published image against the deployment contract
+        run: |
+          image="ghcr.io/${{ github.repository }}-relay:sha-${{ needs.guard.outputs.short }}"
+          docker pull --platform linux/amd64 "$image"
+          node packages/net-server/scripts/smoke-image.mjs "$image"
+
   publish:
-    needs: [guard, installers, image]
+    needs: [guard, installers, image, relay-image]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -142,10 +180,11 @@ jobs:
             xattr -cr /Applications/OpenNorthland.app
             ```
 
-          The browser deployment of the same commit:
+          The browser deployment and the relay of the same commit:
 
           ```sh
           docker pull ghcr.io/s-nems/open-northland-web:sha-@SHORT@
+          docker pull ghcr.io/s-nems/open-northland-relay:sha-@SHORT@
           ```
           EOF
             gh release create "$tag" installers/* \
@@ -167,5 +206,7 @@ jobs:
       - name: Point latest at this build
         if: inputs.commit == ''
         run: |
-          repository="ghcr.io/${{ github.repository }}-web"
-          docker buildx imagetools create -t "$repository:latest" "$repository:sha-${{ needs.guard.outputs.short }}"
+          for image in web relay; do
+            repository="ghcr.io/${{ github.repository }}-$image"
+            docker buildx imagetools create -t "$repository:latest" "$repository:sha-${{ needs.guard.outputs.short }}"
+          done

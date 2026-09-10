@@ -36,6 +36,7 @@
     "web:site": "npm run typecheck && npm run build --workspace @open-northland/web",
     "web:serve": "npm run serve --workspace @open-northland/web",
     "web:image": "docker buildx build --file packages/web/Dockerfile --tag open-northland-web --load .",
+    "relay:image": "docker buildx build --file packages/net-server/Dockerfile --tag open-northland-relay --load .",
     "dev": "npm run dev --workspace @open-northland/app --",
     "dev:ports": "scripts/dev-ports.sh",
     "dev:reset": "scripts/dev-reset.sh",

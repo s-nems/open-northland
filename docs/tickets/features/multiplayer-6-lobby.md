@@ -1,7 +1,6 @@
 # Add the network lobby
 
 **Area:** app, pipeline · **Focus:** entries/main-menu/lobby · **Priority:** P2
-**Blocked by:** [multiplayer-4c-relay-ops.md](multiplayer-4c-relay-ops.md)
 
 The single-player lobby in `packages/app/src/entries/main-menu/lobby/` already has a pure, DOM-free
 roster model (`roster-state.ts`: seats, colours, vacant modes, observer seats) and produces the game
@@ -23,8 +22,10 @@ menu surfaces with map delivery.
 
 ## Scope
 
-- Menu flow: server address (defaulting to the project's server), nick, room list, create room (from a
-  map or from a save), join room, leave. Refuse a server whose protocol version does not match.
+- Menu flow: server address (defaulting to the project's relay, the `RELAY_PUBLIC_URL` of
+  `deploy/relay/compose.yml`), nick, room list, create room (from a map or from a save), join room,
+  leave. Refuse a server whose protocol version does not match: the relay answers `hello` with an
+  `error` naming both versions, and `GET /healthz` reports its version over HTTPS.
 - Room view: seats with colour, team, and the modes the roster supports today (human, idle, ai), ready
   flags, the creator's settings (fog, progression, needs, starting speed, kicked seat fallout), and
   chat. Script and Closed modes stay with `vacant-seat-ai-player.md`.
