@@ -1,11 +1,13 @@
-import type { DiplomacyState } from '@open-northland/sim';
+import type { DiplomacyState, OpenTribute } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
-import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
+import type { DiplomacyPanelRow, TributePanelRow } from '../../hud/tool-panel/diplomacy/index.js';
 
-/** The two sim reads the roster projection needs; `Simulation` satisfies it structurally. */
+/** The sim reads the roster projection needs; `Simulation` satisfies it structurally. */
 export interface DiplomacySimView {
   hasMetPlayer(viewer: number, other: number): boolean;
   diplomacyStance(from: number, to: number): DiplomacyState;
+  /** The open tributes `payer` owes, as the sim's probe lists them. */
+  openTributes(payer: number): readonly OpenTribute[];
 }
 
 export interface DiplomacyRosterOptions {
@@ -17,6 +19,12 @@ export interface DiplomacyRosterOptions {
   readonly seatNameOf?: (player: number) => string | undefined;
   /** Owner slot to team-colour slot; identity when the roster authored no colours. */
   readonly playerColourOf?: (player: number) => number;
+  /** The map's own string for a tribute's description; absent leaves the numbered fallback. */
+  readonly tributeText?: (stringId: number) => string | undefined;
+  /** A good's display label; absent leaves the type id. */
+  readonly goodLabelOf?: (goodType: number) => string | undefined;
+  /** Whether the viewer's seat may issue a payment at all; a read-only spectator's buttons stay dead. */
+  readonly canPay?: boolean;
 }
 
 /**
@@ -26,7 +34,7 @@ export interface DiplomacyRosterOptions {
  * theme's mood is not readable, so this collapses the roster the way the diplomacy window reads it.
  */
 export function harshestStance(
-  sim: DiplomacySimView,
+  sim: Pick<DiplomacySimView, 'hasMetPlayer' | 'diplomacyStance'>,
   opts: Pick<DiplomacyRosterOptions, 'localPlayer' | 'rosterPlayers' | 'observer'>,
 ): DiplomacyState {
   let met = 0;
@@ -43,9 +51,11 @@ export function harshestStance(
   return met > 0 && friendly === met ? 'friend' : 'neutral';
 }
 
-/** One diplomacy-window row per roster player the viewer has discovered, the viewer itself excluded. */
+/** One diplomacy-window row per roster player the viewer has discovered, the viewer itself excluded,
+ *  each carrying the tributes the viewer owes that player. */
 export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterOptions): DiplomacyPanelRow[] {
   const colourOf = opts.playerColourOf ?? ((player: number): number => player);
+  const owed = sim.openTributes(opts.localPlayer);
   const rows: DiplomacyPanelRow[] = [];
   for (const other of opts.rosterPlayers) {
     if (other === opts.localPlayer) continue;
@@ -57,7 +67,23 @@ export function diplomacyPanelRows(sim: DiplomacySimView, opts: DiplomacyRosterO
       colour: PLAYER_SWATCH_COLORS[colourOf(other)] ?? 0,
       towardYou: sim.diplomacyStance(other, opts.localPlayer),
       yourStance: sim.diplomacyStance(opts.localPlayer, other),
+      tributes: owed.filter((t) => t.receiver === other).map((t) => tributeRow(t, opts)),
     });
   }
   return rows;
+}
+
+function tributeRow(tribute: OpenTribute, opts: DiplomacyRosterOptions): TributePanelRow {
+  const text = opts.tributeText?.(tribute.stringId);
+  return {
+    slot: tribute.slot,
+    ...(text !== undefined ? { text } : {}),
+    demands: tribute.demands.map((d) => ({
+      label: opts.goodLabelOf?.(d.good) ?? String(d.good),
+      amount: d.amount,
+      onHand: d.onHand,
+    })),
+    payable: tribute.payable && opts.canPay !== false,
+    split: !tribute.payable && tribute.demands.every((d) => d.onHand >= d.amount),
+  };
 }

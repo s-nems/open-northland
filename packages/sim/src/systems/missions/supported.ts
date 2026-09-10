@@ -47,6 +47,7 @@ export const SUPPORTED_GOALS = [
   'DiplomacyState',
   'PlayerSeen',
   'PlayerAttackedByPlayer',
+  'PayTribute',
 ] as const satisfies readonly MissionGoalOp['opcode'][];
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
@@ -101,4 +102,7 @@ export const SUPPORTED_RESULTS = [
   'MissionFailed',
   'ExploreArea',
   'SetExternalFlag',
+  'CreateTribute',
+  'AddTributeGoods',
+  'ClearTribute',
 ] as const satisfies readonly MissionResultOp['opcode'][];

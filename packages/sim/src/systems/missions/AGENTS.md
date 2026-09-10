@@ -56,6 +56,10 @@ stance, a lock, a verdict, an AI flag, an attacked-by mark. A verdict is read by
 and announced through the match events; the rest are read here or not yet at all. A reveal goes
 through `FogState` like the vision system's own stamps.
 
+The tribute table is the one player table a seat command reads and writes: `tributes.ts` counts and
+drains the payer's houses through the same stock seams the goods results use, and the command system
+hands `payTribute` to it. The window's read of the table is the `Simulation` probe, never the component.
+
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes

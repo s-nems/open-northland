@@ -77,6 +77,16 @@ export function sceneCopy(
   return Object.hasOwn(scenes, id) ? scenes[id as keyof typeof scenes] : undefined;
 }
 
+/** A scene's own string table, the stand-in for a map's `strings.ini`, keyed by string id; undefined
+ *  for a scene whose copy carries none. */
+export function sceneStrings(
+  id: string,
+  locale: Locale = currentLocale(),
+): Readonly<Record<string, string>> | undefined {
+  const entry = sceneCopy(id, locale);
+  return entry !== undefined && 'strings' in entry ? entry.strings : undefined;
+}
+
 export function formatMessage(template: string, values: Readonly<Record<string, string | number>>): string {
   return template.replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (match, key: string) =>
     Object.hasOwn(values, key) ? String(values[key]) : match,

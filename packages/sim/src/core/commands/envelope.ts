@@ -3,13 +3,14 @@ import { isPlainRecord, valueShapeName } from '../plain-value.js';
 import type { AssistantCommand } from './assistant.js';
 import type { Command } from './index.js';
 import type { PlayerPlacementCommand } from './placement.js';
+import type { TributeCommand } from './tribute.js';
 import type { UnitOrderCommand } from './unit-orders.js';
 
 /** Wire version of {@link CommandEnvelope}. An imported log carrying another version is rejected. */
 export const COMMAND_ENVELOPE_VERSION = 1;
 
 /** The commands a seat may issue for itself; {@link COMMAND_ISSUER} is the full split. */
-export type PlayerCommand = PlayerPlacementCommand | UnitOrderCommand | AssistantCommand;
+export type PlayerCommand = PlayerPlacementCommand | UnitOrderCommand | AssistantCommand | TributeCommand;
 
 /** A command plus the authority it was issued under - the serializable external input the sim accepts. */
 export type CommandEnvelope = SeatEnvelope | TrustedEnvelope;
@@ -82,6 +83,7 @@ export const COMMAND_ISSUER: {
   moveUnit: 'seat',
   openChest: 'seat',
   orderNeed: 'seat',
+  payTribute: 'seat',
   placeBoat: 'trusted',
   placeBuilding: 'seat',
   placeResource: 'trusted',

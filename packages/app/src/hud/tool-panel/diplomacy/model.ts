@@ -7,6 +7,7 @@ import {
   CLOSE_BOX,
   HEADLINE_H,
   ROW_H,
+  ROW_INSET_X,
   standardWindowWidth,
   TAB_CONTENT_GAP,
   TAB_H,
@@ -15,14 +16,47 @@ import {
 
 /**
  * The diplomacy pop-up model: a titled window with one tab per discovered player over a short stance
- * readout for the selected one. Metrics come from the shared window-family set, so the pop-ups read
- * as one family.
+ * readout for the selected one, and under it the tributes the viewer owes that player, each a card
+ * with a pay button, the place the original lists them (reading). Metrics come from the shared
+ * window-family set, so the pop-ups read as one family.
  */
 
 /** Tabs per grid row: two columns, so an authored tribe name has room to stay legible. */
 const TAB_COLUMNS = 2;
 /** Readout cards under the tabs: identity, then one card per stance direction. */
 const BODY_LINES = 3;
+/** A tribute card stacks its wrapped description over one line per demand (design px per line),
+ *  inside a vertical pad. */
+const TRIBUTE_LINE_H = 12;
+const TRIBUTE_CARD_PAD_Y = 4;
+/** The pay button inside a tribute card (design px): its width and its inset from the card's edges. */
+const PAY_BUTTON_W = 48;
+const PAY_BUTTON_INSET = 5;
+
+/** The width (design px) a tribute card's text wraps to: the card minus the label inset and the pay
+ *  button with its insets. */
+export function tributeTextWidth(scale: number): number {
+  const s = Math.max(MIN_UI_SCALE, scale);
+  const cardW = standardWindowWidth(scale) / s - 2 * WINDOW_FAMILY_PAD;
+  return Math.floor(cardW - ROW_INSET_X - PAY_BUTTON_W - 2 * PAY_BUTTON_INSET);
+}
+
+/** One tribute the viewer owes the row's player, as the window lists it. */
+export interface TributePanelRow {
+  readonly slot: number;
+  /** The map's own description; absent renders the numbered fallback. */
+  readonly text?: string;
+  readonly demands: readonly {
+    readonly label: string;
+    readonly amount: number;
+    /** What the viewer's stores hold of the good between them. */
+    readonly onHand: number;
+  }[];
+  /** The viewer may pay now: one of its stores holds every demand in full, and the seat is its own. */
+  readonly payable: boolean;
+  /** The stores hold every demand between them, and no single one holds them all. */
+  readonly split: boolean;
+}
 
 /** The decoded `misclogic` rows naming each stance. */
 const STANCE_STRING_ID: Readonly<Record<DiplomacyState, number>> = {
@@ -47,6 +81,8 @@ export interface DiplomacyPanelRow {
   readonly towardYou: DiplomacyState;
   /** The stance the viewer holds toward this player. */
   readonly yourStance: DiplomacyState;
+  /** The open tributes the viewer owes this player, ascending by slot. */
+  readonly tributes: readonly TributePanelRow[];
 }
 
 /** The selected tab resolved against the live row set: a selection whose player vanished (or was never
@@ -65,6 +101,18 @@ export interface DiplomacyTabRect {
   readonly selected: boolean;
 }
 
+export interface DiplomacyTributeRect {
+  readonly slot: number;
+  readonly payable: boolean;
+  /** The card's row slot; the pay button sits inside it at the right. */
+  readonly card: Rect;
+  readonly pay: Rect;
+  /** Where the description's top-left lands. */
+  readonly text: { readonly x: number; readonly y: number };
+  /** The single lines under the description, top to bottom. */
+  readonly lines: readonly { readonly x: number; readonly y: number }[];
+}
+
 export interface DiplomacyWindowLayout {
   readonly scale: number;
   readonly window: Rect;
@@ -73,6 +121,19 @@ export interface DiplomacyWindowLayout {
   readonly tabs: readonly DiplomacyTabRect[];
   /** The readout card slots, top to bottom (one when the row set is empty: the placeholder). */
   readonly bodyLines: readonly Rect[];
+  /** The selected player's tribute cards under the readout, in the order they were given. */
+  readonly tributes: readonly DiplomacyTributeRect[];
+}
+
+/** What the layout needs of a tribute: the card grows with the wrapped description and one line per
+ *  entry under it. */
+export interface TributeCardSpec {
+  readonly slot: number;
+  readonly payable: boolean;
+  /** The wrapped description's height (design px). */
+  readonly descriptionH: number;
+  /** The single lines under the description. */
+  readonly lines: number;
 }
 
 export interface DiplomacyLayoutOptions {
@@ -81,9 +142,11 @@ export interface DiplomacyLayoutOptions {
   readonly scale: number;
   readonly players: readonly number[];
   readonly selected: number | null;
+  /** The selected player's tributes, in listing order. */
+  readonly tributes: readonly TributeCardSpec[];
 }
 
-/** Resolve the window to screen rects; the height follows the tab-grid row count. */
+/** Resolve the window to screen rects; the height follows the tab-grid row count and the tributes. */
 export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWindowLayout {
   const s = Math.max(MIN_UI_SCALE, opts.scale);
   const { originX, originY, players } = opts;
@@ -122,7 +185,35 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     bodyLines.push({ x: contentX, y: bodyTop + i * lineH, w: contentW, h: lineH });
   }
 
-  const height = headlineH + tabsBlockH + px(TAB_CONTENT_GAP) + lineCount * lineH + pad;
+  const payInset = px(PAY_BUTTON_INSET);
+  const payW = px(PAY_BUTTON_W);
+  const textX = contentX + px(ROW_INSET_X);
+  let nextCardY = bodyTop + lineCount * lineH;
+  const tributes: DiplomacyTributeRect[] = opts.tributes.map((tribute) => {
+    const linesTop = TRIBUTE_CARD_PAD_Y + tribute.descriptionH;
+    const cardH = px(linesTop + tribute.lines * TRIBUTE_LINE_H + TRIBUTE_CARD_PAD_Y);
+    const card: Rect = { x: contentX, y: nextCardY, w: contentW, h: cardH };
+    nextCardY += cardH;
+    const lines: { x: number; y: number }[] = [];
+    for (let i = 0; i < tribute.lines; i++) {
+      lines.push({ x: textX, y: card.y + px(linesTop + i * TRIBUTE_LINE_H) });
+    }
+    return {
+      slot: tribute.slot,
+      payable: tribute.payable,
+      card,
+      pay: {
+        x: card.x + card.w - payInset - payW,
+        y: card.y + payInset,
+        w: payW,
+        h: card.h - 2 * payInset,
+      },
+      text: { x: textX, y: card.y + px(TRIBUTE_CARD_PAD_Y) },
+      lines,
+    };
+  });
+
+  const height = nextCardY - originY + pad;
   const closeSize = px(CLOSE_BOX);
   return {
     scale: s,
@@ -136,6 +227,7 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
     },
     tabs,
     bodyLines,
+    tributes,
   };
 }
 
@@ -143,14 +235,19 @@ export function layoutDiplomacyWindow(opts: DiplomacyLayoutOptions): DiplomacyWi
 export type DiplomacyHit =
   | { readonly kind: 'close' }
   | { readonly kind: 'tab'; readonly player: number }
-  | { readonly kind: 'window' } // over the chrome/readout, consumed without an action
+  | { readonly kind: 'pay'; readonly slot: number }
+  | { readonly kind: 'window' } // over the chrome, the readout or a dead button, consumed without an action
   | null;
 
-/** Resolve a screen point against an open window (close > tab > window background > miss). */
+/** Resolve a screen point against an open window (close > tab > live pay button > window background >
+ *  miss). A pay button that is not live is window background. */
 export function hitTestDiplomacyWindow(layout: DiplomacyWindowLayout, x: number, y: number): DiplomacyHit {
   if (contains(layout.closeRect, x, y)) return { kind: 'close' };
   for (const t of layout.tabs) {
     if (contains(t.rect, x, y)) return { kind: 'tab', player: t.player };
+  }
+  for (const t of layout.tributes) {
+    if (t.payable && contains(t.pay, x, y)) return { kind: 'pay', slot: t.slot };
   }
   if (contains(layout.window, x, y)) return { kind: 'window' };
   return null;

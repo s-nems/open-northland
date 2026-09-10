@@ -74,3 +74,40 @@ export function exportedGoodForm(ctx: SystemContext, goodType: number): number {
 export function edibleGoodFormOf(content: ContentSet, goodType: number): number {
   return edibleForms(content).get(goodType) ?? goodType;
 }
+
+const NO_GOODS: readonly number[] = Object.freeze([]);
+
+/** Resolved `edible goodType -> the goods that count as it`: the edible first, then the dishes that
+ *  become it, ascending by typeId. */
+const edibleClassCache = new WeakMap<ContentSet, ReadonlyMap<number, readonly number[]>>();
+
+function edibleClasses(content: ContentSet): ReadonlyMap<number, readonly number[]> {
+  let classes = edibleClassCache.get(content);
+  if (classes === undefined) {
+    const built = new Map<number, number[]>();
+    for (const good of content.goods) {
+      if (good.id.startsWith(FOOD_GOOD_ID_PREFIX)) built.set(good.typeId, []);
+    }
+    for (const [dish, edible] of edibleForms(content)) {
+      let dishes = built.get(edible);
+      if (dishes === undefined) {
+        dishes = [];
+        built.set(edible, dishes);
+      }
+      dishes.push(dish);
+    }
+    for (const [edible, dishes] of built) {
+      dishes.sort((a, b) => a - b);
+      dishes.unshift(edible);
+    }
+    classes = built;
+    edibleClassCache.set(content, classes);
+  }
+  return classes;
+}
+
+/** The goods a store answers a demand for `edible` with, the edible itself before the dishes that
+ *  become it; empty for a good that is no edible. */
+export function edibleClassOf(content: ContentSet, edible: number): readonly number[] {
+  return edibleClasses(content).get(edible) ?? NO_GOODS;
+}

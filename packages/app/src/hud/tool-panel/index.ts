@@ -76,6 +76,8 @@ export interface ToolPanelOptions {
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A seat's roster name, which the diplomacy rows withhold for the viewer's own and unmet seats. */
   readonly seatNameOf?: (player: number) => string | undefined;
+  /** The diplomacy window's pay button: the seat pays the tribute slot. */
+  readonly onPayTribute: (slot: number) => void;
   /** Convert a client (CSS) point to a map tile, or `null` off the map - the placement target. */
   readonly screenToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The sim's live placement rule (`Simulation.placementProbe`), which gates the placement click. */
@@ -255,6 +257,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       paperLabel: nameOfPaper,
       heldPaper,
       diplomacyRows: opts.diplomacyRows,
+      onPayTribute: opts.onPayTribute,
       art,
       missionBrief: opts.missionBrief ?? ((): null => null),
       history,

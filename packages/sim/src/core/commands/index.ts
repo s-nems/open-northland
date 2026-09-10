@@ -3,6 +3,7 @@ import type { AiPlayerCommand } from './ai-player.js';
 import type { AssistantCommand } from './assistant.js';
 import type { PlacementCommand } from './placement.js';
 import type { SpawnCommand } from './spawn.js';
+import type { TributeCommand } from './tribute.js';
 import type { UnitOrderCommand } from './unit-orders.js';
 
 export {
@@ -33,4 +34,5 @@ export type Command =
   | RulesCommand
   | AiPlayerCommand
   | AssistantCommand
+  | TributeCommand
   | DebugCommand;

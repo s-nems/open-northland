@@ -175,6 +175,16 @@ export const enContent = {
       summary:
         'First contact under fog: the ally beside you is known at once, a one-way aggressor reveals itself by its blow and turns you hostile, and a tribe never seen stays off the diplomacy window.',
     },
+    tribute: {
+      title: 'Tributes',
+      summary:
+        'The map script demands three tributes for the neighbour: the timber is payable out of one warehouse and paying it turns the neighbour friendly, the purse of coins is short, and the stone lies split between two stores where no single one can pay.',
+      strings: {
+        '1': 'The neighbours ask for timber and stone for their new hall.',
+        '2': 'The neighbours ask for a purse of coins.',
+        '3': 'The neighbours ask for stone to pave the road between us.',
+      },
+    },
     victory: {
       title: 'Victory and defeat',
       summary:

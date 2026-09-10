@@ -24,6 +24,7 @@ import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
 import { towerDefenceScene } from './tower-defence.js';
 import { towerGarrisonScene } from './tower-garrison.js';
+import { tributeScene } from './tribute.js';
 import type { SceneDefinition } from './types.js';
 import { upgradeScene } from './upgrade.js';
 import { victoryScene } from './victory.js';
@@ -66,6 +67,7 @@ export const SCENES: readonly SceneDefinition[] = [
   aiDefenceScene,
   deathLootScene,
   victoryScene,
+  tributeScene,
 ];
 
 export function getScene(id: string): SceneDefinition | undefined {

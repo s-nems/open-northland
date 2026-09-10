@@ -15,7 +15,7 @@ import type { MissionBrief } from '../game/mission-brief.js';
 import { applySessionRuleOverrides } from '../game/session-rules.js';
 import { sceneSession } from '../game/session-url.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
-import { messages, sceneCopy } from '../i18n/index.js';
+import { messages, sceneCopy, sceneStrings } from '../i18n/index.js';
 import { createSceneSim, getScene, restoreSceneSim, SCENES } from '../scenes/index.js';
 import type { SceneDefinition } from '../scenes/types.js';
 import { assetSetFor } from '../view/asset-settings.js';
@@ -184,6 +184,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     cameraCtl,
     terrainGrid,
     rosterPlayers,
+    tributeText: (stringId) => sceneStrings(scene.id)?.[String(stringId)],
     ...terrainColourOption(terrain),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     worldToken,

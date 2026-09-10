@@ -1,6 +1,6 @@
 import { buildScene, terrainMapToScene } from '@open-northland/render';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { loadMapBriefing, loadMapMeta, loadTerrainMap } from '../src/content/map-loader.js';
+import { loadMapBriefing, loadMapMeta, loadMapStrings, loadTerrainMap } from '../src/content/map-loader.js';
 import { EMPTY_SNAPSHOT } from './support/snapshot.js';
 
 /**
@@ -93,5 +93,36 @@ describe('loadMapMeta and loadMapBriefing', () => {
     expect(await loadMapBriefing('burza_piaskowa', malformed as unknown as typeof fetch)).toBeNull();
     const missing = vi.fn(async () => jsonResponse(null, false, 404));
     expect(await loadMapBriefing('burza_piaskowa', missing as unknown as typeof fetch)).toBeNull();
+  });
+});
+
+describe('loadMapStrings', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('fetches /maps/<id>.strings.json and validates the per-language tables', async () => {
+    const tables = { pol: { '930': 'Drewno dla sąsiada' }, eng: { '930': 'Timber for the neighbour' } };
+    const fetchImpl = vi.fn(async () => jsonResponse(tables));
+    expect(await loadMapStrings('cn_1', fetchImpl as unknown as typeof fetch)).toEqual(tables);
+    expect(fetchImpl).toHaveBeenCalledWith('/maps/cn_1.strings.json');
+  });
+
+  it('falls back to null on a 404, a malformed table, or an unsafe id', async () => {
+    expect(
+      await loadMapStrings(
+        'cn_1',
+        vi.fn(async () => jsonResponse(null, false, 404)) as unknown as typeof fetch,
+      ),
+    ).toBeNull();
+    expect(
+      await loadMapStrings(
+        'cn_1',
+        vi.fn(async () => jsonResponse({ pol: ['not a table'] })) as unknown as typeof fetch,
+      ),
+    ).toBeNull();
+    const fetchImpl = vi.fn();
+    expect(await loadMapStrings('../ir', fetchImpl as unknown as typeof fetch)).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

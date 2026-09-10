@@ -10,6 +10,7 @@ import {
   adminCommand,
   type Command,
   type Entity,
+  type OpenTribute,
   type PlayerCommand,
   playerCommand,
   type SimEvent,
@@ -45,7 +46,7 @@ import {
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
-import { createFogGates, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
+import { createFogGates, type DiplomacySimView, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
 import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
@@ -113,6 +114,8 @@ export interface GameViewDeps {
   readonly seatNameOf?: (player: number) => string | undefined;
   /** The map roster's player slots; the diplomacy window lists the discovered ones. Default empty. */
   readonly rosterPlayers?: readonly number[];
+  /** The map's own string by id, for the tribute descriptions the diplomacy window lists. */
+  readonly tributeText?: (stringId: number) => string | undefined;
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /** Sim events from the frame's step(s), delivered before the renderer draws. Skipped on frames that did not step. */
@@ -237,13 +240,35 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
   };
 
+  const menuGoods = menuGoodsFromContent(sim.content);
+  const goodLabelByType = new Map(menuGoods.map((g) => [g.goodType, g.label]));
+  // The open diplomacy window pulls its rows every frame; the tribute probe walks the payer's houses,
+  // and nothing it reads moves between ticks.
+  let owedMemo: {
+    readonly tick: number;
+    readonly payer: number;
+    readonly owed: readonly OpenTribute[];
+  } | null = null;
+  const diplomacyView: DiplomacySimView = {
+    hasMetPlayer: (viewer, other) => sim.hasMetPlayer(viewer, other),
+    diplomacyStance: (from, to) => sim.diplomacyStance(from, to),
+    openTributes: (payer) => {
+      if (owedMemo === null || owedMemo.tick !== sim.tick || owedMemo.payer !== payer) {
+        owedMemo = { tick: sim.tick, payer, owed: sim.openTributes(payer) };
+      }
+      return owedMemo.owed;
+    },
+  };
   const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
-    diplomacyPanelRows(sim, {
+    diplomacyPanelRows(diplomacyView, {
       localPlayer,
       rosterPlayers: deps.rosterPlayers ?? [],
       observer: deps.observer === true,
+      goodLabelOf: (goodType) => goodLabelByType.get(goodType),
+      canPay: !readOnly,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+      ...(deps.tributeText !== undefined ? { tributeText: deps.tributeText } : {}),
     });
 
   // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
@@ -265,12 +290,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     counters: assistantCountersSeam(sim, localPlayer, issueCommand, !readOnly),
     papers: { read: () => sim.papers(localPlayer) },
     diplomacyRows,
+    onPayTribute: (slot) => issueCommand({ kind: 'payTribute', player: localPlayer, slot }),
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     buildings: menuEntriesFromContent(sim.content, lang),
     // The goods drop is a trusted world edit, which has no wire in a shared session.
-    goods: sharedClock ? [] : menuGoodsFromContent(sim.content),
+    goods: sharedClock ? [] : menuGoods,
     lang,
     bindings: keyBindings,
     tribe: seatTribeOf(localPlayer),

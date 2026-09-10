@@ -47,6 +47,8 @@ export interface ToolWindowsDeps {
   readonly paperLabel: (paper: Paper) => string;
   /** The diplomacy window's roster: one row per discovered player, pulled only while it is open. */
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
+  /** A live pay button in the diplomacy window was pressed for the tribute slot. */
+  readonly onPayTribute: (slot: number) => void;
   /** The decoded GUI sheet the mission window draws its papyrus from; null degrades to flat chrome. */
   readonly art: GuiArt | null;
   readonly missionBrief: () => MissionBrief | null;
@@ -122,7 +124,12 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     },
   });
   const stats = createStatsWindow({ ctx, container });
-  const diplomacy = createDiplomacyWindow({ ctx, container, rows: deps.diplomacyRows });
+  const diplomacy = createDiplomacyWindow({
+    ctx,
+    container,
+    rows: deps.diplomacyRows,
+    onPayTribute: deps.onPayTribute,
+  });
   const mission = createMissionWindow({
     ctx,
     container,

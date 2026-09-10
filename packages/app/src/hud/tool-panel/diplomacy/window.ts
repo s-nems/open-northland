@@ -3,11 +3,13 @@ import { Container } from 'pixi.js';
 import { messages } from '../../../i18n/index.js';
 import { drawPlateOutline, WIN_PAD } from '../../chrome.js';
 import type { Rect } from '../../geometry.js';
-import type { TextRun } from '../../text-run.js';
+import type { ParagraphRun, TextRun } from '../../text-run.js';
 import type { PanelContext } from '../context.js';
 import {
   addRun,
+  centreRun,
   clearFills,
+  paintPlate,
   paintRowCard,
   paintTitledTabWindow,
   placeOnCard,
@@ -25,6 +27,9 @@ import {
   hitTestDiplomacyWindow,
   layoutDiplomacyWindow,
   resolveSelectedPlayer,
+  type TributeCardSpec,
+  type TributePanelRow,
+  tributeTextWidth,
 } from './model.js';
 
 /** Team-swatch square side (design px) on the identity card. */
@@ -34,6 +39,7 @@ const SWATCH_NAME_GAP = 5;
 
 /** The decoded original strings the window prefers over the catalog fallbacks. */
 const TITLE_STRING_ID = 350; // miscwindow 'Diplomacy'
+const IN_STORES_STRING_ID = 355; // miscwindow 'in stores', the tribute demand's stock note
 const THEIR_STANCE_STRING_ID = 358; // miscwindow 'Relationship to your tribe is'
 const YOUR_STANCE_STRING_ID = 359; // miscwindow 'Your relation to the other tribe'
 const PLAYER_STRING_ID = 361; // miscwindow 'Player'
@@ -43,6 +49,8 @@ export interface DiplomacyWindowDeps {
   readonly container: Container;
   /** One row per discovered player, viewer excluded. Pulled only while the window is open. */
   readonly rows: () => readonly DiplomacyPanelRow[];
+  /** A live pay button was pressed; the rows show the payment once the sim applied it. */
+  readonly onPayTribute?: (slot: number) => void;
 }
 
 /** The pop-up diplomacy window; per-frame refresh rebuilds only when the rows or selection changed. */
@@ -50,6 +58,13 @@ export interface DiplomacyWindow extends ToolWindow {
   refresh(): void;
   state(): number | null;
   restore(player: number | null): void;
+}
+
+/** A tribute's wrapped description, measured before the layout so its card can take its height. */
+interface TributeCard {
+  readonly tribute: TributePanelRow;
+  readonly description: ParagraphRun;
+  readonly spec: TributeCardSpec;
 }
 
 export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindow {
@@ -70,6 +85,8 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     graphics: shell.graphics,
     runs: shell.runs,
   };
+  /** The wrapped descriptions, owned beside the shell's single-line runs and cleared with them. */
+  const paragraphs: ParagraphRun[] = [];
 
   let selected: number | null = null;
   let layout: DiplomacyWindowLayout | null = null;
@@ -77,9 +94,29 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
 
   const rebuildKey = (rows: readonly DiplomacyPanelRow[], chosen: number | null): string =>
     JSON.stringify([
-      rows.map((r) => [r.player, r.name ?? null, r.colour, r.towardYou, r.yourStance]),
+      rows.map((r) => [
+        r.player,
+        r.name ?? null,
+        r.colour,
+        r.towardYou,
+        r.yourStance,
+        r.tributes.map((t) => [
+          t.slot,
+          t.text ?? null,
+          t.payable,
+          t.split,
+          t.demands.map((d) => [d.label, d.amount, d.onHand]),
+        ]),
+      ]),
       chosen,
     ]);
+
+  const clear = (): void => {
+    shell.clear();
+    clearFills(back);
+    for (const p of paragraphs) p.destroy();
+    paragraphs.length = 0;
+  };
 
   /** The authored name, or the numbered fallback an unnamed slot renders as. */
   const playerLabel = (player: number, name: string | undefined): string =>
@@ -133,17 +170,66 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     );
   };
 
+  /** Wrap each tribute's description ahead of the layout, so a long one grows its card. */
+  const measureCards = (tributes: readonly TributePanelRow[]): TributeCard[] =>
+    tributes.map((tribute) => {
+      const text = tribute.text ?? `${messages().hud.tribute} ${tribute.slot}`;
+      const description = ctx.makeParagraph(text, 'white', ROW_PX, tributeTextWidth(scale));
+      shell.container.addChild(description.container);
+      paragraphs.push(description);
+      return {
+        tribute,
+        description,
+        spec: {
+          slot: tribute.slot,
+          payable: tribute.payable,
+          descriptionH: description.height,
+          lines: tribute.demands.length + (tribute.split ? 1 : 0),
+        },
+      };
+    });
+
+  /** One card per tribute: the description over one line per demand, each with what the stores
+   *  hold, a note when the stores hold it all but no single one does, and the pay button lit only
+   *  while the viewer could pay. */
+  const paintTributes = (built: DiplomacyWindowLayout, cards: readonly TributeCard[]): void => {
+    const inStores = ctx.uiString('miscwindow', IN_STORES_STRING_ID, messages().hud.tributeInStores);
+    const { width: rw, height: rh } = ctx.screen();
+    const onLine = (run: TextRun, at: { readonly x: number; readonly y: number }): void =>
+      run.place(at.x, at.y, scale, rw, rh);
+    built.tributes.forEach((rect, i) => {
+      const card = cards[i];
+      if (card === undefined) return;
+      paintRowCard(layers, rect.card);
+      card.description.place(rect.text.x, rect.text.y);
+      const lines = card.tribute.demands.map((d) => `${d.amount} ${d.label} (${d.onHand} ${inStores})`);
+      if (card.tribute.split) lines.push(messages().hud.tributeSplit);
+      lines.forEach((line, l) => {
+        const at = rect.lines[l];
+        if (at !== undefined) onLine(addRun(layers, line, 'dimmed', ROW_PX), at);
+      });
+      paintPlate(layers, rect.pay, rect.payable);
+      centreRun(
+        layers,
+        addRun(layers, messages().hud.tributePay, rect.payable ? 'white' : 'dimmed', ROW_PX),
+        rect.pay,
+      );
+    });
+  };
+
   const rebuild = (rows: readonly DiplomacyPanelRow[]): void => {
-    shell.clear();
-    clearFills(back);
+    clear();
     selected = resolveSelectedPlayer(rows, selected);
     key = rebuildKey(rows, selected);
+    const selectedRow = rows.find((r) => r.player === selected);
+    const cards = measureCards(selectedRow?.tributes ?? []);
     const built = layoutDiplomacyWindow({
       originX: origin.x,
       originY: origin.y,
       scale,
       players: rows.map((r) => r.player),
       selected,
+      tributes: cards.map((c) => c.spec),
     });
     layout = built;
 
@@ -160,9 +246,9 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
       ctx.uiString('miscwindow', TITLE_STRING_ID, messages().hud.diplomacy),
     );
 
-    const selectedRow = rows.find((r) => r.player === selected);
     if (selectedRow !== undefined) {
       paintBody(built, selectedRow);
+      paintTributes(built, cards);
     } else {
       const line = built.bodyLines[0];
       if (line !== undefined) {
@@ -174,8 +260,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
 
   const close = (): void => {
     shell.setOpen(false);
-    shell.clear();
-    clearFills(back);
+    clear();
     layout = null;
     key = '';
   };
@@ -202,6 +287,9 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
         case 'tab':
           selected = hit.player;
           rebuild(deps.rows());
+          break;
+        case 'pay':
+          deps.onPayTribute?.(hit.slot);
           break;
         case 'window':
           break; // a click on the window body is consumed

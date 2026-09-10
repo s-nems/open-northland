@@ -176,6 +176,16 @@ export const plContent = {
       summary:
         'Pierwszy kontakt pod mgłą: sojusznik obok jest znany od razu, jednostronny agresor zdradza się własnym ciosem i zmienia Twoje nastawienie na wrogie, a nigdy niewidziane plemię nie trafia do okna dyplomacji.',
     },
+    tribute: {
+      title: 'Trybuty',
+      summary:
+        'Skrypt mapy żąda trzech trybutów dla sąsiada: drewno można zapłacić z jednego magazynu i zapłata zmienia nastawienie sąsiada na przyjazne, sakiewki monet brakuje, a kamień leży rozdzielony między dwa składy, z których żaden sam nie zapłaci.',
+      strings: {
+        '1': 'Sąsiedzi proszą o drewno i kamień na nową halę.',
+        '2': 'Sąsiedzi proszą o sakiewkę monet.',
+        '3': 'Sąsiedzi proszą o kamień na drogę między nami.',
+      },
+    },
     victory: {
       title: 'Zwycięstwo i porażka',
       summary:

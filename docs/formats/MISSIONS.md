@@ -196,7 +196,7 @@ kinds in order.
 | 27 | `DetectGuide` | 1, 16, 17, 9 | the player has a guide (signpost) within `range` of the point | 3 |
 | 28 | `TimeGone` | 35 | `seconds` of game time have passed since activation | 1529 |
 | 29 | `CheckMission` | 21 | mission `n`'s goals hold now (evaluated without firing) | 20 |
-| 30 | `PayTribute` | 28 | the tribute slot is active and fully paid | 702 |
+| 30 | `PayTribute` | 28 | the tribute slot is open and paid: fresh from `CreateTribute` with nothing demanded, or paid by its owner (reading) | 702 |
 | 31 | `Population` | 1, 7 | the player has at least `amount` humans of any age | 71 |
 | 32 | `PlayerSeen` | 1, 2 | the first player has seen the second | 140 |
 | 33 | `IsHumanInVehicle` | 10, 12 | every human with the id sits in a vehicle with the vehicle id | 0 |
@@ -269,8 +269,8 @@ of each.
 | 24 | `SendVehicle` | 12, 16, 17 | order vehicles with the id to move there | sim | 49 |
 | 25 | `DockVehicle` | 12, 16, 17 | order vehicles with the id to dock there | sim | 30 |
 | 26 | `PlaySound` | 26, 16, 17 | play the sound effect at the point | app | 498 |
-| 27 | `CreateTribute` | 28, 1, 2, 27 | open tribute slot `n` from the first player to the second with the description string; starts paid and empty | sim | 995 |
-| 28 | `AddTributeGoods` | 28, 6, 7 | add a demand (up to 5 kinds per slot); marks the slot unpaid | sim | 1135 |
+| 27 | `CreateTribute` | 28, 1, 2, 27 | open tribute slot `n` from the first player to the second with the description string, over whatever the slot held; starts paid and empty (reading) | sim | 995 |
+| 28 | `AddTributeGoods` | 28, 6, 7 | add to the slot's demand for the good or append a new one, up to 5 kinds, and mark the slot unpaid; skipped on a closed slot (reading) | sim | 1135 |
 | 29 | `AllowJob` | 1, 3, 4 | allow the job for the player's tribe and refresh its humans | sim | 5 |
 | 30 | `AllowHouse` | 1, 3, 15 | allow the house type for the player's tribe | sim | 11 |
 | 31 | `AddGoodsToHouses` | 14, 6, 7 | add the amount to every house with the id that has a slot for the good; the write is not capped at the slot | sim | 459 |
@@ -300,7 +300,7 @@ of each.
 | 55 | `RemoveAnimals` | 14 | remove every animal with the id, silently | sim | 22 |
 | 56 | `ChangeHumanObjectIdInArea` | 1, 16, 17, 9, 10 | give the player's humans within `range` the id | sim | 16 |
 | 57 | `HealHumansInArea` | 16, 17, 9 | set every human within `range` to full hit points | sim | 31 |
-| 58 | `ClearTribute` | 28 | close the tribute slot | sim | 818 |
+| 58 | `ClearTribute` | 28 | close the tribute slot; its data stays for a later `CreateTribute` to replace (reading) | sim | 818 |
 | 59 | `SetGuiMarker` | 14, 16, 17 | show a marker of the given kind at the point | app | 20 |
 | 60 | `SetHumanName` | 10, 27 | name the first human with the id from the string table | app | 138 |
 | 61 | `SetWeather` | 16, 17, 9, 32, 7 | enable or disable a weather effect over the square of half-side `range` | app | 207 |
@@ -443,15 +443,39 @@ Readings unless marked otherwise.
 
 A reading of the tribute manager, which the goal `PayTribute` and results 27, 28, and 58 drive.
 
-- 44 slots. A slot holds: active flag, paid flag, payer, receiver, description string id, and up to 5
-  demands (good, amount). `CreateTribute` initialises the slot as active and paid with no demands and
-  the string id from the fourth parameter. `AddTributeGoods` adds to an existing demand or appends a
-  new one and clears the paid flag. `ClearTribute` clears the active flag.
-- Paying is a player action (a network command from the tribute window): the slot is payable only
-  when one single warehouse or workplace of the payer holds every demanded amount in full. Payment
-  then takes goods from the payer's houses in a fixed order until every demand reaches zero, and sets
-  the paid flag. The receiver gets nothing (the goods vanish).
+- 44 slots (the corpus addresses 0 to 39). A slot holds: active flag, paid flag, payer, receiver,
+  description string id, and up to 5 demands (good, amount). `CreateTribute` initialises the slot as
+  active and paid with no demands and the string id from the fourth parameter. `AddTributeGoods` adds
+  to an existing demand or appends a new one, drops a sixth kind, and clears the paid flag; the
+  manager skips it on an inactive slot. `ClearTribute` clears the active flag and nothing else.
+- Where it shows: the diplomacy window, under the selected player's tab, lists every active unpaid
+  slot from the viewer to that player as one button: the description from the map's string table
+  (`"<MISSION STRINGS NOT LOADED>"` without one), then each demand as `amount good (have "in stores")`,
+  where "have" is the payer's warehouses and workplaces summed. The button is disabled unless the
+  slot is payable, and pressing it sends the pay network command for the slot. The window iterator
+  walks slots 0 to 39 only.
+- Payable: one single warehouse or workplace of the payer holds every demanded amount in full,
+  counted like the goal counts (a workplace's product slots, never its inputs). A food demand is met
+  by the first good of the same food class (simple or extra) the house stores, walking the food
+  goods in id order (`food_simple` and `food_extra` first, then the dishes), so a warehouse pays
+  bread out of its `food_simple` and a bakery out of its bread. A slot demanding nothing is payable
+  by any such house standing.
+- Paying takes goods out of a copy of the demands, house by house until every demand reaches zero:
+  the first house of the headquarters type, then every warehouse in array order, then every
+  workplace, each giving what it holds of what is still owed, so a payment can drain several houses
+  although one held everything. The slot's own demand amounts are untouched; only the paid flag is
+  set. The receiver gets nothing (the goods vanish). The command does not check who sent it.
 - `PayTribute n` holds when slot `n` is active and paid.
+- This build keeps the table in `components/tributes.ts`, pays it through the `payTribute` seat
+  command (`systems/missions/tributes.ts`) and lists it in the diplomacy window, with the same rule
+  and drain order over finished storages then workplaces, each ascending by entity id
+  (approximation: no house type is drained first, since no content role marks the headquarters); the
+  food class is the dish table of `readviews/food.ts`. Two demands a house meets with the same
+  stocked good are checked as their sum, where the original checks each alone and would mark a slot
+  paid with part of it still owed (deviation). The seat command is admitted only for the slot's
+  payer, and only while the slot is open, unpaid and payable. The window lists all 44 slots where
+  the original's walks 40 (unreachable in the corpus), under a discovered roster player, which every
+  corpus receiver is, and notes a slot the stores hold in sum but no single one can pay.
 
 ## On-screen info lines
 

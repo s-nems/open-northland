@@ -33,6 +33,7 @@ import {
   setScriptedStance,
 } from './standing.js';
 import { grantUnlock } from './tech.js';
+import { scriptTribute } from './tributes.js';
 
 /** Execute one result of mission `index`. An opcode with no executor is reported and does nothing;
  *  nothing here throws, because a corpus script must never halt a running world. */
@@ -172,6 +173,11 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       return;
     case 'SetExternalFlag':
       setScriptedAiFlag(pass, index, result);
+      return;
+    case 'CreateTribute':
+    case 'AddTributeGoods':
+    case 'ClearTribute':
+      scriptTribute(pass, index, result);
       return;
     default:
       pass.report(index, result.opcode);

@@ -1,4 +1,4 @@
-import type { CellTerrainMap, Simulation } from '@open-northland/sim';
+import type { CellTerrainMap, MissionScript, Simulation } from '@open-northland/sim';
 import type { FogModeName } from '../game/fog.js';
 
 export interface SceneCheck {
@@ -22,6 +22,8 @@ export interface SceneWorld {
   readonly progression?: boolean;
   /** The seats that can win or lose the skirmish; omit for a scene that decides nothing. */
   readonly participants?: readonly number[];
+  /** A script the world runs from its first tick, written with resolved ids; omit for none. */
+  readonly missions?: MissionScript;
 }
 
 /**

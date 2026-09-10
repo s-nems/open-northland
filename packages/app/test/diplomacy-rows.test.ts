@@ -1,3 +1,4 @@
+import type { OpenTribute } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../src/catalog/roster.js';
 import {
@@ -10,12 +11,14 @@ import {
 function simView(
   met: readonly [number, number][],
   stances: readonly [number, number, 'friend' | 'neutral' | 'enemy'][],
+  owed: readonly OpenTribute[] = [],
 ): DiplomacySimView {
   const metSet = new Set(met.map(([v, o]) => `${v}:${o}`));
   const stanceMap = new Map(stances.map(([f, t, s]) => [`${f}:${t}`, s]));
   return {
     hasMetPlayer: (viewer, other) => viewer === other || metSet.has(`${viewer}:${other}`),
     diplomacyStance: (from, to) => stanceMap.get(`${from}:${to}`) ?? 'enemy',
+    openTributes: () => owed,
   };
 }
 
@@ -41,7 +44,61 @@ describe('diplomacyPanelRows', () => {
         colour: PLAYER_SWATCH_COLORS[2],
         towardYou: 'friend',
         yourStance: 'neutral',
+        tributes: [],
       },
+    ]);
+  });
+
+  it('hands each row the tributes owed to its player, worded from the map strings and good labels', () => {
+    const owed: OpenTribute[] = [
+      { slot: 3, receiver: 2, stringId: 930, demands: [{ good: 5, amount: 6, onHand: 8 }], payable: true },
+      { slot: 1, receiver: 1, stringId: 931, demands: [{ good: 8, amount: 20, onHand: 5 }], payable: false },
+    ];
+    const sim = simView(
+      [
+        [0, 1],
+        [0, 2],
+      ],
+      [],
+      owed,
+    );
+    const rows = diplomacyPanelRows(sim, {
+      localPlayer: 0,
+      rosterPlayers: [0, 1, 2],
+      observer: false,
+      tributeText: (id) => (id === 930 ? 'Drewno dla sąsiada' : undefined),
+      goodLabelOf: (good) => (good === 5 ? 'Drewno' : undefined),
+    });
+    expect(rows.map((r) => r.tributes)).toEqual([
+      [{ slot: 1, demands: [{ label: '8', amount: 20, onHand: 5 }], payable: false, split: false }],
+      [
+        {
+          slot: 3,
+          text: 'Drewno dla sąsiada',
+          demands: [{ label: 'Drewno', amount: 6, onHand: 8 }],
+          payable: true,
+          split: false,
+        },
+      ],
+    ]);
+  });
+
+  it('notes a tribute the stores hold between them but no single one can pay, and deadens every button for a seat that may not pay', () => {
+    const owed: OpenTribute[] = [
+      { slot: 2, receiver: 1, stringId: 1, demands: [{ good: 3, amount: 5, onHand: 6 }], payable: false },
+      { slot: 5, receiver: 1, stringId: 2, demands: [{ good: 5, amount: 2, onHand: 4 }], payable: true },
+    ];
+    const sim = simView([[0, 1]], [], owed);
+    const roster = { localPlayer: 0, rosterPlayers: [0, 1], observer: false };
+    expect(diplomacyPanelRows(sim, roster)[0]?.tributes.map((t) => [t.payable, t.split])).toEqual([
+      [false, true],
+      [true, false],
+    ]);
+    expect(
+      diplomacyPanelRows(sim, { ...roster, canPay: false })[0]?.tributes.map((t) => [t.payable, t.split]),
+    ).toEqual([
+      [false, true],
+      [false, false],
     ]);
   });
 

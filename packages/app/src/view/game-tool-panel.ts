@@ -58,6 +58,8 @@ export interface GameToolPanelDeps {
   readonly diplomacyRows: () => readonly DiplomacyPanelRow[];
   /** A seat's roster name, for the note about an eliminated player. */
   readonly seatNameOf?: (player: number) => string | undefined;
+  /** The diplomacy window's pay button; a closure, so it follows a scene restart. */
+  readonly onPayTribute: (slot: number) => void;
   /** UI string language (`pol`/`eng`); defaults to the active locale. */
   readonly lang?: string;
   readonly bindings: KeyBindings;
@@ -161,6 +163,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       papers: deps.papers,
       diplomacyRows: deps.diplomacyRows,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+      onPayTribute: deps.onPayTribute,
       screenToTile: clientToTile,
       canPlaceAt: deps.canPlaceAt,
       onSpeedChange: deps.onSpeed,

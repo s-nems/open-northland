@@ -1,4 +1,11 @@
-import { MapBriefing, MapMeta, MapScript, parseTerrainMap, type TerrainMapFile } from '@open-northland/data';
+import {
+  MapBriefing,
+  MapMeta,
+  MapScript,
+  MapStrings,
+  parseTerrainMap,
+  type TerrainMapFile,
+} from '@open-northland/data';
 import { withBaseUrl } from '../base-url.js';
 import { diag } from '../diag/index.js';
 
@@ -83,6 +90,26 @@ export async function loadMapBriefing(
     return MapBriefing.parse(await res.json());
   } catch (err) {
     diag.warn('content', `loadMapBriefing: malformed /maps/${safe}.briefing.json (${String(err)})`);
+    return null;
+  }
+}
+
+/**
+ * A decoded map's own string table per language: the tribute descriptions, human names and info lines
+ * its script points at by id. A 404 is normal absence and returns null silently; a malformed file warns.
+ */
+export async function loadMapStrings(
+  id: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<MapStrings | null> {
+  const safe = safeMapId(id);
+  if (safe === null) return null;
+  try {
+    const res = await fetchImpl(withBaseUrl(`/maps/${safe}.strings.json`));
+    if (!res.ok) return null;
+    return MapStrings.parse(await res.json());
+  } catch (err) {
+    diag.warn('content', `loadMapStrings: malformed /maps/${safe}.strings.json (${String(err)})`);
     return null;
   }
 }

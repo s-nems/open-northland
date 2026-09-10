@@ -518,6 +518,7 @@ describe('tool windows registry', () => {
       history: null,
       onPickBuilding: (typeId) => picks.push(typeId),
       onPickGood: () => undefined,
+      onPayTribute: () => undefined,
     });
     return { ctx, windows, picks, container, textRuns };
   }

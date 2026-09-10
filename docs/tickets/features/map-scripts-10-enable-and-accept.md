@@ -1,10 +1,8 @@
 # Enable mission scripts by default and accept them on a real map
 
 **Area:** sim, app · **Focus:** acceptance · **Priority:** P2
-**Blocked by:** [map-scripts-8-tributes.md](map-scripts-8-tributes.md)
 
-Map-scripts epic, stage 10 of 10. Also needs stage 9 merged; check the coverage report before
-starting.
+Map-scripts epic, stage 10 of 10. Needs stage 9 merged; check the coverage report before starting.
 
 With the executors in place, `MissionRules` still defaults to off and only `?missions=on` turns a
 script on, so players never see one run. This stage flips the default, proves a campaign map end to
@@ -22,6 +20,9 @@ end, and records what the original confirms.
   the `?ai=` seats minus `playerneverdies`; a scripted map launched without `?ai=` has one
   participant and nobody ever dies. [match-participants-from-in-use-seats.md](match-participants-from-in-use-seats.md)
   covers the seat source.
+- Observe on the original whether a new tribute gets any cue beyond the diplomacy window (most corpus
+  `CreateTribute` lines share no mission with a cutscene or info line); a cue this build adds would be
+  its own, so decide it here with the messages branch in mind.
 - Register an acceptance scene on a real campaign map (the CnMod `cn_1` or the base game's first
   mission) that lists fired missions and their tick, and update `docs/SCENES.md`.
 - Update golden hashes only where a scenario deliberately includes a scripted map; state every moved

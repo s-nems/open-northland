@@ -107,6 +107,7 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
   DiplomacyState: { opcode: 'DiplomacyState', player: 0, otherPlayer: 1, state: 'friend' },
   PlayerSeen: { opcode: 'PlayerSeen', player: 0, otherPlayer: 1 },
   PlayerAttackedByPlayer: { opcode: 'PlayerAttackedByPlayer', otherPlayer: 1, player: 0 },
+  PayTribute: { opcode: 'PayTribute', slot: 0 },
 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
@@ -244,6 +245,9 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
   MissionFailed: { opcode: 'MissionFailed', player: 0 },
   ExploreArea: { opcode: 'ExploreArea', player: 0, point: POINT, range: 2 },
   SetExternalFlag: { opcode: 'SetExternalFlag', player: 0, flagId: 1, flag: true },
+  CreateTribute: { opcode: 'CreateTribute', slot: 0, player: 0, otherPlayer: 1, stringId: 1 },
+  AddTributeGoods: { opcode: 'AddTributeGoods', slot: 0, good: 1, amount: 1 },
+  ClearTribute: { opcode: 'ClearTribute', slot: 0 },
 };
 
 function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): string[] {

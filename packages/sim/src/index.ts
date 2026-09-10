@@ -133,9 +133,10 @@ export type {
   MissionHouseRef,
   MissionResultOp,
   MissionScript,
+  OpenTribute,
   ResolvedOp,
 } from './systems/missions/index.js';
-export { MISSION_HOUSE_NAME_FIELD } from './systems/missions/index.js';
+export { MISSION_HOUSE_NAME_FIELD, SUCCESSFUL_IF } from './systems/missions/index.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
 // independently without restating the sim's travel time.
 export { WALK_TICKS_PER_CELL } from './systems/movement/system.js';

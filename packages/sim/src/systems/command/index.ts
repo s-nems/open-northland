@@ -14,6 +14,7 @@ import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
+import { payTribute } from '../missions/tributes.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
 // `ai-player/assistant-counters.js` for the published-counter map, and routing that through the
 // barrel would widen its import graph.
@@ -193,6 +194,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setPlayerPlacementTribes':
       setPlayerPlacementTribes(world, ctx.content, command.player, command.tribes);
+      return;
+    case 'payTribute':
+      payTribute(world, ctx, command);
       return;
     case 'setNeedsEnabled':
       setNeedsEnabled(world, command.enabled);

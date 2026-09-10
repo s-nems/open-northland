@@ -2,11 +2,11 @@ import { BUILDING_KIND } from '@open-northland/data';
 import { Stockpile, setStockAmount } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { SystemContext } from '../context.js';
+import type { ContentContext, SystemContext } from '../context.js';
 import { stockCapacity } from '../stores/index.js';
 
 /** Whether a house of the type has a slot for `good` at all, finished or not. */
-export function typeStoresGood(ctx: SystemContext, buildingType: number, good: number): boolean {
+export function typeStoresGood(ctx: ContentContext, buildingType: number, good: number): boolean {
   return contentIndex(ctx.content).storedGoodsByBuilding.get(buildingType)?.has(good) ?? false;
 }
 
@@ -15,7 +15,7 @@ export function typeStoresGood(ctx: SystemContext, buildingType: number, good: n
  * tower shelves, but of a workplace only what it makes, never the inputs delivered to it. Reading: the
  * original's counts take a workplace's product slots and skip its input slots.
  */
-export function countsAsOwnStock(ctx: SystemContext, buildingType: number, good: number): boolean {
+export function countsAsOwnStock(ctx: ContentContext, buildingType: number, good: number): boolean {
   const index = contentIndex(ctx.content);
   const type = index.buildings.get(buildingType);
   if (type === undefined) return false;

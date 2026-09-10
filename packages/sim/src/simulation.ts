@@ -37,7 +37,7 @@ import {
   placementBlockerVersion,
   workFlagBlockerVersion,
 } from './systems/footprint/index.js';
-import type { MissionScript } from './systems/missions/index.js';
+import { type MissionScript, type OpenTribute, openTributes } from './systems/missions/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
@@ -318,6 +318,12 @@ export class Simulation {
   /** `player`'s standing in the match the MatchSystem drives; `undecided` for a non-participant too. */
   matchOutcome(player: number): MatchOutcome {
     return matchOutcome(this.world, player);
+  }
+
+  /** The open, unpaid tributes the map's script has `payer` owing, ascending by slot, each with what
+   *  the payer's stores hold toward it and whether the `payTribute` command would take it now. */
+  openTributes(payer: number): readonly OpenTribute[] {
+    return openTributes(this.world, { content: this.content }, payer);
   }
 
   /** Whether `viewer` has discovered `other`: true with fog off or absent (everything is in plain

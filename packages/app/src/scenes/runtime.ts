@@ -22,8 +22,10 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
     content: resolveWorldContent(scene.terrain, options),
     // Scenes author cell grids; the sim navigates their half-cell lattice.
     map: halfCellMapFromCells(scene.terrain),
+    ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
   scene.build(sim);
+  if (scene.missions !== undefined) sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
   // Scenes run with needs off so an inspection unit cannot starve mid-run. Enqueued after build so it
   // lands before tick 1's needsSystem; `SceneDefinition.needs` opts back in (FIFO, later write wins).
   if (scene.needs !== true) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
@@ -54,6 +56,7 @@ export function restoreSceneSim(
   return restoreSimulation(save, {
     content: resolveWorldContent(scene.terrain, options),
     map: halfCellMapFromCells(scene.terrain),
+    ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
 }
 

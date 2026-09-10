@@ -1,4 +1,4 @@
-import type { MissionRecord } from '../../components/index.js';
+import { type MissionRecord, tributePaid } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import {
   animalsGone,
@@ -177,6 +177,8 @@ function goalHolds(
       return playerSeenHolds(pass, op);
     case 'PlayerAttackedByPlayer':
       return playerAttackedHolds(pass.world, op);
+    case 'PayTribute':
+      return tributePaid(pass.world, op.slot);
     default:
       pass.report(index, op.opcode);
       // An opcode this build cannot judge holds nowhere, so its mission waits rather than firing on
