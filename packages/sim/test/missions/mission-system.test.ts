@@ -315,13 +315,13 @@ describe('an opcode this build cannot run', () => {
   it('reports it once per mission and treats the goal as not held', () => {
     const sim = missionSim([
       mission({
-        goals: [{ opcode: 'PlayerDied', player: 0 }],
+        goals: [{ opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 }],
         results: [{ opcode: 'Exit' }],
       }),
     ]);
     sim.run(FIRST_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
-      { kind: 'missionUnsupported', mission: 0, opcode: 'PlayerDied' },
+      { kind: 'missionUnsupported', mission: 0, opcode: 'BuildVehicles' },
     ]);
     expect(records(sim)[0]?.active).toBe(true);
     sim.run(FIRST_PASS);

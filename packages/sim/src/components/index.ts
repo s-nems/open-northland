@@ -3,6 +3,7 @@
  * regrouping these modules is hash-neutral.
  */
 
+export * from './ai-flags.js';
 export * from './ai-player.js';
 export * from './assistant.js';
 export * from './behaviour.js';
@@ -20,6 +21,7 @@ export * from './needs.js';
 export * from './ownership.js';
 export * from './papers.js';
 export * from './player-placement.js';
+export * from './relations.js';
 export * from './rules.js';
 export * from './settler.js';
 export * from './signpost.js';

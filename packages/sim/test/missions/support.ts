@@ -1,7 +1,16 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
+import { expect } from 'vitest';
 import { Health, missionRecords } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import {
+  exportSaveGame,
+  parseSaveGame,
+  restoreSimulation,
+  type SimEvent,
+  type SimEventKind,
+  Simulation,
+  serializeSaveGame,
+} from '../../src/index.js';
 import type { MissionDefinition, MissionGoalOp, MissionResultOp } from '../../src/systems/missions/index.js';
 import { MISSION_EVALUATION_TICKS, missionObjects, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
@@ -149,4 +158,39 @@ export function stamped(sim: Simulation, id: number): Entity {
 export function kill(sim: Simulation, victim: Entity): void {
   sim.world.mut(victim, Health).hitpoints = 0;
   sim.step();
+}
+
+/** Step to `tick`, keeping the events of the named kinds with the tick each fired on. */
+export function eventsUntil(
+  sim: Simulation,
+  tick: number,
+  kinds: readonly SimEventKind[],
+): { tick: number; event: SimEvent }[] {
+  const out: { tick: number; event: SimEvent }[] = [];
+  while (sim.tick < tick) {
+    sim.step();
+    for (const event of sim.events.current()) {
+      if (kinds.includes(event.kind)) out.push({ tick: sim.tick, event });
+    }
+  }
+  return out;
+}
+
+/** The opcodes of the results that ran but could not act, up to `tick`. */
+export function failedResultsUntil(sim: Simulation, tick: number): string[] {
+  return eventsUntil(sim, tick, ['missionResultFailed']).map(({ event }) =>
+    event.kind === 'missionResultFailed' ? event.opcode : '',
+  );
+}
+
+/** A restore of the sim's save on the same map and script, checked to hash the same. */
+export function roundTrip(sim: Simulation): Simulation {
+  const bytes = serializeSaveGame(exportSaveGame(sim));
+  const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {
+    content: sim.content,
+    map: grassNodeMap(MAP_NODES, MAP_NODES),
+    ...(sim.missions !== undefined ? { missions: sim.missions } : {}),
+  }).sim;
+  expect(restored.hashState()).toBe(sim.hashState());
+  return restored;
 }

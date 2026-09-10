@@ -29,7 +29,8 @@ export const MATCH_DEATH_CHECK_INTERVAL_TICKS = 125;
  * when the check finds it without a living adult man (the same engine-build reading; the maps'
  * `playerneverdies` rows corroborate that seats do die). Once a seat has died, the standing seats win
  * as soon as every pair of them is mutual `friend` (approximation: the original only marks the dead as
- * lost), and a decided match runs no further checks.
+ * lost), and a decided match runs no further checks. A script's `MissionWon` decides nothing here:
+ * the original's death check keeps running after its won flag (reading).
  */
 export const matchSystem: System = (world, ctx) => {
   const participants = matchParticipantBits(world);

@@ -39,6 +39,14 @@ export const SUPPORTED_GOALS = [
   'NumberOfGoodsInHousesInArea',
   'JobEnabled',
   'GoodProduceable',
+  'FindPos',
+  'FindHumans',
+  'FindHouses',
+  'FindAnimals',
+  'PlayerDied',
+  'DiplomacyState',
+  'PlayerSeen',
+  'PlayerAttackedByPlayer',
 ] as const satisfies readonly MissionGoalOp['opcode'][];
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
@@ -87,4 +95,10 @@ export const SUPPORTED_RESULTS = [
   'EnableHouse',
   'AllowGood',
   'EnableGood',
+  'SetDiplomacy',
+  'SetDiplomacyNotChangeableFlag',
+  'MissionWon',
+  'MissionFailed',
+  'ExploreArea',
+  'SetExternalFlag',
 ] as const satisfies readonly MissionResultOp['opcode'][];

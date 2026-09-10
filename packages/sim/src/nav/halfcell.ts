@@ -106,9 +106,14 @@ export function hexNeighboursOf(hx: number, hy: number): HalfCellNode[] {
  * to that reading and unconfirmed against the running game.
  */
 export function hexDistance(a: HalfCellNode, b: HalfCellNode): number {
-  const dx = b.hx - a.hx;
-  const rows = Math.abs(b.hy - a.hy);
+  return hexDistanceBetween(a.hx, a.hy, b.hx, b.hy);
+}
+
+/** {@link hexDistance} over bare coordinates, for a scan that must not allocate a node per test. */
+export function hexDistanceBetween(ahx: number, ahy: number, bhx: number, bhy: number): number {
+  const dx = bhx - ahx;
+  const rows = Math.abs(bhy - ahy);
   let columns = Math.abs(dx);
-  if (rows % 2 !== 0 && (b.hy % 2 === 0 ? dx > 0 : dx < 0)) columns--;
+  if (rows % 2 !== 0 && (bhy % 2 === 0 ? dx > 0 : dx < 0)) columns--;
   return rows + Math.max(0, columns - Math.floor(rows / 2));
 }

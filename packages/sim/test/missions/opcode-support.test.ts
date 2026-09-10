@@ -99,6 +99,14 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
   },
   JobEnabled: { opcode: 'JobEnabled', player: 0, tribe: 1, job: 1 },
   GoodProduceable: { opcode: 'GoodProduceable', player: 0, tribe: 1, good: 1 },
+  FindPos: { opcode: 'FindPos', player: 0, point: POINT },
+  FindHumans: { opcode: 'FindHumans', player: 0, humanId: 7 },
+  FindHouses: { opcode: 'FindHouses', player: 0, objectId: 7 },
+  FindAnimals: { opcode: 'FindAnimals', player: 0, objectId: 7 },
+  PlayerDied: { opcode: 'PlayerDied', player: 0 },
+  DiplomacyState: { opcode: 'DiplomacyState', player: 0, otherPlayer: 1, state: 'friend' },
+  PlayerSeen: { opcode: 'PlayerSeen', player: 0, otherPlayer: 1 },
+  PlayerAttackedByPlayer: { opcode: 'PlayerAttackedByPlayer', otherPlayer: 1, player: 0 },
 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
@@ -225,6 +233,17 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
   EnableHouse: { opcode: 'EnableHouse', player: 0, tribe: 1, houseType: 1 },
   AllowGood: { opcode: 'AllowGood', player: 0, tribe: 1, good: 1 },
   EnableGood: { opcode: 'EnableGood', player: 0, tribe: 1, good: 1 },
+  SetDiplomacy: { opcode: 'SetDiplomacy', player: 0, otherPlayer: 1, state: 'friend' },
+  SetDiplomacyNotChangeableFlag: {
+    opcode: 'SetDiplomacyNotChangeableFlag',
+    player: 0,
+    otherPlayer: 1,
+    flag: true,
+  },
+  MissionWon: { opcode: 'MissionWon', player: 0 },
+  MissionFailed: { opcode: 'MissionFailed', player: 0 },
+  ExploreArea: { opcode: 'ExploreArea', player: 0, point: POINT, range: 2 },
+  SetExternalFlag: { opcode: 'SetExternalFlag', player: 0, flagId: 1, flag: true },
 };
 
 function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): string[] {
@@ -249,7 +268,11 @@ describe('the published opcode support lists', () => {
   });
 
   it('reports an opcode outside the lists, so the lists are the whole of it', () => {
-    expect(reportedOpcodes([{ opcode: 'PlayerDied', player: 0 }], [])).toEqual(['PlayerDied']);
-    expect(reportedOpcodes([], [{ opcode: 'MissionFailed', player: 0 }])).toEqual(['MissionFailed']);
+    expect(
+      reportedOpcodes([{ opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 }], []),
+    ).toEqual(['BuildVehicles']);
+    expect(reportedOpcodes([], [{ opcode: 'PlayCutscene', cutscene: 1, replay: false }])).toEqual([
+      'PlayCutscene',
+    ]);
   });
 });

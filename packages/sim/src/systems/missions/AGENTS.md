@@ -49,6 +49,13 @@ the enabled table beside the living-trade rule, and the `JobEnabled` and `GoodPr
 through those gates rather than the table, so a script and a settler unlock one and the same thing.
 The allowed table has no reader yet.
 
+## The player tables
+
+A result that changes a player's standing writes a player table beside the world, never an entity: a
+stance, a lock, a verdict, an AI flag, an attacked-by mark. A verdict is read by the match outcome
+and announced through the match events; the rest are read here or not yet at all. A reveal goes
+through `FogState` like the vision system's own stamps.
+
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes

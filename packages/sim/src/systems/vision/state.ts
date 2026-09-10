@@ -1,5 +1,6 @@
 import { FOG_MODE } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
+import { type HalfCellNode, hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 
 /** The tri-state visibility values one mask byte holds. Order matters: a higher state shows more, so
@@ -190,6 +191,45 @@ export class FogState {
     if (maxR > b.maxR) b.maxR = maxR;
   }
 
+  /**
+   * Mark every cell with a node within `range` map points of `point` at least EXPLORED for `player`;
+   * a VISIBLE cell is left alone. Scans the cells of the clamped box and tests a cell's four nodes only
+   * while it is still unexplored; a range no lattice distance exceeds is the whole grid.
+   */
+  exploreArea(player: number, point: HalfCellNode, range: number): void {
+    if (range >= this.cellsWide * 2 + this.cellsHigh * 2) {
+      this.exploreAll(player);
+      return;
+    }
+    const mask = this.maskFor(player);
+    let changed = false;
+    const rLo = Math.max(0, (point.hy - range) >> 1);
+    const rHi = Math.min(this.cellsHigh - 1, (point.hy + range) >> 1);
+    const cLo = Math.max(0, (point.hx - range) >> 1);
+    const cHi = Math.min(this.cellsWide - 1, (point.hx + range) >> 1);
+    for (let r = rLo; r <= rHi; r++) {
+      for (let c = cLo; c <= cHi; c++) {
+        const i = r * this.cellsWide + c;
+        if (mask[i] !== FOG_STATE.UNEXPLORED || !cellWithinRange(point, range, c, r)) continue;
+        mask[i] = FOG_STATE.EXPLORED;
+        changed = true;
+      }
+    }
+    if (changed) this.generation++;
+  }
+
+  /** Mark the whole grid at least EXPLORED for `player` (a script's whole-map `ExploreArea`). */
+  exploreAll(player: number): void {
+    const mask = this.maskFor(player);
+    let changed = false;
+    for (let i = 0; i < mask.length; i++) {
+      if (mask[i] !== FOG_STATE.UNEXPLORED) continue;
+      mask[i] = FOG_STATE.EXPLORED;
+      changed = true;
+    }
+    if (changed) this.generation++;
+  }
+
   /** Downgrade every VISIBLE byte of `player` to EXPLORED, scanning only the may-hold-VISIBLE box and
    *  then clearing it. Byte-identical to a full-mask scan. */
   downgradeVisible(player: number): void {
@@ -256,4 +296,16 @@ export class FogState {
     const mask = this.masks.get(player);
     return mask === undefined ? FOG_STATE.UNEXPLORED : (mask[cellY * this.cellsWide + cellX] ?? 0);
   }
+}
+
+/** Whether any of cell (c, r)'s four nodes lies within `range` map points of `point`. */
+function cellWithinRange(point: HalfCellNode, range: number, c: number, r: number): boolean {
+  const hx = c * 2;
+  const hy = r * 2;
+  return (
+    hexDistanceBetween(point.hx, point.hy, hx, hy) <= range ||
+    hexDistanceBetween(point.hx, point.hy, hx + 1, hy) <= range ||
+    hexDistanceBetween(point.hx, point.hy, hx, hy + 1) <= range ||
+    hexDistanceBetween(point.hx, point.hy, hx + 1, hy + 1) <= range
+  );
 }

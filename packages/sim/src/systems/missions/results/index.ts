@@ -25,6 +25,13 @@ import {
   removeScriptedHumans,
 } from './remove.js';
 import { spawnScriptedAnimal, spawnScriptedHumans } from './spawn.js';
+import {
+  declareScriptedVerdict,
+  exploreScriptedArea,
+  lockScriptedStance,
+  setScriptedAiFlag,
+  setScriptedStance,
+} from './standing.js';
 import { grantUnlock } from './tech.js';
 
 /** Execute one result of mission `index`. An opcode with no executor is reported and does nothing;
@@ -149,6 +156,22 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
     case 'AllowGood':
     case 'EnableGood':
       grantUnlock(pass, result);
+      return;
+    case 'SetDiplomacy':
+      setScriptedStance(pass, index, result);
+      return;
+    case 'SetDiplomacyNotChangeableFlag':
+      lockScriptedStance(pass, index, result);
+      return;
+    case 'MissionWon':
+    case 'MissionFailed':
+      declareScriptedVerdict(pass, index, result);
+      return;
+    case 'ExploreArea':
+      exploreScriptedArea(pass, index, result);
+      return;
+    case 'SetExternalFlag':
+      setScriptedAiFlag(pass, index, result);
       return;
     default:
       pass.report(index, result.opcode);

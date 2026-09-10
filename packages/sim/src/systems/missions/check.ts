@@ -9,6 +9,12 @@ import {
   soldiersDiedHolds,
 } from './goals/casualties.js';
 import {
+  animalsExploredHolds,
+  housesExploredHolds,
+  humansExploredHolds,
+  pointExploredHolds,
+} from './goals/explored.js';
+import {
   goodProduceableHolds,
   goodsGlobalHolds,
   goodsInAreaHolds,
@@ -36,6 +42,12 @@ import {
   playerNearPoint,
   soldiersNearPoint,
 } from './goals/proximity.js';
+import {
+  diplomacyStateHolds,
+  playerAttackedHolds,
+  playerDiedHolds,
+  playerSeenHolds,
+} from './goals/standing.js';
 import type { MissionPass } from './pass.js';
 import { setMissionActive } from './pass.js';
 import { executeResult } from './results/index.js';
@@ -149,6 +161,22 @@ function goalHolds(
       return jobEnabledHolds(pass, op);
     case 'GoodProduceable':
       return goodProduceableHolds(pass, op);
+    case 'FindPos':
+      return pointExploredHolds(pass, op);
+    case 'FindHumans':
+      return humansExploredHolds(pass, op);
+    case 'FindHouses':
+      return housesExploredHolds(pass, op);
+    case 'FindAnimals':
+      return animalsExploredHolds(pass, op);
+    case 'PlayerDied':
+      return playerDiedHolds(pass.world, op.player);
+    case 'DiplomacyState':
+      return diplomacyStateHolds(pass.world, op);
+    case 'PlayerSeen':
+      return playerSeenHolds(pass, op);
+    case 'PlayerAttackedByPlayer':
+      return playerAttackedHolds(pass.world, op);
     default:
       pass.report(index, op.opcode);
       // An opcode this build cannot judge holds nowhere, so its mission waits rather than firing on

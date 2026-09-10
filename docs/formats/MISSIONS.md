@@ -203,7 +203,7 @@ kinds in order.
 | 34 | `FindHumansByPlayersMM` | 10, 1, 9 | any human with the id has a human or vehicle of the player within `range` | 14 |
 | 35 | `SoldiersDied` | 1, 7 | at least `amount` soldiers of the player have died | 15 |
 | 36 | `AnimalsDied` | 14 | no animal carries the id | 10 |
-| 37 | `PlayerAttackedByPlayer` | 2, 1 | the first player has been attacked by the second | 5 |
+| 37 | `PlayerAttackedByPlayer` | 2, 1 | the first player has had a human damaged by the second (the victim's row, one direction) | 5 |
 | 38 | `JobEnabled` | 1, 3, 4 | the job is enabled for the player's tribe | 34 |
 | 39 | `GoodProduceable` | 1, 3, 6 | the good is produceable for the player's tribe | 150 |
 | 40 | `NumberOfHumansDied` | 1, 7 | at least `amount` humans of the player have died | 118 |
@@ -254,14 +254,14 @@ of each.
 | 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt`; with the replay flag it becomes the page the mission window replays; stops the current pass; plays the briefing pop-up sound | app | 1450 |
 | 10 | `ActivateMission` | 21 | set the active flag (records the activation tick on the transition) | sim | 4665 |
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
-| 12 | `MissionWon` | 1 | mark the map won, send the "won" message and notification; in multiplayer also trigger the multiplayer goal manager | both | 120 |
-| 13 | `MissionFailed` | 1 | as above for "lost" | both | 110 |
+| 12 | `MissionWon` | 1 | set the mission manager's won flag, send the "won" message and the notification with the player; in multiplayer also trigger the multiplayer goal manager. Here: the player's script verdict, announced like the skirmish rule's | both | 120 |
+| 13 | `MissionFailed` | 1 | as above for "lost"; the player's dead flag stays clear and, here, its commands stay accepted (approximation) | both | 110 |
 | 14 | `AllowMap` | 31, 22 | unlock a campaign map | sim | 0 |
 | 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 |
-| 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the area for the player; `0 0 0 0` (any zero x, y, or range) reveals the whole map | sim | 1412 |
+| 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the hexagon of `range` map points around the point for the player, ring by ring, and the area of any house or landscape on a revealed point; `0 0 0 0` (any zero x, y, or range) reveals the whole map; a player at or above 16 explores nothing. Here: the fog mask's cells, nothing with fog off, and a house or landscape reveals only what its own eye sees (approximation) | sim | 1412 |
 | 17 | `Exit` | | leave the map (restart callback) | app | 70 |
-| 18 | `SetExternalFlag` | 1, 24, 32 | set or clear an AI condition flag for the player (`ai.inc` states) | sim | 67 |
-| 19 | `SetDiplomacy` | 1, 2, 25 | set the first player's stance toward the second (one direction only); the original sends a message unless the pair is marked not changeable | sim | 632 |
+| 18 | `SetExternalFlag` | 1, 24, 32 | set or clear condition slot `n` (below 100) of the player's AI handler, accepted only when that slot is an external-activate condition of its `ai.inc`; a seat without a handler drops it. Here: kept per player with no reader (see below) | sim | 67 |
+| 19 | `SetDiplomacy` | 1, 2, 25 | set the first player's stance toward the second (one direction only, both slots in use), through any lock on the pair; the original sends a message unless the pair is marked not changeable | sim | 632 |
 | 20 | `SetVisible` | 21, 32 | show or hide mission `n` in the mission window | app | 506 |
 | 21 | `ChangeHumanPlayerId` | 10, 1 | hand every human with the id to the player (detached from houses) | sim | 266 |
 | 22 | `ChangePlayerPlayerId` | 1, 2 | hand every vehicle, house, human, animal, and guide of the first player to the second | sim | 68 |
@@ -287,7 +287,7 @@ of each.
 | 42 | `AllowGood` | 1, 3, 6 | allow the good for the player's tribe | sim | 34 |
 | 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe | sim | 101 |
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second | sim | 134 |
-| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | lock the pair's stance in both directions (also silences stance messages) | sim | 189 |
+| 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions; the stance setter only silences its message for a flagged pair, so the lock binds in the diplomacy window (not examined) | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove `fx wave` landscapes within `range` | sim | 0 |
 | 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 |
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
@@ -405,16 +405,26 @@ Readings unless marked otherwise.
   landscape unless bit 14 is set.
 - **Humans killed**: two counters per player (soldiers, civilians), incremented for the attacker when
   a hit takes a victim below one hit point. Houses destroyed have a third counter that no goal reads.
-- **Attacked by**: set for the victim's owner and the attacker whenever a human is damaged. The same
-  hook escalates the victim's stance to enemy when the attacker already treats the victim as an enemy
-  and the victim still treats the attacker as friend or neutral.
+- **Attacked by**: the damage callback of a human whose computed damage is above zero, shield or no
+  shield, marks the attacker in the victim's row, one direction. The same callback escalates the
+  victim's stance to enemy when the attacker already treats the victim as an enemy and the victim
+  still treats the attacker as friend or neutral, with no regard to the not-changeable flag. This
+  build keeps the row in `components/relations.ts`, written by the hit resolution.
 - **Player dead**: every 125 ticks after tick 720, a player with no living adult male human is marked
   dead (a died callback and a message follow) unless `playerneverdies` is set in `[playermisc]`. The
-  flag is permanent. `MissionFailed` does not set it.
+  flag is permanent. `MissionFailed` does not set it. This build reads the match rule's dead flag.
+- **Won, lost**: `MissionWon` and `MissionFailed` set one won and one lost flag on the mission manager,
+  not per player, and hand the player to the notification. This build records the verdict per player
+  (`components/match.ts`), which the match outcome and the end-of-match panel read.
 - **Seen**: the setter was not located; the hypothesis is the vision update when a unit or building of
-  the other player enters view. Needs an observation or a further reading.
+  the other player enters view. Needs an observation or a further reading. This build reads the vision
+  system's first-contact record under fog, and everyone as seen with fog off (approximation).
 - **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when they
-  want symmetry (corpus). The not-changeable flag is symmetric and also silences stance messages.
+  want symmetry (corpus). The not-changeable flag is symmetric and silences stance messages; this
+  build keeps it in `components/relations.ts`, with no seat command yet that would have to respect it.
+- **External flags**: up to 100 condition slots on a seat's AI handler; a slot takes a script's flag
+  only when its `ai.inc` condition is the external-activate kind. This build keeps the raised slots per
+  player (`components/ai-flags.ts`) for the day that condition layer is modelled; nothing reads them.
 - **Allowed and enabled tables**: per player and tribe: 56 job, 66 good and 55 house-type slots,
   one byte each in an allowed table and an enabled table (produceable for goods). Allowed is the
   map's permission: the per-human update that opens a trade, a good or a house type for a settler
@@ -425,7 +435,9 @@ Readings unless marked otherwise.
   This build keeps both tables per player and tribe (`components/unlocks.ts`): the enabled ones OR
   into the living-trade gates, the allowed ones have no reader, because the content catalog is the
   only permission it models (approximation).
-- **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15.
+- **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15. This build answers
+  from its per-cell fog masks: explored everywhere with fog off, known terrain counting in RECON, and a
+  script reveal writes EXPLORED without downgrading a VISIBLE cell.
 
 ## Tributes
 

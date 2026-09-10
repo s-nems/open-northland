@@ -9,6 +9,7 @@ import {
   Person,
   Position,
   recordHumanKill,
+  recordPlayerAttack,
 } from '../../../../../../components/index.js';
 import type { AtomicEffect } from '../../../../../../core/atomic-effect.js';
 import { eventAt } from '../../../../../../core/events.js';
@@ -143,6 +144,11 @@ export function resolveCombatHit(
   if (!saved) health.hitpoints = Math.max(0, health.hitpoints - dealt);
   provokeAnger(world, ctx, target);
   provokeHostility(world, ctx, attacker, target);
+  // A damaging blow on a human marks its owner as attacked by the striker's owner, shield or no shield:
+  // the original's damage callback fires on the computed damage, before the pool is touched.
+  if (dealtDamage && world.has(target, Person)) {
+    recordPlayerAttack(world, ownerOf(world, target), ownerOf(world, attacker));
+  }
   if (dealtDamage) grantFightExperience(world, ctx, attacker, weaponMainType);
   if (health.hitpoints <= 0) {
     if (wasAlive) {

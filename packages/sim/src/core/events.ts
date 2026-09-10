@@ -239,15 +239,16 @@ export type SimEvent =
     }
   | {
       /**
-       * A match participant died this tick: the MatchSystem found it without a living adult man. Emitted
-       * once per player; its commands are refused from now on.
+       * The player lost this tick: the MatchSystem found the participant without a living adult man, after
+       * which its commands are refused, or the map's script fired `MissionFailed` for it, which leaves
+       * its commands alone. The match rule emits it once per player; a script emits it each time it fires.
        */
       readonly kind: 'playerDefeated';
       readonly player: number;
     }
   | {
-      /** A match participant won this tick: every seat still standing is a mutual friend of the others.
-       *  Emitted once per winning player, all in the same tick. */
+      /** The player won this tick: every seat still standing is a mutual friend of the others (once per
+       *  winner, all in the same tick), or the map's script fired `MissionWon` for it. */
       readonly kind: 'playerWon';
       readonly player: number;
     }

@@ -8,7 +8,8 @@ Original maps configure the autonomous AI per player in `map.ini` `[AIData]` (sc
 (vocabulary confirmed in `the original` strings). Free-play maps ship an empty `[AIData]`, meaning
 full HAI for AI-type players. Honoring these toggles makes imported scenario maps behave as
 authored because their choreographed garrisons stay static instead of sprouting an economy. The scripted
-`AI_MainTask_*`/`AI_SetCondition_*` layer in the same section stays out of scope.
+`AI_MainTask_*`/`AI_SetCondition_*` layer in the same section stays out of scope; the flags a map
+script's `SetExternalFlag` raises for it already land in `components/ai-flags.ts`, unread.
 
 ## Scope
 

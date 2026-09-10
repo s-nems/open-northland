@@ -12,7 +12,8 @@ import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../nav/halfce
 import { canonicalById } from '../spatial/nodes.js';
 import { missionObjects } from './object-index.js';
 
-function entityPoint(world: World, e: Entity): HalfCellNode | undefined {
+/** The map point an entity stands on; an entity with no position is nowhere. */
+export function entityPoint(world: World, e: Entity): HalfCellNode | undefined {
   const at = world.tryGet(e, Position);
   return at === undefined ? undefined : nodeOfPosition(at.x, at.y);
 }

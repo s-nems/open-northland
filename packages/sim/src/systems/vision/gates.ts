@@ -37,6 +37,22 @@ function playerSeesNode(fog: FogState | undefined, player: number, hx: number, h
 }
 
 /**
+ * Whether `player` has explored the half-cell node (hx, hy): its cell reads at least EXPLORED under the
+ * mode the last rebuild ran, so RECON's known terrain counts as explored, and fog off or absent reads
+ * explored everywhere.
+ */
+export function playerExploredNode(
+  fog: FogState | undefined,
+  player: number,
+  hx: number,
+  hy: number,
+): boolean {
+  if (fog === undefined || fog.activeMode === FOG_MODE.OFF) return true;
+  const { cx, cy } = cellOfNode(hx, hy);
+  return effectiveFogState(fog, fog.activeMode, player, cx, cy) >= FOG_STATE.EXPLORED;
+}
+
+/**
  * Whether `viewer` has discovered `other` - the first-contact gate the diplomacy roster reads. With fog
  * off or absent everything is in plain sight, so every player reads discovered, mirroring
  * {@link playerSeesEntity}; under fog the vision system's recorded contacts decide. A player always

@@ -18,6 +18,17 @@ const matchRules = defineWorldSingleton<{
  */
 export const MatchRules = matchRules.component;
 
+const scriptVerdicts = defineWorldSingleton<{
+  /** Players a script's `MissionWon` named. */
+  won: number;
+  /** Players a script's `MissionFailed` named; their commands stay accepted (approximation). */
+  lost: number;
+}>('ScriptVerdicts', () => ({ won: 0, lost: 0 }));
+
+/** The outcome a map script declares, apart from the skirmish rule: any valid slot, participant or
+ *  not, since a campaign map decides for whoever it names. */
+export const ScriptVerdicts = scriptVerdicts.component;
+
 export type MatchOutcome = 'undecided' | 'defeat' | 'victory';
 
 export function playerBit(player: number): number {
@@ -39,8 +50,18 @@ export function deadPlayerBits(world: World): number {
   return matchRules.read(world).dead;
 }
 
+/** The skirmish rule's winners; a non-zero set is a decided match, and a script's verdicts are not
+ *  part of it because the death check keeps running after a scripted win (reading). */
 export function wonPlayerBits(world: World): number {
   return matchRules.read(world).won;
+}
+
+export function wonByScriptBits(world: World): number {
+  return scriptVerdicts.read(world).won;
+}
+
+export function lostByScriptBits(world: World): number {
+  return scriptVerdicts.read(world).lost;
 }
 
 export function isMatchParticipant(world: World, player: number): boolean {
@@ -57,9 +78,13 @@ export function matchEnded(world: World): boolean {
   return rules.participants !== 0 && ((rules.dead | rules.won) & rules.participants) === rules.participants;
 }
 
+/** A defeat outranks a victory: a seat that died, or that a script failed, has lost whatever else is
+ *  marked. */
 export function matchOutcome(world: World, player: number): MatchOutcome {
-  if (isPlayerDead(world, player)) return 'defeat';
-  if (isValidPlayer(player) && (wonPlayerBits(world) & playerBit(player)) !== 0) return 'victory';
+  if (!isValidPlayer(player)) return 'undecided';
+  const bit = playerBit(player);
+  if (isPlayerDead(world, player) || (lostByScriptBits(world) & bit) !== 0) return 'defeat';
+  if (((wonPlayerBits(world) | wonByScriptBits(world)) & bit) !== 0) return 'victory';
   return 'undecided';
 }
 
@@ -86,5 +111,15 @@ export function markPlayerDead(world: World, player: number): void {
 export function markPlayersWon(world: World, bits: number): void {
   matchRules.write(world, (rules) => {
     rules.won = bits & rules.participants;
+  });
+}
+
+/** Record a script's verdict for `player`. A mark already held takes no write. */
+export function markScriptVerdict(world: World, player: number, verdict: 'won' | 'lost'): void {
+  if (!isValidPlayer(player)) return;
+  const bit = playerBit(player);
+  if ((scriptVerdicts.read(world)[verdict] & bit) !== 0) return;
+  scriptVerdicts.write(world, (verdicts) => {
+    verdicts[verdict] |= bit;
   });
 }
