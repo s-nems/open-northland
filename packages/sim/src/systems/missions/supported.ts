@@ -33,6 +33,12 @@ export const SUPPORTED_GOALS = [
   'NumberOfCivilainsNearPos',
   'NumberOfHousesInArea',
   'NumberOfAnimalsInArea',
+  'GoodsInHouses',
+  'GoodsGlobal',
+  'NumberOfGoodsInArea',
+  'NumberOfGoodsInHousesInArea',
+  'JobEnabled',
+  'GoodProduceable',
 ] as const satisfies readonly MissionGoalOp['opcode'][];
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
@@ -71,4 +77,14 @@ export const SUPPORTED_RESULTS = [
   'SetPlayerBehaviourFlag',
   'SetImportHumanFlag',
   'SetHouseBehaviourFlag',
+  'AddGoodsToHouses',
+  'AddGoodsToAnyStock',
+  'AddGoodsToMapArea',
+  'RemoveGoodsFromMapArea',
+  'AllowJob',
+  'EnableJob',
+  'AllowHouse',
+  'EnableHouse',
+  'AllowGood',
+  'EnableGood',
 ] as const satisfies readonly MissionResultOp['opcode'][];

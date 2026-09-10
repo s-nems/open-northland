@@ -26,3 +26,4 @@ export * from './signpost.js';
 export * from './social.js';
 export * from './statistics.js';
 export * from './training.js';
+export * from './unlocks.js';

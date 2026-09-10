@@ -1,6 +1,13 @@
 // The cross-system store and economy read model: what a store can hold, what a workplace makes, and who
 // staffs it. A leaf module, so every per-system file can import it without creating cycles.
-export { bankedSlot, isYardHeap, lowestStockedGood, MAX_GROUND_STACK, stockCapacity } from './capacity.js';
+export {
+  bankedSlot,
+  isLoosePile,
+  isYardHeap,
+  lowestStockedGood,
+  MAX_GROUND_STACK,
+  stockCapacity,
+} from './capacity.js';
 export {
   constructionBillOf,
   constructionMaterialsPresent,

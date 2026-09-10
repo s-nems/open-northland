@@ -13,6 +13,8 @@ followed by a silently rejected command.
   interaction as an approximation.
 - Consult the `ProgressionRules` singleton the way `goodEnabled` does
   (`progression/unlocks.ts`): with profession progression off, building unlocks must lift too.
+- Keep the map script's `EnableHouse` grant as the gate's second source: `buildingEnabled` already
+  ORs `scriptEnables` in ahead of the living-trade rule, and the HUD must show such a house as open.
 - Expose the same enablement in the building menu, upgrade control, and placement probe, including a
   localized explanation of the enabling trade.
 - Re-enable the sim gate, unskip its tests (including the paper bypass in `test/chests/papers.test.ts`:

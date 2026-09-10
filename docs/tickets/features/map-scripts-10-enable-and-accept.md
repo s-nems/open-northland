@@ -1,9 +1,9 @@
 # Enable mission scripts by default and accept them on a real map
 
 **Area:** sim, app · **Focus:** acceptance · **Priority:** P2
-**Blocked by:** [map-scripts-5-economy-and-tech.md](map-scripts-5-economy-and-tech.md)
+**Blocked by:** [map-scripts-8-tributes.md](map-scripts-8-tributes.md)
 
-Map-scripts epic, stage 10 of 10. Also needs stages 7, 8, and 9 merged; check the coverage report
+Map-scripts epic, stage 10 of 10. Also needs stages 7 and 9 merged; check the coverage report
 before starting.
 
 With the executors in place, `MissionRules` still defaults to off and only `?missions=on` turns a
@@ -20,7 +20,8 @@ end, and records what the original confirms.
 - Observe the original for the timing constants in the open questions of
   [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md) and rewrite those readings as observations
   or corrections.
-- Vehicles, sub-missions, chests, guides, wall gates, campaign map unlocks, and the FMV opcode stay
+- Vehicles, sub-missions, chests, guides, wall gates, campaign map unlocks, the FMV opcode, and the
+  `NumberOfGoodsTraded` goal (three corpus lines; no trade ledger exists to count) stay
   unsupported and reported; file tickets for them only when their systems exist. The authored
   `vehicles` and `guides` lanes are already extracted and wait for those systems.
 

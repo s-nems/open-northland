@@ -1,7 +1,6 @@
 # Add tributes: script demands, payment, and the tribute window
 
 **Area:** sim, app · **Focus:** `systems/missions`, HUD · **Priority:** P2
-**Blocked by:** [map-scripts-5-economy-and-tech.md](map-scripts-5-economy-and-tech.md)
 
 Map-scripts epic, stage 8 of 10. Reference: [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md),
 "Tributes".

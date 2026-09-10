@@ -11,6 +11,12 @@ export {
   endRestTail,
   swingWorkUnits,
 } from './harvest-burst.js';
-export { dropOrStackGood, placeUnitOnTile, spillOverRings } from './piles.js';
+export {
+  dropOrStackGood,
+  placeUnitOnTile,
+  reapEmptyLoosePile,
+  spillOverRings,
+  stackOntoTile,
+} from './piles.js';
 export { drawUtilityGood, pickupFromStore, pileupIntoStore } from './transfer.js';
 export { isUsed } from './wear.js';

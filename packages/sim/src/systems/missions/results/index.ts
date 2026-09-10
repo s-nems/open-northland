@@ -6,6 +6,7 @@ import {
   setImportMarker,
   setPlayerBehaviour,
 } from './behaviour.js';
+import { addGoodsToAnyStock, addGoodsToArea, addGoodsToHouses, removeGoodsFromArea } from './goods.js';
 import { damageHousesInArea, healHumansInArea } from './health.js';
 import { placeScriptedHouse, setScriptedHouseLevel } from './houses.js';
 import { moveUnitsInArea, sendScriptedHumans, stopPlayerHumans, teleportScriptedHumans } from './movement.js';
@@ -24,6 +25,7 @@ import {
   removeScriptedHumans,
 } from './remove.js';
 import { spawnScriptedAnimal, spawnScriptedHumans } from './spawn.js';
+import { grantUnlock } from './tech.js';
 
 /** Execute one result of mission `index`. An opcode with no executor is reported and does nothing;
  *  nothing here throws, because a corpus script must never halt a running world. */
@@ -127,6 +129,26 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
     case 'ChangeMissionIdOfHumanInRange':
     case 'ChangeHumanObjectIdInArea':
       stampHumansInRange(pass, result.player, result.humanId, result.point, result.range);
+      return;
+    case 'AddGoodsToHouses':
+      addGoodsToHouses(pass, result.objectId, result.good, result.amount);
+      return;
+    case 'AddGoodsToAnyStock':
+      addGoodsToAnyStock(pass, result.player, result.good, result.amount);
+      return;
+    case 'AddGoodsToMapArea':
+      addGoodsToArea(pass, index, result);
+      return;
+    case 'RemoveGoodsFromMapArea':
+      removeGoodsFromArea(pass, index, result);
+      return;
+    case 'AllowJob':
+    case 'EnableJob':
+    case 'AllowHouse':
+    case 'EnableHouse':
+    case 'AllowGood':
+    case 'EnableGood':
+      grantUnlock(pass, result);
       return;
     default:
       pass.report(index, result.opcode);

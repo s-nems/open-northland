@@ -9,6 +9,14 @@ import {
   soldiersDiedHolds,
 } from './goals/casualties.js';
 import {
+  goodProduceableHolds,
+  goodsGlobalHolds,
+  goodsInAreaHolds,
+  goodsInHousesHolds,
+  goodsInHousesInAreaHolds,
+  jobEnabledHolds,
+} from './goals/goods.js';
+import {
   attachedToWorkHouseHolds,
   buildHousesHolds,
   buildHumansHolds,
@@ -129,6 +137,18 @@ function goalHolds(
       return housesInArea(pass.world, op);
     case 'NumberOfAnimalsInArea':
       return animalsInArea(pass.world, op);
+    case 'GoodsInHouses':
+      return goodsInHousesHolds(pass, op.objectId, op.good, op.amount);
+    case 'GoodsGlobal':
+      return goodsGlobalHolds(pass, op.player, op.good, op.amount);
+    case 'NumberOfGoodsInArea':
+      return goodsInAreaHolds(pass, op);
+    case 'NumberOfGoodsInHousesInArea':
+      return goodsInHousesInAreaHolds(pass, op);
+    case 'JobEnabled':
+      return jobEnabledHolds(pass, op);
+    case 'GoodProduceable':
+      return goodProduceableHolds(pass, op);
     default:
       pass.report(index, op.opcode);
       // An opcode this build cannot judge holds nowhere, so its mission waits rather than firing on

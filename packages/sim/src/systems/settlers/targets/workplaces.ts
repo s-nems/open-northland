@@ -1,4 +1,11 @@
-import { Building, JobAssignment, Position, Resource, UnderConstruction } from '../../../components/index.js';
+import {
+  Building,
+  JobAssignment,
+  ownerOf,
+  Position,
+  Resource,
+  UnderConstruction,
+} from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -36,7 +43,7 @@ export function boundWorkplaceTarget(
   if (world.has(workplace, UnderConstruction)) return null;
   if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;
-  if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null;
+  if (!buildingEnabled(world, ctx, ownerOf(world, workplace), tribe, building.buildingType)) return null;
   if (!world.has(workplace, Position)) return null;
   return workplace;
 }

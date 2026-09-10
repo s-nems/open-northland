@@ -79,6 +79,26 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
     point: POINT,
     range: 3,
   },
+  GoodsInHouses: { opcode: 'GoodsInHouses', objectId: 7, good: 1, amount: 1 },
+  GoodsGlobal: { opcode: 'GoodsGlobal', player: 0, good: 1, amount: 1 },
+  NumberOfGoodsInArea: {
+    opcode: 'NumberOfGoodsInArea',
+    player: 0,
+    good: 1,
+    amount: 1,
+    point: POINT,
+    range: 3,
+  },
+  NumberOfGoodsInHousesInArea: {
+    opcode: 'NumberOfGoodsInHousesInArea',
+    player: 0,
+    good: 1,
+    amount: 1,
+    point: POINT,
+    range: 3,
+  },
+  JobEnabled: { opcode: 'JobEnabled', player: 0, tribe: 1, job: 1 },
+  GoodProduceable: { opcode: 'GoodProduceable', player: 0, tribe: 1, good: 1 },
 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
@@ -179,6 +199,32 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
     range: 4,
     humanId: 7,
   },
+  AddGoodsToHouses: { opcode: 'AddGoodsToHouses', objectId: 7, good: 1, amount: 1 },
+  AddGoodsToAnyStock: { opcode: 'AddGoodsToAnyStock', player: 0, good: 1, amount: 1 },
+  AddGoodsToMapArea: {
+    opcode: 'AddGoodsToMapArea',
+    good: 1,
+    amount: 1,
+    point: POINT,
+    range: 2,
+    flag: false,
+    player: 0,
+  },
+  RemoveGoodsFromMapArea: {
+    opcode: 'RemoveGoodsFromMapArea',
+    good: 1,
+    amount: 1,
+    point: POINT,
+    range: 2,
+    flag: false,
+    player: 0,
+  },
+  AllowJob: { opcode: 'AllowJob', player: 0, tribe: 1, job: 1 },
+  EnableJob: { opcode: 'EnableJob', player: 0, tribe: 1, job: 1 },
+  AllowHouse: { opcode: 'AllowHouse', player: 0, tribe: 1, houseType: 1 },
+  EnableHouse: { opcode: 'EnableHouse', player: 0, tribe: 1, houseType: 1 },
+  AllowGood: { opcode: 'AllowGood', player: 0, tribe: 1, good: 1 },
+  EnableGood: { opcode: 'EnableGood', player: 0, tribe: 1, good: 1 },
 };
 
 function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): string[] {

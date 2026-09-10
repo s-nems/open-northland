@@ -24,19 +24,19 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
   it('follows a spawn, a trade change, and a death with no tick boundary between probes', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false); // nobody alive holds the trade
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false); // nobody alive holds the trade
 
     const cutter = settlerAt(sim, { jobType: WOODCUTTER, tribe: VIKING });
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(true);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(true);
 
     setSettlerJob(sim.world, cutter, MINER); // retrained out of the enabling trade
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false);
 
     setSettlerJob(sim.world, cutter, WOODCUTTER);
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(true);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(true);
 
     sim.world.destroy(cutter); // the tribe's last woodcutter dies mid-tick
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
@@ -44,7 +44,7 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
     const cutter = settlerAt(sim, { jobType: WOODCUTTER, tribe: VIKING });
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(true);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(true);
 
     // Re-`add` is the only way a settler's tribe can change, so the memo leans on it bumping the
     // membership generation even though the entity was already in the store.
@@ -54,7 +54,7 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
       experience: new Map(cutterState.experience),
       tribe: OTHER_TRIBE,
     });
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
@@ -63,7 +63,7 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
     const ctx = ctxOf(sim);
     settlerAt(sim, { jobType: WOODCUTTER, tribe: OTHER_TRIBE });
 
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
@@ -71,10 +71,10 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
     const cutter = settlerAt(sim, { jobType: WOODCUTTER, tribe: VIKING });
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(true);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(true);
 
     setSettlerJob(sim.world, cutter, null); // unemployed: a trade nobody works unlocks nothing
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 
@@ -82,14 +82,14 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
     const cutter = settlerAt(sim, { jobType: WOODCUTTER, tribe: VIKING });
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(true); // builds the memo
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(true); // builds the memo
 
     // What `readonly jobType` prevents in real code: a raw store write with no value-generation bump.
     (sim.world.get(cutter, Settler) as { jobType: number | null }).jobType = MINER;
     expect(sim.world.verifyCaches().join('\n')).toContain('aliveTribeJobs');
 
     setSettlerJob(sim.world, cutter, MINER); // the same trade through the seam - the next read rebuilds
-    expect(goodEnabled(sim.world, ctx, VIKING, PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, undefined, VIKING, PLANK)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
   });
 });

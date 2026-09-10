@@ -60,9 +60,14 @@ export function summonToWorkplaces(world: World, ctx: SystemContext): void {
       if (!inputsOnHand(stock, recipe)) continue;
       const token = recipe.outputs[0]?.goodType;
       if (token !== undefined && (stock.get(token) ?? 0) > 0) continue; // backlog first
-      if (token !== undefined && !tokenConsumable(world, ctx, b.tribe, token, recipes)) continue;
+      if (
+        token !== undefined &&
+        !tokenConsumable(world, ctx, ownerOf(world, building), b.tribe, token, recipes)
+      ) {
+        continue;
+      }
       if (hasVisitor(world, building, tribe)) continue;
-      if (!recipeOutputsEnabled(world, ctx, b.tribe, recipe)) continue;
+      if (!recipeOutputsEnabled(world, ctx, ownerOf(world, building), b.tribe, recipe)) continue;
       // Pen scan before the seat read: the scan walks the small Livestock store, while the seat count
       // needs the settler node index, which an empty pen never builds.
       const best = feedAnimalPick(world, ctx, building, tribe);
@@ -123,13 +128,14 @@ function feedRecipeOfTribe(
 function tokenConsumable(
   world: World,
   ctx: SystemContext,
+  owner: number | undefined,
   tribe: number,
   token: number,
   recipes: ReadonlyMap<number, Recipe>,
 ): boolean {
   for (const recipe of recipes.values()) {
     if (!recipe.inputs.some((i) => i.goodType === token)) continue;
-    if (recipeOutputsEnabled(world, ctx, tribe, recipe)) return true;
+    if (recipeOutputsEnabled(world, ctx, owner, tribe, recipe)) return true;
   }
   return false;
 }

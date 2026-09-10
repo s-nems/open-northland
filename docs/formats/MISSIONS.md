@@ -172,7 +172,7 @@ kinds in order.
 | 3 | `BuildHouses` | 1, 15, 7, 14 | the player owns at least `amount` finished houses of the type; every match gets object id `arg4` | 165 |
 | 4 | `GoodsInVehicles` | 12, 6, 7 | vehicles with the id hold at least `amount` of the good in total | 3 |
 | 5 | `GoodsInHouses` | 14, 6, 7 | houses with the id hold at least `amount` of the good in total | 10 |
-| 6 | `GoodsGlobal` | 1, 6, 7 | the player's houses that can store the good hold at least `amount` in total | 11 |
+| 6 | `GoodsGlobal` | 1, 6, 7 | the player's houses hold at least `amount` of the good as their own stock: everything a storage or a home shelves, of a workplace only what it makes, never its inputs | 11 |
 | 7 | `FindPos` | 1, 16, 17 | the map point has been explored by the player (player 16 or more: always) | 23 |
 | 8 | `FindHumans` | 1, 10 | any human with the id stands on a point explored by the player | 0 |
 | 9 | `FindVehicles` | 1, 12 | as above for vehicles | 6 |
@@ -220,9 +220,9 @@ kinds in order.
 | 51 | `NumberOfSoldiersNearPos` | 1, 16, 17, 9, 7 | at least `amount` non-hero soldiers of the player within `range`, vehicle crews included | 24 |
 | 52 | `NumberOfCivilainsNearPos` | 1, 16, 17, 9, 7 | as above for civilians; a hero counts in neither | 14 |
 | 53 | `ChestNearPos` | 16, 17, 9 | a chest landscape lies within `range` of the point | 6 |
-| 54 | `NumberOfGoodsInArea` | 1, 6, 7, 16, 17, 9 | goods on the ground plus goods in the player's finished houses within `range` reach `amount` | 113 |
+| 54 | `NumberOfGoodsInArea` | 1, 6, 7, 16, 17, 9 | goods on the ground plus the own stock (as `GoodsGlobal`) of the player's finished houses within `range` reach `amount` | 113 |
 | 55 | `NumberOfHousesInArea` | 1, 15, 7, 16, 17, 9 | the player has at least `amount` finished houses of the type within `range` | 33 |
-| 56 | `NumberOfGoodsInHousesInArea` | 1, 6, 7, 16, 17, 9 | goods in the player's finished houses within `range` reach `amount` | 8 |
+| 56 | `NumberOfGoodsInHousesInArea` | 1, 6, 7, 16, 17, 9 | the own stock of the player's finished houses within `range` reaches `amount` | 8 |
 | 57 | `NumberOfVehiclesInArea` | 1, 5, 7, 16, 17, 9 | the player has at least `amount` vehicles of the type within `range` | 4 |
 | 58 | `NumberOfAnimalsInArea` | 1, 3, 7, 16, 17, 9 | the player has at least `amount` animals of the species within `range` | 11 |
 | 59 | `CheckHumanJob` | 10, 4 | any human with the id has the job | 10 |
@@ -273,7 +273,7 @@ of each.
 | 28 | `AddTributeGoods` | 28, 6, 7 | add a demand (up to 5 kinds per slot); marks the slot unpaid | sim | 1135 |
 | 29 | `AllowJob` | 1, 3, 4 | allow the job for the player's tribe and refresh its humans | sim | 5 |
 | 30 | `AllowHouse` | 1, 3, 15 | allow the house type for the player's tribe | sim | 11 |
-| 31 | `AddGoodsToHouses` | 14, 6, 7 | add the amount to every house with the id that can store the good | sim | 459 |
+| 31 | `AddGoodsToHouses` | 14, 6, 7 | add the amount to every house with the id that has a slot for the good; the write is not capped at the slot | sim | 459 |
 | 32 | `StartSubMission` | 31, 22 | after the pass: save the game, load the campaign sub map, embed the save | sim | 46 |
 | 33 | `EndSubMission` | | after the pass: restore the embedded parent game | sim | 42 |
 | 34 | `ChangeVehiclesPlayerId` | 12, 1 | hand vehicles with the id to the player | sim | 28 |
@@ -306,8 +306,8 @@ of each.
 | 61 | `SetWeather` | 16, 17, 9, 32, 7 | enable or disable a weather effect over the square of half-side `range` | app | 207 |
 | 62 | `StartEarthQuake` | 35 | shake for `seconds`, with its sound | app | 122 |
 | 63 | `SelectHuman` | 10, 32 | select the first human with the id | app | 7 |
-| 64 | `AddGoodsToMapArea` | 6, 7, 16, 17, 9, 32, 1 | drop goods on the ground, spiralling outward from the point until the amount is placed | sim | 206 |
-| 65 | `RemoveGoodsFromMapArea` | 6, 7, 16, 17, 9, 32, 1 | pick goods up from the ground the same way | sim | 31 |
+| 64 | `AddGoodsToMapArea` | 6, 7, 16, 17, 9, 32, 1 | drop goods on the ground, spiralling outward from the point until the amount is placed; with the flag, the player's finished house standing on a point takes its fill first | sim | 206 |
+| 65 | `RemoveGoodsFromMapArea` | 6, 7, 16, 17, 9, 32, 1 | pick goods up the same way; with the flag, out of the player's houses' own stock first | sim | 31 |
 | 66 | `ChangeMissionIdOfHumanInRange` | 1, 10, 16, 17, 9 | give the player's humans within `range` the id | sim | 39 |
 | 67 | `ChangeMissionIdOfPlayer` | 1, 10 | give every human of the player the id | sim | 1 |
 | 68 | `SetVertexColor` | 16, 17, 9, 7 | tint the terrain within `range` | app | 413 |
@@ -415,8 +415,16 @@ Readings unless marked otherwise.
   the other player enters view. Needs an observation or a further reading.
 - **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when they
   want symmetry (corpus). The not-changeable flag is symmetric and also silences stance messages.
-- **Enabled and allowed tables**: per player and tribe: 56 job slots, 66 good slots, 55 house-type
-  slots, one byte each for "allowed" and "enabled" (produceable for goods).
+- **Allowed and enabled tables**: per player and tribe: 56 job, 66 good and 55 house-type slots,
+  one byte each in an allowed table and an enabled table (produceable for goods). Allowed is the
+  map's permission: the per-human update that opens a trade, a good or a house type for a settler
+  (its experience or education permitting, or an AI seat) first requires the player's allowed byte,
+  and `Allow*` writes it. Enabled is the tech-tree progress that update records once any settler of
+  the player gained the ability, with a "new ability" message; `Enable*` writes it outright, a chest
+  reward writes the produceable byte the same way, and `JobEnabled` and `GoodProduceable` read it.
+  This build keeps both tables per player and tribe (`components/unlocks.ts`): the enabled ones OR
+  into the living-trade gates, the allowed ones have no reader, because the content catalog is the
+  only permission it models (approximation).
 - **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15.
 
 ## Tributes

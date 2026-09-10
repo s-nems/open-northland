@@ -83,17 +83,16 @@ export function lowestStockedGood(stock: { amounts: ReadonlyMap<number, number> 
   return lowest;
 }
 
-/**
- * Whether `e` is a loose gatherer-yard heap: a bare positioned stockpile that is none of a building store,
- * a boat hull, an uncollected trunk, or a delivery-flag marker.
- */
-export function isYardHeap(world: World, e: Entity): boolean {
+/** Whether `e` is a heap lying on the ground: a positioned stockpile that is neither a building store nor
+ *  a boat hull, whatever marker it carries. */
+export function isLoosePile(world: World, e: Entity): boolean {
   return (
-    world.has(e, Stockpile) &&
-    world.has(e, Position) &&
-    !world.has(e, Building) &&
-    !world.has(e, Vehicle) &&
-    !world.has(e, GroundDrop) &&
-    !world.has(e, DeliveryFlag)
+    world.has(e, Stockpile) && world.has(e, Position) && !world.has(e, Building) && !world.has(e, Vehicle)
   );
+}
+
+/** Whether `e` is a loose gatherer-yard heap: a {@link isLoosePile} that is neither an uncollected trunk
+ *  nor a delivery-flag marker. */
+export function isYardHeap(world: World, e: Entity): boolean {
+  return isLoosePile(world, e) && !world.has(e, GroundDrop) && !world.has(e, DeliveryFlag);
 }

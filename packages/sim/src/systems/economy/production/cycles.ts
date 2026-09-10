@@ -2,6 +2,7 @@ import type { Recipe } from '@open-northland/data';
 import {
   Building,
   consumeGoods,
+  ownerOf,
   Production,
   type ProductionCycle,
   Stockpile,
@@ -32,7 +33,11 @@ export function startableCycleCount(
   building: Entity,
   recipe: Recipe,
 ): number {
-  if (!recipeOutputsEnabled(world, ctx, world.get(building, Building).tribe, recipe)) return 0;
+  if (
+    !recipeOutputsEnabled(world, ctx, ownerOf(world, building), world.get(building, Building).tribe, recipe)
+  ) {
+    return 0;
+  }
   // Both halves are already >= 0, so the combined count needs no further clamp.
   const cycles = Math.min(
     inputStockForCycles(world, building, recipe),
@@ -90,9 +95,10 @@ export function shelfBlockedOutput(world: World, ctx: SystemContext, building: E
   const recipes = recipesByProductOf(world, ctx, building);
   if (recipes === undefined) return null;
   const stock = world.get(building, Stockpile).amounts;
+  const owner = ownerOf(world, building);
   let blocked: number | null = null;
   for (const recipe of recipes.values()) {
-    if (!recipeOutputsEnabled(world, ctx, b.tribe, recipe)) continue; // locked: shipping a unit would not help
+    if (!recipeOutputsEnabled(world, ctx, owner, b.tribe, recipe)) continue; // locked: shipping a unit would not help
     if (inputStockForCycles(world, building, recipe) < 1) continue; // starved: the fetch rung owns this one
     if (outputRoomForCycles(world, ctx, building, recipe) > 0) return null;
     blocked ??= stockedOutput(stock, recipe);
@@ -212,7 +218,13 @@ export function depositCycleOutput(
     const meat = livestockMeatGoodOf(ctx.content);
     if (meat !== null) {
       const have = stock.get(meat) ?? 0;
-      const unlocked = goodEnabled(world, ctx, world.get(building, Building).tribe, meat);
+      const unlocked = goodEnabled(
+        world,
+        ctx,
+        ownerOf(world, building),
+        world.get(building, Building).tribe,
+        meat,
+      );
       if (unlocked && have < stockCapacity(world, ctx, building, meat)) {
         setStockAmount(world, building, meat, have + 1);
         ctx.events.emit({ kind: 'goodProduced', building, goodType: meat, amount: 1 });

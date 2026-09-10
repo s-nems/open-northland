@@ -2,11 +2,10 @@
 
 **Area:** sim · **Priority:** P3
 
-The `job` kind of the `jobEnables` tech-graph is now read by nothing. Its only consumer was
-`jobEnabled`, which the automatic employment pass called; with that pass gone, `jobEnabled` was
-deleted and `tribeUnlockEnabled` is reached only with `'house'` (a kill-switched no-op),
-`'good'` and `'vehicle'`. The extracted edges are still parsed
-(`core/content-index/progression.ts`) and still in `ir.json` - they simply gate nothing.
+The `job` kind of the `jobEnables` tech-graph gates no order. Its one reader is `jobEnabled`
+(`progression/unlocks.ts`), which answers the map script's `JobEnabled` goal beside the script's own
+`EnableJob` grant; no command consults it. The automatic employment pass that once did is gone. The
+extracted edges are still parsed (`core/content-index/progression.ts`) and still in `ir.json`.
 
 The rule they encode is real: `jobEnablesJob <jobType> <targetJob>` means a tribe cannot take up a
 specialization until a settler of the prerequisite trade exists (a smith unlocking a weaponsmith).
@@ -20,8 +19,8 @@ per-settler `needforjob` XP threshold.
 Decide one:
 
 - apply the gate in `setJob` (and grey the row out in the picker, with the enabling trade named), or
-- record the rule as deliberately unmodeled at the `JobEnablesKind` seam and drop the `job` edges
-  from the content index.
+- record the rule as deliberately unmodeled at the `JobEnablesKind` seam, leaving the `job` edges to
+  the mission goal alone.
 
 Either way the outcome must be visible in the source, not implied by an absent call.
 

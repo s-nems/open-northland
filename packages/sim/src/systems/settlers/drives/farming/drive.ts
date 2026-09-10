@@ -8,6 +8,7 @@ import {
   Crop,
   FarmTask,
   JobAssignment,
+  ownerOf,
   Position,
   UnderConstruction,
 } from '../../../../components/index.js';
@@ -52,7 +53,7 @@ function boundFarmTarget(
   if (spec === null) return null;
   if (!jobAtomics(ctx, jobType).has(spec.plantAtomic)) return null; // not the field trade (a carrier)
   if (!buildingWorkerJobs(world, ctx, b).has(jobType)) return null;
-  if (!buildingEnabled(world, ctx, tribe, building.buildingType)) return null;
+  if (!buildingEnabled(world, ctx, ownerOf(world, b), tribe, building.buildingType)) return null;
   if (!world.has(b, Position)) return null;
   return { farm: b, spec };
 }

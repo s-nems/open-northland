@@ -43,7 +43,7 @@ export function openWorkerJobFromList(
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace
-  if (!buildingEnabled(world, ctx, tribe, b.buildingType)) return null;
+  if (!buildingEnabled(world, ctx, ownerOf(world, building), tribe, b.buildingType)) return null;
   const offered = buildingWorkerJobs(world, ctx, building);
   for (const jobType of jobPriority) {
     if (!offered.has(jobType)) continue;

@@ -251,9 +251,9 @@ describe('jobEnables tech-graph under the profession-progression toggle', () => 
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
     // Gated while progression is on: the fixture gates the plank on a woodcutter, and none is alive.
-    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, undefined, 1, 2)).toBe(false);
 
     setProfessionProgression(sim.world, false);
-    expect(goodEnabled(sim.world, ctx, 1, 2)).toBe(true); // free start
+    expect(goodEnabled(sim.world, ctx, undefined, 1, 2)).toBe(true); // free start
   });
 });

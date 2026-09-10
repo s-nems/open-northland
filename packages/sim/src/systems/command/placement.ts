@@ -3,6 +3,7 @@ import {
   DefenceMode,
   Health,
   JobAssignment,
+  ownerOf,
   type Paper,
   PLACING_PAPER_KINDS,
   Position,
@@ -74,7 +75,12 @@ export function placeBuilding(
   if (command.force !== true) {
     // A house paper names its house whether or not the tribe has unlocked it.
     const techGated = paper === undefined || paper.kind === 'placeAny';
-    if (techGated && !buildingEnabled(world, ctx, command.tribe, command.buildingType)) return;
+    if (
+      techGated &&
+      !buildingEnabled(world, ctx, command.owner, command.tribe, command.buildingType)
+    ) {
+      return;
+    }
 
     // The seat's placement rule; a mapless sim validates trivially.
     if (
@@ -165,7 +171,7 @@ export function upgradeBuilding(
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
   const target = type === undefined ? undefined : upgradeTierOf(type, ctx);
   if (target === undefined) return; // top level, unchained, or malformed content
-  if (!buildingEnabled(world, ctx, building.tribe, target.typeId)) return;
+  if (!buildingEnabled(world, ctx, ownerOf(world, command.building), building.tribe, target.typeId)) return;
 
   const stock = world.tryMut(command.building, Stockpile);
   if (stock === undefined) return; // no build hold, so the site could never advance

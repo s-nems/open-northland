@@ -6,7 +6,13 @@ import type {
   Recipe,
   VehicleType,
 } from '@open-northland/data';
-import { isAiPlayer, ownerOf, professionProgressionEnabled, Settler } from '../../components/index.js';
+import {
+  isAiPlayer,
+  ownerOf,
+  professionProgressionEnabled,
+  Settler,
+  scriptEnables,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -20,9 +26,9 @@ import { requirementRepeats } from './bonus.js';
 const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
 
 /**
- * Whether a building of `buildingType` is unlocked for `tribe` right now: the read side of the
+ * Whether a building of `buildingType` is unlocked for `owner`'s `tribe` right now: the read side of the
  * `tribetypes` `jobEnablesHouse <jobType> <houseType>` edges, a house enabled once a settler of the
- * gating job is present in the tribe.
+ * gating job is present in the tribe, or once the map's script enabled it for that player.
  *
  * While {@link BUILDING_UNLOCK_GATE_ENABLED} is false this always returns true; every gate site keeps
  * calling it, so flipping the switch needs no code moves.
@@ -30,32 +36,65 @@ const BUILDING_UNLOCK_GATE_ENABLED: boolean = false;
 export function buildingEnabled(
   world: World,
   ctx: SystemContext,
+  owner: number | undefined,
   tribe: number,
   buildingType: number,
 ): boolean {
   if (!BUILDING_UNLOCK_GATE_ENABLED) return true;
-  return tribeUnlockEnabled(world, ctx, tribe, 'house', buildingType);
+  return (
+    scriptEnables(world, owner, tribe, 'house', buildingType) ||
+    tribeUnlockEnabled(world, ctx, tribe, 'house', buildingType)
+  );
 }
 
 /**
- * Whether producing `goodType` is unlocked for `tribe` right now: the `good` kind of the same
- * `jobEnables` tech-graph, so a tannery makes no leather until the tribe has the tanner that enables it.
+ * Whether producing `goodType` is unlocked for `owner`'s `tribe` right now: the `good` kind of the same
+ * `jobEnables` tech-graph, so a tannery makes no leather until the tribe has the tanner that enables it,
+ * or until the map's script enabled the good for that player.
  */
-export function goodEnabled(world: World, ctx: SystemContext, tribe: number, goodType: number): boolean {
+export function goodEnabled(
+  world: World,
+  ctx: SystemContext,
+  owner: number | undefined,
+  tribe: number,
+  goodType: number,
+): boolean {
   if (!professionProgressionEnabled(world)) return true; // free start: goods are civilian, no carve-out
-  return tribeUnlockEnabled(world, ctx, tribe, 'good', goodType);
+  return (
+    scriptEnables(world, owner, tribe, 'good', goodType) ||
+    tribeUnlockEnabled(world, ctx, tribe, 'good', goodType)
+  );
 }
 
 export function recipeOutputsEnabled(
   world: World,
   ctx: SystemContext,
+  owner: number | undefined,
   tribe: number,
   recipe: Recipe,
 ): boolean {
   for (const output of recipe.outputs) {
-    if (!goodEnabled(world, ctx, tribe, output.goodType)) return false;
+    if (!goodEnabled(world, ctx, owner, tribe, output.goodType)) return false;
   }
   return true;
+}
+
+/**
+ * Whether `jobType` is unlocked for `owner`'s `tribe`: the `job` kind of the `jobEnables` graph, a trade
+ * open once a settler of the enabling trade is alive, or once the map's script enabled it. No order is
+ * gated on it.
+ */
+export function jobEnabled(
+  world: World,
+  ctx: SystemContext,
+  owner: number | undefined,
+  tribe: number,
+  jobType: number,
+): boolean {
+  return (
+    scriptEnables(world, owner, tribe, 'job', jobType) ||
+    tribeUnlockEnabled(world, ctx, tribe, 'job', jobType)
+  );
 }
 
 /**

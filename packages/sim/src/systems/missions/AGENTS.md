@@ -42,6 +42,13 @@ planner, combat, command, trade and movement systems decide what it means. An ev
 bit only for a mechanic that is the script's own - script damage checks the indestructible house bit,
 because no other system deals that damage. Anything else would put one mechanic in two places.
 
+## The unlock tables
+
+A result writes a player's script unlock tables (`components/unlocks.ts`). The progression gates read
+the enabled table beside the living-trade rule, and the `JobEnabled` and `GoodProduceable` goals go
+through those gates rather than the table, so a script and a settler unlock one and the same thing.
+The allowed table has no reader yet.
+
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes
