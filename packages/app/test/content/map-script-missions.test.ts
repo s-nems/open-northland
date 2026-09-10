@@ -36,8 +36,8 @@ const SCRIPT_RUN_PASSES = 6;
  *  these files in parallel; the default 5s budget is not enough under that load. */
 const REAL_MAP_TIMEOUT_MS = 30_000;
 
-/** A CnMod campaign map that opens with 104 of its 149 missions active: a real world, a real script,
- *  and most of its opcodes still without an evaluator. */
+/** A CnMod campaign map that opens with 104 of its 149 missions active: a real world and a real
+ *  script, which opens on a briefing. */
 const CAMPAIGN_MAP = 'ucieczka_z_gazy';
 
 /** The CnMod campaign map whose second mission is the corpus's first wave: `TimeGone 30`, then
@@ -136,20 +136,21 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))(
       'runs a real campaign map with its script on, exactly as `?missions=on` builds it',
       async () => {
         const { sim } = await realMapWorld({ mapId: CAMPAIGN_MAP, aiSeats: [], missions: true });
-        // Events live for one tick, so the diagnostics are collected as the run goes.
-        const unsupported = new Set<string>();
+        // Events live for one tick, so the briefing is caught as the run goes.
+        const briefings: number[] = [];
         for (let tick = 0; tick < systems.MISSION_EVALUATION_TICKS * SCRIPT_RUN_PASSES; tick++) {
           sim.step();
           for (const event of sim.events.current()) {
-            if (event.kind === 'missionUnsupported') unsupported.add(event.opcode);
+            if (event.kind === 'missionCutscene') briefings.push(event.page);
           }
         }
         const records = components.missionRecords(sim.world);
         expect(records.filter((r) => r.evaluated).length).toBeGreaterThan(0);
         // The world is real, so its placements carried their authored ids in with them.
         expect(systems.missionObjectIds(sim.world).length).toBeGreaterThan(0);
-        // An opcode with no evaluator says so instead of throwing.
-        expect(unsupported.size).toBeGreaterThan(0);
+        // The campaign opens on its briefing, which the window would open on and replay.
+        expect(briefings.length).toBeGreaterThan(0);
+        expect(sim.missionBriefingPage()).toBe(briefings[0]);
       },
       REAL_MAP_TIMEOUT_MS,
     );

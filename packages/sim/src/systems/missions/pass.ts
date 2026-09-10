@@ -19,6 +19,9 @@ export interface MissionPass {
   /** Missions whose goals are being evaluated right now, so a `CheckMission` cycle stops instead of
    *  recursing. Approximation: the original recurses without a guard. */
   readonly checking: Set<number>;
+  /** Raised by a result that ends the pass (`PlayCutscene`); the pass finishes the mission that
+   *  raised it and visits no later one. */
+  halted: boolean;
 }
 
 /**

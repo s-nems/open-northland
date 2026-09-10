@@ -1,13 +1,15 @@
-import type { ContentSet, MapDiplomacy } from '@open-northland/data';
+import type { ContentSet, MapDiplomacy, MapHumanName } from '@open-northland/data';
 import { components, type MissionScript, Simulation, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
 import type { AuthoredPlacement } from './authored-placements.js';
 
-/** What a decoded map's script contributes to a fresh world: the `[playerdata]` stances and the
- *  `[MissionData]` triggers. A world built without either runs the same as before both existed. */
+/** What a decoded map's script contributes to a fresh world: the `[playerdata]` stances, the
+ *  `[misc_humannames]` rows the placed humans take their names from, and the `[MissionData]`
+ *  triggers. A world built without any runs the same as before they existed. */
 export interface MapScriptWorld {
   readonly diplomacy?: readonly MapDiplomacy[];
+  readonly humanNames?: readonly MapHumanName[];
   readonly missions?: MissionScript;
 }
 
@@ -93,6 +95,7 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         ...own,
         ...(equipment !== undefined ? { equipment } : {}),
         ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
+        ...(p.nameStringId !== undefined ? { nameStringId: p.nameStringId } : {}),
         ...(p.home !== undefined ? { home: p.home } : {}),
         ...(p.workplace !== undefined ? { workplace: p.workplace } : {}),
         ...(p.missionId !== undefined ? { missionId: p.missionId } : {}),

@@ -2,6 +2,7 @@ import { Building, ownerOf, Person, Position, Settler } from '../../../component
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import type { ContentContext } from '../../context.js';
 import { isHeroJob, isSoldierJob } from '../../readviews/index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
@@ -86,12 +87,25 @@ export function soldiersNearPoint(
   pass: MissionPass,
   op: Extract<MissionGoalOp, { opcode: 'NumberOfSoldiersNearPos' }>,
 ): boolean {
-  const { world, ctx } = pass;
-  return (
-    countPlayerHumansInRange(world, op.player, op.point, op.range, (e) =>
-      isSoldierJob(ctx.content, world.get(e, Settler).jobType),
-    ) >= op.amount
+  return countSoldiersInArea(pass.world, pass.ctx, op.player, op.point, op.range) >= op.amount;
+}
+
+/** The player's soldiers within `range` of the point; a hero is not a soldier here. */
+export function countSoldiersInArea(
+  world: World,
+  ctx: ContentContext,
+  player: number,
+  point: HalfCellNode,
+  range: number,
+): number {
+  return countPlayerHumansInRange(world, player, point, range, (e) =>
+    isSoldierJob(ctx.content, world.get(e, Settler).jobType),
   );
+}
+
+/** Every human of the player within `range` of the point, soldier or not. */
+export function countHumansInArea(world: World, player: number, point: HalfCellNode, range: number): number {
+  return countPlayerHumansInRange(world, player, point, range, () => true);
 }
 
 /** At least `amount` civilians of the player stand within `range` of the point. A hero satisfies
@@ -115,14 +129,26 @@ export function housesInArea(
   op: Extract<MissionGoalOp, { opcode: 'NumberOfHousesInArea' }>,
 ): boolean {
   if (op.amount <= 0) return true; // as the original's `count >= amount` does over an empty area
+  return countHousesInArea(world, op.player, op.houseType, op.point, op.range, op.amount) >= op.amount;
+}
+
+/** The player's finished houses of the type within `range` of the point, counted up to `limit`. */
+export function countHousesInArea(
+  world: World,
+  player: number,
+  houseType: number,
+  point: HalfCellNode,
+  range: number,
+  limit = Number.POSITIVE_INFINITY,
+): number {
   let count = 0;
   for (const e of world.query(Building, Position)) {
     const building = world.get(e, Building);
-    if (building.buildingType !== op.houseType || building.built !== ONE) continue;
-    if (ownerOf(world, e) !== op.player || !withinRange(world, e, op.point, op.range)) continue;
-    if (++count >= op.amount) return true;
+    if (building.buildingType !== houseType || building.built !== ONE) continue;
+    if (ownerOf(world, e) !== player || !withinRange(world, e, point, range)) continue;
+    if (++count >= limit) break;
   }
-  return false;
+  return count;
 }
 
 /** The player has at least `amount` animals of the species within `range` of the point. */
@@ -131,13 +157,25 @@ export function animalsInArea(
   op: Extract<MissionGoalOp, { opcode: 'NumberOfAnimalsInArea' }>,
 ): boolean {
   if (op.amount <= 0) return true;
+  return countAnimalsInArea(world, op.player, op.tribe, op.point, op.range, op.amount) >= op.amount;
+}
+
+/** The player's animals of the species within `range` of the point, counted up to `limit`. */
+export function countAnimalsInArea(
+  world: World,
+  player: number,
+  tribe: number,
+  point: HalfCellNode,
+  range: number,
+  limit = Number.POSITIVE_INFINITY,
+): number {
   let count = 0;
   for (const e of world.query(Settler, Position)) {
-    if (!isMissionAnimal(world, e) || world.get(e, Settler).tribe !== op.tribe) continue;
-    if (!ownedBy(world, e, op.player) || !withinRange(world, e, op.point, op.range)) continue;
-    if (++count >= op.amount) return true;
+    if (!isMissionAnimal(world, e) || world.get(e, Settler).tribe !== tribe) continue;
+    if (!ownedBy(world, e, player) || !withinRange(world, e, point, range)) continue;
+    if (++count >= limit) break;
   }
-  return false;
+  return count;
 }
 
 /** A count needs no order and no array: these goals run over the player's humans every pass. */

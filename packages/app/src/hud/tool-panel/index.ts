@@ -29,6 +29,7 @@ import type { GameSpeedChangeCause, GameSpeedControl, GameSpeedStateSpec } from 
 import { createGoodsDropController } from './goods-drop.js';
 import type { MenuGoodEntry } from './goods-menu.js';
 import { createHeldPaperController } from './held-paper.js';
+import { createInfoLinesOverlay } from './info-lines.js';
 import { createToolPanelInput, type HeldMode, type ToolPanelInput } from './input.js';
 import { buildToolPanelLayout, pointOverToolPanel, type ToolButtonId } from './layout.js';
 import {
@@ -91,7 +92,10 @@ export interface ToolPanelOptions {
   /** That same overlay's box, which the pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
-  readonly missionBrief?: () => MissionBrief | null;
+  /** The mission window's brief for a briefing page, or the map's fallback text with null. */
+  readonly missionBrief?: (page: number | null) => MissionBrief | null;
+  /** The briefing page the mission window opens on from the strip; null before any replayable one. */
+  readonly missionReplayPage?: () => number | null;
   readonly onLargeWindow?: (open: boolean) => void;
   /** The map's sprite sheet, which draws a settler standing on its note; absent leaves the note bare. */
   readonly sheet?: SpriteSheet;
@@ -106,8 +110,11 @@ export interface ToolPanelOptions {
 export interface ToolPanelController {
   /** The decoded UI string lookup the panel resolved for its language, shared with sibling overlays. */
   readonly uiString: UiString;
-  /** Open the mission window (the map's briefing and goals), as the session start does. */
-  openMission(): void;
+  /** Open the mission window (the map's briefing and goals), as the session start does; on `page`
+   *  when a script asked for one. */
+  openMission(page?: number): void;
+  /** The on-screen info lines a map script writes for the seat, top to bottom. */
+  setInfoLines(lines: readonly string[]): void;
   /** True when a client point should be claimed by the HUD (over the strip, an open window, or in placement). */
   claimsPointer(clientX: number, clientY: number): boolean;
   /** True when a client point is over an open pop-up window, which owns the wheel; unlike
@@ -189,11 +196,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   root.zIndex = 1000;
   app.stage.addChild(root);
   const stripContainer = new Container();
+  const infoContainer = new Container();
   const notesContainer = new Container();
   const hoverContainer = new Container();
   const windowContainer = new Container();
   const bannerContainer = new Container();
-  root.addChild(stripContainer, notesContainer, windowContainer, hoverContainer, bannerContainer);
+  root.addChild(stripContainer, infoContainer, notesContainer, windowContainer, hoverContainer, bannerContainer);
 
   let stripSurface: StripSurface | null = null;
   let input: ToolPanelInput | null = null;
@@ -260,6 +268,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       onPayTribute: opts.onPayTribute,
       art,
       missionBrief: opts.missionBrief ?? ((): null => null),
+      missionReplayPage: opts.missionReplayPage ?? ((): null => null),
       history,
       ...(opts.onLargeWindow !== undefined ? { onLargeWindow: opts.onLargeWindow } : {}),
       onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
@@ -312,6 +321,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     };
 
     const activateButton = (id: ToolButtonId): void => applyToolButtonEffect(surfaces, id);
+    const infoLines = createInfoLinesOverlay(ctx, infoContainer);
 
     const toCanvas = (clientX: number, clientY: number): { x: number; y: number } =>
       clientToCanvas(opts.screenScale(canvas), clientX, clientY);
@@ -348,9 +358,12 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
 
     return {
       uiString: ctx.uiString,
-      openMission: () => {
-        if (!windows.byId.mission.isOpen()) activateButton('mission');
+      openMission: (page) => {
+        if (page !== undefined)
+          applyToolButtonEffect(surfaces, 'mission', () => windows.mission.showPage(page));
+        else if (!windows.mission.isOpen()) activateButton('mission');
       },
+      setInfoLines: (lines) => infoLines.set(lines),
       claimsPointer,
       claimsWheel,
       placementType: () => placement.activeType(),
@@ -360,6 +373,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           syncPriorityGlyph();
         }
         windows.refresh(hudFor);
+        infoLines.refresh();
         for (const mode of held) mode.placeBanner();
       },
       presentMessages: (snapshot, events) => messageCenter.present(snapshot, events),
@@ -384,6 +398,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       dispose(): void {
         mountedInput.dispose();
         messageCenter.dispose();
+        infoLines.dispose();
         root.destroy({ children: true });
         mountedStrip.dispose();
       },

@@ -13,6 +13,7 @@ import {
   type MatchOutcome,
   matchEnded,
   matchOutcome,
+  missionBriefingPage,
   needsEnabled,
   type Paper,
   playerPaperSlots,
@@ -37,7 +38,15 @@ import {
   placementBlockerVersion,
   workFlagBlockerVersion,
 } from './systems/footprint/index.js';
-import { type MissionScript, type OpenTribute, openTributes } from './systems/missions/index.js';
+import {
+  type InfoLineView,
+  infoLines,
+  type MissionScript,
+  type MissionStatus,
+  missionStatus,
+  type OpenTribute,
+  openTributes,
+} from './systems/missions/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
@@ -324,6 +333,22 @@ export class Simulation {
    *  the payer's stores hold toward it and whether the `payTribute` command would take it now. */
   openTributes(payer: number): readonly OpenTribute[] {
     return openTributes(this.world, { content: this.content }, payer);
+  }
+
+  /** Every mission of the map's script with its live flags, for the mission window's goal list;
+   *  empty for a world that runs none. */
+  missionStatus(): readonly MissionStatus[] {
+    return missionStatus(this.world, this.missions);
+  }
+
+  /** The briefing page a `PlayCutscene` with the replay flag left as the map's current one, or null. */
+  missionBriefingPage(): number | null {
+    return missionBriefingPage(this.world);
+  }
+
+  /** The player's set on-screen info lines with their live tallies, ascending by line. */
+  infoLines(player: number): readonly InfoLineView[] {
+    return infoLines(this.world, { content: this.content }, player);
   }
 
   /** Whether `viewer` has discovered `other`: true with fog off or absent (everything is in plain

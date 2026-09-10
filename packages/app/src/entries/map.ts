@@ -37,3 +37,20 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   });
   await presentMapWorld(world, { driver, introAtStart: stagedSave === null && introParam(params) });
 }
+
+/** The mission window's pages and fallback text for a decoded map. */
+function mapBriefSource(
+  briefing: MapBriefing | null,
+  meta: { readonly name?: string | undefined; readonly description?: string | undefined } | null,
+  matchDeclared: boolean,
+): MissionBriefSource {
+  const lang = currentLocale();
+  return {
+    page: (id) => briefingPage(briefing, lang, id),
+    fallback: {
+      title: meta?.name ?? '',
+      ...(meta?.description !== undefined ? { description: meta.description } : {}),
+    },
+    skirmishGoal: matchDeclared ? messages().hud.skirmishGoal : null,
+  };
+}

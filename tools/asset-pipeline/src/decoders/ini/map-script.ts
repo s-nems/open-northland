@@ -193,13 +193,21 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
   return out;
 }
 
+/** One `setname <humanId> <stringId>` row, or undefined when either id is malformed. */
+function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined {
+  if (p.key !== 'setname') return undefined;
+  const humanId = int(p.values[0]);
+  const stringId = int(p.values[1]);
+  return humanId === undefined || stringId === undefined ? undefined : { humanId, stringId };
+}
+
 /**
  * Reduces a map's decoded sections into its validated {@link MapScript}, keeping every `playermisc`
- * line and unrecognized `playerdata` or `specialItems` line lossless in `misc` and one mission per
- * repeated `MissionData` section in authored order. Section names match case-insensitively (the corpus
- * carries both `[AIData]` and `[aidata]`), and a duplicate `player` slot keeps its first row. Returns
- * undefined when no section yields anything, and the caller then emits no script sidecar. `aidata`, the
- * AI task and condition program, is out of scope here.
+ * line and unrecognized `playerdata` or `specialItems` line lossless in `misc`, the `misc_humannames`
+ * rows typed, and one mission per repeated `MissionData` section in authored order. Section names match
+ * case-insensitively (the corpus carries both `[AIData]` and `[aidata]`), and a duplicate `player`
+ * slot keeps its first row. Returns undefined when no section yields anything, and the caller then
+ * emits no script sidecar. `aidata`, the AI task and condition program, is out of scope here.
  */
 export function extractMapScript(sections: readonly RuleSection[], src: SourceRef): MapScript | undefined {
   const players: NonNullable<MapScript['players']> = [];
@@ -207,11 +215,17 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const diplomacy: NonNullable<MapScript['diplomacy']> = [];
   const specialItems: NonNullable<MapScript['specialItems']> = [];
   const misc: NonNullable<MapScript['misc']> = [];
+  const humanNames: NonNullable<MapScript['humanNames']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
   let multiplayer: NonNullable<MapScript['multiplayer']> | undefined;
   for (const sec of sections) {
     const name = sec.name.toLowerCase();
-    if (name === 'playerdata') {
+    if (name === 'misc_humannames') {
+      for (const p of sec.props) {
+        const row = humanNameRow(p);
+        if (row !== undefined) humanNames.push(row);
+      }
+    } else if (name === 'playerdata') {
       for (const p of sec.props) {
         if (p.key === 'player') {
           const row = playerRow(p);
@@ -244,16 +258,21 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       missions.push(mission(sec));
     }
   }
-  const playerLines = players.length + diplomacy.length + specialItems.length + misc.length;
-  if (playerLines + missions.length === 0 && multiplayer === undefined) {
-    return undefined;
-  }
+  const scripted =
+    players.length +
+    diplomacy.length +
+    specialItems.length +
+    misc.length +
+    missions.length +
+    humanNames.length;
+  if (scripted === 0 && multiplayer === undefined) return undefined;
   return MapScript.parse({
     players,
     diplomacy,
     multiplayer,
     specialItems,
     misc,
+    humanNames,
     missions,
     // Provenance names the section the payload actually came from, not a fixed `playerdata`.
     source: makeSource(

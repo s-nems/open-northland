@@ -106,6 +106,14 @@ export const MapSpecialItem = z.strictObject({
 });
 export type MapSpecialItem = z.infer<typeof MapSpecialItem>;
 
+/** One `[misc_humannames]` `setname <humanId> <stringId>` row: the first placed human carrying the
+ *  mission object id is named after the map's own string. */
+export const MapHumanName = z.strictObject({
+  humanId: z.number().int(),
+  stringId: z.number().int(),
+});
+export type MapHumanName = z.infer<typeof MapHumanName>;
+
 /** The whole decoded script: `misc` keeps `playermisc` and unrecognised `playerdata` lines lossless,
  *  and `missions` stays in authored order. */
 export const MapScript = z.strictObject({
@@ -116,6 +124,8 @@ export const MapScript = z.strictObject({
   /** The `[specialItems]` starting papers, in authored order. */
   specialItems: z.array(MapSpecialItem).default([]),
   misc: z.array(MapScriptLine).default([]),
+  /** The `[misc_humannames]` rows in file order, when the map ships the section. */
+  humanNames: z.array(MapHumanName).default([]),
   missions: z.array(MapMission).default([]),
   source: Provenance.optional(),
 });

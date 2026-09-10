@@ -143,6 +143,19 @@ describe('directAudio one-shots', () => {
     expect(done.oneShots).toHaveLength(0);
   });
 
+  it("positions a map script's sound at its own point, resolved by the same logicSoundType id", () => {
+    const frame = direct([{ kind: 'missionSound', soundType: SOUND_AXE, at: { hx: 11, hy: 10 } }]);
+    expect(frame.oneShots).toHaveLength(1);
+    expect(frame.oneShots[0]?.files).toEqual(['static/axe01.wav']);
+    expect(frame.oneShots[0]?.pan).toBeCloseTo(0, 5);
+    expect(frame.oneShots[0]?.key).toBe(`missionSound:${SOUND_AXE}:11,10`);
+    // Off screen, or an id the bank does not carry: silent.
+    expect(
+      direct([{ kind: 'missionSound', soundType: SOUND_AXE, at: { hx: 200, hy: 200 } }]).oneShots,
+    ).toEqual([]);
+    expect(direct([{ kind: 'missionSound', soundType: 999, at: { hx: 11, hy: 10 } }]).oneShots).toEqual([]);
+  });
+
   it("keys a cue by sound as well as emitter, so one clip's two cues never debounce each other", () => {
     const frame = direct([
       { kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE },

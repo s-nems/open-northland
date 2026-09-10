@@ -93,6 +93,16 @@ export type UnitPanelModel =
   | MultiSettlerPanelModel
   | GenericSelectionPanelModel;
 
+/** The name the map gave this settler, when it gave one and the map's table carries the string. */
+function scriptedName(
+  ctx: UnitPanelModelContext,
+  comps: Readonly<Record<string, unknown>>,
+): string | undefined {
+  const named = comps.ScriptedName as { stringId?: unknown } | undefined;
+  const stringId = num(named?.stringId);
+  return stringId === undefined ? undefined : ctx.mapText?.(stringId);
+}
+
 /** The content's own name for a tribe the locale catalogs do not translate, so a selected animal reads as
  *  its species rather than a bare id. */
 function contentTribeName(ctx: UnitPanelModelContext, tribe: number | undefined): string | undefined {
@@ -218,14 +228,16 @@ export function buildUnitPanelModel(
     return {
       kind: 'settler',
       entityId,
-      name: characterName(
-        num(s.tribe) ?? PRIMARY_TRIBE,
-        num(s.jobType),
-        young,
-        entityId,
-        surnameSourceOf(snapshot, ent),
-        isFemale(ent),
-      ),
+      name:
+        scriptedName(ctx, comps) ??
+        characterName(
+          num(s.tribe) ?? PRIMARY_TRIBE,
+          num(s.jobType),
+          young,
+          entityId,
+          surnameSourceOf(snapshot, ent),
+          isFemale(ent),
+        ),
       profession: jobDisplayName(ctx, num(s.jobType)),
       // The child and woman gates are the sim's own `isTradeAssignable` refusals. The idle gate is the
       // panel's alone: a settler with no trade has nothing to place.

@@ -69,7 +69,10 @@ export interface GameToolPanelDeps {
   /** That overlay's screen-px box, which the panel's pop-up lists size against. */
   readonly overlayReserve?: () => Rect | null;
   readonly onSystemMenu?: () => void;
-  readonly missionBrief?: () => MissionBrief | null;
+  /** The mission window's brief for a briefing page, or the map's fallback text with null. */
+  readonly missionBrief?: (page: number | null) => MissionBrief | null;
+  /** The briefing page the mission window opens on from the strip; null before any replayable one. */
+  readonly missionReplayPage?: () => number | null;
   readonly onLargeWindow?: (open: boolean) => void;
   /** The map's sprite sheet for the note portraits; absent leaves the notes bare. */
   readonly sheet?: SpriteSheet;
@@ -172,6 +175,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.overlayReserve !== undefined ? { overlayReserve: deps.overlayReserve } : {}),
       ...(deps.onSystemMenu !== undefined ? { onSystemMenu: deps.onSystemMenu } : {}),
       ...(deps.missionBrief !== undefined ? { missionBrief: deps.missionBrief } : {}),
+      ...(deps.missionReplayPage !== undefined ? { missionReplayPage: deps.missionReplayPage } : {}),
       ...(deps.onLargeWindow !== undefined ? { onLargeWindow: deps.onLargeWindow } : {}),
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),

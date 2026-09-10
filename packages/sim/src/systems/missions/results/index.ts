@@ -9,6 +9,7 @@ import {
 import { addGoodsToAnyStock, addGoodsToArea, addGoodsToHouses, removeGoodsFromArea } from './goods.js';
 import { damageHousesInArea, healHumansInArea } from './health.js';
 import { placeScriptedHouse, setScriptedHouseLevel } from './houses.js';
+import { scriptInfoLine } from './info.js';
 import { moveUnitsInArea, sendScriptedHumans, stopPlayerHumans, teleportScriptedHumans } from './movement.js';
 import { stampHumansInRange, stampPlayerHumans } from './object-id.js';
 import {
@@ -18,6 +19,18 @@ import {
   handHumansToPlayer,
   handPlayerToPlayer,
 } from './ownership.js';
+import {
+  moveScriptedCamera,
+  nameScriptedHuman,
+  playScriptedCutscene,
+  playScriptedSound,
+  selectScriptedHuman,
+  setScriptedAreaMarkers,
+  setScriptedGuiMarker,
+  setScriptedImportMarker,
+  setScriptedWeather,
+  startScriptedEarthquake,
+} from './presentation.js';
 import {
   removeHumansNearPoint,
   removeScriptedAnimals,
@@ -178,6 +191,46 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
     case 'AddTributeGoods':
     case 'ClearTribute':
       scriptTribute(pass, index, result);
+      return;
+    case 'PlayCutscene':
+      playScriptedCutscene(pass, index, result);
+      return;
+    case 'PlaySound':
+      playScriptedSound(pass, result);
+      return;
+    case 'SetCameraPosition':
+      moveScriptedCamera(pass, result);
+      return;
+    case 'SelectHuman':
+      selectScriptedHuman(pass, index, result);
+      return;
+    case 'SetHumanName':
+      nameScriptedHuman(pass, index, result);
+      return;
+    case 'SetGuiMarker':
+      setScriptedGuiMarker(pass, index, result);
+      return;
+    case 'SetImportLandscapeMarker':
+      setScriptedImportMarker(pass, result);
+      return;
+    case 'SetMapAreaMarker':
+    case 'SetMapAreaMarkerMagic':
+      setScriptedAreaMarkers(pass, result);
+      return;
+    case 'SetWeather':
+      setScriptedWeather(pass, result);
+      return;
+    case 'StartEarthQuake':
+      startScriptedEarthquake(pass, result);
+      return;
+    case 'InfoClear':
+    case 'InfoShowString':
+    case 'InfoCountGoodsInArea':
+    case 'InfoCountHousesInArea':
+    case 'InfoCountHumenInArea':
+    case 'InfoCountSoldiersInArea':
+    case 'InfoCountAnimalsInArea':
+      scriptInfoLine(pass, index, result);
       return;
     default:
       pass.report(index, result.opcode);

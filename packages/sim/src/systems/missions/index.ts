@@ -1,3 +1,4 @@
+export { type InfoLineView, infoLines } from './info-lines.js';
 export { missionObjectIds, missionObjects } from './object-index.js';
 export type {
   MissionDefinition,
@@ -8,6 +9,7 @@ export type {
   ResolvedOp,
 } from './script.js';
 export { MISSION_HOUSE_NAME_FIELD, SUCCESSFUL_IF } from './script.js';
+export { type MissionStatus, missionStatus } from './status.js';
 export { SUPPORTED_GOALS, SUPPORTED_RESULTS } from './supported.js';
 export { MISSION_EVALUATION_TICKS, missionSystem } from './system.js';
 export { type OpenTribute, openTributes } from './tributes.js';

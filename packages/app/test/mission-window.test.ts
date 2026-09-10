@@ -69,23 +69,28 @@ const BOOK: HypertextBook = {
 const BRIEF: MissionBrief = {
   title: 'SANDSTORM',
   blocks: [{ kind: 'text', style: 'body', text: 'Body' }],
-  goals: [{ text: 'Win', rule: 'skirmish', done: false }],
+  goals: [{ text: 'Win', rule: 'skirmish', state: 'open' }],
 };
 
-function mount(brief: MissionBrief = BRIEF, now: () => number = () => 0) {
+function mount(brief: MissionBrief = BRIEF, now: () => number = () => 0, replayPage: number | null = null) {
   const { ctx, made, placedY } = stubContext();
   const opened: boolean[] = [];
+  const asked: (number | null)[] = [];
   const window = createMissionWindow({
     ctx,
     container: new Container(),
     art: null,
-    brief: () => brief,
+    brief: (page) => {
+      asked.push(page);
+      return page === null ? brief : { ...brief, title: `PAGE ${page}` };
+    },
+    replayPage: () => replayPage,
     history: BOOK,
     onOpenChange: (open) => opened.push(open),
     now,
   });
   const layout = layoutMissionWindow(SCREEN, null);
-  return { window, made, placedY, opened, layout };
+  return { window, made, placedY, opened, asked, layout };
 }
 
 const middle = (r: Rect): [number, number] => [r.x + r.w / 2, r.y + r.h / 2];
@@ -210,5 +215,82 @@ describe('createMissionWindow', () => {
     expect(window.isOpen()).toBe(false);
     expect(opened).toEqual([true, false]);
     expect(window.claims(rect.x + 1, rect.y + 1)).toBe(false);
+  });
+
+  it('opens on the replayable page from the strip, and on the page a script names, holding the pause once', () => {
+    const { window, made, opened, asked } = mount(BRIEF, () => 0, 500);
+    window.toggle();
+    expect(asked).toEqual([500]);
+    expect(made).toContain('PAGE 500');
+    made.length = 0;
+    window.showPage(501);
+    expect(made).toContain('PAGE 501');
+    expect(opened).toEqual([true]);
+    window.close();
+    made.length = 0;
+    window.showPage(502);
+    expect(opened).toEqual([true, false, true]);
+    expect(made).toContain('PAGE 502');
+  });
+
+  it('reopens from the strip on the replayable page, not the last one shown', () => {
+    const { window, made } = mount(BRIEF, () => 0, 500);
+    window.showPage(501);
+    window.close();
+    made.length = 0;
+    window.toggle();
+    expect(made).toContain('PAGE 500');
+    expect(made).not.toContain('PAGE 501');
+  });
+
+  it('walks the shown pages with the prev and next buttons once there are two', () => {
+    const { window, made, layout } = mount();
+    window.showPage(500);
+    // One page: the pair is not drawn, so a press there is consumed but changes nothing.
+    made.length = 0;
+    expect(window.handleClick(...middle(layout.historyPrev))).toBe(true);
+    expect(made).toEqual([]);
+    window.showPage(501);
+    window.showPage(502);
+    made.length = 0;
+    window.handleClick(...middle(layout.historyPrev));
+    expect(made).toContain('PAGE 501');
+    made.length = 0;
+    window.handleClick(...middle(layout.historyPrev));
+    expect(made).toContain('PAGE 500');
+    made.length = 0;
+    window.handleClick(...middle(layout.historyPrev)); // the oldest page: nothing before it
+    expect(made).toEqual([]);
+    window.handleClick(...middle(layout.historyNext));
+    expect(made).toContain('PAGE 501');
+    // A page shown again keeps its place in the walk rather than moving to the end.
+    window.showPage(500);
+    made.length = 0;
+    window.handleClick(...middle(layout.historyNext));
+    expect(made).toContain('PAGE 501');
+    expect(window.state()).toEqual({ page: 501, pages: [500, 501, 502] });
+  });
+
+  it('rebuilds the goal list when a mark changes and leaves the task tab alone', () => {
+    let brief: MissionBrief = BRIEF;
+    const { ctx, made } = stubContext();
+    const window = createMissionWindow({
+      ctx,
+      container: new Container(),
+      art: null,
+      brief: () => brief,
+      history: BOOK,
+    });
+    const layout = layoutMissionWindow(SCREEN, null);
+    window.toggle();
+    const goalsTab = layout.tabs.find((t) => t.tab === 'goals');
+    if (goalsTab === undefined) throw new Error('no goals tab');
+    window.handleClick(...middle(goalsTab.rect));
+    made.length = 0;
+    window.refresh();
+    expect(made).toEqual([]);
+    brief = { ...BRIEF, goals: [{ text: 'Win', rule: 'skirmish', state: 'done' }] };
+    window.refresh();
+    expect(made).toContain('X');
   });
 });

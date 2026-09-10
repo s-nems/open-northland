@@ -2,7 +2,7 @@
 
 **Area:** sim, app · **Focus:** acceptance · **Priority:** P2
 
-Map-scripts epic, stage 10 of 10. Needs stage 9 merged; check the coverage report before starting.
+Map-scripts epic, stage 10 of 10. Check the coverage report before starting.
 
 With the executors in place, `MissionRules` still defaults to off and only `?missions=on` turns a
 script on, so players never see one run. This stage flips the default, proves a campaign map end to
@@ -29,7 +29,9 @@ end, and records what the original confirms.
   hash in the commit.
 - Observe the original for the timing constants in the open questions of
   [`docs/formats/MISSIONS.md`](../../formats/MISSIONS.md) and rewrite those readings as observations
-  or corrections.
+  or corrections. That includes whether the load tick evaluates: if the opening briefing shows before
+  the map moves, add the load pass to the mission system so a scripted map's intro opens at once
+  instead of three seconds in, and retime the mission tests that count from the first pass.
 - Vehicles, sub-missions, chests, guides, wall gates, campaign map unlocks, the FMV opcode, and the
   `NumberOfGoodsTraded` goal (three corpus lines; no trade ledger exists to count) stay
   unsupported and reported; file tickets for them only when their systems exist. The authored

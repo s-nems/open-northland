@@ -32,6 +32,9 @@ export interface UnitPanelModelContext {
   /** The sim's dish→edible mapping: a gatherer's workplace counts as stocking a dish when it slots the
    *  edible, since the deposit converts. Absent = no conversion. */
   readonly edibleGoodForm?: ((goodType: number) => number) | undefined;
+  /** The map's own string by id, which names a settler the map or its script named. Absent, or a
+   *  missing id, leaves the generated name. */
+  readonly mapText?: ((stringId: number) => string | undefined) | undefined;
 }
 
 export interface Comp {

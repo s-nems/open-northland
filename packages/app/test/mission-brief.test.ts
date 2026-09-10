@@ -1,20 +1,21 @@
 import type { HypertextBlock, MapBriefing, MapScript } from '@open-northland/data';
+import type { MissionStatus } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
-  briefAtOutcome,
   briefingPage,
   introCutsceneId,
-  mapMissionBrief,
+  type MissionBriefSource,
+  missionBrief,
   missionGoals,
 } from '../src/game/mission-brief.js';
 
-/** The pure joins behind the mission window: which cutscene opens the map, which goals show, and how
- *  the brief falls back when a map ships no briefing. */
+/** The pure joins behind the mission window: which page a scriptless map opens on, which goals show
+ *  with which mark, and how the brief falls back when a map ships no briefing. */
 
 const line = (...values: string[]): { key: string; values: string[] } => ({ key: 'x', values });
 
 function script(over: Partial<MapScript> = {}): MapScript {
-  return { players: [], diplomacy: [], specialItems: [], misc: [], missions: [], ...over };
+  return { players: [], diplomacy: [], specialItems: [], misc: [], humanNames: [], missions: [], ...over };
 }
 
 const OPENING = {
@@ -34,6 +35,17 @@ const WIN = {
   results: [line('PlayCutscene', '501', '1'), line('MissionWon', '0')],
   other: [],
 };
+
+const TEXTS: Readonly<Record<number, string>> = {
+  300: 'Pokonaj saracenów',
+  301: '@Skolonizuj krainę!',
+  302: 'Zbuduj świątynię',
+};
+const textOf = (id: number): string | undefined => TEXTS[id];
+
+function status(over: Partial<MissionStatus>, index = 0): MissionStatus {
+  return { index, description: 300, visible: true, active: true, done: false, ...over };
+}
 
 describe('introCutsceneId', () => {
   it('takes the first active trigger that fires at once and plays a cutscene', () => {
@@ -60,28 +72,34 @@ describe('introCutsceneId', () => {
 });
 
 describe('missionGoals', () => {
-  it('lists the visible active goal texts once, in script order', () => {
-    const missions = [
-      OPENING,
-      WIN,
-      { ...WIN, description: 'Pokonaj saracenów' },
-      { ...WIN, description: 'Zbuduj świątynię', visible: false },
-      { ...WIN, description: 'Przetrwaj', active: false },
-      { ...WIN, description: '  ' },
-    ];
-    expect(missionGoals(script({ missions }))).toEqual(['Pokonaj saracenów']);
+  it('lists the visible missions that name a text, in script order, marked by their flags', () => {
+    const goals = missionGoals(
+      [
+        status({ done: true }),
+        status({ description: 302, active: true }, 1),
+        status({ description: 302, active: false }, 2),
+        status({ description: 302, visible: false }, 3),
+        status({ description: undefined }, 4),
+        status({ description: 999 }, 5),
+      ],
+      textOf,
+    );
+    expect(goals).toEqual([
+      { text: 'Pokonaj saracenów', rule: 'authored', state: 'done' },
+      { text: 'Zbuduj świątynię', rule: 'authored', state: 'open' },
+      { text: 'Zbuduj świątynię', rule: 'authored', state: 'idle' },
+      { text: '#999', rule: 'authored', state: 'open' },
+    ]);
   });
 
   it('drops the emphasis mark the corpus prefixes some goals with', () => {
-    const missions = [
-      { ...WIN, description: '@Skolonizuj krainę!' },
-      { ...WIN, description: 'Zbuduj świątynię' },
-    ];
-    expect(missionGoals(script({ missions }))).toEqual(['Skolonizuj krainę!', 'Zbuduj świątynię']);
+    expect(missionGoals([status({ description: 301 })], textOf).map((g) => g.text)).toEqual([
+      'Skolonizuj krainę!',
+    ]);
   });
 });
 
-describe('briefingPage and mapMissionBrief', () => {
+describe('briefingPage and missionBrief', () => {
   const briefing: MapBriefing = {
     texts: {
       pol: {
@@ -100,6 +118,12 @@ describe('briefingPage and mapMissionBrief', () => {
     return first?.kind === 'text' ? first.text : undefined;
   };
 
+  const source = (skirmishGoal: string | null): MissionBriefSource => ({
+    page: (id) => briefingPage(briefing, 'pol', id),
+    fallback: { title: 'Burza Piaskowa', description: 'Opis z menu.' },
+    skirmishGoal,
+  });
+
   it('prefers the app language and falls back through the authoring languages', () => {
     expect(firstText(briefingPage(briefing, 'eng', 500))).toBe('The vikings laid siege.');
     expect(firstText(briefingPage(briefing, 'ger', 500))).toBe('BURZA PIASKOWA');
@@ -108,85 +132,31 @@ describe('briefingPage and mapMissionBrief', () => {
   });
 
   it('heads the brief with the page title and lists the authored goals, then the match rule', () => {
-    const input = {
-      script: script({ missions: [OPENING, WIN] }),
-      briefing,
-      lang: 'pol',
-      name: 'Burza Piaskowa',
-      description: 'Opis z menu.',
-      skirmishGoal: 'Pokonaj wszystkich.',
-    };
-    expect(mapMissionBrief({ ...input, matchDeclared: false })).toEqual({
+    const goals = [status({})];
+    expect(missionBrief(source(null), 500, goals, textOf, 'undecided')).toEqual({
       title: 'BURZA PIASKOWA',
       blocks: [{ kind: 'text', style: 'body', text: 'Wikingowie rozpoczęli oblężenie.' }],
-      goals: [{ text: 'Pokonaj saracenów', rule: 'authored', done: false }],
+      goals: [{ text: 'Pokonaj saracenów', rule: 'authored', state: 'open' }],
     });
-    // The authored goals are informational; with a match declared the rule that decides is listed too.
-    expect(mapMissionBrief({ ...input, matchDeclared: true }).goals).toEqual([
-      { text: 'Pokonaj saracenów', rule: 'authored', done: false },
-      { text: 'Pokonaj wszystkich.', rule: 'skirmish', done: false },
+    expect(missionBrief(source('Pokonaj wszystkich.'), 500, goals, textOf, 'undecided').goals).toEqual([
+      { text: 'Pokonaj saracenów', rule: 'authored', state: 'open' },
+      { text: 'Pokonaj wszystkich.', rule: 'skirmish', state: 'open' },
     ]);
+    // The author already wrote the rule: it is not listed twice.
+    expect(missionBrief(source('Pokonaj saracenów'), 500, goals, textOf, 'undecided').goals).toHaveLength(1);
   });
 
-  it('falls back to the map name, the menu description and the skirmish goal', () => {
-    const brief = mapMissionBrief({
-      script: script(),
-      briefing: null,
-      lang: 'pol',
-      name: 'Wody Nilu',
-      description: 'Mapa wolnej gry.',
-      skirmishGoal: 'Pokonaj wszystkich.',
-      matchDeclared: true,
+  it('ticks the skirmish goal on victory and leaves the authored ones to the sim', () => {
+    const goals = missionBrief(source('Pokonaj wszystkich.'), 500, [status({})], textOf, 'victory').goals;
+    expect(goals.map((g) => g.state)).toEqual(['open', 'done']);
+  });
+
+  it('falls back to the map name and menu description without a page', () => {
+    expect(missionBrief(source(null), null, [], textOf, 'undecided')).toEqual({
+      title: 'Burza Piaskowa',
+      blocks: [{ kind: 'text', style: 'body', text: 'Opis z menu.' }],
+      goals: [],
     });
-    expect(brief).toEqual({
-      title: 'Wody Nilu',
-      blocks: [{ kind: 'text', style: 'body', text: 'Mapa wolnej gry.' }],
-      goals: [{ text: 'Pokonaj wszystkich.', rule: 'skirmish', done: false }],
-    });
-    expect(
-      mapMissionBrief({
-        script: null,
-        briefing: null,
-        lang: 'pol',
-        name: undefined,
-        description: undefined,
-        skirmishGoal: 'x',
-        matchDeclared: false,
-      }),
-    ).toEqual({ title: '', blocks: [], goals: [] });
-  });
-
-  it('keeps a page without a headline whole and titles it with the map name', () => {
-    const brief = mapMissionBrief({
-      script: script({ missions: [OPENING] }),
-      briefing,
-      lang: 'eng',
-      name: 'Sandstorm',
-      description: undefined,
-      skirmishGoal: 'Defeat everyone.',
-      matchDeclared: false,
-    });
-    expect(brief.title).toBe('Sandstorm');
-    expect(brief.blocks).toEqual([{ kind: 'text', style: 'body', text: 'The vikings laid siege.' }]);
-  });
-});
-
-describe('briefAtOutcome', () => {
-  const brief = {
-    title: 'x',
-    blocks: [],
-    goals: [
-      { text: 'Build a temple', rule: 'authored' as const, done: false },
-      { text: 'Defeat everyone', rule: 'skirmish' as const, done: false },
-    ],
-  };
-
-  it('ticks the skirmish goal on victory and leaves the authored ones open', () => {
-    expect(briefAtOutcome(brief, 'victory').goals.map((g) => g.done)).toEqual([false, true]);
-  });
-
-  it('returns the brief itself while the match is undecided or lost', () => {
-    expect(briefAtOutcome(brief, 'undecided')).toBe(brief);
-    expect(briefAtOutcome(brief, 'defeat')).toBe(brief);
+    expect(missionBrief(source(null), 7, [], textOf, 'undecided').title).toBe('Burza Piaskowa');
   });
 });

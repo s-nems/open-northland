@@ -50,8 +50,10 @@ export interface MissionDefinition {
   readonly successfullIf: number;
   /** Active at load, which records the load tick as the activation tick. */
   readonly active: boolean;
-  /** Listed in the mission window. */
+  /** Listed in the mission window, which also needs a {@link description} to list it. */
   readonly visible: boolean;
+  /** The goal text's id in the map's own string table; omitted for a `-1`, which lists nowhere. */
+  readonly description?: number;
   readonly goals: readonly MissionGoalOp[];
   readonly results: readonly MissionResultOp[];
 }

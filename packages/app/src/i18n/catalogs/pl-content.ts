@@ -186,6 +186,24 @@ export const plContent = {
         '3': 'Sąsiedzi proszą o kamień na drogę między nami.',
       },
     },
+    presentation: {
+      title: 'Prezentacja skryptu',
+      summary:
+        'To, co skrypt mapy pokazuje, a nie zmienia: otwiera stronę odprawy, wypisuje dwa wiersze informacji w prawym górnym rogu (jeden z bieżącą liczbą osadników), nadaje imię bohaterowi i go zaznacza, przesuwa kamerę, stawia znacznik, sprowadza deszcz i trzęsie ziemią. Po kilku sekundach do pierwszej strony dochodzi druga, a okno przechodzi między nimi przyciskami wstecz i dalej, wokół brodu staje magiczny krąg, a pierwszy wiersz znika.',
+      strings: {
+        '1': 'Przeczytaj odprawę od starszyzny.',
+        '2': 'Utrzymaj bród do odwilży.',
+        '3': 'Wznieś wielką halę.',
+        '10': 'Starszyzna patrzy.',
+        '11': 'Osadników przy brodzie: %d z %d',
+        '20': 'Hallvard Niezłomny',
+      },
+      pages: {
+        '500':
+          'Starszyzna przysyła wieść: utrzymaj bród do odwilży i wznieś wielką halę przed następną zimą. Straż poprowadzi Hallvard.',
+        '501': 'Jeździec od starszyzny: bród wytyczono pod palisadę. Trzymaj straż wewnątrz kręgu.',
+      },
+    },
     victory: {
       title: 'Zwycięstwo i porażka',
       summary:

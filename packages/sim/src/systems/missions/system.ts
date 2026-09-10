@@ -62,7 +62,8 @@ function initMissionState(world: World, script: MissionScript, tick: number): vo
 
 /**
  * One pass in index order. A mission activated by an earlier mission's results is visited later in
- * this same pass, exactly as the original's single forward walk does.
+ * this same pass, exactly as the original's single forward walk does, unless a result halted the
+ * pass, after which the rest wait for the next one.
  */
 function runPass(world: World, ctx: SystemContext, script: MissionScript, records: MissionRecord[]): void {
   const pass: MissionPass = {
@@ -74,8 +75,9 @@ function runPass(world: World, ctx: SystemContext, script: MissionScript, record
     report: (mission, opcode) => report(world, ctx, 'missionUnsupported', mission, opcode),
     reportFailed: (mission, opcode) => report(world, ctx, 'missionResultFailed', mission, opcode),
     checking: new Set(),
+    halted: false,
   };
-  for (let index = 0; index < records.length; index++) {
+  for (let index = 0; index < records.length && !pass.halted; index++) {
     if (records[index]?.active === true) checkMission(pass, index, true);
   }
 }

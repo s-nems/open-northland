@@ -128,11 +128,13 @@ export {
 } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
 export type {
+  InfoLineView,
   MissionDefinition,
   MissionGoalOp,
   MissionHouseRef,
   MissionResultOp,
   MissionScript,
+  MissionStatus,
   OpenTribute,
   ResolvedOp,
 } from './systems/missions/index.js';

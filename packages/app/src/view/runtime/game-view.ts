@@ -17,7 +17,7 @@ import {
   type Simulation,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import type { Application } from 'pixi.js';
+import { type Application, Container } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import {
   currentDiagGameSession,
@@ -25,7 +25,8 @@ import {
   installSessionInstruments,
   setDiagGameSession,
 } from '../../diag/index.js';
-import { briefAtOutcome, type MissionBrief } from '../../game/mission-brief.js';
+import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
+import { loadGuiArt } from '../../content/gui-art.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
@@ -47,6 +48,8 @@ import { createMatchResultOverlay, type MatchResultOverlay } from '../match-resu
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { createFogGates, type DiplomacySimView, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
+import { createScriptEffects } from '../script-effects.js';
+import { createScriptMarkers } from '../script-markers.js';
 import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
@@ -64,6 +67,7 @@ import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
 import { createViewReadModels } from './read-models.js';
 import { createSaveLoadSession, type SaveLoadSessionOptions } from './save-load/index.js';
+import { createScriptPresentation } from './script-presentation.js';
 
 /** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
 export interface GameViewDeps {
@@ -114,8 +118,9 @@ export interface GameViewDeps {
   readonly seatNameOf?: (player: number) => string | undefined;
   /** The map roster's player slots; the diplomacy window lists the discovered ones. Default empty. */
   readonly rosterPlayers?: readonly number[];
-  /** The map's own string by id, for the tribute descriptions the diplomacy window lists. */
-  readonly tributeText?: (stringId: number) => string | undefined;
+  /** The map's own string by id: the tribute descriptions, the goal texts, the info lines and the
+   *  names a map gives its settlers. */
+  readonly mapText?: (stringId: number) => string | undefined;
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
   /** Sim events from the frame's step(s), delivered before the renderer draws. Skipped on frames that did not step. */
@@ -125,10 +130,17 @@ export interface GameViewDeps {
   readonly worldToken?: string | null;
   readonly saveEntrySearch?: string;
   readonly networkSave?: Pick<SaveLoadSessionOptions, 'sessionMetadata' | 'onSaved'>;
-  readonly missionBrief?: MissionBrief;
+  /** True when the world came from a save: the session opens paused, so the player reads the board
+   *  they loaded before it moves. */
+  readonly restored?: boolean;
+  /** Where the mission window's briefs come from; omitted, the window shows nothing. */
+  readonly missionBriefSource?: MissionBriefSource;
   /** Open the mission window as the session starts, the original's mission briefing; the entry decides
    *  (a fresh world, and no `?intro=off`). */
   readonly introAtStart?: boolean;
+  /** The briefing page that start opens on, the entry's guess for a world whose script the sim does
+   *  not run; a world that runs it opens the page the script names instead. */
+  readonly introPage?: number | null;
   /** The map's `[misc_music]` code; omitted or null, the world plays no music. */
   readonly musicType?: number | null;
 }
@@ -146,6 +158,8 @@ export interface GameViewHandle {
 const PAUSE_HOLDER_MENU = 'menu';
 const PAUSE_HOLDER_MISSION = 'mission';
 const PAUSE_HOLDER_VERDICT = 'verdict';
+/** Above the world layers, below the HUD plane the tool panel and the minimap share. */
+const SCRIPT_OVERLAY_Z = 900;
 
 /** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
@@ -268,8 +282,21 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canPay: !readOnly,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
-      ...(deps.tributeText !== undefined ? { tributeText: deps.tributeText } : {}),
+      ...(deps.mapText !== undefined ? { tributeText: deps.mapText } : {}),
     });
+  const mapText = deps.mapText ?? ((): undefined => undefined);
+  const briefFor: (page: number | null) => MissionBrief | null =
+    deps.missionBriefSource === undefined
+      ? () => null
+      : missionBriefReader(
+          deps.missionBriefSource,
+          {
+            tick: () => sim.tick,
+            status: () => sim.missionStatus(),
+            outcome: () => sim.matchOutcome(localPlayer),
+          },
+          mapText,
+        );
 
   // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
   // reach them through these slots.
@@ -306,10 +333,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     overlayReserve: () => minimap?.panelRect() ?? null,
     onSystemMenu: () => systemMenu?.toggle(),
     ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
-    missionBrief: () =>
-      deps.missionBrief === undefined
-        ? null
-        : briefAtOutcome(deps.missionBrief, sim.matchOutcome(localPlayer)),
+    missionBrief: briefFor,
+    missionReplayPage: () => sim.missionBriefingPage(),
     // The original stops game time behind its large windows.
     onLargeWindow: (open) => {
       if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);
@@ -337,9 +362,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onQuit: quitToMenu,
     });
   }
+  // Assembled below, once the controls and the camera it steers exist.
+  let presentation: ReturnType<typeof createScriptPresentation> | null = null;
   const onEvents = (events: readonly SimEvent[]): void => {
     deps.onEvents?.(events);
     if (deps.observer !== true) verdict?.onEvents(events);
+    presentation?.onEvents(events);
   };
 
   // Injected rather than imported: `hud/` never imports `view/`.
@@ -391,6 +419,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     bindings: keyBindings,
     professions: pickerEntries(),
     content: sim.content,
+    mapText,
     ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
     ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     enqueue: issueCommand,
@@ -431,6 +460,24 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     selection: { ids: controls.selectedIds, version: controls.selectionVersion },
   });
   pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
+
+  // The script's markers and washes draw over the world and under every HUD plane.
+  const scriptOverlay = new Container();
+  scriptOverlay.zIndex = SCRIPT_OVERLAY_Z;
+  app.stage.addChild(scriptOverlay);
+  presentation = createScriptPresentation({
+    sim,
+    localPlayer,
+    toolPanel,
+    controls,
+    centerOn: jumpToWorld,
+    screen: () => app.screen,
+    ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
+    markers: createScriptMarkers(scriptOverlay, await loadGuiArt(), deps.elevation),
+    effects: createScriptEffects(scriptOverlay, deps.elevation),
+    mapText,
+    now: () => performance.now(),
+  });
 
   // Mounted after the unit controls, so an admin spawn click defers to their composed HUD claim.
   const debugMounts = mountDebugOverlays({
@@ -494,12 +541,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     setCameraSuspended: cameraCtl.setSuspended,
     canLoad: !sharedClock,
   });
+  const mountedPresentation = presentation;
   disposeHud = (): void => {
     liveSettings.dispose();
     toolPanel.dispose();
     noteTooltip.destroy();
     mountedMinimap.dispose();
     controls.dispose();
+    mountedPresentation.dispose();
+    scriptOverlay.destroy({ children: true });
     perf.dispose();
     worldTooltip.destroy();
     soundDriver?.close();
@@ -543,13 +593,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     canPlaceSignpostAt,
     placementTribe: seatTribeOf(localPlayer),
     soundDriver,
+    presentation,
     perf,
     netReadout,
     pointer: pointerAt,
     syncViewport: liveSettings.syncViewport,
   });
 
-  if (deps.introAtStart === true) toolPanel.controller.openMission();
+  if (deps.introAtStart === true) toolPanel.controller.openMission(deps.introPage ?? undefined);
   // A restored save of a decided match says so at once, since no event will repeat the verdict.
   if (deps.observer !== true) verdict?.announce(sim.matchOutcome(localPlayer));
 

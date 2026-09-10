@@ -87,13 +87,18 @@ export function resolveMissionScript(
     unresolved.add(name);
   };
   const script: MissionScript = {
-    missions: missions.map((mission) => ({
-      successfullIf: mission.successfullIf ?? 0,
-      active: mission.active ?? false,
-      visible: mission.visible ?? false,
-      goals: mission.goals.map((line) => resolveNames(decodeMissionGoal(line, warn), joins, dropped)),
-      results: mission.results.map((line) => resolveNames(decodeMissionResult(line, warn), joins, dropped)),
-    })),
+    missions: missions.map((mission) => {
+      const description = mission.descriptionStringId;
+      return {
+        successfullIf: mission.successfullIf ?? 0,
+        active: mission.active ?? false,
+        visible: mission.visible ?? false,
+        // The corpus writes `-1` for "no goal text"; the loader's own default of 0 would name string 0.
+        ...(description !== undefined && description >= 0 ? { description } : {}),
+        goals: mission.goals.map((line) => resolveNames(decodeMissionGoal(line, warn), joins, dropped)),
+        results: mission.results.map((line) => resolveNames(decodeMissionResult(line, warn), joins, dropped)),
+      };
+    }),
   };
   return { script, unknownOpcodes, tokenMismatches, unresolvedNames: [...unresolved].sort() };
 }
@@ -149,7 +154,8 @@ function resolveRef(field: string, ref: MissionNameRef, joins: ContentJoins, dro
  */
 export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows | null): MapScriptWorld {
   const diplomacy = script?.diplomacy ?? [];
-  if (script === null || rows === null || script.missions.length === 0) return { diplomacy };
+  const humanNames = script?.humanNames ?? [];
+  if (script === null || rows === null || script.missions.length === 0) return { diplomacy, humanNames };
   const join = resolveMissionScript(script.missions, rows);
   if (join.unknownOpcodes > 0 || join.tokenMismatches > 0 || join.unresolvedNames.length > 0) {
     const named = join.unresolvedNames.slice(0, NAMES_IN_WARNING).join(', ');
@@ -158,5 +164,5 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
       `mapScriptWorld: ${script.missions.length} missions loaded with ${join.unknownOpcodes} unknown opcodes, ${join.tokenMismatches} token-count mismatches and ${join.unresolvedNames.length} unresolvable names (${named})`,
     );
   }
-  return { diplomacy, missions: join.script };
+  return { diplomacy, humanNames, missions: join.script };
 }

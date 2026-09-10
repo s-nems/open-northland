@@ -20,10 +20,12 @@ import {
   MISSION_TITLE_PX,
   type MissionTab,
   type MissionWindowLayout,
+  neighbouringPage,
   placedLeft,
   WHEEL_STEP,
+  withShownPage,
 } from './model.js';
-import { paintScrollButtons, paintSheet, sheetFrame } from './paint.js';
+import { paintHistoryButtons, paintScrollButtons, paintSheet, sheetFrame } from './paint.js';
 import { createPictureCache, type PictureLoader } from './pictures.js';
 
 /** The decoded original strings (`miscwindow`) the window prefers over the catalog fallbacks. */
@@ -36,8 +38,11 @@ export interface MissionWindowDeps {
   readonly container: Container;
   /** The decoded GUI sheet; without it the window falls back to a flat parchment panel. */
   readonly art: GuiArt | null;
-  /** What the task and goal tabs show, read as the window opens; null opens them empty. */
-  readonly brief: () => MissionBrief | null;
+  /** What the task and goal tabs show for a briefing page (null for the map's fallback text), read
+   *  as the window builds; null opens them empty. */
+  readonly brief: (page: number | null) => MissionBrief | null;
+  /** The page the strip button opens on: the last replayable cutscene, or null before any. */
+  readonly replayPage?: () => number | null;
   /** The history tab's book; null shows it empty. */
   readonly history: HypertextBook | null;
   readonly onOpenChange?: (open: boolean) => void;
@@ -49,6 +54,11 @@ export interface MissionWindowDeps {
 
 /** The mission window: the briefing, the goal list, and the history book, one tab each. */
 export interface MissionWindow extends ToolWindow {
+  /** Open on briefing `page` (a `PlayCutscene`), which joins the pages the prev/next buttons walk. */
+  showPage(page: number): void;
+  /** The shown page and the pages shown so far, carried across a remount. */
+  state(): MissionWindowState;
+  restore(state: MissionWindowState): void;
   handleWheel(x: number, y: number, deltaY: number): boolean;
   /** Light the tab, arrow or link under the pointer. */
   handleHover(x: number, y: number): void;
@@ -57,8 +67,16 @@ export interface MissionWindow extends ToolWindow {
   refresh(): void;
 }
 
+export interface MissionWindowState {
+  readonly page: number | null;
+  readonly pages: readonly number[];
+}
+
 const sameRect = (a: Rect | null, b: Rect | null): boolean =>
   a === b || (a !== null && b !== null && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h);
+
+const goalsKeyOf = (brief: MissionBrief | null): string =>
+  brief === null ? '' : brief.goals.map((g) => `${g.state}:${g.text}`).join('\n');
 
 export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   const pictures = createPictureCache(deps.loadPicture);
@@ -75,10 +93,18 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
 
   let tab: MissionTab = 'task';
   let page = '';
+  /** The briefing page the task tab shows; null shows the map's fallback text. */
+  let shownPage: number | null = null;
+  /** The briefing pages shown so far, oldest first; the prev/next pair walks it. */
+  let shownPages: number[] = [];
   let layout: MissionWindowLayout | null = null;
   let sink: ContentSink | null = null;
   /** The Up/Down pair shows on the text tabs, and on the goals tab only once the list overflows. */
   let buttonsShown = false;
+  /** The prev/next briefing pair shows on the task tab once two pages have been shown. */
+  let historyShown = false;
+  /** What the goals tab was built from, so a changed mark rebuilds it and nothing else does. */
+  let goalsKey = '';
   let scroll = 0;
   /** The opened sheet's own descent; null once the player takes the scroll. */
   let creep: SheetCreep | null = null;
@@ -157,14 +183,16 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     }
 
     const filled = createContentSink(ctx, content, pictures);
+    const brief = tab === 'history' ? null : deps.brief(shownPage);
+    goalsKey = goalsKeyOf(brief);
     switch (tab) {
       case 'task':
-        fillTask(filled, deps.brief(), built.wrapWidth, copy.missionNoBriefing);
+        fillTask(filled, brief, built.wrapWidth, copy.missionNoBriefing);
         break;
       case 'goals':
         fillGoals(
           filled,
-          deps.brief(),
+          brief,
           ctx.uiString('miscwindow', STRING_GOALS_HEADING, copy.missionGoals),
           built.wrapWidth,
         );
@@ -178,22 +206,48 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     mask.rect(built.viewport.x, built.viewport.y, built.viewport.w, built.viewport.h).fill(0xffffff);
     buttonsShown = tab !== 'goals' || filled.height() > built.viewport.h;
     if (buttonsShown) paintScrollButtons(layers, deps.art, built, screen);
+    historyShown = tab === 'task' && shownPages.length >= 2;
+    if (historyShown) paintHistoryButtons(layers, deps.art, built, screen);
     placeRuns();
   };
 
+  /** Start on the task tab, on `next` when the caller has a page, reading fresh. */
+  const openOn = (next: number | null): void => {
+    tab = 'task';
+    page = deps.history?.start ?? '';
+    scroll = 0;
+    creep = startCreep(now());
+    if (next !== null) {
+      shownPage = next;
+      shownPages = withShownPage(shownPages, next);
+    }
+    build();
+  };
+
+  /** From the strip the window opens on the map's replayable page (reading); a map whose pages all
+   *  came without the replay flag reopens on the last one shown (approximation). */
   const setOpen = (open: boolean): void => {
     if (open === shell.isOpen()) return;
     shell.setOpen(open);
-    if (open) {
-      tab = 'task';
-      page = deps.history?.start ?? '';
-      scroll = 0;
-      creep = startCreep(now());
-      build();
-    } else {
-      clear();
-    }
+    if (open) openOn(deps.replayPage?.() ?? shownPage ?? null);
+    else clear();
     deps.onOpenChange?.(open);
+  };
+
+  const showPage = (next: number): void => {
+    if (!shell.isOpen()) {
+      shell.setOpen(true);
+      openOn(next);
+      deps.onOpenChange?.(true);
+      return;
+    }
+    openOn(next);
+  };
+
+  /** Step to the neighbouring shown page; the creep restarts as for a fresh page. */
+  const stepHistory = (direction: -1 | 1): void => {
+    const next = neighbouringPage(shownPages, shownPage, direction);
+    if (next !== null) openOn(next);
   };
 
   const showTab = (next: MissionTab): void => {
@@ -228,6 +282,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
         return layout.tabs.find((t) => t.tab === hit.tab)?.rect ?? null;
       case 'scroll':
         return buttonsShown ? (hit.direction < 0 ? layout.scrollUp : layout.scrollDown) : null;
+      case 'history':
+        return historyShown ? (hit.direction < 0 ? layout.historyPrev : layout.historyNext) : null;
       case 'text': {
         const run = linkUnder(hit.x, hit.y);
         if (run === null) return null;
@@ -250,6 +306,12 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
     isOpen: () => shell.isOpen(),
     toggle: () => setOpen(!shell.isOpen()),
     close: () => setOpen(false),
+    showPage,
+    state: () => ({ page: shownPage, pages: [...shownPages] }),
+    restore: (state): void => {
+      shownPage = state.page;
+      shownPages = [...state.pages];
+    },
     claims: (x, y) => shell.claims(layout?.sheet ?? null, x, y),
     handleClick(x, y): boolean {
       if (!shell.isOpen() || layout === null) return false;
@@ -264,6 +326,9 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
           break;
         case 'scroll':
           if (buttonsShown) scrollBy(hit.direction * BUTTON_SCROLL_STEP * layout.scale);
+          break;
+        case 'history':
+          if (historyShown) stepHistory(hit.direction);
           break;
         case 'text': {
           const link = linkUnder(hit.x, hit.y)?.link ?? null;
@@ -295,6 +360,8 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
       if (!shell.isOpen()) return;
       const screen = deps.ctx.screen();
       if (`${screen.width}x${screen.height}` !== screenKey) build();
+      // A mark on the goal list follows the sim; the sheet's text never moves under the reader.
+      else if (tab === 'goals' && goalsKeyOf(deps.brief(shownPage)) !== goalsKey) build();
       if (creep !== null && layout !== null) scrollTo(creep.advance(now(), layout.scale));
     },
   };

@@ -9,6 +9,7 @@ import {
   Health,
   MISC_EQUIP_SLOTS,
   MoveSpeed,
+  nameHuman,
   Owner,
   Position,
   stampMissionBehaviour,
@@ -119,6 +120,7 @@ export function createSettler(world: World, content: ContentSet, rng: Rng, spec:
   stampOwner(world, e, spec.owner);
   stampMissionId(world, e, spec.missionId);
   stampMissionBehaviour(world, e, spec.behaviourFlags);
+  if (spec.nameStringId !== undefined) nameHuman(world, e, spec.nameStringId);
   // The default stance is owned-only, so an unowned or golden settler carries no Stance at all.
   if (world.has(e, Owner)) stampDefaultStance(world, content, e, spec.jobType);
   return e;

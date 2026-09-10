@@ -22,7 +22,8 @@ Nothing here is copied from the engine. Constants and semantics are described, n
 ## Files and sections
 
 A map folder's `map.ini` includes `mission.inc`, `staticobjects.inc`, `ai.inc`, `player.inc`, and
-`misc.inc` (corpus). Packed base-game maps carry the same sections inside `map.cif`. Texts live in
+`misc.inc` (corpus), the last carrying the `[misc_humannames]` and `[misc_weather]` sections beside
+the map's name, type and music. Packed base-game maps carry the same sections inside `map.cif`. Texts live in
 `text/<lang>/strings.ini` (`[text] stringn <id> "..."`) and briefing pages in
 `text/<lang>/briefings/NNNN.hlt` with their prose in a sibling `briefings.txt`
 (`[blockstart:N]` .. `[blockend:N]`).
@@ -155,7 +156,8 @@ All of this section is a reading unless marked otherwise.
 - Results that only affect presentation reach the display through callbacks: open briefing, play a
   sound at a position, notification (won, lost), camera, selection, marker, explored area, player
   died, load and leave sub map, map point changed. For the reimplementation these are simulation
-  events consumed by the app; the simulation never touches the display.
+  events consumed by the app; the simulation never touches the display. What outlives the frame
+  stays simulation state: the current briefing page, the info lines, a human's name.
 
 ## Goals
 
@@ -251,7 +253,7 @@ of each.
 | 6 | `RemoveVehicles` | 12 | remove every vehicle with the id | sim | 16 |
 | 7 | `RemoveHouses` | 14 | remove every house with the id | sim | 3 |
 | 8 | `RemoveLandscape` | 16, 17 | clear the landscape object on the point | sim | 446 |
-| 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt`; with the replay flag it becomes the page the mission window replays; stops the current pass; plays the briefing pop-up sound | app | 1450 |
+| 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt` in the mission window and add it to the shown-page history; with the replay flag the page is also stored as the map's current briefing, which the window opens on from the tool button; raises the pass's stop flag; plays the briefing pop-up sound (reading). Here: the `missionCutscene` event, the `MissionBriefing` page, and the pass ends after this mission; the pop-up sound is not in the decoded bank | both | 1450 |
 | 10 | `ActivateMission` | 21 | set the active flag (records the activation tick on the transition) | sim | 4665 |
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
 | 12 | `MissionWon` | 1 | set the mission manager's won flag, send the "won" message and the notification with the player; in multiplayer also trigger the multiplayer goal manager. Here: the player's script verdict, announced like the skirmish rule's | both | 120 |
@@ -268,7 +270,7 @@ of each.
 | 23 | `SendHuman` | 10, 16, 17 | order every human with the id to walk to the nearest unblocked point | sim | 521 |
 | 24 | `SendVehicle` | 12, 16, 17 | order vehicles with the id to move there | sim | 49 |
 | 25 | `DockVehicle` | 12, 16, 17 | order vehicles with the id to dock there | sim | 30 |
-| 26 | `PlaySound` | 26, 16, 17 | play the sound effect at the point | app | 498 |
+| 26 | `PlaySound` | 26, 16, 17 | play the sound effect at the point; the id is an `ATOMIC_ANIMATION_EVENT_SOUND_FX_TYPE_*` value (`logicdefines.inc`), the sound bank's `logicSoundType` (reading of the corpus's 56, 58, 60 against the bank). Here: the `missionSound` event, played by the audio director like an animation's cue | app | 498 |
 | 27 | `CreateTribute` | 28, 1, 2, 27 | open tribute slot `n` from the first player to the second with the description string, over whatever the slot held; starts paid and empty (reading) | sim | 995 |
 | 28 | `AddTributeGoods` | 28, 6, 7 | add to the slot's demand for the good or append a new one, up to 5 kinds, and mark the slot unpaid; skipped on a closed slot (reading) | sim | 1135 |
 | 29 | `AllowJob` | 1, 3, 4 | allow the job for the player's tribe and refresh its humans | sim | 5 |
@@ -301,11 +303,11 @@ of each.
 | 56 | `ChangeHumanObjectIdInArea` | 1, 16, 17, 9, 10 | give the player's humans within `range` the id | sim | 16 |
 | 57 | `HealHumansInArea` | 16, 17, 9 | set every human within `range` to full hit points | sim | 31 |
 | 58 | `ClearTribute` | 28 | close the tribute slot; its data stays for a later `CreateTribute` to replace (reading) | sim | 818 |
-| 59 | `SetGuiMarker` | 14, 16, 17 | show a marker of the given kind at the point | app | 20 |
-| 60 | `SetHumanName` | 10, 27 | name the first human with the id from the string table | app | 138 |
-| 61 | `SetWeather` | 16, 17, 9, 32, 7 | enable or disable a weather effect over the square of half-side `range` | app | 207 |
-| 62 | `StartEarthQuake` | 35 | shake for `seconds`, with its sound | app | 122 |
-| 63 | `SelectHuman` | 10, 32 | select the first human with the id | app | 7 |
+| 59 | `SetGuiMarker` | 14, 16, 17 | move GUI marker slot 0 to 9 to the point; the origin clears the slot; the world cursor draws each set slot as six GUI-sheet bobs cycled every 150 ms in the player's palette (reading). Here: the `missionGuiMarker` event and the marker overlay | app | 20 |
+| 60 | `SetHumanName` | 10, 27 | name the first human with the id after the string in the map's own table (reading). Here: the `ScriptedName` component, resolved by the app in the player's language | both | 138 |
+| 61 | `SetWeather` | 16, 17, 9, 32, 7 | set the rain (flag 0) or snow (flag 1) density of every 10-point weather sector under the square of half-side `range` to `amount` times 100, clamped to 10000, where 0 clears it; the map's `[misc_weather]` `setrainrectangle`, `setsnowrectangle` and `setsandrectangle` write the same fields (reading). Here: the `missionWeather` event and a screen wash by the density at the view's centre (approximation) | app | 207 |
+| 62 | `StartEarthQuake` | 35 | shake the display until `seconds` have passed, with `earthquak.wav` (reading). Here: the `missionEarthquake` event and a camera jitter; the sound is not in the decoded bank | app | 122 |
+| 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading). Here: the `missionSelectHuman` event; the view centres once instead of following (approximation) | app | 7 |
 | 64 | `AddGoodsToMapArea` | 6, 7, 16, 17, 9, 32, 1 | drop goods on the ground, spiralling outward from the point until the amount is placed; with the flag, the player's finished house standing on a point takes its fill first | sim | 206 |
 | 65 | `RemoveGoodsFromMapArea` | 6, 7, 16, 17, 9, 32, 1 | pick goods up the same way; with the flag, out of the player's houses' own stock first | sim | 31 |
 | 66 | `ChangeMissionIdOfHumanInRange` | 1, 10, 16, 17, 9 | give the player's humans within `range` the id | sim | 39 |
@@ -314,20 +316,20 @@ of each.
 | 69 | `RemoveLandscapesInArea` | 16, 17, 9 | clear landscape objects within `range` | sim | 11 |
 | 70 | `MoveUnitsInArea` | 1, 16, 17, 9, 36, 37 | teleport up to 20 free humans and the vehicles of the player from within `range` of the first point to near the second, when the second lies farther than `range` | sim | 346 |
 | 71 | `SetHouseExtensionLevel` | 14, 7 | rebuild up to 10 houses with the id at the new level in place | sim | 1 |
-| 72 | `InfoClear` | 1, 36 | clear the on-screen info line | app | 202 |
-| 73 | `InfoShowString` | 1, 36, 27 | show the string on the line | app | 112 |
-| 74 | `InfoCountGoodsInArea` | 1, 36, 27, 6, 16, 17, 9, 37 | show the string with a live count of goods on the ground and in houses within `range` | app | 11 |
-| 75 | `InfoCountHousesInArea` | 1, 36, 27, 15, 16, 17, 9, 37 | live count of finished houses of the type | app | 0 |
-| 76 | `InfoCountHumenInArea` | 1, 36, 27, 16, 17, 9, 37 | live count of humans | app | 0 |
-| 77 | `InfoCountSoldiersInArea` | 1, 36, 27, 16, 17, 9, 37 | live count of soldiers | app | 0 |
-| 78 | `InfoCountAnimalsInArea` | 1, 36, 27, 3, 16, 17, 9, 37 | live count of animals of the species | app | 8 |
+| 72 | `InfoClear` | 1, 36 | clear the player's info line `index` (0 to 4); player 20 or -1 clears every player's | sim | 202 |
+| 73 | `InfoShowString` | 1, 36, 27 | show the string on the line; its `%d` prints a zero (reading) | sim | 112 |
+| 74 | `InfoCountGoodsInArea` | 1, 36, 27, 6, 16, 17, 9, 37 | show the string with a live count of the good on the ground, whoever dropped it, plus in the player's finished houses within `range`, in its first `%d`, and `extra` in its second (reading) | sim | 11 |
+| 75 | `InfoCountHousesInArea` | 1, 36, 27, 15, 16, 17, 9, 37 | live count of the player's finished houses of the type within `range` | sim | 0 |
+| 76 | `InfoCountHumenInArea` | 1, 36, 27, 16, 17, 9, 37 | live count of the player's humans within `range`, civilians and soldiers | sim | 0 |
+| 77 | `InfoCountSoldiersInArea` | 1, 36, 27, 16, 17, 9, 37 | live count of the player's soldiers within `range` | sim | 0 |
+| 78 | `InfoCountAnimalsInArea` | 1, 36, 27, 3, 16, 17, 9, 37 | live count of the player's animals of the species within `range` | sim | 8 |
 | 79 | `RemoveFXSmokeLandscapeInArea` | 16, 17, 9 | remove fire, smoke, fog, and wave effect landscapes within `range` | sim | 1 |
 | 80 | `ChangeAnimalPlayerIdInArea` | 1, 3, 16, 17, 9, 7, 2 | hand up to `amount` (0: all, cap 50) animals of the species within `range` to the second player | sim | 6 |
 | 81 | `RemoveHPsOfHousesInArea` | 1, 16, 17, 9, 7 | take `hp` from up to 100 houses of the player within `range` unless the house is indestructible; floor at zero | sim | 99 |
 | 82 | `RemoveBlockerLandscapeInArea` | 16, 17, 9 | remove `block` landscapes within `range` | sim | 1 |
 | 83 | `RemoveFX1LandscapeInArea` | 16, 17, 9 | remove fog and waterfall effects within `range` | sim | 1 |
 | 84 | `RemoveFX2LandscapeInArea` | 16, 17, 9 | remove fire and smoke effects within `range` | sim | 1 |
-| 85 | `SetCameraPosition` | 16, 17 | move the camera | app | 197 |
+| 85 | `SetCameraPosition` | 16, 17 | end any follow mode and set the display's wanted position to the point (reading). Here: the `missionCamera` event and a jump | app | 197 |
 | 86 | `SetHumanX` | 1, 3, 4, 16, 17, 10, 29, 7 | `SetHuman` repeated `count` times | sim | 1371 |
 | 87 | `RemoveHPsOfHousesInAreaX` | 1, 16, 17, 9, 7, 14 | as 81, skipping houses with the id | sim | 0 |
 | 88 | `SetHouseOverlayState` | 14, 37, 32 | toggle a landscape overlay on houses with the id | app | 0 |
@@ -338,13 +340,13 @@ of each.
 | 93 | `SetHouseBehaviourFlag` | 14, 36, 32 | set or clear bit `index` on houses with the id | sim | 113 |
 | 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 |
 | 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove vehicles with the id, and their crews when the flag is set | sim | 0 |
-| 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place or remove an import marker at the point | app | 0 |
+| 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place a kind-2 marker entity on the point, or with the flag clear free every kind-2 marker there (reading). Here: the `missionImportMarker` event and the marker overlay, which borrows the GUI marker's first bob for want of the entity's own art (approximation) | app | 0 |
 | 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | tint land within `range` | app | 17 |
 | 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 |
 | 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 |
 | 100 | `SetRandomChestOnPosition` | 7, 16, 17 | drop a random chest of the category at the point | sim | 41 |
-| 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | place or remove an area marker | app | 0 |
-| 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | the magic-styled variant | app | 7 |
+| 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, `range` steps a side, and on every `index`th step place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points, walked in the map-point metric, and the marker overlay, which borrows the GUI marker's first bob (approximation); which corner the walk starts at is an approximation too | app | 0 |
+| 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | as 101 with kind-4 markers | app | 7 |
 
 Chest categories for 51 and 100 are a bitmask (docs): 1 soldiers, 2 tower, 4 catapult, 8 goods,
 16 buildings, 64 potions, 128 amulets, 256 wolves, 512 armours, 1024 lions.
@@ -481,18 +483,49 @@ A reading of the tribute manager, which the goal `PayTribute` and results 27, 28
 
 Five lines per player, twenty players, plus broadcast (player 20 or -1 writes every existing player).
 A line is cleared, a plain string, or a string with a live count (goods, houses, humans, soldiers,
-animals in an area) substituted into the string's `%d` (reading). The window that draws them was not
-examined; the docs place them at the top right.
+animals in an area) substituted into the string's `%d` (reading). The lines are logic state, saved
+with the game.
+
+The static window that draws them rebuilds its strings at most every two seconds, walks the local
+player's five slots in order and packs the set ones top-down with no gap for a cleared one, prints
+each through the same formatter with the count and the line's `extra` as its two arguments (a plain
+string prints zeros), and right-aligns every line 8 px from the display's right edge, the first 4 px
+from its top, 12 px apart, in white over a dark outline (reading). This build draws them at the same
+inset and pitch in the HUD font, outline left out; the tally is re-read every two seconds (24 ticks),
+as the original's window rebuilds its lines.
 
 ## Briefings and the mission window
 
-`PlayCutscene id replay` opens `text/<lang>/briefings/<id as 4 digits>.hlt` in the mission window's
-hypertext element, remembers up to 50 shown page ids as history, and, when `replay` is set, stores
-`id` as the page the window's "mission" tab shows again later (reading). The window's goal strings
-come from the map's string table; how it filters and marks missions (the `visible` flag, the
-per-mission "evaluated true" flag, `description`) needs a reading of its draw routine or an
-observation. The app-side page format is documented with the `.briefing.json` sidecar schema in
-`packages/data`.
+`PlayCutscene id replay` opens `text/<lang>/briefings/<id as 4 digits>.hlt` (ids from 500 up name a
+`briefings.txt` block instead) in the mission window on its briefing tab and adds the id to the
+shown-page history, which holds up to 50 distinct ids and drops the oldest past that; when `replay`
+is set the id is also stored as the map's current briefing, the page the window opens on from the
+tool button, and that page joins the history the same way. Once the history holds two pages the
+briefing tab gains a previous and a next button at the ends of the row under the text, which walk
+it (reading). The history is saved with the game in the original; here it lives with the HUD for
+the session.
+
+The goals tab lists every mission whose `visible` flag is set and whose `description` is not `-1`,
+in script order, printing the string from the map's own table under the heading: with an `X` when
+the mission's last check satisfied its `successfullif` rule, with an `o` when it is active, and with
+no mark and dimmed when it is neither. A description starting with `@` prints without it, in black
+rather than the list's colour (reading); this build strips the mark and keeps the list's colour. The
+`visible` flag is the `SetVisible` result's; the satisfied flag is rewritten by every check, so a
+mission that fired keeps its `X` until something checks it again. The app-side page format is
+documented with the `.briefing.json` sidecar schema in `packages/data`.
+
+The markers (`SetGuiMarker`, the area and import markers) and the weather squares are marker
+entities and sector fields in the original, saved with the game; here they are events the view keeps
+for the session, so a save loaded later shows none of them until the script sets them again
+(approximation).
+
+## Human names
+
+`misc.inc` may carry `[misc_humannames]` with `setname <humanId> <stringId>` rows. After the
+`StaticObjects` placements load, each row names the first human carrying the mission object id
+after the string in the map's table, through the same call the `SetHumanName` result makes; a row
+naming an id no human carries does nothing (reading). Here the row becomes the settler's
+`ScriptedName` at spawn and the app resolves the string in the player's language.
 
 ## Sub-missions
 
@@ -515,5 +548,7 @@ an inhabitant or soldier count, type 4 wins when `MissionWon` fires for the play
   activation, and the `[n/2, n)` range of `RandomTimeGone`.
 - What sets a player's "seen" flag toward another player.
 - Behaviour bits 8, 10, 18, 19 and the animal behaviour value.
-- The mission window's listing rule and done marker.
+- Whether the load tick evaluates: the tick count starts at 0, which is a multiple of 36, so the
+  first pass would run at once and an opening `PlayCutscene` show its page before the map moves,
+  where this build's first pass runs three seconds in.
 - The loader's `description` default of 0 against the corpus convention of -1.

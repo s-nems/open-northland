@@ -32,6 +32,11 @@ add 2 #SPECIAL_ITEM_TYPE_NONE
 add X #SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE
 remove 0 #SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE
 
+[misc_humannames]
+setname	100	100
+setname 101 101 
+setname x 7
+
 [MissionData]
 debuginfo "StartText"
 description 300
@@ -81,6 +86,11 @@ esult "AddTributeGoods" 15 "coin" 40
       { key: 'add', values: ['2', '#SPECIAL_ITEM_TYPE_NONE'] },
       { key: 'add', values: ['X', '#SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE'] },
       { key: 'remove', values: ['0', '#SPECIAL_ITEM_TYPE_LETTER_TO_SET_ANY_HOUSE'] },
+    ]);
+    // The human-name rows are typed; a malformed one is dropped rather than failing the map.
+    expect(script?.humanNames).toEqual([
+      { humanId: 100, stringId: 100 },
+      { humanId: 101, stringId: 101 },
     ]);
     expect(script?.missions).toHaveLength(2);
     expect(script?.missions[0]).toMatchObject({

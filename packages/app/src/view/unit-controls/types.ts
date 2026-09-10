@@ -38,6 +38,8 @@ export interface UnitControlsOptions {
   /** Owner slot to team-colour slot; absent means identity. */
   readonly playerColourOf?: (player: number) => number;
   readonly enqueue: (command: PlayerCommand) => void;
+  /** The map's own string by id, for the names a map gives its settlers. */
+  readonly mapText?: (stringId: number) => string | undefined;
   /** Re-centre the main view on a world-px point at the current zoom; the hud layer never reaches the
    *  camera itself. */
   readonly centerOn: (worldX: number, worldY: number) => void;
@@ -65,6 +67,8 @@ export interface UnitControls {
   readonly selectEntity: (id: number) => void;
   /** Take a press on the map overview as an order at the world spot it depicts. */
   readonly overviewPress: OverviewPress;
+  /** Replace the selection, as a map script's `SelectHuman` does. */
+  readonly select: (ids: Iterable<number>) => void;
   readonly portrait: () => PortraitBox | null;
   readonly flaggedFlagIds: () => ReadonlySet<number>;
   /** The work-area circles the "Show Work Area" order has switched on. */

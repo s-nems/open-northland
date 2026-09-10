@@ -87,6 +87,16 @@ export function sceneStrings(
   return entry !== undefined && 'strings' in entry ? entry.strings : undefined;
 }
 
+/** A scene's briefing pages by cutscene id, the stand-in for a map's `text/<lang>/briefings/`;
+ *  undefined for a scene whose script plays none. */
+export function scenePages(
+  id: string,
+  locale: Locale = currentLocale(),
+): Readonly<Record<string, string>> | undefined {
+  const entry = sceneCopy(id, locale);
+  return entry !== undefined && 'pages' in entry ? entry.pages : undefined;
+}
+
 export function formatMessage(template: string, values: Readonly<Record<string, string | number>>): string {
   return template.replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (match, key: string) =>
     Object.hasOwn(values, key) ? String(values[key]) : match,

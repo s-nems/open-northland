@@ -9,6 +9,9 @@ import type { MissionWindowLayout, ScreenSize, SheetFrame } from './model.js';
 const SHEET_GFX = 0x19;
 const SCROLL_UP_GFX = 0x8a;
 const SCROLL_DOWN_GFX = 0x8b;
+/** The bobs the original's window builds its previous and next briefing buttons from (reading). */
+const HISTORY_PREV_GFX = 0x8c;
+const HISTORY_NEXT_GFX = 0x8d;
 /** The flat parchment stand-in for the sheet when the decoded GUI art is absent. */
 const FALLBACK_SHEET_FILL = 0xd8c8a2;
 /** The flat fallback arrow (design px) when the decoded GUI sheet is absent. */
@@ -60,6 +63,17 @@ export function paintScrollButtons(
   paintArrow(target, art, layout.scrollDown, SCROLL_DOWN_GFX, 1, layout.scale, screen);
 }
 
+/** The previous and next briefing buttons at the row's ends, the same bob treatment as the scroll pair. */
+export function paintHistoryButtons(
+  target: PaintTarget,
+  art: GuiArt | null,
+  layout: MissionWindowLayout,
+  screen: ScreenSize,
+): void {
+  paintArrow(target, art, layout.historyPrev, HISTORY_PREV_GFX, -1, layout.scale, screen, 'x');
+  paintArrow(target, art, layout.historyNext, HISTORY_NEXT_GFX, 1, layout.scale, screen, 'x');
+}
+
 function paintArrow(
   target: PaintTarget,
   art: GuiArt | null,
@@ -68,6 +82,7 @@ function paintArrow(
   direction: -1 | 1,
   scale: number,
   screen: ScreenSize,
+  axis: 'x' | 'y' = 'y',
 ): void {
   const sprite =
     art === null ? null : makeGuiSprite(art, gfx, { defaultPalette: 'context', colorKey: 'full' });
@@ -88,6 +103,15 @@ function paintArrow(
   const cy = rect.y + rect.h / 2;
   const halfW = FALLBACK_ARROW_HALF_W * scale;
   const halfH = (FALLBACK_ARROW_H * scale) / 2;
+  if (axis === 'x') {
+    target.graphics
+      .moveTo(cx + direction * halfH, cy)
+      .lineTo(cx - direction * halfH, cy - halfW)
+      .lineTo(cx - direction * halfH, cy + halfW)
+      .closePath()
+      .fill(FALLBACK_ARROW_COLOR);
+    return;
+  }
   target.graphics
     .moveTo(cx, cy + direction * halfH)
     .lineTo(cx - halfW, cy - direction * halfH)

@@ -33,6 +33,32 @@ describe('resolveAuthoredPlacements', () => {
     expect(skipped).toBe(3);
   });
 
+  it('names the first human carrying a `setname` id, once, and leaves the rest of the group unnamed', () => {
+    const entities = {
+      buildings: [],
+      humans: [
+        { tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5, missionId: 100 },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 5, hy: 5, missionId: 100 },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 7, hy: 5, missionId: 101 },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 9, hy: 5 },
+      ],
+      animals: [],
+    };
+    const names = [
+      { humanId: 100, stringId: 10 },
+      { humanId: 100, stringId: 11 },
+      { humanId: 101, stringId: 12 },
+      { humanId: 102, stringId: 13 },
+    ];
+    const { placements } = resolveAuthoredPlacements(entities, AUTHORED_ROWS, authoredMap(), names);
+    expect(placements.map((p) => (p.kind === 'human' ? (p.nameStringId ?? null) : -1))).toEqual([
+      10,
+      null,
+      12,
+      null,
+    ]);
+  });
+
   it('resolves the freehand role spellings the decoded maps really author via the normalized key', () => {
     // `Child_Male`-style casing, `coin maker`-style spacing and `hero_axe_???` suffixes all mean the
     // `jobtypes.ini` slug; an exact-string join dropped them (observed across content/maps/*.json).

@@ -16,7 +16,7 @@ import {
 } from './extras-window.js';
 import { goodsTabbedList, type MenuGoodEntry } from './goods-menu.js';
 import type { HeldPaperController } from './held-paper.js';
-import { createMissionWindow } from './mission/index.js';
+import { createMissionWindow, type MissionWindow, type MissionWindowState } from './mission/index.js';
 import { createStatsWindow } from './stats-window.js';
 import {
   createTabbedListWindow,
@@ -51,7 +51,10 @@ export interface ToolWindowsDeps {
   readonly onPayTribute: (slot: number) => void;
   /** The decoded GUI sheet the mission window draws its papyrus from; null degrades to flat chrome. */
   readonly art: GuiArt | null;
-  readonly missionBrief: () => MissionBrief | null;
+  /** The mission window's brief for a briefing page, or for the map's fallback text with null. */
+  readonly missionBrief: (page: number | null) => MissionBrief | null;
+  /** The briefing page the mission window opens on from the strip; null before any replayable one. */
+  readonly missionReplayPage: () => number | null;
   /** The mission window's history book; null shows the tab empty. */
   readonly history: HypertextBook | null;
   readonly onLargeWindow?: (open: boolean) => void;
@@ -65,6 +68,8 @@ export interface ToolWindowsDeps {
 export interface ToolWindows {
   /** Each pop-up by id, as the strip buttons toggle them. */
   readonly byId: Readonly<Record<ToolWindowId, ToolWindow>>;
+  /** The mission window itself, for the page a script opens it on. */
+  readonly mission: MissionWindow;
   claims(x: number, y: number): boolean;
   /** Offer a click to the top-drawn open pop-up over the point; true when it consumed it. */
   handleClick(x: number, y: number, mods?: ClickModifiers): boolean;
@@ -85,6 +90,7 @@ export interface ToolWindowsState {
   readonly diplomacy: number | null;
   /** The paper the build menu holds for its next pick, restored with its banner. */
   readonly heldPaper: Paper | null;
+  readonly mission: MissionWindowState;
 }
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
@@ -135,6 +141,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
     container,
     art: deps.art,
     brief: deps.missionBrief,
+    replayPage: deps.missionReplayPage,
     history: deps.history,
     ...(deps.onLargeWindow !== undefined ? { onOpenChange: deps.onLargeWindow } : {}),
   });
@@ -159,6 +166,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
 
   return {
     byId: { menu, goods, extras, stats, diplomacy, mission },
+    mission,
     claims: (x, y) => topAt(x, y) !== null,
     handleClick: (x, y, mods): boolean => topAt(x, y)?.handleClick(x, y, mods) ?? false,
     handleWheel: (x, y, deltaY): boolean => {
@@ -190,6 +198,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       extras: extras.state(),
       diplomacy: diplomacy.state(),
       heldPaper: heldPaper.held(),
+      mission: mission.state(),
     }),
     restore: (state): void => {
       menu.restore(state.buildings);
@@ -198,6 +207,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       diplomacy.restore(state.diplomacy);
       if (state.heldPaper === null) heldPaper.cancel();
       else heldPaper.hold(state.heldPaper);
+      mission.restore(state.mission);
       const open = new Set(state.openIds);
       for (const id of MOUNT_ORDER) {
         const window = entries[id].window;

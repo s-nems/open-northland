@@ -60,6 +60,17 @@ The tribute table is the one player table a seat command reads and writes: `trib
 drains the payer's houses through the same stock seams the goods results use, and the command system
 hands `payTribute` to it. The window's read of the table is the `Simulation` probe, never the component.
 
+## The display
+
+A result that only shows something emits an event and changes nothing: the cutscene, the sound, the
+camera, the selection, the markers, the weather, the quake. Of what the original keeps past the
+frame, the current briefing page, the info lines and a human's `ScriptedName` are state here as
+well, saved and hashed like the rest; the markers and the weather are not, which the format doc
+names as an approximation. An info line stores what to tally, never the tally; the `Simulation`
+probe counts through the same helpers the area goals use, so the display and a goal never disagree
+about a count. A cutscene halts the pass after its mission, which is the one result that changes
+the order the others run in.
+
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes

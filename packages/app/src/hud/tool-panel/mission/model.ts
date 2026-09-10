@@ -39,6 +39,12 @@ const BUTTON_W = 42;
 const BUTTON_H = 58;
 const SCROLL_UP_X = 212;
 const SCROLL_DOWN_X = 246;
+/** The previous and next briefing buttons at the row's two ends, shown once the shown-page history
+ *  holds two pages (reading). */
+const HISTORY_PREV_X = 8;
+const HISTORY_NEXT_X = 450;
+/** How many shown briefing pages the window remembers; the oldest drops off (reading). */
+export const BRIEFING_HISTORY_LIMIT = 50;
 
 /** The goal list's columns, in design px from the viewport origin; each wraps to the viewport's
  *  right edge. */
@@ -96,6 +102,8 @@ export interface MissionWindowLayout {
   readonly wrapWidth: number;
   readonly scrollUp: Rect;
   readonly scrollDown: Rect;
+  readonly historyPrev: Rect;
+  readonly historyNext: Rect;
 }
 
 export interface ScreenSize {
@@ -149,6 +157,8 @@ export function layoutMissionWindow(screen: ScreenSize, sheet: SheetFrame | null
     wrapWidth: CONTENT_W - 2 * CONTENT_INSET,
     scrollUp: at(SCROLL_UP_X, BUTTON_Y, BUTTON_W, BUTTON_H),
     scrollDown: at(SCROLL_DOWN_X, BUTTON_Y, BUTTON_W, BUTTON_H),
+    historyPrev: at(HISTORY_PREV_X, BUTTON_Y, BUTTON_W, BUTTON_H),
+    historyNext: at(HISTORY_NEXT_X, BUTTON_Y, BUTTON_W, BUTTON_H),
   };
 }
 
@@ -156,6 +166,7 @@ export type MissionHit =
   | { readonly kind: 'close' }
   | { readonly kind: 'tab'; readonly tab: MissionTab }
   | { readonly kind: 'scroll'; readonly direction: -1 | 1 }
+  | { readonly kind: 'history'; readonly direction: -1 | 1 }
   | { readonly kind: 'text'; readonly x: number; readonly y: number }
   | { readonly kind: 'window' }
   | null;
@@ -168,10 +179,34 @@ export function hitTestMissionWindow(layout: MissionWindowLayout, x: number, y: 
   if (tab !== undefined) return { kind: 'tab', tab: tab.tab };
   if (contains(layout.scrollDown, x, y)) return { kind: 'scroll', direction: 1 };
   if (contains(layout.scrollUp, x, y)) return { kind: 'scroll', direction: -1 };
+  if (contains(layout.historyPrev, x, y)) return { kind: 'history', direction: -1 };
+  if (contains(layout.historyNext, x, y)) return { kind: 'history', direction: 1 };
   if (contains(layout.viewport, x, y))
     return { kind: 'text', x: x - layout.viewport.x, y: y - layout.viewport.y };
   if (contains(layout.sheet, x, y)) return { kind: 'window' };
   return null;
+}
+
+/**
+ * The shown-page history with `page` added: a page already in it stays where it was, a new one goes
+ * on the end, and past {@link BRIEFING_HISTORY_LIMIT} the oldest drops off (reading).
+ */
+export function withShownPage(history: readonly number[], page: number): number[] {
+  if (history.includes(page)) return [...history];
+  const next = [...history, page];
+  return next.length > BRIEFING_HISTORY_LIMIT ? next.slice(next.length - BRIEFING_HISTORY_LIMIT) : next;
+}
+
+/** The page `direction` steps from `page` in the history, or null at either end or off the list. */
+export function neighbouringPage(
+  history: readonly number[],
+  page: number | null,
+  direction: -1 | 1,
+): number | null {
+  if (page === null) return null;
+  const at = history.indexOf(page);
+  if (at < 0) return null;
+  return history[at + direction] ?? null;
 }
 
 /** The scroll offset clamped to what the content can scroll by; zero when it fits. */

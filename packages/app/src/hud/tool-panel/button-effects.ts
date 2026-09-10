@@ -64,7 +64,13 @@ export interface ToolButtonSurfaces {
   readonly cycleMessagePriority: () => void;
 }
 
-export function applyToolButtonEffect(surfaces: ToolButtonSurfaces, id: ToolButtonId): void {
+/** Apply a button's effect; `open` replaces a window button's toggle, for a caller that opens the
+ *  window on something of its own (a script's briefing page) and still wants the rest of the effect. */
+export function applyToolButtonEffect(
+  surfaces: ToolButtonSurfaces,
+  id: ToolButtonId,
+  open?: () => void,
+): void {
   const effect = toolButtonEffect(id);
   if (effect === null) return;
   switch (effect.kind) {
@@ -80,7 +86,8 @@ export function applyToolButtonEffect(surfaces: ToolButtonSurfaces, id: ToolButt
     case 'window': {
       if (effect.cancelsHeld) surfaces.cancelHeld();
       for (const closing of effect.closes) surfaces.windows[closing].close();
-      surfaces.windows[effect.toggles].toggle();
+      if (open !== undefined) open();
+      else surfaces.windows[effect.toggles].toggle();
       return;
     }
     default: {

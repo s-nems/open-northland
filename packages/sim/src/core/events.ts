@@ -277,6 +277,71 @@ export type SimEvent =
       /** An `Exit` result fired: the script asks to leave the map. The simulation itself does nothing. */
       readonly kind: 'missionExit';
       readonly mission: number;
+    }
+  | {
+      /**
+       * A `PlayCutscene` result fired: the mission window opens on briefing page `page`. With `replay`
+       * the page is also the one the window opens on later, which `MissionBriefing` records.
+       */
+      readonly kind: 'missionCutscene';
+      readonly mission: number;
+      readonly page: number;
+      readonly replay: boolean;
+    }
+  | {
+      /** A `PlaySound` result: the sound bank group with this `logicSoundType` id plays at `at`. */
+      readonly kind: 'missionSound';
+      readonly soundType: number;
+      readonly at: HalfCellNode;
+    }
+  | {
+      /** A `SetCameraPosition` result: the view moves to `point`. */
+      readonly kind: 'missionCamera';
+      readonly point: HalfCellNode;
+    }
+  | {
+      /** A `SelectHuman` result: the view follows `entity`, and with `select` also selects it. */
+      readonly kind: 'missionSelectHuman';
+      readonly entity: Entity;
+      readonly select: boolean;
+    }
+  | {
+      /** A `SetGuiMarker` result: marker slot `marker` (0 to 9) moves to `point`, or clears when
+       *  `placed` is false, which is the origin point the script writes for "none". */
+      readonly kind: 'missionGuiMarker';
+      readonly marker: number;
+      readonly point: HalfCellNode;
+      readonly placed: boolean;
+    }
+  | {
+      /** A `SetMapAreaMarker` or its magic variant: markers of that style on `points` are placed or,
+       *  with `placed` false, taken away. */
+      readonly kind: 'missionAreaMarkers';
+      readonly magic: boolean;
+      readonly points: readonly HalfCellNode[];
+      readonly placed: boolean;
+    }
+  | {
+      /** A `SetImportLandscapeMarker` result: the import marker on `point` is placed or taken away. */
+      readonly kind: 'missionImportMarker';
+      readonly point: HalfCellNode;
+      readonly placed: boolean;
+    }
+  | {
+      /**
+       * A `SetWeather` result: `rain` or snow over the square from `min` to `max` at `density`, the
+       * original's 0 to 10000 scale where 0 clears the effect.
+       */
+      readonly kind: 'missionWeather';
+      readonly weather: 'rain' | 'snow';
+      readonly min: HalfCellNode;
+      readonly max: HalfCellNode;
+      readonly density: number;
+    }
+  | {
+      /** A `StartEarthQuake` result: the view shakes for `seconds`. */
+      readonly kind: 'missionEarthquake';
+      readonly seconds: number;
     };
 
 export type SimEventKind = SimEvent['kind'];

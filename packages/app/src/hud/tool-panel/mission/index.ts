@@ -6,4 +6,4 @@ export {
   missionWindowScale,
   type SheetFrame,
 } from './model.js';
-export { createMissionWindow } from './window.js';
+export { createMissionWindow, type MissionWindow, type MissionWindowState } from './window.js';

@@ -79,6 +79,9 @@ export type SpawnCommand =
       readonly missionId?: number;
       /** The `sethuman` behaviour mask, stamped as a {@link MissionBehaviour}; omit (or 0) for none. */
       readonly behaviourFlags?: number;
+      /** The map's `[misc_humannames]` name for this settler, as a string id in the map's own table;
+       *  omit for a settler the map left unnamed. */
+      readonly nameStringId?: number;
     }
   | {
       /**

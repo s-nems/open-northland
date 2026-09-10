@@ -25,6 +25,8 @@ import type { PictureCache } from './pictures.js';
 const GLYPH_WRAP_WIDTH = 40;
 const DEFAULT_TEXT_COLOR: FontColorName = 'dark';
 const LINK_COLOR: FontColorName = 'red';
+/** An inactive, unmet goal prints in the window's muted colour (reading). */
+const IDLE_GOAL_COLOR: FontColorName = 'dimmed';
 
 /** One placed run of tab content: where it sits and the run it owns. */
 export interface PlacedRun extends PlacedLink {
@@ -172,7 +174,8 @@ export function fillTask(
   for (const b of brief.blocks) sink.block(b, wrapWidth, PARAGRAPH_GAP);
 }
 
-/** The goals tab: the heading, then one `o`/`X` bullet and wrapped text per goal, as the original prints them. */
+/** The goals tab: the heading, then one `o`/`X` bullet and wrapped text per goal, as the original
+ *  prints them; an idle goal has no bullet and prints dimmed. */
 export function fillGoals(
   sink: ContentSink,
   brief: MissionBrief | null,
@@ -182,8 +185,18 @@ export function fillGoals(
   sink.heading(heading, GOAL_LIST.headingX, wrapWidth - GOAL_LIST.headingX);
   sink.skipTo(GOAL_LIST.listY);
   for (const goal of brief?.goals ?? []) {
-    sink.glyph(goal.done ? GOAL_DONE_BULLET : GOAL_OPEN_BULLET, GOAL_LIST.bulletX, MISSION_BODY_PX);
-    sink.paragraph(bodyParagraph(goal.text), GOAL_LIST.textX, wrapWidth - GOAL_LIST.textX, GOAL_LIST.gap);
+    if (goal.state !== 'idle') {
+      sink.glyph(
+        goal.state === 'done' ? GOAL_DONE_BULLET : GOAL_OPEN_BULLET,
+        GOAL_LIST.bulletX,
+        MISSION_BODY_PX,
+      );
+    }
+    const paragraph =
+      goal.state === 'idle'
+        ? { ...bodyParagraph(goal.text), color: IDLE_GOAL_COLOR }
+        : bodyParagraph(goal.text);
+    sink.paragraph(paragraph, GOAL_LIST.textX, wrapWidth - GOAL_LIST.textX, GOAL_LIST.gap);
   }
 }
 

@@ -14,6 +14,18 @@ export function stampMissionId(world: World, e: Entity, id: number | undefined):
 }
 
 /**
+ * The name a map gave one human, as the id of a string in the map's own table: a `[misc_humannames]`
+ * row at build or a `SetHumanName` result later. The app resolves it in the player's language; a
+ * human without one shows its generated name.
+ */
+export const ScriptedName = defineComponent<{ stringId: number }>('ScriptedName');
+
+export function nameHuman(world: World, e: Entity, stringId: number): void {
+  if (world.has(e, ScriptedName)) world.mut(e, ScriptedName).stringId = stringId;
+  else world.add(e, ScriptedName, { stringId });
+}
+
+/**
  * One mission's live state, indexed by the mission's position in the map's script - the same index
  * every `ActivateMission`, `DeactivateMission`, `CheckMission`, `IsMissionDone`, `IfMissionIsActive`
  * and `SetVisible` argument names. The mission's goals and results are content, not state, so only
@@ -56,5 +68,23 @@ export function missionStateExists(world: World): boolean {
 export function writeMissionState(world: World, apply: (missions: MissionRecord[]) => void): void {
   missionState.write(world, (state) => {
     apply(state.missions);
+  });
+}
+
+/** The briefing page the mission window opens on when nothing newer was shown: the last
+ *  `PlayCutscene` that carried the replay flag. Null until one fires. */
+const missionBriefing = defineWorldSingleton<{ page: number | null }>('MissionBriefing', () => ({
+  page: null,
+}));
+
+export const MissionBriefing = missionBriefing.component;
+
+export function missionBriefingPage(world: World): number | null {
+  return missionBriefing.read(world).page;
+}
+
+export function setMissionBriefingPage(world: World, page: number): void {
+  missionBriefing.write(world, (state) => {
+    state.page = page;
   });
 }

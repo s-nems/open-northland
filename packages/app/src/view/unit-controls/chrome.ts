@@ -53,6 +53,7 @@ export async function createUnitChrome(
       isLivestockGood: (goodType) => systems.livestockTribeOfGood(opts.content, goodType) !== null,
       livestockMeatGood: systems.livestockMeatGoodOf(opts.content),
       edibleGoodForm: (goodType) => systems.edibleGoodFormOf(opts.content, goodType),
+      ...(opts.mapText !== undefined ? { mapText: opts.mapText } : {}),
       ...(opts.sheet !== undefined ? { sheet: opts.sheet } : {}),
       ...(opts.playerColourOf !== undefined ? { playerColourOf: opts.playerColourOf } : {}),
       onDemolish: (id) => opts.enqueue({ kind: 'demolish', building: id as Entity }),

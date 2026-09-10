@@ -185,6 +185,25 @@ export const enContent = {
         '3': 'The neighbours ask for stone to pave the road between us.',
       },
     },
+    presentation: {
+      title: 'Script presentation',
+      summary:
+        'What a map script shows rather than changes: the briefing page it opens, two info lines in the top-right corner (one with a live head-count), the hero it names and selects, the camera it moves, the marker it plants, the rain it starts and the ground it shakes. A few seconds on, a second page joins the first, which the window walks with its prev and next buttons, a magic ring surrounds the ford and the first info line clears.',
+      strings: {
+        '1': 'Read the briefing the elders sent.',
+        '2': 'Hold the ford until the thaw.',
+        '3': 'Raise the great hall.',
+        '10': 'The elders are watching.',
+        '11': 'Settlers at the ford: %d of %d',
+        '20': 'Hallvard the Steadfast',
+      },
+      pages: {
+        '500':
+          'The elders send word: hold the ford until the thaw, and raise the great hall before the next winter. Hallvard will lead the guard.',
+        '501':
+          'A rider from the elders: the ford is marked out for the palisade. Keep the guard inside the ring.',
+      },
+    },
     victory: {
       title: 'Victory and defeat',
       summary:

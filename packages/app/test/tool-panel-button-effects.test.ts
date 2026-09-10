@@ -85,6 +85,7 @@ function mountSurfaces() {
     diplomacyRows: () => [],
     art: null,
     missionBrief: () => null,
+    missionReplayPage: () => null,
     history: null,
     onPickBuilding: (typeId) => placement.enter(typeId),
     onPickGood: (goodType) => goodsDrop.enter(goodType),

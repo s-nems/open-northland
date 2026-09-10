@@ -332,12 +332,15 @@ describe('an opcode this build cannot run', () => {
     const sim = missionSim([
       mission({
         goals: [TRUE_GOAL],
-        results: [{ opcode: 'PlaySound', sound: 1, point: { hx: 0, hy: 0 } }, { opcode: 'Exit' }],
+        results: [
+          { opcode: 'SetVertexColor', point: { hx: 0, hy: 0 }, range: 1, amount: 1 },
+          { opcode: 'Exit' },
+        ],
       }),
     ]);
     sim.run(FIRST_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
-      { kind: 'missionUnsupported', mission: 0, opcode: 'PlaySound' },
+      { kind: 'missionUnsupported', mission: 0, opcode: 'SetVertexColor' },
     ]);
     expect(eventsOfKind(sim, 'missionExit')).toHaveLength(1);
   });

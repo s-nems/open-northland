@@ -248,6 +248,67 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
   CreateTribute: { opcode: 'CreateTribute', slot: 0, player: 0, otherPlayer: 1, stringId: 1 },
   AddTributeGoods: { opcode: 'AddTributeGoods', slot: 0, good: 1, amount: 1 },
   ClearTribute: { opcode: 'ClearTribute', slot: 0 },
+  PlayCutscene: { opcode: 'PlayCutscene', cutscene: 500, replay: true },
+  PlaySound: { opcode: 'PlaySound', sound: 1, point: POINT },
+  SetCameraPosition: { opcode: 'SetCameraPosition', point: POINT },
+  SelectHuman: { opcode: 'SelectHuman', humanId: 7, flag: false },
+  SetHumanName: { opcode: 'SetHumanName', humanId: 7, stringId: 100 },
+  SetGuiMarker: { opcode: 'SetGuiMarker', objectId: 1, point: POINT },
+  SetImportLandscapeMarker: { opcode: 'SetImportLandscapeMarker', point: POINT, flag: true },
+  SetMapAreaMarker: { opcode: 'SetMapAreaMarker', point: POINT, range: 3, flag: true, index: 1 },
+  SetMapAreaMarkerMagic: { opcode: 'SetMapAreaMarkerMagic', point: POINT, range: 3, flag: true, index: 1 },
+  SetWeather: { opcode: 'SetWeather', point: POINT, range: 3, flag: false, amount: 5 },
+  StartEarthQuake: { opcode: 'StartEarthQuake', seconds: 2 },
+  InfoClear: { opcode: 'InfoClear', player: 0, index: 0 },
+  InfoShowString: { opcode: 'InfoShowString', player: 0, index: 0, stringId: 1 },
+  InfoCountGoodsInArea: {
+    opcode: 'InfoCountGoodsInArea',
+    player: 0,
+    index: 0,
+    stringId: 1,
+    good: 1,
+    point: POINT,
+    range: 3,
+    extra: 0,
+  },
+  InfoCountHousesInArea: {
+    opcode: 'InfoCountHousesInArea',
+    player: 0,
+    index: 0,
+    stringId: 1,
+    houseType: 1,
+    point: POINT,
+    range: 3,
+    extra: 0,
+  },
+  InfoCountHumenInArea: {
+    opcode: 'InfoCountHumenInArea',
+    player: 0,
+    index: 0,
+    stringId: 1,
+    point: POINT,
+    range: 3,
+    extra: 0,
+  },
+  InfoCountSoldiersInArea: {
+    opcode: 'InfoCountSoldiersInArea',
+    player: 0,
+    index: 0,
+    stringId: 1,
+    point: POINT,
+    range: 3,
+    extra: 0,
+  },
+  InfoCountAnimalsInArea: {
+    opcode: 'InfoCountAnimalsInArea',
+    player: 0,
+    index: 0,
+    stringId: 1,
+    tribe: 1,
+    point: POINT,
+    range: 3,
+    extra: 0,
+  },
 };
 
 function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): string[] {
@@ -275,8 +336,8 @@ describe('the published opcode support lists', () => {
     expect(
       reportedOpcodes([{ opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 }], []),
     ).toEqual(['BuildVehicles']);
-    expect(reportedOpcodes([], [{ opcode: 'PlayCutscene', cutscene: 1, replay: false }])).toEqual([
-      'PlayCutscene',
+    expect(reportedOpcodes([], [{ opcode: 'SetVertexColor', point: POINT, range: 1, amount: 1 }])).toEqual([
+      'SetVertexColor',
     ]);
   });
 });

@@ -1,0 +1,122 @@
+import type { Camera } from '@open-northland/render';
+import { halfCellToScreen } from '@open-northland/render';
+import type { Entity, InfoLineView, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { ONE } from '@open-northland/sim';
+import { describe, expect, it } from 'vitest';
+import type { GameToolPanelHandle } from '../src/view/game-tool-panel.js';
+import { createScriptPresentation } from '../src/view/runtime/script-presentation.js';
+import type { ScriptEffects } from '../src/view/script-effects.js';
+import type { ScriptMarkers } from '../src/view/script-markers.js';
+
+/**
+ * The join from a script's display events to the HUD: a cutscene opens the window on its page, a
+ * camera result and a selection centre the view, the markers and effects get their events, and the
+ * info lines reach the panel on the original's refresh cadence.
+ */
+
+const HERO = 3 as Entity;
+const HERO_NODE = { hx: 11, hy: 10 };
+const CAMERA: Camera = { offsetX: 0, offsetY: 0, scale: 1 };
+const SCREEN = { width: 800, height: 600 };
+
+function snapshotAt(tick: number): WorldSnapshot {
+  return {
+    tick,
+    events: [],
+    entities: [{ id: HERO, components: { Position: { x: 5 * ONE, y: 5 * ONE } } }],
+  } as unknown as WorldSnapshot;
+}
+
+function harness(lines: InfoLineView[] = []) {
+  const calls: string[] = [];
+  const infoLines: (readonly string[])[] = [];
+  let tick = 0;
+  const sim = {
+    get tick() {
+      return tick;
+    },
+    snapshot: () => snapshotAt(tick),
+    infoLines: () => lines,
+  };
+  const toolPanel = {
+    controller: {
+      openMission: (page?: number) => calls.push(`open:${page}`),
+      setInfoLines: (next: readonly string[]) => infoLines.push(next),
+    },
+  } as unknown as GameToolPanelHandle;
+  const markers: ScriptMarkers = {
+    apply: (event) => calls.push(`marker:${event.kind}`),
+    update: () => undefined,
+    dispose: () => undefined,
+  };
+  const effects: ScriptEffects = {
+    setWeather: (event) => calls.push(`weather:${event.weather}`),
+    startEarthquake: (seconds) => calls.push(`quake:${seconds}`),
+    jitter: () => null,
+    update: () => undefined,
+    dispose: () => undefined,
+  };
+  const presentation = createScriptPresentation({
+    sim,
+    localPlayer: 0,
+    toolPanel,
+    controls: { select: (ids) => calls.push(`select:${[...ids].join()}`) },
+    centerOn: (x, y) => calls.push(`centre:${x},${y}`),
+    screen: () => SCREEN,
+    markers,
+    effects,
+    mapText: (id) => (id === 7 ? 'Held: %d of %d' : undefined),
+    now: () => 0,
+  });
+  return {
+    presentation,
+    calls,
+    infoLines,
+    advance: (to: number) => {
+      tick = to;
+    },
+  };
+}
+
+describe('createScriptPresentation', () => {
+  it('routes each display event to its surface', () => {
+    const { presentation, calls } = harness();
+    const world = halfCellToScreen(HERO_NODE.hx, HERO_NODE.hy);
+    const events: SimEvent[] = [
+      { kind: 'missionCutscene', mission: 0, page: 500, replay: true },
+      { kind: 'missionCamera', point: { hx: 4, hy: 2 } },
+      { kind: 'missionSelectHuman', entity: HERO, select: true },
+      { kind: 'missionSelectHuman', entity: HERO, select: false },
+      { kind: 'missionGuiMarker', marker: 1, point: HERO_NODE, placed: true },
+      { kind: 'missionWeather', weather: 'snow', min: HERO_NODE, max: HERO_NODE, density: 100 },
+      { kind: 'missionEarthquake', seconds: 3 },
+      { kind: 'missionUnsupported', mission: 2, opcode: 'SetVehicle' },
+    ];
+    presentation.onEvents(events);
+    const at = halfCellToScreen(4, 2);
+    expect(calls).toEqual([
+      'open:500',
+      `centre:${at.x},${at.y}`,
+      `select:${HERO}`,
+      `centre:${world.x},${world.y}`,
+      `centre:${world.x},${world.y}`,
+      'marker:missionGuiMarker',
+      'weather:snow',
+      'quake:3',
+    ]);
+  });
+
+  it('pushes the formatted info lines every frame and re-reads their tallies every two seconds', () => {
+    const lines: InfoLineView[] = [{ index: 0, stringId: 7, count: 1, extra: 4 }];
+    const { presentation, infoLines, advance } = harness(lines);
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(infoLines).toEqual([['Held: 1 of 4']]);
+    lines[0] = { index: 0, stringId: 7, count: 2, extra: 4 };
+    advance(12);
+    presentation.frame(snapshotAt(12), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual(['Held: 1 of 4']);
+    advance(24);
+    presentation.frame(snapshotAt(24), CAMERA, 0);
+    expect(infoLines.at(-1)).toEqual(['Held: 2 of 4']);
+  });
+});

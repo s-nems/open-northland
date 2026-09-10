@@ -108,8 +108,8 @@ describe('fillGoals', () => {
         title: '',
         blocks: [],
         goals: [
-          { text: 'Build a temple', rule: 'authored', done: false },
-          { text: 'Defeat everyone', rule: 'skirmish', done: true },
+          { text: 'Build a temple', rule: 'authored', state: 'open' },
+          { text: 'Defeat everyone', rule: 'skirmish', state: 'done' },
         ],
       },
       'Objectives',

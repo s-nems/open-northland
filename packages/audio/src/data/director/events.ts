@@ -37,14 +37,15 @@ function eventEntity(ev: SimEvent): number | undefined {
 /**
  * A stable per-emitter key so the engine can debounce a burst of identical events. A positioned event keys
  * on its node, so two emitters at one spot collapse and two spots stay distinct; everything else keys on its
- * emitter entity. An `atomicSound` adds its `soundType`, since one clip can author two distinct sounds a
- * few ticks apart (a bow's draw and its arrow) and those must not debounce each other. This keys
- * `settlerDied` (a jingle carrying an optional `at`) by death node rather than by the reaped entity -
- * deliberate: the debounce should dedup "deaths here", and the reaped id is never repeated anyway, so an
- * entity key could never collapse a simultaneous pile-up.
+ * emitter entity. An `atomicSound` or a script's `missionSound` adds its `soundType`, since one clip can
+ * author two distinct sounds a few ticks apart (a bow's draw and its arrow) and those must not debounce
+ * each other. This keys `settlerDied` (a jingle carrying an optional `at`) by death node rather than by the
+ * reaped entity - deliberate: the debounce should dedup "deaths here", and the reaped id is never repeated
+ * anyway, so an entity key could never collapse a simultaneous pile-up.
  */
 function eventKey(ev: SimEvent): string {
   const node = eventNode(ev);
+  if (ev.kind === 'missionSound') return `${ev.kind}:${ev.soundType}:${ev.at.hx},${ev.at.hy}`;
   if (node !== null) return `${ev.kind}:${node.hx},${node.hy}`;
   const emitter = eventEntity(ev) ?? '?';
   if (ev.kind === 'atomicSound') return `${ev.kind}:${ev.soundType}:${emitter}`;
@@ -147,6 +148,14 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       if (files !== undefined && files.length > 0 && id !== undefined) {
         neededIds.add(id);
         pending.push({ kind: 'cue', ev, files, node: null, entity: id });
+      }
+      continue;
+    }
+    // A map script's `PlaySound` names its group the same way, at a point of its own.
+    if (ev.kind === 'missionSound') {
+      const files = index.groupsByLogicSoundType.get(ev.soundType);
+      if (files !== undefined && files.length > 0) {
+        pending.push({ kind: 'sfx', ev, files, node: ev.at, entity: undefined });
       }
       continue;
     }

@@ -11,11 +11,11 @@ import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
 import { matchIsContested } from '../game/match-participants.js';
-import type { MissionBrief } from '../game/mission-brief.js';
+import type { MissionBriefSource } from '../game/mission-brief.js';
 import { applySessionRuleOverrides } from '../game/session-rules.js';
 import { sceneSession } from '../game/session-url.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
-import { messages, sceneCopy, sceneStrings } from '../i18n/index.js';
+import { messages, sceneCopy, scenePages, sceneStrings } from '../i18n/index.js';
 import { createSceneSim, getScene, restoreSceneSim, SCENES } from '../scenes/index.js';
 import type { SceneDefinition } from '../scenes/types.js';
 import { assetSetFor } from '../view/asset-settings.js';
@@ -184,23 +184,30 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     cameraCtl,
     terrainGrid,
     rosterPlayers,
-    tributeText: (stringId) => sceneStrings(scene.id)?.[String(stringId)],
+    mapText: (stringId) => sceneStrings(scene.id)?.[String(stringId)],
     ...terrainColourOption(terrain),
     mapSize: { width: scene.terrain.width, height: scene.terrain.height },
     worldToken,
-    missionBrief: sceneMissionBrief(scene),
+    restored: stagedSave !== null,
+    missionBriefSource: sceneBriefSource(scene),
   });
   await boot.finish();
 }
 
-/** The mission sheet for a scene: its menu title and summary, and the skirmish goal when it runs a match. */
-function sceneMissionBrief(scene: SceneDefinition): MissionBrief {
+/** The mission sheet for a scene: its menu title and summary, the briefing pages its catalog entry
+ *  authors as the stand-in for a map's briefing files, and the skirmish goal when it runs a match. */
+function sceneBriefSource(scene: SceneDefinition): MissionBriefSource {
   const entry = sceneCopy(scene.id);
+  const pages = scenePages(scene.id);
   return {
-    title: entry?.title ?? scene.id,
-    blocks: entry === undefined ? [] : [{ kind: 'text', style: 'body', text: entry.summary }],
-    goals: matchIsContested(scene.participants ?? [])
-      ? [{ text: messages().hud.skirmishGoal, rule: 'skirmish', done: false }]
-      : [],
+    page: (id) => {
+      const text = pages?.[String(id)];
+      return text === undefined ? null : [{ kind: 'text', style: 'body', text }];
+    },
+    fallback: {
+      title: entry?.title ?? scene.id,
+      ...(entry !== undefined ? { description: entry.summary } : {}),
+    },
+    skirmishGoal: matchIsContested(scene.participants ?? []) ? messages().hud.skirmishGoal : null,
   };
 }

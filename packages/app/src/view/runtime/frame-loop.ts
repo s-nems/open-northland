@@ -25,6 +25,7 @@ import type { GameViewDeps } from './game-view.js';
 import type { NetReadout } from './net-readout.js';
 import { placementCursor } from './placement-cursor.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
+import type { ScriptPresentation } from './script-presentation.js';
 
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
@@ -61,6 +62,8 @@ export interface FrameLoopDeps {
   readonly placementTribe: number;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
+  /** The map script's display: its camera jitter for the frame, and its overlays after the draw. */
+  readonly presentation: Pick<ScriptPresentation, 'jitter' | 'frame'> | null;
   readonly perf: PerfOverlayHandle;
   /** A relayed session's connection figures for the overlay; null in a local session. */
   readonly netReadout: () => NetReadout | null;
@@ -98,6 +101,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     canPlaceSignpostAt,
     placementTribe,
     soundDriver,
+    presentation,
     perf,
     netReadout,
     pointer: pointerAt,
@@ -222,9 +226,16 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const lifeHearts = lifeHeartsFor(snap);
     // Blood and bones decay against the sim tick, so a pause or a screenshot reproduces.
     renderer.ingestCombatEffects(presentEvents, snap.tick);
+    // A script's earthquake shakes the drawn world alone; picking and the HUD keep the steady frame.
+    const jitter = presentation?.jitter(nowMs) ?? null;
+    const camera = cameraCtl.camera();
+    const drawnCamera =
+      jitter === null
+        ? camera
+        : { ...camera, offsetX: camera.offsetX + jitter.dx, offsetY: camera.offsetY + jitter.dy };
     renderer.update({
       snapshot: snap,
-      camera: cameraCtl.camera(),
+      camera: drawnCamera,
       tick: snap.tick,
       selection: controls.selectedIds(),
       alpha: renderAlpha,
@@ -236,6 +247,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       workAreas: controls.workAreaRings(),
     });
     worldTooltip.update(snap); // after controls, so the pointer-claim state is current
+    presentation?.frame(snap, drawnCamera, nowMs);
     deps.onFrame?.(snap);
     if (soundDriver !== null) {
       soundDriver.update({
