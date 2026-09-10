@@ -1,8 +1,9 @@
 import {
   MAX_COMMANDS_PER_TICK,
+  type PlayerWireEnvelope,
+  type RelayWireEnvelope,
   TICK_MS,
   type WireCommand,
-  type WireEnvelope,
   type WireFrame,
 } from '@open-northland/net-protocol';
 
@@ -15,13 +16,15 @@ export type ScheduleOutcome = { readonly applyTick: number } | { readonly refuse
 
 /**
  * The room's tick clock: wall time scaled by the speed becomes frames, each carrying the commands
- * scheduled for its tick in the order they arrived.
+ * scheduled for its tick in the order they arrived. A pause is a member's choice; a hold is the
+ * relay's, while it waits for a member, and the two are independent.
  */
 export class RoomClock {
   private accumulatorMs = 0;
   private lastTick = 0;
   private started = false;
   private pausedFlag = false;
+  private heldFlag = false;
   private speedMultiplier: number;
   private readonly pending = new Map<number, WireCommand[]>();
   /** Per tick, how many commands each member has landed on it. */
@@ -52,6 +55,13 @@ export class RoomClock {
     return this.pausedFlag;
   }
 
+  /** Stand at `tick` before the start: the tick every client's freshly built world already holds, so
+   *  the first frame is the one after it. */
+  startAt(tick: number): void {
+    if (this.started) throw new Error('the clock has started');
+    this.lastTick = tick;
+  }
+
   start(): void {
     this.started = true;
   }
@@ -64,12 +74,21 @@ export class RoomClock {
     this.pausedFlag = paused;
   }
 
+  hold(held: boolean): void {
+    this.heldFlag = held;
+  }
+
   /**
    * Land an envelope `delayTicks` after the tick the member issued it on, or on the next unemitted tick
    * when the member's clock has fallen further behind than its budget. A client cannot have run a tick
    * this clock has not emitted, so a larger claim is clamped.
    */
-  schedule(member: string, envelope: WireEnvelope, fromTick: number, delayTicks: number): ScheduleOutcome {
+  schedule(
+    member: string,
+    envelope: PlayerWireEnvelope,
+    fromTick: number,
+    delayTicks: number,
+  ): ScheduleOutcome {
     const issued = Math.min(fromTick, this.lastTick);
     const applyTick = Math.max(this.nextTick, issued + delayTicks);
     const budget = this.budgets.get(applyTick) ?? new Map<string, number>();
@@ -77,14 +96,18 @@ export class RoomClock {
     if (used >= MAX_COMMANDS_PER_TICK) return { refused: 'budget' };
     budget.set(member, used + 1);
     this.budgets.set(applyTick, budget);
-    const commands = this.pending.get(applyTick);
-    if (commands === undefined) this.pending.set(applyTick, [{ envelope, sequence: 0 }]);
-    else commands.push({ envelope, sequence: commands.length });
+    this.land(applyTick, envelope);
     return { applyTick };
   }
 
+  /** Land the relay's own command on the next tick, outside every budget; returns that tick. */
+  scheduleTrusted(envelope: RelayWireEnvelope): number {
+    this.land(this.nextTick, envelope);
+    return this.nextTick;
+  }
+
   advance(elapsedMs: number): readonly WireFrame[] {
-    if (!this.started || this.pausedFlag) return [];
+    if (!this.started || this.pausedFlag || this.heldFlag) return [];
     this.accumulatorMs += elapsedMs * this.speedMultiplier;
     const frames: WireFrame[] = [];
     while (this.accumulatorMs >= TICK_MS - TIME_EPSILON_MS && frames.length < MAX_FRAMES_PER_ADVANCE) {
@@ -93,6 +116,12 @@ export class RoomClock {
     }
     if (this.accumulatorMs >= TICK_MS - TIME_EPSILON_MS) this.accumulatorMs = 0;
     return frames;
+  }
+
+  private land(tick: number, envelope: WireCommand['envelope']): void {
+    const commands = this.pending.get(tick);
+    if (commands === undefined) this.pending.set(tick, [{ envelope, sequence: 0 }]);
+    else commands.push({ envelope, sequence: commands.length });
   }
 
   private emit(): WireFrame {

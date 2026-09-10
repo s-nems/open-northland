@@ -5,11 +5,13 @@
 
 The save format is the resync primitive: `exportSaveGame` and `restoreSimulation` round-trip to an
 identical hash (the fuzz suite proves it), a save is about 1.3 MB after gzip, and every client in a
-lockstep game holds the same state, so any client can produce the save. A networked save omits
-tick-targeted pending envelopes, as the sim seams ticket defines, and the server's frames after the
-saved tick reconstruct them. What is missing is the lifecycle around it in a networked session, and a
-terminal game state: the sim has none, the features ticket for skirmish victory and defeat covers the
-rule, and a networked match without an outcome cannot end.
+lockstep game holds the same state, so any client can produce the save. The relay side of that is in
+place (`docs/NETWORK.md`): a `save` blob refreshes the room's cached snapshot, a returning token is
+served the cache and the frames since, a kicked seat falls to idle or to the AI on one announced
+tick, and the headless client proves each path. What is missing is the lifecycle around it in the
+app, joining a room that is already running, and a terminal game state: the sim has none, the
+features ticket for skirmish victory and defeat covers the rule, and a networked match without an
+outcome cannot end.
 
 ## Scope
 
@@ -19,22 +21,23 @@ rule, and a networked match without an outcome cannot end.
 - Load: creating a room from a save; the server delivers the save to every joiner through the blob
   relay, seats are matched by nick with the creator resolving the rest, and Start restores every
   client from the same bytes at the same tick.
-- Late join and rejoin: a joiner into a running game, or a player returning after the countdown, gets
-  the room's cached snapshot (or one from a reference client when none is cached yet) and the frames
-  since, then catches up.
-- Kick fallout: a kicked seat becomes idle or AI as the lobby chose; the AI case uses the server's
-  single allowlisted trusted command and takes effect on a known tick on every client.
+- Late join: `joinRoom` into a running room, refused today, admits a joiner to a vacant seat or as
+  an observer; the joiner is served the cached snapshot (or one requested from a reference client
+  when none is cached yet) and the frames since, the way a returning token is, then catches up. A
+  player kicked out comes back this way, since its token is a stranger to the room. The cache can be
+  up to five minutes old, which is thousands of ticks to replay while the room waits; serve a fresh
+  snapshot instead when the cache trails the clock by more than the lag budget.
+- Kicked seats in the app: the seat's change of hands reaches the sim through the relay's frame
+  already; the HUD and the roster must show it.
 - End of game: the skirmish victory and defeat rule reports per seat; the app shows the local result,
   the room returns to the lobby with the roster intact, and the server stops the clock.
 - Non-goals: no persistent server-side game history, no replays, no observers.
 
 ## Verify
 
-- Headless through the server: a client disconnects for 30 s, rejoins, and finishes with the majority
-  hash; a room created from a save starts every client at the saved tick with identical hashes; a late
-  joiner from the cached snapshot matches.
-- Kick: after the countdown and a passing vote, the seat's mode changes on every client on the same
-  tick and hashes agree.
+- Headless through the server: a room created from a save starts every client at the saved tick with
+  identical hashes; a late joiner from the cached snapshot matches, and one admitted before any
+  snapshot is cached is served one from a reference client.
 - End of game: a two-seat elimination emits the outcome on the same tick on both clients and returns
   both to the lobby.
 - `npm run check`, `npm run build`, `npm test`, `npm run test:content` where content exists, plus a

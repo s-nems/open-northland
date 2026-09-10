@@ -8,13 +8,15 @@ export interface RelayTransportOptions {
    *  payload from one client cannot split the session. */
   readonly parseEnvelope: (value: unknown) => CommandEnvelope;
   readonly onDropped?: (tick: number, reason: string) => void;
+  /** The tick the client's world stands at; frames up to it are ignored. Default 0, a fresh world. */
+  readonly fromTick?: number;
 }
 
 /** The client's side of a relayed session: commands go up with the tick they were issued on, frames come
  *  down and are held until the driver asks for their tick. */
 export class RelayTransport implements SessionTransport {
   private readonly frames = new Map<number, WireFrame>();
-  private lastTaken = 0;
+  private lastTaken: number;
   private readonly send: RelayTransportOptions['send'];
   private readonly parseEnvelope: RelayTransportOptions['parseEnvelope'];
   private readonly onDropped: RelayTransportOptions['onDropped'];
@@ -23,6 +25,7 @@ export class RelayTransport implements SessionTransport {
     this.send = options.send;
     this.parseEnvelope = options.parseEnvelope;
     this.onDropped = options.onDropped;
+    this.lastTaken = options.fromTick ?? 0;
   }
 
   /** Frames received and not yet run: how far this client trails the relay's clock. */

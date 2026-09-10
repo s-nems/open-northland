@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { aiSeatsOf, type GameSession, humanSeatsOf } from '@open-northland/lockstep';
 import type { RoomSeatSetup, RoomSettings } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
-import { playerCommand, type Simulation } from '@open-northland/sim';
+import { playerCommand, type SaveGame, type Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { HeadlessClient } from '../../../net-server/test/support/headless-client.js';
 import { assembleRoom, runUntil, type Stage } from '../../../net-server/test/support/session-run.js';
@@ -12,12 +12,13 @@ import {
   VirtualNetwork,
 } from '../../../net-server/test/support/virtual-network.js';
 import { hasRealIr } from './helpers.js';
-import { realMapPath, realMapScript, realMapWorld } from './real-map-world.js';
+import { realMapPath, realMapScript, realMapWorld, restoreRealMapWorld } from './real-map-world.js';
 
 /**
  * The relay proven on the map a session is played on: every client assembles the world from the
  * descriptor the relay broadcast, plays through frames the relay assigned over links with injected
- * latency and jitter, and must end on one state and one command log.
+ * latency and jitter, and must end on one state and one command log. A client pushed off its state
+ * must come back from the other's snapshot, restored onto the same map, and end there too.
  *
  * `ON_RELAY_TICKS` lengthens each run; the default keeps the file within a content-suite budget.
  */
@@ -37,6 +38,8 @@ const RULES = { fog: null, progression: null, needs: null };
 /** Virtual time for a lobby step to cross the slowest link twice, with margin. */
 const LOBBY_SETTLE_MS = 800;
 const RUN_TIMEOUT_MS = 900_000;
+/** The tick one client's RNG is pushed off its stream on, once the economy has something to diverge. */
+const DIVERGE_AT_TICK = 200;
 
 async function buildWorld(session: GameSession): Promise<Simulation> {
   if (session.world.kind !== 'map') throw new Error(`a map session, not ${session.world.kind}`);
@@ -49,6 +52,11 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
     berryBushes: true,
   });
   return world.sim;
+}
+
+async function restoreWorld(session: GameSession, save: SaveGame): Promise<Simulation> {
+  if (session.world.kind !== 'map') throw new Error(`a map session, not ${session.world.kind}`);
+  return restoreRealMapWorld(session.world.mapId, save);
 }
 
 /** The room's seats as the lobby would take them from the map script: AI seats stay AI, the rest wait. */
@@ -82,7 +90,16 @@ function orderAt(client: HeadlessClient, tick: number): void {
   );
 }
 
-async function playThrough(mapId: string, count: number): Promise<HeadlessClient[]> {
+interface PlayOptions {
+  /** The client, by index, whose state is pushed off at `DIVERGE_AT_TICK`. */
+  readonly diverge?: number;
+}
+
+async function playThrough(
+  mapId: string,
+  count: number,
+  options: PlayOptions = {},
+): Promise<HeadlessClient[]> {
   const stage = stageFor(count);
   const seats = seatsFromScript(mapId);
   const openSeats = seats.filter((seat) => seat.mode === 'idle').map((seat) => seat.player);
@@ -92,6 +109,7 @@ async function playThrough(mapId: string, count: number): Promise<HeadlessClient
       token: `client-${i}-token-0123456789`,
       nick: `Gracz ${i}`,
       buildWorld,
+      restoreWorld,
     });
     stage.network.link(client, LINKS[i % LINKS.length]);
     return client;
@@ -109,14 +127,26 @@ async function playThrough(mapId: string, count: number): Promise<HeadlessClient
     seatOf: (i) => openSeats[i] ?? -1,
     settleMs: LOBBY_SETTLE_MS,
   });
-  const captures = await runUntil(stage, clients, RUN_TICKS, { onTick: orderAt });
+  const diverging = options.diverge === undefined ? null : clients[options.diverge];
+  const captures = await runUntil(stage, clients, RUN_TICKS, {
+    onTick: (client, tick) => {
+      orderAt(client, tick);
+      if (client === diverging && tick === DIVERGE_AT_TICK && client.sim !== null) {
+        client.sim.rng.setState(client.sim.rng.getState() ^ 1);
+      }
+    },
+  });
 
   const [first, ...rest] = clients;
   if (first === undefined) throw new Error('no clients');
   const reference = captures.get(first);
+  // A restored sim's log starts at its snapshot, so the logs are compared from there on.
+  const since = Math.max(0, ...clients.flatMap((client) => client.restoredFrom));
+  const logSince = (client: HeadlessClient) =>
+    captures.get(client)?.log.filter(([applyTick]) => applyTick > since);
   for (const client of rest) {
     expect(captures.get(client)?.hash, `${client.nick} against ${first.nick}`).toBe(reference?.hash);
-    expect(captures.get(client)?.log).toEqual(reference?.log);
+    expect(logSince(client)).toEqual(logSince(first));
   }
   for (const client of clients) {
     expect(client.rejections, client.nick).toEqual([]);
@@ -150,6 +180,18 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)) && existsSync(real
       timeout: RUN_TIMEOUT_MS,
     }, async () => {
       await playThrough(TWELVE_SEAT_MAP_ID, 12);
+    });
+
+    it('brings a diverged client back from the other’s snapshot on the real map', {
+      timeout: RUN_TIMEOUT_MS,
+    }, async () => {
+      expect(RUN_TICKS).toBeGreaterThan(DIVERGE_AT_TICK);
+      const [reference, diverged] = await playThrough(MAP_ID, 2, { diverge: 1 });
+      expect(diverged?.desyncs).toHaveLength(1);
+      expect(diverged?.desyncs[0]).toMatchObject({ tick: DIVERGE_AT_TICK + 1, reference: reference?.nick });
+      expect(diverged?.restoredFrom).toHaveLength(1);
+      expect(reference?.snapshotsSent).toBe(1);
+      expect(reference?.desyncs).toEqual([]);
     });
   },
 );

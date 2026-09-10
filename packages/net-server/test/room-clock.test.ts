@@ -1,11 +1,11 @@
-import { MAX_COMMANDS_PER_TICK, TICK_MS, type WireEnvelope } from '@open-northland/net-protocol';
+import { MAX_COMMANDS_PER_TICK, type PlayerWireEnvelope, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { RoomClock } from '../src/relay/room-clock.js';
 
 /** Frames one advance may carry after a stall. */
 const STALL_BURST_FRAMES = 12;
 
-function envelope(kind: string): WireEnvelope {
+function envelope(kind: string): PlayerWireEnvelope {
   return { v: 1, origin: 'player', player: 0, command: { kind } };
 }
 
@@ -74,5 +74,23 @@ describe('room clock', () => {
     expect(clock.advance(TICK_MS * 100)).toHaveLength(STALL_BURST_FRAMES);
     expect(clock.advance(0)).toEqual([]);
     expect(clock.advance(TICK_MS).map((frame) => frame.tick)).toEqual([STALL_BURST_FRAMES + 1]);
+  });
+
+  it('emits nothing while held, and lands the relay’s own command on the next tick outside every budget', () => {
+    const clock = startedAt(3);
+    clock.hold(true);
+    expect(clock.advance(TICK_MS * 4)).toEqual([]);
+    for (let i = 0; i < MAX_COMMANDS_PER_TICK; i++) clock.schedule('a', envelope(`a${i}`), 3, 1);
+    const trusted = {
+      v: 1,
+      origin: 'admin',
+      command: { kind: 'setPlayerAi', player: 2, enabled: true },
+    } as const;
+    expect(clock.scheduleTrusted(trusted)).toBe(4);
+    clock.hold(false);
+    const [frame] = clock.advance(TICK_MS);
+    expect(frame?.tick).toBe(4);
+    expect(frame?.commands).toHaveLength(MAX_COMMANDS_PER_TICK + 1);
+    expect(frame?.commands.at(-1)).toEqual({ envelope: trusted, sequence: MAX_COMMANDS_PER_TICK });
   });
 });

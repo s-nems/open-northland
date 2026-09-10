@@ -1,7 +1,7 @@
 import type { GameSession } from '@open-northland/lockstep';
 import type { RoomSettings } from '@open-northland/net-protocol';
 import { type RelayHost, startRelayHost } from '@open-northland/net-server';
-import { playerCommand, Simulation } from '@open-northland/sim';
+import { playerCommand, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
 import { afterEach, describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { HeadlessClient } from './support/headless-client.js';
@@ -27,6 +27,10 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
   return new Simulation({ seed: session.seed, content: testContent() });
 }
 
+async function restoreWorld(_session: GameSession, save: SaveGame): Promise<Simulation> {
+  return restoreSimulation(save, { content: testContent() }).sim;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -44,7 +48,12 @@ async function connect(
   nick: string,
 ): Promise<{ client: HeadlessClient; socket: WebSocket }> {
   const socket = new WebSocket(`ws://127.0.0.1:${host.port}`);
-  const client = new HeadlessClient({ token: `${nick.toLowerCase()}-token-0123456789`, nick, buildWorld });
+  const client = new HeadlessClient({
+    token: `${nick.toLowerCase()}-token-0123456789`,
+    nick,
+    buildWorld,
+    restoreWorld,
+  });
   socket.addEventListener('message', (event) => client.receive(JSON.parse(String(event.data))));
   client.attach((message) => socket.send(JSON.stringify(message)));
   await new Promise<void>((resolve, reject) => {

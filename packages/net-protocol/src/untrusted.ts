@@ -56,6 +56,12 @@ export function asPositiveNumber(value: unknown, at: string, max: number): numbe
   return value;
 }
 
+/** The keys of a record keyed by every member of a union: a member added to the union without a key
+ *  fails to compile, so the list can never fall behind the type. */
+export function keysOf<T extends string>(set: { readonly [K in T]: true }): readonly T[] {
+  return Object.keys(set) as T[];
+}
+
 export function asOneOf<T extends string>(value: unknown, options: readonly T[], at: string): T {
   const found = options.find((option) => option === value);
   if (found === undefined) {

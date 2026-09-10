@@ -2,7 +2,7 @@ import { TICK_MS } from '@open-northland/net-protocol';
 import type { Relay } from '@open-northland/net-server';
 import type { Command } from '@open-northland/sim';
 import type { HeadlessClient } from './headless-client.js';
-import type { VirtualClock, VirtualNetwork } from './virtual-network.js';
+import type { Link, LinkOptions, VirtualClock, VirtualNetwork } from './virtual-network.js';
 
 /** Fine enough for injected jitter to land between frames. */
 export const NETWORK_STEP_MS = 5;
@@ -20,6 +20,21 @@ export function settle(stage: Stage, ms: number): void {
     stage.network.flush();
     stage.relay.advance();
   }
+}
+
+/** Let virtual time pass with the clients running: how a held or paused game is waited out. */
+export function runFor(stage: Stage, clients: readonly HeadlessClient[], ms: number): void {
+  for (let elapsed = 0; elapsed < ms; elapsed += NETWORK_STEP_MS) {
+    settle(stage, NETWORK_STEP_MS);
+    for (const client of clients) client.advance(NETWORK_STEP_MS);
+  }
+}
+
+/** Connect `client` over a fresh link and introduce it again, as a returning player does. */
+export function relink(stage: Stage, client: HeadlessClient, options: LinkOptions): Link {
+  const link = stage.network.link(client, options);
+  client.hello();
+  return link;
 }
 
 export interface Capture {

@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
   type ClientMessage,
   clientMessageKind,
+  MAX_BLOB_BYTES,
   MAX_NICK_LENGTH,
   PROTOCOL_VERSION,
   parseClientMessage,
   parseServerMessage,
   type RoomSettings,
   type ServerMessage,
+  type WireDigest,
 } from '../src/index.js';
 
 /**
@@ -43,6 +45,17 @@ const MOVE_ORDER: { readonly kind: string } & Record<string, unknown> = {
   y: 2,
 };
 const STANCE_ORDER: { readonly kind: string } & Record<string, unknown> = { kind: 'setStance', entity: 4 };
+const DIGEST: WireDigest = {
+  rng: 1,
+  entities: 2,
+  players: 3,
+  movement: 4,
+  settlers: 5,
+  economy: 6,
+  combat: 7,
+  fog: 0xffffffff,
+};
+const BLOB = Buffer.from('a snapshot').toString('base64');
 
 function wire<T>(value: T): unknown {
   return JSON.parse(JSON.stringify(value));
@@ -67,7 +80,10 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   { kind: 'setSeat', player: 1 },
   { kind: 'setReady', ready: true },
   { kind: 'start' },
-  { kind: 'loaded' },
+  { kind: 'loaded', tick: 1, world: 0 },
+  { kind: 'loaded', tick: 300, world: 240 },
+  { kind: 'loaded', tick: null },
+  { kind: 'ack', tick: 12, digest: DIGEST, world: 0 },
   {
     kind: 'command',
     envelope: { v: 1, origin: 'player', player: 0, command: MOVE_ORDER },
@@ -75,6 +91,10 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   },
   { kind: 'clock', speed: 2 },
   { kind: 'clock', paused: true },
+  { kind: 'kick', player: 1 },
+  { kind: 'blob', type: 'snapshot', to: null, tick: 40, bytes: BLOB },
+  { kind: 'blob', type: 'save', to: 'Ania', tick: 40, bytes: BLOB },
+  { kind: 'blob', type: 'map', to: null, tick: null, bytes: BLOB },
   { kind: 'chat', text: 'gotowi?' },
   { kind: 'pong', t: 1234.5 },
 ];
@@ -139,6 +159,42 @@ describe('client messages', () => {
     ['a zero speed', { kind: 'clock', speed: 0 }, /clock\.speed/],
     ['a negative pong', { kind: 'pong', t: -1 }, /pong\.t/],
     ['an empty chat line', { kind: 'chat', text: '   ' }, /empty/],
+    [
+      'a digest missing a domain',
+      { kind: 'ack', tick: 1, digest: { ...DIGEST, fog: undefined }, world: 0 },
+      /digest\.fog/,
+    ],
+    [
+      'a digest with a stray domain',
+      { kind: 'ack', tick: 1, digest: { ...DIGEST, magic: 1 }, world: 0 },
+      /unknown domain/,
+    ],
+    [
+      'a digest word past 32 bits',
+      { kind: 'ack', tick: 1, digest: { ...DIGEST, rng: 2 ** 32 }, world: 0 },
+      /32-bit/,
+    ],
+    [
+      'a save without a tick',
+      { kind: 'blob', type: 'save', to: null, tick: null, bytes: BLOB },
+      /blob\.tick/,
+    ],
+    [
+      'a blob that is not base64',
+      { kind: 'blob', type: 'map', to: null, tick: null, bytes: 'a b' },
+      /base64/,
+    ],
+    [
+      'a blob over the cap',
+      {
+        kind: 'blob',
+        type: 'map',
+        to: null,
+        tick: null,
+        bytes: 'A'.repeat(Math.ceil(MAX_BLOB_BYTES / 3) * 4 + 4),
+      },
+      /over/,
+    ],
   ])('refuses %s', (_name, value, reason) => {
     expect(() => parseClientMessage(value)).toThrow(reason);
   });
@@ -171,7 +227,8 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
     },
   },
   { kind: 'left' },
-  { kind: 'start', session },
+  { kind: 'start', session, snapshotTick: null },
+  { kind: 'start', session, snapshotTick: 300 },
   { kind: 'clock', tick: 40, speed: 2, paused: false, by: 'Ania' },
   { kind: 'clock', tick: 1, speed: 1, paused: false, by: null },
   {
@@ -183,6 +240,29 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
     ],
   },
   { kind: 'delay', ticks: 3 },
+  {
+    kind: 'waiting',
+    for: [
+      { nick: 'Ania', reason: 'gone', voteAfterMs: 60000 },
+      { nick: 'Cezary', reason: 'lagging', voteAfterMs: 0 },
+    ],
+  },
+  { kind: 'waiting', for: [] },
+  { kind: 'kickVote', player: 0, nick: 'Ania', yes: ['Bartek'], needed: 2 },
+  { kind: 'kicked', player: 0, nick: 'Ania', mode: 'ai', tick: 42 },
+  { kind: 'desync', tick: 41, domains: ['rng', 'economy'], reference: 'Ania' },
+  { kind: 'snapshotRequest' },
+  { kind: 'blob', type: 'snapshot', from: 'Ania', tick: 40, bytes: BLOB },
+  {
+    kind: 'frame',
+    tick: 42,
+    commands: [
+      {
+        envelope: { v: 1, origin: 'admin', command: { kind: 'setPlayerAi', player: 0, enabled: true } },
+        sequence: 0,
+      },
+    ],
+  },
   { kind: 'chat', from: 'Ania', text: 'gotowi?' },
   { kind: 'ping', t: 99 },
   { kind: 'rejected', of: 'command', reason: 'no seat' },
@@ -210,11 +290,47 @@ describe('server messages', () => {
     expect(() => parseServerMessage(frame, parseSession)).toThrow(/sequence 1 out of order/);
   });
 
+  it('refuses a trusted envelope in a frame other than the relay’s one allowed command', () => {
+    const frame = (command: Record<string, unknown>) => ({
+      kind: 'frame',
+      tick: 1,
+      commands: [{ envelope: { v: 1, origin: 'admin', command }, sequence: 0 }],
+    });
+    expect(() => parseServerMessage(frame({ kind: 'debugKill', entity: 1 }), parseSession)).toThrow(
+      /setPlayerAi only/,
+    );
+    expect(() =>
+      parseServerMessage(frame({ kind: 'setPlayerAi', player: 0, enabled: false }), parseSession),
+    ).toThrow(/enabled/);
+    expect(() =>
+      parseServerMessage(
+        {
+          kind: 'frame',
+          tick: 1,
+          commands: [{ envelope: { v: 1, origin: 'setup', command: {} }, sequence: 0 }],
+        },
+        parseSession,
+      ),
+    ).toThrow(/player envelopes only/);
+  });
+
+  it('refuses a wait reason and a desync domain it does not know', () => {
+    expect(() =>
+      parseServerMessage(
+        { kind: 'waiting', for: [{ nick: 'A', reason: 'bored', voteAfterMs: 0 }] },
+        parseSession,
+      ),
+    ).toThrow(/reason/);
+    expect(() =>
+      parseServerMessage({ kind: 'desync', tick: 1, domains: ['weather'], reference: 'A' }, parseSession),
+    ).toThrow(/domains\[0\]/);
+  });
+
   it('hands the session to the parser it was given', () => {
     const refusing = (): GameSession => {
       throw new Error('session: not for this client');
     };
-    expect(() => parseServerMessage(wire({ kind: 'start', session }), refusing)).toThrow(
+    expect(() => parseServerMessage(wire({ kind: 'start', session, snapshotTick: null }), refusing)).toThrow(
       /not for this client/,
     );
   });

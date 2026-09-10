@@ -1,7 +1,6 @@
 # Connect the desktop client to the relay server
 
 **Area:** app, desktop · **Focus:** view/runtime, net transport · **Priority:** P2
-**Blocked by:** [multiplayer-4b-relay-resilience.md](multiplayer-4b-relay-resilience.md)
 
 With the resilient relay and the loopback driver in place, the desktop shell needs the network
 transport and the player-facing pieces of a networked session. Desktop has priority over web:
@@ -11,11 +10,14 @@ Responsiveness in lockstep comes from the interface reacting at once while the c
 ticks later (two to three ticks at 12 ticks per second, 170 to 250 ms at a 100 ms round trip). The HUD
 must acknowledge every issued command immediately and must never wait for its application.
 
-The relay core already provides the client's pure half: `RelayTransport` in `packages/net-protocol`
+The relay already provides the client's pure half: `RelayTransport` in `packages/net-protocol`
 (frames in, commands out, the sim's parser injected) and the headless client under
 `packages/net-server/test/support/`, which walks the lobby, builds a world from the broadcast
-descriptor, follows the clock, and answers pings. The desktop client wraps that logic around a real
-socket and a HUD rather than writing it again; promote what it reuses out of test support.
+descriptor, follows the clock, answers pings, acknowledges every tick with its digest, answers a
+snapshot request with a gzip save, rebuilds from a snapshot blob, and records waits, votes, kicks
+and desyncs. The desktop client wraps that logic around a real socket and a HUD rather than writing
+it again; promote what it reuses out of test support, the snapshot codec included (the browser side
+of it is `CompressionStream`, as the save-load codec already does).
 
 World assembly on every client must come from the descriptor alone. The map entry today declares the
 match participants and the assistant grants from the local seat, which two clients would do

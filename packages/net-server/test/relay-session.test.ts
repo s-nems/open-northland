@@ -1,11 +1,11 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { type RoomSettings, TICK_MS } from '@open-northland/net-protocol';
 import { Relay } from '@open-northland/net-server';
-import { playerCommand, Simulation } from '@open-northland/sim';
+import { playerCommand, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { HeadlessClient } from './support/headless-client.js';
-import { assembleRoom, NETWORK_STEP_MS, runUntil, type Stage, settle } from './support/session-run.js';
+import { assembleRoom, runFor, runUntil, type Stage, settle } from './support/session-run.js';
 import { seededRandom, VirtualClock, VirtualNetwork } from './support/virtual-network.js';
 
 /**
@@ -36,8 +36,17 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
   return new Simulation({ seed: session.seed, content: testContent() });
 }
 
+async function restoreWorld(_session: GameSession, save: SaveGame): Promise<Simulation> {
+  return restoreSimulation(save, { content: testContent() }).sim;
+}
+
 function client(nick: string): HeadlessClient {
-  return new HeadlessClient({ token: `${nick.toLowerCase()}-token-0123456789`, nick, buildWorld });
+  return new HeadlessClient({
+    token: `${nick.toLowerCase()}-token-0123456789`,
+    nick,
+    buildWorld,
+    restoreWorld,
+  });
 }
 
 function stageFor(seed: number): Stage {
@@ -67,14 +76,6 @@ function orderAt(client: HeadlessClient, tick: number): void {
 /** Both seats order on the same ticks, so their commands compete for one frame. */
 function orderTogether(client: HeadlessClient, tick: number): void {
   if (tick % ORDER_EVERY_TICKS === 0) order(client, tick);
-}
-
-/** Let virtual time pass with the clients running, as a paused game is waited out. */
-function holdWith(stage: Stage, clients: readonly HeadlessClient[], ms: number): void {
-  for (let elapsed = 0; elapsed < ms; elapsed += NETWORK_STEP_MS) {
-    settle(stage, NETWORK_STEP_MS);
-    for (const client of clients) client.advance(NETWORK_STEP_MS);
-  }
 }
 
 describe('a relayed session', () => {
@@ -153,9 +154,9 @@ describe('a relayed session', () => {
     expect(ania.driver?.speed).toBe(2);
 
     ania.setClock({ paused: true });
-    holdWith(stage, [ania, bartek], 400);
+    runFor(stage, [ania, bartek], 400);
     const held = [ania.tick, bartek.tick];
-    holdWith(stage, [ania, bartek], TICK_MS * 24);
+    runFor(stage, [ania, bartek], TICK_MS * 24);
     expect([ania.tick, bartek.tick]).toEqual(held);
     expect(bartek.clockNotices.at(-1)).toMatchObject({ paused: true, by: 'Ania' });
 

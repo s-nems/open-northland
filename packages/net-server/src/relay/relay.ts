@@ -2,14 +2,16 @@ import { randomBytes } from 'node:crypto';
 import {
   type ClientMessage,
   clientMessageKind,
-  MAX_ENVELOPE_BYTES,
+  MAX_CLIENT_MESSAGE_BYTES,
   MAX_REASON_LENGTH,
   PROTOCOL_VERSION,
   parseClientMessage,
   type ServerMessage,
 } from '@open-northland/net-protocol';
 import { LatencyProbe } from './input-delay.js';
-import { type Member, Room } from './room.js';
+import { createMember, type Member } from './member.js';
+import { Room } from './room.js';
+import { dispatchRoomMessage } from './room-dispatch.js';
 
 export interface Connection {
   send(message: ServerMessage): void;
@@ -87,15 +89,20 @@ export class Relay {
     if (client.token !== null && this.byToken.get(client.token) === client) this.byToken.delete(client.token);
     if (client.room !== null && client.member !== null) {
       const room = client.room;
-      if (room.disconnect(client.member) === 'left') this.roomOfToken.delete(client.member.token);
+      room.disconnect(client.member, this.now());
       this.dropIfEmpty(room);
     }
     this.log('disconnect', { nick: client.nick, clients: this.clients.size });
   }
 
-  receive(client: ClientHandle, raw: unknown): void {
+  /** `bytes` is the message's size on the wire, when the transport knows it. */
+  receive(client: ClientHandle, raw: unknown, bytes?: number): void {
     // A closed or replaced connection may still deliver what its socket had queued; none of it counts.
     if (!this.clients.has(client)) return;
+    if (bytes !== undefined && bytes > MAX_CLIENT_MESSAGE_BYTES && clientMessageKind(raw) !== 'blob') {
+      this.fail(client, `message of ${bytes} bytes over ${MAX_CLIENT_MESSAGE_BYTES}`);
+      return;
+    }
     let message: ClientMessage;
     try {
       message = parseClientMessage(raw);
@@ -119,7 +126,7 @@ export class Relay {
     const now = this.now();
     const elapsed = now - this.lastAdvanceAt;
     this.lastAdvanceAt = now;
-    for (const room of this.rooms.values()) room.advance(elapsed);
+    for (const room of this.rooms.values()) room.advance(elapsed, now);
     this.pingDue(now);
     this.expireEmptyRooms(now);
   }
@@ -170,7 +177,7 @@ export class Relay {
     if (room !== undefined && member !== null) {
       client.room = room;
       client.member = member;
-      room.reconnect(member);
+      room.reconnect(member, this.now());
       this.emptySince.delete(room);
     }
     this.log('hello', { nick: message.nick, rejoined: member !== null });
@@ -190,7 +197,7 @@ export class Relay {
         if (client.room !== null) return 'already in a room';
         if (this.rooms.size >= MAX_ROOMS) return `the relay is full at ${MAX_ROOMS} rooms`;
         const member = this.newMember(client, client.nick);
-        const room = new Room(this.newRoomId(), member, message.settings, message.seats, this.deliver);
+        const room = new Room(this.newRoomId(), member, message.settings, message.seats, this.hooks);
         this.rooms.set(room.id, room);
         this.enter(client, room, member);
         client.connection.send({ kind: 'room', room: room.view() });
@@ -212,81 +219,54 @@ export class Relay {
         if (room === null || member === null) return 'not in a room';
         const refusal = room.leave(member);
         if (refusal !== null) return refusal;
-        this.roomOfToken.delete(member.token);
-        client.room = null;
-        client.member = null;
         this.dropIfEmpty(room);
         return null;
       }
-      case 'pong':
-        if (client.probe.pong(message.t, this.now())) {
-          client.connection.send({ kind: 'delay', ticks: client.probe.delay.ticks });
+      case 'pong': {
+        const now = this.now();
+        const changed = client.probe.pong(message.t, now);
+        if (client.member !== null) {
+          client.member.lastHeardAt = now;
+          client.member.delayTicks = client.probe.delay.ticks;
+          client.member.roundTripMs = client.probe.delay.roundTripMs;
         }
+        if (changed) client.connection.send({ kind: 'delay', ticks: client.probe.delay.ticks });
         return null;
-      default:
-        return this.dispatchInRoom(client, message);
+      }
+      default: {
+        const { room, member } = client;
+        if (room === null || member === null) return 'not in a room';
+        const refusal = dispatchRoomMessage(room, member, message, this.now());
+        if (message.kind === 'start' && refusal === null) this.log('room started', { room: room.id });
+        return refusal;
+      }
     }
   }
 
-  private dispatchInRoom(
-    client: Client,
-    message: Exclude<
-      ClientMessage,
-      { kind: 'hello' | 'listRooms' | 'createRoom' | 'joinRoom' | 'leaveRoom' | 'pong' }
-    >,
-  ): string | null {
-    const { room, member } = client;
-    if (room === null || member === null) return 'not in a room';
-    switch (message.kind) {
-      case 'claimSeat':
-        return room.claimSeat(member, message.player);
-      case 'setSeat':
-        return room.setSeat(member, message.player, message);
-      case 'setReady':
-        return room.setReady(member, message.ready);
-      case 'start': {
-        const refusal = room.start(member);
-        if (refusal !== null) return refusal;
-        // Every member learns its input delay before its first command can be scheduled.
-        for (const token of room.memberTokens()) {
-          const other = this.byToken.get(token);
-          if (other !== undefined) other.connection.send({ kind: 'delay', ticks: other.probe.delay.ticks });
-        }
-        this.log('room started', { room: room.id });
-        return null;
-      }
-      case 'loaded':
-        return room.markLoaded(member);
-      case 'command': {
-        const bytes = Buffer.byteLength(JSON.stringify(message.envelope));
-        if (bytes > MAX_ENVELOPE_BYTES) return `envelope of ${bytes} bytes over ${MAX_ENVELOPE_BYTES}`;
-        return room.submit(member, message.envelope, message.fromTick, client.probe.delay.ticks);
-      }
-      case 'clock':
-        return room.setClock(member, message.speed, message.paused);
-      case 'chat':
-        room.chat(member, message.text);
-        return null;
-      default:
-        return assertNever(message);
-    }
-  }
-
-  private readonly deliver = (member: Member, message: ServerMessage): void => {
-    this.byToken.get(member.token)?.connection.send(message);
+  private readonly hooks = {
+    deliver: (member: Member, message: ServerMessage): void => {
+      this.byToken.get(member.token)?.connection.send(message);
+    },
+    removed: (member: Member): void => {
+      const room = this.roomOfToken.get(member.token);
+      if (room !== undefined) this.detach(member.token, room);
+    },
   };
+
+  /** The token no longer belongs to `room`, nor does the connection holding it. */
+  private detach(token: string, room: Room): void {
+    this.roomOfToken.delete(token);
+    const client = this.byToken.get(token);
+    if (client !== undefined && client.room === room) {
+      client.room = null;
+      client.member = null;
+    }
+  }
 
   private newMember(client: Client, nick: string): Member {
     if (client.token === null) throw new Error('a member needs an introduced client');
-    return {
-      token: client.token,
-      nick,
-      connected: true,
-      seat: null,
-      ready: false,
-      loaded: false,
-      pausesUsed: 0,
-    };
+    const { ticks: delayTicks, roundTripMs } = client.probe.delay;
+    return createMember(client.token, nick, this.now(), { delayTicks, roundTripMs });
   }
 
   private enter(client: Client, room: Room, member: Member): void {
@@ -309,14 +289,7 @@ export class Relay {
   private dropRoom(room: Room): void {
     this.rooms.delete(room.id);
     this.emptySince.delete(room);
-    for (const token of room.memberTokens()) {
-      this.roomOfToken.delete(token);
-      const client = this.byToken.get(token);
-      if (client !== undefined && client.room === room) {
-        client.room = null;
-        client.member = null;
-      }
-    }
+    for (const token of room.memberTokens()) this.detach(token, room);
     this.log('room dropped', { room: room.id });
   }
 
@@ -330,8 +303,4 @@ export class Relay {
     client.connection.close(clipped);
     this.disconnect(client);
   }
-}
-
-function assertNever(value: never): never {
-  throw new Error(`unreachable: ${JSON.stringify(value)}`);
 }

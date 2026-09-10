@@ -2,9 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type ContentSet, MapScript } from '@open-northland/data';
 import type { SessionRules } from '@open-northland/lockstep';
-import type { Simulation } from '@open-northland/sim';
+import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
-import { buildMapWorld } from '../../src/entries/map/world.js';
+import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
 import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
 import type { AuthoredJoinRows } from '../../src/game/world/index.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
@@ -94,4 +94,15 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   });
   if (world.kind !== 'authored') throw new Error(`${options.mapId} resolved no authored placements`);
   return { sim: world.sim, content: merge.content, ir, mapCells: { width: map.width, height: map.height } };
+}
+
+/** Restore a save onto the map it was taken on, through the entry's own restore: what a client does with
+ *  a snapshot another client of the same session took. */
+export async function restoreRealMapWorld(mapId: string, save: SaveGame): Promise<Simulation> {
+  const { merge } = await loadContentUnderTest();
+  const mapPath = realMapPath(mapId);
+  if (!existsSync(mapPath)) throw new Error(`no decoded map at ${mapPath}`);
+  const map = JSON.parse(readFileSync(mapPath, 'utf8'));
+  const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
+  return restoreMapWorld({ map, ir, content: { content: merge.content } }, save).sim;
 }

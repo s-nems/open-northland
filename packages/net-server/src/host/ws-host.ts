@@ -1,5 +1,5 @@
-import { MAX_CLIENT_MESSAGE_BYTES, type ServerMessage } from '@open-northland/net-protocol';
-import { WebSocketServer } from 'ws';
+import { MAX_BLOB_MESSAGE_BYTES, type ServerMessage } from '@open-northland/net-protocol';
+import { type RawData, WebSocketServer } from 'ws';
 import { type Connection, Relay, type RelayLog } from '../relay/relay.js';
 
 /** How often the relay clock is polled; a small fraction of a frame at the highest speed. */
@@ -27,6 +27,11 @@ export interface RelayHost {
   close(): Promise<void>;
 }
 
+function byteLength(data: RawData): number {
+  if (Array.isArray(data)) return data.reduce((sum, chunk) => sum + chunk.length, 0);
+  return data instanceof ArrayBuffer ? data.byteLength : data.length;
+}
+
 /** Serve the relay over WebSockets with JSON text frames. */
 export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
   const log = options.log ?? (() => undefined);
@@ -43,7 +48,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
   const server = new WebSocketServer({
     port: options.port,
     ...(options.host !== undefined ? { host: options.host } : {}),
-    maxPayload: MAX_CLIENT_MESSAGE_BYTES,
+    maxPayload: MAX_BLOB_MESSAGE_BYTES,
   });
   server.on('connection', (socket) => {
     const connection: Connection = {
@@ -72,7 +77,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
       }
       // A relay fault costs the one connection that triggered it, never the other rooms.
       try {
-        relay.receive(client, raw);
+        relay.receive(client, raw, byteLength(data));
       } catch (err) {
         log('receive failed', { error: String(err) });
         socket.close(CLOSE_INTERNAL_ERROR, 'relay fault');

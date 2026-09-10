@@ -31,6 +31,14 @@ export interface LinkOptions {
   readonly jitterMs?: number;
 }
 
+/** One client's connection to the relay, and the two ways it can end. */
+export interface Link {
+  /** Close the socket: the relay learns at once, as it does from a TCP close. */
+  close(): void;
+  /** Cut the wire without a word: nothing crosses either way and the relay is not told. */
+  cut(): void;
+}
+
 interface Direction {
   lastAt: number;
 }
@@ -55,7 +63,8 @@ export class VirtualNetwork {
     private readonly random: () => number = seededRandom(1),
   ) {}
 
-  link(client: HeadlessClient, options: LinkOptions = {}): void {
+  /** Connect `client` over a fresh link; a client linked again speaks through the new one. */
+  link(client: HeadlessClient, options: LinkOptions = {}): Link {
     const latency = options.latencyMs ?? 0;
     const jitter = options.jitterMs ?? 0;
     const up: Direction = { lastAt: 0 };
@@ -76,10 +85,21 @@ export class VirtualNetwork {
     const handle = this.relay.connect(connection);
     client.attach((message: ClientMessage) => {
       if (!alive) return;
+      const text = JSON.stringify(message);
       this.schedule(up, oneWay(), () => {
-        if (alive) this.relay.receive(handle, JSON.parse(JSON.stringify(message)));
+        if (alive) this.relay.receive(handle, JSON.parse(text), Buffer.byteLength(text));
       });
     });
+    return {
+      close: () => {
+        if (!alive) return;
+        alive = false;
+        this.relay.disconnect(handle);
+      },
+      cut: () => {
+        alive = false;
+      },
+    };
   }
 
   /** Deliver everything due by now, in order. */

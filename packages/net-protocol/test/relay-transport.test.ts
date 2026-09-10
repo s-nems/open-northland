@@ -79,4 +79,16 @@ describe('relay transport', () => {
     expect(dropped).toHaveLength(1);
     expect(dropped[0]).toMatch(/^3: /);
   });
+
+  it('starts where a restored world stands and ignores the frames before it', () => {
+    const transport = new RelayTransport({
+      send: () => undefined,
+      parseEnvelope: parseCommandEnvelope,
+      fromTick: 40,
+    });
+    transport.receiveFrame({ tick: 40, commands: [{ envelope: order(0, 1), sequence: 0 }] });
+    transport.receiveFrame({ tick: 41, commands: [] });
+    expect(transport.bufferedTicks).toBe(1);
+    expect(transport.take(41)).toEqual({ tick: 41, commands: [] });
+  });
 });

@@ -3,109 +3,23 @@ import {
   MAX_ENVELOPE_BYTES,
   PAUSE_BUDGET,
   PROTOCOL_VERSION,
-  type RoomSettings,
-  type ServerMessage,
   TICK_MS,
 } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
-import { type ClientHandle, Relay } from '../src/index.js';
+import {
+  SEATS,
+  SETTINGS,
+  seatCommand,
+  stage,
+  startedRoom,
+  TOKEN_A,
+  TOKEN_B,
+} from './support/message-stage.js';
 
 /**
  * The relay's authority, driven message by message with no sim behind it: who may sit, start, and
  * drive the clock, what an envelope leaves with, and what a returning token gets back.
  */
-
-const SETTINGS: RoomSettings = {
-  name: 'Zatoka',
-  world: { kind: 'map', mapId: 'zatoka' },
-  seed: 7,
-  rules: { fog: null, progression: null, needs: null },
-  speed: 1,
-};
-const SEATS = [
-  { player: 0, mode: 'idle', color: 0 },
-  { player: 1, mode: 'idle', color: 1 },
-  { player: 2, mode: 'ai', color: 2 },
-] as const;
-const TOKEN_A = 'token-a-0123456789ab';
-const TOKEN_B = 'token-b-0123456789ab';
-
-interface Peer {
-  readonly handle: ClientHandle;
-  readonly sent: ServerMessage[];
-  readonly closed: () => string | null;
-  send(message: unknown): void;
-  /** Messages of one kind received so far. */
-  of<K extends ServerMessage['kind']>(kind: K): Extract<ServerMessage, { kind: K }>[];
-  last<K extends ServerMessage['kind']>(kind: K): Extract<ServerMessage, { kind: K }> | undefined;
-}
-
-function stage() {
-  const time = { ms: 0 };
-  const relay = new Relay({ now: () => time.ms });
-  const advance = (ms: number): void => {
-    time.ms += ms;
-    relay.advance();
-  };
-  const peer = (): Peer => {
-    const sent: ServerMessage[] = [];
-    let closedFor: string | null = null;
-    const handle = relay.connect({
-      send: (message) => sent.push(message),
-      close: (reason) => {
-        closedFor = reason;
-      },
-    });
-    const of = <K extends ServerMessage['kind']>(kind: K) =>
-      sent.filter((message): message is Extract<ServerMessage, { kind: K }> => message.kind === kind);
-    return {
-      handle,
-      sent,
-      closed: () => closedFor,
-      send: (message) => relay.receive(handle, message),
-      of,
-      last: (kind) => of(kind).at(-1),
-    };
-  };
-  const introduce = (token: string, nick: string): Peer => {
-    const p = peer();
-    p.send({ kind: 'hello', protocol: PROTOCOL_VERSION, token, nick });
-    return p;
-  };
-  return { relay, advance, peer, introduce };
-}
-
-/** Two seated, ready members in a started room whose clock is running. */
-function startedRoom() {
-  const s = stage();
-  const a = s.introduce(TOKEN_A, 'Ania');
-  const b = s.introduce(TOKEN_B, 'Bartek');
-  a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
-  const roomId = a.last('room')?.room.id;
-  if (roomId === undefined) throw new Error('no room');
-  b.send({ kind: 'joinRoom', roomId });
-  a.send({ kind: 'claimSeat', player: 0 });
-  b.send({ kind: 'claimSeat', player: 1 });
-  a.send({ kind: 'setReady', ready: true });
-  b.send({ kind: 'setReady', ready: true });
-  a.send({ kind: 'start' });
-  a.send({ kind: 'loaded' });
-  b.send({ kind: 'loaded' });
-  return { ...s, a, b, roomId };
-}
-
-function seatCommand(player: number, value = 0): unknown {
-  return {
-    kind: 'command',
-    envelope: {
-      v: 1,
-      origin: 'player',
-      player,
-      command: { kind: 'setAssistantCounter', player, counter: 'extraMen', value, infinite: false },
-    },
-    fromTick: 0,
-  };
-}
 
 describe('relay identity', () => {
   it('refuses anything before hello, and a protocol it does not speak', () => {
@@ -219,13 +133,10 @@ describe('relay rooms', () => {
       { player: 1, mode: 'human', color: 1 },
       { player: 2, mode: 'ai', color: 2 },
     ];
-    expect(a.last('start')?.session).toEqual({
-      world: SETTINGS.world,
-      seed: 7,
-      seats,
-      localSeat: 0,
-      rules: SETTINGS.rules,
-      speed: 1,
+    expect(a.last('start')).toEqual({
+      kind: 'start',
+      session: { world: SETTINGS.world, seed: 7, seats, localSeat: 0, rules: SETTINGS.rules, speed: 1 },
+      snapshotTick: null,
     });
     expect(b.last('start')?.session).toEqual({
       world: SETTINGS.world,
@@ -279,7 +190,7 @@ describe('relay clock', () => {
     a.send({ kind: 'start' });
     s.advance(TICK_MS * 5);
     expect(a.of('frame')).toEqual([]);
-    a.send({ kind: 'loaded' });
+    a.send({ kind: 'loaded', tick: 0, world: 0 });
     expect(a.last('clock')).toEqual({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null });
     s.advance(TICK_MS * 2);
     expect(a.of('frame')).toEqual([
@@ -294,7 +205,7 @@ describe('relay clock', () => {
     s.advance(TICK_MS * 3);
     const carried = s.a.of('frame').flatMap((frame) => frame.commands);
     expect(carried).toHaveLength(1);
-    expect(carried[0]?.envelope.player).toBe(1);
+    expect(carried[0]?.envelope).toMatchObject({ origin: 'player', player: 1 });
     expect(s.b.of('rejected')).toEqual([]);
   });
 
