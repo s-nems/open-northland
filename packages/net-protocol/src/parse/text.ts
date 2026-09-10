@@ -1,5 +1,5 @@
 import { MAX_NICK_LENGTH, MAX_TOKEN_LENGTH, MIN_TOKEN_LENGTH } from '../limits.js';
-import { asString, typeName } from '../untrusted.js';
+import { asNonNegativeNumber, asString } from '../untrusted.js';
 
 const TOKEN_SHAPE = /^[A-Za-z0-9_-]+$/;
 /** No control characters, so a nick or chat line cannot carry a newline or terminal escape. */
@@ -26,10 +26,7 @@ export function parseLine(value: unknown, at: string, maxLength: number): string
 }
 
 export function asTimestamp(value: unknown, at: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw new Error(`${at}: expected a non-negative number, got ${typeName(value)}`);
-  }
-  return value;
+  return asNonNegativeNumber(value, at);
 }
 
 export function assertNever(value: never): never {

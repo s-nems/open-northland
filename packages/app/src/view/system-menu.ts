@@ -18,6 +18,8 @@ export interface SystemMenuDeps {
   readonly saveLoad: SaveLoadSession;
   readonly settings: GameSettingsRuntime;
   readonly setCameraSuspended: (suspended: boolean) => void;
+  /** False hides the load button: a relayed session cannot swap its world for a file's. */
+  readonly canLoad?: boolean;
 }
 
 const MODAL_PANEL_STYLE = [
@@ -180,7 +182,16 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
   };
   document.addEventListener('keydown', onKey);
 
-  panel.append(title, save, load, settings, quit, diagnostics, ...(trace !== null ? [trace] : []), close);
+  panel.append(
+    title,
+    save,
+    ...(deps.canLoad === false ? [] : [load]),
+    settings,
+    quit,
+    diagnostics,
+    ...(trace !== null ? [trace] : []),
+    close,
+  );
   backdrop.append(panel, savePanel.el, loadPanel.el, settingsPanel.el);
   document.body.append(backdrop);
 

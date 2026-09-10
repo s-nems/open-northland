@@ -1,4 +1,4 @@
-import type { LockstepDriver } from '@open-northland/lockstep';
+import type { SessionDriver } from '@open-northland/lockstep';
 import type {
   DoorBadge,
   ElevationField,
@@ -24,6 +24,7 @@ import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
+import type { GameSpeedControl } from '../../hud/tool-panel/game-speed.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { currentLocale } from '../../i18n/index.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
@@ -38,6 +39,7 @@ import {
 } from '../game-tool-panel.js';
 import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
+import { createOrderCue } from '../order-cue.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { createFogGates, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
@@ -50,6 +52,7 @@ import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
 import { createLiveGameSettings, perfCornerForUiScale } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
+import type { NetReadout } from './net-readout.js';
 import { createPauseHolds } from './pause-holds.js';
 import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
@@ -69,8 +72,14 @@ export interface GameViewDeps {
   /** Absent in a checkout without decoded content, which leaves the animated worker field empty. */
   readonly sheet?: SpriteSheet;
   readonly sim: Simulation;
-  /** The session this client runs: it owns tempo and pause, and is where every HUD command goes. */
-  readonly driver: LockstepDriver;
+  /** The session this client runs: it decides which ticks run, owns tempo and pause, and is where every
+   *  HUD command goes. */
+  readonly driver: SessionDriver;
+  /** True when the clock is shared with other clients: the menus and sheets that hold a local game
+   *  paused hold nothing, and a file cannot be loaded over the shared world. */
+  readonly sharedClock?: boolean;
+  /** A relayed session's connection figures for the overlays; omitted in a local session. */
+  readonly netReadout?: () => NetReadout | null;
   readonly cameraCtl: CameraController;
   readonly terrainGrid: SceneTerrain;
   /** typeId to minimap ground colour; without it the minimap keeps its flat-tint default. */
@@ -116,6 +125,10 @@ export interface GameViewDeps {
 export interface GameViewHandle {
   /** Stop the frame loop and remove this session's HUD overlays. Idempotent. */
   destroy(): void;
+  /** Show a clock change another client made, so the speed button follows the session. */
+  syncSpeed(control: GameSpeedControl): void;
+  /** Left inset in px that clears the tool-panel strip, for overlays mounted beside this view. */
+  readonly hudInsetLeftPx: number;
 }
 
 const PAUSE_HOLDER_MENU = 'menu';
@@ -127,6 +140,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const { app, canvas, params, renderer, sim, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
   const seatTribeOf = deps.seatTribeOf ?? ((): number => PRIMARY_TRIBE);
+  const sharedClock = deps.sharedClock === true;
+  const netReadout = deps.netReadout ?? ((): null => null);
 
   // Installed before the HUD mounts so the system menu sees an active recording.
   const profile = installSessionInstruments(sim, params);
@@ -139,12 +154,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const saveLoad = createSaveLoadSession({
     sim,
     worldToken: deps.worldToken ?? null,
-    setPaused: (paused) => driver.setPaused(paused),
+    // A shared clock is nobody's to hold: the save dialog and the overlays above pause nothing.
+    setPaused: (paused) => {
+      if (!sharedClock) driver.setPaused(paused);
+    },
     isPaused: () => driver.paused,
   });
   // Three overlays hold the sim paused - the menu, the mission sheet and the verdict - so each holds
   // under its own key and none can release another's.
   const pauseHolds = createPauseHolds(saveLoad);
+  const orderCue = createOrderCue();
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;
@@ -152,6 +171,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     systemMenu?.dispose();
     disposeHud();
     verdict?.dispose();
+    orderCue.dispose();
     // Leaving the debug seam set would pin this sim, renderer and stats for the document's lifetime.
     delete window.__opennorthland;
   };
@@ -186,15 +206,24 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // draws over the strip's lower buttons on a short screen.
   let minimap: MinimapHandle | undefined;
 
+  // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
+  // the sim on every mousemove, and so a sent command can be cued where it was clicked.
+  const pointerAt = trackCanvasPointer(canvas);
+
   // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
   // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
-  // seat reaching into another's units.
+  // seat reaching into another's units. The cue fires on send: the command applies ticks later.
   const readOnly = deps.readOnly === true;
   const overseer = deps.observer === true && !readOnly;
-  const issueTrusted = (command: Command): void => driver.submit(adminCommand(command));
+  // A trusted command has no wire: a shared session drops it rather than hand it to the relay.
+  const issueTrusted = (command: Command): void => {
+    if (!sharedClock) driver.submit(adminCommand(command));
+  };
   const issueCommand = (command: PlayerCommand): void => {
     if (readOnly) return;
     driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
+    const pointer = pointerAt();
+    if (pointer !== null) orderCue.at(pointer.clientX, pointer.clientY);
   };
 
   const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
@@ -228,7 +257,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
     buildings: menuEntriesFromContent(sim.content, lang),
-    goods: menuGoodsFromContent(sim.content),
+    // The goods drop is a trusted world edit, which has no wire in a shared session.
+    goods: sharedClock ? [] : menuGoodsFromContent(sim.content),
     lang,
     bindings: keyBindings,
     tribe: seatTribeOf(localPlayer),
@@ -303,10 +333,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     toolPanel.claimsWheel(clientX, clientY) || mountedMinimap.claimsPointer(clientX, clientY);
   cameraCtl.setPointerGuard(hudClaims);
   cameraCtl.setEdgeGuard(hudClaims);
-
-  // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
-  // the sim on every mousemove.
-  const pointerAt = trackCanvasPointer(canvas);
 
   // Late-bound: the badge projection below needs the fog gates and the building index.
   let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
@@ -422,6 +448,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     },
     settings: liveSettings.settings,
     setCameraSuspended: cameraCtl.setSuspended,
+    canLoad: !sharedClock,
   });
   disposeHud = (): void => {
     liveSettings.dispose();
@@ -439,6 +466,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     cameraCtl,
     canvas,
     driver,
+    netReadout,
     frameStats,
     profile,
   });
@@ -468,6 +496,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     placementTribe: seatTribeOf(localPlayer),
     soundDriver,
     perf,
+    netReadout,
     pointer: pointerAt,
     syncViewport: liveSettings.syncViewport,
   });
@@ -476,5 +505,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // A restored save of a decided match says so at once, since no event will repeat the verdict.
   verdict?.announce(sim.matchOutcome(localPlayer));
 
-  return { destroy };
+  return {
+    destroy,
+    syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
+    hudInsetLeftPx: perfLeftForUiScale(uiscale),
+  };
 }

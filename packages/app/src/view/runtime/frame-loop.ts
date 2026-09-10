@@ -1,5 +1,5 @@
 import type { MusicStanding } from '@open-northland/audio';
-import type { LockstepDriver } from '@open-northland/lockstep';
+import type { SessionDriver } from '@open-northland/lockstep';
 import type { HudLayout, HudModel } from '@open-northland/render';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { createSoundDriver } from '../../content/audio.js';
@@ -22,6 +22,7 @@ import {
 import type { FpsLimit } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
 import type { GameViewDeps } from './game-view.js';
+import type { NetReadout } from './net-readout.js';
 import { placementCursor } from './placement-cursor.js';
 import { type RafLoop, startRafLoop } from './raf-loop.js';
 
@@ -29,8 +30,8 @@ import { type RafLoop, startRafLoop } from './raf-loop.js';
 export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
   readonly fpsLimit: FpsLimit;
-  /** The session clock: it decides how many ticks this frame may run and holds the render alpha. */
-  readonly driver: LockstepDriver;
+  /** The session driver: it decides how many ticks this frame may run and holds the render alpha. */
+  readonly driver: SessionDriver;
   readonly frameStats: FrameStats;
   readonly fogGates: FogGates;
   readonly toolPanel: GameToolPanelHandle;
@@ -59,6 +60,8 @@ export interface FrameLoopDeps {
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   readonly perf: PerfOverlayHandle;
+  /** A relayed session's connection figures for the overlay; null in a local session. */
+  readonly netReadout: () => NetReadout | null;
   /** Client coords; null when the pointer left the canvas. */
   readonly pointer: () => { clientX: number; clientY: number } | null;
   /** Reconcile Pixi's live screen size before camera and HUD work. */
@@ -94,6 +97,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     placementTribe,
     soundDriver,
     perf,
+    netReadout,
     pointer: pointerAt,
     syncViewport,
   } = loop;
@@ -268,7 +272,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       drawMs,
       ...renderer.stats(),
     });
-    perf.update(frameStats.report());
+    perf.update(frameStats.report(), netReadout());
   }
   return startRafLoop(frame, loop.fpsLimit);
 }

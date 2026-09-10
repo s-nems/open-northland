@@ -21,6 +21,9 @@ The root [`AGENTS.md`](../../AGENTS.md) still applies.
   the common game runtime. Reach them only through the `src/routes.ts` thunks: a static `entries/`
   import anywhere in the shell puts every mode back into the first download, which the build's size
   report shows but does not block.
+- A world is assembled from the session descriptor alone, never from the local seat: two clients of
+  one relayed session must enqueue the same setup. The `?relay=` entry runs the shared map boot
+  through `@open-northland/net-client`, which is the session driver and clock there.
 - The menu hands over to a game through `swapToEntry`, never by assigning `window.location`. A
   document navigation ends the browser's fullscreen grant, and the next document can only take it
   back on the player's next click. Entries that still navigate owe the player that flash.

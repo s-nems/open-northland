@@ -1,8 +1,7 @@
 # Add the network lobby
 
 **Area:** app, pipeline · **Focus:** entries/main-menu/lobby · **Priority:** P2
-**Blocked by:** [multiplayer-5-electron-net-client.md](multiplayer-5-electron-net-client.md),
-[multiplayer-4c-relay-ops.md](multiplayer-4c-relay-ops.md)
+**Blocked by:** [multiplayer-4c-relay-ops.md](multiplayer-4c-relay-ops.md)
 
 The single-player lobby in `packages/app/src/entries/main-menu/lobby/` already has a pure, DOM-free
 roster model (`roster-state.ts`: seats, colours, vacant modes, observer seats) and produces the game

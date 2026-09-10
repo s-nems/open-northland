@@ -5,6 +5,7 @@ import {
   asArray,
   asBoolean,
   asCount,
+  asNonNegativeNumber,
   asOneOf,
   asPositiveNumber,
   asRecord,
@@ -139,7 +140,11 @@ export function parseServerMessage(
         text: parseLine(raw.text, 'chat.text', MAX_CHAT_LENGTH),
       };
     case 'ping':
-      return { kind, t: asTimestamp(raw.t, 'ping.t') };
+      return {
+        kind,
+        t: asTimestamp(raw.t, 'ping.t'),
+        roundTripMs: asNonNegativeNumber(raw.roundTripMs, 'ping.roundTripMs'),
+      };
     case 'rejected':
       return {
         kind,

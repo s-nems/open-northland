@@ -2,8 +2,24 @@
  * The running game's diagnostics identity. Quit to menu is a full page navigation, so this module
  * state resets with the page and never needs explicit clearing.
  */
-import { HashTrace, type Simulation } from '@open-northland/sim';
+import { HashTrace, type Simulation, type SyncDomain } from '@open-northland/sim';
 import { hasDebugFlag } from './debug-flags.js';
+
+/** What a relayed session adds to a bundle: where the relay said this client parted from the room,
+ *  and the digests it acknowledged around there. */
+export interface DiagNetReport {
+  readonly desync: {
+    readonly tick: number;
+    readonly domains: readonly SyncDomain[];
+    readonly reference: string;
+  } | null;
+  readonly digests: readonly {
+    readonly tick: number;
+    readonly digest: Readonly<Record<SyncDomain, number>>;
+  }[];
+  readonly delayTicks: number | null;
+  readonly roundTripMs: number | null;
+}
 
 export interface DiagGameSession {
   readonly entry: 'map' | 'scene';
@@ -16,6 +32,8 @@ export interface DiagGameSession {
   readonly sim: Simulation;
   /** State-hash ring when `?debug=diag` recording is on; `null` otherwise. */
   readonly hashTrace: HashTrace | null;
+  /** The relayed session's report at bundle time; absent in a local session. */
+  readonly net?: () => DiagNetReport;
 }
 
 /**

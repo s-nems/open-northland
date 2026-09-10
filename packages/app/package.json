@@ -14,13 +14,14 @@
     "@open-northland/audio": "*",
     "@open-northland/data": "*",
     "@open-northland/lockstep": "*",
+    "@open-northland/net-client": "*",
+    "@open-northland/net-protocol": "*",
     "@open-northland/render": "*",
     "@open-northland/sim": "*",
     "@open-northland/art-contracts": "*"
   },
   "devDependencies": {
     "@open-northland/content-resolver": "*",
-    "@open-northland/net-protocol": "*",
     "@open-northland/net-server": "*",
     "vite": "^8.1.4"
   }

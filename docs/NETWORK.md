@@ -16,7 +16,9 @@ WebSocket, one JSON text frame per message. A client message is at most `MAX_CLI
 plus its fields). A relay message is bounded by what it carries: a full tick frame holds up to
 `MAX_MEMBERS * MAX_COMMANDS_PER_TICK` envelopes of `MAX_ENVELOPE_BYTES` each plus their sequence
 wrappers, a little over 240 KiB, and a blob is as large as the one a client sent. A binary frame or
-unparsable text closes the connection. Every message is an object with a string `kind`.
+unparsable text closes the connection. Every message is an object with a string `kind`. A close
+with `CLOSE_REPLACED` (4000) or `CLOSE_PROTOCOL_ERROR` (1002) is final; after any other close a
+client may reconnect on its token.
 
 The relay replies to a message it cannot honour with `rejected { of, reason }`, naming the kind it
 refused, and keeps the connection. A violation of the protocol itself gets `error { reason }`
@@ -103,8 +105,9 @@ It is the only trusted command the wire carries; a client refuses a frame with a
 
 ## Input delay
 
-The relay pings each client once a second (`ping { t }`, answered by `pong { t }`) and keeps a
-smoothed round trip and jitter per client. The assigned input delay is
+The relay pings each client once a second (`ping { t, roundTripMs }`, answered by `pong { t }`) and
+keeps a smoothed round trip and jitter per client; `roundTripMs` is that smoothed trip, carried so
+the client can show it. The assigned input delay is
 `ceil((rtt + jitter) / tickLength) + 1` ticks, starting at 2, raised on the spot by a spike and
 lowered one tick at a time once the smoothed trip has allowed it for ten quiet samples. A change is
 sent as `delay { ticks }`; every member also gets its current delay at the start.
@@ -234,6 +237,17 @@ replaces the client's world, and the frames that follow are applied through the 
 | `SNAPSHOT_REFRESH_MS` / `SNAPSHOT_RETRY_MS` | 5 min / 10 s |
 | nick / room name / chat line | 24 / 48 / 500 characters |
 | token | 16 to 128 URL-safe characters |
+
+## The client
+
+`packages/net-client` is the client half every host shares: `RelayClient` walks the lobby, opens the
+world `start` names through a port the host supplies, runs it over `RelayTransport`, acknowledges
+every tick, answers pings and snapshot requests, and asks a diverged world's host to restore. It runs
+the sim a frame or two behind the relay's clock (`JITTER_BUFFER_TICKS`) by scaling the time it feeds
+the driver, never by skipping a tick, so a late frame lands inside the buffer. `RelaySocket` keeps
+the connection and reopens it on the same token after a drop; a connection the relay replaced or
+refused stays closed. The desktop and browser app plays through the `?relay=` entry, the headless
+test client through an in-memory network.
 
 ## What is not here yet
 

@@ -28,7 +28,12 @@ outcome cannot end.
   up to five minutes old, which is thousands of ticks to replay while the room waits; serve a fresh
   snapshot instead when the cache trails the clock by more than the lag budget.
 - Kicked seats in the app: the seat's change of hands reaches the sim through the relay's frame
-  already; the HUD and the roster must show it.
+  already and the chat announces it; the roster must show it too.
+- Load in a relayed game: the system menu hides Load there today, since a file restored on one
+  client alone would split the room. A loaded save becomes the room's world through the creator
+  flow above.
+- A resync in the app is a full relaunch over the staged snapshot, accepted for now; an in-place
+  restore that keeps the HUD up is the better experience once the runtime can swap its sim.
 - End of game: the skirmish victory and defeat rule reports per seat; the app shows the local result,
   the room returns to the lobby with the roster intact, and the server stops the clock.
 - Non-goals: no persistent server-side game history, no replays, no observers.

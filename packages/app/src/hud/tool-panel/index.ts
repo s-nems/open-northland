@@ -114,6 +114,8 @@ export interface ToolPanelController {
   presentMessages(snapshot: WorldSnapshot, events: readonly SimEvent[]): void;
   state(): ToolPanelState;
   restore(state: ToolPanelState): void;
+  /** Show the session's clock as it stands, without pushing to the loop: a change made elsewhere. */
+  syncSpeed(control: GameSpeedControl): void;
   dispose(): void;
 }
 
@@ -343,6 +345,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         goodType: goodsDrop.activeGood(),
         messages: messageCenter.state(),
       }),
+      syncSpeed(control): void {
+        speedButton.restore(control);
+      },
       restore(state): void {
         speedButton.restore(state.speed);
         windows.restore(state.windows);

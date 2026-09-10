@@ -3,7 +3,7 @@
  * only the mode it was asked for; choosing the mode must stay free of the loading it decides on.
  */
 
-export type RouteId = 'shot' | 'backdrop' | 'scene' | 'art' | 'anim' | 'icons' | 'sounds' | 'map' | 'menu';
+export type RouteId = 'shot' | 'backdrop' | 'scene' | 'art' | 'anim' | 'icons' | 'sounds' | 'relay' | 'map' | 'menu';
 
 /** Every entry module conforms to this, so the dispatcher never adapts a per-mode call shape. */
 export type EntryRunner = (canvas: HTMLCanvasElement, params: URLSearchParams) => void | Promise<void>;
@@ -61,6 +61,12 @@ const ROUTES: readonly Route[] = [
     id: 'sounds',
     matches: (params) => params.has('sounds'),
     load: () => import('./entries/sound.js').then((m) => m.renderSoundGallery),
+  },
+  // Before `map`: a relayed game's creator names the map in the same search.
+  {
+    id: 'relay',
+    matches: (params) => params.has('relay'),
+    load: () => import('./entries/relay.js').then((m) => m.renderRelayGame),
   },
   {
     id: 'map',

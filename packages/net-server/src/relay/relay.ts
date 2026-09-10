@@ -135,7 +135,9 @@ export class Relay {
     for (const client of this.clients) {
       if (client.token === null) continue;
       const stamp = client.probe.pingDue(now);
-      if (stamp !== null) client.connection.send({ kind: 'ping', t: stamp });
+      if (stamp !== null) {
+        client.connection.send({ kind: 'ping', t: stamp, roundTripMs: client.probe.delay.roundTripMs });
+      }
     }
   }
 

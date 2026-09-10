@@ -15,7 +15,9 @@ image can be shared.
   the health check; the existing nginx configuration in `packages/web` is the reference for the web
   side.
 - Version reporting: the server announces its protocol version on connect so clients can refuse a
-  mismatch in the lobby.
+  mismatch in the lobby. The client of this tree requires `ping.roundTripMs`, added without a
+  version bump while nothing was deployed; the first deployment fixes the version the field belongs
+  to.
 - Non-goals: no autoscaling, no accounts, no metrics stack.
 
 ## Verify

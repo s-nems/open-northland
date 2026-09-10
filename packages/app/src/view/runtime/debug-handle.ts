@@ -1,5 +1,5 @@
 /** The machine-readable debug seam both playable entries expose, installed by `startGameView`. */
-import type { LockstepDriver } from '@open-northland/lockstep';
+import type { SessionDriver } from '@open-northland/lockstep';
 import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
 import { type Simulation, TICKS_PER_SECOND } from '@open-northland/sim';
 import type { FrameStats, FrameStatsReport } from '../../diag/frame-stats.js';
@@ -7,6 +7,7 @@ import { heapMb } from '../../diag/heap.js';
 import type { SystemProfile, SystemProfileRow } from '../../diag/system-profile.js';
 import { recordedTraceEvents, type TraceEvent } from '../../diag/trace.js';
 import type { CameraController } from '../camera/index.js';
+import type { NetReadout } from './net-readout.js';
 
 declare global {
   interface Window {
@@ -66,6 +67,8 @@ export interface PerfReport {
   /** Per-system sim cost since the window opened; empty unless profiling. */
   readonly systems: readonly SystemProfileRow[];
   readonly sampling: PerfSampling;
+  /** The connection figures of a relayed session; absent in a local one. */
+  readonly net?: NetReadout;
 }
 
 export interface OpenNorthlandDebug {
@@ -95,6 +98,7 @@ export interface PerfReportInputs {
   readonly profiling: boolean;
   readonly systems: readonly SystemProfileRow[];
   readonly sampling: PerfSampling;
+  readonly net?: NetReadout | null;
 }
 
 /** Pure so the report shape is testable without a browser; `page.evaluate` throws on anything that
@@ -137,6 +141,7 @@ export function buildPerfReport(inputs: PerfReportInputs): PerfReport {
     profiling: inputs.profiling,
     systems: inputs.systems,
     sampling,
+    ...(inputs.net !== undefined && inputs.net !== null ? { net: inputs.net } : {}),
   };
 }
 
@@ -146,7 +151,8 @@ export interface DebugHandleDeps {
   readonly sheet: SpriteSheet | undefined;
   readonly cameraCtl: CameraController;
   readonly canvas: HTMLCanvasElement;
-  readonly driver: LockstepDriver;
+  readonly driver: SessionDriver;
+  readonly netReadout: () => NetReadout | null;
   readonly frameStats: FrameStats;
   /** Null unless `?debug=profile` asked for a running per-system profile. */
   readonly profile: SystemProfile | null;
@@ -176,6 +182,7 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
         profiling: deps.profile !== null,
         systems: deps.profile?.rows() ?? [],
         sampling: sampling(),
+        net: deps.netReadout(),
       }),
     resetPerf: () => {
       deps.frameStats.reset();

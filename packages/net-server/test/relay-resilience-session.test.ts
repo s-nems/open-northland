@@ -124,10 +124,10 @@ describe('a relayed session under faults', () => {
     const { stage, ania, bartek, links } = await twoClients(1);
     await runUntil(stage, [ania, bartek], 40, { onTick: orderAt });
     links[1].close();
-    runFor(stage, [ania, bartek], SETTLE_MS);
+    await runFor(stage, [ania, bartek], SETTLE_MS);
     expect(ania.waits.at(-1)?.for).toMatchObject([{ nick: 'Bartek', reason: 'gone' }]);
     const held = ania.tick;
-    runFor(stage, [ania, bartek], TICK_MS * 48);
+    await runFor(stage, [ania, bartek], TICK_MS * 48);
     expect(ania.tick).toBe(held);
 
     relink(stage, bartek, LINK);
@@ -143,7 +143,7 @@ describe('a relayed session under faults', () => {
     await runUntil(stage, [ania, bartek], 40, { onTick: orderAt });
     const cutAt = bartek.tick ?? 0;
     links[1].cut();
-    runFor(stage, [ania, bartek], SILENT_AFTER_MS + SETTLE_MS);
+    await runFor(stage, [ania, bartek], SILENT_AFTER_MS + SETTLE_MS);
     expect(ania.tick).toBeGreaterThan(cutAt);
     expect(ania.waits.at(-1)?.for.map((entry) => entry.nick)).toEqual(['Bartek']);
 
@@ -194,17 +194,17 @@ describe('a relayed session under faults', () => {
     });
     await runUntil(stage, clients, 30, { onTick: orderAt });
     cezaryLink.close();
-    runFor(stage, [ania, bartek], SETTLE_MS);
+    await runFor(stage, [ania, bartek], SETTLE_MS);
     ania.kick(2);
-    runFor(stage, [ania, bartek], SETTLE_MS);
+    await runFor(stage, [ania, bartek], SETTLE_MS);
     expect(ania.rejections.at(-1)?.reason).toMatch(/opens in/);
-    runFor(stage, [ania, bartek], KICK_COUNTDOWN_MS);
+    await runFor(stage, [ania, bartek], KICK_COUNTDOWN_MS);
     expect(ania.waits.at(-1)).toEqual({
       kind: 'waiting',
       for: [{ nick: 'Cezary', reason: 'gone', voteAfterMs: 0 }],
     });
     ania.kick(2);
-    runFor(stage, [ania, bartek], SETTLE_MS);
+    await runFor(stage, [ania, bartek], SETTLE_MS);
     expect(bartek.votes.at(-1)).toMatchObject({ player: 2, nick: 'Cezary', yes: ['Ania'], needed: 1 });
     const kicked = bartek.kicks[0];
     expect(kicked).toMatchObject({ player: 2, nick: 'Cezary', mode: 'ai' });
@@ -229,14 +229,15 @@ describe('a relayed session under faults', () => {
   it('brings a player back with nothing from the room’s cached save', async () => {
     const { stage, ania, bartek, links } = await twoClients(6);
     await runUntil(stage, [ania, bartek], 60, { onTick: orderAt });
-    ania.shareSave(null);
+    await ania.shareSave(null);
     settle(stage, SETTLE_MS);
     expect(bartek.blobs.map((blob) => blob.type)).toEqual(['save']);
     links[1].close();
     const again = client('Bartek');
     relink(stage, again, LINK);
-    settle(stage, SETTLE_MS);
-    await again.settled();
+    // The port answers `start` asynchronously, so the ask for the cache and the snapshot it brings
+    // need the network stepped between them.
+    await runFor(stage, [ania, again], SETTLE_MS);
     expect(again.restoredFrom).toHaveLength(1);
     expect(again.restoredFrom[0]).toBeLessThanOrEqual(60);
 

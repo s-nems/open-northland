@@ -264,7 +264,7 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
     ],
   },
   { kind: 'chat', from: 'Ania', text: 'gotowi?' },
-  { kind: 'ping', t: 99 },
+  { kind: 'ping', t: 99, roundTripMs: 42.5 },
   { kind: 'rejected', of: 'command', reason: 'no seat' },
   { kind: 'error', reason: 'hello first' },
 ];

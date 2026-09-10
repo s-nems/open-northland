@@ -1,7 +1,7 @@
 # Let the web shell join networked games on engines that hash identically
 
 **Area:** web, app · **Focus:** web shell, net transport · **Priority:** P3
-**Blocked by:** [multiplayer-5-electron-net-client.md](multiplayer-5-electron-net-client.md)
+**Blocked by:** [multiplayer-6-lobby.md](multiplayer-6-lobby.md)
 
 Web is an addition to desktop, not a requirement. It joins only on engines that passed the
 cross-engine determinism check recorded by the first multiplayer ticket; a browser that did not is
@@ -14,11 +14,13 @@ frames it missed or, past the waiting threshold, resync from a snapshot.
 
 ## Scope
 
-- The WebSocket transport and lobby flow from the desktop tickets working in the web shell, with the
-  engine fingerprint reported to the lobby.
+- The relay client and lobby flow from the desktop tickets working in the web shell, with the engine
+  fingerprint reported to the lobby. `@open-northland/net-client` already runs on the Web platform
+  alone (`WebSocket`, `CompressionStream`), so the work is the shell's wiring and the fingerprint.
 - Hidden-tab handling: keep receiving frames while hidden, catch up on return within the driver's
   cap, and fall back to the snapshot resync path beyond it.
-- Storage of the identity token and nick in the web shell's settings store.
+- The identity token and nick already live in the app's stored settings, which the web shell shares;
+  confirm the web shell's storage keeps them across its own reloads.
 - Non-goals: no WebTransport, no service-worker involvement in game traffic, no shell-specific sim
   changes.
 

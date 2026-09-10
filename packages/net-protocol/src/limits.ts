@@ -25,6 +25,10 @@ export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
 export const MAX_BLOB_BYTES = 16 * 1024 * 1024;
 /** Bytes of the JSON message carrying a blob: its base64 text plus the fields around it. */
 export const MAX_BLOB_MESSAGE_BYTES = Math.ceil(MAX_BLOB_BYTES / 3) * 4 + 1024;
+/** RFC 6455 close codes a connection ends with for good: the relay's private code for a connection a
+ *  newer one replaced, and a protocol violation. A client reopens after any other close. */
+export const CLOSE_REPLACED = 4000;
+export const CLOSE_PROTOCOL_ERROR = 1002;
 export const MIN_TOKEN_LENGTH = 16;
 export const MAX_TOKEN_LENGTH = 128;
 export const MAX_NICK_LENGTH = 24;

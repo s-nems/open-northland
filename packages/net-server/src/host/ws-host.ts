@@ -1,14 +1,16 @@
-import { MAX_BLOB_MESSAGE_BYTES, type ServerMessage } from '@open-northland/net-protocol';
+import {
+  CLOSE_PROTOCOL_ERROR,
+  CLOSE_REPLACED,
+  MAX_BLOB_MESSAGE_BYTES,
+  type ServerMessage,
+} from '@open-northland/net-protocol';
 import { type RawData, WebSocketServer } from 'ws';
 import { type Connection, Relay, type RelayLog } from '../relay/relay.js';
 
 /** How often the relay clock is polled; a small fraction of a frame at the highest speed. */
 const POLL_INTERVAL_MS = 5;
-/** RFC 6455 close codes: a protocol violation, an internal error, and the private range for a
- *  superseded connection. */
-const CLOSE_PROTOCOL_ERROR = 1002;
+/** RFC 6455 close code for a relay fault, after which a client may reconnect. */
 const CLOSE_INTERNAL_ERROR = 1011;
-const CLOSE_REPLACED = 4000;
 /** The close frame's reason field holds at most 123 bytes; a longer reason is replaced, since `ws`
  *  throws on it and the `error` message already carried the detail. */
 const MAX_CLOSE_REASON_BYTES = 123;

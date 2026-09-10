@@ -277,6 +277,11 @@ export const enSurfaces = {
     gpu: 'gpu',
     worst: 'worst',
     heap: 'heap',
+    roundTrip: 'rtt',
+    delay: 'delay',
+    clickToApply: 'click→apply',
+    buffer: 'buffer',
+    reconnecting: 'reconnecting',
   },
   animation: {
     title: 'Character animation',

@@ -187,6 +187,7 @@ export type ServerMessage =
       readonly bytes: string;
     }
   | { readonly kind: 'chat'; readonly from: string; readonly text: string }
-  | { readonly kind: 'ping'; readonly t: number }
+  /** `roundTripMs` is the smoothed round trip the relay measured for this client, for its own readout. */
+  | { readonly kind: 'ping'; readonly t: number; readonly roundTripMs: number }
   | { readonly kind: 'rejected'; readonly of: ClientMessageKind; readonly reason: string }
   | { readonly kind: 'error'; readonly reason: string };

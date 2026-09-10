@@ -22,11 +22,13 @@ export function settle(stage: Stage, ms: number): void {
   }
 }
 
-/** Let virtual time pass with the clients running: how a held or paused game is waited out. */
-export function runFor(stage: Stage, clients: readonly HeadlessClient[], ms: number): void {
+/** Let virtual time pass with the clients running: how a held or paused game is waited out. A
+ *  client's world build, restore or snapshot in flight lands before the next step. */
+export async function runFor(stage: Stage, clients: readonly HeadlessClient[], ms: number): Promise<void> {
   for (let elapsed = 0; elapsed < ms; elapsed += NETWORK_STEP_MS) {
     settle(stage, NETWORK_STEP_MS);
     for (const client of clients) client.advance(NETWORK_STEP_MS);
+    await Promise.all(clients.map((client) => client.settled()));
   }
 }
 

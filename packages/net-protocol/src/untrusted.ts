@@ -49,6 +49,13 @@ export function asString(value: unknown, at: string, maxLength: number): string 
   return value;
 }
 
+export function asNonNegativeNumber(value: unknown, at: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw new Error(`${at}: expected a non-negative number, got ${preview(value)}`);
+  }
+  return value;
+}
+
 export function asPositiveNumber(value: unknown, at: string, max: number): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0 || value > max) {
     throw new Error(`${at}: expected a number in (0, ${max}], got ${preview(value)}`);

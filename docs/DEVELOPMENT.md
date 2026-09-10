@@ -69,6 +69,7 @@ art stands in. Direct entries are useful during focused work:
 | `?art=gallery` | own animations, buildings, terrain and tilesets; comparisons and links to known real maps ([workflow](art/PIPELINE.md)) |
 | `?art` | own-art review using the production terrain layer; synthetic ground, current civilian, filtering and scale controls; `&artMap=tutorial_005` checks an owned-map meadow patch with own textures |
 | `?map=<id>` | decoded map |
+| `?relay=<ws url>&room=<id\|new>` | decoded map played through a relay server; see below |
 | `?anim` | character animation gallery |
 | `?icons` | decoded sprite-frame gallery |
 | `?sounds` | sound-binding gallery |
@@ -174,6 +175,22 @@ Builds the workspace and serves the multiplayer relay over WebSockets on `PORT`.
 content and runs no simulation; the protocol it speaks is [`NETWORK.md`](NETWORK.md). Every
 message it handles is exercised by the tests under `packages/net-server/test`, and the
 decoded-map run in `npm run test:content` plays real sessions through it in memory.
+
+To play through it, open the developer entry in two windows of one dev server. The first creates
+the room and waits for `players` people; it rewrites its URL to the room's id, which the others
+join with:
+
+```text
+?relay=ws://localhost:8765&room=new&map=magiczny_las&players=2&nick=Ania
+?relay=ws://localhost:8765&room=<id from the first window>&nick=Bartek
+```
+
+Each window sits in the first open seat and reports ready on its own; the creator starts once
+everyone is. The identity token and the nick are kept in the stored settings, so a reload rejoins
+the same seat; two windows of one browser profile share them, so give the second a private window
+or another profile. Enter opens the chat line. The perf overlay's third line and `perf().net` carry
+the round trip, the assigned input delay, the click-to-apply time and the jitter buffer's depth. A
+forced divergence for a resync check is a console mutation of `__opennorthland.sim` in one window.
 
 ## Desktop packaging
 

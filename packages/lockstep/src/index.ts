@@ -1,4 +1,9 @@
-export { LockstepDriver, type LockstepDriverOptions, type SessionClock } from './driver.js';
+export {
+  LockstepDriver,
+  type LockstepDriverOptions,
+  type SessionClock,
+  type SessionDriver,
+} from './driver.js';
 export { LOOPBACK_DELAY_TICKS, LoopbackTransport } from './loopback.js';
 export {
   aiSeatsOf,

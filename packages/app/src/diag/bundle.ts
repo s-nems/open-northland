@@ -5,7 +5,7 @@
 import type { LoggedCommand } from '@open-northland/sim';
 import { downloadJsonFile } from './download.js';
 import { type DiagEntry, type DiagLog, diag } from './log.js';
-import { currentDiagGameSession, type DiagGameSession } from './session.js';
+import { currentDiagGameSession, type DiagGameSession, type DiagNetReport } from './session.js';
 import { recordedTraceEvents, type TraceEvent } from './trace.js';
 
 export const DIAGNOSTICS_BUNDLE_KIND = 'opennorthland-diagnostics';
@@ -25,6 +25,8 @@ export interface DiagnosticsGameReport {
   readonly commandLog: readonly LoggedCommand[];
   /** The hash trace recorded in `?debug=diag` runs only, for divergence localization. */
   readonly hashes?: readonly { readonly tick: number; readonly hash: string }[];
+  /** A relayed session's desync notice and acknowledged digests. */
+  readonly net?: DiagNetReport;
 }
 
 export interface DiagnosticsBundle {
@@ -75,6 +77,7 @@ function gameReport(session: DiagGameSession): DiagnosticsGameReport {
     ...(session.hashTrace !== null
       ? { hashes: session.hashTrace.list().map(({ tick, hash }) => ({ tick, hash })) }
       : {}),
+    ...(session.net !== undefined ? { net: session.net() } : {}),
   };
 }
 

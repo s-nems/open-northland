@@ -10,6 +10,16 @@ export interface SessionClock {
   setSpeed(speed: number): void;
 }
 
+/** What a frame loop drives: elapsed display time in, the interpolation alpha out, and the way to hand
+ *  the session a command. A relayed client stands in for the plain driver behind this. */
+export interface SessionDriver extends SessionClock {
+  /** Ticks the per-frame cap has discarded over the session. */
+  readonly droppedTicks: number;
+  readonly maxStepsPerFrame: number;
+  advance(elapsedMs: number, onTick?: () => void): number;
+  submit(envelope: CommandEnvelope): void;
+}
+
 export interface LockstepDriverOptions {
   readonly sim: Simulation;
   readonly transport: SessionTransport;
@@ -22,7 +32,7 @@ export interface LockstepDriverOptions {
  * One client of a session: it turns elapsed display time into whole ticks and runs a tick only once
  * the transport has handed over that tick's complete input.
  */
-export class LockstepDriver implements SessionClock {
+export class LockstepDriver implements SessionDriver {
   private readonly sim: Simulation;
   private readonly transport: SessionTransport;
   private readonly timestep: FixedTimestep;

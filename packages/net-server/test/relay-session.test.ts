@@ -151,12 +151,12 @@ describe('a relayed session', () => {
     settle(stage, 400);
     expect(ania.clockNotices.at(-1)).toEqual(bartek.clockNotices.at(-1));
     expect(ania.clockNotices.at(-1)).toMatchObject({ speed: 2, paused: false, by: 'Bartek' });
-    expect(ania.driver?.speed).toBe(2);
+    expect(ania.speed).toBe(2);
 
     ania.setClock({ paused: true });
-    runFor(stage, [ania, bartek], 400);
+    await runFor(stage, [ania, bartek], 400);
     const held = [ania.tick, bartek.tick];
-    runFor(stage, [ania, bartek], TICK_MS * 24);
+    await runFor(stage, [ania, bartek], TICK_MS * 24);
     expect([ania.tick, bartek.tick]).toEqual(held);
     expect(bartek.clockNotices.at(-1)).toMatchObject({ paused: true, by: 'Ania' });
 

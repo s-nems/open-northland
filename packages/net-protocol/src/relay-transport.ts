@@ -10,6 +10,8 @@ export interface RelayTransportOptions {
   readonly onDropped?: (tick: number, reason: string) => void;
   /** The tick the client's world stands at; frames up to it are ignored. Default 0, a fresh world. */
   readonly fromTick?: number;
+  /** Runs with each frame as the driver takes it, the moment its commands apply. */
+  readonly onFrame?: (frame: TickFrame) => void;
 }
 
 /** The client's side of a relayed session: commands go up with the tick they were issued on, frames come
@@ -20,11 +22,13 @@ export class RelayTransport implements SessionTransport {
   private readonly send: RelayTransportOptions['send'];
   private readonly parseEnvelope: RelayTransportOptions['parseEnvelope'];
   private readonly onDropped: RelayTransportOptions['onDropped'];
+  private readonly onFrame: RelayTransportOptions['onFrame'];
 
   constructor(options: RelayTransportOptions) {
     this.send = options.send;
     this.parseEnvelope = options.parseEnvelope;
     this.onDropped = options.onDropped;
+    this.onFrame = options.onFrame;
     this.lastTaken = options.fromTick ?? 0;
   }
 
@@ -59,6 +63,8 @@ export class RelayTransport implements SessionTransport {
         this.onDropped?.(tick, err instanceof Error ? err.message : String(err));
       }
     }
-    return { tick, commands };
+    const taken = { tick, commands };
+    this.onFrame?.(taken);
+    return taken;
   }
 }

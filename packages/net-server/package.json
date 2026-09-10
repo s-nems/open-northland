@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@open-northland/lockstep": "*",
+    "@open-northland/net-client": "*",
     "@open-northland/sim": "*",
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1"

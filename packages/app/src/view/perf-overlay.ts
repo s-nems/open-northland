@@ -1,15 +1,17 @@
 import type { FrameRecent, FrameStatsReport } from '../diag/frame-stats.js';
 import { heapMb } from '../diag/heap.js';
 import { messages } from '../i18n/index.js';
+import type { NetReadout } from './runtime/net-readout.js';
 
 /**
- * The on-canvas debug readout: one line of sim state, one of frame timing. Formatting only, the fold
- * lives in `diag/frame-stats.ts` where it can be tested.
+ * The on-canvas debug readout: one line of sim state, one of frame timing, and in a relayed session
+ * one of connection figures. Formatting only, the fold lives in `diag/frame-stats.ts` where it can
+ * be tested.
  */
 
 export interface PerfOverlayHandle {
   /** Call once per frame. */
-  update(report: FrameStatsReport): void;
+  update(report: FrameStatsReport, net: NetReadout | null): void;
   /** Re-anchor the readout along the bottom edge between the minimap and the details panel. */
   place(leftPx: number, rightPx: number, bottomPx: number): void;
   dispose(): void;
@@ -53,6 +55,23 @@ function formatDeliveredSpeed(requested: number, recent: FrameRecent): string {
   return delivered === formatDelivered(requested) ? label : `${label}→${delivered}`;
 }
 
+function formatMs(ms: number | null): string {
+  return ms === null ? '-' : `${ms.toFixed(0)}ms`;
+}
+
+export function formatNetReadout(net: NetReadout): string {
+  const copy = messages().performance;
+  const delay =
+    net.delayTicks === null
+      ? '-'
+      : `${net.delayTicks} (${net.delayMs === null ? '-' : `${net.delayMs.toFixed(0)}ms`})`;
+  const link = net.connected ? '' : `  ${copy.reconnecting}`;
+  return (
+    `${copy.roundTrip} ${formatMs(net.roundTripMs)}  ${copy.delay} ${delay}` +
+    `  ${copy.clickToApply} ${formatMs(net.clickToApplyMs)}  ${copy.buffer} ${net.bufferedTicks}${link}`
+  );
+}
+
 /** Mount the debug readout along the bottom edge, spanning from `leftPx` (clear of the minimap) to
  *  `rightPx` from the right edge (clear of the details panel), `bottomPx` up. */
 export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: number): PerfOverlayHandle {
@@ -65,7 +84,7 @@ export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: numb
   document.body.append(panel);
 
   return {
-    update(report: FrameStatsReport): void {
+    update(report: FrameStatsReport, net: NetReadout | null): void {
       const last = report.last;
       if (last === null) return;
       const copy = messages().performance;
@@ -86,7 +105,8 @@ export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: numb
       const heap = heapMb();
       if (heap !== null) perf += `  ${copy.heap} ${heap}MB`;
 
-      panel.textContent = `${simState}\n${perf}`;
+      panel.textContent =
+        net === null ? `${simState}\n${perf}` : `${simState}\n${perf}\n${formatNetReadout(net)}`;
     },
     place(leftPx, rightPx, bottomPx): void {
       panel.style.left = `${leftPx}px`;

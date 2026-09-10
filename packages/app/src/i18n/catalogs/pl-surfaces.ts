@@ -273,6 +273,11 @@ export const plSurfaces = {
     gpu: 'grafika',
     worst: 'najgorzej',
     heap: 'pamięć',
+    roundTrip: 'rtt',
+    delay: 'opóźnienie',
+    clickToApply: 'klik→skutek',
+    buffer: 'bufor',
+    reconnecting: 'łączenie',
   },
   animation: {
     title: 'Animacje postaci',
