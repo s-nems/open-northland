@@ -9,6 +9,7 @@ and the test strategy in [`TESTING.md`](TESTING.md).
 npm ci                  # install the locked dependency set
 npm run dev             # browser development server
 npm run desktop         # Electron development build
+npm run relay           # lockstep relay server on PORT (default 8765)
 npm run build           # typecheck and build the browser app, then report per-mode JS size
 npm test                # normal Vitest suite
 npm test -- scenario    # tests matching a name
@@ -161,6 +162,18 @@ Every run keeps its report under `bench-out/` (untracked), so a baseline exists 
 planned for. `npm run bench:compare` with no arguments compares the two most recent runs of the same
 world; `npm run bench:compare -- before.json after.json` names two explicitly, and `ON_BENCH_JSON`
 overrides where a run writes.
+
+## Relay server
+
+```bash
+npm run relay
+PORT=9000 npm run relay
+```
+
+Builds the workspace and serves the multiplayer relay over WebSockets on `PORT`. It loads no
+content and runs no simulation; the protocol it speaks is [`NETWORK.md`](NETWORK.md). Every
+message it handles is exercised by the tests under `packages/net-server/test`, and the
+decoded-map run in `npm run test:content` plays real sessions through it in memory.
 
 ## Desktop packaging
 

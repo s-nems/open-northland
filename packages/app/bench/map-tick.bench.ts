@@ -59,7 +59,7 @@ describe('map per-system benchmark', () => {
     const { sim, mapCells } = await realMapWorld({
       mapId,
       aiSeats: [...Array(seats).keys()],
-      fog: FOG_MODE.REVEAL,
+      rules: { fog: FOG_MODE.REVEAL, progression: null, needs: null },
       berryBushes: true,
     });
     sim.setSyncDigest(syncDigest);

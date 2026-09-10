@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aiSeatsOf,
   type GameSession,
+  humanSeatsOf,
   isReadOnlySpectator,
   isSpectator,
   orderedSeats,
@@ -89,5 +90,20 @@ describe('game session descriptor', () => {
     expect(isSpectator(session({ localSeat: 'overseer' }))).toBe(true);
     expect(isReadOnlySpectator(session({ localSeat: 'overseer' }))).toBe(false);
     expect(isSpectator(session())).toBe(false);
+  });
+});
+
+describe('roster queries', () => {
+  it('split the seats by who plays them', () => {
+    const roster = session({
+      seats: [
+        { player: 0, mode: 'human', color: 0 },
+        { player: 1, mode: 'ai', color: 1 },
+        { player: 2, mode: 'idle', color: 2 },
+        { player: 5, mode: 'human', color: 5 },
+      ],
+    });
+    expect(humanSeatsOf(roster)).toEqual([0, 5]);
+    expect(aiSeatsOf(roster)).toEqual([1]);
   });
 });

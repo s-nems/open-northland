@@ -23,6 +23,7 @@
     "test:content": "node scripts/test-content.mjs",
     "test:pipeline": "node scripts/test-pipeline.mjs",
     "test:engines": "node scripts/test-engines.mjs",
+    "relay": "tsc --build && node packages/net-server/dist/main.js",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",

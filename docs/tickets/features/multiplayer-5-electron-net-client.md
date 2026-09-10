@@ -11,12 +11,22 @@ Responsiveness in lockstep comes from the interface reacting at once while the c
 ticks later (two to three ticks at 12 ticks per second, 170 to 250 ms at a 100 ms round trip). The HUD
 must acknowledge every issued command immediately and must never wait for its application.
 
+The relay core already provides the client's pure half: `RelayTransport` in `packages/net-protocol`
+(frames in, commands out, the sim's parser injected) and the headless client under
+`packages/net-server/test/support/`, which walks the lobby, builds a world from the broadcast
+descriptor, follows the clock, and answers pings. The desktop client wraps that logic around a real
+socket and a HUD rather than writing it again; promote what it reuses out of test support.
+
+World assembly on every client must come from the descriptor alone. The map entry today declares the
+match participants and the assistant grants from the local seat, which two clients would do
+differently; `humanSeatsOf(session)` is the shared answer, and the headless twin in
+`packages/app/test/content/real-map-world.ts` already builds that way.
+
 ## Scope
 
-- A WebSocket (`wss://`) implementation of the `packages/lockstep` transport interface, with
-  reconnect on the same token, a jitter buffer of one to two ticks behind the server clock, and
-  catch-up through the driver when frames arrive late (several ticks per frame within the existing
-  `FixedTimestep` cap).
+- A WebSocket (`wss://`) socket around `RelayTransport`, with reconnect on the same token, a jitter
+  buffer of one to two ticks behind the server clock, and catch-up through the driver when frames
+  arrive late (several ticks per frame within the existing `FixedTimestep` cap).
 - Identity storage: the token and nick live in the desktop settings store next to the other stored
   settings in `packages/app/src/view/settings-store.ts`.
 - Immediate feedback on issue. Investigate first where the order acknowledgement cue fires today; if

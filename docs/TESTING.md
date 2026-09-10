@@ -116,7 +116,9 @@ npm run test:pipeline
 ```
 
 `test:content` validates code paths that consume an existing generated content set. Use it for
-loaders, id joins, overlay behavior, or scenarios based on real extracted rows.
+loaders, id joins, overlay behavior, or scenarios based on real extracted rows. The relayed-session
+runs in it play a few hundred ticks by default; `ON_RELAY_TICKS=10000` lengthens them for a
+change to the relay or the lockstep seams.
 
 `test:pipeline` performs a fresh conversion into a temporary directory and runs the real-content
 checks against that result. Use it for source parsing, schemas, decoders, map conversion, and output

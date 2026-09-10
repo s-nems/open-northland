@@ -75,7 +75,16 @@ export function isReadOnlySpectator(session: GameSession): boolean {
 }
 
 export function aiSeatsOf(session: GameSession): number[] {
-  return session.seats.filter((seat) => seat.mode === 'ai').map((seat) => seat.player);
+  return seatsInMode(session, 'ai');
+}
+
+/** Every seat a person plays, on whichever client. */
+export function humanSeatsOf(session: GameSession): number[] {
+  return seatsInMode(session, 'human');
+}
+
+function seatsInMode(session: GameSession, mode: SeatMode): number[] {
+  return session.seats.filter((seat) => seat.mode === mode).map((seat) => seat.player);
 }
 
 /** Seat to team colour; a seat outside the roster keeps its slot id as its colour. */

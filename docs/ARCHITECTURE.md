@@ -28,6 +28,13 @@ asset-pipeline -> generated content -> content-resolver -> app / desktop
 - `packages/lockstep` describes a session as serializable data and drives one client of it: it
   decides when a tick may run and which command envelopes it carries. It depends on `sim` alone, so
   the same driver runs in a browser, in Electron, and in a headless Node client.
+- `packages/net-protocol` is the lockstep wire protocol: message catalogue, limits, the parser for
+  each direction, and the client-side transport that turns relay frames into the driver's input. It
+  has no runtime dependency; the descriptor and the command payload cross it as opaque JSON that
+  their owners validate.
+- `packages/net-server` is the relay a networked game runs through: rooms, seats, identities, the
+  tick clock, and command frames. It holds no content and runs no simulation. The contract is
+  `docs/NETWORK.md`.
 - `packages/app` owns browser input, menus, HUD, the frame loop, and package wiring.
 - `packages/content-resolver` maps content URLs onto the generated directory for every host.
 - `packages/vfs` is the file-system seam the pipeline, the content routes, and the installers share,
@@ -52,7 +59,8 @@ sits in that tick, and the driver runs a tick only once that tick's inputs are c
 admits each queued command its origin is entitled to, applies it, and runs the fixed system schedule.
 A tick applies the world's own untargeted emissions first - an AI seat's commands, authored setup -
 then the session's stamped input. Single-player runs the same driver over an in-process loopback
-transport. Systems mutate their own world during the tick. Authored world assembly uses
+transport; a networked game runs it over `RelayTransport`, whose frames the relay assigned. Systems
+mutate their own world during the tick. Authored world assembly uses
 `sim.enqueueSetup(command)`; `parseCommandLog` is the validator an importer of untrusted replay or
 diagnostics JSON has to run before that log drives a sim.
 
@@ -92,10 +100,8 @@ usable without copyrighted data. See [`DATA-FORMAT.md`](DATA-FORMAT.md).
 
 ## Saves and multiplayer
 
-Persisted save/load and multiplayer are not implemented yet. The existing command log, deterministic
-step, state hash, and snapshot boundary are useful foundations, but they do not define a finished
-save format or network protocol.
-
-A future save will need enough state for a fast load plus versioned input metadata. A future lockstep
-mode will need command exchange and divergence detection. Both features must preserve the current
-determinism rules rather than assuming replay alone solves persistence or synchronization.
+A save is the sim's exported state plus the untargeted commands still queued; `exportSaveGame` and
+`restoreSimulation` round-trip to an identical hash. A networked session is server-paced lockstep
+over the relay: every client runs the full sim, the relay owns the clock and the order of commands,
+and the same save format is the resync primitive. The wire contract is `docs/NETWORK.md`; the
+remaining milestones are the multiplayer tickets under `docs/tickets/features/`.

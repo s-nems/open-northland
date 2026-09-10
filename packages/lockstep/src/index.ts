@@ -4,6 +4,7 @@ export {
   aiSeatsOf,
   DEFAULT_LOCAL_PLAYER,
   type GameSession,
+  humanSeatsOf,
   isReadOnlySpectator,
   isSpectator,
   type LocalSeat,

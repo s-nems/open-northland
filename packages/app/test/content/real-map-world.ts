@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type ContentSet, MapScript } from '@open-northland/data';
-import type { FOG_MODE, Simulation } from '@open-northland/sim';
+import type { SessionRules } from '@open-northland/lockstep';
+import type { Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld } from '../../src/entries/map/world.js';
 import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
@@ -22,8 +23,13 @@ export interface RealMapWorldOptions {
   readonly mapId: string;
   /** Seats to flag as AI players. */
   readonly aiSeats: readonly number[];
-  /** Fog mode to enqueue; omitted leaves the sim's default. */
-  readonly fog?: (typeof FOG_MODE)[keyof typeof FOG_MODE];
+  /** Seats people play, on this client or another: the match participants and assistant grants a
+   *  relayed session declares on every client alike. Omitted runs the observer's world. */
+  readonly humanSeats?: readonly number[];
+  /** Omitted runs on the browser entry's default seed. */
+  readonly seed?: number;
+  /** A session's rule overrides; omitted leaves the sim's defaults. */
+  readonly rules?: SessionRules;
   /** Also spawn the map's berry bushes (the `?map=` entry does; a scenario that ignores food need not). */
   readonly berryBushes?: boolean;
 }
@@ -45,7 +51,7 @@ export function realMapPath(mapId: string): string {
 
 /** The map's `.script.json` sidecar, absent for a map that ships none - the browser's `loadMapScript`
  *  twin, so the headless world seeds the same diplomacy rows the entry does. */
-function realMapScript(mapId: string): MapScript | null {
+export function realMapScript(mapId: string): MapScript | null {
   const path = resolve(contentDir(), `maps/${mapId}.script.json`);
   if (!existsSync(path)) return null;
   return MapScript.parse(JSON.parse(readFileSync(path, 'utf8')));
@@ -61,29 +67,29 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   const map = JSON.parse(readFileSync(mapPath, 'utf8'));
   const script = realMapScript(options.mapId);
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
+  const humanSeats = options.humanSeats ?? [];
   const world = buildMapWorld({
-    seed: MAP_SEED,
+    seed: options.seed ?? MAP_SEED,
     map,
     ir,
     // Only `content` matters here: the real-content override replaces the sandbox build whole, so a
     // footprint overlay would be ignored (see resolveWorldContent).
     content: { content: merge.content },
     aiSeats: options.aiSeats,
-    // Each AI seat's assistant, so a headless run measures an economy that dresses itself like the
-    // browser's. The entry also grants to the seat the person controls; a headless run has none.
-    assistantSeats: options.aiSeats,
+    // Each played seat's assistant and each AI seat's, so a headless run measures an economy that
+    // dresses itself like the browser's.
+    assistantSeats: [...humanSeats, ...options.aiSeats],
     diplomacy: script?.diplomacy ?? [],
-    // The entry declares the match from the same three inputs; an observer controls no seat, which is
-    // the session this world stands in for. Left out, the headless world would run without the match
-    // rules the browser plays under.
+    // The entry declares the match from the same three inputs. Left out, the headless world would run
+    // without the match rules the browser plays under.
     matchParticipants: matchParticipants({
-      controlled: [],
+      controlled: humanSeats,
       aiSeats: options.aiSeats,
       neverDies: script === null ? [] : neverDiesSeats(script),
     }),
-    fog: options.fog ?? null,
-    progression: null,
-    needs: null,
+    fog: options.rules?.fog ?? null,
+    progression: options.rules?.progression ?? null,
+    needs: options.rules?.needs ?? null,
     berryBushes: options.berryBushes === true,
   });
   if (world.kind !== 'authored') throw new Error(`${options.mapId} resolved no authored placements`);

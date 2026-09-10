@@ -5,6 +5,8 @@
     { "path": "packages/data" },
     { "path": "packages/sim" },
     { "path": "packages/lockstep" },
+    { "path": "packages/net-protocol" },
+    { "path": "packages/net-server" },
     { "path": "packages/render" },
     { "path": "packages/audio" },
     { "path": "packages/app" },

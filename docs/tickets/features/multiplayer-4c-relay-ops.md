@@ -1,7 +1,6 @@
 # Package and deploy the relay server
 
 **Area:** web, desktop · **Focus:** packages/net-server, deploy/ · **Priority:** P2
-**Blocked by:** [multiplayer-4a-relay-core.md](multiplayer-4a-relay-core.md)
 
 The relay runs on the project owner's machine as a Docker image behind a TLS reverse proxy on a
 subdomain of opennorthland.org, reached over `wss://`. The image must contain no decoded game data:

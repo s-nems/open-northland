@@ -1,7 +1,6 @@
 # Make the relay resilient: waiting for players, kick votes, digests, resync, and blob relay
 
 **Area:** web, desktop · **Focus:** packages/net-server · **Priority:** P2
-**Blocked by:** [multiplayer-4a-relay-core.md](multiplayer-4a-relay-core.md)
 
 The core relay keeps everyone on one clock as long as everyone keeps up and nobody diverges. A real
 game has a player whose connection drops, a laptop that falls behind, and eventually a client whose
@@ -17,7 +16,9 @@ about 0.5 s to produce on the donor and 0.45 s to restore.
 - Acknowledgements: each client reports the tick it has applied together with that tick's sync
   digest from the sim; the report doubles as the lag signal.
 - Waiting policy: when a client's applied tick falls more than 2 s of game time behind the server
-  clock (24 ticks at x1, scaled with the session speed), or its socket drops, the clock stops and
+  clock (24 ticks at x1, scaled with the session speed), its socket drops, or it has answered no ping
+  for a few seconds (a half-open socket today stays "connected" and buffers every frame), the clock
+  stops and
   every client is told who is being waited for, with a 60 s countdown. A reconnect with the same
   token, or the lagging client catching up, resumes the clock.
 - Kick vote: after the countdown any player may open a vote; at least 50% of connected human players

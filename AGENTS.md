@@ -155,6 +155,8 @@ Load the relevant file when working in that area:
 - `docs/art/AGENTS.md`
 - `packages/sim/AGENTS.md`
 - `packages/lockstep/AGENTS.md`
+- `packages/net-protocol/AGENTS.md`
+- `packages/net-server/AGENTS.md`
 - `packages/render/AGENTS.md`
 - `packages/audio/AGENTS.md`
 - `packages/app/AGENTS.md`
