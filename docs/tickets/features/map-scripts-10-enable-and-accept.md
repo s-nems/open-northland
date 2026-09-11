@@ -4,13 +4,17 @@
 
 Map-scripts epic, stage 10 of 10. Check the coverage report before starting.
 
-With the executors in place, `MissionRules` still defaults to off and only `?missions=on` turns a
+The implemented executors cover only part of the map behavior. `MissionRules` still defaults to off and only `?missions=on` turns a
 script on, so players never see one run. This stage flips the default, proves a campaign map end to
 end, and records what the original confirms.
 
 ## Scope
 
-- Flip the `MissionRules` default to on; keep the flag and the `?missions=` override for tests.
+- Before enabling scripts, evaluate the chosen map's unsupported opcodes and partial executors:
+  `Allow*` and `SetExternalFlag` currently store flags with no gameplay consumer, and the building
+  unlock gate is disabled. Static opcode coverage cannot establish that a campaign is completable.
+- Flip the `MissionRules` default to on after acceptance; keep the flag and the `?missions=` override
+  for tests.
 - Decide the fog default for a scripted map. With fog off, `PlayerSeen` and the explored-point goals
   (`FindPos`, `FindHumans`, `FindHouses`, `FindAnimals`) hold at once and `ExploreArea` writes
   nothing, so a campaign map's first-contact missions fire on the first pass; today only the `?fog=`
@@ -25,6 +29,9 @@ end, and records what the original confirms.
   its own, so decide it here with the messages branch in mind.
 - Register an acceptance scene on a real campaign map (the CnMod `cn_1` or the base game's first
   mission) that lists fired missions and their tick, and update `docs/SCENES.md`.
+- Exercise save/load during the accepted scenario. Persistent marker and weather overlays currently
+  live only in app event caches and disappear on restore; either restore them from saved sim state
+  or explicitly exclude dependent scenarios from the fidelity claim.
 - Update golden hashes only where a scenario deliberately includes a scripted map; state every moved
   hash in the commit.
 - Observe the original for the timing constants in the open questions of
@@ -45,5 +52,5 @@ end, and records what the original confirms.
 ## Verify
 
 Full gates on merged `main` (`check:assets`, `check:docs`, `check`, `build`, `test`, `test:content`),
-the coverage report showing every stage's opcodes as supported, and a human run of the acceptance
+the coverage report identifying remaining unsupported and partial behavior, and a human run of the acceptance
 scene with the intro briefing, the first wave, and the map's ending.

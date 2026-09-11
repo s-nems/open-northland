@@ -151,6 +151,12 @@ All of this section is a reading unless marked otherwise.
   flags and applies `n`'s own `successfullif` without re-evaluating, so it stays true after `n` fired
   until `n` is re-activated and checked again, and it is true for a never-checked mission whose rule is
   3 (no goals hold). `IfMissionIsActive n` reads the active flag.
+- Implementation safety rule (not an original-game claim): an unsupported goal or a recursive
+  `CheckMission` cycle has an unknown answer, distinct from false. A mission fires only when its
+  `successfullif` is true for every possible answer to unknown goals. Thus one known true goal can
+  satisfy `any`, but `none` cannot turn an unimplemented goal into success. Unknown goal indices are
+  saved beside the last goal flags and retained by `IsMissionDone`; older records without this
+  optional field retain their stored boolean answers.
 - `RemoveHumans` and `RemoveAnimals` raise a "silent removal" flag around the removal so the deaths do
   not count in the player statistics; `RemoveHumans` also skips the cadaver.
 - Results that only affect presentation reach the display through callbacks: open briefing, play a

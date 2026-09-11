@@ -37,7 +37,7 @@ export interface ScriptEffects {
 }
 
 /** One square per weather and extent: a later write over the same square replaces it, the way a
- *  later write overwrites a sector's field in the original, and a zero takes it out. */
+ *  later write overwrites a sector's field in the original, including a zero that clears it. */
 const squareKey = (s: WeatherEvent): string => `${s.weather}:${s.min.hx},${s.min.hy}:${s.max.hx},${s.max.hy}`;
 
 /** The density of `weather` at `node`: the last square written over it decides. */
@@ -67,7 +67,7 @@ export function createScriptEffects(parent: Container, elevation?: ElevationFiel
     setWeather(event) {
       const key = squareKey(event);
       squares.delete(key);
-      if (event.density > 0) squares.set(key, event);
+      squares.set(key, event);
     },
     startEarthquake(seconds, nowMs) {
       quakeUntilMs = nowMs + seconds * MS_PER_SECOND;

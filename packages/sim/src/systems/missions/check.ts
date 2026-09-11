@@ -59,29 +59,33 @@ import { type MissionGoalOp, ruleSatisfied } from './script.js';
  * The verdict is stored on the record either way, which is what makes a `CheckMission` probe visible
  * to a later `IsMissionDone`.
  */
-export function checkMission(pass: MissionPass, index: number, execute: boolean): boolean {
+export function checkMission(pass: MissionPass, index: number, execute: boolean): boolean | undefined {
   const definition = pass.script.missions[index];
   const record = pass.records[index];
   if (definition === undefined || record === undefined) return false;
-  // A `CheckMission` cycle would otherwise recurse until the stack gives out.
-  if (pass.checking.has(index)) return record.evaluated;
+  // A recursive probe has no known answer, including under a none-rule.
+  if (pass.checking.has(index)) return undefined;
   pass.checking.add(index);
   let held = 0;
+  const unknown: number[] = [];
   for (let goal = 0; goal < definition.goals.length; goal++) {
     const op = definition.goals[goal];
     const holds = op !== undefined && goalHolds(pass, index, record, goal, op);
-    record.goalsHeld[goal] = holds;
-    if (holds) held++;
+    record.goalsHeld[goal] = holds === true;
+    if (holds === undefined) unknown.push(goal);
+    else if (holds) held++;
   }
   pass.checking.delete(index);
-  const verdict = ruleSatisfied(definition.successfullIf, held, definition.goals.length);
+  if (unknown.length > 0) record.unknownGoals = unknown;
+  else delete record.unknownGoals;
+  const verdict = ruleVerdict(definition.successfullIf, held, definition.goals.length, unknown.length);
   if (verdict && execute) {
     // The active flag is cleared before the results run, so a mission that re-activates itself keeps
     // the activation its own results asked for.
     setMissionActive(pass, index, false);
     for (const result of definition.results) executeResult(pass, index, result);
   }
-  record.evaluated = verdict;
+  record.evaluated = verdict === true;
   return verdict;
 }
 
@@ -91,7 +95,7 @@ function goalHolds(
   record: MissionRecord,
   goal: number,
   op: MissionGoalOp,
-): boolean {
+): boolean | undefined {
   switch (op.opcode) {
     case 'True':
       return true;
@@ -181,9 +185,8 @@ function goalHolds(
       return tributePaid(pass.world, op.slot);
     default:
       pass.report(index, op.opcode);
-      // An opcode this build cannot judge holds nowhere, so its mission waits rather than firing on
-      // an answer nobody computed.
-      return false;
+      // Unknown is distinct from false: a none-rule must not invert missing implementation into success.
+      return undefined;
   }
 }
 
@@ -215,10 +218,22 @@ function randomTimeGone(pass: MissionPass, record: MissionRecord, goal: number, 
 
 /** Mission `index`'s stored goal flags judged by its own rule, with no re-evaluation: it stays true
  *  after that mission fired, and a never-checked mission answers true under the `none` rule. */
-function missionDone(pass: MissionPass, index: number): boolean {
+function missionDone(pass: MissionPass, index: number): boolean | undefined {
   const definition = pass.script.missions[index];
   const record = pass.records[index];
   if (definition === undefined || record === undefined) return false;
   const held = record.goalsHeld.reduce((count, flag) => (flag ? count + 1 : count), 0);
-  return ruleSatisfied(definition.successfullIf, held, definition.goals.length);
+  return ruleVerdict(
+    definition.successfullIf,
+    held,
+    definition.goals.length,
+    record.unknownGoals?.length ?? 0,
+  );
+}
+
+/** A rule is decided only when every possible value of its unknown goals gives the same answer. */
+function ruleVerdict(rule: number, held: number, total: number, unknown: number): boolean | undefined {
+  const minimum = ruleSatisfied(rule, held, total);
+  const maximum = ruleSatisfied(rule, held + unknown, total);
+  return minimum === maximum ? minimum : undefined;
 }

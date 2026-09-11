@@ -304,6 +304,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let overviewPress: UnitControls['overviewPress'] | null = null;
   // Its own chip: the pile and stock-row tooltips hide whenever the pointer is over the HUD.
   const noteTooltip = createTooltip();
+  let missionWindowOpen = false;
   const toolPanel = await mountGameToolPanel({
     app,
     canvas,
@@ -337,6 +338,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     missionReplayPage: () => sim.missionBriefingPage(),
     // The original stops game time behind its large windows.
     onLargeWindow: (open) => {
+      missionWindowOpen = open;
       if (open) pauseHolds.hold(PAUSE_HOLDER_MISSION);
       else pauseHolds.release(PAUSE_HOLDER_MISSION);
     },
@@ -477,6 +479,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     effects: createScriptEffects(scriptOverlay, deps.elevation),
     mapText,
     now: () => performance.now(),
+    exit: () => queueMicrotask(quitToMenu),
   });
 
   // Mounted after the unit controls, so an admin spawn click defers to their composed HUD claim.
@@ -594,6 +597,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     placementTribe: seatTribeOf(localPlayer),
     soundDriver,
     presentation,
+    portraitVisible: () => !missionWindowOpen,
     perf,
     netReadout,
     pointer: pointerAt,

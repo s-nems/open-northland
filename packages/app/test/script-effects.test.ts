@@ -45,6 +45,32 @@ describe('createScriptEffects', () => {
     expect(wash?.getBounds().width ?? 0).toBe(0);
   });
 
+  it('clears overlapping weather only inside the zero-density region', () => {
+    const parent = new Container();
+    const effects = createScriptEffects(parent);
+    const wash = parent.children[0];
+    const camera = { offsetX: screen.width / 2, offsetY: screen.height / 2, scale: 1 };
+    effects.setWeather({
+      kind: 'missionWeather',
+      weather: 'rain',
+      min: { hx: -20, hy: -20 },
+      max: { hx: 20, hy: 20 },
+      density: 5000,
+    });
+    effects.setWeather({
+      kind: 'missionWeather',
+      weather: 'rain',
+      min: { hx: -2, hy: -2 },
+      max: { hx: 2, hy: 2 },
+      density: 0,
+    });
+    effects.update(camera, screen);
+    expect(wash?.getBounds().width ?? 0).toBe(0);
+    effects.update({ ...camera, offsetX: camera.offsetX - 340 }, screen);
+    expect(wash?.getBounds().width ?? 0).toBe(screen.width);
+    effects.dispose();
+  });
+
   it('keeps one entry per square, so a mission re-firing its weather never grows the list', () => {
     const parent = new Container();
     const effects = createScriptEffects(parent);

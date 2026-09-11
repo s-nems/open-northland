@@ -15,6 +15,7 @@ import {
   type Command,
   type CommandEnvelope,
   type PlayerCommand,
+  parseCommandEnvelope,
   playerCommand,
   Simulation,
   setupCommand,
@@ -200,6 +201,23 @@ describe('CommandSystem - command authority', () => {
     expect(sim.world.has(building, UnderConstruction)).toBe(true);
     expect(sim.world.get(building, Stockpile).amounts.size).toBe(0);
     expect(sim.commands.log[1]?.command).toMatchObject({ underConstruction: true, owner: MINE });
+  });
+
+  it.each(['player', 'ai'])('refuses mission object ids in an imported %s placement', (origin) => {
+    const sim = fresh();
+    const command = {
+      kind: 'placeBuilding',
+      buildingType: HEADQUARTERS,
+      x: 2,
+      y: 2,
+      tribe: VIKING,
+      owner: MINE,
+      missionId: 42,
+    };
+    sim.enqueue(parseCommandEnvelope({ v: 1, origin, player: MINE, command }));
+    sim.step();
+    expect([...sim.world.query(Building)]).toEqual([]);
+    expect(sim.commands.log).toHaveLength(1);
   });
 
   it('holds an AI seat to the same rule as a human seat', () => {

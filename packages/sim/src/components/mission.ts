@@ -39,10 +39,11 @@ export interface MissionRecord {
   activationTick: number;
   /** Per goal, whether it held at the last check. Rewritten by every check, never latched. */
   goalsHeld: boolean[];
+  /** Goal indices whose last check was unavailable; omitted when every answer was known. */
+  unknownGoals?: number[];
   /** Per goal, the seconds a `RandomTimeGone` drew for the current activation; 0 while undrawn. */
   randomSeconds: number[];
-  /** Whether the last check satisfied the mission's `successfullif` rule. Rewritten by every check,
-   *  including a `CheckMission` probe, so it is not the "has fired" flag `IsMissionDone` reads. */
+  /** Whether the last check established success; false also covers an unavailable verdict. */
   evaluated: boolean;
 }
 

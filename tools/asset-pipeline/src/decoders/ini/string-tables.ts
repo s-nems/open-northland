@@ -69,12 +69,14 @@ export function latin1ToCp1250(latin1: string): string {
 
 /**
  * Decodes one encrypted `.cif` string table (a `CStringArray` of `[control]`/`[text]` lines) straight to
- * display text, re-decoding every value through {@link latin1ToCp1250} because the `.cif` seam preserves
- * source bytes as latin1.
+ * display text in the caller's codepage; the `.cif` seam preserves source bytes as latin1.
  */
-export function decodeCifStringTable(bytes: Uint8Array): Record<number, string> {
+export function decodeCifStringTable(bytes: Uint8Array, encoding = 'windows-1250'): Record<number, string> {
   const raw = extractStringTable(cifBytesToSections(bytes));
   const table: Record<number, string> = {};
-  for (const [id, display] of Object.entries(raw)) table[Number(id)] = latin1ToCp1250(display);
+  const decoder = new TextDecoder(encoding);
+  for (const [id, display] of Object.entries(raw)) {
+    table[Number(id)] = decoder.decode(Uint8Array.from(display, (c) => c.charCodeAt(0) & 0xff));
+  }
   return table;
 }

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { missionRecords, missionStateExists } from '../../src/components/index.js';
 import type { SimEvent } from '../../src/core/events.js';
-import { Simulation, TICKS_PER_SECOND } from '../../src/index.js';
+import {
+  exportSaveGame,
+  parseSaveGame,
+  restoreSimulation,
+  Simulation,
+  TICKS_PER_SECOND,
+} from '../../src/index.js';
 import type {
   MissionDefinition,
   MissionGoalOp,
@@ -343,5 +349,80 @@ describe('an opcode this build cannot run', () => {
       { kind: 'missionUnsupported', mission: 0, opcode: 'SetVertexColor' },
     ]);
     expect(eventsOfKind(sim, 'missionExit')).toHaveLength(1);
+  });
+});
+
+describe('unavailable goal verdicts', () => {
+  const unknown: MissionGoalOp = {
+    opcode: 'BuildVehicles',
+    player: 0,
+    vehicleType: 1,
+    amount: 1,
+    vehicleId: 7,
+  };
+  const falseGoal: MissionGoalOp = { opcode: 'IfMissionIsActive', missionIndex: 999 };
+
+  it.each([
+    [SUCCESSFUL_IF.none, [unknown], false],
+    [SUCCESSFUL_IF.any, [unknown, TRUE_GOAL], true],
+    [SUCCESSFUL_IF.half, [unknown, TRUE_GOAL], true],
+    [SUCCESSFUL_IF.all, [unknown, TRUE_GOAL], false],
+  ])('only fires a rule when its known goals establish success (%s)', (successfullIf, goals, fires) => {
+    const sim = missionSim([mission({ successfullIf, goals, results: [{ opcode: 'Exit' }] })]);
+    sim.run(FIRST_PASS);
+    expect(eventsOfKind(sim, 'missionExit')).toHaveLength(fires ? 1 : 0);
+    expect(records(sim)[0]?.unknownGoals).toEqual([0]);
+  });
+
+  it('propagates an unavailable CheckMission through negation', () => {
+    const sim = missionSim([
+      mission({ active: false, goals: [unknown] }),
+      mission({ successfullIf: SUCCESSFUL_IF.none, goals: [{ opcode: 'CheckMission', missionIndex: 0 }] }),
+    ]);
+    sim.run(FIRST_PASS);
+    expect(records(sim)[1]?.active).toBe(true);
+    expect(records(sim)[1]?.unknownGoals).toEqual([0]);
+  });
+
+  it('allows negating a certainly false probe with an unavailable conjunct', () => {
+    const sim = missionSim([
+      mission({ active: false, goals: [unknown, falseGoal] }),
+      mission({ successfullIf: SUCCESSFUL_IF.none, goals: [{ opcode: 'CheckMission', missionIndex: 0 }] }),
+    ]);
+    sim.run(FIRST_PASS);
+    expect(records(sim)[1]?.active).toBe(false);
+    expect(records(sim)[1]?.unknownGoals).toBeUndefined();
+  });
+
+  it('preserves an unavailable stored verdict through IsMissionDone and save/restore', () => {
+    const definitions = [
+      mission({ goals: [unknown], results: [] }),
+      mission({ goals: [TRUE_GOAL], results: [{ opcode: 'DeactivateMission', missionIndex: 0 }] }),
+      mission({ successfullIf: SUCCESSFUL_IF.none, goals: [{ opcode: 'IsMissionDone', missionIndex: 0 }] }),
+    ];
+    const sim = missionSim(definitions);
+    sim.run(FIRST_PASS);
+    expect(records(sim)[2]?.active).toBe(true);
+    const save = parseSaveGame(JSON.parse(JSON.stringify(exportSaveGame(sim))));
+    const { sim: restored } = restoreSimulation(save, {
+      content: testContent(),
+      missions: { missions: definitions },
+    });
+    sim.run(FIRST_PASS);
+    restored.run(FIRST_PASS);
+    expect(records(restored)[2]?.active).toBe(true);
+    expect(restored.hashState()).toBe(sim.hashState());
+  });
+
+  it('does not turn a recursive probe into success by negation', () => {
+    const sim = missionSim([
+      mission({
+        successfullIf: SUCCESSFUL_IF.none,
+        goals: [{ opcode: 'CheckMission', missionIndex: 0 }],
+      }),
+    ]);
+    sim.run(FIRST_PASS);
+    expect(records(sim)[0]?.active).toBe(true);
+    expect(records(sim)[0]?.unknownGoals).toEqual([0]);
   });
 });

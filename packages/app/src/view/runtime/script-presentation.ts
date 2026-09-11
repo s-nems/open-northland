@@ -35,6 +35,7 @@ export interface ScriptPresentationDeps {
   /** The map's own string by id, for the info lines. */
   readonly mapText: (stringId: number) => string | undefined;
   readonly now: () => number;
+  readonly exit: () => void;
 }
 
 export interface ScriptPresentation {
@@ -102,8 +103,8 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
             diag.warn(DIAG_CHANNEL, `mission ${event.mission}: ${event.opcode} could not act on the world`);
             break;
           case 'missionExit':
-            diag.info(DIAG_CHANNEL, `mission ${event.mission} asked to leave the map`);
-            break;
+            deps.exit();
+            return;
           default:
             break;
         }

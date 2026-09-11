@@ -4,16 +4,10 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { ContentContext } from '../../context.js';
 import { isHeroJob, isSoldierJob } from '../../readviews/index.js';
+import { groupsWithinRange } from '../nearby.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
-import {
-  isMissionAnimal,
-  missionHouses,
-  missionHumans,
-  ownedBy,
-  withinRange,
-  withinRangeOfEach,
-} from '../targets.js';
+import { isMissionAnimal, missionHouses, missionHumans, ownedBy, withinRange } from '../targets.js';
 
 /**
  * The range goals: every one measures in map points through `hexDistance`, and every one holds on the
@@ -51,9 +45,7 @@ export function humansNearHumans(
 ): boolean {
   const others = missionHumans(world, op.otherHumanId);
   if (others.length === 0) return false;
-  return missionHumans(world, op.humanId).some((a) =>
-    others.some((b) => withinRangeOfEach(world, a, b, op.range)),
-  );
+  return groupsWithinRange(world, missionHumans(world, op.humanId), others, op.range);
 }
 
 /** Any human with the id stands within `range` of any house with the object id. */
@@ -63,9 +55,7 @@ export function humansNearHouses(
 ): boolean {
   const houses = missionHouses(world, op.objectId);
   if (houses.length === 0) return false;
-  return missionHumans(world, op.humanId).some((a) =>
-    houses.some((b) => withinRangeOfEach(world, a, b, op.range)),
-  );
+  return groupsWithinRange(world, missionHumans(world, op.humanId), houses, op.range);
 }
 
 /** Any human with the id has a human of the player within `range` of it. */
@@ -75,11 +65,8 @@ export function playerNearHumans(
 ): boolean {
   const marked = missionHumans(world, op.humanId);
   if (marked.length === 0) return false;
-  for (const e of world.query(Person, Position)) {
-    if (!ownedBy(world, e, op.player)) continue;
-    if (marked.some((m) => withinRangeOfEach(world, m, e, op.range))) return true;
-  }
-  return false;
+  const owned = [...world.query(Person, Position)].filter((e) => ownedBy(world, e, op.player));
+  return groupsWithinRange(world, marked, owned, op.range);
 }
 
 /** At least `amount` non-hero soldiers of the player stand within `range` of the point. */

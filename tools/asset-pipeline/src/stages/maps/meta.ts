@@ -7,6 +7,7 @@ import {
   extractStringTable,
   iniBytesToSections,
   type MapTypeHeader,
+  parseIniSections,
   type RuleSection,
 } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
@@ -110,10 +111,12 @@ export async function loadMapStringTables(
       let table: Record<number, string>;
       try {
         const bytes = await fs.readFile(path);
+        // Owned text/rus/strings.ini uses CP1251 (e.g. CD CE C2 C0 DF spells НОВАЯ).
+        const encoding = lang === 'rus' ? 'windows-1251' : 'windows-1250';
         table =
           form === 'strings.ini'
-            ? extractStringTable(iniBytesToSections(bytes))
-            : decodeCifStringTable(bytes);
+            ? extractStringTable(parseIniSections(new TextDecoder(encoding).decode(bytes)))
+            : decodeCifStringTable(bytes, encoding);
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: text/${lang}/${form} undecodable: ${errorMessage(err)}`);
         continue;

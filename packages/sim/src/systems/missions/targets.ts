@@ -58,12 +58,6 @@ export function withinRange(world: World, e: Entity, point: HalfCellNode, range:
   return at !== undefined && hexDistance(at, point) <= range;
 }
 
-/** Whether two entities stand within `range` map points of each other. */
-export function withinRangeOfEach(world: World, a: Entity, b: Entity, range: number): boolean {
-  const at = entityPoint(world, a);
-  return at !== undefined && withinRange(world, b, at, range);
-}
-
 /** Whether `e` belongs to the script's `player`: a slot the sim does not know - the wild one above
  *  all - names what it leaves ownerless. */
 export function ownedBy(world: World, e: Entity, player: number): boolean {

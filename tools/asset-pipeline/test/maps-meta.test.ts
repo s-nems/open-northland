@@ -133,6 +133,17 @@ describe('resolveMapMeta', () => {
 /** The `maps/<id>.strings.json` sidecar's source: mission `description`, `CreateTribute`,
  *  `InfoShowString` and `SetHumanName` all address these ids at runtime. */
 describe('loadMapStringTables', () => {
+  it('decodes the Russian plaintext table as CP1251', async () => {
+    const dir = await mapFolder();
+    const langDir = join(dir, 'text', 'rus');
+    await mkdir(langDir, { recursive: true });
+    await writeFile(
+      join(langDir, 'strings.ini'),
+      Buffer.from('[text]\nstringn 7 "\xcf\xf0\xe8\xe2\xe5\xf2"\n', 'latin1'),
+    );
+    expect(await loadMapStringTables(fs, [dir], 'x/map.dat')).toEqual({ rus: { 7: 'Привет' } });
+  });
+
   it('keeps every language the folder ships, and picks Polish for the menu', async () => {
     const dir = await mapFolder();
     await writeStrings(dir, 'eng', 'stringn 7 "Pay the tribute"');

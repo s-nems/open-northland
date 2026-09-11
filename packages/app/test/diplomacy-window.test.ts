@@ -13,6 +13,7 @@ import {
   type TributeCardSpec,
   type TributePanelRow,
 } from '../src/hud/tool-panel/diplomacy/index.js';
+import { fitDiplomacyWindow } from '../src/hud/tool-panel/diplomacy/viewport.js';
 import { buildToolPanelLayout } from '../src/hud/tool-panel/layout.js';
 
 const SCREEN = { width: 800, height: 600 };
@@ -328,4 +329,31 @@ describe('diplomacy window controller', () => {
     window.refresh();
     expect(texts).toContain('Sasi');
   });
+});
+
+it('allows scrolling to and paying a tribute beyond the initial viewport', () => {
+  const { ctx } = stubContext();
+  const paid: number[] = [];
+  const rows = [row(1, { tributes: Array.from({ length: 20 }, (_, slot) => tribute(slot, true)) })];
+  const window = createDiplomacyWindow({
+    ctx,
+    container: new Container(),
+    rows: () => rows,
+    onPayTribute: (slot) => paid.push(slot),
+  });
+  window.toggle();
+  for (let i = 0; i < 40; i++) window.handleWheel(200, 300, 100);
+  const raw = layoutDiplomacyWindow({
+    originX: ctx.layout.width + WIN_PAD * ctx.scale,
+    originY: 151,
+    scale: 1,
+    players: [1],
+    selected: 1,
+    tributes: Array.from({ length: 20 }, (_, slot) => ({ slot, payable: true, descriptionH: 0, lines: 1 })),
+  });
+  const last = fitDiplomacyWindow(raw, SCREEN, null, Infinity).tributes.at(-1);
+  expect(last).toBeDefined();
+  if (last === undefined) return;
+  window.handleClick(last.pay.x + last.pay.w / 2, last.pay.y + last.pay.h / 2);
+  expect(paid).toEqual([19]);
 });

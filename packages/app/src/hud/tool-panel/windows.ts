@@ -173,6 +173,7 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       const top = topAt(x, y);
       if (top === null) return false;
       if (top === mission) return mission.handleWheel(x, y, deltaY);
+      if (top === diplomacy) return diplomacy.handleWheel(x, y, deltaY);
       for (const list of lists) {
         if (list === top) list.handleWheel(x, y, deltaY);
       }

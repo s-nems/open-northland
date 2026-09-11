@@ -270,7 +270,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       missionBrief: opts.missionBrief ?? ((): null => null),
       missionReplayPage: opts.missionReplayPage ?? ((): null => null),
       history,
-      ...(opts.onLargeWindow !== undefined ? { onLargeWindow: opts.onLargeWindow } : {}),
+      onLargeWindow: (open) => {
+        // A briefing must cover the selected unit's details and its worker sprites.
+        root.zIndex = open ? 1004 : 1000;
+        opts.onLargeWindow?.(open);
+      },
       onPickBuilding: (typeId, paper) => placement.enter(typeId, paper),
       onPickGood: (goodType) => goodsDrop.enter(goodType),
     });
@@ -337,7 +341,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       bindings: opts.bindings,
       activateButton,
       togglePause: () => speedButton.togglePause(),
-      ...(opts.deferToOverlay !== undefined ? { deferToOverlay: opts.deferToOverlay } : {}),
+      deferToOverlay: (clientX, clientY) => {
+        const { x, y } = toCanvas(clientX, clientY);
+        return !windows.mission.claims(x, y) && opts.deferToOverlay?.(clientX, clientY) === true;
+      },
     });
     const mountedInput = input;
 

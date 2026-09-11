@@ -30,7 +30,7 @@
     "check:fix": "biome check --write .",
     "check:assets": "node scripts/check-repository-assets.mjs",
     "check:docs": "node scripts/check-docs.mjs",
-    "missions:coverage": "node scripts/mission-coverage.mjs",
+    "missions:coverage": "tsc --build && node scripts/mission-coverage.mjs",
     "tickets:list": "node scripts/list-tickets.mjs",
     "desktop": "npm run build && npm run start --workspace @open-northland/desktop",
     "desktop:dist": "npm run build && npm run dist --workspace @open-northland/desktop",

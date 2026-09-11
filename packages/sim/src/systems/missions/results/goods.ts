@@ -112,15 +112,16 @@ function walkArea(
   visit: AreaVisitor,
 ): void {
   if (op.amount <= 0) return;
-  const houses = op.flag ? housesByDistance(pass, op, houseHolds) : [];
+  const houses = op.flag ? housesByDistance(pass, op, houseHolds) : new Map<number, Entity[]>();
   const rings = ringsAround(terrain, op.point, op.range);
   let left = op.amount;
-  for (let r = 0; r <= op.range; r++) {
-    for (const e of houses[r] ?? []) {
+  const distances = [...new Set([...houses.keys(), ...rings.keys()])].sort((a, b) => a - b);
+  for (const r of distances) {
+    for (const e of houses.get(r) ?? []) {
       if (left <= 0) return;
       left -= visit.atHouse(e, left);
     }
-    for (const node of rings[r] ?? []) {
+    for (const node of rings.get(r) ?? []) {
       if (left <= 0) return;
       left -= visit.atGround(node, left);
     }
@@ -133,9 +134,9 @@ function housesByDistance(
   pass: MissionPass,
   op: AreaGoodsOp,
   houseHolds: (ctx: SystemContext, buildingType: number, good: number) => boolean,
-): Entity[][] {
+): Map<number, Entity[]> {
   const { world, ctx } = pass;
-  const buckets: Entity[][] = [];
+  const buckets = new Map<number, Entity[]>();
   for (const e of canonicalById(world.query(Building, Stockpile, Position))) {
     const building = world.get(e, Building);
     if (building.built !== ONE || ownerOf(world, e) !== op.player) continue;
@@ -150,24 +151,24 @@ function housesByDistance(
 
 /** Every in-bounds node within `range` of the point, bucketed by distance and ascending by id within
  *  a ring. */
-function ringsAround(terrain: TerrainGraph, point: HalfCellNode, range: number): NodeId[][] {
-  const rings: NodeId[][] = [];
-  for (let hy = point.hy - range; hy <= point.hy + range; hy++) {
-    for (let hx = point.hx - range; hx <= point.hx + range; hx++) {
+function ringsAround(terrain: TerrainGraph, point: HalfCellNode, range: number): Map<number, NodeId[]> {
+  const rings = new Map<number, NodeId[]>();
+  for (let hy = Math.max(0, point.hy - range); hy <= Math.min(terrain.height - 1, point.hy + range); hy++) {
+    for (let hx = Math.max(0, point.hx - range); hx <= Math.min(terrain.width - 1, point.hx + range); hx++) {
       if (!terrain.inBounds(hx, hy)) continue;
       const distance = hexDistance({ hx, hy }, point);
       if (distance <= range) bucketAt(rings, distance).push(terrain.nodeAt(hx, hy));
     }
   }
-  for (const ring of rings) ring?.sort((a, b) => a - b);
+  for (const ring of rings.values()) ring.sort((a, b) => a - b);
   return rings;
 }
 
-function bucketAt<T>(buckets: T[][], index: number): T[] {
-  let bucket = buckets[index];
+function bucketAt<T>(buckets: Map<number, T[]>, index: number): T[] {
+  let bucket = buckets.get(index);
   if (bucket === undefined) {
     bucket = [];
-    buckets[index] = bucket;
+    buckets.set(index, bucket);
   }
   return bucket;
 }

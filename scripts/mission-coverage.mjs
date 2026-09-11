@@ -8,8 +8,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { contentDir } from './content-dir.mjs';
 
-// The decoder and the support lists come from the built packages, so the report always describes the
-// working tree rather than a second copy of the tables.
+// The npm command builds these packages before loading their opcode tables.
 let decodeMissionGoal;
 let decodeMissionResult;
 let systems;
@@ -43,6 +42,9 @@ const totals = { goal: { ran: 0, missing: 0 }, result: { ran: 0, missing: 0 } };
 const missingByOpcode = new Map();
 const perMapRows = [];
 let missions = 0;
+let completeMissions = 0;
+let unknownLines = 0;
+let tokenMismatches = 0;
 
 for (const file of readdirSync(mapsDir)
   .filter((f) => f.endsWith('.script.json'))
@@ -51,20 +53,27 @@ for (const file of readdirSync(mapsDir)
   const row = { map: file.replace('.script.json', ''), ran: 0, missing: 0 };
   for (const mission of script.missions ?? []) {
     missions++;
+    const missingBefore = row.missing;
     count('goal', mission.goals ?? [], decodeMissionGoal, row);
     count('result', mission.results ?? [], decodeMissionResult, row);
+    if (row.missing === missingBefore) completeMissions++;
   }
   perMapRows.push(row);
 }
 
 function count(phase, lines, decode, row) {
   for (const line of lines) {
-    const { opcode } = decode(line);
-    const ran = supported[phase].has(opcode);
+    let unknown;
+    const { opcode } = decode(line, (warning) => {
+      if (warning.reason === 'unknownOpcode') unknown = warning.opcode;
+      else tokenMismatches++;
+    });
+    if (unknown !== undefined) unknownLines++;
+    const ran = unknown === undefined && supported[phase].has(opcode);
     totals[phase][ran ? 'ran' : 'missing']++;
     row[ran ? 'ran' : 'missing']++;
     if (!ran) {
-      const key = `${phase} ${opcode}`;
+      const key = `${phase} ${unknown === undefined ? opcode : `unknown ${JSON.stringify(unknown)}`}`;
       missingByOpcode.set(key, (missingByOpcode.get(key) ?? 0) + 1);
     }
   }
@@ -77,12 +86,15 @@ console.log(`mission coverage over ${perMapRows.length} maps, ${missions} missio
 for (const phase of ['goal', 'result']) {
   const { ran, missing } = totals[phase];
   console.log(
-    `  ${phase}s:   ${ran} run, ${missing} unsupported (${share(ran, missing)} of ${ran + missing})`,
+    `  ${phase}s:   ${ran} implemented, ${missing} unsupported or unknown (${share(ran, missing)} of ${ran + missing})`,
   );
 }
 const ran = totals.goal.ran + totals.result.ran;
 const missing = totals.goal.missing + totals.result.missing;
 console.log(`  overall: ${ran} of ${ran + missing} lines (${share(ran, missing)})`);
+console.log(`  missions with every opcode implemented: ${completeMissions} of ${missions}`);
+console.log(`  decoder warnings: ${unknownLines} unknown lines, ${tokenMismatches} token-count mismatches`);
+console.log('Static opcode coverage only; this does not prove successful execution or map completion.');
 
 console.log(`\nthe ${top} unsupported opcodes costing the most lines:`);
 for (const [key, lines] of [...missingByOpcode].sort((a, b) => b[1] - a[1]).slice(0, top)) {

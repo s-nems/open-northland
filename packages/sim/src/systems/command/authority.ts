@@ -62,7 +62,8 @@ function hasAuthoredOptions(command: PlaceBuildingCommand): boolean {
     command.underConstruction === false ||
     command.force !== undefined ||
     command.fillStock !== undefined ||
-    command.initialGoods !== undefined
+    command.initialGoods !== undefined ||
+    command.missionId !== undefined
   );
 }
 

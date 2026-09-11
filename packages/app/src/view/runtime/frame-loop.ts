@@ -64,6 +64,7 @@ export interface FrameLoopDeps {
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   /** The map script's display: its camera jitter for the frame, and its overlays after the draw. */
   readonly presentation: Pick<ScriptPresentation, 'jitter' | 'frame'> | null;
+  readonly portraitVisible: () => boolean;
   readonly perf: PerfOverlayHandle;
   /** A relayed session's connection figures for the overlay; null in a local session. */
   readonly netReadout: () => NetReadout | null;
@@ -205,7 +206,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     controls.tick(snap);
     // A world cutout centred on the selection, rendered into the portrait box during `renderer.update`.
     // Null when the selection has no portrait.
-    renderer.setPortraitInset(controls.portrait());
+    renderer.setPortraitInset(loop.portraitVisible() ? controls.portrait() : null);
     // Fog gate: the plot layer draws above the wash, so an enemy foundation in the black would paint
     // through it. Plot cells are half-cell nodes.
     const plots = sim.constructionPlots();

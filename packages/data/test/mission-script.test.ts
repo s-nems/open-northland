@@ -220,7 +220,7 @@ describe('decoding a mission line', () => {
     });
   });
 
-  it('resolves an unknown opcode to the table entry the original falls back to', () => {
+  it('resolves an unknown opcode to the approximated index-zero fallback', () => {
     expect(goal('NumberOfHumansNearPos', '100', '65', '45', '3', '1')).toEqual({ opcode: 'True' });
     expect(result('SetLandspace', '10', '20', 'stone', '0', '0')).toEqual({ opcode: 'None' });
     // Only the name is reported: the fallback declares no parameters, so the line's own tokens are

@@ -20,7 +20,7 @@ export interface MissionPoint {
 
 export type MissionDiplomacyState = MapDiplomacy['state'];
 
-/** The engine reads each token as an integer; a missing or unparsable token reads as zero. */
+/** Missing or unparsable integers default to zero, pending confirmation against the running original. */
 function int(token: string | undefined): number {
   const n = Number.parseInt(token ?? '', 10);
   return Number.isNaN(n) ? 0 : n;

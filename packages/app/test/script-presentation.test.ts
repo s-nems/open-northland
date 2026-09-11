@@ -67,6 +67,7 @@ function harness(lines: InfoLineView[] = []) {
     effects,
     mapText: (id) => (id === 7 ? 'Held: %d of %d' : undefined),
     now: () => 0,
+    exit: () => calls.push('exit'),
   });
   return {
     presentation,
@@ -119,4 +120,13 @@ describe('createScriptPresentation', () => {
     presentation.frame(snapshotAt(24), CAMERA, 0);
     expect(infoLines.at(-1)).toEqual(['Held: 2 of 4']);
   });
+});
+
+it('leaves the map on Exit and stops presenting the remaining frame events', () => {
+  const { presentation, calls } = harness();
+  presentation.onEvents([
+    { kind: 'missionExit', mission: 0 },
+    { kind: 'missionCutscene', mission: 1, page: 5, replay: false },
+  ]);
+  expect(calls).toEqual(['exit']);
 });

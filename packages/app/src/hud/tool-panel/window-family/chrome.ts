@@ -145,6 +145,12 @@ export function paintTitledTabWindow(
   drawCloseX(graphics, frame.closeRect, scale);
   centreRun(layers, addRun(layers, title, 'white', TITLE_PX), frame.titleRect);
 
+  paintWindowTabs(layers, tabs);
+}
+
+export function paintWindowTabs(layers: WindowLayers, tabs: readonly TitledTab[]): void {
+  const { ctx, graphics } = layers;
+  const { scale } = ctx;
   for (const tab of tabs) {
     if (paintPlate(layers, tab.rect, tab.selected) === 'tiled' && !tab.selected) {
       drawBevel(graphics, tab.rect, scale, 'pressed'); // recede the inactive tabs

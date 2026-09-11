@@ -4,6 +4,8 @@ import type { MapsIndexEntry, MapsIndexPlayerSlot, MapsIndexProvenance } from '.
 
 /** The `PLAYER_TYPE_*` values a `playeroption` row may offer, as the sidecar spells them. */
 const PLAYER_OPTIONS = ['human', 'ai', 'none'] as const;
+// PLAYER_COLOR_ID_MAXIMUM in logicdefines.inc, shared by the sidecar schema.
+const PLAYER_COLOR_COUNT = 10;
 
 /** The sidecar's `[multiplayer]` lobby table, narrowed off the parsed JSON. */
 interface ScriptMultiplayer {
@@ -28,8 +30,9 @@ const NO_MULTIPLAYER: ScriptMultiplayer = {
  */
 function multiplayerOf(raw: unknown): ScriptMultiplayer | undefined {
   if (raw === undefined) return NO_MULTIPLAYER;
-  if (typeof raw !== 'object' || raw === null) return undefined;
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
   const { slotOptions, hiddenSlots, fixedColors } = raw as Record<string, unknown>;
+  if (fixedColors !== undefined && typeof fixedColors !== 'boolean') return undefined;
   const humanOptionSlots = new Set<number>();
   const aiDeniedSlots = new Set<number>();
   const hidden = new Set<number>();
@@ -38,7 +41,7 @@ function multiplayerOf(raw: unknown): ScriptMultiplayer | undefined {
     for (const opt of slotOptions) {
       if (typeof opt !== 'object' || opt === null) return undefined;
       const { player, allowed } = opt as Record<string, unknown>;
-      if (typeof player !== 'number' || !Array.isArray(allowed)) return undefined;
+      if (!isNonnegativeInteger(player) || !Array.isArray(allowed)) return undefined;
       // A row whose values this cannot read decides seats by accident: an unrecognized `allowed`
       // entry reads as neither human nor ai, which closes the seat and denies the AI at once.
       if (!allowed.every((value) => PLAYER_OPTIONS.some((option) => option === value))) return undefined;
@@ -47,7 +50,7 @@ function multiplayerOf(raw: unknown): ScriptMultiplayer | undefined {
     }
   }
   if (hiddenSlots !== undefined) {
-    if (!Array.isArray(hiddenSlots) || !hiddenSlots.every((slot) => typeof slot === 'number')) {
+    if (!Array.isArray(hiddenSlots) || !hiddenSlots.every(isNonnegativeInteger)) {
       return undefined;
     }
     for (const slot of hiddenSlots) hidden.add(slot);
@@ -55,13 +58,19 @@ function multiplayerOf(raw: unknown): ScriptMultiplayer | undefined {
   return { humanOptionSlots, aiDeniedSlots, hiddenSlots: hidden, fixedColors: fixedColors === true };
 }
 
+function isNonnegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
 /** Guards the menu against a hand-edited roster row; the pipeline validates what it emits. */
 function playerSlotOf(raw: unknown, multiplayer: ScriptMultiplayer): MapsIndexPlayerSlot | undefined {
-  if (typeof raw !== 'object' || raw === null) return undefined;
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
   const { player, type, tribeId, colorId, name } = raw as Record<string, unknown>;
-  if (typeof player !== 'number' || !Number.isInteger(player) || player < 0) return undefined;
+  if (!isNonnegativeInteger(player)) return undefined;
   if (type !== 'human' && type !== 'ai') return undefined;
-  if (typeof tribeId !== 'number' || typeof colorId !== 'number') return undefined;
+  if (!isNonnegativeInteger(tribeId) || tribeId === 0) return undefined;
+  if (!isNonnegativeInteger(colorId) || colorId >= PLAYER_COLOR_COUNT) return undefined;
+  if (name !== undefined && typeof name !== 'string') return undefined;
   return {
     player,
     type,

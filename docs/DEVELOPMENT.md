@@ -58,9 +58,10 @@ fresh conversion into a temporary directory and validates the result. It uses
 `CULTURES_GAME_DIR` and, when needed, `CULTURES_MOD_ROOT`. `test:engines` boots the app in Electron
 and the Playwright browsers and compares their state hashes with Node (see `TESTING.md`).
 
-`npm run missions:coverage` reports how much of that content's `[MissionData]` scripts this build can
-run, per opcode and (with `--per-map`) per map. Each stage of the map-scripts epic states its
-coverage delta with it.
+`npm run missions:coverage` builds the workspace and reports static opcode coverage of the content's
+`[MissionData]` scripts, per opcode and (with `--per-map`) per map. Unknown names count as missing
+even when the decoder falls back to `True` or `None`; token-count warnings are reported separately.
+Coverage does not prove successful execution, correct name joins, or map completion.
 
 ## Browser entries
 

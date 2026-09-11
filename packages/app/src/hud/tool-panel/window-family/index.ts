@@ -6,6 +6,7 @@ export {
   paintPlate,
   paintRowCard,
   paintTitledTabWindow,
+  paintWindowTabs,
   placeOnCard,
   ROW_INSET_X,
   ROW_PX,

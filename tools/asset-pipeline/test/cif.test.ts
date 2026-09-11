@@ -190,6 +190,14 @@ describe('decodeCifStringArray', () => {
 });
 
 describe('decodeCifStringTable', () => {
+  it('decodes a Russian table with the explicitly selected CP1251 codepage', () => {
+    const cif = buildCif([
+      { level: 1, text: 'text' },
+      { level: 2, text: 'stringn 7 "\xcf\xf0\xe8\xe2\xe5\xf2"' },
+    ]);
+    expect(decodeCifStringTable(cif, 'windows-1251')[7]).toBe('Привет');
+  });
+
   it('decodes CP1250 display letters through the full seam (ś, not S - the reported bug)', () => {
     // The real ingameguihumanwindow.cif string 130. 0xBF is ż and 0x9C is ś in CP1250; the earlier
     // windows-1252 latin1 alias mangled ś (0x9C → U+0153 → &0xff → 0x53 'S'), so this string shipped

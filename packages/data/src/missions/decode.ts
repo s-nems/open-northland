@@ -23,11 +23,7 @@ export type MissionWarn = (warning: MissionDecodeWarning) => void;
 /** An opcode table, non-empty so its index 0 is the fallback every unmatched name resolves to. */
 type OpcodeTable = readonly [OpcodeRow, ...OpcodeRow[]];
 
-/**
- * Reads each parameter off the line in signature order. The engine reads exactly as many tokens as
- * the signature declares, so a surplus token is dropped and a missing one reads as zero; both are
- * common enough in the corpus to warn rather than reject.
- */
+/** Missing numeric tokens become zero and surplus tokens are dropped; original behavior is unconfirmed. */
 function decodeArgs(row: OpcodeRow, values: readonly string[], warn?: MissionWarn): Record<string, unknown> {
   const [opcode, ...params] = row;
   const args: Record<string, unknown> = {};
@@ -45,12 +41,7 @@ function decodeArgs(row: OpcodeRow, values: readonly string[], warn?: MissionWar
   return args;
 }
 
-/**
- * One table's line decoder, its name lookup built once. Names match case-insensitively and trimmed:
- * the corpus authors both spellings and one map leaves a control character inside the quoted name.
- * An unmatched name resolves to the table's index 0 as in the original, and only that is reported:
- * the fallback declares no parameters, so the line's own tokens are not counted against it.
- */
+/** Case and whitespace normalization follows corpus variants; index-zero fallback remains an approximation. */
 function decoder<R extends OpcodeTable>(rows: R): (line: MapScriptLine, warn?: MissionWarn) => Decoded<R> {
   const byName = new Map(rows.map((row) => [row[0].toLowerCase(), row]));
   const unknown = rows[UNKNOWN_OPCODE_INDEX];

@@ -192,6 +192,30 @@ describe('AddGoodsToAnyStock', () => {
 });
 
 describe('AddGoodsToMapArea', () => {
+  it('bounds an oversized range to the map and preserves nearest-ring placement', () => {
+    const bounded = firingSim([areaOp('AddGoodsToMapArea', 12, 80, false)]);
+    const oversized = firingSim([areaOp('AddGoodsToMapArea', 12, 1_000_000_000, false)]);
+    bounded.run(FIRST_PASS);
+    oversized.run(FIRST_PASS);
+    expect(groundPiles(oversized, WOOD)).toEqual(groundPiles(bounded, WOOD));
+  });
+
+  it('visits populated distance buckets for a centre far outside the map', () => {
+    const sim = firingSim([
+      {
+        opcode: 'AddGoodsToMapArea',
+        good: WOOD,
+        amount: 3,
+        point: { hx: -1_000_000_000, hy: 0 },
+        range: 1_000_000_080,
+        flag: false,
+        player: OWNER,
+      },
+    ]);
+    sim.run(FIRST_PASS);
+    expect(groundTotal(sim, WOOD)).toBe(3);
+  });
+
   it('stacks the good on the ground nearest the point first', () => {
     const sim = firingSim([areaOp('AddGoodsToMapArea', 12, 2, false)]);
     sim.run(FIRST_PASS);

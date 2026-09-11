@@ -22,8 +22,8 @@ format and the execution semantics live in [`docs/formats/MISSIONS.md`](../../..
 - Randomness comes from `ctx.rng` alone, drawn only where the original draws, so a run and its replay
   fire on the same ticks.
 - An opcode with no evaluator reports through the `missionUnsupported` event and never throws. A goal
-  that cannot be judged does not hold, so its mission waits instead of firing on an answer nobody
-  computed. A result that does run but cannot act on the world reports `missionResultFailed`, which is
+  that cannot be judged is unknown. A rule fires only when its known goals establish success, so
+  negation never turns an unavailable answer into success. A result that does run but cannot act on the world reports `missionResultFailed`, which is
   the map's data being wrong rather than this build being incomplete.
 
 ## Changing the world

@@ -218,6 +218,56 @@ describe('buildMapsIndexEntries', () => {
     warn.mockRestore();
   });
 
+  it.each([
+    [],
+    { slotOptions: [{ player: -1, allowed: ['human'] }] },
+    { slotOptions: [{ player: 0.5, allowed: ['human'] }] },
+    { hiddenSlots: [-1] },
+    { hiddenSlots: [0.5] },
+    { fixedColors: 'true' },
+  ])('rejects malformed multiplayer scalars and containers: %j', async (multiplayer) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      await writeFile(join(mapsRoot, 'lobby.json'), '{}');
+      await writeFile(
+        join(mapsRoot, 'lobby.script.json'),
+        JSON.stringify({ players: [{ player: 0, type: 'ai', tribeId: 1, colorId: 0 }], multiplayer }),
+      );
+      expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([{ id: 'lobby', minimap: false }]);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('unreadable [multiplayer] table'));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it.each([
+    { tribeId: 0 },
+    { tribeId: 1.5 },
+    { colorId: -1 },
+    { colorId: 10 },
+    { colorId: 0.5 },
+    { name: 42 },
+    { player: Number.MAX_SAFE_INTEGER + 1 },
+  ])('rejects an invalid roster field without serving a partial roster: %j', async (invalid) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      await writeFile(join(mapsRoot, 'lobby.json'), '{}');
+      await writeFile(
+        join(mapsRoot, 'lobby.script.json'),
+        JSON.stringify({
+          players: [
+            { player: 0, type: 'human', tribeId: 1, colorId: 0 },
+            { player: 1, type: 'ai', tribeId: 1, colorId: 1, ...invalid },
+          ],
+        }),
+      );
+      expect(await buildMapsIndexEntries(fs, mapsRoot)).toEqual([{ id: 'lobby', minimap: false }]);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('unreadable player row'));
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it('degrades a malformed script sidecar to a roster-less entry', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await writeFile(join(mapsRoot, 'bad.json'), '{}');
