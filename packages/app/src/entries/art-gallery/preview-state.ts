@@ -6,6 +6,7 @@ export interface GalleryPreviewState {
   readonly clip: string;
   readonly playing: boolean;
   readonly speed: number;
+  readonly time?: number;
   readonly frame?: number;
   readonly progress: number;
   readonly terrainView: 'atlas' | 'repeat';

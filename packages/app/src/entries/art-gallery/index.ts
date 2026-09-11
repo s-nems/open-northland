@@ -3,13 +3,10 @@ import { type GalleryEntry, galleryEntries, loadGalleryCatalog } from './catalog
 import { button, element, galleryControls } from './controls.js';
 import { galleryMapDestination } from './locations.js';
 import { createGalleryPreview } from './preview.js';
+import { gallerySelection, tabOf } from './selection.js';
 import { type GalleryTab, galleryQuery, readGalleryState } from './state.js';
 import { thumbnail } from './thumbnail.js';
 import './gallery.css';
-
-function tabOf(entry: GalleryEntry): GalleryTab {
-  return entry.kind === 'character' ? 'animations' : entry.kind === 'building' ? 'buildings' : 'terrain';
-}
 
 async function deliveryLabel(): Promise<string> {
   if (!import.meta.env.DEV) return 'Published assets';
@@ -104,7 +101,8 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
   function save(): void {
     window.history.replaceState(null, '', galleryQuery(state));
   }
-  function update(): void {
+  function update(captureClock = false): void {
+    if (captureClock) state.time = preview.time();
     save();
     viewport.className = `viewport ${state.background}`;
     preview.update(state);
@@ -153,25 +151,22 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
       tabButton.setAttribute('aria-pressed', String(state.tab === tab));
       nav.append(tabButton);
     }
-    const selected =
-      entries.find((entry) => entry.id === state.asset && tabOf(entry) === state.tab) ??
-      entries.find((entry) => tabOf(entry) === state.tab);
+    const { selected, compared, missing } = gallerySelection(entries, state);
     detail.replaceChildren();
     if (!selected) {
-      status.textContent = 'No delivered assets in this category.';
+      const message = state.asset
+        ? `Asset unavailable in this category or delivery: ${state.asset}`
+        : 'No delivered assets match these filters.';
+      detail.append(element('p', message));
+      status.textContent = message;
+      void preview.show([]);
       renderList();
+      save();
       return;
     }
     state.asset = selected.id;
-    const compared = entries.filter(
-      (entry) => state.compare.includes(entry.id) && entry.id !== selected.id && tabOf(entry) === state.tab,
-    );
     const shown = [selected, ...compared];
-    if (
-      selected.kind === 'character' &&
-      !shown.some((entry) => entry.kind === 'character' && entry.clips.some((clip) => clip.id === state.clip))
-    )
-      state.clip = selected.clips[0]?.id ?? 'walk';
+    if (missing.length) detail.append(element('p', `Comparison assets unavailable: ${missing.join(', ')}`));
     detail.append(element('h2', selected.name));
     const destination = galleryMapDestination(
       selected,
@@ -194,7 +189,7 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
     actions.append(
       pin,
       button('Copy view link', () => {
-        save();
+        update(true);
         if (!navigator.clipboard) {
           status.textContent = 'Copy the address from your browser.';
           return;

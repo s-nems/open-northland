@@ -10,6 +10,7 @@ export interface GalleryState {
   clip: string;
   playing: boolean;
   speed: number;
+  time: number;
   frame?: number;
   progress: number;
   terrainView: 'atlas' | 'repeat';
@@ -37,8 +38,9 @@ export function readGalleryState(params: URLSearchParams): GalleryState {
     zoom: params.get('zoom') === '1' ? 1 : 2,
     direction: Math.floor(bounded(params.get('direction'), 5, 0, 7)),
     clip: params.get('clip') ?? 'walk',
-    playing: params.get('pause') !== '1',
+    playing: params.get('pause') !== '1' && !params.has('frame'),
     speed: bounded(params.get('speed'), 1, 0.1, 3),
+    time: bounded(params.get('time'), 0, 0, Number.MAX_SAFE_INTEGER),
     ...(params.has('frame') ? { frame: Math.floor(bounded(params.get('frame'), 0, 0, 10000)) } : {}),
     progress: bounded(params.get('progress'), 100, 0, 100),
     terrainView: params.get('terrainView') === 'repeat' ? 'repeat' : 'atlas',
@@ -50,7 +52,8 @@ export function galleryQuery(state: GalleryState): string {
   for (const key of ['asset', 'q', 'clip', 'background', 'terrainView', 'terrainKind'] as const)
     if (state[key]) params.set(key, state[key]);
   if (state.compare.length) params.set('compare', state.compare.join(','));
-  for (const key of ['zoom', 'direction', 'speed', 'progress'] as const) params.set(key, String(state[key]));
+  for (const key of ['zoom', 'direction', 'speed', 'progress', 'time'] as const)
+    params.set(key, String(state[key]));
   if (!state.playing) params.set('pause', '1');
   if (state.frame !== undefined) params.set('frame', String(state.frame));
   return `?${params}`;
