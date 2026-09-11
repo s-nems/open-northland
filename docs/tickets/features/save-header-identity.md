@@ -17,10 +17,8 @@ and `packages/data/src/fnv.ts` holds the mixer.
 
 ## Scope
 
-- Bump `SAVE_FORMAT_VERSION` with a migration for both fields at once, and keep the v1 and v2 goldens
-  passing.
-- Add `savedAt` to the header, written at export. The stores keep their own timestamp as the fallback for
-  a save that predates the field.
+- Bump `SAVE_FORMAT_VERSION` once for both fields and regenerate the committed fixture.
+- Add `savedAt` to the header, written at export, and list from it on both stores.
 - Fingerprint the resolved content's id tables (goods, jobs, buildings) the way the terrain grid is
   fingerprinted, record it, and compare it on restore. Keep `contentRevision`'s current reporting
   behavior; the fingerprint is the check that must not be forgettable.
@@ -28,7 +26,7 @@ and `packages/data/src/fnv.ts` holds the mixer.
 
 ## Verify
 
-- A v2 fixture migrates and restores; a save whose content id tables moved is caught by the fingerprint,
-  not by a crash later in the session.
+- A save whose content id tables moved is caught by the fingerprint, not by a crash later in the
+  session.
 - The list shows the same date for the same save on both stores, and a copied file keeps its original date.
 - `npm run check`, `npm run build`, `npm test`.

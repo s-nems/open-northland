@@ -97,7 +97,6 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     assets: record.assets === 'original' ? 'original' : defaults.assets,
     displayMode: record.displayMode === 'fullscreen' ? 'fullscreen' : 'window',
     renderScale: clampRenderScale(record.renderScale),
-    // Blobs from before the relative-factor model carried an absolute `uiScale`; it is ignored.
     uiScaleFactor: clampFactor(record.uiScaleFactor),
     postFxEnabled: typeof record.postFxEnabled === 'boolean' ? record.postFxEnabled : defaults.postFxEnabled,
     spriteSmoothing:

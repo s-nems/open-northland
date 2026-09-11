@@ -22,13 +22,11 @@ describe('paletteLutRow', () => {
     expect(paletteLutRow(armorLut(80), 2, 99)).toBe(2); // good with no armor record
   });
 
-  it('falls back when the loaded LUT predates the armor rows (16 rows only)', () => {
+  it('falls back to the plain player row when the tier row lies past the texture', () => {
     expect(paletteLutRow(armorLut(16), 2, 35)).toBe(2); // row 50 >= 16 colours - out of texture
   });
 
-  it('treats a palette without the armor axis and an unowned settler as row 0 reads', () => {
-    const legacy: PlayerColourLut = { source: {} as PlayerColourLut['source'], colours: 16 };
-    expect(paletteLutRow(legacy, 5, 35)).toBe(5); // no playerRows - armor axis absent
-    expect(paletteLutRow(armorLut(80), undefined, 35)).toBe(3 * 16); // unowned - base palette block row
+  it('reads an unowned settler as the base palette row of its block', () => {
+    expect(paletteLutRow(armorLut(80), undefined, 35)).toBe(3 * 16);
   });
 });

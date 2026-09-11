@@ -22,18 +22,9 @@ export interface SaveListBridge {
   showSavesFolder(): Promise<void>;
 }
 
-/** The desktop shell's save list bridge, or null in a plain browser or an older shell. */
+/** The desktop shell's save list bridge, or null in a plain browser. */
 export function desktopSaveListBridge(): SaveListBridge | null {
-  const bridge = window.desktop;
-  if (bridge === undefined) return null;
-  const methods = [
-    bridge.listSaves,
-    bridge.readSave,
-    bridge.writeSave,
-    bridge.deleteSave,
-    bridge.showSavesFolder,
-  ];
-  return methods.every((method) => typeof method === 'function') ? (bridge as SaveListBridge) : null;
+  return window.desktop ?? null;
 }
 
 /** The saves folder as a store: metadata comes from each file's own header and mtime, so a file

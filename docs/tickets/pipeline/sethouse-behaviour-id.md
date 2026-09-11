@@ -16,8 +16,7 @@ ids. Generated map JSON contains 4,014 such values, but the app drops them.
 - Attach it to authored building state under a semantics-accurate component/read view and include it in
   snapshots, so script commands can address a house without coordinate heuristics. Interpreting mission
   commands is out of scope.
-- Add a migration policy for locally generated old map JSON, or make the schema error explain that
-  content must be regenerated.
+- Make the schema error on locally generated old map JSON explain that content must be regenerated.
 
 ## Verify
 

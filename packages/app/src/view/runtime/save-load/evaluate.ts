@@ -1,10 +1,4 @@
-import {
-  OLDEST_SUPPORTED_SAVE_VERSION,
-  parseSaveGame,
-  SAVE_FORMAT_VERSION,
-  SAVE_KIND,
-  type SaveGame,
-} from '@open-northland/sim';
+import { parseSaveGame, SAVE_FORMAT_VERSION, SAVE_KIND, type SaveGame } from '@open-northland/sim';
 
 /** The live session identity a candidate save must match before the page reloads into it. */
 export interface LiveWorldIdentity {
@@ -43,11 +37,9 @@ export function evaluateSaveDocument(text: string): EvaluatedDocument {
   try {
     return { ok: true, save: parseSaveGame(raw) };
   } catch {
-    // A real save whose version the migration seam cannot lift is incompatible, not corrupt.
+    // A real save from another format version is incompatible, not corrupt.
     const version = header.formatVersion;
-    const unsupported =
-      typeof version === 'number' &&
-      (version > SAVE_FORMAT_VERSION || version < OLDEST_SUPPORTED_SAVE_VERSION);
+    const unsupported = typeof version === 'number' && version !== SAVE_FORMAT_VERSION;
     return { ok: false, reason: unsupported ? 'incompatibleVersion' : 'corrupt' };
   }
 }

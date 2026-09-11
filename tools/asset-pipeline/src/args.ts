@@ -15,11 +15,11 @@ export function parseArgs(argv: readonly string[]): Args {
     return i >= 0 ? argv[i + 1] : undefined;
   };
   const game = get('--game');
-  if (game === undefined || get('--mod') !== undefined) {
+  if (game === undefined) {
     throw new Error(
       'usage: pipeline --game <dir> [--mod-root <dir>] [--out <dir>] - a mod installed inside the ' +
         `game folder is auto-detected (${CULTURESNATION_MOD}/); --mod-root points at a mod unpacked ` +
-        'elsewhere (the former --mod <subdir> flag is gone)',
+        'elsewhere',
     );
   }
   return { game, modRoot: get('--mod-root'), out: get('--out') ?? 'content' };

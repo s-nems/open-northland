@@ -1,10 +1,11 @@
+import { SAVE_FORMAT_VERSION } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { compressSaveText } from '../src/view/runtime/save-load/codec.js';
 import { desktopSaveStore, type ListedSaveFile } from '../src/view/runtime/save-load/store-desktop.js';
 
 function saveText(mapId: string, tick: number, entry: string | null): string {
   return JSON.stringify({
-    header: { kind: 'open-northland-save', formatVersion: 2, mapId, tick, entry },
+    header: { kind: 'open-northland-save', formatVersion: SAVE_FORMAT_VERSION, mapId, tick, entry },
     sections: [],
   });
 }
