@@ -7,6 +7,11 @@ describe('public base URL', () => {
     expect(withBaseUrl('/ir.json', '/')).toBe('/ir.json');
   });
 
+  it('keeps URLs already emitted under the Vite base unchanged', () => {
+    expect(withBaseUrl('/game/assets/body-time.png', '/game/')).toBe('/game/assets/body-time.png');
+    expect(withBaseUrl('/gameplay/icon.png', '/game/')).toBe('/game/gameplay/icon.png');
+  });
+
   it('leaves non-root URLs unchanged', () => {
     expect(withBaseUrl('blob:preview', '/game/')).toBe('blob:preview');
   });

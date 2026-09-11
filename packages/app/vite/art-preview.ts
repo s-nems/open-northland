@@ -55,6 +55,11 @@ export async function artPreviewPlugin(repoRoot: string, configuredPath: string)
     enforce: 'pre',
     config: () => ({ resolve: { alias: { [alias]: normalizePath(preview) } } }),
     configureServer(server) {
+      server.middlewares.use(`${server.config.base}__art-preview.json`, (_req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify({ id: report.id, digest: report.digest }));
+      });
       server.config.logger.info(`Art candidate: ${match[1]} (${report.digest}); restart after art preview`);
     },
     async transform(code, id) {

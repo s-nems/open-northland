@@ -24,6 +24,11 @@ const MENU_ROUTE: Route = {
 const ROUTES: readonly Route[] = [
   {
     id: 'art',
+    matches: (params) => params.get('art') === 'gallery',
+    load: () => import('./entries/art-gallery/index.js').then((m) => m.renderArtGallery),
+  },
+  {
+    id: 'art',
     matches: (params) => params.has('art'),
     load: () => import('./entries/art-review/index.js').then((m) => m.renderArtReview),
   },

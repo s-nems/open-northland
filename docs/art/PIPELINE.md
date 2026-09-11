@@ -22,8 +22,8 @@ Normal builds use local files; they do not generate AI images, call providers or
    candidate source folder; preserve selected masters and generation records.
 4. Edit the package recipe and register a new ID in [assets.json](assets.json) when needed.
    Outputs must use unowned paths or paths already owned by this package.
-5. Build and review that package, then preview its candidate on a playable map. Record actual visual
-   acceptance, publish, and verify the delivery. Use the
+5. Build and review that package, then compare its candidate in the gallery and on a real playable map.
+   Record actual visual acceptance, publish, and verify the delivery. Use the
    [runtime review locations](OWN-ASSET-RUNTIME.md#review-locations).
 
 A finish variant usually changes source pixels while retaining IDs, layout and calibration; verify
@@ -99,6 +99,19 @@ writes only ignored preview files; sources, runtime delivery and approvals remai
 map with `assets=own&zoom=2` and use the review locations linked above. After rebuilding a candidate,
 prepare its preview again and restart the development server. Ordinary `npm run dev` uses the
 committed delivery. Release builds ignore the override.
+
+For every asset handoff, open and verify two live URLs on the same server:
+
+- Gallery with the selected asset and useful comparisons, for example
+  `?art=gallery&tab=buildings&asset=buildings/farm&compare=buildings/house-1`.
+- A familiar real map with `assets=own&zoom=2`, using the gallery's map link or the
+  [recorded locations](OWN-ASSET-RUNTIME.md#review-locations). State when the asset must be built or its
+  exact placement is unknown; a loaded map alone does not prove the asset is visible.
+
+Include both absolute URLs in the handoff, identify candidate or published delivery, and state what
+needs visual assessment. Leave the preview server running for review. After a rebuild, refresh the
+preview, restart that server and verify the links again. If extracted maps are unavailable, report
+the missing map check rather than substituting a synthetic map.
 
 After a human accepts the concrete candidate, record the **presentation digest printed by review**:
 

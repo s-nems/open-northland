@@ -22,6 +22,7 @@ describe('routeFor', () => {
     ['?scene=battle', 'scene'],
     ['?anim', 'anim'],
     ['?art', 'art'],
+    ['?art=gallery', 'art'],
     ['?icons', 'icons'],
     ['?sounds', 'sounds'],
     ['?map=alpha', 'map'],

@@ -49,6 +49,18 @@ painting. Other building packages currently have no delivered construction layer
 
 ## Review locations
 
+Open `?art=gallery` to compare delivered own assets. Its tabs use
+`tab=animations`, `tab=buildings` and `tab=terrain`; `asset=<id>` selects an entry and
+`compare=<id>,<id>` pins comparison entries. For example:
+`?art=gallery&tab=animations&asset=characters/man-silver&compare=characters/man-redmane`.
+The gallery uses runtime manifests and shares the development server's candidate override with the
+game. Source studies and unpublished packages without a prepared preview are outside this catalog.
+
+Use the selected asset's map link for scale, movement, depth and terrain checks. It opens a real map
+at zoom ×2; character links can force the selected appearance with `ownHead=<id>`. A family review
+area does not guarantee every variant or resource state. Unknown placements open Magiczny Las with
+an explicit context-only note. Build the stonemason there before inspecting that workshop.
+
 Run the normal app with `npm run dev`; append these queries to its URL. For unpublished work, use
 the [isolated candidate preview](PIPELINE.md#package-and-command-contract). Locations require locally
 extracted maps. Use current actors, motion, elevation and zoom-out alongside close inspection.

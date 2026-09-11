@@ -83,6 +83,29 @@ describe('candidate asset preview', () => {
     }
   });
 
+  it('serves candidate identity under the configured app base', async () => {
+    const { root, app, preview } = await fixture();
+    const server = await createServer({
+      configFile: false,
+      root: app,
+      base: '/review/',
+      plugins: [await artPreviewPlugin(root, preview)],
+      logLevel: 'silent',
+      server: { port: 0, host: '127.0.0.1' },
+      optimizeDeps: { noDiscovery: true },
+    });
+    try {
+      await server.listen();
+      const address = server.httpServer?.address();
+      if (!address || typeof address === 'string') throw new Error('Missing test server address');
+      const response = await fetch(`http://127.0.0.1:${address.port}/review/__art-preview.json`);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ id: 'terrain/sample', digest: expect.any(String) });
+    } finally {
+      await server.close();
+    }
+  });
+
   it('leaves production bundles on the committed assets', async () => {
     const { root, app, preview, own } = await fixture();
     const result = await build({
