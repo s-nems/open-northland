@@ -29,8 +29,9 @@ Pack READMEs describe approximations that affect their output.
 ## Export and verification
 
 Each pack has a versioned `asset.json` registered in [the asset catalog](../assets.json).
-Use `npm run art -- build terrain/<pack>`, then `review` and `publish` for that same ID.
-The shared [art pipeline](../PIPELINE.md) validates candidates before delivery.
+Use `npm run art -- build terrain/<pack>`, then follow the shared
+[art pipeline](../PIPELINE.md#package-and-command-contract) for review, in-game preview, visual
+acceptance and publication.
 Alpha thresholds locate rectangular crop bounds; resampling preserves the generated silhouette.
 
 [Terrain delivery tests](../../../packages/app/test/own-terrain-export.test.ts) and

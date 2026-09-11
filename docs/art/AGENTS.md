@@ -1,5 +1,9 @@
 # Art contract
 
+Read [PIPELINE.md](PIPELINE.md) before creating or changing an asset package. It defines recipes,
+candidate builds, in-game preview, approval and publication. Use
+[OWN-ASSET-RUNTIME.md](OWN-ASSET-RUNTIME.md) for bindings, scale and review locations.
+
 For building, terrain, vegetation, water or environment asset work, read
 [WORLD-STYLE.md](WORLD-STYLE.md) and view its canonical reference image before generating or editing.
 The selected direction is **A · Stonowany remaster**, covering buildings, terrain and environment props.

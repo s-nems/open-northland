@@ -10,6 +10,8 @@ Start with these pages:
 
 Other references:
 
+- [`art/AGENTS.md`](art/AGENTS.md): own-art contract and starting point for asset work
+- [`art/PIPELINE.md`](art/PIPELINE.md): source packages, candidate review and runtime publication
 - [`SCENES.md`](SCENES.md): acceptance scenes for tests and human review
 - [`SOURCES.md`](SOURCES.md): acceptable evidence for formats and game behavior
 - [`LEGAL.md`](LEGAL.md): game-data, licensing, and trademark rules
@@ -26,7 +28,7 @@ See [`tickets/README.md`](tickets/README.md) for the format.
 
 The root [`./AGENTS.md`](../AGENTS.md) is the project-wide contract for coding agents. Package-local
 files add rules for `sim`, `render`, `audio`, `app`, `data`, `vfs`, `content-resolver`, `installer`,
-`desktop`, `web`, and the asset pipeline.
+`desktop`, `web`, original-game extraction, and own-art production.
 
 Claude workflow definitions live in `.claude/commands/` and reviewer checklists in
 `.claude/agents/`. `CLAUDE.md` only loads the nearest `./AGENTS.md`; Codex reads `./AGENTS.md` directly.

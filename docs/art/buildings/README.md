@@ -15,8 +15,10 @@ entrance anchors and construction layers. The game loads exported copies from
 ```sh
 npm run art -- build buildings/<slot>
 npm run art -- review buildings/<slot>
-npm run art -- publish buildings/<slot>
 ```
+
+Continue with in-game preview, visual acceptance and publication through the
+[shared art pipeline](../PIPELINE.md#package-and-command-contract).
 
 [PIPELINE.md](PIPELINE.md) defines generation, calibration and validation.
 Shared Blender and alpha-inspection scripts live in `tools/`.
