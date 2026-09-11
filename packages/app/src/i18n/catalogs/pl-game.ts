@@ -310,7 +310,6 @@ export const plGame = {
       '18': 'błądzi bez drogowskazów',
       '23': 'nie ma gdzie pracować',
       '47': 'ledwo się trzyma',
-      '50': 'wita się ze światem',
       '51': 'dorasta',
       '53': 'nie znajduje pary',
       '61': '- pod atakiem',

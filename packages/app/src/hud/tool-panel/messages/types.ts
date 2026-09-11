@@ -3,6 +3,10 @@ import type { HalfCellNode } from '@open-northland/sim';
 /**
  * The original's `TToUserMessage` ids (`ingameguimessages.cif` rows 15-134 spell out each one). The
  * id is the key of the byte-verified priority table and of the string-id map, so it is pinned here.
+ *
+ * Seven have no raise site in the 2022 build: `taskCompleted`, `waitingForGood`, `bored`, `wasBorn`,
+ * `cannotAttachVehicle`, and the two `gaveBirth` ids whose wrapper the compiler dropped. Nothing here
+ * raises them either.
  */
 export const USER_MESSAGE_TYPE = {
   taskCompleted: 0x01,

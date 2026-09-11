@@ -319,7 +319,6 @@ export const enGame = {
       '18': 'is wandering with no signpost to follow',
       '23': 'has nowhere to work',
       '47': 'is barely holding on',
-      '50': 'was born',
       '51': 'came of age',
       '53': 'finds no one to wed',
       '61': 'is under attack',
