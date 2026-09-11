@@ -13,11 +13,11 @@
   "filtering": "linear",
   "walkFrames": 16,
   "idleFrames": 12,
+  "idleDuration": 4,
   "walkDuration": 1.0333333333333332,
   "walkTravelPerCycle": [
-    75.9812083949704, 75.9812083949704, 75.9812083949704, 75.9812083949704, 75.9812083949704,
-    75.9812083949704, 75.9812083949704, 75.9812083949704
+    75.98209828032543, 75.98209828032543, 75.98209828032543, 75.98209828032543, 75.98209828032543,
+    75.98209828032543, 75.98209828032543, 75.98209828032543
   ],
-  "idleDuration": 4,
   "sourceBasis": "Generated character from docs/art/characters/appearances/woman-blonde; soft-separation export. No original-game pixels."
 }

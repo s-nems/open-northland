@@ -8,6 +8,9 @@ and `projected/` hold the geometry, motions and matching textures. Keep `recipe.
 `layout.json`, head socket and selected strips for export.
 
 `model/prepare-skirt.py` creates the skinned skirt from `rigged-source.glb` and `walk-source.glb`.
+`model/prepare-walk.py` derives `walk-upright.glb` from `walk.glb`, with local X posture
+corrections of −7° at `Spine01` and −5° at `neck` (artistic approximation). It retains the
+head socket, leg motion and clip timing. Run it with Blender before rendering walk.
 `model/make-idle.py` derives relaxed idle from `idle.glb`. The skirt has a dedicated UV strip;
 run `model/guard-garment.mjs` after projection. Check skirt deformation and neck seams in turns.
 

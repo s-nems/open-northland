@@ -20,7 +20,7 @@
   "clips": [
     {
       "name": "walk",
-      "file": "walk.glb",
+      "file": "walk-upright.glb",
       "facings": ["SW", "W", "NW", "N", "NE", "E", "SE", "S"],
       "frames": 16,
       "duration": 1.0333333333333332,

@@ -45,9 +45,9 @@
     "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
   },
   "characters/woman-blonde": {
-    "digest": "23fd9e53466db0fd36bbd7d3bb9ef3eff6fb2a30c1a01098f27df0db02b0bf28",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "87fbc1166f9edf1d8c68e4c4f8a38840044b73740f781afa8fc8ec58989b50e3",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "terrain/bushes": {
     "digest": "87a29782b1d757d6056cb548c286dc79539e5cccadc27677576882d838b54d5a",

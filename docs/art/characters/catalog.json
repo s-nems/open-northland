@@ -285,56 +285,56 @@
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "b87c6d1ed8484cf7bf83a012e7b8a0f21fa5542b5cb25e65fd56b3594f259502"
+            "sha256": "91d72a4d829a79b1692c23ef9fa2a4e7b1e3fcad59242c2b2149692d87abe5b9"
           },
           "W": {
             "file": "appearances/woman-blonde/sprites/walk-W-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "64260bd3d5b2fd584619d8f3203b5f22086a5aff02b7d0f42d387b4549704b69"
+            "sha256": "cdaae8cc4583f86d6481e4aac2b2ccabc3dd0695744f4f61628e85b49f1cde66"
           },
           "NW": {
             "file": "appearances/woman-blonde/sprites/walk-NW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "b9f4d1785f7a4df90237328a63cd35de5df0b64bd3b6ccfd7e5ecf93bd3cbac4"
+            "sha256": "f11cf6db573b816283b65620f99a03de256620e615d125e309ff7e188eac3c7a"
           },
           "N": {
             "file": "appearances/woman-blonde/sprites/walk-N-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "c84454b4a61906bbf97dd142d5949e07e33152b1eb0d3337dbe87103f21c331a"
+            "sha256": "fbb0a0dc141c6d0d0a1e08ce711a4e9117ba95475f197ebbee64b6db912ae85a"
           },
           "NE": {
             "file": "appearances/woman-blonde/sprites/walk-NE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "5841902ac9ea13fded1f4dd5eb88f5d4afa19be200ebe178f4c377fc49d1dd9f"
+            "sha256": "42fdc7f5aca0ac5e922cdd3d62164970cf248f1e5b14dc6bd51a25df237df5a3"
           },
           "E": {
             "file": "appearances/woman-blonde/sprites/walk-E-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "9b2035744c6360d01e2c568a3e1ffff256b46b576310c714164bd78144b9d539"
+            "sha256": "6d5003be5ebfffa71529e307553acf979747ed9cb574d132b77c6fef94339675"
           },
           "SE": {
             "file": "appearances/woman-blonde/sprites/walk-SE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "848afe3f9d3a7ee6a0f36fd44c1f362f4bc7f79075c49f5f80207b51d90cad04"
+            "sha256": "5afe8570e559e5daa1a2c828a7893e720fea544e1c93965812561b1ebf950e7d"
           },
           "S": {
             "file": "appearances/woman-blonde/sprites/walk-S-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
             "status": "approved",
-            "sha256": "b2da3a296e1492af88072322da077da7c9771012dedd7528ee444f190691c443"
+            "sha256": "920f9a51e2b64d54653a166f4293a5b8e34aeeddc9e2f720b892035bd86ab090"
           }
         }
       }
