@@ -1,9 +1,11 @@
 import type { ContentSet } from '@open-northland/data';
 import { Building, ResourceFootprint } from '../../components/index.js';
+import { landscapeTopologyRevision } from '../../components/landscape.js';
 import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { landscapeView } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 
@@ -37,6 +39,7 @@ interface RouteRegionCache {
   buildingGeneration: number;
   buildingValueGeneration: number;
   resourceGeneration: number;
+  landscapeGeneration: number;
   /** Composed building + resource overlay for the current epoch's floods. */
   blocked: BlockOverlay;
   /** labels[n] is valid only while stamps[n] === epoch - the pathfinding-scratch reuse pattern, so an
@@ -105,11 +108,13 @@ export class RouteRegions {
     const buildingGeneration = world.componentGeneration(Building);
     const buildingValueGeneration = world.componentValueGeneration(Building);
     const resourceGeneration = world.componentGeneration(ResourceFootprint);
+    const landscapeGeneration = landscapeTopologyRevision(world);
     if (
       cache.content === content &&
       cache.buildingGeneration === buildingGeneration &&
       cache.buildingValueGeneration === buildingValueGeneration &&
-      cache.resourceGeneration === resourceGeneration
+      cache.resourceGeneration === resourceGeneration &&
+      cache.landscapeGeneration === landscapeGeneration
     ) {
       return;
     }
@@ -117,9 +122,11 @@ export class RouteRegions {
     cache.buildingGeneration = buildingGeneration;
     cache.buildingValueGeneration = buildingValueGeneration;
     cache.resourceGeneration = resourceGeneration;
+    cache.landscapeGeneration = landscapeGeneration;
     cache.blocked = new LayeredBlocks([
       buildingBlockedCells(world, this.ctx, cache.terrain),
       resourceBlockedCells(world, cache.terrain),
+      landscapeView(world, cache.terrain).walk,
     ]);
     cache.nextPocket = 0;
     if (cache.epoch >= MAX_EPOCH) {
@@ -184,6 +191,7 @@ export function routeRegions(world: World, ctx: SystemContext, terrain: TerrainG
       buildingGeneration: -1,
       buildingValueGeneration: -1,
       resourceGeneration: -1,
+      landscapeGeneration: -1,
       blocked: new LayeredBlocks([]),
       labels: new Int32Array(terrain.nodeCount),
       stamps: new Int32Array(terrain.nodeCount),

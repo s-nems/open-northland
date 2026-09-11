@@ -185,6 +185,11 @@ export const enContent = {
         '3': 'The neighbours ask for stone to pave the road between us.',
       },
     },
+    'terrain-edits': {
+      title: 'Scripted terrain edits',
+      summary:
+        'The script colors two areas of grass brown and green and forbids building in the western area. Both colors survive saving and loading.',
+    },
     presentation: {
       title: 'Script presentation',
       summary:

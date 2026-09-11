@@ -1,6 +1,7 @@
 import { type ContentSet, fullStateBlockAreaCells, type LandscapeGfx } from '@open-northland/data';
 import {
   Felling,
+  LandscapeResource,
   MineDeposit,
   Position,
   Resource,
@@ -112,6 +113,7 @@ export function unstampResourceFootprint(world: World, resource: Entity): void {
 /** The caller-resolved shape of a resource node to place. The felling and deposit balance constants live
  *  in the app catalog, so the caller resolves them and hands the sim a ready spec. */
 export interface ResourceNodeSpec {
+  readonly landscapeId?: number;
   readonly good: number;
   /** The node's half-cell lattice coords, like every sim command, mapped to a visual-tile Position. */
   readonly x: number;
@@ -146,6 +148,7 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
   if (resourceFootprintForGood(content, spec.good) === null) return null;
   if (spec.deposit !== undefined && spec.deposit.strikesPerUnit < 1) return null;
   const e = world.create();
+  if (spec.landscapeId !== undefined) world.add(e, LandscapeResource, { id: spec.landscapeId });
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Resource, {
     goodType: spec.good,

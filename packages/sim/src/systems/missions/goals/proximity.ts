@@ -156,10 +156,20 @@ export function countAnimalsInArea(
   range: number,
   limit = Number.POSITIVE_INFINITY,
 ): number {
+  return countAnimals(world, player, tribe, limit, (e) => withinRange(world, e, point, range));
+}
+
+export function countAnimals(
+  world: World,
+  player: number,
+  tribe: number,
+  limit: number,
+  keep?: (e: Entity) => boolean,
+): number {
   let count = 0;
   for (const e of world.query(Settler, Position)) {
     if (!isMissionAnimal(world, e) || world.get(e, Settler).tribe !== tribe) continue;
-    if (!ownedBy(world, e, player) || !withinRange(world, e, point, range)) continue;
+    if (!ownedBy(world, e, player) || (keep !== undefined && !keep(e))) continue;
     if (++count >= limit) break;
   }
   return count;

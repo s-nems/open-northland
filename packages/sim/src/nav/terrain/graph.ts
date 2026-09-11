@@ -1,5 +1,6 @@
 import { TerrainEdges } from './edges.js';
 import type { LandscapeProps } from './landscape-props.js';
+import type { LandscapeMapInput } from './landscapes.js';
 import type { NodeId } from './node-id.js';
 import { StepBuffer } from './step-buffer.js';
 
@@ -16,6 +17,8 @@ export class TerrainGraph extends TerrainEdges {
     height: number,
     typeIds: Int32Array,
     props: ReadonlyMap<number, LandscapeProps>,
+    readonly landscapes?: LandscapeMapInput,
+    readonly landVertices?: readonly boolean[],
   ) {
     super(width, height, typeIds, props);
     this.components = this.computeComponents();

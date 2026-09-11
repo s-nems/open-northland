@@ -42,17 +42,18 @@ interface PooledObject {
  * per-frame cull cost tracks the visible blocks rather than the map.
  */
 interface TallBlock {
-  readonly minX: number;
-  readonly minY: number;
-  readonly maxX: number;
-  readonly maxY: number;
+  readonly key: string;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
   readonly objects: PooledObject[];
   /** How many members are currently attached - lets an off-screen block skip its detach scan. */
   attachedCount: number;
 }
 
 export class TallObjectLayer {
-  private blocks: TallBlock[] = [];
+  private readonly blocks = new Map<string, TallBlock>();
   /** Which block holds each object, so {@link remove} does not scan every block. */
   private blockByObject = new Map<MapObjectSprite, TallBlock>();
   /** The animation tick the tall-object frames were last refreshed for. */
@@ -66,7 +67,7 @@ export class TallObjectLayer {
 
   /** Build the AABB-culled blocks from the tall placements grouped by chunk key. */
   build(tallByBlock: Map<string, MapObjectSprite[]>): void {
-    for (const block of tallByBlock.values()) {
+    for (const [key, block] of tallByBlock) {
       let minX = Number.POSITIVE_INFINITY;
       let minY = Number.POSITIVE_INFINITY;
       let maxX = Number.NEGATIVE_INFINITY;
@@ -78,12 +79,18 @@ export class TallObjectLayer {
         maxX = Math.max(maxX, obj.x);
         maxY = Math.max(maxY, obj.y);
       }
-      const tall: TallBlock = {
-        minX,
-        minY,
-        maxX,
-        maxY,
-        objects: block.map((obj) => ({
+      let tall = this.blocks.get(key);
+      if (tall === undefined) {
+        tall = { key, minX, minY, maxX, maxY, objects: [], attachedCount: 0 };
+        this.blocks.set(key, tall);
+      } else {
+        tall.minX = Math.min(tall.minX, minX);
+        tall.minY = Math.min(tall.minY, minY);
+        tall.maxX = Math.max(tall.maxX, maxX);
+        tall.maxY = Math.max(tall.maxY, maxY);
+      }
+      tall.objects.push(
+        ...block.map((obj) => ({
           obj,
           sprite: null,
           shadowSprite: null,
@@ -92,9 +99,7 @@ export class TallObjectLayer {
           ghostTint: 0xffffff,
           lastWatched: true,
         })),
-        attachedCount: 0,
-      };
-      this.blocks.push(tall);
+      );
       for (const obj of block) this.blockByObject.set(obj, tall);
     }
   }
@@ -116,6 +121,7 @@ export class TallObjectLayer {
       po.sprite?.destroy();
       po.shadowSprite?.destroy();
       block.objects.splice(i, 1);
+      if (block.objects.length === 0) this.blocks.delete(block.key);
     }
     return true;
   }
@@ -186,7 +192,7 @@ export class TallObjectLayer {
    */
   update(vp: Viewport, tick: number, fogStateOfCell?: (cellX: number, cellY: number) => number): void {
     const animAdvanced = tick !== this.lastAnimTick;
-    for (const block of this.blocks) {
+    for (const block of this.blocks.values()) {
       if (!aabbIntersects(vp, block)) {
         if (block.attachedCount > 0) {
           for (const po of block.objects) this.detach(po);
@@ -231,13 +237,13 @@ export class TallObjectLayer {
 
   /** Free the tall-object sprites (a map change re-invalidates them). */
   destroy(): void {
-    for (const block of this.blocks) {
+    for (const block of this.blocks.values()) {
       for (const po of block.objects) {
         po.sprite?.destroy();
         po.shadowSprite?.destroy();
       }
     }
-    this.blocks = [];
+    this.blocks.clear();
     this.blockByObject.clear();
     this.lastAnimTick = -1;
   }

@@ -16,6 +16,7 @@ import {
 import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { setupPlacementTribes } from '../../game/placement-tribes.js';
+import { buildScriptLandscapeTerrain } from '../../content/script-landscape.js';
 import {
   mapResourceObjectNames,
   resolveWorldContent,
@@ -84,7 +85,7 @@ const PLACEMENT_DRAIN_TICKS = 1;
 
 /** Session rules and visibility are applied before the briefing can pause the world. */
 export function buildMapWorld(options: MapWorldOptions): MapWorld {
-  const terrain = collisionTerrain(options.map, options.ir);
+  const terrain = collisionTerrain(options.map, options.ir, options.script?.missions !== undefined);
   const { sim, kind } = runWorld(options, terrain);
   setupPlacementTribes(sim, options.playerRoster);
   applySessionRules(sim, options);
@@ -95,8 +96,13 @@ export function buildMapWorld(options: MapWorldOptions): MapWorld {
 
 /** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose
  *  footprints unblock when felled. */
-function collisionTerrain(map: TerrainMapFile | null, ir: ContentIr | null): TerrainMap | null {
+function collisionTerrain(
+  map: TerrainMapFile | null,
+  ir: ContentIr | null,
+  scripted: boolean,
+): TerrainMap | null {
   if (map === null) return null;
+  if (scripted && ir !== null) return buildScriptLandscapeTerrain(map, ir);
   return ir === null ? halfCellMapFromCells(map) : buildCollisionTerrain(map, ir, mapResourceObjectNames(ir));
 }
 
@@ -149,7 +155,7 @@ export interface RestoredMapWorld {
  * paths to the same resolution.
  */
 export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): RestoredMapWorld {
-  const terrain = collisionTerrain(options.map, options.ir);
+  const terrain = collisionTerrain(options.map, options.ir, options.script?.missions !== undefined);
   if (terrain === null) {
     const demo = {
       ...options.content,

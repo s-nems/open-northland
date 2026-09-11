@@ -1,5 +1,6 @@
 import { type MissionRecord, tributePaid } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
+import { landscapeView } from '../landscape/view.js';
 import {
   animalsGone,
   housesGone,
@@ -34,6 +35,7 @@ import {
 import {
   animalsInArea,
   civiliansNearPoint,
+  countAnimals,
   housesInArea,
   humansNearHouses,
   humansNearHumans,
@@ -97,6 +99,16 @@ function goalHolds(
   op: MissionGoalOp,
 ): boolean | undefined {
   switch (op.opcode) {
+    case 'IsAnyLandscapeOnPoint':
+      if (pass.ctx.terrain?.landscapes === undefined) {
+        pass.report(index, op.opcode);
+        return undefined;
+      }
+      return landscapeView(pass.world, pass.ctx.terrain).placements.some(
+        (p) => p.hx === op.point.hx && p.hy === op.point.hy,
+      );
+    case 'NumberOfAnimals':
+      return countAnimals(pass.world, op.player, op.tribe, op.amount) >= op.amount;
     case 'True':
       return true;
     case 'TimeGone':

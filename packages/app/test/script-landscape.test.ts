@@ -1,0 +1,112 @@
+import { GfxPattern, TerrainMapFile, TrianglePatternType } from '@open-northland/data';
+import { describe, expect, it } from 'vitest';
+import { TERRAIN_OPEN } from '../src/catalog/terrain.js';
+import type { ContentIr } from '../src/content/ir/rows.js';
+import { buildScriptLandscapeTerrain, scriptLandscapeTypes } from '../src/content/script-landscape.js';
+
+const IR: ContentIr = {
+  landscapeGfx: [
+    {
+      index: 12,
+      editName: 'block',
+      logicType: 1,
+      walkBlockAreas: [[1, 0, 0, 1]],
+      buildBlockAreas: [[1, -1, 0, 3]],
+    },
+    { index: 13, editName: 'fx smoke', logicType: 1 },
+    { index: 14, editName: 'fx fire small', logicType: 1 },
+    { index: 15, editName: 'fx wave', logicType: 1 },
+    { index: 16, editName: 'similar block decor', logicType: 1 },
+    { index: 17, editName: 'test stone', logicType: 15, maxValency: 23 },
+    { index: 18, editName: 'test berries', logicType: 11 },
+  ],
+  gatheringPipeline: [{ goodType: 9, goodId: 'stone', harvest: { landscapeType: 15, gfxIndices: [17] } }],
+};
+
+describe('script landscape content', () => {
+  it('classifies explicit graphics without conflating their shared void logic type', () => {
+    const types = scriptLandscapeTypes(IR);
+    expect(types.map((t) => [t.typeId, t.groups])).toEqual([
+      [12, ['blocker']],
+      [13, ['fx1', 'fx2', 'smoke']],
+      [14, ['fx1', 'fx2']],
+      [15, ['wave']],
+      [16, []],
+      [17, []],
+      [18, []],
+    ]);
+    expect(types[0]?.walk).toEqual([{ dx: 0, dy: 0 }]);
+    expect(types[0]?.build).toEqual([
+      { dx: -1, dy: 0 },
+      { dx: 0, dy: 0 },
+      { dx: 1, dy: 0 },
+    ]);
+    expect(types[5]?.resource).toMatchObject({
+      gfxIndex: 17,
+      remaining: 23,
+      deposit: { initial: 23, levels: 23 },
+    });
+    expect(types[5]?.resource).not.toHaveProperty('x');
+    expect(types[6]?.bushGfxIndex).toBe(18);
+  });
+
+  it('keeps ground unblocked and preserves placement ids, levels and resource ownership', () => {
+    const map = TerrainMapFile.parse({
+      width: 2,
+      height: 2,
+      typeIds: [1, 1, 1, 1],
+      objects: {
+        types: ['missing', 'block', 'test stone', 'test berries'],
+        placements: [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3],
+        levels: [1, 4, 2, 1],
+      },
+    });
+    const before = JSON.stringify(map);
+    const terrain = buildScriptLandscapeTerrain(map, IR);
+    expect(terrain.typeIds).toEqual(new Array(16).fill(TERRAIN_OPEN));
+    expect(terrain.landscapes?.placements).toEqual([
+      { id: 1, typeId: 12, hx: 1, hy: 1, level: 4 },
+      { id: 2, typeId: 17, hx: 2, hy: 2, level: 2, resourceBacked: true },
+      { id: 3, typeId: 18, hx: 3, hy: 3, level: 1, resourceBacked: true },
+    ]);
+    expect(JSON.stringify(map)).toBe(before);
+  });
+
+  it('marks only confirmed dry cells for land-only vertex colors', () => {
+    const map = TerrainMapFile.parse({
+      width: 3,
+      height: 1,
+      typeIds: [1, 1, 1],
+      ground: {
+        patterns: ['dry', 'wet', 'unknown'],
+        a: [0, 0, 2],
+        b: [0, 1, 2],
+      },
+    });
+    const ir: ContentIr = {
+      ...IR,
+      gfxPatterns: [
+        GfxPattern.parse({ id: 1, editName: 'dry', logicType: 2 }),
+        GfxPattern.parse({ id: 2, editName: 'wet', logicType: 1 }),
+      ],
+      trianglePatternTypes: [
+        TrianglePatternType.parse({ type: 2, isWater: false }),
+        TrianglePatternType.parse({ type: 1, isWater: true }),
+      ],
+    };
+    expect(buildScriptLandscapeTerrain(map, ir).landVertices).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+});

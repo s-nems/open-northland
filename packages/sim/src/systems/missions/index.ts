@@ -8,7 +8,7 @@ export type {
   MissionScript,
   ResolvedOp,
 } from './script.js';
-export { MISSION_HOUSE_NAME_FIELD, SUCCESSFUL_IF } from './script.js';
+export { MISSION_HOUSE_NAME_FIELD, MISSION_LANDSCAPE_NAME_FIELD, SUCCESSFUL_IF } from './script.js';
 export { type MissionStatus, missionStatus } from './status.js';
 export { SUPPORTED_GOALS, SUPPORTED_RESULTS } from './supported.js';
 export { MISSION_EVALUATION_TICKS, missionSystem } from './system.js';

@@ -5,6 +5,8 @@ import type { MissionGoalOp, MissionResultOp } from './script.js';
  * what the coverage report and the opcode-support test read, and the test holds the two together.
  */
 export const SUPPORTED_GOALS = [
+  'IsAnyLandscapeOnPoint',
+  'NumberOfAnimals',
   'True',
   'TimeGone',
   'RandomTimeGone',
@@ -52,6 +54,17 @@ export const SUPPORTED_GOALS = [
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
 export const SUPPORTED_RESULTS = [
+  'SetLandscape',
+  'RemoveLandscape',
+  'RemoveLandscapesInArea',
+  'RemoveFXWaveLandscapeInArea',
+  'RemoveFXSmokeLandscapeInArea',
+  'RemoveBlockerLandscapeInArea',
+  'RemoveFX1LandscapeInArea',
+  'RemoveFX2LandscapeInArea',
+  'SetHouseBuildForbiddenArea',
+  'SetVertexColor',
+  'SetVertexColorOnLand',
   'None',
   'ActivateMission',
   'DeactivateMission',

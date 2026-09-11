@@ -6,6 +6,7 @@ import type { MissionGoal, MissionNameRef, MissionResult } from '@open-northland
  * name so the two halves of that join cannot drift apart.
  */
 export const MISSION_HOUSE_NAME_FIELD = 'houseName';
+export const MISSION_LANDSCAPE_NAME_FIELD = 'landscape';
 
 /**
  * A resolved house-instance name. One building typeId recurs across civilizations - 45 of the 54
@@ -26,7 +27,9 @@ type Resolved<T> = {
     ? number
     : K extends typeof MISSION_HOUSE_NAME_FIELD
       ? MissionHouseRef
-      : T[K];
+      : K extends typeof MISSION_LANDSCAPE_NAME_FIELD
+        ? number
+        : T[K];
 };
 
 /** One decoded opcode with its name arguments replaced by content ids. Distributes over the opcode

@@ -11,10 +11,19 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, type NodeId, ONE, Simulation } from '../../src/index.js';
 import { plannerSystem } from '../../src/systems/index.js';
+import { removeLandscapes } from '../../src/systems/landscape/edits.js';
+import {
+  markPorterDormant,
+  porterDormant,
+} from '../../src/systems/settlers/drives/economy/porter-dormancy.js';
+import type { PlannerContext } from '../../src/systems/settlers/planner/context.js';
+import { collectTargets } from '../../src/systems/settlers/targets/index.js';
 import {
   noteUnreachableGoal,
   UNREACHABLE_GOAL_MEMO_TICKS,
 } from '../../src/systems/settlers/unreachable-goals.js';
+import { GossipCandidates } from '../../src/systems/social/index.js';
+import { collectInboundSupply } from '../../src/systems/stores/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -79,6 +88,43 @@ function anchorCell(sim: Simulation, x: number, y: number): NodeId {
 }
 
 describe('porter dormancy', () => {
+  it('invalidates a dormant pickup scan when a script removes a landscape blocker', () => {
+    const sim = new Simulation({
+      seed: 1,
+      content: testContent(),
+      map: {
+        ...grassMap(6, 1),
+        landscapes: {
+          types: [{ typeId: 1, walk: [{ dx: 0, dy: 0 }], build: [], groups: ['blocker'] }],
+          placements: [{ id: 0, typeId: 1, hx: 4, hy: 0, level: 0 }],
+        },
+      },
+    });
+    const hq = hqAt(sim, 5, 0);
+    const porter = porterAt(sim, 0, 0, hq);
+    if (sim.terrain === undefined) throw new Error('mapped fixture');
+    const ctx = ctxOf(sim);
+    const plan: PlannerContext = {
+      world: sim.world,
+      ctx,
+      terrain: sim.terrain,
+      entity: porter,
+      here: sim.terrain.nodeAt(0, 0),
+      tribe: VIKING,
+      jobType: CARRIER,
+      experience: new Map(),
+      owner: undefined,
+      limit: null,
+      targets: collectTargets(sim.world, ctx, sim.terrain),
+      inbound: collectInboundSupply(sim.world),
+      gossipCandidates: new GossipCandidates(sim.world, sim.content),
+    };
+    markPorterDormant(plan);
+    expect(porterDormant(plan)).toBe(true);
+    removeLandscapes(sim.world, sim.terrain, { hx: 4, hy: 0 }, 0);
+    expect(porterDormant(plan)).toBe(false);
+  });
+
   it('a dormant porter still reacts when a new ground pile appears', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     const hq = hqAt(sim, 5, 0);

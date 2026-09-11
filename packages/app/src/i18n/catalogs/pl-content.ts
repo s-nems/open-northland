@@ -186,6 +186,11 @@ export const plContent = {
         '3': 'Sąsiedzi proszą o kamień na drogę między nami.',
       },
     },
+    'terrain-edits': {
+      title: 'Zmiany terenu ze skryptu',
+      summary:
+        'Skrypt barwi dwa obszary trawy na brązowo i zielono oraz zakazuje budowy w zachodnim obszarze. Oba kolory pozostają po zapisaniu i wczytaniu gry.',
+    },
     presentation: {
       title: 'Prezentacja skryptu',
       summary:

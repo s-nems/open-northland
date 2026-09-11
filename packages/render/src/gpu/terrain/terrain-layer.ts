@@ -1,4 +1,4 @@
-import { BufferImageSource, Container } from 'pixi.js';
+import { BufferImageSource, Container, Mesh } from 'pixi.js';
 import { aabbIntersects, type Viewport } from '../../data/projection/index.js';
 import type { SceneTerrain } from '../../data/scene/index.js';
 import {
@@ -22,6 +22,7 @@ import {
   type TerrainChunk,
 } from './geometry.js';
 import { padLaneRows } from './lane-texture.js';
+import { type TerrainVertexColor, TerrainVertexColors } from './vertex-colors.js';
 
 /**
  * The retained terrain layer: the static ground, meshed once per map into world-space AABB blocks and
@@ -37,6 +38,7 @@ const ROW_ALIGN = 4;
 export class TerrainLayer {
   readonly container = new Container();
   private chunks: TerrainChunk[] = [];
+  private readonly vertexColors = new TerrainVertexColors();
   /** The grass default until a map is loaded. */
   private ground = DEFAULT_TILE_COLOUR;
   private brightnessTex: BufferImageSource | undefined;
@@ -94,6 +96,15 @@ export class TerrainLayer {
       textures !== undefined
         ? buildTextured(this.container, terrain, textures, elevation, brightness, lane)
         : buildFlat(this.container, terrain, elevation, brightness);
+    for (const chunk of this.chunks) {
+      for (const child of chunk.container.children) {
+        if (child instanceof Mesh) this.vertexColors.bind(child.geometry);
+      }
+    }
+  }
+
+  applyVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {
+    this.vertexColors.apply(updates, palette);
   }
 
   /** The flat tint of the map's most-common ground typeId (grass until a map is {@link set}) - the
@@ -126,6 +137,7 @@ export class TerrainLayer {
   }
 
   destroy(): void {
+    this.vertexColors.clear();
     for (const chunk of this.chunks) {
       destroyMeshChildren(chunk.container);
       chunk.container.destroy({ children: true });

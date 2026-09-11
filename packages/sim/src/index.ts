@@ -86,6 +86,12 @@ export {
   TerrainGraph,
   type TerrainMap,
 } from './nav/terrain/index.js';
+export type {
+  LandscapeMapInput,
+  LandscapeRemovalGroup,
+  ScriptLandscapePlacement,
+  ScriptLandscapeType,
+} from './nav/terrain/landscapes.js';
 export { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW, worldDistance } from './nav/world-metric.js';
 export { type DivergenceReport, localizeDivergence } from './replay/localize-divergence.js';
 export {
@@ -127,6 +133,7 @@ export {
   type SystemInstrument,
 } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
+export type { LandscapeEditView } from './systems/landscape/view.js';
 export type {
   InfoLineView,
   MissionDefinition,
@@ -138,7 +145,11 @@ export type {
   OpenTribute,
   ResolvedOp,
 } from './systems/missions/index.js';
-export { MISSION_HOUSE_NAME_FIELD, SUCCESSFUL_IF } from './systems/missions/index.js';
+export {
+  MISSION_HOUSE_NAME_FIELD,
+  MISSION_LANDSCAPE_NAME_FIELD,
+  SUCCESSFUL_IF,
+} from './systems/missions/index.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
 // independently without restating the sim's travel time.
 export { WALK_TICKS_PER_CELL } from './systems/movement/system.js';

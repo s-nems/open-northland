@@ -273,6 +273,9 @@ export type SimEvent =
       readonly mission: number;
       readonly opcode: string;
     }
+  | { readonly kind: 'missionLandscapeResourceRemoved'; readonly entity: Entity }
+  | { readonly kind: 'missionLandscapeChanged' }
+  | { readonly kind: 'missionVertexColor' }
   | {
       /** An `Exit` result fired: the script asks to leave the map. The simulation itself does nothing. */
       readonly kind: 'missionExit';

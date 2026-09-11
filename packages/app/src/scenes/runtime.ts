@@ -21,7 +21,10 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
     seed: scene.seed,
     content: resolveWorldContent(scene.terrain, options),
     // Scenes author cell grids; the sim navigates their half-cell lattice.
-    map: halfCellMapFromCells(scene.terrain),
+    map: {
+      ...halfCellMapFromCells(scene.terrain),
+      ...(scene.landVertices !== undefined ? { landVertices: scene.landVertices } : {}),
+    },
     ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
   scene.build(sim);
@@ -55,7 +58,10 @@ export function restoreSceneSim(
 ): RestoredSimulation {
   return restoreSimulation(save, {
     content: resolveWorldContent(scene.terrain, options),
-    map: halfCellMapFromCells(scene.terrain),
+    map: {
+      ...halfCellMapFromCells(scene.terrain),
+      ...(scene.landVertices !== undefined ? { landVertices: scene.landVertices } : {}),
+    },
     ...(scene.missions !== undefined ? { missions: scene.missions } : {}),
   });
 }

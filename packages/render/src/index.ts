@@ -160,6 +160,7 @@ export {
   syntheticAtlasFrames,
 } from './gpu/synthetic-atlas.js';
 export { flatTileColour, TerrainLayer } from './gpu/terrain/index.js';
+export type { TerrainVertexColor } from './gpu/terrain/vertex-colors.js';
 export type {
   GroundPattern,
   TerrainTextureSet,

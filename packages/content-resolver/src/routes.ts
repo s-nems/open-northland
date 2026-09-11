@@ -32,6 +32,7 @@ const CONTENT_TYPES = {
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.cur': 'image/x-icon',
+  '.pcx': 'application/octet-stream',
 } as const;
 
 type ServedExtension = keyof typeof CONTENT_TYPES;
@@ -56,6 +57,7 @@ const FILE_ROUTES: readonly FileRoute[] = [
   { prefix: '/maps/', root: MAPS_ROOT, extensions: ['.json', '.png'] },
   { prefix: '/bobs/', root: BOBS_ROOT, extensions: ['.png', '.atlas.json'] },
   { prefix: '/textures/', root: 'Data/engine2d/bin/textures', extensions: ['.png'] },
+  { prefix: '/terrain-palettes/', root: 'Data/engine2d/bin/palettes/misc', extensions: ['.pcx'] },
   { prefix: '/sounds/', root: 'Data/engine2d/bin/sounds', extensions: ['.wav'] },
   // Rendered music tracks + the track manifest.
   { prefix: '/music/', root: 'music', extensions: ['.ogg', '.json'] },

@@ -1,7 +1,7 @@
 import type { ContentSet, LandscapeType } from '@open-northland/data';
-
 import { TerrainGraph } from './graph.js';
 import { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js';
+import type { LandscapeMapInput } from './landscapes.js';
 
 /**
  * The graph input: a terrain map at half-cell resolution. `resolution` is a compile-time discriminant
@@ -10,6 +10,9 @@ import { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js
  */
 export interface TerrainMap {
   readonly resolution: 'half-cell';
+  readonly landscapes?: LandscapeMapInput;
+  /** Ground vertex land mask, row-major on the half-cell grid. */
+  readonly landVertices?: readonly boolean[];
   /** Half-cell grid width, twice the map's cell columns. */
   readonly width: number;
   /** Half-cell grid height, twice the map's cell rows. */
@@ -78,5 +81,5 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
   for (const id of typeIds) {
     if (!props.has(id)) throw new Error(`terrain map references landscape typeId ${id} absent from content`);
   }
-  return new TerrainGraph(map.width, map.height, typeIds, props);
+  return new TerrainGraph(map.width, map.height, typeIds, props, map.landscapes, map.landVertices);
 }

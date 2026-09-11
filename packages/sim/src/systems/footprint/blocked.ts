@@ -5,6 +5,7 @@ import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { landscapeView } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
@@ -72,17 +73,21 @@ export function walkBlockedBodyOf(
   return body.size === 0 ? null : body;
 }
 
-/** The two shared walk-block caches - building bodies then resource footprints - as a layer list a caller
+/** The shared walk-block caches (buildings, resources, landscapes) as a layer list a caller
  *  folds into its own {@link LayeredBlocks}. The sets are the live cached copies: membership reads only. */
 export function dynamicBlockLayers(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-): readonly [ReadonlySet<NodeId>, ReadonlySet<NodeId>] {
-  return [buildingBlockedCells(world, ctx, terrain), resourceBlockedCells(world, terrain)];
+): readonly ReadonlySet<NodeId>[] {
+  return [
+    buildingBlockedCells(world, ctx, terrain),
+    resourceBlockedCells(world, terrain),
+    landscapeView(world, terrain).walk,
+  ];
 }
 
-/** The building and resource walk-block overlay as a membership view over the cached layers, copying
+/** The dynamic walk-block overlay as a membership view over the cached layers, copying
  *  neither, so composing it is O(1) per call. */
 export function dynamicBlockOverlay(world: World, ctx: SystemContext, terrain: TerrainGraph): BlockOverlay {
   return new LayeredBlocks(dynamicBlockLayers(world, ctx, terrain));

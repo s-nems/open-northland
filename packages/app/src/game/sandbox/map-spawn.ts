@@ -49,7 +49,7 @@ export function authoredDepositUnits(units: number, level: number, states: numbe
  * Every mined record does (`maxValency === frames.length` across all 32), which
  * `test/content/ir-invariants.test.ts` pins over real content.
  */
-function withRecordDeposit(spec: ResourceNodeSpec, spawn: MapResourceSpawn): ResourceNodeSpec {
+export function withRecordDeposit(spec: ResourceNodeSpec, spawn: MapResourceSpawn): ResourceNodeSpec {
   const { deposit } = spec;
   if (deposit === undefined) return spec; // a felled tree or a pluck-whole node has no valency ladder
   const { maxValency, growth } = spawn;
@@ -86,7 +86,11 @@ export function spawnMapResources(
     const { goodId, gfxIndex, hx, hy, placement } = spawn;
     const g = GATHERER_BY_GOOD_ID.get(goodId);
     if (g === undefined) continue;
-    const spec = { ...withRecordDeposit(resourceSpecFor(g, hx, hy), spawn), gfxIndex };
+    const spec = {
+      ...withRecordDeposit(resourceSpecFor(g, hx, hy), spawn),
+      gfxIndex,
+      ...(sim.terrain?.landscapes !== undefined ? { landscapeId: placement } : {}),
+    };
     const e = systems.createResourceNode(sim.world, sim.content, spec);
     if (e !== null) {
       spawned++;
@@ -140,7 +144,12 @@ export function spawnMapBerryBushes(
   let spawned = 0;
   const placementByEntity = new Map<Entity, number>();
   for (const { gfxIndex, hx, hy, placement } of mapBerryBushSpawns(objects, ir)) {
-    const e = systems.createBerryBush(sim.world, { x: hx, y: hy, gfxIndex });
+    const e = systems.createBerryBush(sim.world, {
+      x: hx,
+      y: hy,
+      gfxIndex,
+      ...(sim.terrain?.landscapes !== undefined ? { landscapeId: placement } : {}),
+    });
     placementByEntity.set(e, placement);
     spawned++;
   }

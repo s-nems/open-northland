@@ -20,6 +20,7 @@ import {
 } from '../overlays/index.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { TerrainLayer } from '../terrain/index.js';
+import type { TerrainVertexColor } from '../terrain/vertex-colors.js';
 import type { TerrainTextureSet } from '../terrain-textures.js';
 import { TextureCache } from '../texture-cache.js';
 import {
@@ -112,6 +113,10 @@ export class WorldRenderer {
     this.terrain.set(terrain, textures, this.elevation);
   }
 
+  applyTerrainVertexColors(updates: readonly TerrainVertexColor[], palette?: readonly number[]): void {
+    this.terrain.applyVertexColors(updates, palette);
+  }
+
   brightnessField(): BrightnessField {
     return this.terrain.brightnessField();
   }
@@ -119,6 +124,10 @@ export class WorldRenderer {
   /** Call once per map. */
   setMapObjects(objects: readonly MapObjectSprite[]): void {
     this.mapObjects.set(objects);
+  }
+
+  addMapObjects(objects: readonly MapObjectSprite[]): void {
+    this.mapObjects.add(objects);
   }
 
   /** Feed this frame's sim events (accumulated across every fixed-timestep sub-step) to the marks that

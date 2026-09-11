@@ -23,6 +23,7 @@ const ROWS: AuthoredJoinRows = {
   animals: [{ tribeType: 10, hitpointsAdult: 15000 }],
   goods: [{ typeId: 4, id: 'wheat', name: 'wheat' }],
   vehicles: [{ typeId: 3, id: 'oxcart', name: 'ox cart' }],
+  landscapeGfx: [{ index: 72, editName: 'mist effect' }],
 };
 
 function mission(lines: Partial<MapMission>): MapMission {
@@ -47,6 +48,21 @@ describe('resolveMissionScript', () => {
       { successfullIf: 2, active: true, visible: true, goals: [], results: [] },
       { successfullIf: 0, active: false, visible: false, goals: [], results: [] },
     ]);
+  });
+
+  it('resolves a landscape EditName to its graphic index and reports missing names', () => {
+    const { script, unresolvedNames } = resolveMissionScript(
+      resultsOf(
+        ['SetLandscape', '10', '20', ' MIST EFFECT ', '3', '1'],
+        ['SetLandscape', '10', '20', 'missing effect', '1', '0'],
+      ),
+      ROWS,
+    );
+    expect(script.missions[0]?.results).toEqual([
+      { opcode: 'SetLandscape', point: { hx: 10, hy: 20 }, landscape: 72, level: 3, flag: true },
+      { opcode: 'SetLandscape', point: { hx: 10, hy: 20 }, landscape: -1, level: 1, flag: false },
+    ]);
+    expect(unresolvedNames).toEqual(['missing effect']);
   });
 
   it('resolves every name kind to its content typeId', () => {

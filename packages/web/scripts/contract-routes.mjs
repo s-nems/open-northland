@@ -10,6 +10,7 @@ export const CONTENT_ROUTES = [
   '/maps/probe.json',
   '/bobs/probe.png',
   '/textures/probe.png',
+  '/terrain-palettes/probe.pcx',
   '/sounds/probe.wav',
   '/music/probe.ogg',
   '/gui/probe.json',

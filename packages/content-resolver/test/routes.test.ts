@@ -31,6 +31,7 @@ describe('resolveContentRequest', () => {
     const atlas = await put('Data/engine2d/bin/bobs/ls_trees.tree01.atlas.json');
     const sheet = await put('Data/engine2d/bin/bobs/ls_trees.tree01.png');
     const texture = await put('Data/engine2d/bin/textures/text_000.png');
+    const palette = await put('Data/engine2d/bin/palettes/misc/vertexcolors.pcx');
     const sound = await put('Data/engine2d/bin/sounds/axe01.wav');
     const track = await put('music/theme_viking_neutral.ogg');
     const musicManifest = await put('music/manifest.json');
@@ -58,6 +59,14 @@ describe('resolveContentRequest', () => {
     expect(await resolveContentRequest(fs, '/textures/text_000.png', contentRoot)).toMatchObject({
       path: texture,
     });
+    expect(await resolveContentRequest(fs, '/terrain-palettes/vertexcolors.pcx', contentRoot)).toMatchObject({
+      path: palette,
+      contentType: 'application/octet-stream',
+    });
+    expect(await resolveContentRequest(fs, '/terrain-palettes/missing.pcx', contentRoot)).toBeUndefined();
+    expect(
+      await resolveContentRequest(fs, '/terrain-palettes/../vertexcolors.pcx', contentRoot),
+    ).toBeUndefined();
     expect(await resolveContentRequest(fs, '/sounds/axe01.wav', contentRoot)).toMatchObject({
       path: sound,
       contentType: 'audio/wav',

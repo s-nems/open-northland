@@ -9,7 +9,7 @@ import {
   type MissionResult,
 } from '@open-northland/data';
 import type { MissionHouseRef, MissionScript, ResolvedOp } from '@open-northland/sim';
-import { MISSION_HOUSE_NAME_FIELD } from '@open-northland/sim';
+import { MISSION_HOUSE_NAME_FIELD, MISSION_LANDSCAPE_NAME_FIELD } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import type { MapScriptWorld } from './build.js';
 import type { AuthoredJoinRows, ContentJoins } from './content-joins.js';
@@ -46,9 +46,14 @@ const NAME_JOINS: Record<MissionNameField, (joins: ContentJoins, name: string) =
 
 /** Every field a content name resolves in, for a caller counting how much of a script resolved. The
  *  house-instance kind (19) is not in {@link NAME_JOINS}: it joins by name and level at once. */
-export const MISSION_NAME_FIELDS: readonly (MissionNameField | typeof MISSION_HOUSE_NAME_FIELD)[] = [
+export const MISSION_NAME_FIELDS: readonly (
+  | MissionNameField
+  | typeof MISSION_HOUSE_NAME_FIELD
+  | typeof MISSION_LANDSCAPE_NAME_FIELD
+)[] = [
   ...(Object.keys(NAME_JOINS) as MissionNameField[]),
   MISSION_HOUSE_NAME_FIELD,
+  MISSION_LANDSCAPE_NAME_FIELD,
 ];
 
 /** What an unresolvable house name loads as - both halves miss, like {@link UNRESOLVED_NAME}. */
@@ -113,7 +118,11 @@ function resolveNames<T extends object>(op: T, joins: ContentJoins, dropped: Dro
     if (isNameRef(value)) out[field] = resolveRef(field, value, joins, dropped);
     else if (field === MISSION_HOUSE_NAME_FIELD && typeof value === 'string')
       out[field] = resolveHouseName(value, op, joins, dropped);
-    else out[field] = value;
+    else if (field === MISSION_LANDSCAPE_NAME_FIELD && typeof value === 'string') {
+      const typeId = joins.landscape(value);
+      if (typeId === undefined) dropped(value);
+      out[field] = typeId ?? UNRESOLVED_NAME;
+    } else out[field] = value;
   }
   return out as ResolvedOp<T>;
 }

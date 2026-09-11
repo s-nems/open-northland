@@ -10,6 +10,7 @@ import { addGoodsToAnyStock, addGoodsToArea, addGoodsToHouses, removeGoodsFromAr
 import { damageHousesInArea, healHumansInArea } from './health.js';
 import { placeScriptedHouse, setScriptedHouseLevel } from './houses.js';
 import { scriptInfoLine } from './info.js';
+import { editScriptedLandscape } from './landscape.js';
 import { moveUnitsInArea, sendScriptedHumans, stopPlayerHumans, teleportScriptedHumans } from './movement.js';
 import { stampHumansInRange, stampPlayerHumans } from './object-id.js';
 import {
@@ -52,6 +53,19 @@ import { scriptTribute } from './tributes.js';
  *  nothing here throws, because a corpus script must never halt a running world. */
 export function executeResult(pass: MissionPass, index: number, result: MissionResultOp): void {
   switch (result.opcode) {
+    case 'SetLandscape':
+    case 'RemoveLandscape':
+    case 'RemoveLandscapesInArea':
+    case 'RemoveFXWaveLandscapeInArea':
+    case 'RemoveFXSmokeLandscapeInArea':
+    case 'RemoveBlockerLandscapeInArea':
+    case 'RemoveFX1LandscapeInArea':
+    case 'RemoveFX2LandscapeInArea':
+    case 'SetHouseBuildForbiddenArea':
+    case 'SetVertexColor':
+    case 'SetVertexColorOnLand':
+      editScriptedLandscape(pass, index, result);
+      return;
     case 'None':
       return;
     case 'ActivateMission':

@@ -47,6 +47,7 @@ function pushTriangle(
 ): void {
   const base = batch.positions.length / 2;
   batch.positions.push(...positions(nodes, lift));
+  for (const [hx, hy] of nodes) batch.nodes.push(hx, hy);
   batch.uvs.push(...uvs);
   if (lane.brightnessTex !== undefined) {
     for (const [hx, hy] of nodes) {
@@ -84,6 +85,7 @@ export function buildTextured(
           for (const nodes of triangles) {
             batcher.drawFallbackTriangle(
               positions(nodes, lift),
+              nodes,
               // Unbound typeId → the flat class colour `buildFlat` uses, so a synthetic grid's nav
               // classes still read as grass/water/sand. A textured cell never reaches here.
               cellTex?.fallbackColour ?? flatTileColour(typeId),
@@ -182,6 +184,7 @@ function buildGround(
             const typeId = terrain.typeIds[cell] ?? -1;
             batcher.drawFallbackTriangle(
               positions(nodes, lift),
+              nodes,
               textures.cellFor(typeId)?.fallbackColour ?? DEFAULT_TILE_COLOUR,
               shaded ? brightness.brightnessAt(col, row) : 1,
             );

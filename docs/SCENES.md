@@ -53,3 +53,5 @@ entries.
 
 Scenes accept `assets=own` for the same own sprite and terrain loaders as map play. The
 `farm-construction` scene starts at ×2 and places a working construction crew beside a finished farm.
+The `terrain-edits` scene exercises saved terrain palette edits and a scripted build ban. Its western
+patch uses a brown vertex palette entry and its eastern patch a green entry from the owned content.

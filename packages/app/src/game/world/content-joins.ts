@@ -13,6 +13,7 @@ export interface AuthoredJoinRows {
   readonly jobs?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly tribes?: readonly { typeId?: number; id?: string; name?: string }[];
   readonly goods?: readonly { typeId?: number; name?: string; id?: string }[];
+  readonly landscapeGfx?: readonly { index: number; editName?: string }[];
   readonly vehicles?: readonly { typeId?: number; id?: string; name?: string }[];
   /** The `animaltypes` rows. A species places only when its tribe has a living record
    *  (`hitpointsAdult` > 0); without one the sim would drop the spawn and leave the count dishonest. */
@@ -60,6 +61,7 @@ export interface ContentJoins {
   /** An animal tribe, keyed by slug and by display name: `setanimal` authors either. */
   species(name: string): number | undefined;
   vehicleType(name: string): number | undefined;
+  landscape(name: string): number | undefined;
   /** A good by name, or by the bare `goodtype` id maps rarely author (`addgoods 49 1000`). */
   good(name: string): number | undefined;
 }
@@ -97,6 +99,12 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
   const speciesByKey = byNormalizedName(
     (rows.tribes ?? []).filter((t) => t.typeId !== undefined && animalTribes.has(t.typeId)),
   );
+  const landscapeByName = new Map<string, number>();
+  for (const row of rows.landscapeGfx ?? []) {
+    if (row.editName === undefined) continue;
+    const key = catalogKey(row.editName);
+    if (!landscapeByName.has(key)) landscapeByName.set(key, row.index);
+  }
   const goodByName = new Map<string, number>();
   const goodTypeIds = new Set<number>();
   for (const g of rows.goods ?? []) {
@@ -115,6 +123,7 @@ export function contentJoins(rows: AuthoredJoinRows): ContentJoins {
     tribe: (name) => tribeByName.get(catalogKey(name)),
     species: (name) => speciesByKey.get(normalizeRoleKey(name)),
     vehicleType: (name) => vehicleByName.get(normalizeRoleKey(name)),
+    landscape: (name) => landscapeByName.get(catalogKey(name)),
     good: (name) => {
       const byName = goodByName.get(catalogKey(name));
       if (byName !== undefined) return byName;

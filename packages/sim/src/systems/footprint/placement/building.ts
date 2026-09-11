@@ -1,7 +1,9 @@
 import { type BuildingFootprint, type ContentSet, footprintCellDx } from '@open-northland/data';
+import { landscapeEditState } from '../../../components/landscape.js';
 import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { landscapeView } from '../../landscape/view.js';
 import { buildingFootprintOf } from '../geometry.js';
 import { BUILDING_ZONE, EXCLUSION, eachBlockerCell, OBSTACLE, placementBlockerVersion } from './blockers.js';
 
@@ -62,6 +64,10 @@ function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
 function stampBlockerGrid(world: World, content: ContentSet, grid: PlacementGrid): void {
   const w = grid.terrain.width;
   const h = grid.terrain.height;
+  const landscape = landscapeView(world, grid.terrain);
+  for (const node of landscape.walk) grid.obstacle[node] = 1;
+  for (const node of landscape.build) grid.exclusion[node] = 1;
+  for (const node of landscapeEditState(world).forbidden.keys()) grid.obstacle[node] = 1;
   eachBlockerCell(world, content, (x, y, channel) => {
     if (channel !== OBSTACLE && channel !== EXCLUSION && channel !== BUILDING_ZONE) return;
     if (x < 0 || y < 0 || x >= w || y >= h) return; // off-map cells are never queried (see PlacementGrid)
@@ -148,7 +154,7 @@ export function canPlaceBuilding(
   y: number,
 ): boolean {
   const footprint = buildingFootprintOf(ctx.content, buildingType);
-  if (footprint === undefined) return true;
+  if (footprint === undefined) return !landscapeEditState(world).forbidden.has(y * terrain.width + x);
   return canPlaceAnchor(memoizedPlacementGrid(world, ctx.content, terrain), footprint, x, y);
 }
 
@@ -172,7 +178,8 @@ export function placementProbe(
   buildingType: number,
 ): PlacementProbe {
   const footprint = buildingFootprintOf(content, buildingType);
-  if (footprint === undefined) return { canPlace: () => true };
+  if (footprint === undefined)
+    return { canPlace: (x, y) => !landscapeEditState(world).forbidden.has(y * terrain.width + x) };
   const grid = memoizedPlacementGrid(world, content, terrain);
   return { canPlace: (x, y) => canPlaceAnchor(grid, footprint, x, y) };
 }

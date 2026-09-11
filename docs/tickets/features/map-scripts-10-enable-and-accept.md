@@ -13,6 +13,10 @@ end, and records what the original confirms.
 - Before enabling scripts, evaluate the chosen map's unsupported opcodes and partial executors:
   `Allow*` and `SetExternalFlag` currently store flags with no gameplay consumer, and the building
   unlock gate is disabled. Static opcode coverage cannot establish that a campaign is completable.
+- Check the documented terrain approximations against the original: FX removal memberships differ
+  between the shipped reference and the macOS reading; vertex colors use the owned palette with an
+  approximated RGB multiplier. `SetLandscape` can show and block with a chest but does not implement
+  its interaction or payload, and its final flag has no confirmed behavior here.
 - Flip the `MissionRules` default to on after acceptance; keep the flag and the `?missions=` override
   for tests.
 - Decide the fog default for a scripted map. With fog off, `PlayerSeen` and the explored-point goals

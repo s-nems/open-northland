@@ -221,7 +221,7 @@ kinds in order.
 | 44 | `CheckNumberOfWildAnimals` | 3, 7 | at least `amount` wild animals of the species | 0 |
 | 45 | `RandomTimeGone` | 35 | a random `[n/2, n)` seconds have passed since activation | 28 |
 | 46 | `IfMissionIsActive` | 21 | mission `n` is active | 210 |
-| 47 | `NumberOfAnimals` | 1, 3, 7 | the player owns at least `amount` animals of the species | 8 |
+| 47 | `NumberOfAnimals` | 1, 3, 7 | the player owns at least `amount` animals of the species; implemented against living animal groups | 8 |
 | 48 | `NumberOfHumansKilled` | 1, 7 | the player has killed at least `amount` humans (soldiers plus civilians) | 20 |
 | 49 | `HumanIsOnContinent` | 10, 16, 17 | any human with the id stands on the continent of the point | 0 |
 | 50 | `IsMissionDone` | 21 | mission `n`'s stored goal flags satisfy its rule | 325 |
@@ -235,7 +235,7 @@ kinds in order.
 | 58 | `NumberOfAnimalsInArea` | 1, 3, 7, 16, 17, 9 | the player has at least `amount` animals of the species within `range` | 11 |
 | 59 | `CheckHumanJob` | 10, 4 | any human with the id has the job | 10 |
 | 60 | `NumberOfGoodsInVehiclesInArea` | 1, 5, 6, 7, 16, 17, 9 | goods in the player's vehicles of the type within `range` reach `amount` | 0 |
-| 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point carries a landscape object | 0 |
+| 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point carries a live landscape placement; implemented when the map provides the mutable landscape catalog | 0 |
 | 62 | `IsLandscapePlayer10ConstructionSignOnPoint` | 16, 17 | the point carries the `player10 construction sign` landscape | 0 |
 
 Range tests use the original's hexagonal map-point distance. "Explored" is the per-player seen bit
@@ -254,11 +254,11 @@ of each.
 | 1 | `SetHuman` | 1, 3, 4, 16, 17, 10, 29 | spawn one human at the point with the id and behaviour flags | sim | 2067 |
 | 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle; with the captain flag also spawn its commander at the door and board it | sim | 154 |
 | 3 | `SetHouse` | 1, 19, 8, 20, 16, 17, 14 | place a house of the named type at the nearest buildable spot within 12 points, finished or as a construction site, with the id; warns when no spot exists | sim | 30 |
-| 4 | `SetLandscape` | 16, 17, 18, 8, 32 | place the named landscape object at the point | sim | 760 |
+| 4 | `SetLandscape` | 16, 17, 18, 8, 32 | replace the landscape at the point using the named graphic; size and final-flag limitations below | both | 760 |
 | 5 | `RemoveHumans` | 10 | remove every human with the id, silently (no death statistics, no cadaver) | sim | 96 |
 | 6 | `RemoveVehicles` | 12 | remove every vehicle with the id | sim | 16 |
 | 7 | `RemoveHouses` | 14 | remove every house with the id | sim | 3 |
-| 8 | `RemoveLandscape` | 16, 17 | clear the landscape object on the point | sim | 446 |
+| 8 | `RemoveLandscape` | 16, 17 | remove the live landscape at the point and its sprite | both | 446 |
 | 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt` in the mission window and add it to the shown-page history; with the replay flag the page is also stored as the map's current briefing, which the window opens on from the tool button; raises the pass's stop flag; plays the briefing pop-up sound (reading). Here: the `missionCutscene` event, the `MissionBriefing` page, and the pass ends after this mission; the pop-up sound is not in the decoded bank | both | 1450 |
 | 10 | `ActivateMission` | 21 | set the active flag (records the activation tick on the transition) | sim | 4665 |
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
@@ -296,7 +296,7 @@ of each.
 | 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe | sim | 101 |
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second | sim | 134 |
 | 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions; the stance setter only silences its message for a flagged pair, so the lock binds in the diplomacy window (not examined) | sim | 189 |
-| 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove `fx wave` landscapes within `range` | sim | 0 |
+| 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the explicit wave-group graphics within `range` | both | 0 |
 | 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 |
 | 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
 | 49 | `SetPlayerBehaviourFlag` | 1, 7, 32 | OR or clear the mask on every current human of the player | sim | 240 |
@@ -318,8 +318,8 @@ of each.
 | 65 | `RemoveGoodsFromMapArea` | 6, 7, 16, 17, 9, 32, 1 | pick goods up the same way; with the flag, out of the player's houses' own stock first | sim | 31 |
 | 66 | `ChangeMissionIdOfHumanInRange` | 1, 10, 16, 17, 9 | give the player's humans within `range` the id | sim | 39 |
 | 67 | `ChangeMissionIdOfPlayer` | 1, 10 | give every human of the player the id | sim | 1 |
-| 68 | `SetVertexColor` | 16, 17, 9, 7 | tint the terrain within `range` | app | 413 |
-| 69 | `RemoveLandscapesInArea` | 16, 17, 9 | clear landscape objects within `range` | sim | 11 |
+| 68 | `SetVertexColor` | 16, 17, 9, 7 | save a palette index on terrain nodes within `range` and update the display | both | 413 |
+| 69 | `RemoveLandscapesInArea` | 16, 17, 9 | remove live landscape placements and their sprites within `range` | both | 11 |
 | 70 | `MoveUnitsInArea` | 1, 16, 17, 9, 36, 37 | teleport up to 20 free humans and the vehicles of the player from within `range` of the first point to near the second, when the second lies farther than `range` | sim | 346 |
 | 71 | `SetHouseExtensionLevel` | 14, 7 | rebuild up to 10 houses with the id at the new level in place | sim | 1 |
 | 72 | `InfoClear` | 1, 36 | clear the player's info line `index` (0 to 4); player 20 or -1 clears every player's | sim | 202 |
@@ -329,12 +329,12 @@ of each.
 | 76 | `InfoCountHumenInArea` | 1, 36, 27, 16, 17, 9, 37 | live count of the player's humans within `range`, civilians and soldiers | sim | 0 |
 | 77 | `InfoCountSoldiersInArea` | 1, 36, 27, 16, 17, 9, 37 | live count of the player's soldiers within `range` | sim | 0 |
 | 78 | `InfoCountAnimalsInArea` | 1, 36, 27, 3, 16, 17, 9, 37 | live count of the player's animals of the species within `range` | sim | 8 |
-| 79 | `RemoveFXSmokeLandscapeInArea` | 16, 17, 9 | remove fire, smoke, fog, and wave effect landscapes within `range` | sim | 1 |
+| 79 | `RemoveFXSmokeLandscapeInArea` | 16, 17, 9 | remove the explicit smoke-group graphics within `range` (membership below) | both | 1 |
 | 80 | `ChangeAnimalPlayerIdInArea` | 1, 3, 16, 17, 9, 7, 2 | hand up to `amount` (0: all, cap 50) animals of the species within `range` to the second player | sim | 6 |
 | 81 | `RemoveHPsOfHousesInArea` | 1, 16, 17, 9, 7 | take `hp` from up to 100 houses of the player within `range` unless the house is indestructible; floor at zero | sim | 99 |
-| 82 | `RemoveBlockerLandscapeInArea` | 16, 17, 9 | remove `block` landscapes within `range` | sim | 1 |
-| 83 | `RemoveFX1LandscapeInArea` | 16, 17, 9 | remove fog and waterfall effects within `range` | sim | 1 |
-| 84 | `RemoveFX2LandscapeInArea` | 16, 17, 9 | remove fire and smoke effects within `range` | sim | 1 |
+| 82 | `RemoveBlockerLandscapeInArea` | 16, 17, 9 | remove `block` landscapes and their collision within `range` | both | 1 |
+| 83 | `RemoveFX1LandscapeInArea` | 16, 17, 9 | remove small fire, smoke, fog, and waterfall graphics within `range` (membership below) | both | 1 |
+| 84 | `RemoveFX2LandscapeInArea` | 16, 17, 9 | remove the explicit fire/smoke graphics within `range` (membership below) | both | 1 |
 | 85 | `SetCameraPosition` | 16, 17 | end any follow mode and set the display's wanted position to the point (reading). Here: the `missionCamera` event and a jump | app | 197 |
 | 86 | `SetHumanX` | 1, 3, 4, 16, 17, 10, 29, 7 | `SetHuman` repeated `count` times | sim | 1371 |
 | 87 | `RemoveHPsOfHousesInAreaX` | 1, 16, 17, 9, 7, 14 | as 81, skipping houses with the id | sim | 0 |
@@ -347,7 +347,7 @@ of each.
 | 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 |
 | 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove vehicles with the id, and their crews when the flag is set | sim | 0 |
 | 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place a kind-2 marker entity on the point, or with the flag clear free every kind-2 marker there (reading). Here: the `missionImportMarker` event and the marker overlay, which borrows the GUI marker's first bob for want of the entity's own art (approximation) | app | 0 |
-| 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | tint land within `range` | app | 17 |
+| 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | save a palette index on confirmed land nodes within `range` and update the display | both | 17 |
 | 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 |
 | 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 |
 | 100 | `SetRandomChestOnPosition` | 7, 16, 17 | drop a random chest of the category at the point | sim | 41 |
@@ -532,6 +532,51 @@ for the session, so a save loaded later shows none of them until the script sets
 after the string in the map's table, through the same call the `SetHumanName` result makes; a row
 naming an id no human carries does nothing (reading). Here the row becomes the settler's
 `ScriptedName` at spawn and the app resolves the string in the player's language.
+
+## Mutable landscape and terrain
+
+Scripted maps load a ground-only collision grid and a separate numeric landscape catalog. The app
+joins `SetLandscape` text against `GfxLandscape.EditName` once, passing its positional `index` to the
+sim. All 109 distinct authored names resolve in the baseline corpus. The source is the owned
+`Data/engine2d/inis/landscapes/landscapes.cif`, decoded by
+`tools/asset-pipeline/src/decoders/ini/types/landscape.ts`; generated `landscapeGfx` carries the names,
+footprints and indices. `Data/logic/landscapetypes.ini` provides logic classification. Effects and
+`block` all have logic type 1 (`void`), so that classification cannot distinguish removal groups.
+
+The shipped `Tools/result list EN.pdf` supplies these memberships, interpreted against actual
+`EditName` spellings. Its `fx fire2`, `fx fire house0` and `fx fx waterfall` spellings are normalized
+to the corresponding source names below. This interpretation remains unconfirmed in the running game.
+The macOS result-handler reading disagrees: FX1 excludes small fire/smoke, while Smoke additionally
+includes small fire and land waves. The implementation follows the readable reference pending an
+owned-game observation that resolves this conflict.
+
+| Removal group | Exact graphic names |
+| --- | --- |
+| Blocker | `block` |
+| Wave | `fx wave`, `fx wave land` |
+| FX1 | `fx fire small`, `fx smoke`, `fx fog`, `fx fog waterfall`, `fx fog waterfall00`, `fx waterfall` |
+| FX2 | `fx fire`, `fx fire 2`, `fx fire house 0`, `fx fire house 1`, `fx fire house 2`, `fx fire small`, `fx smoke` |
+| Smoke | `fx smoke`, `fx fire`, `fx fire 2`, `fx fire incense`, `fx fog`, `fx fog waterfall`, `fx fog waterfall00`, `fx waterfall` |
+
+Placement removals/additions, construction exclusions and vertex palette indices persist in the
+simulation save. Live resources own the lifetime of their associated landscape placement, so depletion
+cannot restore a removed tree or mineral deposit. Changing a landscape updates collision and its
+sprite; ordinary maps keep the existing collision path.
+
+The result reference calls `SetLandscape`'s fourth value **Size** and gives only `1` for the final
+flag. The implementation preserves size as the placement level and replaces the object at its anchor;
+the final flag has no modeled effect. These are approximations. Chest sizes reach 96 although their
+graphics have one frame state: the value cannot generally mean a frame number. Chests can be placed
+and removed visually, but opening them, distributing rewards and interpreting that payload remain
+unimplemented.
+
+The vertex color argument is a palette index, corroborated by the result reference and the owned
+`Data/engine2d/bin/palettes/misc/vertexcolors.pcx`. The display reads its RGB entries and applies RGB/128
+as an approximated multiplier, pending comparison with the original. Values outside 0 to 255 are
+clamped, an approximation for malformed input. Land-only edits conservatively require both
+source cell triangles to have known `isWater=false`, then mark their four half-cell nodes. Shoreline
+membership and this cell-to-node projection remain approximations; missing ground metadata does not
+invent a land mask.
 
 ## Sub-missions
 

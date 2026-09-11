@@ -16,6 +16,7 @@ export function placeResource(
   command: Extract<Command, { kind: 'placeResource' }>,
 ): void {
   createResourceNode(world, ctx.content, {
+    ...(command.landscapeId !== undefined ? { landscapeId: command.landscapeId } : {}),
     good: command.good,
     x: command.x,
     y: command.y,

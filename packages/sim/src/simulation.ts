@@ -1,4 +1,4 @@
-import { type ContentSet, type EquipCategory, terrainGridFingerprint } from '@open-northland/data';
+import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
   ASSISTANT_COUNTER_KINDS,
   AssistantCounters,
@@ -19,12 +19,14 @@ import {
   playerPaperSlots,
   professionProgressionEnabled,
 } from './components/index.js';
+import { landscapeRevision } from './components/landscape.js';
 import { CommandQueue } from './core/command-queue.js';
 import { type Command, type CommandEnvelope, setupCommand } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
 import { Rng } from './core/rng.js';
 import { type Entity, World } from './ecs/world.js';
 import { checkInvariants as _checkInvariants, type Invariant as _Invariant } from './harness/invariants.js';
+import { mapFingerprint } from './inspect/map-fingerprint.js';
 import { takeSnapshot, type WorldSnapshot } from './inspect/snapshot.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
 import { hashSimState } from './simulation/hash.js';
@@ -38,6 +40,7 @@ import {
   placementBlockerVersion,
   workFlagBlockerVersion,
 } from './systems/footprint/index.js';
+import { type LandscapeEditView, landscapeEdits } from './systems/landscape/view.js';
 import {
   type InfoLineView,
   infoLines,
@@ -128,8 +131,16 @@ export class Simulation {
    */
   get mapFingerprint(): string | undefined {
     if (this.map === undefined) return undefined;
-    this.mapFingerprintMemo ??= terrainGridFingerprint(this.map);
+    this.mapFingerprintMemo ??= mapFingerprint(this.map);
     return this.mapFingerprintMemo;
+  }
+
+  get landscapeRevision(): number {
+    return landscapeRevision(this.world);
+  }
+
+  landscapeEdits(): LandscapeEditView {
+    return landscapeEdits(this.world, this.terrain);
   }
 
   get tick(): number {

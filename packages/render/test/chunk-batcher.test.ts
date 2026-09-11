@@ -1,6 +1,9 @@
-import { Graphics, Mesh, Texture } from 'pixi.js';
+import { Mesh, Texture } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { ChunkBatcher } from '../src/gpu/terrain/chunk-batcher.js';
+import { useHeadlessShaderContext } from './support/shader-context.js';
+
+useHeadlessShaderContext();
 
 /**
  * Overlays alpha-blend over whatever drew before them, so `children()` must return fallback, base,
@@ -31,12 +34,21 @@ describe('ChunkBatcher paint order', () => {
     // The worst push order: top layer first, base last, fallback in the middle.
     pushTagged(batcher, 'tran_meadow.masked', 'overlay1', 300);
     pushTagged(batcher, 'tran_sand.masked', 'overlay2', 200);
-    batcher.drawFallbackTriangle([0, 0, 1, 0, 0, 1], 0x123456);
+    batcher.drawFallbackTriangle(
+      [0, 0, 1, 0, 0, 1],
+      [
+        [0, 0],
+        [1, 0],
+        [0, 1],
+      ],
+      0x123456,
+    );
     pushTagged(batcher, 'text_003', 'base', 100);
     pushTagged(batcher, 'text_005', 'base', 101);
 
     const children = batcher.children();
-    expect(children[0]).toBeInstanceOf(Graphics); // the fallback always draws first (underneath)
+    expect(children[0]).toBeInstanceOf(Mesh);
+    expect(children[0]?.tint).toBe(0x123456);
     expect(children.slice(1).map(tagOf)).toEqual([100, 101, 200, 300]);
   });
 

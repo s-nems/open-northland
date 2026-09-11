@@ -97,6 +97,7 @@ export interface PlaceBoatCommand {
  * none is skipped.
  */
 export interface PlaceResourceCommand {
+  readonly landscapeId?: number;
   readonly kind: 'placeResource';
   readonly good: number;
   readonly x: number;

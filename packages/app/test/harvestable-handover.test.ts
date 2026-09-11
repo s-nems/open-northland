@@ -113,6 +113,15 @@ describe('harvestable static-draw handover', () => {
     expect([...spy.refs()]).toEqual([10]);
   });
 
+  it('retires a script-removed resource without keeping a fog ghost', () => {
+    const spy = surfaceSpy();
+    const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);
+    onEvents?.([{ kind: 'missionLandscapeResourceRemoved', entity: entity(10) }]);
+    expect(spy.removed).toEqual(['tree']);
+    expect(spy.ghosts).toEqual([]);
+    expect([...spy.refs()]).toEqual([11]);
+  });
+
   it('ignores events for entities it never drew statically', () => {
     const spy = surfaceSpy();
     const onEvents = bindHarvestableHandover(spy.surface, BOUND, SPRITES);

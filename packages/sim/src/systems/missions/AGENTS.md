@@ -71,6 +71,13 @@ probe counts through the same helpers the area goals use, so the display and a g
 about a count. A cutscene halts the pass after its mission, which is the one result that changes
 the order the others run in.
 
+Landscape placements and type footprints are immutable numeric map input. Scripted replacements,
+removals, build bans and vertex palette indices are lazy `LandscapeEdits` state, saved and hashed.
+The ground graph excludes those placements; their collision is a derived overlay shared by routing
+and placement. Resource-backed objects use the existing resource lifecycle. The app reads detached
+edits after change events and on restore, then updates retained landscape sprites and terrain buffers.
+Color changes do not invalidate collision caches.
+
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes

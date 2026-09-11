@@ -18,6 +18,8 @@ interface Retirement {
 /** What an event retires from the static layer, or null when it leaves the drawn set alone. */
 function retirement(event: SimEvent): Retirement | null {
   switch (event.kind) {
+    case 'missionLandscapeResourceRemoved':
+      return { entity: event.entity, keepsFogGhost: false };
     case 'resourceFelled':
     case 'resourceMined':
     case 'resourceDepleted':

@@ -1,8 +1,10 @@
-import { Graphics, Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
+import { Mesh, MeshGeometry, type Shader, Texture, type TextureSource } from 'pixi.js';
 import { scaleColour } from '../../data/terrain/index.js';
-import { makeShadedTerrainShader, type WaveUniforms } from '../shading.js';
+import { makeShadedTerrainShader, makeTintedTerrainShader, type WaveUniforms } from '../shading.js';
 
-export type TerrainChild = Mesh<MeshGeometry, Shader> | Graphics;
+export type TerrainChild = Mesh<MeshGeometry, Shader>;
+
+import { registerTerrainNodes } from './vertex-colors.js';
 
 /**
  * A terrain draw layer, in paint order: `base` is the opaque ground triangle, `overlay2` the
@@ -16,6 +18,7 @@ const LAYER_ORDER: Readonly<Record<TerrainLayerKind, number>> = { base: 0, overl
 /** The batched geometry accumulated for one draw call (a colour, or a texture page × layer) within a chunk. */
 export interface TerrainBatch {
   readonly positions: number[];
+  readonly nodes: number[];
   readonly uvs: number[];
   readonly indices: number[];
   /** Per-vertex UVs into the map's brightness-lane texture, 2 per position pair, pushed in lockstep with
@@ -29,7 +32,7 @@ export interface TerrainBatch {
 }
 
 export function emptyBatch(): TerrainBatch {
-  return { positions: [], uvs: [], indices: [], brightnessUVs: [], waves: [] };
+  return { nodes: [], positions: [], uvs: [], indices: [], brightnessUVs: [], waves: [] };
 }
 
 /**
@@ -42,6 +45,10 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
     uvs: new Float32Array(batch.uvs),
     indices: new Uint32Array(batch.indices),
   });
+  geometry.addAttribute('aVertexColor', {
+    buffer: new Float32Array((batch.positions.length / 2) * 3).fill(1),
+  });
+  registerTerrainNodes(geometry, batch.nodes);
   if (batch.brightnessUVs.length > 0) {
     geometry.addAttribute('aBrightnessUV', { buffer: new Float32Array(batch.brightnessUVs) });
     geometry.addAttribute('aWave', { buffer: new Float32Array(batch.waves) });
@@ -55,9 +62,10 @@ export function meshGeometry(batch: TerrainBatch): MeshGeometry {
  * {@link Graphics}. Single-use per chunk build - accumulate first, then call {@link children} once.
  */
 export class ChunkBatcher {
-  private readonly byLayerPage = new Map<string, TerrainBatch & { source: TextureSource; order: number }>();
-  private readonly fallback = new Graphics();
-  private fallbackUsed = false;
+  private readonly byLayerPage = new Map<
+    string,
+    TerrainBatch & { source: TextureSource; order: number; tint?: number }
+  >();
 
   constructor(
     private readonly brightnessTex?: TextureSource,
@@ -77,21 +85,32 @@ export class ChunkBatcher {
   /** Trace one flat-colour ground triangle for an unbound cell. `positions` is the already-lifted
    *  `[x0,y0, x1,y1, x2,y2]` vertex buffer; `brightness` is the owning cell's centre multiplier,
    *  applied CPU-side to the whole triangle because a solid fill cannot gradient. */
-  drawFallbackTriangle(positions: readonly number[], colour: number, brightness = 1): void {
-    this.fallback
-      .moveTo(positions[0] ?? 0, positions[1] ?? 0)
-      .lineTo(positions[2] ?? 0, positions[3] ?? 0)
-      .lineTo(positions[4] ?? 0, positions[5] ?? 0)
-      .closePath()
-      .fill({ color: scaleColour(colour, brightness) });
-    this.fallbackUsed = true;
+  drawFallbackTriangle(
+    positions: readonly number[],
+    nodes: readonly (readonly [number, number])[],
+    colour: number,
+    brightness = 1,
+  ): void {
+    const tint = scaleColour(colour, brightness);
+    const key = `fallback:${tint}`;
+    let batch = this.byLayerPage.get(key);
+    if (batch === undefined) {
+      batch = { ...emptyBatch(), source: Texture.WHITE.source, order: -1, tint };
+      this.byLayerPage.set(key, batch);
+    }
+    const base = batch.positions.length / 2;
+    batch.positions.push(...positions);
+    for (const [hx, hy] of nodes) {
+      batch.nodes.push(hx, hy);
+      batch.uvs.push(0, 0);
+    }
+    batch.indices.push(base, base + 1, base + 2);
   }
 
   /** The chunk's display children in paint order: the fallback when used, then one mesh per
    *  accumulated batch, base pages before the overlay layers. */
   children(): TerrainChild[] {
     const out: TerrainChild[] = [];
-    if (this.fallbackUsed) out.push(this.fallback);
     const batches = [...this.byLayerPage.values()].sort((a, b) => a.order - b.order);
     for (const batch of batches) {
       const geometry = meshGeometry(batch);
@@ -100,7 +119,9 @@ export class ChunkBatcher {
         const shader = makeShadedTerrainShader(batch.source, this.brightnessTex, this.wave);
         out.push(new Mesh({ geometry, texture, shader }));
       } else {
-        out.push(new Mesh({ geometry, texture }));
+        const mesh = new Mesh({ geometry, texture, shader: makeTintedTerrainShader(batch.source) });
+        mesh.tint = batch.tint ?? 0xffffff;
+        out.push(mesh);
       }
     }
     return out;

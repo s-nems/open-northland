@@ -1,4 +1,4 @@
-import { BerryBush, Position } from '../../components/index.js';
+import { BerryBush, LandscapeResource, Position } from '../../components/index.js';
 import { eventAt } from '../../core/events.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
@@ -35,6 +35,7 @@ export const BERRY_FORAGE_RADIUS = 64;
 
 /** The resolved shape of a berry bush to place: its half-cell node and an optional render variant. */
 export interface BerryBushSpec {
+  readonly landscapeId?: number;
   /** Half-cell lattice coords. */
   readonly x: number;
   readonly y: number;
@@ -49,6 +50,7 @@ export interface BerryBushSpec {
  */
 export function createBerryBush(world: World, spec: BerryBushSpec): Entity {
   const e = world.create();
+  if (spec.landscapeId !== undefined) world.add(e, LandscapeResource, { id: spec.landscapeId });
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, BerryBush, {
     stage: 'ripe',

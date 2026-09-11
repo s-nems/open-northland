@@ -68,6 +68,7 @@ import type { RafLoop } from './raf-loop.js';
 import { createViewReadModels } from './read-models.js';
 import { createSaveLoadSession, type SaveLoadSessionOptions } from './save-load/index.js';
 import { createScriptPresentation } from './script-presentation.js';
+import { mountScriptTerrainColors } from './script-terrain-colors.js';
 
 /** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
 export interface GameViewDeps {
@@ -365,9 +366,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
   }
   // Assembled below, once the controls and the camera it steers exist.
+  const terrainColors = await mountScriptTerrainColors(sim, renderer);
   let presentation: ReturnType<typeof createScriptPresentation> | null = null;
   const onEvents = (events: readonly SimEvent[]): void => {
     deps.onEvents?.(events);
+    terrainColors(events);
     if (deps.observer !== true) verdict?.onEvents(events);
     presentation?.onEvents(events);
   };

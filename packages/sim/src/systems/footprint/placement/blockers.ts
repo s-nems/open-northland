@@ -1,5 +1,6 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, DeliveryFlag, Position, ResourceFootprint, Signpost } from '../../../components/index.js';
+import { landscapePlacementRevision } from '../../../components/landscape.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
@@ -114,10 +115,11 @@ export function eachBlockerCell(
 
 /**
  * A per-world version of the placement-blocker inputs: the `Building`, `ResourceFootprint` and `Signpost`
- * membership generations, plus the `Building` VALUE generation, since the home tier upgrade swaps
- * `buildingType` in place invisibly to membership. That swap cannot change the cells today (`familyBody`
- * and `reserved` are level-chain unions), so the value term only guards a future per-level footprint. It
- * moves when those cells can change rather than every tick.
+ * membership generations, the scripted landscape placement revision, plus the `Building` VALUE
+ * generation, since the home tier upgrade swaps `buildingType` in place invisibly to membership. That
+ * swap cannot change the cells today (`familyBody` and `reserved` are level-chain unions), so the value
+ * term only guards a future per-level footprint. It moves when those cells can change rather than every
+ * tick.
  *
  * Exactness rests on buildings and footprinted objects never MOVING once placed, so a stored entity's
  * cells are fixed. Completeness is load-bearing: a memo keyed on this gates a placement, so a missed input
@@ -125,5 +127,5 @@ export function eachBlockerCell(
  * never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;
+  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}.${landscapePlacementRevision(world)}`;
 }

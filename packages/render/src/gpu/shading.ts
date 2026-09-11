@@ -37,10 +37,12 @@ const FIELD_VERTEX = `#version 300 es
   in vec2 aPosition;
   in vec2 aUV;
   in vec2 aBrightnessUV;
+  in vec3 aVertexColor;
   in float aWave;
 
   out vec2 vUV;
   out vec2 vBrightnessUV;
+  out vec3 vVertexColor;
   out float vWave;
   out float vWavePhase;
   uniform vec2 uWave; // x = animation time (sim ticks), y = master amplitude scale (0 = still)
@@ -55,6 +57,7 @@ const FIELD_VERTEX = `#version 300 es
     gl_Position = vec4((mvp * vec3(pos, 1.0)).xy, 0.0, 1.0);
     vUV = aUV;
     vBrightnessUV = aBrightnessUV;
+    vVertexColor = aVertexColor;
     vWave = aWave;
     vWavePhase = phase;
   }
@@ -66,6 +69,7 @@ const FIELD_FRAGMENT = `#version 300 es
   precision highp float;
   in vec2 vUV;
   in vec2 vBrightnessUV;
+  in vec3 vVertexColor;
   in float vWave;
   in float vWavePhase;
 
@@ -83,7 +87,7 @@ const FIELD_FRAGMENT = `#version 300 es
     lane *= 1.0 + vWave * uWave.y * ${WAVE_SHIMMER.toFixed(4)}
       * sin(uWave.x * ${WAVE_SHIMMER_RADIANS_PER_TICK.toFixed(8)} + vWavePhase * 1.7);
     // Unclamped multiply: > 1 brightens (the lane's 128..255 half); the FB write clamps per channel.
-    finalColor = vec4(texel.rgb * lane, texel.a) * uColor;
+    finalColor = vec4(texel.rgb * lane * vVertexColor, texel.a) * uColor;
   }
 `;
 
@@ -166,6 +170,42 @@ export function makeShadedDecorShader(source: TextureSource): Shader {
   vertexProgram ??= new GlProgram({ vertex: VERTEX_VERTEX, fragment: VERTEX_FRAGMENT });
   return new Shader({
     glProgram: vertexProgram,
+    resources: { uTexture: source, uSampler: source.style },
+  });
+}
+
+const COLOR_VERTEX = `#version 300 es
+  in vec2 aPosition;
+  in vec2 aUV;
+  in vec3 aVertexColor;
+  out vec2 vUV;
+  out vec3 vVertexColor;
+  ${matrixBlock}
+  void main(void) {
+    mat3 mvp = uProjectionMatrix * uWorldTransformMatrix * uTransformMatrix;
+    gl_Position = vec4((mvp * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
+    vUV = aUV;
+    vVertexColor = aVertexColor;
+  }
+`;
+const COLOR_FRAGMENT = `#version 300 es
+  precision highp float;
+  in vec2 vUV;
+  in vec3 vVertexColor;
+  uniform sampler2D uTexture;
+  uniform vec4 uColor;
+  out vec4 finalColor;
+  void main(void) {
+    vec4 texel = texture(uTexture, vUV);
+    finalColor = vec4(texel.rgb * vVertexColor, texel.a) * uColor;
+  }
+`;
+let colorProgram: GlProgram | undefined;
+
+export function makeTintedTerrainShader(source: TextureSource): Shader {
+  colorProgram ??= new GlProgram({ vertex: COLOR_VERTEX, fragment: COLOR_FRAGMENT });
+  return new Shader({
+    glProgram: colorProgram,
     resources: { uTexture: source, uSampler: source.style },
   });
 }

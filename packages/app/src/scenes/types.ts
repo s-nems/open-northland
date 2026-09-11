@@ -11,6 +11,8 @@ export interface SceneWorld {
   readonly seed: number;
   /** Authored in cells; `createSceneSim` upsamples it to the sim's half-cell lattice. */
   readonly terrain: CellTerrainMap;
+  /** Optional dry-land mask on the half-cell grid for land-only terrain color edits. */
+  readonly landVertices?: readonly boolean[];
   /** Runs once before any tick. */
   readonly build: (sim: Simulation) => void;
   /** Opts back into the needs mechanic; a scene world otherwise runs with needs off. */

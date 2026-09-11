@@ -2,6 +2,7 @@ import { DeliveryFlag } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
+import { landscapeView } from '../../../landscape/view.js';
 import { closer, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { placementBlockerVersion } from '../blockers.js';
 import { workFlagMoveCount } from './flag-moves.js';
@@ -18,7 +19,9 @@ export function canPlaceWorkFlag(
   ignoreFlag?: Entity,
 ): boolean {
   return (
-    terrain.isWalkable(node) && !workFlagPlacementBlocks(world, ctx.content, terrain, ignoreFlag).has(node)
+    terrain.isWalkable(node) &&
+    !landscapeView(world, terrain).walk.has(node) &&
+    !workFlagPlacementBlocks(world, ctx.content, terrain, ignoreFlag).has(node)
   );
 }
 
@@ -55,8 +58,12 @@ export function nearestWorkFlagPlacement(
   const { accept, withinRadius } = opts;
   const origin = terrain.coordsOf(from);
   const blocked = workFlagPlacementBlocks(world, ctx.content, terrain, opts.ignoreFlag);
+  const landscape = landscapeView(world, terrain).walk;
   const legal = (node: NodeId): boolean =>
-    terrain.isWalkable(node) && !blocked.has(node) && (accept === undefined || accept(node));
+    terrain.isWalkable(node) &&
+    !landscape.has(node) &&
+    !blocked.has(node) &&
+    (accept === undefined || accept(node));
   // The first ring holding a legal node ends the search; its lowest node id is the same
   // `(distance, node-id)` winner the reference scan below picks.
   for (let r = 0; r <= (withinRadius ?? PLACEMENT_RING_MAX_RADIUS); r++) {

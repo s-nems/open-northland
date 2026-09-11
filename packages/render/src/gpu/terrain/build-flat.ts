@@ -7,7 +7,8 @@ import {
   triangleANodes,
   triangleBNodes,
 } from '../../data/terrain/index.js';
-import { emptyBatch, meshGeometry, type TerrainBatch } from './chunk-batcher.js';
+import { makeTintedTerrainShader } from '../shading.js';
+import { emptyBatch, meshGeometry, type TerrainBatch, type TerrainChild } from './chunk-batcher.js';
 import { buildChunks, flatTileColour, liftFn, positions, type TerrainChunk } from './geometry.js';
 
 /** Shading levels per unit. The meshes batch by exact colour, so an unquantized gradient would
@@ -46,14 +47,19 @@ export function buildFlat(
         for (const nodes of [triangleANodes(col, row), triangleBNodes(col, row)]) {
           const base = batch.positions.length / 2;
           batch.positions.push(...positions(nodes, lift));
+          for (const [hx, hy] of nodes) batch.nodes.push(hx, hy);
           for (let v = 0; v < 3; v++) batch.uvs.push(0, 0); // every vertex samples the 1×1 white texel
           batch.indices.push(base, base + 1, base + 2);
         }
       }
     }
-    const children: Mesh[] = [];
+    const children: TerrainChild[] = [];
     for (const [colour, batch] of byColour) {
-      const mesh = new Mesh({ geometry: meshGeometry(batch), texture: Texture.WHITE });
+      const mesh = new Mesh({
+        geometry: meshGeometry(batch),
+        texture: Texture.WHITE,
+        shader: makeTintedTerrainShader(Texture.WHITE.source),
+      });
       mesh.tint = colour;
       children.push(mesh);
     }

@@ -7,6 +7,7 @@ import {
   SUPPORTED_RESULTS,
 } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
  * The published support lists against the evaluators themselves: the coverage report reads the lists,
@@ -20,6 +21,8 @@ const POINT = { hx: 4, hy: 4 };
 
 /** One well-formed line per listed opcode; the mapped type is what forces an entry for each. */
 const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }> } = {
+  IsAnyLandscapeOnPoint: { opcode: 'IsAnyLandscapeOnPoint', point: POINT },
+  NumberOfAnimals: { opcode: 'NumberOfAnimals', player: 0, tribe: 9, amount: 1 },
   True: { opcode: 'True' },
   TimeGone: { opcode: 'TimeGone', seconds: 1 },
   RandomTimeGone: { opcode: 'RandomTimeGone', seconds: 4 },
@@ -111,6 +114,17 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
+  SetLandscape: { opcode: 'SetLandscape', point: POINT, landscape: 1, level: 0, flag: false },
+  RemoveLandscape: { opcode: 'RemoveLandscape', point: POINT },
+  RemoveLandscapesInArea: { opcode: 'RemoveLandscapesInArea', point: POINT, range: 1 },
+  RemoveFXWaveLandscapeInArea: { opcode: 'RemoveFXWaveLandscapeInArea', point: POINT, range: 1 },
+  RemoveFXSmokeLandscapeInArea: { opcode: 'RemoveFXSmokeLandscapeInArea', point: POINT, range: 1 },
+  RemoveBlockerLandscapeInArea: { opcode: 'RemoveBlockerLandscapeInArea', point: POINT, range: 1 },
+  RemoveFX1LandscapeInArea: { opcode: 'RemoveFX1LandscapeInArea', point: POINT, range: 1 },
+  RemoveFX2LandscapeInArea: { opcode: 'RemoveFX2LandscapeInArea', point: POINT, range: 1 },
+  SetHouseBuildForbiddenArea: { opcode: 'SetHouseBuildForbiddenArea', point: POINT, range: 1, flag: true },
+  SetVertexColor: { opcode: 'SetVertexColor', point: POINT, range: 1, amount: 127 },
+  SetVertexColorOnLand: { opcode: 'SetVertexColorOnLand', point: POINT, range: 1, amount: 127 },
   None: { opcode: 'None' },
   ActivateMission: { opcode: 'ActivateMission', missionIndex: 0 },
   DeactivateMission: { opcode: 'DeactivateMission', missionIndex: 0 },
@@ -315,6 +329,7 @@ function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): st
   const sim = new Simulation({
     seed: 1,
     content: testContent(),
+    map: { ...grassNodeMap(10, 10), landscapes: { types: [], placements: [] } },
     missions: { missions: [{ successfullIf: 0, active: true, visible: false, goals, results }] },
   });
   sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
@@ -336,8 +351,6 @@ describe('the published opcode support lists', () => {
     expect(
       reportedOpcodes([{ opcode: 'BuildVehicles', player: 0, vehicleType: 1, amount: 1, vehicleId: 7 }], []),
     ).toEqual(['BuildVehicles']);
-    expect(reportedOpcodes([], [{ opcode: 'SetVertexColor', point: POINT, range: 1, amount: 1 }])).toEqual([
-      'SetVertexColor',
-    ]);
+    expect(reportedOpcodes([], [{ opcode: 'RemoveVehicles', vehicleId: 1 }])).toEqual(['RemoveVehicles']);
   });
 });

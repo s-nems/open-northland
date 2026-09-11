@@ -9,8 +9,7 @@ import { type MapObjectSprite, objectFrameAt } from './map-object-sprite.js';
 import { TallObjectLayer } from './tall-blocks.js';
 
 /**
- * The retained landscape-object layers, split by whether an object occludes a settler. Both halves are
- * built once per map.
+ * Landscape objects share retained spatial blocks, split by whether they occlude a settler.
  */
 
 /** Decor chunks partition world space into square blocks of this many px - the same horizontal pitch as
@@ -31,7 +30,9 @@ interface UpdateInputs {
 export class MapObjectLayer {
   /** Flat map-object decor (waves, grass, mine stains). */
   readonly decorContainer = new Container();
-  private decorChunks: DecorChunk[] = [];
+  private readonly decorChunks = new Map<string, DecorChunk>();
+  private readonly decorByObject = new Map<MapObjectSprite, string>();
+  private readonly objects = new Set<MapObjectSprite>();
   private readonly tall: TallObjectLayer;
   /** The last frame's inputs; an identical frame skips the walk since the retained scene already
    *  matches. `remove` needs no reset - it detaches and zeroes directly. */
@@ -44,25 +45,42 @@ export class MapObjectLayer {
   /** Call once per map. */
   set(objects: readonly MapObjectSprite[]): void {
     this.destroy();
+    this.add(objects);
+  }
+
+  /** Add script placements, rebuilding only affected decor blocks. Existing object references are ignored. */
+  add(objects: readonly MapObjectSprite[]): void {
     const byBlock = new Map<string, MapObjectSprite[]>();
     const tallByBlock = new Map<string, MapObjectSprite[]>();
     for (const obj of objects) {
-      if (obj.frames.length === 0) continue;
+      if (obj.frames.length === 0 || this.objects.has(obj)) continue;
+      this.objects.add(obj);
       const key = `${Math.floor(obj.x / DECOR_CHUNK_PX)},${Math.floor(obj.y / DECOR_CHUNK_PX)}`;
       const buckets = obj.decor ? byBlock : tallByBlock;
       let block = buckets.get(key);
       if (block === undefined) {
-        block = [];
+        block = obj.decor ? [...(this.decorChunks.get(key)?.quads.keys() ?? [])] : [];
         buckets.set(key, block);
       }
       block.push(obj);
+      if (obj.decor) this.decorByObject.set(obj, key);
     }
-    for (const block of byBlock.values()) {
+    for (const [key, block] of byBlock) {
+      const previous = this.decorChunks.get(key);
+      const index =
+        previous === undefined
+          ? this.decorContainer.children.length
+          : this.decorContainer.getChildIndex(previous.container);
+      if (previous !== undefined) {
+        destroyMeshChildren(previous.container);
+        previous.container.destroy({ children: true });
+      }
       const chunk = buildDecorChunk(block);
-      this.decorContainer.addChild(chunk.container);
-      this.decorChunks.push(chunk);
+      this.decorContainer.addChildAt(chunk.container, index);
+      this.decorChunks.set(key, chunk);
     }
     this.tall.build(tallByBlock);
+    this.lastInputs = null;
   }
 
   /**
@@ -71,16 +89,24 @@ export class MapObjectLayer {
    * unknown object is a no-op.
    */
   remove(obj: MapObjectSprite): void {
+    if (!this.objects.delete(obj)) return;
     if (this.tall.remove(obj)) return;
-    for (const chunk of this.decorChunks) {
-      const quad = chunk.quads.get(obj);
-      if (quad === undefined) continue;
-      chunk.quads.delete(obj);
-      quad.positions.fill(0, quad.quadIndex * 8, quad.quadIndex * 8 + 8); // degenerate quad → invisible
-      quad.geometry.getBuffer('aPosition').update();
-      if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null;
+    const key = this.decorByObject.get(obj);
+    this.decorByObject.delete(obj);
+    if (key === undefined) return;
+    const chunk = this.decorChunks.get(key);
+    const quad = chunk?.quads.get(obj);
+    if (chunk === undefined || quad === undefined) return;
+    chunk.quads.delete(obj);
+    if (chunk.quads.size === 0) {
+      destroyMeshChildren(chunk.container);
+      chunk.container.destroy({ children: true });
+      this.decorChunks.delete(key);
       return;
     }
+    quad.positions.fill(0, quad.quadIndex * 8, quad.quadIndex * 8 + 8);
+    quad.geometry.getBuffer('aPosition').update();
+    if (quad.animated !== null) quad.animated.objects[quad.quadIndex] = null;
   }
 
   /**
@@ -111,7 +137,7 @@ export class MapObjectLayer {
     this.lastInputs = fogKeyed
       ? { minX: vp.minX, minY: vp.minY, maxX: vp.maxX, maxY: vp.maxY, tick, fogEpoch }
       : null;
-    for (const chunk of this.decorChunks) {
+    for (const chunk of this.decorChunks.values()) {
       const visible = aabbIntersects(vp, chunk);
       chunk.container.visible = visible;
       if (!visible || chunk.animated.length === 0 || chunk.lastWrittenTick === tick) continue;
@@ -139,11 +165,13 @@ export class MapObjectLayer {
 
   /** Free the decor meshes + tall-object sprites (a map change re-invalidates both). */
   destroy(): void {
-    for (const chunk of this.decorChunks) {
+    for (const chunk of this.decorChunks.values()) {
       destroyMeshChildren(chunk.container);
       chunk.container.destroy({ children: true });
     }
-    this.decorChunks = [];
+    this.decorChunks.clear();
+    this.decorByObject.clear();
+    this.objects.clear();
     this.tall.destroy();
     this.lastInputs = null;
   }

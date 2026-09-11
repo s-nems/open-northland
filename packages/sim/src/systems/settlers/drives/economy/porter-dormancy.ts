@@ -16,6 +16,7 @@ import {
   UnreachableGoals,
   WorkFlag,
 } from '../../../../components/index.js';
+import { landscapeTopologyRevision } from '../../../../components/landscape.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
@@ -79,7 +80,8 @@ function porterScanVersion(world: World): number {
     world.componentGeneration(SiteAssignment) +
     world.componentGeneration(SupplyRun) +
     world.componentGeneration(Signpost) +
-    world.componentGeneration(Owner)
+    world.componentGeneration(Owner) +
+    landscapeTopologyRevision(world)
   );
 }
 
