@@ -77,25 +77,6 @@ describe('user messages from sim events', () => {
     expect(out[0]?.at).toEqual({ hx: 6, hy: 4 });
   });
 
-  it("announces a person born to the seat, not an animal or another seat's child", () => {
-    const snap = snapshot(50, [
-      { id: 1, player: LOCAL, kind: 'person' },
-      { id: 2, player: LOCAL, kind: 'animal' },
-      { id: 3, player: ENEMY, kind: 'person' },
-    ]);
-    const out = run(
-      [
-        { kind: 'settlerBorn', entity: e(1) },
-        { kind: 'settlerBorn', entity: e(2) },
-        { kind: 'settlerBorn', entity: e(3) },
-      ],
-      snap,
-    );
-    expect(out.map((m) => [m.type, m.subject?.entity, m.jobType])).toEqual([
-      [USER_MESSAGE_TYPE.wasBorn, 1, 7],
-    ]);
-  });
-
   it('names a reaped settler off the snapshot before the frame, else reports an unknown hero', () => {
     const before = snapshot(49, [{ id: 1, player: LOCAL, kind: 'person' }]);
     const after = snapshot(50, []);
@@ -227,8 +208,18 @@ describe('user messages from sim events', () => {
     expect(out.map((m) => [m.type, m.subject?.entity])).toEqual([[USER_MESSAGE_TYPE.noOneToMarry, 1]]);
   });
 
-  it('ignores events with no message in the original', () => {
-    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'building' }]);
-    expect(run([{ kind: 'defenceAlarmRaised', entity: e(1), player: LOCAL }], snap)).toEqual([]);
+  it('ignores events with no message in the original, a birth among them', () => {
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'building' },
+      { id: 2, player: LOCAL, kind: 'person' },
+    ]);
+    const out = run(
+      [
+        { kind: 'defenceAlarmRaised', entity: e(1), player: LOCAL },
+        { kind: 'settlerBorn', entity: e(2) },
+      ],
+      snap,
+    );
+    expect(out).toEqual([]);
   });
 });

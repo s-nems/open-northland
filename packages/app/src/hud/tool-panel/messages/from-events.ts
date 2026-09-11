@@ -110,11 +110,6 @@ export function messagesFromEvents(
             }),
         );
         break;
-      case 'settlerBorn': {
-        const e = ownedPerson(ev.entity);
-        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.wasBorn, e);
-        break;
-      }
       case 'settlerDied':
         if (ev.player === localPlayer && ev.animal !== true) died(ev.entity, ev.at ?? null);
         break;
