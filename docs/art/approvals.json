@@ -25,24 +25,24 @@
     "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
   },
   "characters/man-forkbeard": {
-    "digest": "eeef12d4119523390cfe5f6a00927033d4899686869c551d7e3429aa0dae43b3",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "c54bf2a3e9a48bdb56a102d3539d655779138983aff82354c8b4ea154183f0ac",
+    "reviewer": "snems — approved Test 2 proportions",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/man-ravenknot": {
-    "digest": "5829048f7b9ec024bc32043e74ccc07c8b5a45e0b01284da0124bfc0b0f1446f",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "81632bb1156cc3ca671f505c752e84bc895c4fc624454ff769233706e06b1440",
+    "reviewer": "snems — approved Test 2 proportions",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/man-redmane": {
-    "digest": "1190f475d797bc4b60b46f7506d83e1eaa91b105685e29319a03ec068df31251",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "e0d9ef8aaac52da92005a04e08edd20e2f20feb738c5a860a99bf2c193bb3243",
+    "reviewer": "snems — approved Test 2 proportions",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/man-silver": {
-    "digest": "833565cf66d3a505d72ae3ac1b6a8acbb99da7e286645cdf894e6cab117f04b1",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "b1f91cc6c40c1c0c50a6ff0774a43475446a01add38fdf794a693f886d4f97c1",
+    "reviewer": "snems — approved Test 2 proportions",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/woman-blonde": {
     "digest": "87fbc1166f9edf1d8c68e4c4f8a38840044b73740f781afa8fc8ec58989b50e3",

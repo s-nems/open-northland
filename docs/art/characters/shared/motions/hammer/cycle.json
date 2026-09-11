@@ -1,20 +1,18 @@
 {
-  "source": "motion/animation.glb",
+  "source": "../../body/model/idle.glb",
   "output": "hammer.glb",
-  "source_frames": [49, 71],
-  "bake_frames": 24,
+  "bake_frames": 30,
   "fps": 24,
-  "local_rotation_degrees": { "RightHand": [0, 60, 0] },
-  "planted_bones": [
-    "Hips",
-    "LeftUpLeg",
-    "LeftLeg",
-    "LeftFoot",
-    "LeftToeBase",
-    "RightUpLeg",
-    "RightLeg",
-    "RightFoot",
-    "RightToeBase"
+  "elbow_pole": [-0.9, -0.08, 1.35],
+  "poses": [
+    { "frame": 0, "wrist": [-0.32, -0.04, 1.22], "handle_back_degrees": 55 },
+    { "frame": 4, "wrist": [-0.32, 0.045, 1.26], "handle_back_degrees": 75 },
+    { "frame": 6, "wrist": [-0.32, -0.19, 1.2], "handle_back_degrees": 35 },
+    { "frame": 8, "wrist": [-0.32, -0.355, 1.04], "handle_back_degrees": 0 },
+    { "frame": 10, "wrist": [-0.32, -0.31, 1.07], "handle_back_degrees": 12 },
+    { "frame": 14, "wrist": [-0.32, -0.33, 1.06], "handle_back_degrees": 5 },
+    { "frame": 22, "wrist": [-0.32, -0.16, 1.14], "handle_back_degrees": 32 },
+    { "frame": 30, "wrist": [-0.32, -0.04, 1.22], "handle_back_degrees": 55 }
   ],
-  "sourceBasis": "Generated Meshy motion; selected one strike with smooth endpoint correction and a planted lower-body pose. Visual approximation, not gameplay timing."
+  "sourceBasis": "Authored wall-nailing cycle on the shared idle rig: planted stance, backswing behind the head, forward contact at shoulder height. Positions are metres in the -Y-facing body space; visual approximation, with contact at 8/24 seconds."
 }

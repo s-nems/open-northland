@@ -52,57 +52,57 @@
             "file": "appearances/man-silver/sprites/walk-SW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "97a19815e21bb003bdd1a547df549628240decdd2d6c3cd4499f93a1d9ec53ab"
+            "status": "approved",
+            "sha256": "ebbb6ed6721f1e8519e57bda24e9b11d1cddf25be2ec7dbee9e3094b79b38173"
           },
           "W": {
             "file": "appearances/man-silver/sprites/walk-W-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "cc47432d6dce09eeddfacd7e00bf3854b18c5d9fb69c79c98987b547d0ee1fc4"
+            "status": "approved",
+            "sha256": "fe94a8c3e3a180bd51415bf4e20d4475454b98afdda84660d3972c35f9576c66"
           },
           "NW": {
             "file": "appearances/man-silver/sprites/walk-NW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "e66ac291e33e76dfb57240374f69cba8324941ec88f80f9a8258a612adb1a734"
+            "status": "approved",
+            "sha256": "6ecbf3bb85d29556d712b17284d528c3d25ab1d17de1b351a379c87932583184"
           },
           "N": {
             "file": "appearances/man-silver/sprites/walk-N-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "ec657d968aa791a58fa024c244c1fb1454b14f4b179932b822864547145725d3"
+            "status": "approved",
+            "sha256": "d55356b7b0c22b0ebbdf5a788b4aa086f5af703b9e9815b1ff0269db3d58ab21"
           },
           "NE": {
             "file": "appearances/man-silver/sprites/walk-NE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "b6cedef8b5c3daa4600ce349c867e1ad8d9c963941cfcab3da54b35442caceaf"
+            "status": "approved",
+            "sha256": "8f62e2e34a7be84066fb4cf06a7ba92dbf5aca893bb3845060ccc980a17388e7"
           },
           "E": {
             "file": "appearances/man-silver/sprites/walk-E-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "ff93840f7a6457a98931225bcdbe425a3f0ea0efcb29e740934c641a528e594b"
+            "status": "approved",
+            "sha256": "a9334fc9f0b6f0cac87eb264419cb3064f1e9b6aaf1ee9fd5421c2573106b539"
           },
           "SE": {
             "file": "appearances/man-silver/sprites/walk-SE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "96a171c0d6c57305ffcd795a2cb6e31275165685fcbd6518f2fcf6cb9b769324"
+            "status": "approved",
+            "sha256": "85a3b0241f6313fc376fff7d317f116658f17d051a7b3f1ff052dc00177299c2"
           },
           "S": {
             "file": "appearances/man-silver/sprites/walk-S-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "d994cc23c71c4e6fd6394a0b3bd984d4c1d00dfe17135a18a113f25ec5ca158c"
+            "status": "approved",
+            "sha256": "074f46433f764304f1def86ec1f2aa05ffad3767df4e828b78fed06a201bbe29"
           }
         },
         "man-forkbeard": {
@@ -110,57 +110,57 @@
             "file": "appearances/man-forkbeard/sprites/walk-SW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "fdceff903cef734a757c78c90d33b18aaecff6f230acae3b647bd4115dd6813e"
+            "status": "approved",
+            "sha256": "5b79eb8cb8e79ba442ee5c728d3b78eadc961197f99a66a86686fbe77e174d4c"
           },
           "W": {
             "file": "appearances/man-forkbeard/sprites/walk-W-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "35d4f03ab49a84d9e8b1ee3860987e5e34d4deb4c6b69d2e0bb47c26726bca95"
+            "status": "approved",
+            "sha256": "53d97d11d34a2b4b9423d5dc30219157ff102eb936531c123d0a635576579686"
           },
           "NW": {
             "file": "appearances/man-forkbeard/sprites/walk-NW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "fbc8c904e87efd50dee0593c38a42faa39ac4b54faae5a9a519fa9ca563d8f66"
+            "status": "approved",
+            "sha256": "2d0ee3aa5553907d21019bc648507a8470c63e39b154bbc63f91a75f753090fe"
           },
           "N": {
             "file": "appearances/man-forkbeard/sprites/walk-N-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "ce4dbc5a692773d1d7fcaa15893ae39e7548f3f7c6376c1c4edcfe38b3097156"
+            "status": "approved",
+            "sha256": "5191eeaa1efea8a42bada0303f9b1df6b9d669a86c0f72f1cb498d59242d44de"
           },
           "NE": {
             "file": "appearances/man-forkbeard/sprites/walk-NE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "1c662827502d213673acab9b966cac9e4436e99fb31a0fcf6ce0f75f39db90fa"
+            "status": "approved",
+            "sha256": "8ffa622cfb2d082b2428d62da3c074ba232b52963199965c05ed1b5c606bce37"
           },
           "E": {
             "file": "appearances/man-forkbeard/sprites/walk-E-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "f0b3c10eabb7efd3b495f96df7e4f1c83be00c0928af7b70c22c6f4efd28fca4"
+            "status": "approved",
+            "sha256": "4d83b8c9e72deb066a0b7eeeefd91158f5d02e561d32df26cc5b80e33fa0b146"
           },
           "SE": {
             "file": "appearances/man-forkbeard/sprites/walk-SE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "1c3af23cc9e968fe66c22fd2d7c27c160caeb68d0b61ac701d2e531f7e4bc5aa"
+            "status": "approved",
+            "sha256": "9a9fa52a2a82798057960a2ff32ae5842eb4d9dc5086f3e5fb284052c75ffaaf"
           },
           "S": {
             "file": "appearances/man-forkbeard/sprites/walk-S-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "b53c55c743a0a4872ce6aef31635f22f3d88590291978011303595e350120265"
+            "status": "approved",
+            "sha256": "8e5899b499209453c30975111bbee51041b34e99be7ec69b68582aae6c0b4100"
           }
         },
         "man-redmane": {
@@ -168,57 +168,57 @@
             "file": "appearances/man-redmane/sprites/walk-SW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "f93f57811d3054184556c23b3428cb127b364f0619a68e270931bc8208808ced"
+            "status": "approved",
+            "sha256": "c4452f8db20dc635ab7e42fd904565241a0fc65444591ebb86a59be4ed3535f7"
           },
           "W": {
             "file": "appearances/man-redmane/sprites/walk-W-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "b3f008976e1473a4b861d76d2f0a3dc73e28f636f41c039a38619a659c3abf50"
+            "status": "approved",
+            "sha256": "a288b76cb35a8ba04de4b3cb26f980041e5276af3671b18da8643b08103e9e88"
           },
           "NW": {
             "file": "appearances/man-redmane/sprites/walk-NW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "d288869943383024a04c9e41f14452a6c7b2b1142e7f05747515f1947122c8fe"
+            "status": "approved",
+            "sha256": "1749dcb9462055df88542494f4149b5d7d997ec2a8b829586dffd4fbc339e8d9"
           },
           "N": {
             "file": "appearances/man-redmane/sprites/walk-N-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "e9337d165042575f9b78ae2a4d963e8d145f76659a6a65c482a724902666e540"
+            "status": "approved",
+            "sha256": "506abab858e969223d7b0d52d62a5d75c338e4e9079e20b3dc336cdf1d3be3d5"
           },
           "NE": {
             "file": "appearances/man-redmane/sprites/walk-NE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "2a2286f5b1bc2c79bad845d688fb2dea1f4b86186f0c357291b0df73b7974977"
+            "status": "approved",
+            "sha256": "92e885155ddd2d59dac2e9c055abddf4384b88343c6ea3c53eea1026f19b45f8"
           },
           "E": {
             "file": "appearances/man-redmane/sprites/walk-E-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "da9ff4dd6d6f22d300df8803445c6377def3f5a4f4880cb6d4158b0c5e234702"
+            "status": "approved",
+            "sha256": "6025a764fd03ceeedd71b1f39edf3299bfc924908a26a2dc7d0467d769bebd35"
           },
           "SE": {
             "file": "appearances/man-redmane/sprites/walk-SE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "e96c80d5c2e1044f5608ca08f267ee0664059c43cbe0c59a3f3621c1072cbd9f"
+            "status": "approved",
+            "sha256": "fcf7631861b9cb990687c4f3799952ec23d51387f63d77ad7052e6f5b092d452"
           },
           "S": {
             "file": "appearances/man-redmane/sprites/walk-S-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "4a3647cd62e1559826131dcaeeea33965712f8cbe9fc353838e0673f67b8242c"
+            "status": "approved",
+            "sha256": "17904efc626283bac4f37ab62036baeac1b1bc3202e294778d43ee7bb9ab15af"
           }
         },
         "man-ravenknot": {
@@ -226,57 +226,57 @@
             "file": "appearances/man-ravenknot/sprites/walk-SW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "26293805762af9594bbf9c7eabc2a4095ddc7377978a47047c9ecabe753c30b2"
+            "status": "approved",
+            "sha256": "3fa9d2993dc30a0a3f48f289b978313adae374112606205b82276d83ec96dee2"
           },
           "W": {
             "file": "appearances/man-ravenknot/sprites/walk-W-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "07e9b8aaecb94bdbb1b0e621dce9bfac276e35f351e9499e74c360b7f214a176"
+            "status": "approved",
+            "sha256": "02bc600dbba9e2db60fb8775f15c619ff6466d6bde1130937765ce0dc369d7df"
           },
           "NW": {
             "file": "appearances/man-ravenknot/sprites/walk-NW-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "6926e08b6e56d1a09df85956f18c2164ced6d89c55ade5cc3f085235a6bc90d0"
+            "status": "approved",
+            "sha256": "4dac4c6321ec3330a522ba3a6ce4bf5218fdabc91310be68aa2641457cd04d6c"
           },
           "N": {
             "file": "appearances/man-ravenknot/sprites/walk-N-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "78c0b159201e0c2ad8f7397921f542638b06e5d784a45df4cad1c2ab8f6b3f1f"
+            "status": "approved",
+            "sha256": "cc7f7e9b1a3971bb1bc47412fa7c5c920eaaba526a8436340bcb70eebe4553b0"
           },
           "NE": {
             "file": "appearances/man-ravenknot/sprites/walk-NE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "36905f0093919a21121f00b29d7bc5e1033e5983e9e77593f9dd8f3dcbbdc73d"
+            "status": "approved",
+            "sha256": "938c9c7a2bd03d4e06547ee0a6ae684e70fdd8aeff34c084d1179a6490c516fd"
           },
           "E": {
             "file": "appearances/man-ravenknot/sprites/walk-E-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "41f74355661c49a09ad9452825b781a958d0b1a3e2fe233bc4173d848a685ce7"
+            "status": "approved",
+            "sha256": "52d154ea740053e54427b5662a11744ccac591c926df8df25da9a6b86c2a8604"
           },
           "SE": {
             "file": "appearances/man-ravenknot/sprites/walk-SE-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "07ce148a0d4f0f34929d95710d95fc4598f32571bd971be8a8df9eb8059f40a6"
+            "status": "approved",
+            "sha256": "28fd36a99d30dfa52626aba963121451c0a8246f3adf1363a2af5b82d1c6c384"
           },
           "S": {
             "file": "appearances/man-ravenknot/sprites/walk-S-88px.png",
             "frames": 16,
             "duration": 1.0333333333333332,
-            "status": "review",
-            "sha256": "7f6090cc0a6c8f082d8613cbf192f6b0e86fdbe6a33cb0d9a50ccdca96bbc7d0"
+            "status": "approved",
+            "sha256": "ac33f1ee57deb5ef0e754cb6c78bbfd74314430f0b8b8ba7cc113786923b4818"
           }
         },
         "woman-blonde": {
@@ -349,8 +349,8 @@
             "file": "appearances/man-silver/sprites/idle-SW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "15ef4d7cbe0d64085db6faacd33a4a7e9cd7af33edeb724538e2de2892f69861",
+            "status": "approved",
+            "sha256": "763e69b40497052aa02e9384751c74d4bee52140fde6ef1d0e7a3593d49b0fdd",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -362,8 +362,8 @@
             "file": "appearances/man-silver/sprites/idle-W-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "11354fba36736f5719a6d2ca8b435c5cf7ef85eb9c986c94f91846beebbfb7e7",
+            "status": "approved",
+            "sha256": "9b98ea3f804949489a714001442cdfa98618054bf89b2f8471e1ac8d6b46261c",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -375,8 +375,8 @@
             "file": "appearances/man-silver/sprites/idle-NW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "14e07ee8b140453c43de046b669c4cd2c4eb2e2d2244eb1e8d5a620077863a8e",
+            "status": "approved",
+            "sha256": "30392cdcbfbff091368a545e47564cf0654c8a5e458355eb1447cb135093c1a2",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -388,8 +388,8 @@
             "file": "appearances/man-silver/sprites/idle-N-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "aa7841bf308084c19ba414bce7fced488608b3c134045eda1a186e4941ed91e4",
+            "status": "approved",
+            "sha256": "7feb36d1d5c71bf99f7cc2bfd035a1fd53735e4cfe505bb8e8f4a414331614ae",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -401,8 +401,8 @@
             "file": "appearances/man-silver/sprites/idle-NE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "14317eb053a5573652dd3212e75264305e5aa4b06da4e2a1b6cb867431140c1a",
+            "status": "approved",
+            "sha256": "a21ab7fa5bf9d0adce76a196b8ac86644c4d46471f5ac64f87ecd3f1687ec6a8",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -414,8 +414,8 @@
             "file": "appearances/man-silver/sprites/idle-E-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "f92ddca9c34ac198b94dcc9b3b4c01538c61f549a19215487cdcf570de6a45ab",
+            "status": "approved",
+            "sha256": "12cb0bc0f6a95505bdd9160cf89095a60a7328c77f4c7d4e98157f88557e45db",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -427,8 +427,8 @@
             "file": "appearances/man-silver/sprites/idle-SE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "57f3f49b70e8f9b0ed75b4c1fce34dd1c4228a52a41ceebc51194145b155379e",
+            "status": "approved",
+            "sha256": "d820507a31c5949898f6cd957b82d19cfff159ebfab5baaa6f3fa1ae2b0c9c88",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -440,8 +440,8 @@
             "file": "appearances/man-silver/sprites/idle-S-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "af4706fdf271a9fb0ab68712c0fbc5d028201542d2af04388c7739783e723ba1",
+            "status": "approved",
+            "sha256": "dab5b7788fb9546cbca0c804b61fd2cfac1262ca23387b43ebb6576efdb69381",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -455,8 +455,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-SW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "8cacdd9391af9d36594c04883aec7956867131305ffe8907c262c468255c8c6f",
+            "status": "approved",
+            "sha256": "4506faafc5202fcb87ec055798c809c588fefb06430b644718f0da564315bde7",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -468,8 +468,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-W-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "8e754cdcf7a3b3125cffd0958b6503881457b6501dbf0e2de5ae417cbef5e52e",
+            "status": "approved",
+            "sha256": "a7b0a79b8209ac26b2e7194413023e20e0af69f1db466c7230daaf16df904b2e",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -481,8 +481,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-NW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "c3c51173a1e44ae69d02b5ad31b6b41b5480596d23afbf38fca75202d6d723b9",
+            "status": "approved",
+            "sha256": "7255717a26ee09edc57138ddf718291e4cb296d7c8326ac3f97f116c452bb7c4",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -494,8 +494,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-N-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "5892e98411204f12832fd8f33eaa233985c9772385c81a45bf28e1dc49c7324c",
+            "status": "approved",
+            "sha256": "8b63603a5235bd312a5020874c1f81683ae0c04d2c1b4dfd8f9052ac30aeb520",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -507,8 +507,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-NE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "34494402f01d12b0928348d202eac0297061026ddb8db2c6827c1c317bbbb198",
+            "status": "approved",
+            "sha256": "b233a6a5c3602d04d62a74c8d57a1dc4b2782ab4a6cdda2411783aa33fe1e186",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -520,8 +520,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-E-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "044d5611abff830d5d586f0e0b2d7fbe9fc8050fefa726efc8935c470362b0e0",
+            "status": "approved",
+            "sha256": "c7297d6d2d3850974643715b3cef108ae8b0b90f47636fba00d7cd983c6a95fa",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -533,8 +533,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-SE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "7b8ecc1cb05a20c4332a77abbd3f4c2b9f006b9e46b669859ceaed2a261aa344",
+            "status": "approved",
+            "sha256": "8a1674c4cbe6906a1aa41314e891be76d8d2c13d16a63ab1dbbfb5eacba2934d",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -546,8 +546,8 @@
             "file": "appearances/man-forkbeard/sprites/idle-S-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "06b0df5b7448a7477f7f2516e740066b88b57539eacea0ebb52bf030955bc208",
+            "status": "approved",
+            "sha256": "658e40778f9050c6d1a5ee4abe68d92db45c503d08bf69eab12601d60f6bc178",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -561,8 +561,8 @@
             "file": "appearances/man-redmane/sprites/idle-SW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "3aee53bce232498f18059036a42d4fb56d0531ff54fd8fdced0dd7d262f5c21d",
+            "status": "approved",
+            "sha256": "a1e5aca77755dea612819f9e97e16cac7b02ad8bbccff066e5b9a9276e5c186f",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -574,8 +574,8 @@
             "file": "appearances/man-redmane/sprites/idle-W-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "abe6edb36d6fef4ed4326f4e2648f0259b61c97e2607709ce914e4f0c4ac6bfb",
+            "status": "approved",
+            "sha256": "9eb6d54cf65586d500e2ab5f748288eeef4f8a85e8d3cc55c6b45f64d63db7a4",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -587,8 +587,8 @@
             "file": "appearances/man-redmane/sprites/idle-NW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "7850ce7573a46c45fce70cc10a3bd0b0f0568e8b9c4b607ce62df2a45fc16aed",
+            "status": "approved",
+            "sha256": "28f7350c023bc77d427b878d6dd0a628bc201b4b67b3a1800f33739e1a5f59f5",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -600,8 +600,8 @@
             "file": "appearances/man-redmane/sprites/idle-N-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "6142f84a6b1475f55b1880398b8438e99aaeb4bde50c5c3b8db00a7712a62d5e",
+            "status": "approved",
+            "sha256": "c0dd3b795aa4d579c899cbd28edbd28ef761c02b920fdd93ad5de1b90702752c",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -613,8 +613,8 @@
             "file": "appearances/man-redmane/sprites/idle-NE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "7a6291a0ede3b6888e2cec86802c72cd5dc022440de6153940506a90de95f105",
+            "status": "approved",
+            "sha256": "e508ad1b5a86a60f0f3abf0af6d27c0ad4dd6c6b5132fd2293f2636f8a192add",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -626,8 +626,8 @@
             "file": "appearances/man-redmane/sprites/idle-E-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "8a9f3c627f5750e2323adc3a00570b0d2aaeaf346f5a46ec58ea0cad6d650e54",
+            "status": "approved",
+            "sha256": "0a60e5ad1ce657c7ceecf36769b1bcdc531db9882fdb92fb0fce6fe2792ea0ce",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -639,8 +639,8 @@
             "file": "appearances/man-redmane/sprites/idle-SE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "76c17e10f3763dece08e0fa747de38a83a9cde4bca3265aba197661f1aaeb01b",
+            "status": "approved",
+            "sha256": "5cc95ef0285f8142942fa73322fd2fa34c54a9b09399c9f74098836742bb054a",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -652,8 +652,8 @@
             "file": "appearances/man-redmane/sprites/idle-S-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "2af84fda75666e7b8c302325a4cf0baff3173a1306869da8f2af4930bec0bbcb",
+            "status": "approved",
+            "sha256": "fc6d0efd7f10a2e9881221a78a465920b884cb58d4da52178d9c4ce093614ce1",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -667,8 +667,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-SW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "955e83a7e9b0803f85a79f07c0c4f3bd0893817c1efecff89904c5389a26b3e9",
+            "status": "approved",
+            "sha256": "c25767449b5ff3f2156ea052d2e258a45878c294ed62dbc0c660867208bbc0df",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -680,8 +680,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-W-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "af99e7c6166dcfb316ffdfae014522fdd4a594aaf37bf9f8784405fb873cd134",
+            "status": "approved",
+            "sha256": "8537c05c72adbe21635c8797265bef7e8ca4f46c844c08aae1956c6712b97295",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -693,8 +693,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-NW-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "828e3f1e6294aa0551dbadce911ac86c448a8d3bef9376fb0e210f8c5275ed42",
+            "status": "approved",
+            "sha256": "5eed6d7395443ba1d63aa6774420f499fbef65d656a5aee774649194cf38f8f1",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -706,8 +706,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-N-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "67ea01b6c73a8a5c9181c0d6598f4daff8a6241c6712e00ece4b1b165065a0c2",
+            "status": "approved",
+            "sha256": "bed87bf76bde0dfbe8d3ed3d1fd16fd04f6cd57af8e6a6a1b0bcfab154bbcbc0",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -719,8 +719,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-NE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "b3c3b6d5418792ca8761dbc769460199e76e4b5e78cc29dd22252b017a13e2bf",
+            "status": "approved",
+            "sha256": "c4b77844649aeea889261fe2cc02a27ddad1449c56d1ce03622be746f9f04a29",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -732,8 +732,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-E-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "f147c87e574019358d05e0a976cce9b71d859e5bf21b8b9e43b7fd1d7ddd326c",
+            "status": "approved",
+            "sha256": "416b066a3a01fc7302254ed158e74b8cb1534d96bf743aa5135d6f0c949b05df",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -745,8 +745,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-SE-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "6d5e10ad88c7899b8ea6d2d8e5d0d509a05fd124d7ddcd69310f84e9aa43bc8f",
+            "status": "approved",
+            "sha256": "bbe0f42cccb04033722aa29844bc6929cbf64828ec486ec52b82a178cdf3432d",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -758,8 +758,8 @@
             "file": "appearances/man-ravenknot/sprites/idle-S-88px.png",
             "frames": 16,
             "duration": 5,
-            "status": "review",
-            "sha256": "6f1103283f9e2ef9ced185f9f1770332537cb2e4db283dd832ebe88ed1aadc81",
+            "status": "approved",
+            "sha256": "551e8f6259ffc67c906af155699274a153494179c293f5d0158fe548f8416bca",
             "frameDurations": [
               1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
               0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
@@ -831,103 +831,103 @@
     {
       "id": "hammer",
       "name": "Budowanie młotkiem",
-      "description": "12 póz, cykl 1,25 s. W grze podczas faktycznej budowy; większy obuch. Do oceny na mapie.",
+      "description": "Zamach zza głowy i uderzenie przed siebie w pionową ścianę. 12 póz, cykl 1,25 s. Do oceny podczas budowy na mapie.",
       "variants": {
         "man-silver": {
           "SW": {
             "file": "appearances/man-silver/sprites/hammer-SW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "7b2299692346d37b6d86a25276ee6490b5df436a7480a2f1b6fb721791da00e3",
+            "status": "approved",
+            "sha256": "f06718076abab2b829f3053e0551cc573e758bcd55ee8c7048475a9588709405",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "W": {
             "file": "appearances/man-silver/sprites/hammer-W-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "be164d4eac20b41e83ec69758583d897729b779eaac41c57195fcf0634107c8f",
+            "status": "approved",
+            "sha256": "4e8796a0c8f1655b3d27df2769b711cf794d22f369d9590f8d36fa2714ad1e64",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NW": {
             "file": "appearances/man-silver/sprites/hammer-NW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "eb94be505af664969636530f1d28bf6f906b306cc8cd225d426c5be0a7d1d434",
+            "status": "approved",
+            "sha256": "99754b1644349741ab18d4731402f510a5f02f280aec869b62d01a876ff83d5f",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NE": {
             "file": "appearances/man-silver/sprites/hammer-NE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "a0d119663b9ae6daf6020449d6c75931f44289784ea2f38037a0585a75dcb010",
+            "status": "approved",
+            "sha256": "0c39cad3aacfb19f32d0e98e691523d0a37367ba26c9db8777c6864c62dbed52",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "E": {
             "file": "appearances/man-silver/sprites/hammer-E-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "e838ec26cea9303fd279c0cff3231fe5ea3358611896514e1a599b0d3cac512b",
+            "status": "approved",
+            "sha256": "3df9a1218e64b4c90c983ea7ed23c356bdaee1530f915cb8bd8798060ff3bae7",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "SE": {
             "file": "appearances/man-silver/sprites/hammer-SE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "ecaf6962bcaf6866523854a5bebf635a758e35df6af4296c4b5f7cb41a2acbb6",
+            "status": "approved",
+            "sha256": "3b6423214543aed296ded4ba5cf223077a32c7bac30b9dabf138d62fb7f530c5",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "S": {
             "file": "appearances/man-silver/sprites/hammer-S-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "780577ca7bfa92467f64ba5bb03c7c2bbed32b21f449361dfe572f178135a566",
+            "status": "approved",
+            "sha256": "57de18998672ea2a9ccdfdddb32f1440c8dfac078f1c8bbb8aba69a3dbe9ddd0",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "N": {
             "file": "appearances/man-silver/sprites/hammer-N-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "965bb1aed0dcf427bb966634bce22b4d20aacc234a837b3e7bc1903522714c22",
+            "status": "approved",
+            "sha256": "4b5d19d81736ec20bb83848af9c55891d56f38956df69694e0bc7f6228a5cdb2",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           }
         },
@@ -936,96 +936,96 @@
             "file": "appearances/man-forkbeard/sprites/hammer-SW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "2a6ded0e6a4c3aacd5309bc17875ffe90b00773c7384c407a2ed69d75e89ec9c",
+            "status": "approved",
+            "sha256": "31060af2d83f9112659d4be3310124174243950f60a17708ff59a57ff5b4b068",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "W": {
             "file": "appearances/man-forkbeard/sprites/hammer-W-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "74cc59e8755542c3f4dc23ef7f84ff85ae47085d88ef52e4a5b75b4e1c5f24fe",
+            "status": "approved",
+            "sha256": "92ea703f0678a0bcdd4700e8a2f4e0f6b178d9ccc4e2333958601d08fc406f67",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NW": {
             "file": "appearances/man-forkbeard/sprites/hammer-NW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "da93f2899ec188fce5b7d6922d5aa2d7fda9713fca63a8e0d46f98dca14a13b5",
+            "status": "approved",
+            "sha256": "8a0366d7bf7f3931c6da96f4616eeec81fd5ae3f7904eda0f364c1a0a73ecf9c",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NE": {
             "file": "appearances/man-forkbeard/sprites/hammer-NE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "c215bdf162333be04547e24082b1dfff77d2b4ac25450d030ac216f13fcf3c73",
+            "status": "approved",
+            "sha256": "67f83446ea5628267597add11822e57ca88618242ee07cbcb2c6c41774430853",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "E": {
             "file": "appearances/man-forkbeard/sprites/hammer-E-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "f205fe972bf2a6d5b8497f025e926dbc8cb8ec103c46e7c2da37968ffaed08a5",
+            "status": "approved",
+            "sha256": "073868610a85a88d21d5bd44bf6b52788bb69dbe03005e813d18f262c42f6b5e",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "SE": {
             "file": "appearances/man-forkbeard/sprites/hammer-SE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "bef5aff2a17e9fa9721a33c8ff00af2a9f6b59e58c9c1f6dea3be2b815612eea",
+            "status": "approved",
+            "sha256": "6ae06ccd92e9f91ee5d3aefa87cd5439241409181d56c7644ed066f60cb1295c",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "S": {
             "file": "appearances/man-forkbeard/sprites/hammer-S-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "fa4d7fbd7335d38288c231c8d3c09b1d2ee9743cbe0c5381b007fa2581fe13c2",
+            "status": "approved",
+            "sha256": "5888e05eb2cd32083672e2831ffa607f008a3a73f423333998a33246cb2a40d0",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "N": {
             "file": "appearances/man-forkbeard/sprites/hammer-N-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "857864dfebcbfbb172890d2a15dd84b85b2cc448a632a837d56d360f8879dbe7",
+            "status": "approved",
+            "sha256": "00be795f047bf8a865994e5e9a7ca343c5a659060d39286a5b256fe0358a835d",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           }
         },
@@ -1034,96 +1034,96 @@
             "file": "appearances/man-redmane/sprites/hammer-SW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "64df5bf8fdf7c95bb9350d134a05b779e62a8700b19a4024cb31bfd0d82ee14b",
+            "status": "approved",
+            "sha256": "7c3ec86b993927082f1bfc4f3350fa407c141f7cb853504488019879ca134d9d",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "W": {
             "file": "appearances/man-redmane/sprites/hammer-W-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "021155509d5d96624caca9d0a4d2cce4b2e0c3c8aa6e33722e18e90aeec68497",
+            "status": "approved",
+            "sha256": "951968fe3d6ac56fb102f5b1613f2ae79569b1bfbc40e48fdea75667fdbf6a60",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NW": {
             "file": "appearances/man-redmane/sprites/hammer-NW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "207f996096aaab742b0df3178653884211aec6ff4b6b7c048b757523fa8a2db9",
+            "status": "approved",
+            "sha256": "9fc1a5a752742c03f5cb831f909516cfa626bda79cd0a9d72dce6d732984f306",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NE": {
             "file": "appearances/man-redmane/sprites/hammer-NE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "9a7e81308275d1efc4d11632eef30fe511057f103ef9368b6d10b6d9cbcfd943",
+            "status": "approved",
+            "sha256": "ac55ccbaaf92871effe373adf46b6b28e0652cd21e35b3bac8e737da314e7723",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "E": {
             "file": "appearances/man-redmane/sprites/hammer-E-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "cd69747f9f1edcd2cea7351656994eef3753b3ceec38ea0aef6389a756767b5a",
+            "status": "approved",
+            "sha256": "4c92ca0ee6a7f4035c067eb6a1eab9a75f4af048668f8023944a6a7e1ba02d6c",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "SE": {
             "file": "appearances/man-redmane/sprites/hammer-SE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "d2adef468c497100b44a15a2f1e31df145689e1c1d342dfc456da7f83b507cdd",
+            "status": "approved",
+            "sha256": "db9fcc5de116844b33083d0b29a57f7808641555f0f0d2fafabfa162a236e1ae",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "S": {
             "file": "appearances/man-redmane/sprites/hammer-S-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "88c26589914291d76b11edd3c76e09648dffdda19e5aa5bcd7383b94df068102",
+            "status": "approved",
+            "sha256": "bdd3ec9022cfcaa43d455b127877e5104b1ba1f8be07996cc7c43ae692cc41b6",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "N": {
             "file": "appearances/man-redmane/sprites/hammer-N-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "ce1734b555101cd6f75c579f3a711c340441496c16525e9ca59f8b938ab66893",
+            "status": "approved",
+            "sha256": "023d9345e2a4482fd8a89f3ac990aac48bed55fa85f31f95d104086ee4f7b0e2",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           }
         },
@@ -1132,96 +1132,96 @@
             "file": "appearances/man-ravenknot/sprites/hammer-SW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "20ce976401949c24273f26dd6b9c57c40a3a72de142d922ae28385c125b6324d",
+            "status": "approved",
+            "sha256": "f20bbff82a351d61de91cc9a0e7840993b5d8ef5182614c2619af77622246284",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "W": {
             "file": "appearances/man-ravenknot/sprites/hammer-W-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "95c2d982fc3a1515fed9893a38f792024c01be7c87f985e6ffe6bb103b463455",
+            "status": "approved",
+            "sha256": "c3de7b55d80bd6a4f6c1073b21927596a8aeca385f81d72f714dff4400947b1f",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NW": {
             "file": "appearances/man-ravenknot/sprites/hammer-NW-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "ee60e649b7cd04885d20e9e281fa692de572c801f28ae4fb40d6f6ada4247d86",
+            "status": "approved",
+            "sha256": "ad96dd8c7f305d5340d5f3480d5d3c8e29f0ed7dc12da36e21fb789a0d6fad56",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "NE": {
             "file": "appearances/man-ravenknot/sprites/hammer-NE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "0aec08c9c9914e28ada86a1f7f065439ccb84d034c7b671cb7fbec16b9615cfc",
+            "status": "approved",
+            "sha256": "6c287b0c404167655d0544f67fa6d748f3786c28a26443c5ef0d8172198f915b",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "E": {
             "file": "appearances/man-ravenknot/sprites/hammer-E-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "234442d4652bd4044823bfd2579298d69c17c8ce7b27341eeef8820e6f3b1342",
+            "status": "approved",
+            "sha256": "e286627daebe65154652d9711edf73ad12751504dc99a33d977bc7e5613613e8",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "SE": {
             "file": "appearances/man-ravenknot/sprites/hammer-SE-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "dd388323df60dd8f4d6eb21b07e9a15421ca9ce25f8a2a9e1c2899272ee85e61",
+            "status": "approved",
+            "sha256": "8028386ded2c69383323b1b346a09f821a0e46eaa8098455f2908af5ad3d819a",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "S": {
             "file": "appearances/man-ravenknot/sprites/hammer-S-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "f5e8a5b6cfae1b4667bcc8a9860572be5b7c981a352e22f834114295ace94776",
+            "status": "approved",
+            "sha256": "94fc49d345461575badf1557175a3457b24ba6b472b2a832a7e401923ae25e8c",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           },
           "N": {
             "file": "appearances/man-ravenknot/sprites/hammer-N-88px.png",
             "frames": 12,
             "duration": 1.25,
-            "status": "review",
-            "sha256": "11be4f972e759ee50f547f6fe362dcd80b75516be12d4af5caaaf473dddf5f3d",
+            "status": "approved",
+            "sha256": "8f26a4764dab06313a799e7e799b7d73d3c7ba86321738667ae5e384bddbef71",
             "frameDurations": [
-              0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
-              0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
-              0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+              0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+              0.041666666666666664, 0.041666666666666664, 0.08333333333333333, 0.08333333333333333,
+              0.16666666666666666, 0.16666666666666666, 0.16666666666666666, 0.16666666666666666
             ]
           }
         }

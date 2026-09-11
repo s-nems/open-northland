@@ -24,6 +24,7 @@ def parse_args():
     p.add_argument("--camera-reference", help="Read-only approved camera receipt, independent of pose selection")
     p.add_argument("--head-model", help="separate head GLB fitted to the civilian socket")
     p.add_argument("--head-config", help="head attachment JSON")
+    p.add_argument("--body-proportions", help="Body scale profile applied after neutral head assembly")
     p.add_argument("--equipment", help="textured equipment attachment JSON")
     p.add_argument("--limb-texture", help="matching rigged base paint for exposed arm and hand regions")
     return p.parse_args(argv)
@@ -116,6 +117,9 @@ def main():
         restore_limb_paint(meshes, args.limb_texture)
     for i, f in enumerate(frames):
         pose(i)
+        if i == 0 and args.body_proportions:
+            from body_proportions import apply_body_proportions
+            apply_body_proportions(args.body_proportions, FACING_YAW[args.facing])
         render_to(os.path.join(args.out, f"f{i:02d}.png"))
         print(f"RENDER frame {i} at {f:.2f}")
 

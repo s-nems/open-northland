@@ -1,0 +1,11 @@
+{
+  "bodyScale": [0.94, 1, 1],
+  "independentScale": ["ForeArm", "Hand", "Leg", "Foot"],
+  "boneScales": {
+    "Arm": [0.9, 0.9, 0.9],
+    "ForeArm": [0.9, 0.94, 0.9],
+    "Hand": [0.82, 0.82, 0.82],
+    "UpLeg": [0.84, 1, 0.84],
+    "Leg": [0.84, 1, 0.84]
+  }
+}

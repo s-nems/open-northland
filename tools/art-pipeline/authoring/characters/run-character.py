@@ -108,6 +108,8 @@ def main():
                         options += ['--camera-reference',run/recipe['camera_reference']/f'{name}.json']
                     if recipe.get('camera_cache'):
                         options += ['--camera-cache',run/recipe['camera_cache']/f'{name}.json']
+                    if recipe.get('bodyProportions'):
+                        options += ['--body-proportions', run/recipe['bodyProportions']]
                     if recipe.get('head'):
                         options += ['--head-model', run/recipe['head']['model'], '--head-config', run/recipe['head']['config']]
                     render_script('render_walk.py',*options)

@@ -6,6 +6,10 @@ Blender defaults to `/Applications/Blender.app/Contents/MacOS/Blender`; `BLENDER
 
 ## Re-export selected sprites
 
+Male recipes bind `shared/body/proportions.json` through `bodyProportions`; apply it after head
+assembly for every clip. Bone scale inheritance is disabled at the listed joints to avoid compounding
+limb thickness or shrinking the boots.
+
 Retain `recipe.json`, `layout.json`, `projected/` textures and camera receipts when rerendering.
 Male walk/idle files resolve from the shared model folder; hammer resolves from the appearance folder.
 
@@ -82,7 +86,8 @@ Remeasure when changing source motion or geometry; retain playback tuning:
 ```sh
 "${BLENDER:-/Applications/Blender.app/Contents/MacOS/Blender}" -b \
   --python "$SCRIPTS/measure-walk-gait.py" -- \
-  --model "$MODEL/walk.glb" --out docs/art/characters/shared/body/walk-gait.json
+  --model "$MODEL/walk.glb" --body-proportions docs/art/characters/shared/body/proportions.json \
+  --out docs/art/characters/shared/body/walk-gait.json
 ```
 
 This planted-ankle measurement is a visual approximation. The sim already normalizes projected travel;
