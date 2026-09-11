@@ -2,7 +2,10 @@ import type { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import type { DrawItem } from '../../src/data/scene/index.js';
 import { resolveSettlerBobId } from '../../src/data/sprites/settler.js';
-import { characterGaitRate } from '../../src/gpu/sprite-pool/character-layers.js';
+import {
+  characterGaitRate,
+  characterInterpolatesMotion,
+} from '../../src/gpu/sprite-pool/character-layers.js';
 import { type MotionTrack, trackMotion } from '../../src/gpu/sprite-pool/motion.js';
 import type { SettlerCharacterSet } from '../../src/gpu/sprite-sheet.js';
 
@@ -88,5 +91,32 @@ describe('measured walk travel', () => {
     };
     expect(characterGaitRate(loaded, { ...item, carrying: true })).toBe(1);
     expect(characterGaitRate(loaded, item)).toBe(0.5);
+  });
+});
+
+describe('character motion ownership', () => {
+  const mixed: SettlerCharacterSet = {
+    ...characters,
+    default: {
+      ...characters.default,
+      variants: [
+        { body, binding, scale: 0.5, interpolateMotion: true },
+        { body, binding, scale: 1 },
+      ],
+    },
+    animals: { tribes: new Set([9]), byTribe: { 9: { body, binding } } },
+  };
+
+  it('uses each appearance scale for its gait calibration', () => {
+    expect(characterGaitRate(mixed, { ...item, ref: 2 })).toBe(0.5);
+    expect(characterGaitRate(mixed, { ...item, ref: 3 })).toBe(0.25);
+  });
+
+  it('keeps interpolation local to the selected appearance, including jobs and wildlife', () => {
+    expect(characterInterpolatesMotion(mixed, { ...item, ref: 2 })).toBe(true);
+    expect(characterInterpolatesMotion(mixed, { ...item, ref: 3 })).toBe(false);
+    expect(characterInterpolatesMotion(mixed, { ...item, ref: 2, jobType: 7 })).toBe(false);
+    expect(characterInterpolatesMotion(mixed, { ...item, ref: 2, tribe: 9 })).toBe(false);
+    expect(characterInterpolatesMotion(undefined, item)).toBe(false);
   });
 });

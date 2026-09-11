@@ -2,7 +2,7 @@
 
 Style and world-scale rules: [WORLD-STYLE.md](../WORLD-STYLE.md).
 Asset rules: [AGENTS.md](../AGENTS.md).
-Runtime schema and export: [OWN-ASSET-RUNTIME.md](../OWN-ASSET-RUNTIME.md#building-delivery).
+Runtime schema and export: [OWN-ASSET-RUNTIME.md](../OWN-ASSET-RUNTIME.md#bindings).
 
 ## Inputs and geometry
 
@@ -49,9 +49,9 @@ bounds; camera magnification does not add source detail.
 uv run --with pillow python docs/art/buildings/tools/inspect-sprite.py path/to/sprite.png
 npm run art -- build buildings/<slot>
 npm run art -- review buildings/<slot>
-npm run art -- publish buildings/<slot>
 ```
 
+After visual acceptance, use the [shared approval and publication commands](../PIPELINE.md#package-and-command-contract).
 Verify tribe/type and door offset against readable owned content and generated IR.
 Check exported file identity, then review the real map with `assets=own&zoom=2`:
 entrance alignment, walking actors, depth sorting, elevation and readability at lower zoom.

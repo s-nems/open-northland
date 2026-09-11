@@ -7,26 +7,11 @@
   "camera_elevation": 28.5,
   "camera_azimuth": 22.5,
   "orthographic_scale": 9.092827796936035,
-  "sprite_size": [
-    512,
-    512
-  ],
-  "master_size": [
-    1536,
-    1536
-  ],
-  "door_top_sprite": [
-    182.33364868164062,
-    316.4615936279297
-  ],
-  "door_foot_sprite": [
-    182.33364868164062,
-    412.4615936279297
-  ],
-  "ground_entrance_anchor_sprite": [
-    182.33364868164062,
-    423.235107421875
-  ],
+  "sprite_size": [512, 512],
+  "master_size": [1536, 1536],
+  "door_top_sprite": [182.33364868164062, 316.4615936279297],
+  "door_foot_sprite": [182.33364868164062, 412.4615936279297],
+  "ground_entrance_anchor_sprite": [182.33364868164062, 423.235107421875],
   "door_screen_px_target": 96,
   "actor_screen_px_target": 88,
   "world_zoom": 2,

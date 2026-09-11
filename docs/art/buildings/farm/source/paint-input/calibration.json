@@ -1,17 +1,8 @@
 {
   "status": "selected-for-runtime",
-  "sourceSize": [
-    1254,
-    1254
-  ],
-  "doorTop": [
-    510,
-    890
-  ],
-  "entrancePixel": [
-    510,
-    1120
-  ],
+  "sourceSize": [1254, 1254],
+  "doorTop": [510, 890],
+  "entrancePixel": [510, 1120],
   "doorHeightPx": 230,
   "measurementUncertaintyPx": 8,
   "reviewZoom": 2,

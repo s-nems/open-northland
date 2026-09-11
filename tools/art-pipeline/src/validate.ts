@@ -67,12 +67,6 @@ export async function validateDelivery(directory: string, complete = false) {
       const m = ownCharacterManifest.parse(raw);
       claim(identities, `character:${m.id}`);
       if (folder !== `characters/${m.id}`) throw new Error('Character folder and id disagree');
-      const count =
-        8 * (m.walkFrames + m.idleFrames + (m.atomicClips ?? []).reduce((n, c) => n + c.frames, 0));
-      if (m.columns * m.cellWidth !== m.width || Math.ceil(count / m.columns) * m.cellHeight !== m.height)
-        throw new Error('Character clip coverage disagrees with atlas');
-      if (m.anchorX < 0 || m.anchorX > m.cellWidth || m.anchorY < 0 || m.anchorY > m.cellHeight)
-        throw new Error('Character anchor outside cell');
       await inspect(`${folder}/atlas.png`, m.width, m.height, true);
     } else throw new Error(`Unknown manifest: ${file}`);
   }

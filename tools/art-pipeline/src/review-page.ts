@@ -9,10 +9,12 @@ export function reviewPage(data: unknown) {
 <label>Tło <input id="background" type="color" value="#596344"></label><button id="checker">Szachownica</button>
 <small id="stats"></small><main><section><h2>Obecnie w grze</h2><canvas id="before"></canvas></section><section><h2>Kandydat</h2><canvas id="after"></canvas></section></main>
 <details><summary>Parametry prezentacji</summary><main><pre id="oldmeta"></pre><pre id="newmeta"></pre></main></details>
+<h2>Metadane dostawy</h2><p>Pełne manifesty i powiązania; null oznacza brak pliku w danej wersji.</p><div id="metadata"></div>
 <p>Sprawdź krawędzie na jasnym, ciemnym i terenowym tle. Ten widok nie zastępuje oceny wejścia, skali postaci i sortowania na mapie przy zoomie ×2.</p>
 <details><summary>Identyfikator wersji do zatwierdzenia</summary><pre id="receipt"></pre></details>
 <script type="module">
 const data=${payload};const el=id=>document.getElementById(id);el('title').textContent=data.id;
+for(const item of data.metadata){const details=document.createElement('details');const title=document.createElement('summary');title.textContent=item.path;details.append(title);const columns=document.createElement('main');for(const [label,value] of [['Obecnie w grze',item.previous],['Kandydat',item.next]]){const section=document.createElement('section');const heading=document.createElement('h3');heading.textContent=label;const pre=document.createElement('pre');pre.textContent=JSON.stringify(value,null,2);section.append(heading,pre);columns.append(section);}details.append(columns);el('metadata').append(details);}
 for(const [i,item] of data.items.entries()){const option=document.createElement('option');option.value=i;option.textContent=item.path;el('image').append(option);}
 el('receipt').textContent=data.digest;
 function geometry(m,image){if(el('atlas').checked||!m)return {x:0,y:0,width:image.width,height:image.height,scale:m?.scale??1};
@@ -21,7 +23,7 @@ if(m.cellWidth){const count=8*(m.walkFrames+m.idleFrames+(m.atomicClips??[]).red
 return {x:0,y:0,width:image.width,height:image.height,scale:m.scale??1};}
 let revision=0;
 async function render(){const token=++revision;const item=data.items[Number(el('image').value)];if(!item)return;
-el('stats').textContent=item.changedPixels===null?'Nowy obraz lub zmienione wymiary':item.changedPixels+' zmienionych pikseli RGBA';
+el('stats').textContent=!item.next?'Obraz zostanie usunięty':item.changedPixels===null?'Nowy obraz lub zmienione wymiary':item.changedPixels+' zmienionych pikseli RGBA';
 el('oldmeta').textContent=JSON.stringify(item.beforeManifest,null,2);el('newmeta').textContent=JSON.stringify(item.manifest,null,2);
 for(const [id,base64,m] of [['before',item.previous,item.beforeManifest],['after',item.next,item.manifest]]){const canvas=el(id);if(!base64){canvas.width=1;canvas.height=1;continue;}const image=new Image();image.src='data:image/png;base64,'+base64;await image.decode();if(token!==revision)return;
 const g=geometry(m,image);canvas.width=g.width;canvas.height=g.height;canvas.style.width=g.width*g.scale*Number(el('zoom').value)+'px';canvas.style.height=g.height*g.scale*Number(el('zoom').value)+'px';canvas.getContext('2d').drawImage(image,g.x,g.y,g.width,g.height,0,0,g.width,g.height);}}

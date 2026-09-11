@@ -21,7 +21,7 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { LayerBinder } from './bind-layers.js';
-import { characterGaitRate } from './character-layers.js';
+import { characterGaitRate, characterInterpolatesMotion } from './character-layers.js';
 import { drawAlphaForKind, trackMotion } from './motion.js';
 import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
@@ -299,7 +299,7 @@ export class SpritePool {
   }
 
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    const smooth = pe.kind === 'settler' && this.sheet?.characters?.interpolateMotion === true;
+    const smooth = characterInterpolatesMotion(this.sheet?.characters, item);
     const alpha = drawAlphaForKind(pe.kind, frame.alpha, smooth);
     trackMotion(
       pe.motion,

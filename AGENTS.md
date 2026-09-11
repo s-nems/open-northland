@@ -150,3 +150,4 @@ Load the relevant file when working in that area:
 - `packages/desktop/AGENTS.md`
 - `packages/web/AGENTS.md`
 - `tools/asset-pipeline/AGENTS.md`
+- `tools/art-pipeline/AGENTS.md`

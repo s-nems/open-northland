@@ -1,20 +1,11 @@
 {
-  "doorTop": [
-    483.54515075683594,
-    570.4803466796875
-  ],
-  "doorFoot": [
-    483.54515075683594,
-    792.4069671630859
-  ],
+  "doorTop": [483.54515075683594, 570.4803466796875],
+  "doorFoot": [483.54515075683594, 792.4069671630859],
   "doorHeightUnits": 1.94,
   "adultHeightUnits": 1.78,
   "cameraElevation": 28.5,
   "cameraAzimuth": 22.5,
-  "sourceSize": [
-    1536,
-    1024
-  ],
+  "sourceSize": [1536, 1024],
   "doorHeightPixels": 221.92662048339844,
   "sourceToWorldScale": 0.21628770760103885
 }

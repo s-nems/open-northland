@@ -9,6 +9,7 @@ import { candidate } from './candidate.js';
 import { loadAsset } from './catalog.js';
 import { json } from './files.js';
 import { assertStopped } from './lock.js';
+import { preparePreview } from './preview.js';
 import { publish } from './publish.js';
 import { catalogSchema } from './recipe.js';
 import { review } from './review.js';
@@ -16,7 +17,7 @@ import { recover } from './transaction.js';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const usage =
-  'art list | build <id|all> | validate <id|all> | review <id> [--port 5188] | approve <id> --digest <hash> --reviewer <name> | publish <id> | recover [id]';
+  'art list | build <id|all> | validate <id|all> | review <id> [--port 5188] | preview <id> | approve <id> --digest <hash> --reviewer <name> | publish <id> | recover [id]';
 try {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
@@ -53,7 +54,8 @@ try {
           command === 'build' ? await buildAsset(root, assetId) : (await candidate(root, assetId)).report;
         console.log(`${assetId}: ${Object.keys(result.files).length} files, ${result.digest}`);
       }
-    } else if (command === 'publish') console.log(await publish(root, id));
+    } else if (command === 'preview') console.log(await preparePreview(root, id));
+    else if (command === 'publish') console.log(await publish(root, id));
     else if (command === 'approve') {
       if (!values.digest || !values.reviewer) throw new Error(usage);
       console.log(await approve(root, id, values.digest, values.reviewer));

@@ -1,19 +1,20 @@
 import fs from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
 const root = new URL('../', import.meta.url);
 const files = (await fs.readdir(new URL('projected/', root))).filter((f) => /^texture.*\.png$/.test(f));
 const report = [];
 for (const file of files) {
-  const { data, info } = await sharp(new URL('projected/' + file, root).pathname)
+  const { data, info } = await sharp(fileURLToPath(new URL(`projected/${file}`, root)))
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  const raw = await sharp(new URL('.work/projected/' + file, root).pathname)
+  const raw = await sharp(fileURLToPath(new URL(`.work/projected/${file}`, root)))
     .ensureAlpha()
     .raw()
     .toBuffer();
-  const base = await sharp(new URL('model/rigged-base-0.png', root).pathname)
+  const base = await sharp(fileURLToPath(new URL('model/rigged-base-0.png', root)))
     .resize(info.width, info.height)
     .ensureAlpha()
     .raw()
@@ -36,7 +37,7 @@ for (const file of files) {
   }
   await sharp(data, { raw: info })
     .png()
-    .toFile(new URL('projected/' + file, root).pathname);
+    .toFile(fileURLToPath(new URL(`projected/${file}`, root)));
   report.push({ file, linen, magenta });
 }
 console.log(JSON.stringify(report));

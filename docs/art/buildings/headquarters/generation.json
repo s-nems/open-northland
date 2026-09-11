@@ -56,26 +56,19 @@
     "output_format": "png",
     "calls": [
       {
-        "images": [
-          "painted.png"
-        ],
+        "images": ["painted.png"],
         "prompt": "alpha.submitted.prompt.txt",
         "output": "final.png",
         "status": "rejected: porch step clipped"
       },
       {
-        "images": [
-          "final.png"
-        ],
+        "images": ["final.png"],
         "prompt": "alpha-margin.submitted.prompt.txt",
         "output": "final-margin.png",
         "status": "rejected: golden material drift and overly small framing"
       },
       {
-        "images": [
-          "painted.png",
-          "../house-1/house-painted-runtime.png"
-        ],
+        "images": ["painted.png", "../house-1/house-painted-runtime.png"],
         "prompt": "alpha-muted.submitted.prompt.txt",
         "output": "repaint/input.png",
         "status": "delivered"

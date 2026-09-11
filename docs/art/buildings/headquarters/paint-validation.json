@@ -2,25 +2,12 @@
   "file": "painted.png",
   "sha256": "0c3eb22dd3f5e41b34860377c2e0a35a28c1dda43b5718d240562e381f945a06",
   "mode": "RGB",
-  "size": [
-    1536,
-    1024
-  ],
-  "alphaBounds": [
-    0,
-    0,
-    1536,
-    1024
-  ],
+  "size": [1536, 1024],
+  "alphaBounds": [0, 0, 1536, 1024],
   "transparentPixels": 0,
   "partialAlphaPixels": 0,
   "opaquePixels": 1572864,
-  "errors": [
-    "No alpha channel or transparency metadata.",
-    "No fully transparent background pixels."
-  ],
-  "warnings": [
-    "Nonzero alpha reaches canvas boundary; inspect clipping and margin."
-  ],
+  "errors": ["No alpha channel or transparency metadata.", "No fully transparent background pixels."],
+  "warnings": ["Nonzero alpha reaches canvas boundary; inspect clipping and margin."],
   "status": "rejected-export"
 }

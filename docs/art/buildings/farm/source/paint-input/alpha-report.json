@@ -2,16 +2,8 @@
   "file": "farm-painted.png",
   "sha256": "23f63bdbb51a89390a46ff1591a71431fee465ea27313cddf537380380c6de3d",
   "mode": "RGBA",
-  "size": [
-    1254,
-    1254
-  ],
-  "alphaBounds": [
-    67,
-    57,
-    1230,
-    1221
-  ],
+  "size": [1254, 1254],
+  "alphaBounds": [67, 57, 1230, 1221],
   "transparentPixels": 951747,
   "partialAlphaPixels": 620396,
   "opaquePixels": 373,

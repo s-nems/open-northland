@@ -1,1 +1,6 @@
-{"task_id":"01a08aed-8163-764d-9186-4a3f195b6964","status":"PENDING","estimated_credits":30,"authorization":"User explicitly authorized Meshy costs without further confirmation for this task."}
+{
+  "task_id": "01a08aed-8163-764d-9186-4a3f195b6964",
+  "status": "PENDING",
+  "estimated_credits": 30,
+  "authorization": "User explicitly authorized Meshy costs without further confirmation for this task."
+}

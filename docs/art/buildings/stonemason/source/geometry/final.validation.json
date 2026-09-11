@@ -2,16 +2,8 @@
   "file": "final.png",
   "sha256": "ec4bd9e90052f8ae4bb74d3b5e7bf90afd479536494b82bc52f87caba3325fbb",
   "mode": "RGBA",
-  "size": [
-    1536,
-    1024
-  ],
-  "alphaBounds": [
-    205,
-    92,
-    1321,
-    959
-  ],
+  "size": [1536, 1024],
+  "alphaBounds": [205, 92, 1321, 959],
   "transparentPixels": 1001903,
   "partialAlphaPixels": 11740,
   "opaquePixels": 559221,

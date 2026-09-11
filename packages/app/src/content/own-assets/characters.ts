@@ -46,6 +46,7 @@ export async function loadOwnCharacters(
           },
           binding: ownCharacterBinding(manifest),
           scale: manifest.scale,
+          interpolateMotion: manifest.smoothMotion === true,
         };
       } catch (error) {
         diag.warn('content', `Own character ${manifest.id}: ${String(error)}; using placeholder`);
@@ -67,7 +68,6 @@ export async function loadOwnCharacters(
     (ir?.animals ?? []).flatMap((a) => (a.tribeType === undefined ? [] : [a.tribeType])),
   );
   return {
-    interpolateMotion: requested.every((c) => c.manifest.smoothMotion === true),
     ...selection,
     youngByJob,
     animals: {

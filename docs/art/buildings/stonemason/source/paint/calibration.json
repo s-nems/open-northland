@@ -16,9 +16,6 @@
   "scale": 0.20425531914893616,
   "worldReviewZoom": 2,
   "doorScreenHeight": 96,
-  "sourceSize": [
-    1536,
-    1024
-  ],
+  "sourceSize": [1536, 1024],
   "basis": "Manual clear door estimate on final API export, excluding frame; entrance at lower step edge. Not exact model projection. Original geometry camera 28.5 elevation, 22.5 azimuth; generative local contour drift remains."
 }

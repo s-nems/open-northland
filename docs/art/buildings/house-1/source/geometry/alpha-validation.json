@@ -1,88 +1,33 @@
 {
   "house-final.png": {
-    "size": [
-      1536,
-      1536
-    ],
+    "size": [1536, 1536],
     "mode": "RGBA",
-    "alpha_extrema": [
-      0,
-      255
-    ],
+    "alpha_extrema": [0, 255],
     "transparent_pixels": 1632049,
     "opaque_pixels": 716796,
-    "content_bounds": [
-      232,
-      227,
-      1307,
-      1355
-    ]
+    "content_bounds": [232, 227, 1307, 1355]
   },
   "house-sprite.png": {
-    "size": [
-      512,
-      512
-    ],
+    "size": [512, 512],
     "mode": "RGBA",
-    "alpha_extrema": [
-      0,
-      255
-    ],
+    "alpha_extrema": [0, 255],
     "transparent_pixels": 180471,
     "opaque_pixels": 78760,
-    "content_bounds": [
-      77,
-      75,
-      436,
-      452
-    ]
+    "content_bounds": [77, 75, 436, 452]
   },
   "finished-right.png": {
-    "size": [
-      768,
-      768
-    ],
-    "alpha_extrema": [
-      0,
-      255
-    ],
-    "content_bounds": [
-      118,
-      161,
-      650,
-      672
-    ]
+    "size": [768, 768],
+    "alpha_extrema": [0, 255],
+    "content_bounds": [118, 161, 650, 672]
   },
   "finished-back.png": {
-    "size": [
-      768,
-      768
-    ],
-    "alpha_extrema": [
-      0,
-      255
-    ],
-    "content_bounds": [
-      114,
-      113,
-      652,
-      678
-    ]
+    "size": [768, 768],
+    "alpha_extrema": [0, 255],
+    "content_bounds": [114, 113, 652, 678]
   },
   "finished-left.png": {
-    "size": [
-      768,
-      768
-    ],
-    "alpha_extrema": [
-      0,
-      255
-    ],
-    "content_bounds": [
-      118,
-      161,
-      649,
-      671
-    ]
+    "size": [768, 768],
+    "alpha_extrema": [0, 255],
+    "content_bounds": [118, 161, 649, 671]
   }
 }

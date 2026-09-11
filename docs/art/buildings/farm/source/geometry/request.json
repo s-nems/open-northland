@@ -13,8 +13,6 @@
   "remove_lighting": false,
   "texture_resolution": "2k",
   "enable_pbr": false,
-  "target_formats": [
-    "glb"
-  ],
+  "target_formats": ["glb"],
   "response_format": "json"
 }

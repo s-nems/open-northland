@@ -2,22 +2,12 @@
   "file": "final-muted.png",
   "sha256": "114e3e6011c8360a1b988ffb401cae23268b35b945e290627bbb37421c48f37b",
   "mode": "RGBA",
-  "size": [
-    1536,
-    1024
-  ],
-  "alphaBounds": [
-    12,
-    0,
-    1520,
-    1023
-  ],
+  "size": [1536, 1024],
+  "alphaBounds": [12, 0, 1520, 1023],
   "transparentPixels": 720632,
   "partialAlphaPixels": 293879,
   "opaquePixels": 558353,
   "errors": [],
-  "warnings": [
-    "Nonzero alpha reaches canvas boundary; inspect clipping and margin."
-  ],
+  "warnings": ["Nonzero alpha reaches canvas boundary; inspect clipping and margin."],
   "status": "requires-visual-review"
 }

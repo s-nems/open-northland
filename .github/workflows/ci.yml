@@ -69,3 +69,5 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:art
+      - run: npm run art -- build all
+      - run: npm run art -- validate all

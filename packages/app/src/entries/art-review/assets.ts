@@ -1,16 +1,18 @@
-import { Assets, Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import house from '../../assets/own/buildings/house-1/runtime.json';
 import character from '../../assets/own/characters/man-silver/runtime.json';
+import { ownBuildingAtlas, ownBuildingManifest } from '../../content/own-assets/building-manifest.js';
+import { ownCharacterAtlas, ownCharacterManifest } from '../../content/own-assets/character-manifest.js';
 
-export const reviewWalk = { frames: character.walkFrames, duration: character.walkDuration };
+export const reviewCharacter = ownCharacterManifest.parse(character);
+const reviewBuilding = ownBuildingManifest.parse(house);
+export const reviewWalk = { frames: reviewCharacter.walkFrames, duration: reviewCharacter.walkDuration };
 
 const urls = {
-  grass: new URL('../../../../../docs/art/terrain/grass/grass-base.png', import.meta.url).href,
-  soil: new URL('../../../../../docs/art/terrain/grass/soil.png', import.meta.url).href,
-  house: new URL('../../../../../docs/art/diagnostics/cottage/cottage-alpha.png', import.meta.url).href,
-  walk: new URL(
-    '../../../../../docs/art/characters/appearances/man-silver/sprites/walk-SW-88px.png',
-    import.meta.url,
-  ).href,
+  grass: new URL('../../assets/own/terrain/grass-base.png', import.meta.url).href,
+  soil: new URL('../../assets/own/terrain/soil.png', import.meta.url).href,
+  house: new URL('../../assets/own/buildings/house-1/house-painted-runtime.png', import.meta.url).href,
+  walk: new URL('../../assets/own/characters/man-silver/atlas.png', import.meta.url).href,
 };
 
 export async function loadReviewAssets(): Promise<Record<keyof typeof urls, Texture>> {
@@ -43,11 +45,23 @@ export function contactShadow(width: number, height: number): Graphics {
 
 export function reviewHouse(texture: Texture): Container {
   const house = new Container();
-  const size = 260;
+  const frame = ownBuildingAtlas(reviewBuilding).frames.get(0);
+  if (frame === undefined) throw new Error('Review building frame missing');
   const sprite = new Sprite(texture);
-  sprite.width = size;
-  sprite.height = size;
-  sprite.position.set(-size / 2, -size * 0.91);
+  sprite.scale.set(reviewBuilding.scale);
+  sprite.position.set(frame.offsetX * reviewBuilding.scale, frame.offsetY * reviewBuilding.scale);
   house.addChild(sprite);
   return house;
+}
+
+export function reviewWalkTextures(texture: Texture): readonly Texture[] {
+  const atlas = ownCharacterAtlas(reviewCharacter);
+  return Array.from({ length: reviewWalk.frames }, (_, index) => {
+    const frame = atlas.frames.get(index);
+    if (frame === undefined) throw new Error(`Review walk frame missing: ${index}`);
+    return new Texture({
+      source: texture.source,
+      frame: new Rectangle(frame.x, frame.y, frame.width, frame.height),
+    });
+  });
 }

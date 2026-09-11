@@ -4,8 +4,15 @@ import {
   makeElevationField,
   TerrainLayer,
 } from '@open-northland/render';
-import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
-import { contactShadow, loadReviewAssets, reviewHouse, reviewWalk } from './assets.js';
+import { Container, Sprite } from 'pixi.js';
+import {
+  contactShadow,
+  loadReviewAssets,
+  reviewCharacter,
+  reviewHouse,
+  reviewWalk,
+  reviewWalkTextures,
+} from './assets.js';
 import { loadReviewGround } from './load-ground.js';
 
 export async function renderArtReview(canvas: HTMLCanvasElement): Promise<void> {
@@ -43,18 +50,14 @@ export async function renderArtReview(canvas: HTMLCanvasElement): Promise<void> 
   world.addChildAt(houseShadow, 1);
   actors.addChild(house);
   house.visible = !ground.realMap;
-  const frames = Array.from(
-    { length: reviewWalk.frames },
-    (_, index) =>
-      new Texture({
-        source: assets.walk.source,
-        frame: new Rectangle(index * 192, 0, 192, 144),
-      }),
-  );
+  const frames = reviewWalkTextures(assets.walk);
   const people = [0, 150].map((offset) => {
     const sprite = new Sprite(frames[0]);
-    sprite.anchor.set(0.5, 128 / 144);
-    sprite.scale.set(0.5);
+    sprite.anchor.set(
+      reviewCharacter.anchorX / reviewCharacter.cellWidth,
+      reviewCharacter.anchorY / reviewCharacter.cellHeight,
+    );
+    sprite.scale.set(reviewCharacter.scale);
     actors.addChild(sprite);
     const shadow = contactShadow(8, 2.5);
     world.addChildAt(shadow, 1);

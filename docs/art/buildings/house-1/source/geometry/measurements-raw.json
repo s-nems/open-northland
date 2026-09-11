@@ -67,33 +67,16 @@
     }
   ],
   "vertex_bounds": [
-    [
-      -0.9553750157356262,
-      -0.9290969967842102,
-      -0.9185969829559326
-    ],
-    [
-      0.9519140124320984,
-      0.9284219741821289,
-      0.9204750061035156
-    ]
+    [-0.9553750157356262, -0.9290969967842102, -0.9185969829559326],
+    [0.9519140124320984, 0.9284219741821289, 0.9204750061035156]
   ],
   "material_nodes": [
     {
       "name": "Material_0",
       "nodes": [
-        [
-          "Principled BSDF",
-          "BSDF_PRINCIPLED"
-        ],
-        [
-          "Material Output",
-          "OUTPUT_MATERIAL"
-        ],
-        [
-          "Image Texture",
-          "TEX_IMAGE"
-        ]
+        ["Principled BSDF", "BSDF_PRINCIPLED"],
+        ["Material Output", "OUTPUT_MATERIAL"],
+        ["Image Texture", "TEX_IMAGE"]
       ]
     }
   ]

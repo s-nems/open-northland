@@ -11,6 +11,53 @@ not installed. The CLI compiles only the art tools and contracts. Blender author
 need Blender and the dependencies documented in [character production](characters/PIPELINE.md).
 Normal builds use local files; they do not generate AI images, call providers or require API keys.
 
+## Adding or revising a package
+
+1. Choose a stable package ID and the nearest existing recipe: [building](buildings/house-2/asset.json),
+   [prop atlas](terrain/ferns/asset.json), [terrain material](terrain/sand/asset.json) or
+   [character](characters/appearances/man-silver/asset.json). Reuse that presentation format.
+2. Define the subject, gameplay binding, expected states, source dimensions, world scale and ground
+   anchor before generation. Verify compatibility IDs against owned content; art is independent.
+3. Read the relevant style contract and attach its canonical reference. Generate into a separate
+   candidate source folder; preserve selected masters and generation records.
+4. Edit the package recipe and register a new ID in [assets.json](assets.json) when needed.
+   Outputs must use unowned paths or paths already owned by this package.
+5. Build and review that package, then preview its candidate on a playable map. Record actual visual
+   acceptance, publish, and verify the delivery. Use the
+   [runtime review locations](OWN-ASSET-RUNTIME.md#review-locations).
+
+A finish variant usually changes source pixels while retaining IDs, layout and calibration; verify
+those measurements after painting. A new building or prop family also needs unique runtime IDs and
+verified bindings. A new character appearance needs role selection as well as an atlas; do not add it
+to normal selection before acceptance. Terrain manifests are currently imported explicitly by
+`packages/app/src/content/own-assets/materials.ts`; registering another package alone does not load
+a new manifest file. A new presentation behavior needs a shared schema, app adapter and focused tests;
+adding a recipe alone cannot introduce animation, collision or simulation rules.
+
+Keep one short package README with purpose, source entry points, reproduction commands and remaining
+visual approximations. Commands and policy belong here; do not copy this workflow into every package.
+
+## Source retention
+
+Retain the exact prompt, tool/model and relevant settings, ordered input references with their roles,
+selected master, and crop/edit/export parameters. Use relative paths in new records. Record each
+reference hash so a changed file cannot silently replace the intended style source. Provider generation
+is not reproducible from a prompt alone; selected source pixels are required build inputs.
+
+Separate references needed to rerun an export from historical generation inputs. Keep every current
+recipe dependency. Historical missing intermediates must be identified as absent; a receipt naming
+one does not mean it is available. Keep original-game references local and ignored. Do not retain
+credentials or signed provider download URLs. Legal provenance and visual approval are separate.
+
+`npm run check:assets` derives source roots from registered recipe directories and their `sourceBasis`;
+shared body, motion and equipment roots are listed in
+[the source registry](../../scripts/own-art-sources.json). Runtime binaries must belong to a package in
+[delivery.json](delivery.json). Registration establishes the provenance boundary, not visual acceptance.
+
+Commit masters, editable geometry, required textures, recipes and runtime delivery. Keep candidates,
+comparison captures and reproducible scratch renders in ignored work directories. Inspect binary size
+in `git diff --stat` before committing; avoid accumulating rejected full model/render copies.
+
 ## Package and command contract
 
 [assets.json](assets.json) explicitly registers each package's `asset.json`. Paths in a recipe's
@@ -38,6 +85,20 @@ selector for resources and characters, and inspect light, dark and terrain backg
 zoom control applies manifest scale; it does not increase source resolution. An atlas comparison
 cannot establish world alignment, depth sorting, character contacts or doorway proportions.
 Building designs still require individual visual acceptance on the playable map at zoom ×2.
+
+Prepare an isolated playable preview before approval:
+
+```sh
+npm run art -- preview terrain/ferns
+ART_CANDIDATE=.art-build/terrain/ferns/preview/own npm run dev
+```
+
+`preview` combines that candidate with the current deliveries and validates the complete pack. It
+writes only ignored preview files; sources, runtime delivery and approvals remain unchanged.
+`ART_CANDIDATE` is a development-only override, resolved from the repository root. Open the regular
+map with `assets=own&zoom=2` and use the review locations linked above. After rebuilding a candidate,
+prepare its preview again and restart the development server. Ordinary `npm run dev` uses the
+committed delivery. Release builds ignore the override.
 
 After a human accepts the concrete candidate, record the **presentation digest printed by review**:
 

@@ -69,7 +69,7 @@ describe('own character atlas', () => {
     ).toBe(false);
   });
   it('validates authored pose holds and converts seconds to simulation tick units', () => {
-    const sparse = { ...manifest, idleFrames: 2, idleFrameDurations: [4.75, 0.25] };
+    const sparse = { ...manifest, height: 1120, idleFrames: 2, idleFrameDurations: [4.75, 0.25] };
     expect(ownCharacterManifest.safeParse(sparse).success).toBe(true);
     expect(ownCharacterBinding(sparse).idle).toMatchObject({ frameDurations: [57, 3] });
     expect(ownCharacterManifest.safeParse({ ...sparse, idleFrameDurations: [5] }).success).toBe(false);

@@ -36,6 +36,12 @@ export const ownCharacterManifest = z
   })
   .strict()
   .superRefine((m, ctx) => {
+    const count =
+      8 * (m.walkFrames + m.idleFrames + (m.atomicClips ?? []).reduce((sum, clip) => sum + clip.frames, 0));
+    if (m.columns * m.cellWidth !== m.width || Math.ceil(count / m.columns) * m.cellHeight !== m.height)
+      ctx.addIssue({ code: 'custom', message: 'Character clip coverage disagrees with atlas' });
+    if (m.anchorX < 0 || m.anchorX > m.cellWidth || m.anchorY < 0 || m.anchorY > m.cellHeight)
+      ctx.addIssue({ code: 'custom', message: 'Character anchor outside cell' });
     const seen = new Set<number>();
     for (const [index, clip] of (m.atomicClips ?? []).entries()) {
       if (seen.has(clip.atomicId))

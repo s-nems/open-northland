@@ -31,8 +31,9 @@ per-clip authoring review and does not itself authorize runtime publication.
 1. Generate front, left, back and right views at equal scale, in a neutral A-pose with empty hands.
    Use `shared/body/concept/sheet.png` for male proportions and `shared/body/restyle/out-facings.png`
    for painting. Base bodies must be bald and clean-shaven, with a complete collar and short neck.
-2. Validate alpha; for solid-magenta inputs use `key-background.mjs`, then `cut-views.mjs`.
-   Keep the exact prompt, source sheet and actual four Meshy inputs.
+2. Validate alpha. For an explicitly authorized solid-magenta workflow, use `key-background.mjs`.
+   Crop the four concept views into separate images; retain their crop rectangles, exact prompt,
+   source sheet and actual Meshy inputs. `restyle-cut.mjs` serves the eight-facing paint sheet below.
 3. Use the matching `model/params.json` as the Meshy request template. Retain the remeshed model,
    rig, useful clips and API receipts. Rigging/remeshing can change UVs: use the rigged base texture.
 4. Render a facing sheet, paint it without changing silhouettes or pose, then project it:

@@ -12,8 +12,6 @@
   "texture_resolution": "4k",
   "image_enhancement": false,
   "enable_pbr": false,
-  "target_formats": [
-    "glb"
-  ],
+  "target_formats": ["glb"],
   "response_format": "json"
 }

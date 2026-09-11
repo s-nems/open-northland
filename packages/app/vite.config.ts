@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { isContentRoute, resolveContentRequest } from '@open-northland/content-resolver';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { defineConfig, type Plugin } from 'vite';
+import { artPreviewPlugin } from './vite/art-preview.js';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
 // wraps the same build and serves the same routes over its app:// protocol.
@@ -61,10 +62,15 @@ function serveContent(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(async ({ command }) => ({
   base: basePath,
-  plugins: [serveContent()],
+  plugins: [
+    serveContent(),
+    ...(command === 'serve' && process.env.ART_CANDIDATE
+      ? [await artPreviewPlugin(resolve(here, '../..'), process.env.ART_CANDIDATE)]
+      : []),
+  ],
   server: { port: 5173, open: false },
   // `manifest` feeds scripts/bundle-report.mjs, which prints what each URL mode costs after the build.
   build: { target: 'es2022', outDir: 'dist', manifest: true },
-});
+}));

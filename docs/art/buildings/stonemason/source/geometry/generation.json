@@ -14,9 +14,6 @@
       "role": "world style"
     }
   ],
-  "prompts": [
-    "paint.prompt.txt",
-    "white.prompt.txt"
-  ],
+  "prompts": ["paint.prompt.txt", "white.prompt.txt"],
   "paidMeshyCalls": 0
 }

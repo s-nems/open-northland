@@ -6,3 +6,7 @@
 # Binary assets - never end-of-line converted.
 *.png binary
 *.webp binary
+*.blend binary
+*.glb binary
+*.fbx binary
+*.exr binary

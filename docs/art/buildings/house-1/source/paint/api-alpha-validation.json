@@ -4,17 +4,9 @@
   "quality": "high",
   "input_fidelity": "high",
   "background": "transparent",
-  "size": [
-    1024,
-    1024
-  ],
+  "size": [1024, 1024],
   "mode": "RGBA",
-  "alpha_bounds": [
-    69,
-    23,
-    962,
-    978
-  ],
+  "alpha_bounds": [69, 23, 962, 978],
   "transparent_pixels": 532114,
   "opaque_pixels": 420257,
   "partial_alpha_pixels": 96205,
