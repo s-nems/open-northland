@@ -130,7 +130,8 @@ def main():
                 if not clip.get('duration') or clip['duration'] <= 0:
                     raise ValueError('Preview requires each clip duration in seconds')
                 cells = [
-                    {'file':str(run/'sprites'/f"{clip['name']}-{f}-88px.png"),'duration':clip['duration']}
+                    {'file':str(run/'sprites'/f"{clip['name']}-{f}-88px.png"),'duration':clip['duration'],
+                     **({'frameDurations':clip['frameDurations']} if clip.get('frameDurations') else {})}
                     if f in clip['facings'] else None for f in facings
                 ]
                 rows.append({'name':clip['name'],'cells':cells})

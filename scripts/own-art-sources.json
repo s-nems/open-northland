@@ -1,0 +1,18 @@
+[
+  {
+    "directory": "docs/art/characters/shared/body",
+    "provenance": "docs/art/characters/shared/body/README.md"
+  },
+  {
+    "directory": "docs/art/characters/shared/motions/idle",
+    "provenance": "docs/art/characters/shared/motions/idle/README.md"
+  },
+  {
+    "directory": "docs/art/characters/shared/motions/hammer",
+    "provenance": "docs/art/characters/shared/motions/hammer/README.md"
+  },
+  {
+    "directory": "docs/art/characters/equipment/carpenter-hammer",
+    "provenance": "docs/art/characters/equipment/carpenter-hammer/README.md"
+  }
+]

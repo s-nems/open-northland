@@ -77,6 +77,21 @@ export const recipeSchema = z
     for (const file of value.outputs) {
       if (paths.has(file.path)) ctx.addIssue({ code: 'custom', message: `Duplicate output: ${file.path}` });
       paths.add(file.path);
+      if (file.content.operation === 'character') {
+        const folder = `characters/${file.content.id}`;
+        if (file.path !== `${folder}/atlas.png`)
+          ctx.addIssue({ code: 'custom', message: 'Character output must be characters/<id>/atlas.png' });
+        const manifest = value.outputs.find((output) => output.path === `${folder}/runtime.json`)?.content;
+        if (
+          manifest?.operation !== 'json' ||
+          manifest.framesFrom !== undefined ||
+          Object.keys(manifest.value).length !== 0
+        )
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Generated character needs an empty JSON runtime manifest',
+          });
+      }
     }
   });
 export const catalogSchema = z

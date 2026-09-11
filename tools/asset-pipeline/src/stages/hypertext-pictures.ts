@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { HypertextPicture } from '@open-northland/data';
 import { type Vfs, vjoin } from '@open-northland/vfs';
 import { type IncludeResolver, type PictureResolver, renderHypertext } from '../decoders/hypertext.js';
@@ -59,7 +58,9 @@ async function emitPicture(fs: Vfs, outDir: string, bytes: Uint8Array): Promise<
   const { width, height, pixels, palette } = decodePcx(bytes);
   if (palette === undefined) throw new Error('picture has no palette');
   assertPaletteBytes(palette, 'hypertext picture');
-  const file = `${createHash('sha256').update(bytes).digest('hex').slice(0, NAME_DIGEST_CHARS)}.png`;
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes)));
+  const name = Array.from(digest, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const file = `${name.slice(0, NAME_DIGEST_CHARS)}.png`;
   const rgba = paletteToRgba(pixels, palette, (i) => (pixels[i] === COLOR_KEY_INDEX ? 0 : 0xff));
   await fs.writeFile(vjoin(outDir, HYPERTEXT_PICTURES_DIR, file), await encodePng({ width, height, rgba }));
   return { kind: 'picture', file, width, height };

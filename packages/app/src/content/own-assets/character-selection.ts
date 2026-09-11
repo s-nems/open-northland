@@ -33,7 +33,7 @@ export function selectOwnCharacters(
     byJob[Number(job)] = preview === null && id !== undefined ? (loaded.get(id) ?? fallback) : fallback;
   }
   return {
-    default: { ...first, bodyVariants: civilians.map((character) => character.body) },
+    default: { ...first, variants: civilians },
     byJob,
   };
 }

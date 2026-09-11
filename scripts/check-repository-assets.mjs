@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { extname } from 'node:path';
 import { isForbiddenGameFile } from './game-asset-policy.mjs';
+import { ownArtPolicy } from './own-art-policy.mjs';
 
 const reviewedBinaryAssets = new Set([
   'docs/images/logo.webp',
@@ -25,7 +27,11 @@ const reviewedBinaryAssets = new Set([
 ]);
 
 const reviewRequiredExtensions = new Set([
+  '.blend',
+  '.exr',
+  '.fbx',
   '.gif',
+  '.glb',
   '.icns',
   '.ico',
   '.jpeg',
@@ -40,6 +46,15 @@ const reviewRequiredExtensions = new Set([
 
 const tracked = execFileSync('git', ['ls-files', '-z'], { encoding: 'utf8' }).split('\0').filter(Boolean);
 const errors = [];
+const trackedSet = new Set(tracked);
+const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
+const isOwnArt = ownArtPolicy(
+  readJson('docs/art/assets.json'),
+  readJson('docs/art/delivery.json'),
+  readJson('scripts/own-art-sources.json'),
+  readJson,
+  (path) => trackedSet.has(path),
+);
 
 for (const file of tracked) {
   const lower = file.toLowerCase();
@@ -51,7 +66,7 @@ for (const file of tracked) {
   if (isForbiddenGameFile(file)) {
     errors.push(`${file}: original or decoded game-file type is not allowed`);
   }
-  if (reviewRequiredExtensions.has(extension) && !reviewedBinaryAssets.has(file)) {
+  if (reviewRequiredExtensions.has(extension) && !reviewedBinaryAssets.has(file) && !isOwnArt(file)) {
     errors.push(`${file}: binary asset is not in the reviewed allowlist`);
   }
 }
@@ -61,6 +76,7 @@ if (errors.length > 0) {
   for (const error of errors) console.error(`- ${error}`);
   console.error('\nIf this is an original or decoded game asset, remove it.');
   console.error('For a new project-owned binary, document its source and update the allowlist.');
+  console.error('Own art uses registered source packages and delivery ownership; see docs/art/PIPELINE.md.');
   process.exit(1);
 }
 

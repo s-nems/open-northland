@@ -295,7 +295,10 @@ describe('complete character appearances', () => {
       byJob: {},
       default: {
         body,
-        bodyVariants: [body, { source: second, atlas }],
+        variants: [
+          { body, binding: { idle: 1, moving: 1 }, scale: 0.75 },
+          { body: { source: second, atlas }, binding: { idle: 1, moving: 2 }, scale: 0.5 },
+        ],
         scale: 0.5,
         binding: { idle: 1, moving: 2 },
       },
@@ -308,6 +311,9 @@ describe('complete character appearances', () => {
     expect(moving?.source).toBe(second);
     expect(moving?.frame.x).toBe(2);
     expect(moving?.scale).toBe(0.5);
-    expect(resolveLayers(sheet, { ...item, ref: 4 }, 0)?.[0]?.source).toBe(first);
+    const other = resolveLayers(sheet, { ...item, ref: 4, state: 'moving' }, 0)?.[0];
+    expect(other?.source).toBe(first);
+    expect(other?.frame.x).toBe(1);
+    expect(other?.scale).toBe(0.75);
   });
 });

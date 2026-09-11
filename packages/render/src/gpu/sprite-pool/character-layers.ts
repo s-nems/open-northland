@@ -26,8 +26,7 @@ export function resolveCharacterLayers(
   }
   const char = characterForItem(characters, item);
   if (char === undefined) return [];
-  const variants = char.bodyVariants;
-  const body = variants?.length ? (variants[item.ref % variants.length] ?? char.body) : char.body;
+  const body = char.body;
   const scale = char.scale ?? 1;
   const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
   const layers: ResolvedLayer[] = [];
@@ -66,7 +65,9 @@ function characterForItem(characters: SettlerCharacterSet, item: DrawItem): Sett
   if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe))
     return characters.animals.byTribe[item.tribe];
   const table = (item.tribe !== undefined ? characters.byTribe?.[item.tribe] : undefined) ?? characters;
-  return pickByJob(table, item.jobType, item.young === true, item.weaponGood);
+  const character = pickByJob(table, item.jobType, item.young === true, item.weaponGood);
+  const variants = character.variants;
+  return variants?.length ? (variants[item.ref % variants.length] ?? character) : character;
 }
 
 /** Converts measured foot travel to the selected clip's tick clock without changing movement. */
@@ -87,4 +88,15 @@ export function characterGaitRate(
     clip.frameDurations?.reduce((sum, hold) => sum + hold, 0) ??
     (clip.frames ?? clip.stride) * (clip.ticksPerFrame ?? 1);
   return ticks / (travel * (char.scale ?? 1));
+}
+
+export function characterInterpolatesMotion(
+  characters: SettlerCharacterSet | undefined,
+  item: DrawItem,
+): boolean {
+  return (
+    item.kind === 'settler' &&
+    characters !== undefined &&
+    characterForItem(characters, item)?.interpolateMotion === true
+  );
 }

@@ -1,6 +1,9 @@
 .git
 .playwright-mcp
 bench-out
+.art-build
+docs/art
+output
 content
 **/node_modules
 packages/desktop/release

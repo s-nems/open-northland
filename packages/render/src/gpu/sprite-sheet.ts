@@ -52,8 +52,9 @@ export interface SpriteLayer {
  *  in its own frame-id space, so the binding travels with the layers. */
 export interface SettlerCharacter {
   readonly body: SpriteLayer;
-  /** Complete appearances sharing the binding, selected stably by entity id. */
-  readonly bodyVariants?: readonly SpriteLayer[];
+  /** Complete appearances selected stably by entity id. */
+  readonly variants?: readonly Omit<SettlerCharacter, 'variants'>[];
+  readonly interpolateMotion?: boolean;
   readonly scale?: number;
   /** The head looks that can overlay this body (the `gfxbobmanagerhead` slots). Empty for a body-only
    *  character whose head is baked into the body bob. */
@@ -68,7 +69,6 @@ export interface SettlerCharacter {
  *  young flag pick which body/heads/binding compose it. The base table serves an item of no or an
  *  unloaded tribe. */
 export interface SettlerCharacterSet extends ByJobTable<SettlerCharacter> {
-  readonly interpolateMotion?: boolean;
   /** The other loaded civilizations' looks, keyed by `Settler.tribe`. */
   readonly byTribe?: Readonly<Record<number, ByJobTable<SettlerCharacter>>>;
   /**

@@ -146,7 +146,7 @@ export async function packCharacter(directory: string, source: string, id: strin
           })),
         }
       : {}),
-    sourceBasis: `Generated character from docs/art/characters/${directory.split('/docs/art/characters/')[1]}; ${recipe.post} export. No original-game pixels.`,
+    sourceBasis: `Generated character from docs/art/characters/${directory.replaceAll('\\', '/').split('/docs/art/characters/')[1]}; ${recipe.post} export. No original-game pixels.`,
   });
   const png = await sharp({ create: { width, height, channels: 4, background: '#00000000' } })
     .composite(composites)

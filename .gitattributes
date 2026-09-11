@@ -6,6 +6,10 @@
 # Binary assets - never end-of-line converted.
 *.png binary
 *.webp binary
+*.blend binary
+*.glb binary
+*.fbx binary
+*.exr binary
 docs/art/**/*.blend filter=lfs diff=lfs merge=lfs -text
 docs/art/**/*.fbx filter=lfs diff=lfs merge=lfs -text
 docs/art/**/*.gz filter=lfs diff=lfs merge=lfs -text

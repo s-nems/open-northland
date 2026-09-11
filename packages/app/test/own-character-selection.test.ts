@@ -27,7 +27,7 @@ describe('own character selection', () => {
     expect(requestedOwnAppearance('woman-blonde', null)).toBe(true);
     const selected = selectOwnCharacters(loaded, fallback, null);
     expect(selected?.byJob[JOB_WOMAN]).toBe(woman);
-    expect(selected?.default.bodyVariants).toEqual([man.body]);
+    expect(selected?.default.variants).toEqual([man]);
     expect(selected?.byJob[JOB_SCOUT]).toBe(fallback);
   });
 
@@ -49,7 +49,7 @@ describe('own character selection', () => {
       null,
     );
     expect(selected?.default.body).toBe(man.body);
-    expect(selected?.default.bodyVariants).toEqual([man.body, forkbeard.body]);
+    expect(selected?.default.variants).toEqual([man, forkbeard]);
   });
 
   it('keeps explicit appearance previews isolated from default job selection', () => {

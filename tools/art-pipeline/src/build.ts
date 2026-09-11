@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { chromium } from 'playwright';
+import { type Browser, chromium } from 'playwright';
 import sharp from 'sharp';
 import { loadAsset } from './catalog.js';
 import { packCharacter } from './character.js';
@@ -28,10 +28,10 @@ export async function buildAsset(root: string, id: string) {
     const temporary = await mkdtemp(join(base, 'build-')),
       delivery = join(temporary, 'delivery');
     await mkdir(delivery);
-    const browser = asset.recipe.outputs.some((o) => o.content.operation === 'raster')
-      ? await chromium.launch({ headless: true })
-      : undefined;
+    let browser: Browser | undefined;
     try {
+      if (asset.recipe.outputs.some((o) => o.content.operation === 'raster'))
+        browser = await chromium.launch({ headless: true });
       const frames = new Map<string, Frame[]>(),
         characters = new Map<string, unknown>();
       const operations: unknown[] = [];
@@ -60,13 +60,13 @@ export async function buildAsset(root: string, id: string) {
         } else if (c.operation === 'character') {
           const result = await packCharacter(asset.directory, c.source, c.id, c.name);
           await writeFile(path, result.png);
-          characters.set(dirname(output.path), result.manifest);
+          characters.set(`${dirname(output.path)}/runtime.json`, result.manifest);
         }
       }
       for (const output of asset.recipe.outputs) {
         const c = output.content;
         if (c.operation !== 'json') continue;
-        const generated = characters.get(dirname(output.path));
+        const generated = characters.get(output.path);
         const f = c.framesFrom === undefined ? undefined : frames.get(c.framesFrom);
         if (c.framesFrom !== undefined && (!f || f.length === 0))
           throw new Error(`Missing generated frames: ${c.framesFrom}`);

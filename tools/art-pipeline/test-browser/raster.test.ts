@@ -1,9 +1,13 @@
+import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { promisify } from 'node:util';
 import { type Browser, chromium } from 'playwright';
 import sharp from 'sharp';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { writeJson } from '../src/files.js';
 import { renderRaster } from '../src/raster.js';
 import { raster } from '../src/recipe.js';
 
@@ -45,6 +49,48 @@ const job = (sampling = 'canvas-high') => ({
   ],
 });
 describe('raster backends', () => {
+  it('character review plays authored pose holds when scrubbing', async () => {
+    const pixels = Buffer.alloc(384 * 144 * 4);
+    for (let y = 0; y < 144; y++)
+      for (let x = 0; x < 384; x++)
+        pixels.set(x < 192 ? [255, 0, 0, 255] : [0, 0, 255, 255], (y * 384 + x) * 4);
+    const strip = join(root, 'poses.png');
+    await sharp(pixels, { raw: { width: 384, height: 144, channels: 4 } })
+      .png()
+      .toFile(strip);
+    const manifest = join(root, 'poses.json');
+    await writeJson(manifest, {
+      title: 'Synthetic poses',
+      columns: [{ name: 'SW' }],
+      rows: [{ name: 'idle', cells: [{ file: strip, duration: 1, frameDurations: [0.8, 0.2] }] }],
+    });
+    const html = join(root, 'poses.html');
+    await promisify(execFile)(process.execPath, [
+      resolve('tools/art-pipeline/authoring/characters/review-characters.mjs'),
+      manifest,
+      html,
+    ]);
+    const page = await browser.newPage();
+    try {
+      await page.goto(pathToFileURL(html).href);
+      const pixel = async (phase: number) =>
+        page.evaluate(async (phase) => {
+          const input = document.querySelector<HTMLInputElement>('#position');
+          if (!input) throw new Error('Missing scrubber');
+          input.value = String(phase * 1000);
+          input.dispatchEvent(new Event('input'));
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+          const context = document.querySelector('canvas')?.getContext('2d');
+          if (!context) throw new Error('Missing preview');
+          return [...context.getImageData(96, 96, 1, 1).data];
+        }, phase);
+      expect(await pixel(0.6)).toEqual([255, 0, 0, 255]);
+      expect(await pixel(0.9)).toEqual([0, 0, 255, 255]);
+    } finally {
+      await page.close();
+    }
+  });
   for (const sampling of ['canvas-high', 'lanczos3']) {
     it(`${sampling} retains alpha, bounds, source scale and frame anchors`, async () => {
       const output = await renderRaster(browser, root, join(root, 'source'), [
