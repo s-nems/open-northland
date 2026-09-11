@@ -66,6 +66,7 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
   return {
     async show(entries: readonly GalleryEntry[]): Promise<void> {
       const current = ++revision;
+      clear();
       const prepared: PreviewPanel[] = [];
       try {
         for (const entry of entries.slice(0, 4)) {
@@ -89,7 +90,7 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
       }
       clear();
       panels = prepared;
-      seconds = 0;
+      seconds = state.time ?? 0;
       const vertical = entries.some((entry) => entry.kind === 'material');
       width = 0;
       height = 0;
@@ -113,9 +114,12 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
       height = Math.max(160, height);
       resize();
     },
+    time(): number {
+      return seconds;
+    },
     update(next: GalleryPreviewState): void {
       const zoomChanged = state.zoom !== next.zoom;
-      if (state.clip !== next.clip) seconds = 0;
+      if (state.clip !== next.clip || state.time !== next.time) seconds = next.time ?? 0;
       state = { ...next };
       for (const panel of panels) panel.update(state, seconds);
       if (zoomChanged) resize();

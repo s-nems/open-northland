@@ -49,6 +49,9 @@ painting. Other building packages currently have no delivered construction layer
 
 ## Review locations
 
+Copy view link preserves the shared animation clock, including a paused pose. Missing linked assets
+or clips remain marked unavailable; they are not replaced with another preview.
+
 Open `?art=gallery` to compare delivered own assets. Its tabs use
 `tab=animations`, `tab=buildings` and `tab=terrain`; `asset=<id>` selects an entry and
 `compare=<id>,<id>` pins comparison entries. For example:

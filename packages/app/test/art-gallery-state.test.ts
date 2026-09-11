@@ -5,10 +5,13 @@ describe('gallery links', () => {
   it('roundtrips comparison and playback state', () => {
     const state = readGalleryState(
       new URLSearchParams(
-        'tab=animations&asset=characters/man-silver&compare=characters/woman,characters/man&direction=3&clip=atomic-4&frame=7&pause=1&zoom=1&background=checker&terrainKind=material',
+        'tab=animations&asset=characters/man-silver&compare=characters/woman,characters/man&direction=3&clip=atomic-4&frame=7&pause=1&zoom=1&background=checker&terrainKind=material&time=1.234567',
       ),
     );
     expect(readGalleryState(new URLSearchParams(galleryQuery(state)))).toEqual(state);
+  });
+  it('treats an explicit frame as a paused review', () => {
+    expect(readGalleryState(new URLSearchParams('frame=4')).playing).toBe(false);
   });
   it('bounds external values and limits unique comparison entries', () => {
     const state = readGalleryState(

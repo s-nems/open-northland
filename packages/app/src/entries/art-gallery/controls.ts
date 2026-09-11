@@ -16,7 +16,7 @@ export function galleryControls(
   selected: GalleryEntry,
   entries: readonly GalleryEntry[],
   state: GalleryState,
-  changed: () => void,
+  changed: (captureClock?: boolean) => void,
 ): HTMLElement {
   const controls = element('div');
   controls.className = 'toolbar';
@@ -76,8 +76,10 @@ export function galleryControls(
         entry.kind === 'character' ? entry.clips.map((clip) => [clip.id, clip.label] as const) : [],
       ),
     );
+    if (!clips.has(state.clip)) clips.set(state.clip, `${state.clip} — unavailable`);
     select('Animation', [...clips], state.clip, (value) => {
       state.clip = value;
+      state.time = 0;
       delete state.frame;
     });
     select(
@@ -105,7 +107,7 @@ export function galleryControls(
       state.playing = !(state.playing && state.frame === undefined);
       delete state.frame;
       play.textContent = state.playing ? 'Pause' : 'Play';
-      changed();
+      changed(true);
     });
     controls.append(play);
     const frameLabel = element('label', 'Frame');
