@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "id": "buildings/farm",
+  "kind": "building",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "buildings/farm/body-time.png",
+      "content": {
+        "operation": "copy",
+        "source": "body-time.png"
+      }
+    },
+    {
+      "path": "buildings/farm/farm-painted.png",
+      "content": {
+        "operation": "copy",
+        "source": "farm-painted.png"
+      }
+    },
+    {
+      "path": "buildings/farm/frame-time.png",
+      "content": {
+        "operation": "copy",
+        "source": "frame-time.png"
+      }
+    },
+    {
+      "path": "buildings/farm/frame.png",
+      "content": {
+        "operation": "copy",
+        "source": "frame.png"
+      }
+    },
+    {
+      "path": "buildings/farm/site-base.png",
+      "content": {
+        "operation": "copy",
+        "source": "site-base.png"
+      }
+    },
+    {
+      "path": "buildings/farm/site-time.png",
+      "content": {
+        "operation": "copy",
+        "source": "site-time.png"
+      }
+    },
+    {
+      "path": "buildings/farm/runtime.json",
+      "content": {
+        "operation": "copy",
+        "source": "runtime.json"
+      }
+    }
+  ]
+}

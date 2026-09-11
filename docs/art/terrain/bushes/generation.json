@@ -1,0 +1,60 @@
+{
+  "styleReference": {
+    "path": "../../references/world/J.png",
+    "role": "Primary J Warm Remaster style reference only",
+    "sha256": "4cc6c5d24e4f9861a598f5e475044323c1c6df8ef3302e3ff27f5d4a994239cf"
+  },
+  "study": {
+    "tool": "built-in image_gen",
+    "prompt": "master.prompt.txt",
+    "output": "study.png",
+    "sha256": "f1e753d0aac646e70e79860c990bcc837f509784f79d7553bc5931b0e1cb6277",
+    "result": "1536x1024 RGB with painted checkerboard; rejected for runtime transparency"
+  },
+  "alpha": {
+    "tool": "imagegen skill CLI",
+    "model": "gpt-image-1.5",
+    "operation": "edit",
+    "inputs": [
+      {
+        "path": "study.png",
+        "role": "edit target"
+      },
+      {
+        "path": "../../references/world/J.png",
+        "role": "primary style reference"
+      }
+    ],
+    "prompt": "alpha.prompt.txt",
+    "size": "1536x1024",
+    "quality": "high",
+    "input_fidelity": "high",
+    "background": "transparent",
+    "output_format": "png",
+    "n": 1,
+    "elapsedSeconds": 55.2,
+    "separatelyBilled": true,
+    "chargeReported": null,
+    "output": "atlas-alpha.png",
+    "sha256": "68a75b30d4ea3e936a03768782e1291b608c25c3324e0fa9e9f223c1a41ccd3b"
+  },
+  "export": {
+    "script": "scripts/export-own-bushes.mjs",
+    "recipe": "recipe.json",
+    "audit": "export.json",
+    "operations": [
+      "Rectangular per-cell crops located using generated alpha; no keying or silhouette masks",
+      "Independent horizontal and vertical downsampling into original first-frame world budgets at source scale 2",
+      "Preserve alpha and original frame anchor offsets"
+    ],
+    "animation": "Static seasonal paintings; original leaf animation not reproduced"
+  },
+  "sourceEvidence": {
+    "landscapeSource": "Owned Data/engine2d/inis/landscapes/landscapes.cif",
+    "verification": "All 866 extracted landscapeGfx rows equal generated content/ir.json excluding source metadata",
+    "decoder": "tools/asset-pipeline/src/decoders/ini/types/landscape.ts",
+    "atlas": "Local decoded ls_trees.bush01.atlas.json first bobs 270,279,288,297,306,315",
+    "originalImagesSuppliedToGenerator": false
+  },
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

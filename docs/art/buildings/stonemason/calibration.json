@@ -1,0 +1,14 @@
+{
+  "doorX": 484,
+  "doorTop": 554,
+  "doorBottom": 788,
+  "doorHeight": 234,
+  "uncertaintyPixels": 6,
+  "entrancePixel": {
+    "x": 476,
+    "y": 862
+  },
+  "scale": 0.20512820512820512,
+  "reviewZoom": 2,
+  "basis": "Manual visual estimate on final API output, not recovered 3D projection"
+}

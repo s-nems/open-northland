@@ -1,0 +1,13 @@
+{
+  "status": "succeeded",
+  "outputCreated": true,
+  "model": "gpt-image-1.5",
+  "output": "house-painted-runtime.png",
+  "previousAttempt": {
+    "status": "failed",
+    "httpStatus": 429,
+    "type": "insufficient_quota",
+    "code": "credit_balance_exhausted",
+    "outputCreated": false
+  }
+}

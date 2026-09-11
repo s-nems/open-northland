@@ -1,0 +1,9 @@
+Use case: style-transfer.
+TASK: Repaint image 1, our calibrated narrow farm / grain drying barn render, as a final hand-painted HQ remaster settlement-game sprite using the exact material finish of image 2 (our approved House 1 runtime sprite). This is a surface paintover of the existing farm, not a new house design.
+REFERENCES in order:
+1: Farm Blender render, edit target, strict architecture/camera/framing reference.
+2: Painted House 1, primary brushwork/material finish reference ONLY. Do not copy its architecture, shutter, threshold or any background/glow.
+3: J world board, supporting palette and world atmosphere ONLY.
+Keep the farm's exact orthographic projection, canvas margins, silhouette, straight roof ridge, loft slats, posts, clay infill and door location/size. Preserve its narrow drying-barn identity. No added props, windows, extensions, ground, shadow outside the silhouette, or ornaments.
+Match House 1's grouped directional thatch brushstrokes with selective fine tips, broad warm wood grain, restrained edge highlights, quiet cream clay planes and deliberately painted light/shadow separation. Eliminate muddy photogrammetry surfaces, uniformly etched tiny fibers and noisy plaster. Matte painterly finish, readable at game scale; no heavy black outline, no plastic CGI shine, no blanket orange lighting, no glowing halo. Light from upper left. Timber and clay remain the farm's main construction materials. Keep roof volume and structure rather than inflating the thatch.
+Output one square master with a genuinely transparent background. No checkerboard, colored backdrop, text or watermark. Preserve clear door dimensions and ground anchor for later scale measurement.

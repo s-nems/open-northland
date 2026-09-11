@@ -1,0 +1,35 @@
+{
+  "sourceBasis": "Owned mountain metadata and real map adjacency select a continuous generated 8-column by 11-row ground surface. Dark shallow rocky grain is an artistic approximation informed by local observation of original textures; map elevation and brightness supply landform. No original pixels are included.",
+  "materials": [
+    {
+      "id": "mountains",
+      "image": "mountains.png",
+      "tint": [0.78, 0.8, 0.84],
+      "wear": 0,
+      "pages": [
+        "text_001",
+        "text_200",
+        "text_201",
+        "text_202",
+        "text_203",
+        "text_204",
+        "text_205",
+        "text_206",
+        "text_207",
+        "text_208"
+      ],
+      "names": [],
+      "transitions": [],
+      "layout": "mountain"
+    },
+    {
+      "id": "gravel",
+      "image": "gravel.png",
+      "tint": [0.64, 0.69, 0.73],
+      "wear": 0,
+      "pages": [],
+      "names": [],
+      "transitions": ["mountain 1", "mountain 2"]
+    }
+  ]
+}

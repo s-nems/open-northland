@@ -127,6 +127,10 @@ export const enSurfaces = {
       displayFullscreen: 'Fullscreen',
       displayWindow: 'Window',
       renderScale: 'Render scale',
+      assets: 'Asset set',
+      assetsOwn: 'Own',
+      assetsOriginal: 'Original',
+      assetsTip: 'Original assets require imported game data.',
       renderScaleTip:
         'Resolution the whole game image is drawn at: lower runs smoother on weak hardware, higher sharpens it. Applies in game.',
       fpsLimit: 'Frame rate limit',

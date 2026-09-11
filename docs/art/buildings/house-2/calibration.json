@@ -1,0 +1,14 @@
+{
+  "doorX": 294,
+  "doorTop": 614,
+  "doorBottom": 806,
+  "doorHeight": 192,
+  "uncertaintyPixels": 5,
+  "scale": 0.25,
+  "entrancePixel": {
+    "x": 294,
+    "y": 883
+  },
+  "reviewZoom": 2,
+  "basis": "Manual estimate on final alpha export; not exact model projection"
+}

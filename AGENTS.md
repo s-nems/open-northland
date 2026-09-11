@@ -138,6 +138,7 @@ Commands and local tools are listed in `docs/DEVELOPMENT.md`. Test modes are exp
 
 Load the relevant file when working in that area:
 
+- `docs/art/AGENTS.md`
 - `packages/sim/AGENTS.md`
 - `packages/render/AGENTS.md`
 - `packages/audio/AGENTS.md`

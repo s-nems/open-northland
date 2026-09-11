@@ -1,0 +1,14 @@
+{
+  "sourceBasis": "Owned pattern.cif (927 rows) and transitions.cif (38 rows) freshly decoded and compared with local IR. The sand all group contains 97 patterns: sand 01 and beach pages text_214 through text_217. sand 1 and sand 2 supply both six-pair overlay orientations. Original pixels stay local. Generated J-style sand, tint and existing procedural transition profiles are artistic approximations.",
+  "materials": [
+    {
+      "id": "sand",
+      "image": "sand.png",
+      "tint": [0.84, 0.86, 0.9],
+      "wear": 0,
+      "pages": ["text_214", "text_215", "text_216", "text_217"],
+      "names": ["sand 01"],
+      "transitions": ["sand 1", "sand 2"]
+    }
+  ]
+}

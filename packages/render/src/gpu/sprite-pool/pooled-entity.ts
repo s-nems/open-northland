@@ -1,4 +1,5 @@
 import { Container, type Graphics, type Sprite } from 'pixi.js';
+import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedSprite } from '../paletted-sprite/index.js';
 import type { PlayerColourLut } from '../sprite-sheet.js';
@@ -44,6 +45,7 @@ interface PooledEntityBase {
    *  sim's reported progress; `undefined` when nothing is in progress. Declared present rather than
    *  optional so the entity's shape never changes when a reveal first appears. */
   reveal: number | undefined;
+  selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
   readonly motion: MotionTrack;
 }
 
@@ -74,6 +76,7 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
     bounds: { minX: 0, minY: 0, maxX: 0, maxY: 0 },
     boundsFrame: -1,
     reveal: undefined,
+    selectionEllipse: undefined,
     motion: {
       tick: -1,
       x: 0,
@@ -83,6 +86,7 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
       drawX: 0,
       drawY: 0,
       gaitPhase: 0,
+      prevGaitPhase: 0,
       stillTicks: 0,
       snapDistance: snapDistanceForKind(kind),
     },

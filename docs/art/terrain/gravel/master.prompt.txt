@@ -1,0 +1,10 @@
+Use case: stylized-concept
+TASK
+Create a new rocky foothill ground material pair for Open Northland. Output purpose: production terrain texture masters.
+Composition: a square image divided into exactly TWO equal vertical panels, touching with NO border, no margin, no text. Left half: fine angular gravel and tiny embedded weathered stones on subdued warm grey-brown earth. Right half: quiet exposed weathered grey bedrock, shallow broad irregular planes and restrained small cracks with a little earth in crevices. Both are flat overhead orthographic material surfaces, fully opaque, edge-to-edge, even detail density, no horizon or perspective.
+REFERENCES
+Image 1 is the approved J / Warm Remaster world-style board, primary style reference only, NOT edit target or layout reference. Especially its bottom middle woodland rock materials. Match its nostalgic Cultures-like settlement game warmth and readable painterly material treatment, redesigned high quality.
+STYLE
+Grounded stylization with matte grey/taupe stone, soft muted olive undertones and earth. Subtle upper-left surface lighting, no large cast shadows. Small-scale restrained texture, quiet areas for game actors. No giant boulders, no cobblestone paving, no bricks, no cliffs, no grass tufts, no vegetation, no objects. Bedrock is eroded natural rock surface, not dense rubble. Gravel grains much smaller than bedrock planes. Avoid photographic harshness, bright white pebbles, deep black cracks, high contrast, uniform orange, toy gloss, oversharpening. High-quality source without simulated pixelation.
+QUALITY
+Both panels should be useful repeatable texture material swatches without distinctive central landmarks or edge frames. No transparency, watermarks, labels, UI. Do not reproduce any buildings from the board.

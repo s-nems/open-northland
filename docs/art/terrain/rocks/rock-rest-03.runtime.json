@@ -1,0 +1,26 @@
+{
+  "id": "rock-rest-03",
+  "kind": "decor",
+  "image": "rock-rest-03.png",
+  "width": 192,
+  "height": 128,
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "scale": 0.5,
+  "frames": [
+    {
+      "x": 4,
+      "y": 4,
+      "width": 74,
+      "height": 36,
+      "anchor": {
+        "x": 37,
+        "y": 20.88
+      }
+    }
+  ],
+  "editNames": ["stones 03 grey rest"],
+  "sourceBasis": "Exact owned landscapes.cif grey/rock02 and khaki/rock03 slots and state counts verified against decoder and IR. Independent dark and light artwork; frame geometry preserved from rocks-v2. Palette colours and low-to-full depletion shapes are artistic approximations."
+}

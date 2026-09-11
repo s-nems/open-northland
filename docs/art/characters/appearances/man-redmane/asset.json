@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "characters/man-redmane",
+  "kind": "character",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "characters/man-redmane/atlas.png",
+      "content": {
+        "operation": "character",
+        "source": "recipe.json",
+        "id": "man-redmane",
+        "name": "Ruda grzywa"
+      }
+    },
+    {
+      "path": "characters/man-redmane/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {}
+      }
+    }
+  ]
+}

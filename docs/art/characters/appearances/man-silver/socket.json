@@ -1,0 +1,24 @@
+{
+  "construction": "bald-neck-socket",
+  "cut_z": 1.18,
+  "chin_min_z": 1.085,
+  "chin_front_y": -0.125,
+  "chin_half_width": 0.2,
+  "height": 0.55,
+  "neck_origin": [0, 0.035, 1.09],
+  "unlit": true,
+  "source_basis": "Body-family neck overlap; head fit is an anatomical approximation for review in every direction.",
+  "neck_bridge": {
+    "bottom": 1.015,
+    "top": 1.22,
+    "radius_x": 0.09,
+    "radius_y": 0.08,
+    "center_y": 0.025,
+    "color": [0.61, 0.39, 0.21, 1]
+  },
+  "neck_blend_height": 0.12,
+  "head_pivot": [0, 0.025, 1.2],
+  "neck_torso_bone": "Spine",
+  "neck_inset": 0.055,
+  "neck_base_scale": 0.65
+}

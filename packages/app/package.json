@@ -14,7 +14,8 @@
     "@open-northland/audio": "*",
     "@open-northland/data": "*",
     "@open-northland/render": "*",
-    "@open-northland/sim": "*"
+    "@open-northland/sim": "*",
+    "@open-northland/art-contracts": "*"
   },
   "devDependencies": {
     "@open-northland/content-resolver": "*",

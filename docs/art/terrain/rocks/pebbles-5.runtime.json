@@ -1,0 +1,26 @@
+{
+  "id": "pebbles-5",
+  "kind": "decor",
+  "image": "pebbles-5.png",
+  "width": 192,
+  "height": 128,
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "scale": 0.5,
+  "frames": [
+    {
+      "x": 4,
+      "y": 4,
+      "width": 22,
+      "height": 13,
+      "anchor": {
+        "x": 11,
+        "y": 7.539999999999999
+      }
+    }
+  ],
+  "editNames": ["debris stones 05", "debris stones 10", "debris stones 15"],
+  "sourceBasis": "Exact owned landscapes.cif grey/rock02 and khaki/rock03 slots and state counts verified against decoder and IR. Independent dark and light artwork; frame geometry preserved from rocks-v2. Palette colours and low-to-full depletion shapes are artistic approximations."
+}

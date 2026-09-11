@@ -1,18 +1,11 @@
-import { UI_SCALE_FACTOR_MAX, UI_SCALE_FACTOR_MIN, UI_SCALE_FACTOR_STEP } from '../hud/ui-scale.js';
 import { type Locale, messages } from '../i18n/index.js';
 import { enterFullscreen, isFullscreen, leaveFullscreen } from './fullscreen.js';
 import { segControl, settingRow, sliderControl, togglePill } from './settings-controls.js';
 import { createControlsTab } from './settings-controls-tab.js';
 import { createSettingsDisplayMode, type DisplayMode } from './settings-display-mode.js';
-import {
-  defaultSettings,
-  type FpsLimit,
-  type MenuSettings,
-  RENDER_SCALE_MAX,
-  RENDER_SCALE_MIN,
-} from './settings-store.js';
+import { graphicsSettingsRows } from './settings-graphics-tab.js';
+import { defaultSettings, type MenuSettings } from './settings-store.js';
 
-type FpsChoice = 'fps30' | 'fps60' | 'screen';
 export type SettingsTab = 'graphics' | 'audio' | 'gameplay' | 'controls';
 
 export interface SettingsMemory {
@@ -35,7 +28,6 @@ export interface SettingsPageHandle {
 }
 
 const SETTINGS_TABS: readonly SettingsTab[] = ['graphics', 'audio', 'gameplay', 'controls'];
-const RENDER_SCALE_STEP = 0.25;
 const LANGUAGE_CHOICES: readonly Locale[] = ['pol', 'eng'];
 const PLACEHOLDER_SCROLL_SPEED = 1;
 const PLACEHOLDER_STEP = 0.05;
@@ -44,11 +36,6 @@ const VOLUME_MAX = 1;
 const VOLUME_STEP = 0.01;
 const SCROLL_SPEED_MIN = 0.5;
 const SCROLL_SPEED_MAX = 2;
-
-const fpsChoiceOf = (limit: FpsLimit): FpsChoice =>
-  limit === 30 ? 'fps30' : limit === 60 ? 'fps60' : 'screen';
-const fpsLimitOf = (choice: FpsChoice): FpsLimit =>
-  choice === 'fps30' ? 30 : choice === 'fps60' ? 60 : null;
 
 export function initialSettingsMemory(): SettingsMemory {
   return { tab: 'graphics' };
@@ -91,11 +78,6 @@ export function createSettingsPage(opts: {
       button.dataset.settingsFocus = `${prefix}:${index}`;
     }
   };
-  const deferredTip = (tip: string): string =>
-    opts.settings.bootOwnedChangesDeferred === true
-      ? `${tip} ${messages().mainMenu.settings.nextGameTip}`
-      : tip;
-
   const liveDisplayMode = (): DisplayMode => (isFullscreen() ? 'fullscreen' : 'window');
   const displayMode = createSettingsDisplayMode({
     current: liveDisplayMode,
@@ -159,74 +141,14 @@ export function createSettingsPage(opts: {
       if (liveStatus !== null) liveStatus.textContent = messages().mainMenu.settings.uiScaleApplyFailed;
     };
 
-    const graphicsRows = (): HTMLElement[] => {
-      const settings = opts.settings.current();
-      const displaySeg = segControl<DisplayMode>(
-        [
-          { id: 'fullscreen', label: text.displayFullscreen },
-          { id: 'window', label: text.displayWindow },
-        ],
-        liveDisplayMode(),
-        (mode) => {
-          displayMode.request(mode);
-        },
+    const graphicsRows = (): HTMLElement[] =>
+      graphicsSettingsRows(
+        opts.settings,
+        liveDisplayMode,
+        (mode) => displayMode.request(mode),
+        applyUiScale,
+        markSegment,
       );
-      markSegment(displaySeg.root, 'display');
-      const uiScale = sliderControl(text.uiScale, {
-        min: UI_SCALE_FACTOR_MIN,
-        max: UI_SCALE_FACTOR_MAX,
-        step: UI_SCALE_FACTOR_STEP,
-        value: settings.uiScaleFactor,
-        disabled: opts.settings.pinnedUiScale !== null,
-        onCommit: (value) => {
-          void applyUiScale(value);
-        },
-        format: (value) =>
-          opts.settings.pinnedUiScale === null
-            ? `${Math.round(value * 100)}% (×${opts.settings.effectiveUiScaleFor(value).toFixed(2)})`
-            : `×${opts.settings.pinnedUiScale.toFixed(2)}`,
-      });
-      const uiScaleInput = uiScale.querySelector<HTMLInputElement>('input[type="range"]');
-      if (uiScaleInput !== null) uiScaleInput.dataset.settingsFocus = 'ui-scale';
-      const renderScale = sliderControl(text.renderScale, {
-        min: RENDER_SCALE_MIN,
-        max: RENDER_SCALE_MAX,
-        step: RENDER_SCALE_STEP,
-        value: settings.renderScale,
-        onCommit: (value) => {
-          void opts.settings.update({ renderScale: value });
-        },
-      });
-      const renderScaleInput = renderScale.querySelector<HTMLInputElement>('input[type="range"]');
-      if (renderScaleInput !== null) renderScaleInput.dataset.settingsFocus = 'render-scale';
-      const fpsSeg = segControl<FpsChoice>(
-        [
-          { id: 'fps30', label: '30 FPS' },
-          { id: 'fps60', label: '60 FPS' },
-          { id: 'screen', label: text.fpsLimitScreen },
-        ],
-        fpsChoiceOf(settings.fpsLimit),
-        (choice) => {
-          void opts.settings.update({ fpsLimit: fpsLimitOf(choice) });
-          fpsSeg.setActive(choice);
-        },
-      );
-      markSegment(fpsSeg.root, 'fps');
-      const postFx = togglePill(settings.postFxEnabled, (enabled) => {
-        void opts.settings.update({ postFxEnabled: enabled });
-      });
-      postFx.setAttribute('aria-label', text.postFx);
-      postFx.dataset.settingsFocus = 'post-fx';
-      return [
-        settingRow(text.displayMode, displaySeg.root),
-        settingRow(text.uiScale, uiScale, {
-          tip: opts.settings.pinnedUiScale === null ? text.uiScaleTip : text.uiScalePinnedTip,
-        }),
-        settingRow(text.renderScale, renderScale, { tip: deferredTip(text.renderScaleTip) }),
-        settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
-        settingRow(text.postFx, postFx, { tip: deferredTip(text.postFxTip) }),
-      ];
-    };
 
     const audioRows = (): HTMLElement[] => {
       const settings = opts.settings.current();

@@ -10,6 +10,10 @@ import { loadIr } from '../content/ir/load.js';
 import { loadMapBriefing, loadMapMeta, loadMapScript, loadTerrainMap } from '../content/map-loader.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
+import { mountOwnAssetsLegend } from '../content/own-assets/legend.js';
+import { loadOwnMapObjects } from '../content/own-assets/objects.js';
+import { loadOwnSpriteSheet } from '../content/own-assets/sprite-sheet.js';
+import { loadOwnTerrain } from '../content/own-assets/terrain.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
@@ -30,8 +34,10 @@ import { sessionRuleOverrides } from '../game/session-rules.js';
 import { terrainSceneFor } from '../game/world/index.js';
 import { worldTribes } from '../game/world-tribes.js';
 import { currentLocale, messages } from '../i18n/index.js';
+import { assetSetFor } from '../view/asset-settings.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
+import { mapZoomParam } from '../view/camera/map-zoom.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { bindHarvestableHandover, retireStaticHarvestables } from '../view/harvestable-handover.js';
 import { aiSeatsParam, introParam } from '../view/params.js';
@@ -70,14 +76,14 @@ export const MAP_BOOT_PHASES = [
 ] as const satisfies readonly BootPhase[];
 
 /** `?center=x,y` in integer tile coords; `null` when the value is absent or malformed. */
-function centerTile(raw: string | null, width: number, height: number): Camera | null {
+function centerTile(raw: string | null, width: number, height: number, zoom: number): Camera | null {
   if (raw === null) return null;
   const parts = raw.split(',').map((s) => Number.parseInt(s, 10));
   const [tx, ty] = parts;
   if (parts.length !== 2 || tx === undefined || ty === undefined || Number.isNaN(tx) || Number.isNaN(ty)) {
     return null;
   }
-  return cameraCenteredOnTile(tx, ty, 1, width, height);
+  return cameraCenteredOnTile(tx, ty, zoom, width, height);
 }
 
 export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
@@ -85,6 +91,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const boot = mountBootProgress(MAP_BOOT_PHASES);
   await boot.begin('graphics');
   const mapId = params.get('map');
+  const ownAssets = assetSetFor(params) === 'own';
   // Consumed before any other boot work: a staged save that fails from here on halts the boot rather
   // than silently starting a fresh world.
   let stagedSave: SaveGame | null;
@@ -127,11 +134,13 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // exactly the seats' and the authored entities' tribes.
   const tribes = worldTribes(script, loaded?.entities, ir ?? {});
   await boot.begin('sprites');
-  const sheet = await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods(), tribes);
+  const sheet = ownAssets
+    ? await loadOwnSpriteSheet(ir, params.get('ownHead'))
+    : await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods(), tribes);
   await boot.begin('terrain');
   let terrain: TerrainTextureSet;
   try {
-    terrain = await loadRealTerrain(ir);
+    terrain = ownAssets ? await loadOwnTerrain(app.renderer, ir) : await loadRealTerrain(ir);
   } catch (err) {
     if (!(err instanceof MissingTerrainError)) throw err;
     haltOnMissingContent(err);
@@ -147,7 +156,9 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   let staticObjects: Awaited<ReturnType<typeof loadMapObjects>> | undefined;
   if (loaded?.objects !== undefined && ir !== null) {
     try {
-      const loadedObjects = await loadMapObjects(loaded.objects, ir, elevation, brightness);
+      const loadedObjects = ownAssets
+        ? await loadOwnMapObjects(app.renderer, loaded.objects, elevation)
+        : await loadMapObjects(loaded.objects, ir, elevation, brightness);
       renderer.setMapObjects(loadedObjects.sprites);
       // Assigned only after the layer accepted the sprites: static refs against an empty layer would
       // leave every virgin node invisible until first touch.
@@ -234,9 +245,10 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
 
   const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
   const initialViewport = { width: app.screen.width, height: app.screen.height };
+  const zoom = mapZoomParam(params);
   const initialCamera =
-    centerTile(params.get('center'), initialViewport.width, initialViewport.height) ??
-    cameraCenteredOnTile(focus.x, focus.y, 1, initialViewport.width, initialViewport.height);
+    centerTile(params.get('center'), initialViewport.width, initialViewport.height, zoom) ??
+    cameraCenteredOnTile(focus.x, focus.y, zoom, initialViewport.width, initialViewport.height);
   const cameraCtl = createCameraController(
     canvas,
     initialCamera,
@@ -247,7 +259,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Averaged from the real texture pages the map's ground lanes point at: the shipped `minimap.pcx` is
   // map-selection card art, not an overview raster. Null without lanes or textures.
   await boot.begin('minimap');
-  const minimapCells = await loadMinimapCellColours(terrainGrid, terrain);
+  const minimapCells = ownAssets ? null : await loadMinimapCellColours(terrainGrid, terrain);
 
   await boot.begin('hud');
   await startGameView({
@@ -287,5 +299,8 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       matchDeclared: matchIsContested(participants) && participants.includes(localPlayer),
     }),
   });
+  if (ownAssets) {
+    mountOwnAssetsLegend(app);
+  }
   await boot.finish();
 }

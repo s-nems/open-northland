@@ -1,0 +1,89 @@
+{
+  "angle": 15,
+  "frames": 12,
+  "power": 3,
+  "pose": "walk.glb",
+  "paint": {
+    "head_scale": 1,
+    "widen": 1,
+    "upper_scale": 1,
+    "foot_scale": 1,
+    "hunch": 0
+  },
+  "sprite": {
+    "head_scale": 1,
+    "widen": 1,
+    "upper_scale": 1,
+    "foot_scale": 1,
+    "hunch": 0
+  },
+  "clips": [
+    {
+      "name": "walk",
+      "file": "walk.glb",
+      "facings": ["SW", "W", "NW", "N", "NE", "E", "SE", "S"],
+      "frames": 16,
+      "duration": 1.0333333333333332,
+      "samplePhases": [
+        0, 0.0625, 0.125, 0.1875, 0.25, 0.3125, 0.375, 0.4375, 0.5, 0.5625, 0.625, 0.6875, 0.75, 0.8125,
+        0.875, 0.9375
+      ]
+    },
+    {
+      "name": "idle",
+      "file": "idle.glb",
+      "facings": ["SW", "W", "NW", "N", "NE", "E", "SE", "S"],
+      "frames": 16,
+      "duration": 5,
+      "frameDurations": [
+        1.5, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+        0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 2.3333333333333335,
+        0.08333333333333333, 0.08333333333333333, 0.08333333333333333, 0.08333333333333333,
+        0.08333333333333333, 0.08333333333333333, 0.08333333333333333
+      ],
+      "samplePhases": [
+        0, 0.175, 0.21666666666666667, 0.25833333333333336, 0.3, 0.35, 0.4, 0.44166666666666665, 0.5,
+        0.7333333333333333, 0.7666666666666667, 0.8, 0.8333333333333334, 0.8666666666666667, 0.9,
+        0.9333333333333333
+      ]
+    },
+    {
+      "name": "hammer",
+      "file": "../../shared/motions/hammer/hammer.glb",
+      "facings": ["SW", "W", "NW", "NE", "E", "SE", "S", "N"],
+      "frames": 12,
+      "duration": 1.25,
+      "samplePhases": [
+        0.7083333333333334, 0.7916666666666666, 0.875, 0.9583333333333334, 0, 0.08333333333333333,
+        0.16666666666666666, 0.25, 0.3333333333333333, 0.4166666666666667, 0.5416666666666666, 0.625
+      ],
+      "frameDurations": [
+        0.12, 0.07999999999999999, 0.06666666666666667, 0.06666666666666667, 0.1037037037037037,
+        0.09074074074074075, 0.11666666666666665, 0.12962962962962962, 0.1425925925925926,
+        0.13333333333333333, 0.13333333333333333, 0.06666666666666665
+      ],
+      "equipment": "../../equipment/carpenter-hammer/socket.json",
+      "limb_texture": "../../shared/body/model/rigged-base-0.png",
+      "atomicId": 39
+    }
+  ],
+  "post": "soft-separation",
+  "projection": {
+    "view_selection": "strongest",
+    "texsize": 2048,
+    "eps": 0.03
+  },
+  "render": {
+    "unlit": true,
+    "toon": 0,
+    "size": 512
+  },
+  "head": {
+    "model": "model/model.glb",
+    "config": "socket.json"
+  },
+  "texture_dir": "../../shared/body/projected",
+  "camera_reference": "../../shared/body/cameras-smooth",
+  "walkCalibration": "../../shared/body/walk-gait.json",
+  "walkPlayback": "../../shared/body/walk-playback.json"
+}

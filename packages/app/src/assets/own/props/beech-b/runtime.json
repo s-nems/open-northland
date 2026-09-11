@@ -1,0 +1,47 @@
+{
+  "id": "beech-b",
+  "kind": "resource",
+  "image": "beech-b.png",
+  "width": 864,
+  "height": 464,
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "scale": 0.5,
+  "sway": 0.02,
+  "frames": [
+    {
+      "x": 4,
+      "y": 4,
+      "width": 90,
+      "height": 156,
+      "anchor": {
+        "x": 47.7,
+        "y": 151.32
+      }
+    },
+    {
+      "x": 292,
+      "y": 4,
+      "width": 126,
+      "height": 200,
+      "anchor": {
+        "x": 66.78,
+        "y": 194
+      }
+    },
+    {
+      "x": 580,
+      "y": 4,
+      "width": 274,
+      "height": 454,
+      "anchor": {
+        "x": 145.22,
+        "y": 440.38
+      }
+    }
+  ],
+  "editNames": ["beech 02"],
+  "sourceBasis": "Exact owned landscapes.cif tree slots and three growth states verified against decoder and IR. Each state matches the original atlas width and height at two source pixels per world pixel. Independent generated designs, rectangular crops and separate horizontal/vertical downsampling. Younger states reuse the mature design at reduced dimensions; root anchors and procedural breeze are artistic approximations."
+}

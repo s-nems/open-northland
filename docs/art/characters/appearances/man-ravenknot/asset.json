@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "characters/man-ravenknot",
+  "kind": "character",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "characters/man-ravenknot/atlas.png",
+      "content": {
+        "operation": "character",
+        "source": "recipe.json",
+        "id": "man-ravenknot",
+        "name": "Krucza kita"
+      }
+    },
+    {
+      "path": "characters/man-ravenknot/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {}
+      }
+    }
+  ]
+}

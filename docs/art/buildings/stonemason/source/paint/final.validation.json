@@ -1,0 +1,23 @@
+{
+  "file": "final.png",
+  "sha256": "d3dbd82d2e00835feebc4e09af7fc72c441470e7441e2155fcad642ecf837095",
+  "mode": "RGBA",
+  "size": [
+    1536,
+    1024
+  ],
+  "alphaBounds": [
+    12,
+    0,
+    1512,
+    1023
+  ],
+  "transparentPixels": 929577,
+  "partialAlphaPixels": 220798,
+  "opaquePixels": 422489,
+  "errors": [],
+  "warnings": [
+    "Nonzero alpha reaches canvas boundary; inspect clipping and margin."
+  ],
+  "status": "requires-visual-review"
+}

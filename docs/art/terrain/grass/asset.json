@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "terrain/grass",
+  "kind": "terrain",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "terrain/grass-base.png",
+      "content": {
+        "operation": "copy",
+        "source": "grass-base.png"
+      }
+    },
+    {
+      "path": "terrain/map-bindings.json",
+      "content": {
+        "operation": "copy",
+        "source": "map-bindings.json"
+      }
+    },
+    {
+      "path": "terrain/soil.png",
+      "content": {
+        "operation": "copy",
+        "source": "soil.png"
+      }
+    }
+  ]
+}

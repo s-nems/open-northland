@@ -1,0 +1,17 @@
+Use case: stylized-concept
+TASK
+Create a new mushroom master sprite sheet for Open Northland, a nostalgic Cultures-like HQ/remastered redesign settlement game.
+Output purpose: 36 small independent mushroom sprites in an exact regular SIX COLUMNS by SIX ROWS square atlas, 1536x1536 requested. One mushroom per equal cell, fully isolated, generous clear margins and consistent elevated orthographic game view. No labels or grid lines. Every mushroom has its own complete cap and short earthy cream stem, root baseline near bottom of its individual cell. These are tiny woodland accents ultimately 7-25 world pixels wide, exported with double source detail, NOT huge fantasy mushrooms. Cap about 2/3 of silhouette height with short visible stem. Readable restrained painterly cap shading and darker undersides. No surrounding vegetation, moss bed, soil island, rocks or scenic props.
+Row 1: six red-brown fly agaric mushrooms with sparse small warm ivory flecks; natural muted brick red, not candy red.
+Row 2: six plain cap mushrooms with subdued gray-taupe/olive-brown caps.
+Row 3: six ochre-brown fly agarics with sparse pale tan flecks.
+Row 4: six plain cap mushrooms with moss olive green caps, natural subdued pigment, no glow.
+Row 5: six dark olive green fly agarics with sparse muted cream flecks.
+Row 6: six plain cap mushrooms with dusty muted russet/rose caps.
+Each row must have six DISTINCT silhouettes: broad shallow asymmetric open cap, upright young domed cap, smaller pointed cap, leaning irregular open cap, tiny round button, a wider old uneven cap. Vary stem lean and cap outlines, never duplicate exactly. All single mushrooms, no bouquets or clusters. Keep every cell isolated and do not let objects cross cell boundaries.
+BACKGROUND
+Genuinely transparent PNG RGBA background, alpha=0 everywhere outside mushroom silhouettes. Do not paint a checkerboard or solid backdrop. Tiny soft root contact shadow only; no big shadow disks.
+REFERENCES
+Image 1 is approved J / Warm Remaster world board, primary style reference only, not an edit target or a layout to repeat. Its bottom middle woodland panel governs material and quiet environment treatment. No original-game pixels supplied.
+STYLE
+Grounded warm painted stylization, nostalgic settlement-game character with HQ material definition, elevated orthographic game view, soft upper-left light. Restrained colors and small accents supporting the ground. Avoid glossy plastic, inflated toy shapes, photorealism, neon, glaring white speckles, dense noise, fantasy glow, outlines, text, watermarks and UI. Independent new designs; high-quality master, no artificial pixelation.

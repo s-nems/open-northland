@@ -1,0 +1,25 @@
+Use case: style-transfer.
+TASK
+Repaint the independently authored stonemason workshop Blender render for Open Northland using the same final 2D paintover technique as the approved House A. Produce ONE 1536 x 1024 master building sprite with genuine transparent alpha background, no backdrop, no checkerboard, no ground patch, no external shadow or colored glow.
+
+REFERENCES IN EXACT ORDER
+Image 1 is stonemason-v2/base.png: the EDIT TARGET and calibrated architectural/camera reference. It is a plain procedural-material render, not the desired finish.
+Image 2 is house-painted-runtime.png: the PRIMARY APPROVED BUILDING FINISH reference. Match its hand-painted surface quality, broad timber grain, quiet materials and directional straw. Do NOT copy its house architecture, plaster-wall layout, background appearance or surrounding amber glow.
+Image 3 is immutable J / Warm Remaster: WORLD palette and atmosphere reference, not a building layout to copy.
+
+INVARIANTS
+Keep image 1's exact orthographic projection, canvas, margins, overall scale, straight ridges, roof pitches and building proportions. Doorway top is around (484,570), foot around (484,792) on this 1536x1024 canvas. Keep the doorway, threshold, front gable, lean-to work canopy on the right, all posts, braces, stone footings, workbench, mallet, chisels, unworked boulder, barrel on the left of the doorway and tool rack in their existing positions. Keep architecture and the stoneworking function. Do not add windows, chimneys, new props or terrain. Do not inflate the roof, bend the ridge or change camera perspective.
+
+MATERIAL PAINTOVER
+Replace EVERY visible plain procedural material with coherent hand-painted material. Nothing should remain a flat gray or brown unpainted model strip.
+Roof: natural layered thatch like House A, broad directional golden-ochre strokes with selective fine tips, soft deliberate overlapping tuft shadows. Image 1's tiny straight repeated fibers and extremely uniform slats are only a geometry placeholder: paint expressive straw over them. Preserve roof volumes while eliminating bare straight strips, flat dark backing planes, tiled banding, black horizontal trenches and pale grey edge seams. Cover the rear edge of the lean-to completely with thatch. Roof layers should read as soft interlocking straw, not corrugated boards or rigid slabs.
+Wood: matte warm oak with broad painted grain, subtle knots, selective chipped highlights. Carefully paint junctions between posts, beams and planks: no accidental grey filler strips or duplicated seams between timber pieces. Only real iron hardware should be iron grey; do not turn frame joints into silver bands.
+Stone: deliberate cooler limestone faces with cream highlights and restrained shading. Stone belongs to the footings, steps, work slab and stone supplies; no stray grey stripes painted across timber or thatch.
+Barrel: a coherent curved oak stave body with three thin iron hoops snug to its volume and an elliptical wooden lid, no doubled bands or disconnected outlines.
+Interiors: soft dark warm shadow while leaving real openings under the canopy and workbench transparent where background is visible. Keep structural timber readable.
+
+STYLE AND LIGHT
+Match House A's painted Cultures HQ/remaster finish, within J's world. Confident broad brushwork, grouped shapes, matte surfaces, upper-left daylight, moderate warm honey highlights, neutral/cooler stone. No uniformly etched microtexture, sharp white polygon outlines, glossy CGI, heavy black outlines, orange cast over every surface or surrounding glow. Keep material readability when the doorway is about 96 screen pixels at world zoom2 beside an 88px actor.
+This is the final 2D image: do not mimic the earlier misregistered texture projection. Preserve accurate structural layout, but paint the surfaces completely and coherently.
+OUTPUT
+One isolated building, exact landscape canvas, real transparent alpha outside the building including openings. No text, labels, border, UI, drop shadow, gray/white checkerboard or colored background.

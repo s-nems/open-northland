@@ -1,0 +1,22 @@
+{
+  "tool": "built-in imagegen",
+  "bodyPrompt": "Use case: identity-preserve. Production 3D modeling turnaround of the approved G2 woman, RIGHTMOST figure in reference. Only G2 is the subject. Preserve EXACT compact adult anatomy and relative dimensions: large adult head, short neck, short legs, lighter sturdy torso and forearms, substantial hands/shoes, about 3.5 heads tall. Do not elongate or slenderize her silhouette. Match her ochre bodice, ivory short sleeves, cream knee-to-low-calf skirt, brown belt/pouch and blue hip cloth. Remove ALL hair and braid to make a BALD CLEAN-SHAVEN base with temporary complete bare head; no hair shadow. Four full body orthographic views in ONE horizontal row: FRONT, LEFT profile facing left, BACK, RIGHT profile facing right. Same scale, soles/skull aligned; neutral A pose arms 25 degrees from torso, empty hands, clear armpit gaps, separated feet. Preserve pose across profiles. Short complete visible neck and collar. Matte painted game finish as reference. Pure uniform magenta RGB255,0,255 background for pipeline keying, no ground shadows, labels, lines or other figures. Generous empty gutters between views, every hand and shoe fully inside its column. Crown-to-sole anatomy and short legs MUST remain identical to approved G2. Neither tall realistic anatomy nor additional stoutness.",
+  "headPrompt": "Use case: identity-preserve. Separate COMPLETE female head production turnaround for approved G2, rightmost figure of reference 1. Preserve her mature expressive face, large stylized head shapes, warm skin, blonde parted hair and short single braid behind head. Reference 2 is the bald G2 body: match skin hue and brightness to its arms and ears. HEAD ONLY plus a short complete neck cylinder ending in a flat anatomical neck cap; no torso, shoulders, clothing, pedestal. Four views in one horizontal row: exact FRONT, LEFT profile facing left, BACK, RIGHT profile facing right. Identical scale and anatomy across all four, level head position, neck bases aligned, empty wide gutters. Braid kept compact close to back of skull but with clearance from implied upper back, short tapered braid ending around neck base. Warm matte painterly 3D game finish, broad readable forms, no photorealism, not childlike or glamorous. Pure uniform magenta RGB255,0,255 background, no ground shadows, text, guides. Every complete head and braid fully within its column.",
+  "background": "Magenta keyed with standard character pipeline helper.",
+  "bodyReferences": [
+    {
+      "role": "rightmost approved G2 anatomy and costume",
+      "retained": false
+    }
+  ],
+  "headReferences": [
+    {
+      "role": "G2 face and hair identity",
+      "retained": false
+    },
+    {
+      "path": "concept/sheet.png",
+      "role": "body arm and ear skin palette"
+    }
+  ]
+}

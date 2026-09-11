@@ -1,0 +1,68 @@
+{
+  "sourceBasis": "Owned pattern.cif and transitions.cif decoded with the repository decoder and compared to local IR. Page identifiers select metadata only. Original pixels are not delivered. Colours, wear and transition edge profiles are independent artistic approximations in the muted A direction. Meadow sampling uses four independent source quadrants with a shared edge blend; this is an artistic approximation.",
+  "materials": [
+    {
+      "id": "meadow",
+      "image": "quiet.png",
+      "tint": [0.93, 0.98, 0.96],
+      "wear": 0,
+      "pages": ["text_224", "text_225", "text_226", "text_227"],
+      "names": ["meadow 01", "meadow 02", "meadow 03"],
+      "transitions": ["meadow 1", "meadow 2"],
+      "sampling": "patches"
+    },
+    {
+      "id": "dark-meadow",
+      "image": "dark.png",
+      "tint": [0.97, 0.98, 0.96],
+      "wear": 0,
+      "pages": ["text_228", "text_229", "text_230", "text_231"],
+      "names": ["meadow dark 01"],
+      "transitions": ["meadow dark 1", "meadow dark 2"],
+      "sampling": "patches"
+    },
+    {
+      "id": "deep-meadow",
+      "image": "dark.png",
+      "tint": [0.76, 0.84, 0.78],
+      "wear": 0,
+      "pages": ["text_237", "text_238", "text_239", "text_240"],
+      "names": [],
+      "transitions": ["meadow MegaDark 1", "meadow MegaDark 2"],
+      "sampling": "patches"
+    },
+    {
+      "id": "earth",
+      "image": "soil.png",
+      "tint": [0.88, 0.85, 0.8],
+      "wear": 0,
+      "pages": ["text_190", "text_191", "text_192", "text_193"],
+      "names": ["overlay road", "overlay house"],
+      "transitions": [
+        "DesertBrown 1",
+        "DesertBrown 2",
+        "DesertBrown 1a",
+        "DesertBrown 2a",
+        "DesertBrown 1b",
+        "DesertBrown 2b",
+        "DesertBrown 1c",
+        "DesertBrown 2c",
+        "DesertBrown 1d",
+        "DesertBrown 2d",
+        "overlay road 1",
+        "overlay road 2",
+        "overlay house 1",
+        "overlay house 2"
+      ]
+    },
+    {
+      "id": "mud",
+      "image": "soil.png",
+      "tint": [0.63, 0.61, 0.56],
+      "wear": 0,
+      "pages": ["text_210", "text_211", "text_212", "text_213"],
+      "names": [],
+      "transitions": ["mud 1", "mud 2"]
+    }
+  ]
+}

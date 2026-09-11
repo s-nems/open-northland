@@ -1,0 +1,18 @@
+{
+  "tribeId": 1,
+  "typeId": 3,
+  "layer": "own-house-2",
+  "sprite": "house-painted-runtime.png",
+  "width": 1024,
+  "height": 1024,
+  "scale": 0.25,
+  "entrancePixel": {
+    "x": 294,
+    "y": 883
+  },
+  "doorNode": {
+    "x": -2,
+    "y": 3
+  },
+  "sourceBasis": "House 2 D restyled with built-in imagegen to canonical House 1 A / Stonowany remaster, then gpt-image-1.5 genuine-alpha API export, high quality/input fidelity,1024 square. Existing four-view Meshy/Blender structural source retained. Tribe1/type3 home_level_01 and door(-2,3) retain verified houses.ini/IR identity. Final clear door manually estimated at x294,y614..806 (192px,+/-5px), scale .25 gives approximately96px at zoom2. Ground entrance(294,883) is the lower step edge, artistic approximation. Alpha preserved without keying, masks or resizing; API smooths painting and shifts local details."
+}

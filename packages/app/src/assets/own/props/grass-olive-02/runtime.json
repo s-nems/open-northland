@@ -1,0 +1,15 @@
+{
+  "id": "grass-olive-02",
+  "kind": "decor",
+  "image": "grass-olive-02.png",
+  "width": 80,
+  "height": 56,
+  "anchor": {
+    "x": 52,
+    "y": 38
+  },
+  "scale": 0.5,
+  "brightness": 0.76,
+  "editNames": ["grass 02"],
+  "sourceBasis": "Same previously verified owned landscape names, original world frame dimensions and anchors. Independent muted A redesign: separated slender grass blades with no connected ground mass; sparse small flowers. Local original comparison informed scale and open structure, not a traced copy. Static sprites; 2 source pixels per world pixel, native generated high-resolution artwork proportionally downsampled into the original frame. Per-prop brightness is an artistic map-rendering calibration: ordinary .76, dark .55, deep .40; not extracted original luminance."
+}

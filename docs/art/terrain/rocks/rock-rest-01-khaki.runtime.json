@@ -1,0 +1,26 @@
+{
+  "id": "rock-rest-01-khaki",
+  "kind": "decor",
+  "image": "rock-rest-01-khaki.png",
+  "width": 192,
+  "height": 128,
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "scale": 0.5,
+  "frames": [
+    {
+      "x": 4,
+      "y": 4,
+      "width": 41,
+      "height": 24,
+      "anchor": {
+        "x": 20.5,
+        "y": 13.919999999999998
+      }
+    }
+  ],
+  "editNames": ["stones 01 khaki rest"],
+  "sourceBasis": "Exact owned landscapes.cif grey/rock02 and khaki/rock03 slots and state counts verified against decoder and IR. Independent dark and light artwork; frame geometry preserved from rocks-v2. Palette colours and low-to-full depletion shapes are artistic approximations."
+}

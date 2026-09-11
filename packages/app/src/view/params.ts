@@ -5,7 +5,16 @@
 
 /** The player-facing settings that survive a menu/game switch; every other param is dropped. The
  *  `?uiscale` diagnostic pin is deliberately not carried: sticky, it would mask the scale setting. */
-export const CARRIED_PARAMS = ['lang', 'speed', 'fog', 'progression', 'needs', 'sound', 'debug'] as const;
+export const CARRIED_PARAMS = [
+  'lang',
+  'speed',
+  'fog',
+  'progression',
+  'needs',
+  'sound',
+  'debug',
+  'assets',
+] as const;
 export type CarriedParam = (typeof CARRIED_PARAMS)[number];
 
 export function carriedParams(current = new URLSearchParams(window.location.search)): URLSearchParams {

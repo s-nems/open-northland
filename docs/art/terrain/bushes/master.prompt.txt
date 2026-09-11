@@ -1,0 +1,15 @@
+Use case: stylized-concept
+TASK
+Create an independent shrub sprite atlas for Open Northland, a nostalgic Cultures-style settlement game HQ/remastered redesign. Six isolated small woody shrubs, arranged in exactly THREE columns and TWO rows, on a 1536x1024 canvas. Each cell 512x512, each shrub fully inside its cell with at least 60 pixels of transparent margin. No text or grid.
+REFERENCES
+Image 1 is the canonical J Warm Remaster board, PRIMARY STYLE REFERENCE ONLY, not an edit target. Match its woodland vegetation, grounded painterly material definition and restrained colors. Do not reproduce buildings or ground panels. No original-game images are provided.
+DESIGN
+Two distinct slender irregular woodland shrub silhouettes, visibly woody branching stems and open gaps between foliage clusters, taller than wide (roughly width:height 0.75). They are small shrubs, not round hedge balls, not large trees. Broad grouped matte leaves, moss/olive green highlights, deep muted green shadows, brown thin stems. Individually designed natural asymmetry, no topiary, no giant tropical leaves.
+Top row: same first shrub architecture across three seasonal states: left sparse bare branching shrub with a few muted residual leaves; middle leafy shrub with a FEW tiny ivory blossoms; right leafy shrub with sparse small dusty red berries.
+Bottom row: second shrub architecture, a little broader, leaning differently with unequal branching: left leafy green shrub without flowers or berries; middle same architecture with a FEW small ivory blossoms; right same architecture with sparse dusty red berries.
+VIEW/LIGHT
+Elevated orthographic game view, about 30 degrees above horizon, upper-left soft daylight, believable dark undersides and readable foliage planes. Root contact at bottom center of each plant. Only tiny translucent root contact shadow, no ground mound, turf island, pot, stone, scenery or long cast shadow.
+QUALITY
+High-quality detailed master for downsampling to about 88–96 pixels wide and 122–132 pixels tall, representing original world sizes at source resolution x2. Selective detail readable at that final size, no artificial pixelation, no outlines, no glossy toy/plastic look, no photographic cutout.
+BACKGROUND
+Genuinely transparent PNG alpha around and between stems and leaves. Do not paint a checkerboard or colored background. Keep six separate plants with clean anti-aliased alpha edges.

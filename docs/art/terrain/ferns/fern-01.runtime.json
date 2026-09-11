@@ -1,0 +1,14 @@
+{
+  "id": "fern-01",
+  "kind": "decor",
+  "image": "fern-01.png",
+  "width": 120,
+  "height": 84,
+  "anchor": {
+    "x": 54,
+    "y": 68
+  },
+  "scale": 0.5,
+  "editNames": ["fern 01"],
+  "sourceBasis": "Same previously verified owned landscape names, world frame dimensions and anchors as Meadows v3. Independent muted A redesign: broad open grass patches with fine spaced stems, flowers within matching grass, low separated fern fronds. Original pixels inspected locally only, never supplied to generation. Static sprites; two native source pixels per world pixel. Alpha-bound proportional downsample."
+}

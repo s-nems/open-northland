@@ -57,3 +57,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test # builds/typechecks workspace + test sources, then runs Vitest
+
+  art:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:art

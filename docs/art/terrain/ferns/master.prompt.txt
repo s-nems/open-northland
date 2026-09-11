@@ -1,0 +1,11 @@
+Use case: stylized-concept.
+Asset type: transparent sprite atlas, TEN separate ground vegetation patches for an isometric Cultures HQ/remastered redesign.
+Image 1 is primary canonical muted House A, matte painting, palette restraint and neutral upper-left daylight reference. Image 2 is matching meadow ground material, use the SAME subdued olive/sage grass pigments. Do not include the house or any background ground.
+Canvas wide landscape. EXACTLY FIVE equally spaced columns by TWO rows, generous transparent gutters, no labels. Each patch occupies a wide shallow ellipse, width about 2.2 times height. Elevated orthographic view, visible vertical stems but shallow footprint.
+Reading order:
+top row: 1 ordinary meadow grass patch, 2 a different ordinary grass patch, 3 dark woodland grass, 4 different dark woodland grass, 5 deep shadow woodland grass.
+bottom row: 6 different deep shadow grass, 7 sparse dusty pink field flowers in fine grass, 8 small cream/oat yellow flowers in fine grass, 9 ordinary olive green fern group, 10 darker woodland fern group.
+GRASS DESIGN CRITICAL: each of six grass sprites is an OPEN WIDE PATCH of 40-60 thin mostly upright meadow stems growing at MANY separate points across a shallow irregular ellipse, with three loose areas of greater density. Fine threadlike blades, some gently leaning, a few fine seed heads, thin sparse low blades. Lots of transparent gaps BETWEEN stems and between roots. Organic airy grass at knee-height, not a dense shrub, not a round tuft sprouting from one center, not a bush, no broad leaves, no solid dark base. Vary height and clustering naturally. Preserve readable height and width at final 84x58 pixel export.
+Flowers are tiny scattered flowerheads on thin spaced stems among the same grass; not bouquets or broad-leaf plants, final 52x50 pixels.
+FERNS: low wide loose group of separated arching finely pinnate fronds, subtle olive midtones, sparse fine leaflets and translucent gaps, asymmetrical heights, no central spear, no hemispherical shrub, no glowing yellow/lime outline. Final 120x84 pixels.
+Muted moderate-low contrast botanical painting, soft selective highlights, not photographic, not glossy. Roots taper naturally into TRANSPARENCY, no soil island, platform, circle shadow, vignette or background. Genuine transparent RGBA alpha, no painted checkerboard.

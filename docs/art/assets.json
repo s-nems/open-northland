@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "buildings/farm",
+      "recipe": "docs/art/buildings/farm/asset.json"
+    },
+    {
+      "id": "buildings/headquarters",
+      "recipe": "docs/art/buildings/headquarters/asset.json"
+    },
+    {
+      "id": "buildings/house-1",
+      "recipe": "docs/art/buildings/house-1/asset.json"
+    },
+    {
+      "id": "buildings/house-2",
+      "recipe": "docs/art/buildings/house-2/asset.json"
+    },
+    {
+      "id": "buildings/stonemason",
+      "recipe": "docs/art/buildings/stonemason/asset.json"
+    },
+    {
+      "id": "characters/man-forkbeard",
+      "recipe": "docs/art/characters/appearances/man-forkbeard/asset.json"
+    },
+    {
+      "id": "characters/man-ravenknot",
+      "recipe": "docs/art/characters/appearances/man-ravenknot/asset.json"
+    },
+    {
+      "id": "characters/man-redmane",
+      "recipe": "docs/art/characters/appearances/man-redmane/asset.json"
+    },
+    {
+      "id": "characters/man-silver",
+      "recipe": "docs/art/characters/appearances/man-silver/asset.json"
+    },
+    {
+      "id": "characters/woman-blonde",
+      "recipe": "docs/art/characters/appearances/woman-blonde/asset.json"
+    },
+    {
+      "id": "terrain/bushes",
+      "recipe": "docs/art/terrain/bushes/asset.json"
+    },
+    {
+      "id": "terrain/ferns",
+      "recipe": "docs/art/terrain/ferns/asset.json"
+    },
+    {
+      "id": "terrain/grass",
+      "recipe": "docs/art/terrain/grass/asset.json"
+    },
+    {
+      "id": "terrain/gravel",
+      "recipe": "docs/art/terrain/gravel/asset.json"
+    },
+    {
+      "id": "terrain/meadow-ground",
+      "recipe": "docs/art/terrain/meadow-ground/asset.json"
+    },
+    {
+      "id": "terrain/meadows",
+      "recipe": "docs/art/terrain/meadows/asset.json"
+    },
+    {
+      "id": "terrain/mountains",
+      "recipe": "docs/art/terrain/mountains/asset.json"
+    },
+    {
+      "id": "terrain/mushrooms",
+      "recipe": "docs/art/terrain/mushrooms/asset.json"
+    },
+    {
+      "id": "terrain/rocks",
+      "recipe": "docs/art/terrain/rocks/asset.json"
+    },
+    {
+      "id": "terrain/sand",
+      "recipe": "docs/art/terrain/sand/asset.json"
+    },
+    {
+      "id": "terrain/woodland",
+      "recipe": "docs/art/terrain/woodland/asset.json"
+    }
+  ]
+}

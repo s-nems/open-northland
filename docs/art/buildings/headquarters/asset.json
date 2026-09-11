@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "buildings/headquarters",
+  "kind": "building",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "buildings/headquarters/final-muted.png",
+      "content": {
+        "operation": "copy",
+        "source": "final-muted.png"
+      }
+    },
+    {
+      "path": "buildings/headquarters/runtime.json",
+      "content": {
+        "operation": "copy",
+        "source": "runtime.json"
+      }
+    }
+  ]
+}

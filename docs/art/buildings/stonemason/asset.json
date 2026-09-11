@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "buildings/stonemason",
+  "kind": "building",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "buildings/stonemason/final.png",
+      "content": {
+        "operation": "copy",
+        "source": "final.png"
+      }
+    },
+    {
+      "path": "buildings/stonemason/runtime.json",
+      "content": {
+        "operation": "copy",
+        "source": "runtime.json"
+      }
+    }
+  ]
+}

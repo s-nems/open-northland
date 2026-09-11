@@ -1,0 +1,21 @@
+{
+  "status": "selected-for-runtime",
+  "sourceSize": [
+    1254,
+    1254
+  ],
+  "doorTop": [
+    510,
+    890
+  ],
+  "entrancePixel": [
+    510,
+    1120
+  ],
+  "doorHeightPx": 230,
+  "measurementUncertaintyPx": 8,
+  "reviewZoom": 2,
+  "targetDoorScreenPx": 96,
+  "sourceToWorldScale": 0.20869565217391303,
+  "basis": "Manual apparent clear doorway measurement after final 2D paintover; not a geometry-derived anchor."
+}

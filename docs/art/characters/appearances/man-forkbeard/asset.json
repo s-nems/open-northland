@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "characters/man-forkbeard",
+  "kind": "character",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "characters/man-forkbeard/atlas.png",
+      "content": {
+        "operation": "character",
+        "source": "recipe.json",
+        "id": "man-forkbeard",
+        "name": "D\u0105b"
+      }
+    },
+    {
+      "path": "characters/man-forkbeard/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {}
+      }
+    }
+  ]
+}

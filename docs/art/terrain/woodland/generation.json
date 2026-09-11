@@ -1,0 +1,52 @@
+{
+  "reference": {
+    "path": "docs/art/references/world/J.png",
+    "role": "Canonical style reference, unchanged",
+    "sha256": "4cc6c5d24e4f9861a598f5e475044323c1c6df8ef3302e3ff27f5d4a994239cf"
+  },
+  "generation": {
+    "tool": "built-in image_gen",
+    "prompt": "atlas.prompt.txt",
+    "output": "atlas-study.png",
+    "sha256": "e1ffaedfa4933350d65fed8a2b7ba8d44cc75e1983724a211f761f9da2b64675",
+    "acceptedForRuntime": false,
+    "reason": "RGB painted checkerboard"
+  },
+  "alpha": {
+    "tool": "imagegen skill CLI, OpenAI API",
+    "model": "gpt-image-1.5",
+    "prompt": "alpha.prompt.txt",
+    "inputs": [
+      {
+        "path": "atlas-study.png",
+        "role": "Edit target"
+      },
+      {
+        "path": "docs/art/references/world/J.png",
+        "role": "Style reference"
+      }
+    ],
+    "n": 1,
+    "size": "1024x1024",
+    "quality": "high",
+    "inputFidelity": "high",
+    "background": "transparent",
+    "format": "png",
+    "elapsedSeconds": 36.2,
+    "output": "atlas-alpha.png",
+    "sha256": "b2c3b4e3e1c567fc47d195ba985a0a63be34ca5b12cdb1ac531647e47c70b62e",
+    "zeroAlphaPixels": 673792,
+    "totalPixels": 1048576
+  },
+  "export": {
+    "recipe": "recipe.json",
+    "script": "scripts/export-own-trees.mjs",
+    "operations": [
+      "Rectangular alpha bounds crop with margin",
+      "Independent-axis downsampling to 2x original world dimensions",
+      "Packing three growth states; no alpha keying"
+    ],
+    "motion": "Runtime anchored shear, artistic approximation"
+  },
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

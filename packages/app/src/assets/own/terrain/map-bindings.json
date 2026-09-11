@@ -1,0 +1,21 @@
+{
+  "sourceBasis": "Owned pattern.cif and generated IR; 256px source pages with 64px samples. All covered neutral meadow variants use one own mirrored grass material; authored variant distinctions are not yet reproduced.",
+  "pages": [
+    {
+      "source": "data/engine2d/bin/textures/text_224.pcx",
+      "extent": 256
+    },
+    {
+      "source": "data/engine2d/bin/textures/text_225.pcx",
+      "extent": 256
+    },
+    {
+      "source": "data/engine2d/bin/textures/text_226.pcx",
+      "extent": 256
+    },
+    {
+      "source": "data/engine2d/bin/textures/text_227.pcx",
+      "extent": 256
+    }
+  ]
+}

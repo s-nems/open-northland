@@ -1,0 +1,20 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "Use case: style-transfer. Edit target image 1 is the exact eight-view GEOMETRY sheet for G2 bald female base body, four columns two rows. Preserve every silhouette, head size, body width, limb length, pose, facing, object center and shoe baseline precisely. Do not resize figures or reframe the sheet. Input2 is the approved male game's painterly MATERIAL FINISH reference only. Input3 rightmost G2 is costume identity only, not permission to change geometry.\nRepaint image1's flat surfaces into cohesive warm hand-painted game materials matching input2: rich ochre bodice with structured seams and folds, ivory short sleeves, cream continuous SKIRT with broad readable vertical fabric folds and restrained shading, brown leather belt buckle pouch and substantial shoes with painted creases, blue hipcloth neatly hanging from belt as in G2. Clear warm skin with broad soft form shading matching arms to ears face and neck. Remain BALD CLEAN-SHAVEN: no scalp hair, braid, facial hair or hair shadows anywhere. Temporary bare head is replaced separately later.\nExactly eight figures in SAME order SW W NW N / NE E SE S. Fixed 1536x1024 canvas, cells384x512, figures about264px high, feet y440 within each row. Keep ALL positions and scales of image1. Background outside figures uniform pure magenta RGB255,0,255, including gaps. No ground shadows or labels. Clean coherent materials, no heavy outline, no pixel blocks, no speckles, no watercolor washes, no view-specific dramatic light. Preserve exact geometry shape even where skirt swings; paint folds onto it without changing hem contour. Final textures need clear volume suitable for unlit rendering, close to existing male finish.",
+  "references": [
+    {
+      "path": "in-facings.png",
+      "role": "exact geometry and pose target"
+    },
+    {
+      "path": "../../../shared/body/restyle/out-facings.png",
+      "role": "approved material painting finish"
+    },
+    {
+      "role": "G2 costume identity",
+      "retained": false
+    }
+  ],
+  "alignment": "Pipeline keys magenta, cuts views, aligns generated figures to source geometry. Approximate generative paint alignment; projection is strongest-view 2048.",
+  "postProjection": "model/guard-garment.mjs preserves warm linen folds in reserved UV strip and rejects pink/magenta contamination after generic material guard."
+}

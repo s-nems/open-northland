@@ -1,0 +1,25 @@
+{
+  "ai_model": "meshy-7",
+  "image_files": [
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/front.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/left.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/back.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/right.png"
+  ],
+  "image_enhancement": false,
+  "remove_lighting": false,
+  "should_remesh": false,
+  "should_texture": true,
+  "enable_pbr": false,
+  "texture_resolution": "2k",
+  "target_formats": ["glb"],
+  "auto_size": false,
+  "multi_view_thumbnails": true,
+  "alpha_thumbnail": true,
+  "texture_image_files": [
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/front.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/left.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/back.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/woman-blonde/concept/right.png"
+  ]
+}

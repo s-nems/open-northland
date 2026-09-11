@@ -1,0 +1,12 @@
+Use case: stylized-concept
+TASK
+Create a new sand ground material for Open Northland, a Cultures-inspired HQ/remastered redesign.
+Output purpose: production opaque terrain texture master, one square 1024x1024 image, edge-to-edge ground material. No panels or borders.
+Composition: straight top-down orthographic, flat compacted sandy earth across the entire image, uniform scale and lighting, designed for small repeated game terrain triangles. No perspective, horizon or isolated island.
+Materials: quiet weathered tan sand with fine granular painterly definition, a few barely visible tiny embedded mineral grains, very shallow irregular scuffed patches. Broad surfaces remain calm. Tiny details should emerge only close up. No recognisable repeating motif.
+REFERENCES
+Image 1 is the approved J / Warm Remaster world-style board. Primary style reference only, not an edit target and do not reproduce the board layout. Use J7 and J9's earthy sandy material relationship to greens and buildings, but make a complete standalone sand texture without plants, rocks or water.
+STYLE
+Grounded hand-painted nostalgic settlement game, matte warm muted ochre/taupe sandy earth, restrained saturation, modest fine light/shadow separation. Even diffuse upper-left light. Medium value earth, never glowing pale cream or lemon yellow. Keep contrast gentle and variation small: avoid bright flecks, dark divots and large mottled blotches. Terrain supports attention on actors. High-quality genuine painted detail, no pixelation.
+CONSTRAINTS
+Flat walkable ground. Seamlessly compatible opposite edges with consistent colour and grain scale across the full square; no vignette, central highlight or diagonal band. No dunes, ridges, cliffs, cracks, cobblestones, pebbles larger than tiny grains, grass, leaves, roots, shells, footprints, water, shore line, cast shadows, text or UI. Opaque RGB texture, no transparency/checkerboard. Invent independent material artwork; no original game images provided.

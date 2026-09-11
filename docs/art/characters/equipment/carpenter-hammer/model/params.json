@@ -1,0 +1,11 @@
+{
+  "ai_model": "meshy-7",
+  "should_remesh": true,
+  "target_polycount": 12000,
+  "should_texture": true,
+  "enable_pbr": false,
+  "texture_resolution": "2k",
+  "image_enhancement": false,
+  "remove_lighting": false,
+  "image_file": "docs/art/characters/equipment/carpenter-hammer/concept/hammer.png"
+}

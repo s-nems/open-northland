@@ -1,0 +1,46 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "master.prompt.txt",
+  "reference": {
+    "path": "../../references/world/J.png",
+    "role": "primary world style only",
+    "sha256": "4cc6c5d24e4f9861a598f5e475044323c1c6df8ef3302e3ff27f5d4a994239cf"
+  },
+  "originalPixelsSupplied": false,
+  "master": {
+    "file": "master.png",
+    "sha256": "07cf78aae7459c9d666398531a5ad35bdd123537f97dee9b95e78089bb5b2797",
+    "width": 1254,
+    "height": 1254,
+    "transparentPixels": 0,
+    "partialAlphaPixels": 0
+  },
+  "status": "Integrated candidate; awaiting human visual approval",
+  "apiCalls": 1,
+  "api": {
+    "model": "gpt-image-1.5",
+    "mode": "edit",
+    "background": "transparent",
+    "quality": "high",
+    "inputFidelity": "high",
+    "outputFormat": "png",
+    "n": 1,
+    "size": "1024x1024",
+    "prompts": ["alpha.prompt.txt"],
+    "inputRoles": "Own study as edit target; immutable J as primary style reference. Fern color pass edits own alpha study with J as style reference."
+  },
+  "final": {
+    "file": "atlas-alpha.png",
+    "sha256": "8d991b8c096766db8986726ece6d0037e6a6ee11530394aa7f5e2a14589c9040",
+    "alpha": {
+      "zero": 782572,
+      "partial": 136943,
+      "opaque": 129061
+    }
+  },
+  "export": {
+    "method": "Canvas crop and high quality downsample; preserve generated alpha; fit each crop to original first-frame dimensions \u00d72 with 2 source px padding; original anchor \u00d72; scale 0.5",
+    "limitations": "Static sprites; XY fitting can change aspect ratio. Mushroom cells manually calibrated to actual generated layout; no background keying, repainting or hand-authored masks."
+  },
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

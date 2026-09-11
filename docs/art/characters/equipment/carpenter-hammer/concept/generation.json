@@ -1,0 +1,9 @@
+{
+  "tool": "built-in imagegen",
+  "reference": "../../../shared/body/restyle/out-facings.png",
+  "referenceRole": "Painting and material style only; no character depiction",
+  "referenceSha256": "68858fe8a09b37ebee7ee51b6fe1bc5dcd1fc4d68d7eca1304c3bab36aad1a3f",
+  "prompt": "prompt.txt",
+  "output": "hammer.png",
+  "outputSha256": "e0c6a5a165d362c2eb9f2fe42dae6d2fd743cfb6578be3483f0eedf0ec9ecfff"
+}

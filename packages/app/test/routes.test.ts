@@ -21,6 +21,7 @@ describe('routeFor', () => {
     ['?backdrop', 'backdrop'],
     ['?scene=battle', 'scene'],
     ['?anim', 'anim'],
+    ['?art', 'art'],
     ['?icons', 'icons'],
     ['?sounds', 'sounds'],
     ['?map=alpha', 'map'],

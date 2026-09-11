@@ -1,0 +1,38 @@
+{
+  "paint": {
+    "tool": "built-in imagegen",
+    "prompt": "paint.prompt.txt",
+    "output": "paint.png",
+    "inputs": [
+      {
+        "path": "input.png",
+        "role": "edit target"
+      },
+      {
+        "path": "../../house-1/house-painted-runtime.png",
+        "role": "primary finish"
+      },
+      {
+        "path": "../../house-2/house-painted-runtime.png",
+        "role": "material reference"
+      },
+      {
+        "path": "../../farm/farm-painted.png",
+        "role": "material reference"
+      }
+    ],
+    "alpha": "RGB; painted checkerboard, unsuitable for runtime"
+  },
+  "alpha": {
+    "tool": "imagegen skill CLI",
+    "model": "gpt-image-1.5",
+    "prompt": "alpha.prompt.txt",
+    "input": "paint.png",
+    "output": "../final-muted.png",
+    "size": "1536x1024",
+    "quality": "high",
+    "input_fidelity": "high",
+    "background": "transparent",
+    "output_format": "png"
+  }
+}

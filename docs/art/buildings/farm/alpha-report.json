@@ -1,0 +1,35 @@
+{
+  "site-base.png": {
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "transparent": 935204,
+    "partial": 3167,
+    "opaque": 110205,
+    "sha256": "942ee346151058e89d834551d8737a5200395c26a237f8c7b8627de7764837ad"
+  },
+  "frame.png": {
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "transparent": 825632,
+    "partial": 20275,
+    "opaque": 202669,
+    "sha256": "298eddc0b0dfd45d6c5df4db65d8e3272525a9eddfad1493979e9d55d3664b22"
+  },
+  "farm-painted.png": {
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGBA",
+    "transparent": 627938,
+    "partial": 101664,
+    "opaque": 318974,
+    "sha256": "699dabbe49480bbe26d030f82ab3b4cc9334dbfb4fedf9eb85ac5ab5314f3803"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "paintedPolygons": 5906,
+  "registrationHomography": [
+    [
+      1.0076917986285916,
+      0.03254917475562453,
+      -24.234514943405003
+    ],
+    [
+      -0.01933569974792185,
+      1.076725263659536,
+      -47.978727790221626
+    ],
+    [
+      -3.058710492844575e-05,
+      3.489010107615841e-05,
+      1.0
+    ]
+  ],
+  "visibilityTolerance": 0.025,
+  "mode": "Front-view UV projection onto visible faces; hidden faces retain procedural materials; no raster masking or alpha editing."
+}

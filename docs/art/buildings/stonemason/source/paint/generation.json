@@ -1,0 +1,40 @@
+{
+  "painting": {
+    "tool": "built-in imagegen",
+    "prompt": "paint.prompt.txt",
+    "references": [
+      {
+        "path": "../geometry/base.png",
+        "role": "Clean calibrated Blender render, edit target/architecture/camera"
+      },
+      {
+        "path": "../../../house-1/source/paint/house-painted-runtime.png",
+        "role": "Primary approved painted building finish"
+      },
+      {
+        "path": "../../../../references/world/J.png",
+        "role": "Immutable world style"
+      }
+    ],
+    "output": "paint.png",
+    "status": "RGB checkerboard, not runtime-ready"
+  },
+  "alphaExport": {
+    "tool": "imagegen skill bundled CLI",
+    "model": "gpt-image-1.5",
+    "operation": "edit",
+    "input": "paint.png",
+    "prompt": "api-alpha.prompt.txt",
+    "size": "1536x1024",
+    "quality": "high",
+    "input_fidelity": "high",
+    "background": "transparent",
+    "output_format": "png",
+    "n": 1,
+    "output": "final.png",
+    "authorization": "Standing capability-based API permission in root AGENTS.override.md, requested House A workflow",
+    "correction": "Alpha export plus stray pale front-facade filler strips changed to oak. Output also smooths/reinterprets painted details."
+  },
+  "postprocessing": "None: generated alpha and RGB preserved, no keying/masks/resizing/projection",
+  "runtimeStatus": "Approved for delivery to own-assets stonemason slot, tribe 1/type 29."
+}

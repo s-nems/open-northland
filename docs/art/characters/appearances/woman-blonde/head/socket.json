@@ -1,0 +1,28 @@
+{
+  "construction": "bald-neck-socket",
+  "cut_z": 1.25,
+  "chin_min_z": 1.2,
+  "chin_front_y": -0.07,
+  "chin_half_width": 0.18,
+  "height": 0.55,
+  "source_neck_origin": [0, 0.12, -0.6],
+  "neck_origin": [0, 0.025, 1.17],
+  "head_pivot": [0, 0.025, 1.24],
+  "unlit": true,
+  "neck_bridge": {
+    "bottom": 1.08,
+    "top": 1.27,
+    "radius_x": 0.07,
+    "radius_y": 0.065,
+    "center_y": 0.025,
+    "color": [0.61, 0.39, 0.21, 1]
+  },
+  "neck_blend_height": 0.1,
+  "neck_blend_start": 1.17,
+  "neck_blend_radius": [0.07, 0.08],
+  "neck_blend_back_radius": [0.07, 0.08],
+  "neck_torso_bone": "Spine",
+  "neck_inset": 0.015,
+  "neck_base_scale": 0.8,
+  "source_basis": "Anatomical approximation: generated head has no neck cylinder; tapered skinned bridge joins the jaw to the body collar. Braid excluded from neck landmark."
+}

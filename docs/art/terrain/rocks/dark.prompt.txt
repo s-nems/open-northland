@@ -1,0 +1,6 @@
+TASK
+Edit image 1, our own accepted rock sprite atlas, to create its DARK GREY material variant. Use case: precise-object-edit. Production sprite atlas with genuine transparency.
+Preserve every one of the 12 silhouettes, their outlines, sizes, positions, camera, spacing, rock fractures, shadows and layout exactly. Keep the 4 columns, 3 rows and 1536x1024 canvas. Change ONLY stone material color: replace beige/golden khaki with dark charcoal neutral-cool grey, slightly green-grey in darkest recesses. Keep upper left diffuse highlights as subdued medium grey, not silver white. Dark faces should be clearly much darker than current tan rocks, while maintaining readable plane separation and painted texture.
+Image 2 is canonical J / Warm Remaster style reference only, not an edit target. Maintain its matte grounded nostalgic settlement game rendering.
+BACKGROUND: image 1 has genuine alpha. Preserve actual transparent pixels and partial-alpha edges/shadows. Return RGBA PNG with real transparency, no colored background, no painted checkerboard, no floor, no backdrop. Do not add anything. This is a palette variant of the existing sprites, not a new shape design. All rock geometry and sprite cell arrangement must remain identical.
+No text, watermark, grid lines, new vegetation, glowing colors or outline.

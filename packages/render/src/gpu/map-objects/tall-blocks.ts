@@ -11,6 +11,7 @@ import {
 import { SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
 import type { TextureCache } from '../texture-cache.js';
+import { setVegetationShear, vegetationShear } from '../vegetation-sway.js';
 import { type MapObjectSprite, objectFrameIndexAt } from './map-object-sprite.js';
 
 /**
@@ -157,7 +158,12 @@ export class TallObjectLayer {
     // Draw at the lifted feet; mint's zIndex kept the pre-lift `obj.y`, so depth is still by map row.
     const lift = obj.lift ?? 0;
     sprite.texture = this.textures.get(obj.source, frame);
-    sprite.position.set(obj.x + frame.offsetX * obj.scale, obj.y - lift + frame.offsetY * obj.scale);
+    const shear = vegetationShear(clock, obj.x, obj.y, obj.sway ?? 0);
+    setVegetationShear(sprite, obj.scale, shear);
+    sprite.position.set(
+      obj.x + (frame.offsetX + frame.offsetY * shear) * obj.scale,
+      obj.y - lift + frame.offsetY * obj.scale,
+    );
     if (po.shadowSprite !== null && obj.shadow !== undefined) {
       const shadowFrame = obj.shadow.frames[frameIndex];
       po.shadowSprite.visible = shadowFrame !== undefined; // a pose with no silhouette just hides it
@@ -207,7 +213,9 @@ export class TallObjectLayer {
         if (sprite.tint !== tint) sprite.tint = tint;
         // The frozen/live pose switches with the tint.
         const rebind =
-          !po.attached || watched !== po.lastWatched || (watched && animAdvanced && obj.frames.length > 1);
+          !po.attached ||
+          watched !== po.lastWatched ||
+          (watched && animAdvanced && (obj.frames.length > 1 || obj.sway !== undefined));
         if (rebind && !this.bindPose(po, sprite, watched ? tick : 0)) continue;
         po.lastWatched = watched;
         if (!po.attached) {

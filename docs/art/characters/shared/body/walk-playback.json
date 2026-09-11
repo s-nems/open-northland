@@ -1,0 +1,5 @@
+{
+  "cadenceScale": 0.8,
+  "referenceFacing": "E",
+  "sourceBasis": "Visual cadence tuning from the side-on planted-foot measurement. All facings share one cycle distance because sim movement already uses equal projected world distance per tick (nav/world-metric.ts). Do not apply camera or map depth ratios again."
+}

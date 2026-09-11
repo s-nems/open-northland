@@ -1,0 +1,14 @@
+{
+  "id": "bush-02-flower",
+  "kind": "decor",
+  "image": "bush-02-flower.png",
+  "width": 96,
+  "height": 132,
+  "anchor": {
+    "x": 54,
+    "y": 120
+  },
+  "scale": 0.5,
+  "editNames": ["bush 02 flower"],
+  "sourceBasis": "Owned landscapes.cif slots and first-frame atlas rectangles/offsets verified against decoder and IR. Independent generated shrub designs, cropped and separately downsampled horizontally and vertically to original frame budgets at two source pixels per world pixel. Empty/barren aliases share original bobs. Static paintings approximate the original animated foliage; seasonal stages remain distinct."
+}

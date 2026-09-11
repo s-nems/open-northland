@@ -1,0 +1,39 @@
+{
+  "basis": "Manual clear-opening reading in front-elevation.png at x365: y606 to y895 on 1100px orthographic scale 2.2; approximately \u00b15px. Front depth from mesh raycast; artistic calibration.",
+  "raw_door_x": -0.37,
+  "raw_door_y": -0.5563027858734131,
+  "raw_door_top": -0.112,
+  "raw_door_foot": -0.69,
+  "raw_door_height": 0.578,
+  "model_scale": 3.3564013840830453,
+  "door_height_design_units": 1.94,
+  "adult_height_design_units": 1.78,
+  "camera_elevation": 28.5,
+  "camera_azimuth": 22.5,
+  "orthographic_scale": 9.092827796936035,
+  "sprite_size": [
+    512,
+    512
+  ],
+  "master_size": [
+    1536,
+    1536
+  ],
+  "door_top_sprite": [
+    151.16140747070312,
+    304.3797302246094
+  ],
+  "door_foot_sprite": [
+    151.16140747070312,
+    400.37972259521484
+  ],
+  "ground_entrance_anchor_sprite": [
+    151.16140747070312,
+    420.71361541748047
+  ],
+  "door_screen_px_target": 96,
+  "actor_screen_px_target": 88,
+  "world_zoom": 2,
+  "source_to_world_scale": 0.5,
+  "runtime_integrated": false
+}

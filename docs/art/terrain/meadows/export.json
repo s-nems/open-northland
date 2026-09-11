@@ -1,0 +1,41 @@
+{
+  "alpha": {
+    "zero": 1421653,
+    "partial": 138734,
+    "opaque": 12477
+  },
+  "crops": [
+    {
+      "id": "grass-olive-01",
+      "crop": [37, 93, 305, 269]
+    },
+    {
+      "id": "grass-olive-02",
+      "crop": [432, 96, 291, 270]
+    },
+    {
+      "id": "grass-dark-01",
+      "crop": [813, 99, 282, 261]
+    },
+    {
+      "id": "grass-dark-02",
+      "crop": [1225, 118, 275, 248]
+    },
+    {
+      "id": "grass-deep-01",
+      "crop": [30, 629, 304, 257]
+    },
+    {
+      "id": "grass-deep-02",
+      "crop": [418, 636, 308, 256]
+    },
+    {
+      "id": "flowers-pink",
+      "crop": [832, 664, 289, 228]
+    },
+    {
+      "id": "flowers-yellow",
+      "crop": [1254, 644, 252, 254]
+    }
+  ]
+}

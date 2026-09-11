@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "id": "terrain/meadows",
+  "kind": "props",
+  "sourceBasis": "Same previously verified owned landscape names, original world frame dimensions and anchors. Independent muted A redesign: separated slender grass blades with no connected ground mass; sparse small flowers. Local original comparison informed scale and open structure, not a traced copy. Static sprites; 2 source pixels per world pixel, native generated high-resolution artwork proportionally downsampled into the original frame. Per-prop brightness is an artistic map-rendering calibration: ordinary .76, dark .55, deep .40; not extracted original luminance.",
+  "outputs": [],
+  "atlas": {
+    "type": "vegetation",
+    "sampling": "canvas-high",
+    "scale": 0.5,
+    "source": "atlas-alpha.png",
+    "fit": "frame-contain",
+    "props": [
+      {
+        "id": "grass-olive-01",
+        "editNames": ["grass 01"],
+        "cell": [0, 0, 384, 512],
+        "size": [84, 58],
+        "anchor": {
+          "x": 42,
+          "y": 44
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "grass-olive-02",
+        "editNames": ["grass 02"],
+        "cell": [384, 0, 384, 512],
+        "size": [80, 56],
+        "anchor": {
+          "x": 52,
+          "y": 38
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "grass-dark-01",
+        "editNames": ["grass dark 01"],
+        "cell": [768, 0, 384, 512],
+        "size": [84, 58],
+        "anchor": {
+          "x": 42,
+          "y": 44
+        },
+        "brightness": 0.55
+      },
+      {
+        "id": "grass-dark-02",
+        "editNames": ["grass dark 02"],
+        "cell": [1152, 0, 384, 512],
+        "size": [80, 56],
+        "anchor": {
+          "x": 52,
+          "y": 38
+        },
+        "brightness": 0.55
+      },
+      {
+        "id": "grass-deep-01",
+        "editNames": ["grass MegaDark 01"],
+        "cell": [0, 512, 384, 512],
+        "size": [84, 58],
+        "anchor": {
+          "x": 42,
+          "y": 44
+        },
+        "brightness": 0.4
+      },
+      {
+        "id": "grass-deep-02",
+        "editNames": ["grass MegaDark 02"],
+        "cell": [384, 512, 384, 512],
+        "size": [80, 56],
+        "anchor": {
+          "x": 52,
+          "y": 38
+        },
+        "brightness": 0.4
+      },
+      {
+        "id": "flowers-pink",
+        "editNames": ["grass flower 01"],
+        "cell": [768, 512, 384, 512],
+        "size": [52, 50],
+        "anchor": {
+          "x": 30,
+          "y": 42
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flowers-yellow",
+        "editNames": ["grass flower 02"],
+        "cell": [1152, 512, 384, 512],
+        "size": [52, 50],
+        "anchor": {
+          "x": 30,
+          "y": 42
+        },
+        "brightness": 0.76
+      }
+    ]
+  }
+}

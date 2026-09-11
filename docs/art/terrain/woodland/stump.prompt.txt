@@ -1,0 +1,11 @@
+TASK
+Create a new stump environment prop for Open Northland.
+Output purpose: master game sprite for direct placement on our existing meadow.
+SUBJECT
+One freshly felled woodland tree stump, short warm brown rough bark cylinder with an uneven pale honey wood cut surface and readable growth rings, spreading roots, two tiny wood chips close to base. About knee-high and adult shoulder width. Neutral woodland stump suitable after harvesting timber. No axe, tools, mushrooms or grass island.
+REFERENCES
+Image 1 is the canonical J / Warm Remaster board. Primary style reference, NOT an edit target: generate the requested NEW SUBJECT, not the board or any buildings. Use the woodland material treatment in J8 and warm timber from J2.
+STYLE
+Warm grounded stylization, welcoming old settlement strategy game atmosphere, HQ painted material definition with selective detail and broad readable groups. Elevated orthographic game camera approximately 29 degrees above horizon, no perspective convergence. Upper-left neutral daylight. Matte materials. Avoid photorealism, plastic mobile-game gloss, exaggerated toy shapes, orange wash and oversharpened microtexture.
+OUTPUT
+One isolated master sprite centered in a 1024 square with generous margins. Entire subject visible. Genuinely transparent RGBA background, including gaps inside the silhouette. No painted checkerboard, solid backdrop, scene, terrain slab, text, labels, watermarks or UI. Minimal contact shadow only; no broad cast shadow. High quality for world camera x2 review; no artificial pixelation. Invent an independent silhouette.

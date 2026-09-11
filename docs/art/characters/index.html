@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Postacie — tablica animacji</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="board.css">
+<header>
+  <h1>Osadnicy · idle / walk / budowanie</h1>
+  <p>Zestaw gry: Siwy, Dąb, Ruda grzywa, Krucza kita i Blondynka.</p>
+  <p><a href="http://127.0.0.1:5173/?map=magiczny_las&amp;assets=own&amp;intro=off&amp;zoom=2&amp;fullscreen=off&amp;center=37,43">Otwórz Magiczny Las z własnymi postaciami →</a></p>
+  <div id="choice"></div>
+  <p>Młotek sprawdzaj podczas budowy na mapie: otwórz menu budowy i postaw budynek.</p>
+  <div id="total"></div>
+  <div id="summary"></div>
+</header>
+<div class="controls">
+  <label>Widok <select id="mode"><option value="directions">Wszystkie kierunki</option><option value="heads">Porównanie wariantów</option></select></label>
+  <label>Wariant <select id="head"></select></label>
+  <label>Kierunek <select id="facing" disabled></select></label>
+  <label>Tło <select id="ground"><option value="grass">Trawa</option><option value="soil">Ziemia</option><option value="grey">Szare</option></select></label>
+  <label>Skala <select id="zoom"><option value="1">½× · porównanie 44 px</option><option value="2" selected>1× · cel 88 px</option><option value="3">1,5×</option></select></label>
+  <button type="button" id="pause">Pauza</button>
+  <button type="button" id="restart">Od początku</button>
+  <label>Klatka cyklu <input id="phase" type="range" min="0" max="1000" value="0"></label>
+</div>
+<main>
+  <p>Chód w atlasie ma nominalne tempo klipu. Na mapie tempo wynika z przebytej drogi i skalibrowanej długości kroku.</p>
+  <div class="legend"><span class="approved">Zatwierdzone</span><span class="review">Do oceny</span><span class="missing">Brakuje sprite’ów</span></div>
+  <div class="scroll"><table><thead id="columns"></thead><tbody id="animations"></tbody></table></div>
+  <h2>Projekty głów i podgląd na mapie</h2>
+  <p>Link pod każdą postacią otwiera podgląd tego wariantu na mapie.</p>
+  <div id="heads"></div>
+  <p id="error" role="alert"></p>
+</main>
+<script type="module" src="board.js?v=skin-match"></script>
+</html>

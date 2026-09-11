@@ -201,6 +201,11 @@ export const enContent = {
       summary:
         'Foundations rise the normal way (carriers haul wood and stone, builders hammer) while the scaffolding stays up until the roof grows over it and comes down at completion.',
     },
+    'farm-construction': {
+      title: 'Farm construction',
+      summary:
+        'Builders raise a farm beside a finished drying barn, from its timber frame to walls and roofing.',
+    },
     upgrade: {
       title: 'Building upgrades',
       summary:

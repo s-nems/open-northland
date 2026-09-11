@@ -1,0 +1,22 @@
+[
+  {
+    "file": "paint.png",
+    "mode": "RGB",
+    "size": [
+      1254,
+      1254
+    ],
+    "hasAlpha": false,
+    "sha256": "d836baa8fa0ca328014f98b2d021de70b8867c2bd318457889cbab05c7ea1cae"
+  },
+  {
+    "file": "builtin-alpha-attempt.png",
+    "mode": "RGB",
+    "size": [
+      1254,
+      1254
+    ],
+    "hasAlpha": false,
+    "sha256": "19cdea5c6228a54f4757ad3f6b37d692ee7ca9575913c3b124eca87c28f2f884"
+  }
+]

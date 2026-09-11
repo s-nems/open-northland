@@ -1,0 +1,47 @@
+{
+  "id": "pine-b",
+  "kind": "resource",
+  "image": "pine-b.png",
+  "width": 864,
+  "height": 464,
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "scale": 0.5,
+  "sway": 0.02,
+  "frames": [
+    {
+      "x": 4,
+      "y": 4,
+      "width": 80,
+      "height": 128,
+      "anchor": {
+        "x": 37.599999999999994,
+        "y": 122.88
+      }
+    },
+    {
+      "x": 292,
+      "y": 4,
+      "width": 116,
+      "height": 168,
+      "anchor": {
+        "x": 54.519999999999996,
+        "y": 161.28
+      }
+    },
+    {
+      "x": 580,
+      "y": 4,
+      "width": 150,
+      "height": 216,
+      "anchor": {
+        "x": 70.5,
+        "y": 207.35999999999999
+      }
+    }
+  ],
+  "editNames": ["pine 02"],
+  "sourceBasis": "Exact owned landscapes.cif tree slots and three growth states verified against decoder and IR. Each state matches the original atlas width and height at two source pixels per world pixel. Independent generated designs, rectangular crops and separate horizontal/vertical downsampling. Younger states reuse the mature design at reduced dimensions; root anchors and procedural breeze are artistic approximations."
+}

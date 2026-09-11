@@ -202,6 +202,11 @@ export const plContent = {
       summary:
         'Fundamenty rosną normalnym trybem: tragarze znoszą drewno i kamień, budowniczowie pracują młotkami, a rusztowanie stoi, aż przerośnie je dach, i znika przy ukończeniu.',
     },
+    'farm-construction': {
+      title: 'Budowa farmy',
+      summary:
+        'Budowniczowie wznoszą farmę obok gotowej suszarni: od drewnianego szkieletu po ściany i dach.',
+    },
     upgrade: {
       title: 'Rozbudowa budynków',
       summary:

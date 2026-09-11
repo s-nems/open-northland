@@ -1,0 +1,56 @@
+{
+  "id": "rock-04",
+  "kind": "resource",
+  "image": "rock-04.png",
+  "width": 768,
+  "height": 128,
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "scale": 0.5,
+  "frames": [
+    {
+      "x": 4,
+      "y": 4,
+      "width": 51,
+      "height": 27,
+      "anchor": {
+        "x": 25.5,
+        "y": 15.659999999999998
+      }
+    },
+    {
+      "x": 196,
+      "y": 4,
+      "width": 77,
+      "height": 37,
+      "anchor": {
+        "x": 38.5,
+        "y": 21.459999999999997
+      }
+    },
+    {
+      "x": 388,
+      "y": 4,
+      "width": 102,
+      "height": 49,
+      "anchor": {
+        "x": 51,
+        "y": 28.419999999999998
+      }
+    },
+    {
+      "x": 580,
+      "y": 4,
+      "width": 128,
+      "height": 61,
+      "anchor": {
+        "x": 64,
+        "y": 35.379999999999995
+      }
+    }
+  ],
+  "editNames": ["stones 04 grey"],
+  "sourceBasis": "Exact owned landscapes.cif grey/rock02 and khaki/rock03 slots and state counts verified against decoder and IR. Independent dark and light artwork; frame geometry preserved from rocks-v2. Palette colours and low-to-full depletion shapes are artistic approximations."
+}

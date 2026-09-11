@@ -1,0 +1,57 @@
+{
+  "status": "Retained fern source; only the two fern cells are exported.",
+  "primaryReference": {
+    "path": "../../buildings/house-1/house-painted-runtime.png",
+    "role": "canonical muted A palette, painting and neutral daylight",
+    "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+  },
+  "originalPixelsSupplied": false,
+  "steps": [
+    {
+      "tool": "built-in imagegen",
+      "prompt": "master.prompt.txt",
+      "output": "master.png",
+      "references": [
+        "../../buildings/house-1/house-painted-runtime.png",
+        "../meadow-v4/quiet-master.png (matching grass pigments)"
+      ],
+      "limitation": "painted checkerboard, not alpha",
+      "sha256": "59b45e99cf18c6452c1e0c16a542a01b1054dd219027d8b3962b7bb5907e0a6b"
+    },
+    {
+      "tool": "imagegen skill API fallback, authorized in session for true alpha",
+      "model": "gpt-image-1.5",
+      "mode": "edit",
+      "prompt": "alpha.prompt.txt",
+      "output": "alpha-before-finish.png",
+      "references": ["master.png (edit target)", "../../buildings/house-1/house-painted-runtime.png"],
+      "size": "1536x1024",
+      "quality": "high",
+      "inputFidelity": "high",
+      "background": "transparent",
+      "n": 1,
+      "sha256": "734bda7fa4a333335767be7d60ac70d826099bc69f05fcd90c9c04136a95ce0d"
+    },
+    {
+      "tool": "imagegen skill authorized API fallback",
+      "model": "gpt-image-1.5",
+      "mode": "edit",
+      "prompt": "finish.prompt.txt",
+      "output": "atlas-alpha.png",
+      "references": [
+        "alpha-before-finish.png (edit target)",
+        "../meadow-v4/quiet-master.png (primary vegetation colours)",
+        "../../buildings/house-1/house-painted-runtime.png"
+      ],
+      "size": "1536x1024",
+      "quality": "high",
+      "inputFidelity": "high",
+      "background": "transparent",
+      "n": 1,
+      "reason": "First true-alpha export became pale straw on the map; repaint living green to match ground.",
+      "sha256": "7b74458c810500e12661750b9937fcc0177fdcfcbab6edf84cd2459f52152d60"
+    }
+  ],
+  "postprocessing": "Per-row zero-alpha gutters, alpha-bound crop and proportional full-frame downsample; original frame dimensions and anchors preserved. No keying or hand masks.",
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

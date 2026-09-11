@@ -1,0 +1,12 @@
+TASK
+Create one production sprite atlas of natural stones for Open Northland. Exactly 12 separate stone sprites in a regular 4-column by 3-row layout on a truly transparent RGBA background. Each sprite wholly contained in its cell with generous empty gutters. No labels, grid lines, ground patches or vegetation.
+Row 1: four distinct compact harvestable rock formations: broad low fractured slab; asymmetrical leaning angular boulder; squat split granite lump; long narrow bedrock ridge.
+Row 2: four more distinct forms: two unequal partially buried boulders; rounded weathered solitary boulder; flat broken layered outcrop; small jagged wedge.
+Row 3: four tiny decorative stones: single smooth pebble; two unequal angular pebbles; three scattered flat chips; small flat cobble.
+Natural irregular asymmetry, subdued gray with restrained warm mineral variation. Mostly low and partly embedded in the ground; no giant mountains, piles of repeated blocks or diorama bases. Distinct silhouettes and proportions in every cell. Ground-contact shadow only, short and subtle.
+REFERENCES
+Image 1 is the canonical J / Warm Remaster board, primary style reference, not edit target. Match its bottom-middle stone material and nostalgic Cultures settlement-game warmth; invent new independent silhouettes.
+STYLE
+Elevated orthographic game view, camera approximately 30 degrees above horizon, upper-left diffuse light. Matte weathered stone, readable broad planes and selective fine cracks. Grounded painterly HQ remaster, not shiny, toy-like, photoreal or oversharpened.
+QUALITY
+High quality master atlas, landscape 4:3 framing, real transparent background, no painted checkerboard, no text, watermark or UI. Never let sprites or shadows cross cell boundaries.

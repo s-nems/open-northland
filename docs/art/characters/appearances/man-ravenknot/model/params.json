@@ -1,0 +1,28 @@
+{
+  "ai_model": "meshy-7",
+  "image_files": [
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/front.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/left.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/back.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/right.png"
+  ],
+  "texture_image_files": [
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/front.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/left.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/back.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/characters/appearances/man-ravenknot/concept/right.png"
+  ],
+  "image_enhancement": false,
+  "remove_lighting": false,
+  "should_remesh": true,
+  "should_texture": true,
+  "enable_pbr": false,
+  "texture_resolution": "2k",
+  "target_formats": ["glb"],
+  "auto_size": false,
+  "multi_view_thumbnails": true,
+  "alpha_thumbnail": true,
+  "moderation": false,
+  "target_polycount": 50000,
+  "topology": "triangle"
+}

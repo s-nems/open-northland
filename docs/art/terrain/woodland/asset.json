@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "id": "terrain/woodland",
+  "kind": "props",
+  "sourceBasis": "Exact owned landscapes.cif tree slots and three growth states verified against decoder and IR. Each state matches the original atlas width and height at two source pixels per world pixel. Independent generated designs, rectangular crops and separate horizontal/vertical downsampling. Younger states reuse the mature design at reduced dimensions; root anchors and procedural breeze are artistic approximations.",
+  "outputs": [
+    {
+      "path": "props/stump/stump.png",
+      "content": {
+        "operation": "copy",
+        "source": "stump.png"
+      }
+    },
+    {
+      "path": "props/stump/runtime.json",
+      "content": {
+        "operation": "copy",
+        "source": "stump.runtime.json"
+      }
+    }
+  ],
+  "atlas": {
+    "type": "trees",
+    "sampling": "canvas-high",
+    "scale": 0.5,
+    "source": "atlas-alpha.png",
+    "canvas": [864, 464],
+    "stride": 288,
+    "padding": 4,
+    "props": [
+      {
+        "id": "pine-a",
+        "editNames": ["pine 01"],
+        "cell": [0, 0, 512, 512],
+        "states": [[80, 128], [116, 168], [150, 216]],
+        "root": {
+          "x": 0.59,
+          "y": 0.96
+        },
+        "sway": 0.018
+      },
+      {
+        "id": "pine-b",
+        "editNames": ["pine 02"],
+        "cell": [512, 0, 512, 512],
+        "states": [[80, 128], [116, 168], [150, 216]],
+        "root": {
+          "x": 0.47,
+          "y": 0.96
+        },
+        "sway": 0.02
+      },
+      {
+        "id": "beech-a",
+        "editNames": ["beech 01"],
+        "cell": [0, 512, 512, 512],
+        "states": [[90, 156], [126, 200], [274, 454]],
+        "root": {
+          "x": 0.61,
+          "y": 0.97
+        },
+        "sway": 0.018
+      },
+      {
+        "id": "beech-b",
+        "editNames": ["beech 02"],
+        "cell": [512, 512, 512, 512],
+        "states": [[90, 156], [126, 200], [274, 454]],
+        "root": {
+          "x": 0.53,
+          "y": 0.97
+        },
+        "sway": 0.02
+      }
+    ]
+  }
+}

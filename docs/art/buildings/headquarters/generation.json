@@ -1,0 +1,90 @@
+{
+  "status": "delivered and browser reviewed; human final visual review pending",
+  "architecture": "source/concept.png",
+  "finish": "../house-1/house-painted-runtime.png",
+  "builtIn": [
+    {
+      "output": "views.png",
+      "prompt": "views.prompt.txt",
+      "references": [
+        {
+          "file": "concept.png",
+          "role": "approved architecture; sole input"
+        }
+      ]
+    },
+    {
+      "output": "painted.png",
+      "prompt": "paint.prompt.txt",
+      "references": [
+        {
+          "file": "calibrated.png",
+          "role": "geometry and camera edit target"
+        },
+        {
+          "file": "../house-1/house-painted-runtime.png",
+          "role": "primary muted finish"
+        },
+        {
+          "file": "concept.png",
+          "role": "approved architecture identity"
+        }
+      ]
+    }
+  ],
+  "meshy": {
+    "task_id": "01a08c2d-4958-7149-a142-99bcd3d52e2f",
+    "credits": 30,
+    "request": "request.json",
+    "source": "raw.glb",
+    "result": "result.json"
+  },
+  "blender": {
+    "inspectionScript": "../tools/headquarters-inspect.py",
+    "finishScript": "finish.py",
+    "scene": "calibrated.blend",
+    "camera": "camera.json",
+    "geometryCorrections": "none; retained inspected mesh"
+  },
+  "api": {
+    "cli": "imagegen bundled scripts/image_gen.py",
+    "model": "gpt-image-1.5",
+    "background": "transparent",
+    "quality": "high",
+    "input_fidelity": "high",
+    "size": "1536x1024",
+    "output_format": "png",
+    "calls": [
+      {
+        "images": [
+          "painted.png"
+        ],
+        "prompt": "alpha.submitted.prompt.txt",
+        "output": "final.png",
+        "status": "rejected: porch step clipped"
+      },
+      {
+        "images": [
+          "final.png"
+        ],
+        "prompt": "alpha-margin.submitted.prompt.txt",
+        "output": "final-margin.png",
+        "status": "rejected: golden material drift and overly small framing"
+      },
+      {
+        "images": [
+          "painted.png",
+          "../house-1/house-painted-runtime.png"
+        ],
+        "prompt": "alpha-muted.submitted.prompt.txt",
+        "output": "repaint/input.png",
+        "status": "delivered"
+      }
+    ]
+  },
+  "pixelProcessing": "none; generated PNG copied unchanged",
+  "runtimeSlot": "headquarters",
+  "runtimeManifest": "runtime.json",
+  "constructionAnimation": false,
+  "delivery": "repaint/generation.json"
+}

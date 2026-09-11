@@ -1,0 +1,14 @@
+{
+  "tool": "image_gen.imagegen (built-in)",
+  "prompt": "Generate one square edge-to-edge tileable texture of warm compacted village earth for Open Northland, in the approved J Warm Remaster style shown in reference image 1. Reference is style only, not edit target. Straight-down flat material view, no perspective, no scene or objects. Matte muted tan-brown soil, subtly compressed granular earth with a few tiny embedded pebbles, restrained soft tonal variation, quiet low contrast. No grass, grass border, large stones, cracks, footprints, decorative motifs, cast shadows, vignette, horizon, text or grid. Opposite edges should match seamlessly. This material supports small characters and buildings, so avoid dense sharp microtexture and bright dots. Warm grounded stylization, hand-painted HQ game art, not photorealistic and not cartoon plastic. Opaque full square.",
+  "references": [
+    {
+      "path": "../../references/world/J.png",
+      "role": "Primary style reference"
+    }
+  ],
+  "output": "soil.png",
+  "postprocessing": "None; copied unchanged.",
+  "status": "Base soil candidate. Used on synthetic review mesh, no transition atlas or map replacement.",
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

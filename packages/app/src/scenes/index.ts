@@ -13,6 +13,7 @@ import { diplomacyScene } from './diplomacy.js';
 import { equipmentScene } from './equipment.js';
 import { equipmentEffectsScene } from './equipment-effects.js';
 import { familyScene } from './family.js';
+import { farmConstructionScene } from './farm-construction.js';
 import { goodsCatalogScene } from './goods-catalog.js';
 import { gossipScene } from './gossip.js';
 import { huntingScene } from './hunting.js';
@@ -46,6 +47,7 @@ export const SCENES: readonly SceneDefinition[] = [
   chainScene,
   warehouseScene,
   constructionScene,
+  farmConstructionScene,
   upgradeScene,
   signpostsScene,
   familyScene,

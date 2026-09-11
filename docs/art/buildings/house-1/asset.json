@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "buildings/house-1",
+  "kind": "building",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "buildings/house-1/house-painted-runtime.png",
+      "content": {
+        "operation": "copy",
+        "source": "house-painted-runtime.png"
+      }
+    },
+    {
+      "path": "buildings/house-1/runtime.json",
+      "content": {
+        "operation": "copy",
+        "source": "runtime.json"
+      }
+    }
+  ]
+}

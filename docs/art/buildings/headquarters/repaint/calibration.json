@@ -1,0 +1,17 @@
+{
+  "door": {
+    "x": 900,
+    "top": 582,
+    "foot": 781,
+    "height": 199,
+    "uncertaintyPx": 6
+  },
+  "entrancePixel": {
+    "x": 905,
+    "y": 851
+  },
+  "scale": 0.24120603015075376,
+  "reviewZoom": 2,
+  "targetDoorScreenPx": 96,
+  "basis": "Manual visual measurement of final RGBA; ground anchor at front stair foot is approximate."
+}

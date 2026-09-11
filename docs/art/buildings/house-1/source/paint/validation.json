@@ -1,0 +1,20 @@
+{
+  "house-painted.png": {
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGB",
+    "has_alpha": false,
+    "runtime_ready": false
+  },
+  "house-painted-alpha-attempt.png": {
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGB",
+    "has_alpha": false,
+    "runtime_ready": false
+  }
+}

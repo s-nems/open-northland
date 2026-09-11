@@ -1,0 +1,16 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "Use case: precise-object-edit. Image1 is the UV base-color atlas of our separate G2 female head. Make a LOCAL SKIN PALETTE correction ONLY, using the warm peach/golden arm skin in image2 (painted bald female body sheet) as color reference. Preserve EXACT UV island shapes, coordinates, orientation, boundaries, every eye/lip/eyebrow detail, and all blonde hair and braid texels. Do not re-layout, rotate, enlarge, recolor hair, add shapes or change overall canvas proportions. Skin regions for face/ears/neck should match the reference arms in brightness and hue, retaining their form shading and painted details. Restrained slightly warmer golden-peach skin, no flat fill, no excessive orange, no globally brightening the whole atlas. Output only the corrected UV texture, no surrounding sheet, figures, text or background replacement. This is a texture-map edit, not a portrait.",
+  "references": [
+    {
+      "path": "base-color.png",
+      "role": "UV edit target"
+    },
+    {
+      "path": "../../restyle/out-facings.png",
+      "role": "body arm skin palette"
+    }
+  ],
+  "output": "painted-base.png",
+  "method": "Local generative color correction; requires assembled view inspection."
+}

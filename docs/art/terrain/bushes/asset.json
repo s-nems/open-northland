@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "id": "terrain/bushes",
+  "kind": "props",
+  "sourceBasis": "Owned landscapes.cif slots and first-frame atlas rectangles/offsets verified against decoder and IR. Independent generated shrub designs, cropped and separately downsampled horizontally and vertically to original frame budgets at two source pixels per world pixel. Empty/barren aliases share original bobs. Static paintings approximate the original animated foliage; seasonal stages remain distinct.",
+  "outputs": [],
+  "atlas": {
+    "type": "vegetation",
+    "sampling": "canvas-high",
+    "scale": 0.5,
+    "source": "atlas-alpha.png",
+    "fit": "anchor",
+    "props": [
+      {
+        "id": "bush-01-empty",
+        "editNames": ["bush 01 empty", "bush 01 barren"],
+        "cell": [0, 0, 512, 512],
+        "size": [88, 122],
+        "anchor": {
+          "x": 46,
+          "y": 110
+        }
+      },
+      {
+        "id": "bush-01-flower",
+        "editNames": ["bush 01 flower"],
+        "cell": [512, 0, 512, 512],
+        "size": [96, 122],
+        "anchor": {
+          "x": 46,
+          "y": 110
+        }
+      },
+      {
+        "id": "bush-01-fruits",
+        "editNames": ["bush 01 fruits"],
+        "cell": [1024, 0, 512, 512],
+        "size": [90, 122],
+        "anchor": {
+          "x": 46,
+          "y": 110
+        }
+      },
+      {
+        "id": "bush-02-empty",
+        "editNames": ["bush 02 empty", "bush 02 barren"],
+        "cell": [0, 512, 512, 512],
+        "size": [96, 128],
+        "anchor": {
+          "x": 54,
+          "y": 116
+        }
+      },
+      {
+        "id": "bush-02-flower",
+        "editNames": ["bush 02 flower"],
+        "cell": [512, 512, 512, 512],
+        "size": [96, 132],
+        "anchor": {
+          "x": 54,
+          "y": 120
+        }
+      },
+      {
+        "id": "bush-02-fruits",
+        "editNames": ["bush 02 fruits"],
+        "cell": [1024, 512, 512, 512],
+        "size": [96, 128],
+        "anchor": {
+          "x": 54,
+          "y": 116
+        }
+      }
+    ]
+  }
+}

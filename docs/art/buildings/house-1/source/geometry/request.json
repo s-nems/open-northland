@@ -1,0 +1,19 @@
+{
+  "file_paths": [
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/house-1/source/geometry/front.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/house-1/source/geometry/right.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/house-1/source/geometry/back.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/house-1/source/geometry/left.png"
+  ],
+  "ai_model": "meshy-7",
+  "model_type": "standard",
+  "should_remesh": false,
+  "should_texture": true,
+  "texture_resolution": "4k",
+  "enable_pbr": false,
+  "image_enhancement": false,
+  "target_formats": [
+    "glb"
+  ],
+  "response_format": "json"
+}

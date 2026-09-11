@@ -1,0 +1,8 @@
+{
+  "source": "idle.glb",
+  "script": "make-idle.py",
+  "duration": 4,
+  "frames": 97,
+  "fps": 24,
+  "method": "Neutral retargeted start pose, 0.65-degree spine breath and 12-degree head glance; visual approximation, native bone scales."
+}

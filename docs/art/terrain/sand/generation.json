@@ -1,0 +1,40 @@
+{
+  "tool": "built-in image_gen",
+  "calls": 1,
+  "prompt": "master.prompt.txt",
+  "references": [
+    {
+      "path": "docs/art/references/world/J.png",
+      "role": "Primary world-style reference; not edit target",
+      "sha256": "4cc6c5d24e4f9861a598f5e475044323c1c6df8ef3302e3ff27f5d4a994239cf"
+    }
+  ],
+  "originalPixelsProvided": false,
+  "master": {
+    "path": "master.png",
+    "sha256": "f48bed021b32d19122ad745da56ecfed63de1a5fbc9c28930f1cbc4d2811c517",
+    "size": [1254, 1254]
+  },
+  "export": {
+    "path": "sand.png",
+    "sha256": "d60ef6c9e9ec310e058db2c3eda8eac77bf977adf1fc8f1608bb923d1ac35cd7",
+    "size": [512, 512],
+    "recipe": "scripts/export-own-sand.mjs"
+  },
+  "runtime": {
+    "tileInterior": 128,
+    "originalCoordinateSpan": 63,
+    "worldUnitsChanged": false,
+    "tint": [0.84, 0.86, 0.9],
+    "transitionProfile": "Existing procedural corner coverage with irregular soft edge; original masks are not copied",
+    "sampling": "Existing mirrored UV material sampling; four small brightness variants, no distinct macro composition"
+  },
+  "limitations": [
+    "Generator returned 1254 square instead of requested 1024 square; only downsampled.",
+    "Four source beach pages share one independent material. Original macro details are not reproduced.",
+    "Water and shore transitions remain missing in own mode.",
+    "Map lighting and elevation still control large-scale shading.",
+    "Human visual approval pending."
+  ],
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

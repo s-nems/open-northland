@@ -1,0 +1,21 @@
+# Blondynka
+
+Adult woman with a blonde braid, ochre bodice and cream skirt. Selected through runtime
+`job-selection.json`; she uses her own walk/idle binding and the shared camera receipts.
+
+`concept/` and `head/concept/` hold production views; `model/`, `head/model/`, `restyle/`
+and `projected/` hold the geometry, motions and matching textures. Keep `recipe.json`,
+`layout.json`, head socket and selected strips for export.
+
+`model/prepare-skirt.py` creates the skinned skirt from `rigged-source.glb` and `walk-source.glb`.
+`model/make-idle.py` derives relaxed idle from `idle.glb`. The skirt has a dedicated UV strip;
+run `model/guard-garment.mjs` after projection. Check skirt deformation and neck seams in turns.
+
+```sh
+SCRIPTS=tools/art-pipeline/authoring/characters
+RUN=docs/art/characters/appearances/woman-blonde
+python3 "$SCRIPTS/run-character.py" "$RUN" "$RUN/model" render pack
+npm run art -- build characters/woman-blonde
+npm run art -- review characters/woman-blonde
+python3 "$SCRIPTS/update-character-catalog.py"
+```

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "characters/woman-blonde",
+  "kind": "character",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "characters/woman-blonde/atlas.png",
+      "content": {
+        "operation": "character",
+        "source": "recipe.json",
+        "id": "woman-blonde",
+        "name": "Blondynka"
+      }
+    },
+    {
+      "path": "characters/woman-blonde/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {}
+      }
+    }
+  ]
+}

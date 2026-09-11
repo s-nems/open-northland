@@ -1,0 +1,14 @@
+Use case: style-transfer.
+TASK
+Repaint the existing independently authored House A final render for Open Northland as a hand-painted HQ/remastered Cultures-like settlement-game building sprite. This is a surface paintover, not an architectural redesign. Produce one high-quality square master sprite, ideally 1536 x 1536, with genuine transparent background (alpha), no painted checkerboard, no ground patch, no cast shadow outside the building.
+REFERENCES
+Image 1 is the approved J / Warm Remaster world-style board: primary palette, atmosphere and material-grouping reference only. Do not copy its architecture or panel layout.
+Image 2 is house-final.png: the EDIT TARGET and strict geometry/composition reference.
+INVARIANTS
+Keep image 2's exact elevated orthographic camera, frame, margins, scale, silhouette, straight roof ridge and eaves, front and side wall projections. Preserve ALL architectural feature positions: left front door, small closed shutter to its right, timber frame and braces, three ridge rope stations, foundation and threshold. Preserve the doorway opening height and threshold position. Do not add or remove objects. Keep the current roof shape without sagging, warping or inflating it.
+STYLE
+Make the surface treatment visibly and convincingly hand-painted, like a lovingly painted high-resolution remaster of a classic European settlement strategy game. Match J's warm grounded stylization but push the brush-painted surface quality further than the input render. Matte earthy timber, restrained honey/ochre thatch with cream straw highlights, warm pale clay walls, restrained cool grey-blue shadow accents. Light from upper left. Not blanket orange lighting.
+MATERIAL PAINTOVER
+Replace uniform tiny straw fibers with artist-designed grouped straw bundles and confident directional brush strokes: larger readable light/dark tufts with selective fine tips, maintaining existing roof volume and roof-course locations. Replace repetitive etched wood microtexture with broad painted grain, a few expressive knots and selective chipped-edge highlights. Clay should have subtle broad hand-painted patches, not granular noise or faceted polygons. Paint soft deliberate shadows with readable form separation and restrained ambient occlusion. Reduce the physically rendered CGI/model appearance, tiny texture noise and overly smooth material shading. Crisp readable silhouette, painterly interior detail, no heavy black outlines. Keep sufficient crafted material definition for HQ, not flat cartoon or blurry watercolor.
+QUALITY
+The house will be displayed on a 512px square canvas with approximately 96px door opening next to an 88px adult. Prioritize material and shape readability at that size. Preserve geometry rather than increasing detail. No text, watermark, UI, props, vegetation, background color, checkerboard, new windows, chimney or perspective change. Genuine alpha outside the building.

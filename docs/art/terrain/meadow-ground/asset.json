@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "id": "terrain/meadow-ground",
+  "kind": "terrain",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "terrain/quiet.png",
+      "content": {
+        "operation": "raster",
+        "width": 512,
+        "height": 512,
+        "draws": [
+          {
+            "source": "master.png",
+            "crop": [0, 0, 887, 887],
+            "box": [0, 0, 512, 512]
+          }
+        ],
+        "alpha": "opaque"
+      }
+    },
+    {
+      "path": "terrain/dark.png",
+      "content": {
+        "operation": "raster",
+        "width": 512,
+        "height": 512,
+        "draws": [
+          {
+            "source": "master.png",
+            "crop": [887, 0, 887, 887],
+            "box": [0, 0, 512, 512]
+          }
+        ],
+        "alpha": "opaque"
+      }
+    },
+    {
+      "path": "terrain/materials.json",
+      "content": {
+        "operation": "copy",
+        "source": "materials.json"
+      }
+    }
+  ]
+}

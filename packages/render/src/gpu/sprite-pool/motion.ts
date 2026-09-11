@@ -27,13 +27,9 @@ export function snapDistanceForKind(kind: SpriteKind): number {
   return kind === 'projectile' ? Number.POSITIVE_INFINITY : SNAP_DISTANCE;
 }
 
-/**
- * The fraction a kind is drawn at, given the frame's own. A gait-clocked body takes 1 - its tick anchor
- * - so it steps once per tick, in the same step its pose does. Approximation: the original's sub-tick
- * placement is unknown, and gliding a body between its poses reads as motion on rails.
- */
-export function drawAlphaForKind(kind: SpriteKind, frameAlpha: number): number {
-  return kind === 'settler' ? 1 : frameAlpha;
+/** Original settlers use tick anchors; authored smooth clips opt into between-tick placement. */
+export function drawAlphaForKind(kind: SpriteKind, frameAlpha: number, interpolate = false): number {
+  return kind === 'settler' && !interpolate ? 1 : frameAlpha;
 }
 
 /** World px the feet cover per authored walk frame - one cell (`2·TILE_HALF_W`) over the 12-frame cycle.
@@ -66,12 +62,9 @@ export interface MotionTrack {
   /** The anchor to draw at this frame - `prev` lerped toward `curr` by the frame alpha. */
   drawX: number;
   drawY: number;
-  /**
-   * The walk-cycle clock in tick units, advanced per sim tick by the fraction of a full gait the anchor
-   * actually covered ({@link WALK_FRAME_TRAVEL_PX}), so the drawn frame (`floor(gaitPhase)`) tracks
-   * ground covered rather than wall ticks. Full cruise advances one frame per tick.
-   */
+  /** Clip clock in tick units, advanced by measured travel or the original gait calibration. */
   gaitPhase: number;
+  prevGaitPhase: number;
   /** Consecutive ticks the anchor moved at most the stall epsilon. Reset by real travel and by snaps -
    *  a teleport is not standing still. */
   stillTicks: number;
@@ -89,7 +82,14 @@ export function isStalled(m: MotionTrack): boolean {
  * first sighting or a jump past {@link MotionTrack.snapDistance} snaps both anchors and leaves the gait
  * clock alone - a teleport is not strides. Writes in place, so the per-frame reconcile allocates nothing.
  */
-export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, alpha: number): void {
+export function trackMotion(
+  m: MotionTrack,
+  tick: number,
+  x: number,
+  y: number,
+  alpha: number,
+  gaitTicksPerPixel?: number,
+): void {
   if (m.tick === -1 || Math.abs(x - m.x) > m.snapDistance || Math.abs(y - m.y) > m.snapDistance) {
     m.tick = tick;
     m.x = x;
@@ -97,10 +97,15 @@ export function trackMotion(m: MotionTrack, tick: number, x: number, y: number, 
     m.prevX = x;
     m.prevY = y;
     m.stillTicks = 0;
+    m.prevGaitPhase = m.gaitPhase;
   } else if (m.tick !== tick) {
     const dt = tick - m.tick;
     const dist = Math.hypot(x - m.x, y - m.y);
-    const rate = Math.min(MAX_GAIT_RATE, (dist * WALK_ANIMATION_RATE) / (WALK_FRAME_TRAVEL_PX * dt));
+    const rate =
+      gaitTicksPerPixel === undefined
+        ? Math.min(MAX_GAIT_RATE, (dist * WALK_ANIMATION_RATE) / (WALK_FRAME_TRAVEL_PX * dt))
+        : (dist * gaitTicksPerPixel) / dt;
+    m.prevGaitPhase = m.gaitPhase;
     m.gaitPhase += rate * dt;
     m.stillTicks = dist <= STALL_EPSILON_PX * dt ? m.stillTicks + dt : 0;
     m.prevX = m.x;

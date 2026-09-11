@@ -1,0 +1,66 @@
+{
+  "id": "rock-02-khaki",
+  "kind": "resource",
+  "image": "rock-02-khaki.png",
+  "width": 960,
+  "height": 128,
+  "anchor": {
+    "x": 0,
+    "y": 0
+  },
+  "scale": 0.5,
+  "frames": [
+    {
+      "x": 4,
+      "y": 4,
+      "width": 48,
+      "height": 26,
+      "anchor": {
+        "x": 24,
+        "y": 15.079999999999998
+      }
+    },
+    {
+      "x": 196,
+      "y": 4,
+      "width": 53,
+      "height": 44,
+      "anchor": {
+        "x": 26.5,
+        "y": 25.52
+      }
+    },
+    {
+      "x": 388,
+      "y": 4,
+      "width": 67,
+      "height": 56,
+      "anchor": {
+        "x": 33.5,
+        "y": 32.48
+      }
+    },
+    {
+      "x": 580,
+      "y": 4,
+      "width": 81,
+      "height": 68,
+      "anchor": {
+        "x": 40.5,
+        "y": 39.44
+      }
+    },
+    {
+      "x": 772,
+      "y": 4,
+      "width": 96,
+      "height": 80,
+      "anchor": {
+        "x": 48,
+        "y": 46.4
+      }
+    }
+  ],
+  "editNames": ["stones 02 khaki"],
+  "sourceBasis": "Exact owned landscapes.cif grey/rock02 and khaki/rock03 slots and state counts verified against decoder and IR. Independent dark and light artwork; frame geometry preserved from rocks-v2. Palette colours and low-to-full depletion shapes are artistic approximations."
+}

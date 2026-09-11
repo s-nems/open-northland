@@ -1,0 +1,70 @@
+{
+  "status": "Integrated candidate awaiting human visual review",
+  "primaryReference": {
+    "path": "../../buildings/house-1/house-painted-runtime.png",
+    "role": "canonical muted A painting and neutral light",
+    "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+  },
+  "originalPixelsSupplied": false,
+  "steps": [
+    {
+      "tool": "built-in imagegen",
+      "prompt": "master.prompt.txt",
+      "output": "master.png",
+      "references": [
+        "../meadow-ground/master.png (primary botanical colour)",
+        "../../buildings/house-1/house-painted-runtime.png"
+      ],
+      "limitation": "Painted checkerboard and overly outlined blades; replaced in alpha finish.",
+      "sha256": "3dd2ec79d81a85c1eab78a170a5281e91fb880cd5d8dc677eebb8d14f3173ae9"
+    },
+    {
+      "tool": "imagegen skill API fallback authorized in session for true alpha",
+      "model": "gpt-image-1.5",
+      "mode": "edit",
+      "prompt": "alpha.prompt.txt",
+      "output": "atlas-alpha.png",
+      "references": [
+        "master.png (edit target)",
+        "../meadow-ground/master.png (matching ground colour)",
+        "../../buildings/house-1/house-painted-runtime.png"
+      ],
+      "size": "1536x1024",
+      "quality": "high",
+      "inputFidelity": "high",
+      "background": "transparent",
+      "n": 1,
+      "sha256": "2087686935fe617987f3add1579237438874c85ca8515029fd5ab3236b53c415"
+    },
+    {
+      "tool": "imagegen skill authorized API fallback",
+      "model": "gpt-image-1.5",
+      "mode": "edit",
+      "prompt": "finish.prompt.txt",
+      "output": "rejected-dark-finish.png",
+      "references": [
+        "alpha-before-finish.png (edit target)",
+        "../meadow-ground/master.png (ground palette)",
+        "../../buildings/house-1/house-painted-runtime.png"
+      ],
+      "size": "1536x1024",
+      "quality": "high",
+      "inputFidelity": "high",
+      "background": "transparent",
+      "n": 1,
+      "reason": "Remove excessive yellow-green brightness revealed in actual map and original-scale comparison.",
+      "sha256": "ac047040eb2b56489972bdba63d29bc3339eff3b4ef2a2cd359cca5a2e5aab0e",
+      "status": "Rejected: excessively dark. Final source uses first alpha export with explicit map brightness calibration."
+    }
+  ],
+  "postprocessing": "Existing proportional full-frame downsample with original frame dimensions and anchors, genuine alpha preserved. No keying, hand masks or upscaling.",
+  "runtimeCalibration": {
+    "method": "Existing MapObjectSprite.brightness, sourced from optional prop manifest brightness. PNG colours/alpha unchanged.",
+    "ordinary": 0.76,
+    "dark": 0.55,
+    "deep": 0.4,
+    "flowers": 0.76,
+    "limitation": "Applies to placed map decor; raw sprite previews display the untinted source."
+  },
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

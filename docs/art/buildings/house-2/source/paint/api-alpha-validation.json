@@ -1,0 +1,21 @@
+{
+  "file": "house-painted-runtime.png",
+  "sha256": "defca0294644e86d0506449a7d7d76048e4d90bcd4ea59aa5feb0641d341711f",
+  "mode": "RGBA",
+  "size": [
+    1024,
+    1024
+  ],
+  "alphaBounds": [
+    78,
+    67,
+    976,
+    935
+  ],
+  "transparentPixels": 566107,
+  "partialAlphaPixels": 100265,
+  "opaquePixels": 382204,
+  "errors": [],
+  "warnings": [],
+  "status": "requires-visual-review"
+}

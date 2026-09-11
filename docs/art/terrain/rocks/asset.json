@@ -1,0 +1,374 @@
+{
+  "version": 1,
+  "id": "terrain/rocks",
+  "kind": "props",
+  "sourceBasis": "Exact owned landscapes.cif grey/rock02 and khaki/rock03 slots and state counts verified against decoder and IR. Independent dark and light artwork; frame geometry preserved from rocks-v2. Palette colours and low-to-full depletion shapes are artistic approximations.",
+  "outputs": [],
+  "atlas": {
+    "type": "rocks",
+    "sampling": "canvas-high",
+    "scale": 0.5,
+    "sources": {
+      "dark": "atlas-alpha.png",
+      "light": "atlas-light.png"
+    },
+    "cells": [
+      [0, 0, 400, 398],
+      [400, 0, 365, 398],
+      [765, 0, 360, 398],
+      [1125, 0, 411, 398],
+      [0, 398, 400, 339],
+      [400, 398, 365, 339],
+      [765, 398, 360, 339],
+      [1125, 398, 411, 339],
+      [0, 737, 400, 287],
+      [400, 737, 365, 287],
+      [765, 737, 360, 287],
+      [1125, 737, 411, 287]
+    ],
+    "stride": 192,
+    "height": 128,
+    "padding": 4,
+    "minimumFill": 0.4,
+    "restCells": [8, 9, 10, 11],
+    "root": {
+      "x": 0.5,
+      "y": 0.58
+    },
+    "props": [
+      {
+        "id": "rock-01",
+        "editNames": ["stones 01 grey"],
+        "cell": 0,
+        "size": [144, 72],
+        "states": 4,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-01-khaki",
+        "editNames": ["stones 01 khaki"],
+        "cell": 0,
+        "size": [144, 72],
+        "states": 4,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-01",
+        "editNames": ["stones 01 grey rest"],
+        "cell": 8,
+        "size": [60, 24],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-01-khaki",
+        "editNames": ["stones 01 khaki rest"],
+        "cell": 8,
+        "size": [60, 24],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "rock-02",
+        "editNames": ["stones 02 grey"],
+        "cell": 1,
+        "size": [120, 80],
+        "states": 5,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-02-khaki",
+        "editNames": ["stones 02 khaki"],
+        "cell": 1,
+        "size": [120, 80],
+        "states": 5,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-02",
+        "editNames": ["stones 02 grey rest"],
+        "cell": 9,
+        "size": [72, 30],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-02-khaki",
+        "editNames": ["stones 02 khaki rest"],
+        "cell": 9,
+        "size": [72, 30],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "rock-03",
+        "editNames": ["stones 03 grey"],
+        "cell": 2,
+        "size": [152, 84],
+        "states": 4,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-03-khaki",
+        "editNames": ["stones 03 khaki"],
+        "cell": 2,
+        "size": [152, 84],
+        "states": 4,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-03",
+        "editNames": ["stones 03 grey rest"],
+        "cell": 10,
+        "size": [84, 36],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-03-khaki",
+        "editNames": ["stones 03 khaki rest"],
+        "cell": 10,
+        "size": [84, 36],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "rock-04",
+        "editNames": ["stones 04 grey"],
+        "cell": 3,
+        "size": [128, 72],
+        "states": 4,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-04-khaki",
+        "editNames": ["stones 04 khaki"],
+        "cell": 3,
+        "size": [128, 72],
+        "states": 4,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-04",
+        "editNames": ["stones 04 grey rest"],
+        "cell": 11,
+        "size": [60, 24],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-04-khaki",
+        "editNames": ["stones 04 khaki rest"],
+        "cell": 11,
+        "size": [60, 24],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "rock-05",
+        "editNames": ["stones 05 grey"],
+        "cell": 4,
+        "size": [140, 64],
+        "states": 4,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-05-khaki",
+        "editNames": ["stones 05 khaki"],
+        "cell": 4,
+        "size": [140, 64],
+        "states": 4,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-05",
+        "editNames": ["stones 05 grey rest"],
+        "cell": 8,
+        "size": [72, 30],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-05-khaki",
+        "editNames": ["stones 05 khaki rest"],
+        "cell": 8,
+        "size": [72, 30],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "rock-07",
+        "editNames": ["stones 07 grey"],
+        "cell": 5,
+        "size": [156, 76],
+        "states": 5,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-07-khaki",
+        "editNames": ["stones 07 khaki"],
+        "cell": 5,
+        "size": [156, 76],
+        "states": 5,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-07",
+        "editNames": ["stones 07 grey rest"],
+        "cell": 9,
+        "size": [84, 36],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-07-khaki",
+        "editNames": ["stones 07 khaki rest"],
+        "cell": 9,
+        "size": [84, 36],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "rock-08",
+        "editNames": ["stones 08 grey"],
+        "cell": 6,
+        "size": [128, 92],
+        "states": 4,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-08-khaki",
+        "editNames": ["stones 08 khaki"],
+        "cell": 6,
+        "size": [128, 92],
+        "states": 4,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-08",
+        "editNames": ["stones 08 grey rest"],
+        "cell": 10,
+        "size": [60, 24],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-08-khaki",
+        "editNames": ["stones 08 khaki rest"],
+        "cell": 10,
+        "size": [60, 24],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "rock-13",
+        "editNames": ["stones 13 grey"],
+        "cell": 7,
+        "size": [136, 92],
+        "states": 5,
+        "kind": "resource",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-13-khaki",
+        "editNames": ["stones 13 khaki"],
+        "cell": 7,
+        "size": [136, 92],
+        "states": 5,
+        "kind": "resource",
+        "palette": "light"
+      },
+      {
+        "id": "rock-rest-13",
+        "editNames": ["stones 13 grey rest"],
+        "cell": 11,
+        "size": [72, 30],
+        "states": 1,
+        "kind": "decor",
+        "palette": "dark"
+      },
+      {
+        "id": "rock-rest-13-khaki",
+        "editNames": ["stones 13 khaki rest"],
+        "cell": 11,
+        "size": [72, 30],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "pebbles-1",
+        "editNames": ["debris stones 01", "debris stones 06", "debris stones 11"],
+        "cell": 8,
+        "size": [36, 20],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "pebbles-2",
+        "editNames": ["debris stones 02", "debris stones 07", "debris stones 12"],
+        "cell": 9,
+        "size": [20, 10],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "pebbles-3",
+        "editNames": ["debris stones 03", "debris stones 08", "debris stones 13"],
+        "cell": 10,
+        "size": [26, 18],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "pebbles-4",
+        "editNames": ["debris stones 04", "debris stones 09", "debris stones 14"],
+        "cell": 11,
+        "size": [24, 20],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      },
+      {
+        "id": "pebbles-5",
+        "editNames": ["debris stones 05", "debris stones 10", "debris stones 15"],
+        "cell": 8,
+        "size": [22, 18],
+        "states": 1,
+        "kind": "decor",
+        "palette": "light"
+      }
+    ]
+  }
+}

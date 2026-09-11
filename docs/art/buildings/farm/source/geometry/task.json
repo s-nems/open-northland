@@ -1,0 +1,39 @@
+{
+  "task_id": "01a089c6-e993-70bb-9d61-2f7e4c4e1753",
+  "task_type": "multi-image-to-3d",
+  "status": "SUCCEEDED",
+  "consumed_credits": 30,
+  "sourceModelSha256": "db8b9972cc128480bb3f5122fab6795f72baf9cb79dd96cb321db5f3f5013fc0",
+  "inputs": {
+    "front": "ff7f8413c764c969d547570e40dd32a555bfdc500f4082988618373a01b033ed",
+    "right": "5f7804e317633f6c216a4944e6fd66d278340b50c36dae309da6a1cd9da3450e",
+    "back": "f4d10e3f1619d432c11dcc7e43937ebfc51fc1e280d5bf07124d8790089f16eb",
+    "left": "9688e64f620248ad9e53ad7ad93e69129dce038dbee848bb27fae3e58086a298"
+  },
+  "cropRects": {
+    "front": [
+      0,
+      0,
+      627,
+      627
+    ],
+    "right": [
+      627,
+      0,
+      1254,
+      627
+    ],
+    "back": [
+      0,
+      627,
+      627,
+      1254
+    ],
+    "left": [
+      627,
+      627,
+      1254,
+      1254
+    ]
+  }
+}

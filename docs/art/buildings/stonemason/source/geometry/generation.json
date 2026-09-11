@@ -1,0 +1,22 @@
+{
+  "method": "Procedural Blender geometry, built-in image_gen painting, feature-registered UV projection, Blender RGBA render",
+  "references": [
+    {
+      "path": "base.png",
+      "role": "exact geometry/camera edit target"
+    },
+    {
+      "path": "../concept.png",
+      "role": "selected design material finish"
+    },
+    {
+      "path": "../../../../references/world/J.png",
+      "role": "world style"
+    }
+  ],
+  "prompts": [
+    "paint.prompt.txt",
+    "white.prompt.txt"
+  ],
+  "paidMeshyCalls": 0
+}

@@ -79,3 +79,30 @@ describe('SelectionLayer ring sizing', () => {
     expect(buildingW).toBeGreaterThan(settlerW);
   });
 });
+
+describe('authored building ground marker', () => {
+  it('ignores transparent canvas bounds and follows changing authored geometry while selected', () => {
+    const layer = new SelectionLayer();
+    const snapshot = snapshotOf([entity(2, 1, 8, { Building: {} })]);
+    const ellipse = { cx: 35, cy: -12, rx: 90, ry: 32 };
+    const drawn = {
+      anchorOf: () => ({ x: 100, y: 200 }),
+      boundsOf: () => ({ minX: -500, minY: -900, maxX: 900, maxY: 400 }),
+      selectionOf: () => ellipse,
+    };
+    layer.draw({ snapshot, drawn }, new Set([2]));
+    const ring = layer.container.children[0];
+    expect(ring?.position.x).toBe(100);
+    expect(ring?.position.y).toBe(200);
+    expect(ring?.getLocalBounds().minX).toBeCloseTo(35 - 91);
+    expect(ring?.getLocalBounds().minY).toBeCloseTo(-12 - 33);
+    expect(ring?.getLocalBounds().width).toBeCloseTo(182);
+    ellipse.rx = 110;
+    ellipse.cy = -25;
+    layer.draw({ snapshot, drawn }, new Set([2]));
+    expect(layer.container.children[0]).toBe(ring);
+    expect(ring?.getLocalBounds().width).toBeCloseTo(222);
+    expect(ring?.getLocalBounds().minY).toBeCloseTo(-25 - 33);
+    layer.destroy();
+  });
+});

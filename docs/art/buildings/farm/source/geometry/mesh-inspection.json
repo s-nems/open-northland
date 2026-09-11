@@ -1,0 +1,26 @@
+{
+  "sourceBounds": [
+    [
+      -0.943943977355957,
+      -0.775738000869751,
+      -0.8691890239715576
+    ],
+    [
+      0.9354209899902344,
+      0.7729859948158264,
+      0.8686609864234924
+    ]
+  ],
+  "objects": [
+    {
+      "name": "Mesh_0",
+      "vertices": 1224721,
+      "faces": 1770365
+    }
+  ],
+  "heightMetresProvisional": 6.8,
+  "orthographicSpan": 9.8,
+  "elevation": 28.5,
+  "azimuth": 22.5,
+  "sourceResolution": 1024
+}

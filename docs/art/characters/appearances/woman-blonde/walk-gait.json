@@ -1,0 +1,18 @@
+{
+  "source": "model/walk.glb",
+  "sha256": "15093090597b28f3a91b1c97aa9d4d626d847f02d04bef4b3b2b96b165d17e84",
+  "groundTravelPerCycle": 1.1399879455566406,
+  "orthoScale": 2.6,
+  "sourceBasis": "Measured approximation: median positive backward Y velocity per normalized cycle, ankles in their lowest height quartile; in-place Meshy walk, native bone scales. Projection and packing scale must be applied separately. Not root translation.",
+  "samplesPerCycle": 128,
+  "feet": {
+    "LeftFoot": {
+      "samples": 29,
+      "medianTravel": 1.142812728881836
+    },
+    "RightFoot": {
+      "samples": 30,
+      "medianTravel": 1.071847915649414
+    }
+  }
+}

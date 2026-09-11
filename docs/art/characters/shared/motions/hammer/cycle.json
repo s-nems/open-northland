@@ -1,0 +1,20 @@
+{
+  "source": "motion/animation.glb",
+  "output": "hammer.glb",
+  "source_frames": [49, 71],
+  "bake_frames": 24,
+  "fps": 24,
+  "local_rotation_degrees": { "RightHand": [0, 60, 0] },
+  "planted_bones": [
+    "Hips",
+    "LeftUpLeg",
+    "LeftLeg",
+    "LeftFoot",
+    "LeftToeBase",
+    "RightUpLeg",
+    "RightLeg",
+    "RightFoot",
+    "RightToeBase"
+  ],
+  "sourceBasis": "Generated Meshy motion; selected one strike with smooth endpoint correction and a planted lower-body pose. Visual approximation, not gameplay timing."
+}

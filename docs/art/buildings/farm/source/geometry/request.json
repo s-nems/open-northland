@@ -1,0 +1,20 @@
+{
+  "ai_model": "meshy-7",
+  "model_type": "standard",
+  "file_paths": [
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/farm/source/geometry/front.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/farm/source/geometry/right.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/farm/source/geometry/back.png",
+    "/Users/snems/Projects/vikings/open-northland/docs/art/buildings/farm/source/geometry/left.png"
+  ],
+  "image_enhancement": false,
+  "should_remesh": false,
+  "should_texture": true,
+  "remove_lighting": false,
+  "texture_resolution": "2k",
+  "enable_pbr": false,
+  "target_formats": [
+    "glb"
+  ],
+  "response_format": "json"
+}

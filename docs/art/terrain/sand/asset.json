@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "terrain/sand",
+  "kind": "terrain",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "terrain/sand.png",
+      "content": {
+        "operation": "raster",
+        "width": 512,
+        "height": 512,
+        "draws": [
+          {
+            "source": "master.png",
+            "crop": [0, 0, 1254, 1254],
+            "box": [0, 0, 512, 512]
+          }
+        ],
+        "alpha": "opaque"
+      }
+    },
+    {
+      "path": "terrain/sand-materials.json",
+      "content": {
+        "operation": "copy",
+        "source": "sand-materials.json"
+      }
+    }
+  ]
+}

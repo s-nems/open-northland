@@ -1,0 +1,34 @@
+{
+  "model": "gpt-image-1.5",
+  "operation": "edit",
+  "quality": "high",
+  "input_fidelity": "high",
+  "background": "transparent",
+  "size": [
+    1024,
+    1024
+  ],
+  "mode": "RGBA",
+  "alpha_bounds": [
+    69,
+    23,
+    962,
+    978
+  ],
+  "transparent_pixels": 532114,
+  "opaque_pixels": 420257,
+  "partial_alpha_pixels": 96205,
+  "door_measurement": {
+    "x": 320,
+    "top_y": 637,
+    "bottom_y": 870,
+    "uncertainty_px": 5
+  },
+  "door_screen_height_zoom2": 96.0,
+  "ground_entrance": {
+    "x": 320,
+    "y": 915
+  },
+  "postprocessing": "none; source copied byte-identically",
+  "original_paintwork_exactly_preserved": false
+}

@@ -17,6 +17,42 @@ import type {
 } from '../../src/index.js';
 import { drawItem, settlerItem } from '../support/fixtures.js';
 
+describe('subtick character clips', () => {
+  it('holds stored poses, crosses fractional boundaries and loops without adding images', () => {
+    const idle = { start: 100, dirs: 8, stride: 3, subtick: true, frameDurations: [9, 0.5, 2.5] };
+    const item = settlerItem('idle', { facing: 2 });
+    for (const [clock, pose] of [
+      [0, 106],
+      [8.99, 106],
+      [9, 107],
+      [9.49, 107],
+      [9.5, 108],
+      [11.99, 108],
+      [12, 106],
+      [-0.1, 108],
+    ] as const)
+      expect(resolveSettlerBobId({ idle }, item, clock)).toBe(pose);
+    expect(resolveSettlerBobId({ idle }, settlerItem('acting', { facing: 2, elapsed: 1 }), 9.1)).toBe(107);
+  });
+  it('keeps an unbound idle smooth across atomic wait ticks and restarts', () => {
+    const idle = { start: 0, dirs: 8, stride: 120, ticksPerFrame: 0.5, subtick: true };
+    const item = settlerItem('acting', { facing: 0, elapsed: 1, atomicId: 25 });
+    expect(resolveSettlerBobId({ idle }, item, 2)).toBe(4);
+    expect(resolveSettlerBobId({ idle }, item, 2.5)).toBe(5);
+    expect(resolveSettlerBobId({ idle }, { ...item, elapsed: 20 }, 3)).toBe(6);
+    expect(resolveSettlerBobId({ idle: { ...idle, subtick: false } }, item, 2.5)).toBe(0);
+  });
+  it('advances a 24 fps idle twice per sim tick without changing the loop duration', () => {
+    const idle = { start: 0, dirs: 8, stride: 120, ticksPerFrame: 0.5, subtick: true };
+    const item = settlerItem('idle', { facing: 0 });
+    expect(resolveSettlerBobId({ idle }, item, 0.49)).toBe(0);
+    expect(resolveSettlerBobId({ idle }, item, 0.5)).toBe(1);
+    expect(resolveSettlerBobId({ idle }, item, 59.5)).toBe(119);
+    expect(resolveSettlerBobId({ idle }, item, 60)).toBe(0);
+    expect(resolveSettlerBobId({ idle: { ...idle, subtick: false } }, item, 0.5)).toBe(0);
+  });
+});
+
 describe('resolveSpriteFrame - per-state settler binding', () => {
   /** An atlas with a distinct frame per state bob: idle=10, moving=11, acting=12, chop=13. */
   function stateAtlas(): SpriteAtlas {

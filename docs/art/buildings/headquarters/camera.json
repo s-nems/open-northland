@@ -1,0 +1,24 @@
+{
+  "projection": "orthographic",
+  "elevation": 28.5,
+  "azimuth": -22.5,
+  "roll": 0,
+  "model_rotation_z": 0,
+  "orthographic_scale": 2.2464425563812256,
+  "camera_location": [
+    -3.2024085521698,
+    -7.728180885314941,
+    4.540249347686768
+  ],
+  "target": [
+    -0.001144498586654663,
+    0.0003539919853210449,
+    -0.0017410069704055786
+  ],
+  "canvas": [
+    1536,
+    1024
+  ],
+  "basis": "Working art camera, approximate original fit; viewed from the porch side with 22.5deg azimuth magnitude. Final source door must be measured after painting.",
+  "shader_emission_fraction": 0.35
+}

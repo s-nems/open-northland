@@ -1,0 +1,18 @@
+{
+  "tool": "image_gen.imagegen (built-in)",
+  "prompt": "Create ONE original square game ground texture, edge-to-edge opaque, no panels, no labels. Reference image 1 is the project's approved J Warm Remaster world board: use its bottom-left grass palette and the whole world's warm grounded stylization ONLY, not its composition. This is a NEW base grass material for an independent settlement game, not a repaint of any existing game tile.\nOutput: a square seamlessly tileable short meadow grass albedo-like ground material seen straight down, ready to be mapped onto the game's triangle mesh. Do NOT render an isometric diamond, terrain chunk, horizon, border, vignette, path, building, tree, flowers or large rocks. Continuous texture fills all edges.\nArt: warm natural mid-green meadow, restrained olive and straw undertones, matte organic material, gently hand-crafted HQ remaster feel, materially convincing but not photorealistic or cartoon/plastic. Much quieter and shorter grass than the tall tufts in J: small readable overlapping grass marks grouped into broad soft tones, little microcontrast, sparse tiny glimpses of warm soil, no pronounced clumps or bald patches, no dark pits. People and buildings must stand out on it. No dramatic light or cast shadows; nearly even ambient illumination, faint local material shading only. Uniform average color across the image, matching opposite edges, no bright centre or dark outer ring. The visible square represents ONE small repeating ground sample, not a whole meadow aerial photograph, so use moderate scale grass marks rather than thousands of microscopic blades. Preserve high-quality master detail without artificial pixelation. Seamless repeat horizontally and vertically is essential.",
+  "references": [
+    {
+      "path": "../../references/world/J.png",
+      "role": "Approved world style reference only, not edit target"
+    }
+  ],
+  "output": "grass-base.png",
+  "postprocessing": "None; copied unchanged from built-in output.",
+  "status": "Material candidate. Seamlessness and runtime compatibility not certified.",
+  "dimensions": {
+    "width": 1254,
+    "height": 1254
+  },
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

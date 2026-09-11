@@ -1,0 +1,47 @@
+{
+  "reference": {
+    "path": "../../references/world/J.png",
+    "role": "primary style reference, unchanged",
+    "sha256": "4cc6c5d24e4f9861a598f5e475044323c1c6df8ef3302e3ff27f5d4a994239cf"
+  },
+  "attempts": [
+    {
+      "tool": "image_gen.imagegen",
+      "prompt": "light-atlas.prompt.txt",
+      "output": "atlas-study.png",
+      "sha256": "a9b7b895dc6c035f9f0485b1a4d5dc3e07314006bd785630a7955919d388b82d",
+      "status": "rejected for runtime: RGB painted checkerboard; used as own-design edit target"
+    },
+    {
+      "tool": "imagegen skill CLI edit",
+      "model": "gpt-image-1.5",
+      "prompt": "light-alpha.prompt.txt",
+      "inputs": [
+        {
+          "path": "atlas-study.png",
+          "role": "edit target"
+        },
+        {
+          "path": "../../references/world/J.png",
+          "role": "style reference"
+        }
+      ],
+      "size": "1536x1024",
+      "quality": "high",
+      "inputFidelity": "high",
+      "background": "transparent",
+      "format": "png",
+      "n": 1,
+      "output": "atlas-light.png",
+      "sha256": "7b36a2baaef993fec4f9ea363f7a21097dfdbc10738c1bf44631e0f82e16925f",
+      "cost": "Separately billed; CLI did not report cost.",
+      "alphaZeroPixels": 1169026
+    }
+  ],
+  "export": {
+    "script": "../../../../scripts/export-own-rocks.mjs",
+    "recipe": "recipe.json",
+    "operations": "Rectangular cell crops: alpha > 16 used only to locate visible bounds, with 2px margin. Preserve alpha within crop, including low-alpha shadows. Browser Canvas high-quality downsampling only, never upscale; pack frames with gutters. No keying, silhouette masks or recoloring. Frames ordered low-to-full, 2 source pixels per world pixel."
+  },
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

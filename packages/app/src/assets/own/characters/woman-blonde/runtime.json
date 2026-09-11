@@ -1,0 +1,23 @@
+{
+  "id": "woman-blonde",
+  "name": "Blondynka",
+  "width": 2304,
+  "height": 1200,
+  "cellWidth": 96,
+  "cellHeight": 120,
+  "columns": 24,
+  "anchorX": 48,
+  "anchorY": 104,
+  "scale": 0.5,
+  "smoothMotion": true,
+  "filtering": "linear",
+  "walkFrames": 16,
+  "idleFrames": 12,
+  "walkDuration": 1.0333333333333332,
+  "walkTravelPerCycle": [
+    75.9812083949704, 75.9812083949704, 75.9812083949704, 75.9812083949704, 75.9812083949704,
+    75.9812083949704, 75.9812083949704, 75.9812083949704
+  ],
+  "idleDuration": 4,
+  "sourceBasis": "Generated character from docs/art/characters/appearances/woman-blonde; soft-separation export. No original-game pixels."
+}

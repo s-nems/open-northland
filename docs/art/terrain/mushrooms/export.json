@@ -1,0 +1,153 @@
+{
+  "alpha": {
+    "zero": 782572,
+    "partial": 136943,
+    "opaque": 129061
+  },
+  "crops": [
+    {
+      "id": "mushroom-agaric-01",
+      "crop": [22, 66, 152, 116]
+    },
+    {
+      "id": "mushroom-agaric-02",
+      "crop": [223, 65, 95, 117]
+    },
+    {
+      "id": "mushroom-agaric-03",
+      "crop": [388, 74, 80, 107]
+    },
+    {
+      "id": "mushroom-agaric-04",
+      "crop": [534, 71, 119, 111]
+    },
+    {
+      "id": "mushroom-agaric-05",
+      "crop": [724, 102, 69, 77]
+    },
+    {
+      "id": "mushroom-agaric-06",
+      "crop": [850, 63, 150, 119]
+    },
+    {
+      "id": "mushroom-grey-01",
+      "crop": [21, 234, 157, 112]
+    },
+    {
+      "id": "mushroom-grey-02",
+      "crop": [220, 230, 101, 116]
+    },
+    {
+      "id": "mushroom-grey-03",
+      "crop": [388, 244, 78, 101]
+    },
+    {
+      "id": "mushroom-grey-04",
+      "crop": [537, 236, 122, 109]
+    },
+    {
+      "id": "mushroom-grey-05",
+      "crop": [725, 268, 65, 75]
+    },
+    {
+      "id": "mushroom-grey-06",
+      "crop": [849, 230, 151, 117]
+    },
+    {
+      "id": "mushroom-agaric-brown-01",
+      "crop": [23, 393, 157, 117]
+    },
+    {
+      "id": "mushroom-agaric-brown-02",
+      "crop": [221, 389, 98, 119]
+    },
+    {
+      "id": "mushroom-agaric-brown-03",
+      "crop": [390, 403, 76, 105]
+    },
+    {
+      "id": "mushroom-agaric-brown-04",
+      "crop": [537, 401, 125, 107]
+    },
+    {
+      "id": "mushroom-agaric-brown-05",
+      "crop": [726, 431, 67, 77]
+    },
+    {
+      "id": "mushroom-agaric-brown-06",
+      "crop": [849, 392, 151, 120]
+    },
+    {
+      "id": "mushroom-green-01",
+      "crop": [22, 560, 163, 114]
+    },
+    {
+      "id": "mushroom-green-02",
+      "crop": [220, 554, 103, 118]
+    },
+    {
+      "id": "mushroom-green-03",
+      "crop": [390, 571, 78, 100]
+    },
+    {
+      "id": "mushroom-green-04",
+      "crop": [536, 565, 125, 108]
+    },
+    {
+      "id": "mushroom-green-05",
+      "crop": [729, 601, 67, 71]
+    },
+    {
+      "id": "mushroom-green-06",
+      "crop": [848, 556, 154, 120]
+    },
+    {
+      "id": "mushroom-agaric-green-01",
+      "crop": [22, 720, 164, 114]
+    },
+    {
+      "id": "mushroom-agaric-green-02",
+      "crop": [219, 716, 104, 119]
+    },
+    {
+      "id": "mushroom-agaric-green-03",
+      "crop": [393, 730, 77, 103]
+    },
+    {
+      "id": "mushroom-agaric-green-04",
+      "crop": [534, 718, 123, 116]
+    },
+    {
+      "id": "mushroom-agaric-green-05",
+      "crop": [726, 759, 67, 73]
+    },
+    {
+      "id": "mushroom-agaric-green-06",
+      "crop": [849, 715, 153, 121]
+    },
+    {
+      "id": "mushroom-red-01",
+      "crop": [23, 878, 156, 112]
+    },
+    {
+      "id": "mushroom-red-02",
+      "crop": [220, 868, 102, 119]
+    },
+    {
+      "id": "mushroom-red-03",
+      "crop": [388, 880, 79, 106]
+    },
+    {
+      "id": "mushroom-red-04",
+      "crop": [537, 881, 126, 107]
+    },
+    {
+      "id": "mushroom-red-05",
+      "crop": [725, 915, 65, 73]
+    },
+    {
+      "id": "mushroom-red-06",
+      "crop": [847, 872, 155, 119]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "tool": "built-in imagegen",
+  "prompt": "master.prompt.txt",
+  "reference": {
+    "path": "docs/art/references/world/J.png",
+    "role": "primary style only",
+    "sha256": "4cc6c5d24e4f9861a598f5e475044323c1c6df8ef3302e3ff27f5d4a994239cf"
+  },
+  "master": {
+    "size": [1448, 1086],
+    "sha256": "1de21262012d04dc978aacd8b895eb99b3c74b9233d10e42ab6c336a53f16e8f"
+  },
+  "export": {
+    "path": "mountains.png",
+    "size": [1088, 836],
+    "sha256": "b4c6c6b469d7e33ed8ce9f510488b01c22b00d7af00f50325a29d17a607654e6",
+    "operation": "Canvas high-quality downsample of whole image to 1088x836; no enlargement"
+  },
+  "runtime": "Existing continuous 8-column by 11-row UV composition, 6% opposite-edge blend, wrapped 136px gutters, manifest tint, decoded elevation and brightness.",
+  "sourceBasis": "Local visual comparison with owned text_200, text_204, text_208 and original-assets map captures at centers 70,72 and 85,28. Original pixels were not generator inputs and remain in ignored content. Material is an independent artistic approximation.",
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

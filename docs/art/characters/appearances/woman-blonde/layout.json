@@ -1,0 +1,146 @@
+{
+  "idle-E": {
+    "box": {
+      "left": 176,
+      "top": 94,
+      "width": 99,
+      "height": 318
+    },
+    "scale": 0.26506024096385544
+  },
+  "idle-N": {
+    "box": {
+      "left": 193,
+      "top": 103,
+      "width": 128,
+      "height": 315
+    },
+    "scale": 0.26506024096385544
+  },
+  "idle-NE": {
+    "box": {
+      "left": 182,
+      "top": 97,
+      "width": 124,
+      "height": 315
+    },
+    "scale": 0.26506024096385544
+  },
+  "idle-NW": {
+    "box": {
+      "left": 216,
+      "top": 94,
+      "width": 123,
+      "height": 319
+    },
+    "scale": 0.26506024096385544
+  },
+  "idle-S": {
+    "box": {
+      "left": 191,
+      "top": 87,
+      "width": 128,
+      "height": 322
+    },
+    "scale": 0.26506024096385544
+  },
+  "idle-SE": {
+    "box": {
+      "left": 173,
+      "top": 94,
+      "width": 123,
+      "height": 319
+    },
+    "scale": 0.26506024096385544
+  },
+  "idle-SW": {
+    "box": {
+      "left": 206,
+      "top": 92,
+      "width": 124,
+      "height": 325
+    },
+    "scale": 0.26506024096385544
+  },
+  "idle-W": {
+    "box": {
+      "left": 237,
+      "top": 94,
+      "width": 99,
+      "height": 323
+    },
+    "scale": 0.26506024096385544
+  },
+  "walk-E": {
+    "box": {
+      "left": 155,
+      "top": 86,
+      "width": 197,
+      "height": 325
+    },
+    "scale": 0.27076923076923076
+  },
+  "walk-N": {
+    "box": {
+      "left": 178,
+      "top": 84,
+      "width": 155,
+      "height": 332
+    },
+    "scale": 0.26506024096385544
+  },
+  "walk-NE": {
+    "box": {
+      "left": 168,
+      "top": 84,
+      "width": 181,
+      "height": 333
+    },
+    "scale": 0.26426426426426425
+  },
+  "walk-NW": {
+    "box": {
+      "left": 163,
+      "top": 83,
+      "width": 183,
+      "height": 334
+    },
+    "scale": 0.2634730538922156
+  },
+  "walk-S": {
+    "box": {
+      "left": 179,
+      "top": 90,
+      "width": 155,
+      "height": 329
+    },
+    "scale": 0.2674772036474164
+  },
+  "walk-SE": {
+    "box": {
+      "left": 166,
+      "top": 88,
+      "width": 183,
+      "height": 329
+    },
+    "scale": 0.2674772036474164
+  },
+  "walk-SW": {
+    "box": {
+      "left": 163,
+      "top": 87,
+      "width": 181,
+      "height": 332
+    },
+    "scale": 0.26506024096385544
+  },
+  "walk-W": {
+    "box": {
+      "left": 160,
+      "top": 85,
+      "width": 197,
+      "height": 326
+    },
+    "scale": 0.26993865030674846
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "Use case: precise-object-edit. Image 1 is the EDIT TARGET: an existing square UV base-colour texture atlas for a Viking head. Image 2 is ONLY a skin palette reference: approved painted body with bright light peach/cream skin on arms. Correct ONLY skin colour and brightness in image 1 to closely match the arm skin of image 2, so this head and body visibly share the SAME light complexion. Current head skin is too dark, muddy brown and grey. Lift skin midtones substantially to light warm peach, highlights pale cream, retain readable facial shading, pores, folds and expressive forms. Do not make skin orange or yellow. Keep ALL hair/beard/moustache/eyebrow colours, eye colours, leather ties and non-skin texels UNCHANGED. Preserve exact UV island positions, shapes, boundaries, orientation, padding and every feature coordinate: this output will be applied directly to the existing 3D model, so moving or redrawing any island breaks it. Do not generate a head portrait, turnaround, new hairstyle or new face. Return ONLY the edited square UV texture at the same framing, ideally 2048x2048. No text, guides, swatches or body reference in the output.",
+  "inputs": [
+    {
+      "path": "base-color.png",
+      "role": "Edit target: existing head UV texture"
+    },
+    {
+      "path": "../../../shared/body/restyle/out-facings.png",
+      "role": "Reference: approved body arm skin palette"
+    }
+  ],
+  "output": "painted-base.png",
+  "source_basis": "Generated local skin-colour correction; UV alignment and appearance require assembled render review."
+}

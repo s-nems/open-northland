@@ -1,0 +1,15 @@
+TASK
+Create a new dark rocky upland GROUND MATERIAL for Open Northland.
+Use case: stylized-concept. Output purpose: production opaque terrain texture, one continuous rectangular surface covering many walkable ground tiles.
+Composition: edge-to-edge orthographic surface texture viewed straight down, no horizon, no perspective scene, no isolated mountain. Landscape 4:3, at least 1088 by 836 pixels.
+Materials: predominantly dark charcoal-grey weathered rock and packed dark mineral earth, irregular shallow eroded diagonal rock grain, subdued low embedded stone plates, scattered SMALL chips. Broad quiet areas between fine rock grain. Very sparse desaturated olive traces in cracks. Everything is flush with the walking surface. This is a surface settlers can walk across in a settlement strategy game. The engine supplies elevations and slope lighting.
+REFERENCES
+Image 1 is the approved J / Warm Remaster board. Style reference only, not an edit target. Follow its matte painted grounded settlement-game material language, especially ground in the bottom row, but make this upland ground much darker and less vegetated. Do not copy its layout or large rocks.
+STYLE
+Nostalgic early settlement-game HQ/remastered redesign, deliberately painted not photographic, restrained organic detail, cool dark stone with subtle warm grey highlights. Small-scale shallow upper-left light only. Overall dark midtones, light marks sparse and subdued. Material definition without visual noise.
+DESIGN
+Invent a new coherent gently undulating rocky surface. Long shallow irregular mineral grain broken by patches of compact dark earth. No large geological forms painted into the texture: actual game elevation shapes the hills. No dominant central feature. Balanced detail density and similar tonal values at opposite edges for tiling.
+AVOID
+Cliffs, escarpments, canyon walls, tall rocks, overhangs, sharp peaks, deep ravines, dramatic cast shadows, terraced platforms, gigantic slabs, bright silver-white stone, cobblestone paving, regular repeated stones, gravel-only uniform noise, buildings, plants taller than moss, people, sky, text, borders, grid, watermark.
+QUALITY
+High-quality newly authored detail, opaque image. Do not upscale or pixelate. Make the surface convincingly traversable everywhere.

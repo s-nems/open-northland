@@ -1,0 +1,14 @@
+{
+  "id": "stump",
+  "kind": "stump",
+  "image": "stump.png",
+  "width": 1024,
+  "height": 1024,
+  "anchor": {
+    "x": 514,
+    "y": 632
+  },
+  "scale": 0.04,
+  "editNames": ["tree debris medium", "tree debris big", "tree debris small"],
+  "sourceBasis": "Exact EditName slots verified against owned landscapes.cif and IR. Independent redesign; still image and scale are artistic approximations."
+}

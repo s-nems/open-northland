@@ -26,6 +26,7 @@ describe('parseStoredSettings', () => {
 
   it('round-trips a full settings object', () => {
     const settings = {
+      assets: 'original',
       displayMode: 'fullscreen',
       renderScale: 0.75,
       uiScaleFactor: 1.25,
@@ -175,6 +176,7 @@ describe('carriedSettingParams', () => {
     });
     expect(rows).toEqual([
       { key: 'language', param: 'lang', value: 'eng' },
+      { key: 'assets', param: 'assets', value: null },
       { key: 'soundEnabled', param: 'sound', value: 'off' },
     ]);
   });

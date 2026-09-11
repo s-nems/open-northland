@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "id": "terrain/mountains",
+  "kind": "terrain",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "terrain/mountains.png",
+      "content": {
+        "operation": "raster",
+        "width": 1088,
+        "height": 836,
+        "draws": [
+          {
+            "source": "master.png",
+            "crop": [0, 0, 1448, 1086],
+            "box": [0, 0, 1088, 836]
+          }
+        ],
+        "alpha": "opaque"
+      }
+    },
+    {
+      "path": "terrain/rock-materials.json",
+      "content": {
+        "operation": "copy",
+        "source": "rock-materials.json"
+      }
+    }
+  ]
+}

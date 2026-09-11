@@ -1,0 +1,30 @@
+{
+  "tool": "built-in imagegen",
+  "prompt": "master.prompt.txt",
+  "reference": {
+    "path": "docs/art/references/world/J.png",
+    "role": "primary style reference, not edit target",
+    "sha256": "4cc6c5d24e4f9861a598f5e475044323c1c6df8ef3302e3ff27f5d4a994239cf"
+  },
+  "master": {
+    "path": "master.png",
+    "size": [1254, 1254],
+    "sha256": "40b3d23eb274647a1a5f9f16699c3ff77536931c08c5a2d23cddc5cdbeb44463"
+  },
+  "exports": [
+    {
+      "path": "gravel.png",
+      "crop": [0, 313, 627, 627],
+      "size": [512, 512],
+      "sha256": "a217ad50b983cae6055f1a6979205bac4489866de51114c12a7b0b4dd0b9cc83"
+    },
+    {
+      "path": "bedrock.png",
+      "crop": [627, 313, 627, 627],
+      "size": [512, 512],
+      "sha256": "da2a90abdcc1fcff42329d4469033b5b954700e15ec761f034cae03dd066e666"
+    }
+  ],
+  "operations": "Canvas high-quality downsample; generated colours retained in PNG; runtime tint and procedural transitions in existing material baker. No separately billed API generation.",
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

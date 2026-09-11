@@ -1,0 +1,23 @@
+{
+  "image": "stump.png",
+  "prompt": "stump.prompt.txt",
+  "tool": "imagegen skill CLI edit",
+  "model": "gpt-image-1.5",
+  "size": [1024, 1024],
+  "quality": "high",
+  "inputFidelity": "high",
+  "background": "transparent",
+  "mode": "RGBA",
+  "alphaBounds": [167, 142, 885, 935],
+  "transparentPixels": 850781,
+  "opaquePixels": 89737,
+  "partialPixels": 108058,
+  "sha256": "5cd22cf54f0413648d2e3bbd1802c5461785bb5ebbdb95bc4656f4fdd38e3495",
+  "references": [
+    {
+      "image": "../../references/world/J.png",
+      "role": "canonical style reference"
+    }
+  ],
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

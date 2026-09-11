@@ -8,6 +8,7 @@ import {
 import {
   animationClock,
   easeReveal,
+  motionClocks,
   revealedItem,
   walkPose,
 } from '../../src/gpu/sprite-pool/presentation.js';
@@ -35,6 +36,7 @@ function motion(stillTicks: number): MotionTrack {
     drawX: 0,
     drawY: 0,
     gaitPhase: 0,
+    prevGaitPhase: 0,
     stillTicks,
     snapDistance: snapDistanceForKind('settler'),
   };
@@ -42,6 +44,17 @@ function motion(stillTicks: number): MotionTrack {
 
 const WALKING = motion(0);
 const STALLED = motion(STALL_TICKS_TO_IDLE);
+
+describe('interpolated character clocks', () => {
+  it('keeps the gait between the same anchors as the moving body', () => {
+    const track = { ...WALKING, prevGaitPhase: 4, gaitPhase: 6 };
+    expect(motionClocks(WALKER, 10, 0.25, track, true).gait).toBe(4.5);
+    expect(motionClocks(WALKER, 10, 0.75, track, true).gait).toBe(5.5);
+    expect(motionClocks(WALKER, 10, 0.25, track, false).gait).toBe(6);
+    expect(motionClocks(IDLE_SETTLER, 10, 0.25, track, true).animation).toBe(46.25);
+    expect(motionClocks({ ...IDLE_SETTLER, frozen: true }, 10, 0.25, track, true).animation).toBe(0);
+  });
+});
 
 describe('walkPose', () => {
   it('presents the idle pose for a settler whose anchor has sat still while state reads moving', () => {

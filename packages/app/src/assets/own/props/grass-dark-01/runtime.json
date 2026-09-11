@@ -1,0 +1,15 @@
+{
+  "id": "grass-dark-01",
+  "kind": "decor",
+  "image": "grass-dark-01.png",
+  "width": 84,
+  "height": 58,
+  "anchor": {
+    "x": 42,
+    "y": 44
+  },
+  "scale": 0.5,
+  "brightness": 0.55,
+  "editNames": ["grass dark 01"],
+  "sourceBasis": "Same previously verified owned landscape names, original world frame dimensions and anchors. Independent muted A redesign: separated slender grass blades with no connected ground mass; sparse small flowers. Local original comparison informed scale and open structure, not a traced copy. Static sprites; 2 source pixels per world pixel, native generated high-resolution artwork proportionally downsampled into the original frame. Per-prop brightness is an artistic map-rendering calibration: ordinary .76, dark .55, deep .40; not extracted original luminance."
+}

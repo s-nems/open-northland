@@ -1,0 +1,107 @@
+{
+  "buildings/farm": {
+    "digest": "bf0558cd689e4a953bec0f266f338ef941617972718581a1d10e4ad7a52c122e",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "buildings/headquarters": {
+    "digest": "b5b0b4a1ce59b23b78376b45ad2040bb20e3fc0dd989c4b4d04cc84093cb5065",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "buildings/house-1": {
+    "digest": "0a58ec1864974303bb5ce1013dee55676ab671c251f1b6e904e5ee98aac27d17",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "buildings/house-2": {
+    "digest": "03312f5a3e476b7d8f17c6237fbefff6ba2f2dea14afe5b76f7022db55d49966",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "buildings/stonemason": {
+    "digest": "b32d37acc4d71a178c400740485e66cf7826599420dfdde5a7c4769d6fc2ac09",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "characters/man-forkbeard": {
+    "digest": "eeef12d4119523390cfe5f6a00927033d4899686869c551d7e3429aa0dae43b3",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "characters/man-ravenknot": {
+    "digest": "5829048f7b9ec024bc32043e74ccc07c8b5a45e0b01284da0124bfc0b0f1446f",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "characters/man-redmane": {
+    "digest": "1190f475d797bc4b60b46f7506d83e1eaa91b105685e29319a03ec068df31251",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "characters/man-silver": {
+    "digest": "833565cf66d3a505d72ae3ac1b6a8acbb99da7e286645cdf894e6cab117f04b1",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "characters/woman-blonde": {
+    "digest": "23fd9e53466db0fd36bbd7d3bb9ef3eff6fb2a30c1a01098f27df0db02b0bf28",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/bushes": {
+    "digest": "87a29782b1d757d6056cb548c286dc79539e5cccadc27677576882d838b54d5a",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/ferns": {
+    "digest": "f126040f761701184afb96ad98ddac74b7f004fcde56bc5265276eda1aa55ae7",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/grass": {
+    "digest": "d9319deb1d632ba471d01cbcf0fd8de4b687f3cda8ec16d2e5c95a2ddc787e16",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/gravel": {
+    "digest": "1787a46e9df884c3f3f41d7b3b1a43a872091580fc853b0c84990d65f8c66cd6",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/meadow-ground": {
+    "digest": "63666a21409cd03bc0aa278c96b520ce9d1d3ae33f11783409c46588d43112f8",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/meadows": {
+    "digest": "d1f9ff705870d3ffefe7ea9672929e4b16bfad4c2fe45bf56d2d14089491b30f",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/mountains": {
+    "digest": "9de647f7a3cafc1595b4a63eae2882e92316898b5ef739514eb597cc5e87afd6",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/mushrooms": {
+    "digest": "74f9c08674019c9c55b5cc4c607d96bba83f7e2eb92e59650b2f2c57b5ada27e",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/rocks": {
+    "digest": "b5391965f326169ecdaf4bea0aa24884b4cc9dd021b5a38da18c1158280b0749",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/sand": {
+    "digest": "ad54c8acca3b2fe46c3d2cef99c98727c923612e888dc62c376ad64dc1b3976e",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/woodland": {
+    "digest": "abc1e9f5503b109ec1281acdd26ac935f00edd910a82863af397df30784e7c11",
+    "reviewer": "existing-delivery",
+    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  }
+}

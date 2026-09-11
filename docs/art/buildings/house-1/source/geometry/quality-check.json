@@ -1,0 +1,10 @@
+{
+  "method": "95th percentile of vertex heights within abs(x)<0.045 and y-bin halfwidth 0.025, excluding center and end rope stations. Approximate sampled ridge check, not a global straightness proof.",
+  "ridge_height_spread_raw": 0.002846062183380127,
+  "ridge_height_spread_fraction_building": 0.0015475534401650482,
+  "texture_dimensions": [
+    4096,
+    4096
+  ],
+  "geometry_modified": false
+}

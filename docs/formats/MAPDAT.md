@@ -7,7 +7,7 @@ The facts below come from byte-level comparisons across owned maps, rendered pro
 decoder tests. Facts credited to the CulturesNation
 [`Cultures2-dat-format`](https://github.com/Mikulus6/Cultures2-dat-format) documentation are marked
 as such; everything marked "verified" was re-checked against the owned corpus (130 map files, 5184
-chunks). [`SOURCES.md`](../SOURCES.md#evidence-baseline) defines that corpus.
+chunks). [`./SOURCES.md`](../SOURCES.md#evidence-baseline) defines that corpus.
 
 ## Chunk stream
 

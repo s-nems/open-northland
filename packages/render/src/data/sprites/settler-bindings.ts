@@ -1,10 +1,15 @@
 /**
  * The original's `[bobseq]` layout: `dirs` facings laid out back-to-back, each `stride` frames long
  * from {@link start}, drawing `start + facing*stride + (floor(clock / ticksPerFrame) % cycle)` where
- * `cycle` is {@link frames}. The cadence is tick-locked, never stretched to an action's duration (the
- * original's behavior).
+ * `cycle` is {@link frames}. Original bindings keep tick cadence; authored clips can opt into subticks.
  */
 export interface DirectionalAnim {
+  /** Authored high-rate clips can advance between simulation ticks. */
+  readonly subtick?: boolean;
+  /** Projected atlas pixels covered per complete walk cycle, in facing order. */
+  readonly travelPerCycle?: readonly number[];
+  /** Positive hold durations in tick units, one per stored pose; their sum is the loop duration. */
+  readonly frameDurations?: readonly number[];
   /** Bob id of direction 0, frame 0 - the `[bobseq]` `seq` record's start value. */
   readonly start: number;
   /** Facing directions laid out back-to-back. */

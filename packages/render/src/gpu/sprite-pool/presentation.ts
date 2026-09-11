@@ -32,6 +32,25 @@ export function animationClock(item: DrawItem, tick: number): number {
   return item.kind === 'settler' ? tick + item.ref * IDLE_PHASE_STEP : tick;
 }
 
+export function motionClocks(
+  item: DrawItem,
+  tick: number,
+  alpha: number,
+  motion: MotionTrack,
+  smooth: boolean,
+) {
+  const clock = smooth ? Math.max(0, tick - 1 + clamp01(alpha)) : tick;
+  return {
+    animation: animationClock(item, clock),
+    gait:
+      item.inHouse === true
+        ? clock
+        : smooth
+          ? lerp(motion.prevGaitPhase, motion.gaitPhase, clamp01(alpha))
+          : Math.floor(motion.gaitPhase),
+  };
+}
+
 /**
  * The pose a settler presents this frame, covering two gaps a raw `moving` state leaves: an anchor that
  * has sat still (an unserviced route, a stalled chase) and the one-tick heading gap a re-pathing walker

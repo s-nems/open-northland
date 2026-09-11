@@ -1,0 +1,14 @@
+{
+  "id": "mushroom-agaric-green-01",
+  "kind": "decor",
+  "image": "mushroom-agaric-green-01.png",
+  "width": 28,
+  "height": 28,
+  "anchor": {
+    "x": 12,
+    "y": 22
+  },
+  "scale": 0.5,
+  "editNames": ["mushroom agaric green 01"],
+  "sourceBasis": "Owned landscapes.cif freshly decoded with extractLandscapeGfx: all 866 rows match content/ir.json after JSON normalization excluding source. Names, palettes, first-frame rectangles and offsets inspected in owned ls_meadows and ls_mushrooms atlases. Independent generated designs; originals used only for local visual comparison and metadata. Source dimensions and anchors are twice original first-frame world budgets, runtime scale 0.5. Static sprite approximation; original placements retained."
+}

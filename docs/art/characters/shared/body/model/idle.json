@@ -1,0 +1,7 @@
+{
+  "source": "docs/art/characters/shared/motions/idle/idle.glb",
+  "target": "docs/art/characters/shared/body/model/rigged.glb",
+  "method": "world rest-rotation deltas with target segment lengths; visual approximation",
+  "duration": 5.0,
+  "frames": 121
+}

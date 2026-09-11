@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "id": "terrain/gravel",
+  "kind": "terrain",
+  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "outputs": [
+    {
+      "path": "terrain/gravel.png",
+      "content": {
+        "operation": "raster",
+        "width": 512,
+        "height": 512,
+        "draws": [
+          {
+            "source": "master.png",
+            "crop": [0, 313, 627, 627],
+            "box": [0, 0, 512, 512]
+          }
+        ],
+        "alpha": "opaque"
+      }
+    }
+  ]
+}

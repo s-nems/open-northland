@@ -1,0 +1,20 @@
+{
+  "status": "Integrated candidate awaiting human visual review",
+  "primaryReference": {
+    "path": "../../buildings/house-1/house-painted-runtime.png",
+    "role": "canonical muted A painting and neutral light",
+    "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+  },
+  "originalPixelsSupplied": false,
+  "steps": [
+    {
+      "tool": "built-in imagegen",
+      "prompt": "master.prompt.txt",
+      "output": "master.png",
+      "references": ["../../buildings/house-1/house-painted-runtime.png"],
+      "sha256": "cbada5c829e7cc584ec0406851a0eb642d8ff052f5220ba37ac17f1426f8ff6b"
+    }
+  ],
+  "postprocessing": "Two square panels cropped at the central boundary and downsampled from 887x887 to 512x512. Runtime retains the four-quadrant sampling introduced in v4, including shared blended edges. No upscaling.",
+  "retention": "Final export sources and exact prompts are retained. Intermediate and rejected images named in this generation record are historical provenance and may be absent."
+}

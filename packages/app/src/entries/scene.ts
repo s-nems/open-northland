@@ -3,6 +3,9 @@ import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
+import { ownSceneTerrain } from '../content/own-assets/scene-terrain.js';
+import { loadOwnSpriteSheet } from '../content/own-assets/sprite-sheet.js';
+import { loadOwnTerrain } from '../content/own-assets/terrain.js';
 import { resolveSpriteSheet } from '../content/sprite-sheet/index.js';
 import { loadRealTerrain, MissingTerrainError } from '../content/terrain.js';
 import { diag, hashTraceFor, setDiagGameSession } from '../diag/index.js';
@@ -13,6 +16,7 @@ import { ownerPlayerOf } from '../game/snapshot.js';
 import { messages, sceneCopy } from '../i18n/index.js';
 import { createSceneSim, getScene, restoreSceneSim, SCENES } from '../scenes/index.js';
 import type { SceneDefinition } from '../scenes/types.js';
+import { assetSetFor } from '../view/asset-settings.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
@@ -115,11 +119,14 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   if (stagedSave === null) applySessionRuleOverrides(sim, sessionRuleOverrides(params));
   await boot.begin('sprites');
   // Goods are global sandbox content, not scene-local data.
-  const sheet = await resolveSpriteSheet(sim.content.goods);
+  const ownAssets = assetSetFor(params) === 'own';
+  const sheet = ownAssets
+    ? await loadOwnSpriteSheet(ir, params.get('ownHead'))
+    : await resolveSpriteSheet(sim.content.goods);
   await boot.begin('terrain');
   let terrain: TerrainTextureSet;
   try {
-    terrain = await loadRealTerrain(ir);
+    terrain = ownAssets ? ownSceneTerrain(await loadOwnTerrain(app.renderer, ir)) : await loadRealTerrain(ir);
   } catch (err) {
     if (!(err instanceof MissingTerrainError)) throw err;
     haltOnMissingContent(err);

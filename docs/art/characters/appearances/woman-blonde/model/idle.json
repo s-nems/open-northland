@@ -1,0 +1,7 @@
+{
+  "source": "docs/art/characters/shared/body/model/idle.glb",
+  "target": "docs/art/characters/appearances/woman-blonde/model/rigged.glb",
+  "method": "world rest-rotation deltas with target segment lengths; visual approximation",
+  "duration": 5.041666666666667,
+  "frames": 122
+}
