@@ -16,7 +16,15 @@ import { applySessionRuleOverrides } from '../game/session-rules.js';
 import { sceneSession } from '../game/session-url.js';
 import { ownerPlayerOf } from '../game/snapshot.js';
 import { messages, sceneCopy, scenePages, sceneStrings } from '../i18n/index.js';
-import { createSceneSim, getScene, restoreSceneSim, SCENES } from '../scenes/index.js';
+import { routeFor } from '../routes.js';
+import {
+  createSceneSim,
+  getScene,
+  MAP_SCENES,
+  mapSceneParams,
+  restoreSceneSim,
+  SCENES,
+} from '../scenes/index.js';
 import type { SceneDefinition } from '../scenes/types.js';
 import { assetSetFor } from '../view/asset-settings.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
@@ -52,6 +60,14 @@ export const SCENE_BOOT_PHASES = [
 
 export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   const sceneId = params.get('scene') ?? '';
+  const mapScene = MAP_SCENES.find((scene) => scene.id === sceneId);
+  if (mapScene !== undefined) {
+    const mapParams = mapSceneParams(mapScene, params);
+    const renderMap = await routeFor(new URLSearchParams({ map: mapScene.mapId })).load();
+    window.history.replaceState(null, '', `?${mapParams.toString()}`);
+    await renderMap(canvas, mapParams);
+    return;
+  }
   const worldToken = `${SCENE_TOKEN_PREFIX}${sceneId}`;
   // Claimed before the scene lookup, and so before any world assembly: the staged bytes are one-shot,
   // and an entry that returns without claiming them leaves them for an unrelated boot to restore. A
@@ -67,7 +83,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   if (scene === undefined) {
     mountUnknownSceneOverlay(
       sceneId,
-      SCENES.map((s) => s.id),
+      [...SCENES, ...MAP_SCENES].map((s) => s.id),
     );
     return;
   }

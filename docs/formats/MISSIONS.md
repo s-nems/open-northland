@@ -309,9 +309,9 @@ of each.
 | 56 | `ChangeHumanObjectIdInArea` | 1, 16, 17, 9, 10 | give the player's humans within `range` the id | sim | 16 |
 | 57 | `HealHumansInArea` | 16, 17, 9 | set every human within `range` to full hit points | sim | 31 |
 | 58 | `ClearTribute` | 28 | close the tribute slot; its data stays for a later `CreateTribute` to replace (reading) | sim | 818 |
-| 59 | `SetGuiMarker` | 14, 16, 17 | move GUI marker slot 0 to 9 to the point; the origin clears the slot; the world cursor draws each set slot as six GUI-sheet bobs cycled every 150 ms in the player's palette (reading). Here: the `missionGuiMarker` event and the marker overlay | app | 20 |
+| 59 | `SetGuiMarker` | 14, 16, 17 | move GUI marker slot 0 to 9 to the point; the origin clears the slot; the world cursor draws each set slot as six GUI-sheet bobs cycled every 150 ms in the player's palette (reading). Here: the `missionGuiMarker` event and the marker overlay | both | 20 |
 | 60 | `SetHumanName` | 10, 27 | name the first human with the id after the string in the map's own table (reading). Here: the `ScriptedName` component, resolved by the app in the player's language | both | 138 |
-| 61 | `SetWeather` | 16, 17, 9, 32, 7 | set the rain (flag 0) or snow (flag 1) density of every 10-point weather sector under the square of half-side `range` to `amount` times 100, clamped to 10000, where 0 clears it; the map's `[misc_weather]` `setrainrectangle`, `setsnowrectangle` and `setsandrectangle` write the same fields (reading). Here: the `missionWeather` event and a screen wash by the density at the view's centre (approximation) | app | 207 |
+| 61 | `SetWeather` | 16, 17, 9, 32, 7 | set the rain (flag 0) or snow (flag 1) density of every 10-point weather sector under the square of half-side `range` to `amount` times 100, clamped to 10000, where 0 clears it; the map's `[misc_weather]` `setrainrectangle`, `setsnowrectangle` and `setsandrectangle` write the same fields (reading). Here: the `missionWeather` event and a screen wash by the density at the view's centre (approximation) | both | 207 |
 | 62 | `StartEarthQuake` | 35 | shake the display until `seconds` have passed, with `earthquak.wav` (reading). Here: the `missionEarthquake` event and a camera jitter; the sound is not in the decoded bank | app | 122 |
 | 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading). Here: the `missionSelectHuman` event; the view centres once instead of following (approximation) | app | 7 |
 | 64 | `AddGoodsToMapArea` | 6, 7, 16, 17, 9, 32, 1 | drop goods on the ground, spiralling outward from the point until the amount is placed; with the flag, the player's finished house standing on a point takes its fill first | sim | 206 |
@@ -346,13 +346,13 @@ of each.
 | 93 | `SetHouseBehaviourFlag` | 14, 36, 32 | set or clear bit `index` on houses with the id | sim | 113 |
 | 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 |
 | 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove vehicles with the id, and their crews when the flag is set | sim | 0 |
-| 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place a kind-2 marker entity on the point, or with the flag clear free every kind-2 marker there (reading). Here: the `missionImportMarker` event and the marker overlay, which borrows the GUI marker's first bob for want of the entity's own art (approximation) | app | 0 |
+| 96 | `SetImportLandscapeMarker` | 16, 17, 32 | place a kind-2 marker entity on the point, or with the flag clear free every kind-2 marker there (reading). Here: the `missionImportMarker` event and the marker overlay, which borrows the GUI marker's first bob for want of the entity's own art (approximation) | both | 0 |
 | 97 | `SetVertexColorOnLand` | 16, 17, 9, 7 | save a palette index on confirmed land nodes within `range` and update the display | both | 17 |
 | 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 |
 | 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 |
 | 100 | `SetRandomChestOnPosition` | 7, 16, 17 | drop a random chest of the category at the point | sim | 41 |
-| 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, `range` steps a side, and on every `index`th step place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points, walked in the map-point metric, and the marker overlay, which borrows the GUI marker's first bob (approximation); which corner the walk starts at is an approximation too | app | 0 |
-| 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | as 101 with kind-4 markers | app | 7 |
+| 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, `range` steps a side, and on every `index`th step place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points, walked in the map-point metric, and the marker overlay, which borrows the GUI marker's first bob (approximation); which corner the walk starts at is an approximation too | both | 0 |
+| 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | as 101 with kind-4 markers | both | 7 |
 
 Chest categories for 51 and 100 are a bitmask (docs): 1 soldiers, 2 tower, 4 catapult, 8 goods,
 16 buildings, 64 potions, 128 amulets, 256 wolves, 512 armours, 1024 lions.
@@ -520,10 +520,24 @@ rather than the list's colour (reading); this build strips the mark and keeps th
 mission that fired keeps its `X` until something checks it again. The app-side page format is
 documented with the `.briefing.json` sidecar schema in `packages/data`.
 
-The markers (`SetGuiMarker`, the area and import markers) and the weather squares are marker
-entities and sector fields in the original, saved with the game; here they are events the view keeps
-for the session, so a save loaded later shows none of them until the script sets them again
-(approximation).
+The markers (`SetGuiMarker`, the area and import markers) and weather squares are retained in a lazy
+`MissionPresentation` singleton and restored into the view before its first frame. GUI slots replace
+their previous marker; ground markers share a point-keyed overlay. Weather regions retain write
+order, including zero-density clears, with repeated extents replacing their earlier entry. The
+point overlay and weather squares remain approximations of the original's entities and sector fields.
+
+Mission records also retain the first and last execution ticks and an execution count. Goal-only
+`CheckMission` probes do not increment them, and later failed checks do not erase them. The optional
+`?debug=missions` inspector lists the latest 100 executed missions; this records execution attempts,
+not proof that every result succeeded. Old saves without these fields start collecting history from
+their next execution.
+
+Fresh maps launched with `?missions=on` default to reveal fog and declare every authored player seat
+except `playerneverdies` exemptions. An explicit fog override wins. A separate lazy `ScriptMatchRules`
+policy allows death checks even with one participant and leaves victory to the script, avoiding an
+early skirmish victory while story objectives remain. Restores preserve the saved rules. Changing
+the mission toggle during a running session does not reset its fog or match rules. Script execution
+still defaults off pending campaign acceptance.
 
 ## Human names
 

@@ -13,10 +13,15 @@ const matchRules = defineWorldSingleton<{
 }>('MatchRules', 'players', () => ({ participants: 0, dead: 0, won: 0 }));
 
 /**
- * The skirmish match state the `setMatchParticipants` command opens and the MatchSystem drives. Kept
+ * The match state the `setMatchParticipants` command opens and the MatchSystem drives. Kept
  * apart from the other rule singletons so declaring a match never materializes them.
  */
 export const MatchRules = matchRules.component;
+
+const scriptMatchRules = defineWorldSingleton<{ enabled: boolean }>('ScriptMatchRules', () => ({
+  enabled: false,
+}));
+export const ScriptMatchRules = scriptMatchRules.component;
 
 const scriptVerdicts = defineWorldSingleton<{
   /** Players a script's `MissionWon` named. */
@@ -90,7 +95,11 @@ export function matchOutcome(world: World, player: number): MatchOutcome {
 
 /** Replace the participant set with the valid slots of `players`; a seat dropped from the set also loses
  *  its dead or won mark. */
-export function setMatchParticipants(world: World, players: readonly number[]): void {
+export function setMatchParticipants(
+  world: World,
+  players: readonly number[],
+  victory: 'script' | 'elimination' = 'elimination',
+): void {
   if (!Array.isArray(players)) return; // an imported log carries untyped payloads
   let bits = 0;
   for (const p of players) if (isValidPlayer(p)) bits |= playerBit(p);
@@ -98,7 +107,14 @@ export function setMatchParticipants(world: World, players: readonly number[]): 
     rules.participants = bits;
     rules.dead &= bits;
     rules.won &= bits;
+    if (victory === 'script') rules.won = 0;
   });
+  const enabled = victory === 'script';
+  if (scriptedMatchVictory(world) !== enabled) {
+    scriptMatchRules.write(world, (rules) => {
+      rules.enabled = enabled;
+    });
+  }
 }
 
 export function markPlayerDead(world: World, player: number): void {
@@ -122,4 +138,20 @@ export function markScriptVerdict(world: World, player: number, verdict: 'won' |
   scriptVerdicts.write(world, (verdicts) => {
     verdicts[verdict] |= bit;
   });
+}
+
+export function scriptedMatchVictory(world: World): boolean {
+  return scriptMatchRules.read(world).enabled;
+}
+
+export interface MatchRulesView {
+  readonly participants: readonly number[];
+  readonly victory: 'script' | 'elimination';
+}
+
+export function matchRulesView(world: World): MatchRulesView {
+  return {
+    participants: playersOfBits(matchParticipantBits(world)),
+    victory: scriptedMatchVictory(world) ? 'script' : 'elimination',
+  };
 }

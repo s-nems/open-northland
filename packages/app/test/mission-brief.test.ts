@@ -44,7 +44,17 @@ const TEXTS: Readonly<Record<number, string>> = {
 const textOf = (id: number): string | undefined => TEXTS[id];
 
 function status(over: Partial<MissionStatus>, index = 0): MissionStatus {
-  return { index, description: 300, visible: true, active: true, done: false, ...over };
+  return {
+    index,
+    description: 300,
+    visible: true,
+    active: true,
+    done: false,
+    firstFiredTick: undefined,
+    lastFiredTick: undefined,
+    fireCount: 0,
+    ...over,
+  };
 }
 
 describe('introCutsceneId', () => {

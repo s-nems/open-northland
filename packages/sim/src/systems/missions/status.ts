@@ -11,6 +11,9 @@ export interface MissionStatus {
   readonly active: boolean;
   /** Whether the last check satisfied the mission's rule, which is the window's "done" mark. */
   readonly done: boolean;
+  readonly firstFiredTick: number | undefined;
+  readonly lastFiredTick: number | undefined;
+  readonly fireCount: number;
 }
 
 /** Every mission of the script with its live flags, in script order; a mission the system has not
@@ -26,6 +29,9 @@ export function missionStatus(world: World, script: MissionScript | undefined): 
       visible: record?.visible ?? definition.visible,
       active: record?.active ?? definition.active,
       done: record?.evaluated ?? false,
+      firstFiredTick: record?.firstFiredTick,
+      lastFiredTick: record?.lastFiredTick,
+      fireCount: record?.fireCount ?? 0,
     };
   });
 }

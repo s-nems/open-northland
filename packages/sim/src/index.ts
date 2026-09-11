@@ -2,9 +2,14 @@ export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/
 export * as components from './components/index.js';
 // Fog-of-war mode ids and the diplomacy stance union, flattened to the package root for render and
 // app consumers.
-export type { MatchOutcome } from './components/match.js';
 /** The four need bars, the vocabulary the `orderNeed` command addresses one by. */
 export type { NeedKind } from './components/needs.js';
+export type { MatchOutcome, MatchRulesView } from './components/match.js';
+export type {
+  GroundMissionMarker,
+  MissionPresentationView,
+  MissionWeatherRegion,
+} from './components/mission-presentation.js';
 export { PAPER_KINDS, type Paper, type PaperKind, PLACING_PAPER_KINDS } from './components/papers.js';
 export { type DiplomacyState, FOG_MODE, type FogMode } from './components/rules.js';
 export type { AtomicEffect } from './core/atomic-effect.js';

@@ -1,7 +1,7 @@
 import { withBaseUrl } from '../../base-url.js';
 import { loadMapList } from '../../content/maps-index.js';
 import { bcp47Tag, formatMessage, messages } from '../../i18n/index.js';
-import { SCENES } from '../../scenes/index.js';
+import { MAP_SCENES, SCENES } from '../../scenes/index.js';
 import { createMapDetailsCard, metaLine } from './map-card.js';
 import { generatedMapPreview } from './map-preview.js';
 import {
@@ -44,7 +44,7 @@ export interface MapPicker {
 
 function sceneRows(): readonly MapSelectItem[] {
   const sceneCopy = messages().scene;
-  return SCENES.flatMap((scene) => {
+  return [...SCENES, ...MAP_SCENES].flatMap((scene) => {
     const metadata = sceneCopy[scene.id as keyof typeof sceneCopy];
     return metadata === undefined ? [] : [sceneItem(scene.id, metadata.title, metadata.summary)];
   });

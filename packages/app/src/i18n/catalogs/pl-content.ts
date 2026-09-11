@@ -142,7 +142,19 @@ export const plContent = {
     chest: 'Skrzynia',
     anything: 'Dowolny towar',
   },
+  missionTrace: {
+    title: 'Rejestr wykonanych misji',
+    atTick: 'Rejestr misji · tick {tick}',
+    note: 'Ostatnie 100 wykonanych misji. Wykonanie nie oznacza powodzenia każdego wyniku. Pierwszy i ostatni tick oraz licznik pozostają w zapisie.',
+    empty: 'Nie wykonano jeszcze żadnej misji.',
+    row: '#{index}: ticki {first} / {last}, wykonań: {count}',
+  },
   scene: {
+    'mission-map': {
+      title: 'Test skryptu mapy fabularnej',
+      summary:
+        'Mapa Wielkie Sprzatanie z pełnym skryptem, mgłą i zapisywanym rejestrem wykonanych misji. Wymaga lokalnie zdekodowanej zawartości. Akceptacja kampanii i zgodności z oryginałem pozostaje otwarta.',
+    },
     sandbox: {
       title: 'Otwarty sandbox',
       summary:

@@ -85,6 +85,9 @@ export function checkMission(pass: MissionPass, index: number, execute: boolean)
     // The active flag is cleared before the results run, so a mission that re-activates itself keeps
     // the activation its own results asked for.
     setMissionActive(pass, index, false);
+    record.firstFiredTick ??= pass.tick;
+    record.lastFiredTick = pass.tick;
+    record.fireCount = (record.fireCount ?? 0) + 1;
     for (const result of definition.results) executeResult(pass, index, result);
   }
   record.evaluated = verdict === true;

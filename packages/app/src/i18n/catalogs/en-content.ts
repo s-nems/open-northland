@@ -142,7 +142,19 @@ export const enContent = {
     chest: 'Chest',
     anything: 'Anything',
   },
+  missionTrace: {
+    title: 'Mission execution log',
+    atTick: 'Mission log · tick {tick}',
+    note: 'Latest 100 executed missions. Execution does not guarantee every result succeeded. First/last ticks and counts survive saving.',
+    empty: 'No missions executed yet.',
+    row: '#{index}: ticks {first} / {last}, executed {count} times',
+  },
   scene: {
+    'mission-map': {
+      title: 'Story map script acceptance',
+      summary:
+        'The owned Wielkie Sprzatanie map with its complete script, fog and a saved mission execution log. Requires locally decoded content. Campaign and original-game fidelity acceptance remain pending.',
+    },
     sandbox: {
       title: 'Open sandbox',
       summary:

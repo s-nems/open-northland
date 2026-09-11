@@ -10,6 +10,7 @@ import {
   Person,
   playerBit,
   playersOfBits,
+  scriptedMatchVictory,
   wonPlayerBits,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
@@ -24,17 +25,13 @@ import { isAdultSettler } from '../family/eligibility.js';
 export const MATCH_DEATH_GRACE_TICKS = 720;
 export const MATCH_DEATH_CHECK_INTERVAL_TICKS = 125;
 
-/**
- * The skirmish rule over the declared participants, which needs two seats to mean anything. A seat dies
- * when the check finds it without a living adult man (the same engine-build reading; the maps'
- * `playerneverdies` rows corroborate that seats do die). Once a seat has died, the standing seats win
- * as soon as every pair of them is mutual `friend` (approximation: the original only marks the dead as
- * lost), and a decided match runs no further checks. A script's `MissionWon` decides nothing here:
- * the original's death check keeps running after its won flag (reading).
- */
+/** A seat without a living adult man dies (engine-build reading). Skirmish mode needs two seats and
+ *  stops after the survivors win by mutual friendship (approximation). Script mode checks even one
+ *  seat and leaves victory to script results; death checks continue after a scripted win. */
 export const matchSystem: System = (world, ctx) => {
   const participants = matchParticipantBits(world);
-  if (!hasTwoSeats(participants) || wonPlayerBits(world) !== 0) return;
+  const scripted = scriptedMatchVictory(world);
+  if (participants === 0 || (!scripted && (!hasTwoSeats(participants) || wonPlayerBits(world) !== 0))) return;
   if (ctx.tick < MATCH_DEATH_GRACE_TICKS || ctx.tick % MATCH_DEATH_CHECK_INTERVAL_TICKS !== 0) return;
 
   let dead = deadPlayerBits(world);
@@ -48,6 +45,7 @@ export const matchSystem: System = (world, ctx) => {
     }
   }
 
+  if (scripted) return;
   const standing = participants & ~dead;
   if (dead === 0 || standing === 0 || !allMutualFriends(world, playersOfBits(standing))) return;
   markPlayersWon(world, standing);

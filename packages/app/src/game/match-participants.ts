@@ -1,4 +1,5 @@
 import type { MapScript } from '@open-northland/data';
+import type { MatchRulesView } from '@open-northland/sim';
 
 const NEVER_DIES_KEY = 'playerneverdies';
 
@@ -13,10 +14,6 @@ export function neverDiesSeats(script: Pick<MapScript, 'misc'>): number[] {
   return seats.sort((a, b) => a - b);
 }
 
-/**
- * The seats that play the match: the controlled seat and the AI seats, minus the never-dying ones.
- * A read-only observer controls no seat, so only the AI seats play. Ascending, deduplicated.
- */
 /** Whether a declared list makes a match at all: with one seat there is nobody to beat, so the rule
  *  decides nothing and the sheet promises no skirmish goal. */
 export function matchIsContested(participants: readonly number[]): boolean {
@@ -31,4 +28,20 @@ export function matchParticipants(input: {
   const seats = new Set<number>([...input.controlled, ...input.aiSeats]);
   for (const seat of input.neverDies) seats.delete(seat);
   return [...seats].sort((a, b) => a - b);
+}
+
+export function scriptMatchParticipants(script: Pick<MapScript, 'players' | 'misc'>): number[] {
+  return matchParticipants({
+    controlled: script.players.map((row) => row.player),
+    aiSeats: [],
+    neverDies: neverDiesSeats(script),
+  });
+}
+
+export function hasEliminationGoal(rules: MatchRulesView, player: number): boolean {
+  return (
+    rules.victory === 'elimination' &&
+    matchIsContested(rules.participants) &&
+    rules.participants.includes(player)
+  );
 }

@@ -55,3 +55,20 @@ Scenes accept `assets=own` for the same own sprite and terrain loaders as map pl
 `farm-construction` scene starts at ×2 and places a working construction crew beside a finished farm.
 The `terrain-edits` scene exercises saved terrain palette edits and a scripted build ban. Its western
 patch uses a brown vertex palette entry and its eastern patch a green entry from the owned content.
+
+## Real map acceptance
+
+`?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with
+`missions=on` and `debug=missions`. The menu lists it under test scenes. The URL becomes a map URL,
+so save/load uses the real map identity. Explicit mission and fog overrides remain effective.
+
+Real-map scenes live in `scenes/map-scenes.ts`, separately from synthetic `SceneDefinition` worlds.
+Their headless checks require owned content and run under `npm run test:content`:
+`packages/app/test/content/map-mission-acceptance.test.ts` exercises the untouched script's opening,
+the hero's ordinary move order to reinforcements, and identical continuation after save/load.
+`packages/app/test/map-mission-scene.test.ts` checks routing and the execution-log projection without
+owned content.
+
+This is a scripted single-player free map, not a base campaign. Its opening and reinforcements do not
+prove its ending or campaign completion. The inspector shows saved execution ticks and counts;
+unsupported and refused results remain in the diagnostic log.

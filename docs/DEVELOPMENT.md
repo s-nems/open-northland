@@ -100,7 +100,8 @@ Debug modes:
 - `debug=diag` records replay and state-hash diagnostics;
 - `debug=perf` adds browser performance marks;
 - `debug=trace` records a trace that can be exported for offline profiling;
-- `debug=profile` accumulates per-system sim cost for the whole session.
+- `debug=profile` accumulates per-system sim cost for the whole session;
+- `debug=missions` shows saved mission execution ticks and counts in a collapsible inspector.
 
 Flags combine: `?debug=profile,trace` runs both.
 

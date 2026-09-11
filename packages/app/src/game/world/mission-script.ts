@@ -11,6 +11,7 @@ import {
 import type { MissionHouseRef, MissionScript, ResolvedOp } from '@open-northland/sim';
 import { MISSION_HOUSE_NAME_FIELD, MISSION_LANDSCAPE_NAME_FIELD } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
+import { scriptMatchParticipants } from '../match-participants.js';
 import type { MapScriptWorld } from './build.js';
 import type { AuthoredJoinRows, ContentJoins } from './content-joins.js';
 import { contentJoins } from './content-joins.js';
@@ -156,15 +157,14 @@ function resolveRef(field: string, ref: MissionNameRef, joins: ContentJoins, dro
   return UNRESOLVED_NAME;
 }
 
-/**
- * What a decoded map's script contributes to its world: the diplomacy rows verbatim and the missions
- * resolved against the served catalog. A map with no script, or a boot with no IR to join against,
- * contributes nothing and its world runs as it did before missions existed.
- */
+/** Script roster and diplomacy survive missing catalog data; mission names require the served IR. */
 export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows | null): MapScriptWorld {
   const diplomacy = script?.diplomacy ?? [];
   const humanNames = script?.humanNames ?? [];
-  if (script === null || rows === null || script.missions.length === 0) return { diplomacy, humanNames };
+  const roster =
+    script !== null && script.players.length > 0 ? { participants: scriptMatchParticipants(script) } : {};
+  if (script === null || rows === null || script.missions.length === 0)
+    return { diplomacy, humanNames, ...roster };
   const join = resolveMissionScript(script.missions, rows);
   if (join.unknownOpcodes > 0 || join.tokenMismatches > 0 || join.unresolvedNames.length > 0) {
     const named = join.unresolvedNames.slice(0, NAMES_IN_WARNING).join(', ');
@@ -173,5 +173,5 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
       `mapScriptWorld: ${script.missions.length} missions loaded with ${join.unknownOpcodes} unknown opcodes, ${join.tokenMismatches} token-count mismatches and ${join.unresolvedNames.length} unresolvable names (${named})`,
     );
   }
-  return { diplomacy, humanNames, missions: join.script };
+  return { diplomacy, humanNames, ...roster, missions: join.script };
 }

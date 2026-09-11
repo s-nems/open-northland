@@ -7,6 +7,7 @@ import type {
 import type { SessionRules } from '@open-northland/lockstep';
 import {
   type Entity,
+  FOG_MODE,
   halfCellMapFromCells,
   restoreSimulation,
   type SaveGame,
@@ -57,7 +58,7 @@ export interface MapWorldOptions extends SessionRules {
   readonly playerRoster?: MapScript['players'];
   /** Seats whose chest-window assistant grants start on. */
   readonly assistantSeats: readonly number[];
-  /** The seats that can win or lose the skirmish; omitted or empty runs no match. */
+  /** Override the authored participant roster; an empty list runs no match. */
   readonly matchParticipants?: readonly number[];
   /** The map script's authored `specialItems` rows, the papers each player starts with. */
   readonly specialItems?: readonly MapSpecialItem[];
@@ -124,14 +125,20 @@ function runWorld(
 }
 
 function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
-  applySessionRuleOverrides(sim, options);
+  const scripted = options.script?.missions !== undefined && options.missions === true;
+  applySessionRuleOverrides(sim, { ...options, fog: options.fog ?? (scripted ? FOG_MODE.REVEAL : null) });
   for (const seat of options.aiSeats) {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: seat, enabled: true });
   }
   grantAssistantDefaults(sim, sim.content, options.assistantSeats);
   grantStartingPapers(sim, options.specialItems ?? []);
-  if (options.matchParticipants !== undefined && options.matchParticipants.length > 0) {
-    sim.enqueueSetup({ kind: 'setMatchParticipants', players: options.matchParticipants });
+  const participants = options.matchParticipants ?? (scripted ? options.script?.participants : undefined);
+  if (participants !== undefined) {
+    sim.enqueueSetup({
+      kind: 'setMatchParticipants',
+      players: participants,
+      victory: scripted ? 'script' : 'elimination',
+    });
   }
 }
 

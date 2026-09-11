@@ -33,6 +33,7 @@ import { victoryScene } from './victory.js';
 import { warehouseScene } from './warehouse.js';
 import { wildlifeScene } from './wildlife.js';
 
+export { MAP_SCENES, mapSceneParams } from './map-scenes.js';
 export { createSceneSim, restoreSceneSim } from './runtime.js';
 export type { SceneDefinition } from './types.js';
 

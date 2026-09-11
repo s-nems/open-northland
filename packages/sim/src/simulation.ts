@@ -20,6 +20,8 @@ import {
   professionProgressionEnabled,
 } from './components/index.js';
 import { landscapeRevision } from './components/landscape.js';
+import { type MatchRulesView, matchRulesView } from './components/match.js';
+import { type MissionPresentationView, missionPresentation } from './components/mission-presentation.js';
 import { CommandQueue } from './core/command-queue.js';
 import { type Command, type CommandEnvelope, setupCommand } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
@@ -137,6 +139,14 @@ export class Simulation {
 
   get landscapeRevision(): number {
     return landscapeRevision(this.world);
+  }
+
+  matchRules(): MatchRulesView {
+    return matchRulesView(this.world);
+  }
+
+  missionPresentation(): MissionPresentationView {
+    return missionPresentation(this.world);
   }
 
   landscapeEdits(): LandscapeEditView {

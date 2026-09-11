@@ -9,6 +9,7 @@ import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { CameraJitter, ScriptEffects } from '../script-effects.js';
 import type { ScriptMarkers } from '../script-markers.js';
 import type { UnitControls } from '../unit-controls/index.js';
+import { mountMissionTrace } from './mission-trace.js';
 
 /**
  * Where a map script's display results land: the mission window for a cutscene, the camera and the
@@ -22,7 +23,8 @@ const DIAG_CHANNEL = 'missions';
 const INFO_LINE_REFRESH_TICKS = 24;
 
 export interface ScriptPresentationDeps {
-  readonly sim: Pick<Simulation, 'snapshot' | 'infoLines'>;
+  readonly sim: Pick<Simulation, 'snapshot' | 'infoLines' | 'missionPresentation' | 'missionStatus'>;
+  readonly missionTrace?: boolean;
   readonly localPlayer: number;
   readonly toolPanel: GameToolPanelHandle;
   readonly controls: Pick<UnitControls, 'select'>;
@@ -50,8 +52,27 @@ export interface ScriptPresentation {
 
 export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPresentation {
   const { sim, toolPanel, controls, markers, effects } = deps;
+  const trace = deps.missionTrace === true ? mountMissionTrace(sim) : null;
   let linesTick = Number.NEGATIVE_INFINITY;
   let lines: string[] = [];
+
+  const saved = sim.missionPresentation();
+  for (const marker of saved.guiMarkers) {
+    markers.apply({ kind: 'missionGuiMarker', ...marker, placed: true });
+  }
+  for (const marker of saved.groundMarkers) {
+    markers.apply(
+      marker.style === 'import'
+        ? { kind: 'missionImportMarker', point: marker.point, placed: true }
+        : {
+            kind: 'missionAreaMarkers',
+            points: [marker.point],
+            magic: marker.style === 'magic',
+            placed: true,
+          },
+    );
+  }
+  for (const region of saved.weather) effects.setWeather({ kind: 'missionWeather', ...region });
 
   const centreOn = (point: HalfCellNode): void => {
     const world = halfCellToScreen(point.hx, point.hy);
@@ -112,6 +133,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
     },
     jitter: (nowMs) => effects.jitter(nowMs),
     frame(snapshot, camera, nowMs) {
+      trace?.refresh(snapshot.tick);
       if (snapshot.tick - linesTick >= INFO_LINE_REFRESH_TICKS) {
         linesTick = snapshot.tick;
         lines = infoLineTexts(sim.infoLines(deps.localPlayer), deps.mapText);
@@ -123,6 +145,7 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
       effects.update(camera, screen);
     },
     dispose() {
+      trace?.dispose();
       markers.dispose();
       effects.dispose();
     },

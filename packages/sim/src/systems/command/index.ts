@@ -211,7 +211,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       setDiplomacyStance(world, command.from, command.to, command.state);
       return;
     case 'setMatchParticipants':
-      setMatchParticipants(world, command.players);
+      setMatchParticipants(world, command.players, command.victory);
       return;
     case 'setPlayerAi':
       setPlayerAi(world, command);

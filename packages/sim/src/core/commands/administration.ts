@@ -69,6 +69,8 @@ export type RulesCommand =
        */
       readonly kind: 'setMatchParticipants';
       readonly players: readonly number[];
+      /** Script mode checks deaths even for one seat and leaves victory to MissionWon. */
+      readonly victory?: 'script' | 'elimination';
     };
 
 /**

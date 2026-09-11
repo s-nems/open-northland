@@ -26,6 +26,47 @@ const NO_SESSION_FLAGS = {
 const AUTHORED_IR = AUTHORED_ROWS as ContentIr;
 
 describe('buildMapWorld', () => {
+  it.each([
+    null,
+    FOG_MODE.OFF,
+    FOG_MODE.RECON,
+  ])('starts enabled scripts under reveal fog unless overridden (%s)', (fog) => {
+    const { sim } = afterSetupTick({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      script: { missions: { missions: [] }, participants: [0, 2] },
+      missions: true,
+      fog,
+    });
+    expect(sim.fogMode()).toBe(fog ?? FOG_MODE.REVEAL);
+    expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
+  });
+
+  it('keeps disabled scripts from changing fog and legacy match defaults', () => {
+    const { sim } = afterSetupTick({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      script: { missions: { missions: [] }, participants: [0, 2] },
+      matchParticipants: [1, 3],
+    });
+    expect(sim.fogMode()).toBe(FOG_MODE.OFF);
+    expect(sim.matchRules()).toEqual({ participants: [1, 3], victory: 'elimination' });
+  });
+
+  it('lets an explicit empty participant fixture override the scripted roster', () => {
+    const { sim } = afterSetupTick({
+      ...NO_SESSION_FLAGS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      script: { missions: { missions: [] }, participants: [0, 2] },
+      missions: true,
+      matchParticipants: [],
+    });
+    expect(sim.matchRules()).toEqual({ participants: [], victory: 'script' });
+  });
+
   it('falls back to the demo world when no map decoded, owned by the session seat', () => {
     const { Building, Owner, Settler } = components;
     const { sim, kind } = buildMapWorld({

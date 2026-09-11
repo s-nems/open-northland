@@ -1,14 +1,10 @@
 import { nameHuman, setMissionBriefingPage } from '../../../components/index.js';
+import { retainMissionPresentation } from '../../../components/mission-presentation.js';
+import type { SimEvent } from '../../../core/events.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHumans } from '../targets.js';
-
-/**
- * The results that reach the player through the display: each becomes an event the app consumes,
- * and the two that the original keeps as state past the frame (the replayable briefing, a human's
- * name) write that state here as well.
- */
 
 /** The GUI marker slots the original keeps (reading). */
 const GUI_MARKER_SLOTS = 10;
@@ -82,14 +78,14 @@ export function setScriptedGuiMarker(
     return;
   }
   const placed = op.point.hx !== 0 || op.point.hy !== 0;
-  pass.ctx.events.emit({ kind: 'missionGuiMarker', marker: op.objectId, point: { ...op.point }, placed });
+  emitPersistent(pass, { kind: 'missionGuiMarker', marker: op.objectId, point: { ...op.point }, placed });
 }
 
 export function setScriptedImportMarker(
   pass: MissionPass,
   op: Extract<MissionResultOp, { opcode: 'SetImportLandscapeMarker' }>,
 ): void {
-  pass.ctx.events.emit({ kind: 'missionImportMarker', point: { ...op.point }, placed: op.flag });
+  emitPersistent(pass, { kind: 'missionImportMarker', point: { ...op.point }, placed: op.flag });
 }
 
 /** Place or take away area markers on the hexagon ring `range` points out from the point, one every
@@ -98,7 +94,7 @@ export function setScriptedAreaMarkers(
   pass: MissionPass,
   op: Extract<MissionResultOp, { opcode: 'SetMapAreaMarker' | 'SetMapAreaMarkerMagic' }>,
 ): void {
-  pass.ctx.events.emit({
+  emitPersistent(pass, {
     kind: 'missionAreaMarkers',
     magic: op.opcode === 'SetMapAreaMarkerMagic',
     points: hexagonRing(op.point, Math.max(1, op.range), Math.max(1, op.index)),
@@ -165,7 +161,7 @@ export function setScriptedWeather(
   op: Extract<MissionResultOp, { opcode: 'SetWeather' }>,
 ): void {
   const density = Math.min(WEATHER_DENSITY_MAX, Math.max(0, op.amount * WEATHER_DENSITY_SCALE));
-  pass.ctx.events.emit({
+  emitPersistent(pass, {
     kind: 'missionWeather',
     weather: op.flag ? 'snow' : 'rain',
     min: { hx: op.point.hx - op.range, hy: op.point.hy - op.range },
@@ -179,4 +175,15 @@ export function startScriptedEarthquake(
   op: Extract<MissionResultOp, { opcode: 'StartEarthQuake' }>,
 ): void {
   pass.ctx.events.emit({ kind: 'missionEarthquake', seconds: Math.max(0, op.seconds) });
+}
+
+function emitPersistent(
+  pass: MissionPass,
+  event: Extract<
+    SimEvent,
+    { kind: 'missionGuiMarker' | 'missionImportMarker' | 'missionAreaMarkers' | 'missionWeather' }
+  >,
+): void {
+  retainMissionPresentation(pass.world, event);
+  pass.ctx.events.emit(event);
 }

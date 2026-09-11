@@ -45,6 +45,10 @@ export interface MissionRecord {
   randomSeconds: number[];
   /** Whether the last check established success; false also covers an unavailable verdict. */
   evaluated: boolean;
+  /** Execution history excludes goal-only probes and survives later failed checks. */
+  firstFiredTick?: number;
+  lastFiredTick?: number;
+  fireCount?: number;
 }
 
 const missionState = defineWorldSingleton<{ missions: MissionRecord[] }>('MissionState', () => ({

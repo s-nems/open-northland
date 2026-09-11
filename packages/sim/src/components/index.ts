@@ -18,6 +18,7 @@ export * from './landscape.js';
 export * from './livestock.js';
 export * from './match.js';
 export * from './mission.js';
+export * from './mission-presentation.js';
 export * from './movement.js';
 export * from './needs.js';
 export * from './ownership.js';

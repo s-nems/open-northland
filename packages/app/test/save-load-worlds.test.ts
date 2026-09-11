@@ -1,5 +1,6 @@
 import {
   exportSaveGame,
+  FOG_MODE,
   parseSaveGame,
   type SaveGame,
   type Simulation,
@@ -43,6 +44,30 @@ function expectExactRestore(live: Simulation, restored: Simulation, bytes: strin
 }
 
 describe('restoreMapWorld', () => {
+  it('preserves saved scripted fog and participant policy despite current boot defaults', () => {
+    const options = {
+      ...BASE_OPTIONS,
+      map: authoredMapFile(AUTHORED_ENTITIES),
+      ir: AUTHORED_IR,
+      script: { missions: { missions: [] }, participants: [0, 2] },
+      missions: true,
+      fog: FOG_MODE.OFF,
+    };
+    const { sim } = buildMapWorld(options);
+    sim.run(2);
+    const { save, bytes } = exported(sim, 'm1');
+    const { sim: restored } = restoreMapWorld(
+      { ...options, script: { ...options.script, participants: [5, 6] } },
+      save,
+    );
+    expect(restored.fogMode()).toBe(FOG_MODE.OFF);
+    expect(restored.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
+    expectExactRestore(sim, restored, bytes, 'm1');
+    sim.run(1);
+    restored.run(1);
+    expect(restored.hashState()).toBe(sim.hashState());
+  });
+
   it('round-trips an authored world through the authored content resolution', () => {
     const options = { ...BASE_OPTIONS, map: authoredMapFile(AUTHORED_ENTITIES), ir: AUTHORED_IR };
     const { sim } = buildMapWorld(options);

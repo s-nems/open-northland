@@ -25,6 +25,7 @@ import {
   installSessionInstruments,
   setDiagGameSession,
 } from '../../diag/index.js';
+import { hasDebugFlag } from '../../diag/debug-flags.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
@@ -472,6 +473,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   app.stage.addChild(scriptOverlay);
   presentation = createScriptPresentation({
     sim,
+    missionTrace: hasDebugFlag(params, 'missions'),
     localPlayer,
     toolPanel,
     controls,

@@ -54,7 +54,9 @@ The allowed table has no reader yet.
 A result that changes a player's standing writes a player table beside the world, never an entity: a
 stance, a lock, a verdict, an AI flag, an attacked-by mark. A verdict is read by the match outcome
 and announced through the match events; the rest are read here or not yet at all. A reveal goes
-through `FogState` like the vision system's own stamps.
+through `FogState` like the vision system's own stamps. A scripted map declares its mortal seats
+with `setMatchParticipants` in script-victory mode: death checks run for even one seat, while only
+script results award victory. The default elimination mode preserves the skirmish rule.
 
 The tribute table is the one player table a seat command reads and writes: `tributes.ts` counts and
 drains the payer's houses through the same stock seams the goods results use, and the command system
@@ -62,14 +64,13 @@ hands `payTribute` to it. The window's read of the table is the `Simulation` pro
 
 ## The display
 
-A result that only shows something emits an event and changes nothing: the cutscene, the sound, the
-camera, the selection, the markers, the weather, the quake. Of what the original keeps past the
-frame, the current briefing page, the info lines and a human's `ScriptedName` are state here as
-well, saved and hashed like the rest; the markers and the weather are not, which the format doc
-names as an approximation. An info line stores what to tally, never the tally; the `Simulation`
-probe counts through the same helpers the area goals use, so the display and a goal never disagree
-about a count. A cutscene halts the pass after its mission, which is the one result that changes
-the order the others run in.
+One-shot presentation effects emit events: cutscenes, sound, camera, selection and earthquakes.
+The replayable briefing page, info lines, scripted human names, marker slots and weather regions
+are saved and hashed state. `Simulation.missionPresentation()` returns detached marker and weather
+snapshots for initial display and restore; live events still carry their deltas. Weather regions retain
+write order, including zero-density clears, so overlapping regions survive save/load identically.
+An info line stores what to tally, never the tally; its probe shares the area-goal counting helpers.
+A cutscene halts the pass after its mission.
 
 Landscape placements and type footprints are immutable numeric map input. Scripted replacements,
 removals, build bans and vertex palette indices are lazy `LandscapeEdits` state, saved and hashed.

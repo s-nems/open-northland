@@ -1,6 +1,12 @@
 import type { Camera } from '@open-northland/render';
 import { halfCellToScreen } from '@open-northland/render';
-import type { Entity, InfoLineView, SimEvent, WorldSnapshot } from '@open-northland/sim';
+import type {
+  Entity,
+  InfoLineView,
+  MissionPresentationView,
+  SimEvent,
+  WorldSnapshot,
+} from '@open-northland/sim';
 import { ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { GameToolPanelHandle } from '../src/view/game-tool-panel.js';
@@ -27,7 +33,10 @@ function snapshotAt(tick: number): WorldSnapshot {
   } as unknown as WorldSnapshot;
 }
 
-function harness(lines: InfoLineView[] = []) {
+function harness(
+  lines: InfoLineView[] = [],
+  saved: MissionPresentationView = { guiMarkers: [], groundMarkers: [], weather: [] },
+) {
   const calls: string[] = [];
   const infoLines: (readonly string[])[] = [];
   let tick = 0;
@@ -37,6 +46,8 @@ function harness(lines: InfoLineView[] = []) {
     },
     snapshot: () => snapshotAt(tick),
     infoLines: () => lines,
+    missionPresentation: () => saved,
+    missionStatus: () => [],
   };
   const toolPanel = {
     controller: {
@@ -80,6 +91,31 @@ function harness(lines: InfoLineView[] = []) {
 }
 
 describe('createScriptPresentation', () => {
+  it('hydrates persistent overlays before the first frame without replaying transient presentation', () => {
+    const { calls, presentation } = harness([], {
+      guiMarkers: [{ marker: 2, point: HERO_NODE }],
+      groundMarkers: [
+        { style: 'area', point: HERO_NODE },
+        { style: 'magic', point: HERO_NODE },
+        { style: 'import', point: HERO_NODE },
+      ],
+      weather: [
+        { weather: 'rain', min: HERO_NODE, max: HERO_NODE, density: 100 },
+        { weather: 'snow', min: HERO_NODE, max: HERO_NODE, density: 0 },
+      ],
+    });
+    expect(calls).toEqual([
+      'marker:missionGuiMarker',
+      'marker:missionAreaMarkers',
+      'marker:missionAreaMarkers',
+      'marker:missionImportMarker',
+      'weather:rain',
+      'weather:snow',
+    ]);
+    presentation.frame(snapshotAt(0), CAMERA, 0);
+    expect(calls).toHaveLength(6);
+  });
+
   it('routes each display event to its surface', () => {
     const { presentation, calls } = harness();
     const world = halfCellToScreen(HERO_NODE.hx, HERO_NODE.hy);
