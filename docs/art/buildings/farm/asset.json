@@ -15,7 +15,7 @@
       "path": "buildings/farm/farm-painted.png",
       "content": {
         "operation": "copy",
-        "source": "farm-painted.png"
+        "source": "source/weathered-v1/final.png"
       }
     },
     {
@@ -50,7 +50,7 @@
       "path": "buildings/farm/runtime.json",
       "content": {
         "operation": "copy",
-        "source": "runtime.json"
+        "source": "source/weathered-v1/runtime.json"
       }
     }
   ]

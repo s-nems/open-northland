@@ -1,0 +1,11 @@
+{
+  "x": 313,
+  "top": 646,
+  "bottom": 890,
+  "entrance": [313, 941],
+  "uncertaintyPx": 6,
+  "scale": 0.19672131147540983,
+  "reviewZoom": 2,
+  "targetDoorScreenPx": 96,
+  "basis": "Manual final-image estimate; requires live character/entry review."
+}

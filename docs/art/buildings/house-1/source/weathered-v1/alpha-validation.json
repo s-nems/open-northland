@@ -1,0 +1,13 @@
+{
+  "file": "final.png",
+  "sha256": "365e3a5743fb902309489f85ed049b8abca679f28264e20d5996aa6600349eaa",
+  "mode": "RGBA",
+  "size": [1024, 1024],
+  "alphaBounds": [55, 16, 977, 1008],
+  "transparentPixels": 481861,
+  "partialAlphaPixels": 101680,
+  "opaquePixels": 465035,
+  "errors": [],
+  "warnings": [],
+  "status": "requires-visual-review"
+}

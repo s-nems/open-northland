@@ -8,14 +8,14 @@
       "path": "buildings/headquarters/final-muted.png",
       "content": {
         "operation": "copy",
-        "source": "final-muted.png"
+        "source": "source/weathered-projection-v3/final.png"
       }
     },
     {
       "path": "buildings/headquarters/runtime.json",
       "content": {
         "operation": "copy",
-        "source": "runtime.json"
+        "source": "source/weathered-projection-v3/runtime.json"
       }
     }
   ]

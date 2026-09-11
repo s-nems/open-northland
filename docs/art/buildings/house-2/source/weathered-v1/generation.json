@@ -1,0 +1,49 @@
+{
+  "status": "approved",
+  "sourceBasis": "Independent own artwork; user requested unified faded materials and moderate wear across five buildings; headquarters rotated in Blender.",
+  "paint": {
+    "tool": "built-in imagegen",
+    "prompt": "paint.prompt.txt",
+    "orderedReferences": [
+      {
+        "path": "../../house-painted-runtime.png",
+        "sha256": "a3c323f7746fc8417426748520a59ee0a613bc25a2ac225c8d090c221028d159"
+      },
+      {
+        "path": "../../../house-1/house-painted-runtime.png",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "../../../farm/farm-painted.png",
+        "sha256": "699dabbe49480bbe26d030f82ab3b4cc9334dbfb4fedf9eb85ac5ab5314f3803"
+      },
+      {
+        "path": "../../../stonemason/final.png",
+        "sha256": "5265fc80390814d7c39df6531ea35981d7973a0e1e84d10c0797ccf8b7164408"
+      },
+      {
+        "path": "../../../house-1/source/weathered-v1/paint.png",
+        "sha256": "5b9122f0928b7226faff42ee7bd3be97aa1865d12a71bc956895b0fb72f300bd"
+      }
+    ],
+    "output": "paint.png",
+    "exportLimitation": "Built-in result has painted checkerboard, not genuine alpha."
+  },
+  "alpha": {
+    "tool": "imagegen skill CLI",
+    "model": "gpt-image-1.5",
+    "quality": "high",
+    "inputFidelity": "high",
+    "background": "transparent",
+    "size": "1024x1024",
+    "input": "paint.png",
+    "prompt": "alpha.prompt.txt",
+    "output": "final.png",
+    "postProcessing": "None; generated alpha preserved.",
+    "limitation": "Generative export smooths fine wear and can shift local geometry."
+  },
+  "approval": {
+    "reviewer": "snems",
+    "basis": "Explicit approval of all five buildings in this session, including final headquarters projection v3."
+  }
+}

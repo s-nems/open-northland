@@ -4,9 +4,9 @@
     "buildings/farm/farm-painted.png",
     "buildings/farm/frame-time.png",
     "buildings/farm/frame.png",
+    "buildings/farm/runtime.json",
     "buildings/farm/site-base.png",
-    "buildings/farm/site-time.png",
-    "buildings/farm/runtime.json"
+    "buildings/farm/site-time.png"
   ],
   "buildings/headquarters": ["buildings/headquarters/final-muted.png", "buildings/headquarters/runtime.json"],
   "buildings/house-1": ["buildings/house-1/house-painted-runtime.png", "buildings/house-1/runtime.json"],

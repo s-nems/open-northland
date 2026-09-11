@@ -1,28 +1,28 @@
 {
   "buildings/farm": {
-    "digest": "bf0558cd689e4a953bec0f266f338ef941617972718581a1d10e4ad7a52c122e",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "89e4677f7ccf2f7dff6a77d470810f07292cfc787d862a073d64976f17b52a89",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "buildings/headquarters": {
-    "digest": "b5b0b4a1ce59b23b78376b45ad2040bb20e3fc0dd989c4b4d04cc84093cb5065",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "249c105e6e89187773da27f3402f759303c07069a6ef5d919e9e4fd1aa8c51b6",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "buildings/house-1": {
-    "digest": "0a58ec1864974303bb5ce1013dee55676ab671c251f1b6e904e5ee98aac27d17",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "18bf31ceb13821de2b0ad84fd00ad37aed6553ba4ccd6458d8ede5209c8264e2",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "buildings/house-2": {
-    "digest": "03312f5a3e476b7d8f17c6237fbefff6ba2f2dea14afe5b76f7022db55d49966",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "5c5b8f1a49feaab1612dfc7479dca679b3261a083c094c3d8dfb24d907d17236",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "buildings/stonemason": {
-    "digest": "b32d37acc4d71a178c400740485e66cf7826599420dfdde5a7c4769d6fc2ac09",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "cc9aedef937e32a356bd565c18fe5bde983695a9f12b000221378ea39f2bbbd8",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/man-forkbeard": {
     "digest": "c54bf2a3e9a48bdb56a102d3539d655779138983aff82354c8b4ea154183f0ac",

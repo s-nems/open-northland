@@ -1,0 +1,53 @@
+{
+  "status": "approved",
+  "paint": {
+    "tool": "built-in imagegen",
+    "prompt": "paint.prompt.txt",
+    "orderedReferences": [
+      {
+        "path": "geometry.png",
+        "role": "strict calibrated camera and geometry target",
+        "sha256": "1a7e6f8317cebfe6bfdf84aa027e11db5b2e846249e7868d13f58951bda3421b"
+      },
+      {
+        "path": "../../../house-1/house-painted-runtime.png",
+        "role": "canonical muted painting and lighting",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "../../../house-1/source/weathered-v1/final.png",
+        "role": "weathered wood and plaster finish only",
+        "sha256": "365e3a5743fb902309489f85ed049b8abca679f28264e20d5996aa6600349eaa"
+      }
+    ],
+    "output": "paint.png",
+    "limitation": "Painted checkerboard; requires genuine-alpha export"
+  },
+  "alpha": {
+    "tool": "imagegen skill CLI",
+    "model": "gpt-image-1.5",
+    "quality": "high",
+    "inputFidelity": "high",
+    "background": "transparent",
+    "size": "1536x1024",
+    "input": "paint.png",
+    "prompt": "alpha.prompt.txt",
+    "output": "final.png",
+    "postProcessing": "None; native alpha preserved"
+  },
+  "projection": {
+    "source": "geometry.png",
+    "reproduce": "render.py",
+    "cameraElevationDegrees": 28.5,
+    "cameraAzimuthDegrees": -22.5,
+    "modelRotationZDegrees": -45,
+    "relativeFacadeAzimuthDegrees": 22.5,
+    "expectedFrontEdgeDegrees": 11.18,
+    "expectedSideEdgeDegrees": -49.04,
+    "basis": "Same calibrated orthographic camera and projected edge families as the working Viking building preset; approximate art fit, not recovered original metadata. Final image must be measured independently."
+  },
+  "approval": {
+    "reviewer": "snems",
+    "basis": "Explicit approval of all five buildings in this session, including final headquarters projection v3."
+  }
+}

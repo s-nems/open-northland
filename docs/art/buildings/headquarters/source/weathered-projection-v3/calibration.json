@@ -1,0 +1,11 @@
+{
+  "x": 729,
+  "top": 603,
+  "bottom": 753,
+  "entrance": [729, 813],
+  "uncertaintyPx": 6,
+  "scale": 0.32,
+  "reviewZoom": 2,
+  "targetDoorScreenPx": 96,
+  "basis": "Manual final-image estimate; projected edge check in projection-check.json."
+}

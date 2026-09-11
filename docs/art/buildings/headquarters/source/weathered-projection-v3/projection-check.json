@@ -1,0 +1,24 @@
+{
+  "basis": "Agent-inspected straight sill edges, with OpenCV Hough line proposals from final native PNG. Approximate pixel measurements; irregular painted edges are not exact geometry.",
+  "image": "final.png",
+  "segments": {
+    "front": {
+      "a": [578, 737],
+      "b": [812, 783],
+      "angleDegrees": 11.121460194890352
+    },
+    "side": {
+      "a": [1211, 846],
+      "b": [1351, 681],
+      "angleDegrees": -49.68589983950271
+    }
+  },
+  "expected": {
+    "frontDegrees": 11.180166760049726,
+    "sideDegrees": -49.03929672603411
+  },
+  "inferredElevationDegrees": 28.77273792373443,
+  "inferredFacadeAzimuthDegrees": 22.21544153281206,
+  "endpointUncertaintyPx": 3,
+  "limitation": "One pair of orthogonal straight edges; local features may drift. This checks camera consistency, not pixel-exact reprojection."
+}

@@ -1,7 +1,7 @@
 # Viking farm
 
 Runtime slot `farm`: tribe 1 / type 12.
-[Manifest](runtime.json) · [Sprite](farm-painted.png) · [Preview](index.html)
+[Manifest](source/weathered-v1/runtime.json) · [Sprite](source/weathered-v1/final.png) · [Gallery and maps](../../OWN-ASSET-RUNTIME.md#review-locations)
 
 `build-frame.py` and `site_details.py` generate the structural layers.
 `export.py` reads the static painting and calibration from `source/paint/` and writes the construction bundle.
@@ -18,3 +18,7 @@ uv run --with numpy --with pillow python docs/art/buildings/farm/export.py
 
 Normal delivery uses the retained layers and does not require Blender or Python.
 Export and review procedure: [PIPELINE.md](../PIPELINE.md).
+
+Approved weathered finish: `source/weathered-v1/` retains the painting, transparent master,
+exact prompts, reference hashes and runtime calibration. The package recipe builds the approved
+delivery. Earlier paintings needed as generation references remain source inputs.
