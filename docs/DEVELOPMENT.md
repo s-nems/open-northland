@@ -63,6 +63,7 @@ art stands in. Direct entries are useful during focused work:
 | URL query | Purpose |
 | --- | --- |
 | `?scene=<id>` | registered deterministic acceptance scene |
+| `?art=gallery` | own animations, buildings, terrain and tilesets; comparisons and links to known real maps ([workflow](art/PIPELINE.md)) |
 | `?art` | own-art review using the production terrain layer; synthetic ground, current civilian, filtering and scale controls; `&artMap=tutorial_005` checks an owned-map meadow patch with own textures |
 | `?map=<id>` | decoded map |
 | `?anim` | character animation gallery |

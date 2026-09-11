@@ -49,6 +49,7 @@ export {
   type BuildingTypeBinding,
   type BuildTimeSheet,
   type ByJobTable,
+  buildTimeThreshold,
   type CarryingBinding,
   type ConstructionLayerRef,
   type DirectionalAnim,
@@ -57,7 +58,9 @@ export {
   indexAtlasFrames,
   type LayeredBobRef,
   type ResourceTypeBinding,
+  resolveConstructionDraws,
   resolveResourceDraw,
+  resolveSettlerBobId,
   resolveStockpileDraw,
   type SettlerStateBinding,
   type SpriteAtlas,
@@ -123,7 +126,7 @@ export {
   signRowAt,
 } from './gpu/overlays/index.js';
 export { type GuiColorKey, PalettedSprite } from './gpu/paletted-sprite/index.js';
-export { createPixiApp, createWindowPixiApp, loadAtlasSource } from './gpu/pixi-app.js';
+export { createPixiApp, createWindowPixiApp, loadAtlasSource, windowResolutionFor } from './gpu/pixi-app.js';
 export { type EntityBounds, type ResolvedLayer, resolveLayers } from './gpu/sprite-pool/index.js';
 export {
   paletteLutRow,
@@ -151,6 +154,7 @@ export type {
   TerrainTextureSet,
   TransitionPattern,
 } from './gpu/terrain-textures.js';
+export { TextureCache } from './gpu/texture-cache.js';
 export {
   type BuildingHighlightItem,
   SPRITE_CULL_MARGIN,

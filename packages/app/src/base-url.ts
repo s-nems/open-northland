@@ -3,5 +3,7 @@ const viteBaseUrl = (import.meta as ImportMeta & { readonly env: { readonly BASE
 
 export function withBaseUrl(path: string, baseUrl: string = viteBaseUrl): string {
   if (!path.startsWith('/')) return path;
-  return baseUrl === '/' ? path : `${baseUrl.replace(/\/$/, '')}${path}`;
+  const prefix = baseUrl.replace(/\/$/, '');
+  if (!prefix || path === prefix || path.startsWith(`${prefix}/`)) return path;
+  return `${prefix}${path}`;
 }
