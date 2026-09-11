@@ -123,7 +123,9 @@ documented under `.claude/commands/`.
 
 - Prove behavior at the lowest useful layer: unit, integration, headless scenario, then browser scene.
 - Normal code expects `npm run check`, `npm run build`, and `npm test`.
-- Pipeline and schema changes also need `npm run test:pipeline` against the owned copy.
+- Original-game pipeline and content schema changes also need `npm run test:pipeline` against the owned copy.
+- Own-art build and delivery changes follow `docs/art/PIPELINE.md` verification; changed content joins
+  still require the real-content checks below.
 - Real-content loaders and joins need `npm run test:content` when local content exists.
 - Golden hashes move only for intentional behavior changes.
 - Visual and audio changes need human review. Automated checks can prove data decisions, stability,
