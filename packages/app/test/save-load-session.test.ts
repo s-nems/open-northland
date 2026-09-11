@@ -63,21 +63,15 @@ describe('evaluateSaveFile', () => {
     expect(evaluateSaveFile(JSON.stringify(doc), live)).toEqual({ ok: false, reason: 'corrupt' });
   });
 
-  it('reports a truncated v1 save as corrupt too, since the migration still lifts v1', () => {
-    const doc = JSON.parse(bytes) as { header: Record<string, unknown>; sections: unknown };
-    doc.header.formatVersion = 1;
-    delete doc.header.entry;
-    doc.sections = [];
-    expect(evaluateSaveFile(JSON.stringify(doc), live)).toEqual({ ok: false, reason: 'corrupt' });
-  });
-
-  it('classifies an unmigratable format version as incompatible', () => {
-    const doc = JSON.parse(bytes) as { header: { formatVersion: number } };
-    doc.header.formatVersion = SAVE_FORMAT_VERSION + 1;
-    expect(evaluateSaveFile(JSON.stringify(doc), live)).toEqual({
-      ok: false,
-      reason: 'incompatibleVersion',
-    });
+  it('classifies a save from another format version as incompatible, older or newer', () => {
+    for (const formatVersion of [SAVE_FORMAT_VERSION - 1, SAVE_FORMAT_VERSION + 1]) {
+      const doc = JSON.parse(bytes) as { header: { formatVersion: number } };
+      doc.header.formatVersion = formatVersion;
+      expect(evaluateSaveFile(JSON.stringify(doc), live)).toEqual({
+        ok: false,
+        reason: 'incompatibleVersion',
+      });
+    }
   });
 
   it('rejects a save from another IR version, world or map', () => {

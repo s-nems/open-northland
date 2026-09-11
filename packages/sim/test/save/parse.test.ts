@@ -3,13 +3,11 @@ import { FOG_MODE, Owner, Position, Signpost } from '../../src/components/index.
 import { fx } from '../../src/core/fixed.js';
 import {
   exportSaveGame,
-  OLDEST_SUPPORTED_SAVE_VERSION,
   parseSaveGame,
   SAVE_FORMAT_VERSION,
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
-import { registeredMigrations } from '../../src/save/migrate.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -43,57 +41,6 @@ describe('parseSaveGame acceptance', () => {
     const bytes = JSON.stringify(doc);
     expect(serializeSaveGame(parseSaveGame(JSON.parse(bytes)))).toBe(bytes);
   });
-
-  it('lifts a v1 document, defaulting the entry token it predates', () => {
-    const doc = populatedDoc();
-    delete doc.header.entry;
-    doc.header.formatVersion = 1;
-    const save = parseSaveGame(doc);
-    expect(save.header.formatVersion).toBe(SAVE_FORMAT_VERSION);
-    expect(save.header.entry).toBeNull();
-  });
-
-  it('lifts a v2 document, dropping the growth timer its Crop entries carried', () => {
-    const doc = populatedDoc();
-    doc.header.formatVersion = 2;
-    const entities = doc.sections.find((s) => s.id === 'entities');
-    const [entity] = (entities?.alive as number[] | undefined) ?? [];
-    if (entity === undefined) throw new Error('fixture: no alive entity');
-    const rng = doc.sections.findIndex((s) => s.id === 'rng');
-    doc.sections.splice(rng, 0, {
-      id: 'component',
-      name: 'Crop',
-      entries: [
-        [
-          entity,
-          {
-            goodType: 6,
-            farm: entity,
-            stage: 2,
-            stages: 5,
-            growth: 3,
-            ticksPerStage: 10,
-            watered: true,
-            yieldUnits: 1,
-          },
-        ],
-      ],
-    });
-    const save = parseSaveGame(doc);
-    expect(save.header.formatVersion).toBe(SAVE_FORMAT_VERSION);
-    const crop = save.sections.find((s) => s.id === 'component' && s.name === 'Crop');
-    expect(crop?.id === 'component' ? crop.entries : undefined).toEqual([
-      [entity, { goodType: 6, farm: entity, stage: 2, stages: 5, yieldUnits: 1 }],
-    ]);
-  });
-});
-
-describe('save format migration registry', () => {
-  it('registers a step for every supported version below the current one', () => {
-    const wanted: number[] = [];
-    for (let v = OLDEST_SUPPORTED_SAVE_VERSION; v < SAVE_FORMAT_VERSION; v++) wanted.push(v);
-    expect(registeredMigrations()).toEqual(wanted);
-  });
 });
 
 describe('parseSaveGame header rejection', () => {
@@ -104,25 +51,14 @@ describe('parseSaveGame header rejection', () => {
     expect(() => parseSaveGame(doc)).toThrow(/save\.header\.kind: expected 'open-northland-save'/);
   });
 
-  it('rejects a version written by a newer build', () => {
-    const doc = populatedDoc();
-    const newer = SAVE_FORMAT_VERSION + 1;
-    doc.header.formatVersion = newer;
-    expect(() => parseSaveGame(doc)).toThrow(
-      new RegExp(
-        `save\\.header\\.formatVersion: version ${newer} was written by a newer build; this build reads up to ${SAVE_FORMAT_VERSION}`,
-      ),
-    );
-  });
-
-  it('rejects a version below the oldest supported one instead of silently parsing it', () => {
-    const doc = populatedDoc();
-    doc.header.formatVersion = 0;
-    expect(() => parseSaveGame(doc)).toThrow(
-      /save\.header\.formatVersion: version 0 predates the oldest supported version 1/,
-    );
-    doc.header.formatVersion = 1.5;
-    expect(() => parseSaveGame(doc)).toThrow(/save\.header\.formatVersion: expected an integer/);
+  it('rejects every format version but its own, older and newer alike', () => {
+    for (const version of [SAVE_FORMAT_VERSION - 1, SAVE_FORMAT_VERSION + 1, 0, 1.5]) {
+      const doc = populatedDoc();
+      doc.header.formatVersion = version;
+      expect(() => parseSaveGame(doc)).toThrow(
+        `save.header.formatVersion: unsupported version ${version}, this build reads ${SAVE_FORMAT_VERSION}`,
+      );
+    }
   });
 
   it('rejects malformed provenance fields', () => {
