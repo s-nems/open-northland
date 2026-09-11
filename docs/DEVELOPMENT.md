@@ -1,6 +1,6 @@
 # Development reference
 
-This page collects commands and local-only tools. The design rules live in [`AGENTS.md`](../AGENTS.md)
+This page collects commands and local-only tools. The design rules live in [`./AGENTS.md`](../AGENTS.md)
 and the test strategy in [`TESTING.md`](TESTING.md).
 
 ## Common commands
@@ -63,6 +63,7 @@ art stands in. Direct entries are useful during focused work:
 | URL query | Purpose |
 | --- | --- |
 | `?scene=<id>` | registered deterministic acceptance scene |
+| `?art` | own-art review using the production terrain layer; synthetic ground, current civilian, filtering and scale controls; `&artMap=tutorial_005` checks an owned-map meadow patch with own textures |
 | `?map=<id>` | decoded map |
 | `?anim` | character animation gallery |
 | `?icons` | decoded sprite-frame gallery |
@@ -213,3 +214,13 @@ node packages/web/scripts/smoke-image.mjs open-northland-web
 The smoke check runs the image and asserts what the deployment contract requires: hashed assets
 under `/play/assets/` are immutable, every fixed name revalidates, and the content routes and the
 mod archive are misses rather than static files.
+
+Own assets are the default. Choose Own or Original in Settings → Graphics; changes during a game apply to the next game. Explicit `assets=own` / `assets=original` URL parameters override the stored choice.
+
+Own environment development on a playable map: `?map=magiczny_las&assets=own&intro=off`.
+See [own asset runtime](art/OWN-ASSET-RUNTIME.md) for exports, markers and current coverage.
+
+## Own-art production
+
+Use `npm run art -- list` and follow [the art pipeline](art/PIPELINE.md) for candidate builds, review,
+approval and publication. This workshop is independent of `npm run pipeline`, which decodes the owned game.

@@ -34,17 +34,17 @@ const FLAG_RING_WIDTH = 3;
 
 const NO_IDS: ReadonlySet<number> = new Set();
 
-/** One ring's resolved geometry: half-extents + a horizontal centre offset (a sprite not centred on feet). */
+/** One ring's half-extents and centre offset in feet-local world pixels. */
 interface RingSpec {
   readonly rx: number;
   readonly ry: number;
   readonly cx: number;
+  readonly cy: number;
 }
 
 export interface SelectionFrame {
   readonly snapshot: WorldSnapshot;
-  /** The pool's drawn sprites - move a ring with the drawn bob and size a building ring to its
-   *  real footprint. */
+  /** Authored ground markers and drawn bounds, anchored with the displayed sprites. */
   readonly drawn?: DrawnGeometry;
   /** The terrain height field - lifts a ring onto sloped ground. Absent → no lift (flat). */
   readonly elevation?: ElevationField;
@@ -59,6 +59,7 @@ export class SelectionLayer {
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
   private readonly seenFlags = new Set<number>();
+  private readonly specs = new WeakMap<Graphics, RingSpec>();
 
   /** Reconcile both pools: a green ring under every `selected` entity, an amber one under every
    *  `flagged` id (the work flags of the selected gatherers). */
@@ -83,17 +84,30 @@ export class SelectionLayer {
       const pos = readPosition(ent.components);
       if (pos === null) continue;
       const s = feetAnchor(frame.drawn, id, pos, frame.elevation);
+      const isBuilding = classify(ent.components) === 'building';
+      const spec =
+        (isBuilding ? frame.drawn?.selectionOf?.(id) : undefined) ??
+        ringSpec(isBuilding, isBuilding ? frame.drawn?.boundsOf(id) : undefined, s.x);
       let ring = pool.get(id);
       if (ring === undefined) {
-        // Kind + size are fixed while present, so the ring geometry is authored once here.
-        const isBuilding = classify(ent.components) === 'building';
-        ring = makeRing(
-          ringSpec(isBuilding, isBuilding ? frame.drawn?.boundsOf(id) : undefined, s.x),
-          color,
-          width,
-        );
+        ring = new Graphics();
         this.container.addChild(ring);
         pool.set(id, ring);
+      }
+      const previous = this.specs.get(ring);
+      if (
+        previous === undefined ||
+        previous.cx !== spec.cx ||
+        previous.cy !== spec.cy ||
+        previous.rx !== spec.rx ||
+        previous.ry !== spec.ry
+      ) {
+        ring
+          .clear()
+          .ellipse(spec.cx, spec.cy, spec.rx, spec.ry)
+          .fill({ color, alpha: 0.12 })
+          .stroke({ width, color, alpha: 0.9 });
+        this.specs.set(ring, { ...spec });
       }
       ring.position.set(s.x, s.y);
       seen.add(id);
@@ -112,17 +126,10 @@ export class SelectionLayer {
 /** The ring geometry for a target: a settler's fixed feet ellipse, or a building's ellipse fitted to its
  *  sprite footprint and offset when the sprite isn't centred on the feet. */
 function ringSpec(isBuilding: boolean, bounds: EntityBounds | undefined, feetX: number): RingSpec {
-  if (!isBuilding) return { rx: SETTLER_RING.rx, ry: SETTLER_RING.ry, cx: 0 };
+  if (!isBuilding) return { rx: SETTLER_RING.rx, ry: SETTLER_RING.ry, cx: 0, cy: 0 };
   if (bounds !== undefined) {
     const rx = Math.max(MIN_BUILDING_RX, (bounds.maxX - bounds.minX) / 2);
-    return { rx, ry: rx * ISO_RATIO, cx: (bounds.minX + bounds.maxX) / 2 - feetX };
+    return { rx, ry: rx * ISO_RATIO, cx: (bounds.minX + bounds.maxX) / 2 - feetX, cy: 0 };
   }
-  return { rx: BUILDING_RING.rx, ry: BUILDING_RING.ry, cx: 0 };
-}
-
-/** One marker ring, its ellipse authored once at the feet-relative centre `spec.cx`. */
-function makeRing(spec: RingSpec, color: number, width: number): Graphics {
-  const g = new Graphics();
-  g.ellipse(spec.cx, 0, spec.rx, spec.ry).fill({ color, alpha: 0.12 }).stroke({ width, color, alpha: 0.9 });
-  return g;
+  return { rx: BUILDING_RING.rx, ry: BUILDING_RING.ry, cx: 0, cy: 0 };
 }

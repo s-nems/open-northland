@@ -21,11 +21,12 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { LayerBinder } from './bind-layers.js';
+import { characterGaitRate } from './character-layers.js';
 import { drawAlphaForKind, trackMotion } from './motion.js';
 import { anchorOf, boundsOf, type DamagedBuilding, pixelHit } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 import { PortraitSubject } from './portrait-subject.js';
-import { animationClock, easeReveal, revealedItem, walkPose } from './presentation.js';
+import { easeReveal, motionClocks, revealedItem, walkPose } from './presentation.js';
 import { reconcileSprites } from './reconcile.js';
 import { resolveLayers } from './resolve-layers.js';
 import { SpriteSceneCache } from './scene-cache.js';
@@ -238,6 +239,11 @@ export class SpritePool {
     return boundsOf(this.pool.get(ref), this.frameId);
   }
 
+  selectionOf(ref: number) {
+    const pe = this.pool.get(ref);
+    return pe?.boundsFrame === this.frameId ? pe.selectionEllipse : undefined;
+  }
+
   pixelHit(ref: number, wx: number, wy: number): boolean | undefined {
     return pixelHit(this.pool.get(ref), this.frameId, wx, wy);
   }
@@ -293,20 +299,27 @@ export class SpritePool {
   }
 
   private updatePooled(pe: PooledEntity, item: DrawItem, frame: PoolFrame): void {
-    const alpha = drawAlphaForKind(pe.kind, frame.alpha);
-    trackMotion(pe.motion, frame.tick, item.x, item.y - (item.lift ?? 0), alpha);
+    const smooth = pe.kind === 'settler' && this.sheet?.characters?.interpolateMotion === true;
+    const alpha = drawAlphaForKind(pe.kind, frame.alpha, smooth);
+    trackMotion(
+      pe.motion,
+      frame.tick,
+      item.x,
+      item.y - (item.lift ?? 0),
+      alpha,
+      characterGaitRate(this.sheet?.characters, item, pe.lastFacing),
+    );
     pe.container.position.set(pe.motion.drawX, pe.motion.drawY);
     if (item.facing !== undefined) pe.lastFacing = item.facing;
     // `upgradePct` and `builtPct` are mutually exclusive by construction, so an upgrade site rides the
     // same eased reveal as a from-scratch one.
     pe.reveal = easeReveal(pe.reveal, item.builtPct ?? item.upgradePct);
-    // Approximation: an in-house walk is a few px of shuffle per tick, so its cadence rides the free
-    // tick rather than ground covered, which would barely turn the legs over.
+    const clocks = motionClocks(item, frame.tick, alpha, pe.motion, smooth);
     const layers = resolveLayers(
       this.sheet,
       revealedItem(walkPose(item, pe.kind, pe.motion, pe.lastFacing), pe.reveal),
-      animationClock(item, frame.tick),
-      item.inHouse === true ? frame.tick : Math.floor(pe.motion.gaitPhase),
+      clocks.animation,
+      clocks.gait,
     );
     this.binder.bind(pe, item, layers, frame, this.frameId);
   }

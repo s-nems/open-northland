@@ -1,3 +1,11 @@
+/** Authored ground marker in frame-local source pixels, independent of image padding. */
+export interface SelectionEllipse {
+  readonly cx: number;
+  readonly cy: number;
+  readonly rx: number;
+  readonly ry: number;
+}
+
 export interface AtlasFrame {
   /** Pixel rect of the frame inside the atlas sheet (top-left origin). */
   readonly x: number;
@@ -7,6 +15,7 @@ export interface AtlasFrame {
   /** Source draw offset, added to the sprite's feet-anchor screen position. */
   readonly offsetX: number;
   readonly offsetY: number;
+  readonly selectionEllipse?: SelectionEllipse;
 }
 
 export interface SpriteAtlas {

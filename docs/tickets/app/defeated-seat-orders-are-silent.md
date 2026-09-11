@@ -10,7 +10,7 @@ the click enqueues a command the sim drops without a word. Defeat leaves women a
 the player has entities to select and a whole HUD that contradicts the one line the panel showed once.
 
 That is an action that neither succeeds nor explains its refusal - the same defect class as
-[contested ground](./contested-ground-feedback.md) and [razed fields](./field-razed-feedback.md).
+[contested ground](contested-ground-feedback.md) and [razed fields](field-razed-feedback.md).
 
 ## Scope
 

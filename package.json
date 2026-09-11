@@ -38,7 +38,9 @@
     "dev:reset": "scripts/dev-reset.sh",
     "shot": "npm run shot --workspace @open-northland/app --",
     "menu-backdrops": "npm run menu-backdrops --workspace @open-northland/app --",
-    "pipeline": "npm run start --workspace @open-northland/asset-pipeline --"
+    "pipeline": "npm run start --workspace @open-northland/asset-pipeline --",
+    "art": "npm run start --workspace @open-northland/art-pipeline --",
+    "test:art": "npm run typecheck && vitest run --config tools/art-pipeline/vitest.browser.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",

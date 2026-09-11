@@ -281,3 +281,33 @@ describe('resolveLayers - cast shadows draw under the body from the atlas shadow
     expect(flagLayers.map((l) => [l.frame.x, l.source === shadowSource])).toEqual([[85, false]]);
   });
 });
+
+describe('complete character appearances', () => {
+  const first = {} as TextureSource;
+  const second = {} as TextureSource;
+  const atlas: SpriteAtlas = { width: 64, height: 10, frames: new Map([frame(1), frame(2)]) };
+  const body = { source: first, atlas };
+  const sheet: SpriteSheet = {
+    source,
+    atlas,
+    bindings: { settler: 1, resource: 1, building: 1 },
+    characters: {
+      byJob: {},
+      default: {
+        body,
+        bodyVariants: [body, { source: second, atlas }],
+        scale: 0.5,
+        binding: { idle: 1, moving: 2 },
+      },
+    },
+  };
+  const item: DrawItem = { kind: 'settler', ref: 3, x: 0, y: 0, depth: 0, state: 'idle' };
+  it('keeps the same appearance through state and animation clock changes', () => {
+    expect(resolveLayers(sheet, item, 0)?.[0]?.source).toBe(second);
+    const moving = resolveLayers(sheet, { ...item, state: 'moving' }, 30)?.[0];
+    expect(moving?.source).toBe(second);
+    expect(moving?.frame.x).toBe(2);
+    expect(moving?.scale).toBe(0.5);
+    expect(resolveLayers(sheet, { ...item, ref: 4 }, 0)?.[0]?.source).toBe(first);
+  });
+});

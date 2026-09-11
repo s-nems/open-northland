@@ -1,4 +1,5 @@
 import { Sprite } from 'pixi.js';
+import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import { alphaMaskOf, maskSolidAt } from './alpha-mask.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
 
@@ -12,6 +13,8 @@ import type { EntityBounds, PooledEntity } from './pooled-entity.js';
  * after the pool's reconcile and must not hold the answers past the frame.
  */
 export interface DrawnGeometry {
+  /** Ground ellipse in feet-local world pixels. */
+  readonly selectionOf?: (ref: number) => SelectionEllipse | undefined;
   readonly boundsOf: (ref: number) => EntityBounds | undefined;
   readonly anchorOf: (ref: number) => { x: number; y: number } | undefined;
 }
@@ -52,13 +55,12 @@ export function pixelHit(
     const mask = alphaMaskOf(spr.texture.source);
     if (mask === null) return undefined; // pixels unreadable → the box hit stands
     sampledEveryLayer = true;
-    // World → this layer's frame-local texels, inverting the layer binder's placement, which only ever
-    // sets a positive uniform scale. A non-positive one would be a mirroring this inverse cannot map, so
-    // fail soft to the box verdict rather than sample the wrong texels.
+    // The binder preserves vertical scale when shearing vegetation around its root.
     const scale = spr.scale.x;
     if (!(scale > 0)) return undefined;
-    const lx = Math.floor((wx - pe.motion.drawX - spr.position.x) / scale);
-    const ly = Math.floor((wy - pe.motion.drawY - spr.position.y) / scale);
+    const dy = wy - pe.motion.drawY - spr.position.y;
+    const lx = Math.floor((wx - pe.motion.drawX - spr.position.x - dy * Math.tan(spr.skew.x)) / scale);
+    const ly = Math.floor(dy / scale);
     const frame = spr.texture.frame;
     if (lx < 0 || ly < 0 || lx >= frame.width || ly >= frame.height) continue;
     if (maskSolidAt(mask, frame.x + lx, frame.y + ly)) return true;

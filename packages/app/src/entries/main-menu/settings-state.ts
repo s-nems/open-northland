@@ -1,10 +1,11 @@
 import { defaultLocale, localeParam, setActiveLocale } from '../../i18n/index.js';
+import { assetSetFor } from '../../view/asset-settings.js';
 import { type MenuSettings, persistSettings, readStoredSettings } from '../../view/settings-store.js';
 
 /**
- * The menu's settings session: the persisted store plus URL overrides. `lang` and `sound` are
+ * The menu's settings session: the persisted store plus URL overrides. `assets`, `lang`, and `sound` are
  * projected onto the carried URL params so a launched game receives them; the HUD scale factor and
- * the graphics settings are read from the store directly and never enter the URL.
+ * other graphics settings are read from the store directly and never enter the URL.
  */
 
 export interface CarriedSettingParam {
@@ -23,6 +24,7 @@ export function carriedSettingParams(settings: MenuSettings): readonly CarriedSe
       // The elided default is the browser's language, so a `lang`-less link follows whoever opens it.
       value: settings.language === defaultLocale() ? null : settings.language,
     },
+    { key: 'assets', param: 'assets', value: settings.assets === 'own' ? null : settings.assets },
     { key: 'soundEnabled', param: 'sound', value: settings.soundEnabled ? null : 'off' },
   ];
 }
@@ -83,6 +85,7 @@ export function adoptSettings(
   return {
     session: {
       ...stored,
+      assets: assetSetFor(params, stored.assets),
       language: localeParam(params),
       soundEnabled: params.get('sound') !== 'off',
     },
@@ -97,6 +100,7 @@ export function adoptSettings(
  * store. Mutates `params` in place.
  */
 export function adoptStoredSettings(params: URLSearchParams): void {
+  persisted = readStoredSettings();
   const { session, adopted } = adoptSettings(persistedSettings(), params);
   const url = new URL(window.location.href);
   for (const { param, value } of adopted) url.searchParams.set(param, value);

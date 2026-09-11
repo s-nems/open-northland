@@ -6,12 +6,13 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": false
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/assets/own/**/*.json"],
   "references": [
     { "path": "../data" },
     { "path": "../sim" },
     { "path": "../render" },
     { "path": "../audio" },
-    { "path": "../content-resolver" }
+    { "path": "../content-resolver" },
+    { "path": "../art-contracts" }
   ]
 }

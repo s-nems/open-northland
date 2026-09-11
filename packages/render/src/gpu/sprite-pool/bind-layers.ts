@@ -6,6 +6,7 @@ import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { paletteLutRow, type SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
+import { setVegetationShear } from '../vegetation-sway.js';
 import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
 import { drawPlaceholder, PROJECTILE_FLIGHT_HEIGHT, placeholderBounds } from './placeholder.js';
 import {
@@ -64,6 +65,7 @@ export class LayerBinder {
     frameId: number,
   ): void {
     if (layers === null) {
+      pe.selectionEllipse = undefined;
       this.showPlaceholder(pe, item, frame, frameId);
       return;
     }
@@ -84,6 +86,7 @@ export class LayerBinder {
     const bounds = this.layerBounds;
     bounds.reset();
     const displayReveal = pe.reveal;
+    let hasSelection = false;
     for (let i = 0; i < layers.length; i++) {
       const layer = layers[i];
       if (layer === undefined) continue;
@@ -112,10 +115,28 @@ export class LayerBinder {
         this.bindPlainLayer(pe, i, layer, revealTexture, box, tint);
       }
       if (layer.boundsExempt === true) continue;
-      bounds.add(box.ox, box.oy, box.ox + box.width, box.oy + box.height);
+      const selection = layer.frame.selectionEllipse;
+      if (selection !== undefined && !hasSelection) {
+        pe.selectionEllipse ??= { cx: 0, cy: 0, rx: 0, ry: 0 };
+        const ellipse = pe.selectionEllipse;
+        ellipse.cx = box.ox + selection.cx * layer.scale;
+        ellipse.cy = box.oy + selection.cy * layer.scale;
+        ellipse.rx = selection.rx * layer.scale;
+        ellipse.ry = selection.ry * layer.scale;
+        hasSelection = true;
+      }
+      const shearTop = box.oy * (layer.shear ?? 0);
+      const shearBottom = (box.oy + box.height) * (layer.shear ?? 0);
+      bounds.add(
+        box.ox + Math.min(shearTop, shearBottom),
+        box.oy,
+        box.ox + box.width + Math.max(shearTop, shearBottom),
+        box.oy + box.height,
+      );
     }
     // Hide leftover sprites from a frame that needed more layers, and drop the shadow flags that
     // described them.
+    if (!hasSelection) pe.selectionEllipse = undefined;
     pe.shadowFlags.length = layers.length;
     for (let i = layers.length; i < pe.sprites.length; i++) {
       const s = pe.sprites[i];
@@ -188,8 +209,9 @@ export class LayerBinder {
       (box.hiddenTop > 0
         ? this.textures.cropped(layer.source, layer.frame, box.hiddenTop)
         : this.textures.get(layer.source, layer.frame));
-    spr.position.set(box.ox, box.drawnOy);
-    spr.scale.set(layer.scale);
+    const shear = layer.shear ?? 0;
+    spr.position.set(box.ox + box.drawnOy * shear, box.drawnOy);
+    setVegetationShear(spr, layer.scale, shear);
     // The tint setter allocates even for an unchanged value, so assign only on change.
     if (spr.tint !== tint) spr.tint = tint;
     spr.visible = true;

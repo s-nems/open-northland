@@ -67,7 +67,14 @@ map.dat
 # so a baseline belongs to a checkout, never to the repository.
 /bench-out/
 
+# Temporary image generation output
+/output/imagegen/
+
 
 # Logs
 *.log
 npm-debug.log*
+
+# Own-art build candidates and publication transactions
+/.art-build/
+**/__pycache__/

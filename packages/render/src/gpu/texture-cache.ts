@@ -129,7 +129,13 @@ export class TextureCache {
     const canvas = bakeRevealCanvas(source, frame, times, q);
     if (canvas === null) return null;
     const bake: RevealBake = {
-      texture: new Texture({ source: new CanvasSource({ resource: canvas, scaleMode: 'nearest' }) }),
+      texture: new Texture({
+        source: new CanvasSource({
+          resource: canvas,
+          scaleMode: source.scaleMode,
+          autoGenerateMipmaps: source.autoGenerateMipmaps,
+        }),
+      }),
       stamp: frameStamp,
     };
     byThreshold.set(q, bake);

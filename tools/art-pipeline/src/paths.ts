@@ -1,0 +1,15 @@
+import { realpath } from 'node:fs/promises';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { relativePath } from './recipe.js';
+export function inside(root: string, path: string): string {
+  const destination = resolve(root, relativePath.parse(path));
+  const rel = relative(root, destination);
+  if (isAbsolute(rel) || rel.split(sep)[0] === '..') throw new Error('Path outside root');
+  return destination;
+}
+export async function sourcePath(root: string, directory: string, path: string) {
+  const file = await realpath(inside(directory, path));
+  const rel = relative(await realpath(root), file);
+  if (isAbsolute(rel) || rel.split(sep)[0] === '..') throw new Error('Source symlink outside repository');
+  return file;
+}

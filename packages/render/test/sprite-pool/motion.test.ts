@@ -27,6 +27,7 @@ function fresh(snapDistance = SNAP_DISTANCE): MotionTrack {
     drawX: 0,
     drawY: 0,
     gaitPhase: 0,
+    prevGaitPhase: 0,
     stillTicks: 0,
     snapDistance,
   };
@@ -44,6 +45,17 @@ function drawnAt(
 }
 
 describe('drawAlphaForKind - who steps and who glides', () => {
+  it('interpolates authored smooth settlers when explicitly enabled', () => {
+    expect(drawAlphaForKind('settler', 0.25, true)).toBe(0.25);
+    const m = fresh();
+    trackMotion(m, 0, 0, 0, 1);
+    trackMotion(m, 1, FULL_GAIT_PX_PER_TICK, 0, 0.25);
+    expect(m.prevGaitPhase).toBe(0);
+    expect(m.gaitPhase).toBeCloseTo(1);
+    expect(m.drawX).toBeCloseTo(FULL_GAIT_PX_PER_TICK / 4);
+    trackMotion(m, 2, 500, 0, 0.5);
+    expect(m.prevGaitPhase).toBe(m.gaitPhase);
+  });
   it('draws a gait-clocked body on its tick anchor whatever the frame carries', () => {
     for (const frameAlpha of [0, 0.25, 0.99]) expect(drawAlphaForKind('settler', frameAlpha)).toBe(1);
   });

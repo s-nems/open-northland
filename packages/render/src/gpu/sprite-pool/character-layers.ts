@@ -1,15 +1,11 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import { lookupFrame, pickByJob, resolveSettlerBobId } from '../../data/sprites/index.js';
-import type { SettlerCharacterSet } from '../sprite-sheet.js';
+import { DEFAULT_FACING, movingFrameRef } from '../../data/sprites/settler.js';
+import type { SettlerCharacter, SettlerCharacterSet } from '../sprite-sheet.js';
 import { shadowLayerFor } from './layered-layers.js';
 import type { ResolvedLayer } from './resolved-layer.js';
 
-/**
- * A per-job settler character's layers: the job's own body frame plus one head overlay picked by entity
- * id (ids are never reused, so a crowd shows stable varied faces) - the render-side analogue of the
- * original's per-individual random head. The head may resolve through its own binding, so a carry
- * variant whose head bobs are empty plays the base walk's head.
- */
+/** Appearance variants use stable entity ids; optional head layers may use a separate motion binding. */
 export function resolveCharacterLayers(
   characters: SettlerCharacterSet,
   item: DrawItem,
@@ -19,7 +15,7 @@ export function resolveCharacterLayers(
   // A wildlife entity resolves only through the species table: a listed-but-unbound tribe draws nothing,
   // while a bound tribe whose resolved bob has no frame is a real gap and falls to the placeholder.
   if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) {
-    const animal = characters.animals.byTribe[item.tribe];
+    const animal = characterForItem(characters, item);
     if (animal === undefined) return [];
     const bob = resolveSettlerBobId(animal.binding, item, tick, gaitClock);
     const frame = lookupFrame(animal.body.atlas, bob);
@@ -28,18 +24,23 @@ export function resolveCharacterLayers(
     const shadow = shadowLayerFor(animal.body, bob, 1);
     return shadow === null ? [body] : [shadow, body];
   }
-  const table = (item.tribe !== undefined ? characters.byTribe?.[item.tribe] : undefined) ?? characters;
-  const char = pickByJob(table, item.jobType, item.young === true, item.weaponGood);
+  const char = characterForItem(characters, item);
+  if (char === undefined) return [];
+  const variants = char.bodyVariants;
+  const body = variants?.length ? (variants[item.ref % variants.length] ?? char.body) : char.body;
+  const scale = char.scale ?? 1;
   const bob = resolveSettlerBobId(char.binding, item, tick, gaitClock);
   const layers: ResolvedLayer[] = [];
-  const bodyFrame = lookupFrame(char.body.atlas, bob);
+  const bodyFrame = lookupFrame(body.atlas, bob);
   if (bodyFrame !== null) {
+    const shadow = shadowLayerFor(body, bob, scale);
+    if (shadow !== null) layers.push(shadow);
     layers.push({
-      source: char.body.source,
+      source: body.source,
       frame: bodyFrame,
-      scale: 1,
-      atlasW: char.body.atlas.width,
-      atlasH: char.body.atlas.height,
+      scale,
+      atlasW: body.atlas.width,
+      atlasH: body.atlas.height,
     });
   }
   const heads = char.heads;
@@ -52,11 +53,38 @@ export function resolveCharacterLayers(
       layers.push({
         source: head.source,
         frame: headFrame,
-        scale: 1,
+        scale,
         atlasW: head.atlas.width,
         atlasH: head.atlas.height,
       });
     }
   }
   return layers.length > 0 ? layers : null;
+}
+
+function characterForItem(characters: SettlerCharacterSet, item: DrawItem): SettlerCharacter | undefined {
+  if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe))
+    return characters.animals.byTribe[item.tribe];
+  const table = (item.tribe !== undefined ? characters.byTribe?.[item.tribe] : undefined) ?? characters;
+  return pickByJob(table, item.jobType, item.young === true, item.weaponGood);
+}
+
+/** Converts measured foot travel to the selected clip's tick clock without changing movement. */
+export function characterGaitRate(
+  characters: SettlerCharacterSet | undefined,
+  item: DrawItem,
+  lastFacing?: number,
+): number | undefined {
+  if (characters === undefined || item.kind !== 'settler') return undefined;
+  const char = characterForItem(characters, item);
+  if (char === undefined) return undefined;
+  const clip = movingFrameRef(char.binding, item);
+  if (typeof clip === 'number' || 'frameLists' in clip) return undefined;
+  const dir = (((item.facing ?? lastFacing ?? DEFAULT_FACING) % clip.dirs) + clip.dirs) % clip.dirs;
+  const travel = clip.travelPerCycle?.[dir];
+  if (travel === undefined || travel <= 0) return undefined;
+  const ticks =
+    clip.frameDurations?.reduce((sum, hold) => sum + hold, 0) ??
+    (clip.frames ?? clip.stride) * (clip.ticksPerFrame ?? 1);
+  return ticks / (travel * (char.scale ?? 1));
 }

@@ -28,7 +28,7 @@ lobby concept the check never sees.
 
 - Declare the match over every seat the map puts in use, minus the `playerneverdies` exemptions, so the
   defeat half matches the engine. Seat modes from
-  [vacant seat AI player](./vacant-seat-ai-player.md) are the natural source once that lands; until
+  [vacant seat AI player](vacant-seat-ai-player.md) are the natural source once that lands; until
   then the map script's `players` list is.
 - Keep the mutual-friends victory rule as the named approximation it is, and do not let it fire while a
   seat outside the winning group still holds a living adult man.

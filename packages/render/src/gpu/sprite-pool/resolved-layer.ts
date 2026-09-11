@@ -8,6 +8,7 @@ export interface ResolvedLayer {
   readonly source: TextureSource;
   readonly frame: AtlasFrame;
   readonly scale: number;
+  readonly shear?: number;
   readonly atlasW?: number;
   readonly atlasH?: number;
   /** Construction reveal fraction, 0..1 of `builtPct/100`, present only on an under-construction

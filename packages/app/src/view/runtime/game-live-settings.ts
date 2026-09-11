@@ -4,6 +4,7 @@ import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { buildToolPanelLayout } from '../../hud/tool-panel/layout.js';
 import { uiScaleFor } from '../../hud/ui-scale.js';
 import { defaultLocale, localeParam } from '../../i18n/index.js';
+import { assetSetFor } from '../asset-settings.js';
 import type { CameraController } from '../camera/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
@@ -70,6 +71,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
   const settings = createGameSettingsRuntime({
     initial: {
       ...deps.stored,
+      assets: assetSetFor(deps.params, deps.stored.assets),
       soundEnabled: initialSoundEnabled,
       language: localeParam(deps.params),
     },
@@ -77,6 +79,8 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     effectiveUiScaleFor: (factor) => deps.pinnedUiScale ?? uiScaleFor(deps.screen.height, factor),
     persist: (patch) => {
       patchStoredSettings(patch);
+      if (patch.assets !== undefined)
+        syncCarriedParam('assets', patch.assets === 'own' ? null : patch.assets);
     },
     setUiScaleFactor: viewport.setUiScaleFactor,
     setSoundEnabled: (enabled) => {

@@ -29,10 +29,11 @@ function wrap(n: number, m: number): number {
   return ((n % m) + m) % m;
 }
 
-/** `clock` is an integer tick count: the free sim tick for a gait, the atomic's `elapsed` for an action. */
+/** Subtick clips accept a fractional presentation clock; original bindings retain integer cadence. */
 function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   if (typeof ref === 'number') return ref;
-  const ticksPerFrame = Math.max(1, ref.ticksPerFrame ?? 1);
+  const minimum = 'subtick' in ref && ref.subtick === true ? Number.EPSILON : 1;
+  const ticksPerFrame = Math.max(minimum, ref.ticksPerFrame ?? 1);
   const step = Math.floor(clock / ticksPerFrame);
   // A frame list draws pool start + its facing list's entry at the step; an absent list holds frame 0.
   if ('frameLists' in ref) {
@@ -47,6 +48,15 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
     return ref.start + (list[idx] ?? 0);
   }
   const dir = wrap(facing, ref.dirs);
+  if (ref.frameDurations !== undefined && ref.frameDurations.length > 0) {
+    const total = ref.frameDurations.reduce((sum, duration) => sum + duration, 0);
+    let remaining = wrap(clock, total);
+    for (const [index, duration] of ref.frameDurations.entries()) {
+      if (remaining < duration) return ref.start + dir * ref.stride + index;
+      remaining -= duration;
+    }
+    return ref.start + dir * ref.stride;
+  }
   const cycle = ref.frames ?? ref.stride;
   if (cycle <= 0) return ref.start + dir * ref.stride;
   const phase = wrap((ref.phaseStart ?? 0) + step, cycle);
@@ -78,6 +88,18 @@ function stretchedFrame(ref: SpriteFrameRef, facing: number, progress: number): 
   const cycle = ref.frames ?? ref.stride;
   if (cycle <= 0) return ref.start + dir * ref.stride;
   return ref.start + dir * ref.stride + at(cycle);
+}
+
+export function movingFrameRef(binding: SettlerStateBinding, item: DrawItem): SpriteFrameRef {
+  const carry = item.carrying ? binding.carrying : undefined;
+  const loaded = item.carryGood === undefined ? undefined : carry?.byGood?.[item.carryGood];
+  return (
+    (item.engaged ? binding.engaged?.moving : undefined) ??
+    loaded?.moving ??
+    carry?.moving ??
+    binding.moving ??
+    binding.idle
+  );
 }
 
 /** The state pick runs a fixed fallback chain so a sparse table is always total. */
@@ -117,10 +139,13 @@ export function resolveSettlerBobId(
     }
     // With no generic `acting` bound the atomic stands still, rather than borrowing the woodcut swing
     // at a wrong speed.
-    return frameOf(engaged?.idle ?? carry?.idle ?? binding.acting ?? binding.idle, facing, clock);
+    const ref = engaged?.idle ?? carry?.idle ?? binding.acting ?? binding.idle;
+    const smoothIdle =
+      ref === binding.idle && typeof ref !== 'number' && 'subtick' in ref && ref.subtick === true;
+    return frameOf(ref, facing, smoothIdle ? tick : clock);
   }
   if (state === 'moving') {
-    return frameOf(engaged?.moving ?? carry?.moving ?? binding.moving ?? binding.idle, facing, gaitClock);
+    return frameOf(movingFrameRef(binding, item), facing, gaitClock);
   }
   return frameOf(engaged?.idle ?? carry?.idle ?? binding.idle, facing, tick);
 }

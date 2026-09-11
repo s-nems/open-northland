@@ -3,7 +3,7 @@
  * only the mode it was asked for; choosing the mode must stay free of the loading it decides on.
  */
 
-export type RouteId = 'shot' | 'backdrop' | 'scene' | 'anim' | 'icons' | 'sounds' | 'map' | 'menu';
+export type RouteId = 'shot' | 'backdrop' | 'scene' | 'art' | 'anim' | 'icons' | 'sounds' | 'map' | 'menu';
 
 /** Every entry module conforms to this, so the dispatcher never adapts a per-mode call shape. */
 export type EntryRunner = (canvas: HTMLCanvasElement, params: URLSearchParams) => void | Promise<void>;
@@ -22,6 +22,11 @@ const MENU_ROUTE: Route = {
 
 /** First match wins, so a URL carrying two mode flags takes the earlier one. */
 const ROUTES: readonly Route[] = [
+  {
+    id: 'art',
+    matches: (params) => params.has('art'),
+    load: () => import('./entries/art-review/index.js').then((m) => m.renderArtReview),
+  },
   {
     id: 'shot',
     matches: (params) => params.has('shot'),

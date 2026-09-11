@@ -14,6 +14,7 @@ export interface MapObjectSprite {
   /** More than one frame is a loop played at the sim tick rate. */
   readonly frames: readonly AtlasFrame[];
   readonly scale: number;
+  readonly sway?: number;
   readonly decor: boolean;
   /** Starting frame offset into {@link frames}; static objects ignore it. */
   readonly phase: number;
