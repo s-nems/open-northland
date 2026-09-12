@@ -9,7 +9,7 @@ import { drawsAsFlatDecor, landscapeRecordsByName } from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
 import { forEachPlacement } from '../map-placements.js';
 import type { LoadedMapObjects, MapObjectsData } from '../objects.js';
-import { ownPropFrameIndex } from './prop-manifest.js';
+import { ownPropFrameIndex, ownPropPaintedHeight } from './prop-manifest.js';
 import { type LoadedOwnProp, loadOwnProps } from './props.js';
 
 /** The mint dot standing in for a placement no own prop covers. */
@@ -47,8 +47,15 @@ export async function loadOwnMapObjects(
   return placeOwnMapObjects(objects, ir, elevation, byName, placeholder);
 }
 
-/** Resolve each placement to its own prop's frame for the placement's level, or to the placeholder. A
- *  placement's paint order follows its original record, so grass and bushes stay flat ground decor. */
+/** Approximation: ground cover a settler stands over paints at most this far above its feet (world px,
+ *  about half a settler); a taller prop hides a settler behind it, so it sorts by row. */
+const GROUND_COVER_MAX_HEIGHT_PX = 26;
+
+function isGroundCover(prop: LoadedOwnProp): boolean {
+  return ownPropPaintedHeight(prop.manifest) <= GROUND_COVER_MAX_HEIGHT_PX;
+}
+
+/** Resolve each placement to its own prop's frame for the placement's level, or to the placeholder. */
 export function placeOwnMapObjects(
   objects: MapObjectsData,
   ir: ContentIr,
@@ -64,7 +71,7 @@ export function placeOwnMapObjects(
     return {
       prop,
       states: prop === undefined ? [] : [...prop.layer.atlas.frames.values()].map((frame) => [frame]),
-      decor: record !== undefined && drawsAsFlatDecor(record),
+      decor: record !== undefined && drawsAsFlatDecor(record) && prop !== undefined && isGroundCover(prop),
     };
   });
   const sprites: MapObjectSprite[] = [];
