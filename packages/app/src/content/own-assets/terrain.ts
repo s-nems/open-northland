@@ -4,28 +4,28 @@ import type { ContentIr } from '../ir/rows.js';
 import { ownTerrainBindings } from './bindings.js';
 import { bakeOwnMaterial } from './material-atlas.js';
 import { ownMaterialBindings } from './material-layout.js';
-import { ownTerrainMaterials } from './materials.js';
-
-const materialUrls = {
-  'sand.png': new URL('../../assets/own/terrain/sand.png', import.meta.url).href,
-  'quiet.png': new URL('../../assets/own/terrain/quiet.png', import.meta.url).href,
-  'dark.png': new URL('../../assets/own/terrain/dark.png', import.meta.url).href,
-  'soil.png': new URL('../../assets/own/terrain/soil.png', import.meta.url).href,
-  'gravel.png': new URL('../../assets/own/terrain/gravel.png', import.meta.url).href,
-  'mountains.png': new URL('../../assets/own/terrain/mountains.png', import.meta.url).href,
-};
+import { ownMaterialUrls, ownTerrainMaterials } from './materials.js';
 
 export async function loadOwnTerrain(renderer: Renderer, ir: ContentIr | null): Promise<TerrainTextureSet> {
-  const images = await Assets.load<Texture>(Object.values(materialUrls));
-  for (const texture of Object.values(images)) {
+  const materialImages = new Set(['soil.png', ...ownTerrainMaterials.map((material) => material.image)]);
+  const textures = new Map<string, Texture>(
+    await Promise.all(
+      [...materialImages].map(async (name): Promise<[string, Texture]> => {
+        const url = ownMaterialUrls.get(name);
+        if (!url) throw new Error(`Missing terrain material image: ${name}`);
+        return [name, await Assets.load<Texture>(url)];
+      }),
+    ),
+  );
+  for (const texture of textures.values()) {
     texture.source.scaleMode = 'linear';
     texture.source.autoGenerateMipmaps = true;
   }
-  const soil = images[materialUrls['soil.png']];
+  const soil = textures.get('soil.png');
   if (!soil) throw new Error('Own soil material did not load');
   const pages = new Map<string, Texture['source']>();
   for (const material of ownTerrainMaterials) {
-    const texture = images[materialUrls[material.image]];
+    const texture = textures.get(material.image);
     if (!texture) throw new Error(`Own terrain material did not load: ${material.image}`);
     const baked = bakeOwnMaterial(renderer, texture, soil, material);
     pages.set(`own-${material.id}`, baked.source);
