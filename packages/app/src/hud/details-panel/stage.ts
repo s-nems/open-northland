@@ -19,7 +19,7 @@ export const WORKER_OVERLAY_Z = PANEL_Z + 1;
 
 /**
  * Bake oversample cap, decided here rather than by the shared `oversampleFor`: a fractional display scale
- * bakes at the cap for the crispest downscale of native-11px text, an integer scale within the cap bakes
+ * bakes at the cap for smooth palette edges; an integer scale within the cap bakes
  * 1:1 because nearest sampling is already exact.
  */
 const PANEL_MAX_SUPERSAMPLE = 4;
@@ -65,7 +65,8 @@ export function createPanelStage(opts: PanelStageOptions): PanelStage {
       root.visible = true;
       const texture = bakePanel({ assets, baker, view, hover, ui, activeStockTab, scale, ss });
       texture.display.position.set(view.layout.panel.x, view.layout.panel.y);
-      root.addChild(texture.display);
+      texture.textLayer.position.copyFrom(texture.display.position);
+      root.addChild(texture.display, texture.textLayer);
       baked = texture;
     },
     dispose(): void {

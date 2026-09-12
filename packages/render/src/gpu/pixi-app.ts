@@ -4,8 +4,8 @@ import { Application, Assets, type Texture, type TextureSource } from 'pixi.js';
  * The shared one-time GPU options. WebGL preference and antialias-off cut cross-machine pixel variance.
  * `resolution: 1` + `autoDensity: false` keep the backing store in CSS pixels, so one world pixel is one
  * CSS pixel at camera scale 1, so a fixed-size `?shot` capture frames the same world box whatever the
- * machine's devicePixelRatio. {@link createWindowPixiApp} overrides these to render at an integer
- * oversample of the device resolution.
+ * machine's devicePixelRatio. {@link createWindowPixiApp} overrides these to render at the
+ * native device resolution.
  */
 const APP_OPTIONS = {
   // Pure black, like the original's void beyond the map edge (observed: its off-map area is exactly
@@ -34,22 +34,13 @@ export async function createPixiApp(
   return app;
 }
 
-/** Tolerance for float noise in `devicePixelRatio` (browser zoom yields values like 2.0000004). */
-const DPR_EPSILON = 1e-3;
-
-/**
- * The renderer resolution for a device-pixel ratio: the smallest integer at or above it, so
- * nearest-sampled art keeps equal texel runs and the browser finishes with one smooth linear downscale.
- * The backing store stays within `2×` the physical pixels per axis, since `ceil(dpr) / dpr < 2` for
- * every `dpr ≥ 1`.
- */
+/** Match physical display pixels so the compositor does not resample the entire HUD. */
 export function backingResolutionFor(dpr: number): number {
-  if (!Number.isFinite(dpr) || dpr <= 0) return 1;
-  return Math.max(1, Math.ceil(dpr - DPR_EPSILON));
+  return Number.isFinite(dpr) && dpr > 0 ? dpr : 1;
 }
 
 /**
- * The window renderer resolution: the DPR-derived integer oversample times the caller's scale.
+ * The window renderer resolution: the device-pixel ratio times the caller's scale.
  * A scale below 1 trades crispness for fill-rate (the browser upscales the smaller backing store);
  * above 1 supersamples. A degenerate scale falls back to 1.
  */
@@ -99,9 +90,9 @@ export interface WindowPixiAppOptions {
  * live size from `app.screen` per frame, never from a captured constant.
  *
  * Renders at {@link windowResolutionFor} texels per CSS px: `app.screen`, the camera, and every
- * layout stay in CSS px, so at scale 1 screen-space UI rasterizes crisp on HiDPI and fractional OS
- * scaling never lands on uneven texels. The resolution follows live DPR changes; consumers that bake
- * at a resolution must re-bake when `app.renderer.resolution` moves.
+ * layout stay in CSS px. At scale 1 the UI rasterizes at native display density.
+ * The resolution follows live DPR changes; consumers that bake at a resolution must re-bake
+ * when `app.renderer.resolution` moves.
  */
 export async function createWindowPixiApp(
   canvas: HTMLCanvasElement,

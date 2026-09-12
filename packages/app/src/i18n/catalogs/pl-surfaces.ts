@@ -136,6 +136,9 @@ export const plSurfaces = {
       fpsLimitTip:
         'Ogranicza liczbę rysowanych klatek: mniejsze zużycie energii i cichszy wentylator. Działa w grze, nie w menu.',
       fpsLimitScreen: 'Ekran',
+      spriteSmoothing: 'Wygładzanie sprite’ów',
+      spriteSmoothingTip:
+        'Wygładza krawędzie własnych postaci i pomniejszanych sprite’ów świata. Nie zmienia renderowania napisów.',
       postFx: 'Postprocessing',
       postFxTip: 'Winieta i ocieplenie barw nakładane na obraz świata.',
       uiScale: 'Skala interfejsu w grze',

@@ -30,6 +30,8 @@ export interface WorldRendererOptions {
   /** The world post pass: a warm-graded vignette multiply over the world, under the HUD. An enhancement
    *  over the original. */
   readonly postFx?: boolean | undefined;
+  /** Linear minification of world atlas pages; independent of screen-space UI. */
+  readonly spriteSmoothing?: boolean | undefined;
   /** Owner slot → team-colour slot when a map's roster recolours players; absent means identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
 }

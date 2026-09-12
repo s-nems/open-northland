@@ -79,6 +79,11 @@ export function graphicsSettingsRows(
   });
   postFx.setAttribute('aria-label', text.postFx);
   postFx.dataset.settingsFocus = 'post-fx';
+  const smoothing = togglePill(settings.spriteSmoothing, (enabled) => {
+    void store.update({ spriteSmoothing: enabled });
+  });
+  smoothing.setAttribute('aria-label', text.spriteSmoothing);
+  smoothing.dataset.settingsFocus = 'sprite-smoothing';
   const assets = segControl<AssetSet>(
     [
       { id: 'own', label: text.assetsOwn },
@@ -100,6 +105,7 @@ export function graphicsSettingsRows(
     }),
     settingRow(text.renderScale, renderScale, { tip: deferredTip(text.renderScaleTip) }),
     settingRow(text.fpsLimit, fpsSeg.root, { tip: deferredTip(text.fpsLimitTip) }),
+    settingRow(text.spriteSmoothing, smoothing, { tip: deferredTip(text.spriteSmoothingTip) }),
     settingRow(text.postFx, postFx, { tip: deferredTip(text.postFxTip) }),
   ];
 }

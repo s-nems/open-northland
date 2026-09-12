@@ -1,5 +1,5 @@
 import type { ReusableBaker, SupersampledTexture } from '@open-northland/render';
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Text } from 'pixi.js';
 import type { UiString } from '../../content/gui-gfx.js';
 import type { Rect } from '../geometry.js';
 import type { DetailsPanelAssets } from './assets.js';
@@ -46,15 +46,20 @@ function makeLayers(into: Container): PanelLayers {
   const back = new Container();
   const front = new Container();
   const text = new Container();
-  into.addChild(back, g, front, text);
+  into.addChild(back, g, front);
   return { g, back, front, text };
 }
 
-export function bakePanel(opts: PanelBakeOptions): SupersampledTexture {
+export interface BakedPanel extends SupersampledTexture {
+  readonly textLayer: Container;
+}
+
+export function bakePanel(opts: PanelBakeOptions): BakedPanel {
   const { assets, baker, view, hover, ui, activeStockTab, scale, ss } = opts;
   const { toDraw, texW, texH } = panelDrawGeometry(view.layout.panel, scale, ss);
   const offscreen = new Container();
-  const chrome = createChrome(assets, ss, makeLayers(offscreen), { w: texW, h: texH });
+  const layers = makeLayers(offscreen);
+  const chrome = createChrome(assets, ss, layers, { w: texW, h: texH });
   switch (view.kind) {
     case 'building': {
       const draw = mapLayout(view.layout, toDraw);
@@ -77,5 +82,18 @@ export function bakePanel(opts: PanelBakeOptions): SupersampledTexture {
       throw new Error(`unhandled panel view: ${JSON.stringify(unreachable)}`);
     }
   }
-  return baker.bake(offscreen, texW, texH, scale / ss);
+  // Text rasterizes once at its final screen size, outside the downsampled chrome texture.
+  const ratio = scale / ss;
+  for (const child of layers.text.children) {
+    if (!(child instanceof Text)) continue;
+    child.style.fontSize *= ratio;
+    child.position.set(child.x * ratio, child.y * ratio);
+    child.roundPixels = true;
+  }
+  try {
+    return { ...baker.bake(offscreen, texW, texH, ratio), textLayer: layers.text };
+  } catch (error) {
+    layers.text.destroy({ children: true });
+    throw error;
+  }
 }

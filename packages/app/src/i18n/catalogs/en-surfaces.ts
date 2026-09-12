@@ -138,6 +138,9 @@ export const enSurfaces = {
         'Caps the drawn frames per second: less power draw and fan noise. Applies in game, not in the menu.',
       // The display's own refresh rate, next to the fixed 30/60 FPS caps.
       fpsLimitScreen: 'Display',
+      spriteSmoothing: 'Sprite smoothing',
+      spriteSmoothingTip:
+        'Smooths own character edges and zoomed-out world sprites. Does not change text rendering.',
       postFx: 'Post-processing',
       postFxTip: 'A vignette and warm colour grade layered over the world.',
       uiScale: 'In-game interface scale',
