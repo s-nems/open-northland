@@ -18,6 +18,24 @@ const characterRecipe = z
   .object({
     frames: z.number().int().positive().max(16),
     post: z.string(),
+    runtimeCrop: z
+      .object({
+        left: z.number().int().nonnegative(),
+        top: z.number().int().nonnegative(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      })
+      .refine(
+        (crop) =>
+          crop.left + crop.width <= 192 &&
+          crop.top + crop.height <= 144 &&
+          crop.left <= 96 &&
+          crop.left + crop.width > 96 &&
+          crop.top <= 128 &&
+          crop.top + crop.height > 128,
+        'Crop must fit the source cell and contain the foot anchor',
+      )
+      .optional(),
     clips: z.array(clipSchema),
     walkCalibration: z.string().optional(),
     walkPlayback: z.string().optional(),
@@ -83,11 +101,16 @@ export async function packCharacter(
     throw new Error('Duplicate clip name');
   const clips = [walk, idle, ...atomics],
     dirs = ['SW', 'W', 'NW', 'NE', 'E', 'SE', 'S', 'N'];
-  const cellWidth = 96,
-    cellHeight = recipe.post === 'soft-separation' ? 120 : 112;
+  const crop = recipe.runtimeCrop ?? {
+    left: 48,
+    top: recipe.post === 'soft-separation' ? 24 : 32,
+    width: 96,
+    height: recipe.post === 'soft-separation' ? 120 : 112,
+  };
+  const cellWidth = crop.width,
+    cellHeight = crop.height;
   const columns = 8 * clips.reduce((sum, c) => sum + (c.frames ?? recipe.frames), 0) > 576 ? 40 : 24;
-  const cropTop = 144 - cellHeight,
-    composites: OverlayOptions[] = [];
+  const composites: OverlayOptions[] = [];
   let index = 0;
   for (const clip of clips)
     for (const facing of dirs) {
@@ -105,12 +128,12 @@ export async function packCharacter(
           .toBuffer({ resolveWithObject: true });
         for (let y = 0; y < 144; y++)
           for (let x = 0; x < 192; x++)
-            if (data[(y * 192 + x) * 4 + 3] && (x < 48 || x >= 144 || y < cropTop))
+            if (
+              data[(y * 192 + x) * 4 + 3] &&
+              (x < crop.left || x >= crop.left + cellWidth || y < crop.top || y >= crop.top + cellHeight)
+            )
               throw new Error(`${id} ${clip.name}-${facing}:${f} exceeds runtime crop`);
-        const input = await sharp(data, { raw: info })
-          .extract({ left: 48, top: cropTop, width: cellWidth, height: cellHeight })
-          .png()
-          .toBuffer();
+        const input = await sharp(data, { raw: info }).extract(crop).png().toBuffer();
         composites.push({
           input,
           left: (index % columns) * cellWidth,
@@ -162,8 +185,8 @@ export async function packCharacter(
     cellWidth,
     cellHeight,
     columns,
-    anchorX: 48,
-    anchorY: 128 - cropTop,
+    anchorX: 96 - crop.left,
+    anchorY: 128 - crop.top,
     scale: 0.5,
     smoothMotion: recipe.post === 'soft-separation',
     filtering: recipe.post === 'soft-separation' ? 'linear' : 'nearest',

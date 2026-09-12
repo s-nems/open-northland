@@ -94,7 +94,8 @@ Attach heads and tools using [MODULARITY.md](MODULARITY.md). Each head owns its 
 `model/base-color.png` and corrected `model/painted-base.png`; the correction must match arm skin.
 
 `shared/motions/idle/` retains the generated source; `shared/body/model/idle.json` records retargeting.
-`shared/motions/hammer/` owns the construction loop. Recipes bind it to atomic 39.
+`shared/motions/hammer/` owns the construction loop (atomic 39).
+`shared/motions/mining/` owns the two-handed stone-mining loop (atomic 25).
 Check retargeted rest pose, segment lengths, contacts and loop seams on the target rig.
 Bone-name agreement alone is insufficient. Do not regenerate a motion per facing or head.
 
@@ -107,9 +108,10 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
   including repeats and returns; `frameDurations` gives seconds per playback step and must sum to
   `duration`. A long idle should spend time holding chosen poses, with short steps during transitions.
   Body and shadow use the same frame order. Repeated steps never add texture cells.
-- Existing male walk/idle use 16 poses each and hammer 12. The woman's walk uses 16 poses;
+- Existing male walk/idle/mining use 16 poses each and hammer 12. The woman's walk uses 16 poses;
   her six-second idle uses 16 poses.
-- Source strips use 192×144 cells, feet y=128. Runtime crops to 96×120, feet (48,104).
+- Source strips use 192×144 cells, feet y=128. The default runtime crop is 96×120, feet (48,104).
+  Male equipment atlases use `runtimeCrop` 144×144, feet (72,128), for the larger mining tool.
 - Use `post: soft-separation`, unlit rendering, linear filtering and interpolated movement.
 - Reuse `shared/body/cameras-smooth/` and the appearance's saved layout; never fit each frame separately.
 - Work clips share walk-SW packing scale and identical layouts across selected male variants.

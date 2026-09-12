@@ -149,6 +149,10 @@ They combine a small set of operations:
 
 For traded goods and UI icons, use the [goods package contract](goods/README.md).
 
+Character recipes may set `runtimeCrop: { left, top, width, height }` inside the 192×144 source cell.
+The crop must contain the source foot anchor (96,128); packing translates that anchor without changing
+body scale. Omitted crops retain the standard dimensions. Use a larger crop for equipment clearance.
+
 For ordinary vegetation, trees and resource rocks, use the `atlas` section shown in the
 [fern](terrain/ferns/asset.json), [woodland](terrain/woodland/asset.json) and
 [rock](terrain/rocks/asset.json) recipes. It expands a short list of IDs, source cells, sizes, roots

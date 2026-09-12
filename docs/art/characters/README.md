@@ -12,7 +12,7 @@
 
 `appearances/` owns each character's sources, recipe, layout and sprite strips.
 `shared/body/` supplies the male body, textures, cameras and walk calibration.
-`shared/motions/` contains idle and construction sources; `equipment/` contains the hammer.
+`shared/motions/` contains idle, construction and stone-mining sources; `equipment/` contains the hammer and pickaxe.
 Runtime atlases and role selections live in `packages/app/src/assets/own/characters/`.
 
 Use `assets=own` on a playable map. `ownHead=<id>` previews one appearance;

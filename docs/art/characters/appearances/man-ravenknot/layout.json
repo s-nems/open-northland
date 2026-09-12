@@ -214,5 +214,77 @@
       "height": 337
     },
     "scale": 0.26506024096385544
+  },
+  "mining-SW": {
+    "box": {
+      "left": 139,
+      "top": 94,
+      "width": 234,
+      "height": 332
+    },
+    "scale": 0.26506024096385544
+  },
+  "mining-W": {
+    "box": {
+      "left": 157,
+      "top": 93,
+      "width": 197,
+      "height": 337
+    },
+    "scale": 0.26112759643916916
+  },
+  "mining-NW": {
+    "box": {
+      "left": 142,
+      "top": 90,
+      "width": 228,
+      "height": 344
+    },
+    "scale": 0.2558139534883721
+  },
+  "mining-N": {
+    "box": {
+      "left": 147,
+      "top": 91,
+      "width": 218,
+      "height": 337
+    },
+    "scale": 0.26112759643916916
+  },
+  "mining-NE": {
+    "box": {
+      "left": 139,
+      "top": 92,
+      "width": 234,
+      "height": 343
+    },
+    "scale": 0.2565597667638484
+  },
+  "mining-E": {
+    "box": {
+      "left": 158,
+      "top": 93,
+      "width": 197,
+      "height": 338
+    },
+    "scale": 0.2603550295857988
+  },
+  "mining-SE": {
+    "box": {
+      "left": 142,
+      "top": 95,
+      "width": 228,
+      "height": 331
+    },
+    "scale": 0.26586102719033233
+  },
+  "mining-S": {
+    "box": {
+      "left": 147,
+      "top": 96,
+      "width": 218,
+      "height": 325
+    },
+    "scale": 0.27076923076923076
   }
 }

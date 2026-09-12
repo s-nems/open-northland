@@ -14,5 +14,13 @@
   {
     "directory": "docs/art/characters/equipment/carpenter-hammer",
     "provenance": "docs/art/characters/equipment/carpenter-hammer/README.md"
+  },
+  {
+    "directory": "docs/art/characters/shared/motions/mining",
+    "provenance": "docs/art/characters/shared/motions/mining/README.md"
+  },
+  {
+    "directory": "docs/art/characters/equipment/mining-pickaxe",
+    "provenance": "docs/art/characters/equipment/mining-pickaxe/README.md"
   }
 ]
