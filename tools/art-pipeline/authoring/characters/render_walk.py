@@ -28,6 +28,7 @@ def parse_args():
     p.add_argument("--equipment", help="textured equipment attachment JSON")
     p.add_argument("--limb-texture", help="matching rigged base paint for exposed arm and hand regions")
     p.add_argument("--shadow-only", action="store_true", help="Render the evaluated cast silhouette on flat ground")
+    p.add_argument("--padding", type=int, default=0, help="Extra render pixels on each side at the calibrated pixel density")
     return p.parse_args(argv)
 
 
@@ -44,7 +45,9 @@ def root_travel(scene, frames):
 
 def main():
     args = parse_args()
-    scene = setup_scene(args.size)
+    if args.padding < 0:
+        raise ValueError('Render padding must be non-negative')
+    scene = setup_scene(args.size + 2 * args.padding)
     roots, meshes = import_glb(args.glb, args.head_scale, args.widen, args.upper_scale, args.limb_scale, args.foot_scale, args.hunch, args.deepen)
     if args.prop == "axe":
         meshes += add_axe()
@@ -105,6 +108,9 @@ def main():
             temporary.write_text(json.dumps({'signature':signature,'target':target},indent=2)+'\n')
             temporary.replace(cache_file)
     add_camera(args.angle, target)
+    scene.camera.data.ortho_scale *= (args.size + 2 * args.padding) / args.size
+    Path(args.out).mkdir(parents=True, exist_ok=True)
+    (Path(args.out) / 'projection.json').write_text(json.dumps({'padding': args.padding}) + '\n')
     if args.head_model:
         bpy.context.view_layer.update()
         from head_variant import replace_head

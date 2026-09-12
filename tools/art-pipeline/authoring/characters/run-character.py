@@ -112,6 +112,8 @@ def main():
                         options += ['--unlit']
                     if clip.get('prop'):
                         options += ['--prop',clip['prop']]
+                    if clip.get('renderPadding'):
+                        options += ['--padding', str(clip['renderPadding'])]
                     if clip.get('equipment'):
                         options += ['--equipment',run/clip['equipment']]
                     if clip.get('limb_texture'):

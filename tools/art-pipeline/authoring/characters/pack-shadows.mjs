@@ -22,10 +22,9 @@ const clips = [
 ];
 const count = 8 * clips.reduce((sum, c) => sum + (c.frames ?? recipe.frames), 0);
 const columns = count > 576 ? 40 : 24;
-const cellWidth = 192,
-  cellHeight = 192,
-  anchorX = 96,
-  anchorY = 128;
+const stagingSize = 768,
+  anchorX = 352,
+  anchorY = 384;
 const inputs = {};
 for (const file of ['layout.json', 'recipe.json']) {
   inputs[file] = createHash('sha256')
@@ -33,7 +32,6 @@ for (const file of ['layout.json', 'recipe.json']) {
     .digest('hex');
 }
 const composites = [];
-let index = 0;
 const bounds = { left: anchorX, top: anchorY, right: anchorX, bottom: anchorY };
 for (const clip of clips) {
   for (const facing of ATLAS_FACINGS) {
@@ -77,7 +75,11 @@ for (const clip of clips) {
         scaled.data[i + 3] = Math.round(scaled.data[i + 3] * lighting.shadow.characterOpacity);
       }
       const input = await sharp(scaled.data, {
-        raw: { width: scaled.info.width, height: scaled.info.height, channels: 4 },
+        raw: {
+          width: scaled.info.width,
+          height: scaled.info.height,
+          channels: 4,
+        },
       })
         .png()
         .toBuffer();
@@ -85,35 +87,31 @@ for (const clip of clips) {
       const left = Math.round(anchorX - (padding + box.left + box.width / 2) * scale);
       const top = Math.round(anchorY - (padding + box.top + box.height) * scale);
       const padded = await sharp({
-        create: { width: 768, height: 768, channels: 4, background: '#00000000' },
+        create: {
+          width: stagingSize,
+          height: stagingSize,
+          channels: 4,
+          background: '#00000000',
+        },
       })
-        .composite([{ input, left: left + 256, top: top + 256 }])
+        .composite([{ input, left, top }])
         .png()
         .toBuffer();
       const pixels = await sharp(padded).ensureAlpha().raw().toBuffer();
       let visible = 0;
-      for (let y = 0; y < 768; y++)
-        for (let x = 0; x < 768; x++) {
-          if (!pixels[(y * 768 + x) * 4 + 3]) continue;
+      for (let y = 0; y < stagingSize; y++)
+        for (let x = 0; x < stagingSize; x++) {
+          if (!pixels[(y * stagingSize + x) * 4 + 3]) continue;
           visible++;
-          bounds.left = Math.min(bounds.left, x - 256);
-          bounds.top = Math.min(bounds.top, y - 256);
-          bounds.right = Math.max(bounds.right, x - 256);
-          bounds.bottom = Math.max(bounds.bottom, y - 256);
-          if (x <= 256 || x >= 256 + cellWidth - 1 || y <= 256 || y >= 256 + cellHeight - 1)
-            throw new Error(`Shadow exceeds cell: ${name}/${frame}`);
+          bounds.left = Math.min(bounds.left, x);
+          bounds.top = Math.min(bounds.top, y);
+          bounds.right = Math.max(bounds.right, x);
+          bounds.bottom = Math.max(bounds.bottom, y);
+          if (x < 2 || x >= stagingSize - 2 || y < 2 || y >= stagingSize - 2)
+            throw new Error(`Shadow exceeds staging raster: ${name}/${frame}`);
         }
       if (!visible) throw new Error(`Empty shadow: ${name}/${frame}`);
-      const cell = await sharp(padded)
-        .extract({ left: 256, top: 256, width: cellWidth, height: cellHeight })
-        .png()
-        .toBuffer();
-      composites.push({
-        input: cell,
-        left: (index % columns) * cellWidth,
-        top: Math.floor(index / columns) * cellHeight,
-      });
-      index++;
+      composites.push(padded);
     }
   }
 }
@@ -125,7 +123,7 @@ const crop = {
 };
 const packed = await Promise.all(
   composites.map(async (cell, i) => ({
-    input: await sharp(cell.input).extract(crop).png().toBuffer(),
+    input: await sharp(cell).extract(crop).png().toBuffer(),
     left: (i % columns) * crop.width,
     top: Math.floor(i / columns) * crop.height,
   })),

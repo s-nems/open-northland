@@ -12,6 +12,23 @@ const binding = {
 };
 
 describe('gallery animation controls', () => {
+  it('advances fractional pose holds without quantizing them to simulation ticks', () => {
+    const mining = {
+      start: 0,
+      dirs: 8,
+      stride: 16,
+      subtick: true,
+      frameDurations: Array.from({ length: 16 }, () => 1.8),
+    };
+    const state = { direction: 0, playing: true };
+    expect(galleryCharacterFrame(mining, state, 1.79 / TICKS_PER_SECOND)).toBe(0);
+    expect(galleryCharacterFrame(mining, state, 1.81 / TICKS_PER_SECOND)).toBe(1);
+    const observed = new Set(
+      Array.from({ length: 144 }, (_, i) => galleryCharacterFrame(mining, state, i / 60)),
+    );
+    expect([...observed]).toEqual(Array.from({ length: 16 }, (_, i) => i));
+  });
+
   it('plays the selected direction using authored pose holds', () => {
     const state = { direction: 2, playing: true, frame: 2 };
     expect(galleryCharacterFrame(binding, state, 1 / TICKS_PER_SECOND)).toBe(30);
