@@ -8,7 +8,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 FACINGS = ['SW', 'W', 'NW', 'NE', 'E', 'SE', 'S', 'N']
 GRID = ['SW', 'W', 'NW', 'N', 'NE', 'E', 'SE', 'S']
-STAGES = ['facings', 'paint', 'project', 'render', 'shadows', 'pack', 'preview']
+STAGES = ['facings', 'paint', 'project', 'render', 'shadows', 'pack-shadows', 'pack', 'preview']
 PROPORTIONS = {'head_scale':1,'widen':1,'upper_scale':1,'foot_scale':1,'hunch':0}
 DEFAULT = {
     'angle':15, 'frames':12, 'power':3,
@@ -56,7 +56,13 @@ def main():
     def knobs(section):
         return [arg for key,value in recipe[section].items() for arg in ('--'+key.replace('_','-'),str(value))]
 
-    for stage in args.stages:
+    stages = []
+    paired = (run/'asset.json').is_file()
+    for index, stage in enumerate(args.stages):
+        stages.append(stage)
+        if stage == 'render' and paired and args.stages[index + 1:index + 2] != ['shadows']:
+            stages.append('shadows')
+    for stage in stages:
         print(stage, flush=True)
         if stage == 'facings':
             render_script('render_dirs.py','--glb',pose,'--out',run/'facings','--angles',angle,'--frame','0','--frames',count,*knobs('paint'))
@@ -115,7 +121,7 @@ def main():
                     if stage == 'shadows':
                         options += ['--shadow-only']
                         dependencies = [value for value in options if isinstance(value, Path) and value.is_file()]
-                        dependencies += [SCRIPTS.parent/'shared/shadow_lighting.py', SCRIPTS.parents[3]/'docs/art/lighting.json', recipe_file, run/'layout.json', *[p for p in SCRIPTS.glob('*.py') if p.name != 'run-character.py']]
+                        dependencies += [SCRIPTS.parent/'shared/shadow_lighting.py', SCRIPTS.parents[3]/'docs/art/lighting.json', recipe_file, *[p for p in SCRIPTS.glob('*.py') if p.name != 'run-character.py']]
                         if clip.get('equipment'):
                             config = run/clip['equipment']
                             dependencies.append(config.parent/json.loads(config.read_text())['model'])
@@ -140,6 +146,10 @@ def main():
                     print(name,flush=True)
         elif stage == 'pack':
             node('pack-character.mjs',run,work/'render',recipe.get('post','strong-separation'))
+            if paired:
+                node('pack-shadows.mjs', run)
+        elif stage == 'pack-shadows':
+            node('pack-shadows.mjs', run)
         elif stage == 'preview':
             directory = run/'orig-compare'
             directory.mkdir(exist_ok=True)
