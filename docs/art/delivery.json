@@ -49,11 +49,7 @@
     "characters/man-silver/runtime.json",
     "characters/man-silver/shadow.png"
   ],
-  "characters/woman-blonde": [
-    "characters/woman-blonde/atlas.png",
-    "characters/woman-blonde/runtime.json",
-    "characters/woman-blonde/shadow.png"
-  ],
+  "characters/woman-blonde": ["characters/woman-blonde/atlas.png", "characters/woman-blonde/runtime.json"],
   "terrain/bushes": [
     "props/bush-01-empty/bush-01-empty.png",
     "props/bush-01-empty/runtime.json",

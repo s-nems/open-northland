@@ -1,8 +1,11 @@
 {
-  "source": "idle.glb",
+  "source": "idle-motion/animation.glb",
   "script": "make-idle.py",
-  "duration": 4,
-  "frames": 97,
+  "duration": 6,
+  "frames": 145,
   "fps": 24,
-  "method": "Neutral retargeted start pose, 0.65-degree spine breath and 12-degree head glance; visual approximation, native bone scales."
+  "returnBlendFraction": 0.25,
+  "method": "Meshy Motion Prime right-hand-on-hip gesture and head turns, transferred to the matching skirt rig. Generated full-body motion is preserved with fixed ankle contacts and a smooth 1.5-second return to the first pose; artistic loop cleanup. Idle-only neck correction lifts and retracts the head with a slight chin raise; artistic posture approximation.",
+  "neckPitchDegrees": -6,
+  "neckOffsetMeters": [0, 0.01, 0.025]
 }

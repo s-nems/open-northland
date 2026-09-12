@@ -11,7 +11,14 @@ and `projected/` hold the geometry, motions and matching textures. Keep `recipe.
 `model/prepare-walk.py` derives `walk-upright.glb` from `walk.glb`, with local X posture
 corrections of −7° at `Spine01` and −5° at `neck` (artistic approximation). It retains the
 head socket, leg motion and clip timing. Run it with Blender before rendering walk.
-`model/make-idle.py` derives relaxed idle from `idle.glb`. The skirt has a dedicated UV strip;
+`model/make-idle.py` transfers the Meshy Motion Prime clip in `model/idle-motion/` onto the
+matching skirt rig. The six-second idle places the right hand on the hip and looks in both
+directions. Cleanup plants the ankles and blends the final 1.5 seconds back to the first pose;
+body and shoulder motion remain generated. An idle-only neck correction raises the chin by 6°
+and offsets the neck 2.5 cm upward and 1 cm backward (artistic approximation), preserving
+the generated head turns. Run it with Blender before rendering idle.
+Idle exports all 144 loop samples at 24 Hz; the endpoint duplicates the start and is excluded.
+The skirt has a dedicated UV strip;
 run `model/guard-garment.mjs` after projection. Check skirt deformation and neck seams in turns.
 
 ```sh

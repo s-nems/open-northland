@@ -1,6 +1,6 @@
 import type { DrawItem } from '../../data/scene/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
-import { atomicPose } from './atomic-pose.js';
+import { atomicPose, interpolateAtomicPose } from './atomic-pose.js';
 import { characterGaitRate, characterInterpolatesMotion } from './character-layers.js';
 import { drawAlphaForKind, trackMotion } from './motion.js';
 import type { PooledEntity } from './pooled-entity.js';
@@ -15,9 +15,10 @@ export function presentEntity(
   sheet: SpriteSheet | undefined,
 ) {
   if (pe.motion.tick === -1) pe.atomicPose.item = undefined;
-  const pose = atomicPose(item, frame.tick, pe.atomicPose);
+  const atomic = atomicPose(item, frame.tick, pe.atomicPose);
   const smooth = characterInterpolatesMotion(sheet?.characters, item);
   const alpha = drawAlphaForKind(pe.kind, frame.alpha, smooth);
+  const pose = smooth ? interpolateAtomicPose(atomic, alpha) : atomic;
   trackMotion(
     pe.motion,
     frame.tick,

@@ -11,7 +11,7 @@ Read [PIPELINE.md](PIPELINE.md) for reproduction and [MODULARITY.md](MODULARITY.
 - Preserve the fitted head pivot, neck-parented socket and torso-connected neck overlap. Check the nape below the collar during turns.
 - Match face, ears and neck to the painted arms. Keep fractional edge alpha and the soft-separation export.
 - Reuse shared camera receipts and saved layouts. Target 88 screen pixels at zoom 2 and character scale 0.5.
-- Budget 12 poses per clip/direction, up to 16 when needed. Preserve authored sample phases and playback holds.
+- Sample continuously moving own-art clips at 24 frames per second of playback. Derive frame count from duration; 12–16 total poses do not cover a long clip smoothly. Sparse poses and long holds require an intentional held-pose design and visual review.
 - Preserve `walkCalibration` and `walkPlayback`: 0.8 cadence, shared E-facing stride reference. Do not compensate with sim speed or another directional depth correction.
 - Prefer Meshy-generated full-body work motion. Preserve torso, shoulder, hip and knee motion during cleanup; do not freeze the body around an animated tool arm.
 - Bind work through `atomicId`/`atomicClips`; all male variants must share the same clip layout. Gameplay events remain sim-owned.

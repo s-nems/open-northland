@@ -99,9 +99,13 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
 
 ## Timing and export
 
-- Store 12 unique poses per clip/direction, up to 16 when needed. This is a pose budget, not FPS.
+- Sample continuous motion at 24 frames per second of playback (`ceil(duration * 24)` poses).
+  Review atlas dimensions and memory after increasing sample counts; retain explicit sparse holds
+  only for intentionally held poses. Spatial filtering and movement interpolation do not fill
+  gaps between sprite poses.
 - `samplePhases` selects source poses; `frameDurations` controls playback holds. Preserve both.
-- Male walk/idle use 16 poses each, hammer 12; the woman's walk uses 16 and relaxed idle 12.
+- Existing male walk/idle use 16 poses each and hammer 12. The woman's walk uses 16 poses;
+  her six-second idle uses 144 poses at 24 Hz.
 - Source strips use 192×144 cells, feet y=128. Runtime crops to 96×120, feet (48,104).
 - Use `post: soft-separation`, unlit rendering, linear filtering and interpolated movement.
 - Reuse `shared/body/cameras-smooth/` and the appearance's saved layout; never fit each frame separately.
