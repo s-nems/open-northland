@@ -10,7 +10,6 @@ import { loadIr } from '../content/ir/load.js';
 import { loadMapBriefing, loadMapMeta, loadMapScript, loadTerrainMap } from '../content/map-loader.js';
 import { loadMinimapCellColours } from '../content/minimap-ground.js';
 import { loadMapObjects } from '../content/objects.js';
-import { mountOwnAssetsLegend } from '../content/own-assets/legend.js';
 import { loadOwnMapObjects } from '../content/own-assets/objects.js';
 import { loadOwnSpriteSheet } from '../content/own-assets/sprite-sheet.js';
 import { loadOwnTerrain } from '../content/own-assets/terrain.js';
@@ -299,8 +298,5 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
       matchDeclared: matchIsContested(participants) && participants.includes(localPlayer),
     }),
   });
-  if (ownAssets) {
-    mountOwnAssetsLegend(app);
-  }
   await boot.finish();
 }
