@@ -8,13 +8,13 @@ import { characterShadow } from './character-shadow.js';
 
 const clipSchema = z.object({
   name: z.string().regex(/^[a-z0-9-]+$/),
-  frames: z.number().int().positive().optional(),
+  frames: z.number().int().positive().max(16).optional(),
   duration: z.number().positive(),
   frameDurations: z.array(z.number().positive()).optional(),
   atomicId: z.number().int().nonnegative().optional(),
 });
 const characterRecipe = z.object({
-  frames: z.number().int().positive(),
+  frames: z.number().int().positive().max(16),
   post: z.string(),
   clips: z.array(clipSchema),
   walkCalibration: z.string().optional(),

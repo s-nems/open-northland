@@ -28,6 +28,7 @@ for (const name of names) {
     .filter((f) => /^f\d+\.png$/.test(f))
     .sort((a, b) => Number(a.slice(1, -4)) - Number(b.slice(1, -4)));
   if (!files.length) throw new Error(`No frames: ${name}`);
+  if (files.length > 16) throw new Error(`${name}: exceeds 16 stored frames per facing`);
   boxes.set(name, {
     files,
     box: unionBox(await Promise.all(files.map((f) => alphaBox(path.join(renders, name, f))))),

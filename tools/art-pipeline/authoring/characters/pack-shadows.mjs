@@ -9,6 +9,11 @@ const lightingPath = fileURLToPath(new URL('../../../../docs/art/lighting.json',
 const lighting = JSON.parse(await fs.readFile(lightingPath, 'utf8'));
 const run = path.resolve(process.argv[2]);
 const recipe = JSON.parse(await fs.readFile(path.join(run, 'recipe.json'), 'utf8'));
+for (const clip of recipe.clips) {
+  const frames = clip.frames ?? recipe.frames;
+  if (!Number.isInteger(frames) || frames < 1 || frames > 16)
+    throw new Error(`${clip.name}: expected at most 16 stored frames per facing, got ${frames}`);
+}
 const layout = JSON.parse(await fs.readFile(path.join(run, 'layout.json'), 'utf8'));
 const clips = [
   recipe.clips.find((c) => c.name === 'walk'),

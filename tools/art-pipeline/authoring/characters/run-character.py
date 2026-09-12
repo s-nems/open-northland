@@ -33,6 +33,10 @@ def main():
     if not recipe_file.exists():
         recipe_file.write_text(json.dumps(DEFAULT, indent=2)+'\n')
     recipe = json.loads(recipe_file.read_text())
+    for clip in recipe['clips']:
+        frames = clip.get('frames', recipe['frames'])
+        if not isinstance(frames, int) or not 1 <= frames <= 16:
+            raise ValueError(f"{clip['name']}: expected at most 16 stored frames per facing, got {frames}")
     work = run / '.work'
     work.mkdir(exist_ok=True)
     angle, count = str(recipe['angle']), str(recipe['frames'])
