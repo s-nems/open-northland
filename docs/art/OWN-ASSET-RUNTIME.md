@@ -103,6 +103,8 @@ replacement scope. A `/bobs/` request alone therefore does not prove original wo
 Other app entries retain their own loaders.
 
 Static resources hand over to live simulation entities through the existing placement bindings.
+A prop whose original record has no walk-block area (grass, flowers, mushrooms, bushes, ferns,
+reeds) draws as flat ground decor under every entity, as in original-asset mode.
 Map objects retain renderer culling. Automated checks cover bindings and loading; in-game pixels,
 scale, seams, repetition, construction timing and motion still need visual review. Captures containing
 original UI or world pixels stay in ignored `content/`.

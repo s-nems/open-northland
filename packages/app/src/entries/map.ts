@@ -156,7 +156,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   if (loaded?.objects !== undefined && ir !== null) {
     try {
       const loadedObjects = ownAssets
-        ? await loadOwnMapObjects(app.renderer, loaded.objects, elevation)
+        ? await loadOwnMapObjects(app.renderer, loaded.objects, ir, elevation)
         : await loadMapObjects(loaded.objects, ir, elevation, brightness);
       renderer.setMapObjects(loadedObjects.sprites);
       // Assigned only after the layer accepted the sprites: static refs against an empty layer would
