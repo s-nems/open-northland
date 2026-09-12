@@ -1,6 +1,6 @@
 # Low vegetation
 
-Candidate pack for 23 missing map variants: four reeds, fourteen flower patches, two winter grass
+Own-assets pack for 23 map variants: four reeds, fourteen flower patches, two winter grass
 patches and three dense grass tufts. Existing meadow sprites remain unchanged.
 
 `asset.json` owns layout, compatibility names, frame dimensions, scale 0.5 and ground anchors.
@@ -10,8 +10,7 @@ historical built-in studies with painted checkerboards, never runtime inputs. Th
 the flower master are unused because existing meadow assets already cover those names.
 
 Build with `npm run art -- build terrain/understory`. Follow [the shared pipeline](../../PIPELINE.md)
-for validation, candidate preview, visual acceptance and publication. No approval receipt has been
-created. The candidate replaces 4,161 placements on Magiczny Las across 14 covered variants.
+for validation, candidate preview, visual acceptance and publication. The accepted delivery replaces 4,161 placements on Magiczny Las across 14 covered variants.
 
 ## Review locations
 

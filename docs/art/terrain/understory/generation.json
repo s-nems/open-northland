@@ -1,5 +1,5 @@
 {
-  "status": "Candidate built and previewed; human visual acceptance and publication pending.",
+  "status": "Visually accepted by the user and published through the art pipeline.",
   "reference": {
     "path": "../../buildings/house-1/house-painted-runtime.png",
     "role": "Primary muted A painting, palette and lighting",

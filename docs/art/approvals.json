@@ -103,5 +103,10 @@
     "digest": "abc1e9f5503b109ec1281acdd26ac935f00edd910a82863af397df30784e7c11",
     "reviewer": "existing-delivery",
     "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/understory": {
+    "digest": "a6ae5e4308d0f36ba789029ff0d84dbc5f4cdde4d2170d1166441afdbdf59f7a",
+    "reviewer": "user",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   }
 }

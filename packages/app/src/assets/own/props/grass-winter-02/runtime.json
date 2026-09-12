@@ -1,0 +1,15 @@
+{
+  "id": "grass-winter-02",
+  "image": "grass-winter-02.png",
+  "kind": "decor",
+  "scale": 0.5,
+  "editNames": ["grass snow 02"],
+  "width": 80,
+  "height": 56,
+  "anchor": {
+    "x": 52,
+    "y": 38
+  },
+  "brightness": 1,
+  "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+}

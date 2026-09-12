@@ -1,0 +1,15 @@
+{
+  "id": "flower-ivory-02",
+  "image": "flower-ivory-02.png",
+  "scale": 0.5,
+  "editNames": ["grass flower_2 04"],
+  "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation.",
+  "width": 40,
+  "height": 40,
+  "kind": "decor",
+  "anchor": {
+    "x": 30,
+    "y": 34
+  },
+  "brightness": 0.76
+}
