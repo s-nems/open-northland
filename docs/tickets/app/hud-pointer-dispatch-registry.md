@@ -11,9 +11,10 @@ instead of unifying, a patch predicate `deferToOverlay` was added to the tool pa
 `game-view.ts` to `minimap.claimsPointer`. There are now five differently named predicates for one
 concept (`claimsPointer`, `claimPointer`, `claimsWheel`, `claims`, `deferToOverlay`), hand-composed
 in `game-view.ts`, plus a sixth seam carrying the same overlay as geometry rather than a predicate
-(`overlayReserve` → `minimap.panelRect`, so pop-up lists size clear of what `deferToOverlay` takes).
-Every new HUD surface must reason about listener registration order, which is invisible at the call
-site.
+(`overlayReserve` → `minimap.panelRect`, so pop-up lists size clear of what `deferToOverlay` takes)
+and a seventh that hands a press the other way, from a surface back to the order layer (`onOrder` →
+`controls.overviewPress`, the minimap's own orders). Every new HUD surface must reason about listener
+registration order, which is invisible at the call site.
 
 ## Scope
 

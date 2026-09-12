@@ -15,7 +15,7 @@ import {
   trainsRatherThanEmploys,
 } from '../../game/sandbox/index.js';
 import { buildingTypeOf, isBuilding, isSettler, positionOf, settlerJobType } from '../../game/snapshot.js';
-import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
+import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
 
@@ -36,9 +36,11 @@ export interface UnitOrderController {
   /** `onBuilding` is a building resolved from a marker rather than the world pixel under the cursor
    *  (a garrison flag hangs far above the tower it stands for). */
   issueRightClick(event: MouseEvent, onBuilding?: number | null): void;
-  issueSetWorkFlag(event: MouseEvent): void;
-  issueMoveTo(event: MouseEvent): void;
-  issueAttackMove(event: MouseEvent): void;
+  /** The ground orders name a half-cell node rather than a cursor, so the map overview can issue them
+   *  for a spot the camera is nowhere near. Off-map nodes clamp into the map here. */
+  issueSetWorkFlag(target: Tile): void;
+  issueMoveTo(target: Tile): void;
+  issueAttackMove(target: Tile): void;
   /** Strike one enemy of `kind` under the cursor; a click that hits none of them orders nothing. */
   issueAttackTarget(event: MouseEvent, kind: UnitTargetKind): void;
   /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
@@ -66,7 +68,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   // A carrying settler stays in the formation: the sim makes it set its load down before walking, so
   // there is no client-side filtering.
   const issueWalkOrder = (
-    event: MouseEvent,
+    target: Tile,
     movers: readonly FormationUnit[],
     // The whole selection, not just `movers`: standing units keep their ground reserved.
     selected: ReadonlySet<number>,
@@ -74,10 +76,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   ): void => {
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
-    const world = deps.toWorld(event.clientX, event.clientY);
-    const target = clampTile(worldToTile(world.x, world.y, deps.elevation), width, height);
+    const seat = clampTile(target, width, height);
     const blocked = occupiedTiles(selected);
-    for (const order of assignFormation(movers, target, width, height, blocked)) {
+    for (const order of assignFormation(movers, seat, width, height, blocked)) {
       deps.enqueue({ kind, entity: order.ref as Entity, x: order.tile.col, y: order.tile.row });
     }
   };
@@ -146,7 +147,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       }
       return;
     }
-    issueWalkOrder(event, commanded, selected, 'moveUnit');
+    issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
   };
 
   const strike = (commanded: readonly FormationUnit[], enemy: number): void => {
@@ -171,28 +172,27 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     if (prey !== null) strike(deps.targets.ownedSettlersIn(deps.selected()), prey);
   };
 
-  const issueMoveTo = (event: MouseEvent): void => {
+  const issueMoveTo = (target: Tile): void => {
     const selected = deps.selected();
-    issueWalkOrder(event, deps.targets.ownedSettlersIn(selected), selected, 'moveUnit');
+    issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'moveUnit');
   };
 
-  const issueAttackMove = (event: MouseEvent): void => {
+  const issueAttackMove = (target: Tile): void => {
     const selected = deps.selected();
-    issueWalkOrder(event, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
+    issueWalkOrder(target, deps.targets.ownedSettlersIn(selected), selected, 'attackMoveUnit');
   };
 
-  const issueSetWorkFlag = (event: MouseEvent): void => {
+  const issueSetWorkFlag = (target: Tile): void => {
     const movers = deps.targets.ownedSettlersIn(deps.selected());
     if (movers.length === 0) return;
     const { width, height } = nodeBounds(deps.mapSize);
-    const world = deps.toWorld(event.clientX, event.clientY);
-    const target = clampTile(worldToTile(world.x, world.y, deps.elevation), width, height);
+    const flag = clampTile(target, width, height);
     for (const mover of movers) {
       deps.enqueue({
         kind: 'setWorkFlag',
         entity: mover.ref as Entity,
-        x: target.col,
-        y: target.row,
+        x: flag.col,
+        y: flag.row,
       });
     }
   };

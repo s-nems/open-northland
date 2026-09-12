@@ -1,12 +1,13 @@
 import { isActionHotkey } from '../../hud/hotkeys.js';
 import { clientToScreen } from '../camera/index.js';
-import { pickInRect, screenToWorld } from '../picking.js';
+import { pickInRect, screenToWorld, type Tile, worldToTile } from '../picking.js';
 import { allowedActions } from './action-ring/menu-state.js';
 import { createUnitChrome } from './chrome.js';
 import { createClickHits } from './click-hits.js';
 import { type EquipPickController, mountEquipPicker } from './equip-picker.js';
 import { createSelectionMarquee } from './marquee.js';
 import { createUnitOrderController } from './orders.js';
+import { createOverviewOrders } from './overview-orders.js';
 import { createPickModeController } from './pick-mode.js';
 import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
@@ -68,6 +69,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     return screenToWorld(opts.camera(), c.x, c.y);
   };
 
+  /** The half-cell node a click on the world view names, under the terrain lift it was drawn with. */
+  const nodeAt = (clientX: number, clientY: number): Tile => {
+    const w = toWorld(clientX, clientY);
+    return worldToTile(w.x, w.y, opts.elevation);
+  };
+
   const clickHits = createClickHits({
     ...(opts.doorBadges !== undefined ? { doorBadges: opts.doorBadges } : {}),
     targets: unitTargets,
@@ -81,8 +88,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     targets: unitTargets,
     content: opts.content,
     mapSize: opts.mapSize,
-    ...(opts.elevation !== undefined ? { elevation: opts.elevation } : {}),
     toWorld,
+    nodeAt,
     enqueue: opts.enqueue,
     orders: () => orders,
     setArmedCursor: (armed) => {
@@ -119,6 +126,8 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     openActions: (atClient) => chrome.actions().open(atClient),
   });
 
+  const overviewPress = createOverviewOrders({ pickMode, orders: () => orders });
+
   const onMouseDown = (e: MouseEvent): void => {
     // The HUD claims its own clicks before any world picking. The ring claim covers the right button
     // too, since its own listener consumes left clicks only.
@@ -128,7 +137,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (chrome.actions().claimsPointer(e.clientX, e.clientY)) return;
     if (pickMode.handleMouseDown(e)) return;
     if (e.button === 2) {
-      if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(e);
+      if (e.ctrlKey || e.metaKey) orders.issueSetWorkFlag(nodeAt(e.clientX, e.clientY));
       else {
         const w = toWorld(e.clientX, e.clientY);
         const marker = clickHits.doorMarkerAt(w.x, w.y);
@@ -189,6 +198,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectedIds: selection.ids,
     selectionVersion: selection.version,
     selectEntity: (id) => applySelection([id], false),
+    overviewPress,
     portrait: () => chrome.panel().portrait(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     workAreaRings: () => workArea.rings(opts.snapshot()),
