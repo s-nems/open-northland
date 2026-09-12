@@ -1,6 +1,12 @@
 """Directional projection of evaluated character geometry onto a flat ground receiver."""
+import sys
+from pathlib import Path
+
 import bpy
 from mathutils import Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "shared"))
+from shadow_lighting import incoming_for_camera, load_lighting
 
 
 class GroundShadow:
@@ -18,6 +24,8 @@ class GroundShadow:
         scene.camera.data.ortho_scale *= 1.5
         scene.render.resolution_x = round(scene.render.resolution_x * 1.5)
         scene.render.resolution_y = round(scene.render.resolution_y * 1.5)
+        basis = scene.camera.matrix_world.to_3x3()
+        self.ray = Vector(incoming_for_camera(basis @ Vector((1, 0, 0)), basis @ Vector((0, 1, 0)), load_lighting()))
         self.casters = [o for o in bpy.context.scene.objects if o.type == 'MESH' and not o.hide_render]
         self.projected = []
         self.material = bpy.data.materials.new('GroundShadow')
@@ -36,8 +44,7 @@ class GroundShadow:
             bpy.data.meshes.remove(mesh)
         self.projected = []
         graph = bpy.context.evaluated_depsgraph_get()
-        # Artistic daylight: world +X/-Y casts toward screen lower-right; independent of facing.
-        ray = Vector((0.65, -0.75, -1))
+        ray = self.ray
         for caster in self.casters:
             evaluated = caster.evaluated_get(graph)
             mesh = bpy.data.meshes.new_from_object(evaluated, depsgraph=graph)

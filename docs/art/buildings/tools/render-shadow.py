@@ -9,6 +9,11 @@ import bpy
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Matrix, Vector
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[4] / 'tools/art-pipeline/authoring/shared'))
+from shadow_lighting import PROFILE_PATH, incoming_for_camera, load_lighting
+
+lighting = load_lighting()
+
 root = Path(sys.argv[sys.argv.index('--') + 1]).resolve()
 config = json.loads((root / 'calibration.json').read_text())
 manifest = json.loads((root / 'runtime.json').read_text())
@@ -55,14 +60,12 @@ for obj in list(scene.objects):
     if obj.type == 'LIGHT':
         bpy.data.objects.remove(obj, do_unlink=True)
 
-# Rotate daylight with the camera to preserve the same screen-space direction.
-light_rotation = Matrix.Rotation(math.radians(config.get('lightRotationDegrees', 0)), 3, 'Z')
-incoming = light_rotation @ Vector((5, 8, -14))
+incoming = Vector(incoming_for_camera(right, up, lighting))
 bpy.ops.object.light_add(type='SUN')
 sun = bpy.context.object
 sun.rotation_euler = incoming.to_track_quat('-Z', 'Y').to_euler()
 sun.data.energy = 2.0
-sun.data.angle = math.radians(9)
+sun.data.angle = math.radians(lighting['shadow']['sunAngularDiameterDegrees'])
 scene.world.use_nodes = True
 scene.world.node_tree.nodes['Background'].inputs[0].default_value = (.73, .77, .82, 1)
 scene.world.node_tree.nodes['Background'].inputs[1].default_value = .7
@@ -83,7 +86,7 @@ tree.interface.new_socket(name='Image', in_out='OUTPUT', socket_type='NodeSocket
 render = tree.nodes.new('CompositorNodeRLayers')
 set_alpha = tree.nodes.new('CompositorNodeSetAlpha')
 set_alpha.inputs['Type'].default_value = 'Apply Mask'
-set_alpha.inputs['Alpha'].default_value = .48
+set_alpha.inputs['Alpha'].default_value = lighting['shadow']['opacity']
 tree.links.new(render.outputs['Image'], set_alpha.inputs['Image'])
 composite = tree.nodes.new('NodeGroupOutput')
 tree.links.new(set_alpha.outputs[0], composite.inputs[0])
@@ -97,8 +100,10 @@ report = {
     'shadowSha256': hashlib.sha256((root / 'shadow.png').read_bytes()).hexdigest(),
     'cameraElevationDegrees': 28.5,
     'sunIncomingDirection': list(incoming),
-    'sunAngularDiameterDegrees': 9,
-    'opacity': .48,
+    'lightingProfile': lighting['id'],
+    'lightingProfileSha256': hashlib.sha256(PROFILE_PATH.read_bytes()).hexdigest(),
+    'sunAngularDiameterDegrees': lighting['shadow']['sunAngularDiameterDegrees'],
+    'opacity': lighting['shadow']['opacity'],
     'samples': 32,
 }
 (root / 'render.json').write_text(json.dumps(report, indent=2) + '\n')

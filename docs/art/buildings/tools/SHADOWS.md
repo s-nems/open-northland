@@ -11,9 +11,11 @@ measurements. Reproduce a shadow with Blender 5.2.1 LTS from the repository root
 /Applications/Blender.app/Contents/MacOS/Blender --background --python docs/art/buildings/tools/render-shadow.py -- docs/art/buildings/house-2/source/shadow-v1
 ```
 
-The retained geometry approximates the painted silhouette. Shared upper-left daylight, 9° sun and
-0.48 opacity are artistic choices, not recovered original-game lighting. Headquarters rotates both
-geometry and light to match its retained camera. Reference-image doorway measurements are manual
+The retained geometry approximates the painted silhouette. The exporter reads the shared [lighting profile](../../lighting.json) and converts its reference
+shadow direction for the actual camera, including headquarters. The 9° sun and 0.48 opacity are
+artistic choices, not recovered original-game lighting. Model rotation remains independent; legacy
+`lightRotationDegrees` no longer controls the ray. See the exact screen direction in
+[WORLD-STYLE.md](../../WORLD-STYLE.md#shared-cast-shadow-lighting). Reference-image doorway measurements are manual
 estimates. Body pixels, entrance anchors and scale remain unchanged; there is no added soil layer.
 House 1 retains the exact shadow pixels accepted in the initial comparison.
 

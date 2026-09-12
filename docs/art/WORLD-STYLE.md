@@ -48,7 +48,7 @@ See [PIPELINE.md](buildings/PIPELINE.md) for geometry-drift limits and construct
 - Use readable material groups and selective detail. Avoid plastic shine, inflated toy roofs, lemon
   yellow glare, elaborate fantasy ornaments, glowing windows everywhere and blanket orange lighting.
 - Use a consistent elevated orthographic game view and light from upper left. Exact camera, world
-  scale, shadows and export settings still need engine calibration; do not measure them from AI pixels
+  scale and body export settings still need engine calibration; cast shadows follow the shared profile below. Do not measure settings from AI pixels
   and present them as original-game facts.
 - Terrain belongs to the same world. Keep grass/soil variation, stone size, vegetation and shore
   treatment coherent with the buildings. Leave quiet ground areas for people, goods and overlays.
@@ -58,6 +58,26 @@ See [PIPELINE.md](buildings/PIPELINE.md) for geometry-drift limits and construct
 These are artistic decisions based on the selected board and brief, not claims of historical or
 original-engine fidelity. A named gameplay function still requires a verified content join for
 production integration.
+
+## Shared cast-shadow lighting
+
+[lighting.json](lighting.json) is the numerical source for every new or regenerated cast shadow:
+buildings, characters, trees and props. Use the shared camera conversion in
+`tools/art-pipeline/authoring/shared/shadow_lighting.py`; do not choose a separate ray or opacity per asset.
+
+The accepted House 1 reference uses incoming sun direction `[5, 8, -14]`, camera elevation 28.5°
+and azimuth 22.5°. In image coordinates (+x right, +y down), a point 100 projected pixels above
+its ground contact casts its shadow **62.43 pixels right and 21.24 pixels up**: angle −18.79°.
+Camera conversion preserves this direction and length relative to projected height even when an
+exporter uses a different elevation or azimuth. Facing changes rotate the subject, not the daylight.
+Shadow colour is black `[0, 0, 0]`, maximum opacity 0.48, with a 9° sun for building renders.
+The character silhouette uses a fixed 0.55 source-output-pixel blur as a small-sprite approximation.
+These are own-art choices derived from the accepted building shadow, not original-engine facts.
+
+Review cast shadows together on terrain at ×2; painted surface shading and contact shading are
+separate effects. Current woodland cutouts have painted root/contact shading but no separate
+cast-shadow delivery. Adding their directional shadows requires its own geometry or reviewed source
+and must use this profile. Do not infer lighting consistency from that existing contact shading.
 
 ## Independent designs and reference roles
 
@@ -126,6 +146,6 @@ Before treating a new asset as ready:
   engine integration remain task-dependent. Use the relevant package contract for implementation.
 
 Still open: an assembled settlement reference scene, calibrated camera and relative scale,
-production resolutions/filtering/alpha/shadow conventions, and seamless terrain/transition design.
+production resolutions/filtering/alpha, remaining cast-shadow coverage, and seamless terrain/transition design.
 These do not reopen the muted A style selection. Do not start unrelated production integration merely
 because the visual direction has been chosen.

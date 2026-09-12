@@ -41,6 +41,11 @@ node tools/art-pipeline/authoring/characters/pack-shadows.mjs "$RUN"
 npm run art -- build "characters/$ID"
 ```
 
+The shared [lighting profile](../lighting.json) fixes direction, length and darkness to the accepted
+building shadow. The exporter converts it for the character camera; do not copy building world-space
+XYZ into a different camera. Profile and conversion-code hashes invalidate retained renders when
+lighting changes. See [world lighting](../WORLD-STYLE.md#shared-cast-shadow-lighting) for exact values.
+
 Each character operation in `asset.json` references `shadows/shadow.json`; a copy operation delivers
 its atlas as `shadow.png`. The shadow has independent cell dimensions and foot anchors but shares
 the body's frame ids and timing. Packing trims a common envelope without rescaling the silhouette.

@@ -115,7 +115,7 @@ def main():
                     if stage == 'shadows':
                         options += ['--shadow-only']
                         dependencies = [value for value in options if isinstance(value, Path) and value.is_file()]
-                        dependencies += [recipe_file, run/'layout.json', *[p for p in SCRIPTS.glob('*.py') if p.name != 'run-character.py']]
+                        dependencies += [SCRIPTS.parent/'shared/shadow_lighting.py', SCRIPTS.parents[3]/'docs/art/lighting.json', recipe_file, run/'layout.json', *[p for p in SCRIPTS.glob('*.py') if p.name != 'run-character.py']]
                         if clip.get('equipment'):
                             config = run/clip['equipment']
                             dependencies.append(config.parent/json.loads(config.read_text())['model'])
