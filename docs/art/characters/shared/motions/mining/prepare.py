@@ -142,21 +142,33 @@ for (index, pose) in enumerate(poses):
     x = y.cross(axis).normalized()
     orientation = Matrix((x, y, axis)).transposed().to_quaternion() @ Quaternion((0, 0, 1), math.pi)
     authored_grip = grip.copy()
-    for _ in range(12 if phase >= 0.375 else 0):
+    overhead = max(0, min(1, (phase - 0.15) / 0.06, (0.375 - phase) / 0.02))
+    for _ in range(24):
         for side, offset in [('Right', 0), ('Left', 0.16)]:
             palm = orientation if side == 'Right' else orientation @ Quaternion((0, 1, 0), math.pi)
             shoulder, elbow, wrist = map(position, (side + 'Arm', side + 'ForeArm', side + 'Hand'))
-            reach = ((elbow - shoulder).length + (wrist - elbow).length) * 0.97
+            reach = ((elbow - shoulder).length + (wrist - elbow).length) * 0.84
             desired = grip + axis * offset - palm @ Vector((0, 0.065, 0))
             delta = desired - shoulder
             if delta.length > reach:
                 grip -= delta.normalized() * (delta.length - reach)
-    grip = authored_grip.lerp(grip, min(1, (1 - phase) / 0.1875))
+
+    grip = grip.lerp(authored_grip, overhead)
     for (side, center) in [('Right', grip), ('Left', grip + axis * 0.16)]:
         palm = orientation if side == 'Right' else orientation @ Quaternion((0, 1, 0), math.pi)
         wrist = center - palm @ Vector((0, 0.065, 0))
         fit_limb(side + 'Arm', side + 'ForeArm', side + 'Hand', wrist, position(side + 'Arm') + Vector((0.8 if side == 'Left' else -0.8, -0.45, 0.05)))
-        fit_limb(side + 'Arm', side + 'ForeArm', side + 'Hand', position(side + 'Hand'), position(side + 'Arm') + Vector((0.8 if side == 'Left' else -0.8, -0.45, -0.55)))
+        wrist = position(side + 'Hand')
+        shoulder, elbow = map(position, (side + 'Arm', side + 'ForeArm'))
+        reach = ((elbow - shoulder).length + (wrist - elbow).length) * 0.84
+        delta = wrist - shoulder
+        bone = arm.pose.bones[side + 'Arm']
+        world = arm.matrix_world @ bone.matrix
+        world.translation += delta.normalized() * max(0, delta.length - reach) * overhead
+        bone.matrix = arm.matrix_world.inverted() @ world
+        bpy.context.view_layer.update()
+        outward = 0.2 + 1.8 * overhead
+        fit_limb(side + 'Arm', side + 'ForeArm', side + 'Hand', wrist, position(side + 'Arm') + Vector((outward if side == 'Left' else -outward, -0.3, -1.5)))
         current = (arm.matrix_world @ arm.pose.bones[side + 'Hand'].matrix).to_quaternion()
         rotate(side + 'Hand', palm @ current.inverted())
     for bone in arm.pose.bones:
