@@ -15,7 +15,7 @@ describe('gallery links', () => {
   });
   it('bounds external values and limits unique comparison entries', () => {
     const state = readGalleryState(
-      new URLSearchParams('tab=unknown&direction=999&speed=NaN&progress=-2&frame=-1&compare=a,a,b,c,d'),
+      new URLSearchParams('tab=unknown&direction=999&speed=NaN&progress=-2&frame=-1&compare=a,a,b,c,d,e'),
     );
     expect(state).toMatchObject({
       tab: 'animations',
@@ -23,7 +23,7 @@ describe('gallery links', () => {
       speed: 1,
       progress: 0,
       frame: 0,
-      compare: ['a', 'b', 'c'],
+      compare: ['a', 'b', 'c', 'd'],
     });
   });
 });

@@ -1,0 +1,20 @@
+{
+  "blenderVersion": "5.2.1 LTS",
+  "modelSha256": "227b1ead2b9e4ff68f801fae3dfcf12ffdc1bbb4ea0085defa70caef4bf85e30",
+  "scriptSha256": "7922b997c483dedb029295e3b034a2ebb42ea0c1692cb117d24b43386395aa4a",
+  "calibrationSha256": "858e06bd7a9bc8d49b80c4344bbcbf2876e3f47698b00af89b65bf46999754c8",
+  "shadowSha256": "5ea78d67fa98dfb2cfbe708765d3538571b93287e1471323b41468cc07680a37",
+  "cameraElevationDegrees": 28.5,
+  "sunIncomingDirection": [0.357142835855484, 0.571428656578064, -1.0],
+  "lightingProfile": "muted-house-daylight-v1",
+  "lightingProfileSha256": "01d524ea6951d9d45eb0ed1123da5c38eae4ac6639c07593b2fa02372a564c5d",
+  "sunAngularDiameterDegrees": 9,
+  "opacity": 0.48,
+  "alphaFloor": 0.02,
+  "samples": 32,
+  "calibrationFormatting": {
+    "renderInputSha256": "858e06bd7a9bc8d49b80c4344bbcbf2876e3f47698b00af89b65bf46999754c8",
+    "formattedFileSha256": "4b6aa6da49fcf6470fdb9c16ae7b19490192fe55682e5c554663f94631aa2f31",
+    "operation": "Biome JSON formatting after render; numeric values and render parameters unchanged."
+  }
+}

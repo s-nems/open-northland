@@ -7,6 +7,7 @@ import { propPreview } from './preview-prop.js';
 import type { GalleryPreviewState, PreviewPanel } from './preview-state.js';
 import { terrainPreview } from './preview-terrain.js';
 import { createPreviewViewport } from './preview-viewport.js';
+import { GALLERY_COMPARISON_LIMIT } from './state.js';
 
 export type { GalleryPreviewState } from './preview-state.js';
 
@@ -69,7 +70,7 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
       clear();
       const prepared: PreviewPanel[] = [];
       try {
-        for (const entry of entries.slice(0, 4)) {
+        for (const entry of entries.slice(0, GALLERY_COMPARISON_LIMIT + 1)) {
           const panel =
             entry.kind === 'character'
               ? await characterPreview(entry)

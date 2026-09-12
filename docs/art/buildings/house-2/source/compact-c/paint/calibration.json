@@ -1,0 +1,10 @@
+{
+  "doorPixels": {
+    "x": 390,
+    "top": 638,
+    "bottom": 841
+  },
+  "entrancePixel": [380, 955],
+  "uncertaintyPixels": 6,
+  "scale": 0.23645320197044334
+}

@@ -1,0 +1,11 @@
+{
+  "model": "../geometry/house-finished.blend",
+  "doorHeight": 0.4227034807205201,
+  "doorGround": [-0.1442396640777588, -0.6847387552261353, -0.7596819996833801],
+  "doorPixels": 199,
+  "imageSize": [1536, 1280],
+  "bodyPadding": [128, 128],
+  "samples": 32,
+  "alphaFloor": 0.02,
+  "basis": "Manual doorway and ground registration; generated paint can drift slightly from retained geometry. Shared world lighting; approximation reviewed on terrain."
+}

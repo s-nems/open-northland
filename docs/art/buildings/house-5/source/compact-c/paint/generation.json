@@ -1,0 +1,45 @@
+{
+  "painting": {
+    "tool": "built-in image_gen",
+    "prompt": "paint.prompt.txt",
+    "references": [
+      {
+        "path": "../geometry/render.png",
+        "role": "Calibrated geometry/camera edit target",
+        "sha256": "a6ce90a3719e429edb2f7f4c55edfd7e8e1d857bda1c57f4bd5f76866962ab90"
+      },
+      {
+        "path": "../../../../house-1/house-painted-runtime.png",
+        "role": "Canonical muted palette and paint",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "../selected-house.png",
+        "role": "Selected C architecture/details",
+        "sha256": "994b21e67e385293129f1ab22371a811efd7ff256ccc86d683cffda78bd3e2a8"
+      }
+    ],
+    "output": "paint.png",
+    "sha256": "7fed5e1ab39d21af7bd1d754147f340047698869dbf70338b4d577bbbab53838"
+  },
+  "alphaExport": {
+    "tool": "imagegen bundled CLI",
+    "model": "gpt-image-1.5",
+    "prompt": "alpha.prompt.txt",
+    "quality": "high",
+    "input_fidelity": "high",
+    "background": "transparent",
+    "size": "1024x1024",
+    "references": [
+      {
+        "path": "paint.png",
+        "role": "Exact painting; background extraction only",
+        "sha256": "7fed5e1ab39d21af7bd1d754147f340047698869dbf70338b4d577bbbab53838"
+      }
+    ],
+    "output": "final.png",
+    "sha256": "aeb7e2764838485068d36e35468880e49aad51d783d6226c076934e0e95ca079"
+  },
+  "postprocessing": "Generated alpha preserved without keying or authored masks. Light/dark composites are local QA only.",
+  "limitations": "Alpha export can smooth painted texture and shift geometry; final doorway is measured separately. Ground contact and shadow registration remain artistic approximations."
+}

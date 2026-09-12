@@ -96,6 +96,18 @@
     {
       "id": "terrain/woodland",
       "recipe": "docs/art/terrain/woodland/asset.json"
+    },
+    {
+      "id": "buildings/house-3",
+      "recipe": "docs/art/buildings/house-3/asset.json"
+    },
+    {
+      "id": "buildings/house-4",
+      "recipe": "docs/art/buildings/house-4/asset.json"
+    },
+    {
+      "id": "buildings/house-5",
+      "recipe": "docs/art/buildings/house-5/asset.json"
     }
   ]
 }

@@ -1,0 +1,7 @@
+{
+  "fullGeometry": "raw.glb.gz",
+  "scenePurpose": "Editable calibrated shadow geometry; final painting uses the retained full-detail render.",
+  "facesBefore": 1335620,
+  "facesAfter": 450000,
+  "method": "Blender collapse decimation; no changes to camera, model bounds or entrance calibration."
+}

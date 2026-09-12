@@ -1,0 +1,19 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "See turnaround.prompt.txt",
+  "references": [
+    {
+      "path": "turnaround-input.png",
+      "role": "Selected compact house architecture",
+      "sha256": "d1205348951e983917e4257910d2bd41bca649d1be1c39ca15a6851ec1d77701"
+    },
+    {
+      "path": "../../../../house-1/house-painted-runtime.png",
+      "role": "Canonical muted paint and light",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    }
+  ],
+  "output": "turnaround.png",
+  "outputSha256": "c8bfb7d1fbf8caa60683898507dbe55a85121f03285119b07cf40a7ee76c23a8",
+  "postprocessing": "Split 2x2 image into native-resolution quadrants, trim 3 pixels from panel edges. Minor generated view inconsistencies remain reconstruction approximations."
+}

@@ -2,27 +2,27 @@
   "version": 1,
   "id": "buildings/house-1",
   "kind": "building",
-  "sourceBasis": "Independent own artwork. Calibration and compatibility evidence are retained in the package sources and runtime manifests.",
+  "sourceBasis": "Independent selected C architecture, compact calibrated Meshy model and painted genuine-alpha export. Original references remain local and excluded.",
   "outputs": [
     {
       "path": "buildings/house-1/house-painted-runtime.png",
       "content": {
         "operation": "copy",
-        "source": "source/weathered-v1/final.png"
+        "source": "source/compact-c/paint/final.png"
       }
     },
     {
       "path": "buildings/house-1/runtime.json",
       "content": {
         "operation": "copy",
-        "source": "source/shadow-v1/runtime.json"
+        "source": "source/compact-c/shadow/runtime.json"
       }
     },
     {
       "path": "buildings/house-1/shadow.png",
       "content": {
         "operation": "copy",
-        "source": "source/shadow-v1/shadow.png"
+        "source": "source/compact-c/shadow/shadow.png"
       }
     }
   ]

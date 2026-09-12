@@ -1,0 +1,12 @@
+{
+  "file_paths": ["front.png", "right.png", "back.png", "left.png"],
+  "ai_model": "meshy-7",
+  "model_type": "standard",
+  "should_remesh": false,
+  "should_texture": true,
+  "texture_resolution": "4k",
+  "enable_pbr": false,
+  "image_enhancement": false,
+  "target_formats": ["glb"],
+  "response_format": "json"
+}

@@ -1,0 +1,66 @@
+{
+  "painting": {
+    "tool": "built-in image_gen",
+    "prompt": "paint.prompt.txt",
+    "references": [
+      {
+        "path": "../geometry/render.png",
+        "role": "Calibrated geometry/camera edit target",
+        "sha256": "39d0797875fe1ab44df123e98e97d808a28da1eb9579756afc8a256e1583b197"
+      },
+      {
+        "path": "../../../../house-1/house-painted-runtime.png",
+        "role": "Canonical muted palette and paint",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "../selected-house.png",
+        "role": "Selected C architecture/details",
+        "sha256": "6b3131319892d607f720c5b69e204e0c51f45c6013d11b4c42797917478a5c9a"
+      }
+    ],
+    "output": "paint.png",
+    "sha256": "a0a1a6a85a3c4b0326242762cd13b440ea4ce7d2cd4673fb340d99c6eafc09a4"
+  },
+  "alphaExport": {
+    "tool": "imagegen bundled CLI",
+    "model": "gpt-image-1.5",
+    "prompt": "alpha.prompt.txt",
+    "quality": "high",
+    "input_fidelity": "high",
+    "background": "transparent",
+    "size": "1024x1024",
+    "references": [
+      {
+        "path": "paint.png",
+        "role": "Exact painting; background extraction only",
+        "sha256": "a0a1a6a85a3c4b0326242762cd13b440ea4ce7d2cd4673fb340d99c6eafc09a4"
+      }
+    ],
+    "output": "final.png",
+    "sha256": "6988695c097db35a762324509d253b34adfcc92708224337a8138ccde1de29f5"
+  },
+  "postprocessing": "Generated alpha preserved without keying or authored masks. Light/dark composites are local QA only.",
+  "limitations": "Alpha export can smooth painted texture and shift geometry; final doorway is measured separately. Ground contact and shadow registration remain artistic approximations.",
+  "rejectedAttempt": {
+    "prompt": "final.prompt.txt",
+    "references": [
+      {
+        "path": "../geometry/render.png",
+        "role": "Calibrated geometry/camera edit target",
+        "sha256": "39d0797875fe1ab44df123e98e97d808a28da1eb9579756afc8a256e1583b197"
+      },
+      {
+        "path": "../../../../house-1/house-painted-runtime.png",
+        "role": "Canonical muted palette and paint",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "../selected-house.png",
+        "role": "Selected C architecture/details",
+        "sha256": "6b3131319892d607f720c5b69e204e0c51f45c6013d11b4c42797917478a5c9a"
+      }
+    ],
+    "reason": "Direct render-to-alpha edit changed the selected painted finish; output retained only in ignored local QA."
+  }
+}

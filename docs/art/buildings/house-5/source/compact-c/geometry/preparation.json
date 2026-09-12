@@ -1,0 +1,19 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Produce a clean square 2x2 architectural turnaround sheet of the SINGLE HOUSE in attached cropped image, house level 5. Image1 architecture target, image2 primary muted painting and daylight reference. Four equal square panels: top left exactly front elevation, top right right elevation, bottom left back elevation, bottom right left elevation. Orthographic straight-on ELEVATIONS at eye level with no perspective and no visible top planes; same size and ground baseline within each panel. One single identical house reconstructed coherently from all four sides; hidden sides are restrained functional extensions of selected design. Copy the selected level's architecture, roof, materials and COMPACT PROPORTIONS, do not change this design. NO redesign, no extra floors, no elaborate extra wings. All openings must remain physical recesses.  Front upper balcony MUST have a full height wooden door opening directly onto balcony floor. Keep wooden rail and porch. Marble only in a few weathered step treads; wooden entrance frame. No smoke, ground island, backdrop scenery, grass, crates, barrels, detached props, labels, numbers or text. Plain uniform light gray background, thin straight panel gutters. Matte painted wood/plaster/brick/thatch/tile textures as selected. This is a four-view input for 3D reconstruction, preserve compact building silhouette and clearly visible doors. No cast shadow. Large detailed house centered with 7% margin in EACH quadrant.",
+  "references": [
+    {
+      "path": "turnaround-input.png",
+      "role": "Selected compact house architecture",
+      "sha256": "994b21e67e385293129f1ab22371a811efd7ff256ccc86d683cffda78bd3e2a8"
+    },
+    {
+      "path": "../../../../house-1/house-painted-runtime.png",
+      "role": "Canonical muted paint and light",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    }
+  ],
+  "output": "turnaround.png",
+  "outputSha256": "94ec864a84a0a6f9c4fc54610b8647c47d4191eb0f57710bc4c11a1daf21907d",
+  "postprocessing": "Split 2x2 image into native-resolution quadrants, trim 3 pixels from panel edges. Minor generated view inconsistencies remain reconstruction approximations."
+}

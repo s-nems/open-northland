@@ -1,0 +1,19 @@
+{
+  "frontDoorPixels": [433, 524, 711],
+  "measurementOrthographicScale": 2.177583694458008,
+  "depthScale": 0.72,
+  "mirrorX": true,
+  "basis": "Manual clear opening x467 y524..711 +/-4px on original front elevation; X reflected for model mirror restoring right-hand annex. Depth reduced 28% for selected compact proportions.",
+  "doorTop": [-0.03459913955794441, -0.43443238735198975, -0.18000877287652758],
+  "doorFoot": [-0.03459913955794441, -0.43443238735198975, -0.6324622738361358],
+  "doorGround": [-0.03459913955794441, -0.6847502589225769, -0.7817680239677429],
+  "orthographicScale": 2.3801368474960327,
+  "boundsMin": [-0.7868459820747375, -0.6847502589225769, -0.7817680239677429],
+  "boundsMax": [0.7999119758605957, 0.6786065101623535, 0.7798420190811157],
+  "cameraElevation": 28.5,
+  "cameraAzimuth": 22.5,
+  "doorTopPixel": [636.9472503662109, 987.4149169921875],
+  "doorFootPixel": [636.9472503662109, 1244.0178909301758],
+  "entrancePixel": [575.1283721923828, 1399.9076499938965],
+  "masterSize": [1536, 1536]
+}

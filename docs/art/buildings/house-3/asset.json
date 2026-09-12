@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "buildings/house-3",
+  "kind": "building",
+  "sourceBasis": "Independent selected C architecture, compact calibrated Meshy model and painted genuine-alpha export. Original references remain local and excluded.",
+  "outputs": [
+    {
+      "path": "buildings/house-3/house-painted-runtime.png",
+      "content": {
+        "operation": "copy",
+        "source": "source/compact-c/paint/final.png"
+      }
+    },
+    {
+      "path": "buildings/house-3/runtime.json",
+      "content": {
+        "operation": "copy",
+        "source": "source/compact-c/shadow/runtime.json"
+      }
+    },
+    {
+      "path": "buildings/house-3/shadow.png",
+      "content": {
+        "operation": "copy",
+        "source": "source/compact-c/shadow/shadow.png"
+      }
+    }
+  ]
+}

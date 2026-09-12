@@ -1,0 +1,18 @@
+{
+  "frontDoorPixels": [421, 582, 775],
+  "measurementOrthographicScale": 2.188911199569702,
+  "depthScale": 0.72,
+  "basis": "Manual clear doorway +/-4px; shortened depth preserves compact selected concept and original sprite envelope.",
+  "doorTop": [-0.06508610275056627, -0.4953913986682892, -0.3213488229115804],
+  "doorFoot": [-0.06508610275056627, -0.4953913986682892, -0.7907486690415276],
+  "doorGround": [-0.06508610275056627, -0.6471432447433472, -0.9520090222358704],
+  "orthographicScale": 2.855101525783539,
+  "boundsMin": [-0.8081200122833252, -0.6471432447433472, -0.9520090222358704],
+  "boundsMax": [0.8190109729766846, 0.6369624137878418, 0.9513919949531555],
+  "cameraElevation": 28.5,
+  "cameraAzimuth": 22.5,
+  "doorTopPixel": [632.0015716552734, 1029.1381072998047],
+  "doorFootPixel": [632.0015716552734, 1251.0655517578125],
+  "entrancePixel": [600.7592468261719, 1363.297794342041],
+  "masterSize": [1536, 1536]
+}

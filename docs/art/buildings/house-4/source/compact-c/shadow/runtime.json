@@ -1,0 +1,27 @@
+{
+  "tribeId": 1,
+  "typeId": 5,
+  "layer": "own-house-4",
+  "sprite": "house-painted-runtime.png",
+  "width": 1024,
+  "height": 1024,
+  "scale": 0.26229508196721313,
+  "entrancePixel": {
+    "x": 370,
+    "y": 961
+  },
+  "doorNode": {
+    "x": -1,
+    "y": 3
+  },
+  "sourceBasis": "Independent selected C design; compact model-derived painted sprite, GPT Image 1.5 genuine-alpha extraction. Manually measured clear door x371, y692..875, +/-6px; 48 world px doorway at zoom2. Original sprite envelopes compared locally; ground-step anchor is an artistic estimate. Tribe1/type5 verified against owned houses.ini and IR; door -2,3 plus existing home shift +1,0. Separate shared-light model shadow; no simulation changes.",
+  "shadow": {
+    "sprite": "shadow.png",
+    "width": 1536,
+    "height": 1280,
+    "entrancePixel": {
+      "x": 498,
+      "y": 1089
+    }
+  }
+}

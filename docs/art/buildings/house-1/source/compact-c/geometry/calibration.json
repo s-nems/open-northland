@@ -1,0 +1,18 @@
+{
+  "frontDoorPixels": [450, 451, 696],
+  "measurementOrthographicScale": 2.1867835521698,
+  "depthScale": 0.6,
+  "basis": "Manual full-height clear doorway +/-4px; crossbar in generated geometry is a texture/detail artifact to remove in final paint. Depth shortened 40% to match low compact house1 and original envelope.",
+  "doorTop": [-0.0019879937171936035, -0.44074174761772156, -0.00290224552154541],
+  "doorFoot": [-0.0019879937171936035, -0.44074174761772156, -0.5981933236122131],
+  "doorGround": [-0.0019879937171936035, -0.5701721906661987, -0.7206199765205383],
+  "orthographicScale": 2.2634249925613403,
+  "boundsMin": [-0.7564629912376404, -0.5701721906661987, -0.7206199765205383],
+  "boundsMax": [0.7524870038032532, 0.5707584619522095, 0.7196750044822693],
+  "cameraElevation": 28.5,
+  "cameraAzimuth": 22.5,
+  "doorTopPixel": [653.4650115966797, 901.3892211914062],
+  "doorFootPixel": [653.4650115966797, 1256.4093704223633],
+  "entrancePixel": [619.8524780273438, 1368.1426963806152],
+  "masterSize": [1536, 1536]
+}

@@ -1,0 +1,29 @@
+{
+  "tool": "built-in image_gen",
+  "designPrompt": "Use case: precise-object-edit. Revise the attached selected SET C five-level Viking housing progression concept sheet. Keep this exact C architectural identity: carved Norse porch posts, understated ridge carvings, warm weathered wood, neutral plaster at levels1/2, brick walls starting3, aged muted russet tiles starting4, wooden balcony with clearly visible wooden upper-floor door at5 and discreet worn grey-veined marble steps only. Keep orthographic elevated threequarter view and painted quality. Fix proportions rather than redesign style. Exactly five houses 1..5 on one wide sheet. CRITICAL: same clear entrance door height for all five and same world scale; don't independently fit each house to identical boxes. Level1 compact SINGLE STOREY cabin, dramatically lower roof/attic than reference, remove upstairs window, low eaves close above doorway, roof height about half a door height rather than two. Level2 low one-storey cottage plus side lean-to and modest attic, a little larger. Level3 small usable attic over one storey, brick with structural timber. Level4 modest taller attic/dormer and side annex, not a mansion. Level5 compact TWO storeys maximum including upper balcony, reduce reference sprawling side additions and broad roof overhang, retain central porch below balcony and direct visible balcony door. Projected main building total width and height in doorway-height units approximately: 1=3.3x3.2,2=4.2x4.0,3=5.1x4.8,4=5.5x5.3,5=5.9x6.1. Include all roof and plinth in those heights, excluding smoke. House5 no larger than 1.8x House1 width and 1.9x height. These are compact game houses, not real-life capacity scale. More repaired wood, subtle water streaks and chipped brick on upper levels, same welcoming colours. No smoke clouds, surrounding fences, gardens, giant props or detached structures. Plain warm gray backdrop. Headline 'C \u2014 COMPACT' and level numbers only. Preserve wooden doors without white marble doorframe. Input image1 selected architecture to edit, image2 canonical muted material/lighting reference ONLY.",
+  "turnaroundPrompt": "Use case: stylized-concept. Produce a clean square 2x2 architectural turnaround sheet of the SINGLE HOUSE in attached cropped image, house level 2. Image1 architecture target, image2 primary muted painting and daylight reference. Four equal square panels: top left exactly front elevation, top right right elevation, bottom left back elevation, bottom right left elevation. Orthographic straight-on ELEVATIONS at eye level with no perspective and no visible top planes; same size and ground baseline within each panel. One single identical house reconstructed coherently from all four sides; hidden sides are restrained functional extensions of selected design. Copy the selected level's architecture, roof, materials and COMPACT PROPORTIONS, do not change this design. NO redesign, no extra floors, no elaborate extra wings. All openings must remain physical recesses.   No smoke, ground island, backdrop scenery, grass, crates, barrels, detached props, labels, numbers or text. Plain uniform light gray background, thin straight panel gutters. Matte painted wood/plaster/brick/thatch/tile textures as selected. This is a four-view input for 3D reconstruction, preserve compact building silhouette and clearly visible doors. No cast shadow. Large detailed house centered with 7% margin in EACH quadrant.",
+  "references": [
+    {
+      "path": "selected-C.png",
+      "role": "User selected design C",
+      "sha256": "11fa97065c53fac48933c72270f56c1c93171acdd0556a3cb7e5e324be55bd30"
+    },
+    {
+      "path": "selected-path.png",
+      "role": "Proportions adjusted to requested original-game size envelope",
+      "sha256": "c4344e9e610a19414a97a2dbd361b2c4e2f15a1c38dd7068620b2ac09d52e746"
+    },
+    {
+      "path": "../../../house-1/house-painted-runtime.png",
+      "role": "Canonical muted materials and light",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    }
+  ],
+  "selection": {
+    "quote": "C mi sie najbardziej podoba i to mozemy sprobowac wygenerowac",
+    "constraint": "Compare sizes with original; especially reduce level1 height and level5 bulk.",
+    "runtimeApproved": false
+  },
+  "approximation": "Hidden sides and model reconstruction are artistic approximations; generated elevations can retain weak three-quarter projection.",
+  "postprocessing": "Native-resolution crop from concept and 2x2 turnaround split with 3px gutter trim; no background keying."
+}

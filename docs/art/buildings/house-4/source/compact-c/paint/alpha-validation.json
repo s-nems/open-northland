@@ -1,0 +1,12 @@
+{
+  "level": 4,
+  "original": [282, 274],
+  "candidateWorldBounds": [236.85245901639345, 258.62295081967216],
+  "candidateAlphaBounds": [83, 14, 986, 1000],
+  "doorWorldHeight": 48,
+  "sourceToWorldScale": 0.26229508196721313,
+  "sourceSize": [1024, 1024],
+  "alphaZero": 446705,
+  "alphaOpaque": 469135,
+  "alphaPartial": 132736
+}

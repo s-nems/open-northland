@@ -1,0 +1,19 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "Use case: stylized-concept. Produce a clean square 2x2 architectural turnaround sheet of the SINGLE HOUSE in attached cropped image, house level 4. Image1 architecture target, image2 primary muted painting and daylight reference. Four equal square panels: top left exactly front elevation, top right right elevation, bottom left back elevation, bottom right left elevation. Orthographic straight-on ELEVATIONS at eye level with no perspective and no visible top planes; same size and ground baseline within each panel. One single identical house reconstructed coherently from all four sides; hidden sides are restrained functional extensions of selected design. Copy the selected level's architecture, roof, materials and COMPACT PROPORTIONS, do not change this design. NO redesign, no extra floors, no elaborate extra wings. All openings must remain physical recesses.   No smoke, ground island, backdrop scenery, grass, crates, barrels, detached props, labels, numbers or text. Plain uniform light gray background, thin straight panel gutters. Matte painted wood/plaster/brick/thatch/tile textures as selected. This is a four-view input for 3D reconstruction, preserve compact building silhouette and clearly visible doors. No cast shadow. Large detailed house centered with 7% margin in EACH quadrant.",
+  "references": [
+    {
+      "path": "turnaround-input.png",
+      "role": "Selected compact house architecture",
+      "sha256": "27e4741fce2699e7410370342738d13348cf9650c0d85205d813a992baadba74"
+    },
+    {
+      "path": "../../../../house-1/house-painted-runtime.png",
+      "role": "Canonical muted paint and light",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    }
+  ],
+  "output": "turnaround.png",
+  "outputSha256": "ad7679be5c660cf16dceefcc17c2f7f1ac93208e210c488e243c9ffefae3c8e8",
+  "postprocessing": "Split 2x2 image into native-resolution quadrants, trim 3 pixels from panel edges. Minor generated view inconsistencies remain reconstruction approximations."
+}

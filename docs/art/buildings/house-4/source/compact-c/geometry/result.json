@@ -1,0 +1,8 @@
+{
+  "task_id": "01a09732-4ac0-700a-8f43-6443efeddefb",
+  "status": "SUCCEEDED",
+  "consumed_credits": 30,
+  "model": "raw.glb.gz",
+  "provider": "Meshy",
+  "model_format": "glb"
+}

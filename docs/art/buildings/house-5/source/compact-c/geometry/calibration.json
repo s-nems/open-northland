@@ -1,0 +1,18 @@
+{
+  "frontDoorPixels": [380, 616, 783],
+  "measurementOrthographicScale": 2.189361810684204,
+  "depthScale": 0.72,
+  "basis": "Manual clear ground-floor doorway +/-4px; balcony doorway preserved independently. Depth shortened to fit selected compact concept and original sprite envelope.",
+  "doorTop": [-0.15879469248983594, -0.3707703948020935, -0.4041101294093662],
+  "doorFoot": [-0.15879469248983594, -0.3707703948020935, -0.8103583765029907],
+  "doorGround": [-0.15879469248983594, -0.627800464630127, -0.9521909952163696],
+  "orthographicScale": 2.8556894659996033,
+  "boundsMin": [-0.8379520177841187, -0.627800464630127, -0.9521909952163696],
+  "boundsMax": [0.8609300255775452, 0.6311419606208801, 0.9516019821166992],
+  "cameraElevation": 28.5,
+  "cameraAzimuth": 22.5,
+  "doorTopPixel": [606.7195587158203, 1030.4678649902344],
+  "doorFootPixel": [606.7195587158203, 1222.4983978271484],
+  "entrancePixel": [553.8137054443359, 1350.4871978759766],
+  "masterSize": [1536, 1536]
+}
