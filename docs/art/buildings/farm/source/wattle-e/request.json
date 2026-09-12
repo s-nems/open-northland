@@ -1,0 +1,18 @@
+{
+  "tool": "Meshy image-to-3d",
+  "taskId": "01a09568-6f8e-7072-b976-93993350c018",
+  "input": "concept.png",
+  "ai_model": "meshy-7",
+  "should_texture": true,
+  "texture_resolution": "2k",
+  "enable_pbr": false,
+  "should_remesh": true,
+  "target_polycount": 100000,
+  "topology": "triangle",
+  "symmetry_mode": "off",
+  "target_formats": ["glb"],
+  "remove_lighting": true,
+  "image_enhancement": false,
+  "costCredits": 30,
+  "basis": "Single-image reconstruction of selected independent concept E. Four-view study is retained for inspection; it was not supplied to Meshy."
+}

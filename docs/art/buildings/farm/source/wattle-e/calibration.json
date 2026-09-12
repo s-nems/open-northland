@@ -1,0 +1,15 @@
+{
+  "entrance": [478, 895],
+  "doorMeasureX": 478,
+  "doorTop": 597,
+  "doorBottom": 893,
+  "doorPixels": 296,
+  "uncertaintyPx": 8,
+  "reviewZoom": 2,
+  "targetDoorScreenPx": 96,
+  "scale": 0.16216216216216217,
+  "constructionShiftY": -50,
+  "modelReferenceEntrance": [478, 945],
+  "modelReferenceDoorPixels": 296,
+  "basis": "Manual clear-opening measurement of final generated alpha sprite, excluding timber. Model-derived paint/export preserves approximate width and moves the composition upward about 50 pixels. Construction camera is translated to register its supports; no source image upscaling. Original local farm reference canvas is 129x150, about258x300 at zoom2; final nonzero-alpha bounds display about284x281."
+}
