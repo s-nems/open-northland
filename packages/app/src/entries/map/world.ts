@@ -67,12 +67,14 @@ export interface MapWorld {
  *  0-tick snapshot would not, while leaving the spawned settlers at their start. */
 const PLACEMENT_DRAIN_TICKS = 1;
 
-/** The returned sim sits at a tick boundary with every setup command enqueued. */
+/** Session rules and visibility are applied before the briefing can pause the world. */
 export function buildMapWorld(options: MapWorldOptions): MapWorld {
   const terrain = collisionTerrain(options.map, options.ir);
   const { sim, kind } = runWorld(options, terrain);
   applySessionRules(sim, options);
-  return { sim, kind, harvestablePlacements: spawnHarvestables(sim, options) };
+  const harvestablePlacements = spawnHarvestables(sim, options);
+  sim.step();
+  return { sim, kind, harvestablePlacements };
 }
 
 /** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose

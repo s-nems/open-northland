@@ -1,7 +1,7 @@
-import { components, FOG_MODE } from '@open-northland/sim';
+import { components, FOG_MODE, FOG_STATE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
-import { buildMapWorld, type MapWorldOptions } from '../src/entries/map/world.js';
+import { buildMapWorld } from '../src/entries/map/world.js';
 import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
 import { authoredMapFile } from './support/world-maps.js';
 
@@ -23,13 +23,6 @@ const NO_SESSION_FLAGS = {
 /** The authored join rows as a served IR document. Sound for these fixtures: the assembly reads the
  *  join lanes below plus the harvestable lanes, and this map places no objects. */
 const AUTHORED_IR = AUTHORED_ROWS as ContentIr;
-
-/** The world at the tick that applies its enqueued setup commands - the state the frame loop starts on. */
-function afterSetupTick(options: MapWorldOptions): ReturnType<typeof buildMapWorld> {
-  const world = buildMapWorld(options);
-  world.sim.run(1);
-  return world;
-}
 
 describe('buildMapWorld', () => {
   it('falls back to the demo world when no map decoded, owned by the session seat', () => {
@@ -82,8 +75,25 @@ describe('buildMapWorld', () => {
     expect([...world.sim.world.query(components.Position)]).toHaveLength(0);
   });
 
+  it.each([
+    'authored',
+    'bare',
+  ] as const)('initializes fog before the %s map can pause for briefing', (kind) => {
+    const map = authoredMapFile(kind === 'authored' ? AUTHORED_ENTITIES : undefined);
+    const { sim } = buildMapWorld({
+      ...NO_SESSION_FLAGS,
+      map: { ...map, width: 32, height: 32, typeIds: new Array(32 * 32).fill(map.typeIds[0]) },
+      ir: AUTHORED_IR,
+      fog: FOG_MODE.REVEAL,
+    });
+    const fog = sim.fogView(0);
+    expect(fog?.mode).toBe(FOG_MODE.REVEAL);
+    expect(fog?.stateAt(31, 31)).toBe(FOG_STATE.UNEXPLORED);
+    if (kind === 'authored') expect(fog?.stateAt(4, 2)).toBe(FOG_STATE.VISIBLE);
+  });
+
   it('carries the session rules into the built world', () => {
-    const { sim } = afterSetupTick({
+    const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
@@ -101,7 +111,7 @@ describe('buildMapWorld', () => {
   });
 
   it("leaves the world's own rules alone when no flag is set", () => {
-    const { sim } = afterSetupTick({
+    const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
@@ -112,7 +122,7 @@ describe('buildMapWorld', () => {
   });
 
   it("seeds the sim's diplomacy table from the script rows before the placement tick", () => {
-    const { sim } = afterSetupTick({
+    const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
@@ -127,7 +137,7 @@ describe('buildMapWorld', () => {
   });
 
   it('keeps every pair hostile when the map ships no diplomacy rows', () => {
-    const { sim } = afterSetupTick({
+    const { sim } = buildMapWorld({
       ...NO_SESSION_FLAGS,
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
