@@ -771,59 +771,59 @@
         "woman-blonde": {
           "SW": {
             "file": "appearances/woman-blonde/sprites/idle-SW-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "a9643857c383edb06d58f3814fd40409c6e77a8a5132aef8737c0316266e730e"
+            "sha256": "e3ae904da2398d28650f69ec68684852978c360324e57f2c65bb298b982677d2"
           },
           "W": {
             "file": "appearances/woman-blonde/sprites/idle-W-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "719017bb7aae63eff0a0dfe600c18fc2341975898b22a2bd0e937dc1a4b0d5a1"
+            "sha256": "9c7be73926fa44ed4adfe23d191ee6c574bc54c7d5fdfb10bc8a9d4216ac3a3f"
           },
           "NW": {
             "file": "appearances/woman-blonde/sprites/idle-NW-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "9a04f6a87535423c15b494cab34fbb88dc08d3ca2b8b7724f7165d298500c624"
+            "sha256": "f7ae0892bd27605b1cc0bd570da505ab993d8658d73257471600e02f44381cc2"
           },
           "N": {
             "file": "appearances/woman-blonde/sprites/idle-N-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "fbeb7a1e330a1b69001cbc3c518ab6557a6adb3ee3ae218d634733e43f6613c6"
+            "sha256": "c798a8b76c9e3d10a4e3a4b27533acb8db6da1c6311913d0b9b9197913619731"
           },
           "NE": {
             "file": "appearances/woman-blonde/sprites/idle-NE-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "73270626e814fe9ed0d49c816dad109aa8196713ee6e0c39958d772f8c7a6815"
+            "sha256": "7ba0fb93f35f0a6e2c91b258eaf194cff2049d02b674f6e570c059198ce9d39e"
           },
           "E": {
             "file": "appearances/woman-blonde/sprites/idle-E-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "32ccd188c472173accf9867cb586a822c09227b0c0fcbe0380bfcec085421add"
+            "sha256": "9b9ebe6662f27ee03bf37d1f4b17dd70f0caf210227474589b752689d16af9a0"
           },
           "SE": {
             "file": "appearances/woman-blonde/sprites/idle-SE-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "62dbe0cfe79c54d5b33117e75f52785c6ef53c15f0ee959c449cdb072e06ffe0"
+            "sha256": "0b42456f5947b16070fe32d9d7d889ab55d2d7bcb2f73d976acf664a9452c56d"
           },
           "S": {
             "file": "appearances/woman-blonde/sprites/idle-S-88px.png",
-            "frames": 12,
-            "duration": 4,
+            "frames": 144,
+            "duration": 6,
             "status": "approved",
-            "sha256": "7aa72ceb5b876d098adf973761ad96f01ad037b95d35672c9c79ae61d074d105"
+            "sha256": "124c434c9e98eb0a6deffd06ceb78db4a2ceb2a91d89172e35b3705d175d7663"
           }
         }
       }

@@ -33,8 +33,8 @@
       "name": "idle",
       "file": "idle-relaxed.glb",
       "facings": ["SW", "W", "NW", "N", "NE", "E", "SE", "S"],
-      "frames": 12,
-      "duration": 4
+      "frames": 144,
+      "duration": 6
     }
   ],
   "post": "soft-separation",
