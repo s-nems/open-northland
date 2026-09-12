@@ -71,6 +71,7 @@ its ground contact casts its shadow **62.43 pixels right and 21.24 pixels up**: 
 Camera conversion preserves this direction and length relative to projected height even when an
 exporter uses a different elevation or azimuth. Facing changes rotate the subject, not the daylight.
 Shadow colour is black `[0, 0, 0]`, maximum opacity 0.48, with a 9° sun for building renders.
+Characters use a slightly softer opacity of 0.44, with the same direction and black colour.
 The character silhouette uses a fixed 0.55 source-output-pixel blur as a small-sprite approximation.
 These are own-art choices derived from the accepted building shadow, not original-engine facts.
 

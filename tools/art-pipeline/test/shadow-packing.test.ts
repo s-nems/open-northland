@@ -51,9 +51,9 @@ it('packs opaque silhouettes as black shadows at the shared opacity', async () =
       maxAlpha = Math.max(maxAlpha, pixels[i + 3] ?? 0);
     }
     const profile = JSON.parse(await readFile('docs/art/lighting.json', 'utf8')) as {
-      shadow: { opacity: number };
+      shadow: { characterOpacity: number };
     };
-    expect(maxAlpha).toBe(Math.round(255 * profile.shadow.opacity));
+    expect(maxAlpha).toBe(Math.round(255 * profile.shadow.characterOpacity));
   } finally {
     await rm(run, { recursive: true, force: true });
   }

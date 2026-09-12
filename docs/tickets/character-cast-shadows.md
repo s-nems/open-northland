@@ -8,7 +8,7 @@
 Five civilian appearances have retained model-derived shadow atlases and matching runtime/gallery
 support on `art/character-shadows`. Candidate builds preserve every delivered body pixel and all
 body layout, scale and animation metadata. The shared lighting profile now matches the accepted
-building direction across exporter cameras, with black shadows at 0.48 opacity. Source hashes reject
+building direction across exporter cameras, with black character shadows at 0.44 opacity. Source hashes reject
 stale shadows after motion or lighting changes. Existing woodland has contact shading only; adding
 its separate cast shadows is outside this character delivery.
 
