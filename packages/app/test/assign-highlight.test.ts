@@ -166,6 +166,7 @@ describe('pick-mode highlight cost', () => {
       content,
       mapSize: { width: 8, height: 8 },
       toWorld: () => ({ x: 0, y: 0 }),
+      nodeAt: () => ({ col: 0, row: 0 }),
       enqueue: () => undefined,
       orders: () => {
         throw new Error('no order controller in this test');

@@ -14,6 +14,7 @@ import type { Application } from 'pixi.js';
 import type { PickerEntry } from '../../catalog/professions.js';
 import type { PortraitBox } from '../../hud/details-panel/index.js';
 import type { KeyBindings } from '../../hud/keybindings.js';
+import type { OverviewPress } from './overview-orders.js';
 
 export interface UnitControlsOptions {
   readonly app: Application;
@@ -62,6 +63,8 @@ export interface UnitControls {
   readonly selectionVersion: () => number;
   /** Replace the selection with one entity, as a click on it would. */
   readonly selectEntity: (id: number) => void;
+  /** Take a press on the map overview as an order at the world spot it depicts. */
+  readonly overviewPress: OverviewPress;
   readonly portrait: () => PortraitBox | null;
   readonly flaggedFlagIds: () => ReadonlySet<number>;
   /** The work-area circles the "Show Work Area" order has switched on. */

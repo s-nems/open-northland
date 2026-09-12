@@ -15,7 +15,12 @@ import type { Command } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, nodeOfPosition, ONE, Simulation } from '../../../../src/index.js';
 import { positionOfNode } from '../../../../src/nav/halfcell.js';
-import { setGatherGood, setWorkFlag } from '../../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  setGatherGood,
+  setWorkFlag,
+  stampResourceFootprintData,
+} from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf, grassMap, makeWoodcutter, riverMap, VIKING, WOOD, WOODCUTTER } from '../support.js';
 
@@ -80,6 +85,7 @@ describe('setWorkFlag command - place / move a gatherer flag (Ctrl+Right-Click)'
       const ore = sim.world.create();
       sim.world.add(ore, Position, { ...positionOfNode(hx, 0) });
       sim.world.add(ore, Resource, { goodType: WOOD, remaining: 1, harvestAtomic: 24 });
+      stampResourceFootprintData(sim.world, ore, anchorOnlyFootprint());
     }
 
     setWorkFlag(sim.world, ctxOf(sim), { kind: 'setWorkFlag', entity: gatherer, x: 12, y: 0 });

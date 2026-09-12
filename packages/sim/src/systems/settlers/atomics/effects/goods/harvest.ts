@@ -67,17 +67,12 @@ export function harvestFromNode(
   let took = Math.min(HARVEST_YIELD, res.remaining);
   if (deposit !== undefined) {
     // Observation: several strikes chip one unit, and the data pins only the single-swing cycle length.
-    // A 1-strike deposit never writes the counter, so its unstamped component shape survives being worked.
-    const strikesPerUnit = deposit.strikesPerUnit ?? 1;
-    if (strikesPerUnit > 1) {
-      const advanced = (deposit.strikes ?? 0) + swings;
-      const freed = Math.floor(advanced / strikesPerUnit);
-      world.mut(node, MineDeposit).strikes = advanced % strikesPerUnit;
-      if (freed === 0) return 0;
-      took = Math.min(freed * HARVEST_YIELD, res.remaining);
-    } else {
-      took = Math.min(swings * HARVEST_YIELD, res.remaining);
-    }
+    const advanced = deposit.strikes + swings;
+    const freed = Math.floor(advanced / deposit.strikesPerUnit);
+    const rest = advanced % deposit.strikesPerUnit;
+    if (rest !== deposit.strikes) world.mut(node, MineDeposit).strikes = rest;
+    if (freed === 0) return 0;
+    took = Math.min(freed * HARVEST_YIELD, res.remaining);
     dropMinedOre(world, settler, node, res.goodType, took);
   } else {
     if (!strokeCompletesCount(world, ctx, settler, node, res, swings)) return 0;

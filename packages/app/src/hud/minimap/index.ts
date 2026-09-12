@@ -21,9 +21,10 @@ import { createMinimapSurface, type MinimapSurface } from './surface.js';
 
 /**
  * The bottom-left minimap in the original's braided overview frame: the static ground raster, the
- * player-coloured unit dots, the fog mask over both, and the camera's view rectangle. Left-click or drag
- * in the map hole jumps the camera to the pointed world spot; the whole framed window claims its clicks
- * so they never fall through to unit selection or world orders.
+ * player-coloured unit dots, the fog mask over both, and the camera's view rectangle. A press in the
+ * map hole is offered to `onOrder` first and otherwise jumps the camera to the pointed world spot,
+ * which a left drag keeps doing; the whole framed window claims its clicks so they never fall through
+ * to unit selection or world orders.
  */
 
 /** The camera view rectangle's stroke. */
@@ -51,6 +52,9 @@ export interface MinimapOptions {
   readonly camera: () => Camera;
   /** Centre the camera on a world point (projected px, pre-camera). */
   readonly onJump: (worldX: number, worldY: number) => void;
+  /** Offer a press in the map hole to the order layer as an order at the spot it depicts, before the
+   *  camera jumps there. True when the order took the press. Absent, the hole only scrolls the view. */
+  readonly onOrder?: (worldX: number, worldY: number, event: MouseEvent) => boolean;
   /** Client (CSS px) → screen px. */
   readonly toScreenPx: (clientX: number, clientY: number) => { x: number; y: number };
 }
@@ -154,26 +158,33 @@ async function mountMinimapAtScale(opts: MinimapOptions): Promise<MountedMinimap
     container.addChild(dots, viewRect);
 
     let dragging = false;
-    const jumpToScreenPoint = (sx: number, sy: number): void => {
-      // Clamp into the map picture so a drag that wanders off keeps scrolling along the map edge.
+    /** The world spot a screen point depicts, clamped into the map picture so a drag that wanders off
+     *  keeps scrolling along the map edge. */
+    const spotAt = (sx: number, sy: number): { x: number; y: number } => {
       const cx = Math.min(layout.map.x + layout.map.w - 1, Math.max(layout.map.x, sx));
       const cy = Math.min(layout.map.y + layout.map.h - 1, Math.max(layout.map.y, sy));
-      const w = minimapToWorld(layout, bounds, cx, cy);
-      opts.onJump(w.x, w.y);
+      return minimapToWorld(layout, bounds, cx, cy);
     };
     const onMouseDown = (e: MouseEvent): void => {
-      if (e.button !== 0 || !container.visible) return;
+      if (!container.visible) return;
       const p = opts.toScreenPx(e.clientX, e.clientY);
-      // Only the map hole jumps; the braid still claims the click so it never orders units.
+      // Only the map hole answers a press; the braid still claims it so it never orders units.
       if (!pointOverMinimapHole(layout, p.x, p.y)) return;
+      const spot = spotAt(p.x, p.y);
+      if (opts.onOrder?.(spot.x, spot.y, e) === true) {
+        e.preventDefault();
+        return;
+      }
+      if (e.button !== 0) return;
       dragging = true;
-      jumpToScreenPoint(p.x, p.y);
+      opts.onJump(spot.x, spot.y);
       e.preventDefault();
     };
     const onMouseMove = (e: MouseEvent): void => {
       if (!dragging) return;
       const p = opts.toScreenPx(e.clientX, e.clientY);
-      jumpToScreenPoint(p.x, p.y);
+      const spot = spotAt(p.x, p.y);
+      opts.onJump(spot.x, spot.y);
     };
     const onMouseUp = (e: MouseEvent): void => {
       if (e.button === 0) dragging = false;

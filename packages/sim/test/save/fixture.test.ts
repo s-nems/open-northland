@@ -6,29 +6,16 @@ import {
   exportSaveGame,
   parseSaveGame,
   restoreSimulation,
-  SAVE_FORMAT_VERSION,
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
-/**
- * Golden guard of the persisted layout: the committed bytes must stay loadable forever. Any change
- * that moves the bytes - content, IR, or behavior anywhere in the fixture's tick schedule - only
- * needs a regeneration. A layout change is held to more: bump SAVE_FORMAT_VERSION, register the
- * migration, demote this fixture to a historical parse-and-restore case, and commit a new
- * current-format fixture.
- */
-const FIXTURE_PATH = fileURLToPath(new URL('../fixtures/save-v3.golden', import.meta.url));
-
-/** Historical layouts, each frozen at its last regeneration; only the migration seam keeps them
- *  loadable. Neither holds a `Crop`, so the v2 timer stripping is proven by the synthetic document in
- *  parse.test.ts, not here. */
-const HISTORICAL_FIXTURES = [
-  { version: 1, path: fileURLToPath(new URL('../fixtures/save-v1.golden', import.meta.url)) },
-  { version: 2, path: fileURLToPath(new URL('../fixtures/save-v2.golden', import.meta.url)) },
-] as const;
+/** Golden guard of the persisted layout: a change that moves the bytes - content, IR, behavior anywhere
+ *  in the fixture's tick schedule, or the layout itself - regenerates this one file, and a layout change
+ *  also bumps SAVE_FORMAT_VERSION in the same commit. */
+const FIXTURE_PATH = fileURLToPath(new URL('../fixtures/save.golden', import.meta.url));
 
 const VIKING = 1;
 const P0 = 0;
@@ -61,7 +48,7 @@ function fixtureSim(): Simulation {
   return sim;
 }
 
-describe('committed v3 save fixture', () => {
+describe('committed save fixture', () => {
   it('is reproduced byte for byte by exporting the fixture world', () => {
     const bytes = serializeSaveGame(exportSaveGame(fixtureSim(), { mapId: FIXTURE_MAP_ID }));
     if (process.env.UPDATE_SAVE_FIXTURE === '1') writeFileSync(FIXTURE_PATH, `${bytes}\n`);
@@ -78,19 +65,5 @@ describe('committed v3 save fixture', () => {
     expect(contentRevisionDiffers).toBe(false);
     expect(sim.checkInvariants()).toEqual([]);
     expect(serializeSaveGame(exportSaveGame(sim, { mapId: FIXTURE_MAP_ID }))).toBe(committed);
-  });
-});
-
-describe.each(HISTORICAL_FIXTURES)('committed v$version save fixture', ({ path }) => {
-  it('still parses through the migration seam and restores', () => {
-    const committed = readFileSync(path, 'utf8').trimEnd();
-    const save = parseSaveGame(JSON.parse(committed));
-    expect(save.header.formatVersion).toBe(SAVE_FORMAT_VERSION);
-    expect(save.header.entry).toBeNull();
-    const { sim } = restoreSimulation(save, {
-      content: testContent(),
-      map: grassCellMap(MAP_CELLS, MAP_CELLS),
-    });
-    expect(sim.checkInvariants()).toEqual([]);
   });
 });

@@ -81,6 +81,18 @@ Use strict TypeScript deliberately: no `any`, narrow `unknown`, prefer discrimin
 exhaustive switches, use string-literal unions rather than `enum`, mark stable data `readonly`, use
 `import type`, and prove absence cases instead of using non-null assertions.
 
+## Persisted state
+
+The game is unreleased: no save or fixture exists outside this repository and its developers'
+machines. Persisted formats are replaced, never migrated:
+
+- A layout change bumps the format's version and regenerates its committed fixture in the same
+  commit. A reader accepts exactly its own version and rejects every other one. Do not write
+  version-lifting steps, keep historical fixtures, or tolerate a field an older build wrote or omitted.
+- Do not keep a code path only so an old golden, state hash, component shape, or hand-made test
+  fixture survives. Fix the fixture and move the golden in the same commit, naming the behavior change.
+- Generated content is gated, not migrated; `packages/data/AGENTS.md` owns that gate.
+
 ## Working with content
 
 Before changing extraction or a content join, inspect all three:

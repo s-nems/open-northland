@@ -25,7 +25,7 @@ export function continuesHarvest(world: World, node: Entity): boolean {
   const deposit = world.tryGet(node, MineDeposit);
   // A trained swing can free a unit and bank a remainder at once. The executor releases on the extraction
   // result rather than this test, and the banked strikes persist across the pickup trip.
-  if (deposit !== undefined) return (deposit.strikes ?? 0) > 0;
+  if (deposit !== undefined) return deposit.strikes > 0;
   return (res.strikes ?? 0) > 0;
 }
 

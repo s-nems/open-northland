@@ -2,6 +2,7 @@ import { halfCellToScreen } from '@open-northland/render';
 import { type Command, fx, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { sandboxContent } from '../src/game/sandbox/index.js';
+import type { Tile } from '../src/view/picking.js';
 import { createUnitOrderController, type UnitOrderController } from '../src/view/unit-controls/orders.js';
 import { createUnitSelection, type UnitSelection } from '../src/view/unit-controls/selection.js';
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
@@ -51,6 +52,9 @@ const clickOn = (node: { hx: number; hy: number }): MouseEvent => {
   const p = halfCellToScreen(node.hx, node.hy);
   return { clientX: p.x, clientY: p.y } as MouseEvent;
 };
+
+/** The same node as the ground orders name it. */
+const nodeTile = (node: { hx: number; hy: number }): Tile => ({ col: node.hx, row: node.hy });
 
 /** Nothing is pickable under the cursor, so every click resolves to open ground. */
 const targets: UnitTargets = {
@@ -118,7 +122,7 @@ describe('unit orders against a selection that moves under them', () => {
     // Onto its own node: the mover is excluded from the blocked ground, so the formation seats it there
     // rather than pushing it onto a neighbouring node.
     selection.apply([SCOUT.id], false);
-    orders.issueAttackMove(clickOn(under));
+    orders.issueAttackMove(nodeTile(under));
 
     expect(issued).toEqual([{ kind: 'attackMoveUnit', entity: SCOUT.id, x: under.hx, y: under.hy }]);
   });
@@ -127,9 +131,9 @@ describe('unit orders against a selection that moves under them', () => {
     const { selection, orders, issued } = harness();
 
     selection.apply([SCOUT.id], false);
-    orders.issueSetWorkFlag(clickOn(OPEN_GROUND));
+    orders.issueSetWorkFlag(nodeTile(OPEN_GROUND));
     selection.apply([SCOUT.id, GUARD.id], true);
-    orders.issueSetWorkFlag(clickOn(OPEN_GROUND));
+    orders.issueSetWorkFlag(nodeTile(OPEN_GROUND));
 
     expect(issued).toEqual([
       { kind: 'setWorkFlag', entity: SCOUT.id, x: OPEN_GROUND.hx, y: OPEN_GROUND.hy },

@@ -1,13 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
+  collectTerrainMaterials,
   grassBindingsSchema,
   ownBuildingManifest,
   ownCharacterJobSelection,
   ownCharacterManifest,
   ownCharacterSelection,
   ownPropManifest,
-  terrainMaterialsSchema,
 } from '@open-northland/art-contracts';
 import sharp from 'sharp';
 import { json, listFiles } from './files.js';
@@ -35,7 +35,7 @@ export async function validateDelivery(directory: string, complete = false) {
     if (transparent && (!metadata.hasAlpha || !alpha || alpha.min !== 0 || alpha.max === 0))
       throw new Error(`Missing visible sprite or genuine alpha: ${file}`);
   };
-  for (const file of files.filter((f) => f.endsWith('/runtime.json'))) {
+  for (const file of files.filter((f) => !f.startsWith('terrain/') && f.endsWith('/runtime.json'))) {
     const raw = await json(join(directory, file)),
       folder = dirname(file);
     used.add(file);
@@ -87,27 +87,26 @@ export async function validateDelivery(directory: string, complete = false) {
         if (!identities.has(`character:${id}`)) throw new Error(`Selected character is missing: ${id}`);
     used.add(path);
   }
+  const terrainManifests: unknown[] = [];
   for (const file of files) {
     if (file.startsWith('terrain/')) {
+      if (dirname(file) !== 'terrain') throw new Error(`Terrain files must be flat: ${file}`);
       if (file.endsWith('.png')) {
         const metadata = await sharp(join(directory, file)).metadata();
         if (metadata.format !== 'png') throw new Error(`Invalid terrain PNG: ${file}`);
       } else if (file.endsWith('.json')) {
         const raw = await json(join(directory, file));
         if (file === 'terrain/map-bindings.json') grassBindingsSchema.parse(raw);
-        else {
-          const pack = terrainMaterialsSchema.parse(raw);
-          for (const material of pack.materials) {
-            if (complete && !available.has(`terrain/${material.image}`))
-              throw new Error(`Missing terrain material image: ${material.image}`);
-            claim(identities, `material:${material.id}`);
-            for (const page of material.pages) claim(names, `terrain-page:${page}`);
-            for (const name of material.names) claim(names, `terrain-name:${name}`);
-            for (const transition of material.transitions) claim(names, `terrain-transition:${transition}`);
-          }
-        }
+        else terrainManifests.push(raw);
       } else throw new Error(`Unexpected terrain file: ${file}`);
     } else if (!used.has(file)) throw new Error(`Unreferenced delivery file: ${file}`);
   }
+  const materials = collectTerrainMaterials(
+    terrainManifests,
+    complete
+      ? new Set(files.filter((file) => file.startsWith('terrain/')).map((file) => file.slice(8)))
+      : undefined,
+  );
+  for (const material of materials) identities.add(`material:${material.id}`);
   return { files: files.length, bindings: identities.size };
 }

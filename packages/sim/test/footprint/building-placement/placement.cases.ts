@@ -6,6 +6,7 @@ import {
   PathRequest,
   Position,
   Resource,
+  type ResourceFootprintData,
   Stump,
 } from '../../../src/components/index.js';
 import { halfCellMapFromCells, nodeOfPosition, positionOfNode, Simulation } from '../../../src/index.js';
@@ -14,6 +15,7 @@ import {
   canPlaceBuilding,
   createBerryBush,
   placementProbe,
+  stampResourceFootprintData,
 } from '../../../src/systems/index.js';
 
 import {
@@ -31,6 +33,12 @@ import {
   WATER,
   WOODCUTTER,
 } from './support.js';
+
+/** A tree whose trunk fills just its anchor node: one walk cell, so a building's reserved ring may not
+ *  cover that node and nothing else. */
+function trunkOnlyFootprint(): ResourceFootprintData {
+  return { walk: [{ dx: 0, dy: 0 }], build: [], work: [] };
+}
 
 describe('canPlaceBuilding - the free-placement collision rule', () => {
   it('accepts a footprinted type on open ground and places it through the command seam', () => {
@@ -90,8 +98,9 @@ describe('canPlaceBuilding - the free-placement collision rule', () => {
   it('keeps the reserved zone clear of resource nodes (minimum distance from a tree)', () => {
     const sim = mappedSim();
     const tree = sim.world.create();
-    sim.world.add(tree, Position, positionOfNode(7, 5)); // footprint-less: occupies its anchor node
+    sim.world.add(tree, Position, positionOfNode(7, 5));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
     // Anchor (6,5): reserved ring x∈[5..8] covers the tree at node (7,5) - rejected.
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5)).toBe(false);
     // Anchor (4,5): ring x∈[3..6] misses it - accepted.
@@ -130,6 +139,7 @@ describe('the dense mask rule agrees with an independent derivation', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(3, 3));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
 
     const terrain = terrainOf(sim);
     const probe = placementProbe(sim.world, sim.content, terrain, HUT);
@@ -185,6 +195,7 @@ describe('placementBlockerVersion - the shared memo key that decouples the block
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(3, 3));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
     const v2 = sim.placementBlockerVersion();
     expect(v2).not.toBe(v1); // a new resource too
 
@@ -221,6 +232,7 @@ describe('placementBlockerVersion - the shared memo key that decouples the block
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(7, 5));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
     expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, HUT, 6, 5)).toBe(false);
     expect(sim.world.verifyCaches()).toEqual([]);
 
@@ -237,6 +249,7 @@ describe('placementBlockerVersion - the shared memo key that decouples the block
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(3, 3));
     sim.world.add(tree, Resource, { goodType: 1, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, trunkOnlyFootprint());
     canPlaceBuilding(sim.world, ctxOf(sim), terrainOf(sim), HUT, 6, 5); // stamps the memo
     expect(sim.world.verifyCaches()).toEqual([]);
 

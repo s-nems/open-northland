@@ -9,7 +9,12 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
-import { plannerSystem, setGatherGood } from '../../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  plannerSystem,
+  setGatherGood,
+  stampResourceFootprintData,
+} from '../../../../src/systems/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import {
   bindToFlag,
@@ -57,6 +62,7 @@ describe('flag-bound gatherer - works only within its flag radius (req 3)', () =
     const stone = sim.world.create();
     sim.world.add(stone, Position, { x: fx.fromInt(2), y: fx.fromInt(0) });
     sim.world.add(stone, Resource, { goodType: 4, remaining: 2, harvestAtomic: 25 });
+    stampResourceFootprintData(sim.world, stone, anchorOnlyFootprint());
 
     setGatherGood(sim.world, ctxOf(sim), { kind: 'setGatherGood', entity: gatherer, goodType: 4 });
     expect(sim.world.get(gatherer, WorkFlag).goodType).toBe(4);
@@ -91,7 +97,7 @@ describe('flag-bound gatherer - works only within its flag radius (req 3)', () =
 describe('flag-bound gatherer - never targets a tree it cannot reach (mosty na rzece)', () => {
   // A river of WATER nodes at columns 10,11 splits the map: left bank hx≤9, right bank hx≥12 (a single
   // water node kills the straight step and its diagonal flanks, so the banks are separate components).
-  // Tile (tx,ty) sits at node (2·tx, 2·ty); a footprint-less tree's work cell is its own anchor node.
+  // Tile (tx,ty) sits at node (2·tx, 2·ty); an anchor-only tree's work cell is its own anchor node.
   const RIVER = [10, 11] as const;
 
   it('picks a reachable farther tree over the nearest one across the river (planner, one tick)', () => {

@@ -16,8 +16,7 @@ import {
   syncResourceBlockedCacheGeneration,
 } from './resource-blocked-cache.js';
 
-// Resource footprints are the `[GfxLandscape]` walk, build and work areas a stamped resource occupies.
-// They are opt-in through ResourceFootprint: a bare Resource keeps the same-tile fixture behavior.
+// Resource footprints are the `[GfxLandscape]` walk, build and work areas a standing resource occupies.
 
 /**
  * Convert one decoded `[GfxLandscape]` record into the sim's resource-footprint component payload. The
@@ -84,8 +83,7 @@ export function stampResourceFootprint(
  * The stand-in footprint for a node whose good resolves no landscape record: the synthetic fixtures, the
  * sandbox catalog, and real goods with no `[GfxLandscape]` stage such as wool. Non-blocking, and the
  * `work` entry naming the node's own anchor is an invention, since a real record's work area is the
- * neighbour ring. Declaring a footprint at all also moves the node from the placement rule's OBSTACLE
- * channel to RESOURCE_ANCHOR, which admits a building over the node but refuses a work flag on it.
+ * neighbour ring.
  */
 export function anchorOnlyFootprint(): ResourceFootprintData {
   return { walk: [], build: [], work: [{ dx: 0, dy: 0 }] };
@@ -127,11 +125,11 @@ export interface ResourceNodeSpec {
   /** A felled node such as a tree: its chops-to-fell counter. Mutually exclusive with `deposit`. */
   readonly felling?: { readonly chopsLeft: number };
   /** A mined finite deposit: its level ladder and how many work cycles chip one unit off (an observed
-   *  calibration in the app catalog; omitted means 1). `initial` is the deposit's full size, the ladder
-   *  denominator, for a node placed already part-mined; omitted it is `remaining`. */
+   *  calibration in the app catalog). `initial` is the deposit's full size, the ladder denominator, for
+   *  a node placed already part-mined; omitted it is `remaining`. */
   readonly deposit?: {
     readonly levels: number;
-    readonly strikesPerUnit?: number;
+    readonly strikesPerUnit: number;
     readonly initial?: number;
   };
 }
@@ -139,13 +137,14 @@ export interface ResourceNodeSpec {
 /**
  * Assemble a standing resource node from a resolved {@link ResourceNodeSpec} - the one construction path,
  * so a hand-placed tree and a command-placed tree are byte-identical entities. Null without creating
- * anything when `good` has no resource footprint record; the footprint is resolved before `create()` so
- * the rejection burns no entity id, which would otherwise make the id sequence depend on how many
- * rejected commands were issued.
+ * anything when `good` has no resource footprint record or a deposit's `strikesPerUnit` is below one;
+ * both are rejected before `create()` so the rejection burns no entity id, which would otherwise make
+ * the id sequence depend on how many rejected commands were issued.
  */
 export function createResourceNode(world: World, content: ContentSet, spec: ResourceNodeSpec): Entity | null {
   // The stamp below re-resolves this same memoized record, so it cannot fail after the create.
   if (resourceFootprintForGood(content, spec.good) === null) return null;
+  if (spec.deposit !== undefined && spec.deposit.strikesPerUnit < 1) return null;
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Resource, {
@@ -160,9 +159,8 @@ export function createResourceNode(world: World, content: ContentSet, spec: Reso
     world.add(e, MineDeposit, {
       initial: spec.deposit.initial ?? spec.remaining,
       levels: spec.deposit.levels,
-      ...(spec.deposit.strikesPerUnit !== undefined
-        ? { strikesPerUnit: spec.deposit.strikesPerUnit, strikes: 0 }
-        : {}),
+      strikesPerUnit: spec.deposit.strikesPerUnit,
+      strikes: 0,
     });
   }
   return e;

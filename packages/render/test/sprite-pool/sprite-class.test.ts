@@ -78,7 +78,7 @@ describe('LayerBinder - an animal settler is never paletted, even with the LUT l
         tribes: new Set([ANIMAL_TRIBE]),
       },
     },
-    palette: { source, colours: 16 },
+    palette: { source, colours: 16, playerRows: 16, armorTierByGood: new Map() },
   };
   const item = (tribe: number): DrawItem => ({ kind: 'settler', ref: 1, x: 0, y: 0, depth: 0, tribe });
 

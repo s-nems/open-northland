@@ -22,10 +22,6 @@ describe('parseArgs', () => {
   it('throws when --game is missing', () => {
     expect(() => parseArgs(['--mod-root', 'm'])).toThrow(/--game/);
   });
-
-  it('rejects the retired --mod flag with the migration hint', () => {
-    expect(() => parseArgs(['--game', 'g', '--mod', 'DataCnmd'])).toThrow(/--mod-root/);
-  });
 });
 
 describe('resolveArgs', () => {

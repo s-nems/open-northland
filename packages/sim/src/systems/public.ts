@@ -21,7 +21,11 @@ export {
 } from './ai-player/workforce/index.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';
 export { isOnMission } from './family/eligibility.js';
-export { createResourceNode, resourceFootprintForGood } from './footprint/resources.js';
+export {
+  createResourceNode,
+  resourceFootprintForGood,
+  stampResourceFootprintOrFallback,
+} from './footprint/resources.js';
 export { ADULT_AGE_TICKS, CHILD_AGE_TICKS, isChild, TICKS_PER_AGE_YEAR } from './lifecycle/ageclass.js';
 // The need levels the HUD marks its bars and bubbles against, so presentation cannot drift from the
 // level the drives fire at.

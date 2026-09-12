@@ -8,7 +8,13 @@ import {
   Settler,
 } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { atomicSystem, grantWorkExperience, trackFor } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  atomicSystem,
+  grantWorkExperience,
+  stampResourceFootprintData,
+  trackFor,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, GENERAL_TRACK, MINER, makeSettler, WOOD, WOOD_TRACK, WOODCUTTER } from './support.js';
 
@@ -90,6 +96,7 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
     const e = makeSettler(sim, WOODCUTTER);
     const resource = sim.world.create();
     sim.world.add(resource, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, resource, anchorOnlyFootprint());
     sim.world.add(e, CurrentAtomic, {
       atomicId: 24,
       elapsed: 0,
@@ -110,6 +117,7 @@ describe('AtomicSystem grants XP on a completed harvest', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(1) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: 2 });
     const swing = () => {
       sim.world.add(e, CurrentAtomic, {

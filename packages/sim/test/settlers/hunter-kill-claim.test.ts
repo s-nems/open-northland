@@ -18,6 +18,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { HUNT_CARCASS_SLACK_NODES } from '../../src/systems/conflict/hunting/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import { setJob } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
@@ -65,6 +66,7 @@ describe('hunter - one hunter per kill, inside its own ground', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, positionOfNode(hx, hy));
     sim.world.add(e, Resource, { goodType: MEAT, remaining: 4, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
     if (killer !== null) sim.world.add(e, KilledBy, { by: killer });
     return e;
   }

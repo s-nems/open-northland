@@ -216,17 +216,6 @@ describe('buildCollisionTerrain', () => {
     expect(at(9, 3)).toBe(TERRAIN_MARGIN);
   });
 
-  it('falls back to the pinned class split when the IR lacks the trianglePatternTypes lane', () => {
-    const { trianglePatternTypes: _dropped, ...withoutLane } = IR;
-    const g = buildCollisionTerrain(fixtureMap(), withoutLane);
-    const gAt = (x: number, y: number): number => g.typeIds[y * g.width + x] as number;
-    expect(gAt(2, 2)).toBe(TERRAIN_IMPASSABLE); // water on both triangles
-    expect(gAt(4, 2)).toBe(TERRAIN_MARGIN); // half-water - still walkable under the fallback flags
-    expect(gAt(8, 4)).toBe(TERRAIN_MARGIN); // mountain - the fallback pins the same real flags
-    expect(gAt(8, 0)).toBe(TERRAIN_MARGIN); // snow
-    expect(gAt(2, 6)).toBe(TERRAIN_BARREN); // sand - walk+build in the fallback too, still no plough
-  });
-
   it('routes a crossing through the bridge corridor, not over its parapet', () => {
     const g = buildCollisionTerrain(bridgeMap(), BRIDGE_IR);
     const graph = buildTerrainGraph(collisionContent(), g);

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Engagement, Position, Resource } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { plannerSystem } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  plannerSystem,
+  stampResourceFootprintData,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, fighterAt, grassMap, HARVEST_ATOMIC, P0, VIKING, WOOD, WOODCUTTER } from './support.js';
 
@@ -11,6 +15,7 @@ describe('engagement gates the economy (the PlayerOrder-skip pattern)', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
     sim.world.add(e, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: HARVEST_ATOMIC });
+    stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   }
 
   it('an ENGAGED combatant skips economy planning (does not harvest a resource it stands on)', () => {

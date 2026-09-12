@@ -15,6 +15,18 @@ export function parseContentSet(raw: unknown): ContentSet {
   return set;
 }
 
+/** Parse the content set the pipeline generated (`content/ir.json`). The pipeline writes every lane, so
+ *  a document missing one was written by another build and is rejected rather than loaded without it. */
+export function parseGeneratedContentSet(raw: unknown): ContentSet {
+  if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
+    const missing = Object.keys(ContentSet.shape).filter((lane) => !Object.hasOwn(raw, lane));
+    if (missing.length > 0) {
+      throw new Error(`generated content lacks ${missing.join(', ')}: regenerate it with this build`);
+    }
+  }
+  return parseContentSet(raw);
+}
+
 /**
  * Parse and validate one decoded terrain grid file (`content/maps/<id>.json`). The loader boundary:
  * the `typeIds.length === width * height` invariant is checked here, outside the pure sim, so a

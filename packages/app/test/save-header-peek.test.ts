@@ -1,3 +1,4 @@
+import { SAVE_FORMAT_VERSION } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { compressSaveText } from '../src/view/runtime/save-load/codec.js';
 import { peekSaveHeader } from '../src/view/runtime/save-load/header-peek.js';
@@ -8,9 +9,9 @@ function saveText(header: Record<string, unknown>): string {
   return JSON.stringify({ header, sections: [{ id: 'entities', alive: noise }] });
 }
 
-const V2_HEADER = {
+const HEADER = {
   kind: 'open-northland-save',
-  formatVersion: 2,
+  formatVersion: SAVE_FORMAT_VERSION,
   irVersion: 3,
   contentRevision: 0,
   mapId: 'twierdza',
@@ -22,16 +23,15 @@ const V2_HEADER = {
 
 describe('peekSaveHeader', () => {
   it('reads the header from complete gzip bytes and from a truncated prefix', async () => {
-    const bytes = await compressSaveText(saveText(V2_HEADER));
+    const bytes = await compressSaveText(saveText(HEADER));
     const expected = { mapId: 'twierdza', tick: 360, entry: '?map=twierdza&player=2' };
     await expect(peekSaveHeader(bytes)).resolves.toEqual(expected);
     expect(bytes.byteLength).toBeGreaterThan(2048);
     await expect(peekSaveHeader(bytes.slice(0, 2048))).resolves.toEqual(expected);
   });
 
-  it('reads a plain-JSON prefix, defaulting the entry a v1 header predates', async () => {
-    const { entry: _none, ...v1Header } = { ...V2_HEADER, formatVersion: 1 };
-    const text = saveText(v1Header);
+  it('reads a plain-JSON prefix, with a null entry token', async () => {
+    const text = saveText({ ...HEADER, entry: null });
     const prefix = new TextEncoder().encode(text.slice(0, 512));
     await expect(peekSaveHeader(prefix)).resolves.toEqual({
       mapId: 'twierdza',

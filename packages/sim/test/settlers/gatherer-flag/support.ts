@@ -26,7 +26,12 @@ import {
   type Simulation,
   type TerrainMap,
 } from '../../../src/index.js';
-import { atomicSystem, isYardHeap } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  atomicSystem,
+  isYardHeap,
+  stampResourceFootprintData,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 /**
@@ -124,6 +129,7 @@ export function placeFellableTree(sim: Simulation, x: number, y: number): Entity
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WOOD, remaining: TREE_WOOD_YIELD, harvestAtomic: HARVEST_ATOMIC });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
   return e;
 }
