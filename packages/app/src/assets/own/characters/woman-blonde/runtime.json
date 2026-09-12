@@ -9,6 +9,16 @@
   "anchorX": 48,
   "anchorY": 104,
   "scale": 0.5,
+  "shadow": {
+    "sprite": "shadow.png",
+    "width": 2280,
+    "height": 350,
+    "cellWidth": 95,
+    "cellHeight": 35,
+    "columns": 24,
+    "anchorX": 28,
+    "anchorY": 30
+  },
   "smoothMotion": true,
   "filtering": "linear",
   "walkFrames": 16,
@@ -16,8 +26,14 @@
   "idleDuration": 4,
   "walkDuration": 1.0333333333333332,
   "walkTravelPerCycle": [
-    75.98209828032543, 75.98209828032543, 75.98209828032543, 75.98209828032543, 75.98209828032543,
-    75.98209828032543, 75.98209828032543, 75.98209828032543
+    75.98209828032543,
+    75.98209828032543,
+    75.98209828032543,
+    75.98209828032543,
+    75.98209828032543,
+    75.98209828032543,
+    75.98209828032543,
+    75.98209828032543
   ],
   "sourceBasis": "Generated character from docs/art/characters/appearances/woman-blonde; soft-separation export. No original-game pixels."
 }
