@@ -33,6 +33,32 @@ beforeEach(() => {
 });
 
 describe('own construction layer loading', () => {
+  it('aligns a larger shadow canvas without changing body bounds or construction layers', async () => {
+    const shadow = { sprite: 'shadow.png', width: 5, height: 3, entrancePixel: { x: 3, y: 2 } };
+    mocks.texture.mockImplementation(async (url: string) => ({
+      width: url.endsWith('shadow.png') ? 5 : 2,
+      height: url.endsWith('shadow.png') ? 3 : 1,
+      source: {},
+    }));
+    const layers = await loadOwnBuildingLayers({ ...manifest, shadow }, (name) => name);
+    const body = layers.fixture;
+    const frame = body?.atlas.frames.get(0);
+    const ground = body?.shadow?.atlas.frames.get(0);
+    expect(frame).toMatchObject({ width: 2, height: 1, offsetX: -1, offsetY: -1 });
+    expect(ground).toMatchObject({ width: 5, height: 3, offsetX: -3, offsetY: -2 });
+    expect(ground?.selectionEllipse).toBeUndefined();
+    expect(layers['fixture-construction-0']?.shadow).toBeUndefined();
+  });
+  it('rejects missing or mismatched shadow before returning a partial building', async () => {
+    const withGround = {
+      ...manifest,
+      shadow: { sprite: 'shadow.png', width: 5, height: 3, entrancePixel: { x: 3, y: 2 } },
+    };
+    await expect(
+      loadOwnBuildingLayers(withGround, (name) => (name === 'shadow.png' ? undefined : name)),
+    ).rejects.toThrow('Missing sprite shadow.png');
+    await expect(loadOwnBuildingLayers(withGround, (name) => name)).rejects.toThrow('dimensions');
+  });
   it('keeps the final body untimed and the stage aligned with its mask', async () => {
     const layers = await loadOwnBuildingLayers(manifest, (name) => `/assets/${name}`);
     expect(layers.fixture?.times).toBeUndefined();

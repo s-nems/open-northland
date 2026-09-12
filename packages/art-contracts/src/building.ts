@@ -2,6 +2,22 @@ import { z } from 'zod';
 
 const point = z.object({ x: z.number().finite(), y: z.number().finite() }).strict();
 const pngName = z.string().regex(/^[a-zA-Z0-9_-]+\.png$/);
+const shadow = z
+  .object({
+    sprite: pngName,
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    entrancePixel: point,
+  })
+  .strict()
+  .refine(
+    (layer) =>
+      layer.entrancePixel.x >= 0 &&
+      layer.entrancePixel.x <= layer.width &&
+      layer.entrancePixel.y >= 0 &&
+      layer.entrancePixel.y <= layer.height,
+    'Entrance outside shadow image',
+  );
 const constructionStage = z
   .object({
     sprite: pngName,
@@ -23,6 +39,7 @@ export const ownBuildingManifest = z
     entrancePixel: point,
     doorNode: point,
     sourceBasis: z.string().min(1),
+    shadow: shadow.optional(),
     construction: z.array(constructionStage).min(1).max(8).optional(),
     selectionEllipse: z
       .object({

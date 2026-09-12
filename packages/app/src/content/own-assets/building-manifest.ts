@@ -18,6 +18,7 @@ export function ownBuildingFiles(manifest: OwnBuildingManifest): readonly string
   return [
     ...new Set([
       manifest.sprite,
+      ...(manifest.shadow === undefined ? [] : [manifest.shadow.sprite]),
       ...(manifest.construction ?? []).flatMap((stage) => [stage.sprite, stage.timeMask]),
     ]),
   ];
