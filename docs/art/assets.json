@@ -82,6 +82,10 @@
       "recipe": "docs/art/terrain/sand/asset.json"
     },
     {
+      "id": "terrain/understory",
+      "recipe": "docs/art/terrain/understory/asset.json"
+    },
+    {
       "id": "terrain/woodland",
       "recipe": "docs/art/terrain/woodland/asset.json"
     }

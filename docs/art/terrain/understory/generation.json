@@ -1,0 +1,74 @@
+{
+  "status": "Candidate built and previewed; human visual acceptance and publication pending.",
+  "reference": {
+    "path": "../../buildings/house-1/house-painted-runtime.png",
+    "role": "Primary muted A painting, palette and lighting",
+    "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+  },
+  "tool": "built-in image_gen.imagegen",
+  "model": "Not exposed by tool",
+  "originalPixelsSupplied": false,
+  "generations": [
+    {
+      "prompt": "reeds.prompt.txt",
+      "output": "reeds-master.png",
+      "sha256": "3dee6ad2a2cd0d80e5e070663edb6bafce9c882579f0cf59a44a50ba6071ad36"
+    },
+    {
+      "prompt": "flowers.prompt.txt",
+      "output": "flowers-master.png",
+      "sha256": "9992cf57c4dee07390f39bc7bd932ce0068eee1ac366e7cb59aa2fdcd21158f1"
+    },
+    {
+      "prompt": "tufts.prompt.txt",
+      "output": "tufts-master.png",
+      "sha256": "0025e6b5c099954b1543f409940d7a4e795e3a3fe690f58349b1cfafe2288664"
+    }
+  ],
+  "alphaExports": {
+    "tool": "imagegen skill scripts/image_gen.py edit through OpenAI API",
+    "model": "gpt-image-1.5",
+    "prompt": "alpha.prompt.txt",
+    "settings": {
+      "quality": "high",
+      "input_fidelity": "high",
+      "background": "transparent",
+      "output_format": "png",
+      "no_augment": true
+    },
+    "referenceRole": "Each matching built-in master is the sole edit target; retain subject and atlas layout while exporting genuine alpha.",
+    "postProcessing": "Generated alpha retained without colour keying or silhouette masks. Recipe crops use alphaBounds and canvas-high proportional downsampling.",
+    "exports": [
+      {
+        "input": "reeds-master.png",
+        "output": "reeds-alpha.png",
+        "size": [1024, 1024],
+        "sha256": "573dd97d7fd6d0e4ae10a6356a0f5cc64c89f375ea065e641ee2675787e5d965",
+        "alphaRange": [0, 255],
+        "fullyTransparentPixels": 829495
+      },
+      {
+        "input": "flowers-master.png",
+        "output": "flowers-alpha.png",
+        "size": [1024, 1024],
+        "sha256": "0de8908f0e808f6f1c4d288b004a033eba389331ce1dc6253f8d0abbd2bfad9c",
+        "alphaRange": [0, 255],
+        "fullyTransparentPixels": 799177
+      },
+      {
+        "input": "tufts-master.png",
+        "output": "tufts-alpha.png",
+        "size": [1536, 1024],
+        "sha256": "7fba61f5b732c4b634b4a8dc5a07d42bacee3d7f6042409b53731d3177bcd757",
+        "alphaRange": [0, 255],
+        "fullyTransparentPixels": 1100108
+      }
+    ]
+  },
+  "compatibilityEvidence": {
+    "ownedSource": "Data/engine2d/inis/landscapes/landscapes.cif",
+    "decoder": "tools/asset-pipeline/src/decoders/ini/types/landscape.ts:extractLandscapeGfx",
+    "verification": "Decoded 25 low-vegetation rows match local content/ir.json; 23 EditNames lack existing own prop bindings. Frame dimensions and offsets verified against each palette-specific ls_meadows atlas.",
+    "sourcePixelsSupplied": false
+  }
+}
