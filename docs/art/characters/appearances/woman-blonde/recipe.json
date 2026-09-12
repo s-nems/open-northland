@@ -33,7 +33,7 @@
       "name": "idle",
       "file": "idle-relaxed.glb",
       "facings": ["SW", "W", "NW", "N", "NE", "E", "SE", "S"],
-      "frames": 144,
+      "frames": 16,
       "duration": 6
     }
   ],

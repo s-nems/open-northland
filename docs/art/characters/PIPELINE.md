@@ -100,18 +100,19 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
 
 ## Timing and export
 
-- Sample continuous motion at 24 frames per second of playback (`ceil(duration * 24)` poses).
-  Review atlas dimensions and memory after increasing sample counts; retain explicit sparse holds
-  only for intentionally held poses. Spatial filtering and movement interpolation do not fill
-  gaps between sprite poses.
+- Target 12–16 stored frames per clip and facing. Authoring and delivery builds reject more than 16.
+  Choose poses and holds within that budget, independently of playback duration. Review transitions
+  and loop seams; spatial filtering and movement interpolation do not fill gaps between sprite poses.
 - `samplePhases` selects source poses; `frameDurations` controls playback holds. Preserve both.
 - Existing male walk/idle use 16 poses each and hammer 12. The woman's walk uses 16 poses;
-  her six-second idle uses 144 poses at 24 Hz.
+  her six-second idle uses 16 poses.
 - Source strips use 192×144 cells, feet y=128. Runtime crops to 96×120, feet (48,104).
 - Use `post: soft-separation`, unlit rendering, linear filtering and interpolated movement.
 - Reuse `shared/body/cameras-smooth/` and the appearance's saved layout; never fit each frame separately.
 - Work clips share walk-SW packing scale and identical layouts across selected male variants.
 - Each appearance has its own composed atlas; additional outfit/tool combinations multiply texture storage.
+  Candidate reports include body, shadow and combined base RGBA byte counts. These textures are
+  shared by settlers of the same appearance; estimates exclude mipmaps and additional runtime copies.
 
 Walk playback follows projected distance through `walkCalibration` and `walkPlayback`.
 The shared tuning is 0.8 cadence with an E-facing stride reference for all directions.

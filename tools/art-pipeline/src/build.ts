@@ -61,6 +61,15 @@ export async function buildAsset(root: string, id: string) {
           const result = await packCharacter(asset.directory, c.source, c.id, c.name, c.shadow);
           await writeFile(path, result.png);
           characters.set(`${dirname(output.path)}/runtime.json`, result.manifest);
+          const m = result.manifest;
+          const bodyRgbaBytes = m.width * m.height * 4;
+          const shadowRgbaBytes = m.shadow ? m.shadow.width * m.shadow.height * 4 : 0;
+          operations.push({
+            path: output.path,
+            bodyRgbaBytes,
+            shadowRgbaBytes,
+            totalRgbaBytes: bodyRgbaBytes + shadowRgbaBytes,
+          });
         }
       }
       for (const output of asset.recipe.outputs) {
