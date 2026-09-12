@@ -123,6 +123,17 @@ export const MapScript = z.strictObject({
   multiplayer: MapMultiplayer.optional(),
   /** The `[specialItems]` starting papers, in authored order. */
   specialItems: z.array(MapSpecialItem).default([]),
+  permissions: z
+    .array(
+      z.strictObject({
+        player: z.number().int().nonnegative(),
+        tribe: z.number().int().nonnegative(),
+        kind: z.enum(['job', 'house', 'good']),
+        typeId: z.number().int().nonnegative(),
+        allowed: z.boolean(),
+      }),
+    )
+    .optional(),
   misc: z.array(MapScriptLine).default([]),
   /** The `[misc_humannames]` rows in file order, when the map ships the section. */
   humanNames: z.array(MapHumanName).default([]),

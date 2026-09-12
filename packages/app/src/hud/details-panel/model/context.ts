@@ -12,6 +12,10 @@ export type JobExperienceDef = ContentSet['jobExperience'][number];
 export type TribeDef = ContentSet['tribes'][number];
 
 export interface UnitPanelModelContext {
+  readonly goodAllowed?: ((good: number, tribe: number, player?: number) => boolean) | undefined;
+  readonly technologyReason?:
+    | ((kind: 'job' | 'house' | 'good', typeId: number, tribe: number, player?: number) => string | null)
+    | undefined;
   readonly buildings: readonly BuildingDef[];
   readonly goods: readonly GoodDef[];
   /** The content jobs, so the panel can name a bound settler's job even when it is not in the profession

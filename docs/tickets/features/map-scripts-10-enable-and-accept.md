@@ -26,8 +26,9 @@ world handover and save stack, not either map's unmodified story route.
 - `wielkie_sprzatanie` uses only implemented opcode handlers, but winning requires defeating seats 2
   and 3 through actual gameplay, then missions 72 and 77. The bounded reinforcement test does not
   establish that its economy, recruitment and combat can complete that route.
-- `AllowJob`, `AllowHouse`, `AllowGood` and `SetExternalFlag` retain flags with no gameplay consumer;
-  the building unlock gate remains disabled. Static opcode coverage is not completion evidence.
+- `SetExternalFlag` retains flags with no AI-condition consumer. Natural technology prerequisites
+  still use living workers rather than permanent discovery; see MISSIONS.md for the approximation.
+  Static opcode coverage is not completion evidence.
 
 ## Scope
 

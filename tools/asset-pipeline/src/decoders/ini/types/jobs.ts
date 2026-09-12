@@ -135,6 +135,11 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         id: name ? slug(name) : `tribe_${typeId}`,
         name,
         atomicBindings,
+        permissions: {
+          job: getIntList(sec, 'allowjob'),
+          house: getIntList(sec, 'allowhouse'),
+          good: getIntList(sec, 'allowgood'),
+        },
         jobEnables: extractJobEnables(sec),
         jobRequirements: extractJobRequirements(sec),
         source: makeSource(src, 'tribetype'),

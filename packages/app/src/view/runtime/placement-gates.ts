@@ -16,10 +16,13 @@ export function createPlacementGates(
   sim: Simulation,
   fogGates: FogGates,
   localPlayer: number,
+  tribe?: number,
 ): PlacementGates {
   return {
     canPlaceAt: (typeId, col, row) =>
-      fogGates.seesNode(col, row) && (sim.placementProbe(typeId, localPlayer)?.canPlace(col, row) ?? true),
+      (tribe === undefined || sim.unlockStatus('house', typeId, tribe, localPlayer).enabled) &&
+      fogGates.seesNode(col, row) &&
+      (sim.placementProbe(typeId, localPlayer, tribe)?.canPlace(col, row) ?? true),
     canPlaceSignpostAt: (col, row) =>
       fogGates.seesNode(col, row) && (sim.signpostProbe(localPlayer)?.canPlace(col, row) ?? false),
   };

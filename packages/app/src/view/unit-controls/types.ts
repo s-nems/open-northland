@@ -17,6 +17,8 @@ import type { KeyBindings } from '../../hud/keybindings.js';
 import type { OverviewPress } from './overview-orders.js';
 
 export interface UnitControlsOptions {
+  readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'];
+  readonly canChooseJob?: (entity: number, jobType: number) => boolean;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly uiscale?: number;

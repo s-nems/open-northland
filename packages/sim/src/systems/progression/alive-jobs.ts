@@ -1,89 +1,71 @@
-import { Person, Settler } from '../../components/index.js';
+import { Owner, ownerOf, Person, Settler } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
 
-interface AliveTribeJobsCache {
-  /** Settler membership generation: a birth, a spawn, and a death all move through add/destroy. The
-   *  derivation below walks `Person`, which `addPerson` keeps in lockstep with `Settler`. */
-  membershipGeneration: number;
-  /** Settler value generation: a trade is written in place, invisible to the membership generation above.
-   *  Any `World.mut` to Settler bumps it - including the per-tick needs rises - so under a running needs
-   *  system this table rebuilds once per tick and amortizes only the within-tick consult burst. */
-  valueGeneration: number;
-  readonly jobsByTribe: ReadonlyMap<number, ReadonlySet<number>>;
-}
+type Jobs = ReadonlyMap<number | undefined, ReadonlyMap<number, ReadonlySet<number>>>;
+const memo = new WeakMap<World, { key: string; jobs: Jobs }>();
+const EMPTY: ReadonlyMap<number, ReadonlySet<number>> = new Map();
 
-const aliveTribeJobsCache = new WeakMap<World, AliveTribeJobsCache>();
-
-/** The one derivation path, so the verifier's reference run cannot drift from the rebuild. */
-function deriveAliveTribeJobs(world: World): Map<number, Set<number>> {
-  const byTribe = new Map<number, Set<number>>();
-  for (const e of world.query(Person)) {
-    const s = world.get(e, Settler);
-    if (s.jobType === null) continue; // a child and an idle adult hold no trade
-    let jobs = byTribe.get(s.tribe);
-    if (jobs === undefined) {
-      jobs = new Set<number>();
-      byTribe.set(s.tribe, jobs);
-    }
-    jobs.add(s.jobType);
+/** One shared scan per relevant generation, isolated by owner and tribe. */
+export function aliveTribeJobs(world: World, owner?: number): ReadonlyMap<number, ReadonlySet<number>> {
+  const key = generationKey(world);
+  let held = memo.get(world);
+  if (held?.key !== key) {
+    const jobs = deriveJobs(world);
+    if (held === undefined)
+      world.registerCacheVerifier('aliveTribeJobs', () => {
+        const current = memo.get(world);
+        if (current === undefined || current.key !== generationKey(world)) return [];
+        return sameJobs(current.jobs, deriveJobs(world))
+          ? []
+          : ['aliveTribeJobs disagrees with a fresh owner/tribe scan'];
+      });
+    held = { key, jobs };
+    memo.set(world, held);
   }
-  return byTribe;
+  return held.jobs.get(owner) ?? EMPTY;
 }
 
-function sameTables(
-  a: ReadonlyMap<number, ReadonlySet<number>>,
-  b: ReadonlyMap<number, ReadonlySet<number>>,
-): boolean {
+function generationKey(world: World): string {
+  return [
+    world.componentGeneration(Person),
+    world.componentGeneration(Settler),
+    world.componentValueGeneration(Settler),
+    world.componentGeneration(Owner),
+    world.componentValueGeneration(Owner),
+  ].join(':');
+}
+
+function deriveJobs(world: World): Jobs {
+  const jobs = new Map<number | undefined, Map<number, Set<number>>>();
+  for (const e of world.query(Person, Settler)) {
+    const s = world.get(e, Settler);
+    if (s.jobType === null) continue;
+    const player = ownerOf(world, e);
+    let tribes = jobs.get(player);
+    if (tribes === undefined) {
+      tribes = new Map();
+      jobs.set(player, tribes);
+    }
+    let trades = tribes.get(s.tribe);
+    if (trades === undefined) {
+      trades = new Set();
+      tribes.set(s.tribe, trades);
+    }
+    trades.add(s.jobType);
+  }
+  return jobs;
+}
+
+function sameJobs(a: Jobs, b: Jobs): boolean {
   if (a.size !== b.size) return false;
-  for (const [tribe, jobs] of a) {
-    const other = b.get(tribe);
-    if (other === undefined || other.size !== jobs.size) return false;
-    for (const jobType of jobs) {
-      if (!other.has(jobType)) return false;
+  for (const [owner, tribes] of a) {
+    const other = b.get(owner);
+    if (other === undefined || other.size !== tribes.size) return false;
+    for (const [tribe, jobs] of tribes) {
+      const otherJobs = other.get(tribe);
+      if (otherJobs === undefined || jobs.size !== otherJobs.size) return false;
+      for (const job of jobs) if (!otherJobs.has(job)) return false;
     }
   }
   return true;
-}
-
-function verifyAliveTribeJobsCache(world: World): string[] {
-  const cached = aliveTribeJobsCache.get(world);
-  if (cached === undefined) return [];
-  if (
-    cached.membershipGeneration !== world.componentGeneration(Settler) ||
-    cached.valueGeneration !== world.componentValueGeneration(Settler)
-  ) {
-    return []; // stale key, so the next read rebuilds and nothing can consume the old table
-  }
-  if (sameTables(cached.jobsByTribe, deriveAliveTribeJobs(world))) return [];
-  return [
-    'aliveTribeJobs cache disagrees with a fresh derivation: a Settler trade changed outside setSettlerJob',
-  ];
-}
-
-/**
- * The job types at least one living settler of each tribe currently holds - the membership set the
- * tech-unlock gate tests against, so a probe costs a set lookup instead of a scan over every Settler.
- *
- * Derived state, never hashed and never stored on an entity. Keyed on both Settler generations, so it
- * answers exactly what a fresh scan would, with no within-tick staleness window. The returned maps and
- * sets are the shared cached copies: read only.
- */
-export function aliveTribeJobs(world: World): ReadonlyMap<number, ReadonlySet<number>> {
-  const membershipGeneration = world.componentGeneration(Settler);
-  const valueGeneration = world.componentValueGeneration(Settler);
-  const cached = aliveTribeJobsCache.get(world);
-  if (
-    cached !== undefined &&
-    cached.membershipGeneration === membershipGeneration &&
-    cached.valueGeneration === valueGeneration
-  ) {
-    return cached.jobsByTribe;
-  }
-
-  const jobsByTribe = deriveAliveTribeJobs(world);
-  // Registered on the first build only: the verifier closes over `world` alone.
-  if (cached === undefined)
-    world.registerCacheVerifier('aliveTribeJobs', () => verifyAliveTribeJobsCache(world));
-  aliveTribeJobsCache.set(world, { membershipGeneration, valueGeneration, jobsByTribe });
-  return jobsByTribe;
 }

@@ -119,9 +119,7 @@ describe('placing with a paper', () => {
     expect(sim.checkInvariants()).toEqual([]);
   });
 
-  // SKIPPED: the building tech-unlock gate is disabled feature-wide - see
-  // docs/tickets/sim/rework-building-unlock-gate.md. Un-skip when the gate is re-enabled.
-  it.skip('a house paper names its house past the tech gate; a place-any paper still answers to it', () => {
+  it('a house paper names its house past the tech gate; a place-any paper still answers to it', () => {
     const sim = fresh();
     const smithyPaper: Paper = { kind: 'placeHouse', param: GATED_SMITHY };
     sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: anyHouse });

@@ -84,3 +84,36 @@ export function grantScriptUnlock(
     insertSortedById(held[table][kind], typeId, (id) => id);
   });
 }
+
+const mapPermissions = defineWorldSingleton<{
+  rows: { player: number; tribe: number; kind: UnlockKind; typeId: number; allowed: boolean }[];
+}>('MapPermissions', () => ({ rows: [] }));
+export const MapPermissions = mapPermissions.component;
+
+export function setMapPermission(
+  world: World,
+  row: { player: number; tribe: number; kind: UnlockKind; typeId: number; allowed: boolean },
+): void {
+  if (!isValidPlayer(row.player)) return;
+  mapPermissions.write(world, (state) => {
+    const previous = state.rows.findIndex(
+      (r) =>
+        r.player === row.player && r.tribe === row.tribe && r.kind === row.kind && r.typeId === row.typeId,
+    );
+    if (previous >= 0) state.rows.splice(previous, 1);
+    state.rows.push({ ...row });
+  });
+}
+
+export function mapPermission(
+  world: World,
+  player: number | undefined,
+  tribe: number,
+  kind: UnlockKind,
+  typeId: number,
+): boolean | undefined {
+  return mapPermissions
+    .read(world)
+    .rows.find((r) => r.player === player && r.tribe === tribe && r.kind === kind && r.typeId === typeId)
+    ?.allowed;
+}

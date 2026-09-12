@@ -155,3 +155,17 @@ describe('extractTribes', () => {
     ]);
   });
 });
+
+it('extracts tribe permissions as repeated single-value rows', () => {
+  const [tribe] = extractTribes(
+    parseIniSections(`[tribetype]
+type 1
+allowjob 4
+allowjob 7
+allowhouse 2
+allowgood 9
+`),
+    { file: 'synthetic.ini' },
+  );
+  expect(tribe?.permissions).toEqual({ job: [4, 7], house: [2], good: [9] });
+});

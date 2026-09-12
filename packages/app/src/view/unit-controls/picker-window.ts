@@ -131,7 +131,7 @@ export interface PickerWindow {
   setTitle(text: string): void;
   clearList(): void;
   addGroup(label: string): void;
-  addRow(label: string, onPick: () => void): void;
+  addRow(label: string, onPick: () => void, disabledReason?: string): void;
   addNote(label: string): void;
   show(): void;
   hide(): void;
@@ -180,9 +180,15 @@ export function createPickerWindow(opts: {
     addGroup: (label): void => {
       list.append(el('div', GROUP_STYLE, label));
     },
-    addRow: (label, onPick): void => {
+    addRow: (label, onPick, disabledReason): void => {
       const row = el('button', ROW_STYLE, label);
       row.style.fontFamily = fontFamily;
+      if (disabledReason !== undefined) {
+        row.setAttribute('disabled', '');
+        row.title = disabledReason;
+        row.textContent = `${label}: ${disabledReason}`;
+        row.style.opacity = '0.55';
+      }
       row.addEventListener('mouseenter', () => {
         row.style.background = ROW_HOVER;
       });

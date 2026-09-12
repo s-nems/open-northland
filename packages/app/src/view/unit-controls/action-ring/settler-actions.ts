@@ -114,11 +114,14 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     });
     cleanup.push(() => picker.dispose());
 
-    /** Open the profession list over the hidden ring, filtered to the selection's unlocked trades. */
+    /** Open the profession list over the hidden ring, with availability for the current selection. */
     const openJobWindow = (): void => {
       mode = 'jobs';
       hideTransient();
-      picker.show((jobType) => opts.jobUnlocked(actionTargets, jobType));
+      picker.show(
+        (jobType) => opts.jobUnlocked(actionTargets, jobType),
+        (jobType) => opts.jobBlockedReason?.(actionTargets, jobType) ?? '',
+      );
     };
     /** Hide the list and step back to the default menu. */
     const closeJobWindow = (): void => {
@@ -164,10 +167,14 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
       actionTargets = centre.ids;
       if (mode === 'jobs') {
         if (restoredJobs) {
-          picker.show((jobType) => opts.jobUnlocked(actionTargets, jobType));
+          picker.show(
+            (jobType) => opts.jobUnlocked(actionTargets, jobType),
+            (jobType) => opts.jobBlockedReason?.(actionTargets, jobType) ?? '',
+          );
           picker.setScrollTop(restoredPickerScrollTop);
           restoredJobs = false;
         }
+        picker.refresh();
         // Keep the canvas ring hidden under the DOM list window.
         root.visible = false;
         layout = EMPTY_LAYOUT;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Settler } from '../../../src/components/index.js';
+import { Building, grantScriptUnlock, Settler, setMapPermission } from '../../../src/components/index.js';
 import type { Command } from '../../../src/core/commands/index.js';
 import type { Simulation } from '../../../src/index.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from '../../../src/systems/ai-player/index.js';
@@ -214,4 +214,27 @@ describe('build-order module (houseBuild)', () => {
     expect(sim.world.get(bakery, Building).buildingType).toBe(BAKERY_TOP_TYPE);
     expect([...placeOnly.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
+});
+
+it('does not issue an upgrade blocked by map permissions and resumes after a script grant', () => {
+  const sim = aiSim();
+  placeHq(sim);
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: HOME_TYPE,
+    tribe: VIKING,
+    owner: SEAT,
+    x: HQ_X + 8,
+    y: HQ_Y,
+    force: true,
+  });
+  sim.step();
+  const target = sim.content.buildings.find((b) => b.typeId === HOME_TOP_TYPE);
+  const next = sim.content.buildings.find((b) => b.typeId === HOME_TYPE)?.upgradeTarget;
+  if (target === undefined || next === undefined) throw new Error('Missing fixture upgrade chain');
+  const module = buildOrderModule([{ kind: 'upgrade', building: target.id, count: 1 }]);
+  setMapPermission(sim.world, { player: SEAT, tribe: VIKING, kind: 'house', typeId: next, allowed: false });
+  expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  grantScriptUnlock(sim.world, 'enabled', SEAT, VIKING, 'house', next);
+  expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toMatchObject([{ kind: 'upgradeBuilding' }]);
 });

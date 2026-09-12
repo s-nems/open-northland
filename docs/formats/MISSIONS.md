@@ -440,9 +440,22 @@ Readings unless marked otherwise.
   and `Allow*` writes it. Enabled is the tech-tree progress that update records once any settler of
   the player gained the ability, with a "new ability" message; `Enable*` writes it outright, a chest
   reward writes the produceable byte the same way, and `JobEnabled` and `GoodProduceable` read it.
-  This build keeps both tables per player and tribe (`components/unlocks.ts`): the enabled ones OR
-  into the living-trade gates, the allowed ones have no reader, because the content catalog is the
-  only permission it models (approximation).
+  This build keeps script grants per player and tribe (`components/unlocks.ts`). Initial permissions
+  come from `tribetypes.ini` `allowjob`, `allowhouse`, `allowgood`; map `[allowedthings]` overrides
+  (`forbid*` / `allow*`) are saved in `MapPermissions`. Owned `tutorial_008/player.inc` forbids good 14
+  for player 0, tribe 1; `StraznicyPolnocy/player.inc` forbids good 63. `Allow*` removes the restriction
+  without granting progress. `Enable*` grants availability, including permission (approximation for
+  conflicting ban/grant combinations). Missing permission tables in older or synthetic content remain
+  unrestricted. Unknown permission macros remain in the sidecar's `misc` instead of inventing an id.
+  Building placement, upgrades, the profession picker and production use shared sim gates; disabled
+  UI choices explain the restriction or prerequisite. The progression toggle lifts profession
+  prerequisites and civilian XP gates, but not map permissions or military training requirements.
+  Authored building attachments preserve their existing trade even if the building is not yet unlocked.
+  Manual employment at a built workshop still skips the job-to-job prerequisite, while enforcing
+  permissions and XP for a newly acquired trade; this is a deliberate convenience approximation.
+  Natural prerequisites still read living trades, now isolated by owner and tribe, rather than a
+  permanent discovered-technology history. Losing the last prerequisite worker can therefore close
+  availability again (approximation); script `Enable*` grants persist across deaths and saves.
 - **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15. This build answers
   from its per-cell fog masks: explored everywhere with fog off, known terrain counting in RECON, and a
   script reveal writes EXPLORED without downgrading a VISIBLE cell.

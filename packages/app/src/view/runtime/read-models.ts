@@ -16,6 +16,7 @@ import {
 } from '../projections/index.js';
 
 export interface ViewReadModelDeps {
+  readonly placementTribe?: number;
   readonly sim: Simulation;
   readonly mapSize: { readonly width: number; readonly height: number };
   readonly localPlayer: number;
@@ -78,7 +79,7 @@ export async function createViewReadModels(deps: ViewReadModelDeps): Promise<Vie
   return {
     goodLabel: (typeId) => goodLabelByType.get(typeId),
     buildingDoors: buildings.byType,
-    overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer),
+    overlayFrame: makeOverlayFrameSource(sim, mapSize, localPlayer, deps.placementTribe),
     signpostOverlayFrame: makeSignpostOverlaySource(sim, mapSize, localPlayer),
     ...createSnapshotProjections(
       localPlayer,

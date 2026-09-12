@@ -243,6 +243,15 @@ describe('selection details panel model', () => {
     expect(model.health).toEqual({ label: 'Zdrowie', pct: 100, hover: '1000/1000' });
   });
 
+  it('retains the upgrade control and its explanation when technology blocks it', () => {
+    const model = buildUnitPanelModel(snapshotOf([buildingEntity(1, BUILDING_HOME_00)], 1), new Set([1]), {
+      ...sandboxCtx(),
+      technologyReason: () => 'Requires collector',
+    });
+    expect(model.kind === 'building' && model.upgradable).toBe(true);
+    expect(model.kind === 'building' && model.upgradeBlockedReason).toBe('Requires collector');
+  });
+
   it('offers Upgrade on a built chained home and Cancel on a running upgrade site - never both', () => {
     const built = buildUnitPanelModel(
       snapshotOf([buildingEntity(1, BUILDING_HOME_00)], 1),

@@ -27,6 +27,7 @@ export function chromeAboveList(tabCount: number, tabColumns: number): number {
 
 /** A listed item: the window needs only its label. */
 export interface TabbedListItem {
+  readonly disabledReason?: () => string | null;
   readonly label: string;
 }
 

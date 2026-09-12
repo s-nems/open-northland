@@ -30,6 +30,7 @@ import { hasDebugFlag } from '../../diag/debug-flags.js';
 import { type MissionBrief, type MissionBriefSource, missionBriefReader } from '../../game/mission-brief.js';
 import { loadGuiArt } from '../../content/gui-art.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
+import { technologyReason } from '../../game/technology.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import type { DiplomacyPanelRow } from '../../hud/tool-panel/diplomacy/index.js';
@@ -252,7 +253,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // Long-lived consumers close over these predicates; the frame loop refreshes them via `setFrame`.
   const fogGates = createFogGates();
 
-  const { canPlaceAt, canPlaceSignpostAt } = createPlacementGates(sim, fogGates, localPlayer);
+  const { canPlaceAt, canPlaceSignpostAt } = createPlacementGates(
+    sim,
+    fogGates,
+    localPlayer,
+    seatTribeOf(localPlayer),
+  );
 
   // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
   // draws over the strip's lower buttons on a short screen.
@@ -344,8 +350,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     canPlaceAt,
     mapSize: deps.mapSize,
     ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
-    buildings: menuEntriesFromContent(sim.content, lang),
-    // The goods drop is a trusted world edit, which has no wire in a shared session.
+    buildings: menuEntriesFromContent(sim.content, lang).map((entry) => ({
+      ...entry,
+      disabledReason: () =>
+        technologyReason(
+          sim.content,
+          sim.unlockStatus('house', entry.typeId, seatTribeOf(localPlayer), localPlayer),
+        ),
+    })),
     goods: sharedClock ? [] : menuGoods,
     lang,
     bindings: keyBindings,
@@ -448,6 +460,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   const detailsTooltip = createTooltip();
   const controls = await createUnitControls({
+    technologyStatus: (kind, typeId, tribe, player) => sim.unlockStatus(kind, typeId, tribe, player),
+    canChooseJob: (id, jobType) => sim.canChooseJob(id as Entity, jobType),
     app,
     canvas,
     uiscale,
@@ -493,6 +507,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     settlerBubblesFor,
     lifeHeartsFor,
   } = await createViewReadModels({
+    placementTribe: seatTribeOf(localPlayer),
     sim,
     mapSize: deps.mapSize,
     localPlayer,

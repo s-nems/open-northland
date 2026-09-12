@@ -195,7 +195,9 @@ const equipActionHint = (view: PanelView, x: number, y: number): string | null =
 const upgradeButtonHint = (view: PanelView, x: number, y: number): string | null => {
   if (view.kind !== 'building') return null;
   const hit = view.layout.buttons.find((b) => contains(b.rect, x, y));
-  if (hit?.action !== 'upgrade' || view.model.upgradeCost.length === 0) return null;
+  if (hit?.action !== 'upgrade') return null;
+  if (view.model.upgradeBlockedReason) return view.model.upgradeBlockedReason;
+  if (view.model.upgradeCost.length === 0) return null;
   const lines = view.model.upgradeCost.map((c) => `- ${c.label} ×${c.amount}`).join('\n');
   return `${messages().hud.upgradeCostHint}\n${lines}`;
 };

@@ -12,8 +12,9 @@ export interface ProfessionPickerOptions {
 }
 
 export interface ProfessionPicker {
-  /** Reveal the window, offering only the professions `unlocked` admits. */
-  show(unlocked: (jobType: number) => boolean): void;
+  /** Reveal the window, showing unavailable professions with their reason. */
+  show(unlocked: (jobType: number) => boolean, reason?: (jobType: number) => string): void;
+  refresh(): void;
   hide(): void;
   scrollTop(): number;
   setScrollTop(top: number): void;
@@ -27,27 +28,50 @@ export function createProfessionPicker(opts: ProfessionPickerOptions): Professio
     title: uiLabel('changeProfession'),
     onDismiss: opts.onDismiss,
   });
-  return {
-    show: (unlocked: (jobType: number) => boolean): void => {
-      // A header is emitted only once one of its rows survives the filter, so a fully-locked group
-      // leaves no trace; rows before the first header form a headerless leading group.
-      window_.clearList();
-      let pendingHeader: string | null = null;
-      for (const entry of opts.professions) {
-        if (entry.kind === 'header') {
-          pendingHeader = entry.label;
-          continue;
-        }
-        if (!unlocked(entry.jobType)) continue;
-        if (pendingHeader !== null) {
-          window_.addGroup(pendingHeader);
-          pendingHeader = null;
-        }
-        window_.addRow(entry.label, () => opts.onPick(entry.jobType));
+  let unlocked: ((jobType: number) => boolean) | undefined;
+  let reason: ((jobType: number) => string) | undefined;
+  let heldKey: string | null = null;
+  const refresh = (): void => {
+    const permits = unlocked;
+    if (permits === undefined) return;
+    const rows = opts.professions.map((entry) => ({
+      entry,
+      blocked:
+        entry.kind === 'header' || permits(entry.jobType) ? undefined : (reason?.(entry.jobType) ?? ''),
+    }));
+    const key = JSON.stringify(rows.map((row) => row.blocked));
+    if (key === heldKey) return;
+    heldKey = key;
+    const scroll = window_.scrollTop();
+    window_.clearList();
+    for (const { entry, blocked } of rows) {
+      if (entry.kind === 'header') {
+        window_.addGroup(entry.label);
+        continue;
       }
+      window_.addRow(
+        entry.label,
+        () => {
+          if (permits(entry.jobType)) opts.onPick(entry.jobType);
+        },
+        blocked,
+      );
+    }
+    window_.setScrollTop(scroll);
+  };
+  return {
+    show: (permits, blockedReason): void => {
+      unlocked = permits;
+      reason = blockedReason;
+      heldKey = null;
+      refresh();
       window_.show();
     },
-    hide: window_.hide,
+    refresh,
+    hide: () => {
+      unlocked = undefined;
+      window_.hide();
+    },
     scrollTop: window_.scrollTop,
     setScrollTop: window_.setScrollTop,
     dispose: window_.dispose,

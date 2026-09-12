@@ -1,4 +1,5 @@
 import { Container, Graphics } from 'pixi.js';
+import { createTooltip, type Tooltip } from '../../../view/tooltip.js';
 import { WIN_PAD } from '../../chrome.js';
 import { contains } from '../../geometry.js';
 import type { PanelContext } from '../context.js';
@@ -86,6 +87,14 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
   // The tab set is fixed per source, so the chrome above the list is a constant.
   const chromeH = chromeAboveList(source.tabs().length, source.tabColumns);
 
+  let tooltip: Tooltip | undefined;
+  deps.container.on('destroyed', () => tooltip?.destroy());
+  let permissionKey = '';
+  const permissions = (): string =>
+    source
+      .items(selected)
+      .map((i) => i.disabledReason?.() ?? '')
+      .join('\n');
   let selected: Id = source.initialTab;
   let scrollTop = 0;
   let layout: TabbedListLayout<Id, Item> | null = null;
@@ -131,9 +140,19 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     return hit !== null && hit.kind === 'row' ? hit.item : null;
   };
 
+  const showReason = (item: Item | null, x: number, y: number): void => {
+    const reason = item?.disabledReason?.();
+    if (reason) {
+      tooltip ??= createTooltip();
+      const screen = ctx.screen();
+      tooltip.show((x * window.innerWidth) / screen.width, (y * window.innerHeight) / screen.height, reason);
+    } else tooltip?.hide();
+  };
+
   const drawHover = (): void => paintHover(hoverG, layout, hovered, scale);
 
   const rebuild = (): void => {
+    permissionKey = permissions();
     shell.clear();
     clearFills(back);
     builtRows = listRows();
@@ -151,11 +170,13 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     scrollTop = layout.scroll.top; // clamp back (a tab change can shrink the range)
     hovered = lastPointer === null ? null : hoverAt(lastPointer.x, lastPointer.y);
 
+    if (lastPointer !== null) showReason(hovered, lastPointer.x, lastPointer.y);
     paintWindow(layers, layout, source.title());
     drawHover();
   };
 
   const clearHover = (): void => {
+    tooltip?.hide();
     // `paintHover` clears before it draws, so nothing is painted while `hovered` is null.
     if (hovered === null && lastPointer === null) return;
     hovered = null;
@@ -208,6 +229,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
           break;
         case 'row': {
           const { item } = hit;
+          if (item.disabledReason?.()) break;
           close();
           deps.onPick(item);
           break;
@@ -230,6 +252,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
       if (!shell.isOpen() || layout === null) return;
       lastPointer = { x, y };
       const next = hoverAt(x, y);
+      showReason(next, x, y);
       if (next === hovered) return;
       hovered = next;
       drawHover();
@@ -237,7 +260,7 @@ export function createTabbedListWindow<Id, Item extends TabbedListItem>(
     clearHover,
     refresh: (): void => {
       if (!shell.isOpen() || layout === null) return;
-      if (listRows() !== builtRows) rebuild();
+      if (listRows() !== builtRows || permissions() !== permissionKey) rebuild();
     },
     state: () => ({ selected, scrollTop }),
     restore: (state): void => {

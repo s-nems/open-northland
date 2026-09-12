@@ -21,6 +21,7 @@ import { codeOf } from './props.js';
  * mixed case (`#PLAYER_TYPE_human`, `#TRIBE_TYPE_HUMAN_viking`).
  */
 const MACRO_CODES: Readonly<Record<string, number>> = {
+  GOOD_TYPE_SPEAR_WOODEN: 39,
   PLAYER_TYPE_NONE: 0,
   PLAYER_TYPE_HUMAN: 1,
   PLAYER_TYPE_AI: 2,
@@ -55,6 +56,15 @@ const MACRO_CODES: Readonly<Record<string, number>> = {
   SPECIAL_ITEM_TYPE_LETTER_TO_ALLOW_A_JOB: 5,
   SPECIAL_ITEM_TYPE_LETTER_TO_ALLOW_GOOD: 6,
   ...HOUSE_TYPE_CODES,
+};
+
+const PERMISSION_KINDS: Readonly<Record<string, 'job' | 'house' | 'good'>> = {
+  allowjob: 'job',
+  forbidjob: 'job',
+  allowhouse: 'house',
+  forbidhouse: 'house',
+  allowgood: 'good',
+  forbidgood: 'good',
 };
 
 const PLAYER_TYPE_NONE = 0;
@@ -210,6 +220,7 @@ function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined 
  * emits no script sidecar. `aidata`, the AI task and condition program, is out of scope here.
  */
 export function extractMapScript(sections: readonly RuleSection[], src: SourceRef): MapScript | undefined {
+  const permissions: NonNullable<MapScript['permissions']> = [];
   const players: NonNullable<MapScript['players']> = [];
   const seenSlots = new Set<number>();
   const diplomacy: NonNullable<MapScript['diplomacy']> = [];
@@ -220,7 +231,25 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   let multiplayer: NonNullable<MapScript['multiplayer']> | undefined;
   for (const sec of sections) {
     const name = sec.name.toLowerCase();
-    if (name === 'misc_humannames') {
+    if (name === 'allowedthings') {
+      for (const p of sec.props) {
+        const kind = PERMISSION_KINDS[p.key];
+        const allowed = p.key.startsWith('allow');
+        const [player, tribe, typeId] = p.values.map(code);
+        if (
+          kind !== undefined &&
+          (allowed || p.key.startsWith('forbid')) &&
+          player !== undefined &&
+          player >= 0 &&
+          tribe !== undefined &&
+          tribe >= 0 &&
+          typeId !== undefined &&
+          typeId >= 0
+        ) {
+          permissions.push({ player, tribe, kind, typeId, allowed });
+        } else misc.push(asLine(p));
+      }
+    } else if (name === 'misc_humannames') {
       for (const p of sec.props) {
         const row = humanNameRow(p);
         if (row !== undefined) humanNames.push(row);
@@ -264,10 +293,12 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     specialItems.length +
     misc.length +
     missions.length +
-    humanNames.length;
+    humanNames.length +
+    permissions.length;
   if (scripted === 0 && multiplayer === undefined) return undefined;
   return MapScript.parse({
     players,
+    ...(permissions.length > 0 ? { permissions } : {}),
     diplomacy,
     multiplayer,
     specialItems,

@@ -27,12 +27,11 @@ prey, meat and leather. Wool (good 10) carries no enabling edge at all, so it st
 The build order (`build-order/entries.ts`) places `work_animal_farm` well before the `work_bakery_01`
 upgrade, so this is the steady state of every AI game, not an edge case.
 
-Leather is the reachable half of a wider branch: the same block carries `jobEnablesJob 15 16/17`
-(breeder, sewer) and `jobEnablesHouse 15 17/18/44/45` (animal farm, level-0 sewery, both ships). Only
-the `good` half still bites: `buildingEnabled` is a kill-switched no-op (`progression/unlocks.ts`) and
-the `job` half is read by nothing at all (see
-[jobEnablesJob is unmodeled](job-enables-job-unmodeled.md)). Scope the goods branch, and decide the
-`job` half there rather than here.
+The same source block carries `jobEnablesJob 15 16/17` (breeder, sewer) and
+`jobEnablesHouse 15 17/18/44/45` (animal farm, level-0 sewery, both ships). Building and manual
+profession gates are active and scoped to the seat; another player's hunter cannot satisfy them.
+Retiring the final hunter can therefore also block later construction and workplace admission.
+Script Enable grants persist, but ordinary prerequisites still depend on living workers.
 
 ## Scope
 

@@ -198,6 +198,11 @@ export const plContent = {
         '3': 'Sąsiedzi proszą o kamień na drogę między nami.',
       },
     },
+    technology: {
+      title: 'Technologie misji',
+      summary:
+        'Otwórz menu budowania: dom jest początkowo zabroniony. Skrypt najpierw daje zezwolenie, a później twój zbieracz odblokowuje budowę. Zbieracz rywala nie odblokowuje twoich technologii.',
+    },
     'terrain-edits': {
       title: 'Zmiany terenu ze skryptu',
       summary:

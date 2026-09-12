@@ -1,8 +1,11 @@
-import { type Entity, systems } from '@open-northland/sim';
+import { type Entity, entityById, systems } from '@open-northland/sim';
 import { jobUnlockedForSelection } from '../../game/profession-unlocks.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
+import { num, ownerPlayerOf } from '../../game/snapshot.js';
+import { technologyReason } from '../../game/technology.js';
 import { mountUnitPanel, type UnitPanel } from '../../hud/details-panel/index.js';
 import { createReplaceableMount } from '../../hud/replaceable-mount.js';
+import { messages } from '../../i18n/index.js';
 import { screenScale } from '../camera/index.js';
 import { entityAnchor, memoBySnapshot } from '../projections/index.js';
 import { mountSettlerActions, type SettlerActions, selectionCentre } from './action-ring/index.js';
@@ -44,6 +47,20 @@ export async function createUnitChrome(
       uiscale,
       lang: opts.lang,
       backingScale: (canvas) => screenScale(canvas, opts.app.renderer.resolution),
+      technologyReason:
+        opts.technologyStatus === undefined
+          ? undefined
+          : (kind, typeId, tribe, player) =>
+              technologyReason(
+                opts.content,
+                opts.technologyStatus?.(kind, typeId, tribe, player) ?? {
+                  allowed: true,
+                  enabled: true,
+                  enablingJobs: [],
+                },
+              ),
+      goodAllowed: (good, tribe, player) =>
+        opts.technologyStatus?.('good', good, tribe, player).allowed ?? true,
       buildings: opts.content.buildings,
       goods: opts.content.goods,
       jobs: opts.content.jobs,
@@ -93,7 +110,24 @@ export async function createUnitChrome(
       ),
       professions: opts.professions,
       content: opts.content,
-      jobUnlocked: (ids, jobType) => jobUnlockedForSelection(opts.content, opts.snapshot(), ids, jobType),
+      jobUnlocked: (ids, jobType) =>
+        opts.canChooseJob !== undefined
+          ? ids.every((id) => opts.canChooseJob?.(id, jobType))
+          : jobUnlockedForSelection(opts.content, opts.snapshot(), ids, jobType),
+      jobBlockedReason: (ids, jobType) => {
+        for (const id of ids) {
+          const ent = entityById(opts.snapshot(), id);
+          if (ent === undefined) continue;
+          const tribe = num((ent.components.Settler as { tribe?: unknown } | undefined)?.tribe);
+          if (tribe === undefined) continue;
+          const status = opts.technologyStatus?.('job', jobType, tribe, ownerPlayerOf(ent));
+          if (status !== undefined) {
+            const reason = technologyReason(opts.content, status);
+            if (reason !== null) return reason;
+          }
+        }
+        return messages().hud.technologyExperience;
+      },
       onSetJob: (ids, jobType) => {
         for (const id of ids) opts.enqueue({ kind: 'setJob', entity: id as Entity, jobType });
       },

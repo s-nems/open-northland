@@ -7,6 +7,7 @@ import type { TabbedListSource } from './tabbed-list/index.js';
  */
 
 export interface MenuBuildingEntry {
+  readonly disabledReason?: () => string | null;
   readonly typeId: number;
   readonly label: string;
   /** The `ir.json` building `kind`: `home | storage | workplace | tower | training`. */

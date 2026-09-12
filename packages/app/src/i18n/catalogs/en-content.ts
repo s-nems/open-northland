@@ -197,6 +197,11 @@ export const enContent = {
         '3': 'The neighbours ask for stone to pave the road between us.',
       },
     },
+    technology: {
+      title: 'Mission technologies',
+      summary:
+        'Open the building menu: housing starts forbidden. The script first grants permission, then your own collector unlocks it. The rival collector cannot unlock your technologies.',
+    },
     'terrain-edits': {
       title: 'Scripted terrain edits',
       summary:

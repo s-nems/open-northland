@@ -124,7 +124,7 @@ const COMPACT_STOCK_MAX = 16;
  *  upgrade is never also upgradable, so the two never appear together. */
 function buildingButtons(model: BuildingModel): ReadonlyArray<{ action: ButtonAction; enabled: boolean }> {
   return [
-    ...(model.upgradable ? [{ action: 'upgrade', enabled: true } as const] : []),
+    ...(model.upgradable ? [{ action: 'upgrade', enabled: !model.upgradeBlockedReason } as const] : []),
     ...(model.cancelable ? [{ action: 'cancelUpgrade', enabled: true } as const] : []),
     { action: 'demolish', enabled: true },
     { action: 'center', enabled: true },

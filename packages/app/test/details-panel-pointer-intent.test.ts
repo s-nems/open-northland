@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { JOB_COLLECTOR } from '../src/catalog/jobs.js';
 import {
   BUILDING_HEADQUARTERS,
+  BUILDING_HOME_00,
   GOOD_BREAD,
   GOOD_PLANK,
   GOOD_SHOES,
@@ -253,4 +254,17 @@ describe('details panel hover state', () => {
     expect(hover.choiceGood).toBeNull();
     expect(sameHover(hover, NO_PANEL_HOVER)).toBe(false);
   });
+});
+
+it('a technology-locked upgrade is visible but cannot submit a command', () => {
+  const model = panelModelOf(buildingEntity(1, BUILDING_HOME_00));
+  if (model.kind !== 'building') throw new Error('Expected building panel');
+  const locked = viewOfKind({ ...model, upgradeBlockedReason: 'Requires collector' }, 'building');
+  const button = locked.layout.buttons.find((b) => b.action === 'upgrade');
+  if (button === undefined) throw new Error('Missing upgrade control');
+  const at = center(button.rect);
+  expect(button.enabled).toBe(false);
+  expect(panelClickAt(locked, at.x, at.y, false)).toBeNull();
+  const open = viewOfKind({ ...model, upgradeBlockedReason: null }, 'building');
+  expect(panelClickAt(open, at.x, at.y, false)).toEqual({ kind: 'upgrade', entityId: 1 });
 });

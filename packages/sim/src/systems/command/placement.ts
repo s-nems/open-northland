@@ -232,7 +232,7 @@ export function placeBoat(
   ctx: SystemContext,
   command: Extract<Command, { kind: 'placeBoat' }>,
 ): void {
-  const unlocked = tribeShipsUnlocked(world, ctx, command.tribe);
+  const unlocked = tribeShipsUnlocked(world, ctx, command.tribe, command.owner);
   if (!unlocked.some((v) => v.typeId === command.vehicleType)) return;
 
   const e = world.create();

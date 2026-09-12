@@ -67,6 +67,14 @@ export const TribeType = z.strictObject({
   jobEnables: z.array(JobEnables).default([]),
   /** `{need,train}for{job,good}` XP/schooling requirements in file order. */
   jobRequirements: z.array(JobRequirement).default([]),
+  /** Initial allow tables; absent in older content and synthetic catalogs means unrestricted. */
+  permissions: z
+    .strictObject({
+      job: z.array(TypeId),
+      house: z.array(TypeId),
+      good: z.array(TypeId),
+    })
+    .optional(),
   source: Provenance.optional(),
 });
 export type TribeType = z.infer<typeof TribeType>;

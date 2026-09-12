@@ -132,6 +132,9 @@ helpers. Test both shapes when a source table uses both.
 
 Map terrain is stored separately from `ir.json` because each map is loaded on demand. Map JSON is
 validated with `parseTerrainMap`; optional sidecars provide menu, lobby, and mission information.
+A script sidecar may carry `permissions` rows from `[allowedthings]`, scoped by player, tribe and
+job/house/good type. The tribe catalog's optional `permissions` lists supply the initial allow tables;
+absence in older content remains unrestricted. Runtime overrides are saved with the world.
 
 Graphics decoders turn palette-indexed source frames into atlases and manifests. IR tables such as
 `bobSequences`, `gfxAtomics`, `jobGraphics`, and `buildingBobs` connect logical state to those files.

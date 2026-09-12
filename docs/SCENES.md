@@ -72,3 +72,5 @@ owned content.
 This is a scripted single-player free map, not a base campaign. Its opening and reinforcements do not
 prove its ending or campaign completion. The inspector shows saved execution ticks and counts;
 unsupported and refused results remain in the diagnostic log.
+
+`?scene=technology` shows map permission followed by a player-owned profession unlocking housing.

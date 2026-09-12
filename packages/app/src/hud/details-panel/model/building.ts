@@ -50,5 +50,6 @@ export interface BuildingPanelModel {
    *  tier the building already had and loses what the hold took in beyond the building's own inventory. */
   readonly cancelable: boolean;
   /** Material cost of the upgrade target tier; empty unless `upgradable`. */
+  readonly upgradeBlockedReason?: string | null;
   readonly upgradeCost: readonly UpgradeCostRow[];
 }

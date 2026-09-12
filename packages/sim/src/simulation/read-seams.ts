@@ -7,6 +7,7 @@ import { FOG_MODE, type FogMode, fogMode } from '../components/index.js';
 import type { World } from '../ecs/world.js';
 import type { TerrainGraph } from '../nav/terrain/index.js';
 import { type PlayerPlacementProbe, seatPlacementProbe } from '../systems/conflict/contested-ground.js';
+import { buildingEnabled } from '../systems/progression/index.js';
 import { type SignpostProbe, signpostProbe } from '../systems/signposts/index.js';
 import { effectiveFogState, type FogState } from '../systems/vision/index.js';
 
@@ -30,9 +31,17 @@ export function placementProbeFor(
   fog: FogState | undefined,
   buildingType: number,
   player?: number,
+  tribe?: number,
 ): PlayerPlacementProbe | null {
   if (terrain === undefined) return null;
-  return seatPlacementProbe(world, content, terrain, fog, buildingType, player);
+  const probe = seatPlacementProbe(world, content, terrain, fog, buildingType, player);
+  if (tribe === undefined) return probe;
+  const enabled = buildingEnabled(world, { content }, player, tribe, buildingType);
+  return {
+    ...probe,
+    canPlace: (x, y) => enabled && probe.canPlace(x, y),
+    contestedKeyWithin: (...bounds) => `${enabled}:${probe.contestedKeyWithin(...bounds)}`,
+  };
 }
 
 /** Null for a mapless sim. */

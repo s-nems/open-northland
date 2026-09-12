@@ -1,4 +1,4 @@
-import type { ContentSet, MapDiplomacy, MapHumanName } from '@open-northland/data';
+import type { ContentSet, MapDiplomacy, MapHumanName, MapScript } from '@open-northland/data';
 import { components, type MissionScript, Simulation, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
@@ -6,6 +6,7 @@ import type { AuthoredPlacement } from './authored-placements.js';
 
 /** Decoded map setup and resolved mission definitions. */
 export interface MapScriptWorld {
+  readonly permissions?: MapScript['permissions'];
   readonly diplomacy?: readonly MapDiplomacy[];
   readonly humanNames?: readonly MapHumanName[];
   readonly missions?: MissionScript;
@@ -30,6 +31,7 @@ export function newWorldSim(
     map,
     ...(script.missions !== undefined ? { missions: script.missions } : {}),
   });
+  for (const row of script.permissions ?? []) components.setMapPermission(sim.world, row);
   sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
   for (const row of diplomacy) {
     sim.enqueueSetup({ kind: 'setDiplomacy', from: row.from, to: row.to, state: row.state });

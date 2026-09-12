@@ -16,7 +16,7 @@ type SpawnSettlerCommand = Extract<Command, { kind: 'spawnSettler' }>;
  * Deliberately the housing and employment primitives, not the `assignHouse`/`assignWorker` orders: those
  * refuse a target outside the settler's signpost area, and many authored targets sit outside it. A map
  * loads as authored, the same reason `placeBuilding` takes `force`. Each half still applies every
- * admission rule its order does apart from that area gate, and refuses silently - the loader counts only
+ * admission rule its order does apart from area and building-technology gates, and refuses silently - the loader counts only
  * the attachments it could not resolve to a building at all.
  */
 export function attachAuthoredBuildings(
@@ -46,6 +46,7 @@ function postToWorkplace(world: World, ctx: SystemContext, e: Entity, building: 
     {
       world,
       ctx,
+      authored: true,
       tribe: settler.tribe,
       owner: ownerOf(world, e),
       experience: settler.experience,

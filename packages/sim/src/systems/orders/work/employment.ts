@@ -24,7 +24,7 @@ import {
 } from '../../economy/jobs/index.js';
 import { interactionNode } from '../../footprint/index.js';
 import { clearNavState } from '../../movement/nav-state.js';
-import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
+import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../../signposts/index.js';
@@ -49,7 +49,7 @@ export function setJob(
   const e = command.entity;
   if (!isTradeAssignable(world, e)) return;
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job - skip
-  if (!settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', command.jobType)) return; // unearned trade
+  if (!canChooseJob(world, ctx, needSubjectOf(world, e), command.jobType)) return; // unearned trade
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;
 
   world.remove(e, JobAssignment); // the old post is not the new trade's - the player picks the next one

@@ -19,10 +19,12 @@ import {
   type Paper,
   playerPaperSlots,
   professionProgressionEnabled,
+  Settler,
 } from './components/index.js';
 import { landscapeRevision } from './components/landscape.js';
 import { type MatchRulesView, matchRulesView } from './components/match.js';
 import { type MissionPresentationView, missionPresentation } from './components/mission-presentation.js';
+import type { UnlockKind } from './components/unlocks.js';
 import { CommandQueue } from './core/command-queue.js';
 import { type Command, type CommandEnvelope, setupCommand } from './core/commands/index.js';
 import { EventBuffer } from './core/events.js';
@@ -53,6 +55,7 @@ import {
   type OpenTribute,
   openTributes,
 } from './systems/missions/index.js';
+import { canChooseJob, needSubjectOf, unlockStatus } from './systems/progression/index.js';
 import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
 import { SYSTEM_ORDER } from './systems/schedule.js';
 import type { SignpostProbe } from './systems/signposts/index.js';
@@ -248,14 +251,28 @@ export class Simulation {
     return snap;
   }
 
+  unlockStatus(
+    kind: UnlockKind,
+    typeId: number,
+    tribe: number,
+    player?: number,
+  ): ReturnType<typeof unlockStatus> {
+    return unlockStatus(this.world, { content: this.content }, player, tribe, kind, typeId);
+  }
+
+  canChooseJob(entity: Entity, jobType: number): boolean {
+    if (!this.world.has(entity, Settler)) return false;
+    return canChooseJob(this.world, { content: this.content }, needSubjectOf(this.world, entity), jobType);
+  }
+
   /**
    * A buildability test for one building type, reading the same rules the `placeBuilding` command gates on.
    * Obstacle sets are memoized per {@link placementBlockerVersion}, so probing a viewport costs O(visible
    * tiles); with a `player` the probe also refuses the ground a hostile army the seat can see contests.
-   * Null for a mapless sim.
+   * A supplied tribe adds its player-scoped technology gate. Null for a mapless sim.
    */
-  placementProbe(buildingType: number, player?: number): PlayerPlacementProbe | null {
-    return placementProbeFor(this.world, this.content, this.terrain, this.fog, buildingType, player);
+  placementProbe(buildingType: number, player?: number, tribe?: number): PlayerPlacementProbe | null {
+    return placementProbeFor(this.world, this.content, this.terrain, this.fog, buildingType, player, tribe);
   }
 
   /**

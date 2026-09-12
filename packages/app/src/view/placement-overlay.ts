@@ -23,11 +23,12 @@ export function makeOverlayFrameSource(
   mapSize: { readonly width: number; readonly height: number },
   // The seat whose fog and enemies gate the overlay.
   player: number = HUMAN_PLAYER,
+  tribe?: number,
 ): (buildingType: number, camera: Camera, screenW: number, screenH: number) => PlacementOverlayFrame | null {
   const band = makeBandProber(sim, mapSize, player);
   return (buildingType, camera, screenW, screenH) =>
     band(
-      () => sim.placementProbe(buildingType, player),
+      () => sim.placementProbe(buildingType, player, tribe),
       (probe, band) =>
         `b${buildingType}:${sim.placementBlockerVersion()}:${probe.contestedKeyWithin(band.minCol, band.maxCol, band.minRow, band.maxRow)}`,
       camera,

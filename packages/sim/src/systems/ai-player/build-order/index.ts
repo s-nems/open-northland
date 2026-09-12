@@ -6,6 +6,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
 import { buildingTypeByContentId } from '../content-lookup.js';
 import type { AiPlayerModule } from '../index.js';
@@ -68,6 +69,7 @@ function runBuildOrder(
         if (tribe === undefined) return [];
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
+        if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry);
         return spot === null ? [] : [siteCommand(type, spot, tribe, player)];
       }
@@ -76,6 +78,10 @@ function runBuildOrder(
         if (target === undefined) return []; // unreachable after 'skip', kept for the type system
         const candidate = upgradeCandidate(world, index, owned, target);
         if (candidate === null) return [];
+        const building = world.get(candidate, Building);
+        const nextTier = index.buildings.get(building.buildingType)?.upgradeTarget;
+        if (nextTier === undefined || !buildingEnabled(world, ctx, player, building.tribe, nextTier))
+          return [];
         return [{ kind: 'upgradeBuilding', building: candidate }];
       }
       case 'collector':
@@ -84,6 +90,7 @@ function runBuildOrder(
         if (tribe === undefined) return [];
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
+        if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
         const target = firstUncoveredBuilding(world, ctx, player, owned);
         if (target === null) return []; // status said unmet - defensive
         const spot = towerPlacementSpot(world, ctx, terrain, player, owned, anchor, type, target);

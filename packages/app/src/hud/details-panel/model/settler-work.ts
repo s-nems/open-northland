@@ -58,7 +58,9 @@ export function settlerWork(
   // The `needforgood` filter the sim's rotation and harvest gates apply, so both product menus offer
   // only what this settler may make or dig right now.
   const experience = settlerExperienceOf(comps);
+  const owner = num((comps.Owner as { player?: unknown } | undefined)?.player);
   const earned = (goodType: number): boolean =>
+    (ctx.goodAllowed?.(goodType, num(settlerComp?.tribe) ?? 0, owner) ?? true) &&
     goodUnlockedFor(ctx, progressionGated, num(settlerComp?.tribe), experience, goodType);
   const workFlag = comps.WorkFlag as { goodType?: unknown } | undefined;
   if (workFlag !== undefined) {
@@ -97,7 +99,12 @@ export function settlerWork(
       return gatherWork(ctx, buildingTitle(ctx, rawType), choices, selectedGood);
     }
   }
-  const craft = craftChoicesFor(ctx, def, comps, earned);
+  const craft = craftChoicesFor(
+    ctx,
+    def,
+    comps,
+    (good) => earned(good) && !ctx.technologyReason?.('good', good, num(settlerComp?.tribe) ?? 0, owner),
+  );
   if (craft !== null) {
     const selectedLabels = craft.choices
       .filter((choice) => craft.selected.includes(choice.goodType))

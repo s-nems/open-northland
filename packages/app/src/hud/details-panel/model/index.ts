@@ -194,6 +194,11 @@ export function buildUnitPanelModel(
       construction: constructionModel(ctx, def, ent),
       upgradable,
       cancelable: ent.components.Upgrading !== undefined,
+      upgradeBlockedReason:
+        def?.upgradeTarget === undefined
+          ? null
+          : (ctx.technologyReason?.('house', def.upgradeTarget, num(b.tribe) ?? 0, ownerPlayerOf(ent)) ??
+            null),
       upgradeCost: upgradable ? upgradeCostRows(ctx, def) : [],
     };
   }

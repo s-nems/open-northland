@@ -9,6 +9,8 @@ import { buildingWorkerJobs } from '../../stores/index.js';
 /** The settler-side context an openness probe reads: the same tribe/owner/experience triple the
  *  `needfor*` gate judges. */
 export interface OpeningsQuery extends NeedSubject {
+  /** Initial map attachments retain their authored trade even before its building technology opens. */
+  readonly authored?: boolean;
   readonly world: World;
   readonly ctx: SystemContext;
   /** The settler's current trade, null when it holds none; read only by the garrison gate. */
@@ -43,7 +45,8 @@ export function openWorkerJobFromList(
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace
-  if (!buildingEnabled(world, ctx, ownerOf(world, building), tribe, b.buildingType)) return null;
+  if (!query.authored && !buildingEnabled(world, ctx, ownerOf(world, building), tribe, b.buildingType))
+    return null;
   const offered = buildingWorkerJobs(world, ctx, building);
   for (const jobType of jobPriority) {
     if (!offered.has(jobType)) continue;

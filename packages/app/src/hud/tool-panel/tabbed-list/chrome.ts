@@ -29,7 +29,8 @@ export function paintWindow<Id, Item extends TabbedListItem>(
 
   for (const row of layout.rows) {
     const card = paintRowCard(layers, row.rect);
-    placeOnCard(layers, addRun(layers, row.item.label, 'white', ROW_PX), card);
+    const reason = row.item.disabledReason?.();
+    placeOnCard(layers, addRun(layers, row.item.label, reason ? 'dimmed' : 'white', ROW_PX), card);
   }
   if (layout.scrollbar !== undefined) {
     drawScrollbar(graphics, layout.scrollbar.track, layout.scrollbar.thumb, ctx.scale);

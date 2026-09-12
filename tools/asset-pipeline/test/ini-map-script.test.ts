@@ -210,3 +210,19 @@ playerfixcolors 1
     expect(script?.multiplayer?.fixedColors).toBeUndefined();
   });
 });
+
+it('extracts numeric map permissions and keeps unknown permission macros visible', () => {
+  const script = extractMapScript(
+    parseIniSections(`[allowedthings]
+forbidgood 2 1 7
+allowhouse 2 1 4
+forbidjob 2 1 #UNKNOWN_JOB
+`),
+    SRC,
+  );
+  expect(script?.permissions).toEqual([
+    { player: 2, tribe: 1, kind: 'good', typeId: 7, allowed: false },
+    { player: 2, tribe: 1, kind: 'house', typeId: 4, allowed: true },
+  ]);
+  expect(script?.misc).toEqual([{ key: 'forbidjob', values: ['2', '1', '#UNKNOWN_JOB'] }]);
+});

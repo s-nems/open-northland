@@ -23,6 +23,7 @@ import { presentationScene } from './presentation.js';
 import { sandboxScene } from './sandbox/index.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
+import { technologyScene } from './technology.js';
 import { terrainEditsScene } from './terrain-edits.js';
 import { towerDefenceScene } from './tower-defence.js';
 import { towerGarrisonScene } from './tower-garrison.js';
@@ -73,6 +74,7 @@ export const SCENES: readonly SceneDefinition[] = [
   tributeScene,
   presentationScene,
   terrainEditsScene,
+  technologyScene,
 ];
 
 export function getScene(id: string): SceneDefinition | undefined {
