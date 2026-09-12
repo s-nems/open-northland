@@ -515,6 +515,7 @@ describe('tool windows registry', () => {
       diplomacyRows: () => [],
       art: null,
       missionBrief: () => null,
+      missionBriefingHistory: () => [],
       missionReplayPage: () => null,
       history: null,
       onPickBuilding: (typeId) => picks.push(typeId),

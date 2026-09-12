@@ -62,6 +62,8 @@ and the Playwright browsers and compares their state hashes with Node (see `TEST
 `[MissionData]` scripts, per opcode and (with `--per-map`) per map. Unknown names count as missing
 even when the decoder falls back to `True` or `None`; token-count warnings are reported separately.
 Coverage does not prove successful execution, correct name joins, or map completion.
+Fresh maps execute their scripts automatically. `?missions=off` disables execution for diagnostics;
+loading a save preserves its stored mission rules.
 
 ## Browser entries
 

@@ -72,7 +72,12 @@ const BRIEF: MissionBrief = {
   goals: [{ text: 'Win', rule: 'skirmish', state: 'open' }],
 };
 
-function mount(brief: MissionBrief = BRIEF, now: () => number = () => 0, replayPage: number | null = null) {
+function mount(
+  brief: MissionBrief = BRIEF,
+  now: () => number = () => 0,
+  replayPage: number | null = null,
+  briefingHistory: readonly number[] = [],
+) {
   const { ctx, made, placedY } = stubContext();
   const opened: boolean[] = [];
   const asked: (number | null)[] = [];
@@ -85,6 +90,7 @@ function mount(brief: MissionBrief = BRIEF, now: () => number = () => 0, replayP
       return page === null ? brief : { ...brief, title: `PAGE ${page}` };
     },
     replayPage: () => replayPage,
+    briefingHistory: () => briefingHistory,
     history: BOOK,
     onOpenChange: (open) => opened.push(open),
     now,
@@ -96,6 +102,19 @@ function mount(brief: MissionBrief = BRIEF, now: () => number = () => 0, replayP
 const middle = (r: Rect): [number, number] => [r.x + r.w / 2, r.y + r.h / 2];
 
 describe('createMissionWindow', () => {
+  it('restores briefing navigation and falls back to the last delivered page without a replay page', () => {
+    const { window, asked, opened, layout } = mount(BRIEF, () => 0, null, [500, 501]);
+    window.toggle();
+    expect(asked.at(-1)).toBe(501);
+    expect(opened).toEqual([true]);
+    window.handleClick(...middle(layout.historyPrev));
+    expect(asked.at(-1)).toBe(500);
+    window.handleClick(...middle(layout.historyNext));
+    expect(asked.at(-1)).toBe(501);
+    window.toggle();
+    expect(opened).toEqual([true, false]);
+  });
+
   it('opens on the task tab with the chrome strings, holding the pause, and claims only the window', () => {
     const { window, made, opened, layout } = mount();
     window.toggle();

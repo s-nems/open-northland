@@ -41,6 +41,7 @@ export interface MissionWindowDeps {
   /** What the task and goal tabs show for a briefing page (null for the map's fallback text), read
    *  as the window builds; null opens them empty. */
   readonly brief: (page: number | null) => MissionBrief | null;
+  readonly briefingHistory?: () => readonly number[];
   /** The page the strip button opens on: the last replayable cutscene, or null before any. */
   readonly replayPage?: () => number | null;
   /** The history tab's book; null shows it empty. */
@@ -213,6 +214,9 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
 
   /** Start on the task tab, on `next` when the caller has a page, reading fresh. */
   const openOn = (next: number | null): void => {
+    for (const recorded of deps.briefingHistory?.() ?? []) {
+      shownPages = withShownPage(shownPages, recorded);
+    }
     tab = 'task';
     page = deps.history?.start ?? '';
     scroll = 0;
@@ -229,7 +233,7 @@ export function createMissionWindow(deps: MissionWindowDeps): MissionWindow {
   const setOpen = (open: boolean): void => {
     if (open === shell.isOpen()) return;
     shell.setOpen(open);
-    if (open) openOn(deps.replayPage?.() ?? shownPage ?? null);
+    if (open) openOn(deps.replayPage?.() ?? shownPage ?? deps.briefingHistory?.().at(-1) ?? null);
     else clear();
     deps.onOpenChange?.(open);
   };

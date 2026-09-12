@@ -93,3 +93,24 @@ export function setMissionBriefingPage(world: World, page: number): void {
     state.page = page;
   });
 }
+
+/** The briefing window retains up to fifty distinct pages in first-shown order (reading). */
+export const BRIEFING_HISTORY_LIMIT = 50;
+
+const briefingHistory = defineWorldSingleton<{ pages: number[] }>('MissionBriefingHistory', () => ({
+  pages: [],
+}));
+
+export function missionBriefingHistory(world: World): number[] {
+  const pages = briefingHistory.read(world).pages;
+  const replay = missionBriefingPage(world);
+  return pages.length === 0 && replay !== null ? [replay] : [...pages];
+}
+
+export function retainMissionBriefing(world: World, page: number): void {
+  const pages = missionBriefingHistory(world);
+  if (pages.includes(page)) return;
+  briefingHistory.write(world, (state) => {
+    state.pages = [...pages, page].slice(-BRIEFING_HISTORY_LIMIT);
+  });
+}

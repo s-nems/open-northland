@@ -12,7 +12,7 @@ reach the list, so `matchSystem` neither kills them nor waits for them.
 Two consequences over the decoded corpus (124 maps with a roster):
 
 - 96 maps declare no match at all, because they expose fewer than two claimable seats. Intended today:
-  their goals come from the mission script, which runs only with `?missions=on`.
+  their goals come from the mission script, which runs automatically unless explicitly disabled.
 - 13 of the remaining 28 carry armed seats outside the match. `wichry_zimy` seats the player at 0 and
   offers AI on 5 (11 people each) while seats 1-4 hold 39, 84, 182 and 18 people with 15, 11, 10 and 4
   buildings. Wiping seat 5 raises "Wszyscy rywale w rozgrywce upadli" beside an untouched town of 182.

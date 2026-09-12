@@ -1,3 +1,4 @@
+import { BRIEFING_HISTORY_LIMIT } from '@open-northland/sim';
 import { contains, type Rect } from '../../geometry.js';
 import { uiScaleFor } from '../../ui-scale.js';
 
@@ -43,8 +44,9 @@ const SCROLL_DOWN_X = 246;
  *  holds two pages (reading). */
 const HISTORY_PREV_X = 8;
 const HISTORY_NEXT_X = 450;
+
 /** How many shown briefing pages the window remembers; the oldest drops off (reading). */
-export const BRIEFING_HISTORY_LIMIT = 50;
+export { BRIEFING_HISTORY_LIMIT } from '@open-northland/sim';
 
 /** The goal list's columns, in design px from the viewport origin; each wraps to the viewport's
  *  right edge. */

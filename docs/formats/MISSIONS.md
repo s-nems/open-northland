@@ -532,12 +532,16 @@ Mission records also retain the first and last execution ticks and an execution 
 not proof that every result succeeded. Old saves without these fields start collecting history from
 their next execution.
 
-Fresh maps launched with `?missions=on` default to reveal fog and declare every authored player seat
+Fresh maps with scripts run them automatically and default to reveal fog and declare every authored player seat
 except `playerneverdies` exemptions. An explicit fog override wins. A separate lazy `ScriptMatchRules`
 policy allows death checks even with one participant and leaves victory to the script, avoiding an
 early skirmish victory while story objectives remain. Restores preserve the saved rules. Changing
-the mission toggle during a running session does not reset its fog or match rules. Script execution
-still defaults off pending campaign acceptance.
+the mission toggle during a running session does not reset its fog or match rules. `?missions=off` disables scripts for diagnostics on a fresh map.
+Campaign completion remains unaccepted; enabling scripts does not imply full opcode fidelity.
+
+Scripted briefing history retains up to fifty distinct emitted pages in first-shown order, including
+pages without the replay flag. It survives save/load and populates the window navigation; this records
+delivery, not whether the player read the text. Old saves recover their replayable page when present.
 
 ## Human names
 

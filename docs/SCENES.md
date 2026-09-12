@@ -59,7 +59,7 @@ patch uses a brown vertex palette entry and its eastern patch a green entry from
 ## Real map acceptance
 
 `?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with
-`missions=on` and `debug=missions`. The menu lists it under test scenes. The URL becomes a map URL,
+automatic script execution and `debug=missions`. The menu lists it under test scenes. The URL becomes a map URL,
 so save/load uses the real map identity. Explicit mission and fog overrides remain effective.
 
 Real-map scenes live in `scenes/map-scenes.ts`, separately from synthetic `SceneDefinition` worlds.

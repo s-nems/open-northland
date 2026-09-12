@@ -85,6 +85,7 @@ function mountSurfaces() {
     diplomacyRows: () => [],
     art: null,
     missionBrief: () => null,
+    missionBriefingHistory: () => [],
     missionReplayPage: () => null,
     history: null,
     onPickBuilding: (typeId) => placement.enter(typeId),

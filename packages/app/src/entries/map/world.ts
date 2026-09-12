@@ -63,7 +63,7 @@ export interface MapWorldOptions extends SessionRules {
   /** The map script's authored `specialItems` rows, the papers each player starts with. */
   readonly specialItems?: readonly MapSpecialItem[];
   /** What the map's script contributes: the authored `diplomacy` rows (omitted or empty keeps every
-   *  player pair hostile) and the resolved mission triggers, which run only under `?missions=on`. */
+   *  player pair hostile) and the resolved mission triggers, which run unless explicitly disabled. */
   readonly script?: MapScriptWorld;
   /** Owner of the demo strip's entities, reached only when no map decodes; omitted leaves them neutral. */
   readonly demoOwner?: number;
@@ -125,8 +125,12 @@ function runWorld(
 }
 
 function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
-  const scripted = options.script?.missions !== undefined && options.missions === true;
-  applySessionRuleOverrides(sim, { ...options, fog: options.fog ?? (scripted ? FOG_MODE.REVEAL : null) });
+  const scripted = options.script?.missions !== undefined && options.missions !== false;
+  applySessionRuleOverrides(sim, {
+    ...options,
+    missions: options.missions ?? (scripted ? true : null),
+    fog: options.fog ?? (scripted ? FOG_MODE.REVEAL : null),
+  });
   for (const seat of options.aiSeats) {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: seat, enabled: true });
   }

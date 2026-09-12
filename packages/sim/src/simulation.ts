@@ -13,6 +13,7 @@ import {
   type MatchOutcome,
   matchEnded,
   matchOutcome,
+  missionBriefingHistory,
   missionBriefingPage,
   needsEnabled,
   type Paper,
@@ -360,6 +361,11 @@ export class Simulation {
    *  empty for a world that runs none. */
   missionStatus(): readonly MissionStatus[] {
     return missionStatus(this.world, this.missions);
+  }
+
+  /** Delivered briefing pages in first-shown order, detached from saved state. */
+  missionBriefingHistory(): readonly number[] {
+    return missionBriefingHistory(this.world);
   }
 
   /** The briefing page a `PlayCutscene` with the replay flag left as the map's current one, or null. */

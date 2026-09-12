@@ -11,7 +11,6 @@ export function mapSceneParams(scene: MapSceneDefinition, source: URLSearchParam
   const params = new URLSearchParams(source);
   params.delete('scene');
   params.set('map', scene.mapId);
-  if (!params.has('missions')) params.set('missions', 'on');
   setDebugFlag(params, 'missions', true);
   return params;
 }

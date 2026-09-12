@@ -65,7 +65,7 @@ hands `payTribute` to it. The window's read of the table is the `Simulation` pro
 ## The display
 
 One-shot presentation effects emit events: cutscenes, sound, camera, selection and earthquakes.
-The replayable briefing page, info lines, scripted human names, marker slots and weather regions
+The replayable briefing page, bounded delivered-page history, info lines, scripted human names, marker slots and weather regions
 are saved and hashed state. `Simulation.missionPresentation()` returns detached marker and weather
 snapshots for initial display and restore; live events still carry their deltas. Weather regions retain
 write order, including zero-density clears, so overlapping regions survive save/load identically.

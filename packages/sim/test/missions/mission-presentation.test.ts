@@ -76,6 +76,11 @@ describe('PlayCutscene', () => {
     sim.run(FIRST_PASS * 2);
     expect(missionBriefingPage(sim.world)).toBe(PAGE);
     expect(roundTrip(sim).missionBriefingPage()).toBe(PAGE);
+    expect(sim.missionBriefingHistory()).toEqual([PAGE, PAGE + 1]);
+    expect(roundTrip(sim).missionBriefingHistory()).toEqual([PAGE, PAGE + 1]);
+    const detached = sim.missionBriefingHistory() as number[];
+    detached.length = 0;
+    expect(sim.missionBriefingHistory()).toEqual([PAGE, PAGE + 1]);
   });
 });
 

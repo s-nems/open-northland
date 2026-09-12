@@ -1,9 +1,10 @@
-# Enable mission scripts after campaign acceptance
+# Accept mission scripts through a complete campaign
 
 **Area:** sim, app · **Focus:** acceptance · **Priority:** P2
 
-Map-scripts epic, stage 10 of 10. Script execution still defaults off. Enabled scripted maps now
-use reveal fog unless overridden, track deaths over authored seats minus `playerneverdies`, and
+Map-scripts epic, stage 10 of 10. Fresh maps execute their scripts automatically; `missions=off`
+remains a diagnostic override. Enabled scripted maps use reveal fog unless overridden, track deaths
+over authored seats minus `playerneverdies`, and
 leave victory to script results. Saved markers, weather and mission execution history restore.
 `?scene=mission-map` exercises the untouched `wielkie_sprzatanie` opening, reinforcements and save/load.
 This source declares a single-player free map, not a campaign; its ending remains unaccepted.
@@ -25,15 +26,15 @@ This source declares a single-player free map, not a campaign; its ending remain
 
 - Establish a genuine completed campaign route with an intact script and ordinary player actions.
   Do not substitute forced goals, removed enemies, administrative spawns or injected verdicts.
-  Keep the default off until this acceptance prerequisite is met.
+  Automatic execution does not waive this acceptance prerequisite.
 - Observe the running original for the 3-second evaluation cadence, activation-relative `TimeGone`,
   `RandomTimeGone` bounds and whether the load tick evaluates. Keep current unconfirmed readings
   explicit in [`MISSIONS.md`](../../formats/MISSIONS.md); add a load pass only with evidence.
 - Observe tribute notification behavior before adding a new cue; coordinate with the messages work.
 - Check terrain fidelity: FX removal memberships, palette multiplication, `SetLandscape` size and
   final flag. Chest imagery does not implement interaction or payload.
-- Flip the mission default after acceptance, preserving explicit overrides and saved rules. Update
-  initial briefing ownership, scripted-map fog/seat selection and gate tests together.
+- Verify faction discovery opens the authored briefing, pauses play and reveals the next goals in
+  the browser. Saved briefing history must remain navigable after restore.
 
 Vehicles, sub-missions, chests, guides, wall gates, campaign unlocks, FMV and the trade ledger remain
 outside this ticket's implementation scope. Their absence is a dependency, not an acceptance waiver.

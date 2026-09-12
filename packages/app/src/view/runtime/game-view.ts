@@ -337,6 +337,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     onSystemMenu: () => systemMenu?.toggle(),
     ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
     missionBrief: briefFor,
+    missionBriefingHistory: () => sim.missionBriefingHistory(),
     missionReplayPage: () => sim.missionBriefingPage(),
     // The original stops game time behind its large windows.
     onLargeWindow: (open) => {

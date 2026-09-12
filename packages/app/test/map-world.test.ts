@@ -36,7 +36,7 @@ describe('buildMapWorld', () => {
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
       script: { missions: { missions: [] }, participants: [0, 2] },
-      missions: true,
+      missions: null,
       fog,
     });
     expect(sim.fogMode()).toBe(fog ?? FOG_MODE.REVEAL);
@@ -49,6 +49,7 @@ describe('buildMapWorld', () => {
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: AUTHORED_IR,
       script: { missions: { missions: [] }, participants: [0, 2] },
+      missions: false,
       matchParticipants: [1, 3],
     });
     expect(sim.fogMode()).toBe(FOG_MODE.OFF);

@@ -31,7 +31,7 @@ describe.runIf(hasRealIr())('scripted story-map acceptance', () => {
       fog: null,
       progression: null,
       needs: null,
-      missions: true,
+      missions: null,
       berryBushes: true,
     };
     const { sim } = buildMapWorld(options);

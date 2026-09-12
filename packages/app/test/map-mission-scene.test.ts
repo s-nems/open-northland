@@ -10,7 +10,7 @@ describe('the real map acceptance entry', () => {
     const params = mapSceneParams(scene, new URLSearchParams('scene=mission-map&debug=perf&fog=off'));
     expect(params.get('map')).toBe('wielkie_sprzatanie');
     expect(params.has('scene')).toBe(false);
-    expect(params.get('missions')).toBe('on');
+    expect(params.get('missions')).toBeNull();
     expect(params.get('fog')).toBe('off');
     expect(params.get('debug')).toBe('perf,missions');
     const entry = `?${params.toString()}`;
