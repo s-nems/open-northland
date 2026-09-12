@@ -14,6 +14,7 @@ These packs supply own-assets mode. Runtime copies live in
 | [rocks](rocks/README.md) | Grey/khaki deposits, depletion states, remnants and debris |
 | [bushes](bushes/README.md) | Two bushes with three states each |
 | [meadows](meadows/README.md) | Six grass patches and two flower patches |
+| [understory](understory/README.md) | Four reeds, fourteen flowers, two winter grasses and three dense tufts |
 | [ferns](ferns/README.md) | Two fern sprites and their source cells |
 | [mushrooms](mushrooms/README.md) | 36 mushroom sprites |
 

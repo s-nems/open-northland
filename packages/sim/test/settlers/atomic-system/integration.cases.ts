@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Building, Carrying, Resource, Stockpile } from '../../../src/components/index.js';
 import { ONE, Simulation } from '../../../src/index.js';
-import { atomicSystem } from '../../../src/systems/index.js';
+import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
@@ -12,6 +12,7 @@ describe('atomicSystem - end-to-end: harvest -> carry -> pileup', () => {
     const resource = sim.world.create();
     // A plain single-hit wood node (no Felling): one swing yields one unit onto the back.
     sim.world.add(resource, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, resource, anchorOnlyFootprint());
     const store = sim.world.create();
     sim.world.add(store, Building, { buildingType: SAWMILL, tribe: 1, built: ONE, level: 0 });
     sim.world.add(store, Stockpile, { amounts: new Map() });

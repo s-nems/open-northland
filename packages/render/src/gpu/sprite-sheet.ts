@@ -9,17 +9,17 @@ import type {
   SpriteKind,
 } from '../data/sprites/index.js';
 
-/** The player-colour LUT the paletted settler meshes read team colours through. With the optional armor
- *  axis the texture carries one `playerRows`-row block per recolor tier (`row = tier * playerRows +
- *  player`, tier 0 = the plain player rows); a pre-armor 16-row LUT still loads. */
+/** The player-colour LUT the paletted settler meshes read team colours through. The texture carries one
+ *  `playerRows`-row block per recolor tier (`row = tier * playerRows + player`, tier 0 = the plain
+ *  player rows). */
 export interface PlayerColourLut {
   readonly source: TextureSource;
   /** Total row count, across every armor-tier block. */
   readonly colours: number;
   /** Rows per armor-tier block. */
-  readonly playerRows?: number;
+  readonly playerRows: number;
   /** Worn armor `goodType` → its recolor tier (`armortypes.ini` `type`, 1..4). */
-  readonly armorTierByGood?: ReadonlyMap<number, number>;
+  readonly armorTierByGood: ReadonlyMap<number, number>;
 }
 
 /** The `(armor tier, player)` block row when the worn `armorGood` resolves to a tier the texture
@@ -30,8 +30,8 @@ export function paletteLutRow(
   armorGood: number | null | undefined,
 ): number {
   const base = player ?? 0; // player 0 is a block's base palette row
-  if (armorGood == null || palette.playerRows === undefined) return base;
-  const tier = palette.armorTierByGood?.get(armorGood);
+  if (armorGood == null) return base;
+  const tier = palette.armorTierByGood.get(armorGood);
   if (tier === undefined) return base;
   const row = tier * palette.playerRows + base;
   return row < palette.colours ? row : base;

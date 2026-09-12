@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CurrentAtomic, Felling, Position, Resource } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
-import { atomicSystem } from '../../src/systems/index.js';
+import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../src/systems/index.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -167,6 +167,7 @@ describe('atomicSystem - authored sound cues', () => {
       remaining: felling?.yieldPerNode ?? 0,
       harvestAtomic: CHOP_ATOMIC,
     });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: chops });
     sim.world.add(cutter, CurrentAtomic, {
       atomicId: CHOP_ATOMIC,

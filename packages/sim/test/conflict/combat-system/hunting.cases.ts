@@ -20,7 +20,7 @@ import {
   HUNT_LAST_RESORT_SCAN_FACTOR,
   HUNT_SEARCH_REST_TICKS,
 } from '../../../src/systems/conflict/hunting/index.js';
-import { combatSystem } from '../../../src/systems/index.js';
+import { anchorOnlyFootprint, combatSystem, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../../fixtures/content.js';
@@ -179,6 +179,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     const carcass = sim.world.create(); // an unharvested carcass node of the hunter's own trade
     sim.world.add(carcass, Position, positionOfNode(38, 40));
     sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
 
     combatSystem(sim.world, ctxOf(sim));
 
@@ -247,6 +248,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     const carcass = sim.world.create();
     sim.world.add(carcass, Position, positionOfNode(46, 40));
     sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 1, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
 
     combatSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // the out-of-radius carcass still gates
@@ -432,6 +434,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     const carcass = sim.world.create();
     sim.world.add(carcass, Position, positionOfNode(38, 40));
     sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
 
     combatSystem(sim.world, { ...ctxOf(sim), tick: 1 });
 
@@ -468,6 +471,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     const carcass = sim.world.create();
     sim.world.add(carcass, Position, positionOfNode(38, 40));
     sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
     sim.world.add(carcass, KilledBy, { by: colleague });
 
     combatSystem(sim.world, ctxOf(sim));
@@ -494,6 +498,7 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
     const carcass = sim.world.create();
     sim.world.add(carcass, Position, positionOfNode(38, 40));
     sim.world.add(carcass, Resource, { goodType: MEAT, remaining: 2, harvestAtomic: HARVEST_CADAVER });
+    stampResourceFootprintData(sim.world, carcass, anchorOnlyFootprint());
     // The harvest drive's route to it just failed (an overlay-boxed kill): the memo veto must keep the
     // one-kill gate from out-claiming work nobody can bank - the hunter goes on hunting.
     const terrain = sim.terrain;

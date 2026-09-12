@@ -58,7 +58,6 @@ function headerFromText(text: string): PeekedSaveHeader | null {
   return {
     mapId: typeof header.mapId === 'string' ? header.mapId : null,
     tick,
-    // Absent in a v1 header, which predates the field.
     entry: typeof header.entry === 'string' ? header.entry : null,
   };
 }

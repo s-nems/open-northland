@@ -14,7 +14,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, cellAnchorNode, checkInvariants, fx, Simulation } from '../../src/index.js';
-import { atomicSystem } from '../../src/systems/index.js';
+import { anchorOnlyFootprint, atomicSystem, stampResourceFootprintData } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -46,6 +46,8 @@ const HARVEST_MUSHROOM = 32;
 const STONE_GATHERING = testContent().goods.find((g) => g.id === 'stone')?.gathering;
 const DEPOSIT_SIZE = STONE_GATHERING?.depositSize ?? 0;
 const DEPOSIT_LEVELS = STONE_GATHERING?.depositLevels ?? 0;
+/** Every swing frees a unit. */
+const SINGLE_STRIKE = 1;
 
 /** A `width`×`height` CELL strip of grass, upsampled to the half-cell navigation lattice. */
 
@@ -70,7 +72,13 @@ function placeDeposit(sim: Simulation, x: number, y: number, units = DEPOSIT_SIZ
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: STONE, remaining: units, harvestAtomic: HARVEST_STONE });
-  sim.world.add(e, MineDeposit, { initial: units, levels: DEPOSIT_LEVELS });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
+  sim.world.add(e, MineDeposit, {
+    initial: units,
+    levels: DEPOSIT_LEVELS,
+    strikesPerUnit: SINGLE_STRIKE,
+    strikes: 0,
+  });
   return e;
 }
 
@@ -197,7 +205,7 @@ describe('mining - a trained swing advances multiple strikes (the work-credit pa
 
   /** A mastered woodcutter and a WOOD-typed 3-strikes-per-unit deposit (the markers, not the good,
    *  decide the harvest shape - a wood deposit is legal and reuses the trained wood track). */
-  const trainedMinerScene = (units: number, strikesPerUnit?: number) => {
+  const trainedMinerScene = (units: number, strikesPerUnit: number) => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const master = makeMiner(sim, 0, 0);
     setSettlerJob(sim.world, master, WOODCUTTER);
@@ -205,11 +213,8 @@ describe('mining - a trained swing advances multiple strikes (the work-credit pa
     const node = sim.world.create();
     sim.world.add(node, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(node, Resource, { goodType: WOOD, remaining: units, harvestAtomic: HARVEST_STONE });
-    sim.world.add(node, MineDeposit, {
-      initial: units,
-      levels: DEPOSIT_LEVELS,
-      ...(strikesPerUnit !== undefined ? { strikesPerUnit } : {}),
-    });
+    stampResourceFootprintData(sim.world, node, anchorOnlyFootprint());
+    sim.world.add(node, MineDeposit, { initial: units, levels: DEPOSIT_LEVELS, strikesPerUnit, strikes: 0 });
     return { sim, master, node };
   };
 
@@ -230,7 +235,7 @@ describe('mining - a trained swing advances multiple strikes (the work-credit pa
   });
 
   it('a freed count beyond the deposit clamps to what remains (no conjured ore)', () => {
-    const { sim, master, node } = trainedMinerScene(1); // no strikesPerUnit - every swing frees a unit
+    const { sim, master, node } = trainedMinerScene(1, SINGLE_STRIKE);
     harvestOnce(sim, master, node, WOOD, HARVEST_STONE); // a double swing against a single unit
     expect(oreDrops(sim)).toHaveLength(1);
     expect(sim.world.has(node, Resource)).toBe(false); // depleted and removed, exactly one unit dropped
@@ -244,6 +249,7 @@ describe('mining - the mushroom direct-pickup variant', () => {
     const node = sim.world.create();
     sim.world.add(node, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(node, Resource, { goodType: MUSHROOM, remaining: 1, harvestAtomic: HARVEST_MUSHROOM });
+    stampResourceFootprintData(sim.world, node, anchorOnlyFootprint());
     const picker = makeMiner(sim, 1, 0);
     sim.events.clear();
 

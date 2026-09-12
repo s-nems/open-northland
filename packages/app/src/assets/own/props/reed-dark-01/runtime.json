@@ -1,0 +1,15 @@
+{
+  "id": "reed-dark-01",
+  "image": "reed-dark-01.png",
+  "kind": "decor",
+  "scale": 0.5,
+  "editNames": ["schilf dark 01"],
+  "width": 88,
+  "height": 76,
+  "anchor": {
+    "x": 48,
+    "y": 60
+  },
+  "brightness": 0.55,
+  "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+}

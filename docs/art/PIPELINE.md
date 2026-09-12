@@ -29,10 +29,12 @@ Normal builds use local files; they do not generate AI images, call providers or
 A finish variant usually changes source pixels while retaining IDs, layout and calibration; verify
 those measurements after painting. A new building or prop family also needs unique runtime IDs and
 verified bindings. A new character appearance needs role selection as well as an atlas; do not add it
-to normal selection before acceptance. Terrain manifests are currently imported explicitly by
-`packages/app/src/content/own-assets/materials.ts`; registering another package alone does not load
-a new manifest file. A new presentation behavior needs a shared schema, app adapter and focused tests;
-adding a recipe alone cannot introduce animation, collision or simulation rules.
+to normal selection before acceptance. Terrain delivery uses flat `terrain/*.json` material manifests
+and `terrain/*.png` images, discovered automatically by the app. `terrain/map-bindings.json` is reserved for legacy compatibility
+bindings and is not a material manifest. Image names must be PNG basenames; material IDs and
+map bindings must be unique across manifests. A new presentation behavior needs a shared schema,
+app adapter and focused tests; adding a recipe alone cannot introduce animation, collision or
+simulation rules.
 
 Keep one short package README with purpose, source entry points, reproduction commands and remaining
 visual approximations. Commands and policy belong here; do not copy this workflow into every package.

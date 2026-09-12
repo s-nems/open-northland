@@ -17,8 +17,9 @@
         "role": "material reference"
       },
       {
-        "path": "../../farm/farm-painted.png",
-        "role": "material reference"
+        "path": "../../farm/source/references/previous-farm.png",
+        "role": "material reference",
+        "sha256": "699dabbe49480bbe26d030f82ab3b4cc9334dbfb4fedf9eb85ac5ab5314f3803"
       }
     ],
     "alpha": "RGB; painted checkerboard, unsuitable for runtime"

@@ -1,0 +1,110 @@
+{
+  "sourceBasis": "Independent approved concept E, based on own House A finish. Original game sprite used only as a local size/function reference, never traced or copied.",
+  "approval": {
+    "reviewer": "snems",
+    "basis": "User explicitly approved the final published farm E after gallery and real-map review, and requested replacement, commit, merge and cleanup."
+  },
+  "concept": {
+    "tool": "built-in imagegen",
+    "prompt": "concept.prompt.txt",
+    "output": "concept.png",
+    "sha256": "3b2596fbba7533bd7c28d3ad1b9dc562e771cf8db6ddcbf5709ef0c8a4f985db",
+    "references": [
+      {
+        "path": "../../../house-1/house-painted-runtime.png",
+        "role": "primary finish",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "content/local-farm-reference/viking-farm-60.png",
+        "role": "owned original, local scale/function only, excluded from retained own-art package",
+        "sha256": "effb21d485558eea829fe9b701bcea2435c98e092006cbbb1ac7d50cd56f7117"
+      }
+    ]
+  },
+  "turnaround": {
+    "tool": "built-in imagegen",
+    "prompt": "four-views.prompt.txt",
+    "output": "four-views.png",
+    "references": [
+      {
+        "path": "concept.png",
+        "sha256": "3b2596fbba7533bd7c28d3ad1b9dc562e771cf8db6ddcbf5709ef0c8a4f985db"
+      },
+      {
+        "path": "../../../house-1/house-painted-runtime.png",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      }
+    ],
+    "role": "supporting consistency study; generated model uses selected concept directly"
+  },
+  "geometry": {
+    "request": "request.json",
+    "model": "model.glb",
+    "modelSha256": "50120070eb42d210cdd0578bc6362ef1cd1596a63d84e57a240bc5754ca07333",
+    "script": "render.py",
+    "scene": "calibrated.blend",
+    "inspection": "model-inspection.json"
+  },
+  "paint": {
+    "tool": "built-in imagegen",
+    "prompt": "paint.prompt.txt",
+    "output": "paint.png",
+    "references": [
+      {
+        "path": "calibrated-lit.png",
+        "sha256": "f3860010c0b39dfd1149127c579b677013c4bc10f0cba2caeeedddf061246a2d"
+      },
+      {
+        "path": "../../../house-1/house-painted-runtime.png",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "concept.png",
+        "sha256": "3b2596fbba7533bd7c28d3ad1b9dc562e771cf8db6ddcbf5709ef0c8a4f985db"
+      }
+    ],
+    "limitation": "Opaque painted checkerboard; generative output changes composition slightly."
+  },
+  "alpha": {
+    "tool": "imagegen skill CLI",
+    "model": "gpt-image-1.5",
+    "quality": "high",
+    "inputFidelity": "high",
+    "background": "transparent",
+    "size": "1024x1024",
+    "input": "paint.png",
+    "prompt": "alpha.prompt.txt",
+    "output": "final.png",
+    "postProcessing": "Generated alpha preserved; no background keying or authored silhouette masks.",
+    "inputSha256": "86687ec7e0f99fca9ceb657e2251441d78d3f69f245dee2710bbc620b40de146",
+    "outputSha256": "557be904385ad78be937925bc0fb957b4c2c66721550a58d356ce112e6544474"
+  },
+  "compatibility": {
+    "tribeId": 1,
+    "typeId": 12,
+    "doorNode": {
+      "x": -1,
+      "y": 1
+    },
+    "source": "Owned DataCnmd/budynki12/houses/houses.ini GfxHouse viking farm and content/ir.json buildingBobs/footprint; identity unchanged."
+  },
+  "shadow": {
+    "model": "calibrated.blend",
+    "script": "../../../tools/render-shadow.py",
+    "calibration": "shadow/calibration.json",
+    "output": "shadow/shadow.png",
+    "report": "shadow/render.json",
+    "samples": 128,
+    "basis": "Wider shadow canvas prevents right-edge roof-shadow clipping. Camera and body registration retained.",
+    "alphaFloor": 0.04
+  },
+  "construction": {
+    "script": "construction.py",
+    "scene": "construction.blend",
+    "parts": "construction-parts.json",
+    "timingScript": "export.py",
+    "calibration": "calibration.json",
+    "basis": "Camera-registered authored geometry, structural reveal and material-region timing; no masking or keying of final body alpha."
+  }
+}

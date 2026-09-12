@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { build, createServer, normalizePath } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 import { artPreviewPlugin } from '../vite/art-preview.js';
@@ -29,6 +30,25 @@ async function fixture() {
     ['props/old/runtime.json', JSON.stringify({ marker: 'candidate-overlay' })],
     ['props/old/image.png', png],
     ['props/new/image.png', png],
+    ['terrain/new-mud.png', png],
+    [
+      'terrain/mud.json',
+      JSON.stringify({
+        sourceBasis: 'Synthetic fixture',
+        materials: [
+          {
+            id: 'mud',
+            image: 'new-mud.png',
+            tint: [1, 1, 1],
+            wear: 0,
+            pages: [],
+            names: [],
+            transitions: [],
+          },
+        ],
+      }),
+    ],
+    ['terrain/map-bindings.json', JSON.stringify({ sourceBasis: 'Synthetic legacy fixture', pages: [] })],
   ] as const) {
     await put(join(preview, name), content);
     files[name] = hash(content);
@@ -78,6 +98,48 @@ describe('candidate asset preview', () => {
       expect(result?.code).toContain(`new URL("${previewUrl}/props/old/image.png"`);
       const manifest = await server.transformRequest(`${previewUrl}/props/old/runtime.json`);
       expect(manifest?.code).toContain('candidate-overlay');
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('loads a candidate-only terrain manifest and image through the actual material loader', async () => {
+    const { root, app, preview } = await fixture();
+    const folder = join(app, 'src/content/own-assets');
+    await mkdir(folder, { recursive: true });
+    await writeFile(
+      join(folder, 'materials.ts'),
+      await readFile(new URL('../src/content/own-assets/materials.ts', import.meta.url)),
+    );
+    const server = await createServer({
+      configFile: false,
+      root: app,
+      plugins: [await artPreviewPlugin(root, preview)],
+      resolve: {
+        alias: {
+          '@open-northland/art-contracts': fileURLToPath(
+            import.meta.resolve('@open-northland/art-contracts'),
+          ),
+        },
+      },
+      logLevel: 'silent',
+      server: { fs: { allow: [root] } },
+      optimizeDeps: { noDiscovery: true },
+    });
+    try {
+      const loaded = await server.ssrLoadModule('/src/content/own-assets/materials.ts');
+      expect(loaded.ownTerrainMaterials).toEqual([
+        {
+          id: 'mud',
+          image: 'new-mud.png',
+          tint: [1, 1, 1],
+          wear: 0,
+          pages: [],
+          names: [],
+          transitions: [],
+        },
+      ]);
+      expect(loaded.ownMaterialUrls.get('new-mud.png')).toContain('/terrain/new-mud.png');
     } finally {
       await server.close();
     }

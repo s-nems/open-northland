@@ -8,56 +8,56 @@
       "path": "buildings/farm/body-time.png",
       "content": {
         "operation": "copy",
-        "source": "body-time.png"
+        "source": "source/wattle-e/body-time.png"
       }
     },
     {
       "path": "buildings/farm/farm-painted.png",
       "content": {
         "operation": "copy",
-        "source": "source/weathered-v1/final.png"
+        "source": "source/wattle-e/final.png"
       }
     },
     {
       "path": "buildings/farm/frame-time.png",
       "content": {
         "operation": "copy",
-        "source": "frame-time.png"
+        "source": "source/wattle-e/frame-time.png"
       }
     },
     {
       "path": "buildings/farm/frame.png",
       "content": {
         "operation": "copy",
-        "source": "frame.png"
+        "source": "source/wattle-e/frame.png"
       }
     },
     {
       "path": "buildings/farm/site-base.png",
       "content": {
         "operation": "copy",
-        "source": "site-base.png"
+        "source": "source/wattle-e/site-base.png"
       }
     },
     {
       "path": "buildings/farm/site-time.png",
       "content": {
         "operation": "copy",
-        "source": "site-time.png"
+        "source": "source/wattle-e/site-time.png"
       }
     },
     {
       "path": "buildings/farm/runtime.json",
       "content": {
         "operation": "copy",
-        "source": "source/shadow-v1/runtime.json"
+        "source": "source/wattle-e/runtime.json"
       }
     },
     {
       "path": "buildings/farm/shadow.png",
       "content": {
         "operation": "copy",
-        "source": "source/shadow-v1/shadow.png"
+        "source": "source/wattle-e/shadow/shadow.png"
       }
     }
   ]

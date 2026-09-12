@@ -28,9 +28,9 @@ dark and terrain backgrounds. A painted checkerboard or background halo fails de
 Use the imagegen skill and the workspace's API authorization for transparent export.
 Preserve generated alpha; background keying or authored silhouette masks require explicit authorization.
 
-Optional camera-space projection is implemented in [project-paint.py](farm/source/geometry/project-paint.py).
-It uses a depth pass and material fallback for unseen surfaces. Check packed textures by reopening the
-saved scene. Projection does not provide painted hidden surfaces or UV baking.
+Camera-space projection is optional. The current farm retains its final 2D paintover separately
+from the calibrated model. Check packed textures by reopening the saved scene; a painted camera
+view does not provide hidden surfaces or UV baking.
 
 ## Calibration and delivery
 
@@ -66,6 +66,7 @@ The optional finished-building shadow layer and shared geometry renderer are doc
 
 The [farm](farm/README.md) has a static site base, timber/equipment layer and final painting,
 revealed by authored timing masks. All layers share canvas, scale and entrance.
-`build-frame.py` generates structural renders; `export.py` creates the delivery bundle.
+`farm/source/wattle-e/construction.py` generates structural renders; its sibling `export.py`
+creates reveal timing and delivery metadata.
 Temporary equipment disappears at completion. Timing is an artistic approximation.
 Other building packages have no delivered construction layers.

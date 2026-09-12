@@ -9,7 +9,13 @@ import {
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import { Simulation } from '../../../src/index.js';
-import { combatSystem, DEFEND_LEASH_NODES, DEFEND_RADIUS_NODES } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  combatSystem,
+  DEFEND_LEASH_NODES,
+  DEFEND_RADIUS_NODES,
+  stampResourceFootprintData,
+} from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
 import {
@@ -81,6 +87,7 @@ describe('DEFEND - hold an anchor, don’t chase past the leash', () => {
     const wood = sim.world.create();
     sim.world.add(wood, Position, { x: fx.fromInt(0), y: fx.fromInt(0) });
     sim.world.add(wood, Resource, { goodType: WOOD, remaining: 100, harvestAtomic: HARVEST_ATOMIC });
+    stampResourceFootprintData(sim.world, wood, anchorOnlyFootprint());
 
     sim.run(30);
     expect(tileOf(sim, guard)).toEqual({ x: 5, y: 0 }); // stayed on its post, never walked to the wood

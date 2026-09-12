@@ -1,0 +1,12 @@
+{
+  "model": "../calibrated.blend",
+  "referenceEntrance": [478, 945],
+  "referenceDoorPixels": 296,
+  "groundZ": 0,
+  "doorPixels": 296,
+  "imageSize": [1664, 1152],
+  "samples": 128,
+  "alphaFloor": 0.04,
+  "bodyPadding": [128, 0],
+  "basis": "Retained own farm geometry; manual registration from calibrated render to final painted doorway. Shared artistic daylight."
+}

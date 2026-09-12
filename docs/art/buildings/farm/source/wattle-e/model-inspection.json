@@ -1,0 +1,18 @@
+{
+  "sourceBounds": [
+    [-0.952068030834198, -0.8148109912872314, -0.8761730790138245],
+    [0.9521909952163696, 0.8102730512619019, 0.8765490055084229]
+  ],
+  "normalizingScale": 3.0238678720389722,
+  "provisionalHeight": 5.3,
+  "orthographicSpan": 7.2,
+  "elevation": 28.5,
+  "azimuth": 25,
+  "objects": [
+    {
+      "name": "Mesh_0",
+      "faces": 102636
+    }
+  ],
+  "basis": "Independent Meshy reconstruction; dimensions and camera are artistic approximations pending door calibration."
+}

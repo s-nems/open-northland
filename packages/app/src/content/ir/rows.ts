@@ -173,9 +173,9 @@ export interface LandscapeTypeRow {
 }
 
 /**
- * The app's view of the served `content/ir.json`. Every lane is optional, so an `ir.json` generated before a
- * lane existed still loads. The pipeline writes the file through the `@open-northland/data` zod schema, so
- * the fetched JSON is cast to this view at the I/O boundary rather than re-validated per boot.
+ * The app's view of the served `content/ir.json`: the fetched JSON cast at the I/O boundary rather than
+ * re-validated per boot, so every lane is typed optional. The pipeline writes the file through the
+ * `@open-northland/data` zod schema.
  */
 export interface ContentIr {
   readonly bobSequences?: readonly { imagelib: string; sequences?: BobSeqRow[] }[];

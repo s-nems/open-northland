@@ -1,4 +1,4 @@
-import { components, fx, Simulation, type TerrainMap } from '@open-northland/sim';
+import { components, fx, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { buildScene, type SceneTerrain } from '../src/index.js';
@@ -35,6 +35,7 @@ describe('buildScene over a real Simulation snapshot', () => {
       const tree = sim.world.create();
       sim.world.add(tree, Position, { x: fx.fromInt(x), y: fx.fromInt(0) });
       sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
+      systems.stampResourceFootprintOrFallback(sim.world, sim.content, tree, WOOD);
     }
 
     sim.run(20);

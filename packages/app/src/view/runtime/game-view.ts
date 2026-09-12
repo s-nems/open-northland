@@ -44,7 +44,7 @@ import { createFogGates, diplomacyPanelRows, messageTargetAnchor } from '../proj
 import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
-import { createUnitControls } from '../unit-controls/index.js';
+import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
 import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
@@ -214,8 +214,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
     });
 
-  // The unit controls mount after the panel, so a note's Select reaches them through this slot.
+  // The unit controls mount after the panel and the minimap, so a note's Select and a minimap order
+  // reach them through these slots.
   let selectEntity: ((id: number) => void) | null = null;
+  let overviewPress: UnitControls['overviewPress'] | null = null;
   // Its own chip: the pile and stock-row tooltips hide whenever the pointer is over the HUD.
   const noteTooltip = createTooltip();
   const toolPanel = await mountGameToolPanel({
@@ -298,6 +300,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     uiscale,
     camera: () => cameraCtl.camera(),
     onJump: jumpToWorld,
+    onOrder: (worldX, worldY, event) => overviewPress?.(worldX, worldY, event) ?? false,
     toScreenPx: clientToScreen,
   });
 
@@ -347,6 +350,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameSession> {
     tooltip: createTooltip(),
   });
   selectEntity = controls.selectEntity;
+  overviewPress = controls.overviewPress;
 
   const {
     goodLabel,

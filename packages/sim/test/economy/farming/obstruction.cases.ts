@@ -129,7 +129,7 @@ describe('sowing against standing walls', () => {
 
 describe('sowing around bodies that stand without blocking', () => {
   // The occupancy half of the sow filter, the one the walk-block overlay cannot answer: a loose heap or a
-  // footprint-less scenery node is walkable, so only the standing-entity check keeps a plant off it. The
+  // non-blocking scenery node is walkable, so only the standing-entity check keeps a plant off it. The
   // planner and `applySow` share that check, so a node the planner rejects is never one the swing accepts.
   /** Long enough for a lone farmer to fill the fixture plot whichever spots the seeded draw hands it. */
   const SOW_TICKS = 400;

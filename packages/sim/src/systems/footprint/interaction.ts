@@ -193,9 +193,7 @@ export function resourceStanceCells(
   const p = world.get(resource, Position);
   const { hx: ax, hy: ay } = nodeOfPosition(p.x, p.y);
   const anchor = terrain.nodeAtClamped(ax, ay);
-  const footprint = world.tryGet(resource, ResourceFootprint);
-  if (footprint === undefined) return [anchor];
-
+  const footprint = world.get(resource, ResourceFootprint);
   const blocked = resourceBlockedCells(world, terrain);
   const work = translatedCells(terrain, footprint.work, ax, ay).filter(
     (cell) => terrain.isWalkable(cell) && !blocked.has(cell),

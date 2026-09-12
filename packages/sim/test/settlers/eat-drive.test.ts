@@ -16,6 +16,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, halfCellMapFromCells, type NodeId, ONE, Simulation } from '../../src/index.js';
 import {
+  anchorOnlyFootprint,
   atomicSystem,
   BABY_FEMALE,
   CHILD_AGE_TICKS,
@@ -25,6 +26,7 @@ import {
   NEED_SATED_THRESHOLD,
   needBar,
   plannerSystem,
+  stampResourceFootprintData,
 } from '../../src/systems/index.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
 import { testContent } from '../fixtures/content.js';
@@ -167,6 +169,7 @@ describe('eatDrive - the planner choosing to eat', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -198,6 +201,7 @@ describe('eatDrive - the planner choosing to eat', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
 
     plannerSystem(sim.world, ctxOf(sim));
 

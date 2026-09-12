@@ -1,8 +1,8 @@
 {
   "buildings/farm": {
-    "digest": "3f60d7efb5d682ca11b3f330cdd731bb69d9b39808ab2c6c90180b0b1a0783be",
-    "reviewer": "user",
-    "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
+    "digest": "334043574423c1e186ecc3e6ad2f902f2f7c92a35a136845c597276d1bd48e52",
+    "reviewer": "snems",
+    "basis": "Explicit user approval of the final published woven farm E, including replacement, commit, merge and cleanup, after gallery and real-map review."
   },
   "buildings/headquarters": {
     "digest": "3175c5111b6a8a0272b504b095e6352ccdc8d94cdc4968b443913dc293441545",
@@ -103,5 +103,10 @@
     "digest": "abc1e9f5503b109ec1281acdd26ac935f00edd910a82863af397df30784e7c11",
     "reviewer": "existing-delivery",
     "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+  },
+  "terrain/understory": {
+    "digest": "a6ae5e4308d0f36ba789029ff0d84dbc5f4cdde4d2170d1166441afdbdf59f7a",
+    "reviewer": "user",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   }
 }

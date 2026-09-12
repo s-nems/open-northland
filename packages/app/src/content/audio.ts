@@ -19,8 +19,8 @@ export function hasSoundContent(sounds: SoundBank | undefined): sounds is SoundB
 }
 
 /**
- * Build a {@link SoundDriver} from the fetched IR, or `null` when it carries no sound bank (content
- * absent, or an `ir.json` generated before sounds were extracted) - the caller then runs silent.
+ * Build a {@link SoundDriver} from the fetched IR, or `null` when content is absent - the caller then
+ * runs silent.
  */
 export function createSoundDriver(ir: ContentIr | null): SoundDriver | null {
   const sounds = ir?.sounds;

@@ -12,6 +12,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, ONE, Simulation } from '../../src/index.js';
 import {
+  anchorOnlyFootprint,
   atomicSystem,
   BERRY_FORAGE_RADIUS,
   BERRY_REGROW_TICKS,
@@ -20,6 +21,7 @@ import {
   NEED_DRAIN_UNITS_PER_TICK,
   needBar,
   plannerSystem,
+  stampResourceFootprintData,
 } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { cellOf, ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -106,6 +108,7 @@ describe('forageDrive - the planner choosing to forage a wild bush', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
 
     plannerSystem(sim.world, ctxOf(sim));
 
@@ -122,6 +125,7 @@ describe('forageDrive - the planner choosing to forage a wild bush', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
 
     plannerSystem(sim.world, ctxOf(sim));
 

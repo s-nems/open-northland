@@ -29,20 +29,13 @@ export interface GameFileBridge {
 
 declare global {
   interface Window {
-    /** The two dialogs are the bridge's floor; the save-list methods arrived in a later shell. */
-    readonly desktop?: GameFileBridge & Partial<SaveListBridge>;
+    readonly desktop?: GameFileBridge & SaveListBridge;
   }
 }
 
-/** The desktop shell's file bridge, or null in a plain browser. Feature-checked per method: the
- *  preload predates these methods in older shells. */
+/** The desktop shell's file bridge, or null in a plain browser. */
 export function desktopFileBridge(): GameFileBridge | null {
-  const bridge = window.desktop;
-  if (bridge === undefined) return null;
-  const partial = bridge as Partial<GameFileBridge>;
-  return typeof partial.saveGameFile === 'function' && typeof partial.openGameFile === 'function'
-    ? bridge
-    : null;
+  return window.desktop ?? null;
 }
 
 /** The browser's save delivery: a download whose MIME matches the payload it carries. */

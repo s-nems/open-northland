@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Building, Felling, Position, Resource, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -110,6 +111,7 @@ function runSlice(seed: number, ticks: number): GoldenRun {
       remaining: woodFell?.yieldPerNode ?? 0,
       harvestAtomic: HARVEST_ATOMIC,
     });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: woodFell?.chopsToFell ?? 0 });
   }
 

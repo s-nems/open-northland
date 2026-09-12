@@ -74,7 +74,7 @@ catcher = bpy.context.object
 catcher.name = 'Ground shadow catcher'
 catcher.is_shadow_catcher = True
 scene.render.engine = 'CYCLES'
-scene.cycles.samples = 32
+scene.cycles.samples = config.get('samples', 32)
 scene.cycles.use_denoising = True
 scene.render.film_transparent = True
 scene.render.image_settings.file_format = 'PNG'
@@ -88,6 +88,19 @@ set_alpha = tree.nodes.new('CompositorNodeSetAlpha')
 set_alpha.inputs['Type'].default_value = 'Apply Mask'
 set_alpha.inputs['Alpha'].default_value = lighting['shadow']['opacity']
 tree.links.new(render.outputs['Image'], set_alpha.inputs['Image'])
+alpha_floor = config.get('alphaFloor', 0)
+if alpha_floor:
+    opacity = tree.nodes.new('ShaderNodeMath')
+    opacity.operation = 'MULTIPLY'
+    opacity.inputs[1].default_value = lighting['shadow']['opacity']
+    tree.links.new(render.outputs['Alpha'], opacity.inputs[0])
+    floor = tree.nodes.new('ShaderNodeMath')
+    floor.operation = 'SUBTRACT'
+    floor.use_clamp = True
+    floor.inputs[1].default_value = alpha_floor
+    tree.links.new(opacity.outputs[0], floor.inputs[0])
+    set_alpha.inputs['Type'].default_value = 'Replace Alpha'
+    tree.links.new(floor.outputs[0], set_alpha.inputs['Alpha'])
 composite = tree.nodes.new('NodeGroupOutput')
 tree.links.new(set_alpha.outputs[0], composite.inputs[0])
 scene.render.filepath = str(root / 'shadow.png')
@@ -104,6 +117,7 @@ report = {
     'lightingProfileSha256': hashlib.sha256(PROFILE_PATH.read_bytes()).hexdigest(),
     'sunAngularDiameterDegrees': lighting['shadow']['sunAngularDiameterDegrees'],
     'opacity': lighting['shadow']['opacity'],
-    'samples': 32,
+    'alphaFloor': alpha_floor,
+    'samples': scene.cycles.samples,
 }
 (root / 'render.json').write_text(json.dumps(report, indent=2) + '\n')

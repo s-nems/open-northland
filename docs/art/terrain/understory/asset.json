@@ -1,0 +1,540 @@
+{
+  "version": 1,
+  "id": "terrain/understory",
+  "kind": "props",
+  "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation.",
+  "outputs": [
+    {
+      "path": "props/reed-01/reed-01.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 88,
+        "height": 76,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "reeds-alpha.png",
+            "crop": [0, 0, 512, 512],
+            "alphaBounds": true,
+            "box": [2, 2, 84, 72],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/reed-01/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "reed-01",
+          "image": "reed-01.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["schilf 01"],
+          "width": 88,
+          "height": 76,
+          "anchor": {
+            "x": 48,
+            "y": 60
+          },
+          "brightness": 0.76,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/reed-dark-01/reed-dark-01.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 88,
+        "height": 76,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "reeds-alpha.png",
+            "crop": [0, 512, 512, 512],
+            "alphaBounds": true,
+            "box": [2, 2, 84, 72],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/reed-dark-01/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "reed-dark-01",
+          "image": "reed-dark-01.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["schilf dark 01"],
+          "width": 88,
+          "height": 76,
+          "anchor": {
+            "x": 48,
+            "y": 60
+          },
+          "brightness": 0.55,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/grass-winter-01/grass-winter-01.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 84,
+        "height": 58,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "tufts-alpha.png",
+            "crop": [0, 560, 512, 464],
+            "alphaBounds": true,
+            "box": [2, 2, 80, 54],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/grass-winter-01/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "grass-winter-01",
+          "image": "grass-winter-01.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["grass snow 01"],
+          "width": 84,
+          "height": 58,
+          "anchor": {
+            "x": 42,
+            "y": 44
+          },
+          "brightness": 1,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/grass-winter-02/grass-winter-02.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 80,
+        "height": 56,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "tufts-alpha.png",
+            "crop": [512, 560, 512, 464],
+            "alphaBounds": true,
+            "box": [2, 2, 76, 52],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/grass-winter-02/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "grass-winter-02",
+          "image": "grass-winter-02.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["grass snow 02"],
+          "width": 80,
+          "height": 56,
+          "anchor": {
+            "x": 52,
+            "y": 38
+          },
+          "brightness": 1,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/grass-dense-01/grass-dense-01.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 62,
+        "height": 72,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "tufts-alpha.png",
+            "crop": [0, 0, 512, 560],
+            "alphaBounds": true,
+            "box": [2, 2, 58, 68],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/grass-dense-01/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "grass-dense-01",
+          "image": "grass-dense-01.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["grass bush 01"],
+          "width": 62,
+          "height": 72,
+          "anchor": {
+            "x": 30,
+            "y": 62
+          },
+          "brightness": 0.76,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/grass-dense-02/grass-dense-02.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 62,
+        "height": 72,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "tufts-alpha.png",
+            "crop": [512, 0, 512, 560],
+            "alphaBounds": true,
+            "box": [2, 2, 58, 68],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/grass-dense-02/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "grass-dense-02",
+          "image": "grass-dense-02.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["grass bush 02"],
+          "width": 62,
+          "height": 72,
+          "anchor": {
+            "x": 30,
+            "y": 62
+          },
+          "brightness": 0.55,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/grass-dense-03/grass-dense-03.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 62,
+        "height": 72,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "tufts-alpha.png",
+            "crop": [1024, 0, 512, 560],
+            "alphaBounds": true,
+            "box": [2, 2, 58, 68],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/grass-dense-03/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "grass-dense-03",
+          "image": "grass-dense-03.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["grass bush 03"],
+          "width": 62,
+          "height": 72,
+          "anchor": {
+            "x": 30,
+            "y": 62
+          },
+          "brightness": 0.4,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/reed-02/reed-02.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 90,
+        "height": 86,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "reeds-alpha.png",
+            "crop": [512, 0, 512, 512],
+            "alphaBounds": true,
+            "box": [2, 2, 86, 82],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/reed-02/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "reed-02",
+          "image": "reed-02.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["schilf 02"],
+          "width": 90,
+          "height": 86,
+          "anchor": {
+            "x": 36,
+            "y": 54
+          },
+          "brightness": 0.76,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    },
+    {
+      "path": "props/reed-dark-02/reed-dark-02.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "canvas-high",
+        "width": 90,
+        "height": 86,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "reeds-alpha.png",
+            "crop": [512, 512, 512, 512],
+            "alphaBounds": true,
+            "box": [2, 2, 86, 82],
+            "fit": "contain",
+            "align": "center"
+          }
+        ]
+      }
+    },
+    {
+      "path": "props/reed-dark-02/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "reed-dark-02",
+          "image": "reed-dark-02.png",
+          "kind": "decor",
+          "scale": 0.5,
+          "editNames": ["schilf dark 02"],
+          "width": 90,
+          "height": 86,
+          "anchor": {
+            "x": 36,
+            "y": 54
+          },
+          "brightness": 0.55,
+          "sourceBasis": "Compatibility EditNames verified against owned landscapes.cif and generated IR; original frame dimensions and ground offsets from ls_meadows atlas metadata at two source pixels per world pixel. Independent muted A paintings with generated alpha, proportional downsampling and scale 0.5. Static decor; original animation is not reproduced. Brightness is an artistic calibration matching existing meadow vegetation."
+        }
+      }
+    }
+  ],
+  "atlas": {
+    "type": "vegetation",
+    "sampling": "canvas-high",
+    "scale": 0.5,
+    "source": "flowers-alpha.png",
+    "fit": "frame-contain",
+    "props": [
+      {
+        "id": "flower-blue-01",
+        "editNames": ["grass flower 03"],
+        "cell": [512, 0, 256, 256],
+        "size": [52, 50],
+        "anchor": {
+          "x": 30,
+          "y": 42
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-ivory-01",
+        "editNames": ["grass flower 04"],
+        "cell": [768, 0, 256, 256],
+        "size": [52, 50],
+        "anchor": {
+          "x": 30,
+          "y": 42
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-pink-02",
+        "editNames": ["grass flower_2 01"],
+        "cell": [0, 256, 256, 256],
+        "size": [40, 40],
+        "anchor": {
+          "x": 30,
+          "y": 34
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-yellow-02",
+        "editNames": ["grass flower_2 02"],
+        "cell": [256, 256, 256, 256],
+        "size": [40, 40],
+        "anchor": {
+          "x": 30,
+          "y": 34
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-blue-02",
+        "editNames": ["grass flower_2 03"],
+        "cell": [512, 256, 256, 256],
+        "size": [40, 40],
+        "anchor": {
+          "x": 30,
+          "y": 34
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-ivory-02",
+        "editNames": ["grass flower_2 04"],
+        "cell": [768, 256, 256, 256],
+        "size": [40, 40],
+        "anchor": {
+          "x": 30,
+          "y": 34
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-pink-03",
+        "editNames": ["grass flower_3 01"],
+        "cell": [0, 512, 256, 256],
+        "size": [58, 50],
+        "anchor": {
+          "x": 32,
+          "y": 40
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-yellow-03",
+        "editNames": ["grass flower_3 02"],
+        "cell": [256, 512, 256, 256],
+        "size": [58, 50],
+        "anchor": {
+          "x": 32,
+          "y": 40
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-blue-03",
+        "editNames": ["grass flower_3 03"],
+        "cell": [512, 512, 256, 256],
+        "size": [58, 50],
+        "anchor": {
+          "x": 32,
+          "y": 40
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-ivory-03",
+        "editNames": ["grass flower_3 04"],
+        "cell": [768, 512, 256, 256],
+        "size": [58, 50],
+        "anchor": {
+          "x": 32,
+          "y": 40
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-pink-04",
+        "editNames": ["grass flower 05"],
+        "cell": [0, 768, 256, 256],
+        "size": [66, 64],
+        "anchor": {
+          "x": 32,
+          "y": 56
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-yellow-04",
+        "editNames": ["grass flower 06"],
+        "cell": [256, 768, 256, 256],
+        "size": [66, 64],
+        "anchor": {
+          "x": 32,
+          "y": 56
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-blue-04",
+        "editNames": ["grass flower 07"],
+        "cell": [512, 768, 256, 256],
+        "size": [66, 64],
+        "anchor": {
+          "x": 32,
+          "y": 56
+        },
+        "brightness": 0.76
+      },
+      {
+        "id": "flower-ivory-04",
+        "editNames": ["grass flower 08"],
+        "cell": [768, 768, 256, 256],
+        "size": [66, 64],
+        "anchor": {
+          "x": 32,
+          "y": 56
+        },
+        "brightness": 0.76
+      }
+    ]
+  }
+}

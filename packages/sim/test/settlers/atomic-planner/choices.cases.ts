@@ -8,7 +8,11 @@ import {
   Resource,
 } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { plannerSystem } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  plannerSystem,
+  stampResourceFootprintData,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import {
   anchorCell,
@@ -65,6 +69,7 @@ describe('atomicPlanner - choosing the next atomic', () => {
     const e = sim.world.create();
     sim.world.add(e, Position, { x: fx.fromInt(3), y: fx.fromInt(0) });
     sim.world.add(e, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 99 });
+    stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
     plannerSystem(sim.world, ctxOf(sim));
     expect(sim.world.has(cutter, MoveGoal)).toBe(false); // nothing it may harvest -> idle
     expect(sim.world.has(cutter, CurrentAtomic)).toBe(false);

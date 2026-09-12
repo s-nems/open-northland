@@ -15,7 +15,11 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../src/index.js';
-import { BUILD_GUIDE_ATOMIC_ID } from '../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  BUILD_GUIDE_ATOMIC_ID,
+  stampResourceFootprintData,
+} from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -170,6 +174,7 @@ describe('a parked order and the multi-swing harvest chain', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(4), y: fx.fromInt(1) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: 5 }); // far from felled - an ungated chain would re-arm
     const swingTicks = 3; // fixture `viking_chop` length
     sim.world.add(e, CurrentAtomic, {

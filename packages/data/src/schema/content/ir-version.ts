@@ -1,5 +1,5 @@
-/** Current IR schema version and the only stamp {@link IrManifest} accepts. Bump on a breaking shape
- *  change, or on an addition that generated content must carry for real rather than by default. */
+/** Current IR schema version and the only stamp {@link IrManifest} accepts. Bump on any schema change,
+ *  a new lane included: generated content is regenerated, never read with a lane defaulted. */
 export const IR_VERSION = 6 as const;
 
 /** The manifest stamp of content that never went through the pipeline: synthetic sandbox and test
