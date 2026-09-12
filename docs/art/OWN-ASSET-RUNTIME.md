@@ -104,7 +104,8 @@ Other app entries retain their own loaders.
 
 Static resources hand over to live simulation entities through the existing placement bindings.
 A prop whose original record has no walk-block area (grass, flowers, mushrooms, bushes, ferns,
-reeds) draws as flat ground decor under every entity, as in original-asset mode.
+reeds) draws as flat ground decor under every entity, as in original-asset mode, and a building's
+walk-block footprint clears the static objects under it when it is placed.
 Map objects retain renderer culling. Automated checks cover bindings and loading; in-game pixels,
 scale, seams, repetition, construction timing and motion still need visual review. Captures containing
 original UI or world pixels stay in ignored `content/`.
