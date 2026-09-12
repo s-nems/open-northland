@@ -64,7 +64,7 @@ for (const clip of clips) {
         scaled.data[i] = lighting.shadow.rgb[0];
         scaled.data[i + 1] = lighting.shadow.rgb[1];
         scaled.data[i + 2] = lighting.shadow.rgb[2];
-        scaled.data[i + 3] = Math.round(scaled.data[i + 3] * lighting.shadow.opacity);
+        scaled.data[i + 3] = Math.round(scaled.data[i + 3] * lighting.shadow.characterOpacity);
       }
       const input = await sharp(scaled.data, {
         raw: { width: scaled.info.width, height: scaled.info.height, channels: 4 },
