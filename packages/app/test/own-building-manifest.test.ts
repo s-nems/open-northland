@@ -98,15 +98,15 @@ describe('own building registry', () => {
 
 describe('map review zoom', () => {
   it.each([
-    ['', 2],
+    ['', 1],
     ['assets=original', 1],
-    ['assets=own', 2],
+    ['assets=own', 1],
     ['assets=own&zoom=1', 1],
-    ['assets=own&zoom=NaN', 2],
-    ['assets=own&zoom=-1', 2],
+    ['assets=own&zoom=NaN', 1],
+    ['assets=own&zoom=-1', 1],
     ['zoom=100', 8],
     ['zoom=0.01', 0.35],
-    ['zoom=2oops', 2],
+    ['zoom=2oops', 1],
   ])('uses bounded initial zoom for %s', (query, zoom) => {
     expect(mapZoomParam(new URLSearchParams(query))).toBe(zoom);
   });

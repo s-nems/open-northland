@@ -24,7 +24,7 @@ describe('asset settings', () => {
     expect(assetSetFor(new URLSearchParams())).toBe('original');
     expect(mapZoomParam(new URLSearchParams())).toBe(1);
     expect(assetSetFor(new URLSearchParams('assets=own'))).toBe('own');
-    expect(mapZoomParam(new URLSearchParams('assets=own'))).toBe(2);
+    expect(mapZoomParam(new URLSearchParams('assets=own'))).toBe(1);
     expect(assetSetFor(new URLSearchParams('assets=original'), 'own')).toBe('original');
     expect(assetSetFor(new URLSearchParams('assets=invalid'), 'own')).toBe('own');
   });
