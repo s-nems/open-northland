@@ -4,13 +4,12 @@
 
 Every own prop is its own PNG, so its `TextureSource` is its own decor batch key
 (`packages/render/src/gpu/map-objects/decor-batch.ts` groups a chunk's quads by source). Own-assets
-mode now sends every walk-block-less prop (grass, flowers, mushrooms, bushes, ferns, reeds) down the
-flat decor path, and on magiczny_las that is 73k placements over 32 chunks with ~70 distinct sources
-per chunk: one mesh, one shader for a shaded batch, and one draw call each. Measured in headless
-Chromium at the meadow review view (`?map=magiczny_las&assets=own&zoom=2&center=48,39`, 1280x800):
-245 WebGL draw calls per frame against 84 for original assets at the same view. At `MIN_ZOOM` on a
-1080p screen the viewport covers 12-16 chunks, so roughly 850-1100 draw calls. The JS side got
-cheaper than before (the tall pooled-sprite path paid per visible grass sprite), but the batch count
+mode sends every ground-cover prop (grass, mushrooms, rubble and the like) down the flat decor path, and
+on magiczny_las that is tens of thousands of placements over 32 chunks with ~60 distinct sources per
+chunk: one mesh, one shader for a shaded batch, and one draw call each. Measured in headless Chromium
+on `?map=magiczny_las&assets=own&center=48,39` at 1920x1080, WebGL draw calls per frame: 297 at zoom 2
+and 445 at `MIN_ZOOM`, against 128 and 317 when the same props were tall pooled sprites, whose batcher
+spans up to 16 textures (original-asset mode draws 469 and 776 at the same views). The batch count
 breaks the render contract's "preserve batching" rule as soon as the camera zooms out.
 
 ## Scope
@@ -25,6 +24,6 @@ breaks the render contract's "preserve batching" rule as soon as the camera zoom
 ## Verify
 
 - Repeat the draw-call probe at the meadow view and at `MIN_ZOOM`: at most two decor batches per
-  visible chunk (still and moving), draw calls back near the original-assets count.
-- Human review at zoom 2 and zoom-out for seams, halos or wrong frames on grass, mushrooms and bushes.
+  visible chunk (still and moving), draw calls back near the pooled-sprite count.
+- Human review at zoom 2 and zoom-out for seams, halos or wrong frames on grass, mushrooms and flowers.
 - `npm test`, `npm run check`, `npm run build`.

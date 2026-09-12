@@ -43,6 +43,13 @@ export function ownPropAtlas(m: OwnPropManifest): SpriteAtlas {
   };
 }
 
+/** How far above its feet a prop paints, in world px: its tallest frame's anchor height at the manifest
+ *  scale. */
+export function ownPropPaintedHeight(m: OwnPropManifest): number {
+  const anchorY = m.frames === undefined ? m.anchor.y : Math.max(...m.frames.map((f) => f.anchor.y));
+  return anchorY * m.scale;
+}
+
 export function ownPropFrameIndex(level: number | undefined, count: number): number {
   return level !== undefined && Number.isInteger(level) && level >= 1 && level <= count
     ? level - 1
