@@ -31,6 +31,7 @@ interface GallerySprite {
 
 export interface GalleryCharacter extends GallerySprite {
   readonly kind: 'character';
+  readonly shadowImage?: string;
   readonly manifest: OwnCharacterManifest;
   readonly clips: readonly GalleryClip[];
 }
@@ -117,6 +118,9 @@ export function buildGalleryCatalog(sources: GalleryCatalogSources): GalleryCata
       const binding = ownCharacterBinding(manifest);
       return {
         kind: 'character',
+        ...(manifest.shadow
+          ? { shadowImage: siblingImage(sources.images, path, manifest.shadow.sprite) }
+          : {}),
         id: `characters/${manifest.id}`,
         name: manifest.name,
         image: siblingImage(sources.images, path, 'atlas.png'),

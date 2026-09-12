@@ -58,7 +58,7 @@ export async function buildAsset(root: string, id: string) {
           frames.set(output.path, result.frames);
           operations.push({ path: output.path, crops: result.crops, alpha: result.alpha });
         } else if (c.operation === 'character') {
-          const result = await packCharacter(asset.directory, c.source, c.id, c.name);
+          const result = await packCharacter(asset.directory, c.source, c.id, c.name, c.shadow);
           await writeFile(path, result.png);
           characters.set(`${dirname(output.path)}/runtime.json`, result.manifest);
         }

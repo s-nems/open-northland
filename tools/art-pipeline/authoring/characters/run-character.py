@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -7,7 +8,7 @@ from pathlib import Path
 SCRIPTS = Path(__file__).resolve().parent
 FACINGS = ['SW', 'W', 'NW', 'NE', 'E', 'SE', 'S', 'N']
 GRID = ['SW', 'W', 'NW', 'N', 'NE', 'E', 'SE', 'S']
-STAGES = ['facings', 'paint', 'project', 'render', 'pack', 'preview']
+STAGES = ['facings', 'paint', 'project', 'render', 'shadows', 'pack', 'preview']
 PROPORTIONS = {'head_scale':1,'widen':1,'upper_scale':1,'foot_scale':1,'hunch':0}
 DEFAULT = {
     'angle':15, 'frames':12, 'power':3,
@@ -24,6 +25,7 @@ def main():
     parser.add_argument('model', type=Path)
     parser.add_argument('stages', nargs='+', choices=STAGES)
     parser.add_argument('--clips', help='Comma-separated clip names to render')
+    parser.add_argument('--reuse-shadow-renders', action='store_true', help='Reuse complete scratch shadows whose scene inputs still match')
     args = parser.parse_args()
     run, model = args.run.resolve(), args.model.resolve()
     run.mkdir(parents=True, exist_ok=True)
@@ -76,7 +78,7 @@ def main():
                 node('guard-materials.mjs',run/guard['base_texture'],destination,run/'projected')
             if not (run/'projected/texture-N.png').exists():
                 raise RuntimeError('Projection did not create all facing textures')
-        elif stage == 'render':
+        elif stage in ('render', 'shadows'):
             if recipe.get('sampleSource'):
                 raise ValueError('Sampled recipes use sample-character.mjs; rendering uniformly would discard authored poses')
             for clip in recipe['clips']:
@@ -85,10 +87,8 @@ def main():
                 clip_count = str(clip.get('frames', recipe['frames']))
                 for facing in clip['facings']:
                     name = f"{clip['name']}-{facing}"
-                    out = work/'render'/name
+                    out = work/('shadow-render' if stage == 'shadows' else 'render')/name
                     out.mkdir(parents=True,exist_ok=True)
-                    for old in out.glob('f[0-9]*.png'):
-                        old.unlink()
                     options = ['--glb',model/clip['file'],'--out',out,'--facing',facing,'--angle',angle,'--frames',clip_count,'--toon',str(recipe.get('render',DEFAULT['render'])['toon']),'--size',str(recipe.get('render',DEFAULT['render'])['size']),'--texture',run/recipe.get('texture_dir','projected')/f'texture-{facing}.png',*knobs('sprite')]
                     if recipe.get('render',DEFAULT['render'])['unlit']:
                         options += ['--unlit']
@@ -112,7 +112,29 @@ def main():
                         options += ['--body-proportions', run/recipe['bodyProportions']]
                     if recipe.get('head'):
                         options += ['--head-model', run/recipe['head']['model'], '--head-config', run/recipe['head']['config']]
+                    if stage == 'shadows':
+                        options += ['--shadow-only']
+                        dependencies = [value for value in options if isinstance(value, Path) and value.is_file()]
+                        dependencies += [recipe_file, run/'layout.json', *[p for p in SCRIPTS.glob('*.py') if p.name != 'run-character.py']]
+                        if clip.get('equipment'):
+                            config = run/clip['equipment']
+                            dependencies.append(config.parent/json.loads(config.read_text())['model'])
+                        before = {os.path.relpath(p, run): hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
+                        receipt = out/'inputs.json'
+                        if args.reuse_shadow_renders and receipt.exists():
+                            saved = {p: h for p, h in json.loads(receipt.read_text()).items() if Path(p).name != 'run-character.py'}
+                            complete = all((out/f'f{i:02d}.png').is_file() for i in range(int(clip_count)))
+                            if saved == before and complete:
+                                print(name+' (retained)', flush=True)
+                                continue
+                    for old in out.glob('f[0-9]*.png'):
+                        old.unlink()
                     render_script('render_walk.py',*options)
+                    if stage == 'shadows':
+                        after = {os.path.relpath(p, run): hashlib.sha256(p.read_bytes()).hexdigest() for p in dependencies}
+                        if before != after:
+                            raise RuntimeError('Shadow inputs changed during render')
+                        (out/'inputs.json').write_text(json.dumps(before, indent=2)+'\n')
                     if not (out/f'f{int(clip_count)-1:02d}.png').exists():
                         raise RuntimeError(f'Incomplete clip: {name}')
                     print(name,flush=True)

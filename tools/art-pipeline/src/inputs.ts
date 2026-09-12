@@ -16,7 +16,7 @@ export async function inputHashes(root: string, asset: Awaited<ReturnType<typeof
         for (const name of [draw.source, draw.reference])
           if (name) files.add(await sourcePath(root, asset.directory, name));
     if (c.operation === 'character')
-      for (const path of await characterInputs(asset.directory, c.source)) {
+      for (const path of await characterInputs(asset.directory, c.source, c.shadow)) {
         const resolved = await realpath(path);
         await sourcePath(
           root,
