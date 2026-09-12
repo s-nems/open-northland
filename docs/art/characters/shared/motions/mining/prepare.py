@@ -140,7 +140,7 @@ for (index, pose) in enumerate(poses):
     x = Vector((1, 0, 0))
     y = axis.cross(x).normalized()
     x = y.cross(axis).normalized()
-    orientation = Matrix((x, y, axis)).transposed().to_quaternion()
+    orientation = Matrix((x, y, axis)).transposed().to_quaternion() @ Quaternion((0, 0, 1), math.pi)
     authored_grip = grip.copy()
     for _ in range(12 if phase >= 0.375 else 0):
         for side, offset in [('Right', 0), ('Left', 0.16)]:

@@ -112,6 +112,8 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
   her six-second idle uses 16 poses.
 - Source strips use 192×144 cells, feet y=128. The default runtime crop is 96×120, feet (48,104).
   Male equipment atlases use `runtimeCrop` 144×144, feet (72,128), for the larger mining tool.
+- Clips may set `renderPadding` to expand the Blender source frame at unchanged pixel density.
+  Packing compensates against the retained camera/layout; source edge contact fails before export.
 - Use `post: soft-separation`, unlit rendering, linear filtering and interpolated movement.
 - Reuse `shared/body/cameras-smooth/` and the appearance's saved layout; never fit each frame separately.
 - Work clips share walk-SW packing scale and identical layouts across selected male variants.

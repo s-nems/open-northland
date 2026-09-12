@@ -36,25 +36,45 @@ for (const name of names) {
 }
 const report = [];
 for (const [name, { files, box }] of boxes) {
+  const projection = await fs
+    .readFile(path.join(renders, name, 'projection.json'), 'utf8')
+    .then(JSON.parse)
+    .catch((error) => {
+      if (error.code === 'ENOENT') return { padding: 0 };
+      throw error;
+    });
+  const padding = projection.padding;
+  if (!Number.isInteger(padding) || padding < 0) throw new Error(`Invalid render padding: ${name}`);
   if (!layout[name]) {
     const reference = boxes.get('walk-SW');
     if (!name.startsWith('walk-') && !reference)
       throw new Error('Render walk-SW first to establish equipment scale');
-    layout[name] = { box, scale: 88 / (name.startsWith('walk-') ? box.height : reference.box.height) };
+    layout[name] = {
+      box: { ...box, left: box.left - padding, top: box.top - padding },
+      scale: 88 / (name.startsWith('walk-') ? box.height : reference.box.height),
+    };
   }
   const { box: anchor, scale } = layout[name];
   const frames = [];
   for (const [index, file] of files.entries()) {
     const source = path.join(renders, name, file);
     const meta = await sharp(source).metadata();
+    const bounds = await alphaBox(source);
+    if (
+      bounds.left === 0 ||
+      bounds.top === 0 ||
+      bounds.left + bounds.width >= meta.width ||
+      bounds.top + bounds.height >= meta.height
+    )
+      throw new Error(`Clipped source render: ${name}/${file}; add renderPadding`);
     const fig = await figureFromRender(
       source,
       { left: 0, top: 0, width: meta.width, height: meta.height },
       scale,
       POST[preset],
     );
-    const left = Math.round(96 - (anchor.left + anchor.width / 2) * scale);
-    const top = Math.round(128 - (anchor.top + anchor.height) * scale);
+    const left = Math.round(96 - (anchor.left + anchor.width / 2 + padding) * scale);
+    const top = Math.round(128 - (anchor.top + anchor.height + padding) * scale);
     const padded = await sharp({ create: { width: 768, height: 768, channels: 4, background: '#00000000' } })
       .composite([{ input: fig.png, left: left + 256, top: top + 256 }])
       .png()

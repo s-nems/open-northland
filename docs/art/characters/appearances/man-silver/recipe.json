@@ -83,7 +83,8 @@
       ],
       "equipment": "../../equipment/mining-pickaxe/socket.json",
       "limb_texture": "../../shared/body/model/rigged-base-0.png",
-      "atomicId": 25
+      "atomicId": 25,
+      "renderPadding": 64
     }
   ],
   "post": "soft-separation",
