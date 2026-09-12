@@ -18,9 +18,9 @@ interface ResourceBlockedCache {
 const resourceBlockedCache = new WeakMap<World, ResourceBlockedCache>();
 
 function resourceBlockedCellsFor(world: World, terrain: TerrainGraph, resource: Entity): NodeId[] | null {
-  const footprint = world.tryGet(resource, ResourceFootprint);
+  const footprint = world.get(resource, ResourceFootprint);
   const p = world.tryGet(resource, Position);
-  if (footprint === undefined || p === undefined) return null;
+  if (p === undefined) return null;
   const n = nodeOfPosition(p.x, p.y);
   return translatedCells(terrain, footprint.walk, n.hx, n.hy);
 }

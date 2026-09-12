@@ -27,8 +27,8 @@ function tribeTables(ir: ContentIr | null, scope: BuildingRefScope): BuildingTri
   const upgradeByType = upgradeRefsByType(ir?.constructionLayers ?? [], scope);
   const overlayByType = buildingOverlayRefsByType(ir?.buildingOverlays ?? [], scope);
   const byType: Record<number, BuildingBobRef> = {
-    // The transcribed constant backs the base tribe for an IR that is absent or predates the lane; the
-    // extracted rows overlay it per type.
+    // The transcribed constant backs the base tribe when the IR is absent; the extracted rows overlay it
+    // per type.
     ...(scope.tribeId === VIKING_TRIBE ? VIKING_HOUSE01_BOBS : {}),
     ...buildingBobRefsByType(ir?.buildingBobs ?? [], scope),
   };

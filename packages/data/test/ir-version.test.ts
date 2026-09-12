@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { IR_VERSION, NO_PIPELINE_REVISION, parseContentSet } from '../src/index.js';
+import { IR_VERSION, NO_PIPELINE_REVISION, parseContentSet, parseGeneratedContentSet } from '../src/index.js';
 
 function contentSet(version: unknown): Record<string, unknown> {
   return {
@@ -50,5 +50,26 @@ describe('the IR version gate', () => {
       buildings: [],
     };
     expect(parseContentSet(raw).manifest.contentRevision).toBe(7);
+  });
+});
+
+describe('the generated-content lane gate', () => {
+  // The parsed set materializes every lane, the shape the pipeline writes.
+  const generated: Record<string, unknown> = parseContentSet(contentSet(IR_VERSION));
+
+  it('accepts a document carrying every lane', () => {
+    expect(parseGeneratedContentSet(generated).manifest.version).toBe(IR_VERSION);
+  });
+
+  it('rejects a document missing a lane instead of defaulting it', () => {
+    const { tribes: _tribes, sounds: _sounds, ...older } = generated;
+    expect(() => parseGeneratedContentSet(older)).toThrow(
+      'generated content lacks tribes, sounds: regenerate',
+    );
+  });
+
+  it('leaves a non-object to the schema error', () => {
+    expect(() => parseGeneratedContentSet(null)).not.toThrow('generated content lacks');
+    expect(() => parseGeneratedContentSet(null)).toThrow();
   });
 });

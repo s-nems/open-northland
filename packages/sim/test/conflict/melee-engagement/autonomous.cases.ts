@@ -9,7 +9,12 @@ import {
   Resource,
 } from '../../../src/components/index.js';
 import { fx, Simulation } from '../../../src/index.js';
-import { combatSystem, SIGHT_RADIUS_NODES } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  combatSystem,
+  SIGHT_RADIUS_NODES,
+  stampResourceFootprintData,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import {
   BEAR,
@@ -144,6 +149,7 @@ describe('walk-into-melee - an OWNED combatant advances on a spotted enemy', () 
     const wood = sim.world.create(); // work waiting on its own bank
     sim.world.add(wood, Position, { x: fx.fromInt(3), y: fx.fromInt(2) });
     sim.world.add(wood, Resource, { goodType: WOOD, remaining: 100, harvestAtomic: HARVEST_ATOMIC });
+    stampResourceFootprintData(sim.world, wood, anchorOnlyFootprint());
 
     sim.run(62); // the walk out, then the first swings of the harvest
 

@@ -89,10 +89,9 @@ machines. Persisted formats are replaced, never migrated:
 - A layout change bumps the format's version and regenerates its committed fixture in the same
   commit. A reader accepts exactly its own version and rejects every other one. Do not write
   version-lifting steps, keep historical fixtures, or tolerate a field an older build wrote or omitted.
-- Do not keep a second code path so an old state hash, golden, or component shape survives. Move the
-  golden in the same commit and name the behavior change.
-- Generated content is gated, not migrated: a shape change bumps `IR_VERSION` and the manifest rejects
-  any other stamp. `packages/data/AGENTS.md` says when a lane may default instead.
+- Do not keep a code path only so an old golden, state hash, component shape, or hand-made test
+  fixture survives. Fix the fixture and move the golden in the same commit, naming the behavior change.
+- Generated content is gated, not migrated; `packages/data/AGENTS.md` owns that gate.
 
 ## Working with content
 

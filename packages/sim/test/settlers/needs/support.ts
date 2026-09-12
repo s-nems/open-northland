@@ -2,6 +2,7 @@ import { Position, Resource } from '../../../src/components/index.js';
 import { ULP } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, type Fixed, fx, type NodeId, type Simulation } from '../../../src/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { ctxOf } from '../../fixtures/context.js';
 import { settlerAt } from '../../fixtures/settler.js';
 import { grassCellMap as grassMap } from '../../fixtures/terrain.js';
@@ -49,6 +50,7 @@ export function treeAt(sim: Simulation, x: number, y: number): Entity {
   const entity = sim.world.create();
   sim.world.add(entity, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(entity, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+  stampResourceFootprintData(sim.world, entity, anchorOnlyFootprint());
   return entity;
 }
 

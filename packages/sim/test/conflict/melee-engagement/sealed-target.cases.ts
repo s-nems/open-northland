@@ -29,7 +29,12 @@ import {
   UNREACHABLE_TARGET_MEMO_TICKS,
 } from '../../../src/systems/conflict/unreachable-targets.js';
 import { dynamicBlockOverlay } from '../../../src/systems/footprint/index.js';
-import { combatSystem, type SystemContext } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  combatSystem,
+  type SystemContext,
+  stampResourceFootprintData,
+} from '../../../src/systems/index.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../../src/systems/readviews/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { addSettlerOfTribe } from '../../fixtures/settler.js';
@@ -244,6 +249,7 @@ describe('a chase whose target is walled in by buildings', () => {
     const wood = scene.sim.world.create();
     scene.sim.world.add(wood, Position, { x: fx.fromInt(1), y: fx.fromInt(BESIEGER_CELL.y) });
     scene.sim.world.add(wood, Resource, { goodType: WOOD, remaining: 100, harvestAtomic: HARVEST_ATOMIC });
+    stampResourceFootprintData(scene.sim.world, wood, anchorOnlyFootprint());
 
     // The first chase starts once the harvest walk the planner issued at tick 0 ends, so the release is
     // detected rather than dated: the first tick the marker drops after having stood.

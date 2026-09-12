@@ -170,12 +170,13 @@ export function heapAtNode(sim: Simulation, hx: number, hy: number): Entity {
   return e;
 }
 
-/** A footprint-less resource node on half-cell node (hx, hy) - scenery that stands without blocking, the
+/** A non-blocking resource node on half-cell node (hx, hy) - scenery that stands without blocking, the
  *  {@link heapAtNode} twin on the resource side of the same occupancy rule. */
 export function sceneryAtNode(sim: Simulation, hx: number, hy: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));
   sim.world.add(e, Resource, { goodType: PLANK, remaining: 0, harvestAtomic: OFF_TRADE_ATOMIC });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   return e;
 }
 

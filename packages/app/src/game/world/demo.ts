@@ -2,10 +2,9 @@ import type { ContentSet, TerrainMapFile } from '@open-northland/data';
 import { type SceneTerrain, terrainMapToScene } from '@open-northland/render';
 import {
   type CellTerrainMap,
-  components,
   halfCellMapFromCells,
-  positionOfNode,
   type Simulation,
+  systems,
   type TerrainMap,
 } from '@open-northland/sim';
 import { HARVEST_ATOMIC } from '../../catalog/atomics.js';
@@ -26,8 +25,6 @@ import { enqueuePlacements, newWorldSim } from './build.js';
  * The demo world: a 6×1 grass strip carrying HQ, joinery, a wood gatherer, a carrier and two wood nodes.
  * It is what a checkout with no decodable map plays, over the shared sandbox content fixture.
  */
-
-const { Position, Resource } = components;
 
 const WIDTH = 6;
 const HEIGHT = 1;
@@ -118,7 +115,7 @@ export function demoWorldBase(
 /**
  * Build the demo simulation and run it `ticks` ticks; the returned sim sits at a tick boundary. With a
  * loaded grid the same six entities land on the real map, and a map with too few walkable cells falls
- * back to the strip, so this always runs and never throws.
+ * back to the strip.
  */
 export function runDemoWorld(
   seed: number,
@@ -164,11 +161,12 @@ export function runDemoWorld(
       { kind: 'human', jobType: JOB_CARRIER, tribe: PRIMARY_TRIBE, ...cellAt(3), ...own },
     ]);
   }
-  // Bare resources with no felling counter or footprint, which `placeResourceNode` would add.
+  // Pluck-whole wood nodes: no felling counter, so the collector gathers them unit by unit.
   for (const cell of [cellAt(4), cellAt(5)]) {
-    const tree = sim.world.create();
-    sim.world.add(tree, Position, positionOfNode(cell.x, cell.y));
-    sim.world.add(tree, Resource, { goodType: GOOD_WOOD, remaining: 4, harvestAtomic: HARVEST_ATOMIC });
+    const spec = { good: GOOD_WOOD, x: cell.x, y: cell.y, remaining: 4, harvestAtomic: HARVEST_ATOMIC };
+    if (systems.createResourceNode(sim.world, sim.content, spec) === null) {
+      throw new Error('demo world: missing resource footprint for wood');
+    }
   }
   sim.run(ticks);
   return sim;

@@ -43,8 +43,8 @@ export interface ResourceFootprintCell {
  * Data-driven collision/work footprint for a standing {@link Resource} node, copied from its harvest-stage
  * `[GfxLandscape]` record (`LogicWalkBlockArea`, `LogicBuildBlockArea`, `LogicWorkArea`). `walk` cells enter
  * the dynamic pathfinding overlay, `build` cells reserve the no-building ring, and `work` cells are where a
- * collector stands. A node that blocks nothing says so with empty `walk`/`build`: an absent component means
- * "no declaration", and the placement rule then assumes a body.
+ * collector stands. Every Resource node carries one; a node that blocks nothing says so with empty
+ * `walk`/`build`.
  */
 export interface ResourceFootprintData {
   readonly walk: readonly ResourceFootprintCell[];
@@ -78,11 +78,11 @@ export const MineDeposit = defineComponent<{
   /** The visual state count this node shrinks through: the `[GfxLandscape]` record's own for a map
    *  placement, the good's uniform fallback otherwise. */
   levels: number;
-  /** Work cycles per chipped unit (>= 1); a node stamped without it behaves as 1. Observed calibration: the
-   *  readable data carries only the single-swing cycle length (`atomicanimations.ini`). */
-  strikesPerUnit?: number;
+  /** Work cycles per chipped unit (>= 1). Observed calibration: the readable data carries only the
+   *  single-swing cycle length (`atomicanimations.ini`). */
+  strikesPerUnit: number;
   /** Progress toward the next unit (0..strikesPerUnit-1), reset on each chipped unit. */
-  strikes?: number;
+  strikes: number;
 }>('MineDeposit');
 
 /**

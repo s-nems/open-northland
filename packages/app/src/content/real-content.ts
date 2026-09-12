@@ -4,6 +4,7 @@ import {
   type GoodType,
   hasFieldFarmAtomics,
   parseContentSet,
+  parseGeneratedContentSet,
   type WeaponType,
 } from '@open-northland/data';
 import { HARVEST_CADAVER_ATOMIC } from '../catalog/atomics.js';
@@ -24,8 +25,8 @@ let contentSetPromise: Promise<ContentSet | null> | null = null;
 /**
  * Fetch and validate the served `content/ir.json` into the sim's `ContentSet` at the app boundary.
  * Returns `null` when `content/` is absent so a bare checkout still boots; a present-but-malformed IR
- * throws via `parseContentSet`. The default transport shares one memoized parse of the {@link loadIrRaw}
- * document per page, while an injected `fetchImpl` fetches and parses uncached.
+ * throws via `parseGeneratedContentSet`. The default transport shares one memoized parse of the
+ * {@link loadIrRaw} document per page, while an injected `fetchImpl` fetches and parses uncached.
  */
 export function loadRealContent(fetchImpl: typeof fetch = fetch): Promise<ContentSet | null> {
   if (fetchImpl !== fetch) return fetchContentSet(fetchImpl);
@@ -39,12 +40,12 @@ export function loadRealContent(fetchImpl: typeof fetch = fetch): Promise<Conten
 
 async function parseSharedIr(): Promise<ContentSet | null> {
   const raw = await loadIrRaw();
-  return raw === null ? null : parseContentSet(raw);
+  return raw === null ? null : parseGeneratedContentSet(raw);
 }
 
 async function fetchContentSet(fetchImpl: typeof fetch): Promise<ContentSet | null> {
   const raw = await fetchJsonOrNull<unknown>('/ir.json', fetchImpl);
-  return raw === null ? null : parseContentSet(raw);
+  return raw === null ? null : parseGeneratedContentSet(raw);
 }
 
 /** The real content with its clean-room balance completed, plus the gaps the overlay cannot fill. */

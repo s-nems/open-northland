@@ -11,7 +11,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
-import { stockCapacity } from '../../src/systems/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData, stockCapacity } from '../../src/systems/index.js';
 import { setGatherGood, setJob } from '../../src/systems/orders/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -63,6 +63,7 @@ function placeTree(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: WOOD_HARVEST });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
   return e;
 }
@@ -71,6 +72,7 @@ function placeStone(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: STONE, remaining: 5, harvestAtomic: STONE_HARVEST });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   return e;
 }
 

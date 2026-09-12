@@ -9,7 +9,12 @@ import {
   Stockpile,
 } from '../../../src/components/index.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
-import { atomicSystem, needBar } from '../../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  atomicSystem,
+  needBar,
+  stampResourceFootprintData,
+} from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf, PLANK, SAWMILL, startAtomic, WOOD } from './support.js';
 
@@ -24,6 +29,7 @@ describe('atomicSystem - effects', () => {
     const e = sim.world.create();
     const resource = sim.world.create();
     sim.world.add(resource, Resource, { goodType: WOOD, remaining: 5, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, resource, anchorOnlyFootprint());
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(e, Carrying)).toEqual({ goodType: WOOD, amount: 1 });
@@ -35,6 +41,7 @@ describe('atomicSystem - effects', () => {
     const e = sim.world.create();
     const resource = sim.world.create();
     sim.world.add(resource, Resource, { goodType: WOOD, remaining: 0, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, resource, anchorOnlyFootprint());
     startAtomic(sim, e, { kind: 'harvest', resource, goodType: WOOD }, 1);
     atomicSystem(sim.world, ctxOf(sim));
     expect(sim.world.get(resource, Resource).remaining).toBe(0); // stays at floor, no negative
