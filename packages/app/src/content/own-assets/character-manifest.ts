@@ -56,6 +56,7 @@ export function ownCharacterBinding(m: OwnCharacterManifest): SettlerStateBindin
       ticksPerFrame: (m.walkDuration * TICKS_PER_SECOND) / m.walkFrames,
     },
     idle: {
+      ...(m.idleFrameOrder === undefined ? {} : { frameOrder: m.idleFrameOrder }),
       ...(m.idleFrameDurations === undefined
         ? {}
         : { frameDurations: m.idleFrameDurations.map((seconds) => seconds * TICKS_PER_SECOND) }),

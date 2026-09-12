@@ -17,7 +17,10 @@ directions. Cleanup plants the ankles and blends the final 1.5 seconds back to t
 body and shoulder motion remain generated. An idle-only neck correction raises the chin by 6°
 and offsets the neck 2.5 cm upward and 1 cm backward (artistic approximation), preserving
 the generated head turns. Run it with Blender before rendering idle.
-Idle exports 16 loop samples over six seconds; the duplicated endpoint is excluded.
+Idle retains 16 poses from source phases 0.25–0.625 for a held head-turn gesture.
+The six-second playback visits them forward and backward, reusing cells through `frameOrder`.
+Transitions use 1/12-second steps; each endpoint holds for 11/6 seconds. This pose selection and
+timing are artistic approximations, not the original game's choreography.
 The skirt has a dedicated UV strip;
 run `model/guard-garment.mjs` after projection. Check skirt deformation and neck seams in turns.
 

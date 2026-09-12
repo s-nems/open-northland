@@ -18,6 +18,28 @@ import type {
 import { drawItem, settlerItem } from '../support/fixtures.js';
 
 describe('subtick character clips', () => {
+  it('plays a held turn and reuses poses on the return without allocating more atlas frames', () => {
+    const idle = {
+      start: 100,
+      dirs: 8,
+      stride: 3,
+      subtick: true,
+      frameOrder: [0, 1, 2, 1],
+      frameDurations: [8, 0.5, 3, 0.5],
+    };
+    const item = settlerItem('idle', { facing: 2 });
+    for (const [clock, pose] of [
+      [0, 106],
+      [7.99, 106],
+      [8, 107],
+      [8.5, 108],
+      [11.49, 108],
+      [11.5, 107],
+      [12, 106],
+      [-0.1, 107],
+    ] as const)
+      expect(resolveSettlerBobId({ idle }, item, clock)).toBe(pose);
+  });
   it('holds stored poses, crosses fractional boundaries and loops without adding images', () => {
     const idle = { start: 100, dirs: 8, stride: 3, subtick: true, frameDurations: [9, 0.5, 2.5] };
     const item = settlerItem('idle', { facing: 2 });

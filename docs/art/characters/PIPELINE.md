@@ -103,7 +103,10 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
 - Target 12–16 stored frames per clip and facing. Authoring and delivery builds reject more than 16.
   Choose poses and holds within that budget, independently of playback duration. Review transitions
   and loop seams; spatial filtering and movement interpolation do not fill gaps between sprite poses.
-- `samplePhases` selects source poses; `frameDurations` controls playback holds. Preserve both.
+- `samplePhases` selects stored source poses. Idle `frameOrder` indexes those poses in playback order,
+  including repeats and returns; `frameDurations` gives seconds per playback step and must sum to
+  `duration`. A long idle should spend time holding chosen poses, with short steps during transitions.
+  Body and shadow use the same frame order. Repeated steps never add texture cells.
 - Existing male walk/idle use 16 poses each and hammer 12. The woman's walk uses 16 poses;
   her six-second idle uses 16 poses.
 - Source strips use 192×144 cells, feet y=128. Runtime crops to 96×120, feet (48,104).

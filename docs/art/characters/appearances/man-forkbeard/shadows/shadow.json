@@ -29,7 +29,6 @@
     "../../../../../tools/art-pipeline/authoring/characters/blender_common.py": "193518337c8a3e836a95eb8112993b5da856eba2354f79d370dee41e7aba3c3f",
     "../../../../../tools/art-pipeline/authoring/characters/render_dirs.py": "be31a8cbbefdee55c853f82862c1b0d99b5bc63f38c3fccc5ed6f4e13e97fe04",
     "../../../../../tools/art-pipeline/authoring/characters/retarget-family.py": "be3d90f83db3a6da42c4ef6fc057d89f79d761a5275c46a611e7f6fb5da3d65d",
-    "../../../../../tools/art-pipeline/authoring/characters/update-character-catalog.py": "4fcad57cc5b5347f2cc715e6b32b20ef9281c19b85b2599f4626fd676a6ccbcb",
     "../../../../../tools/art-pipeline/authoring/characters/measure-walk-gait.py": "2f1a2ca2a45400df228350dc1a77c0590a17a20a4b98a30ede7914e622abf9f9",
     "../../../../../tools/art-pipeline/authoring/characters/body_proportions.py": "52faecee2182bb2fe7da6805e00b20e5d78551ba4c4e78f1222754b95b4be68c",
     "../../../../../tools/art-pipeline/authoring/characters/head_variant.py": "462a2a17d34dc4f625c117f5277e9e922e24bf28589fca6169ea1c40bb1b12f7",

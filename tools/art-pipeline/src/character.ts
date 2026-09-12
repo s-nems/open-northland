@@ -11,16 +11,40 @@ const clipSchema = z.object({
   frames: z.number().int().positive().max(16).optional(),
   duration: z.number().positive(),
   frameDurations: z.array(z.number().positive()).optional(),
+  frameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
   atomicId: z.number().int().nonnegative().optional(),
 });
-const characterRecipe = z.object({
-  frames: z.number().int().positive().max(16),
-  post: z.string(),
-  clips: z.array(clipSchema),
-  walkCalibration: z.string().optional(),
-  walkPlayback: z.string().optional(),
-  render: z.object({ size: z.number().positive().optional() }).optional(),
-});
+const characterRecipe = z
+  .object({
+    frames: z.number().int().positive().max(16),
+    post: z.string(),
+    clips: z.array(clipSchema),
+    walkCalibration: z.string().optional(),
+    walkPlayback: z.string().optional(),
+    render: z.object({ size: z.number().positive().optional() }).optional(),
+  })
+  .superRefine((recipe, ctx) => {
+    for (const [index, clip] of recipe.clips.entries()) {
+      if (!clip.frameOrder) continue;
+      const count = clip.frames ?? recipe.frames;
+      if (clip.name !== 'idle' || clip.frameOrder.some((frame) => frame >= count))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['clips', index, 'frameOrder'],
+          message: 'Frame order requires idle indices within stored poses',
+        });
+      if (
+        !clip.frameDurations ||
+        clip.frameDurations.length !== clip.frameOrder.length ||
+        Math.abs(clip.frameDurations.reduce((sum, hold) => sum + hold, 0) - clip.duration) > 1e-6
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path: ['clips', index, 'frameDurations'],
+          message: 'Ordered idle requires durations for every playback step',
+        });
+    }
+  });
 export async function characterInputs(directory: string, source: string, shadowSource?: string) {
   const raw = characterRecipe.parse(JSON.parse(await readFile(resolve(directory, source), 'utf8')));
   const inputs = [resolve(directory, source)];
@@ -149,6 +173,7 @@ export async function packCharacter(
     walkTravelPerCycle,
     idleDuration: idle.duration,
     ...(idle.frameDurations ? { idleFrameDurations: idle.frameDurations } : {}),
+    ...(idle.frameOrder ? { idleFrameOrder: idle.frameOrder } : {}),
     ...(atomics.length
       ? {
           atomicClips: atomics.map((c) => ({

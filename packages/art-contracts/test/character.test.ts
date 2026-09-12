@@ -21,6 +21,17 @@ const manifest = {
 };
 
 describe('character atlas contract', () => {
+  it('reuses stored idle poses while validating every playback step and hold', () => {
+    const ordered = { ...manifest, idleFrameOrder: [0, 0], idleFrameDurations: [0.8, 0.2] };
+    expect(() => ownCharacterManifest.parse(ordered)).not.toThrow();
+    expect(() => ownCharacterManifest.parse({ ...ordered, idleFrameOrder: [0, 1] })).toThrow(
+      'outside stored poses',
+    );
+    expect(() => ownCharacterManifest.parse({ ...ordered, idleFrameDurations: [1] })).toThrow('Pose holds');
+    expect(() => ownCharacterManifest.parse({ ...ordered, idleFrameDurations: undefined })).toThrow(
+      'explicit step durations',
+    );
+  });
   it('accounts for all directions and atomic clips, including a partially filled last row', () => {
     expect(() => ownCharacterManifest.parse(manifest)).not.toThrow();
     expect(() => ownCharacterManifest.parse({ ...manifest, columns: 10, width: 100 })).not.toThrow();

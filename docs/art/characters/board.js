@@ -224,10 +224,11 @@ function tick(now) {
     if (cell.frameDurations) {
       let time = Math.min(phase * cell.duration, cell.duration - 1e-9);
       frame = 0;
-      while (frame < cell.frames - 1 && time >= cell.frameDurations[frame]) {
+      while (frame < cell.frameDurations.length - 1 && time >= cell.frameDurations[frame]) {
         time -= cell.frameDurations[frame++];
       }
     }
+    frame = cell.frameOrder?.[frame] ?? frame;
     if (cell.image.complete && cell.image.naturalWidth)
       ctx.drawImage(cell.image, frame * 192, 0, 192, 144, -16, 0, 96, 72);
   }

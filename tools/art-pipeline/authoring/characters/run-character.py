@@ -37,6 +37,14 @@ def main():
         frames = clip.get('frames', recipe['frames'])
         if not isinstance(frames, int) or not 1 <= frames <= 16:
             raise ValueError(f"{clip['name']}: expected at most 16 stored frames per facing, got {frames}")
+        order = clip.get('frameOrder', list(range(frames)))
+        holds = clip.get('frameDurations')
+        if not order or any(not isinstance(i, int) or not 0 <= i < frames for i in order):
+            raise ValueError('Playback frame index outside stored poses')
+        if clip.get('frameOrder') and (clip['name'] != 'idle' or holds is None):
+            raise ValueError('Frame order requires idle with explicit step durations')
+        if holds is not None and (len(holds) != len(order) or any(h <= 0 for h in holds) or abs(sum(holds) - clip['duration']) > 1e-6):
+            raise ValueError('Pose durations must match playback steps and sum to clip duration')
     work = run / '.work'
     work.mkdir(exist_ok=True)
     angle, count = str(recipe['angle']), str(recipe['frames'])
@@ -125,7 +133,7 @@ def main():
                     if stage == 'shadows':
                         options += ['--shadow-only']
                         dependencies = [value for value in options if isinstance(value, Path) and value.is_file()]
-                        dependencies += [SCRIPTS.parent/'shared/shadow_lighting.py', SCRIPTS.parents[3]/'docs/art/lighting.json', recipe_file, *[p for p in SCRIPTS.glob('*.py') if p.name != 'run-character.py']]
+                        dependencies += [SCRIPTS.parent/'shared/shadow_lighting.py', SCRIPTS.parents[3]/'docs/art/lighting.json', recipe_file, *[p for p in SCRIPTS.glob('*.py') if p.name not in ('run-character.py', 'update-character-catalog.py')]]
                         if clip.get('equipment'):
                             config = run/clip['equipment']
                             dependencies.append(config.parent/json.loads(config.read_text())['model'])
@@ -169,6 +177,7 @@ def main():
                     raise ValueError('Preview requires each clip duration in seconds')
                 cells = [
                     {'file':str(run/'sprites'/f"{clip['name']}-{f}-88px.png"),'duration':clip['duration'],
+                     **({'frameOrder':clip['frameOrder']} if clip.get('frameOrder') else {}),
                      **({'frameDurations':clip['frameDurations']} if clip.get('frameDurations') else {})}
                     if f in clip['facings'] else None for f in facings
                 ]
