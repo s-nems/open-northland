@@ -45,6 +45,8 @@ export interface DebugMounts {
   /** Shows or hides the stats readout, the admin palette and its geometry grid together, as the one
    *  settings toggle. */
   setToolsEnabled(enabled: boolean): void;
+  /** Tear the palette's listeners and DOM down with the world that mounted it. */
+  dispose(): void;
 }
 
 export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
@@ -80,7 +82,14 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
   };
   setToolsEnabled(opts.initialToolsEnabled);
 
-  return { geometryDebug, setToolsEnabled };
+  return {
+    geometryDebug,
+    setToolsEnabled,
+    dispose: () => {
+      admin?.dispose();
+      admin = null;
+    },
+  };
 }
 
 function mountAdminPalette(

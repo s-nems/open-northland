@@ -15,13 +15,17 @@ matches and the briefing arrows navigate between pages 500 and 511. The authored
 mission 82 visible but supplies no description; the goal tab correctly retains the main victory
 objective. This contact does not establish presentation of a newly described objective.
 
+A browser probe with control scripts over two real custom maps covers sub-mission entry, saving
+through the game menu, reloading the child and returning to the suspended parent. It validates the
+world handover and save stack, not either map's unmodified story route.
+
 ## Verified blockers
 
-- `cn_1` has no `MissionWon`: it returns through unsupported `EndSubMission`. Parent `cn_0` needs
-  `StartSubMission` and vehicle ownership changes. Neither is a standalone campaign acceptance case.
+- `cn_1` has no `MissionWon`: it returns through `EndSubMission`. The parent/submap handover is implemented,
+  but parent `cn_0` still needs vehicle ownership changes. Neither is a standalone campaign acceptance case.
 - Owned `DataX/Libs/data0001.lib` contains base campaign maps; the current map pipeline serves loose
-  map directories. The first base mission, `campaign_03_01`, requires `DockVehicle` and
-  `StartSubMission` on its story path. Extracting it alone does not make it completable.
+  map directories. The first base mission, `campaign_03_01`, requires `DockVehicle` on its story path. Sub-missions can now resolve generated campaign slots,
+  but extracting this map alone does not make it completable.
 - `wielkie_sprzatanie` uses only implemented opcode handlers, but winning requires defeating seats 2
   and 3 through actual gameplay, then missions 72 and 77. The bounded reinforcement test does not
   establish that its economy, recruitment and combat can complete that route.
@@ -42,7 +46,7 @@ objective. This contact does not establish presentation of a newly described obj
 - Verify a story transition with a newly described visible objective in the browser, beyond the
   already checked Frank contact and restored briefing navigation.
 
-Vehicles, sub-missions, chests, guides, wall gates, campaign unlocks, FMV and the trade ledger remain
+Vehicles, chests, guides, wall gates, campaign unlocks, FMV and the trade ledger remain
 outside this ticket's implementation scope. Their absence is a dependency, not an acceptance waiver.
 Human review of the intro, combat and ending remains part of final epic acceptance.
 

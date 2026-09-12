@@ -13,6 +13,7 @@ import {
   type OpenTribute,
   type PlayerCommand,
   playerCommand,
+  type SaveGame,
   type SimEvent,
   type Simulation,
   type WorldSnapshot,
@@ -68,8 +69,11 @@ import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
 import { createViewReadModels } from './read-models.js';
 import { createSaveLoadSession, type SaveLoadSessionOptions } from './save-load/index.js';
+import { relatedWorldLoader } from './save-load/related-world.js';
 import { createScriptPresentation } from './script-presentation.js';
 import { mountScriptTerrainColors } from './script-terrain-colors.js';
+import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
+import { createWorldTeardown } from './world-teardown.js';
 
 /** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
 export interface GameViewDeps {
@@ -93,6 +97,9 @@ export interface GameViewDeps {
   readonly onReturnToMenu?: () => void;
   /** A relayed session's connection figures for the overlays; omitted in a local session. */
   readonly netReadout?: () => NetReadout | null;
+  readonly parentSave?: SaveGame;
+  readonly prepareSubMission?: PrepareSubMission;
+  readonly validateSavedMap?: (save: SaveGame) => Promise<void>;
   readonly cameraCtl: CameraController;
   readonly terrainGrid: SceneTerrain;
   /** typeId to minimap ground colour; without it the minimap keeps its flat-tint default. */
@@ -179,6 +186,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let disposeHud = (): void => undefined;
   let verdict: MatchResultOverlay | null = null;
   let destroyed = false;
+  const lifetime = new AbortController();
+  const teardownWorld = createWorldTeardown({
+    app,
+    canvas,
+    renderer,
+    cameraCtl,
+    disposeSession: () => destroy(),
+  });
   const saveLoad = createSaveLoadSession({
     ...deps.networkSave,
     captureSave: (options) => driver.captureSave(options),
@@ -186,6 +201,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     worldToken: deps.worldToken ?? null,
     ...(deps.saveEntrySearch !== undefined ? { entrySearch: deps.saveEntrySearch } : {}),
     // A shared clock is nobody's to hold: the save dialog and the overlays above pause nothing.
+    ...(deps.validateSavedMap !== undefined
+      ? { loadRelatedWorld: relatedWorldLoader(deps.validateSavedMap, teardownWorld) }
+      : {}),
+    ...(deps.parentSave !== undefined ? { parent: deps.parentSave } : {}),
     setPaused: (paused) => {
       if (!sharedClock) driver.setPaused(paused);
     },
@@ -197,6 +216,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;
+    lifetime.abort();
     loop?.stop();
     systemMenu?.dispose();
     disposeHud();
@@ -223,7 +243,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const frameStats = new FrameStats();
 
   // A checkout without a decoded sound bank degrades to silence.
-  const soundDriver = await mountGamePresentation(params, renderer, deps.musicType ?? null);
+  const soundDriver = await mountGamePresentation(params, renderer, deps.musicType ?? null, lifetime.signal);
 
   // Along the bottom edge between the minimap and the details panel, clear of the notes up top.
   const perfCorner = perfCornerForUiScale(uiscale);
@@ -370,9 +390,24 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // Assembled below, once the controls and the camera it steers exist.
   const terrainColors = await mountScriptTerrainColors(sim, renderer);
   let presentation: ReturnType<typeof createScriptPresentation> | null = null;
+  const subMissions = createSubMissions({
+    sim,
+    params,
+    worldToken: deps.worldToken ?? null,
+    ...(deps.parentSave !== undefined ? { parent: deps.parentSave } : {}),
+    ...(deps.prepareSubMission !== undefined ? { prepare: deps.prepareSubMission } : {}),
+    pause: () => {
+      control.paused = true;
+    },
+    resume: () => {
+      control.paused = false;
+    },
+    teardown: teardownWorld,
+  });
   const onEvents = (events: readonly SimEvent[]): void => {
     deps.onEvents?.(events);
     terrainColors(events);
+    if (subMissions.onEvents(events)) return;
     if (deps.observer !== true) verdict?.onEvents(events);
     presentation?.onEvents(events);
   };
@@ -411,6 +446,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // Late-bound: the badge projection below needs the fog gates and the building index.
   let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
 
+  const detailsTooltip = createTooltip();
   const controls = await createUnitControls({
     app,
     canvas,
@@ -440,7 +476,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
     // A separate instance from the ground tooltip below, which the frame loop hides whenever the
     // pointer is over the HUD - exactly when this one must stay shown.
-    tooltip: createTooltip(),
+    tooltip: detailsTooltip,
   });
   selectEntity = controls.selectEntity;
   overviewPress = controls.overviewPress;
@@ -552,6 +588,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   });
   const mountedPresentation = presentation;
   disposeHud = (): void => {
+    soundDriver?.close();
+    detailsTooltip.destroy();
+    debugMounts.dispose();
     liveSettings.dispose();
     toolPanel.dispose();
     noteTooltip.destroy();
@@ -579,6 +618,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // This mount owns construction; the loop owns the pinned per-frame order.
   loop = startFrameLoop({
     deps: { ...deps, onEvents },
+    suspended: subMissions.isPending,
     fpsLimit: storedSettings.fpsLimit,
     onMatchEnd: () => verdict?.finish(sim.matchOutcome(localPlayer)),
     isDisposed: () => destroyed,

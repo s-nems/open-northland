@@ -30,6 +30,7 @@ import type { ScriptPresentation } from './script-presentation.js';
 /** Everything the per-frame loop reads, assembled once by the mount phase. */
 export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
+  readonly suspended?: () => boolean;
   readonly fpsLimit: FpsLimit;
   readonly onMatchEnd?: () => void;
   readonly isDisposed?: () => boolean;
@@ -138,10 +139,14 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const collect = (): void => {
     steps++;
     recordDiagHash(sim);
-    for (const ev of sim.events.current()) frameEvents.push(ev);
+    for (const ev of sim.events.current()) {
+      frameEvents.push(ev);
+      if (ev.kind === 'missionSubMission') control.paused = true;
+    }
   };
 
   function frame(nowMs: number): void {
+    if (loop.suspended?.() === true) control.paused = true;
     syncViewport(nowMs);
     const pointer = pointerAt();
     const elapsed = nowMs - lastMs;

@@ -53,6 +53,19 @@ import { scriptTribute } from './tributes.js';
  *  nothing here throws, because a corpus script must never halt a running world. */
 export function executeResult(pass: MissionPass, index: number, result: MissionResultOp): void {
   switch (result.opcode) {
+    case 'StartSubMission':
+      if (result.campaignId < 0 || result.mapId < 0) pass.reportFailed(index, result.opcode);
+      else if (pass.subMission?.kind !== 'end')
+        pass.subMission = {
+          kind: 'start',
+          campaignId: result.campaignId,
+          mapId: result.mapId,
+          mission: index,
+        };
+      return;
+    case 'EndSubMission':
+      pass.subMission = { kind: 'end', mission: index };
+      return;
     case 'SetLandscape':
     case 'RemoveLandscape':
     case 'RemoveLandscapesInArea':

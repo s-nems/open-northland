@@ -10,6 +10,7 @@ import { compressSaveText, isGzipSave, type SaveBytes } from './codec.js';
 import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
 import { browserSaveDownload, type PickedSaveFile, pickedSaveOf } from './file-access.js';
 import { displayNameOf } from './list-model.js';
+import { rootWorldId } from './related-world.js';
 import type { SaveSlotInfo, SaveStore } from './store.js';
 
 export type SaveOutcome = { kind: 'saved' } | { kind: 'cancelled' } | { kind: 'failed' };
@@ -22,6 +23,8 @@ export type LoadOutcome =
 export interface SaveLoadDeps {
   readonly sim: Simulation;
   readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
+  readonly parent?: SaveGame;
+  readonly loadRelatedWorld?: (save: SaveGame, bytes: SaveBytes) => Promise<void>;
   /** The entry's world identity, exported as the save header's `mapId` and required to match on load. */
   readonly worldToken: string | null;
   /** The entry-selecting URL search, exported as the header's `entry` relaunch token. */
@@ -90,10 +93,22 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
     if (picked === null) return { kind: 'cancelled' };
     const evaluated = evaluateSaveFile(picked.contents, {
       worldToken,
+      ...(deps.loadRelatedWorld !== undefined
+        ? { rootWorldToken: deps.parent !== undefined ? rootWorldId(deps.parent) : worldToken }
+        : {}),
       mapFingerprint: sim.mapFingerprint ?? null,
       irVersion: sim.content.manifest.version,
     });
     if (!evaluated.ok) return { kind: 'rejected', reason: evaluated.reason };
+    if (evaluated.save.header.mapId !== worldToken && deps.loadRelatedWorld !== undefined) {
+      try {
+        await deps.loadRelatedWorld(evaluated.save, picked.raw);
+        return { kind: 'loading' };
+      } catch (err) {
+        diag.warn('save', `related mission could not load: ${String(err)}`);
+        return { kind: 'rejected', reason: 'wrongMap' };
+      }
+    }
     try {
       await deps.stagePending(picked.raw);
     } catch {
@@ -114,6 +129,7 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
         const save = await capture({
           savedAt: Date.now(),
           ...(deps.sessionMetadata === undefined ? {} : { session: deps.sessionMetadata() }),
+          ...(deps.parent !== undefined ? { parent: deps.parent } : {}),
           ...(worldToken !== null ? { mapId: worldToken } : {}),
           ...(deps.entrySearch !== null ? { entry: deps.entrySearch } : {}),
         });

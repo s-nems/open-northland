@@ -12,6 +12,7 @@ import {
 } from './format.js';
 import { parseSavedAt } from './header-fields.js';
 import { copySessionMetadata } from './session-metadata.js';
+import { parseSaveGame } from './parse.js';
 
 export interface ExportSaveOptions {
   readonly continuation?: readonly SavedCommand[];
@@ -24,6 +25,7 @@ export interface ExportSaveOptions {
   /** The caller's relaunch token (the app uses the entry URL search), recorded so a loader can
    *  reboot the session the save came from. Omit when there is nothing to reboot into. */
   entry?: string;
+  parent?: SaveGame;
 }
 
 /**
@@ -88,6 +90,7 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
       tick: sim.tick,
     },
     sections,
+    ...(opts.parent !== undefined ? { parent: parseSaveGame(JSON.parse(JSON.stringify(opts.parent))) } : {}),
   };
 }
 

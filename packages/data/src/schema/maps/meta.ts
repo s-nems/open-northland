@@ -18,6 +18,7 @@ export const MAP_TYPE_LIMIT = 7;
  *  newer sidecar with an extra field still loads. */
 export const MapMeta = z.object({
   provenance: MapProvenance.optional(),
+  campaign: z.object({ campaignId: z.number().int(), missionId: z.number().int() }).optional(),
   name: z.string().optional(),
   description: z.string().optional(),
   /** `DM_MUSIC_TYPE_*` (0-38). */

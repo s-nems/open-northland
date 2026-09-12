@@ -17,8 +17,11 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // Consumed before any other boot work: a staged save that fails from here on halts the boot rather
   // than silently starting a fresh world.
   let stagedSave: SaveGame | null;
+  let resume = false;
   try {
-    stagedSave = await takeStagedSave(mapId);
+    const staged = await takeStagedSession(mapId);
+    stagedSave = staged.save;
+    resume = staged.resume;
   } catch (err) {
     haltOnFailedRestore(err);
     return;

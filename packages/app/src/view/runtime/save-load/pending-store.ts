@@ -16,11 +16,11 @@ function openPendingDb(): Promise<IDBDatabase> {
 }
 
 /** Stage a validated save file's bytes for the page reload that follows. */
-export async function storePendingLoad(bytes: SaveBytes): Promise<void> {
+export async function storePendingLoad(bytes: SaveBytes, resume = false): Promise<void> {
   const db = await openPendingDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
-    txn.objectStore(STORE_NAME).put(bytes, ENTRY_KEY);
+    txn.objectStore(STORE_NAME).put(resume ? { bytes, resume } : bytes, ENTRY_KEY);
     await completed(txn);
   } finally {
     db.close();
@@ -44,6 +44,10 @@ export async function clearPendingLoad(): Promise<void> {
  * loop the failure; null on a normal fresh boot.
  */
 export async function takePendingLoad(): Promise<SaveBytes | null> {
+  return (await takePendingSession())?.bytes ?? null;
+}
+
+export async function takePendingSession(): Promise<{ bytes: SaveBytes; resume: boolean } | null> {
   const db = await openPendingDb();
   try {
     const txn = db.transaction(STORE_NAME, 'readwrite');
@@ -51,7 +55,12 @@ export async function takePendingLoad(): Promise<SaveBytes | null> {
     const read = store.get(ENTRY_KEY);
     store.delete(ENTRY_KEY);
     await completed(txn);
-    return isSaveBytes(read.result) ? read.result : null;
+    const value: unknown = read.result;
+    if (isSaveBytes(value)) return { bytes: value, resume: false };
+    if (typeof value === 'object' && value !== null && 'bytes' in value && isSaveBytes(value.bytes)) {
+      return { bytes: value.bytes, resume: 'resume' in value && value.resume === true };
+    }
+    return null;
   } finally {
     db.close();
   }

@@ -11,7 +11,7 @@ import { type ReadableVfs, readText, type Vfs, vjoin, writeText } from '@open-no
  * (IR_VERSION covers that leg). Save files record it as part of their content identity, so a
  * forgotten bump also costs a loaded game the warning that its content moved under it.
  */
-export const CONTENT_REVISION = 8;
+export const CONTENT_REVISION = 9;
 
 export const PIPELINE_MANIFEST_NAME = 'pipeline-manifest.json';
 

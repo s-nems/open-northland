@@ -162,10 +162,13 @@ export async function resolveMapMeta(
   );
   const name = strings?.[nameStringId];
   const description = strings?.[descriptionStringId];
-  const listing = mapTypes !== undefined && (mapTypes.types.length > 0 || mapTypes.multiplayerOnly);
+  const listing =
+    mapTypes !== undefined &&
+    (mapTypes.types.length > 0 || mapTypes.multiplayerOnly || mapTypes.campaign !== undefined);
   if (name === undefined && description === undefined && musicType === undefined && !listing)
     return undefined;
   return {
+    ...(mapTypes?.campaign === undefined ? {} : { campaign: mapTypes.campaign }),
     ...(name !== undefined ? { name } : {}),
     ...(description !== undefined ? { description } : {}),
     ...(musicType !== undefined ? { musicType } : {}),

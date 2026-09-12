@@ -39,8 +39,8 @@ import {
 /**
  * The admin and debug spawn palette: arm a tool, then click the map to drop a test entity or run an
  * entity action on what is already there. Every poke goes through the sim command seam, so it stays as
- * replay-faithful as a player order. Mounted at most once per document and never torn down: only
- * sessions without a shared clock mount it, and those leave by navigation.
+ * replay-faithful as a player order. The session owns its listeners and DOM lifetime: a world torn
+ * down in place disposes it before the next one mounts its own.
  */
 
 export interface AdminDebugDeps {
@@ -73,6 +73,7 @@ export interface AdminDebugDeps {
 
 export interface AdminDebugHandle {
   setVisible(visible: boolean): void;
+  dispose(): void;
 }
 
 /** Matches the settler HP the content's tribes carry, so the field shows what an untouched spawn gets. */
@@ -324,6 +325,12 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     setVisible(visible): void {
       toggle.style.display = visible ? '' : 'none';
       if (!visible && open) setOpen(false);
+    },
+    dispose(): void {
+      window.removeEventListener('mousedown', onPointerDown, { capture: true });
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
+      toggle.remove();
+      panel.remove();
     },
   };
 }

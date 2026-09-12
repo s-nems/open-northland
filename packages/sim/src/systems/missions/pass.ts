@@ -22,6 +22,14 @@ export interface MissionPass {
   /** Raised by a result that ends the pass (`PlayCutscene`); the pass finishes the mission that
    *  raised it and visits no later one. */
   halted: boolean;
+  subMission?:
+    | {
+        readonly kind: 'start';
+        readonly campaignId: number;
+        readonly mapId: number;
+        readonly mission: number;
+      }
+    | { readonly kind: 'end'; readonly mission: number };
 }
 
 /**

@@ -1,9 +1,12 @@
 import { parseSaveGame, SAVE_FORMAT_VERSION, SAVE_KIND, type SaveGame } from '@open-northland/sim';
 
+import { rootWorldId } from './related-world.js';
+
 /** The live session identity a candidate save must match before the page reloads into it. */
 export interface LiveWorldIdentity {
   /** The entry's world token: the decoded map id, or `scene:<id>`; null for a tokenless world. */
   readonly worldToken: string | null;
+  readonly rootWorldToken?: string | null;
   readonly mapFingerprint: string | null;
   readonly irVersion: number;
 }
@@ -54,7 +57,13 @@ export function evaluateSaveFile(text: string, live: LiveWorldIdentity): Evaluat
   if (!evaluated.ok) return evaluated;
   const save = evaluated.save;
   if (save.header.irVersion !== live.irVersion) return { ok: false, reason: 'wrongContent' };
-  if (save.header.mapId !== live.worldToken) return { ok: false, reason: 'wrongWorld' };
+  if (save.header.mapId !== live.worldToken) {
+    return live.rootWorldToken !== undefined &&
+      live.rootWorldToken !== null &&
+      rootWorldId(save) === live.rootWorldToken
+      ? { ok: true, save }
+      : { ok: false, reason: 'wrongWorld' };
+  }
   if (save.header.mapFingerprint !== live.mapFingerprint) return { ok: false, reason: 'wrongMap' };
   return { ok: true, save };
 }

@@ -1,4 +1,11 @@
 export const enGame = {
+  subMission: {
+    stay: 'Stay on this map',
+    loading: 'Loading mission…',
+    failed:
+      'The mission could not be loaded. Your current world is paused and retained. You can retry loading or stay on this map without completing the transition.',
+    retry: 'Try again',
+  },
   hud: {
     changeProfession: 'Change profession',
     build: 'Build',

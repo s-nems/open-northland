@@ -345,6 +345,17 @@ export type SimEvent =
       /** A `StartEarthQuake` result: the view shakes for `seconds`. */
       readonly kind: 'missionEarthquake';
       readonly seconds: number;
+    }
+  | {
+      readonly kind: 'missionSubMission';
+      readonly transition:
+        | {
+            readonly kind: 'start';
+            readonly campaignId: number;
+            readonly mapId: number;
+            readonly mission: number;
+          }
+        | { readonly kind: 'end'; readonly mission: number };
     };
 
 export type SimEventKind = SimEvent['kind'];

@@ -1,4 +1,11 @@
 export const plGame = {
+  subMission: {
+    stay: 'Pozostań na tej mapie',
+    loading: 'Wczytywanie misji…',
+    failed:
+      'Nie udało się wczytać misji. Obecny świat jest zatrzymany i zachowany. Możesz ponowić wczytywanie albo pozostać na tej mapie bez wykonania przejścia.',
+    retry: 'Spróbuj ponownie',
+  },
   hud: {
     changeProfession: 'Zmiana zawodu',
     build: 'Budowa',

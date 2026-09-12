@@ -80,6 +80,8 @@ function runPass(world: World, ctx: SystemContext, script: MissionScript, record
   for (let index = 0; index < records.length && !pass.halted; index++) {
     if (records[index]?.active === true) checkMission(pass, index, true);
   }
+  if (pass.subMission !== undefined)
+    ctx.events.emit({ kind: 'missionSubMission', transition: pass.subMission });
 }
 
 function report(

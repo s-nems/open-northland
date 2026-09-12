@@ -1,4 +1,4 @@
-import type { Simulation } from '@open-northland/sim';
+import type { SaveGame, Simulation } from '@open-northland/sim';
 import { entrySearch } from '../../params.js';
 import { type SaveLoadDeps, type SaveLoadSession, type SaveOutcome, saveLoadSession } from './controller.js';
 import { browserSaveDownload, desktopFileBridge, platformSavePicker } from './file-access.js';
@@ -13,6 +13,8 @@ export { evaluateSaveFile, type LiveWorldIdentity, type SaveRejection } from './
 export interface SaveLoadSessionOptions
   extends Pick<SaveLoadDeps, 'sessionMetadata' | 'onSaved' | 'captureSave'> {
   readonly sim: Simulation;
+  readonly parent?: SaveGame;
+  readonly loadRelatedWorld?: NonNullable<SaveLoadDeps['loadRelatedWorld']>;
   readonly worldToken: string | null;
   readonly entrySearch?: string;
   readonly setPaused: (paused: boolean) => void;

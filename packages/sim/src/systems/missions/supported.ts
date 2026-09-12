@@ -54,6 +54,8 @@ export const SUPPORTED_GOALS = [
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
 export const SUPPORTED_RESULTS = [
+  'StartSubMission',
+  'EndSubMission',
   'SetLandscape',
   'RemoveLandscape',
   'RemoveLandscapesInArea',

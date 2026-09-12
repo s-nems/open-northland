@@ -180,6 +180,7 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   exact ascending seat roster, keeps modes, colors, teams, rules and the local seat, strips unknown
   fields, and allows a nick (unique, printable, trimmed, at most 24 characters) on human seats only.
   The app checks the descriptor's map and seed against the enclosing header.
+- Optional `parent` stores the suspended map save, with at most 16 parent envelopes.
 - `sections` is an array of string-identified sections in a fixed order: `entities` (the
   allocation counter plus the alive list), one `component` section per store in first-registration
   order with entries in per-store insertion order (both orders are behavior contracts), `rng` (the

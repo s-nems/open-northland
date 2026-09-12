@@ -1,8 +1,8 @@
 import { parseSaveGame, type SaveGame } from '@open-northland/sim';
 import { diag } from '../../../diag/index.js';
-import { decodeSaveText, type SaveBytes } from './codec.js';
+import { decodeSaveText } from './codec.js';
 import { saveDocumentOf } from './evaluate.js';
-import { takePendingLoad } from './pending-store.js';
+import { takePendingSession } from './pending-store.js';
 
 /** Parse staged text through the same seam that accepted it, and pin it to this boot's world. */
 export function stagedSaveFrom(text: string, worldToken: string | null): SaveGame {
@@ -21,12 +21,23 @@ export function stagedSaveFrom(text: string, worldToken: string | null): SaveGam
  * world. An unreadable store degrades to a fresh boot: nothing was staged that could be lost.
  */
 export async function takeStagedSave(worldToken: string | null): Promise<SaveGame | null> {
-  let bytes: SaveBytes | null;
+  return (await takeStagedSession(worldToken)).save;
+}
+
+export async function takeStagedSession(
+  worldToken: string | null,
+): Promise<{ save: SaveGame | null; resume: boolean }> {
+  let pending: Awaited<ReturnType<typeof takePendingSession>>;
   try {
-    bytes = await takePendingLoad();
+    pending = await takePendingSession();
   } catch (err) {
     diag.warn('boot', `pending-load store unavailable: ${String(err)}`);
-    return null;
+    return { save: null, resume: false };
   }
-  return bytes === null ? null : stagedSaveFrom(await decodeSaveText(bytes), worldToken);
+  return pending === null
+    ? { save: null, resume: false }
+    : {
+        save: stagedSaveFrom(await decodeSaveText(pending.bytes), worldToken),
+        resume: pending.resume,
+      };
 }

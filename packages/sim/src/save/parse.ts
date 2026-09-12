@@ -17,6 +17,8 @@ import {
 import { parseContentFingerprint, parseSavedAt } from './header-fields.js';
 import { copySessionMetadata } from './session-metadata.js';
 
+export const MAX_SUBMISSION_DEPTH = 16;
+
 /**
  * Validate a save decoded from untrusted JSON into a structurally sound {@link SaveGame}: header
  * identity, the exact section order, allocation coherence, and every pending envelope. Component
@@ -24,9 +26,18 @@ import { copySessionMetadata } from './session-metadata.js';
  * everything that needs loaded content or a map.
  */
 export function parseSaveGame(value: unknown): SaveGame {
+  return parseWorld(value, 0);
+}
+
+function parseWorld(value: unknown, depth: number): SaveGame {
+  if (depth > MAX_SUBMISSION_DEPTH) throw new Error('save.parent: sub-mission nesting limit exceeded');
   const raw = asRecord(value, 'save');
   const header = parsedHeader(raw.header);
-  return { header, sections: parsedSections(raw.sections, header) };
+  return {
+    header,
+    sections: parsedSections(raw.sections, header),
+    ...(raw.parent !== undefined ? { parent: parseWorld(raw.parent, depth + 1) } : {}),
+  };
 }
 
 function parsedHeader(value: unknown): SaveGameHeader {

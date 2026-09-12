@@ -26,6 +26,15 @@ async function writeStrings(dir: string, lang: string, body: string): Promise<vo
 }
 
 describe('resolveMapMeta', () => {
+  it('retains the campaign pair from readable custom-map metadata without a string table', async () => {
+    const dir = await mapFolder();
+    await writeFile(join(dir, 'misc.inc'), '[misc_maptype]\nmapcampaignid 0 91\n');
+    const cif = parseIniSections('[misc_maptype]\nmapcampaignid 3 7\n');
+    expect(await resolveMapMeta(fs, [dir], 'x/map.dat', cif)).toEqual({
+      campaign: { campaignId: 0, missionId: 91 },
+    });
+  });
+
   it('returns undefined when the folder carries no string table', async () => {
     const dir = await mapFolder();
     expect(await resolveMapMeta(fs, [dir], 'x/map.dat', undefined)).toBeUndefined();
@@ -62,7 +71,7 @@ describe('resolveMapMeta', () => {
       multiplayerOnly: true,
     });
     const bare = await mapFolder();
-    await writeFile(join(bare, 'misc.inc'), '[misc_maptype]\nmapcampaignid 0 5\n');
+    await writeFile(join(bare, 'misc.inc'), '[misc_maptype]\nmaptype 9\n');
     expect(await resolveMapMeta(fs, [bare], 'x/map.dat', undefined)).toBeUndefined();
     const cif = parseIniSections('[misc_maptype]\nmaptype 2\n');
     const typed = await mapFolder();

@@ -26,6 +26,7 @@ export async function mountGamePresentation(
   renderer: WorldRenderer,
   /** The map's `[misc_music]` code; null for a world that plays no music. */
   musicType: number | null,
+  signal?: AbortSignal,
 ): Promise<ReturnType<typeof createSoundDriver> | null> {
   const ir = await loadIr();
   const sound = createSoundDriver(ir);
@@ -34,7 +35,7 @@ export async function mountGamePresentation(
     sound.setEnabled(gameSoundEnabled(params, settings.soundEnabled));
     sound.setSfxVolume(settings.soundVolume);
     sound.setMusicVolume(settings.musicVolume);
-    startSound(sound);
+    startSound(sound, { ...(signal !== undefined ? { signal } : {}) });
     if (musicType !== null) void startMapMusic(sound, musicType);
   }
   if (assetSetFor(params) === 'own') return sound;

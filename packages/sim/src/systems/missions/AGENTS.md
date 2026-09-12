@@ -79,6 +79,13 @@ and placement. Resource-backed objects use the existing resource lifecycle. The 
 edits after change events and on restore, then updates retained landscape sprites and terrain buffers.
 Color changes do not invalidate collision caches.
 
+## Sub-missions
+
+A pass defers its sub-mission request until after the mission walk. End takes precedence over start;
+multiple starts use the last request. The app owns loading, the frozen parent save stack and its
+validation. `missionSubMission` stops the app frame at the emitting tick boundary, before another
+simulation step. A headless host must handle this event itself when running multiple worlds.
+
 ## Cost
 
 A pass costs the active missions and their goals. An evaluator that addresses mission object ids goes

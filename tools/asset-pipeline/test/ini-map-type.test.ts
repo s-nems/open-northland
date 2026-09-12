@@ -29,10 +29,22 @@ describe('extractMapTypes', () => {
       types: [4],
       multiplayerOnly: true,
     });
-    expect(extractMapTypes(parseIniSections('[misc_maptype]\nmapcampaignid 0 5\n'))).toEqual({
+    expect(extractMapTypes(parseIniSections('[misc_maptype]\nmaptype 9\n'))).toEqual({
       types: [],
       multiplayerOnly: false,
     });
     expect(extractMapTypes(parseIniSections('[misc_mapname]\nmapnamestringid 0\n'))).toBeUndefined();
+  });
+
+  it('reads the mapcampaignid pair and drops a malformed one', () => {
+    expect(extractMapTypes(parseIniSections('[misc_maptype]\nmapcampaignid 0 5\n'))).toEqual({
+      types: [],
+      multiplayerOnly: false,
+      campaign: { campaignId: 0, missionId: 5 },
+    });
+    expect(extractMapTypes(parseIniSections('[misc_maptype]\nmaptype 1\nmapcampaignid 0\n'))).toEqual({
+      types: [1],
+      multiplayerOnly: false,
+    });
   });
 });

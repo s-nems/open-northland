@@ -68,6 +68,11 @@ export class SoundDriver {
     this.engine = new WebAudioEngine(options);
   }
 
+  close(): void {
+    this.musicMap = null;
+    this.engine.close();
+  }
+
   /** Start/resume audio - call from inside a user gesture (first click/key) to satisfy autoplay policy. */
   resume(): Promise<void> {
     return this.engine.resume();

@@ -89,4 +89,5 @@ export type SaveGameSection = EntitiesSection | ComponentSection | RngSection | 
 export interface SaveGame {
   readonly header: SaveGameHeader;
   readonly sections: readonly SaveGameSection[];
+  readonly parent?: SaveGame;
 }

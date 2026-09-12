@@ -282,8 +282,8 @@ of each.
 | 29 | `AllowJob` | 1, 3, 4 | allow the job for the player's tribe and refresh its humans | sim | 5 |
 | 30 | `AllowHouse` | 1, 3, 15 | allow the house type for the player's tribe | sim | 11 |
 | 31 | `AddGoodsToHouses` | 14, 6, 7 | add the amount to every house with the id that has a slot for the good; the write is not capped at the slot | sim | 459 |
-| 32 | `StartSubMission` | 31, 22 | after the pass: save the game, load the campaign sub map, embed the save | sim | 46 |
-| 33 | `EndSubMission` | | after the pass: restore the embedded parent game | sim | 42 |
+| 32 | `StartSubMission` | 31, 22 | after the pass: resolve campaign/map pair, freeze and embed parent save, load a separate world | both | 46 |
+| 33 | `EndSubMission` | | after the pass: validate and restore the embedded parent world | both | 42 |
 | 34 | `ChangeVehiclesPlayerId` | 12, 1 | hand vehicles with the id to the player | sim | 28 |
 | 35 | `ChangeHousesPlayerId` | 14, 1 | hand houses with the id to the player | sim | 28 |
 | 36 | `SetImportHumanFlag` | 10, 32 | set or clear behaviour bit 7 on humans with the id | sim | 8 |
@@ -603,6 +603,28 @@ map at the current difficulty, and embeds the saved parent inside the new game; 
 restores the embedded parent and discards the temporary slot (reading). A sub-mission is therefore a
 separate world with the parent frozen, not a shared map. `AllowMap` and `CloseMap` toggle campaign map
 availability.
+
+Here the sim emits one transition after the evaluation pass. Later results and missions finish first;
+`EndSubMission` takes precedence over any start in the same pass. The app stops at that tick boundary,
+resolves the numeric pair through `MapMeta.campaign`, preflights the destination map and script, then
+hands over through the normal map entry without document navigation. Duplicate or missing pairs are
+refused rather than selecting a map arbitrarily. A failed preflight retains the paused current world
+and offers retry or an explicit choice to remain without completing the transition. A submap loaded directly has no parent for `EndSubMission` to restore.
+
+The pair comes from `[misc_maptype] mapcampaignid` in readable `misc.inc` or `map.ini`, falling back
+to decoded `map.cif`. Owned `CnModMaps/Boso_Przez_Swiat/mission.inc` starts pair `0 52190`;
+`Boso_Przez_Swiat_sub2/misc.inc` declares that pair. This is also a custom-map mechanism, even though
+the parameter is named campaign. Only maps present in generated content can be selected.
+
+Save format 3 embeds optional `parent` envelopes recursively. Each includes its own map identity,
+commands, RNG, fog and mission state. The app session retains that envelope on subsequent saves;
+restoring a single simulation does not itself manage the world stack. Returning discards the child,
+so neither inhabitants nor goods are merged into the parent. Parent simulation time stays frozen.
+The parser limits nesting to 16 parents, a defensive approximation. A fresh child reuses the parent's
+construction seed and URL session rules, an approximation; difficulty-specific campaign state is not
+implemented. The in-game load menu accepts another map in the same saved parent chain, with a destination
+preflight; unrelated map saves remain rejected. Automatic handovers resume play; ordinary user loads remain paused. The temporary
+IndexedDB handover records this distinction separately from the saved game.
 
 ## Multiplayer goals
 
