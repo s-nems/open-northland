@@ -74,19 +74,9 @@
     "props/fern-dark-01/fern-dark-01.png",
     "props/fern-dark-01/runtime.json"
   ],
-  "terrain/grass": [
-    "terrain/grass-base.png",
-    "terrain/map-bindings.json",
-    "terrain/soil.png"
-  ],
-  "terrain/gravel": [
-    "terrain/gravel.png"
-  ],
-  "terrain/meadow-ground": [
-    "terrain/quiet.png",
-    "terrain/dark.png",
-    "terrain/materials.json"
-  ],
+  "terrain/grass": ["terrain/grass-base.png", "terrain/map-bindings.json", "terrain/soil.png"],
+  "terrain/gravel": ["terrain/gravel.png"],
+  "terrain/meadow-ground": ["terrain/quiet.png", "terrain/dark.png", "terrain/materials.json"],
   "terrain/meadows": [
     "props/grass-olive-01/grass-olive-01.png",
     "props/grass-olive-01/runtime.json",
@@ -105,10 +95,7 @@
     "props/flowers-yellow/flowers-yellow.png",
     "props/flowers-yellow/runtime.json"
   ],
-  "terrain/mountains": [
-    "terrain/mountains.png",
-    "terrain/rock-materials.json"
-  ],
+  "terrain/mountains": ["terrain/mountains.png", "terrain/rock-materials.json"],
   "terrain/mushrooms": [
     "props/mushroom-agaric-01/mushroom-agaric-01.png",
     "props/mushroom-agaric-01/runtime.json",
@@ -259,10 +246,7 @@
     "props/pebbles-5/pebbles-5.png",
     "props/pebbles-5/runtime.json"
   ],
-  "terrain/sand": [
-    "terrain/sand.png",
-    "terrain/sand-materials.json"
-  ],
+  "terrain/sand": ["terrain/sand.png", "terrain/sand-materials.json"],
   "terrain/woodland": [
     "props/pine-a/pine-a.png",
     "props/pine-a/runtime.json",
