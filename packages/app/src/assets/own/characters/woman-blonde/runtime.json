@@ -9,6 +9,16 @@
   "anchorX": 48,
   "anchorY": 104,
   "scale": 0.5,
+  "shadow": {
+    "sprite": "shadow.png",
+    "width": 3960,
+    "height": 1120,
+    "cellWidth": 99,
+    "cellHeight": 35,
+    "columns": 40,
+    "anchorX": 28,
+    "anchorY": 30
+  },
   "smoothMotion": true,
   "filtering": "linear",
   "walkFrames": 16,

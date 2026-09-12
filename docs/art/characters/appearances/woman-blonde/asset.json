@@ -10,7 +10,8 @@
         "operation": "character",
         "source": "recipe.json",
         "id": "woman-blonde",
-        "name": "Blondynka"
+        "name": "Blondynka",
+        "shadow": "shadows/shadow.json"
       }
     },
     {
@@ -18,6 +19,13 @@
       "content": {
         "operation": "json",
         "value": {}
+      }
+    },
+    {
+      "path": "characters/woman-blonde/shadow.png",
+      "content": {
+        "operation": "copy",
+        "source": "shadows/atlas.png"
       }
     }
   ]

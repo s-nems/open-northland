@@ -15,6 +15,7 @@ Read [PIPELINE.md](PIPELINE.md) for reproduction and [MODULARITY.md](MODULARITY.
 - Preserve `walkCalibration` and `walkPlayback`: 0.8 cadence, shared E-facing stride reference. Do not compensate with sim speed or another directional depth correction.
 - Prefer Meshy-generated full-body work motion. Preserve torso, shoulder, hip and knee motion during cleanup; do not freeze the body around an animated tool arm.
 - Bind work through `atomicId`/`atomicClips`; all male variants must share the same clip layout. Gameplay events remain sim-owned.
+- Export every production animation together with its matching cast-shadow frames. `render pack` handles both; a character recipe must bind the shadow delivery.
 - Only approved appearances belong in runtime selection. Pixel or timing changes require review on playable maps.
 - Keep source models, matching textures, prompts, API receipts, recipes and selected strips. Remove obsolete comparisons and reproducible scratch output.
 - Keep documentation factual and current: dependencies, commands and constraints. Omit experiment histories, spending summaries and repeated explanations; link to the owning file.

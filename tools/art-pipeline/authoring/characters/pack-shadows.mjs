@@ -22,6 +22,11 @@ const cellWidth = 192,
   anchorX = 96,
   anchorY = 128;
 const inputs = {};
+for (const file of ['layout.json', 'recipe.json']) {
+  inputs[file] = createHash('sha256')
+    .update(await fs.readFile(path.join(run, file)))
+    .digest('hex');
+}
 const composites = [];
 let index = 0;
 const bounds = { left: anchorX, top: anchorY, right: anchorX, bottom: anchorY };

@@ -32,14 +32,15 @@ per-clip authoring review and does not itself authorize runtime publication.
 
 ## Cast shadows
 
-`run-character.py RUN MODEL shadows --clips walk,idle` renders only ground shadows using the
-same recipe poses, attachments, camera receipts and body layout. Use the appearance directory as
-MODEL for male hammer clips, as in the body export above. Then run:
+`render` automatically exports matching ground-shadow frames for character packages, using the same
+poses, attachments and camera options. `pack` packs both body strips and the complete shadow atlas.
+Use the normal `render pack` commands above when changing animations; there is no separate shadow
+follow-up task. Character package recipes require a shadow binding, and missing or stale shadow
+inputs reject the build.
 
-```sh
-node tools/art-pipeline/authoring/characters/pack-shadows.mjs "$RUN"
-npm run art -- build "characters/$ID"
-```
+For a lighting-only repair that preserves the existing body strips, use `shadows` for each model
+folder, followed by `pack-shadows` on the runner. These are maintenance stages, not the normal
+animation workflow. Body layout is recorded when packing, after any new clip layout is established.
 
 The shared [lighting profile](../lighting.json) fixes direction, length and darkness to the accepted
 building shadow. The exporter converts it for the character camera; do not copy building world-space

@@ -3,7 +3,13 @@ import { recipeSchema } from '../src/recipe.js';
 
 const atlas = {
   path: 'characters/test/atlas.png',
-  content: { operation: 'character', source: 'recipe.json', id: 'test', name: 'Test' },
+  content: {
+    operation: 'character',
+    source: 'recipe.json',
+    id: 'test',
+    name: 'Test',
+    shadow: 'shadows/shadow.json',
+  },
 };
 const manifest = {
   path: 'characters/test/runtime.json',
@@ -17,6 +23,10 @@ const recipe = {
 };
 
 describe('generated character outputs', () => {
+  it('rejects a character export without paired shadows', () => {
+    const { shadow: _shadow, ...content } = atlas.content;
+    expect(() => recipeSchema.parse({ ...recipe, outputs: [{ ...atlas, content }, manifest] })).toThrow();
+  });
   it('requires the atlas location used by the runtime loader', () => {
     expect(() => recipeSchema.parse({ ...recipe, outputs: [atlas, manifest] })).not.toThrow();
     expect(() =>
