@@ -50,6 +50,7 @@ export const output = z
       z
         .object({
           operation: z.literal('character'),
+          shadow: relativePath.optional(),
           source: relativePath,
           id: assetId,
           name: z.string().min(1),

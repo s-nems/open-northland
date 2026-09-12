@@ -30,6 +30,30 @@ The woman uses her own `model/` for both clips; see her [package](appearances/wo
 Review and publication use the shared [art pipeline](../PIPELINE.md); the character board remains a
 per-clip authoring review and does not itself authorize runtime publication.
 
+## Cast shadows
+
+`run-character.py RUN MODEL shadows --clips walk,idle` renders only ground shadows using the
+same recipe poses, attachments, camera receipts and body layout. Use the appearance directory as
+MODEL for male hammer clips, as in the body export above. Then run:
+
+```sh
+node tools/art-pipeline/authoring/characters/pack-shadows.mjs "$RUN"
+npm run art -- build "characters/$ID"
+```
+
+Each character operation in `asset.json` references `shadows/shadow.json`; a copy operation delivers
+its atlas as `shadow.png`. The shadow has independent cell dimensions and foot anchors but shares
+the body's frame ids and timing. Packing trims a common envelope without rescaling the silhouette.
+The current projection uses evaluated geometry on flat ground with fixed directional daylight;
+softness, opacity and the flat receiver are artistic approximations.
+
+The retained receipt hashes models, poses, attachments, camera/layout files and selected body strips.
+After changing an animation or its geometry, re-export its shadows and repack the complete atlas.
+Changing `recipe.json` invalidates all clips for that appearance; re-export every clip before packing.
+A stale receipt fails the candidate build. Concurrent animation branches must regenerate shadows
+against their accepted sources before publication. Inspect the same clip and direction in the gallery
+and on the real map, including contact at both feet and the carried tool.
+
 ## Body and painting
 
 1. Generate front, left, back and right views at equal scale, in a neutral A-pose with empty hands.

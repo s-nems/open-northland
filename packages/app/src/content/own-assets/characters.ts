@@ -5,7 +5,12 @@ import { diag } from '../../diag/index.js';
 import { readStoredSettings } from '../../view/settings-store.js';
 import type { ContentIr } from '../ir/rows.js';
 import { YOUNG_CHARACTER_BY_JOB } from '../settler-gfx/index.js';
-import { ownCharacterAtlas, ownCharacterBinding, ownCharacterManifest } from './character-manifest.js';
+import {
+  ownCharacterAtlas,
+  ownCharacterBinding,
+  ownCharacterManifest,
+  ownCharacterShadowAtlas,
+} from './character-manifest.js';
 import { requestedOwnAppearance, selectOwnCharacters } from './character-selection.js';
 import { characterContactShadow } from './character-shadow.js';
 
@@ -13,7 +18,7 @@ const manifests = import.meta.glob('../../assets/own/characters/*/runtime.json',
   eager: true,
   import: 'default',
 });
-const images = import.meta.glob<string>('../../assets/own/characters/*/atlas.png', {
+const images = import.meta.glob<string>('../../assets/own/characters/*/*.png', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -39,12 +44,27 @@ export async function loadOwnCharacters(
           throw new Error('Character atlas dimensions mismatch');
         texture.source.scaleMode = smoothing ? (manifest.filtering ?? 'nearest') : 'nearest';
         const atlas = ownCharacterAtlas(manifest);
+        let shadow: ReturnType<typeof characterContactShadow> | undefined;
+        if (manifest.shadow) {
+          const shadowUrl = images[path.replace('runtime.json', manifest.shadow.sprite)];
+          if (!shadowUrl) throw new Error('Missing character shadow atlas');
+          const shadowTexture = await Assets.load<Texture>(shadowUrl);
+          if (
+            shadowTexture.width !== manifest.shadow.width ||
+            shadowTexture.height !== manifest.shadow.height
+          )
+            throw new Error('Character shadow dimensions mismatch');
+          shadowTexture.source.scaleMode = texture.source.scaleMode;
+          const shadowAtlas = ownCharacterShadowAtlas(manifest);
+          if (!shadowAtlas) throw new Error('Missing character shadow layout');
+          shadow = { source: shadowTexture.source, atlas: shadowAtlas };
+        } else if (manifest.smoothMotion === true) shadow = characterContactShadow(atlas);
         return {
           id: manifest.id,
           body: {
             source: texture.source,
             atlas,
-            ...(manifest.smoothMotion === true ? { shadow: characterContactShadow(atlas) } : {}),
+            ...(shadow ? { shadow } : {}),
           },
           binding: ownCharacterBinding(manifest),
           scale: manifest.scale,

@@ -71,6 +71,7 @@ export async function validateDelivery(directory: string, complete = false) {
       claim(identities, `character:${m.id}`);
       if (folder !== `characters/${m.id}`) throw new Error('Character folder and id disagree');
       await inspect(`${folder}/atlas.png`, m.width, m.height, true);
+      if (m.shadow) await inspect(`${folder}/${m.shadow.sprite}`, m.shadow.width, m.shadow.height, true);
     } else throw new Error(`Unknown manifest: ${file}`);
   }
   for (const name of ['selection.json', 'job-selection.json']) {

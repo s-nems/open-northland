@@ -1,5 +1,18 @@
 import { z } from 'zod';
 
+export const ownCharacterShadow = z
+  .object({
+    sprite: z.literal('shadow.png'),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    cellWidth: z.number().int().positive(),
+    cellHeight: z.number().int().positive(),
+    columns: z.number().int().positive(),
+    anchorX: z.number().finite(),
+    anchorY: z.number().finite(),
+  })
+  .strict();
+
 export const ownCharacterManifest = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
@@ -12,6 +25,7 @@ export const ownCharacterManifest = z
     anchorX: z.number().finite(),
     anchorY: z.number().finite(),
     scale: z.number().positive(),
+    shadow: ownCharacterShadow.optional(),
     smoothMotion: z.boolean().optional(),
     filtering: z.enum(['nearest', 'linear']).optional(),
     walkFrames: z.number().int().positive(),
@@ -42,6 +56,17 @@ export const ownCharacterManifest = z
       ctx.addIssue({ code: 'custom', message: 'Character clip coverage disagrees with atlas' });
     if (m.anchorX < 0 || m.anchorX > m.cellWidth || m.anchorY < 0 || m.anchorY > m.cellHeight)
       ctx.addIssue({ code: 'custom', message: 'Character anchor outside cell' });
+    if (m.shadow) {
+      const s = m.shadow;
+      if (s.columns * s.cellWidth !== s.width || Math.ceil(count / s.columns) * s.cellHeight !== s.height)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['shadow'],
+          message: 'Shadow coverage disagrees with character clips',
+        });
+      if (s.anchorX < 0 || s.anchorX > s.cellWidth || s.anchorY < 0 || s.anchorY > s.cellHeight)
+        ctx.addIssue({ code: 'custom', path: ['shadow'], message: 'Shadow anchor outside cell' });
+    }
     const seen = new Set<number>();
     for (const [index, clip] of (m.atomicClips ?? []).entries()) {
       if (seen.has(clip.atomicId))

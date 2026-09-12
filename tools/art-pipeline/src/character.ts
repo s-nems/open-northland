@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { ownCharacterManifest } from '@open-northland/art-contracts';
 import sharp, { type OverlayOptions } from 'sharp';
 import { z } from 'zod';
+import { characterShadow } from './character-shadow.js';
 
 const clipSchema = z.object({
   name: z.string().regex(/^[a-z0-9-]+$/),
@@ -20,7 +21,7 @@ const characterRecipe = z.object({
   walkPlayback: z.string().optional(),
   render: z.object({ size: z.number().positive().optional() }).optional(),
 });
-export async function characterInputs(directory: string, source: string) {
+export async function characterInputs(directory: string, source: string, shadowSource?: string) {
   const raw = characterRecipe.parse(JSON.parse(await readFile(resolve(directory, source), 'utf8')));
   const inputs = [resolve(directory, source)];
   for (const clip of raw.clips)
@@ -36,9 +37,19 @@ export async function characterInputs(directory: string, source: string) {
       .parse(JSON.parse(await readFile(calibration, 'utf8')));
     inputs.push(resolve(dirname(calibration), measurement.source));
   }
+  if (shadowSource) {
+    const shadow = await characterShadow(directory, shadowSource);
+    inputs.push(resolve(directory, shadowSource), ...shadow.inputs);
+  }
   return inputs;
 }
-export async function packCharacter(directory: string, source: string, id: string, name: string) {
+export async function packCharacter(
+  directory: string,
+  source: string,
+  id: string,
+  name: string,
+  shadowSource?: string,
+) {
   const recipe = characterRecipe.parse(JSON.parse(await readFile(resolve(directory, source), 'utf8')));
   const walk = recipe.clips.find((c) => c.name === 'walk'),
     idle = recipe.clips.find((c) => c.name === 'idle');
@@ -117,7 +128,9 @@ export async function packCharacter(directory: string, source: string, id: strin
   }
   const width = columns * cellWidth,
     height = Math.ceil(index / columns) * cellHeight;
+  const shadow = shadowSource ? await characterShadow(directory, shadowSource) : undefined;
   const manifest = ownCharacterManifest.parse({
+    ...(shadow ? { shadow: shadow.manifest } : {}),
     id,
     name,
     width,

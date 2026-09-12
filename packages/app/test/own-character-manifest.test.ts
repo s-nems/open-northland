@@ -3,6 +3,7 @@ import {
   ownCharacterAtlas,
   ownCharacterBinding,
   ownCharacterManifest,
+  ownCharacterShadowAtlas,
 } from '../src/content/own-assets/character-manifest.js';
 
 const manifest = ownCharacterManifest.parse({
@@ -105,4 +106,31 @@ describe('own character atlas', () => {
   it('rejects a truncated atlas', () => {
     expect(() => ownCharacterAtlas({ ...manifest, height: 112 })).toThrow('coverage');
   });
+});
+
+it('keeps independent shadow geometry synchronized with body frame ids', () => {
+  const shadow = {
+    sprite: 'shadow.png',
+    width: 1920,
+    height: 1920,
+    cellWidth: 80,
+    cellHeight: 80,
+    columns: 24,
+    anchorX: 20,
+    anchorY: 32,
+  };
+  const m = ownCharacterManifest.parse({ ...manifest, shadow });
+  const atlas = ownCharacterShadowAtlas(m);
+  expect(atlas && [...atlas.frames.keys()]).toEqual([...ownCharacterAtlas(m).frames.keys()]);
+  expect(atlas?.frames.get(575)).toEqual({
+    x: 1840,
+    y: 1840,
+    width: 80,
+    height: 80,
+    offsetX: -20,
+    offsetY: -32,
+  });
+  expect(ownCharacterShadowAtlas(manifest)).toBeUndefined();
+  expect(ownCharacterManifest.safeParse({ ...m, shadow: { ...shadow, height: 1840 } }).success).toBe(false);
+  expect(ownCharacterManifest.safeParse({ ...m, shadow: { ...shadow, anchorX: -1 } }).success).toBe(false);
 });

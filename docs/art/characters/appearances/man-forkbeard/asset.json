@@ -10,7 +10,8 @@
         "operation": "character",
         "source": "recipe.json",
         "id": "man-forkbeard",
-        "name": "D\u0105b"
+        "name": "D\u0105b",
+        "shadow": "shadows/shadow.json"
       }
     },
     {
@@ -18,6 +19,13 @@
       "content": {
         "operation": "json",
         "value": {}
+      }
+    },
+    {
+      "path": "characters/man-forkbeard/shadow.png",
+      "content": {
+        "operation": "copy",
+        "source": "shadows/atlas.png"
       }
     }
   ]

@@ -27,6 +27,7 @@ def parse_args():
     p.add_argument("--body-proportions", help="Body scale profile applied after neutral head assembly")
     p.add_argument("--equipment", help="textured equipment attachment JSON")
     p.add_argument("--limb-texture", help="matching rigged base paint for exposed arm and hand regions")
+    p.add_argument("--shadow-only", action="store_true", help="Render the evaluated cast silhouette on flat ground")
     return p.parse_args(argv)
 
 
@@ -115,11 +116,17 @@ def main():
     if args.limb_texture:
         from limb_paint import restore_limb_paint
         restore_limb_paint(meshes, args.limb_texture)
+    shadow = None
+    if args.shadow_only:
+        from ground_shadow import GroundShadow
+        shadow = GroundShadow()
     for i, f in enumerate(frames):
         pose(i)
         if i == 0 and args.body_proportions:
             from body_proportions import apply_body_proportions
             apply_body_proportions(args.body_proportions, FACING_YAW[args.facing])
+        if shadow is not None:
+            shadow.update()
         render_to(os.path.join(args.out, f"f{i:02d}.png"))
         print(f"RENDER frame {i} at {f:.2f}")
 

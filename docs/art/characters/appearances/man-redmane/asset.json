@@ -10,7 +10,8 @@
         "operation": "character",
         "source": "recipe.json",
         "id": "man-redmane",
-        "name": "Ruda grzywa"
+        "name": "Ruda grzywa",
+        "shadow": "shadows/shadow.json"
       }
     },
     {
@@ -18,6 +19,13 @@
       "content": {
         "operation": "json",
         "value": {}
+      }
+    },
+    {
+      "path": "characters/man-redmane/shadow.png",
+      "content": {
+        "operation": "copy",
+        "source": "shadows/atlas.png"
       }
     }
   ]

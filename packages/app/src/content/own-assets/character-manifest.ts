@@ -24,6 +24,11 @@ export function ownCharacterAtlas(m: OwnCharacterManifest): SpriteAtlas {
   return { width: m.width, height: m.height, frames };
 }
 
+export function ownCharacterShadowAtlas(m: OwnCharacterManifest): SpriteAtlas | undefined {
+  if (!m.shadow) return undefined;
+  return ownCharacterAtlas({ ...m, ...m.shadow });
+}
+
 export function ownCharacterBinding(m: OwnCharacterManifest): SettlerStateBinding {
   const byAtomic: Record<number, SpriteFrameRef> = {};
   let start = 8 * (m.walkFrames + m.idleFrames);
