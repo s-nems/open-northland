@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import {
   anyResourceNear,
   canonicalResources,
@@ -32,6 +33,7 @@ function nodeAt(sim: Simulation, hx: number, hy: number) {
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));
   sim.world.add(e, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   return e;
 }
 
@@ -109,6 +111,7 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     sim.world.remove(a, Resource); // the component leaves; the entity (and its Position) stay
     expect(canonicalResources(sim.world)).toEqual([b]);
     sim.world.add(a, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, a, anchorOnlyFootprint());
     expect(canonicalResources(sim.world)).toEqual([a, b]); // sorted re-entry, not an append
     expect(resourcesNearNode(sim.world, 3, 3, 0)).toEqual([a]);
     expect(sim.world.verifyCaches()).toEqual([]);
@@ -157,6 +160,7 @@ describe('resourcesNearNode (the flag-bound scan index)', () => {
     sim.world.remove(a, Resource);
     expect(resourcesAtNode(sim.world, 9, 9)).toEqual([b]);
     sim.world.add(a, Resource, { goodType: 1, remaining: 3, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, a, anchorOnlyFootprint());
     expect(resourcesAtNode(sim.world, 9, 9)).toEqual([a, b]); // sorted re-entry, not an append
   });
 

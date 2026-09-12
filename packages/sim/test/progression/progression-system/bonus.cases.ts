@@ -3,6 +3,7 @@ import { CurrentAtomic, Felling, Position, Resource, Settler } from '../../../sr
 import { ZERO } from '../../../src/core/fixed.js';
 import { fx, ONE, Simulation } from '../../../src/index.js';
 import {
+  anchorOnlyFootprint,
   atomicSystem,
   EXPERIENCE_MASTERY_REPEATS,
   experienceBonus,
@@ -14,6 +15,7 @@ import {
   operatorProductionBonus,
   SCOUT_VISION_BONUS_MAX_NODES,
   scoutVisionBonusNodes,
+  stampResourceFootprintData,
   WEAPON_MAIN_TYPE,
   withFightDamageBonus,
 } from '../../../src/systems/index.js';
@@ -91,6 +93,7 @@ describe('work-credit wiring - an experienced gatherer fells in fewer swings, no
     const tree = sim.world.create();
     sim.world.add(tree, Position, { x: fx.fromInt(1), y: fx.fromInt(0) });
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 4, harvestAtomic: 24 });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
     sim.world.add(tree, Felling, { chopsLeft: 3 });
     sim.world.add(e, CurrentAtomic, {
       atomicId: 24,

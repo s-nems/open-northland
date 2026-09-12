@@ -27,9 +27,8 @@ import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.
  *  - **BUILDING_ZONE** - existing building RESERVED zones. Rejects a building candidate's RESERVED zone,
  *    so two buildings' reserved rings may not overlap (the zone-vs-zone spacing `canPlaceAnchor` names as
  *    an approximation); still open ground for a work flag.
- *  - **RESOURCE_ANCHOR** - a footprinted resource's own cell, which its walk body need not cover. Blocks a
- *    work flag only; a footprint-less resource contributes OBSTACLE instead (the pre-footprint same-tile
- *    rule), which already covers its anchor for both rules.
+ *  - **RESOURCE_ANCHOR** - a resource's own cell, which its walk body need not cover. Blocks a work flag
+ *    only.
  *  - **MARKER** - a delivery flag's cell. Blocks another marker, never a building.
  */
 const OBSTACLE = 0;
@@ -59,11 +58,7 @@ export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisi
   const p = world.tryGet(e, Position);
   if (p === undefined) return;
   const { hx, hy } = nodeOfPosition(p.x, p.y);
-  const fp = world.tryGet(e, ResourceFootprint);
-  if (fp === undefined) {
-    visit(hx, hy, OBSTACLE); // a footprint-less resource keeps the same-tile rule
-    return;
-  }
+  const fp = world.get(e, ResourceFootprint);
   visit(hx, hy, RESOURCE_ANCHOR);
   for (const c of fp.walk) visit(hx + footprintCellDx(hy, c), hy + c.dy, OBSTACLE);
   for (const c of fp.build) visit(hx + footprintCellDx(hy, c), hy + c.dy, EXCLUSION);

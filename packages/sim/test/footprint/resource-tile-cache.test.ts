@@ -4,6 +4,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { resourceAtTile } from '../../src/systems/footprint/resource-tile-cache.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -26,6 +27,7 @@ function resourceAt(sim: Simulation, hx: number, hy: number, good: number): Enti
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(hx, hy));
   sim.world.add(e, Resource, { goodType: good, remaining: 3, harvestAtomic: ATOMIC });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   return e;
 }
 
@@ -58,6 +60,7 @@ describe('resourceAtTile (the ground-drop deposit join index)', () => {
     const e = resourceAt(sim, 9, 9, WOOD);
     expect(resourceAtTile(sim.world, 9, 9, WOOD)).toBe(e);
     sim.world.add(e, Resource, { goodType: STONE, remaining: 3, harvestAtomic: ATOMIC });
+    stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
     expect(resourceAtTile(sim.world, 9, 9, WOOD)).toBeNull();
     expect(resourceAtTile(sim.world, 9, 9, STONE)).toBe(e);
     expect(sim.world.verifyCaches()).toEqual([]);

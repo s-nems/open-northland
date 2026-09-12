@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
 import { fx, Simulation } from '../../src/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 
 /**
@@ -24,6 +25,7 @@ function bareResource(sim: Simulation, remaining: number) {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: 0, y: 0 });
   sim.world.add(e, Resource, { goodType: 1, remaining, harvestAtomic: 24 });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   return e;
 }
 

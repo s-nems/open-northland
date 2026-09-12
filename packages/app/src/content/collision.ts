@@ -52,29 +52,11 @@ export interface CollisionIrView {
     | undefined;
 }
 
-/**
- * Fallback ground split for an `ir.json` generated before the `trianglePatternTypes` lane existed: a
- * pinned approximation of that table's real flags.
- */
-const FALLBACK_GROUND_CLASS: ReadonlyMap<number, number> = new Map([
-  [0, TERRAIN_IMPASSABLE], // border - no table row even in the real data
-  [1, TERRAIN_IMPASSABLE], // water
-  [3, TERRAIN_MARGIN], // mountain faces - humancanwalkon 1, no housecanbebuildon
-  [4, TERRAIN_BARREN], // sand - walk + build, no biocanplanton
-  [5, TERRAIN_IMPASSABLE], // swamp - neither flag
-  [6, TERRAIN_IMPASSABLE], // black - the void filler outside authored ground
-  [7, TERRAIN_MARGIN], // snow - walkable, not buildable
-  [8, TERRAIN_BARREN], // beach - like sand
-  [9, TERRAIN_BARREN], // desert stone - like sand
-]);
-
 /** logicType → terrain class from the extracted `trianglepatterntypes.cif` flags. */
 function groundClassTable(ir: CollisionIrView): ReadonlyMap<number, number> {
-  const rows = ir.trianglePatternTypes;
-  if (rows === undefined || rows.length === 0) return FALLBACK_GROUND_CLASS;
   const table = new Map<number, number>();
   table.set(0, TERRAIN_IMPASSABLE); // border: the one logicType with no row (named approximation)
-  for (const t of rows) {
+  for (const t of ir.trianglePatternTypes ?? []) {
     if (t.humanCanWalkOn !== true) table.set(t.type, TERRAIN_IMPASSABLE);
     else if (t.houseCanBeBuildOn !== true) table.set(t.type, TERRAIN_MARGIN);
     // Walk + build but no `biocanplanton`: everything works there except the plough.

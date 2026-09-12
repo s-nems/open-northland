@@ -24,7 +24,12 @@ import {
   RESOURCE_ANCHOR,
   resourceBlockerCells,
 } from '../../src/systems/footprint/placement/blockers.js';
-import { setWorkFlag, workFlagPlacementBlocks } from '../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  setWorkFlag,
+  stampResourceFootprintData,
+  workFlagPlacementBlocks,
+} from '../../src/systems/index.js';
 import { ctxOf } from '../fixtures/context.js';
 import { HQ, HUT, mappedSim, terrainOf, VIKING } from './building-placement/support.js';
 
@@ -245,6 +250,7 @@ describe('workFlagPlacementBlocks incremental state', () => {
     const tree = sim.world.create();
     sim.world.add(tree, Position, positionOfNode(SPOT.x, SPOT.y));
     sim.world.add(tree, Resource, { goodType: WOOD, remaining: 3, harvestAtomic: HARVEST_ATOMIC });
+    stampResourceFootprintData(sim.world, tree, anchorOnlyFootprint());
 
     const ignoring = workFlagPlacementBlocks(sim.world, sim.content, terrain, flag);
     expect(ignoring.has(terrain.nodeAt(SPOT.x, SPOT.y))).toBe(true);

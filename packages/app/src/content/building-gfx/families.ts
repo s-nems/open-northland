@@ -31,10 +31,10 @@ export const BUILDING_SCALE = 1;
 
 /**
  * Fallback per-building-type bob ids for the viking buildings sharing the {@link HOUSE_ATLAS}, used when
- * `content/ir.json` is absent or predates the `buildingBobs` lane. Keyed by building `typeId` (the
- * `[GfxHouse]` `LogicType`) → its `GfxBobId`, transcribed from the mod's `budynki12/houses/houses.ini`
- * `[GfxHouse]` records (`LogicTribeType 1`, `house01`). The extracted table reproduces these five exactly
- * and additionally recovers the home and bakery growth-stage typeIds this constant drops.
+ * `content/ir.json` is absent. Keyed by building `typeId` (the `[GfxHouse]` `LogicType`) → its
+ * `GfxBobId`, transcribed from the mod's `budynki12/houses/houses.ini` `[GfxHouse]` records
+ * (`LogicTribeType 1`, `house01`). The extracted table reproduces these five exactly and additionally
+ * recovers the home and bakery growth-stage typeIds this constant drops.
  */
 export const VIKING_HOUSE01_BOBS: Readonly<Record<number, number>> = {
   6: 41, // viking home

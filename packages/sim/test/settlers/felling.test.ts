@@ -13,7 +13,12 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { CORE_INVARIANTS, checkInvariants, fx, Simulation } from '../../src/index.js';
-import { atomicSystem, plannerSystem } from '../../src/systems/index.js';
+import {
+  anchorOnlyFootprint,
+  atomicSystem,
+  plannerSystem,
+  stampResourceFootprintData,
+} from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -51,6 +56,7 @@ function placeFellableTree(sim: Simulation, x: number, y: number): Entity {
   const e = sim.world.create();
   sim.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(e, Resource, { goodType: WOOD, remaining: TREE_WOOD_YIELD, harvestAtomic: HARVEST_ATOMIC });
+  stampResourceFootprintData(sim.world, e, anchorOnlyFootprint());
   sim.world.add(e, Felling, { chopsLeft: CHOPS_TO_FELL });
   return e;
 }
@@ -255,7 +261,7 @@ describe('felling - the planner fell-vs-collect split', () => {
   });
 
   it('with no trunk in reach, a collector standing on a tree chops it (starts the harvest atomic)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
     const tree = placeFellableTree(sim, 3, 0);
     const cutter = makeWoodcutter(sim, 3, 0);
 
@@ -272,7 +278,7 @@ describe('felling - end-to-end through the real schedule', () => {
   it('a woodcutter fells a tree and delivers exactly its yield to the store; goods are conserved', () => {
     // Strip: woodcutter@0, a fellable tree@3, a warehouse store@4 (a real typed store - a delivery sink
     // must be a Building/Vehicle, never a bare loose pile).
-    const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(6, 1) });
+    const sim = new Simulation({ seed: 3, content: testContent(), map: grassMap(10, 1) });
     makeWoodcutter(sim, 0, 0);
     placeFellableTree(sim, 3, 0);
     const store = sim.world.create();

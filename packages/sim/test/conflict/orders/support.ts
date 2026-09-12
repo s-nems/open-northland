@@ -5,6 +5,7 @@ export { grassMap };
 import { addPerson, Owner, Position, Resource } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, Simulation } from '../../../src/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 
 /**
@@ -58,5 +59,6 @@ export function woodAt(s: Simulation, x: number, y: number, remaining = 5): Enti
   const e = s.world.create();
   s.world.add(e, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   s.world.add(e, Resource, { goodType: WOOD, remaining, harvestAtomic: HARVEST_ATOMIC });
+  stampResourceFootprintData(s.world, e, anchorOnlyFootprint());
   return e;
 }

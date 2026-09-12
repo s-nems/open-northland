@@ -61,8 +61,11 @@ report without removing them.
 
 `parseContentSet(raw)` performs Zod validation and cross-reference checks. `IR_VERSION` records the
 current schema version, and the manifest gate rejects any other stamp - older or newer - before the
-rest of the document is validated. The gate covers the `parseContentSet` seam only; the app's raw
-graphics/atlas view of the same document is a deliberate unchecked cast that falls back per lane.
+rest of the document is validated. Any schema change bumps it, a new lane included. The served
+`content/ir.json` goes through `parseGeneratedContentSet`, which also rejects a document missing any
+lane: generated content is regenerated, never read with a lane defaulted, and the lane defaults serve
+synthetic and test sets only. Both checks live on the parse seam; the app's raw graphics/atlas view of
+the same document is a deliberate unchecked cast that falls back per lane.
 
 ## Where content lives in the source tree
 

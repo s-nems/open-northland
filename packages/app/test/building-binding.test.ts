@@ -88,8 +88,8 @@ describe('buildingBinding', () => {
   });
 
   it('backs the base tribe with the transcribed constant, and only the base tribe', () => {
-    // The constant is the fallback for an IR that is absent or predates the lane; another tribe's
-    // types must never inherit viking bobs from it.
+    // The constant is the fallback for an absent IR; another tribe's types must never inherit viking
+    // bobs from it.
     const bare = buildingBinding(null, [VIKING, SARACEN], []);
     expect(bare.byTribe?.[VIKING]?.byType).toEqual(VIKING_HOUSE01_BOBS);
     expect(bare.byTribe?.[SARACEN]?.byType).toEqual({});

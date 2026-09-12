@@ -1,4 +1,4 @@
-import { IR_VERSION } from '@open-northland/data';
+import { type ContentSet, IR_VERSION, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { loadRealContent } from '../src/content/real-content.js';
 
@@ -9,14 +9,20 @@ import { loadRealContent } from '../src/content/real-content.js';
  * in the real-content suite (`test/content/real-content-loader.test.ts`).
  */
 
-/** Serves one minimal IR document, differing only in its manifest version stamp. */
-function irFetchStamped(version: number): typeof fetch {
-  const body = JSON.stringify({
-    manifest: { version, generatedFrom: { game: 'test' } },
+/** An empty IR document carrying every lane, as the pipeline writes it. */
+function generatedIr(): ContentSet {
+  return parseContentSet({
+    manifest: { version: IR_VERSION, generatedFrom: { game: 'test' } },
     goods: [],
     jobs: [],
     buildings: [],
   });
+}
+
+/** Serves the generated document under `version`. */
+function irFetchStamped(version: number): typeof fetch {
+  const generated = generatedIr();
+  const body = JSON.stringify({ ...generated, manifest: { ...generated.manifest, version } });
   return () => Promise.resolve(new Response(body));
 }
 
@@ -37,5 +43,11 @@ describe('loadRealContent', () => {
 
   it('rejects that same document under another stamp instead of degrading to null', async () => {
     await expect(loadRealContent(irFetchStamped(IR_VERSION + 1))).rejects.toThrow('IR version mismatch');
+  });
+
+  it('rejects a document another build generated without a lane instead of defaulting it', async () => {
+    const { tribes: _tribes, ...older } = generatedIr();
+    const fetchOlder: typeof fetch = () => Promise.resolve(new Response(JSON.stringify(older)));
+    await expect(loadRealContent(fetchOlder)).rejects.toThrow('generated content lacks tribes');
   });
 });

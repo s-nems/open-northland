@@ -7,6 +7,7 @@ export { grassMap };
 import { addPerson, Building, Position, Resource, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, type Simulation } from '../../../src/index.js';
+import { anchorOnlyFootprint, stampResourceFootprintData } from '../../../src/systems/index.js';
 
 export const WOOD = 1;
 const WOODCUTTER = 1;
@@ -38,6 +39,7 @@ export function woodAt(sim: Simulation, x: number, y: number, remaining = 5): En
   const entity = sim.world.create();
   sim.world.add(entity, Position, { x: fx.fromInt(x), y: fx.fromInt(y) });
   sim.world.add(entity, Resource, { goodType: WOOD, remaining, harvestAtomic: HARVEST_ATOMIC });
+  stampResourceFootprintData(sim.world, entity, anchorOnlyFootprint());
   return entity;
 }
 
