@@ -1,7 +1,7 @@
 import { type BuildingType, type ContentSet, lastByTypeId } from '@open-northland/data';
-import type { BuildingHighlightItem, ElevationField } from '@open-northland/render';
+import type { BuildingHighlightItem } from '@open-northland/render';
 import type { Entity, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
-import { clampTile, nodeBounds, pickTopAt, worldToTile } from '../picking.js';
+import { clampTile, nodeBounds, pickTopAt, type Tile } from '../picking.js';
 import { memoBySnapshot } from '../projections/index.js';
 import {
   assignableJobForBuilding,
@@ -15,14 +15,16 @@ import type { UnitOrderController } from './orders.js';
 import type { UnitTargets } from './unit-targets.js';
 
 /**
- * Arming one mode replaces whatever was armed; a click of any kind, a right-click, Esc, or a selection
- * change resolves or cancels it. Modes that name one settler carry it, because the selection may change
- * before the click lands.
+ * Arming one mode replaces whatever was armed; a click of any kind, Esc, or a selection change resolves
+ * or cancels it. The map overview is the one surface that can leave a mode armed: it cannot name the
+ * unit or building a picked-target mode wants. Modes that name one settler carry it, because the
+ * selection may change before the click lands.
  */
 export type PickMode =
   | { readonly kind: BuildingPickKind; readonly settler: number }
   | { readonly kind: ScoutPickKind; readonly scout: number }
-  | { readonly kind: GroundPickKind };
+  | { readonly kind: SpotPickKind }
+  | { readonly kind: StrikePickKind };
 
 /** The orders one scout resolves by clicking a spot on the map. */
 type ScoutPickKind = 'signpost' | 'explore';
@@ -30,14 +32,15 @@ type ScoutPickKind = 'signpost' | 'explore';
 /** The orders that resolve by clicking one of the player's own buildings. */
 export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learning-place';
 
-/** The orders that resolve against the world under the cursor and apply to the whole selection. */
-type GroundPickKind =
-  | 'destination'
-  | 'work-area'
-  | 'attack-move'
-  | 'attack-settler'
-  | 'attack-building'
-  | 'attack-animal';
+/** The selection-wide orders that resolve against a spot on the ground. */
+type SpotPickKind = 'destination' | 'work-area' | 'attack-move';
+
+/** The selection-wide orders that resolve against the unit or building drawn under the cursor. */
+type StrikePickKind = 'attack-settler' | 'attack-building' | 'attack-animal';
+
+/** A mode whose target is a spot, so any surface that names one - the world view or the map overview -
+ *  can resolve it. */
+type SpotMode = Extract<PickMode, { readonly kind: SpotPickKind | ScoutPickKind }>;
 
 interface BuildingPick {
   readonly highlight: (
@@ -96,24 +99,37 @@ const BUILDING_PICKS: Readonly<Record<BuildingPickKind, BuildingPick>> = {
 const isBuildingPick = (mode: PickMode): mode is Extract<PickMode, { readonly settler: number }> =>
   'settler' in mode;
 
-/** Modes whose target is a point or a unit rather than a lit building, so the cursor carries the prompt. */
-const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<GroundPickKind | ScoutPickKind>([
+const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | ScoutPickKind>([
   'destination',
   'work-area',
   'attack-move',
-  'attack-settler',
-  'attack-building',
-  'attack-animal',
+  'signpost',
   'explore',
 ]);
+
+const isSpotMode = (mode: PickMode): mode is SpotMode => SPOT_MODES.has(mode.kind);
+
+/** Modes whose target is a point or a unit rather than a lit building, so the cursor carries the prompt. */
+const CROSSHAIR_MODES: ReadonlySet<PickMode['kind']> = new Set<SpotPickKind | StrikePickKind | ScoutPickKind>(
+  [
+    'destination',
+    'work-area',
+    'attack-move',
+    'attack-settler',
+    'attack-building',
+    'attack-animal',
+    'explore',
+  ],
+);
 
 export interface PickModeDeps {
   readonly snapshot: () => WorldSnapshot;
   readonly targets: UnitTargets;
   readonly content: ContentSet;
   readonly mapSize: { readonly width: number; readonly height: number };
-  readonly elevation?: ElevationField;
   readonly toWorld: (clientX: number, clientY: number) => { x: number; y: number };
+  /** The half-cell node a click on the world view names. */
+  readonly nodeAt: (clientX: number, clientY: number) => Tile;
   readonly enqueue: (command: PlayerCommand) => void;
   /** The order controller owns every selection-wide order, so a walk fans a group out through the same
    *  formation spread whether it was armed here or right-clicked. Read at click time: it is built after
@@ -131,6 +147,10 @@ export interface PickModeController {
   /** True when a mode was armed: the press resolved or cancelled it, so the caller must not fall through
    *  to selection or an order. */
   handleMouseDown(event: MouseEvent): boolean;
+  /** A press on the map overview, which names the node `target` and nothing drawn there. A spot-target
+   *  mode resolves; one that needs a picked unit or building stays armed, so scrolling the overview to
+   *  find that target does not call it off. True when the armed mode took the press. */
+  handleOverviewPress(button: number, target: Tile): boolean;
   highlight(): readonly BuildingHighlightItem[] | null;
 }
 
@@ -153,23 +173,67 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     if (order !== null) deps.enqueue(order);
   };
 
-  // Named deviation from the observed original, which erects with a right-click on lit ground: this
-  // places with a left-click and dims blocked ground, matching build placement.
-  const resolveSignpost = (event: MouseEvent, scout: number): void => {
-    deps.enqueue({ kind: 'placeSignpost', entity: scout as Entity, ...clickedNode(event) });
-  };
-
-  /** The explore order centres the scout's sweep on the clicked spot, as the original does. */
-  const resolveExplore = (event: MouseEvent, scout: number): void => {
-    deps.enqueue({ kind: 'exploreArea', entity: scout as Entity, ...clickedNode(event) });
-  };
-
-  /** The clicked point as an on-map half-cell node. */
-  const clickedNode = (event: MouseEvent): { x: number; y: number } => {
+  const resolveSpot = (mode: SpotMode, named: Tile): void => {
     const { width, height } = nodeBounds(deps.mapSize);
-    const w = deps.toWorld(event.clientX, event.clientY);
-    const target = clampTile(worldToTile(w.x, w.y, deps.elevation), width, height);
-    return { x: target.col, y: target.row };
+    const target = clampTile(named, width, height);
+    switch (mode.kind) {
+      case 'destination':
+        deps.orders().issueMoveTo(target);
+        return;
+      case 'work-area':
+        deps.orders().issueSetWorkFlag(target);
+        return;
+      case 'attack-move':
+        deps.orders().issueAttackMove(target);
+        return;
+      // Named deviation from the observed original, which erects with a right-click on lit ground: this
+      // places with a left-click and dims blocked ground, matching build placement.
+      case 'signpost':
+        deps.enqueue({
+          kind: 'placeSignpost',
+          entity: mode.scout as Entity,
+          x: target.col,
+          y: target.row,
+        });
+        return;
+      // The explore order centres the scout's sweep on the named spot, as the original does.
+      case 'explore':
+        deps.enqueue({
+          kind: 'exploreArea',
+          entity: mode.scout as Entity,
+          x: target.col,
+          y: target.row,
+        });
+        return;
+      default: {
+        const unreachable: never = mode;
+        throw new Error(`unhandled spot pick mode: ${JSON.stringify(unreachable)}`);
+      }
+    }
+  };
+
+  const resolvePicked = (mode: Exclude<PickMode, SpotMode>, event: MouseEvent): void => {
+    switch (mode.kind) {
+      case 'workplace':
+      case 'home':
+      case 'building-site':
+      case 'learning-place':
+        resolveBuilding(event, mode.kind, mode.settler);
+        return;
+      case 'attack-settler':
+        deps.orders().issueAttackTarget(event, 'settler');
+        return;
+      case 'attack-building':
+        deps.orders().issueAttackTarget(event, 'building');
+        return;
+      case 'attack-animal':
+        deps.orders().issueAttackAnimal(event);
+        return;
+      default: {
+        const unreachable: never = mode;
+        throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);
+      }
+    }
   };
 
   const handleMouseDown = (event: MouseEvent): boolean => {
@@ -179,42 +243,22 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     // this mode was armed for.
     cancel();
     if (event.button !== 0) return true; // any other button just calls the mode off
-    switch (mode.kind) {
-      case 'workplace':
-      case 'home':
-      case 'building-site':
-      case 'learning-place':
-        resolveBuilding(event, mode.kind, mode.settler);
-        return true;
-      case 'signpost':
-        resolveSignpost(event, mode.scout);
-        return true;
-      case 'explore':
-        resolveExplore(event, mode.scout);
-        return true;
-      case 'destination':
-        deps.orders().issueMoveTo(event);
-        return true;
-      case 'work-area':
-        deps.orders().issueSetWorkFlag(event);
-        return true;
-      case 'attack-move':
-        deps.orders().issueAttackMove(event);
-        return true;
-      case 'attack-settler':
-        deps.orders().issueAttackTarget(event, 'settler');
-        return true;
-      case 'attack-building':
-        deps.orders().issueAttackTarget(event, 'building');
-        return true;
-      case 'attack-animal':
-        deps.orders().issueAttackAnimal(event);
-        return true;
-      default: {
-        const unreachable: never = mode;
-        throw new Error(`unhandled pick mode: ${JSON.stringify(unreachable)}`);
-      }
+    if (isSpotMode(mode)) resolveSpot(mode, deps.nodeAt(event.clientX, event.clientY));
+    else resolvePicked(mode, event);
+    return true;
+  };
+
+  const handleOverviewPress = (button: number, target: Tile): boolean => {
+    const mode = pickMode;
+    if (mode === null) return false;
+    if (button !== 0) {
+      cancel(); // any other button just calls the mode off
+      return true;
     }
+    if (!isSpotMode(mode)) return false;
+    cancel();
+    resolveSpot(mode, target);
+    return true;
   };
 
   /** Read every frame, so the O(entities) pass is memoized on everything it reads: the snapshot instance
@@ -235,6 +279,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     isArmed: () => pickMode !== null,
     signpostActive: () => pickMode?.kind === 'signpost',
     handleMouseDown,
+    handleOverviewPress,
     highlight: () => highlightFor(deps.snapshot()),
   };
 }
