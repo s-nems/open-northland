@@ -4,7 +4,7 @@ import { button, element, galleryControls } from './controls.js';
 import { galleryMapDestination } from './locations.js';
 import { createGalleryPreview } from './preview.js';
 import { gallerySelection, tabOf } from './selection.js';
-import { type GalleryTab, galleryQuery, readGalleryState } from './state.js';
+import { GALLERY_COMPARISON_LIMIT, type GalleryTab, galleryQuery, readGalleryState } from './state.js';
 import { thumbnail } from './thumbnail.js';
 import './gallery.css';
 
@@ -184,7 +184,7 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
     const pin = button(pinned ? 'Unpin comparison' : 'Pin for comparison', () => {
       state.compare = pinned
         ? state.compare.filter((id) => id !== selected.id)
-        : [...state.compare, selected.id].slice(-3);
+        : [...state.compare, selected.id].slice(-GALLERY_COMPARISON_LIMIT);
       render();
     });
     actions.append(
