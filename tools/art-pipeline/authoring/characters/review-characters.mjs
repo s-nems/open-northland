@@ -19,7 +19,7 @@ for (const row of manifest.rows) {
       throw new Error('Invalid strip or duration: ' + cell.file);
     if (
       cell.frameDurations &&
-      (cell.frameDurations.length !== cell.frames ||
+      (cell.frameDurations.length !== (cell.frameOrder?.length ?? cell.frames) ||
         cell.frameDurations.some((duration) => !(duration > 0)) ||
         Math.abs(cell.frameDurations.reduce((sum, duration) => sum + duration, 0) - cell.duration) > 1e-6)
     )
@@ -66,7 +66,7 @@ controls.position.oninput=()=>{playing=false;scrub=Number(controls.position.valu
 function tick(now){if(last&&playing)time+=(now-last)/1000;last=now;const zoom=Number(controls.zoom.value);const ground=backgrounds.get(controls.background.value);
 for(const c of cells){const w=144,h=112;if(c.canvas.width!==w*zoom){c.canvas.width=w*zoom;c.canvas.height=h*zoom;}const ctx=c.canvas.getContext('2d');ctx.setTransform(zoom,0,0,zoom,0,0);ctx.imageSmoothingEnabled=false;ctx.fillStyle='#6e6e6e';ctx.fillRect(0,0,w,h);
 if(ground?.complete&&ground.naturalWidth){const pattern=ctx.createPattern(ground,'repeat');ctx.fillStyle=pattern;ctx.fillRect(0,0,w,h);}
-const phase=scrub??((time%c.duration)/c.duration);let frame=Math.min(c.frames-1,Math.floor(phase*c.frames));if(c.frameDurations){let end=0;frame=c.frames-1;for(let i=0;i<c.frames;i++){end+=c.frameDurations[i];if(phase*c.duration<end){frame=i;break;}}}if(c.img.complete&&c.img.naturalWidth)ctx.drawImage(c.img,frame*192,0,192,144,24,20,96,72);}
+const phase=scrub??((time%c.duration)/c.duration);let frame=Math.min(c.frames-1,Math.floor(phase*c.frames));if(c.frameDurations){let end=0;frame=c.frameDurations.length-1;for(let i=0;i<c.frameDurations.length;i++){end+=c.frameDurations[i];if(phase*c.duration<end){frame=i;break;}}}frame=c.frameOrder?.[frame]??frame;if(c.img.complete&&c.img.naturalWidth)ctx.drawImage(c.img,frame*192,0,192,144,24,20,96,72);}
 requestAnimationFrame(tick);}requestAnimationFrame(tick);
 </script></html>`,
 );

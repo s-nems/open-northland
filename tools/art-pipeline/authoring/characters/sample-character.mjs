@@ -29,7 +29,7 @@ for (const clip of recipe.clips) {
     throw new Error('Invalid source frame selection');
   if (
     clip.frameDurations &&
-    (clip.frameDurations.length !== frames ||
+    (clip.frameDurations.length !== (clip.frameOrder?.length ?? frames) ||
       clip.frameDurations.some((d) => !(d > 0)) ||
       Math.abs(clip.frameDurations.reduce((a, b) => a + b, 0) - clip.duration) > 1e-6)
   )

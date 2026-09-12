@@ -39,7 +39,7 @@ def main():
                 digest = hashlib.sha256(sprite.read_bytes()).hexdigest()
                 if old.get('sha256') and old['sha256'] != digest:
                     status = 'review'
-                if old.get('duration') != clip['duration'] or old.get('frameDurations') != clip.get('frameDurations'):
+                if old.get('duration') != clip['duration'] or old.get('frameDurations') != clip.get('frameDurations') or old.get('frameOrder') != clip.get('frameOrder'):
                     status = 'review'
                 if status not in ('approved', 'review'):
                     raise ValueError(f'Invalid review status: {sprite}')
@@ -47,6 +47,7 @@ def main():
                     'file': str(sprite.relative_to(root)), 'frames': frames,
                     'duration': clip['duration'], 'status': status, 'sha256': digest,
                     **({'frameDurations':clip['frameDurations']} if clip.get('frameDurations') else {}),
+                    **({'frameOrder':clip['frameOrder']} if clip.get('frameOrder') else {}),
                 }
                 total += 1
     catalog['actions'] = list(actions.values())

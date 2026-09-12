@@ -24,6 +24,31 @@ const manifest = ownCharacterManifest.parse({
   sourceBasis: 'Synthetic fixture',
 });
 describe('own character atlas', () => {
+  it('binds repeated idle steps without multiplying stored body or shadow frames', () => {
+    const ordered = ownCharacterManifest.parse({
+      ...manifest,
+      height: 1120,
+      idleFrames: 2,
+      idleFrameOrder: [0, 1, 0],
+      idleFrameDurations: [2, 0.5, 2.5],
+      shadow: {
+        sprite: 'shadow.png',
+        width: 120,
+        height: 150,
+        cellWidth: 10,
+        cellHeight: 15,
+        columns: 12,
+        anchorX: 5,
+        anchorY: 12,
+      },
+    });
+    expect(ownCharacterBinding(ordered).idle).toMatchObject({
+      frameOrder: [0, 1, 0],
+      frameDurations: [24, 6, 30],
+    });
+    expect(ownCharacterAtlas(ordered).frames.size).toBe(112);
+    expect(ownCharacterShadowAtlas(ordered)?.frames.size).toBe(112);
+  });
   it('binds construction without replacing walking, waiting or unrelated actions', () => {
     const work = ownCharacterManifest.parse({
       ...manifest,

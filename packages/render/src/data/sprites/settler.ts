@@ -52,10 +52,10 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
     const total = ref.frameDurations.reduce((sum, duration) => sum + duration, 0);
     let remaining = wrap(clock, total);
     for (const [index, duration] of ref.frameDurations.entries()) {
-      if (remaining < duration) return ref.start + dir * ref.stride + index;
+      if (remaining < duration) return ref.start + dir * ref.stride + (ref.frameOrder?.[index] ?? index);
       remaining -= duration;
     }
-    return ref.start + dir * ref.stride;
+    return ref.start + dir * ref.stride + (ref.frameOrder?.[0] ?? 0);
   }
   const cycle = ref.frames ?? ref.stride;
   if (cycle <= 0) return ref.start + dir * ref.stride;

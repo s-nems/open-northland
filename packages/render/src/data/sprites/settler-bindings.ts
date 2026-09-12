@@ -10,6 +10,8 @@ export interface DirectionalAnim {
   readonly travelPerCycle?: readonly number[];
   /** Positive hold durations in tick units, one per stored pose; their sum is the loop duration. */
   readonly frameDurations?: readonly number[];
+  /** Stored pose indices in playback order; repeated entries reuse the same texture cell. */
+  readonly frameOrder?: readonly number[];
   /** Bob id of direction 0, frame 0 - the `[bobseq]` `seq` record's start value. */
   readonly start: number;
   /** Facing directions laid out back-to-back. */

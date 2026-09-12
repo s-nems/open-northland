@@ -32,6 +32,7 @@ export const ownCharacterManifest = z
     idleFrames: z.number().int().positive(),
     idleDuration: z.number().positive(),
     idleFrameDurations: z.array(z.number().positive()).optional(),
+    idleFrameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
     walkDuration: z.number().positive(),
     walkTravelPerCycle: z.array(z.number().positive()).length(8).optional(),
     atomicClips: z
@@ -87,9 +88,24 @@ export const ownCharacterManifest = z
           message: 'Pose holds must cover the atomic clip and sum to its duration',
         });
     }
+    if (m.idleFrameOrder?.some((frame) => frame >= m.idleFrames))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['idleFrameOrder'],
+        message: 'Idle frame index outside stored poses',
+      });
+    if (m.idleFrameOrder && !m.idleFrameDurations)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['idleFrameDurations'],
+        message: 'Ordered idle requires explicit step durations',
+      });
     if (m.idleFrameDurations === undefined) return;
     const total = m.idleFrameDurations.reduce((sum, duration) => sum + duration, 0);
-    if (m.idleFrameDurations.length !== m.idleFrames || Math.abs(total - m.idleDuration) > 0.000001)
+    if (
+      m.idleFrameDurations.length !== (m.idleFrameOrder?.length ?? m.idleFrames) ||
+      Math.abs(total - m.idleDuration) > 0.000001
+    )
       ctx.addIssue({
         code: 'custom',
         path: ['idleFrameDurations'],
