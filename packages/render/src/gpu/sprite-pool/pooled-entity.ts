@@ -3,6 +3,7 @@ import type { SelectionEllipse } from '../../data/sprites/atlas.js';
 import type { SpriteKind } from '../../data/sprites/index.js';
 import type { PalettedSprite } from '../paletted-sprite/index.js';
 import type { PlayerColourLut } from '../sprite-sheet.js';
+import type { AtomicPoseTrack } from './atomic-pose.js';
 import { type MotionTrack, snapDistanceForKind } from './motion.js';
 
 /** The world-space (pre-camera) axis-aligned box of an entity's drawn sprite this frame. */
@@ -47,6 +48,7 @@ interface PooledEntityBase {
   reveal: number | undefined;
   selectionEllipse: { -readonly [K in keyof SelectionEllipse]: SelectionEllipse[K] } | undefined;
   readonly motion: MotionTrack;
+  readonly atomicPose: AtomicPoseTrack;
 }
 
 /** A settler drawing team-coloured {@link PalettedSprite} meshes through its own LUT. */
@@ -77,6 +79,7 @@ export function createPooled(kind: SpriteKind, palette: PlayerColourLut | undefi
     boundsFrame: -1,
     reveal: undefined,
     selectionEllipse: undefined,
+    atomicPose: { tick: -1, item: undefined },
     motion: {
       tick: -1,
       x: 0,

@@ -1,11 +1,16 @@
 export type GalleryTab = 'animations' | 'buildings' | 'terrain';
+export const GALLERY_ZOOMS = [1, 2, 4, 8] as const;
+export type GalleryZoom = (typeof GALLERY_ZOOMS)[number];
+export function galleryZoom(value: string | null): GalleryZoom {
+  return GALLERY_ZOOMS.find((zoom) => String(zoom) === value) ?? 2;
+}
 export interface GalleryState {
   tab: GalleryTab;
   asset: string;
   compare: string[];
   q: string;
   terrainKind: 'all' | 'material' | 'prop';
-  zoom: 1 | 2;
+  zoom: GalleryZoom;
   direction: number;
   clip: string;
   playing: boolean;
@@ -35,7 +40,7 @@ export function readGalleryState(params: URLSearchParams): GalleryState {
         : params.get('terrainKind') === 'material'
           ? 'material'
           : 'all',
-    zoom: params.get('zoom') === '1' ? 1 : 2,
+    zoom: galleryZoom(params.get('zoom')),
     direction: Math.floor(bounded(params.get('direction'), 5, 0, 7)),
     clip: params.get('clip') ?? 'walk',
     playing: params.get('pause') !== '1' && !params.has('frame'),

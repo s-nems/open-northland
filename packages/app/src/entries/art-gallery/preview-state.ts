@@ -1,7 +1,8 @@
 import type { Container } from 'pixi.js';
+import type { GalleryZoom } from './state.js';
 
 export interface GalleryPreviewState {
-  readonly zoom: 1 | 2;
+  readonly zoom: GalleryZoom;
   readonly direction: number;
   readonly clip: string;
   readonly playing: boolean;
