@@ -6,8 +6,14 @@ Map-scripts epic, stage 10 of 10. Fresh maps execute their scripts automatically
 remains a diagnostic override. Enabled scripted maps use reveal fog unless overridden, track deaths
 over authored seats minus `playerneverdies`, and
 leave victory to script results. Saved markers, weather and mission execution history restore.
-`?scene=mission-map` exercises the untouched `wielkie_sprzatanie` opening, reinforcements and save/load.
+`?scene=mission-map` opens the untouched `wielkie_sprzatanie` script. Its headless acceptance covers
+the opening, Frank contact, reinforcements, a subsequent story encounter and save/load continuation.
 This source declares a single-player free map, not a campaign; its ending remains unaccepted.
+
+Browser checks confirm Frank contact opens page 511 and pauses play. After restore, the state hash
+matches and the briefing arrows navigate between pages 500 and 511. The authored contact makes
+mission 82 visible but supplies no description; the goal tab correctly retains the main victory
+objective. This contact does not establish presentation of a newly described objective.
 
 ## Verified blockers
 
@@ -33,8 +39,8 @@ This source declares a single-player free map, not a campaign; its ending remain
 - Observe tribute notification behavior before adding a new cue; coordinate with the messages work.
 - Check terrain fidelity: FX removal memberships, palette multiplication, `SetLandscape` size and
   final flag. Chest imagery does not implement interaction or payload.
-- Verify faction discovery opens the authored briefing, pauses play and reveals the next goals in
-  the browser. Saved briefing history must remain navigable after restore.
+- Verify a story transition with a newly described visible objective in the browser, beyond the
+  already checked Frank contact and restored briefing navigation.
 
 Vehicles, sub-missions, chests, guides, wall gates, campaign unlocks, FMV and the trade ledger remain
 outside this ticket's implementation scope. Their absence is a dependency, not an acceptance waiver.
