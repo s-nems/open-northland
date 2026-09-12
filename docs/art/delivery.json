@@ -5,13 +5,30 @@
     "buildings/farm/frame-time.png",
     "buildings/farm/frame.png",
     "buildings/farm/runtime.json",
+    "buildings/farm/shadow.png",
     "buildings/farm/site-base.png",
     "buildings/farm/site-time.png"
   ],
-  "buildings/headquarters": ["buildings/headquarters/final-muted.png", "buildings/headquarters/runtime.json"],
-  "buildings/house-1": ["buildings/house-1/house-painted-runtime.png", "buildings/house-1/runtime.json"],
-  "buildings/house-2": ["buildings/house-2/house-painted-runtime.png", "buildings/house-2/runtime.json"],
-  "buildings/stonemason": ["buildings/stonemason/final.png", "buildings/stonemason/runtime.json"],
+  "buildings/headquarters": [
+    "buildings/headquarters/final-muted.png",
+    "buildings/headquarters/runtime.json",
+    "buildings/headquarters/shadow.png"
+  ],
+  "buildings/house-1": [
+    "buildings/house-1/house-painted-runtime.png",
+    "buildings/house-1/runtime.json",
+    "buildings/house-1/shadow.png"
+  ],
+  "buildings/house-2": [
+    "buildings/house-2/house-painted-runtime.png",
+    "buildings/house-2/runtime.json",
+    "buildings/house-2/shadow.png"
+  ],
+  "buildings/stonemason": [
+    "buildings/stonemason/final.png",
+    "buildings/stonemason/runtime.json",
+    "buildings/stonemason/shadow.png"
+  ],
   "characters/man-forkbeard": ["characters/man-forkbeard/atlas.png", "characters/man-forkbeard/runtime.json"],
   "characters/man-ravenknot": ["characters/man-ravenknot/atlas.png", "characters/man-ravenknot/runtime.json"],
   "characters/man-redmane": ["characters/man-redmane/atlas.png", "characters/man-redmane/runtime.json"],

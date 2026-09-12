@@ -39,6 +39,39 @@ function sources(): GalleryCatalogSources {
 }
 
 describe('own-art gallery catalog', () => {
+  it('resolves the optional shadow image beside its building and rejects missing delivery pixels', () => {
+    const input = sources();
+    const buildings = {
+      'buildings/home/runtime.json': {
+        tribeId: 1,
+        typeId: 2,
+        layer: 'home',
+        sprite: 'body.png',
+        width: 20,
+        height: 20,
+        scale: 0.5,
+        entrancePixel: { x: 10, y: 18 },
+        doorNode: { x: 0, y: 0 },
+        sourceBasis: 'Synthetic shadow fixture',
+        shadow: { sprite: 'shadow.png', width: 30, height: 25, entrancePixel: { x: 15, y: 18 } },
+      },
+    };
+    const images = {
+      ...input.images,
+      'buildings/home/body.png': '/body.png',
+      'buildings/home/shadow.png': '/shadow.png',
+    };
+    expect(buildGalleryCatalog({ ...input, buildings, images }).buildings[0]?.shadowImage).toBe(
+      '/shadow.png',
+    );
+    expect(() =>
+      buildGalleryCatalog({
+        ...input,
+        buildings,
+        images: { ...input.images, 'buildings/home/body.png': '/body.png' },
+      }),
+    ).toThrow('Gallery image missing');
+  });
   it('discovers a new appearance and preserves runtime frame geometry and nonuniform timing', () => {
     const catalog = buildGalleryCatalog(sources());
     const look = catalog.characters[0];

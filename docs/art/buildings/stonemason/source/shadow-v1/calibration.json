@@ -1,0 +1,9 @@
+{
+  "model": "../geometry/workshop.blend",
+  "doorHeight": 1.94,
+  "doorGround": [-1.815, -2.19, 0],
+  "doorPixels": 239,
+  "imageSize": [1920, 1152],
+  "bodyPadding": [128, 0],
+  "basis": "Retained own geometry, manually registered to the painted doorway. Geometry-to-paintover registration and daylight are artistic approximations."
+}

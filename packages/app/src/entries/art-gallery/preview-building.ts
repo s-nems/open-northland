@@ -12,6 +12,9 @@ export async function buildingPreview(
 ): Promise<PreviewPanel> {
   const manifest = entry.manifest;
   const files = new Map([[manifest.sprite, entry.image]]);
+  if (manifest.shadow && entry.shadowImage) {
+    files.set(manifest.shadow.sprite, entry.shadowImage);
+  }
   manifest.construction?.forEach((stage, i) => {
     const paths = entry.construction[i];
     if (paths) {
@@ -24,21 +27,35 @@ export async function buildingPreview(
   const binding = ownBuildingBindings(0, [manifest]);
   const cache = new TextureCache();
   const container = new Container();
+  const shadow = manifest.shadow;
+  const dx = shadow ? (manifest.entrancePixel.x - shadow.entrancePixel.x) * entry.scale : 0;
+  const dy = shadow ? (manifest.entrancePixel.y - shadow.entrancePixel.y) * entry.scale : 0;
+  const left = Math.min(0, dx);
+  const top = Math.min(0, dy);
+  const shadowLayer = layers[manifest.layer]?.shadow;
+  const shadowFrame = shadowLayer?.atlas.frames.get(0);
+  const shadowSprite =
+    shadowLayer && shadowFrame ? new Sprite(cache.get(shadowLayer.source, shadowFrame)) : undefined;
+  if (shadowSprite) {
+    shadowSprite.scale.set(entry.scale);
+    shadowSprite.position.set(20 - left + dx, 25 - top + dy);
+    container.addChild(shadowSprite);
+  }
   const sprites = Object.fromEntries(
     Object.keys(layers).map((key) => {
       const sprite = new Sprite();
       sprite.scale.set(entry.scale);
-      sprite.position.set(20, 25);
+      sprite.position.set(20 - left, 25 - top);
       container.addChild(sprite);
       return [key, sprite];
     }),
   );
-  const width = manifest.width * entry.scale + 40;
-  const height = manifest.height * entry.scale + 50;
+  const width = Math.max(manifest.width * entry.scale, dx + (shadow?.width ?? 0) * entry.scale) - left + 40;
+  const height = Math.max(manifest.height * entry.scale, dy + (shadow?.height ?? 0) * entry.scale) - top + 50;
   if (person) {
     person.container.position.set(
-      20 + manifest.entrancePixel.x * entry.scale - person.width / 2,
-      25 + manifest.entrancePixel.y * entry.scale - person.height + 15,
+      20 - left + manifest.entrancePixel.x * entry.scale - person.width / 2,
+      25 - top + manifest.entrancePixel.y * entry.scale - person.height + 15,
     );
     container.addChild(person.container);
   }
@@ -52,6 +69,7 @@ export async function buildingPreview(
       person?.update({ ...state, clip: 'idle', frame: 0 }, seconds);
       if (state.progress === lastProgress) return;
       lastProgress = state.progress;
+      if (shadowSprite) shadowSprite.visible = state.progress >= 100 || manifest.construction === undefined;
       stamp++;
       for (const sprite of Object.values(sprites)) sprite.visible = false;
       const draws =

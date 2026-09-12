@@ -57,6 +57,11 @@ Check exported file identity, then review the real map with `assets=own&zoom=2`:
 entrance alignment, walking actors, depth sorting, elevation and readability at lower zoom.
 Store captures containing original UI in ignored `content/`.
 
+## Shadows
+
+The optional finished-building shadow layer and shared geometry renderer are documented in
+[tools/SHADOWS.md](tools/SHADOWS.md).
+
 ## Construction
 
 The [farm](farm/README.md) has a static site base, timber/equipment layer and final painting,

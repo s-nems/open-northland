@@ -51,6 +51,9 @@ export async function validateDelivery(directory: string, complete = false) {
       )
         throw new Error('Entrance outside building image');
       await inspect(`${folder}/${m.sprite}`, m.width, m.height, true);
+      if (m.shadow) {
+        await inspect(`${folder}/${m.shadow.sprite}`, m.shadow.width, m.shadow.height, true);
+      }
       for (const [i, s] of (m.construction ?? []).entries()) {
         claim(layers, `${m.layer}-construction-${i}`);
         await inspect(`${folder}/${s.sprite}`, m.width, m.height, true);

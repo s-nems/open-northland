@@ -40,6 +40,7 @@ The [shared schema](../../packages/art-contracts/src/building.ts) defines the fi
 | `doorNode` | Existing footprint door offset in half-cell nodes |
 | `sourceBasis` | Compatibility evidence and artistic calibration basis |
 | `construction` | Optional reveal layers and progress windows on the same canvas |
+| `shadow` | Optional finished-building shadow PNG with its own width, height and entrance anchor; inherits body scale and stays outside selection/hit testing |
 | `selectionEllipse` | Optional authored selection geometry in source pixels |
 
 Invalid manifests or duplicate identities/layers reject the pack. Missing or unloadable building

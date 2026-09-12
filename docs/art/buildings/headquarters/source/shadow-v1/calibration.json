@@ -1,0 +1,12 @@
+{
+  "model": "../../calibrated.blend",
+  "referenceDoorPixels": 150,
+  "referenceEntrance": [721, 849],
+  "groundZ": -0.36886200309,
+  "doorPixels": 150,
+  "modelRotationDegrees": -45,
+  "lightRotationDegrees": -45,
+  "imageSize": [1920, 1152],
+  "bodyPadding": [128, 0],
+  "basis": "Retained own geometry, manually registered to the painted doorway. Geometry-to-paintover registration and daylight are artistic approximations."
+}

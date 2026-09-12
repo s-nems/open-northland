@@ -56,6 +56,18 @@ describe('own construction assets', () => {
 import { mapZoomParam } from '../src/view/camera/map-zoom.js';
 
 describe('own building registry', () => {
+  it('includes shadow in delivery files and rejects unsafe paths or detached anchors', () => {
+    const shadow = { sprite: 'shadow.png', width: 300, height: 240, entrancePixel: { x: 150, y: 200 } };
+    expect(ownBuildingFiles(ownBuildingManifest.parse({ ...building, shadow }))).toEqual([
+      'test.png',
+      'shadow.png',
+    ]);
+    for (const patch of [{ sprite: '../shadow.png' }, { width: 0 }, { entrancePixel: { x: 301, y: 200 } }]) {
+      expect(ownBuildingManifest.safeParse({ ...building, shadow: { ...shadow, ...patch } }).success).toBe(
+        false,
+      );
+    }
+  });
   it('places the authored entrance on the half-cell door point', () => {
     const frame = ownBuildingAtlas(building).frames.get(0);
     expect(frame).toBeDefined();

@@ -50,7 +50,14 @@
       "path": "buildings/farm/runtime.json",
       "content": {
         "operation": "copy",
-        "source": "source/weathered-v1/runtime.json"
+        "source": "source/shadow-v1/runtime.json"
+      }
+    },
+    {
+      "path": "buildings/farm/shadow.png",
+      "content": {
+        "operation": "copy",
+        "source": "source/shadow-v1/shadow.png"
       }
     }
   ]

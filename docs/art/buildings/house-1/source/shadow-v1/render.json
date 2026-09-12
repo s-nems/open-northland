@@ -1,0 +1,11 @@
+{
+  "basis": "Retained exact House 1 shadow accepted in the shadow-only comparison. Shared renderer preserves its lighting and camera setup.",
+  "blenderVersion": "5.2.1 LTS",
+  "sunIncomingDirection": [5, 8, -14],
+  "sunAngularDiameterDegrees": 9,
+  "opacity": 0.48,
+  "samples": 32,
+  "calibrationSha256": "804d7abe00a8781678c71d38adb994d10f46f6daaafe1986ae079525a3e295e0",
+  "shadowSha256": "b4b9660fa8b135145b16ddb6261925796452bd8d553af387c42aba9471ed9526",
+  "modelSha256": "0a3089d635f0a9ff97743a5c06582d0643d4121c5dcee7436feecf0193aa628f"
+}

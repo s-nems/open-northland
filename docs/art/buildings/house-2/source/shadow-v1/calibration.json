@@ -1,0 +1,10 @@
+{
+  "model": "../geometry/house-finished.blend",
+  "doorPixels": 195,
+  "imageSize": [1408, 1152],
+  "bodyPadding": [128, 0],
+  "basis": "Retained own geometry, manually registered to the painted doorway. Geometry-to-paintover registration and daylight are artistic approximations.",
+  "referenceDoorPixels": 288,
+  "referenceEntrance": [426, 1332],
+  "groundZ": 0
+}

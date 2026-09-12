@@ -1,28 +1,28 @@
 {
   "buildings/farm": {
-    "digest": "89e4677f7ccf2f7dff6a77d470810f07292cfc787d862a073d64976f17b52a89",
-    "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "digest": "3f60d7efb5d682ca11b3f330cdd731bb69d9b39808ab2c6c90180b0b1a0783be",
+    "reviewer": "user",
+    "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
   },
   "buildings/headquarters": {
-    "digest": "249c105e6e89187773da27f3402f759303c07069a6ef5d919e9e4fd1aa8c51b6",
-    "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "digest": "3175c5111b6a8a0272b504b095e6352ccdc8d94cdc4968b443913dc293441545",
+    "reviewer": "user",
+    "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
   },
   "buildings/house-1": {
-    "digest": "18bf31ceb13821de2b0ad84fd00ad37aed6553ba4ccd6458d8ede5209c8264e2",
-    "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "digest": "e8511611de4dce86c3f06a21b8416ccea3efae01b0c776e072fb25c2f90aaeda",
+    "reviewer": "user",
+    "basis": "User visually accepted the shadow-only House 1 treatment, rejected soil, and explicitly requested integration and merge. Retains the exact accepted shadow pixels; body artwork and scale unchanged."
   },
   "buildings/house-2": {
-    "digest": "5c5b8f1a49feaab1612dfc7479dca679b3261a083c094c3d8dfb24d907d17236",
-    "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "digest": "80dd17c2fb1a36e90bc2b13b322df780697c2d342cb69875d301012291fff08a",
+    "reviewer": "user",
+    "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
   },
   "buildings/stonemason": {
-    "digest": "cc9aedef937e32a356bd565c18fe5bde983695a9f12b000221378ea39f2bbbd8",
-    "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "digest": "ef954a460f297d9e1aa455cc49f16f99d4f44a357b83f79fb8df7aebd48838d9",
+    "reviewer": "user",
+    "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
   },
   "characters/man-forkbeard": {
     "digest": "0169e1d5b36154aeebacec68b2019095d93f2c2b67c3be3e4b9d600f2ac0f873",
