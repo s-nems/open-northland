@@ -31,6 +31,7 @@ describe('parseStoredSettings', () => {
       renderScale: 0.75,
       uiScaleFactor: 1.25,
       postFxEnabled: false,
+      spriteSmoothing: false,
       fpsLimit: 30,
       soundEnabled: false,
       soundVolume: 0.35,
@@ -53,6 +54,13 @@ describe('parseStoredSettings', () => {
     expect(parsed.fpsLimit).toBeNull();
     expect(parsed.soundEnabled).toBe(defaultSettings().soundEnabled);
     expect(parsed.keyBindings).toEqual(DEFAULT_KEY_BINDINGS);
+  });
+
+  it('persists explicit sprite smoothing choices and defaults older settings to on', () => {
+    expect(parseStoredSettings('{}').spriteSmoothing).toBe(true);
+    expect(parseStoredSettings('{"spriteSmoothing":false}').spriteSmoothing).toBe(false);
+    expect(parseStoredSettings('{"spriteSmoothing":true}').spriteSmoothing).toBe(true);
+    expect(parseStoredSettings('{"spriteSmoothing":"off"}').spriteSmoothing).toBe(true);
   });
 
   it('clamps an out-of-range stored factor instead of dropping it', () => {

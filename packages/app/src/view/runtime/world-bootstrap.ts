@@ -45,6 +45,7 @@ export function createWorldRenderer(
   return new WorldRenderer(app, {
     sheet,
     viewSmoothing: true,
+    spriteSmoothing: readStoredSettings().spriteSmoothing,
     postFx: postFxParam(params) ?? readStoredSettings().postFxEnabled,
     ...(playerColourOf !== undefined ? { playerColourOf } : {}),
   });

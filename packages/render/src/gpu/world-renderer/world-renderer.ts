@@ -92,7 +92,7 @@ export class WorldRenderer {
       ...this.marks.slots,
     });
     app.stage.addChild(this.worldLayer);
-    this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true);
+    this.chrome = new WorldChrome(this.textureCache, opts?.postFx === true, opts?.spriteSmoothing);
     this.chrome.attach(app.stage);
     app.stage.addChild(this.hud.container);
   }

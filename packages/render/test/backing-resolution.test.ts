@@ -8,16 +8,11 @@ describe('backingResolutionFor', () => {
     expect(backingResolutionFor(3)).toBe(3);
   });
 
-  it('rounds fractional OS scaling up to the next integer', () => {
-    expect(backingResolutionFor(1.25)).toBe(2);
-    expect(backingResolutionFor(1.5)).toBe(2);
-    expect(backingResolutionFor(1.75)).toBe(2);
-    expect(backingResolutionFor(2.5)).toBe(3);
-  });
-
-  it('absorbs float noise around integer ratios instead of jumping a tier', () => {
-    expect(backingResolutionFor(2.0000004)).toBe(2);
-    expect(backingResolutionFor(1.9999996)).toBe(2);
+  it('preserves fractional display density without a compositor downscale', () => {
+    for (const dpr of [0.8, 1.25, 1.5, 1.75, 2.5, 2.0000004]) {
+      expect(backingResolutionFor(dpr)).toBe(dpr);
+      expect(windowResolutionFor(dpr, 1)).toBe(dpr);
+    }
   });
 
   it('falls back to 1 for degenerate ratios', () => {
@@ -29,11 +24,11 @@ describe('backingResolutionFor', () => {
 });
 
 describe('windowResolutionFor', () => {
-  it('multiplies the DPR-derived oversample by the render scale', () => {
+  it('multiplies the device density by the render scale', () => {
     expect(windowResolutionFor(1, 1)).toBe(1);
     expect(windowResolutionFor(1, 0.5)).toBe(0.5);
     expect(windowResolutionFor(2, 0.75)).toBe(1.5);
-    expect(windowResolutionFor(1.5, 2)).toBe(4);
+    expect(windowResolutionFor(1.5, 2)).toBe(3);
   });
 
   it('falls back to scale 1 for a degenerate scale', () => {

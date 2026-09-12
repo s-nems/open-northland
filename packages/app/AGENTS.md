@@ -40,6 +40,12 @@ For player-visible mechanics, add a registered scene when it provides useful acc
 Each scene needs headless checks, localized menu text, and a human browser pass. See
 [`docs/SCENES.md`](../../docs/SCENES.md).
 
+## Graphics settings
+
+Player-facing graphics options belong in the shared Graphics settings, with persisted defaults,
+localized labels, and an explicit next-game hint when they cannot apply live. World smoothing must
+not change HUD text rendering.
+
 ## Diagnostics
 
 Use `src/diag/` instead of ad hoc logging:

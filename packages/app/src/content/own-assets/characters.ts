@@ -2,6 +2,7 @@
 import type { SettlerCharacter, SettlerCharacterSet, SpriteSheet } from '@open-northland/render';
 import { Assets, type Texture } from 'pixi.js';
 import { diag } from '../../diag/index.js';
+import { readStoredSettings } from '../../view/settings-store.js';
 import type { ContentIr } from '../ir/rows.js';
 import { YOUNG_CHARACTER_BY_JOB } from '../settler-gfx/index.js';
 import { ownCharacterAtlas, ownCharacterBinding, ownCharacterManifest } from './character-manifest.js';
@@ -23,6 +24,7 @@ export async function loadOwnCharacters(
   ir: ContentIr | null,
   selected: string | null,
 ): Promise<SettlerCharacterSet | undefined> {
+  const smoothing = readStoredSettings().spriteSmoothing;
   const candidates = Object.entries(manifests)
     .map(([path, raw]) => ({ path, manifest: ownCharacterManifest.parse(raw) }))
     .sort((a, b) => a.manifest.id.localeCompare(b.manifest.id));
@@ -35,7 +37,7 @@ export async function loadOwnCharacters(
         const texture = await Assets.load<Texture>(url);
         if (texture.width !== manifest.width || texture.height !== manifest.height)
           throw new Error('Character atlas dimensions mismatch');
-        texture.source.scaleMode = manifest.filtering ?? 'nearest';
+        texture.source.scaleMode = smoothing ? (manifest.filtering ?? 'nearest') : 'nearest';
         const atlas = ownCharacterAtlas(manifest);
         return {
           id: manifest.id,

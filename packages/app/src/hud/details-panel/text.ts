@@ -43,7 +43,7 @@ export interface TextKit {
   textRight(text: string, rightX: number, y: number, color: FontColorName, variant?: FontVariant): void;
 }
 
-/** Each `Text` renders at `FONT_PX * scale`, so the bake's oversample keeps it sharp. */
+/** Lay out text in panel draw coordinates; the panel maps it to screen size before rendering. */
 export function createTextKit(textLayer: Container, fontFamily: string, scale: number): TextKit {
   const makeText = (text: string, color: FontColorName, variant: FontVariant): Text => {
     const t = new Text({

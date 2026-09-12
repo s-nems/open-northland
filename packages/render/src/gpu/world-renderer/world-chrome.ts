@@ -20,6 +20,7 @@ export class WorldChrome {
   constructor(
     private readonly textures: TextureCache,
     postFx: boolean,
+    private readonly spriteSmoothing = true,
   ) {
     this.vignette = postFx ? makeVignetteSprite() : null;
     this.pauseWash.tint = PAUSE_WASH_TINT;
@@ -62,7 +63,7 @@ export class WorldChrome {
    * page twice a frame.
    */
   applyWorldSampling(scale: number): void {
-    if (scale < 1) {
+    if (this.spriteSmoothing && scale < 1) {
       for (const source of this.textures.pageSources()) {
         if (this.linearPages.has(source)) continue;
         if (source.scaleMode !== 'nearest') continue; // a page someone loaded linear stays theirs

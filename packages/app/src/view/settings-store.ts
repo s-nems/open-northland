@@ -29,6 +29,7 @@ export interface MenuSettings {
   readonly uiScaleFactor: number;
   /** The world post pass: a warm-graded vignette over the world, under the HUD. */
   readonly postFxEnabled: boolean;
+  readonly spriteSmoothing: boolean;
   readonly fpsLimit: FpsLimit;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
@@ -49,6 +50,7 @@ export function defaultSettings(): MenuSettings {
     renderScale: DEFAULT_RENDER_SCALE,
     uiScaleFactor: DEFAULT_UI_SCALE_FACTOR,
     postFxEnabled: true,
+    spriteSmoothing: true,
     fpsLimit: null,
     soundEnabled: true,
     soundVolume: DEFAULT_SFX_VOLUME,
@@ -98,6 +100,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     // Blobs from before the relative-factor model carried an absolute `uiScale`; it is ignored.
     uiScaleFactor: clampFactor(record.uiScaleFactor),
     postFxEnabled: typeof record.postFxEnabled === 'boolean' ? record.postFxEnabled : defaults.postFxEnabled,
+    spriteSmoothing:
+      typeof record.spriteSmoothing === 'boolean' ? record.spriteSmoothing : defaults.spriteSmoothing,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
