@@ -1,4 +1,4 @@
-# Accept mission scripts through a complete campaign
+# Accept a complete authored map-script route
 
 **Area:** sim, app · **Focus:** acceptance · **Priority:** P2
 
@@ -23,9 +23,6 @@ world handover and save stack, not either map's unmodified story route.
 
 - `cn_1` has no `MissionWon`: it returns through `EndSubMission`. The parent/submap handover is implemented,
   but parent `cn_0` still needs vehicle ownership changes. Neither is a standalone campaign acceptance case.
-- Owned `DataX/Libs/data0001.lib` contains base campaign maps; the current map pipeline serves loose
-  map directories. The first base mission, `campaign_03_01`, requires `DockVehicle` on its story path. Sub-missions can now resolve generated campaign slots,
-  but extracting this map alone does not make it completable.
 - `wielkie_sprzatanie` uses only implemented opcode handlers, but winning requires defeating seats 2
   and 3 through actual gameplay, then missions 72 and 77. The bounded reinforcement test does not
   establish that its economy, recruitment and combat can complete that route.
@@ -34,7 +31,9 @@ world handover and save stack, not either map's unmodified story route.
 
 ## Scope
 
-- Establish a genuine completed campaign route with an intact script and ordinary player actions.
+Campaign maps stored in archives are excluded; no archive extraction is required for this epic.
+
+- Establish a genuine completed loose-map story route with an intact script and ordinary player actions.
   Do not substitute forced goals, removed enemies, administrative spawns or injected verdicts.
   Automatic execution does not waive this acceptance prerequisite.
 - Observe the running original for the 3-second evaluation cadence, activation-relative `TimeGone`,
@@ -46,13 +45,14 @@ world handover and save stack, not either map's unmodified story route.
 - Verify a story transition with a newly described visible objective in the browser, beyond the
   already checked Frank contact and restored briefing navigation.
 
-Vehicles, chests, guides, wall gates, campaign unlocks, FMV and the trade ledger remain
+Vehicle and chest integration are tracked in [vehicles](map-scripts-vehicles.md) and
+[chests](map-scripts-chests.md). DetectGuide integration, wall gates, campaign unlocks, FMV and the trade ledger remain
 outside this ticket's implementation scope. Their absence is a dependency, not an acceptance waiver.
 Human review of the intro, combat and ending remains part of final epic acceptance.
 
 ## Verify
 
 Run `check:assets`, `check:docs`, `check`, `build`, `test`, `test:content` and the coverage report in
-the authorized worktree. Accept an intact campaign's intro, combat, ending and save/load continuation.
+the authorized worktree. Accept an intact loose map's intro, combat, ending and save/load continuation.
 Any merge and validation on primary `main` require the user's separate merge instruction. List any
 intentional golden changes.

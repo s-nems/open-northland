@@ -9,6 +9,12 @@ followed by a silently rejected command.
 
 ## Scope
 
+- Isolate progression by player and tribe: `aliveTribeJobs` currently groups by tribe alone, so a
+  different player's worker can satisfy the shared prerequisite. Keep script grants player-scoped.
+- Define authored map permissions before wiring `AllowHouse`: the current sparse grant table has no
+  reader and an absent grant must not accidentally lock every building on ordinary maps. Coordinate
+  job/good permissions with the same rule and verify initialization against owned map data.
+
 - Pin the progression rule from extracted `jobEnablesHouse` and `needfor*` data; name any unobserved XP
   interaction as an approximation.
 - Consult the `ProgressionRules` singleton the way `goodEnabled` does
