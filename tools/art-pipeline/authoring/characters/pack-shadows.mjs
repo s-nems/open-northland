@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { ATLAS_FACINGS } from './sprite-post.mjs';
 
+const lightingPath = fileURLToPath(new URL('../../../../docs/art/lighting.json', import.meta.url));
+const lighting = JSON.parse(await fs.readFile(lightingPath, 'utf8'));
 const run = path.resolve(process.argv[2]);
 const recipe = JSON.parse(await fs.readFile(path.join(run, 'recipe.json'), 'utf8'));
 const layout = JSON.parse(await fs.readFile(path.join(run, 'layout.json'), 'utf8'));
@@ -53,17 +56,21 @@ for (const clip of clips) {
         }
       const scaled = await sharp(source)
         .resize(Math.round(info.width * scale), Math.round(info.height * scale))
-        .blur(0.55)
+        .blur(lighting.shadow.characterBlurPixels)
         .ensureAlpha()
         .raw()
         .toBuffer({ resolveWithObject: true });
       for (let i = 0; i < scaled.data.length; i += 4) {
-        scaled.data[i] = 24;
-        scaled.data[i + 1] = 20;
-        scaled.data[i + 2] = 15;
-        scaled.data[i + 3] = Math.round(scaled.data[i + 3] * 0.32);
+        scaled.data[i] = lighting.shadow.rgb[0];
+        scaled.data[i + 1] = lighting.shadow.rgb[1];
+        scaled.data[i + 2] = lighting.shadow.rgb[2];
+        scaled.data[i + 3] = Math.round(scaled.data[i + 3] * lighting.shadow.opacity);
       }
-      const input = await sharp(scaled.data, { raw: scaled.info }).png().toBuffer();
+      const input = await sharp(scaled.data, {
+        raw: { width: scaled.info.width, height: scaled.info.height, channels: 4 },
+      })
+        .png()
+        .toBuffer();
       const padding = (info.width - (recipe.render?.size ?? 512)) / 2;
       const left = Math.round(anchorX - (padding + box.left + box.width / 2) * scale);
       const top = Math.round(anchorY - (padding + box.top + box.height) * scale);
@@ -133,8 +140,7 @@ await fs.writeFile(
       columns,
       anchorX: anchorX - crop.left,
       anchorY: anchorY - crop.top,
-      basis:
-        'Evaluated Blender geometry projected along fixed world ray [0.65,-0.75,-1] onto z=0. Flat receiver and 0.55px blur/0.32 opacity are artistic approximations. Body camera, layout, poses and attachments retained.',
+      basis: `Evaluated Blender geometry projected onto flat ground using ${lighting.id} from docs/art/lighting.json. Camera conversion preserves the reference screen-space direction and length relative to projected height. Flat receiver and fixed character blur are artistic approximations. Body camera, layout, poses and attachments retained.`,
       inputs,
     },
     null,
