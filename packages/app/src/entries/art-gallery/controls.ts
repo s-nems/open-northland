@@ -1,5 +1,5 @@
 import type { GalleryEntry } from './catalog.js';
-import type { GalleryState } from './state.js';
+import { GALLERY_ZOOMS, type GalleryState, galleryZoom } from './state.js';
 
 export function element<K extends keyof HTMLElementTagNameMap>(tag: K, text = ''): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -49,13 +49,10 @@ export function galleryControls(
   }
   select(
     'Zoom',
-    [
-      ['1', '×1'],
-      ['2', '×2'],
-    ],
+    GALLERY_ZOOMS.map((zoom) => [String(zoom), `×${zoom}`]),
     String(state.zoom),
     (value) => {
-      state.zoom = value === '1' ? 1 : 2;
+      state.zoom = galleryZoom(value);
     },
   );
   select(

@@ -4,9 +4,9 @@
   "bone": "RightHand",
   "length": 0.38,
   "grip_fraction": [0.5, 0.5, 0.23],
-  "rotation_degrees": [0, 180, 0],
-  "palm_offset": [0, 0.08, 0],
-  "sourceBasis": "Visual grip fit in the modular civilian rig; metres and bone-local rotation.",
+  "rotation_degrees": [41.24688060520878, -122.21022523396367, -46.023508514460076],
+  "palm_offset": [0, 0.07, 0],
+  "sourceBasis": "Visual palm-centred fit on the compact Meshy hammer clip. Handle perpendicular to wrist-to-finger axis; striking face points toward the wall at contact. Metres and bone-local rotation.",
   "head_scale": [1.6, 1.6, 1.45],
   "head_start_fraction": 0.76,
   "head_center_fraction": 0.88

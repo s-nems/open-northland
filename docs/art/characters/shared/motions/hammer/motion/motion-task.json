@@ -1,0 +1,19 @@
+{
+  "id": "01a09524-0f46-7046-b0d5-a0cbd3da09ab",
+  "type": "text-to-motion",
+  "name": "",
+  "status": "SUCCEEDED",
+  "created_at": 1789208564593,
+  "progress": 100,
+  "started_at": 1789208564600,
+  "finished_at": 1789208573369,
+  "expires_at": 1789467773369,
+  "task_error": null,
+  "result": {
+    "motion_url": "https://assets.meshy.ai/b5eb1e55-552a-4a6c-a226-457f256e6533/tasks/01a09524-0f46-7046-b0d5-a0cbd3da09ab/output/clip.fbx",
+    "motion_format": "fbx",
+    "duration_ms": 4000,
+    "mode": "prime"
+  },
+  "consumed_credits": 10
+}
