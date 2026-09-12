@@ -3,14 +3,16 @@
 `motion/` retains the Meshy Motion Prime request, receipts, source FBX and retargeted GLB.
 `prepare.py` removes lateral torso rotation while retaining the generated forward bend, hip motion
 and head nod. It fits the two-hand grip along an overhead arc, raises and retracts the shoulders
-during the backswing, plants the feet and closes the loop. These contact and shoulder adjustments
+during the backswing, plants the feet with forward knee poles and closes the loop. Elbow poles point downward while
+retaining the achieved wrist contacts. These contact and shoulder adjustments
 are authored visual approximations. Palms face the handle with their finger axis perpendicular
 to the shaft; the return uses the same grip orientation. `cycle.json` owns source sampling and the tool trajectory.
 
-Playback uses 16 poses over 29/12 seconds. Each pose lasts approximately 0.15 seconds; there is no
-extended impact hold. Impact pose 5 begins at elapsed tick 10, followed by continuous recovery.
-Atomic 25, its 29-tick length and impact timing follow the local stone-harvest binding. Gameplay
-events remain sim-owned. Pose sampling and playback duration are separate recipe inputs.
+Playback uses 16 poses over 29/24 seconds. Lift and strike poses last 0.035–0.06 seconds;
+recovery poses last approximately 0.093 seconds. The stored sequence starts during recovery so
+impact pose 11 begins at elapsed tick 10. Two complete visual swings fit the 29-tick stone-harvest
+atomic without a phase reset. Resource yield and gameplay events remain sim-owned; the additional
+visual strike does not grant another resource. Pose sampling and playback timing are recipe inputs.
 
 ```sh
 /Applications/Blender.app/Contents/MacOS/Blender -b \

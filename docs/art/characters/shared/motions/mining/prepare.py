@@ -113,7 +113,7 @@ for (index, pose) in enumerate(poses):
     root.location -= arm.matrix_world.inverted().to_3x3() @ Vector((0, 0, lower_by))
     bpy.context.view_layer.update()
     for (side, (target, orientation)) in feet.items():
-        fit_limb(side + 'UpLeg', side + 'Leg', side + 'Foot', target + Vector((0, 0, hop)))
+        fit_limb(side + 'UpLeg', side + 'Leg', side + 'Foot', target + Vector((0, 0, hop)), position(side + 'UpLeg') + Vector((0, -1, 0)))
         current = (arm.matrix_world @ arm.pose.bones[side + 'Foot'].matrix).to_quaternion()
         rotate(side + 'Foot', orientation @ current.inverted())
     (grip, axis) = interpolate(config['tool_keys'], phase)
@@ -156,6 +156,7 @@ for (index, pose) in enumerate(poses):
         palm = orientation if side == 'Right' else orientation @ Quaternion((0, 1, 0), math.pi)
         wrist = center - palm @ Vector((0, 0.065, 0))
         fit_limb(side + 'Arm', side + 'ForeArm', side + 'Hand', wrist, position(side + 'Arm') + Vector((0.8 if side == 'Left' else -0.8, -0.45, 0.05)))
+        fit_limb(side + 'Arm', side + 'ForeArm', side + 'Hand', position(side + 'Hand'), position(side + 'Arm') + Vector((0.8 if side == 'Left' else -0.8, -0.45, -0.55)))
         current = (arm.matrix_world @ arm.pose.bones[side + 'Hand'].matrix).to_quaternion()
         rotate(side + 'Hand', palm @ current.inverted())
     for bone in arm.pose.bones:
