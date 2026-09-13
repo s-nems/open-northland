@@ -75,7 +75,7 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
               ? await characterPreview(entry)
               : entry.kind === 'building'
                 ? await buildingPreview(entry, options.reference)
-                : entry.kind === 'prop'
+                : entry.kind === 'prop' || entry.kind === 'good'
                   ? await propPreview(entry)
                   : await terrainPreview(entry, app.renderer, options.soilImage);
           prepared.push(panel);

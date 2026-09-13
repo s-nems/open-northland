@@ -45,6 +45,7 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
     ['animations', 'Animations'],
     ['buildings', 'Buildings'],
     ['terrain', 'Terrain & tilesets'],
+    ['goods', 'Goods & icons'],
   ];
   const body = element('div');
   body.className = 'body';

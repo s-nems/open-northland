@@ -126,6 +126,7 @@ export interface DetailsPanelArt {
 
 /** The panel's art plus the building previews, which come from the caller's loaded sprite sheet. */
 export interface DetailsPanelAssets extends DetailsPanelArt {
+  readonly ownGoods?: ReadonlyMap<string, Texture>;
   readonly previews: BuildingPreviews;
 }
 

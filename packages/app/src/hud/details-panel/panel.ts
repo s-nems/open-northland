@@ -1,6 +1,7 @@
 import type { PortraitInsetFrame, SpriteSheet } from '@open-northland/render';
 import type { WorldSnapshot } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
+import { ownGoodIcons } from '../../content/own-assets/goods.js';
 import { clientToCanvas, contains } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 import { buildingPreviews, loadDetailsPanelArt } from './assets.js';
@@ -67,7 +68,11 @@ export interface UnitPanelState {
 export async function mountUnitPanel(opts: UnitPanelOptions): Promise<UnitPanel> {
   const { app, canvas } = opts;
   const scale = Math.max(MIN_UI_SCALE, opts.uiscale ?? 1);
-  const assets = { ...(await loadDetailsPanelArt(opts.lang)), previews: buildingPreviews(opts.sheet) };
+  const assets = {
+    ...(await loadDetailsPanelArt(opts.lang)),
+    previews: buildingPreviews(opts.sheet),
+    ownGoods: ownGoodIcons(opts.sheet),
+  };
   const stage = createPanelStage({ app, assets, scale });
   const workerField = createWorkerField({
     app,

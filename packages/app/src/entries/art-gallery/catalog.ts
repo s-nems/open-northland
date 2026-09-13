@@ -2,6 +2,7 @@
 import type {
   OwnBuildingManifest,
   OwnCharacterManifest,
+  OwnGoodManifest,
   OwnPropManifest,
   OwnTerrainMaterial,
 } from '@open-northland/art-contracts';
@@ -12,6 +13,7 @@ import {
   ownCharacterBinding,
   ownCharacterManifest,
 } from '../../content/own-assets/character-manifest.js';
+import { ownGoodAtlas, ownGoodManifest } from '../../content/own-assets/good-manifest.js';
 import { ownTerrainMaterials } from '../../content/own-assets/materials.js';
 import { ownPropAtlas, ownPropManifest } from '../../content/own-assets/prop-manifest.js';
 
@@ -63,13 +65,18 @@ export interface GalleryMaterial {
   readonly manifest: OwnTerrainMaterial;
 }
 
-export type GalleryEntry = GalleryCharacter | GalleryBuilding | GalleryProp | GalleryMaterial;
+export interface GalleryGood extends GallerySprite {
+  readonly kind: 'good';
+  readonly manifest: OwnGoodManifest;
+}
+export type GalleryEntry = GalleryCharacter | GalleryBuilding | GalleryProp | GalleryMaterial | GalleryGood;
 
 export interface GalleryCatalog {
   readonly characters: readonly GalleryCharacter[];
   readonly buildings: readonly GalleryBuilding[];
   readonly props: readonly GalleryProp[];
   readonly materials: readonly GalleryMaterial[];
+  readonly goods: readonly GalleryGood[];
   readonly soilImage: string;
 }
 
@@ -77,6 +84,7 @@ export interface GalleryCatalogSources {
   readonly characters: Readonly<Record<string, unknown>>;
   readonly buildings: Readonly<Record<string, unknown>>;
   readonly props: Readonly<Record<string, unknown>>;
+  readonly goods?: Readonly<Record<string, unknown>>;
   readonly images: Readonly<Record<string, string>>;
   readonly materials: readonly OwnTerrainMaterial[];
 }
@@ -195,6 +203,20 @@ export function buildGalleryCatalog(sources: GalleryCatalogSources): GalleryCata
         }),
       ),
     ),
+    goods: sortedUnique(
+      Object.entries(sources.goods ?? {}).map(([path, raw]): GalleryGood => {
+        const manifest = ownGoodManifest.parse(raw);
+        return {
+          kind: 'good',
+          id: `goods/${manifest.id}`,
+          name: manifest.id,
+          image: siblingImage(sources.images, path, manifest.image),
+          scale: manifest.scale,
+          atlas: ownGoodAtlas(manifest),
+          manifest,
+        };
+      }),
+    ),
     soilImage: terrainImage(sources.images, 'soil.png'),
   };
 }
@@ -209,6 +231,7 @@ export function loadGalleryCatalog(): GalleryCatalog {
       eager: true,
       import: 'default',
     }),
+    goods: import.meta.glob('../../assets/own/goods/*/runtime.json', { eager: true, import: 'default' }),
     props: import.meta.glob('../../assets/own/props/*/runtime.json', {
       eager: true,
       import: 'default',
@@ -223,5 +246,11 @@ export function loadGalleryCatalog(): GalleryCatalog {
 }
 
 export function galleryEntries(catalog: GalleryCatalog): readonly GalleryEntry[] {
-  return [...catalog.characters, ...catalog.buildings, ...catalog.materials, ...catalog.props];
+  return [
+    ...catalog.characters,
+    ...catalog.buildings,
+    ...catalog.materials,
+    ...catalog.props,
+    ...catalog.goods,
+  ];
 }

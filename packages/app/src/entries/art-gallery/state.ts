@@ -1,4 +1,4 @@
-export type GalleryTab = 'animations' | 'buildings' | 'terrain';
+export type GalleryTab = 'animations' | 'buildings' | 'terrain' | 'goods';
 export const GALLERY_ZOOMS = [1, 2, 4, 8] as const;
 export type GalleryZoom = (typeof GALLERY_ZOOMS)[number];
 export function galleryZoom(value: string | null): GalleryZoom {
@@ -30,7 +30,7 @@ export function readGalleryState(params: URLSearchParams): GalleryState {
   const tab = params.get('tab');
   const background = params.get('background');
   return {
-    tab: tab === 'buildings' || tab === 'terrain' ? tab : 'animations',
+    tab: tab === 'buildings' || tab === 'terrain' || tab === 'goods' ? tab : 'animations',
     asset: params.get('asset') ?? '',
     compare: [...new Set((params.get('compare') ?? '').split(',').filter(Boolean))].slice(0, 3),
     q: params.get('q') ?? '',

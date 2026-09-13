@@ -53,7 +53,7 @@ const propLocations: readonly (ReviewLocation & { readonly prefixes: readonly st
 ];
 
 export function galleryMapDestination(
-  asset: { readonly id: string; readonly kind: 'character' | 'building' | 'material' | 'prop' },
+  asset: { readonly id: string; readonly kind: 'character' | 'building' | 'material' | 'prop' | 'good' },
   appearanceId?: string,
 ): GalleryMapDestination {
   const matched = reviewLocations[asset.id];

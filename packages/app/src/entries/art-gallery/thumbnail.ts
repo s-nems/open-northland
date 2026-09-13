@@ -14,7 +14,7 @@ export function thumbnail(entry: GalleryEntry): HTMLElement {
   const frameId =
     typeof idle === 'number'
       ? idle
-      : (idle?.start ?? (entry.kind === 'prop' ? entry.atlas.frames.size - 1 : 0));
+      : (idle?.start ?? (entry.kind === 'prop' || entry.kind === 'good' ? entry.atlas.frames.size - 1 : 0));
   const frame = entry.atlas.frames.get(frameId);
   if (frame === undefined) throw new Error(`Gallery thumbnail frame missing: ${entry.id}`);
   const scale = 52 / Math.max(frame.width, frame.height);
