@@ -15,7 +15,7 @@ At the project's 12-tick clock this corresponds to approximately 2.42 seconds. T
 reconstruction from data, not a wall-clock recording of the original executable.
 
 The original body frames spend the end and beginning of the loop with the hammer low, with small
-body movements. The authored timing approximates that rest with a 0.6875-second impact hold and a
+body movements. The authored timing approximates that rest with a 0.6875-second hold on the pose immediately after contact and a
 5/12-second ready hold. Moving steps last 0.042–0.125 seconds, rather than uniformly stretching all
 poses. Contact pose 11 begins at elapsed tick 19, matching the source strike-sound event. Frame durations are presentation metadata;
 resource yield and gameplay events remain sim-owned.
