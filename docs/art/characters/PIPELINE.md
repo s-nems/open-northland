@@ -103,7 +103,7 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
 - Target 12–16 stored frames per clip and facing. Authoring and delivery builds reject more than 16.
   Choose poses and holds within that budget, independently of playback duration. Review transitions
   and loop seams; spatial filtering and movement interpolation do not fill gaps between sprite poses.
-- `samplePhases` selects stored source poses. Idle `frameOrder` indexes those poses in playback order,
+- `samplePhases` selects stored source poses. `frameOrder` indexes those poses in playback order,
   including repeats and returns; `frameDurations` gives seconds per playback step and must sum to
   `duration`. A long idle should spend time holding chosen poses, with short steps during transitions.
   Body and shadow use the same frame order. Repeated steps never add texture cells.
@@ -116,6 +116,39 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
 - Each appearance has its own composed atlas; additional outfit/tool combinations multiply texture storage.
   Candidate reports include body, shadow and combined base RGBA byte counts. These textures are
   shared by settlers of the same appearance; estimates exclude mipmaps and additional runtime copies.
+
+### Pose storage and playback
+
+Every clip (`walk`, `idle`, or an atomic work clip) accepts the same recipe timing fields:
+
+| Field | Meaning |
+| --- | --- |
+| `frames` | Stored poses per facing; body and shadow each export this many cells. |
+| `samplePhases` | Source-motion phase for each stored pose, independent of playback time. |
+| `frameOrder` | Stored-pose indices in playback order; repeats add metadata, not image cells. |
+| `frameDurations` | Positive seconds per playback step, summing to `duration`. |
+| `duration` | Total playback duration, including pauses. |
+
+Without `frameOrder`, playback visits each stored pose once in order. Without both timing arrays,
+steps have equal duration. A frame order requires explicit step durations. Choose variable timing
+when the motion benefits from rests, anticipation or recovery; do not add pauses to every clip by rule.
+
+This three-pose illustration plays a turn, holds it, and returns through the middle pose:
+
+```json
+{
+  "frames": 3,
+  "duration": 3,
+  "samplePhases": [0, 0.1, 0.2],
+  "frameOrder": [0, 1, 2, 1],
+  "frameDurations": [1.4, 0.1, 1.4, 0.1]
+}
+```
+
+Production clips target 12–16 stored poses. Preserve short moving transitions and put long holds at
+intentional rest poses; uniformly stretching sparse samples over a long source motion causes stepping.
+The woman's recipe is a complete retained example. Gallery, board, game and shadow playback must
+agree. Work timing changes only presentation; hit events and action duration remain sim-owned.
 
 Walk playback follows projected distance through `walkCalibration` and `walkPlayback`.
 The shared tuning is 0.8 cadence with an E-facing stride reference for all directions.

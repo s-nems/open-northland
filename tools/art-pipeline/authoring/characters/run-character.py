@@ -41,8 +41,8 @@ def main():
         holds = clip.get('frameDurations')
         if not order or any(not isinstance(i, int) or not 0 <= i < frames for i in order):
             raise ValueError('Playback frame index outside stored poses')
-        if clip.get('frameOrder') and (clip['name'] != 'idle' or holds is None):
-            raise ValueError('Frame order requires idle with explicit step durations')
+        if clip.get('frameOrder') and holds is None:
+            raise ValueError('Frame order requires explicit step durations')
         if holds is not None and (len(holds) != len(order) or any(h <= 0 for h in holds) or abs(sum(holds) - clip['duration']) > 1e-6):
             raise ValueError('Pose durations must match playback steps and sum to clip duration')
     work = run / '.work'

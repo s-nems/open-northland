@@ -21,6 +21,24 @@ const manifest = {
 };
 
 describe('character atlas contract', () => {
+  it('uses the same timing validation for walk and work clips', () => {
+    const ordered = {
+      ...manifest,
+      walkFrameOrder: [0, 0],
+      walkFrameDurations: [0.8, 0.2],
+      atomicClips: [{ atomicId: 1, frames: 1, duration: 1, frameOrder: [0, 0], frameDurations: [0.1, 0.9] }],
+    };
+    expect(() => ownCharacterManifest.parse(ordered)).not.toThrow();
+    expect(() => ownCharacterManifest.parse({ ...ordered, walkFrameOrder: [1, 0] })).toThrow(
+      'outside stored poses',
+    );
+    expect(() =>
+      ownCharacterManifest.parse({
+        ...ordered,
+        atomicClips: [{ ...ordered.atomicClips[0], frameDurations: [0.1] }],
+      }),
+    ).toThrow('Pose holds');
+  });
   it('reuses stored idle poses while validating every playback step and hold', () => {
     const ordered = { ...manifest, idleFrameOrder: [0, 0], idleFrameDurations: [0.8, 0.2] };
     expect(() => ownCharacterManifest.parse(ordered)).not.toThrow();

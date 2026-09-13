@@ -24,6 +24,25 @@ const manifest = ownCharacterManifest.parse({
   sourceBasis: 'Synthetic fixture',
 });
 describe('own character atlas', () => {
+  it('carries authored order and seconds into walking and working bindings', () => {
+    const timed = {
+      ...manifest,
+      walkFrameOrder: [0, 1, 0],
+      walkDuration: 1,
+      walkFrameDurations: [0.25, 0.5, 0.25],
+      atomicClips: [
+        { atomicId: 39, frames: 2, duration: 2, frameOrder: [0, 1, 0], frameDurations: [0.5, 1, 0.5] },
+      ],
+    };
+    expect(ownCharacterBinding(timed).moving).toMatchObject({
+      frameOrder: [0, 1, 0],
+      frameDurations: [3, 6, 3],
+    });
+    expect(ownCharacterBinding(timed).byAtomic?.[39]).toMatchObject({
+      frameOrder: [0, 1, 0],
+      frameDurations: [6, 12, 6],
+    });
+  });
   it('binds repeated idle steps without multiplying stored body or shadow frames', () => {
     const ordered = ownCharacterManifest.parse({
       ...manifest,

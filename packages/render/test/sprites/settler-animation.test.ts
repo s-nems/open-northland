@@ -294,6 +294,27 @@ describe('resolveSpriteBobId - FrameListAnim (explicit per-direction attack layo
 });
 
 describe('resolveSettlerBobId - an in-house craft sub-clip', () => {
+  it('preserves authored holds and returns when stretching a work clip', () => {
+    const binding = {
+      idle: 900,
+      byAtomic: { 47: { start: 500, dirs: 8, stride: 2, frameOrder: [0, 1, 0], frameDurations: [1, 2, 1] } },
+    };
+    for (const [progress, expected] of [
+      [0, 500],
+      [0.24, 500],
+      [0.25, 501],
+      [0.74, 501],
+      [0.75, 500],
+      [1, 500],
+    ] as const)
+      expect(
+        resolveSettlerBobId(
+          binding,
+          drawItem('settler', { state: 'acting', facing: 0, craftClip: { action: 47, subId: 0, progress } }),
+          0,
+        ),
+      ).toBe(expected);
+  });
   const KNEAD: FrameListAnim = { start: 500, frameLists: [[0, 1, 2, 3]] };
   const IDLE_STAND = 900;
   const MAKE_BREAD = 47;

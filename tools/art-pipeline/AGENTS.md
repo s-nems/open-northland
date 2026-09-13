@@ -5,6 +5,7 @@ Follow the root contract and `docs/art/AGENTS.md`; command and recipe rules live
 
 - Build into `.art-build/`; only explicit publication writes runtime assets.
 - Share delivery schemas with the browser through `@open-northland/art-contracts`.
+- Character animation work must follow `docs/art/characters/AGENTS.md`, including its pose budget and playback timing rules.
 - Keep provider generation separate from reproducible local build operations.
 - Preserve source alpha, source resolution, calibration and animation timing unless a reviewed recipe changes them.
 - Never infer visual approval from a successful build or test. Approval identifies actual pixels and metadata.

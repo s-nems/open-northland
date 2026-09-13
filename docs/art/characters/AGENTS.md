@@ -12,6 +12,9 @@ Read [PIPELINE.md](PIPELINE.md) for reproduction and [MODULARITY.md](MODULARITY.
 - Match face, ears and neck to the painted arms. Keep fractional edge alpha and the soft-separation export.
 - Reuse shared camera receipts and saved layouts. Target 88 screen pixels at zoom 2 and character scale 0.5.
 - Budget 12–16 stored frames per clip and facing, with a hard maximum of 16 in authoring and delivery builds. Playback duration does not increase the frame budget. Design motion and pose timing within this budget; review transitions and loop seams on playable maps.
+- Choose stored poses, playback order and timing separately. Use `frameDurations` for deliberate pauses and shorter moving transitions; use `frameOrder` to repeat or return through existing poses instead of exporting duplicate images. These fields apply to walk, idle and work clips.
+- Never derive sprite count from source FPS or `duration × FPS`, or spread a reduced pose set uniformly over a long moving clip. Simplify the gesture or select a shorter motion segment before adding frames. Longer holds belong at intentional rest poses, not between arbitrary moving samples.
+- Inspect the candidate report's combined body/shadow RGBA memory and review motion at normal speed on a playable map at zoom ×2. Counts and PNG file size alone do not establish efficiency or smoothness. Do not relax the frame limit silently; a larger budget needs a concrete motion and memory justification.
 - Preserve `walkCalibration` and `walkPlayback`: 0.8 cadence, shared E-facing stride reference. Do not compensate with sim speed or another directional depth correction.
 - Prefer Meshy-generated full-body work motion. Preserve torso, shoulder, hip and knee motion during cleanup; do not freeze the body around an animated tool arm.
 - Bind work through `atomicId`/`atomicClips`; all male variants must share the same clip layout. Gameplay events remain sim-owned.

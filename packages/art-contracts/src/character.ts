@@ -34,6 +34,8 @@ export const ownCharacterManifest = z
     idleFrameDurations: z.array(z.number().positive()).optional(),
     idleFrameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
     walkDuration: z.number().positive(),
+    walkFrameDurations: z.array(z.number().positive()).optional(),
+    walkFrameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
     walkTravelPerCycle: z.array(z.number().positive()).length(8).optional(),
     atomicClips: z
       .array(
@@ -43,6 +45,7 @@ export const ownCharacterManifest = z
             frames: z.number().int().positive(),
             duration: z.number().positive(),
             frameDurations: z.array(z.number().positive()).optional(),
+            frameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
           })
           .strict(),
       )
@@ -68,6 +71,49 @@ export const ownCharacterManifest = z
       if (s.anchorX < 0 || s.anchorX > s.cellWidth || s.anchorY < 0 || s.anchorY > s.cellHeight)
         ctx.addIssue({ code: 'custom', path: ['shadow'], message: 'Shadow anchor outside cell' });
     }
+    function playback(
+      frames: number,
+      duration: number,
+      order: number[] | undefined,
+      holds: number[] | undefined,
+      orderPath: (string | number)[],
+      holdPath: (string | number)[],
+    ) {
+      if (order?.some((frame) => frame >= frames))
+        ctx.addIssue({ code: 'custom', path: orderPath, message: 'Playback index outside stored poses' });
+      if (order && !holds)
+        ctx.addIssue({
+          code: 'custom',
+          path: holdPath,
+          message: 'Frame order requires explicit step durations',
+        });
+      if (
+        holds &&
+        (holds.length !== (order?.length ?? frames) ||
+          Math.abs(holds.reduce((sum, hold) => sum + hold, 0) - duration) > 0.000001)
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path: holdPath,
+          message: 'Pose holds must cover playback steps and sum to duration',
+        });
+    }
+    playback(
+      m.walkFrames,
+      m.walkDuration,
+      m.walkFrameOrder,
+      m.walkFrameDurations,
+      ['walkFrameOrder'],
+      ['walkFrameDurations'],
+    );
+    playback(
+      m.idleFrames,
+      m.idleDuration,
+      m.idleFrameOrder,
+      m.idleFrameDurations,
+      ['idleFrameOrder'],
+      ['idleFrameDurations'],
+    );
     const seen = new Set<number>();
     for (const [index, clip] of (m.atomicClips ?? []).entries()) {
       if (seen.has(clip.atomicId))
@@ -77,40 +123,15 @@ export const ownCharacterManifest = z
           message: 'Duplicate atomic clip',
         });
       seen.add(clip.atomicId);
-      if (
-        clip.frameDurations !== undefined &&
-        (clip.frameDurations.length !== clip.frames ||
-          Math.abs(clip.frameDurations.reduce((sum, hold) => sum + hold, 0) - clip.duration) > 0.000001)
-      )
-        ctx.addIssue({
-          code: 'custom',
-          path: ['atomicClips', index, 'frameDurations'],
-          message: 'Pose holds must cover the atomic clip and sum to its duration',
-        });
+      playback(
+        clip.frames,
+        clip.duration,
+        clip.frameOrder,
+        clip.frameDurations,
+        ['atomicClips', index, 'frameOrder'],
+        ['atomicClips', index, 'frameDurations'],
+      );
     }
-    if (m.idleFrameOrder?.some((frame) => frame >= m.idleFrames))
-      ctx.addIssue({
-        code: 'custom',
-        path: ['idleFrameOrder'],
-        message: 'Idle frame index outside stored poses',
-      });
-    if (m.idleFrameOrder && !m.idleFrameDurations)
-      ctx.addIssue({
-        code: 'custom',
-        path: ['idleFrameDurations'],
-        message: 'Ordered idle requires explicit step durations',
-      });
-    if (m.idleFrameDurations === undefined) return;
-    const total = m.idleFrameDurations.reduce((sum, duration) => sum + duration, 0);
-    if (
-      m.idleFrameDurations.length !== (m.idleFrameOrder?.length ?? m.idleFrames) ||
-      Math.abs(total - m.idleDuration) > 0.000001
-    )
-      ctx.addIssue({
-        code: 'custom',
-        path: ['idleFrameDurations'],
-        message: 'Pose holds must cover every idle frame and sum to idleDuration',
-      });
   });
 export type OwnCharacterManifest = z.infer<typeof ownCharacterManifest>;
 
