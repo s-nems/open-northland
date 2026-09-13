@@ -72,6 +72,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  binding advances one frame per `ticksPerFrame` of these, so every action animates at the same
    *  cadence. */
   readonly elapsed?: number;
+  /** The atomic is resting between completed harvest swings. */
+  readonly atomicRest?: boolean;
   /**
    * For a settler: facing direction index (0..7) a directional binding indexes by. The `CR_Hum_Body`
    * blocks are not a uniform rotation (source basis "Settler facing"): `0 SW, 1 W, 2 NW, 3 NE, 4 E,

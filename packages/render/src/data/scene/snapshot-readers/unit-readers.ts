@@ -13,6 +13,11 @@ export function readAtomicElapsed(components: Readonly<Record<string, unknown>>)
   return readNumFieldOrNull(components, 'CurrentAtomic', 'elapsed');
 }
 
+export function readAtomicRest(components: Readonly<Record<string, unknown>>): boolean {
+  const atomic = components.CurrentAtomic as { restTail?: unknown } | undefined;
+  return atomic?.restTail === true;
+}
+
 /**
  * The entity a settler's current atomic acts on (`CurrentAtomic.targetEntity`), or `null` when it runs
  * no atomic or its atomic has no entity target. The id rather than the target's tile, because the

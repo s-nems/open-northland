@@ -10,6 +10,7 @@ import {
   assignStaticFields,
   copyStaticFields,
   readAtomicElapsed,
+  readAtomicRest,
   readBerryBushGfxIndex,
   readBerryBushLevel,
   readCarrying,
@@ -38,6 +39,7 @@ export function assignSettlerFields(
 ): void {
   if (actingAtomic !== null) {
     item.atomicId = actingAtomic;
+    if (readAtomicRest(components)) item.atomicRest = true;
     // The clock only rides with the atomic: a stale `CurrentAtomic` must not leave an orphan elapsed.
     const elapsed = readAtomicElapsed(components);
     if (elapsed !== null) item.elapsed = elapsed;
