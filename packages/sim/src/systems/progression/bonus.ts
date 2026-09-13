@@ -46,59 +46,19 @@ export function experienceRepeats(xp: number, track: HumanJobExperienceType): nu
   return track.experienceFactor > 0 ? Math.trunc(xp / track.experienceFactor) : 0;
 }
 
-/**
- * The repeats a settler's XP contributes toward one `needfor*` requirement, summed over its `expTypes`,
- * each track counted at most once. A track-less expType accrues at rate 1, so its raw XP is already the
- * repeat count; a good-specific track counts its own repeats; a job-general track counts every track its
- * job owns, because work accrues only the matched track while gates key on the trade's overall practice.
- * Approximated: the original's threshold arithmetic is not readable.
- */
+/** Requirements sum only the named tracks; XP retains the saved factor-scaled encoding. */
 export function requirementRepeats(
   tracks: readonly HumanJobExperienceType[],
   experience: ReadonlyMap<number, number>,
   expTypes: readonly number[],
 ): number {
-  const { byId, byJob } = trackTables(tracks);
   let repeats = 0;
-  const counted = new Set<number>();
-  const count = (track: HumanJobExperienceType): void => {
-    if (counted.has(track.typeId)) return;
-    counted.add(track.typeId);
-    repeats += experienceRepeats(experience.get(track.typeId) ?? 0, track);
-  };
-  for (const expType of expTypes) {
-    const named = byId.get(expType);
-    if (named === undefined) repeats += experience.get(expType) ?? 0;
-    else if (named.goodType !== undefined) count(named);
-    else for (const t of byJob.get(named.jobType) ?? []) count(t);
+  for (const id of expTypes) {
+    const track = tracks.find((t) => t.typeId === id);
+    const xp = experience.get(id) ?? 0;
+    repeats += track === undefined ? xp : experienceRepeats(xp, track);
   }
   return repeats;
-}
-
-/** The by-id and by-owning-job track lookups, memoized per content array so the per-tick gate never
- *  rescans the catalog. First-wins per id. */
-const TRACK_TABLES = new WeakMap<
-  readonly HumanJobExperienceType[],
-  {
-    byId: ReadonlyMap<number, HumanJobExperienceType>;
-    byJob: ReadonlyMap<number, readonly HumanJobExperienceType[]>;
-  }
->();
-
-function trackTables(tracks: readonly HumanJobExperienceType[]) {
-  const cached = TRACK_TABLES.get(tracks);
-  if (cached !== undefined) return cached;
-  const byId = new Map<number, HumanJobExperienceType>();
-  const byJob = new Map<number, HumanJobExperienceType[]>();
-  for (const t of tracks) {
-    if (!byId.has(t.typeId)) byId.set(t.typeId, t);
-    const owned = byJob.get(t.jobType);
-    if (owned === undefined) byJob.set(t.jobType, [t]);
-    else owned.push(t);
-  }
-  const tables = { byId, byJob };
-  TRACK_TABLES.set(tracks, tables);
-  return tables;
 }
 
 /** The raw XP worth `repeats` on an optional track - {@link experienceRepeats}' inverse. */

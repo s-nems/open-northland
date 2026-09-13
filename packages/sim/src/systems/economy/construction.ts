@@ -182,9 +182,10 @@ const STRIKES_PER_UNIT = 26;
  * Advance a site's builder-work `labor` by one hammer strike - the `construct` atomic's effect. A free
  * (empty-cost) type has nothing to install, so a single swing completes it.
  */
-export function advanceConstructionLabor(world: World, ctx: SystemContext, site: Entity): void {
+export function advanceConstructionLabor(world: World, ctx: SystemContext, site: Entity): boolean {
   const uc = world.tryMut(site, UnderConstruction);
-  if (uc === undefined) return;
+  if (uc === undefined) return false;
+  const before = uc.labor;
   const totalStrikes = constructionTotalUnits(world, ctx, site) * STRIKES_PER_UNIT;
   // At least 1 ULP per strike so a huge-cost building still finishes: `trunc(ONE / totalStrikes)` floors
   // to 0 once `totalStrikes > ONE`.
@@ -195,4 +196,5 @@ export function advanceConstructionLabor(world: World, ctx: SystemContext, site:
   const cap = delivered < ONE ? delivered : ONE;
   const advanced = fx.add(uc.labor, quantum);
   uc.labor = (advanced > cap ? cap : advanced) as Fixed;
+  return uc.labor > before;
 }

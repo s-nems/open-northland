@@ -146,7 +146,12 @@ describe('navigationLimitFor, the per-settler memo', () => {
 
     // A trade change to a fighter lifts the confinement: jobType is part of the memo key.
     const uState = sim.world.get(u, Settler);
-    addPerson(sim.world, u, { ...uState, experience: new Map(uState.experience), jobType: SOLDIER });
+    addPerson(sim.world, u, {
+      ...uState,
+      learned: { job: [...(uState.learned?.job ?? [])], good: [...(uState.learned?.good ?? [])] },
+      experience: new Map(uState.experience),
+      jobType: SOLDIER,
+    });
     expect(navigationLimitFor(sim.world, sim.content, terrain, u)).toBeNull();
   });
 

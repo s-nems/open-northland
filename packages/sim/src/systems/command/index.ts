@@ -19,6 +19,7 @@ import { payTribute } from '../missions/tributes.js';
 // `ai-player/assistant-counters.js` for the published-counter map, and routing that through the
 // barrel would widen its import graph.
 import { setPlayerAi } from '../orders/ai.js';
+import { learn } from '../orders/education.js';
 import {
   assignBuilder,
   assignHouse,
@@ -125,6 +126,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'unassignBuilder':
       unassignBuilder(world, command);
+      return;
+    case 'learn':
+      learn(world, ctx, command);
       return;
     case 'trainSoldier':
       trainSoldier(world, ctx, command);

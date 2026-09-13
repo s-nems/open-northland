@@ -7,6 +7,7 @@ import { advanceConstructionLabor } from '../../../economy/construction.js';
 import { applySow, applyWater } from '../../../economy/fields.js';
 import {
   grantCarryExperience,
+  grantProfessionExperience,
   grantScoutExperience,
   grantWorkExperience,
 } from '../../../progression/index.js';
@@ -90,7 +91,7 @@ export function applyEffect(
       openChest(world, ctx, settler, effect.chest);
       return;
     case 'construct':
-      advanceConstructionLabor(world, ctx, effect.site);
+      if (advanceConstructionLabor(world, ctx, effect.site)) grantProfessionExperience(world, ctx, settler);
       return;
     case 'sow':
       applySow(world, ctx, effect);

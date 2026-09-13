@@ -193,6 +193,13 @@ export type UnitOrderCommand =
       readonly house: Entity;
     }
   | {
+      readonly kind: 'learn';
+      readonly entity: Entity;
+      readonly house: Entity;
+      readonly target: 'job' | 'good';
+      readonly typeId: number;
+    }
+  | {
       /**
        * Order one owned unmarried adult settler to seek the nearest eligible partner of its tribe and
        * wed. Soldiers and scouts are ineligible on either side, and the order auto-cancels when no

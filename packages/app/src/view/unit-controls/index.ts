@@ -114,6 +114,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   };
 
   const orders = createUnitOrderController({
+    technologyStatus: opts.technologyStatus,
     selected: selection.ids,
     targets: unitTargets,
     snapshot: opts.snapshot,
@@ -224,6 +225,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       window.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('keydown', onKeyDown);
+      orders.dispose();
       marquee.dispose();
       chrome.dispose();
       equipPicker?.dispose();

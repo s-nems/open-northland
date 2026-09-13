@@ -9,4 +9,5 @@ import { defineComponent, type Entity } from '../ecs/world.js';
 export const TrainingOrder = defineComponent<{
   house: Entity;
   drillTicksLeft: number;
+  lesson?: { kind: 'job' | 'good'; typeId: number };
 }>('TrainingOrder', 'settlers');

@@ -26,8 +26,10 @@ import {
 import { clampTile, nodeBounds, pickTopAt, type Tile, worldToTile } from '../picking.js';
 import { assignFormation, type FormationUnit } from './formation.js';
 import type { UnitTargetKind, UnitTargets } from './unit-targets.js';
+import { openSchoolDialog } from './school-dialog.js';
 
 export interface UnitOrderDeps {
+  readonly technologyStatus?: import('@open-northland/sim').Simulation['unlockStatus'] | undefined;
   readonly selected: () => ReadonlySet<number>;
   readonly targets: UnitTargets;
   readonly snapshot: () => WorldSnapshot;
@@ -53,11 +55,13 @@ export interface UnitOrderController {
   issueAttackTarget(event: MouseEvent, kind: UnitTargetKind): void;
   /** Strike the wild creature under the cursor; a click that hits none orders nothing. */
   issueAttackAnimal(event: MouseEvent): void;
+  dispose(): void;
 }
 
 type WalkOrderKind = Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>['kind'];
 
 export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderController {
+  let closeSchool: (() => void) | undefined;
   const buildingsByType = lastByTypeId(deps.content.buildings);
 
   const occupiedTiles = (exclude: ReadonlySet<number>): ((col: number, row: number) => boolean) => {
@@ -116,6 +120,22 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       const entity = entityById(snapshot, building);
       const type = entity !== undefined ? buildingTypeOf(entity) : undefined;
       const def = type !== undefined ? buildingsByType.get(type) : undefined;
+      if (
+        def?.kind === 'training' &&
+        def.workers.length === 0 &&
+        entity?.components.UnderConstruction === undefined
+      ) {
+        closeSchool?.();
+        closeSchool = openSchoolDialog(
+          deps.content,
+          snapshot,
+          commanded.map((t) => t.ref),
+          building,
+          deps.enqueue,
+          deps.technologyStatus,
+        );
+        return;
+      }
       const slots = def?.workers;
       const underConstruction = entity?.components.UnderConstruction !== undefined;
       const employsTrade = (jobType: number | undefined): boolean =>
@@ -228,6 +248,7 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
   };
 
   return {
+    dispose: () => closeSchool?.(),
     issueRightClick,
     issueSetWorkFlag,
     issueMoveTo,

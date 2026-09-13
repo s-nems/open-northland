@@ -131,6 +131,16 @@ function checkTribes(set: ContentSet, ids: IdSets): string[] {
       if (!ids[target.idSet].has(e.targetId))
         errors.push(`tribe "${t.id}" job ${e.jobType} enables unknown ${target.label} ${e.targetId}`);
     }
+    for (const row of t.technology?.houses ?? []) {
+      if (!ids.buildingIds.has(row.house))
+        errors.push(`tribe "${t.id}" technology references unknown buildingType ${row.house}`);
+      for (const job of row.jobs)
+        if (!jobIds.has(job))
+          errors.push(`tribe "${t.id}" house ${row.house} requires unknown jobType ${job}`);
+      for (const good of row.goods)
+        if (!ids.goodIds.has(good))
+          errors.push(`tribe "${t.id}" house ${row.house} requires unknown goodType ${good}`);
+    }
     for (const r of t.jobRequirements) {
       const target = JOB_REQUIREMENT_TARGET[r.target];
       if (!ids[target.idSet].has(r.targetId))

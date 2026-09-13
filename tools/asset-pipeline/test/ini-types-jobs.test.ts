@@ -169,3 +169,17 @@ allowgood 9
   );
   expect(tribe?.permissions).toEqual({ job: [4, 7], house: [2], good: [9] });
 });
+
+it('preserves all required house discoveries across repeated rows and lists', () => {
+  const [tribe] = extractTribes(
+    parseIniSections(`[tribetype]
+type 3
+toBuildHouseNeedJob 8 4
+toBuildHouseNeedJob 8 7
+toBuildHouseNeedGood 8 2 9
+toBuildHouseNeedGood 8 9 6
+`),
+    { file: 'synthetic.ini' },
+  );
+  expect(tribe?.technology?.houses).toEqual([{ house: 8, jobs: [4, 7], goods: [2, 9, 6] }]);
+});

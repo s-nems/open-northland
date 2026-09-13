@@ -72,9 +72,12 @@ describe('localizeDivergence', () => {
     // The diff is over the SAME tick of two runs, so both endpoints are tick 7.
     expect(report.diff.fromTick).toBe(7);
     expect(report.diff.toTick).toBe(7);
-    // B has one more entity (the tick-7 carpenter), so it shows up as `added` and nothing else differs.
+    // The new carpenter also changes the player's persistent discoveries.
     expect(report.diff.removed).toHaveLength(0);
-    expect(report.diff.changed).toHaveLength(0);
+    expect(report.diff.changed).toHaveLength(1);
+    expect(report.diff.changed[0]?.changes).toEqual([
+      expect.objectContaining({ name: 'TechnologyDiscoveries' }),
+    ]);
     expect(report.diff.added).toHaveLength(1);
     expect(report.diff.added[0]?.components).toHaveProperty('Settler');
   });

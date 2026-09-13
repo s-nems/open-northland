@@ -75,6 +75,18 @@ export const TribeType = z.strictObject({
       good: z.array(TypeId),
     })
     .optional(),
+  /** Explicit discovery requirements; absent in older catalogs. */
+  technology: z
+    .strictObject({
+      houses: z.array(
+        z.strictObject({
+          house: TypeId,
+          jobs: z.array(TypeId),
+          goods: z.array(TypeId),
+        }),
+      ),
+    })
+    .optional(),
   source: Provenance.optional(),
 });
 export type TribeType = z.infer<typeof TribeType>;

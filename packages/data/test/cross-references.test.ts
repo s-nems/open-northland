@@ -393,3 +393,16 @@ describe('validateCrossReferences', () => {
     expect(buildingAt).toBeGreaterThan(goodAt);
   });
 });
+
+it.each([
+  { house: UNKNOWN, jobs: [], goods: [], error: /unknown buildingType 99/ },
+  { house: 1, jobs: [UNKNOWN], goods: [], error: /requires unknown jobType 99/ },
+  { house: 1, jobs: [], goods: [UNKNOWN], error: /requires unknown goodType 99/ },
+])('rejects dangling technology prerequisites: $error', ({ error, ...requirement }) => {
+  expect(() =>
+    parseWith({
+      buildings: [{ typeId: 1, id: 'workshop', kind: 'workplace' }],
+      tribes: [{ typeId: 1, id: 'viking', technology: { houses: [requirement] } }],
+    }),
+  ).toThrow(error);
+});

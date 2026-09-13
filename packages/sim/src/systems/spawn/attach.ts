@@ -50,6 +50,7 @@ function postToWorkplace(world: World, ctx: SystemContext, e: Entity, building: 
       tribe: settler.tribe,
       owner: ownerOf(world, e),
       experience: settler.experience,
+      learned: settler.learned,
       jobType: settler.jobType,
     },
     building,

@@ -57,6 +57,8 @@ export async function createUnitChrome(
                   allowed: true,
                   enabled: true,
                   enablingJobs: [],
+                  requiredJobs: [],
+                  requiredGoods: [],
                 },
               ),
       goodAllowed: (good, tribe, player) =>

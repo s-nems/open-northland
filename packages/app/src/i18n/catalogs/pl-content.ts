@@ -198,6 +198,11 @@ export const plContent = {
         '3': 'Sąsiedzi proszą o kamień na drogę między nami.',
       },
     },
+    school: {
+      title: 'Nauka zawodu',
+      summary:
+        'Jeden zbieracz idzie do szkoły uczyć się ciesielstwa, które osada już zna. Wybierz drugiego zbieracza i kliknij szkołę prawym przyciskiem, aby samodzielnie wybrać kurs.',
+    },
     technology: {
       title: 'Technologie misji',
       summary:

@@ -12,6 +12,7 @@ import {
   Position,
   UnderConstruction,
 } from '../../../../components/index.js';
+import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId } from '../../../../nav/terrain/index.js';
@@ -53,7 +54,11 @@ function boundFarmTarget(
   if (spec === null) return null;
   if (!jobAtomics(ctx, jobType).has(spec.plantAtomic)) return null; // not the field trade (a carrier)
   if (!buildingWorkerJobs(world, ctx, b).has(jobType)) return null;
-  if (!buildingEnabled(world, ctx, ownerOf(world, b), tribe, building.buildingType)) return null;
+  if (
+    contentIndex(ctx.content).tribes.get(tribe)?.technology === undefined &&
+    !buildingEnabled(world, ctx, ownerOf(world, b), tribe, building.buildingType)
+  )
+    return null;
   if (!world.has(b, Position)) return null;
   return { farm: b, spec };
 }

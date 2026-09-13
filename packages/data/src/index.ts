@@ -6,6 +6,7 @@ export * from './json-fingerprint.js';
 export * from './lookup.js';
 export * from './missions/index.js';
 export * from './schema/index.js';
+export * from './technology.js';
 export * from './terrain-fingerprint.js';
 
 import { validateCrossReferences } from './cross-references.js';

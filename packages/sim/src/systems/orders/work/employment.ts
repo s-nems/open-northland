@@ -102,6 +102,7 @@ export function assignWorker(
       tribe: settler.tribe,
       owner: ownerOf(world, e),
       experience: settler.experience,
+      learned: settler.learned,
       jobType: settler.jobType,
     },
     b,

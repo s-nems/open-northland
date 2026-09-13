@@ -140,6 +140,7 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
           house: getIntList(sec, 'allowhouse'),
           good: getIntList(sec, 'allowgood'),
         },
+        technology: extractTechnology(sec),
         jobEnables: extractJobEnables(sec),
         jobRequirements: extractJobRequirements(sec),
         source: makeSource(src, 'tribetype'),
@@ -147,4 +148,21 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
     );
   }
   return tribes;
+}
+
+function extractTechnology(sec: RuleSection) {
+  const houses = new Map<number, { house: number; jobs: number[]; goods: number[] }>();
+  for (const p of sec.props) {
+    if (p.key !== 'toBuildHouseNeedJob' && p.key !== 'toBuildHouseNeedGood') continue;
+    const [house, ...ids] = p.values.map(Number);
+    if (house === undefined || !Number.isInteger(house) || !ids.every(Number.isInteger)) continue;
+    let row = houses.get(house);
+    if (row === undefined) {
+      row = { house, jobs: [], goods: [] };
+      houses.set(house, row);
+    }
+    const targets = p.key === 'toBuildHouseNeedJob' ? row.jobs : row.goods;
+    for (const id of ids) if (!targets.includes(id)) targets.push(id);
+  }
+  return { houses: [...houses.values()] };
 }

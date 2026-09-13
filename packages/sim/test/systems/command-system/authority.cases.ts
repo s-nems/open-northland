@@ -34,7 +34,7 @@ const THEIRS = 1;
 function settlerFor(sim: Simulation, player: number, x: number): Entity {
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x, y: 0, tribe: VIKING, owner: player });
   sim.step();
-  return nthEntity(sim, sim.world.canonicalEntities().length - 1);
+  return nthEntity(sim, [...sim.world.query(Position)].length - 1);
 }
 
 /** A bare entity carrying only an `Owner`, for gate checks that never reach a handler. */
@@ -48,7 +48,7 @@ function buildingFor(sim: Simulation, player: number | undefined, x: number): En
   const own = player === undefined ? {} : { owner: player };
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HEADQUARTERS, x, y: 4, tribe: VIKING, ...own });
   sim.step();
-  return nthEntity(sim, sim.world.canonicalEntities().length - 1);
+  return nthEntity(sim, [...sim.world.query(Position)].length - 1);
 }
 
 describe('CommandSystem - command authority', () => {

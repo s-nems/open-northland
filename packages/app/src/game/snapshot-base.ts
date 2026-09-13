@@ -262,3 +262,13 @@ export function shelterClaimCount(snapshot: WorldSnapshot, building: number): nu
   }
   return count;
 }
+
+export function settlerLearnedOf(
+  components: Readonly<Record<string, unknown>>,
+  kind: 'job' | 'good',
+): readonly number[] {
+  const learned = (components.Settler as { learned?: { job?: unknown; good?: unknown } } | undefined)
+    ?.learned;
+  const ids = learned?.[kind];
+  return Array.isArray(ids) ? ids.filter((id): id is number => typeof id === 'number') : [];
+}

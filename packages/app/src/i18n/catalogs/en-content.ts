@@ -197,6 +197,11 @@ export const enContent = {
         '3': 'The neighbours ask for stone to pave the road between us.',
       },
     },
+    school: {
+      title: 'Learning a profession',
+      summary:
+        'One collector goes to school to learn carpentry, a trade already known to the settlement. Select the other collector and right-click the school to choose a course yourself.',
+    },
     technology: {
       title: 'Mission technologies',
       summary:

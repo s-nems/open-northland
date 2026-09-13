@@ -110,6 +110,7 @@ export const COMMAND_ISSUER: {
   spawnSettler: 'trusted',
   trainSoldier: 'seat',
   unassignBuilder: 'seat',
+  learn: 'seat',
   unassignHouse: 'seat',
   unassignWorker: 'seat',
   unequipGood: 'seat',

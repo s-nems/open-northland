@@ -105,6 +105,7 @@ export interface SandboxBuildingRow {
   kind: string;
   /** How many families, not settlers, a home houses (`logichomesize`). */
   homeSize?: number;
+  schoolSize?: number;
   stock?: readonly StockSlot[];
   construction?: readonly { goodType: number; amount: number }[];
   hitpoints?: number;
@@ -276,6 +277,8 @@ function buildingRow(b: VikingBuilding): SandboxBuildingRow {
     typeId: b.typeId,
     id: b.id,
     kind: b.kind,
+    // Owned houses.ini: logicSchoolSize 5 for the school.
+    ...(b.id === 'school' ? { schoolSize: 5 } : {}),
     construction: buildingConstructionCost(b),
     hitpoints: buildingHitpoints(b.kind),
     ...(upgradeTarget !== undefined ? { upgradeTarget } : {}),

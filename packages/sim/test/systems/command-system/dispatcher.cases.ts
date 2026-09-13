@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Building, Settler } from '../../../src/components/index.js';
+import { Building, Position, Settler } from '../../../src/components/index.js';
 import type { Command } from '../../../src/index.js';
 
 import { fresh, HEADQUARTERS, nthEntity, VIKING, WOODCUTTER } from './support.js';
@@ -25,7 +25,7 @@ describe('CommandSystem - dispatch and logging', () => {
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: WOODCUTTER, x: 6, y: 0, tribe: VIKING });
     sim.step();
 
-    expect(sim.world.canonicalEntities()).toHaveLength(2);
+    expect([...sim.world.query(Position)]).toHaveLength(2);
     // First enqueued (the building) got the lower id.
     expect(sim.world.has(nthEntity(sim, 0), Building)).toBe(true);
     expect(sim.world.has(nthEntity(sim, 1), Settler)).toBe(true);

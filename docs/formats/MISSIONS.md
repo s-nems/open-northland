@@ -288,7 +288,7 @@ of each.
 | 35 | `ChangeHousesPlayerId` | 14, 1 | hand houses with the id to the player | sim | 28 |
 | 36 | `SetImportHumanFlag` | 10, 32 | set or clear behaviour bit 7 on humans with the id | sim | 8 |
 | 37 | `EnableJob` | 1, 3, 4 | enable the job for the player's tribe | sim | 21 |
-| 38 | `EnableHouse` | 1, 3, 15 | enable the house type; the original also flips a few good flags for three specific house types (id-specific, approximate) | sim | 75 |
+| 38 | `EnableHouse` | 1, 3, 15 | enable the house type and its well, beehive or animal-farm goods; catalog-name bindings | sim | 75 |
 | 39 | `DisableAll` | | deactivate every mission | sim | 83 |
 | 40 | `AddGoodsToVehicle` | 12, 6, 7 | add goods to vehicles with the id that can carry the good | sim | 14 |
 | 41 | `AddGoodsToAnyStock` | 1, 6, 7 | fill the player's warehouses that store the good, spilling to the next until the amount is placed | sim | 29 |
@@ -451,11 +451,10 @@ Readings unless marked otherwise.
   UI choices explain the restriction or prerequisite. The progression toggle lifts profession
   prerequisites and civilian XP gates, but not map permissions or military training requirements.
   Authored building attachments preserve their existing trade even if the building is not yet unlocked.
-  Manual employment at a built workshop still skips the job-to-job prerequisite, while enforcing
-  permissions and XP for a newly acquired trade; this is a deliberate convenience approximation.
-  Natural prerequisites still read living trades, now isolated by owner and tribe, rather than a
-  permanent discovered-technology history. Losing the last prerequisite worker can therefore close
-  availability again (approximation); script `Enable*` grants persist across deaths and saves.
+  Extracted catalogs now retain player discoveries and require all listed profession and product
+  discoveries for new buildings. Individual XP or a completed school course gates a worker's new
+  profession and products. Older catalogs retain their live-profession approximation. See
+  [PROGRESSION.md](PROGRESSION.md) for rules, save conversion and remaining fidelity limits.
 - **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15. This build answers
   from its per-cell fog masks: explored everywhere with fog off, known terrain counting in RECON, and a
   script reveal writes EXPLORED without downgrading a VISIBLE cell.

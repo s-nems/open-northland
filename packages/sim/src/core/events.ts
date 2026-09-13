@@ -9,6 +9,13 @@ import type { Fixed } from './fixed.js';
  */
 export type SimEvent =
   | {
+      readonly kind: 'technologyDiscovered';
+      readonly player: number;
+      readonly tribe: number;
+      readonly technology: 'job' | 'good' | 'house';
+      readonly typeId: number;
+    }
+  | {
       readonly kind: 'buildingPlaced';
       readonly entity: Entity;
       readonly at: HalfCellNode;

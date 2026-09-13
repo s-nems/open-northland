@@ -59,7 +59,13 @@ export const productionSystem: System = (world, ctx) => {
     const recipes = recipesByProductOf(world, ctx, e);
     for (const cycle of done) depositCycleOutput(world, ctx, e, cycle, recipes);
     chargeMilitaryPietyCost(world, ctx, done, staffing);
-    grantProductionExperience(world, ctx, done.length, staffing);
+    grantProductionExperience(
+      world,
+      ctx,
+      done.length,
+      staffing,
+      done.map((cycle) => cycle.goodType),
+    );
     // After the grant, so the batch that just finished already counts toward its own bonus fraction.
     accrueBonusOutput(world, ctx, e, done, staffing, recipes);
     if (prod.cycles.length === 0) world.remove(e, Production);

@@ -31,6 +31,7 @@ export const Settler = defineComponent<{
   enjoyment: Fixed;
   /** specialization id -> experience points (humanjobexperiencetypes). */
   experience: Map<number, number>;
+  learned?: { job: number[]; good: number[] };
 }>('Settler', 'settlers');
 
 export type SettlerState = NonNullable<(typeof Settler)['__value']>;

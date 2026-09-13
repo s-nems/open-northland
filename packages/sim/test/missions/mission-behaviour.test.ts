@@ -248,7 +248,7 @@ describe('the bits the sim reads', () => {
     grantWorkExperience(sim.world, ctxOf(sim), barred, WOOD, 1);
     grantWorkExperience(sim.world, ctxOf(sim), learner, WOOD, 1);
     expect(sim.world.get(barred, Settler).experience.size).toBe(0);
-    expect(sim.world.get(learner, Settler).experience.size).toBe(1);
+    expect(sim.world.get(learner, Settler).experience.size).toBe(2);
   });
 
   it('paces a slow human behind and a fast one ahead of an ordinary walker', () => {

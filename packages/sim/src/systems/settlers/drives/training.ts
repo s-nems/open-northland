@@ -5,13 +5,16 @@ import {
   ownerOf,
   Settler,
   type SettlerIdentity,
+  sameSide,
   TrainingOrder,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
+import { isSchool } from '../../orders/education.js';
 import { reidleAsJob } from '../../orders/work/index.js';
+import { typeAllowed } from '../../progression/unlocks.js';
 import { needAtomicDuration } from '../../readviews/animations.js';
 import { baseSoldierJobType, isBarracks, isFighterJob } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
@@ -44,15 +47,34 @@ export function planTraining(
 ): boolean {
   const order = world.tryGet(e, TrainingOrder);
   if (order === undefined) return false;
+  if (
+    order.lesson !== undefined &&
+    (!isSchool(world, ctx, order.house) ||
+      !sameSide(world, e, order.house) ||
+      !typeAllowed(world, ctx, ownerOf(world, e), settler.tribe, order.lesson.kind, order.lesson.typeId))
+  )
+    return abandonDrill(world, e);
   // Time served is served: the enlistment settles before the house is looked at again, so a barracks razed
   // between the last repetition and this planning cannot swallow it. It takes the settler for the tick
   // because `enlist` retires its trade, and the rungs below were entered with the old one.
   if (order.drillTicksLeft <= 0) {
     abandonDrill(world, e);
-    enlist(world, ctx, e);
+    if (order.lesson === undefined) enlist(world, ctx, e);
+    else {
+      const s = world.mut(e, Settler);
+      s.learned ??= { job: [], good: [] };
+      const ids = s.learned[order.lesson.kind];
+      if (!ids.includes(order.lesson.typeId)) ids.push(order.lesson.typeId);
+      ids.sort((a, b) => a - b);
+      if (order.lesson.kind === 'job') {
+        world.remove(e, JobAssignment);
+        reidleAsJob(world, ctx, e, order.lesson.typeId);
+      }
+    }
     return true;
   }
-  if (!isBarracks(world, ctx, order.house)) return abandonDrill(world, e);
+  if (!(order.lesson === undefined ? isBarracks : isSchool)(world, ctx, order.house))
+    return abandonDrill(world, e);
   const door = interactionCell(world, ctx, terrain, order.house, here);
   if (!drillDoorOpen(world, ctx, e, door, limit)) return abandonDrill(world, e);
   enterBuilding(world, e, order.house, here, door, () =>

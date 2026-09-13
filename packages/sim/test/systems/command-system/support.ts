@@ -1,3 +1,4 @@
+import { Position } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { testContent } from '../../fixtures/content.js';
@@ -28,7 +29,7 @@ export function fresh(seed = 1): Simulation {
 
 /** The nth canonical (ascending-id) entity, asserting it exists - keeps tests free of `!`. */
 export function nthEntity(sim: Simulation, n: number): Entity {
-  const ids = sim.world.canonicalEntities();
+  const ids = sim.world.canonicalEntities().filter((entity) => sim.world.has(entity, Position));
   const e = ids[n];
   if (e === undefined) throw new Error(`no entity at index ${n} (have ${ids.length})`);
   return e;

@@ -2,7 +2,7 @@ import { Building, JobAssignment, ownerOf, ownersCompatible, Settler } from '../
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { buildingEnabled, type NeedSubject, settlerMeetsNeed } from '../../progression/index.js';
+import { buildingEnabled, jobEnabled, type NeedSubject, settlerMeetsNeed } from '../../progression/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 
@@ -18,23 +18,10 @@ export interface OpeningsQuery extends NeedSubject {
 }
 
 /**
- * The open worker job at `building` chosen by the caller's ordered `jobPriority`: the first job the building
- * both offers and has room for, or null.
- *
- * Employment is directed, never automatic, so the two extracted gates on a specialization split (the coiner
- * carries both, `jobEnablesJob 8/13 14` and `needforjob 14 …`) resolve as:
- *  - the tribe-tech gate (`jobEnablesJob`) is not applied, a deliberate convenience deviation so an
- *    assignment staffs a built workshop with its own trade instead of silently downgrading to the carrier
- *    slot;
- *  - the per-settler XP threshold (`needforjob`) is enforced on a trade the settler does not yet hold, so an
- *    unqualified settler falls through to the next listed job, which is the carrier slot - the original's
- *    "make him a tradesman, else a hauler" rule. Being posted to the trade it already practises is not
- *    earning it, so that case skips the gate.
- *
- * A building still under construction answers like a finished one, and an upgrade site reports the slots of
- * the tier it currently is, so a higher tier's extra seats cannot be filled early. The slot counts and the
- * tier chain are extracted (`logicworker`, `upgradeTarget`); hiring onto a foundation and the upgrade's
- * base-tier cap are authored, since the original offers no pre-completion staffing to read.
+ * Select the first offered, understaffed trade the worker qualifies for. Catalogs with explicit house
+ * requirements separate construction discovery from staffing; a newly chosen trade must be known to
+ * the player. Initial authored attachments and workers retaining their current trade keep their seats.
+ * Foundation staffing and an upgrade's base-tier slot cap are authored approximations.
  */
 export function openWorkerJobFromList(
   query: OpeningsQuery,
@@ -45,7 +32,12 @@ export function openWorkerJobFromList(
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace
-  if (!query.authored && !buildingEnabled(world, ctx, ownerOf(world, building), tribe, b.buildingType))
+  const modern = contentIndex(ctx.content).tribes.get(tribe)?.technology !== undefined;
+  if (
+    !modern &&
+    !query.authored &&
+    !buildingEnabled(world, ctx, ownerOf(world, building), tribe, b.buildingType)
+  )
     return null;
   const offered = buildingWorkerJobs(world, ctx, building);
   for (const jobType of jobPriority) {
@@ -53,6 +45,13 @@ export function openWorkerJobFromList(
     if (!jobUnderstaffed(query, building, jobType)) continue;
     if (!garrisonPostOpenTo(query, jobType)) continue;
     const alreadyHoldsTrade = query.jobType === jobType;
+    if (
+      modern &&
+      !query.authored &&
+      !alreadyHoldsTrade &&
+      !jobEnabled(world, ctx, query.owner, tribe, jobType)
+    )
+      continue;
     // A bow soldier's `needforjob 40 5 69` reads a fight track only fighting accrues, so re-gating a
     // settler already in the trade would leave every tower post unmannable.
     if (!alreadyHoldsTrade && !settlerMeetsNeed(world, ctx, query, 'job', jobType)) continue;

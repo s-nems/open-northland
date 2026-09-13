@@ -73,4 +73,7 @@ This is a scripted single-player free map, not a base campaign. Its opening and 
 prove its ending or campaign completion. The inspector shows saved execution ticks and counts;
 unsupported and refused results remain in the diagnostic log.
 
+`?scene=school` shows a collector walking to school and acquiring an individual carpentry qualification.
+Another collector is available for choosing a course through the school dialog.
+
 `?scene=technology` shows map permission followed by a player-owned profession unlocking housing.

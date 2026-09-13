@@ -1,6 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import { entityById, systems, type WorldSnapshot } from '@open-northland/sim';
-import { num, progressionGatesSettler, settlerExperienceOf } from './snapshot.js';
+import { num, progressionGatesSettler, settlerExperienceOf, settlerLearnedOf } from './snapshot.js';
 
 /**
  * The profession picker's qualification filter: the app-side mirror of the sim's `settlerMeetsNeed`
@@ -96,7 +96,11 @@ export function jobUnlockedForSelection(
     const settler = ent.components.Settler as { tribe?: unknown } | undefined;
     const experience = settlerExperienceOf(ent.components);
     const gated = progressionGatesSettler(snapshot, ent);
-    if (!jobUnlockedFor(content, gated, num(settler?.tribe), experience, jobType)) return false;
+    if (
+      !settlerLearnedOf(ent.components, 'job').includes(jobType) &&
+      !jobUnlockedFor(content, gated, num(settler?.tribe), experience, jobType)
+    )
+      return false;
   }
   return true;
 }

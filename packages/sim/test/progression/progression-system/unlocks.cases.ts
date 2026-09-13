@@ -80,23 +80,11 @@ describe('experienceRequirementMet - a single needfor XP threshold', () => {
     ).toBe(true); // 20 + 10 >= 30
   });
 
-  it('counts a job-GENERAL expType as total repeats across every track the job owns', () => {
-    // Track 2 is the woodcutter GENERAL track (factor 1): a gate keyed to it measures the trade's
-    // overall practice, so wood-specific repeats (track 1, factor 10) count toward it even though
-    // work accrues only the specific track.
+  it('a general requirement reads its own counter without adding specializations', () => {
     const generalKeyed: JobRequirement = { ...need, experienceTypes: [2] };
-    expect(experienceRequirementMet(ctx, new Map([[1, 290]]), generalKeyed)).toBe(false); // 29 < 30
-    expect(experienceRequirementMet(ctx, new Map([[1, 300]]), generalKeyed)).toBe(true); // 30 repeats
-    expect(
-      experienceRequirementMet(
-        ctx,
-        new Map([
-          [1, 250], // 25 repeats on the wood specialization
-          [2, 5], // 5 repeats on the general track itself (counted once, at its own factor)
-        ]),
-        generalKeyed,
-      ),
-    ).toBe(true); // 25 + 5 >= 30
+    expect(experienceRequirementMet(ctx, new Map([[1, 300]]), generalKeyed)).toBe(false);
+    expect(experienceRequirementMet(ctx, new Map([[2, 29]]), generalKeyed)).toBe(false);
+    expect(experienceRequirementMet(ctx, new Map([[2, 30]]), generalKeyed)).toBe(true);
   });
 
   it('counts each track once when a row names a general track beside its own specific', () => {

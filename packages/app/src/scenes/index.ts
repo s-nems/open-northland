@@ -21,6 +21,7 @@ import { huntingScene } from './hunting.js';
 import { livestockScene } from './livestock.js';
 import { presentationScene } from './presentation.js';
 import { sandboxScene } from './sandbox/index.js';
+import { schoolScene } from './school.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
 import { technologyScene } from './technology.js';
@@ -75,6 +76,7 @@ export const SCENES: readonly SceneDefinition[] = [
   presentationScene,
   terrainEditsScene,
   technologyScene,
+  schoolScene,
 ];
 
 export function getScene(id: string): SceneDefinition | undefined {

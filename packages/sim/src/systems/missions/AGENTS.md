@@ -45,10 +45,13 @@ because no other system deals that damage. Anything else would put one mechanic 
 ## The unlock tables
 
 A result writes a player's script unlock tables (`components/unlocks.ts`). The progression gates read
-the enabled table beside the living-trade rule, and the `JobEnabled` and `GoodProduceable` goals go
+the enabled table beside saved technology discoveries, and the `JobEnabled` and `GoodProduceable` goals go
 through those gates rather than the table, so a script and a settler unlock one and the same thing.
 The allowed table overrides initial tribe permissions and saved map bans. Progression and UI probes
 share the same player-and-tribe gates; Allow grants permission, Enable grants availability.
+Natural discoveries persist in the lazy `TechnologyDiscoveries` singleton; individual school
+qualifications live on `Settler`. The common progression contract is in
+[`PROGRESSION.md`](../../../../../docs/formats/PROGRESSION.md).
 
 ## The player tables
 

@@ -21,7 +21,7 @@ function houseKind(mainType: number | undefined): BuildingType['kind'] {
 
 /**
  * A house record keys its id on `logictype`, not the `type` every other table uses, and its name on
- * `debugname`. The graphics and placement extras (`debugcolor`, `logicSchoolSize`, `logicvehicletype`,
+ * `debugname`. The graphics and placement extras (`debugcolor`, `logicvehicletype`,
  * `logicbuildon*`/`logicignore*`) are skipped here: they belong with the construction and placement
  * systems rather than this type-table slice.
  */
@@ -54,6 +54,7 @@ export function extractBuildings(sections: readonly RuleSection[], src: SourceRe
         typeId,
         id: name ? slug(name) : `house_${typeId}`,
         kind: houseKind(getInt(sec, 'logicmaintype')),
+        schoolSize: getInt(sec, 'logicSchoolSize'),
         homeSize: getInt(sec, 'logichomesize') ?? 0,
         canEnableDefenceMode: getInt(sec, 'logicCanEnableDefenceMode') === 1,
         workers,

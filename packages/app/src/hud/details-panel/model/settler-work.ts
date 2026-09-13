@@ -1,7 +1,8 @@
 import { resolveJobAtomics } from '@open-northland/data';
-import { entityById, type WorldSnapshot } from '@open-northland/sim';
+import { entityById, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
 import { goodUnlockedFor } from '../../../game/profession-unlocks.js';
-import { num, settlerExperienceOf } from '../../../game/snapshot.js';
+import { num, settlerExperienceOf, settlerLearnedOf } from '../../../game/snapshot.js';
+import { technologyLabel } from '../../../game/technology.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import {
   buildingDef,
@@ -48,6 +49,22 @@ export function settlerWork(
   comps: Comp,
   progressionGated: boolean,
 ): SettlerWorkModel {
+  const training = comps.TrainingOrder as
+    | { drillTicksLeft?: number; lesson?: { kind: 'job' | 'good'; typeId: number } }
+    | undefined;
+  if (training?.lesson !== undefined) {
+    return {
+      place: messages().hud.schoolTitle,
+      product: formatMessage(messages().hud.schoolProgress, {
+        target: technologyLabel(ctx, training.lesson.kind, training.lesson.typeId),
+        seconds: Math.ceil(Math.max(0, training.drillTicksLeft ?? 0) / TICKS_PER_SECOND),
+      }),
+      gatherChoices: [],
+      selectedGood: null,
+      craftChoices: [],
+      selectedCraftGoods: [],
+    };
+  }
   const carry = comps.Carrying as { goodType?: unknown; amount?: unknown } | undefined;
   const carried =
     carry === undefined
@@ -61,7 +78,8 @@ export function settlerWork(
   const owner = num((comps.Owner as { player?: unknown } | undefined)?.player);
   const earned = (goodType: number): boolean =>
     (ctx.goodAllowed?.(goodType, num(settlerComp?.tribe) ?? 0, owner) ?? true) &&
-    goodUnlockedFor(ctx, progressionGated, num(settlerComp?.tribe), experience, goodType);
+    (settlerLearnedOf(comps, 'good').includes(goodType) ||
+      goodUnlockedFor(ctx, progressionGated, num(settlerComp?.tribe), experience, goodType));
   const workFlag = comps.WorkFlag as { goodType?: unknown } | undefined;
   if (workFlag !== undefined) {
     const selectedGood = num(workFlag.goodType) ?? null;

@@ -43,7 +43,11 @@ export function boundWorkplaceTarget(
   if (world.has(workplace, UnderConstruction)) return null;
   if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;
-  if (!buildingEnabled(world, ctx, ownerOf(world, workplace), tribe, building.buildingType)) return null;
+  if (
+    contentIndex(ctx.content).tribes.get(tribe)?.technology === undefined &&
+    !buildingEnabled(world, ctx, ownerOf(world, workplace), tribe, building.buildingType)
+  )
+    return null;
   if (!world.has(workplace, Position)) return null;
   return workplace;
 }

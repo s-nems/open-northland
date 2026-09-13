@@ -39,13 +39,13 @@ describe('trackFor - (job, good) specialization lookup', () => {
 });
 
 describe('grantWorkExperience - accrual on a completed work atomic', () => {
-  it('trains ONLY the good-specific track when one matches (one XP row per worked resource)', () => {
+  it('trains the general and good-specific tracks together', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const e = makeSettler(sim, WOODCUTTER);
     grantWorkExperience(sim.world, ctxOf(sim), e, WOOD, 1);
     expect(sim.world.get(e, Settler).experience.get(WOOD_TRACK)).toBe(10); // specific factor 10
-    expect(sim.world.get(e, Settler).experience.has(GENERAL_TRACK)).toBe(false); // no side accrual
-    expect(sim.world.get(e, Settler).experience.size).toBe(1);
+    expect(sim.world.get(e, Settler).experience.get(GENERAL_TRACK)).toBe(1);
+    expect(sim.world.get(e, Settler).experience.size).toBe(2);
   });
 
   it('accumulates across repeated work (repetition builds expertise)', () => {

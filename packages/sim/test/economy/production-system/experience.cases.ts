@@ -20,9 +20,7 @@ describe('productionSystem grants the operator profession XP per completed batch
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // the batch really finished
     const xp = sim.world.get(worker, Settler).experience;
     expect(xp.get(CARPENTER_GENERAL_TRACK)).toBe(100); // one batch = one experienceFactor grant
-    // Profession-level: only the seeded plank-gate entry + the general track - the good-specific
-    // carpenter_plank track stays untouched.
-    expect(xp.size).toBe(2);
+    expect(xp.size).toBe(3);
   });
 
   it('accumulates across cycles (two planks = two grants)', () => {

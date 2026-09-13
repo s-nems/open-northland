@@ -51,6 +51,7 @@ describe('jobEnables gate: tracks the living trades within a single tick', () =>
     const cutterState = sim.world.get(cutter, Settler);
     addPerson(sim.world, cutter, {
       ...cutterState,
+      learned: { job: [...(cutterState.learned?.job ?? [])], good: [...(cutterState.learned?.good ?? [])] },
       experience: new Map(cutterState.experience),
       tribe: OTHER_TRIBE,
     });

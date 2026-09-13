@@ -1,135 +1,13 @@
-import type {
-  HumanJobExperienceType,
-  JobEnablesKind,
-  JobRequirement,
-  JobRequirementTarget,
-  Recipe,
-  VehicleType,
-} from '@open-northland/data';
-import {
-  isAiPlayer,
-  mapPermission,
-  ownerOf,
-  professionProgressionEnabled,
-  Settler,
-  scriptAllows,
-  scriptEnables,
-  type UnlockKind,
-} from '../../components/index.js';
+import type { HumanJobExperienceType, JobRequirement, JobRequirementTarget } from '@open-northland/data';
+import { isAiPlayer, ownerOf, professionProgressionEnabled, Settler } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { isFighterJob } from '../readviews/index.js';
-import { isShipVehicle } from '../readviews/vehicles.js';
-import { aliveTribeJobs } from './alive-jobs.js';
+import { jobEnabled, typeAllowed } from './availability.js';
 import { requirementRepeats } from './bonus.js';
 
-export function buildingEnabled(
-  world: World,
-  ctx: ContentContext,
-  owner: number | undefined,
-  tribe: number,
-  buildingType: number,
-): boolean {
-  if (!typeAllowed(world, ctx, owner, tribe, 'house', buildingType)) return false;
-  if (!professionProgressionEnabled(world)) return true;
-  return (
-    scriptEnables(world, owner, tribe, 'house', buildingType) ||
-    tribeUnlockEnabled(world, ctx, tribe, 'house', buildingType, owner)
-  );
-}
-
-/**
- * Whether producing `goodType` is unlocked for `owner`'s `tribe` right now: the `good` kind of the same
- * `jobEnables` tech-graph, so a tannery makes no leather until the tribe has the tanner that enables it,
- * or until the map's script enabled the good for that player.
- */
-export function goodEnabled(
-  world: World,
-  ctx: ContentContext,
-  owner: number | undefined,
-  tribe: number,
-  goodType: number,
-): boolean {
-  if (!typeAllowed(world, ctx, owner, tribe, 'good', goodType)) return false;
-  if (!professionProgressionEnabled(world)) return true;
-  return (
-    scriptEnables(world, owner, tribe, 'good', goodType) ||
-    tribeUnlockEnabled(world, ctx, tribe, 'good', goodType, owner)
-  );
-}
-
-export function recipeOutputsEnabled(
-  world: World,
-  ctx: ContentContext,
-  owner: number | undefined,
-  tribe: number,
-  recipe: Recipe,
-): boolean {
-  for (const output of recipe.outputs) {
-    if (!goodEnabled(world, ctx, owner, tribe, output.goodType)) return false;
-  }
-  return true;
-}
-
-export function jobEnabled(
-  world: World,
-  ctx: ContentContext,
-  owner: number | undefined,
-  tribe: number,
-  jobType: number,
-): boolean {
-  if (!typeAllowed(world, ctx, owner, tribe, 'job', jobType)) return false;
-  if (!professionProgressionEnabled(world)) return true;
-  return (
-    scriptEnables(world, owner, tribe, 'job', jobType) ||
-    tribeUnlockEnabled(world, ctx, tribe, 'job', jobType, owner)
-  );
-}
-
-/**
- * Shared read side of the `jobEnables` tech-graph for a single `(kind, targetId)`: enabled when no edge of
- * `kind` gates the target, or a settler of a gating job is currently alive in the tribe. A tribe absent
- * from content gates nothing. The tribe id is the `TribeType` `typeId` that `Settler.tribe` and
- * `Building.tribe` carry.
- *
- * Both halves are memoized, so a probe costs only the handful of edges that gate this one target. A pure
- * membership query, so nothing here needs canonical order.
- */
-function tribeUnlockEnabled(
-  world: World,
-  ctx: ContentContext,
-  tribe: number,
-  kind: JobEnablesKind,
-  targetId: number,
-  owner?: number,
-): boolean {
-  const enablingJobs = contentIndex(ctx.content).enablingJobsByTribe.get(tribe)?.get(kind)?.get(targetId);
-  if (enablingJobs === undefined) return true;
-
-  const trades = aliveTribeJobs(world, owner).get(tribe);
-  if (trades === undefined) return false; // the tribe holds no trade at all
-  for (const jobType of enablingJobs) {
-    if (trades.has(jobType)) return true;
-  }
-  return false;
-}
-
-/**
- * The ship types `tribe` has currently unlocked, sorted ascending by `typeId` so the order cannot depend
- * on `content.vehicles` declaration order. Composes the extracted `passengerSlots` ship classification
- * with the `vehicle`-kind tech gate.
- */
-export function tribeShipsUnlocked(
-  world: World,
-  ctx: ContentContext,
-  tribe: number,
-  owner?: number,
-): VehicleType[] {
-  return ctx.content.vehicles
-    .filter((v) => isShipVehicle(v) && tribeUnlockEnabled(world, ctx, tribe, 'vehicle', v.typeId, owner))
-    .sort((a, b) => a.typeId - b.typeId);
-}
+export * from './availability.js';
 
 /**
  * Whether a settler's accrued XP satisfies a single `needfor*` requirement from the
@@ -158,11 +36,12 @@ export interface NeedSubject {
   /** The owning player, or `undefined` for a neutral settler (which the gates do apply to). */
   readonly owner: number | undefined;
   readonly experience: ReadonlyMap<number, number>;
+  readonly learned?: { readonly job: readonly number[]; readonly good: readonly number[] } | undefined;
 }
 
 export function needSubjectOf(world: World, settler: Entity): NeedSubject {
   const s = world.get(settler, Settler);
-  return { tribe: s.tribe, owner: ownerOf(world, settler), experience: s.experience };
+  return { tribe: s.tribe, owner: ownerOf(world, settler), experience: s.experience, learned: s.learned };
 }
 
 /**
@@ -190,13 +69,14 @@ export function settlerMeetsNeed(
 ): boolean {
   const { tribe, owner, experience } = subject;
   if (!typeAllowed(world, ctx, owner, tribe, target, targetId)) return false;
+  if (subject.learned?.[target].includes(targetId)) return true;
   const fighterJob = target === 'job' && isFighterJob(ctx.content, targetId);
   if (!experienceGatesApply(world, owner) && !fighterJob) return true;
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true;
   if (
     fighterJob &&
-    schoolingMet(ctx.content.jobExperience, tribeType.jobRequirements, experience, targetId)
+    educationMet(ctx.content.jobExperience, tribeType.jobRequirements, experience, target, targetId)
   ) {
     return true;
   }
@@ -223,31 +103,23 @@ export function schoolingMet(
   experience: ReadonlyMap<number, number>,
   targetId: number,
 ): boolean {
+  return educationMet(tracks, requirements, experience, 'job', targetId);
+}
+
+function educationMet(
+  tracks: readonly HumanJobExperienceType[],
+  requirements: readonly JobRequirement[],
+  experience: ReadonlyMap<number, number>,
+  target: JobRequirementTarget,
+  targetId: number,
+): boolean {
   let schooled = false;
   for (const req of requirements) {
-    if (req.requirement !== 'train' || req.target !== 'job' || req.targetId !== targetId) continue;
+    if (req.requirement !== 'train' || req.target !== target || req.targetId !== targetId) continue;
     if (requirementRepeats(tracks, experience, req.experienceTypes) < req.amount) return false;
     schooled = true;
   }
   return schooled;
-}
-
-/** Map grants override authored bans; otherwise the tribe's initial allow table is authoritative. */
-export function typeAllowed(
-  world: World,
-  ctx: ContentContext,
-  owner: number | undefined,
-  tribe: number,
-  kind: UnlockKind,
-  typeId: number,
-): boolean {
-  if (scriptAllows(world, owner, tribe, kind, typeId) || scriptEnables(world, owner, tribe, kind, typeId))
-    return true;
-  return (
-    mapPermission(world, owner, tribe, kind, typeId) ??
-    contentIndex(ctx.content).tribes.get(tribe)?.permissions?.[kind].includes(typeId) ??
-    true
-  );
 }
 
 export function canChooseJob(
@@ -260,28 +132,4 @@ export function canChooseJob(
     jobEnabled(world, ctx, subject.owner, subject.tribe, jobType) &&
     settlerMeetsNeed(world, ctx, subject, 'job', jobType)
   );
-}
-
-export function unlockStatus(
-  world: World,
-  ctx: ContentContext,
-  owner: number | undefined,
-  tribe: number,
-  kind: UnlockKind,
-  typeId: number,
-): { allowed: boolean; enabled: boolean; enablingJobs: number[] } {
-  const allowed = typeAllowed(world, ctx, owner, tribe, kind, typeId);
-  const enabled =
-    kind === 'house'
-      ? buildingEnabled(world, ctx, owner, tribe, typeId)
-      : kind === 'good'
-        ? goodEnabled(world, ctx, owner, tribe, typeId)
-        : jobEnabled(world, ctx, owner, tribe, typeId);
-  return {
-    allowed,
-    enabled,
-    enablingJobs: [
-      ...(contentIndex(ctx.content).enablingJobsByTribe.get(tribe)?.get(kind)?.get(typeId) ?? []),
-    ],
-  };
 }

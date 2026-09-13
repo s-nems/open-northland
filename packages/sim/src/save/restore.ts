@@ -10,6 +10,7 @@ import type { MissionScript } from '../systems/missions/index.js';
 import { FOG_STATE } from '../systems/vision/index.js';
 import { simContentFingerprint } from './content-fingerprint.js';
 import { type ComponentSection, type FogSection, SAVE_MAP_KEY, type SaveGame } from './format.js';
+import { migrateProgression } from './progression.js';
 
 export interface RestoreOptions {
   content: ContentSet;
@@ -80,6 +81,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
         assertNever(section);
     }
   }
+  migrateProgression(sim.world, opts.content, header.contentRevision);
   sim.restoreTick(header.tick);
   assertMissionScriptMatches(sim, opts.missions);
   // Structural validation cannot see that a saved reference points at a settler with no marriage or a

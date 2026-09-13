@@ -74,6 +74,7 @@ import { relatedWorldLoader } from './save-load/related-world.js';
 import { createScriptPresentation } from './script-presentation.js';
 import { mountScriptTerrainColors } from './script-terrain-colors.js';
 import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
+import { createWorldEventHandler } from './world-events.js';
 import { createWorldTeardown } from './world-teardown.js';
 
 /** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
@@ -416,13 +417,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     },
     teardown: teardownWorld,
   });
-  const onEvents = (events: readonly SimEvent[]): void => {
-    deps.onEvents?.(events);
-    terrainColors(events);
-    if (subMissions.onEvents(events)) return;
-    if (deps.observer !== true) verdict?.onEvents(events);
-    presentation?.onEvents(events);
-  };
+  const onEvents = createWorldEventHandler({
+    content: sim.content,
+    player: localPlayer,
+    signal: lifetime.signal,
+    forward: (events) => deps.onEvents?.(events),
+    terrainColors,
+    subMissions: (events) => subMissions.onEvents(events),
+    verdict: (events) => { if (deps.observer !== true) verdict?.onEvents(events); },
+    presentation: (events) => presentation?.onEvents(events),
+  });
 
   // Injected rather than imported: `hud/` never imports `view/`.
   const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>

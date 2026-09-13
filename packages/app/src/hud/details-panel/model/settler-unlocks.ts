@@ -1,6 +1,6 @@
 import { systems } from '@open-northland/sim';
 import { isFighterTarget } from '../../../game/profession-unlocks.js';
-import { num, settlerExperienceOf } from '../../../game/snapshot.js';
+import { num, settlerExperienceOf, settlerLearnedOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { type Comp, jobDisplayName, type UnitPanelModelContext } from './context.js';
 import { experienceLabel } from './settler.js';
@@ -37,7 +37,12 @@ export function unlockProgressRows(
   const points = settlerExperienceOf(comps);
   const rows: (UnlockProgressRowModel & { targetId: number })[] = [];
   for (const req of tribeType.jobRequirements) {
-    if (req.requirement !== 'need' || req.target !== 'job') continue;
+    if (
+      req.requirement !== 'need' ||
+      req.target !== 'job' ||
+      settlerLearnedOf(comps, 'job').includes(req.targetId)
+    )
+      continue;
     if (isFighterTarget(ctx, req.targetId)) continue; // barracks territory, never an XP promise
     const tracks = req.experienceTypes.map((t) => ctx.jobExperience.find((d) => d.typeId === t));
     const reachable = tracks.findIndex((t) => t?.jobType === jobType);

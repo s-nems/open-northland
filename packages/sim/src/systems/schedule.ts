@@ -34,6 +34,7 @@ import {
   playerOrderSystem,
   signpostOrderSystem,
 } from './orders/index.js';
+import { technologySystem } from './progression/discoveries.js';
 import { atomicSystem } from './settlers/atomics/system.js';
 import { plannerSystem } from './settlers/planner/system.js';
 import { gossipSystem } from './social/index.js';
@@ -47,10 +48,17 @@ interface ScheduledSystem {
 
 /** Canonical per-tick execution order. Engine wiring, not part of the public systems namespace. */
 export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
+  {
+    name: 'technologyBeforeCommands',
+    system: (world, ctx) => {
+      if (ctx.tick > 1) technologySystem(world, ctx);
+    },
+  },
   { name: 'command', system: commandSystem },
   // Directly after the commands that enable it, and at the head of the tick, so a mission judges the
   // settled world the previous tick's cleanup left behind.
   { name: 'mission', system: missionSystem },
+  { name: 'technologyAfterMissions', system: technologySystem },
   // After the orders that raise and lower alarms and before the planner, so a shelter that stopped
   // qualifying releases its civilians in time to claim another one on this same pass.
   { name: 'defence', system: defenceSystem },
@@ -100,6 +108,7 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'combat', system: combatSystem },
   { name: 'projectile', system: projectileSystem },
   { name: 'growth', system: growthSystem },
+  { name: 'technologyAfterWork', system: technologySystem },
   { name: 'cleanup', system: cleanupSystem },
   // After cleanup, so a man reaped this tick is already gone when the death check counts, and before
   // the AI, so a seat that just died issues nothing.

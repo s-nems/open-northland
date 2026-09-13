@@ -25,6 +25,7 @@ import {
   JOB_BUILDER,
   JOB_CIVILIST,
   JOB_HUNTER,
+  JOB_JOINER,
   JOB_SCOUT,
   JOB_SOLDIER_BROADSWORD,
   JOB_SOLDIER_SPEAR,
@@ -157,7 +158,17 @@ export function buildSandboxTribes(
       ]),
     ],
     jobEnables: SANDBOX_JOB_ENABLES,
-    jobRequirements: SOLDIER_GATE,
+    jobRequirements: [
+      ...SOLDIER_GATE,
+      // Owned CnMod tribetypes.ini: trainforjob 9 10 77.
+      {
+        requirement: 'train',
+        target: 'job',
+        targetId: JOB_JOINER,
+        amount: 10,
+        experienceTypes: [systems.TRAINING_EXPERIENCE_TYPE],
+      },
+    ],
   });
   // No hitpoints row: an animal's HP pool comes from its animal record, not the tribe table.
   for (const tribe of SANDBOX_ANIMAL_TRIBES) {
