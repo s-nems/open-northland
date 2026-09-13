@@ -38,7 +38,6 @@ import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraCenteredOnTile, createCameraController } from '../view/camera/index.js';
 import { mapZoomParam } from '../view/camera/map-zoom.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
-import { bindHarvestableHandover, retireStaticHarvestables } from '../view/harvestable-handover.js';
 import { aiSeatsParam, introParam } from '../view/params.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { takeStagedSave } from '../view/runtime/save-load/index.js';
@@ -50,6 +49,7 @@ import {
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
 import { readStoredSettings } from '../view/settings-store.js';
+import { bindStaticLayer } from '../view/static-layer.js';
 import { buildMapWorld, restoreMapWorld } from './map/world.js';
 
 /**
@@ -156,7 +156,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   if (loaded?.objects !== undefined && ir !== null) {
     try {
       const loadedObjects = ownAssets
-        ? await loadOwnMapObjects(app.renderer, loaded.objects, elevation)
+        ? await loadOwnMapObjects(app.renderer, loaded.objects, ir, elevation)
         : await loadMapObjects(loaded.objects, ir, elevation, brightness);
       renderer.setMapObjects(loadedObjects.sprites);
       // Assigned only after the layer accepted the sprites: static refs against an empty layer would
@@ -227,19 +227,17 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     hashTrace: hashTraceFor(params),
   });
 
-  // A worked resource leaves the built-once static layer for the sprite pool. Without static sprites
-  // every node is pool-drawn already. A restored world retires every harvestable quad up front
-  // instead: the virgin bake cannot know which nodes the save already worked or felled.
-  if (stagedSave !== null && staticObjects !== undefined && loaded?.objects !== undefined && ir !== null) {
-    retireStaticHarvestables(
-      renderer,
-      harvestablePlacementOrdinals(sim.content, loaded.objects, ir),
-      staticObjects.byPlacement,
-    );
-  }
-  const harvestableHandover =
-    staticObjects !== undefined && stagedSave === null
-      ? bindHarvestableHandover(renderer, harvestablePlacements, staticObjects.byPlacement)
+  const staticLayer =
+    staticObjects !== undefined && loaded?.objects !== undefined && ir !== null
+      ? bindStaticLayer(
+          renderer,
+          { placements: loaded.objects.placements, byPlacement: staticObjects.byPlacement },
+          stagedSave === null
+            ? { kind: 'fresh', placementByEntity: harvestablePlacements }
+            : { kind: 'restored', placements: harvestablePlacementOrdinals(sim.content, loaded.objects, ir) },
+          sim.content,
+          () => sim.snapshot(),
+        )
       : null;
 
   const focus = mapStartFocus(sim.snapshot(), terrainGrid.width, terrainGrid.height, localPlayer);
@@ -283,7 +281,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
     ...(minimapCells !== null ? { minimapCellColours: minimapCells } : {}),
     mapSize: { width: terrainGrid.width, height: terrainGrid.height },
     elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
-    ...(harvestableHandover !== null ? { onEvents: harvestableHandover } : {}),
+    ...(staticLayer !== null ? { onEvents: staticLayer } : {}),
     worldToken: mapId,
     restored: stagedSave !== null,
     introAtStart: stagedSave === null && introParam(params),

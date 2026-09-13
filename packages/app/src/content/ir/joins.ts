@@ -40,6 +40,16 @@ export function drawsAsFlatDecor(record: Pick<LandscapeGfxRow, 'walkBlockAreas'>
   return (record.walkBlockAreas ?? []).length === 0;
 }
 
+/** The `landscapeGfx` rows by `EditName`, the key a map's `objects` lane joins on; the first row of a
+ *  repeated name wins. */
+export function landscapeRecordsByName(ir: ContentIr): ReadonlyMap<string, LandscapeGfxRow> {
+  const byName = new Map<string, LandscapeGfxRow>();
+  for (const row of ir.landscapeGfx ?? []) {
+    if (row.editName !== undefined && !byName.has(row.editName)) byName.set(row.editName, row);
+  }
+  return byName;
+}
+
 /**
  * The half-cell row a bridge depth-sorts at relative to its own node (the far, lowest-`dy` row of its
  * deck), `undefined` for every other record. Settlers cross a bridge's span, so sorting at the object's
