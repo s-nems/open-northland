@@ -201,7 +201,7 @@ kinds in order.
 | 24 | `DiplomacyState` | 1, 2, 25 | the first player's stance toward the second equals the state | 83 |
 | 25 | `HumansWithHome` | 1, 7 | at least `amount` adult humans of the player live in a finished home | 5 |
 | 26 | `NumberOfSoldiers` | 1, 7 | the player has at least `amount` soldiers | 17 |
-| 27 | `DetectGuide` | 1, 16, 17, 9 | the player has a guide (signpost) within `range` of the point | 3 |
+| 27 | `DetectGuide` | 1, 16, 17, 9 | the player has a standing signpost within `range` of the point. Here: live `Signpost` ownership and inclusive map-point hex distance, including authored and scout-built posts | 3 |
 | 28 | `TimeGone` | 35 | `seconds` of game time have passed since activation | 1529 |
 | 29 | `CheckMission` | 21 | mission `n`'s goals hold now (evaluated without firing) | 20 |
 | 30 | `PayTribute` | 28 | the tribute slot is open and paid: fresh from `CreateTribute` with nothing demanded, or paid by its owner (reading) | 702 |
@@ -638,6 +638,25 @@ construction seed and URL session rules, an approximation; difficulty-specific c
 implemented. The in-game load menu accepts another map in the same saved parent chain, with a destination
 preflight; unrelated map saves remain rejected. Automatic handovers resume play; ordinary user loads remain paused. The temporary
 IndexedDB handover records this distinction separately from the saved game.
+
+## Guide detection
+
+`DetectGuide` reads standing signposts, so a pending scout order or a decorative landscape does not
+satisfy it. Ownership changes and demolition affect the next mission evaluation; no detection latch
+is added. Existing signpost state supplies save/load persistence.
+
+Decoded `setguide` rows create posts at their authored half-cell positions before the first tick,
+using the same constructor as scout-built posts. Interactive spacing and terrain restrictions do not
+filter authored placements; invalid player slots and out-of-bounds points are skipped and counted.
+Navigation and spacing radii use the existing signpost approximations.
+
+The owned `CnModMaps/Polski_Mlyn_1.1/mission.inc` uses the goal for players 0, 1 and 2 at
+point (130, 130), range 200, alongside worker goals to identify human-controlled seats. This confirms
+the argument use, but does not establish exact range boundaries. The macOS
+`an original routine` and `CGuideIterator` readings suggest owner filtering and inclusive
+hex distance. This build shares the existing mission area metric; the boundary remains unconfirmed
+by observation of the running original. Negative ranges match nothing, rather than reproducing
+unsigned conversion suggested by the iterator reading.
 
 ## Multiplayer goals
 

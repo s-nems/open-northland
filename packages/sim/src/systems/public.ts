@@ -115,6 +115,7 @@ export {
 export { jobCanBuild, PRAY_ATOMIC_ID } from './settlers/atomics/start.js';
 export {
   canPlaceSignpost,
+  createSignpost,
   type SignpostProbe,
   type SignpostSite,
   signpostNetwork,

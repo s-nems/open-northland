@@ -1,5 +1,5 @@
 import type { ContentSet, MapDiplomacy, MapHumanName, MapScript } from '@open-northland/data';
-import { components, type MissionScript, Simulation, type TerrainMap } from '@open-northland/sim';
+import { components, type MissionScript, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
 import type { AuthoredPlacement } from './authored-placements.js';
@@ -49,7 +49,7 @@ export function newWorldSim(
 }
 
 /**
- * Enqueue resolved placements in list order, so determinism follows the placement list. Buildings are
+ * Authored signposts are assembled before tick zero; other placements enqueue in list order. Buildings are
  * forced because both callers place fixture state that loads as-is, exactly as the original loads a
  * scenario map; the tech and collision gates govern the player's interactive placements instead.
  *
@@ -57,7 +57,14 @@ export function newWorldSim(
  * workplace resolve to a standing building as it spawns.
  */
 export function enqueuePlacements(sim: Simulation, placements: readonly AuthoredPlacement[]): void {
+  if (placements.some((p) => p.kind === 'signpost') && sim.tick !== 0) {
+    throw new Error('Authored signposts require pre-tick world assembly');
+  }
   for (const p of placements) {
+    if (p.kind === 'signpost') {
+      systems.createSignpost(sim.world, { hx: p.x, hy: p.y }, p.owner);
+      continue;
+    }
     if (p.kind === 'animal') {
       sim.enqueueSetup({
         kind: 'spawnAnimalHerd',

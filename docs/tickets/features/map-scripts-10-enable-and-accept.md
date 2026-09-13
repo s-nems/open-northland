@@ -47,7 +47,7 @@ Campaign maps stored in archives are excluded; no archive extraction is required
   already checked Frank contact and restored briefing navigation.
 
 Vehicle and chest integration are tracked in [vehicles](map-scripts-vehicles.md) and
-[chests](map-scripts-chests.md). DetectGuide integration, wall gates, campaign unlocks, FMV and the trade ledger remain
+[chests](map-scripts-chests.md). Wall gates, campaign unlocks, FMV and the trade ledger remain
 outside this ticket's implementation scope. Their absence is a dependency, not an acceptance waiver.
 Human review of the intro, combat and ending remains part of final epic acceptance.
 

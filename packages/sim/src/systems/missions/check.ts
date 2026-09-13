@@ -36,6 +36,7 @@ import {
   animalsInArea,
   civiliansNearPoint,
   countAnimals,
+  guideNearPoint,
   housesInArea,
   humansNearHouses,
   humansNearHumans,
@@ -150,6 +151,8 @@ function goalHolds(
       return humanJobHolds(pass.world, op.humanId, op.job);
     case 'HumanAttachedToWorkHouse':
       return attachedToWorkHouseHolds(pass.world, op);
+    case 'DetectGuide':
+      return guideNearPoint(pass.world, op);
     case 'FindPosByHumans':
       return humansNearPoint(pass.world, op);
     case 'FindPosByPlayersMapMoveable':

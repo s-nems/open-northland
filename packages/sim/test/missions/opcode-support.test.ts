@@ -21,6 +21,7 @@ const POINT = { hx: 4, hy: 4 };
 
 /** One well-formed line per listed opcode; the mapped type is what forces an entry for each. */
 const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }> } = {
+  DetectGuide: { opcode: 'DetectGuide', player: 0, point: POINT, range: 1 },
   IsAnyLandscapeOnPoint: { opcode: 'IsAnyLandscapeOnPoint', point: POINT },
   NumberOfAnimals: { opcode: 'NumberOfAnimals', player: 0, tribe: 9, amount: 1 },
   True: { opcode: 'True' },

@@ -95,10 +95,8 @@ console.log(`  overall: ${ran} of ${ran + missing} lines (${share(ran, missing)}
 console.log(`  missions with every opcode implemented: ${completeMissions} of ${missions}`);
 console.log(`  decoder warnings: ${unknownLines} unknown lines, ${tokenMismatches} token-count mismatches`);
 console.log('Static opcode coverage only; this does not prove successful execution or map completion.');
-console.log('Partial executors: AllowJob/AllowHouse/AllowGood and SetExternalFlag have no gameplay reader;');
-console.log(
-  '  EnableHouse has no placement gate; SetLandscape has no chest interaction or final-flag behavior.',
-);
+console.log('Partial executors: SetExternalFlag has no AI-condition reader;');
+console.log('  SetLandscape has no chest interaction or final-flag behavior.');
 console.log('Terrain, vision and presentation fidelity limits are recorded in docs/formats/MISSIONS.md.');
 
 console.log(`\nthe ${top} unsupported opcodes costing the most lines:`);

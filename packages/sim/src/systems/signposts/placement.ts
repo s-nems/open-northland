@@ -7,7 +7,7 @@ import {
   Signpost,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { positionOfNode } from '../../nav/halfcell.js';
+import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
 import { withinNodeRadius } from '../../nav/node-circle.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
@@ -109,7 +109,12 @@ export function erectSignpost(
 ): Entity | null {
   if (!canPlaceSignpost(world, ctx, terrain, node, player)) return null;
   const c = terrain.coordsOf(node);
-  const pos = positionOfNode(c.x, c.y);
+  return createSignpost(world, { hx: c.x, hy: c.y }, player);
+}
+
+/** Pre-tick world assembly may load authored posts without interactive spacing restrictions. */
+export function createSignpost(world: World, point: HalfCellNode, player: number): Entity {
+  const pos = positionOfNode(point.hx, point.hy);
   const e = world.create();
   world.add(e, Position, { x: pos.x, y: pos.y });
   world.add(e, Owner, { player });

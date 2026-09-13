@@ -28,7 +28,7 @@ export function authoredCatalogExtras(
     jobs: ascending(placements.filter((p) => p.kind === 'human').map((p) => p.jobType))
       .filter((typeId) => typeId !== JOB_IDLE)
       .map((typeId) => ({ typeId, id: `job_${typeId}` })),
-    tribes: ascending(placements.map((p) => p.tribe)).map((typeId) => ({
+    tribes: ascending(placements.filter((p) => p.kind !== 'signpost').map((p) => p.tribe)).map((typeId) => ({
       typeId,
       id: `tribe_${typeId}`,
     })),

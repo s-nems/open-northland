@@ -1,4 +1,4 @@
-import { Building, ownerOf, Person, Position, Settler } from '../../../components/index.js';
+import { Building, ownerOf, Person, Position, Settler, Signpost } from '../../../components/index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -34,6 +34,13 @@ export function playerNearPoint(
 ): boolean {
   for (const e of world.query(Person, Position)) {
     if (ownedBy(world, e, op.player) && withinRange(world, e, op.point, op.range)) return true;
+  }
+  return false;
+}
+
+export function guideNearPoint(world: World, op: Extract<MissionGoalOp, { opcode: 'DetectGuide' }>): boolean {
+  for (const e of world.query(Signpost, Position)) {
+    if (ownerOf(world, e) === op.player && withinRange(world, e, op.point, op.range)) return true;
   }
   return false;
 }

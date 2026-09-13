@@ -10,10 +10,12 @@ function anchorKey(hx: number, hy: number): string {
 export type AuthoredEntities = Pick<
   NonNullable<TerrainMapFile['entities']>,
   'buildings' | 'humans' | 'animals'
->;
+> &
+  Partial<Pick<NonNullable<TerrainMapFile['entities']>, 'guides'>>;
 
 /** One resolved authored placement, ready to enqueue. */
 export type AuthoredPlacement =
+  | { kind: 'signpost'; x: number; y: number; owner: number }
   | {
       kind: 'building';
       typeId: number;
@@ -191,6 +193,13 @@ export function resolveAuthoredPlacements(
       ...(components.isValidPlayer(a.player) ? { owner: a.player } : {}),
       ...(a.missionId !== undefined ? { missionId: a.missionId } : {}),
     });
+  }
+  for (const guide of entities.guides ?? []) {
+    if (!components.isValidPlayer(guide.player) || !inBounds(guide.hx, guide.hy)) {
+      skipped++;
+      continue;
+    }
+    placements.push({ kind: 'signpost', x: guide.hx, y: guide.hy, owner: guide.player });
   }
   return { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals };
 }

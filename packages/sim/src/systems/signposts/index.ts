@@ -5,4 +5,10 @@ export {
   type SignpostSite,
   signpostNetwork,
 } from './network.js';
-export { canPlaceSignpost, erectSignpost, type SignpostProbe, signpostProbe } from './placement.js';
+export {
+  canPlaceSignpost,
+  createSignpost,
+  erectSignpost,
+  type SignpostProbe,
+  signpostProbe,
+} from './placement.js';

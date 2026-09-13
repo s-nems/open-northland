@@ -26,6 +26,7 @@ export const SUPPORTED_GOALS = [
   'HumansWithHome',
   'CheckHumanJob',
   'HumanAttachedToWorkHouse',
+  'DetectGuide',
   'FindPosByHumans',
   'FindPosByPlayersMapMoveable',
   'FindHumansByHumans',
