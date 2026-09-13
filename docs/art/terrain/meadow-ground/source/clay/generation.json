@@ -1,0 +1,29 @@
+{
+  "tool": "built-in imagegen",
+  "prompt": "prompt.txt",
+  "master": "master.png",
+  "masterSha256": "e76df3d79bfa6af5d2896d988550791ebba08c1af9ec6497202a6637d30ea70f",
+  "export": {
+    "output": "texture.png",
+    "size": [512, 512],
+    "method": "Sharp resize to 512x512, remove alpha, PNG; selected pixels retained."
+  },
+  "references": [
+    {
+      "role": "primary canonical muted painting style",
+      "path": "../../../../buildings/house-1/house-painted-runtime.png",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    },
+    {
+      "role": "own meadow brushwork",
+      "retained": false,
+      "reason": "Exact historical image input identity unavailable; generation prompt retained."
+    },
+    {
+      "role": "original map atmosphere only",
+      "retained": false,
+      "reason": "Local owned-game screenshot excluded from Git; historical input."
+    }
+  ],
+  "approval": "Selected with olive-brown K clay, approved for publication and merge."
+}

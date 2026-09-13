@@ -6,11 +6,12 @@ These packs supply own-assets mode. Runtime copies live in
 | Pack | Delivered content |
 | --- | --- |
 | [grass](grass/README.md) | Soil, grass review master and legacy binding metadata |
-| [meadow-ground](meadow-ground/README.md) | Meadow and earth material bindings, light/dark ground |
+| [meadow-ground](meadow-ground/README.md) | Meadow, earth and clay material bindings, light/dark ground |
 | [gravel](gravel/README.md) | Rocky transition texture |
 | [mountains](mountains/README.md) | Mountain composition and rocky material bindings |
 | [sand](sand/README.md) | Sand/beach ground and transition bindings |
 | [woodland](woodland/README.md) | Four trees with growth states and the post-felling stump |
+| [clay](clay/README.md) | Two clay deposits with five depletion states each |
 | [rocks](rocks/README.md) | Grey/khaki deposits, depletion states, remnants and debris |
 | [bushes](bushes/README.md) | Two bushes with three states each |
 | [meadows](meadows/README.md) | Six grass patches and two flower patches |

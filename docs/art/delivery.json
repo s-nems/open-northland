@@ -68,6 +68,12 @@
     "props/bush-02-fruits/bush-02-fruits.png",
     "props/bush-02-fruits/runtime.json"
   ],
+  "terrain/clay": [
+    "props/clay-mine-01/atlas.png",
+    "props/clay-mine-01/runtime.json",
+    "props/clay-mine-02/atlas.png",
+    "props/clay-mine-02/runtime.json"
+  ],
   "terrain/ferns": [
     "props/fern-01/fern-01.png",
     "props/fern-01/runtime.json",
@@ -76,7 +82,12 @@
   ],
   "terrain/grass": ["terrain/grass-base.png", "terrain/map-bindings.json", "terrain/soil.png"],
   "terrain/gravel": ["terrain/gravel.png"],
-  "terrain/meadow-ground": ["terrain/quiet.png", "terrain/dark.png", "terrain/materials.json"],
+  "terrain/meadow-ground": [
+    "terrain/clay.png",
+    "terrain/dark.png",
+    "terrain/materials.json",
+    "terrain/quiet.png"
+  ],
   "terrain/meadows": [
     "props/grass-olive-01/grass-olive-01.png",
     "props/grass-olive-01/runtime.json",
@@ -247,18 +258,6 @@
     "props/pebbles-5/runtime.json"
   ],
   "terrain/sand": ["terrain/sand.png", "terrain/sand-materials.json"],
-  "terrain/woodland": [
-    "props/pine-a/pine-a.png",
-    "props/pine-a/runtime.json",
-    "props/pine-b/pine-b.png",
-    "props/pine-b/runtime.json",
-    "props/beech-a/beech-a.png",
-    "props/beech-a/runtime.json",
-    "props/beech-b/beech-b.png",
-    "props/beech-b/runtime.json",
-    "props/stump/stump.png",
-    "props/stump/runtime.json"
-  ],
   "terrain/understory": [
     "props/flower-blue-01/flower-blue-01.png",
     "props/flower-blue-01/runtime.json",
@@ -306,5 +305,17 @@
     "props/reed-dark-01/runtime.json",
     "props/reed-dark-02/reed-dark-02.png",
     "props/reed-dark-02/runtime.json"
+  ],
+  "terrain/woodland": [
+    "props/pine-a/pine-a.png",
+    "props/pine-a/runtime.json",
+    "props/pine-b/pine-b.png",
+    "props/pine-b/runtime.json",
+    "props/beech-a/beech-a.png",
+    "props/beech-a/runtime.json",
+    "props/beech-b/beech-b.png",
+    "props/beech-b/runtime.json",
+    "props/stump/stump.png",
+    "props/stump/runtime.json"
   ]
 }

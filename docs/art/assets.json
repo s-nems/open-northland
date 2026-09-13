@@ -46,6 +46,10 @@
       "recipe": "docs/art/terrain/bushes/asset.json"
     },
     {
+      "id": "terrain/clay",
+      "recipe": "docs/art/terrain/clay/asset.json"
+    },
+    {
       "id": "terrain/ferns",
       "recipe": "docs/art/terrain/ferns/asset.json"
     },

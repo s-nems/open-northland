@@ -1,0 +1,7 @@
+Use case: stylized-concept
+Asset type: square opaque tileable clay-ground material for an elevated orthographic settlement game
+Input images: Image 1 is the canonical own house finish reference for restrained hand-painted materials and neutral light. Image 2 is the own meadow texture; match its scale of brushwork, softness and visual density, without copying grass shapes. Image 3 is a local original-game map screenshot used only to understand how quietly clay terrain sits beside meadow; do not copy pixels or layout.
+Primary request: Paint a seamless-looking field of firm olive-brown clay soil. It is cohesive fine earth, slightly compacted and matte, with broad irregular tonal clouds and only a few soft shallow rub marks. The surface is level, walkable and buildable. Direction G is closest to the subdued olive-umber atmosphere of the original reference.
+Composition: top-down surface filling the canvas edge to edge; no horizon, border or objects. Use the same calm hand-painted visual frequency as the own meadow texture. No isolated outlined marks that become visible repeats.
+Constraints: opaque; low contrast; muted olive umber, brown and a trace of grey ochre; neutral light; quiet at gameplay zoom 2; compatible with grassy transitions.
+Avoid: gravel, stones, pebbles, sand grains, cobbles, cracks, scales, tiles, thick impasto, brush ridges, footprints, puddles, shine, vegetation, orange saturation, vignette or text.

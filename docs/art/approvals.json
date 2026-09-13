@@ -70,9 +70,9 @@
     "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
   },
   "terrain/meadow-ground": {
-    "digest": "63666a21409cd03bc0aa278c96b520ce9d1d3ae33f11783409c46588d43112f8",
-    "reviewer": "existing-delivery",
-    "basis": "Preserves the selected runtime delivery at migration; no approval of new pixels is implied."
+    "digest": "2d195c046dbdf79028125f82e3abdbe491a2cbaf25af47a86bce555952cfac23",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "terrain/meadows": {
     "digest": "d1f9ff705870d3ffefe7ea9672929e4b16bfad4c2fe45bf56d2d14089491b30f",
@@ -107,6 +107,11 @@
   "terrain/understory": {
     "digest": "a6ae5e4308d0f36ba789029ff0d84dbc5f4cdde4d2170d1166441afdbdf59f7a",
     "reviewer": "user",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+  },
+  "terrain/clay": {
+    "digest": "11c44566db4c9e3120da3d678421c744786cc8cafdcc1ecdff9960ea30b259ba",
+    "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
   }
 }

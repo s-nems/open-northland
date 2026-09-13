@@ -42,6 +42,13 @@
         "operation": "copy",
         "source": "materials.json"
       }
+    },
+    {
+      "path": "terrain/clay.png",
+      "content": {
+        "operation": "copy",
+        "source": "source/clay/texture.png"
+      }
     }
   ]
 }

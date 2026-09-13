@@ -1,0 +1,56 @@
+{
+  "model": "gpt-image-1.5",
+  "tool": "OpenAI Images edits API",
+  "settings": {
+    "size": "1024x1536",
+    "background": "transparent",
+    "quality": "high"
+  },
+  "prompt": "prompt.txt",
+  "master": "master.png",
+  "masterSha256": "4232faa0e3bfce704753c80f64953b2658f535bb2513c4d6db8af7529dd11dc5",
+  "references": [
+    {
+      "role": "original state count, understatement and depletion logic",
+      "path": ".art-build/clay-redesign/original-states.png",
+      "retained": false,
+      "reason": "Local owned-game reference excluded from Git; historical generation input.",
+      "sha256": "5a2e8216ca34fcff94d91ef023f5509e3012c6c7d1352b79462198361b395c3c"
+    },
+    {
+      "role": "canonical painting and lighting",
+      "path": "../../../../buildings/house-1/house-painted-runtime.png",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    },
+    {
+      "role": "palette integration",
+      "path": ".art-build/clay-integrated-directions/h/ground.png",
+      "retained": false,
+      "reason": "Rejected historical direction removed after selection.",
+      "sha256": "850e90ec9c5f1856db9ce5048099cba9e040a36ce263727ce671cb21e163411d"
+    },
+    {
+      "role": "negative example",
+      "path": ".art-build/clay-integrated-directions/h/map.png",
+      "retained": false,
+      "reason": "Historical local map capture removed after selection.",
+      "sha256": "153ee67183e071c174cb79fa2ed924e3f36e7c2296caeb6b34ac63c703d97bce"
+    }
+  ],
+  "export": {
+    "script": "export.mjs",
+    "layout": "layout.json",
+    "rows": [0, 1, 2, 4, 5],
+    "scale": 0.78,
+    "grade": {
+      "brightness": 0.67,
+      "saturation": 0.52,
+      "hue": 8
+    },
+    "ground": "../../../meadow-ground/source/clay/texture.png",
+    "groundBrightness": 0.82,
+    "contactAlpha": 0.6,
+    "falloff": "smoothstep; zero at 13 source pixels"
+  },
+  "approval": "User accepted olive-brown K, then its tileset-derived contact gradient and reduced-halo correction at zooms 1 and 2; explicitly authorized publication, merge and cleanup."
+}

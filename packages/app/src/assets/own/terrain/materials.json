@@ -57,12 +57,13 @@
     },
     {
       "id": "mud",
-      "image": "soil.png",
-      "tint": [0.63, 0.61, 0.56],
+      "image": "clay.png",
+      "tint": [1, 1, 1],
       "wear": 0,
       "pages": ["text_210", "text_211", "text_212", "text_213"],
       "names": [],
-      "transitions": ["mud 1", "mud 2"]
+      "transitions": ["mud 1", "mud 2"],
+      "sampling": "patches"
     }
   ]
 }
