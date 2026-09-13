@@ -396,3 +396,14 @@ A returning client verifies the final full hash before showing the result.
 The final result replaces any earlier local defeat panel and offers exit to the menu. Leaving an
 ended session releases membership without scheduling further AI commands. Commands, clock changes,
 kicks, lobby edits and Start cannot restart the ended session. Another match needs a new room.
+
+## Background windows
+
+The desktop window disables Electron background throttling so its animation-driven session keeps
+advancing when minimized or covered. This also keeps rendering active in the background.
+See [Electron page visibility](https://www.electronjs.org/docs/latest/api/browser-window#page-visibility).
+
+Window focus and browser tab visibility do not change room membership. A client that stops ticking
+uses the ordinary [waiting](#waiting) and [kick votes](#kick-votes) policies; removal is never
+automatic. Resuming clients drain their buffered frames through the existing pacer. Socket loss and
+reconnect continue to use the existing recovery path.

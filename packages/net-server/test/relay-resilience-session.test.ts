@@ -1,7 +1,7 @@
 import type { GameSession } from '@open-northland/lockstep';
 import { prepareInitialSave } from '@open-northland/net-client';
 import { type RoomSettings, TICK_MS } from '@open-northland/net-protocol';
-import { KICK_COUNTDOWN_MS, Relay, SILENT_AFTER_MS } from '@open-northland/net-server';
+import { KICK_COUNTDOWN_MS, Relay, SILENT_AFTER_MS, WAIT_BEHIND_MS } from '@open-northland/net-server';
 import {
   exportSaveGame,
   playerCommand,
@@ -160,6 +160,44 @@ describe('a relayed session under faults', () => {
     expectAgreement(captures, [ania, bartek]);
     expect(bartek.restoredFrom).toEqual([]);
     expect(bartek.rejections).toEqual([]);
+  });
+
+  it('lets a connected client resume ticking before the kick countdown without rebuilding', async () => {
+    const { stage, ania, bartek } = await twoClients(21);
+    await runUntil(stage, [ania, bartek], 40, { onTick: orderAt });
+    const stoppedAt = bartek.tick;
+    await runFor(stage, [ania], WAIT_BEHIND_MS + SETTLE_MS * 2);
+    expect(bartek.tick).toBe(stoppedAt);
+    expect(ania.waits.at(-1)?.for).toMatchObject([{ nick: 'Bartek', reason: 'lagging' }]);
+    ania.kick(1);
+    await runFor(stage, [ania], SETTLE_MS);
+    expect(ania.rejections.at(-1)?.reason).toMatch(/opens in/);
+
+    const captures = await runUntil(stage, [ania, bartek], RUN_TICKS, { onTick: orderAt });
+    expectAgreement(captures, [ania, bartek]);
+    expect(ania.waits.at(-1)?.for).toEqual([]);
+    expect(bartek.restoredFrom).toEqual([]);
+    expect(bartek.kicks).toEqual([]);
+    ania.kick(1);
+    await runFor(stage, [ania, bartek], SETTLE_MS);
+    expect(ania.rejections.at(-1)?.reason).toMatch(/not being waited for/);
+  });
+
+  it('offers a vote for a connected client that stops ticking, without automatically removing it', async () => {
+    const { stage, ania, bartek } = await twoClients(22);
+    await runUntil(stage, [ania, bartek], 40);
+    await runFor(stage, [ania], WAIT_BEHIND_MS + KICK_COUNTDOWN_MS + SETTLE_MS * 2);
+    expect(ania.waits.at(-1)?.for).toEqual([{ nick: 'Bartek', reason: 'lagging', voteAfterMs: 0 }]);
+    expect(ania.room?.members.find((member) => member.nick === 'Bartek')?.connected).toBe(true);
+    expect(ania.kicks).toEqual([]);
+    const held = ania.tick;
+    await runFor(stage, [ania], SETTLE_MS);
+    expect(ania.tick).toBe(held);
+    ania.kick(1);
+    await runFor(stage, [ania], SETTLE_MS * 2);
+    expect(ania.kicks.at(-1)).toMatchObject({ player: 1, nick: 'Bartek', mode: 'idle' });
+    expect(ania.tick).toBeGreaterThan(held ?? 0);
+    expect(ania.waits.at(-1)?.for).toEqual([]);
   });
 
   it('detects a diverged client within a tick, names the domain, and resyncs it from the reference', async () => {

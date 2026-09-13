@@ -1,31 +1,28 @@
-# Let the web shell join networked games on engines that hash identically
+# Verify optional web multiplayer compatibility
 
-**Area:** web, app · **Focus:** web shell, net transport · **Priority:** P3
+**Area:** web, app · **Focus:** web shell compatibility · **Priority:** P3
 
-Web is an addition to desktop, not a requirement. It joins only on engines that passed the
-cross-engine determinism check recorded by the first multiplayer ticket; a browser that did not is
-refused in the lobby by its engine fingerprint rather than allowed to desync.
-
-Two web-specific behaviors matter. A page served over `https://` must connect over `wss://`, which
-the server deployment already provides. A hidden tab stops `requestAnimationFrame`, so the session
-clock keeps running on the server while the client stops ticking; on return it must catch up from the
-frames it missed or, past the waiting threshold, resync from a snapshot.
+Electron is the primary client. The app already has a shared relay client and multiplayer lobby;
+verify them in the packaged web shell with its installed content and storage.
 
 ## Scope
 
-- The relay client and lobby flow from the desktop tickets working in the web shell, with the engine
-  fingerprint reported to the lobby. `@open-northland/net-client` already runs on the Web platform
-  alone (`WebSocket`, `CompressionStream`), so the work is the shell's wiring and the fingerprint.
-- Hidden-tab handling: keep receiving frames while hidden, catch up on return within the driver's
-  cap, and fall back to the snapshot resync path beyond it.
-- The identity token and nick already live in the app's stored settings, which the web shell shares;
-  confirm the web shell's storage keeps them across its own reloads.
-- Non-goals: no WebTransport, no service-worker involvement in game traffic, no shell-specific sim
-  changes.
+- Verify the shared lobby and game flow through the web shell's installed content.
+- Establish supported engines from cross-engine determinism evidence and refuse unsupported engines
+  in the lobby with a clear message.
+- Confirm nick and relay-scoped identity survive web-shell reloads.
+- Verify HTTPS pages connect through WSS.
+
+Background clients use ordinary relay waiting and kick voting. Visibility alone never removes a
+player. A client that resumes uses existing buffered-frame and reconnect/resync mechanisms.
+No dedicated hidden-tab scheduler or visibility-triggered snapshot recovery is required.
 
 ## Verify
 
-- Two Chromium tabs play a real map through the server with identical hashes; hiding one tab for
-  longer than the waiting threshold ends in a resync and an identical hash afterwards.
-- A browser with a failing engine fingerprint is refused in the lobby with a clear message.
-- `npm run check`, `npm run build`, `npm test`, `npm run web:site`, plus a human pass in the browser.
+- Two supported browser clients play a real map with identical hashes.
+- An unsupported engine is refused before starting, with a clear message.
+- Reload preserves identity and uses existing reconnection.
+- Run `npm run check`, `npm run build`, `npm test`, `npm run web:site`, and a human browser pass.
+
+Non-goals: WebTransport, service-worker game traffic, shell-specific simulation, automatic removal
+on tab switching, and special hidden-tab catch-up.

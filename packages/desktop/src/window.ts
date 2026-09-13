@@ -11,6 +11,8 @@ export function createWindow(initial: ContentStatus, preloadScript: string, loca
     backgroundColor: '#1d1a15',
     webPreferences: {
       preload: preloadScript,
+      // The session advances on animation frames even while the game is minimized.
+      backgroundThrottling: false,
       // Electron 43 defaults, pinned so a future option edit can't silently regress them.
       sandbox: true,
       contextIsolation: true,
