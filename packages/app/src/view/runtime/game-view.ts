@@ -44,7 +44,6 @@ import {
 } from '../game-tool-panel.js';
 import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
-import { createOrderCue } from '../order-cue.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
 import { createFogGates, diplomacyPanelRows, messageTargetAnchor } from '../projections/index.js';
@@ -176,7 +175,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   // Three overlays hold the sim paused - the menu, the mission sheet and the verdict - so each holds
   // under its own key and none can release another's.
   const pauseHolds = createPauseHolds(saveLoad);
-  const orderCue = createOrderCue();
   const destroy = (): void => {
     if (destroyed) return;
     destroyed = true;
@@ -184,7 +182,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     systemMenu?.dispose();
     disposeHud();
     verdict?.dispose();
-    orderCue.dispose();
     deps.cameraCtl.dispose();
     // Leaving the debug seams set would pin this sim, renderer and stats for the document's lifetime.
     delete window.__opennorthland;
@@ -223,12 +220,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let minimap: MinimapHandle | undefined;
 
   // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
-  // the sim on every mousemove, and so a sent command can be cued where it was clicked.
+  // the sim on every mousemove.
   const pointerAt = trackCanvasPointer(canvas);
 
   // A read-only spectator drops every HUD command here. Sim-init commands enqueue on the sim directly.
   // The overseer seat commands every player, so its orders enter as trusted admin input instead of one
-  // seat reaching into another's units. The cue fires on send: the command applies ticks later.
+  // seat reaching into another's units.
   const readOnly = deps.readOnly === true;
   const overseer = deps.observer === true && !readOnly;
   // A trusted command has no wire: a shared session drops it rather than hand it to the relay.
@@ -238,8 +235,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   const issueCommand = (command: PlayerCommand): void => {
     if (readOnly) return;
     driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
-    const pointer = pointerAt();
-    if (pointer !== null) orderCue.at(pointer.clientX, pointer.clientY);
   };
 
   const diplomacyRows = (): readonly DiplomacyPanelRow[] =>
