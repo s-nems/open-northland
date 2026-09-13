@@ -101,7 +101,7 @@ export const plContent = {
     meat: 'Mięso',
     brick: 'Cegła',
     tile: 'Dachówka',
-    pillar: 'Filar',
+    pillar: 'Kamienny blok',
     ornament: 'Ozdoba',
     crockery: 'Naczynia',
     furniture: 'Meble',
