@@ -113,5 +113,10 @@
     "digest": "11c44566db4c9e3120da3d678421c744786cc8cafdcc1ecdff9960ea30b259ba",
     "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
+  },
+  "goods/wood": {
+    "digest": "f568fa36d1bc82d5453a28da0f7d9e9b1103a6c716d3d53d030fe85387b7607c",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   }
 }

@@ -317,5 +317,6 @@
     "props/beech-b/runtime.json",
     "props/stump/stump.png",
     "props/stump/runtime.json"
-  ]
+  ],
+  "goods/wood": ["goods/wood/atlas.png", "goods/wood/runtime.json"]
 }

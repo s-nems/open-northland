@@ -1,0 +1,70 @@
+{
+  "id": "wood",
+  "image": "atlas.png",
+  "width": 576,
+  "height": 96,
+  "scale": 0.5,
+  "sourceBasis": "Independent generated muted House A wood artwork. Identity verified in owned Data/logic/goodtypes.ini: name wood, type 5, landscapeToStore 7; decoder tools/asset-pipeline/src/decoders/ini/types/goods.ts and local content/ir.json agree. Binding uses the good slug, not numeric type. Five quantity states follow existing renderer clamping. World scale, painting and ground anchors are artistic approximations.",
+  "frames": [
+    {
+      "x": 24,
+      "y": 41,
+      "width": 48,
+      "height": 39,
+      "anchor": {
+        "x": 24,
+        "y": 31.200000000000003
+      }
+    },
+    {
+      "x": 117,
+      "y": 36,
+      "width": 53,
+      "height": 44,
+      "anchor": {
+        "x": 26.5,
+        "y": 35.2
+      }
+    },
+    {
+      "x": 210,
+      "y": 31,
+      "width": 59,
+      "height": 49,
+      "anchor": {
+        "x": 29.5,
+        "y": 39.2
+      }
+    },
+    {
+      "x": 303,
+      "y": 26,
+      "width": 67,
+      "height": 54,
+      "anchor": {
+        "x": 33.5,
+        "y": 43.2
+      }
+    },
+    {
+      "x": 396,
+      "y": 25,
+      "width": 71,
+      "height": 55,
+      "anchor": {
+        "x": 35.5,
+        "y": 44
+      }
+    },
+    {
+      "x": 496,
+      "y": 24,
+      "width": 64,
+      "height": 56,
+      "anchor": {
+        "x": 32,
+        "y": 44.800000000000004
+      }
+    }
+  ]
+}

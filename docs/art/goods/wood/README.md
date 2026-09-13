@@ -12,4 +12,4 @@ The candidate gallery selects `?art=gallery&tab=goods&asset=goods/wood`.
 World art uses half a world pixel per delivered source pixel. Native generated masters are retained;
 only downsampling occurs. Pile size and contact anchors are provisional artistic calibration.
 No cast shadow is authored. Trees, stumps, pickup-stage trunks and carried equipment remain separate.
-Visual acceptance is pending; this package has not been published.
+The six-frame presentation is approved and published; the receipt is retained by the shared pipeline.
