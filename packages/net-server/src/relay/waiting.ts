@@ -1,4 +1,4 @@
-import type { WaitReason } from '@open-northland/net-protocol';
+import type { ServerMessage, WaitReason } from '@open-northland/net-protocol';
 
 /** How long a member is waited for before a vote to kick it may open. */
 export const KICK_COUNTDOWN_MS = 60_000;
@@ -22,6 +22,17 @@ export class Waiting {
 
   get active(): boolean {
     return this.announced.length > 0;
+  }
+
+  message(now: number): Extract<ServerMessage, { kind: 'waiting' }> {
+    return {
+      kind: 'waiting',
+      for: this.announced.map(({ token, nick, reason }) => ({
+        nick,
+        reason,
+        voteAfterMs: this.voteAfterMs(token, now),
+      })),
+    };
   }
 
   isWaitedFor(token: string): boolean {
@@ -60,6 +71,14 @@ export class Waiting {
       }
     }
     return opened || !sameWait(before, waited);
+  }
+
+  /** A departed token cannot retain either a target countdown or votes in another countdown. */
+  forget(token: string): void {
+    this.since.delete(token);
+    this.voteAnnounced.delete(token);
+    this.votes.delete(token);
+    for (const voters of this.votes.values()) voters.delete(token);
   }
 
   /** Count `voter`'s yes for `target`, once; returns the voters so far. */

@@ -1,4 +1,5 @@
 import { MAX_ROOM_ID_LENGTH } from '@open-northland/net-protocol';
+import { relayAddress } from '../../net/address.js';
 import { intParam } from '../../view/params.js';
 
 /** The `room=` value that creates a room instead of joining one. */
@@ -16,18 +17,8 @@ export interface RelayPlan {
   readonly room: RelayRoomPlan;
 }
 
-function relayUrl(raw: string | null): string | null {
-  if (raw === null) return null;
-  try {
-    const url = new URL(raw);
-    return url.protocol === 'ws:' || url.protocol === 'wss:' ? url.toString() : null;
-  } catch {
-    return null;
-  }
-}
-
 export function relayPlan(params: URLSearchParams): RelayPlan | null {
-  const url = relayUrl(params.get('relay'));
+  const url = relayAddress(params.get('relay') ?? '');
   const room = params.get('room');
   if (url === null || room === null || room.length === 0 || room.length > MAX_ROOM_ID_LENGTH) return null;
   if (room !== NEW_ROOM) return { url, room: { kind: 'join', id: room } };

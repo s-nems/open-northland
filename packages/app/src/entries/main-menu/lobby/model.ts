@@ -8,6 +8,7 @@ import {
   sessionSearch,
 } from '../../../game/session-url.js';
 import { formatSearch } from '../../../view/params.js';
+import { RULE_FOG_MODES as LOBBY_FOG_MODES } from '../lobby-controls/rules-state.js';
 import type { MapPlayerSlot, SeatChoice } from './roster-state.js';
 import {
   aiSeats,
@@ -18,8 +19,7 @@ import {
   type VacantMode,
 } from './roster-state.js';
 
-/** The fog modes in the segment's display order. */
-export const LOBBY_FOG_MODES: readonly FogModeName[] = ['off', 'reveal', 'recon'];
+export { RULE_FOG_MODES as LOBBY_FOG_MODES } from '../lobby-controls/rules-state.js';
 
 /** Fallback fog mode for a `?map=` launch that carries no explicit pick. */
 export const DEFAULT_FOG_MODE: FogModeName = 'reveal';

@@ -15,6 +15,8 @@ export interface TickFrame {
 /** The seam between a client and whoever decides when a command applies: the transport assigns the tick
  *  and the position within it, never the caller, whose arrival order two clients would disagree about. */
 export interface SessionTransport {
+  /** Available only when this transport owns the complete future command stream. */
+  pendingFrames?(): readonly TickFrame[];
   /** Hand over an authorized envelope. `fromTick` is the tick the local sim had reached when it was
    *  issued. */
   submit(envelope: CommandEnvelope, fromTick: number): void;

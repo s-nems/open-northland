@@ -2,6 +2,7 @@ import type { GameSession } from '@open-northland/lockstep';
 import { decodeSnapshot, type OpenedWorld, RelayClient, type WorldPort } from '@open-northland/net-client';
 import { DESCRIPTOR_WORLD, type ServerMessage } from '@open-northland/net-protocol';
 import type { SaveGame, Simulation } from '@open-northland/sim';
+import { TEST_COMPATIBILITY } from './compatibility.js';
 
 export interface HeadlessClientOptions {
   readonly token: string;
@@ -72,6 +73,14 @@ export class HeadlessClient extends RelayClient {
       world: worldPortFor(options),
       onMessage: (message) => {
         switch (message.kind) {
+          case 'room':
+            if (
+              message.room.state === 'lobby' &&
+              message.room.members.find((member) => member.nick === this.nick)?.compatibility === null
+            ) {
+              this.setCompatibility(TEST_COMPATIBILITY);
+            }
+            return;
           case 'clock':
             recorded.clockNotices.push(message);
             return;

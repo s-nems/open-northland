@@ -1,7 +1,6 @@
 # Let the web shell join networked games on engines that hash identically
 
 **Area:** web, app · **Focus:** web shell, net transport · **Priority:** P3
-**Blocked by:** [multiplayer-6-lobby.md](multiplayer-6-lobby.md)
 
 Web is an addition to desktop, not a requirement. It joins only on engines that passed the
 cross-engine determinism check recorded by the first multiplayer ticket; a browser that did not is

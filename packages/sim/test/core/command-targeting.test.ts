@@ -133,6 +133,22 @@ describe('tick-targeted commands', () => {
     expect(() => s.enqueueAt(setNeeds(false), 1, -1)).toThrow(/sequence must be a non-negative integer/);
   });
 
+  it('does not reserve a position when copying a payload fails', () => {
+    const s = sim();
+    const malformed = adminCommand({ kind: 'setNeedsEnabled', enabled: false });
+    Object.assign(malformed.command, { unsupported: new Set([1]) });
+    expect(() => s.enqueueAt(malformed, 1, 0)).toThrow(/non-serializable/);
+    expect(() => s.enqueueAt(setNeeds(false), 1, 0)).not.toThrow();
+    s.step();
+    expect(s.needsEnabled()).toBe(false);
+  });
+
+  it('rejects target positions outside the exact integer range', () => {
+    const s = sim();
+    expect(() => s.enqueueAt(setNeeds(false), 1e30, 0)).toThrow(/applyTick/);
+    expect(() => s.enqueueAt(setNeeds(false), 1, 1e30)).toThrow(/sequence/);
+  });
+
   it('keeps next-tick semantics for an untargeted envelope', () => {
     const s = sim();
     s.enqueue(setNeeds(false));

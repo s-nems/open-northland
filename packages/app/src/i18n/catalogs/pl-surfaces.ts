@@ -25,6 +25,7 @@ export const plSurfaces = {
     backLabels: { main: 'Menu', newGame: 'Wybór mapy' },
     underConstruction: 'Ten ekran jest w budowie.',
     screenTitles: {
+      multiplayer: 'Gra wieloosobowa',
       newGame: 'Nowa gra',
       lobby: 'Lobby',
       load: 'Wczytaj grę',

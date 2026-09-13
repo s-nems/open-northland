@@ -1,4 +1,14 @@
-import { exportSaveGame, SAVE_FORMAT_VERSION, type Simulation, serializeSaveGame } from '@open-northland/sim';
+import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
+import {
+  adminCommand,
+  type ExportSaveOptions,
+  exportSaveGame,
+  parseSaveGame,
+  SAVE_FORMAT_VERSION,
+  type SaveGame,
+  type Simulation,
+  serializeSaveGame,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { runDemoWorld } from '../src/game/world/index.js';
 import { stagedSaveFrom } from '../src/view/runtime/save-load/boot.js';
@@ -109,11 +119,14 @@ const ENTRY_SEARCH = '?map=demo-test&player=2';
 function harness(
   sim: Simulation,
   overrides: {
+    captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
     pickFile?: () => Promise<PickedSaveFile | null>;
     stagePending?: (bytes: SaveBytes) => Promise<void>;
     deliverSave?: 'cancel' | 'throw';
     startPaused?: boolean;
     failWrite?: boolean;
+    sessionMetadata?: () => unknown;
+    onSaved?: (save: SaveGame) => Promise<void>;
   } = {},
 ): Harness {
   let paused = overrides.startPaused === true;
@@ -122,6 +135,9 @@ function harness(
   const staged: SaveBytes[] = [];
   const delivered: Array<{ fileName: string; bytes: SaveBytes }> = [];
   const session = saveLoadSession({
+    ...(overrides.captureSave === undefined ? {} : { captureSave: overrides.captureSave }),
+    ...(overrides.sessionMetadata === undefined ? {} : { sessionMetadata: overrides.sessionMetadata }),
+    ...(overrides.onSaved === undefined ? {} : { onSaved: overrides.onSaved }),
     sim,
     worldToken: WORLD_TOKEN,
     entrySearch: ENTRY_SEARCH,
@@ -187,6 +203,40 @@ describe('stagedSaveFrom', () => {
 });
 
 describe('saveLoadSession save flow', () => {
+  it('shares the exact captured save after storage, even when simulation advances during compression', async () => {
+    const sim = demoSim();
+    const tick = sim.tick;
+    let shared: SaveGame | null = null;
+    const h = harness(sim, {
+      sessionMetadata: () => ({ roster: ['Ania'] }),
+      onSaved: async (save) => {
+        expect(h.store.has('Multi')).toBe(true);
+        shared = save;
+      },
+    });
+    const pending = h.session.saveGame('Multi');
+    sim.step();
+    expect(await pending).toEqual({ kind: 'saved' });
+    const stored = h.store.get('Multi');
+    const document = JSON.parse(await decodeSaveText(stored?.bytes ?? new Uint8Array()));
+    expect(shared).toEqual(document);
+    expect(document.header).toMatchObject({ tick, session: { roster: ['Ania'] } });
+  });
+
+  it('keeps a successful local save when relay upload fails, and never shares a failed local write', async () => {
+    let calls = 0;
+    const onSaved = async () => {
+      calls++;
+      throw new Error('offline');
+    };
+    const h = harness(demoSim(), { onSaved });
+    expect(await h.session.saveGame('Local')).toEqual({ kind: 'saved' });
+    expect(h.store.has('Local')).toBe(true);
+    const failed = harness(demoSim(), { onSaved, failWrite: true });
+    expect(await failed.session.saveGame('Failed')).toEqual({ kind: 'failed' });
+    expect(calls).toBe(1);
+  });
+
   it('writes the gzipped live sim into the named slot with its provenance', async () => {
     const sim = demoSim();
     const h = harness(sim);
@@ -195,13 +245,33 @@ describe('saveLoadSession save flow', () => {
     expect(slot).toBeDefined();
     expect(isGzipSave(slot?.bytes ?? new Uint8Array())).toBe(true);
     const doc = JSON.parse(await decodeSaveText(slot?.bytes ?? new Uint8Array())) as {
-      header: { mapId: string; tick: number; entry: string };
+      header: { mapId: string; tick: number; entry: string; savedAt: number };
     };
     expect(doc.header.mapId).toBe(WORLD_TOKEN);
     expect(doc.header.entry).toBe(ENTRY_SEARCH);
     expect(doc.header.tick).toBe(sim.tick);
-    expect(slot?.meta).toEqual({ mapId: WORLD_TOKEN, tick: sim.tick, entry: ENTRY_SEARCH });
+    expect(doc.header.savedAt).toBeGreaterThan(0);
+    expect(slot?.meta).toEqual({
+      mapId: WORLD_TOKEN,
+      tick: sim.tick,
+      entry: ENTRY_SEARCH,
+      savedAt: doc.header.savedAt,
+    });
     expect(h.paused()).toBe(false);
+  });
+
+  it('keeps slot metadata at the captured tick while a shared session advances during compression', async () => {
+    const sim = demoSim();
+    const h = harness(sim);
+    const capturedTick = sim.tick;
+    const saving = h.session.saveGame('Running session');
+    sim.step();
+    await expect(saving).resolves.toEqual({ kind: 'saved' });
+    const slot = h.store.get('Running session');
+    const save = stagedSaveFrom(await decodeSaveText(slot?.bytes ?? new Uint8Array()), WORLD_TOKEN);
+    expect(save.header.tick).toBe(capturedTick);
+    expect(slot?.meta.tick).toBe(capturedTick);
+    expect(sim.tick).toBeGreaterThan(capturedTick);
   });
 
   it('reports a failed store write and keeps the player pause state', async () => {
@@ -338,4 +408,40 @@ describe('saveLoadSession file load flow', () => {
     expect(storage.reloads()).toBe(0);
     expect(storage.paused()).toBe(false);
   });
+});
+
+it('writes the paused session orders into the compressed manual save without running a tick', async () => {
+  const sim = demoSim();
+  const driver = new LockstepDriver({ sim, transport: new LoopbackTransport(), paused: true });
+  driver.submit(adminCommand({ kind: 'setNeedsEnabled', enabled: false }));
+  driver.submit(adminCommand({ kind: 'setNeedsEnabled', enabled: true }));
+  const before = sim.tick;
+  const h = harness(sim, { captureSave: (options) => driver.captureSave(options), startPaused: true });
+  expect(await h.session.saveGame('paused')).toEqual({ kind: 'saved' });
+  const bytes = h.store.get('paused')?.bytes;
+  if (bytes === undefined) throw new Error('no saved slot');
+  const save = parseSaveGame(JSON.parse(await decodeSaveText(bytes)));
+  expect(save.header.tick).toBe(before);
+  expect(save.sections.find((section) => section.id === 'commands')?.continuation).toEqual([
+    { applyTick: before + 1, envelope: adminCommand({ kind: 'setNeedsEnabled', enabled: false }) },
+    { applyTick: before + 1, envelope: adminCommand({ kind: 'setNeedsEnabled', enabled: true }) },
+  ]);
+  expect(sim.tick).toBe(before);
+  expect(h.paused()).toBe(true);
+});
+
+it('preserves the previous slot when obtaining authoritative pending orders fails', async () => {
+  let fail = false;
+  const sim = demoSim();
+  const h = harness(sim, {
+    captureSave: async (options) => {
+      if (fail) throw new Error('relay disconnected while saving');
+      return exportSaveGame(sim, options);
+    },
+  });
+  expect(await h.session.saveGame('safe')).toEqual({ kind: 'saved' });
+  const previous = h.store.get('safe');
+  fail = true;
+  expect(await h.session.saveGame('safe')).toEqual({ kind: 'failed' });
+  expect(h.store.get('safe')).toBe(previous);
 });

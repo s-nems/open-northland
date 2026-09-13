@@ -28,6 +28,7 @@ export interface DebugMountsOptions {
   readonly clientToTile: (clientX: number, clientY: number) => { col: number; row: number } | null;
   /** The trusted admin channel: every debug poke is a world edit, not a seat's order. */
   readonly enqueue: (command: Command) => void;
+  readonly allowWorldEdits?: boolean;
   /** The composed HUD claim an admin spawn click must defer to. */
   readonly claimPointer: (clientX: number, clientY: number) => boolean;
   /** The localized good name by sim goodType. */
@@ -45,7 +46,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     setItems: (items) => renderer.setGeometryDebug(items),
   });
 
-  // Mounted before the RTS controls so arming a spawn click never also selects a unit.
+  if (opts.allowWorldEdits === false) return geometryDebug;
   mountAdminDebug({
     canvas,
     enqueue: opts.enqueue,

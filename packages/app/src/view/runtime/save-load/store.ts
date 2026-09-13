@@ -17,6 +17,7 @@ export interface SaveSlotInfo {
 
 /** Header provenance recorded at write time where the backing store cannot re-read it cheaply. */
 export interface SaveSlotMeta {
+  readonly savedAt?: number | null;
   readonly mapId: string | null;
   readonly tick: number;
   readonly entry: string | null;

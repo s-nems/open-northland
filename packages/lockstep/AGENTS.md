@@ -19,6 +19,8 @@ broadcast it and a menu can build a world from it. Anything the world identity a
 authored diplomacy, its starting entities, its never-dies seats - stays in the map instead of being
 repeated in the descriptor. `parseGameSession` validates every field, because the sender is another
 client, and it holds the roster to ascending seat order, which is the order world assembly follows.
+An explicit seat team overrides diplomacy between explicitly teamed seats; absent or null teams
+leave the map's relations in place.
 
 Every field but `localSeat` is shared by every client of a session.
 
@@ -31,3 +33,7 @@ the transport, never from local arrival order, which two clients would disagree 
 
 Single-player runs the same driver over `LoopbackTransport`. There is no separate single-player path
 to keep in step.
+
+Manual saves use `SessionDriver.captureSave` so accepted future input accompanies the world. Loopback
+owns its pending frames; a relayed driver obtains them from the server. A reconnect snapshot instead
+carries the existing world continuation and receives the live session's remaining frames separately.

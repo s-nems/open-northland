@@ -1,4 +1,4 @@
-import type { CommandEnvelope } from '@open-northland/sim';
+import { type CommandEnvelope, ownedEnvelope } from '@open-northland/sim';
 import type { SessionTransport, TickCommand, TickFrame } from './transport.js';
 
 /** A loopback command applies one tick after the tick it was issued on, which is where a direct
@@ -12,9 +12,19 @@ export class LoopbackTransport implements SessionTransport {
 
   submit(envelope: CommandEnvelope, fromTick: number): void {
     const applyTick = fromTick + LOOPBACK_DELAY_TICKS;
+    const owned = ownedEnvelope(envelope);
     const held = this.byTick.get(applyTick);
-    if (held === undefined) this.byTick.set(applyTick, [{ envelope, sequence: 0 }]);
-    else held.push({ envelope, sequence: held.length });
+    if (held === undefined) this.byTick.set(applyTick, [{ envelope: owned, sequence: 0 }]);
+    else held.push({ envelope: owned, sequence: held.length });
+  }
+
+  pendingFrames(): readonly TickFrame[] {
+    return [...this.byTick]
+      .sort(([a], [b]) => a - b)
+      .map(([tick, commands]) => ({
+        tick,
+        commands: commands.map(({ envelope, sequence }) => ({ envelope: ownedEnvelope(envelope), sequence })),
+      }));
   }
 
   take(tick: number): TickFrame {

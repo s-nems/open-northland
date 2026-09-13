@@ -129,3 +129,13 @@ describe('RelaySocket', () => {
     expect(socket.send(HELLO)).toBe(false);
   });
 });
+
+it('ignores queued events from a closed or superseded socket', () => {
+  const { socket, sockets, events, received } = harness();
+  const first = sockets[0];
+  socket.close();
+  first?.open();
+  first?.deliver('{"kind":"welcome"}');
+  expect(events).toEqual(['closed:closed']);
+  expect(received).toEqual([]);
+});

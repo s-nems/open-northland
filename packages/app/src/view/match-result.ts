@@ -2,6 +2,7 @@ import type { MatchOutcome, SimEvent } from '@open-northland/sim';
 import type { UiString } from '../content/gui-gfx.js';
 import { messages } from '../i18n/index.js';
 import { confirmDialog } from './confirm-dialog.js';
+import { matchResultActions, matchResultState } from './match-result-state.js';
 
 /** The decoded original strings the verdict prefers over the catalog fallbacks (`miscwindow`). */
 const WON_TITLE_STRING_ID = 81;
@@ -36,6 +37,7 @@ const BUTTON_STYLE = [
 
 export interface MatchResultDeps {
   readonly localPlayer: number;
+  readonly sharedClock?: boolean;
   readonly uiString: UiString;
   /** Hold the sim while the verdict is up; released when the player chooses to go on. */
   readonly pause: () => void;
@@ -48,6 +50,7 @@ export interface MatchResultOverlay {
   onEvents(events: readonly SimEvent[]): void;
   /** Raise the panel for a verdict already standing, as a restored save of a decided match carries. */
   announce(outcome: MatchOutcome): void;
+  finish(outcome: MatchOutcome): void;
   dispose(): void;
 }
 
@@ -60,19 +63,17 @@ export function localVerdict(events: readonly SimEvent[], localPlayer: number): 
   return null;
 }
 
-/**
- * The end-of-match panel: the original's "Mission successful!" / "Mission failed!" line over a short
- * explanation, with a way back to the menu and a way to stay. Shown once per session, the tick the
- * match decides the local seat.
- */
+/** Local outcomes can be dismissed; a confirmed multiplayer finish replaces them permanently. */
 export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOverlay {
-  let shown = false;
+  const state = matchResultState();
   let backdrop: HTMLDivElement | null = null;
 
-  const show = (verdict: MatchOutcome): void => {
+  const show = (verdict: MatchOutcome, terminal = false): void => {
+    hide();
+    const actions = matchResultActions(deps.sharedClock === true, terminal);
     const copy = messages().hud;
     const won = verdict === 'victory';
-    deps.pause();
+    if (actions.pause) deps.pause();
 
     backdrop = document.createElement('div');
     Object.assign(backdrop.style, {
@@ -89,15 +90,22 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     panel.setAttribute('aria-modal', 'true');
 
     const title = document.createElement('h2');
-    title.textContent = won
-      ? deps.uiString('miscwindow', WON_TITLE_STRING_ID, copy.matchWonTitle)
-      : deps.uiString('miscwindow', LOST_TITLE_STRING_ID, copy.matchLostTitle);
+    title.textContent =
+      verdict === 'undecided'
+        ? copy.matchFinishedTitle
+        : won
+          ? deps.uiString('miscwindow', WON_TITLE_STRING_ID, copy.matchWonTitle)
+          : deps.uiString('miscwindow', LOST_TITLE_STRING_ID, copy.matchLostTitle);
     Object.assign(title.style, { margin: '0', font: '20px/1.2 ui-serif,Georgia,serif' });
     panel.setAttribute('aria-label', title.textContent);
 
     const detail = document.createElement('p');
     detail.style.cssText = 'margin:0';
-    detail.textContent = won ? copy.matchWonDetail : copy.matchLostDetail;
+    detail.textContent = terminal
+      ? copy.matchFinishedDetail
+      : won
+        ? copy.matchWonDetail
+        : copy.matchLostDetail;
 
     const button = (label: string, onClick: () => void): HTMLButtonElement => {
       const el = document.createElement('button');
@@ -109,10 +117,15 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     };
     const stay = button(won ? copy.matchContinue : copy.matchWatch, () => {
       hide();
-      deps.resume();
+      if (actions.pause) deps.resume();
     });
     // Quitting throws away everything since the last save, so it asks like the system menu does.
     const quit = button(copy.returnToMenu, () => {
+      if (!actions.confirmQuit) {
+        hide();
+        deps.onQuit();
+        return;
+      }
       void confirmDialog({
         message: copy.quitConfirm,
         confirmLabel: copy.quitConfirmYes,
@@ -125,11 +138,12 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
     });
     const row = document.createElement('div');
     Object.assign(row.style, { display: 'flex', gap: '10px', justifyContent: 'flex-end' });
-    row.append(stay, quit);
+    if (actions.stay) row.append(stay);
+    row.append(quit);
     panel.append(title, detail, row);
     backdrop.append(panel);
     document.body.append(backdrop);
-    stay.focus();
+    (actions.stay ? stay : quit).focus();
   };
 
   const hide = (): void => {
@@ -138,18 +152,20 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
   };
 
   const announce = (outcome: MatchOutcome): void => {
-    if (shown || outcome === 'undecided') return;
-    shown = true;
+    if (deps.sharedClock && outcome === 'victory') return;
+    if (!state.announce(outcome)) return;
     show(outcome);
   };
 
   return {
     onEvents(events): void {
-      if (shown) return;
       const verdict = localVerdict(events, deps.localPlayer);
       if (verdict !== null) announce(verdict);
     },
     announce,
+    finish(outcome): void {
+      if (state.finish()) show(outcome, true);
+    },
     dispose: hide,
   };
 }

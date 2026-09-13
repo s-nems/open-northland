@@ -23,7 +23,7 @@ if (missing.length > 0) {
 const built = spawnSync('npx', ['tsc', '--build'], { stdio: 'inherit', cwd: repoRoot, env: process.env });
 if (built.status !== 0) process.exit(built.status ?? 1);
 
-const result = spawnSync('npx', ['vitest', 'run', 'packages/app/test/engines'], {
+const result = spawnSync('npx', ['vitest', 'run', 'packages/app/test/engines', '--disableConsoleIntercept'], {
   stdio: 'inherit',
   cwd: repoRoot,
   env: { ...process.env, ON_ENGINES: process.env.ON_ENGINES ?? 'all' },

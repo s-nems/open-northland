@@ -14,6 +14,7 @@ import { mapSelectScreen } from './map-select.js';
 import { initialMapSelectMemory, type MapSelectItem } from './map-select-model.js';
 import { backTarget, MAIN_NAV, type MainNavItem, type MenuScreen, moveFocus, VERSION_LINE } from './model.js';
 import { startMenuMusic } from './music.js';
+import { networkScreen } from './network/index.js';
 import { screenHead } from './screen-head.js';
 import { settingsScreen } from './settings.js';
 import { adoptStoredSettings, updateSettings } from './settings-state.js';
@@ -164,6 +165,11 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   const screenFor = (next: MenuScreen): HTMLElement => {
     if (next === 'main') return mainScreen(show);
     if (next === 'newGame') return mapSelectScreen(show, mapSelectMemory, openLobby, launch);
+    if (next === 'multiplayer') {
+      const mounted = networkScreen(show, launch, params);
+      disposeScreen = mounted.dispose;
+      return mounted.element;
+    }
     if (next === 'load') return loadSelectScreen(show, launch);
     if (next === 'lobby' && lobbyMap !== null) return lobbyScreen(lobbyMap, show, rosters, launch);
     if (next === 'settings') {
@@ -190,7 +196,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     // The prompt sits outside `content`, so a language change reaches it only from here.
     fullscreenPrompt.relabel();
   };
-  show('main');
+  show(params.get('menu') === 'multiplayer' ? 'multiplayer' : 'main');
 
   const onKeydown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {

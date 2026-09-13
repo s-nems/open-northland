@@ -100,6 +100,7 @@ describe('matchSystem - death and victory over the declared participants', () =>
     personOf(sim, P0);
     const events = runTo(sim, FIRST_CHECK_TICK + MATCH_DEATH_CHECK_INTERVAL_TICKS);
     expect(events).toEqual([]);
+    expect(sim.matchEnded()).toBe(false);
     expect(sim.world.lowestEntityWith(MatchRules)).toBeNull();
     expect(sim.matchOutcome(P0)).toBe('undecided');
     expect(playersOfBits(matchParticipantBits(sim.world))).toEqual([]);
@@ -128,9 +129,11 @@ describe('matchSystem - death and victory over the declared participants', () =>
     sim.enqueueSetup({ kind: 'debugKill', target: doomed });
     runTo(sim, FIRST_CHECK_TICK);
     expect(sim.matchOutcome(P0)).toBe('victory');
+    expect(sim.matchEnded()).toBe(true);
     sim.enqueue(adminCommand({ kind: 'debugKill', target: winner }));
     expect(runTo(sim, FIRST_CHECK_TICK + 2 * MATCH_DEATH_CHECK_INTERVAL_TICKS)).toEqual([]);
     expect(sim.matchOutcome(P0)).toBe('victory');
+    expect(sim.matchEnded()).toBe(true);
   });
 
   it('kills a seat whose last man died, exactly once, at the first check after the death', () => {
@@ -151,6 +154,7 @@ describe('matchSystem - death and victory over the declared participants', () =>
     ]);
     expect(sim.matchOutcome(P1)).toBe('defeat');
     expect(sim.matchOutcome(P0)).toBe('victory');
+    expect(sim.matchEnded()).toBe(true);
 
     const later = runTo(sim, FIRST_CHECK_TICK + 3 * MATCH_DEATH_CHECK_INTERVAL_TICKS);
     expect(later).toEqual([]);

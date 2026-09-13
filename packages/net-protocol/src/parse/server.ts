@@ -14,8 +14,9 @@ import {
 } from '../untrusted.js';
 import { CLIENT_KINDS } from './client.js';
 import { parseRoomSummary, parseRoomView, parseSeatIndex, VACANT_SEAT_MODES } from './room.js';
+import { parseSaveOrders } from './save-orders.js';
 import { assertNever, asTimestamp, parseLine, parseNick } from './text.js';
-import { BLOB_TYPES, parseBlobBytes, parseWireCommands, SYNC_DOMAINS } from './wire.js';
+import { BLOB_TYPES, parseBlobBytes, parseStateHash, parseWireCommands, SYNC_DOMAINS } from './wire.js';
 
 const SERVER_KINDS = keysOf<ServerMessage['kind']>({
   welcome: true,
@@ -23,6 +24,8 @@ const SERVER_KINDS = keysOf<ServerMessage['kind']>({
   room: true,
   left: true,
   start: true,
+  ended: true,
+  saveOrders: true,
   clock: true,
   frame: true,
   delay: true,
@@ -31,6 +34,7 @@ const SERVER_KINDS = keysOf<ServerMessage['kind']>({
   kicked: true,
   desync: true,
   snapshotRequest: true,
+  mapRequest: true,
   blob: true,
   chat: true,
   ping: true,
@@ -79,6 +83,10 @@ export function parseServerMessage(
         session: parseSession(raw.session),
         snapshotTick: raw.snapshotTick === null ? null : asCount(raw.snapshotTick, 'start.snapshotTick'),
       };
+    case 'saveOrders':
+      return parseSaveOrders(raw);
+    case 'ended':
+      return { kind, tick: asCount(raw.tick, 'ended.tick'), hash: parseStateHash(raw.hash, 'ended.hash') };
     case 'clock':
       return {
         kind,
@@ -125,6 +133,8 @@ export function parseServerMessage(
         ),
         reference: parseNick(raw.reference, 'desync.reference'),
       };
+    case 'mapRequest':
+      return { kind, from: parseNick(raw.from, 'mapRequest.from') };
     case 'blob':
       return {
         kind,
@@ -150,6 +160,7 @@ export function parseServerMessage(
         kind,
         of: asOneOf(raw.of, CLIENT_KINDS, 'rejected.of'),
         reason: asString(raw.reason, 'rejected.reason', MAX_REASON_LENGTH),
+        ...(raw.requestId === undefined ? {} : { requestId: asCount(raw.requestId, 'rejected.requestId') }),
       };
     case 'error':
       return { kind, reason: asString(raw.reason, 'error.reason', MAX_REASON_LENGTH) };

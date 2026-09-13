@@ -12,6 +12,7 @@ import { ONE } from '../core/fixed.js';
 import type { World } from '../ecs/world.js';
 import { NEED_OVERFILL_FLOOR } from '../systems/lifecycle/needs/index.js';
 import { isAnimalTribe } from '../systems/readviews/index.js';
+import { playerPlacementRulesValid } from './player-placement-invariant.js';
 
 /**
  * A property that must hold after every tick, returning one message per violation and an empty list
@@ -112,6 +113,7 @@ export const CORE_INVARIANTS: readonly Invariant[] = [
   preyHoldWithinEngagement,
   personhoodMatchesTribe,
   cachesCoherent,
+  playerPlacementRulesValid,
 ];
 
 /** Run a set of invariants; returns all violations across them. */

@@ -23,6 +23,8 @@ export const MAX_SPEED = 8;
 export const MAX_CLIENT_MESSAGE_BYTES = 16 * 1024;
 /** Bytes of one relayed blob once decoded; a gzip snapshot is about 1.3 MB, a decoded map a few. */
 export const MAX_BLOB_BYTES = 16 * 1024 * 1024;
+/** Upper bound on a serialized manual-save order capture. */
+export const MAX_SAVE_ORDERS_BYTES = MAX_BLOB_BYTES;
 /** Bytes of the JSON message carrying a blob: its base64 text plus the fields around it. */
 export const MAX_BLOB_MESSAGE_BYTES = Math.ceil(MAX_BLOB_BYTES / 3) * 4 + 1024;
 /** RFC 6455 close codes a connection ends with for good: the relay's private code for a connection a
@@ -38,3 +40,5 @@ export const MAX_ROOM_ID_LENGTH = 32;
 export const MAX_WORLD_ID_LENGTH = 128;
 export const MAX_COMMAND_KIND_LENGTH = 64;
 export const MAX_REASON_LENGTH = 200;
+
+export const MAX_CLIENT_VERSION_LENGTH = 128;

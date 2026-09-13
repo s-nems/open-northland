@@ -95,6 +95,7 @@ export const COMMAND_ISSUER: {
   setMatchParticipants: 'trusted',
   setNeedsEnabled: 'trusted',
   setPlayerAi: 'trusted',
+  setPlayerPlacementTribes: 'trusted',
   setProfessionProgression: 'trusted',
   setRegeneration: 'seat',
   setSignpostNavigation: 'trusted',
@@ -111,8 +112,8 @@ export const COMMAND_ISSUER: {
 };
 
 /**
- * A queue-owned copy of `envelope`, with an omitted owner on a seat placement filled in from the
- * issuing seat. The queue keeps no alias to a caller's payload, so a post-enqueue mutation cannot
+ * An owned copy of `envelope`; seat placements default to construction sites owned by the issuing
+ * seat. The copy keeps no alias to a caller's payload, so a post-enqueue mutation cannot
  * rewrite what applies or what the replay log carries.
  */
 export function ownedEnvelope(envelope: CommandEnvelope): CommandEnvelope {
@@ -132,7 +133,12 @@ export function ownedEnvelope(envelope: CommandEnvelope): CommandEnvelope {
 
 function seatOwned(command: PlayerCommand, player: number): PlayerCommand {
   const owned = clonePlainData(command);
-  return owned.kind === 'placeBuilding' && owned.owner === undefined ? { ...owned, owner: player } : owned;
+  if (owned.kind !== 'placeBuilding') return owned;
+  return {
+    ...owned,
+    owner: owned.owner === undefined ? player : owned.owner,
+    underConstruction: owned.underConstruction === undefined ? true : owned.underConstruction,
+  };
 }
 
 /**

@@ -1,6 +1,7 @@
 import { components } from '@open-northland/sim';
+import { type InitialSaveIdentity, parseInitialSaveIdentity } from './initial-save.js';
 
-const { isValidPlayer } = components;
+const { isValidPlayer, isFogMode } = components;
 
 /** What a roster seat does for a whole session: `human` is played by a person, `ai` by the strategic AI
  *  player, and `idle` sits out. */
@@ -14,6 +15,8 @@ export interface SessionSeat {
   readonly mode: SeatMode;
   /** Team colour id, the map's authored colour unless the roster recoloured the seat. */
   readonly color: number;
+  /** Explicit lobby team; absent or null preserves the map's diplomacy. */
+  readonly team?: number | null;
 }
 
 /** The two spectator choices watch the whole map: `observer` issues no command, `overseer` commands
@@ -46,6 +49,8 @@ export interface SessionRules {
  * client's own view of the roster.
  */
 export interface GameSession {
+  readonly initialSave?: InitialSaveIdentity;
+  readonly kickedSeatMode?: 'ai' | 'idle';
   readonly world: SessionWorld;
   readonly seed: number;
   /** See {@link orderedSeats}. Empty for a world that raises no seats of its own. */
@@ -113,6 +118,8 @@ export function parseGameSession(value: unknown): GameSession {
     localSeat: parseLocalSeat(raw.localSeat),
     rules: parseRules(raw.rules),
     speed: positive(raw.speed, 'speed'),
+    ...(raw.initialSave === undefined ? {} : { initialSave: parseInitialSaveIdentity(raw.initialSave) }),
+    ...(raw.kickedSeatMode === undefined ? {} : { kickedSeatMode: parseKickedSeatMode(raw.kickedSeatMode) }),
   };
 }
 
@@ -136,9 +143,22 @@ function parseSeats(value: unknown): readonly SessionSeat[] {
     const color = integer(raw.color, 'seat.color');
     // The palette's own bound belongs to the content layer; a negative id has no reading anywhere.
     if (color < 0) throw new Error(`session seat ${player} has a negative colour`);
-    seats.push({ player, mode: parseSeatMode(raw.mode), color });
+    const team = parseTeam(raw.team);
+    seats.push({
+      player,
+      mode: parseSeatMode(raw.mode),
+      color,
+      ...(team === undefined ? {} : { team }),
+    });
   }
   return seats;
+}
+
+function parseTeam(value: unknown): number | null | undefined {
+  if (value === undefined || value === null) return value;
+  const team = integer(value, 'seat.team');
+  if (!isValidPlayer(team)) throw new Error(`session team ${team} is outside the supported range`);
+  return team;
 }
 
 function parseSeatMode(value: unknown): SeatMode {
@@ -157,10 +177,17 @@ function parseLocalSeat(value: unknown): LocalSeat {
 function parseRules(value: unknown): SessionRules {
   const raw = asRecord(value, 'rules');
   return {
-    fog: raw.fog === null ? null : integer(raw.fog, 'rules.fog'),
+    fog: parseFog(raw.fog),
     progression: nullableBoolean(raw.progression, 'rules.progression'),
     needs: nullableBoolean(raw.needs, 'rules.needs'),
   };
+}
+
+function parseFog(value: unknown): number | null {
+  if (value === null) return null;
+  const fog = integer(value, 'rules.fog');
+  if (!isFogMode(fog)) throw new Error('rules.fog must name a fog mode');
+  return fog;
 }
 
 function asRecord(value: unknown, at: string): Record<string, unknown> {
@@ -176,7 +203,7 @@ function text(value: unknown, at: string): string {
 }
 
 function integer(value: unknown, at: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value)) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
     throw new Error(`${at} must be an integer, got ${JSON.stringify(value)}`);
   }
   return value;
@@ -192,4 +219,9 @@ function positive(value: unknown, at: string): number {
 function nullableBoolean(value: unknown, at: string): boolean | null {
   if (value === null || typeof value === 'boolean') return value;
   throw new Error(`${at} must be a boolean or null`);
+}
+
+function parseKickedSeatMode(value: unknown): 'ai' | 'idle' {
+  if (value !== 'ai' && value !== 'idle') throw new Error('kickedSeatMode must be ai or idle');
+  return value;
 }

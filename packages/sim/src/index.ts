@@ -14,6 +14,7 @@ export {
   COMMAND_ENVELOPE_VERSION,
   type Command,
   type CommandEnvelope,
+  ownedEnvelope,
   type PlayerCommand,
   playerCommand,
   type SettlerEquipment,
@@ -107,10 +108,12 @@ export {
   SAVE_FORMAT_VERSION,
   SAVE_KIND,
   SAVE_MAP_KEY,
+  type SavedCommand,
   type SaveGame,
   type SaveGameHeader,
   type SaveGameSection,
   serializeSaveGame,
+  withSaveContinuation,
 } from './save/index.js';
 // The idle-adult job key of the HUD population tally: a façade read view, not a system.
 export { IDLE_JOB } from './simulation/hud.js';

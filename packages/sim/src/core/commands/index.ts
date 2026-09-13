@@ -11,6 +11,7 @@ export {
   COMMAND_ENVELOPE_VERSION,
   COMMAND_ISSUER,
   type CommandEnvelope,
+  ownedEnvelope,
   type PlayerCommand,
   playerCommand,
   setupCommand,

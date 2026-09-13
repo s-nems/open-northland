@@ -1,3 +1,4 @@
+export { withSaveContinuation } from './continuation.js';
 export { type ExportSaveOptions, exportSaveGame, serializeSaveGame } from './export.js';
 export {
   type CommandsSection,
@@ -8,6 +9,7 @@ export {
   SAVE_FORMAT_VERSION,
   SAVE_KIND,
   SAVE_MAP_KEY,
+  type SavedCommand,
   type SaveGame,
   type SaveGameHeader,
   type SaveGameSection,

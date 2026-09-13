@@ -44,6 +44,19 @@ describe('parseSaveGame acceptance', () => {
 });
 
 describe('parseSaveGame header rejection', () => {
+  it('validates fingerprint and timestamp fields instead of silently dropping them', () => {
+    for (const contentFingerprint of [undefined, '', 'abcd', 'A'.repeat(64), 123]) {
+      const doc = populatedDoc();
+      doc.header.contentFingerprint = contentFingerprint;
+      expect(() => parseSaveGame(doc)).toThrow(/contentFingerprint/);
+    }
+    for (const savedAt of [undefined, 'today', -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER]) {
+      const doc = populatedDoc();
+      doc.header.savedAt = savedAt;
+      expect(() => parseSaveGame(doc)).toThrow(/savedAt/);
+    }
+  });
+
   it('rejects a non-object and a wrong kind', () => {
     expect(() => parseSaveGame([])).toThrow(/save: expected an object, got an array/);
     const doc = populatedDoc();

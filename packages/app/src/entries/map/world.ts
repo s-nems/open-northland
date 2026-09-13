@@ -1,4 +1,4 @@
-import type { ContentSet, MapDiplomacy, TerrainMapFile } from '@open-northland/data';
+import type { ContentSet, MapDiplomacy, MapScript, TerrainMapFile } from '@open-northland/data';
 import type { SessionRules } from '@open-northland/lockstep';
 import {
   type Entity,
@@ -10,6 +10,7 @@ import {
 } from '@open-northland/sim';
 import { buildCollisionTerrain } from '../../content/collision.js';
 import type { ContentIr } from '../../content/ir/rows.js';
+import { setupPlacementTribes } from '../../game/placement-tribes.js';
 import {
   mapResourceObjectNames,
   resolveWorldContent,
@@ -44,6 +45,7 @@ export interface MapWorldOptions extends SessionRules {
   readonly ir: ContentIr | null;
   readonly content: WorldContentOptions;
   readonly aiSeats: readonly number[];
+  readonly playerRoster?: MapScript['players'];
   /** Seats whose chest-window assistant grants start on. */
   readonly assistantSeats: readonly number[];
   /** The seats that can win or lose the skirmish; omitted or empty runs no match. */
@@ -72,6 +74,7 @@ const PLACEMENT_DRAIN_TICKS = 1;
 export function buildMapWorld(options: MapWorldOptions): MapWorld {
   const terrain = collisionTerrain(options.map, options.ir);
   const { sim, kind } = runWorld(options, terrain);
+  setupPlacementTribes(sim, options.playerRoster);
   applySessionRules(sim, options);
   const harvestablePlacements = spawnHarvestables(sim, options);
   sim.step();
@@ -123,7 +126,10 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
 
 /** The world-build inputs a restore reuses: identity only, since placements, session rules, AI seats
  *  and harvestables are already in the saved state. */
-export type RestoreWorldOptions = Pick<MapWorldOptions, 'map' | 'ir' | 'content' | 'demoOwner'>;
+export type RestoreWorldOptions = Pick<
+  MapWorldOptions,
+  'map' | 'ir' | 'content' | 'demoOwner' | 'playerRoster'
+>;
 
 export interface RestoredMapWorld {
   readonly sim: Simulation;
@@ -134,8 +140,8 @@ export interface RestoredMapWorld {
 
 /**
  * Resolve the exact terrain and content a fresh {@link buildMapWorld} would and restore the save onto
- * them, enqueueing nothing. Throws when the save does not fit the resolved world; the app-layer
- * round-trip tests hold both paths to the same resolution.
+ * them. Legacy saves receive missing placement declarations from the map roster. Throws when the
+ * save does not fit the resolved world; app-layer round-trip tests hold both paths to the same resolution.
  */
 export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): RestoredMapWorld {
   const terrain = collisionTerrain(options.map, options.ir);
@@ -145,16 +151,17 @@ export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): R
       ...(options.demoOwner !== undefined ? { owner: options.demoOwner } : {}),
     };
     const base = demoWorldBase(undefined, demo);
-    return { ...restoreSimulation(save, { content: base.content, map: base.terrain }), kind: 'demo' };
+    const restored = restoreSimulation(save, { content: base.content, map: base.terrain });
+    setupPlacementTribes(restored.sim, options.playerRoster);
+    return { ...restored, kind: 'demo' };
   }
   const authored = authoredWorldContent(terrain, options);
-  return {
-    ...restoreSimulation(save, {
-      content: authored ?? resolveWorldContent(terrain, options.content),
-      map: terrain,
-    }),
-    kind: authored !== null ? 'authored' : 'bare',
-  };
+  const restored = restoreSimulation(save, {
+    content: authored ?? resolveWorldContent(terrain, options.content),
+    map: terrain,
+  });
+  setupPlacementTribes(restored.sim, options.playerRoster);
+  return { ...restored, kind: authored !== null ? 'authored' : 'bare' };
 }
 
 /** The authored path's content, or null exactly when `runWorld` would fall through to the bare map. */

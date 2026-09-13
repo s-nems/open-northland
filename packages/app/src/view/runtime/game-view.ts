@@ -58,7 +58,7 @@ import { createPlacementGates } from './placement-gates.js';
 import { trackCanvasPointer } from './pointer-tracker.js';
 import type { RafLoop } from './raf-loop.js';
 import { createViewReadModels } from './read-models.js';
-import { createSaveLoadSession } from './save-load/index.js';
+import { createSaveLoadSession, type SaveLoadSessionOptions } from './save-load/index.js';
 
 /** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
 export interface GameViewDeps {
@@ -78,6 +78,8 @@ export interface GameViewDeps {
   /** True when the clock is shared with other clients: the menus and sheets that hold a local game
    *  paused hold nothing, and a file cannot be loaded over the shared world. */
   readonly sharedClock?: boolean;
+  readonly confirmedMatchEnd?: () => number | null;
+  readonly onReturnToMenu?: () => void;
   /** A relayed session's connection figures for the overlays; omitted in a local session. */
   readonly netReadout?: () => NetReadout | null;
   readonly cameraCtl: CameraController;
@@ -114,6 +116,8 @@ export interface GameViewDeps {
   /** The entry's world identity for save headers: the decoded map id, or `scene:<id>`. Omitted, saves
    *  carry no world token and only load back into another tokenless world. */
   readonly worldToken?: string | null;
+  readonly saveEntrySearch?: string;
+  readonly networkSave?: Pick<SaveLoadSessionOptions, 'sessionMetadata' | 'onSaved'>;
   readonly missionBrief?: MissionBrief;
   /** Open the mission window as the session starts, the original's mission briefing; the entry decides
    *  (a fresh world, and no `?intro=off`). */
@@ -129,6 +133,7 @@ export interface GameViewHandle {
   syncSpeed(control: GameSpeedControl): void;
   /** Left inset in px that clears the tool-panel strip, for overlays mounted beside this view. */
   readonly hudInsetLeftPx: number;
+  readonly hudInsetBottomLeftPx: number;
 }
 
 const PAUSE_HOLDER_MENU = 'menu';
@@ -152,8 +157,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let verdict: MatchResultOverlay | null = null;
   let destroyed = false;
   const saveLoad = createSaveLoadSession({
+    ...deps.networkSave,
+    captureSave: (options) => driver.captureSave(options),
     sim,
     worldToken: deps.worldToken ?? null,
+    ...(deps.saveEntrySearch !== undefined ? { entrySearch: deps.saveEntrySearch } : {}),
     // A shared clock is nobody's to hold: the save dialog and the overlays above pause nothing.
     setPaused: (paused) => {
       if (!sharedClock) driver.setPaused(paused);
@@ -172,12 +180,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     disposeHud();
     verdict?.dispose();
     orderCue.dispose();
+    deps.cameraCtl.dispose();
     // Leaving the debug seam set would pin this sim, renderer and stats for the document's lifetime.
     delete window.__opennorthland;
   };
   const quitToMenu = (): void => {
     destroy();
-    window.location.search = menuSearch();
+    if (deps.onReturnToMenu !== undefined) deps.onReturnToMenu();
+    else window.location.search = menuSearch();
   };
 
   const storedSettings = readStoredSettings();
@@ -289,9 +299,10 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   // The verdict panel rides the same event stream the entry's own hook does; a spectator seat has no
   // verdict to hear.
-  if (deps.observer !== true) {
+  if (deps.observer !== true || sharedClock) {
     verdict = createMatchResultOverlay({
       localPlayer,
+      sharedClock,
       uiString: toolPanel.controller.uiString,
       pause: () => pauseHolds.hold(PAUSE_HOLDER_VERDICT),
       resume: () => pauseHolds.release(PAUSE_HOLDER_VERDICT),
@@ -300,7 +311,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   }
   const onEvents = (events: readonly SimEvent[]): void => {
     deps.onEvents?.(events);
-    verdict?.onEvents(events);
+    if (deps.observer !== true) verdict?.onEvents(events);
   };
 
   // Injected rather than imported: `hud/` never imports `view/`.
@@ -399,6 +410,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     canvas,
     params,
     sim,
+    allowWorldEdits: !sharedClock,
     // The `?debug=` panel is a dev channel rather than part of the seat's HUD, so a read-only
     // spectator still pokes with it.
     enqueue: issueTrusted,
@@ -457,6 +469,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     mountedMinimap.dispose();
     controls.dispose();
     perf.dispose();
+    pileTooltip.destroy();
+    soundDriver?.setEnabled(false);
   };
 
   installDebugHandle({
@@ -475,6 +489,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   loop = startFrameLoop({
     deps: { ...deps, onEvents },
     fpsLimit: storedSettings.fpsLimit,
+    onMatchEnd: () => verdict?.finish(sim.matchOutcome(localPlayer)),
+    isDisposed: () => destroyed,
     driver,
     frameStats,
     fogGates,
@@ -503,11 +519,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   if (deps.introAtStart === true) toolPanel.controller.openMission();
   // A restored save of a decided match says so at once, since no event will repeat the verdict.
-  verdict?.announce(sim.matchOutcome(localPlayer));
+  if (deps.observer !== true) verdict?.announce(sim.matchOutcome(localPlayer));
 
   return {
     destroy,
     syncSpeed: (control) => toolPanel.controller.syncSpeed(control),
-    hudInsetLeftPx: perfLeftForUiScale(uiscale),
+    hudInsetLeftPx: perfCornerForUiScale(uiscale).left,
+    get hudInsetBottomLeftPx() {
+      const rect = mountedMinimap.panelRect();
+      return Math.max(perfCornerForUiScale(uiscale).left, rect === null ? 0 : rect.x + rect.w + 12);
+    },
   };
 }

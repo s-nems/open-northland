@@ -3,6 +3,7 @@ import {
   setFogMode,
   setMatchParticipants,
   setNeedsEnabled,
+  setPlayerPlacementTribes,
   setProfessionProgression,
   setSignpostNavigation,
 } from '../../components/index.js';
@@ -180,6 +181,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command): void 
       return;
     case 'setAssistantCounter':
       setAssistantCounter(world, ctx, command);
+      return;
+    case 'setPlayerPlacementTribes':
+      setPlayerPlacementTribes(world, ctx.content, command.player, command.tribes);
       return;
     case 'setNeedsEnabled':
       setNeedsEnabled(world, command.enabled);

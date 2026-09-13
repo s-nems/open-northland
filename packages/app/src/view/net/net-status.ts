@@ -34,13 +34,18 @@ export interface NetStatusPanel {
   dispose(): void;
 }
 
-const STATUS_PANEL_STYLE = `${PANEL_STYLE};width:auto;min-width:200px;padding:8px 12px;font-size:12px;pointer-events:none`;
+const STATUS_PANEL_STYLE = `${PANEL_STYLE};width:auto;min-width:200px;max-width:calc(100vw - 80px);box-sizing:border-box;padding:8px 12px;font-size:12px;pointer-events:none`;
 const ROW_STYLE = 'display:flex;justify-content:space-between;gap:16px';
 
 /** The top-right player list with each member's status and this client's own connection figures. */
 export function mountNetStatusPanel(): NetStatusPanel {
   const panel = el('div', STATUS_PANEL_STYLE);
   panel.setAttribute('role', 'status');
+  const position = (): void => {
+    panel.style.top = window.innerWidth < 1200 ? '96px' : '12px';
+  };
+  position();
+  window.addEventListener('resize', position);
   const title = el('div', 'font-weight:700;margin-bottom:4px', messages().net.players);
   const list = el('div', '');
   const link = el('div', 'margin-top:6px;opacity:0.8');
@@ -71,6 +76,9 @@ export function mountNetStatusPanel(): NetStatusPanel {
         ? [formatMessage(copy.roundTrip, { ms: trip }), ...(delay === null ? [] : [delay])].join(' · ')
         : copy.reconnecting;
     },
-    dispose: () => panel.remove(),
+    dispose: () => {
+      window.removeEventListener('resize', position);
+      panel.remove();
+    },
   };
 }

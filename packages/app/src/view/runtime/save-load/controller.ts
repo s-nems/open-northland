@@ -1,4 +1,10 @@
-import { exportSaveGame, type Simulation, serializeSaveGame } from '@open-northland/sim';
+import {
+  type ExportSaveOptions,
+  exportSaveGame,
+  type SaveGame,
+  type Simulation,
+  serializeSaveGame,
+} from '@open-northland/sim';
 import { diag } from '../../../diag/index.js';
 import { compressSaveText, isGzipSave, type SaveBytes } from './codec.js';
 import { evaluateSaveFile, type SaveRejection } from './evaluate.js';
@@ -15,6 +21,7 @@ export type LoadOutcome =
 
 export interface SaveLoadDeps {
   readonly sim: Simulation;
+  readonly captureSave?: (options: ExportSaveOptions) => SaveGame | Promise<SaveGame>;
   /** The entry's world identity, exported as the save header's `mapId` and required to match on load. */
   readonly worldToken: string | null;
   /** The entry-selecting URL search, exported as the header's `entry` relaunch token. */
@@ -29,6 +36,8 @@ export interface SaveLoadDeps {
   /** Hand save bytes to the user as a file: a browser download or the desktop save dialog. */
   readonly deliverSave: (fileName: string, bytes: SaveBytes) => Promise<SaveOutcome>;
   readonly store: SaveStore;
+  readonly sessionMetadata?: () => unknown;
+  readonly onSaved?: (save: SaveGame) => Promise<void>;
 }
 
 export interface SaveLoadSession {
@@ -101,16 +110,27 @@ export function saveLoadSession(deps: SaveLoadDeps): SaveLoadSession {
 
     async saveGame(name: string): Promise<SaveOutcome> {
       try {
-        const save = exportSaveGame(sim, {
+        const capture = deps.captureSave ?? ((options: ExportSaveOptions) => exportSaveGame(sim, options));
+        const save = await capture({
+          savedAt: Date.now(),
+          ...(deps.sessionMetadata === undefined ? {} : { session: deps.sessionMetadata() }),
           ...(worldToken !== null ? { mapId: worldToken } : {}),
           ...(deps.entrySearch !== null ? { entry: deps.entrySearch } : {}),
         });
         const bytes = await compressSaveText(serializeSaveGame(save));
         await deps.store.write(name, bytes, {
           mapId: worldToken,
-          tick: sim.tick,
+          tick: save.header.tick,
           entry: deps.entrySearch,
+          savedAt: save.header.savedAt,
         });
+        if (deps.onSaved !== undefined) {
+          try {
+            await deps.onSaved(save);
+          } catch (error) {
+            diag.warn('net', 'saved locally but relay snapshot upload failed', { error: String(error) });
+          }
+        }
         return { kind: 'saved' };
       } catch (err) {
         diag.warn('save', `writing slot ${JSON.stringify(name)} failed: ${String(err)}`);

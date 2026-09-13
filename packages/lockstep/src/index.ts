@@ -25,4 +25,15 @@ export {
   type SessionWorld,
   seatColourOf,
 } from './session/descriptor.js';
+export {
+  applyInitialSaveSeats,
+  type InitialSaveIdentity,
+  parseInitialSaveIdentity,
+} from './session/initial-save.js';
+export {
+  createSavedSessionMetadata,
+  parseSavedSessionMetadata,
+  type SavedSessionMetadata,
+  type SavedSessionSeat,
+} from './session/saved-session.js';
 export type { SessionTransport, TickCommand, TickFrame } from './transport.js';

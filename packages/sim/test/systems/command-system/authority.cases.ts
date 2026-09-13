@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Building, JobAssignment, Owner, Position } from '../../../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  Owner,
+  Position,
+  Stockpile,
+  setPlayerPlacementTribes,
+  UnderConstruction,
+} from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   adminCommand,
@@ -8,10 +16,11 @@ import {
   type CommandEnvelope,
   type PlayerCommand,
   playerCommand,
-  type Simulation,
+  Simulation,
   setupCommand,
 } from '../../../src/index.js';
 import { isAuthorized } from '../../../src/systems/command/authority.js';
+import { testContent } from '../../fixtures/content.js';
 import { fresh, HEADQUARTERS, nthEntity, SAWMILL, VIKING, WOODCUTTER } from './support.js';
 
 /** The fixture HQ declares three woodcutter slots, so a spawned woodcutter qualifies for one. */
@@ -114,6 +123,7 @@ describe('CommandSystem - command authority', () => {
 
   it('refuses a seat placement owned by another player and defaults an omitted owner to the seat', () => {
     const sim = fresh();
+    setPlayerPlacementTribes(sim.world, sim.content, MINE, [VIKING]);
     sim.enqueue(
       playerCommand(MINE, {
         kind: 'placeBuilding',
@@ -125,13 +135,14 @@ describe('CommandSystem - command authority', () => {
       }),
     );
     sim.step();
-    expect(sim.world.canonicalEntities()).toEqual([]);
+    expect([...sim.world.query(Building)]).toEqual([]);
 
     sim.enqueue(
       playerCommand(MINE, { kind: 'placeBuilding', buildingType: HEADQUARTERS, x: 2, y: 2, tribe: VIKING }),
     );
     sim.step();
-    const placed = nthEntity(sim, 0);
+    const placed = [...sim.world.query(Building)][0];
+    if (placed === undefined) throw new Error('missing placed building');
     expect(sim.world.get(placed, Owner)).toEqual({ player: MINE });
     // The log carries the resolved owner, so a replay of it places the same building.
     expect(sim.commands.log[1]).toMatchObject({ origin: 'player', command: { owner: MINE } });
@@ -161,6 +172,34 @@ describe('CommandSystem - command authority', () => {
 
     expect(sim.world.canonicalEntities()).toEqual([]);
     expect(sim.commands.log).toHaveLength(cheats.length);
+  });
+
+  it('places seat buildings as construction sites and rejects instant completion', () => {
+    const content = testContent();
+    const sim = new Simulation({
+      seed: 1,
+      content: {
+        ...content,
+        buildings: content.buildings.map((building) =>
+          building.typeId === SAWMILL
+            ? { ...building, construction: [{ goodType: 1, amount: 5 }] }
+            : building,
+        ),
+      },
+    });
+    setPlayerPlacementTribes(sim.world, sim.content, MINE, [VIKING]);
+    const placement = { kind: 'placeBuilding' as const, buildingType: SAWMILL, x: 4, y: 4, tribe: VIKING };
+    sim.enqueue(playerCommand(MINE, { ...placement, underConstruction: false }));
+    sim.step();
+    expect([...sim.world.query(Building)]).toEqual([]);
+
+    sim.enqueue(playerCommand(MINE, placement));
+    sim.step();
+    const building = [...sim.world.query(Building)][0];
+    if (building === undefined) throw new Error('missing construction site');
+    expect(sim.world.has(building, UnderConstruction)).toBe(true);
+    expect(sim.world.get(building, Stockpile).amounts.size).toBe(0);
+    expect(sim.commands.log[1]?.command).toMatchObject({ underConstruction: true, owner: MINE });
   });
 
   it('holds an AI seat to the same rule as a human seat', () => {

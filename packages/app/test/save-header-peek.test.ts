@@ -22,9 +22,16 @@ const HEADER = {
 };
 
 describe('peekSaveHeader', () => {
+  it('preserves a v3 timestamp and rejects invalid date values', async () => {
+    const savedAt = 1234567890000;
+    const bytes = await compressSaveText(saveText({ ...HEADER, formatVersion: 3, savedAt }));
+    expect((await peekSaveHeader(bytes))?.savedAt).toBe(savedAt);
+    const malformed = new TextEncoder().encode(saveText({ ...HEADER, savedAt: -1 }));
+    expect((await peekSaveHeader(malformed))?.savedAt).toBeNull();
+  });
   it('reads the header from complete gzip bytes and from a truncated prefix', async () => {
     const bytes = await compressSaveText(saveText(HEADER));
-    const expected = { mapId: 'twierdza', tick: 360, entry: '?map=twierdza&player=2' };
+    const expected = { savedAt: null, mapId: 'twierdza', tick: 360, entry: '?map=twierdza&player=2' };
     await expect(peekSaveHeader(bytes)).resolves.toEqual(expected);
     expect(bytes.byteLength).toBeGreaterThan(2048);
     await expect(peekSaveHeader(bytes.slice(0, 2048))).resolves.toEqual(expected);
@@ -37,6 +44,7 @@ describe('peekSaveHeader', () => {
       mapId: 'twierdza',
       tick: 360,
       entry: null,
+      savedAt: null,
     });
   });
 

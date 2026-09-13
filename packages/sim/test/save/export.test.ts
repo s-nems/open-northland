@@ -1,3 +1,4 @@
+import { contentFingerprint } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   FOG_MODE,
@@ -64,6 +65,16 @@ function populatedSim(): Simulation {
 }
 
 describe('exportSaveGame header', () => {
+  it('records only caller-supplied creation time and refuses invalid timestamps', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    expect(exportSaveGame(sim).header.savedAt).toBeNull();
+    expect(exportSaveGame(sim, { savedAt: 1_800_000_000_000 }).header.savedAt).toBe(1_800_000_000_000);
+    expect(exportSaveGame(sim, { savedAt: 0 }).header.savedAt).toBe(0);
+    for (const savedAt of [-1, 0.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER]) {
+      expect(() => exportSaveGame(sim, { savedAt })).toThrow(/savedAt/);
+    }
+  });
+
   it('names the format, the content identity, the map, and the run position', () => {
     const content = testContent();
     const sim = new Simulation({ seed: 42, content, map: grassCellMap(4, 4) });
@@ -74,9 +85,12 @@ describe('exportSaveGame header', () => {
       formatVersion: SAVE_FORMAT_VERSION,
       irVersion: content.manifest.version,
       contentRevision: content.manifest.contentRevision,
+      contentFingerprint: contentFingerprint(content),
+      savedAt: null,
       mapId: 'campaign_01',
       mapFingerprint: sim.mapFingerprint,
       entry: '?map=campaign_01&player=2',
+      session: null,
       seed: 42,
       tick: 3,
     });
@@ -95,7 +109,12 @@ describe('exportSaveGame sections', () => {
     const save = exportSaveGame(new Simulation({ seed: 1, content: testContent() }));
     expect(sectionIds(save)).toEqual(['entities', 'rng', 'commands']);
     expect(sectionOf(save, 'entities')).toEqual({ id: 'entities', nextId: 1, alive: [] });
-    expect(sectionOf(save, 'commands')).toEqual({ id: 'commands', nextSequence: 0, pending: [] });
+    expect(sectionOf(save, 'commands')).toEqual({
+      id: 'commands',
+      nextSequence: 0,
+      pending: [],
+      continuation: [],
+    });
   });
 
   it('preserves per-store insertion order after a remove and re-add', () => {

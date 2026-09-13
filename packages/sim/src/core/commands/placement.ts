@@ -32,6 +32,7 @@ interface PlaceBuildingFields {
   readonly x: number;
   readonly y: number;
   readonly tribe: number;
+  /** Seat placements default to true; only trusted origins may request false. */
   readonly underConstruction?: boolean;
   /** The player that owns this building (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). An explicit
    *  out-of-range value rejects the command; omit it for a neutral building, or in a seat envelope to

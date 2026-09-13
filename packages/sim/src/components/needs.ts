@@ -9,7 +9,7 @@ export type NeedKind = 'hunger' | 'fatigue' | 'piety' | 'enjoyment';
  * order calls it off. Source basis: the original's own eat/sleep/talk/pray buttons set the settler's need
  * task directly (`misclogic` 4/6/8/10).
  */
-export const NeedOrder = defineComponent<{ need: NeedKind }>('NeedOrder');
+export const NeedOrder = defineComponent<{ need: NeedKind }>('NeedOrder', 'settlers');
 
 /**
  * Present while the player has prohibited this soldier's regeneration: it answers a need only from what it
@@ -17,7 +17,7 @@ export const NeedOrder = defineComponent<{ need: NeedKind }>('NeedOrder');
  * overrides it, and a trade change clears it. Absent means regeneration is allowed, which is the default
  * every settler is born with.
  */
-export const NoRegeneration = defineComponent<{ readonly prohibited: true }>('NoRegeneration');
+export const NoRegeneration = defineComponent<{ readonly prohibited: true }>('NoRegeneration', 'settlers');
 
 /** Drop a standing {@link NeedOrder} for `need` - the atomic that answers it has landed. */
 export function clearNeedOrder(world: World, e: Entity, need: NeedKind): void {

@@ -1,19 +1,12 @@
-import { MAP_PLAYER_COLOR_COUNT } from '@open-northland/data';
-import { playerSwatchHex } from '../../../catalog/roster.js';
-import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
+import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { createMapDetailsCard } from '../map-card.js';
 import type { MapSelectItem } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { targetSearch } from '../target-search.js';
-import {
-  initialLobbyOptions,
-  initialLobbyState,
-  type LobbySlotRow,
-  lobbySlotRows,
-  lobbyStartEntry,
-} from './model.js';
+import { localSeatElements } from './local-seats.js';
+import { initialLobbyOptions, initialLobbyState, lobbySlotRows, lobbyStartEntry } from './model.js';
 import { lobbyOptionsCard } from './options-card.js';
 import {
   claimSeat,
@@ -24,7 +17,6 @@ import {
   type SeatChoice,
   setSlotColor,
   toggleVacantMode,
-  wornByAnother,
 } from './roster-state.js';
 
 /** Slots come from the map; none can be added or removed. */
@@ -114,144 +106,6 @@ export function lobbyScreen(
     gateStart();
   };
 
-  const chipButton = (row: LobbySlotRow): HTMLButtonElement => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'main-menu__lobby-chip';
-    chip.style.background = playerSwatchHex(row.colorId);
-    chip.textContent = String(row.slot.player + 1);
-    const colourName = messages().animation.playerColors[row.colorId] ?? String(row.colorId);
-    chip.title = item.fixedColors
-      ? `${lobby.teamColour}: ${colourName} (${lobby.teamColourLocked})`
-      : `${lobby.teamColour}: ${colourName}`;
-    chip.setAttribute('aria-label', chip.title);
-    chip.disabled = item.fixedColors;
-    chip.dataset.focus = `chip:${row.slot.player}`;
-    chip.setAttribute('aria-expanded', String(pickerSlot === row.slot.player));
-    chip.addEventListener('click', () => {
-      pickerSlot = pickerSlot === row.slot.player ? null : row.slot.player;
-      renderSeats();
-    });
-    return chip;
-  };
-
-  const pickerStrip = (row: LobbySlotRow): HTMLElement => {
-    const strip = document.createElement('div');
-    strip.className = 'main-menu__lobby-picker';
-    for (let colorId = 0; colorId < MAP_PLAYER_COLOR_COUNT; colorId++) {
-      const option = document.createElement('button');
-      option.type = 'button';
-      option.className = 'main-menu__lobby-swatch';
-      option.style.background = playerSwatchHex(colorId);
-      const colourName = messages().animation.playerColors[colorId] ?? String(colorId);
-      option.title = `${lobby.teamColour}: ${colourName}`;
-      option.disabled = colorId !== row.colorId && wornByAnother(state, row.slot.player, colorId);
-      option.dataset.focus = `swatch:${row.slot.player}:${colorId}`;
-      option.classList.toggle('is-current', colorId === row.colorId);
-      option.addEventListener('click', () => {
-        const next = setSlotColor(state, row.slot.player, colorId);
-        pickerSlot = null;
-        refocus = `chip:${row.slot.player}`; // the strip closes with the pick
-        if (next !== null) update(next);
-        else renderSeats();
-      });
-      strip.append(option);
-    }
-    return strip;
-  };
-
-  const controlCell = (row: LobbySlotRow): HTMLElement => {
-    if (row.kind === 'yours') {
-      const cell = document.createElement('div');
-      cell.className = 'main-menu__lobby-human';
-      cell.textContent = lobby.human;
-      return cell;
-    }
-    if (row.kind === 'scenario') {
-      const cell = document.createElement('div');
-      cell.className = 'main-menu__lobby-locked';
-      cell.textContent = lobby.scenarioControl;
-      return cell;
-    }
-    if (!row.slot.aiAllowed) {
-      // No AI offer for this seat (`playeroption` Human/Closed-only): vacant means idle, no choice.
-      const cell = document.createElement('div');
-      cell.className = 'main-menu__lobby-locked';
-      cell.textContent = lobby.vacantIdle;
-      return cell;
-    }
-    const seg = document.createElement('div');
-    seg.className = 'main-menu__seg main-menu__lobby-vacant';
-    seg.title = lobby.vacantToggleTitle;
-    const modes = [
-      { mode: 'ai', label: lobby.vacantComputer },
-      { mode: 'idle', label: lobby.vacantIdle },
-    ] as const;
-    for (const { mode, label } of modes) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'main-menu__seg-btn';
-      button.textContent = label;
-      button.dataset.focus = `vacant:${row.slot.player}:${mode}`;
-      button.classList.toggle('is-active', row.vacantMode === mode);
-      button.setAttribute('aria-pressed', String(row.vacantMode === mode));
-      button.addEventListener('click', () => {
-        if (row.vacantMode !== mode) update(toggleVacantMode(state, row.slot.player));
-      });
-      seg.append(button);
-    }
-    return seg;
-  };
-
-  const slotRow = (row: LobbySlotRow): HTMLElement => {
-    const el = document.createElement('div');
-    el.className = 'main-menu__lobby-row';
-    el.classList.toggle('is-yours', row.kind === 'yours');
-    el.classList.toggle('is-scenario', row.kind === 'scenario');
-
-    const label = document.createElement('div');
-    label.className = 'main-menu__lobby-label';
-    const name = document.createElement('span');
-    name.className = 'main-menu__lobby-name';
-    name.textContent =
-      row.slot.name ??
-      (row.kind === 'open'
-        ? lobby.freeSlot
-        : formatMessage(lobby.playerSlotLabel, { n: row.slot.player + 1 }));
-    const sub = document.createElement('span');
-    sub.className = 'main-menu__lobby-sub';
-    const tribe = tribeName(row.slot.tribeId);
-    const subText =
-      row.kind === 'yours'
-        ? lobby.yourSub
-        : row.kind === 'scenario'
-          ? lobby.scenarioSub
-          : row.vacantMode === 'ai'
-            ? lobby.vacantComputerSub
-            : lobby.vacantIdleSub;
-    sub.textContent = `${tribe} · ${subText}`;
-    label.append(name, sub);
-
-    const action = document.createElement('div');
-    action.className = 'main-menu__lobby-action';
-    if (row.kind === 'open') {
-      const sit = document.createElement('button');
-      sit.type = 'button';
-      sit.className = 'main-menu__lobby-sit';
-      sit.textContent = lobby.sit;
-      sit.dataset.focus = `sit:${row.slot.player}`;
-      sit.addEventListener('click', () => {
-        pickerSlot = null;
-        refocus = `chip:${row.slot.player}`; // the claimed row loses its sit button
-        update(claimSeat(state, row.slot.player));
-      });
-      action.append(sit);
-    }
-
-    el.append(chipButton(row), label, controlCell(row), action);
-    return el;
-  };
-
   const watchRow = (seat: SeatChoice, rowName: string, detail: string, taken: string): HTMLElement => {
     const active = state.seat === seat;
     const el = document.createElement('div');
@@ -286,10 +140,31 @@ export function lobbyScreen(
     const active = document.activeElement;
     const key = refocus ?? (active instanceof HTMLElement ? (active.dataset.focus ?? null) : null);
     refocus = null;
+    const seats = localSeatElements(item, state, pickerSlot, {
+      togglePicker(player) {
+        pickerSlot = pickerSlot === player ? null : player;
+        renderSeats();
+      },
+      pickColor(player, color) {
+        const next = setSlotColor(state, player, color);
+        pickerSlot = null;
+        refocus = `chip:${player}`;
+        if (next !== null) update(next);
+        else renderSeats();
+      },
+      toggleMode(player) {
+        update(toggleVacantMode(state, player));
+      },
+      claim(player) {
+        pickerSlot = null;
+        refocus = `chip:${player}`;
+        update(claimSeat(state, player));
+      },
+    });
     const rows: HTMLElement[] = [];
     for (const row of lobbySlotRows(item.players, state)) {
-      rows.push(slotRow(row));
-      if (pickerSlot === row.slot.player) rows.push(pickerStrip(row));
+      rows.push(seats.row(row));
+      if (pickerSlot === row.slot.player) rows.push(seats.picker(row));
     }
     list.replaceChildren(...rows);
     watchList.replaceChildren(

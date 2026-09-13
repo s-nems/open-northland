@@ -1,5 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, UnderConstruction } from '../../../components/index.js';
+import { playerPlacementTribes, UnderConstruction } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -51,11 +51,13 @@ function runBuildOrder(
   }
   if (sites >= MAX_ACTIVE_CONSTRUCTION_SITES) return [];
 
+  const tribe = playerPlacementTribes(world, player)?.[0];
   const base = seatBaseOf(world, ctx, player);
-  if (base === null) return replaceMissingBase(world, ctx, terrain, player, owned);
+  if (base === null) {
+    return tribe === undefined ? [] : replaceMissingBase(world, ctx, terrain, player, owned, tribe);
+  }
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
-  const tribe = world.get(base, Building).tribe;
   const index = contentIndex(ctx.content);
 
   for (const entry of order) {
@@ -63,6 +65,7 @@ function runBuildOrder(
     if (status !== 'unmet') continue;
     switch (entry.kind) {
       case 'place': {
+        if (tribe === undefined) return [];
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         const spot = placementSpot(world, ctx, terrain, player, owned, anchor, type, entry);
@@ -78,6 +81,7 @@ function runBuildOrder(
       case 'collector':
         return []; // the workforce module hires it
       case 'towerCoverage': {
+        if (tribe === undefined) return [];
         const type = buildingTypeByContentId(ctx.content, entry.building);
         if (type === undefined) return []; // unreachable after 'skip', kept for the type system
         const target = firstUncoveredBuilding(world, ctx, player, owned);
@@ -107,21 +111,20 @@ function siteCommand(
   };
 }
 
-/** A seat that holds buildings but no base rebuilds one at the centroid of what stands. `owned[0]`
- *  carries the tribe: nothing transfers a building between seats, so a seat's buildings share one. */
+/** A seat that holds buildings but no base rebuilds one at the centroid of what stands. */
 function replaceMissingBase(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
   owned: readonly Entity[],
+  tribe: number,
 ): readonly PlayerCommand[] {
-  const tribeSource = owned[0];
   const centre = anchorCentroid(world, owned);
-  if (tribeSource === undefined || centre === null) return [];
+  if (centre === null) return [];
   const type = buildingTypeByContentId(ctx.content, BASE_REPLACEMENT_ENTRY.building);
   if (type === undefined) return []; // content without the warehouse expresses no replacement
   const spot = placementSpot(world, ctx, terrain, player, owned, centre, type, BASE_REPLACEMENT_ENTRY);
   if (spot === null) return [];
-  return [siteCommand(type, spot, world.get(tribeSource, Building).tribe, player)];
+  return [siteCommand(type, spot, tribe, player)];
 }

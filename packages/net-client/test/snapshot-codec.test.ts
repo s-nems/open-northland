@@ -7,6 +7,14 @@ import { testContent } from '../../sim/test/fixtures/content.js';
 const WARM_UP_TICKS = 30;
 
 describe('snapshot codec', () => {
+  it('rejects compressed snapshots before inflation exceeds the decoded byte budget', async () => {
+    const save = exportSaveGame(new Simulation({ seed: 11, content: testContent() }));
+    const wire = await encodeSnapshot(save);
+    await expect(decodeSnapshot(wire, 32)).rejects.toThrow('snapshot inflates past 32 bytes');
+    const size = new TextEncoder().encode(serializeSaveGame(save)).byteLength;
+    expect(await decodeSnapshot(wire, size)).toEqual(save);
+  });
+
   it('round-trips a save through gzip and base64 byte for byte', async () => {
     const sim = new Simulation({ seed: 11, content: testContent() });
     for (let i = 0; i < WARM_UP_TICKS; i++) sim.step();

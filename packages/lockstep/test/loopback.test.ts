@@ -12,6 +12,17 @@ describe('loopback transport', () => {
     expect(transport.take(4 + LOOPBACK_DELAY_TICKS).commands).toHaveLength(1);
   });
 
+  it('owns a submitted payload before the caller can change it', () => {
+    const transport = new LoopbackTransport();
+    const command = { kind: 'setMatchParticipants' as const, players: [0, 1] };
+    transport.submit(adminCommand(command), 0);
+    command.players[0] = 7;
+    expect(transport.take(1).commands[0]?.envelope.command).toEqual({
+      kind: 'setMatchParticipants',
+      players: [0, 1],
+    });
+  });
+
   it('numbers a tick from zero and hands each frame over once', () => {
     const transport = new LoopbackTransport();
     transport.submit(envelope(false), 0);

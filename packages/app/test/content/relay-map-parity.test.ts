@@ -49,6 +49,7 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
     humanSeats: humanSeatsOf(session),
     seed: session.seed,
     rules: session.rules,
+    seats: session.seats,
     berryBushes: true,
   });
   return world.sim;

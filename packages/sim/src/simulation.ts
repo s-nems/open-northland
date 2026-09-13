@@ -11,6 +11,7 @@ import {
   type FogMode,
   fogMode,
   type MatchOutcome,
+  matchEnded,
   matchOutcome,
   needsEnabled,
   professionProgressionEnabled,
@@ -291,6 +292,10 @@ export class Simulation {
    *  command sets; a pair never set reads `enemy`. */
   diplomacyStance(from: number, to: number): DiplomacyState {
     return diplomacyStance(this.world, from, to);
+  }
+
+  matchEnded(): boolean {
+    return matchEnded(this.world);
   }
 
   /** `player`'s standing in the match the MatchSystem drives; `undecided` for a non-participant too. */

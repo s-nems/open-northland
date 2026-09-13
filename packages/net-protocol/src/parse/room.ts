@@ -7,6 +7,7 @@ import {
   MAX_WORLD_ID_LENGTH,
 } from '../limits.js';
 import type {
+  LobbySettings,
   RoomMemberView,
   RoomSeatSetup,
   RoomSeatView,
@@ -26,9 +27,10 @@ import {
   asString,
   keysOf,
 } from '../untrusted.js';
+import { fingerprint, parseCompatibility } from './compatibility.js';
 import { assertNever, parseLine, parseNick } from './text.js';
 
-const ROOM_STATES = ['lobby', 'running'] as const satisfies readonly RoomState[];
+const ROOM_STATES = ['lobby', 'running', 'ended'] as const satisfies readonly RoomState[];
 
 const SEAT_MODES = keysOf<SeatMode>({ human: true, ai: true, idle: true });
 export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({ ai: true, idle: true });
@@ -36,11 +38,27 @@ export const VACANT_SEAT_MODES = keysOf<VacantSeatMode>({ ai: true, idle: true }
 export function parseRoomSettings(value: unknown, at: string): RoomSettings {
   const raw = asRecord(value, at);
   return {
-    name: parseLine(raw.name, `${at}.name`, MAX_ROOM_NAME_LENGTH),
+    ...parseLobbySettings(raw, at),
     world: parseSessionWorld(raw.world, `${at}.world`),
+    ...(raw.initialSave === undefined
+      ? {}
+      : { initialSave: parseInitialSave(raw.initialSave, `${at}.initialSave`) }),
+    ...(raw.mapOrigin === undefined
+      ? {}
+      : { mapOrigin: asOneOf(raw.mapOrigin, ['mod', 'user'], `${at}.mapOrigin`) }),
+  };
+}
+
+export function parseLobbySettings(value: unknown, at: string): LobbySettings {
+  const raw = asRecord(value, at);
+  return {
+    name: parseLine(raw.name, `${at}.name`, MAX_ROOM_NAME_LENGTH),
     seed: asCount(raw.seed, `${at}.seed`),
     rules: parseSessionRules(raw.rules, `${at}.rules`),
     speed: asPositiveNumber(raw.speed, `${at}.speed`, MAX_SPEED),
+    ...(raw.kickedSeatMode === undefined
+      ? {}
+      : { kickedSeatMode: asOneOf(raw.kickedSeatMode, VACANT_SEAT_MODES, `${at}.kickedSeatMode`) }),
   };
 }
 
@@ -80,6 +98,7 @@ export function parseSeatSetups(value: unknown, at: string): readonly RoomSeatSe
       player,
       mode: asOneOf(raw.mode, VACANT_SEAT_MODES, `${at}[${i}].mode`),
       color: asCount(raw.color, `${at}[${i}].color`),
+      ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}[${i}].team`) }),
     };
   });
 }
@@ -104,6 +123,7 @@ function parseRoomSeatView(value: unknown, at: string): RoomSeatView {
     player: parseSeatIndex(raw.player, `${at}.player`),
     mode: asOneOf(raw.mode, SEAT_MODES, `${at}.mode`),
     color: asCount(raw.color, `${at}.color`),
+    ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}.team`) }),
     nick: raw.nick === null ? null : parseNick(raw.nick, `${at}.nick`),
     ready: asBoolean(raw.ready, `${at}.ready`),
   };
@@ -115,6 +135,7 @@ function parseRoomMemberView(value: unknown, at: string): RoomMemberView {
     nick: parseNick(raw.nick, `${at}.nick`),
     seat: raw.seat === null ? null : parseSeatIndex(raw.seat, `${at}.seat`),
     connected: asBoolean(raw.connected, `${at}.connected`),
+    compatibility: parseCompatibility(raw.compatibility, `${at}.compatibility`),
   };
 }
 
@@ -133,4 +154,16 @@ export function parseSeatIndex(value: unknown, at: string): number {
   const player = asCount(value, at);
   if (player >= MAX_SEATS) throw new Error(`${at}: seat ${player} is past the last seat ${MAX_SEATS - 1}`);
   return player;
+}
+
+export function parseTeam(value: unknown, at: string): number | null {
+  return value === null ? null : parseSeatIndex(value, at);
+}
+
+function parseInitialSave(value: unknown, at: string) {
+  const raw = asRecord(value, at);
+  return {
+    fingerprint: fingerprint(raw.fingerprint, `${at}.fingerprint`),
+    tick: asCount(raw.tick, `${at}.tick`),
+  };
 }

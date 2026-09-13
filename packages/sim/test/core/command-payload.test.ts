@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCommandEnvelope } from '../../src/index.js';
+import { type Command, parseCommandEnvelope } from '../../src/index.js';
 
 /**
  * The per-kind field contract the parser holds an untrusted payload to. Without it a hand-edited log
@@ -20,6 +20,52 @@ function parse(command: Record<string, unknown>): unknown {
 }
 
 describe('command payload contracts', () => {
+  it('preserves finite-deposit work cycles through the serialized command boundary', () => {
+    const command: Extract<Command, { kind: 'placeResource' }> = {
+      kind: 'placeResource',
+      good: 1,
+      x: 4,
+      y: 6,
+      remaining: 20,
+      harvestAtomic: 1,
+      deposit: { levels: 3, strikesPerUnit: 4 },
+    };
+    expect(parseCommandEnvelope(JSON.parse(JSON.stringify(imported({ ...command }))))).toEqual(
+      imported({ ...command }),
+    );
+    expect(() => parse({ ...command, deposit: { levels: 3 } })).toThrow(
+      /deposit: missing field 'strikesPerUnit'/,
+    );
+    for (const strikesPerUnit of ['4', 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+      expect(() => parse({ ...command, deposit: { levels: 3, strikesPerUnit } })).toThrow(
+        /deposit.strikesPerUnit/,
+      );
+    }
+    expect(() => parse({ ...command, deposit: { levels: 3, strikesPerUnit: 4, unknown: true } })).toThrow(
+      /deposit: unknown field/,
+    );
+  });
+
+  it.each([
+    { kind: 'cancelTraining', entity: UNIT },
+    { kind: 'exploreArea', entity: UNIT, x: 3, y: 4 },
+    { kind: 'orderNeed', entity: UNIT, need: 'piety' },
+    { kind: 'setRegeneration', entity: UNIT, enabled: false },
+    { kind: 'unassignBuilder', entity: UNIT },
+  ])('round-trips a player $kind order and rejects its malformed entity', (command) => {
+    const envelope = { v: 1, origin: 'player', player: SEAT, command };
+    expect(parseCommandEnvelope(JSON.parse(JSON.stringify(envelope)))).toEqual(envelope);
+    expect(() => parseCommandEnvelope({ ...envelope, command: { ...command, entity: 1.5 } })).toThrow(
+      /command.entity/,
+    );
+  });
+
+  it('rejects invalid need orders and regeneration toggles', () => {
+    expect(() => parse({ kind: 'orderNeed', entity: UNIT, need: 'unknown' })).toThrow(/command.need/);
+    expect(() => parse({ kind: 'setRegeneration', entity: UNIT, enabled: 1 })).toThrow(/command.enabled/);
+    expect(() => parse({ kind: 'exploreArea', entity: UNIT, x: 1e30, y: 0 })).toThrow(/command.x/);
+  });
+
   it('accepts a payload carrying every optional field of its kind', () => {
     const spawn = {
       kind: 'spawnSettler',
@@ -59,6 +105,12 @@ describe('command payload contracts', () => {
     );
     expect(() => parse({ kind: 'dropGood', good: 1, x: 0, y: 0, amount: Number.POSITIVE_INFINITY })).toThrow(
       /command\.amount: expected an integer/,
+    );
+  });
+
+  it('refuses integers that cannot be represented exactly', () => {
+    expect(() => parse({ kind: 'moveUnit', entity: UNIT, x: 1e30, y: 0 })).toThrow(
+      /command\.x: expected an integer/,
     );
   });
 

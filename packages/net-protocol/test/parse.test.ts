@@ -19,6 +19,12 @@ import {
  */
 
 const TOKEN = 'abcdefghijklmnop0123';
+const COMPATIBILITY = {
+  content: 'a'.repeat(64),
+  map: 'b'.repeat(64),
+  client: 'fixture',
+  protocol: PROTOCOL_VERSION,
+};
 
 const settings: RoomSettings = {
   name: 'Zatoka o świcie',
@@ -62,6 +68,7 @@ function wire<T>(value: T): unknown {
 }
 
 const CLIENT_MESSAGES: readonly ClientMessage[] = [
+  { kind: 'finish', tick: 12, hash: '0123abcd', world: 0 },
   { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN, nick: 'Ania' },
   { kind: 'listRooms' },
   {
@@ -79,6 +86,12 @@ const CLIENT_MESSAGES: readonly ClientMessage[] = [
   { kind: 'setSeat', player: 1, mode: 'ai', color: 4 },
   { kind: 'setSeat', player: 1 },
   { kind: 'setReady', ready: true },
+  { kind: 'setCompatibility', compatibility: COMPATIBILITY },
+  { kind: 'setCompatibility', compatibility: null },
+  {
+    kind: 'setSettings',
+    settings: { name: settings.name, seed: settings.seed, rules: settings.rules, speed: settings.speed },
+  },
   { kind: 'start' },
   { kind: 'loaded', tick: 1, world: 0 },
   { kind: 'loaded', tick: 300, world: 240 },
@@ -207,6 +220,7 @@ describe('client messages', () => {
 });
 
 const SERVER_MESSAGES: readonly ServerMessage[] = [
+  { kind: 'ended', tick: 12, hash: '0123abcd' },
   { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania2' },
   { kind: 'rooms', rooms: [{ id: 'a1b2c3d4', name: settings.name, state: 'lobby', members: 1, seats: 4 }] },
   {
@@ -221,8 +235,8 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
         { player: 1, mode: 'ai', color: 4, nick: null, ready: false },
       ],
       members: [
-        { nick: 'Ania', seat: 0, connected: true },
-        { nick: 'Bartek', seat: null, connected: false },
+        { nick: 'Ania', seat: 0, connected: true, compatibility: COMPATIBILITY },
+        { nick: 'Bartek', seat: null, connected: false, compatibility: null },
       ],
     },
   },
@@ -333,5 +347,22 @@ describe('server messages', () => {
     expect(() => parseServerMessage(wire({ kind: 'start', session, snapshotTick: null }), refusing)).toThrow(
       /not for this client/,
     );
+  });
+});
+
+describe('terminal result validation', () => {
+  it.each([
+    '',
+    '0123456',
+    '012345678',
+    '0123ABCd',
+    'notahash',
+    12,
+    null,
+  ])('rejects invalid result hash %s', (hash) => {
+    expect(() => parseClientMessage({ kind: 'finish', tick: 12, hash, world: 0 })).toThrow(/finish.hash/);
+  });
+  it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1])('rejects invalid terminal tick %s', (tick) => {
+    expect(() => parseServerMessage({ kind: 'ended', tick }, () => session)).toThrow();
   });
 });

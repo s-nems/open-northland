@@ -5,14 +5,9 @@ import {
   type SessionDriver,
 } from '@open-northland/lockstep';
 import {
-  type ClientMessage,
   DESCRIPTOR_WORLD,
-  PROTOCOL_VERSION,
   parseServerMessage,
   RelayTransport,
-  type RoomSeatSetup,
-  type RoomSettings,
-  type RoomView,
   type ServerMessage,
   type WaitedMember,
   type WireFrame,
@@ -22,18 +17,25 @@ import {
   type ExportSaveOptions,
   exportSaveGame,
   parseCommandEnvelope,
+  type SaveGame,
   type Simulation,
 } from '@open-northland/sim';
 import { DigestTrail } from './digest-trail.js';
+import { applyInitialSeatControl, openSessionWorld, restoreSessionWorld } from './initial-save-world.js';
 import { CommandLatency } from './latency.js';
+import { RelayLobby } from './lobby.js';
+import { MatchCompletion } from './match-completion.js';
 import { paceScale } from './pacer.js';
+import { SaveOrders } from './save-orders.js';
 import { encodeSnapshot } from './snapshot-codec.js';
+import { WorldLoader } from './world-loader.js';
 
 /** A world the client runs, and the generation its acknowledgements carry: `DESCRIPTOR_WORLD` for a
  *  world built from the descriptor, else the tick of the snapshot it was restored from. */
 export interface OpenedWorld {
   readonly sim: Simulation;
   readonly generation: number;
+  readonly initialSaveFingerprint?: string;
 }
 
 /**
@@ -48,8 +50,6 @@ export interface WorldPort {
 }
 
 export type ClockState = Extract<ServerMessage, { kind: 'clock' }>;
-type BlobUpload = Omit<Extract<ClientMessage, { kind: 'blob' }>, 'kind'>;
-type Send = (message: ClientMessage) => void;
 
 export interface RelayClientOptions {
   readonly token: string;
@@ -70,11 +70,7 @@ export interface RelayClientOptions {
 }
 
 /** One client of a relayed session, and the session driver and clock the host runs it through. */
-export class RelayClient implements SessionDriver {
-  readonly token: string;
-  nick: string;
-  welcomed = false;
-  room: RoomView | null = null;
+export class RelayClient extends RelayLobby implements SessionDriver {
   session: GameSession | null = null;
   sim: Simulation | null = null;
   delayTicks: number | null = null;
@@ -91,27 +87,30 @@ export class RelayClient implements SessionDriver {
   private world = DESCRIPTOR_WORLD;
   /** Set by a desync notice: the next world comes from a snapshot, whatever `start` offers. */
   private outOfSync = false;
-  private opening = false;
+  private readonly loader = new WorldLoader();
+  private reportRestoredWorld = false;
   private alpha = 1;
+  private readonly completion = new MatchCompletion();
+  private readonly saveOrders = new SaveOrders();
+
+  get resultTick(): number | null {
+    return this.completion.resultTick;
+  }
+
+  get endedTick(): number | null {
+    return this.completion.readyTick(this.sim);
+  }
   /** Frames that arrived before the world was adopted, kept for the transport. */
   private readonly earlyFrames: WireFrame[] = [];
   private readonly pending = new Set<Promise<void>>();
-  private send: Send = () => {
-    throw new Error(`${this.nick} is not attached to a network`);
-  };
   private readonly options: RelayClientOptions;
   private readonly now: () => number;
 
   constructor(options: RelayClientOptions) {
+    super(options.token, options.nick);
     this.options = options;
-    this.token = options.token;
-    this.nick = options.nick;
     this.now = options.now ?? (() => performance.now());
     this.latency = new CommandLatency();
-  }
-
-  attach(send: Send): void {
-    this.send = send;
   }
 
   get tick(): number | null {
@@ -119,7 +118,9 @@ export class RelayClient implements SessionDriver {
   }
 
   get paused(): boolean {
-    return this.clockState?.paused ?? false;
+    return (
+      this.resultTick !== null || this.completion.confirmedTick !== null || (this.clockState?.paused ?? false)
+    );
   }
 
   get speed(): number {
@@ -128,11 +129,13 @@ export class RelayClient implements SessionDriver {
 
   /** A request, sent only when it would change what the relay last broadcast. */
   setPaused(paused: boolean): void {
-    if (paused !== this.paused) this.setClock({ paused });
+    if (this.resultTick === null && this.completion.confirmedTick === null && paused !== this.paused)
+      this.setClock({ paused });
   }
 
   setSpeed(speed: number): void {
-    if (speed !== this.speed) this.setClock({ speed });
+    if (this.resultTick === null && this.completion.confirmedTick === null && speed !== this.speed)
+      this.setClock({ speed });
   }
 
   get droppedTicks(): number {
@@ -152,54 +155,25 @@ export class RelayClient implements SessionDriver {
     return this.outOfSync;
   }
 
-  hello(): void {
-    this.send({ kind: 'hello', protocol: PROTOCOL_VERSION, token: this.token, nick: this.nick });
-  }
-
-  createRoom(settings: RoomSettings, seats: readonly RoomSeatSetup[]): void {
-    this.send({ kind: 'createRoom', settings, seats });
-  }
-
-  joinRoom(roomId: string): void {
-    this.send({ kind: 'joinRoom', roomId });
-  }
-
-  claimSeat(player: number | null): void {
-    this.send({ kind: 'claimSeat', player });
-  }
-
-  setReady(ready: boolean): void {
-    this.send({ kind: 'setReady', ready });
-  }
-
-  start(): void {
-    this.send({ kind: 'start' });
-  }
-
-  setClock(change: { readonly speed?: number; readonly paused?: boolean }): void {
-    this.send({ kind: 'clock', ...change });
-  }
-
-  say(text: string): void {
-    this.send({ kind: 'chat', text });
-  }
-
-  kick(player: number): void {
-    this.send({ kind: 'kick', player });
-  }
-
-  sendBlob(upload: BlobUpload): void {
-    this.send({ kind: 'blob', ...upload });
+  captureSave(options: ExportSaveOptions = {}): Promise<SaveGame> {
+    if (this.sim === null || this.outOfSync || this.options.connected?.() === false)
+      return Promise.reject(new Error('A save requires a connected, synchronized world'));
+    const save = exportSaveGame(this.sim, { ...this.saveHeader(), ...options });
+    return this.saveOrders.request(save, this.world, (message) => this.send(message));
   }
 
   /** Upload the world as a save, the way a player's in-game save reaches the room. */
-  shareSave(to: string | null): Promise<void> {
+  shareSave(to: string | null, save: SaveGame): Promise<void> {
     const sim = this.sim;
     if (sim === null) throw new Error(`${this.nick} has no world to save`);
-    const tick = sim.tick;
+    const world = this.session?.world;
+    if (save.header.tick > sim.tick || (world?.kind === 'map' && save.header.mapId !== world.mapId))
+      throw new Error('The captured save belongs to another world');
+    const tick = save.header.tick;
     return this.track(
       'save',
-      encodeSnapshot(exportSaveGame(sim, this.saveHeader())).then((bytes) => {
+      encodeSnapshot(save).then((bytes) => {
+        if (this.sim !== sim) return;
         this.sendBlob({ type: 'save', to, tick, bytes });
       }),
     );
@@ -207,6 +181,7 @@ export class RelayClient implements SessionDriver {
 
   /** A command with no world to stamp it or no connection to carry it is dropped and reported. */
   submit(envelope: CommandEnvelope): void {
+    if (this.resultTick !== null || this.completion.confirmedTick !== null) return;
     if (this.driver === null) {
       this.options.onError?.('command', new Error(`${this.nick} holds no world`));
       return;
@@ -223,16 +198,34 @@ export class RelayClient implements SessionDriver {
     const message = parseServerMessage(raw, parseGameSession);
     switch (message.kind) {
       case 'welcome':
+        this.saveOrders.cancel('The relay connection changed while saving');
         this.nick = message.nick;
         this.welcomed = true;
         break;
       case 'rooms':
+        this.rooms = message.rooms;
         break;
       case 'room':
         this.room = message.room;
         break;
+      case 'saveOrders':
+        this.saveOrders.receive(message);
+        break;
+      case 'ended':
+        this.completion.confirmedTick = message.tick;
+        this.completion.confirmedHash = message.hash;
+        this.waitingFor = [];
+        break;
       case 'left':
+        this.completion.confirmedTick = null;
+        this.completion.confirmedHash = null;
         this.room = null;
+        this.session = null;
+        this.clockState = null;
+        this.waitingFor = [];
+        this.delayTicks = null;
+        this.outOfSync = false;
+        this.dropWorld();
         break;
       case 'start':
         this.startSession(message.session, message.snapshotTick);
@@ -251,6 +244,7 @@ export class RelayClient implements SessionDriver {
       case 'waiting':
         this.waitingFor = message.for;
         break;
+      case 'mapRequest':
       case 'kickVote':
       case 'kicked':
       case 'chat':
@@ -264,13 +258,14 @@ export class RelayClient implements SessionDriver {
         this.answerSnapshotRequest();
         break;
       case 'blob':
-        if (message.type === 'snapshot') this.restoreFrom(message.bytes);
+        if (message.type === 'snapshot') this.restoreFrom(message.bytes, message.tick);
         break;
       case 'ping':
         this.roundTripMs = message.roundTripMs;
         this.send({ kind: 'pong', t: message.t });
         break;
       case 'rejected':
+        if (message.of === 'saveOrders') this.saveOrders.refuse(message.requestId, message.reason);
         if (message.of === 'command') this.latency.refused();
         break;
       default:
@@ -291,12 +286,34 @@ export class RelayClient implements SessionDriver {
     const driver = this.driver;
     const transport = this.transport;
     if (driver === null || transport === null) return this.alpha;
-    driver.setPaused(this.paused && transport.bufferedTicks === 0);
+    this.reportResult();
+    this.verifyResult();
+    driver.setPaused(
+      this.resultTick !== null ||
+        this.tick === this.completion.confirmedTick ||
+        (this.paused && transport.bufferedTicks === 0),
+    );
     this.alpha = driver.advance(elapsedMs * paceScale(transport.bufferedTicks), () => {
+      if (this.completion.detect(this.sim) || this.tick === this.completion.confirmedTick) {
+        driver.setPaused(true);
+      }
       this.acknowledge();
+      this.reportResult();
+      this.verifyResult();
       onTick?.();
     });
     return this.alpha;
+  }
+
+  private verifyResult(): void {
+    const failure = this.completion.verify(this.sim);
+    if (failure !== null) this.options.onError?.('result', new Error(failure));
+  }
+
+  private reportResult(): void {
+    this.completion.report(this.sim, this.world, this.options.connected?.() !== false, (message) =>
+      this.send(message),
+    );
   }
 
   private acknowledge(): void {
@@ -307,42 +324,57 @@ export class RelayClient implements SessionDriver {
   }
 
   private startSession(session: GameSession, snapshotTick: number | null): void {
+    this.completion.reconnect();
     this.session = session;
     if (this.sim !== null && !this.outOfSync) {
       this.send({ kind: 'loaded', tick: this.sim.tick, world: this.world });
+      return;
+    }
+    if (this.loader.busy) {
+      this.reportRestoredWorld = true;
       return;
     }
     if (this.outOfSync) {
       this.send({ kind: 'loaded', tick: null });
       return;
     }
-    // A `start` repeated while the world is still opening (a reconnect mid-boot) is answered by the
-    // one `loaded` the opening sends.
-    if (this.opening) return;
-    this.opening = true;
     void this.track(
       'open',
-      this.options.world.open(session, snapshotTick).then((opened) => {
-        this.opening = false;
-        if (opened === null) {
-          this.send({ kind: 'loaded', tick: null });
-          return;
-        }
-        this.adoptWorld(opened);
-        this.send({ kind: 'loaded', tick: opened.sim.tick, world: opened.generation });
-      }),
+      this.loader.run(
+        () => openSessionWorld(this.options.world, session, snapshotTick),
+        (opened) => {
+          if (opened !== null) {
+            applyInitialSeatControl(opened, session, snapshotTick);
+            this.adoptWorld(opened);
+          }
+          this.send(
+            opened === null
+              ? { kind: 'loaded', tick: null }
+              : { kind: 'loaded', tick: opened.sim.tick, world: opened.generation },
+          );
+        },
+      ),
     );
   }
 
-  private restoreFrom(snapshot: string): void {
+  private restoreFrom(snapshot: string, tick: number | null): void {
     const session = this.session;
     if (session === null) throw new Error(`${this.nick} got a snapshot before its session`);
     this.dropWorld();
     void this.track(
       'restore',
-      this.options.world.restore(session, snapshot).then((opened) => {
-        if (opened !== null) this.adoptWorld(opened);
-      }),
+      this.loader.run(
+        () => restoreSessionWorld(this.options.world, session, snapshot, tick),
+        (opened) => {
+          if (opened !== null) {
+            applyInitialSeatControl(opened, session, tick);
+            this.adoptWorld(opened);
+            if (this.reportRestoredWorld) {
+              this.send({ kind: 'loaded', tick: opened.sim.tick, world: opened.generation });
+            }
+          }
+        },
+      ),
     );
   }
 
@@ -377,7 +409,11 @@ export class RelayClient implements SessionDriver {
   }
 
   private dropWorld(): void {
+    this.saveOrders.cancel('The world changed while saving');
+    this.loader.invalidate();
+    this.reportRestoredWorld = false;
     this.sim = null;
+    this.completion.dropWorld();
     this.driver = null;
     this.transport = null;
     this.earlyFrames.length = 0;
@@ -390,6 +426,7 @@ export class RelayClient implements SessionDriver {
     void this.track(
       'snapshot',
       encodeSnapshot(exportSaveGame(sim, this.saveHeader())).then((bytes) => {
+        if (this.sim !== sim) return;
         this.sendBlob({ type: 'snapshot', to: null, tick, bytes });
       }),
     );
@@ -409,7 +446,6 @@ export class RelayClient implements SessionDriver {
       () => this.pending.delete(work),
       (error: unknown) => {
         this.pending.delete(work);
-        this.opening = false;
         this.options.onError?.(what, error);
       },
     );

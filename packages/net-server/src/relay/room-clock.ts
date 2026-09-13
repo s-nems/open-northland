@@ -62,6 +62,19 @@ export class RoomClock {
     this.lastTick = tick;
   }
 
+  /** Read-only queue view; callers publishing a snapshot must detach its envelopes. */
+  pendingFrames(): readonly WireFrame[] {
+    return [...this.pending].sort(([a], [b]) => a - b).map(([tick, commands]) => ({ tick, commands }));
+  }
+
+  finishAt(tick: number): void {
+    this.lastTick = tick;
+    this.pausedFlag = true;
+    this.accumulatorMs = 0;
+    this.pending.clear();
+    this.budgets.clear();
+  }
+
   start(): void {
     this.started = true;
   }

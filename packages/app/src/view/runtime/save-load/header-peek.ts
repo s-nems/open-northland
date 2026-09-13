@@ -3,6 +3,7 @@ import { isGzipSave, type SaveBytes } from './codec.js';
 
 /** The header provenance a save list shows, read from a file prefix without inflating the document. */
 export interface PeekedSaveHeader {
+  readonly savedAt: number | null;
   readonly mapId: string | null;
   readonly tick: number;
   readonly entry: string | null;
@@ -56,6 +57,13 @@ function headerFromText(text: string): PeekedSaveHeader | null {
   const tick = header.tick;
   if (typeof tick !== 'number' || !Number.isInteger(tick) || tick < 0) return null;
   return {
+    savedAt:
+      typeof header.savedAt === 'number' &&
+      Number.isSafeInteger(header.savedAt) &&
+      header.savedAt >= 0 &&
+      header.savedAt <= 8_640_000_000_000_000
+        ? header.savedAt
+        : null,
     mapId: typeof header.mapId === 'string' ? header.mapId : null,
     tick,
     entry: typeof header.entry === 'string' ? header.entry : null,

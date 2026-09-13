@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Page } from 'playwright';
 import type { OpenNorthlandDebug } from '../../../src/view/runtime/debug-handle.js';
@@ -47,13 +49,18 @@ export async function startAppServer(): Promise<AppServer> {
     throw new Error(`ON_CONTENT_DIR is not supported by test:engines: the app serves ${REPO_CONTENT}`);
   }
   const { createServer } = await import('vite');
-  const server = await createServer({ root: APP_ROOT, server: { port: 0, open: false }, logLevel: 'warn' });
+  // localhost can resolve to another checkout's IPv4/IPv6 listener on the same port.
+  const server = await createServer({
+    root: APP_ROOT,
+    server: { host: '127.0.0.1', port: 0, open: false },
+    logLevel: 'warn',
+  });
   await server.listen();
   const address = server.httpServer?.address();
   if (address === null || address === undefined || typeof address === 'string') {
     throw new Error('the app dev server reported no TCP port');
   }
-  return { origin: `http://localhost:${address.port}`, close: () => server.close() };
+  return { origin: `http://127.0.0.1:${address.port}`, close: () => server.close() };
 }
 
 export interface EngineSession {
@@ -91,11 +98,30 @@ function installed(executablePath: () => string): boolean {
 
 async function openElectron(url: string): Promise<EngineSession> {
   const { _electron } = await import('playwright');
-  const app = await _electron.launch({ args: [ELECTRON_MAIN, `--url=${url}`] }).catch((err: unknown) => {
-    throw new EngineUnavailableError(`electron did not launch: ${String(err)}`);
-  });
-  const page = await app.firstWindow();
-  return { page, errors: watchErrors(page), close: () => app.close() };
+  const profile = await mkdtemp(join(tmpdir(), 'northland-engine-'));
+  const removeProfile = () => rm(profile, { recursive: true, force: true });
+  const app = await _electron
+    .launch({ args: [ELECTRON_MAIN, `--profile=${profile}`] })
+    .catch(async (err: unknown) => {
+      await removeProfile();
+      throw new EngineUnavailableError(`electron did not launch: ${String(err)}`);
+    });
+  const close = async (): Promise<void> => {
+    try {
+      await app.close();
+    } finally {
+      await removeProfile();
+    }
+  };
+  try {
+    const page = await app.firstWindow();
+    const errors = watchErrors(page);
+    await page.goto(url, { waitUntil: 'load' });
+    return { page, errors, close };
+  } catch (err) {
+    await close();
+    throw err;
+  }
 }
 
 function watchErrors(page: Page): readonly string[] {

@@ -1,4 +1,11 @@
-import { type CommandEnvelope, FixedTimestep, type Simulation } from '@open-northland/sim';
+import {
+  type CommandEnvelope,
+  type ExportSaveOptions,
+  exportSaveGame,
+  FixedTimestep,
+  type SaveGame,
+  type Simulation,
+} from '@open-northland/sim';
 import type { SessionTransport } from './transport.js';
 
 /** Tempo and pause as the session owns them, so a server clock can replace this without the HUD
@@ -18,6 +25,7 @@ export interface SessionDriver extends SessionClock {
   readonly maxStepsPerFrame: number;
   advance(elapsedMs: number, onTick?: () => void): number;
   submit(envelope: CommandEnvelope): void;
+  captureSave(options?: ExportSaveOptions): SaveGame | Promise<SaveGame>;
 }
 
 export interface LockstepDriverOptions {
@@ -82,6 +90,18 @@ export class LockstepDriver implements SessionDriver {
       throw new Error(`session speed must be a positive number, got ${speed}`);
     }
     this.speedMultiplier = speed;
+  }
+
+  captureSave(options: ExportSaveOptions = {}): SaveGame {
+    if (this.transport.pendingFrames === undefined)
+      throw new Error('This transport requires its authority to capture pending orders');
+    const continuation = this.transport
+      .pendingFrames()
+      .flatMap((frame) => frame.commands.map(({ envelope }) => ({ applyTick: frame.tick, envelope })));
+    return exportSaveGame(this.sim, {
+      ...options,
+      continuation: [...(options.continuation ?? []), ...continuation],
+    });
   }
 
   /** Hand one authorized envelope to the session, which decides the tick it applies at. */

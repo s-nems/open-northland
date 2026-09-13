@@ -16,7 +16,7 @@ describe('backTarget', () => {
 });
 
 describe('MAIN_NAV', () => {
-  it('lists the design order with multiplayer as the one coming-soon row', () => {
+  it('lists the menu order with multiplayer available', () => {
     expect(MAIN_NAV.map((item) => item.id)).toEqual([
       'newGame',
       'load',
@@ -25,18 +25,14 @@ describe('MAIN_NAV', () => {
       'credits',
       'exit',
     ]);
-    expect(MAIN_NAV.filter((item) => item.kind === 'comingSoon').map((item) => item.id)).toEqual([
-      'multiplayer',
-    ]);
+    expect(MAIN_NAV.find((item) => item.id === 'multiplayer')?.kind).toBe('open');
   });
 });
 
 describe('moveFocus', () => {
-  it('skips coming-soon rows in both directions', () => {
-    // From "Wczytaj grę" down: over the badged multiplayer row onto "Ustawienia".
-    expect(moveFocus(MAIN_NAV, 1, 1)).toBe(3);
-    // From "Ustawienia" up: back over the badged row onto "Wczytaj grę".
-    expect(moveFocus(MAIN_NAV, 3, -1)).toBe(1);
+  it('includes multiplayer in keyboard navigation', () => {
+    expect(moveFocus(MAIN_NAV, 1, 1)).toBe(2);
+    expect(moveFocus(MAIN_NAV, 3, -1)).toBe(2);
   });
 
   it('wraps at both ends', () => {

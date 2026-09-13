@@ -5,6 +5,11 @@ import type { Entity } from '../../ecs/world.js';
  *  `components/rules.ts`, so the setting hashes and replays like any other state. */
 export type RulesCommand =
   | {
+      readonly kind: 'setPlayerPlacementTribes';
+      readonly player: number;
+      readonly tribes: readonly number[];
+    }
+  | {
       /** Toggle the needs mechanic globally (`WorldRules.needsEnabled`). */
       readonly kind: 'setNeedsEnabled';
       readonly enabled: boolean;

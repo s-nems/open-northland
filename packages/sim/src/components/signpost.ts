@@ -29,7 +29,7 @@ export const ErectSignpostOrder = defineComponent<{ goal: NodeId }>('ErectSignpo
 export const ExploreOrder = defineComponent<{
   centre: NodeId;
   leg: { from: NodeId; to: NodeId } | null;
-}>('ExploreOrder');
+}>('ExploreOrder', 'settlers');
 
 /**
  * How far from its explore centre a scout will walk to reveal ground, in half-cell nodes on the world

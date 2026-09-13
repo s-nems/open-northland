@@ -1,6 +1,7 @@
 import { EQUIP_CATEGORIES } from '@open-northland/data';
 import { AI_MODULE_IDS } from '../../components/ai-player.js';
 import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
+import type { NeedKind } from '../../components/needs.js';
 import { DIPLOMACY_STATES } from '../../components/rules.js';
 import { assertNever } from '../brand.js';
 import { asRecord, typeName } from '../untrusted.js';
@@ -57,6 +58,16 @@ const AI_MODULES: FieldCheck = {
  * decides that, and an authored-setup-only option is a field a seat envelope simply may not carry.
  */
 const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
+  cancelTraining: { required: { entity: 'integer' } },
+  exploreArea: { required: { entity: 'integer', ...NODE } },
+  orderNeed: {
+    required: {
+      entity: 'integer',
+      need: { oneOf: ['hunger', 'fatigue', 'piety', 'enjoyment'] satisfies readonly NeedKind[] },
+    },
+  },
+  setRegeneration: { required: { entity: 'integer', enabled: 'boolean' } },
+  unassignBuilder: { required: { entity: 'integer' } },
   assignBuilder: { required: { entity: 'integer', site: 'integer' } },
   assignHouse: { required: { entity: 'integer', house: 'integer' } },
   assignWorker: {
@@ -104,7 +115,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
     required: { good: 'integer', ...NODE, remaining: 'integer', harvestAtomic: 'integer' },
     optional: {
       felling: { fields: { required: { chopsLeft: 'integer' } } },
-      deposit: { fields: { required: { levels: 'integer' } } },
+      deposit: { fields: { required: { levels: 'integer', strikesPerUnit: 'integer' } } },
     },
   },
   placeSignpost: { required: { entity: 'integer', ...NODE } },
@@ -125,6 +136,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: FieldSpec } = {
   setJob: { required: { entity: 'integer', jobType: 'integer' } },
   setMatchParticipants: { required: { players: { arrayOf: 'integer' } } },
   setNeedsEnabled: { required: { enabled: 'boolean' } },
+  setPlayerPlacementTribes: { required: { player: 'integer', tribes: { arrayOf: 'integer' } } },
   setPlayerAi: {
     required: { player: 'integer', enabled: 'boolean' },
     optional: { modules: AI_MODULES },
@@ -197,7 +209,7 @@ function checkFields(
 
 function checkField(value: unknown, check: FieldCheck, at: string): void {
   if (check === 'integer') {
-    if (typeof value !== 'number' || !Number.isInteger(value)) {
+    if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
       throw new Error(`${at}: expected an integer, got ${described(value)}`);
     }
     return;

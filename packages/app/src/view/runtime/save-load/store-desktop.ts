@@ -50,7 +50,7 @@ export function desktopSaveStore(bridge: SaveListBridge): SaveStore {
             mapId: peeked?.mapId ?? null,
             tick: peeked?.tick ?? null,
             entry: peeked?.entry ?? null,
-            savedAt: entry.savedAt,
+            savedAt: peeked?.savedAt ?? entry.savedAt,
           };
         }),
       );

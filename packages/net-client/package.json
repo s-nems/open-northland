@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@noble/hashes": "2.2.0",
     "@open-northland/lockstep": "*",
     "@open-northland/net-protocol": "*",
     "@open-northland/sim": "*"

@@ -26,8 +26,8 @@ export function preview(value: unknown): string {
 }
 
 export function asInteger(value: unknown, at: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value)) {
-    throw new Error(`${at}: expected an integer, got ${preview(value)}`);
+  if (typeof value !== 'number' || !Number.isSafeInteger(value)) {
+    throw new Error(`${at}: expected a safe integer, got ${preview(value)}`);
   }
   return value;
 }

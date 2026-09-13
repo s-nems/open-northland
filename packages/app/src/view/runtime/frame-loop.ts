@@ -30,6 +30,8 @@ import { type RafLoop, startRafLoop } from './raf-loop.js';
 export interface FrameLoopDeps {
   readonly deps: GameViewDeps;
   readonly fpsLimit: FpsLimit;
+  readonly onMatchEnd?: () => void;
+  readonly isDisposed?: () => boolean;
   /** The session driver: it decides how many ticks this frame may run and holds the render alpha. */
   readonly driver: SessionDriver;
   readonly frameStats: FrameStats;
@@ -145,6 +147,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // A persistently high step count is the sim falling behind wall-clock.
     steps = 0;
     const renderAlpha = driver.advance(elapsed, collect);
+    // A synchronous driver failure can tear down the view while advance is on the stack.
+    if (loop.isDisposed?.()) return;
     const simMs = performance.now() - cpu0;
     cameraCtl.update(elapsed); // a no-op while the system menu holds the camera suspended
     // Idempotent: the sepia wash mirrors the pause flag every frame rather than on transitions, so a
@@ -153,6 +157,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Before anything draws: the map entry's resource handover must release a first-worked node in the
     // same frame the pool starts drawing it.
     if (frameEvents.length > 0) deps.onEvents?.(frameEvents);
+    if (deps.sharedClock && deps.confirmedMatchEnd?.() != null) loop.onMatchEnd?.();
     const snap0 = performance.now();
     const snap = sim.snapshot();
     const snapMs = performance.now() - snap0;

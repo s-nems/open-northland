@@ -53,10 +53,12 @@ export class RelaySocket {
     const socket = (this.options.createSocket ?? ((url) => new WebSocket(url)))(this.options.url);
     this.socket = socket;
     socket.onopen = () => {
+      if (this.closed || this.socket !== socket) return;
       this.attempt = 0;
       this.options.onOpen();
     };
     socket.onmessage = (event) => {
+      if (this.closed || this.socket !== socket) return;
       if (typeof event.data !== 'string') return;
       let raw: unknown = null;
       try {

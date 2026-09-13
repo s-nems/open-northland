@@ -11,7 +11,7 @@ import type {
 import { asArray, asCount, asInteger, asRecord, asString, keysOf, preview } from '../untrusted.js';
 import { parseSeatIndex } from './room.js';
 
-export const BLOB_TYPES = keysOf<BlobType>({ snapshot: true, save: true, map: true });
+export const BLOB_TYPES = keysOf<BlobType>({ snapshot: true, save: true, map: true, initialSave: true });
 
 /** The sim's domains, repeated here so the relay never loads the sim; a test pins the copy. */
 export const SYNC_DOMAINS = keysOf<SyncDomain>({
@@ -104,5 +104,11 @@ export function parseBlobBytes(value: unknown, at: string): string {
   const padding = value.endsWith('==') ? 2 : value.endsWith('=') ? 1 : 0;
   const bytes = (value.length / BASE64_GROUP) * BYTES_PER_BASE64_GROUP - padding;
   if (bytes > MAX_BLOB_BYTES) throw new Error(`${at}: ${bytes} bytes over ${MAX_BLOB_BYTES}`);
+  return value;
+}
+
+export function parseStateHash(value: unknown, at: string): string {
+  if (typeof value !== 'string' || !/^[0-9a-f]{8}$/.test(value))
+    throw new Error(`${at}: expected eight lowercase hexadecimal digits`);
   return value;
 }

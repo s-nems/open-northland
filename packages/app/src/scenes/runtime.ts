@@ -6,6 +6,7 @@ import {
   Simulation,
 } from '@open-northland/sim';
 import { FOG_MODE_BY_NAME } from '../game/fog.js';
+import { setupPlacementTribes } from '../game/placement-tribes.js';
 import { resolveWorldContent, type WorldContentOptions } from '../game/sandbox/index.js';
 import type { SceneWorld } from './types.js';
 
@@ -39,6 +40,7 @@ export function createSceneSim(scene: SceneWorld, options: WorldContentOptions =
   if (scene.participants !== undefined) {
     sim.enqueueSetup({ kind: 'setMatchParticipants', players: scene.participants });
   }
+  setupPlacementTribes(sim);
   return sim;
 }
 
@@ -49,10 +51,12 @@ export function restoreSceneSim(
   save: SaveGame,
   options: WorldContentOptions = {},
 ): RestoredSimulation {
-  return restoreSimulation(save, {
+  const restored = restoreSimulation(save, {
     content: resolveWorldContent(scene.terrain, options),
     map: halfCellMapFromCells(scene.terrain),
   });
+  setupPlacementTribes(restored.sim);
+  return restored;
 }
 
 /**

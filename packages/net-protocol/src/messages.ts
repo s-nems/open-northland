@@ -1,16 +1,28 @@
-import type { GameSession, SeatMode, SessionRules, SessionWorld } from '@open-northland/lockstep';
+import type {
+  GameSession,
+  InitialSaveIdentity,
+  SeatMode,
+  SessionRules,
+  SessionWorld,
+} from '@open-northland/lockstep';
 import type { SyncDomain } from '@open-northland/sim';
+import type { LobbyCompatibility } from './compatibility.js';
 
-export type RoomState = 'lobby' | 'running';
+export type RoomState = 'lobby' | 'running' | 'ended';
 
 /** What the creator decides for the whole room. The world is fixed at creation. */
 export interface RoomSettings {
+  readonly initialSave?: InitialSaveIdentity;
+  readonly mapOrigin?: 'mod' | 'user';
+  readonly kickedSeatMode?: 'ai' | 'idle';
   readonly name: string;
   readonly world: SessionWorld;
   readonly seed: number;
   readonly rules: SessionRules;
   readonly speed: number;
 }
+
+export type LobbySettings = Omit<RoomSettings, 'world' | 'initialSave' | 'mapOrigin'>;
 
 /** What an unclaimed seat does; `human` is never chosen, it is what a claimed seat becomes. */
 export type VacantSeatMode = Exclude<SeatMode, 'human'>;
@@ -19,12 +31,14 @@ export interface RoomSeatSetup {
   readonly player: number;
   readonly mode: VacantSeatMode;
   readonly color: number;
+  readonly team?: number | null;
 }
 
 export interface RoomSeatView {
   readonly player: number;
   readonly mode: SeatMode;
   readonly color: number;
+  readonly team?: number | null;
   readonly nick: string | null;
   readonly ready: boolean;
 }
@@ -33,6 +47,7 @@ export interface RoomMemberView {
   readonly nick: string;
   readonly seat: number | null;
   readonly connected: boolean;
+  readonly compatibility: LobbyCompatibility | null;
 }
 
 export interface RoomView {
@@ -100,11 +115,13 @@ export interface WaitedMember {
 export const DESCRIPTOR_WORLD = 0;
 
 /** What a blob holds; the relay reads the type and the tick, never the bytes. */
-export type BlobType = 'snapshot' | 'save' | 'map';
+export type BlobType = 'snapshot' | 'save' | 'map' | 'initialSave';
 
 export type ClientMessage =
   | { readonly kind: 'hello'; readonly protocol: number; readonly token: string; readonly nick: string }
   | { readonly kind: 'listRooms' }
+  | { readonly kind: 'requestInitialSave' }
+  | { readonly kind: 'requestMap' }
   | { readonly kind: 'createRoom'; readonly settings: RoomSettings; readonly seats: readonly RoomSeatSetup[] }
   | { readonly kind: 'joinRoom'; readonly roomId: string }
   | { readonly kind: 'leaveRoom' }
@@ -114,13 +131,18 @@ export type ClientMessage =
       readonly player: number;
       readonly mode?: VacantSeatMode;
       readonly color?: number;
+      readonly team?: number | null;
     }
   | { readonly kind: 'setReady'; readonly ready: boolean }
+  | { readonly kind: 'setCompatibility'; readonly compatibility: LobbyCompatibility | null }
+  | { readonly kind: 'setSettings'; readonly settings: LobbySettings }
   | { readonly kind: 'start' }
   /** The tick the client's world stands at and the world's generation, or a null tick for a client
    *  holding no world that needs the room's snapshot. */
+  | { readonly kind: 'saveOrders'; readonly id: number; readonly tick: number; readonly world: number }
   | { readonly kind: 'loaded'; readonly tick: number; readonly world: number }
   | { readonly kind: 'loaded'; readonly tick: null }
+  | { readonly kind: 'finish'; readonly tick: number; readonly hash: string; readonly world: number }
   | { readonly kind: 'ack'; readonly tick: number; readonly digest: WireDigest; readonly world: number }
   | { readonly kind: 'command'; readonly envelope: PlayerWireEnvelope; readonly fromTick: number }
   | { readonly kind: 'clock'; readonly speed?: number; readonly paused?: boolean }
@@ -140,6 +162,13 @@ export type ClientMessage =
 export type ClientMessageKind = ClientMessage['kind'];
 
 export type ServerMessage =
+  | {
+      readonly kind: 'saveOrders';
+      readonly id: number;
+      readonly tick: number;
+      readonly frames: readonly WireFrame[];
+    }
+  | { readonly kind: 'ended'; readonly tick: number; readonly hash: string }
   | { readonly kind: 'welcome'; readonly protocol: number; readonly nick: string }
   | { readonly kind: 'rooms'; readonly rooms: readonly RoomSummary[] }
   | { readonly kind: 'room'; readonly room: RoomView }
@@ -179,6 +208,7 @@ export type ServerMessage =
       readonly reference: string;
     }
   | { readonly kind: 'snapshotRequest' }
+  | { readonly kind: 'mapRequest'; readonly from: string }
   | {
       readonly kind: 'blob';
       readonly type: BlobType;
@@ -189,5 +219,10 @@ export type ServerMessage =
   | { readonly kind: 'chat'; readonly from: string; readonly text: string }
   /** `roundTripMs` is the smoothed round trip the relay measured for this client, for its own readout. */
   | { readonly kind: 'ping'; readonly t: number; readonly roundTripMs: number }
-  | { readonly kind: 'rejected'; readonly of: ClientMessageKind; readonly reason: string }
+  | {
+      readonly kind: 'rejected';
+      readonly of: ClientMessageKind;
+      readonly reason: string;
+      readonly requestId?: number;
+    }
   | { readonly kind: 'error'; readonly reason: string };

@@ -7,12 +7,14 @@ interface Seat {
   /** What the seat is while nobody sits in it. */
   vacantMode: VacantSeatMode;
   color: number;
+  team?: number | null;
   member: Member | null;
 }
 
 export interface SeatChange {
   readonly mode?: VacantSeatMode;
   readonly color?: number;
+  readonly team?: number | null;
 }
 
 /** The room's seats: who sits where, and what a vacant seat does. */
@@ -24,6 +26,7 @@ export class SeatTable {
       player: seat.player,
       vacantMode: seat.mode,
       color: seat.color,
+      ...(seat.team === undefined ? {} : { team: seat.team }),
       member: null,
     }));
   }
@@ -64,6 +67,7 @@ export class SeatTable {
       seat.vacantMode = change.mode;
     }
     if (change.color !== undefined) seat.color = change.color;
+    if (change.team !== undefined && change.team !== (seat.team ?? null)) seat.team = change.team;
     return null;
   }
 
@@ -85,6 +89,11 @@ export class SeatTable {
   }
 
   private sessionSeat(seat: Seat): SessionSeat {
-    return { player: seat.player, mode: seat.member === null ? seat.vacantMode : 'human', color: seat.color };
+    return {
+      player: seat.player,
+      mode: seat.member === null ? seat.vacantMode : 'human',
+      color: seat.color,
+      ...(seat.team === undefined ? {} : { team: seat.team }),
+    };
   }
 }

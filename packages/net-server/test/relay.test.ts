@@ -32,7 +32,7 @@ describe('relay identity', () => {
 
     const future = s.peer();
     future.send({ kind: 'hello', protocol: PROTOCOL_VERSION + 1, token: TOKEN_A, nick: 'Ania' });
-    expect(future.last('error')?.reason).toMatch(/protocol 2 unsupported/);
+    expect(future.last('error')?.reason).toContain(`protocol ${PROTOCOL_VERSION + 1} unsupported`);
     expect(s.relay.clientCount).toBe(0);
   });
 
@@ -65,12 +65,58 @@ describe('relay identity', () => {
     const b = s.introduce(TOKEN_B, 'Ania');
     a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
     b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
-    expect(b.last('welcome')?.nick).toBe('Ania');
+    expect(b.last('welcome')?.nick).toBe('Ania2');
     expect(b.last('room')?.room.members.map((member) => member.nick)).toEqual(['Ania', 'Ania2']);
   });
 });
 
 describe('relay rooms', () => {
+  it('defers departure handover until the first built world establishes its baseline', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania'),
+      b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({ kind: 'createRoom', settings: { ...SETTINGS, kickedSeatMode: 'ai' }, seats: SEATS });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    a.send({ kind: 'setReady', ready: true });
+    b.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    b.send({ kind: 'leaveRoom' });
+    expect(a.of('kicked')).toEqual([]);
+    a.send({ kind: 'loaded', tick: 1, world: 0 });
+    expect(a.last('kicked')).toMatchObject({ player: 1, tick: 2, mode: 'ai' });
+    s.advance(TICK_MS);
+    expect(a.last('frame')).toMatchObject({
+      tick: 2,
+      commands: [{ envelope: { command: { kind: 'setPlayerAi', player: 1 } } }],
+    });
+  });
+
+  it('frees identity and the final room slot before a left callback creates the next room', () => {
+    const relay = new Relay({ now: () => 0, maxRooms: 1 });
+    const sent: unknown[] = [];
+    let replacement = false;
+    const client = relay.connect({
+      send: (message) => {
+        sent.push(message);
+        if (message.kind === 'left' && !replacement) {
+          replacement = true;
+          relay.receive(client, { kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+        }
+      },
+      close: () => undefined,
+    });
+    relay.receive(client, { kind: 'hello', protocol: PROTOCOL_VERSION, token: TOKEN_A, nick: 'Ania' });
+    relay.receive(client, { kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    const before = client.room;
+    relay.receive(client, { kind: 'leaveRoom' });
+    expect(client.room).not.toBe(before);
+    expect(client.room).not.toBeNull();
+    expect(relay.roomCount).toBe(1);
+    expect(sent).not.toContainEqual(expect.objectContaining({ kind: 'rejected' }));
+  });
+
   it('holds as many rooms as it was configured for', () => {
     const time = { ms: 0 };
     const relay = new Relay({ now: () => time.ms, maxRooms: 1 });
@@ -138,11 +184,22 @@ describe('relay rooms', () => {
     expect(s.relay.roomCount).toBe(1);
   });
 
-  it('refuses leaving a started game, whose seats stay as every client built them', () => {
+  it('releases an explicit departure while the other running member continues', () => {
     const s = startedRoom();
     s.b.send({ kind: 'leaveRoom' });
-    expect(s.b.last('rejected')?.reason).toBe('the game has started');
-    expect(s.a.last('room')?.room.members).toHaveLength(2);
+    expect(s.b.last('left')).toEqual({ kind: 'left' });
+    expect(s.b.handle.room).toBeNull();
+    expect(s.a.last('room')?.room.members).toHaveLength(1);
+    expect(s.a.last('kicked')).toMatchObject({ player: 1, mode: 'idle', tick: 1 });
+    s.b.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    expect(s.b.last('room')?.room.id).not.toBe(s.roomId);
+    expect(s.relay.roomCount).toBe(2);
+    s.advance(TICK_MS);
+    expect(s.a.last('frame')?.tick).toBe(1);
+    s.a.send({ kind: 'leaveRoom' });
+    expect(s.relay.roomCount).toBe(1);
+    s.b.send({ kind: 'leaveRoom' });
+    expect(s.relay.roomCount).toBe(0);
   });
 
   it('starts only by the creator, once everyone is seated and ready, with a descriptor per seat', () => {
@@ -156,6 +213,7 @@ describe('relay rooms', () => {
     a.send({ kind: 'start' });
     expect(a.last('rejected')?.reason).toBe('Bartek has no seat');
     b.send({ kind: 'claimSeat', player: 1 });
+    a.send({ kind: 'setReady', ready: true });
     a.send({ kind: 'start' });
     expect(a.last('rejected')?.reason).toBe('Bartek is not ready');
     b.send({ kind: 'setReady', ready: true });
@@ -203,12 +261,12 @@ describe('relay rooms', () => {
   it('gives a returning token its seat and its descriptor back', () => {
     const s = startedRoom();
     s.relay.disconnect(s.a.handle);
-    expect(s.b.last('room')?.room.members).toEqual([
+    expect(s.b.last('room')?.room.members).toMatchObject([
       { nick: 'Ania', seat: 0, connected: false },
       { nick: 'Bartek', seat: 1, connected: true },
     ]);
     const back = s.introduce(TOKEN_A, 'Ania');
-    expect(back.last('room')?.room.members[0]).toEqual({ nick: 'Ania', seat: 0, connected: true });
+    expect(back.last('room')?.room.members[0]).toMatchObject({ nick: 'Ania', seat: 0, connected: true });
     expect(back.last('start')?.session.localSeat).toBe(0);
     expect(back.last('clock')).toEqual({ kind: 'clock', tick: 1, speed: 1, paused: false, by: null });
   });

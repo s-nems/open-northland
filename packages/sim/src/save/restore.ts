@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, contentFingerprint } from '@open-northland/data';
 import { assertNever } from '../core/brand.js';
 import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import { componentByName } from '../ecs/component.js';
@@ -35,6 +35,9 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
       `save.header.irVersion: the save was built on IR v${header.irVersion}, the loaded content is v${loaded.version}`,
     );
   }
+  if (header.contentFingerprint !== null && header.contentFingerprint !== contentFingerprint(opts.content)) {
+    throw new Error('save.header.contentFingerprint: the loaded content differs from the save');
+  }
   const sim = new Simulation({
     seed: header.seed,
     content: opts.content,
@@ -61,7 +64,7 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
         restoreFog(sim, section);
         break;
       case 'commands':
-        sim.commands.restore(section.pending, section.nextSequence);
+        sim.commands.restore(section.pending, section.nextSequence, section.continuation, header.tick);
         break;
       default:
         assertNever(section);

@@ -280,4 +280,31 @@ describe('restoreSimulation rejection', () => {
     expect(restored.tick).toBe(original.tick);
     expect(restored.hashState()).toBe(original.hashState());
   });
+
+  it('rejects changed content ids, ordering and balance before reading saved stores', () => {
+    const content = testContent();
+    const save = exportSaveGame(new Simulation({ seed: 1, content }));
+    const changed = [
+      { ...content, goods: [...content.goods].reverse() },
+      { ...content, jobs: [...content.jobs].reverse() },
+      { ...content, buildings: [...content.buildings].reverse() },
+      {
+        ...content,
+        goods: content.goods.map((good, index) =>
+          index === 0 ? { ...good, typeId: good.typeId + 100 } : good,
+        ),
+      },
+      {
+        ...content,
+        goods: content.goods.map((good, index) =>
+          index === 1 ? { ...good, weight: good.weight + 1 } : good,
+        ),
+      },
+    ];
+    for (const target of changed) {
+      expect(() => restoreSimulation(save, { content: target })).toThrow(/contentFingerprint/);
+    }
+    const revisionOnly = { ...content, manifest: { ...content.manifest, contentRevision: 42 } };
+    expect(restoreSimulation(save, { content: revisionOnly }).contentRevisionDiffers).toBe(true);
+  });
 });

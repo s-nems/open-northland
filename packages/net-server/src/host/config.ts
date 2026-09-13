@@ -1,4 +1,5 @@
 import { DEFAULT_MAX_ROOMS } from '../relay/relay.js';
+import { DEFAULT_MAX_CONNECTIONS } from './socket-budget.js';
 
 export const DEFAULT_PORT = 8765;
 const MAX_PORT = 65535;
@@ -14,6 +15,7 @@ export interface RelayConfig {
   /** The `ws://` or `wss://` address clients reach this relay at, once a proxy stands in front. */
   readonly publicUrl: string | null;
   readonly maxRooms: number;
+  readonly maxConnections: number;
   /** The build this image came from, for the health endpoint. */
   readonly build: string | null;
 }
@@ -54,6 +56,7 @@ export function relayConfigFromEnvironment(env: Environment): RelayConfig {
     host: setting(env, 'HOST'),
     publicUrl: urlSetting(env, 'RELAY_PUBLIC_URL'),
     maxRooms: integerSetting(env, 'RELAY_MAX_ROOMS', DEFAULT_MAX_ROOMS, 1, Number.MAX_SAFE_INTEGER),
+    maxConnections: integerSetting(env, 'RELAY_MAX_CONNECTIONS', DEFAULT_MAX_CONNECTIONS, 1, 65535),
     build: setting(env, 'RELAY_BUILD'),
   };
 }

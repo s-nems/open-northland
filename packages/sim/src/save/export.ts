@@ -1,4 +1,6 @@
+import { contentFingerprint } from '@open-northland/data';
 import type { CommandEnvelope } from '../core/commands/index.js';
+import { mergeContinuation, type SavedCommand } from '../core/continuation.js';
 import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import type { Simulation } from '../simulation.js';
 import {
@@ -8,8 +10,14 @@ import {
   type SaveGame,
   type SaveGameSection,
 } from './format.js';
+import { parseSavedAt } from './header-fields.js';
+import { copySessionMetadata } from './session-metadata.js';
 
 export interface ExportSaveOptions {
+  readonly continuation?: readonly SavedCommand[];
+  /** Opaque plain JSON copied into the header; the session owner validates its schema. */
+  readonly session?: unknown;
+  readonly savedAt?: number | null;
   /** The caller's world identity token (the app uses the decoded map id, or `scene:<id>`), recorded
    *  so a loader can match the save to the world it boots. Omit for a world with no identity. */
   mapId?: string;
@@ -24,6 +32,7 @@ export interface ExportSaveOptions {
  * with the live world.
  */
 export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): SaveGame {
+  const savedAt = parseSavedAt(opts.savedAt ?? null);
   // One visit per object across the whole export: a repeat is a cycle or a cross-entity alias,
   // and either would silently restore as disconnected copies.
   const seen = new WeakMap<object, string>();
@@ -55,6 +64,7 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
   }
   sections.push({
     id: 'commands',
+    continuation: mergeContinuation(sim.commands.continuationSnapshot(), opts.continuation ?? [], sim.tick),
     nextSequence: sim.commands.nextSequenceNumber,
     pending: sim.commands.pendingSnapshot().map(
       (envelope, i) =>
@@ -68,9 +78,12 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
       formatVersion: SAVE_FORMAT_VERSION,
       irVersion: sim.content.manifest.version,
       contentRevision: sim.content.manifest.contentRevision,
+      contentFingerprint: contentFingerprint(sim.content),
+      savedAt,
       mapId: opts.mapId ?? null,
       mapFingerprint: sim.mapFingerprint ?? null,
       entry: opts.entry ?? null,
+      session: copySessionMetadata(opts.session ?? null),
       seed: sim.seed,
       tick: sim.tick,
     },

@@ -183,7 +183,17 @@ through it in memory. `ON_RELAY_URL=wss://…` points the socket test at a deplo
 ON_RELAY_URL=wss://relay.opennorthland.org npx vitest run --project core packages/net-server/test/ws-host.test.ts
 ```
 
-To play through it, open the developer entry in two windows of one dev server. The first creates
+The main menu's **Multiplayer** screen accepts an editable relay address (default
+`wss://relay.opennorthland.org`) and nickname, lists rooms, and creates games from installed maps or
+local saves. Players choose seats and readiness explicitly; the creator controls teams and settings.
+Use separate browser profiles/private windows for two independent players. The default endpoint is
+not deployed by the repository. For a local relay, enter `ws://127.0.0.1:8765`.
+
+To serve an isolated generated content tree with Vite, set `ON_CONTENT_DIR` to an absolute path or a
+path relative to the checkout. This is the same override the content test runner accepts. Restart
+Vite after multiplayer source changes so its client build identity includes them.
+
+The developer entry remains available in two windows of one dev server. The first creates
 the room and waits for `players` people; it rewrites its URL to the room's id, which the others
 join with:
 
@@ -193,8 +203,9 @@ join with:
 ```
 
 Each window sits in the first open seat and reports ready on its own; the creator starts once
-everyone is. The identity token and the nick are kept in the stored settings, so a reload rejoins
-the same seat; two windows of one browser profile share them, so give the second a private window
+everyone is. The reconnect token is stored separately for each relay origin and path; the nickname is
+shared in stored settings. A reload rejoins the same seat; two windows of one browser profile share
+the identity for that relay, so give the second a private window
 or another profile. Enter opens the chat line. The perf overlay's third line and `perf().net` carry
 the round trip, the assigned input delay, the click-to-apply time and the jitter buffer's depth. A
 forced divergence for a resync check is a console mutation of `__opennorthland.sim` in one window.

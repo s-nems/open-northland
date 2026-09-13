@@ -27,6 +27,12 @@ describe('relayPlan', () => {
     expect(relayPlan(new URLSearchParams('relay=ws://localhost:8765'))).toBeNull();
     expect(relayPlan(new URLSearchParams('relay=ws://localhost:8765&room=new'))).toBeNull();
     expect(relayPlan(new URLSearchParams('relay=nonsense&room=ab12'))).toBeNull();
+    expect(
+      relayPlan(new URLSearchParams({ relay: 'ws://localhost:8765/#fragment', room: 'ab12' })),
+    ).toBeNull();
+    expect(
+      relayPlan(new URLSearchParams({ relay: 'ws://user:secret@localhost:8765', room: 'ab12' })),
+    ).toBeNull();
   });
 
   it('pins the created room into the search, keeping the rest', () => {

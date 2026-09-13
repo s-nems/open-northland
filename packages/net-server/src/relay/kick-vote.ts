@@ -27,11 +27,11 @@ export function castKickVote(
   for (const member of members.values()) if (member.connected && member !== target) electorate++;
   const needed = Math.ceil(electorate / 2);
   const yes = [...voters].flatMap((token) => {
-    const nick = members.get(token)?.nick;
-    return nick === undefined ? [] : [nick];
+    const member = members.get(token);
+    return member?.connected === true && member !== target ? [member.nick] : [];
   });
   return {
     tally: { kind: 'kickVote', player, nick: target.nick, yes, needed },
-    kicked: voters.size >= needed ? target : null,
+    kicked: yes.length >= needed ? target : null,
   };
 }

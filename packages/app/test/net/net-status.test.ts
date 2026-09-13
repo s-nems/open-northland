@@ -16,9 +16,9 @@ const ROOM: RoomView = {
   },
   seats: [],
   members: [
-    { nick: 'Ania', seat: 1, connected: true },
-    { nick: 'Bartek', seat: 2, connected: true },
-    { nick: 'Celina', seat: 3, connected: false },
+    { nick: 'Ania', seat: 1, connected: true, compatibility: null },
+    { nick: 'Bartek', seat: 2, connected: true, compatibility: null },
+    { nick: 'Celina', seat: 3, connected: false, compatibility: null },
   ],
 };
 

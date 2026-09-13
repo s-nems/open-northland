@@ -20,10 +20,14 @@ The container reads its settings from the environment and needs nothing else:
 | `HOST` | every interface | The address to bind; leave it unset in the container, whose health check arrives on loopback |
 | `RELAY_PUBLIC_URL` | unset | The `wss://` address the proxy exposes; reported by the health check |
 | `RELAY_MAX_ROOMS` | `64` | Rooms held at once; `createRoom` is refused past it |
+| `RELAY_MAX_CONNECTIONS` | `256` | Open WebSocket connections; further upgrades receive HTTP 503 |
 | `RELAY_BUILD` | unset | What the health check reports as the build; the `Release` workflow stamps the commit, a local `npm run relay:image` leaves it unset |
 
-Everything a client may send is bounded by the protocol's limits; a connection that does not
-introduce itself within ten seconds is closed.
+A connection that does not introduce itself within ten seconds is closed. Each connection has a
+traffic budget of 256 messages and 1 MiB per second, with bursts of 512 messages and two maximum-size
+blob messages. Exceeding either budget closes the connection. Outgoing queues are capped at two
+maximum-size blob messages (about 43 MiB); a recipient that exceeds the cap is disconnected. These
+are deployment limits in addition to the protocol's per-message and per-tick limits.
 
 ## First deployment
 

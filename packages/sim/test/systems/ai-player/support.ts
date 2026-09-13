@@ -100,7 +100,9 @@ export const RESOURCE_SPOTS = {
 } as const;
 
 export function aiSim(seed = 1): Simulation {
-  return new Simulation({ seed, content: aiContent(), map: grassNodeMap(64, 32) });
+  const sim = new Simulation({ seed, content: aiContent(), map: grassNodeMap(64, 32) });
+  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+  return sim;
 }
 
 export function ctxOf(sim: Simulation, tick = 0): SystemContext {
@@ -115,6 +117,7 @@ export function ctxOf(sim: Simulation, tick = 0): SystemContext {
 }
 
 export function placeHq(sim: Simulation, x = HQ_X, y = HQ_Y): void {
+  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ_TYPE, x, y, tribe: VIKING, owner: SEAT });
 }
 

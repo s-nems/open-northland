@@ -8,6 +8,7 @@ describe('relay configuration from the environment', () => {
       host: null,
       publicUrl: null,
       maxRooms: DEFAULT_MAX_ROOMS,
+      maxConnections: 256,
       build: null,
     });
     expect(relayConfigFromEnvironment({ PORT: '', RELAY_BUILD: '  ' })).toEqual(
@@ -22,6 +23,7 @@ describe('relay configuration from the environment', () => {
         HOST: '127.0.0.1',
         RELAY_PUBLIC_URL: 'wss://relay.example.org',
         RELAY_MAX_ROOMS: '8',
+        RELAY_MAX_CONNECTIONS: '32',
         RELAY_BUILD: 'abc1234',
       }),
     ).toEqual({
@@ -29,6 +31,7 @@ describe('relay configuration from the environment', () => {
       host: '127.0.0.1',
       publicUrl: 'wss://relay.example.org/',
       maxRooms: 8,
+      maxConnections: 32,
       build: 'abc1234',
     });
   });
@@ -37,6 +40,7 @@ describe('relay configuration from the environment', () => {
     expect(() => relayConfigFromEnvironment({ PORT: '70000' })).toThrow(/PORT must be an integer/);
     expect(() => relayConfigFromEnvironment({ PORT: '80x' })).toThrow(/PORT/);
     expect(() => relayConfigFromEnvironment({ RELAY_MAX_ROOMS: '0' })).toThrow(/RELAY_MAX_ROOMS/);
+    expect(() => relayConfigFromEnvironment({ RELAY_MAX_CONNECTIONS: '0' })).toThrow(/RELAY_MAX_CONNECTIONS/);
     expect(() => relayConfigFromEnvironment({ RELAY_PUBLIC_URL: 'https://relay.example.org' })).toThrow(
       /RELAY_PUBLIC_URL must be a ws:\/\/ or wss:\/\/ URL/,
     );

@@ -16,6 +16,7 @@ import {
   FARM_TYPE,
   HOME_TOP_TYPE,
   HOME_TYPE,
+  HQ_TYPE,
   HQ_X,
   HQ_Y,
   IRON,
@@ -26,6 +27,7 @@ import {
   RESOURCE_SPOTS,
   SEAT,
   STOCK_TOP_TYPE,
+  STOCK_TYPE,
   VIKING,
   WELL_TYPE,
 } from './support.js';
@@ -44,6 +46,28 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     completeSites(sim);
   }
+
+  it('uses the roster tribe for expansion and base replacement in an authored mixed-tribe town', () => {
+    const sim = aiSim();
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HQ_TYPE,
+      x: HQ_X,
+      y: HQ_Y,
+      tribe: 13,
+      owner: SEAT,
+    });
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, x: 20, y: 8, tribe: 13, owner: SEAT });
+    sim.step();
+    expect(nextPlacement(sim)).toMatchObject({ kind: 'placeBuilding', tribe: VIKING });
+    sim.enqueueSetup({ kind: 'demolish', building: entityOfBuilding(sim, HQ_TYPE) });
+    sim.step();
+    expect(nextPlacement(sim)).toMatchObject({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      tribe: VIKING,
+    });
+  });
 
   it('executes the opening list in order near the HQ, one open site at a time', () => {
     const sim = aiSim();

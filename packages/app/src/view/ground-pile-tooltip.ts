@@ -24,6 +24,7 @@ export interface GroundPileTooltipOptions {
 
 export interface GroundPileTooltip {
   update(snapshot: WorldSnapshot): void;
+  destroy(): void;
 }
 
 export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundPileTooltip {
@@ -57,6 +58,7 @@ export function createGroundPileTooltip(opts: GroundPileTooltipOptions): GroundP
   };
 
   return {
+    destroy: () => tooltip.destroy(),
     update(snap: WorldSnapshot): void {
       const p = opts.pointer();
       if (p === null || opts.suppressed(p.clientX, p.clientY)) {

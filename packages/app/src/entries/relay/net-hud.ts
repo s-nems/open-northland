@@ -33,7 +33,10 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const seatOf = (nick: string): number | null =>
     client.room?.members.find((member) => member.nick === nick)?.seat ?? null;
   const waiting: WaitingOverlay = createWaitingOverlay({ seatOf, onKick: (player) => client.kick(player) });
-  const chat: ChatPanel = mountChatPanel({ leftPx: view.hudInsetLeftPx, onSend: (text) => client.say(text) });
+  const chat: ChatPanel = mountChatPanel({
+    leftPx: () => view.hudInsetBottomLeftPx,
+    onSend: (text) => client.say(text),
+  });
   const status: NetStatusPanel = mountNetStatusPanel();
   let waited: ServerMessage & { kind: 'waiting' } = { kind: 'waiting', for: client.waitingFor };
   let previousRoom: RoomView | null = null;
@@ -43,8 +46,10 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   let worldNotice: string | null = null;
 
   const announce = (text: string): void => chat.append({ from: null, text });
-  const refreshStatus = (): void =>
+  const refreshStatus = (): void => {
+    chat.updateLayout();
     status.update(memberRows(client.room, waited.for, client.nick), deps.readout());
+  };
   const refreshNotice = (): void => waiting.notice(linkNotice ?? worldNotice);
   const syncClock = (clock: ClockState): void => {
     speedControl = speedControlFor(clock, speedControl);

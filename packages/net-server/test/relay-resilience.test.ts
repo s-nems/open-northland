@@ -63,12 +63,16 @@ function play(s: MessageStage, peers: readonly Peer[], ms: number): void {
 }
 
 /** Three seated members in a running room; `c` holds the AI-vacant seat. */
-function roomOfThree() {
+function roomOfThree(kickedSeatMode?: 'ai' | 'idle') {
   const s = stage();
   const a = s.introduce(TOKEN_A, 'Ania');
   const b = s.introduce(TOKEN_B, 'Bartek');
   const c = s.introduce(TOKEN_C, 'Cezary');
-  a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+  a.send({
+    kind: 'createRoom',
+    settings: { ...SETTINGS, ...(kickedSeatMode === undefined ? {} : { kickedSeatMode }) },
+    seats: SEATS,
+  });
   const roomId = a.last('room')?.room.id ?? '';
   b.send({ kind: 'joinRoom', roomId });
   c.send({ kind: 'joinRoom', roomId });
@@ -254,6 +258,32 @@ describe('waiting for a member', () => {
 });
 
 describe('kick votes', () => {
+  it('hands a voluntary departure to AI on the exact next tick without voting', () => {
+    const s = roomOfThree('ai');
+    s.advance(TICK_MS * 4);
+    s.b.send({ kind: 'leaveRoom' });
+    expect(s.a.last('kicked')).toMatchObject({ player: 1, mode: 'ai', tick: 5 });
+    expect(s.a.last('room')?.room.seats[1]).toMatchObject({ mode: 'ai', nick: null });
+    tick(s, [s.a, s.c], TICK_MS);
+    expect(s.a.of('frame').find((frame) => frame.tick === 5)?.commands).toMatchObject([
+      { envelope: { origin: 'admin', command: { kind: 'setPlayerAi', player: 1, enabled: true } } },
+    ]);
+    expect(s.a.of('kickVote')).toEqual([]);
+  });
+
+  it('uses the chosen idle fallout instead of the occupied seat original AI mode', () => {
+    const s = roomOfThree('idle');
+    s.advance(TICK_MS * 4);
+    s.relay.disconnect(s.c.handle);
+    s.advance(TICK_MS);
+    tick(s, [s.a, s.b], KICK_COUNTDOWN_MS + TICK_MS);
+    s.a.send({ kind: 'kick', player: 2 });
+    expect(s.a.last('kicked')).toMatchObject({ player: 2, mode: 'idle' });
+    expect(s.a.last('room')?.room.seats[2]).toMatchObject({ mode: 'idle', nick: null });
+    tick(s, [s.a, s.b], TICK_MS * 2);
+    expect(s.a.of('frame').flatMap((frame) => frame.commands)).toEqual([]);
+  });
+
   it('opens after the countdown, passes at half of everyone else, and hands the seat to the AI', () => {
     const s = roomOfThree();
     s.advance(TICK_MS * 4);
@@ -307,8 +337,8 @@ describe('kick votes', () => {
     for (const peer of [b, c, d]) peer.send({ kind: 'joinRoom', roomId });
     peers.forEach((peer, i) => {
       peer.send({ kind: 'claimSeat', player: i });
-      peer.send({ kind: 'setReady', ready: true });
     });
+    for (const peer of peers) peer.send({ kind: 'setReady', ready: true });
     a.send({ kind: 'start' });
     for (const peer of peers) peer.send({ kind: 'loaded', tick: 0, world: 0 });
     s.advance(TICK_MS * 2);
@@ -472,7 +502,7 @@ describe('catching up', () => {
     expect(back.of('frame').map((frame) => frame.tick)).toEqual([2, 3, 4]);
   });
 
-  it('caches an uploaded save, relays it, and serves a client that holds no world from it', () => {
+  it('forwards manual saves without contaminating the live resync snapshot', () => {
     const s = startedRoom();
     s.advance(TICK_MS * 4);
     ackThrough(s.a, 1, 4);
@@ -480,6 +510,9 @@ describe('catching up', () => {
     s.a.send({ kind: 'blob', type: 'save', to: null, tick: 3, bytes: BLOB });
     expect(s.b.last('blob')).toEqual({ kind: 'blob', type: 'save', from: 'Ania', tick: 3, bytes: BLOB });
     expect(s.a.of('blob')).toEqual([]);
+    s.b.send({ kind: 'loaded', tick: null });
+    expect(s.b.last('rejected')?.reason).toMatch(/no snapshot is cached/);
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 3, bytes: BLOB });
     s.relay.disconnect(s.b.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.last('start')?.snapshotTick).toBe(3);
@@ -502,7 +535,12 @@ describe('catching up', () => {
   });
 
   it('relays a map to one member by nick, byte for byte, and refuses an unknown one', () => {
-    const s = startedRoom();
+    const base = stage();
+    const a = base.introduce(TOKEN_A, 'Ania');
+    const b = base.introduce(TOKEN_B, 'Bartek');
+    a.send({ kind: 'createRoom', settings: { ...SETTINGS, mapOrigin: 'user' }, seats: SEATS });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    const s = { a, b };
     s.a.send({ kind: 'blob', type: 'map', to: 'Bartek', tick: null, bytes: BLOB });
     expect(s.b.last('blob')).toEqual({ kind: 'blob', type: 'map', from: 'Ania', tick: null, bytes: BLOB });
     s.a.send({ kind: 'blob', type: 'map', to: 'Zenon', tick: null, bytes: BLOB });

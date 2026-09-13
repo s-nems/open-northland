@@ -1,4 +1,4 @@
-import { DESCRIPTOR_WORLD, type ServerMessage } from '@open-northland/net-protocol';
+import { DESCRIPTOR_WORLD, type LobbyCompatibility, type ServerMessage } from '@open-northland/net-protocol';
 
 export interface Member {
   readonly token: string;
@@ -15,6 +15,7 @@ export interface Member {
   roundTripMs: number;
   seat: number | null;
   ready: boolean;
+  compatibility: LobbyCompatibility | null;
   loaded: boolean;
   /** The last tick the client reported applied, and the generation of the world it reports from. */
   ackedTick: number;
@@ -43,6 +44,7 @@ export function createMember(token: string, nick: string, now: number, link: Mea
     roundTripMs: link.roundTripMs,
     seat: null,
     ready: false,
+    compatibility: null,
     loaded: false,
     ackedTick: 0,
     world: DESCRIPTOR_WORLD,

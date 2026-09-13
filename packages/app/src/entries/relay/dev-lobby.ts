@@ -1,4 +1,4 @@
-import type { RoomView } from '@open-northland/net-protocol';
+import { compatibilityIssues, type RoomView } from '@open-northland/net-protocol';
 
 /** The developer lobby's one setting: how many people the creator waits for before starting. */
 export interface DevLobbyPlan {
@@ -23,6 +23,7 @@ export function devLobbyAction(room: RoomView, selfNick: string, plan: DevLobbyP
     const open = room.seats.find((seat) => seat.nick === null && seat.mode === 'idle');
     return open === undefined ? null : { kind: 'claimSeat', player: open.player };
   }
+  if (compatibilityIssues(room.members, room.creator).length > 0) return null;
   const seat = room.seats.find((row) => row.player === self.seat);
   if (seat !== undefined && !seat.ready) return { kind: 'setReady' };
   if (room.creator !== selfNick || room.members.length < plan.players) return null;

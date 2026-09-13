@@ -1,5 +1,6 @@
 import { isFogMode } from '../components/rules.js';
 import { parseCommandEnvelope } from '../core/commands/parse.js';
+import { parseContinuation } from '../core/continuation.js';
 import { asCount, asInteger, asRecord, typeName } from '../core/untrusted.js';
 import {
   type CommandsSection,
@@ -13,6 +14,8 @@ import {
   type SaveGameHeader,
   type SaveGameSection,
 } from './format.js';
+import { parseContentFingerprint, parseSavedAt } from './header-fields.js';
+import { copySessionMetadata } from './session-metadata.js';
 
 /**
  * Validate a save decoded from untrusted JSON into a structurally sound {@link SaveGame}: header
@@ -42,9 +45,12 @@ function parsedHeader(value: unknown): SaveGameHeader {
     formatVersion: SAVE_FORMAT_VERSION,
     irVersion: asCount(raw.irVersion, `${at}.irVersion`),
     contentRevision: asCount(raw.contentRevision, `${at}.contentRevision`),
+    contentFingerprint: parseContentFingerprint(raw.contentFingerprint),
+    savedAt: parseSavedAt(raw.savedAt),
     mapId: asNullableString(raw.mapId, `${at}.mapId`),
     mapFingerprint: asNullableString(raw.mapFingerprint, `${at}.mapFingerprint`),
     entry: asNullableString(raw.entry, `${at}.entry`),
+    session: copySessionMetadata(raw.session),
     seed: asInteger(raw.seed, `${at}.seed`),
     tick: asCount(raw.tick, `${at}.tick`),
   };
@@ -84,7 +90,7 @@ function parsedSections(value: unknown, header: SaveGameHeader): readonly SaveGa
   } else if (raws[i]?.id === 'fog') {
     throw new Error(`save.sections[${i}]: a mapless save cannot carry a fog section`);
   }
-  sections.push(parsedCommands(take(i, 'commands'), `save.sections[${i}]`));
+  sections.push(parsedCommands(take(i, 'commands'), `save.sections[${i}]`, header.tick));
   i++;
   if (i < raws.length) {
     throw new Error(
@@ -196,13 +202,14 @@ function parsedFog(raw: Record<string, unknown>, at: string): FogSection {
   return { id: 'fog', activeMode, lastRebuildTick, masks };
 }
 
-function parsedCommands(raw: Record<string, unknown>, at: string): CommandsSection {
+function parsedCommands(raw: Record<string, unknown>, at: string, tick: number): CommandsSection {
   const rawPending = raw.pending;
   if (!Array.isArray(rawPending)) {
     throw new Error(`${at}.pending: expected an array, got ${typeName(rawPending)}`);
   }
   return {
     id: 'commands',
+    continuation: parseContinuation(raw.continuation, tick, `${at}.continuation`),
     nextSequence: asCount(raw.nextSequence, `${at}.nextSequence`),
     pending: rawPending.map((entry: unknown, j) => parseCommandEnvelope(entry, `${at}.pending[${j}]`)),
   };

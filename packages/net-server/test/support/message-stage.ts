@@ -1,10 +1,12 @@
 import {
+  clientMessageKind,
   PROTOCOL_VERSION,
   type RoomSettings,
   type ServerMessage,
   type WireDigest,
 } from '@open-northland/net-protocol';
 import { type ClientHandle, Relay } from '@open-northland/net-server';
+import { TEST_COMPATIBILITY } from './compatibility.js';
 
 /** The relay driven message by message with no sim behind it, on a clock the test moves. */
 
@@ -42,7 +44,7 @@ export interface MessageStage {
   introduce(token: string, nick: string): Peer;
 }
 
-export function stage(): MessageStage {
+export function stage(autoCompatibility = true): MessageStage {
   const time = { ms: 0 };
   const relay = new Relay({ now: () => time.ms });
   const advance = (ms: number): void => {
@@ -64,7 +66,18 @@ export function stage(): MessageStage {
       handle,
       sent,
       closed: () => closedFor,
-      send: (message, bytes) => relay.receive(handle, message, bytes),
+      send: (message, bytes) => {
+        relay.receive(handle, message, bytes);
+        const kind = clientMessageKind(message);
+        if (
+          autoCompatibility &&
+          (kind === 'hello' || kind === 'createRoom' || kind === 'joinRoom') &&
+          handle.room?.state === 'lobby' &&
+          handle.member?.compatibility === null
+        ) {
+          relay.receive(handle, { kind: 'setCompatibility', compatibility: TEST_COMPATIBILITY });
+        }
+      },
       of,
       last: (kind) => of(kind).at(-1),
     };

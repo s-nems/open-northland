@@ -53,6 +53,26 @@ describe('game session descriptor', () => {
     expect(() => parseGameSession(session({ seats: shuffled }))).toThrow(/ascending/);
   });
 
+  it('preserves explicit teams and the map-authored diplomacy default', () => {
+    const configured = session({
+      seats: [
+        { player: 0, mode: 'human', color: 7, team: 0 },
+        { player: 1, mode: 'human', color: 4, team: 0 },
+        { player: 2, mode: 'ai', color: 9, team: null },
+      ],
+    });
+    expect(roundTrip(configured)).toEqual(configured);
+    expect(roundTrip(session()).seats[0]).not.toHaveProperty('team');
+    for (const team of [-1, 17, 1.5, '1', false]) {
+      expect(() =>
+        parseGameSession({
+          ...session(),
+          seats: [{ player: 0, mode: 'human', color: 0, team }],
+        }),
+      ).toThrow(/team/);
+    }
+  });
+
   it('refuses a payload that would assemble a different world', () => {
     expect(() => parseGameSession(session({ seed: 1.5 }))).toThrow(/seed/);
     expect(() => parseGameSession(session({ speed: 0 }))).toThrow(/speed/);
@@ -74,6 +94,13 @@ describe('game session descriptor', () => {
       parseGameSession({ ...session(), seats: [{ player: 0, mode: 'human', color: -1 }] }),
     ).toThrow(/negative colour/);
     expect(() => parseGameSession({ ...session(), rules: { fog: 'reveal' } })).toThrow(/rules.fog/);
+  });
+
+  it('rejects unsafe integers and undefined fog modes', () => {
+    expect(() => parseGameSession(session({ seed: 1e30 }))).toThrow(/seed/);
+    expect(() => parseGameSession(session({ rules: { fog: 3, progression: null, needs: null } }))).toThrow(
+      /rules.fog/,
+    );
   });
 
   it('reads the roster the way the entry consumes it', () => {

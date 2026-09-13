@@ -19,6 +19,16 @@ describe('parseMapsIndex', () => {
     ]);
   });
 
+  it('retains validated provenance and drops malformed source claims', () => {
+    const provenance = { kind: 'user', folder: 'UserMaps/island', layer: 'game' };
+    const entries = parseMapsIndex([
+      { id: 'island', provenance },
+      { id: 'bad', provenance: { ...provenance, folder: '../escape' } },
+    ]);
+    expect(entries[0]?.provenance).toEqual(provenance);
+    expect(entries[1]?.provenance).toBeUndefined();
+  });
+
   it('drops entries without a string id and ignores wrong-typed optional fields', () => {
     expect(
       parseMapsIndex([

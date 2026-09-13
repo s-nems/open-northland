@@ -1,11 +1,14 @@
 import type { CommandEnvelope } from '../core/commands/index.js';
+import type { SavedCommand } from '../core/continuation.js';
+
+export type { SavedCommand } from '../core/continuation.js';
 
 /** Discriminates a save payload from any other JSON document. */
 export const SAVE_KIND = 'open-northland-save';
 
 /** Single monotonic version of the whole persisted layout; any layout change bumps it. A reader accepts
  *  exactly this version and rejects any other, never migrating. */
-export const SAVE_FORMAT_VERSION = 3;
+export const SAVE_FORMAT_VERSION = 5;
 
 /** The single key wrapping a serialized `Map`'s entry pairs; reserved, so a plain record carrying it
  *  is rejected at export. */
@@ -19,12 +22,17 @@ export interface SaveGameHeader {
   /** Content identity: the IR schema version and pipeline conversion revision the run was built on. */
   readonly irVersion: number;
   readonly contentRevision: number;
+  readonly contentFingerprint: string | null;
+  /** Unix milliseconds supplied by the caller, or null when no creation time was recorded. */
+  readonly savedAt: number | null;
   /** Provenance of the decoded map the run loaded, or null for scenes and mapless sims. */
   readonly mapId: string | null;
   readonly mapFingerprint: string | null;
   /** Caller-recorded relaunch token, opaque to the sim like `mapId`; the app stores the entry URL
    *  search that reboots the session. Null when the caller records none. */
   readonly entry: string | null;
+  /** Caller-owned session metadata, validated by its owner; null when the caller records no session. */
+  readonly session: unknown;
   /** The RNG construction seed, provenance only; the live stream position is in the rng section. */
   readonly seed: number;
   readonly tick: number;
@@ -70,6 +78,8 @@ export interface CommandsSection {
   readonly nextSequence: number;
   /** Enqueued but not yet applied envelopes, in enqueue order. */
   readonly pending: readonly CommandEnvelope[];
+  /** Accepted future input retained independently of any live transport. */
+  readonly continuation: readonly SavedCommand[];
 }
 
 /** A reader treats an unknown section id as fatal. */

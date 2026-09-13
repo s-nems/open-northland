@@ -8,7 +8,8 @@ requests. The root [`AGENTS.md`](../../AGENTS.md) applies in full; the wire cont
 
 ## Boundary
 
-- Depends on `net-protocol`, `lockstep` and `sim`, and on the Web platform only through
+- Depends on `net-protocol`, `lockstep`, `sim` and the pure `@noble/hashes` SHA-256 implementation
+  (save verification must also work on HTTP LAN origins), and on the Web platform only through
   `WebSocket`, `CompressionStream`, `Response` and `crypto`, never the document. The DOM lib is on
   for their types; the headless client under `packages/net-server/test/support/`, which runs this
   package under Node, is what holds the boundary.

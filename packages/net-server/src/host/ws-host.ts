@@ -8,6 +8,7 @@ import {
 } from '@open-northland/net-protocol';
 import { type RawData, WebSocketServer } from 'ws';
 import { type Connection, DEFAULT_MAX_ROOMS, Relay, type RelayLog } from '../relay/relay.js';
+import { DEFAULT_MAX_CONNECTIONS, SocketBudget, sendBounded } from './socket-budget.js';
 
 /** How often the relay clock is polled; a small fraction of a frame at the highest speed. */
 const POLL_INTERVAL_MS = 5;
@@ -26,6 +27,7 @@ export interface RelayHostOptions {
   readonly host?: string | null;
   readonly log?: RelayLog;
   readonly maxRooms?: number;
+  readonly maxConnections?: number;
   readonly publicUrl?: string | null;
   readonly build?: string | null;
 }
@@ -78,6 +80,7 @@ function serveHttp(request: IncomingMessage, response: ServerResponse, health: (
 export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
   const log = options.log ?? (() => undefined);
   const maxRooms = options.maxRooms ?? DEFAULT_MAX_ROOMS;
+  const maxConnections = options.maxConnections ?? DEFAULT_MAX_CONNECTIONS;
   const relay = new Relay({ log, maxRooms });
   const startedAt = performance.now();
   const health = (): RelayHealth => ({
@@ -108,11 +111,20 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
       response.end();
     }
   });
-  const sockets = new WebSocketServer({ server, maxPayload: MAX_BLOB_MESSAGE_BYTES });
+  const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_BLOB_MESSAGE_BYTES });
+  server.on('upgrade', (request, socket, head) => {
+    if (sockets.clients.size >= maxConnections) {
+      socket.on('error', () => socket.destroy());
+      socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+      return;
+    }
+    sockets.handleUpgrade(request, socket, head, (peer) => sockets.emit('connection', peer, request));
+  });
   sockets.on('connection', (socket) => {
+    const budget = new SocketBudget(performance.now());
     const connection: Connection = {
       send: (message) => {
-        if (socket.readyState === socket.OPEN) socket.send(encode(message));
+        sendBounded(socket, encode(message));
       },
       close: (reason) => {
         const code = reason === 'replaced' ? CLOSE_REPLACED : CLOSE_PROTOCOL_ERROR;
@@ -124,6 +136,12 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     };
     const client = relay.connect(connection);
     socket.on('message', (data, isBinary) => {
+      if (socket.readyState !== socket.OPEN) return;
+      if (!budget.take(byteLength(data), performance.now())) {
+        socket.close(CLOSE_PROTOCOL_ERROR, 'relay traffic limit');
+        relay.disconnect(client);
+        return;
+      }
       // Anything but a JSON text frame is handed over as a value no message parses, which closes the
       // connection through the relay's own refusal path.
       let raw: unknown = null;
@@ -170,6 +188,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         protocol: PROTOCOL_VERSION,
         build: options.build ?? null,
         maxRooms,
+        maxConnections,
       });
       resolve({
         port,

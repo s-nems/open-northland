@@ -15,6 +15,7 @@ export * from './match.js';
 export * from './movement.js';
 export * from './needs.js';
 export * from './ownership.js';
+export * from './player-placement.js';
 export * from './rules.js';
 export * from './settler.js';
 export * from './signpost.js';

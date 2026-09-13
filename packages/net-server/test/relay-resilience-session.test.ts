@@ -1,9 +1,17 @@
 import type { GameSession } from '@open-northland/lockstep';
+import { prepareInitialSave } from '@open-northland/net-client';
 import { type RoomSettings, TICK_MS } from '@open-northland/net-protocol';
 import { KICK_COUNTDOWN_MS, Relay, SILENT_AFTER_MS } from '@open-northland/net-server';
-import { playerCommand, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
+import {
+  exportSaveGame,
+  playerCommand,
+  restoreSimulation,
+  type SaveGame,
+  Simulation,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
+import { TEST_COMPATIBILITY } from './support/compatibility.js';
 import { HeadlessClient } from './support/headless-client.js';
 import {
   assembleRoom,
@@ -226,12 +234,13 @@ describe('a relayed session under faults', () => {
     }
   });
 
-  it('brings a player back with nothing from the room’s cached save', async () => {
+  it('brings a player back with nothing from the room’s cached checkpoint', async () => {
     const { stage, ania, bartek, links } = await twoClients(6);
     await runUntil(stage, [ania, bartek], 60, { onTick: orderAt });
-    await ania.shareSave(null);
+    ania.receive({ kind: 'snapshotRequest' });
+    await ania.settled();
     settle(stage, SETTLE_MS);
-    expect(bartek.blobs.map((blob) => blob.type)).toEqual(['save']);
+    expect(bartek.blobs).toEqual([]);
     links[1].close();
     const again = client('Bartek');
     relink(stage, again, LINK);
@@ -246,12 +255,50 @@ describe('a relayed session under faults', () => {
     expect(again.rejections).toEqual([]);
   });
 
-  it('relays a blob to one member byte for byte', async () => {
+  it('boots both real clients from the same saved tick and resumes with shared seat control', async () => {
+    const stage = stageFor(17),
+      ania = client('Ania'),
+      bartek = client('Bartek');
+    const sim = await buildWorld({ ...SETTINGS, seats: [], localSeat: 0 });
+    for (let i = 0; i < 73; i++) sim.step();
+    const prepared = await prepareInitialSave(exportSaveGame(sim));
+    for (const c of [ania, bartek]) relink(stage, c, LINK);
+    settle(stage, SETTLE_MS);
+    ania.createRoom({ ...SETTINGS, initialSave: prepared.identity }, SEATS);
+    settle(stage, SETTLE_MS);
+    const roomId = ania.room?.id;
+    if (roomId === undefined) throw new Error('room was not created');
+    bartek.joinRoom(roomId);
+    settle(stage, SETTLE_MS);
+    ania.claimSeat(0);
+    bartek.claimSeat(1);
+    settle(stage, SETTLE_MS);
+    ania.sendBlob({ type: 'initialSave', to: null, tick: 73, bytes: prepared.bytes });
+    for (const c of [ania, bartek])
+      c.setCompatibility({ ...TEST_COMPATIBILITY, save: prepared.identity.fingerprint });
+    settle(stage, SETTLE_MS);
+    for (const c of [ania, bartek]) c.setReady(true);
+    settle(stage, SETTLE_MS);
+    ania.start();
+    await runFor(stage, [ania, bartek], SETTLE_MS * 2);
+    expect(ania.restoredFrom).toEqual([73]);
+    expect(bartek.restoredFrom).toEqual([73]);
+    const captures = await runUntil(stage, [ania, bartek], 95);
+    expectAgreement(captures, [ania, bartek]);
+    expect(ania.rejections).toEqual([]);
+    expect(bartek.rejections).toEqual([]);
+    expect(captures.get(ania)?.log.filter(([, , command]) => command.kind === 'setPlayerAi')).toHaveLength(
+      SEATS.length,
+    );
+  });
+
+  it('refuses lobby map replacement after a session starts', async () => {
     const { stage, ania, bartek } = await twoClients(7);
     const bytes = Buffer.from(Array.from({ length: 3000 }, (_, i) => i % 251)).toString('base64');
     ania.sendBlob({ type: 'map', to: 'Bartek', tick: null, bytes });
     settle(stage, SETTLE_MS);
-    expect(bartek.blobs).toEqual([{ kind: 'blob', type: 'map', from: 'Ania', tick: null, bytes }]);
+    expect(bartek.blobs).toEqual([]);
+    expect(ania.rejections.at(-1)).toMatchObject({ reason: 'lobby files are fixed after start' });
     expect(ania.blobs).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import { parseSaveGame, type SaveGame, serializeSaveGame } from '@open-northland
 /** Bytes per `btoa` call where the platform has no `toBase64`: a multiple of three, so each chunk
  *  encodes on its own without padding, and well under the argument limit of `String.fromCharCode`. */
 const BASE64_CHUNK_BYTES = 32_766;
+const MAX_DECODED_SNAPSHOT_BYTES = 256 * 1024 * 1024;
 
 /** The platform's own base64 pair, where it has one (Chrome 140, Node 26); it is a hundred times faster. */
 interface NativeBase64 {
@@ -18,8 +19,11 @@ export async function encodeSnapshot(save: SaveGame): Promise<string> {
   return bytesToBase64(await gzipText(text));
 }
 
-export async function decodeSnapshot(bytes: string): Promise<SaveGame> {
-  return parseSaveGame(JSON.parse(await gunzipText(base64ToBytes(bytes))));
+export async function decodeSnapshot(
+  bytes: string,
+  maxDecodedBytes = MAX_DECODED_SNAPSHOT_BYTES,
+): Promise<SaveGame> {
+  return parseSaveGame(JSON.parse(await gunzipText(base64ToBytes(bytes), maxDecodedBytes)));
 }
 
 /** A body's stream rather than a `Blob`'s: a blob would copy the whole text once more first. */
@@ -34,8 +38,23 @@ async function gzipText(text: string): Promise<Uint8Array<ArrayBuffer>> {
   return new Uint8Array(await new Response(compressed).arrayBuffer());
 }
 
-async function gunzipText(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
-  return new Response(streamOf(bytes).pipeThrough(new DecompressionStream('gzip'))).text();
+async function gunzipText(bytes: Uint8Array<ArrayBuffer>, maxDecodedBytes: number): Promise<string> {
+  const reader = streamOf(bytes).pipeThrough(new DecompressionStream('gzip')).getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxDecodedBytes) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error(`snapshot inflates past ${maxDecodedBytes} bytes`);
+    }
+    chunks.push(decoder.decode(value, { stream: true }));
+  }
+  chunks.push(decoder.decode());
+  return chunks.join('');
 }
 
 export function bytesToBase64(bytes: Uint8Array): string {

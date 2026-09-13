@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type ContentSet, MapScript } from '@open-northland/data';
-import type { SessionRules } from '@open-northland/lockstep';
+import type { SessionRules, SessionSeat } from '@open-northland/lockstep';
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
 import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
+import { sessionDiplomacy } from '../../src/game/session-diplomacy.js';
 import type { AuthoredJoinRows } from '../../src/game/world/index.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 
@@ -19,6 +20,7 @@ import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 const MAP_SEED = 7;
 
 export interface RealMapWorldOptions {
+  readonly seats?: readonly SessionSeat[];
   /** Decoded map id under `content/maps/<id>.json`. */
   readonly mapId: string;
   /** Seats to flag as AI players. */
@@ -76,10 +78,11 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // footprint overlay would be ignored (see resolveWorldContent).
     content: { content: merge.content },
     aiSeats: options.aiSeats,
+    playerRoster: script?.players ?? [],
     // Each played seat's assistant and each AI seat's, so a headless run measures an economy that
     // dresses itself like the browser's.
     assistantSeats: [...humanSeats, ...options.aiSeats],
-    diplomacy: script?.diplomacy ?? [],
+    diplomacy: sessionDiplomacy({ seats: options.seats ?? [] }, script?.diplomacy ?? []),
     // The entry declares the match from the same three inputs. Left out, the headless world would run
     // without the match rules the browser plays under.
     matchParticipants: matchParticipants({
@@ -104,5 +107,8 @@ export async function restoreRealMapWorld(mapId: string, save: SaveGame): Promis
   if (!existsSync(mapPath)) throw new Error(`no decoded map at ${mapPath}`);
   const map = JSON.parse(readFileSync(mapPath, 'utf8'));
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
-  return restoreMapWorld({ map, ir, content: { content: merge.content } }, save).sim;
+  return restoreMapWorld(
+    { map, ir, content: { content: merge.content }, playerRoster: realMapScript(mapId)?.players ?? [] },
+    save,
+  ).sim;
 }

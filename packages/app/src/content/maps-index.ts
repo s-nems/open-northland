@@ -1,4 +1,5 @@
 import type { MapsIndexEntry, MapsIndexPlayerSlot } from '@open-northland/content-resolver/wire';
+import { MapProvenance } from '@open-northland/data';
 import { fetchJsonOrNull } from './net.js';
 
 /** Lobby fields fall back to the no-`[multiplayer]`-table reading for sidecars predating them. */
@@ -28,14 +29,16 @@ export function parseMapsIndex(data: unknown): readonly MapsIndexEntry[] {
   const entries: MapsIndexEntry[] = [];
   for (const item of data) {
     if (typeof item !== 'object' || item === null) continue;
-    const { id, name, description, minimap, players, fixedColors, multiplayer } = item as Record<
+    const { id, name, description, minimap, players, fixedColors, multiplayer, provenance } = item as Record<
       string,
       unknown
     >;
     if (typeof id !== 'string' || id === '') continue;
     const slots = Array.isArray(players) ? players.map(parsePlayerSlot).filter((s) => s !== undefined) : [];
+    const origin = MapProvenance.safeParse(provenance);
     entries.push({
       id,
+      ...(origin.success ? { provenance: origin.data } : {}),
       ...(typeof name === 'string' ? { name } : {}),
       ...(typeof description === 'string' ? { description } : {}),
       minimap: minimap === true,

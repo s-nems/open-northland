@@ -1,9 +1,12 @@
-export type MenuScreen = 'main' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
+export type MenuScreen = 'main' | 'multiplayer' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
 
 export const VERSION_LINE = 'pre-alpha 0.1 · GPL-3.0';
 
 export type MainNavItem =
-  | { readonly id: Extract<MenuScreen, 'newGame' | 'load' | 'settings' | 'credits'>; readonly kind: 'open' }
+  | {
+      readonly id: Extract<MenuScreen, 'newGame' | 'load' | 'multiplayer' | 'settings' | 'credits'>;
+      readonly kind: 'open';
+    }
   | { readonly id: 'multiplayer'; readonly kind: 'comingSoon' }
   | { readonly id: 'exit'; readonly kind: 'exit' };
 
@@ -11,7 +14,7 @@ export type MainNavItem =
 export const MAIN_NAV: readonly MainNavItem[] = [
   { id: 'newGame', kind: 'open' },
   { id: 'load', kind: 'open' },
-  { id: 'multiplayer', kind: 'comingSoon' },
+  { id: 'multiplayer', kind: 'open' },
   { id: 'settings', kind: 'open' },
   { id: 'credits', kind: 'open' },
   { id: 'exit', kind: 'exit' },

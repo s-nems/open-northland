@@ -1,5 +1,5 @@
 import type { ServerMessage, WaitedMember } from '@open-northland/net-protocol';
-import { formatMessage, messages } from '../../i18n/index.js';
+import { currentLocale, formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 
 /** Above the HUD and the perf readout, below the system menu (z 2000), so the menu still opens over it. */
@@ -75,6 +75,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
   const tallies = new Map<number, KickVote>();
   let panel: HTMLDivElement | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
+  let rendered = '';
 
   const render = (): void => {
     const copy = messages().net;
@@ -82,6 +83,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
     if (rows.length === 0 && noticeText === null) {
       panel?.remove();
       panel = null;
+      rendered = '';
       if (timer !== null) clearInterval(timer);
       timer = null;
       return;
@@ -92,6 +94,18 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
       document.body.append(panel);
       timer = setInterval(render, REDRAW_MS);
     }
+    const signature = JSON.stringify([
+      currentLocale(),
+      noticeText,
+      rows,
+      [...tallies],
+      rows.map((row) => deps.seatOf(row.nick)),
+    ]);
+    if (signature === rendered) return;
+    rendered = signature;
+    const focused = document.activeElement;
+    const focusedSeat =
+      focused instanceof HTMLButtonElement && panel.contains(focused) ? focused.dataset.seat : undefined;
     const children: HTMLElement[] = [];
     if (noticeText !== null) children.push(el('div', 'opacity:0.9', noticeText));
     if (rows.length > 0) {
@@ -112,6 +126,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
               : `${copy.voteKick} (${formatMessage(copy.voteTally, { yes: tally.yes.length, needed: tally.needed })})`;
           const button = el('button', BUTTON_STYLE, label);
           button.type = 'button';
+          button.dataset.seat = String(seat);
           button.addEventListener('click', () => deps.onKick(seat));
           line.append(button);
         }
@@ -119,6 +134,11 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
       }
     }
     panel.replaceChildren(...children);
+    if (focusedSeat !== undefined) {
+      for (const button of panel.querySelectorAll('button')) {
+        if (button.dataset.seat === focusedSeat) button.focus({ preventScroll: true });
+      }
+    }
   };
 
   return {

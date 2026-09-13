@@ -11,6 +11,23 @@ function saveText(mapId: string, tick: number, entry: string | null): string {
 }
 
 describe('desktopSaveStore listing', () => {
+  it('keeps the save creation time after a file copy changes its mtime', async () => {
+    const savedAt = 1234567890000;
+    const prefix = await compressSaveText(
+      JSON.stringify({
+        header: { kind: 'open-northland-save', formatVersion: 3, mapId: 'island', tick: 1, savedAt },
+        sections: [],
+      }),
+    );
+    const store = desktopSaveStore({
+      listSaves: async () => [{ file: 'copied.json.gz', savedAt: savedAt + 9000, prefix }],
+      readSave: async () => null,
+      writeSave: async () => {},
+      deleteSave: async () => {},
+      showSavesFolder: async () => {},
+    });
+    expect((await store.list())[0]?.savedAt).toBe(savedAt);
+  });
   it('joins each file basename with its peeked header, newest first', async () => {
     const files: ListedSaveFile[] = [
       {

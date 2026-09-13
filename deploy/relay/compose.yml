@@ -9,6 +9,7 @@ services:
     environment:
       RELAY_PUBLIC_URL: wss://relay.opennorthland.org
       RELAY_MAX_ROOMS: "64"
+      RELAY_MAX_CONNECTIONS: "256"
     logging:
       driver: json-file
       options:

@@ -12,6 +12,8 @@ import { LatencyProbe } from './input-delay.js';
 import { createMember, type Member } from './member.js';
 import { Room } from './room.js';
 import { dispatchRoomMessage } from './room-dispatch.js';
+import { retireRoomMembers } from './room-retirement.js';
+import { saveOrdersRequestId } from './save-orders.js';
 
 export interface Connection {
   send(message: ServerMessage): void;
@@ -116,7 +118,7 @@ export class Relay {
       const reason = err instanceof Error ? err.message : String(err);
       const of = clientMessageKind(raw);
       if (of === null || client.token === null) this.fail(client, `malformed message: ${reason}`);
-      else this.reject(client, of, reason);
+      else this.reject(client, of, reason, raw);
       return;
     }
     if (client.token === null) {
@@ -125,14 +127,17 @@ export class Relay {
       return;
     }
     const refusal = this.dispatch(client, message);
-    if (refusal !== null) this.reject(client, message.kind, refusal);
+    if (refusal !== null) this.reject(client, message.kind, refusal, message);
   }
 
   advance(): void {
     const now = this.now();
     const elapsed = now - this.lastAdvanceAt;
     this.lastAdvanceAt = now;
-    for (const room of this.rooms.values()) room.advance(elapsed, now);
+    for (const room of this.rooms.values()) {
+      const refusal = room.advance(elapsed, now);
+      if (refusal !== null) this.dropRoom(room, refusal);
+    }
     this.pollClients(now);
     this.expireEmptyRooms(now);
   }
@@ -183,9 +188,10 @@ export class Relay {
     client.token = message.token;
     client.nick = message.nick;
     this.byToken.set(message.token, client);
-    client.connection.send({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: message.nick });
     const room = this.roomOfToken.get(message.token);
     const member = room?.memberOf(message.token) ?? null;
+    client.nick = member?.nick ?? message.nick;
+    client.connection.send({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: client.nick });
     if (room !== undefined && member !== null) {
       client.room = room;
       client.member = member;
@@ -224,12 +230,17 @@ export class Relay {
         const refusal = room.join(member);
         if (refusal !== null) return refusal;
         this.enter(client, room, member);
+        if (client.nick !== member.nick) {
+          client.nick = member.nick;
+          client.connection.send({ kind: 'welcome', protocol: PROTOCOL_VERSION, nick: member.nick });
+        }
+        room.broadcastView();
         return null;
       }
       case 'leaveRoom': {
         const { room, member } = client;
         if (room === null || member === null) return 'not in a room';
-        const refusal = room.leave(member);
+        const refusal = room.leave(member, this.now());
         if (refusal !== null) return refusal;
         this.dropIfEmpty(room);
         return null;
@@ -261,7 +272,10 @@ export class Relay {
     },
     removed: (member: Member): void => {
       const room = this.roomOfToken.get(member.token);
-      if (room !== undefined) this.detach(member.token, room);
+      if (room !== undefined) {
+        this.detach(member.token, room);
+        this.dropIfEmpty(room);
+      }
     },
   };
 
@@ -295,18 +309,24 @@ export class Relay {
   }
 
   private dropIfEmpty(room: Room): void {
-    if (room.memberTokens().length === 0) this.dropRoom(room);
+    if (this.rooms.get(room.id) === room && room.memberTokens().length === 0) this.dropRoom(room);
   }
 
-  private dropRoom(room: Room): void {
+  private dropRoom(room: Room, reason?: string): void {
     this.rooms.delete(room.id);
     this.emptySince.delete(room);
-    for (const token of room.memberTokens()) this.detach(token, room);
-    this.log('room dropped', { room: room.id });
+    retireRoomMembers(room, (token) => this.detach(token, room), this.hooks.deliver, reason);
+    this.log('room dropped', { room: room.id, ...(reason === undefined ? {} : { reason }) });
   }
 
-  private reject(client: Client, of: ClientMessage['kind'], reason: string): void {
-    client.connection.send({ kind: 'rejected', of, reason: reason.slice(0, MAX_REASON_LENGTH) });
+  private reject(client: Client, of: ClientMessage['kind'], reason: string, raw?: unknown): void {
+    const requestId = saveOrdersRequestId(raw);
+    client.connection.send({
+      kind: 'rejected',
+      of,
+      reason: reason.slice(0, MAX_REASON_LENGTH),
+      ...(requestId === undefined ? {} : { requestId }),
+    });
   }
 
   private fail(client: Client, reason: string): void {

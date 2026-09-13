@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { isContentRoute, resolveContentRequest } from '@open-northland/content-resolver';
 import { nodeVfs } from '@open-northland/vfs/node';
 import { defineConfig, type Plugin } from 'vite';
+import { clientBuildIdentity } from './build/client-version.js';
 import { artPreviewPlugin } from './vite/art-preview.js';
 
 // Browser-first app shell. `npm run dev` serves this with HMR; the desktop shell (packages/desktop)
@@ -20,7 +21,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // per-route extensions served. An in-namespace miss is answered 404 HERE: Vite's SPA fallback would
 // otherwise serve `index.html` as HTTP 200 `text/html` and the loaders' `!res.ok` absence checks would
 // mis-read a missing `content/` as bytes. Off-namespace paths fall through to Vite as before.
-const contentRoot = resolve(here, '../../content');
+const contentRoot = resolve(here, '../..', process.env.ON_CONTENT_DIR ?? 'content');
 const configuredBasePath = process.env.OPEN_NORTHLAND_BASE_PATH ?? '/';
 const basePath =
   configuredBasePath === '/' ? '/' : `/${configuredBasePath.split('/').filter(Boolean).join('/')}/`;
@@ -63,6 +64,7 @@ function serveContent(): Plugin {
 }
 
 export default defineConfig(async ({ command }) => ({
+  define: { __CLIENT_BUILD__: JSON.stringify(clientBuildIdentity(resolve(here, '../..'))) },
   base: basePath,
   plugins: [
     serveContent(),

@@ -40,12 +40,13 @@ export interface ChatLine {
 
 export interface ChatPanel {
   append(line: ChatLine): void;
+  updateLayout(): void;
   dispose(): void;
 }
 
 export interface ChatPanelDeps {
   /** Left edge in px, clear of the tool-panel strip. */
-  readonly leftPx: number;
+  readonly leftPx: number | (() => number);
   readonly onSend: (text: string) => void;
 }
 
@@ -59,13 +60,20 @@ function fromThePage(event: KeyboardEvent): boolean {
 export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   const copy = messages().net;
   const log = el('div', LOG_STYLE);
-  log.style.left = `${deps.leftPx}px`;
+  const position = (): void => {
+    const left = typeof deps.leftPx === 'number' ? deps.leftPx : deps.leftPx();
+    log.style.left = `${left}px`;
+    log.style.maxWidth = `max(0px, calc(100vw - ${left + 12}px))`;
+  };
+  position();
+  window.addEventListener('resize', position);
   log.setAttribute('role', 'log');
   const lines = el('div', 'display:flex;flex-direction:column;gap:2px');
   const input = el('input', INPUT_STYLE);
   input.type = 'text';
   input.maxLength = MAX_CHAT_LENGTH;
   input.placeholder = copy.chatPlaceholder;
+  input.setAttribute('aria-label', copy.chatPlaceholder);
   input.hidden = true;
   log.append(lines, input);
   document.body.append(log);
@@ -84,6 +92,7 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   input.addEventListener('keydown', (event) => {
     // Neither key may reach the page: Escape would open the system menu, Enter reopen the line.
     event.stopPropagation();
+    if (event.isComposing) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       closeInput();
@@ -97,14 +106,19 @@ export function mountChatPanel(deps: ChatPanelDeps): ChatPanel {
   document.addEventListener('keydown', onPageKey);
 
   return {
+    updateLayout: position,
     append(line): void {
-      const row = el('div', line.from === null ? 'opacity:0.75;font-style:italic' : '');
+      const row = el(
+        'div',
+        `overflow-wrap:anywhere;${line.from === null ? 'opacity:0.75;font-style:italic' : ''}`,
+      );
       if (line.from !== null) row.append(el('span', 'font-weight:700', `${line.from}: `));
       row.append(document.createTextNode(line.text));
       lines.append(row);
       while (lines.childElementCount > MAX_LINES) lines.firstElementChild?.remove();
     },
     dispose(): void {
+      window.removeEventListener('resize', position);
       document.removeEventListener('keydown', onPageKey);
       log.remove();
     },

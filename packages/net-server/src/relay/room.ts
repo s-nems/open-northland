@@ -1,6 +1,8 @@
 import type { GameSession } from '@open-northland/lockstep';
 import {
   type ClientMessage,
+  type LobbyCompatibility,
+  type LobbySettings,
   MAX_MEMBERS,
   MAX_NICK_LENGTH,
   type PlayerWireEnvelope,
@@ -14,7 +16,10 @@ import {
 } from '@open-northland/net-protocol';
 import type { BlobUpload } from './blob-relay.js';
 import { Game } from './game.js';
+import { Lobby } from './lobby.js';
+import { LobbyTransfers } from './lobby-transfers.js';
 import { broadcast, type Deliver, type Member, type Refusal } from './member.js';
+import { roomView, sessionForMember } from './room-view.js';
 import { type SeatChange, SeatTable } from './seats.js';
 
 export interface RoomHooks {
@@ -29,7 +34,8 @@ export interface RoomHooks {
  */
 export class Room {
   readonly id: string;
-  private readonly settings: RoomSettings;
+  private readonly lobby: Lobby;
+  private readonly transfers: LobbyTransfers;
   private readonly seats: SeatTable;
   private readonly members = new Map<string, Member>();
   /** Owns the settings and the start; passes to the next member when the creator leaves the lobby. */
@@ -48,19 +54,31 @@ export class Room {
     hooks: RoomHooks,
   ) {
     this.id = id;
-    this.settings = settings;
     this.seats = new SeatTable(seats);
     this.creatorToken = creator.token;
     this.hooks = hooks;
+    this.lobby = new Lobby(
+      settings,
+      this.seats,
+      this.members,
+      () => this.members.get(this.creatorToken) ?? null,
+      () => this.broadcastView(),
+    );
+    this.transfers = new LobbyTransfers(
+      settings,
+      this.members,
+      () => this.members.get(this.creatorToken) ?? null,
+      hooks.deliver,
+    );
     this.admit(creator);
   }
 
   get state(): RoomState {
-    return this.game === null ? 'lobby' : 'running';
+    return this.game === null ? 'lobby' : this.game.endedTick === null ? 'running' : 'ended';
   }
 
   get name(): string {
-    return this.settings.name;
+    return this.lobby.settings.name;
   }
 
   get connectedCount(): number {
@@ -92,15 +110,19 @@ export class Room {
     if (this.game !== null) return 'the game has started';
     if (this.members.size >= MAX_MEMBERS) return `the room is full at ${MAX_MEMBERS}`;
     this.admit(member);
-    this.broadcastView();
     return null;
   }
 
   /** Attach a returning connection to its member and show it where the room stands. */
   reconnect(member: Member, now: number): void {
     member.connected = true;
+    member.loaded = false;
     member.connectedSince = now;
     member.lastHeardAt = now;
+    if (this.game === null) {
+      member.compatibility = null;
+      this.lobby.invalidateReady();
+    }
     this.broadcastView();
     if (this.game !== null) {
       if (member.outOfSync !== null) this.deliver(member, member.outOfSync);
@@ -110,12 +132,17 @@ export class Room {
         snapshotTick: this.game.cachedTick,
       });
       if (this.game.running) this.deliver(member, this.game.clockMessage(null));
+      const ended = this.game.endedMessage;
+      if (ended !== null) this.deliver(member, ended);
     }
   }
 
-  /** Leaving is a lobby action; a running game keeps every seat, and a dropped connection reclaims it. */
-  leave(member: Member): Refusal {
-    if (this.game !== null) return 'the game has started';
+  /** Explicit departure releases identity; socket loss alone preserves a running seat for reconnect. */
+  leave(member: Member, now: number): Refusal {
+    if (this.game !== null && this.game.endedTick === null && member.seat !== null) {
+      this.kickOut(member, member.seat, now);
+      return null;
+    }
     this.remove(member);
     return null;
   }
@@ -133,30 +160,28 @@ export class Room {
 
   claimSeat(member: Member, player: number | null): Refusal {
     if (this.game !== null) return 'the game has started';
-    if (player === null) this.seats.standUp(member);
-    else {
-      const refusal = this.seats.claim(member, player);
-      if (refusal !== null) return refusal;
-    }
-    this.broadcastView();
-    return null;
+    return this.lobby.claimSeat(member, player);
   }
 
   setSeat(member: Member, player: number, change: SeatChange): Refusal {
     if (this.game !== null) return 'the game has started';
-    if (member.token !== this.creatorToken) return 'only the creator sets up seats';
-    const refusal = this.seats.setUp(player, change);
-    if (refusal !== null) return refusal;
-    this.broadcastView();
-    return null;
+    return this.lobby.setSeat(member, player, change);
   }
 
   setReady(member: Member, ready: boolean): Refusal {
     if (this.game !== null) return 'the game has started';
-    if (member.seat === null) return 'take a seat first';
-    member.ready = ready;
-    this.broadcastView();
-    return null;
+    const refusal = ready ? this.transfers.readyRefusal() : null;
+    return refusal ?? this.lobby.setReady(member, ready);
+  }
+
+  setCompatibility(member: Member, compatibility: LobbyCompatibility | null): Refusal {
+    if (this.game !== null) return 'the game has started';
+    return this.lobby.setCompatibility(member, compatibility);
+  }
+
+  setSettings(member: Member, settings: LobbySettings): Refusal {
+    if (this.game !== null) return 'the game has started';
+    return this.lobby.setSettings(member, settings);
   }
 
   /** Hand every member its descriptor and its input delay. The clock starts once they have all built
@@ -164,18 +189,38 @@ export class Room {
   start(member: Member, now: number): Refusal {
     if (this.game !== null) return 'the game has started';
     if (member.token !== this.creatorToken) return 'only the creator starts the game';
-    for (const other of this.members.values()) {
-      if (other.seat === null) return `${other.nick} has no seat`;
-      if (!other.ready) return `${other.nick} is not ready`;
-    }
-    this.game = new Game(this.settings.speed, this.members, this.hooks.deliver, now);
+    const refusal = this.transfers.readyRefusal() ?? this.lobby.startRefusal();
+    if (refusal !== null) return refusal;
+    this.game = new Game(
+      this.lobby.settings.speed,
+      this.members,
+      this.hooks.deliver,
+      now,
+      this.transfers.initialSave,
+      () => this.broadcastView(),
+    );
+    this.transfers.release();
     this.startedSeats = this.seats.sessionSeats();
     this.broadcastView();
     for (const other of this.members.values()) {
-      this.deliver(other, { kind: 'start', session: this.sessionFor(other), snapshotTick: null });
+      this.deliver(other, {
+        kind: 'start',
+        session: this.sessionFor(other),
+        snapshotTick: this.game.cachedTick,
+      });
       this.deliver(other, { kind: 'delay', ticks: other.delayTicks });
     }
     return null;
+  }
+
+  saveOrders(member: Member, request: Extract<ClientMessage, { kind: 'saveOrders' }>): Refusal {
+    if (this.game === null) return 'the game has not started';
+    return this.game.saveOrders(member, request);
+  }
+
+  finish(member: Member, report: Extract<ClientMessage, { kind: 'finish' }>): Refusal {
+    if (this.game === null) return 'the game has not started';
+    return this.game.finish(member, report);
   }
 
   markLoaded(member: Member, world: Extract<ClientMessage, { kind: 'loaded' }>, now: number): Refusal {
@@ -207,40 +252,38 @@ export class Room {
     return null;
   }
 
-  blob(member: Member, upload: BlobUpload): Refusal {
-    if (this.game === null) return 'the game has not started';
-    return this.game.blob(member, upload);
+  blob(member: Member, upload: BlobUpload, now: number): Refusal {
+    if (this.game === null) return this.transfers.upload(member, upload);
+    if (upload.type === 'map' || upload.type === 'initialSave') return 'lobby files are fixed after start';
+    return this.game.blob(member, upload, now);
+  }
+
+  requestInitialSave(member: Member, now: number): Refusal {
+    if (this.game !== null) return 'the game has started';
+    return this.transfers.requestInitialSave(member, now);
+  }
+
+  requestMap(member: Member, now: number): Refusal {
+    if (this.game !== null) return 'the game has started';
+    return this.transfers.requestMap(member, now);
   }
 
   chat(member: Member, text: string): void {
     this.broadcast({ kind: 'chat', from: member.nick, text });
   }
 
-  advance(elapsedMs: number, now: number): void {
-    this.game?.advance(elapsedMs, now);
+  advance(elapsedMs: number, now: number): Refusal {
+    return this.game?.advance(elapsedMs, now) ?? null;
   }
 
   view(): RoomView {
-    const creator = this.members.get(this.creatorToken);
-    if (creator === undefined) throw new Error(`room ${this.id} has members but no creator`);
-    return {
-      id: this.id,
-      state: this.state,
-      creator: creator.nick,
-      settings: this.settings,
-      seats: this.seats.views(),
-      members: [...this.members.values()].map((member) => ({
-        nick: member.nick,
-        seat: member.seat,
-        connected: member.connected,
-      })),
-    };
+    return roomView(this.id, this.state, this.creatorToken, this.lobby.settings, this.seats, this.members);
   }
 
   summary(): RoomSummary {
     return {
       id: this.id,
-      name: this.settings.name,
+      name: this.lobby.settings.name,
       state: this.state,
       members: this.members.size,
       seats: this.seats.count,
@@ -249,10 +292,12 @@ export class Room {
 
   /** The seat returns to its lobby setting; the AI case lands on the clock through the game. */
   private kickOut(target: Member, player: number, now: number): void {
-    const mode = this.seats.vacantModeOf(player);
+    const mode = this.lobby.settings.kickedSeatMode ?? this.seats.vacantModeOf(player);
     if (mode === null || this.game === null) return;
     const tick = this.game.kicked(target, player, mode);
-    this.broadcast({ kind: 'kicked', player, nick: target.nick, mode, tick });
+    if (tick !== null) this.broadcast({ kind: 'kicked', player, nick: target.nick, mode, tick });
+    this.seats.standUp(target);
+    this.seats.setUp(player, { mode });
     this.remove(target);
     this.game.removed(now);
   }
@@ -260,38 +305,31 @@ export class Room {
   private admit(member: Member): void {
     member.joinOrder = this.joined++;
     this.members.set(member.token, member);
+    this.lobby.invalidateReady();
   }
 
   private remove(member: Member): void {
     this.seats.standUp(member);
     this.members.delete(member.token);
+    if (this.game === null) this.lobby.invalidateReady();
     if (member.token === this.creatorToken) {
       const next = this.members.keys().next();
       if (!next.done) this.creatorToken = next.value;
     }
-    this.deliver(member, { kind: 'left' });
     this.hooks.removed(member);
+    this.deliver(member, { kind: 'left' });
     if (this.members.size > 0) this.broadcastView();
   }
 
   private sessionFor(member: Member): GameSession {
-    if (member.seat === null) throw new Error(`${member.nick} has no seat in a started room`);
-    if (this.startedSeats === null) throw new Error('no descriptor before the start');
-    return {
-      world: this.settings.world,
-      seed: this.settings.seed,
-      seats: this.startedSeats,
-      localSeat: member.seat,
-      rules: this.settings.rules,
-      speed: this.settings.speed,
-    };
+    return sessionForMember(member, this.lobby.settings, this.startedSeats);
   }
 
   private deliver(member: Member, message: ServerMessage): void {
     this.hooks.deliver(member, message);
   }
 
-  private broadcastView(): void {
+  broadcastView(): void {
     this.broadcast({ kind: 'room', room: this.view() });
   }
 

@@ -1,6 +1,6 @@
 import type { Simulation } from '@open-northland/sim';
 import { entrySearch } from '../../params.js';
-import { type SaveLoadSession, type SaveOutcome, saveLoadSession } from './controller.js';
+import { type SaveLoadDeps, type SaveLoadSession, type SaveOutcome, saveLoadSession } from './controller.js';
 import { browserSaveDownload, desktopFileBridge, platformSavePicker } from './file-access.js';
 import { storePendingLoad } from './pending-store.js';
 import { createSaveStore } from './store.js';
@@ -10,9 +10,11 @@ export type { LoadOutcome, SaveLoadSession, SaveOutcome } from './controller.js'
 export { saveLoadSession } from './controller.js';
 export { evaluateSaveFile, type LiveWorldIdentity, type SaveRejection } from './evaluate.js';
 
-export interface SaveLoadSessionOptions {
+export interface SaveLoadSessionOptions
+  extends Pick<SaveLoadDeps, 'sessionMetadata' | 'onSaved' | 'captureSave'> {
   readonly sim: Simulation;
   readonly worldToken: string | null;
+  readonly entrySearch?: string;
   readonly setPaused: (paused: boolean) => void;
   readonly isPaused: () => boolean;
 }
@@ -22,7 +24,7 @@ export function createSaveLoadSession(opts: SaveLoadSessionOptions): SaveLoadSes
   const bridge = desktopFileBridge();
   return saveLoadSession({
     ...opts,
-    entrySearch: entrySearch(),
+    entrySearch: opts.entrySearch ?? entrySearch(),
     reload: () => window.location.reload(),
     stagePending: storePendingLoad,
     store: createSaveStore(),

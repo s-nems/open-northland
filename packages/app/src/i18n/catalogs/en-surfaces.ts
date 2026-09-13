@@ -26,6 +26,7 @@ export const enSurfaces = {
     backLabels: { main: 'Menu', newGame: 'Map selection' },
     underConstruction: 'This screen is under construction.',
     screenTitles: {
+      multiplayer: 'Multiplayer',
       newGame: 'New game',
       lobby: 'Lobby',
       load: 'Load game',

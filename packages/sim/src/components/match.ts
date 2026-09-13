@@ -52,6 +52,11 @@ export function isPlayerDead(world: World, player: number): boolean {
   return isValidPlayer(player) && (deadPlayerBits(world) & playerBit(player)) !== 0;
 }
 
+export function matchEnded(world: World): boolean {
+  const rules = matchRules.read(world);
+  return rules.participants !== 0 && ((rules.dead | rules.won) & rules.participants) === rules.participants;
+}
+
 export function matchOutcome(world: World, player: number): MatchOutcome {
   if (isPlayerDead(world, player)) return 'defeat';
   if (isValidPlayer(player) && (wonPlayerBits(world) & playerBit(player)) !== 0) return 'victory';

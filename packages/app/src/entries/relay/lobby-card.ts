@@ -1,4 +1,4 @@
-import type { RoomView } from '@open-northland/net-protocol';
+import { compatibilityIssues, type RoomView } from '@open-northland/net-protocol';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { el, PANEL_STYLE } from '../../view/overlay.js';
 
@@ -28,6 +28,11 @@ export function mountLobbyCard(): LobbyCard {
     room(view, players): void {
       const copy = messages().net;
       title.textContent = formatMessage(copy.roomTitle, { id: view.id });
+      if (view.state !== 'lobby') {
+        detail.textContent =
+          view.state === 'ended' ? messages().hud.matchFinishedTitle : messages().network.starting;
+        return;
+      }
       const seated = view.members.map(
         (member) => `${member.nick}${member.seat === null ? '' : ` (${member.seat})`}`,
       );
@@ -37,6 +42,12 @@ export function mountLobbyCard(): LobbyCard {
           : formatMessage(copy.roomWaiting, { count: view.members.length, players }),
         seated.join(', '),
         formatMessage(copy.roomJoinHint, { id: view.id }),
+        ...compatibilityIssues(view.members, view.creator).map((issue) =>
+          formatMessage(issue.reason === 'missing' ? copy.compatibilityMissing : copy.compatibilityMismatch, {
+            nick: issue.nick,
+            kind: copy.compatibilityKinds[issue.kind],
+          }),
+        ),
       ].join('\n');
     },
     note(text): void {
