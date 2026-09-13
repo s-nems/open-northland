@@ -25,24 +25,24 @@
     "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
   },
   "characters/man-forkbeard": {
-    "digest": "1352a9d31a51c3253e32386053df045e9ef5b6363213d93e8b59ed186ceb1c9f",
+    "digest": "a76fec571ec9031b5872bc2beb4bb4d65c0e82749a440e9150357d5c1fc7443d",
     "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "basis": "Explicit approval of the mining candidate and merge; body pixels and animation timing retained, with shadows rebuilt using the already approved main character opacity of 0.4."
   },
   "characters/man-ravenknot": {
-    "digest": "d2551a44bc1ae24e81d9991c7a7cedda77d5dccc255f3063edc26ab5266be86b",
+    "digest": "c2063986fb78351cf208cec56b9416d3c852173d00568a6c66ad6373c5f7c602",
     "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "basis": "Explicit approval of the mining candidate and merge; body pixels and animation timing retained, with shadows rebuilt using the already approved main character opacity of 0.4."
   },
   "characters/man-redmane": {
-    "digest": "63df2ee324e6998ee14c2d1dd5256ab0ce0626d747f19fc4dde6ef12b9712180",
+    "digest": "daad516bfc6d26350729c7bcc94456b2541c7e1bf37a69264e8582c69726b9bb",
     "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "basis": "Explicit approval of the mining candidate and merge; body pixels and animation timing retained, with shadows rebuilt using the already approved main character opacity of 0.4."
   },
   "characters/man-silver": {
-    "digest": "e1c26450b7ba9a4faae4c3ae4bf09b5b17e254873f2d1c4067bb665d66acc4eb",
+    "digest": "2499ee0e0ccf5d070294747ca349f66efdd103680cdb7c9ab32fdf1eb9414f27",
     "reviewer": "snems",
-    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+    "basis": "Explicit approval of the mining candidate and merge; body pixels and animation timing retained, with shadows rebuilt using the already approved main character opacity of 0.4."
   },
   "characters/woman-blonde": {
     "digest": "79a1f5211da4851337e277b8c5734595a003997683542f373e5a027f64a02987",

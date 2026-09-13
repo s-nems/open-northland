@@ -1342,14 +1342,14 @@
     {
       "id": "mining",
       "name": "Wydobywanie kamienia",
-      "description": "Oburęczny kilof, zamach nad głowę i odbicie przy uderzeniu. Kandydat do oceny.",
+      "description": "Oburęczny kilof, zamach nad głowę i odpoczynek po uderzeniu. Zatwierdzona animacja, 16 klatek.",
       "variants": {
         "man-silver": {
           "SW": {
             "file": "appearances/man-silver/sprites/mining-SW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "aa00f9b01b53db2459d2d960c279996c2e1b6b53fbfa3526f916b13405ad24f0",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1361,7 +1361,7 @@
             "file": "appearances/man-silver/sprites/mining-W-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "484dded349073f91dafdb709089e39cb26a26e2491822c8d2e552f29ff664fa9",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1373,7 +1373,7 @@
             "file": "appearances/man-silver/sprites/mining-NW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "8bbd3e63577dae9ba2c6a8d22f9e8c4288695c284ab99e7d0e21eb9b09ed1d20",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1385,7 +1385,7 @@
             "file": "appearances/man-silver/sprites/mining-N-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "1c34ce40fe666dac14839e6f4b08e2983ea374672330548e00215e567c0d3b23",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1397,7 +1397,7 @@
             "file": "appearances/man-silver/sprites/mining-NE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "5348bea2b74e967a8f12208cae2e69ad988d1381f5bd4bcac5b33e212cdb5dca",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1409,7 +1409,7 @@
             "file": "appearances/man-silver/sprites/mining-E-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "8c8ec3c7796449e71c0251e5365c9c6f816c1c85d895f84adcb3fd643f201172",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1421,7 +1421,7 @@
             "file": "appearances/man-silver/sprites/mining-SE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "5d8fa19e927bc70dbaf4d35aed1dff7fd7c380947128e69141fbdf5e2b749ed7",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1433,7 +1433,7 @@
             "file": "appearances/man-silver/sprites/mining-S-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "648dc88d42db947434086d893b6ee4da590a2fd830ffe91b5b25d5a9a62126fb",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1447,7 +1447,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-SW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "5ec45a9dc82efabe3d149e978b534d901d5742b5293c293f0583096809a9c1bd",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1459,7 +1459,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-W-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "42e5ad573563fb64ba3b8f65e3e5df3c73da471a5d24ae29ed6a27fb64bb002b",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1471,7 +1471,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-NW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "bf521015d59ba5abcd31d73d6de0992b60fcd05c4d571b7fb18ad07332e522b1",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1483,7 +1483,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-N-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "83adf2bb317c95ae82afc2759dc1be6a78d6174e045123370f475defe2003165",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1495,7 +1495,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-NE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "c4e3e7d94ff18a14e4fa1aa47d23206e0e3f206378fd55d4bc9e919168145493",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1507,7 +1507,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-E-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "4c1e64257b934d37324ce1c5f4a1e9b4aa5e70a1961fb0d454874c4e201fb003",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1519,7 +1519,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-SE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "16b0e4b8251ddafecb68be806d637dd74741b2d83761911e85914e92bb605565",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1531,7 +1531,7 @@
             "file": "appearances/man-forkbeard/sprites/mining-S-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "1cc141363edb4f7ebcdcf5bee0e6b75ea4b9ca9ed29eb76c79b3ae8b98535aa1",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1545,7 +1545,7 @@
             "file": "appearances/man-redmane/sprites/mining-SW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "b70b2f86554693f64a75a8d6e7ef1fb35537d625d934d218ff5eabefceed1446",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1557,7 +1557,7 @@
             "file": "appearances/man-redmane/sprites/mining-W-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "4c53ad16de77c8f9eac86a72be7c0deea8ccc5abb3a17dba41dd5a7616b49353",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1569,7 +1569,7 @@
             "file": "appearances/man-redmane/sprites/mining-NW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "11bcbf4dc8ea4d65eb2b82b7d79651d458b6397b597703b649e1259974813192",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1581,7 +1581,7 @@
             "file": "appearances/man-redmane/sprites/mining-N-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "182932abbd4abf62b354e563a30e515a4e535a1afc1a7f6cd65cc0d6f524ef18",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1593,7 +1593,7 @@
             "file": "appearances/man-redmane/sprites/mining-NE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "97b2444adef9876da03ceaac94a38cbe50a3f65fb107d0ddd63606e40bcbb22c",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1605,7 +1605,7 @@
             "file": "appearances/man-redmane/sprites/mining-E-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "385711cab37f0b2324b834e11f16d4f32e64dcec8c254fb28800143439595317",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1617,7 +1617,7 @@
             "file": "appearances/man-redmane/sprites/mining-SE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "4b67239a1473c9878b4f0e860e81c4a7ff7158b494ad65becdee8aa13416d57f",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1629,7 +1629,7 @@
             "file": "appearances/man-redmane/sprites/mining-S-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "23b07268de38fdcb20ce512dcd44950920554b8ac5702e810f9041da01f1bd33",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1643,7 +1643,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-SW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "0012716920c07571cc94421ab414da0c65624d63addd03bce2d0fe655ab867d0",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1655,7 +1655,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-W-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "e2f88c6d99562b09b523d43a2690daf03110532e245d0024b776914cf2660bcf",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1667,7 +1667,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-NW-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "671d730542b0b0043e0ed219b7d1ebc8abcf3ec2f1da431993ee0122c571010d",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1679,7 +1679,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-N-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "9df659f6eb19465c525602b5081c0c07c582d60f45fc50361aa61dbbb3367c1b",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1691,7 +1691,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-NE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "4b9933f8ede2be706aa3c8fd6730a034aa4e30be436545a1d11fa0b3c546fde4",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1703,7 +1703,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-E-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "3d25fd9cf7cb79de699259253e828fc8ee48bc12f8b955065c500c3fbbebec29",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1715,7 +1715,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-SE-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "96e1b2fd7c3b61647436845d1ed9cd4b2516394ff4618c2e729b4583917c7589",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
@@ -1727,7 +1727,7 @@
             "file": "appearances/man-ravenknot/sprites/mining-S-88px.png",
             "frames": 16,
             "duration": 2.4166666666666665,
-            "status": "review",
+            "status": "approved",
             "sha256": "22f855f6520ba0ea4c2b50d01d2c5983a325db0645c45694448742eb7c6e70d0",
             "frameDurations": [
               0.125, 0.125, 0.125, 0.125, 0.4166666666666667, 0.10416666666666667, 0.10416666666666667,
