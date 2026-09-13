@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "id": "goods/stone",
+  "kind": "goods",
+  "sourceBasis": "Independent generated muted House A quarried stone artwork. Identity verified in owned Data/logic/goodtypes.ini: name stone, type 3, landscapeToStore 17; decoder tools/asset-pipeline/src/decoders/ini/types/goods.ts and local content/ir.json agree. Binding uses the good slug, not numeric type. Five quantity states follow existing renderer clamping. World scale, painting and ground anchors are artistic approximations.",
+  "outputs": [
+    {
+      "path": "goods/stone/atlas.png",
+      "content": {
+        "operation": "raster",
+        "sampling": "lanczos3",
+        "width": 576,
+        "height": 96,
+        "alpha": "transparent",
+        "draws": [
+          {
+            "source": "source/v1/pile-1-neutral.png",
+            "alphaBounds": true,
+            "box": [23, 42, 50, 38],
+            "fit": "contain",
+            "align": "bottom",
+            "frameAnchor": {
+              "x": 0.5,
+              "y": 0.8
+            }
+          },
+          {
+            "source": "source/v1/pile-2-neutral.png",
+            "alphaBounds": true,
+            "box": [117, 40, 54, 40],
+            "fit": "contain",
+            "align": "bottom",
+            "frameAnchor": {
+              "x": 0.5,
+              "y": 0.8
+            }
+          },
+          {
+            "source": "source/v1/pile-3-neutral.png",
+            "alphaBounds": true,
+            "box": [212, 33, 56, 47],
+            "fit": "contain",
+            "align": "bottom",
+            "frameAnchor": {
+              "x": 0.5,
+              "y": 0.8
+            }
+          },
+          {
+            "source": "source/v1/pile-4-neutral.png",
+            "alphaBounds": true,
+            "box": [305, 28, 62, 52],
+            "fit": "contain",
+            "align": "bottom",
+            "frameAnchor": {
+              "x": 0.5,
+              "y": 0.8
+            }
+          },
+          {
+            "source": "source/v1/pile-5-neutral.png",
+            "alphaBounds": true,
+            "box": [399, 29, 66, 51],
+            "fit": "contain",
+            "align": "bottom",
+            "frameAnchor": {
+              "x": 0.5,
+              "y": 0.8
+            }
+          },
+          {
+            "source": "source/v1/icon-neutral.png",
+            "alphaBounds": true,
+            "box": [496, 16, 64, 64],
+            "fit": "contain",
+            "align": "bottom",
+            "frameAnchor": {
+              "x": 0.5,
+              "y": 0.8
+            }
+          }
+        ]
+      }
+    },
+    {
+      "path": "goods/stone/runtime.json",
+      "content": {
+        "operation": "json",
+        "value": {
+          "id": "stone",
+          "image": "atlas.png",
+          "width": 576,
+          "height": 96,
+          "scale": 0.5,
+          "sourceBasis": "Independent generated muted House A quarried stone artwork. Identity verified in owned Data/logic/goodtypes.ini: name stone, type 3, landscapeToStore 17; decoder tools/asset-pipeline/src/decoders/ini/types/goods.ts and local content/ir.json agree. Binding uses the good slug, not numeric type. Five quantity states follow existing renderer clamping. World scale, painting and ground anchors are artistic approximations."
+        },
+        "framesFrom": "goods/stone/atlas.png"
+      }
+    }
+  ]
+}

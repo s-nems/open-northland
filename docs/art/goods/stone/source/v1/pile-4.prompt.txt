@@ -1,0 +1,6 @@
+Use case: stylized-concept.
+Asset type: resource ground sprite, Open Northland own art.
+Create a ground pile of EXACTLY 4 rough quarried stone blocks, each matching reference image 2's stone, size and hewn shape. Three blocks at bottom and one resting on top. All 4 blocks must be visibly countable; maintain the same lower-left to upper-right block direction.
+Image 1: canonical muted House A, PRIMARY restrained matte painting, palette and neutral upper-left daylight reference only. Image 2: generated single stone block resource, supporting material, perspective and subject reference. Invent independent artwork; no original game art.
+Elevated orthographic game view, about 28.5 degrees above horizon. Whole compact pile centered with generous empty margins. Neutral mid-grey worked stone with lighter top faces, chipped edges and sparse chisel marks, clear silhouette, no black outline, blue tint or glossy render.
+One PNG with genuine transparent RGBA background, alpha zero outside the stone. NO ground, base, shadow, moss, unrelated props, text, border, checkerboard or solid background.

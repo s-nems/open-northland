@@ -1,0 +1,6 @@
+Use case: stylized-concept.
+Asset type: own-art resource ground sprite for Open Northland.
+Primary request: exactly ONE rough quarried stone block lying on invisible level ground. A hewn chunk of neutral mid-grey stone, roughly rectangular with slightly irregular flat faces, chipped edges and a few shallow chisel marks. It is worked building stone, not a natural rounded boulder, brick, cobble, ore or gem.
+Input image 1: canonical muted House A, PRIMARY palette, matte painting and neutral upper-left lighting reference only; do not copy its architecture or background. Match its hand-painted finish: broad flat colour planes, selective painted edge accents and grain, matte surfaces, no photographic microtexture or soft render shading.
+Elevated orthographic settlement game view, about 28.5 degrees above horizon. Block's long axis runs diagonally lower-left to upper-right, front face towards lower-left. Clear simple silhouette readable at 48 screen pixels, with a lighter top face, medium front face and clearly darker right side. Center whole object with generous empty margins. No ground patch, props, moss, labels, border or cast shadow.
+Output one 1024x1024 PNG on genuinely transparent RGBA background, alpha zero outside the stone, not a painted checkerboard or solid background. Neutral grey, not beige or blue, no black outlines, no gloss.

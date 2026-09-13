@@ -1,0 +1,6 @@
+Use case: stylized-concept.
+Asset type: UI goods icon, Open Northland own art.
+Create a compact UI inventory icon of THREE rough quarried stone blocks in a tight stack, two below and one on top, with legible lighter top faces and chipped edges. Slightly simplified bold material groups for readability at 24 and 32 pixels.
+Image 1: canonical muted House A, PRIMARY restrained matte painting, palette and neutral upper-left daylight reference only. Image 2: generated single stone block resource, supporting material, perspective and subject reference. Invent independent artwork; no original game art.
+Elevated orthographic game view, about 28.5 degrees above horizon. Whole compact stack centered with generous empty margins. Neutral mid-grey worked stone, sparse chisel marks, clear silhouette, no black outline, blue tint or glossy render.
+One PNG with genuine transparent RGBA background, alpha zero outside the stone. NO ground, base, shadow, moss, unrelated props, text, border, checkerboard or solid background.

@@ -1,0 +1,303 @@
+{
+  "version": 1,
+  "generations": [
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "low",
+      "prompt": "pile-1.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        }
+      ],
+      "output": "pile-1.png",
+      "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "low",
+      "prompt": "pile-2.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-2.png",
+      "sha256": "33c122977dda377b58731caf0e32fac11124a770642053e8409881824edea74a"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "low",
+      "prompt": "pile-3.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-3.png",
+      "sha256": "9e511189bc709381c0b77d585f410169821d694f4f9e5a97278909273b989138"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "low",
+      "prompt": "pile-4.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-4.png",
+      "sha256": "24cbe2e30711f63daed0ba28aa8fb3276d128c5c419601f22793da3df075715f"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "low",
+      "prompt": "pile-5.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-5.png",
+      "sha256": "2772767bb753c264f9b4cc9111239fc836edf81d0e4d6c0bb24b3220fc59424d"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "low",
+      "prompt": "icon.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "icon.png",
+      "sha256": "86ff95fa361c21607ae710225d2fe2f40eaebc15f17dfa364a870279512be04e"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "pile-5-corrected.prompt.txt",
+      "references": [
+        {
+          "path": "pile-5.png",
+          "role": "Edit target; generated count was four rather than five",
+          "sha256": "2772767bb753c264f9b4cc9111239fc836edf81d0e4d6c0bb24b3220fc59424d"
+        }
+      ],
+      "output": "pile-5-corrected.png",
+      "sha256": "bd9751855da595bbe9627ee764afd4971d1462334826b6ba36c38dd846e6cfb4"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "normalize.prompt.txt",
+      "references": [
+        {
+          "path": "pile-2.png",
+          "role": "Edit target: warm beige drift and cast shadow to remove",
+          "sha256": "33c122977dda377b58731caf0e32fac11124a770642053e8409881824edea74a"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Neutral grey colour and material reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-2-neutral.png",
+      "sha256": "316d8d01cc229a9623d2c1a41601e6caf498af15906de23c018e6821895aa934"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "normalize.prompt.txt",
+      "references": [
+        {
+          "path": "pile-3.png",
+          "role": "Edit target: warm beige drift and cast shadow to remove",
+          "sha256": "9e511189bc709381c0b77d585f410169821d694f4f9e5a97278909273b989138"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Neutral grey colour and material reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-3-neutral.png",
+      "sha256": "811b6a1fce81fd09b3668ccc40b6fa0a5d2b37c0c9605d7b49246bc2f7db5473"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "normalize.prompt.txt",
+      "references": [
+        {
+          "path": "pile-4.png",
+          "role": "Edit target: warm beige drift and cast shadow to remove",
+          "sha256": "24cbe2e30711f63daed0ba28aa8fb3276d128c5c419601f22793da3df075715f"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Neutral grey colour and material reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-4-neutral.png",
+      "sha256": "4fe8503d3e070acde8bfb4d32fdec71ec0a34278d456254ff9c0b74f1f5927e3"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "normalize.prompt.txt",
+      "references": [
+        {
+          "path": "pile-5-corrected.png",
+          "role": "Edit target: warm beige drift and cast shadow to remove",
+          "sha256": "bd9751855da595bbe9627ee764afd4971d1462334826b6ba36c38dd846e6cfb4"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Neutral grey colour and material reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "pile-5-neutral.png",
+      "sha256": "6d18bcdb5be9617ed20ce1bb23435ba02ebc9164cfa3ef4cfec71285835bc9d3"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "normalize.prompt.txt",
+      "references": [
+        {
+          "path": "icon.png",
+          "role": "Edit target: warm beige drift and cast shadow to remove",
+          "sha256": "86ff95fa361c21607ae710225d2fe2f40eaebc15f17dfa364a870279512be04e"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Neutral grey colour and material reference",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        }
+      ],
+      "output": "icon-neutral.png",
+      "sha256": "afbe4df21cd9726e93f0a26b49ce6c4197ce172e3594c7576065cb9d103c15b7"
+    },
+    {
+      "tool": "OpenAI Images API edit (images/edits)",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "normalize-block.prompt.txt",
+      "references": [
+        {
+          "path": "pile-1.png",
+          "role": "Edit target: warm brownish tint to replace",
+          "sha256": "dc00e8eb3db8e8f6748657d439a032566007952075fa5dd8c2db5ba96f94890b"
+        },
+        {
+          "path": "pile-3-neutral.png",
+          "role": "Neutral grey value and contrast reference",
+          "sha256": "811b6a1fce81fd09b3668ccc40b6fa0a5d2b37c0c9605d7b49246bc2f7db5473"
+        }
+      ],
+      "output": "pile-1-neutral.png",
+      "sha256": "177fbe5c23a3c97fd86232c6809767581b4368ac0130eb3132d40b38c892ebeb"
+    }
+  ],
+  "selected": [
+    "pile-1-neutral.png",
+    "pile-2-neutral.png",
+    "pile-3-neutral.png",
+    "pile-4-neutral.png",
+    "pile-5-neutral.png",
+    "icon-neutral.png"
+  ],
+  "postprocessing": "Recipe crops by alpha >16, adds the shared two-pixel bound padding, and downsamples with Lanczos3. No keying, masks or upscaling. Frames and ground anchors are computed by the recipe. Frames 1 and 4 retain a faint generated contact shading below the stone; a further removal edit washed out the colour and was rejected."
+}
