@@ -137,7 +137,7 @@ export async function assembleMapWorld(
     const tribes = worldTribes(script, loaded?.entities, ir ?? {});
     await boot.begin('sprites');
     const sheet = ownAssets
-      ? await loadOwnSpriteSheet(ir, params.get('ownHead'))
+      ? await loadOwnSpriteSheet(ir, params.get('ownHead'), realContent?.content.goods ?? sandboxGoods())
       : await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods(), tribes);
     await boot.begin('terrain');
     let terrain: TerrainTextureSet;
@@ -159,7 +159,7 @@ export async function assembleMapWorld(
     if (loaded?.objects !== undefined && ir !== null) {
       try {
         const loadedObjects = ownAssets
-          ? await loadOwnMapObjects(app.renderer, loaded.objects, elevation)
+          ? await loadOwnMapObjects(app.renderer, loaded.objects, ir, elevation)
           : await loadMapObjects(loaded.objects, ir, elevation, brightness);
         renderer.setMapObjects(loadedObjects.sprites);
         // Assigned only after the layer accepted the sprites: static refs against an empty layer would
