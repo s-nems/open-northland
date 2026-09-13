@@ -1,8 +1,8 @@
 name: Release
 
-# Manually-dispatched build of everything one commit ships - the desktop installers and the web
-# container image - so the two halves always come from the same source. Run it from the Actions tab
-# against main (optionally an older commit via the `commit` input).
+# Manually-dispatched build of everything one commit ships - the desktop installers, the web
+# container image and the relay image - so every part comes from the same source. Run it from the
+# Actions tab against main (optionally an older commit via the `commit` input).
 #
 # Each OS builds its own installers natively, then `publish` collects them into a `build-<short-sha>`
 # prerelease: release assets are plain public download links, unlike workflow artifacts which require
