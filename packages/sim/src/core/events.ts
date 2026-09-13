@@ -43,7 +43,7 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
-      /** A settler gave the place it was heading for up as unreachable, its route retries spent. */
+      /** A settler gave a destination up as unreachable. */
       readonly kind: 'settlerGoalUnreachable';
       readonly entity: Entity;
     }

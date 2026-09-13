@@ -15,6 +15,7 @@ import {
   OpenChestOrder,
   Owner,
   PathRequest,
+  Person,
   PlayerOrder,
   Position,
   Settler,
@@ -60,6 +61,11 @@ function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGra
 function clearPlayerOrder(world: World, e: Entity): void {
   world.remove(e, PlayerOrder);
   clearNavState(world, e);
+}
+
+/** Captured livestock carry an Owner and take walk orders too, but only a person is reported lost. */
+function announceLostWay(world: World, ctx: SystemContext, e: Entity): void {
+  if (world.has(e, Person)) ctx.events.emit({ kind: 'settlerGoalUnreachable', entity: e });
 }
 
 /**
@@ -108,10 +114,14 @@ function startPlayerWalk(
 
   const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
   // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the order is
-  // refused and the unit stays put (source basis: observed original guidepost behaviour).
+  // refused and the unit stays put. Approximation: the original starts the walk and lets its guided
+  // pathfinder fail it, raising the same "lost" note (the original symbols, `an original routine`).
   if (confined) {
     const limit = navigationLimitFor(world, ctx.content, terrain, e);
-    if (limit !== null && !limit.allowsNode(goal)) return false;
+    if (limit !== null && !limit.allowsNode(goal)) {
+      announceLostWay(world, ctx, e);
+      return false;
+    }
   }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
@@ -188,6 +198,9 @@ export const playerOrderSystem: System = (world, ctx) => {
     }
     if (world.tryGet(e, PathRequest)?.failed) {
       // A failed request is never retried, so the order must be dropped or the unit freezes on it forever.
+      // A signpost errand is the original's build-guide task, whose failure is a plain task failure
+      // (`an original routine`), never a lost note.
+      if (!world.has(e, ErectSignpostOrder)) announceLostWay(world, ctx, e);
       clearPlayerOrder(world, e);
       continue;
     }

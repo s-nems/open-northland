@@ -5,6 +5,8 @@ import {
   ErectSignpostOrder,
   FOG_MODE,
   Owner,
+  PathRequest,
+  PlayerOrder,
   Position,
   Settler,
   SIGNPOST_NAV_RADIUS_NODES,
@@ -101,6 +103,20 @@ describe('placeSignpost - the scout erects a guidepost', () => {
     expect(posts.length).toBe(1);
     const p = sim.world.get(posts[0] as Entity, Position);
     expect(fx.toInt(p.x)).toBe(8); // node (16,4) = tile (8,2)
+  });
+
+  it('a signpost walk whose route fails drops the errand without reporting the scout lost', () => {
+    const sim = freshSim();
+    const scout = makeUnit(sim, 2, 2, SCOUT);
+    sim.enqueueSetup({ kind: 'placeSignpost', entity: scout, x: 16, y: 4 });
+    sim.step();
+    expect(sim.world.has(scout, ErectSignpostOrder)).toBe(true);
+    const goal = sim.world.get(scout, ErectSignpostOrder).goal;
+    sim.world.add(scout, PathRequest, { start: goal, goal, failed: true });
+    sim.step();
+    expect(sim.world.has(scout, PlayerOrder)).toBe(false);
+    expect(sim.world.has(scout, ErectSignpostOrder)).toBe(false);
+    expect(sim.events.current()).not.toContainEqual({ kind: 'settlerGoalUnreachable', entity: scout });
   });
 
   it('a non-scout issuer is skipped', () => {

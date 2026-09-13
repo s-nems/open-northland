@@ -360,7 +360,7 @@ export const plGame = {
       '12': 'opada z sił',
       '14': 'chce się pomodlić',
       '17': 'nie ma zajęcia',
-      '18': 'błądzi bez drogowskazów',
+      '18': 'nie zna drogi bez nowych drogowskazów',
       '23': 'nie ma gdzie pracować',
       '47': 'ledwo się trzyma',
       '51': 'dorasta',

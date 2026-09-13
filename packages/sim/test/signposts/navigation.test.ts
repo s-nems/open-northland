@@ -67,16 +67,18 @@ describe('setSignpostNavigation + moveUnit - the confinement rule', () => {
     expect(ordered(sim, u)).toBe(true);
   });
 
-  it('ON: a goal beyond the local circle is refused - the settler stays put', () => {
+  it('ON: a goal beyond the local circle is refused - the settler stays put and is reported lost', () => {
     const sim = confinedSim();
     const u = ownedUnit(sim, 2, 2, 1);
     sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + 2 * LOCAL_NAV_RADIUS_NODES, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(false);
-    // A goal within the local circle is obeyed.
+    expect(sim.events.current()).toContainEqual({ kind: 'settlerGoalUnreachable', entity: u });
+    // A goal within the local circle is obeyed, and silently.
     sim.enqueueSetup({ kind: 'moveUnit', entity: u, x: 4 + LOCAL_NAV_RADIUS_NODES, y: 4 });
     sim.step();
     expect(ordered(sim, u)).toBe(true);
+    expect(sim.events.current()).not.toContainEqual({ kind: 'settlerGoalUnreachable', entity: u });
   });
 
   it('ON: scouts, fighters and hunters are exempt', () => {

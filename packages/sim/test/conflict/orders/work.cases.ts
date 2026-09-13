@@ -221,7 +221,7 @@ describe('setJob work-flag lifecycle', () => {
 });
 
 describe('PlayerOrder abandonment', () => {
-  it('abandons the order and clears the dead nav state when the route fails (unreachable target)', () => {
+  it('abandons the order, clears the dead nav state and tells the player the settler is lost when the route fails', () => {
     const s = sim();
     const e = ownedWoodcutter(s, 0, 0);
     // A target the pathfinder can never reach leaves a failed PathRequest that is never retried;
@@ -235,5 +235,6 @@ describe('PlayerOrder abandonment', () => {
     expect(s.world.has(e, PlayerOrder)).toBe(false); // order abandoned
     expect(s.world.has(e, MoveGoal)).toBe(false); // dead nav state cleared
     expect(s.world.has(e, PathRequest)).toBe(false);
+    expect(s.events.current()).toContainEqual({ kind: 'settlerGoalUnreachable', entity: e });
   });
 });
