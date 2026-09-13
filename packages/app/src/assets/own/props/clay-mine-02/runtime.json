@@ -62,8 +62,6 @@
       }
     }
   ],
-  "editNames": [
-    "clay mine 02"
-  ],
+  "editNames": ["clay mine 02"],
   "sourceBasis": "Independent clay artwork. Two mine EditNames and five ascending depletion states per mine verified in owned landscapes.cif against decoded IR. Source-frame extents and offsets use ls_ground.clay01 atlas bobs 60-69 at twice source resolution and scale 0.5. Painted shapes and material finish are artistic approximations."
 }
