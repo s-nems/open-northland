@@ -110,6 +110,8 @@ Bone-name agreement alone is insufficient. Do not regenerate a motion per facing
   Body and shadow use the same frame order. Repeated steps never add texture cells.
 - Existing male walk/idle/mining use 16 poses each and hammer 12. The woman's walk uses 16 poses;
   her six-second idle uses 16 poses.
+- A clip may set `limb_occlusion` (0–1, default 0) to add contact shading to `limb_texture` paint.
+  The shading uses a 0.12 m ambient-occlusion radius and leaves other painted regions unchanged.
 - Source strips use 192×144 cells, feet y=128. The default runtime crop is 96×120, feet (48,104).
   Male equipment atlases use `runtimeCrop` 144×144, feet (72,128), for the larger mining tool.
 - Clips may set `renderPadding` to expand the Blender source frame at unchanged pixel density.

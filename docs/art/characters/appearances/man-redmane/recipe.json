@@ -82,6 +82,7 @@
       ],
       "equipment": "../../equipment/mining-pickaxe/socket.json",
       "limb_texture": "../../shared/body/model/rigged-base-0.png",
+      "limb_occlusion": 0.55,
       "atomicId": 25,
       "renderPadding": 64
     }

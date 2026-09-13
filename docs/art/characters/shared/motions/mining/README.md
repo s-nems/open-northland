@@ -3,10 +3,12 @@
 `motion/` retains the Meshy Motion Prime request, receipts, source FBX and retargeted GLB.
 `prepare.py` removes lateral torso rotation while retaining the generated forward bend, hip motion
 and head nod. It fits the two-hand grip along an overhead arc, raises and retracts the shoulders
-during the backswing, plants the feet with forward knee poles and closes the loop. Two-hand reach is limited to 84% of arm length, with downward elbow poles.
+during the backswing, plants the feet with forward knee poles and closes the loop. Two-hand reach is limited to 78% of arm length, with downward elbow poles.
 The overhead shoulder adjustment preserves the raised grip; other poses bring the handle closer to the body. These contact and shoulder adjustments
 are authored visual approximations. Palms face the handle with their finger axis perpendicular
-to the shaft; the return uses the same grip orientation. `cycle.json` owns source sampling and the tool trajectory.
+to the shaft; the return uses the same grip orientation. The handle sits 0.105 m along the palm axis,
+with hands spaced 0.20 m apart. Mining enables `limb_occlusion: 0.55` for local contact shading
+on exposed arms and hands while retaining the source skin paint. `cycle.json` owns source sampling and the tool trajectory.
 
 Playback uses 16 poses over 29/12 seconds, one visual swing per stone-harvest atomic.
 The owned-copy `atomicanimations12/atomicanimations.ini` defines a 29-step stone cycle;
@@ -33,5 +35,5 @@ without changing camera pixel density, final cell dimensions or foot anchors.
 
 Repeat the export for all four male appearances. Preserve shared cameras, layouts and walk
 calibration. Review the full loop, overhead clearance, grip and stone contact on a playable map.
-The long-beard appearance still requires contact cleanup. Sources and sprites are candidates,
+Bearded appearances still require hand/beard contact cleanup during lift and impact. Sources and sprites are candidates,
 not approved runtime delivery.
