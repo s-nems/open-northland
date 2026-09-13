@@ -10,10 +10,16 @@ import { walkFiles } from './walk.js';
  */
 export interface SourceRoots {
   readonly game: string;
+  /** Caller-supplied release label, not inferred from installation folder or executable. */
+  readonly modVersion?: string | undefined;
   readonly mod: string | undefined;
   /** The `.lib` members unpacked under `--out`; absent until the unpack stage has run. */
   readonly archive?: string | undefined;
+  /** Winning extracted members, case-folded relative paths; absent means unverified origin. */
+  readonly archiveOrigins?: ReadonlyMap<string, ArchiveOrigin> | undefined;
 }
+
+export type ArchiveOrigin = 'base' | 'mod' | 'unknown';
 
 /** One source file found under the roots: its root-relative path and the winning absolute path. */
 export interface SourceFile {
@@ -32,8 +38,12 @@ export function rootsInOrder(roots: SourceRoots): readonly string[] {
  * path collision with its `.lib` twin. Source basis: data consistency, docs/SOURCES.md "Source
  * precedence".
  */
-export function withArchiveLayer(roots: SourceRoots, outDir: string): SourceRoots {
-  return { ...roots, archive: outDir };
+export function withArchiveLayer(
+  roots: SourceRoots,
+  outDir: string,
+  archiveOrigins?: ReadonlyMap<string, ArchiveOrigin>,
+): SourceRoots {
+  return { ...roots, archive: outDir, archiveOrigins };
 }
 
 /**

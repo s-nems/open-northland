@@ -19,6 +19,7 @@ import { cutsceneIdsOf, resolveMapBriefing } from './briefing.js';
 import { excludeStringTableCopies, mapIdFromPath } from './info.js';
 import { loadMapStringTable, resolveMapMeta } from './meta.js';
 import { minimapToPng } from './minimap.js';
+import { mapProvenance } from './provenance.js';
 import { resolveMapScript } from './script.js';
 import { type MapDatTerrainFile, mapDatToTerrain } from './terrain/index.js';
 
@@ -121,10 +122,9 @@ export async function convertMapDatTree(
     await fs.rm(scriptPath);
     await fs.rm(briefingPath);
     const strings = await loadMapStringTable(fs, mapDirs, rel);
-    const metaFile = await resolveMapMeta(fs, mapDirs, rel, cifSections, strings);
-    if (metaFile !== undefined) {
-      await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
-    }
+    const metadata = await resolveMapMeta(fs, mapDirs, rel, cifSections, strings);
+    const metaFile = { ...metadata, provenance: await mapProvenance(fs, roots, { rel, path }) };
+    await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
     let scriptFile: MapScript | undefined;
     try {
       scriptFile = await resolveMapScript(fs, mapDirs, rel, cifSections, strings);
@@ -173,7 +173,7 @@ export async function convertMapDatTree(
       width: terrain.width,
       height: terrain.height,
       output,
-      meta: metaFile !== undefined,
+      meta: true,
       minimap,
       minimapSynthesized,
       script: scriptFile !== undefined,

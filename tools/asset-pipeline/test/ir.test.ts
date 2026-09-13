@@ -62,6 +62,11 @@ describe('buildIr / resolveIniSources', () => {
     await rm(join(game, '..'), { recursive: true, force: true });
   });
 
+  it('records only a caller-supplied mod release label', async () => {
+    expect((await buildIr(fs, { game, mod: game })).manifest.modVersion).toBeUndefined();
+    expect((await buildIr(fs, { game, mod: game, modVersion: '1.3.1' })).manifest.modVersion).toBe('1.3.1');
+  });
+
   it('reads the readable .ini sources and assembles a validated ContentSet', async () => {
     const set = await buildIr(fs, { game, mod: game });
 

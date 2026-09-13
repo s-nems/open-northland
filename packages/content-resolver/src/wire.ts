@@ -24,8 +24,17 @@ export interface MapsIndexPlayerSlot {
   readonly aiAllowed: boolean;
 }
 
+/** Mirrors the data MapProvenance sidecar without adding a runtime schema dependency.
+ * Source classification only; absent/unknown never establishes delivery eligibility. */
+export interface MapsIndexProvenance {
+  readonly kind: 'base' | 'mod' | 'user' | 'unknown';
+  readonly folder: string;
+  readonly layer: 'game' | 'mod' | 'archive';
+}
+
 /** One `/maps-index` entry: a decoded map's stem id + the pipeline's optional menu sidecars. */
 export interface MapsIndexEntry {
+  readonly provenance?: MapsIndexProvenance;
   readonly id: string;
   readonly name?: string;
   readonly description?: string;

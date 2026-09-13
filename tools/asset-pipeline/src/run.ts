@@ -28,7 +28,11 @@ import { indexSourceAssets } from './stages/source-files.js';
  * the desktop shell's first-run installer. `progress` is optional live-UI telemetry.
  */
 export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgress): Promise<void> {
-  const roots: SourceRoots = { game: args.game, mod: await resolveModRoot(fs, args.game, args.modRoot) };
+  const roots: SourceRoots = {
+    game: args.game,
+    mod: await resolveModRoot(fs, args.game, args.modRoot),
+    modVersion: args.modVersion,
+  };
   console.log(`[pipeline] game=${args.game} mod=${roots.mod} out=${args.out}`);
 
   await clearPipelineManifest(fs, args.out);
@@ -43,7 +47,11 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
 
   // The unpack above is this layer's precondition; <game> == <out> is not a supported invocation.
-  const sources = withArchiveLayer(roots, args.out);
+  const sources = withArchiveLayer(
+    roots,
+    args.out,
+    new Map(extracted.map(({ member, origin }) => [member.toLowerCase(), origin])),
+  );
 
   progress?.stage?.('pictures');
   const pictures = await convertPcxTree(fs, sources, args.out, progress?.item);
@@ -156,7 +164,7 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   const briefings = terrains.filter((t) => t.briefing).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
-      `(${totalCells} cells total, ${metas} name/description sidecar(s), ${minimaps} minimap(s) ` +
+      `(${totalCells} cells total, ${metas} metadata sidecar(s), ${minimaps} minimap(s) ` +
       `of which ${synthesized} synthesized, ${scripts} script sidecar(s), ${briefings} briefing sidecar(s)) ` +
       `into ${vjoin(args.out, 'maps')}`,
   );

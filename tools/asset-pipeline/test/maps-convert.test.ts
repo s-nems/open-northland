@@ -86,10 +86,12 @@ describe('convertMapDatTree', () => {
   /** Raw single-byte string → bytes (for CP1250 fixtures written verbatim to disk). */
   const rawBytes = (s: string): Uint8Array => Uint8Array.from(s, (c) => c.charCodeAt(0) & 0xff);
 
-  it('emits no meta/minimap sidecars for a folder without text or minimap', async () => {
+  it('emits provenance metadata even without text or minimap', async () => {
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
-    expect(done.find((d) => d.id === 'forteca')).toMatchObject({ meta: false, minimap: false });
-    await expect(readFile(join(out, 'maps', 'forteca.meta.json'))).rejects.toThrow();
+    expect(done.find((d) => d.id === 'forteca')).toMatchObject({ meta: true, minimap: false });
+    expect(JSON.parse(await readFile(join(out, 'maps', 'forteca.meta.json'), 'utf8'))).toEqual({
+      provenance: { kind: 'mod', folder: 'CnModMaps/forteca', layer: 'game' },
+    });
     await expect(readFile(join(out, 'maps', 'forteca.png'))).rejects.toThrow();
   });
 
@@ -109,7 +111,7 @@ describe('convertMapDatTree', () => {
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
     expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: true, minimap: true });
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toEqual({ name: 'BŁĘKIT', description: 'Opis mapy' });
+    expect(meta).toMatchObject({ name: 'BŁĘKIT', description: 'Opis mapy' });
     const png = await decodePng(await readFile(join(out, 'maps', 'tutorial_002.png')));
     expect({ width: png.width, height: png.height }).toEqual({ width: 2, height: 1 });
   });
@@ -140,7 +142,7 @@ describe('convertMapDatTree', () => {
     }
     await convertMapDatTree(fs, { game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toEqual({ name: 'Samotnia', description: 'Desc pol' });
+    expect(meta).toMatchObject({ name: 'Samotnia', description: 'Desc pol' });
   });
 
   it('resolves the map cif case-insensitively (a mixed-case Map.CIF still yields its header)', async () => {
@@ -163,7 +165,7 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree(fs, { game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toEqual({ name: 'Samotnia', description: 'Opis' });
+    expect(meta).toMatchObject({ name: 'Samotnia', description: 'Opis' });
   });
 
   it('falls back to the encrypted strings.cif when no strings.ini exists (re-decoded to CP1250)', async () => {
@@ -180,7 +182,7 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree(fs, { game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toEqual({ name: 'Błękit', description: 'Opis' });
+    expect(meta).toMatchObject({ name: 'Błękit', description: 'Opis' });
   });
 
   it('prefers the readable strings.ini over a sibling strings.cif (golden rule 4)', async () => {
@@ -196,7 +198,7 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree(fs, { game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toEqual({ name: 'Readable' });
+    expect(meta).toMatchObject({ name: 'Readable' });
   });
 
   it('resolves the string ids from a readable misc.inc header before the encrypted map.cif', async () => {
@@ -225,10 +227,10 @@ describe('convertMapDatTree', () => {
     );
     await convertMapDatTree(fs, { game, mod: undefined }, out);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
-    expect(meta).toEqual({ name: 'Wlasciwa', description: 'Opis99' });
+    expect(meta).toMatchObject({ name: 'Wlasciwa', description: 'Opis99' });
   });
 
-  it('removes a stale meta sidecar when a re-run no longer finds strings', async () => {
+  it('removes stale metadata strings when a re-run no longer finds strings', async () => {
     const dir = join(game, 'CnModMaps', 'tutorial_002');
     await mkdir(join(dir, 'text', 'pol'), { recursive: true });
     await writeFile(join(dir, 'text', 'pol', 'strings.ini'), rawBytes('[text]\nstringn 0 "Nazwa"\n'));
@@ -236,23 +238,27 @@ describe('convertMapDatTree', () => {
     await readFile(join(out, 'maps', 'tutorial_002.meta.json')); // emitted on the first run
     await rm(join(dir, 'text'), { recursive: true, force: true });
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
-    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: false });
-    await expect(readFile(join(out, 'maps', 'tutorial_002.meta.json'))).rejects.toThrow();
+    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: true });
+    expect(JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'))).toEqual({
+      provenance: { kind: 'mod', folder: 'CnModMaps/tutorial_002', layer: 'game' },
+    });
   });
 
   it('clears a same-id twin sidecar within one run so last-write-wins covers sidecars too', async () => {
     // `tutorial-002` slugs to the same id and sorts first (`-` < `_`); it carries strings, the
-    // winning `tutorial_002` does not, so the winner must clear the twin's meta.
+    // winning `tutorial_002` does not, so the winner must clear the twin's strings.
     const twin = join(game, 'CnModMaps', 'tutorial-002');
     await mkdir(join(twin, 'text', 'pol'), { recursive: true });
     await writeFile(join(twin, 'map.dat'), buildMapDat(1, 1, [2, 2, 2, 2]));
     await writeFile(join(twin, 'text', 'pol', 'strings.ini'), rawBytes('[text]\nstringn 0 "Nazwa"\n'));
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
     expect(done.map((d) => [d.id, d.meta])).toEqual([
-      ['forteca', false],
+      ['forteca', true],
       ['tutorial_002', true],
-      ['tutorial_002', false],
+      ['tutorial_002', true],
     ]);
-    await expect(readFile(join(out, 'maps', 'tutorial_002.meta.json'))).rejects.toThrow();
+    expect(JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'))).toEqual({
+      provenance: { kind: 'mod', folder: 'CnModMaps/tutorial_002', layer: 'game' },
+    });
   });
 });

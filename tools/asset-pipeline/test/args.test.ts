@@ -19,6 +19,17 @@ describe('parseArgs', () => {
     expect(parseArgs(['--game', 'g'])).toEqual({ game: 'g', modRoot: undefined, out: 'content' });
   });
 
+  it('preserves an explicit mod release label independently of paths', () => {
+    const args = parseArgs(['--game', 'g', '--mod-version', '1.3.1']);
+    expect(args.modVersion).toBe('1.3.1');
+    expect(resolveArgs(args, '/tmp').modVersion).toBe('1.3.1');
+    expect(parseArgs(['--game', 'g']).modVersion).toBeUndefined();
+    for (const value of ['', ' ', '--out', 'x'.repeat(129)]) {
+      expect(() => parseArgs(['--game', 'g', '--mod-version', value])).toThrow(/mod-version/);
+    }
+    expect(() => parseArgs(['--game', 'g', '--mod-version'])).toThrow(/mod-version/);
+  });
+
   it('throws when --game is missing', () => {
     expect(() => parseArgs(['--mod-root', 'm'])).toThrow(/--game/);
   });

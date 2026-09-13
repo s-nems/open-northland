@@ -6,6 +6,8 @@ export interface Args {
   game: string;
   /** The culturesnation mod overlay root (a game-root-shaped directory), or undefined to auto-detect. */
   modRoot: string | undefined;
+  /** Explicit release label from the installed mod package; absent means unknown. */
+  modVersion?: string;
   out: string;
 }
 
@@ -17,12 +19,27 @@ export function parseArgs(argv: readonly string[]): Args {
   const game = get('--game');
   if (game === undefined) {
     throw new Error(
-      'usage: pipeline --game <dir> [--mod-root <dir>] [--out <dir>] - a mod installed inside the ' +
+      'usage: pipeline --game <dir> [--mod-root <dir>] [--mod-version <version>] [--out <dir>] - a mod installed inside the ' +
         `game folder is auto-detected (${CULTURESNATION_MOD}/); --mod-root points at a mod unpacked ` +
         'elsewhere',
     );
   }
-  return { game, modRoot: get('--mod-root'), out: get('--out') ?? 'content' };
+  const modVersion = get('--mod-version');
+  if (
+    argv.includes('--mod-version') &&
+    (modVersion === undefined ||
+      modVersion.startsWith('--') ||
+      modVersion.trim().length === 0 ||
+      modVersion.length > 128)
+  ) {
+    throw new Error('--mod-version requires a nonempty release label of at most 128 characters');
+  }
+  return {
+    game,
+    modRoot: get('--mod-root'),
+    out: get('--out') ?? 'content',
+    ...(modVersion === undefined ? {} : { modVersion }),
+  };
 }
 
 /**
@@ -32,6 +49,7 @@ export function parseArgs(argv: readonly string[]): Args {
  */
 export function resolveArgs(args: Args, baseDir: string): Args {
   return {
+    ...args,
     game: resolve(baseDir, args.game),
     modRoot: args.modRoot === undefined ? undefined : resolve(baseDir, args.modRoot),
     out: resolve(baseDir, args.out),

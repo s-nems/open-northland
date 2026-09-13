@@ -1,8 +1,10 @@
 import { z } from 'zod';
+import { MapProvenance } from './provenance.js';
 
-/** A map's `maps/<id>.meta.json` sidecar: the menu-facing strings and the `[misc_music]` code, each
- *  absent when the map ships none. Not strict, so a newer sidecar with an extra field still loads. */
+/** A map's metadata sidecar; optional strings/music and extraction provenance.
+ * Not strict, so a newer sidecar with an extra field still loads. */
 export const MapMeta = z.object({
+  provenance: MapProvenance.optional(),
   name: z.string().optional(),
   description: z.string().optional(),
   /** `DM_MUSIC_TYPE_*` (0-38). */

@@ -3,6 +3,7 @@ import { type Vfs, vdirname } from '@open-northland/vfs';
 import { cifBytesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
 import { collectSourceFilesNamed, type SourceFile, type SourceRoots } from '../../roots.js';
+import { mapProvenance } from './provenance.js';
 
 /**
  * One `map.cif`'s bytes plus a slug id to its validated logic header. Throws an `ini:`/`cif:`-prefixed
@@ -57,7 +58,14 @@ export async function decodeMapTree(fs: Vfs, roots: SourceRoots): Promise<MapInf
   for (const { rel, path } of found) {
     try {
       const bytes = await fs.readFile(path);
-      maps.push(mapCifToInfo(bytes, mapIdFromPath(rel), { file: rel, layer: 'base' }));
+      const provenance = await mapProvenance(fs, roots, { rel, path });
+      maps.push({
+        ...mapCifToInfo(bytes, mapIdFromPath(rel), {
+          file: rel,
+          layer: provenance.kind === 'mod' ? 'mod' : 'base',
+        }),
+        provenance,
+      });
     } catch (err) {
       console.warn(`[pipeline] skipped map ${rel}: ${errorMessage(err)}`);
     }

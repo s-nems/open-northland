@@ -37,6 +37,7 @@ export const IrManifest = z.strictObject({
   }),
   /** The pipeline's conversion revision, part of a save file's content identity. */
   contentRevision: z.number().int().nonnegative().default(NO_PIPELINE_REVISION),
+  modVersion: z.string().trim().min(1).max(128).optional(),
   generatedFrom: z.strictObject({
     game: z.string(),
     mod: z.string().optional(),

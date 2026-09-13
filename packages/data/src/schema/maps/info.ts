@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Provenance } from '../record.js';
+import { MapProvenance } from './provenance.js';
 
 /**
  * The decoded logic header of one `map.cif`: the declarative scalars at the top of its `CStringArray`
@@ -7,6 +8,7 @@ import { Provenance } from '../record.js';
  * scripting payload are separate per-map artifacts, and `AIData` stays unextracted.
  */
 export const MapInfo = z.strictObject({
+  provenance: MapProvenance.optional(),
   /** Stable slug id (the map folder name, lower-cased), the cross-reference key. */
   id: z.string(),
   /** Map width in cells (`logiccontrol` `mapsize <w> <h>`, first value). */

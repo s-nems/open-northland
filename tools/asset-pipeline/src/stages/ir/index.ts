@@ -75,6 +75,7 @@ export async function buildIr(fs: Vfs, roots: SourceRoots): Promise<ContentSet> 
     manifest: {
       version: IR_VERSION,
       contentRevision: CONTENT_REVISION,
+      ...(roots.modVersion === undefined ? {} : { modVersion: roots.modVersion }),
       generatedFrom: { game: roots.game, mod: roots.mod },
     },
     goods,

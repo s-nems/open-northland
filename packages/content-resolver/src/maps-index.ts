@@ -1,6 +1,6 @@
 import { type ReadableVfs, readText, vjoin } from '@open-northland/vfs';
 import { byCodeUnit, fileNamesIn } from './dir-listing.js';
-import type { MapsIndexEntry, MapsIndexPlayerSlot } from './wire.js';
+import type { MapsIndexEntry, MapsIndexPlayerSlot, MapsIndexProvenance } from './wire.js';
 
 /** The sidecar's `[multiplayer]` lobby table, read tolerantly off the parsed JSON. */
 interface ScriptMultiplayer {
@@ -77,11 +77,30 @@ async function readSidecar(dir: MapsDir, id: string, suffix: string): Promise<un
   }
 }
 
-/** Display strings from `<id>.meta.json`; a wrong-typed field is dropped without a warning. */
+/** Mirrors the strict data MapProvenance schema at this untrusted wire boundary. */
+function provenanceOf(raw: unknown): MapsIndexProvenance | undefined {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined;
+  const { kind, folder, layer } = raw as Record<string, unknown>;
+  if (Object.keys(raw).some((key) => key !== 'kind' && key !== 'folder' && key !== 'layer')) return undefined;
+  if (kind !== 'base' && kind !== 'mod' && kind !== 'user' && kind !== 'unknown') return undefined;
+  if (layer !== 'game' && layer !== 'mod' && layer !== 'archive') return undefined;
+  if (
+    typeof folder !== 'string' ||
+    folder.length === 0 ||
+    folder.startsWith('/') ||
+    folder.includes('\\') ||
+    folder.includes(':') ||
+    folder.split('/').some((part) => part === '' || part === '.' || part === '..')
+  )
+    return undefined;
+  return { kind, folder, layer };
+}
+
+/** Optional metadata from `<id>.meta.json`; malformed fields are dropped. */
 async function metaOf(
   dir: MapsDir,
   id: string,
-): Promise<{ readonly name?: string; readonly description?: string }> {
+): Promise<Pick<MapsIndexEntry, 'name' | 'description' | 'provenance'>> {
   const parsed = await readSidecar(dir, id, '.meta.json');
   if (parsed === undefined) return {};
   if (typeof parsed !== 'object' || parsed === null) {
@@ -89,7 +108,9 @@ async function metaOf(
     return {};
   }
   const meta = parsed as Record<string, unknown>;
+  const provenance = provenanceOf(meta.provenance);
   return {
+    ...(provenance === undefined ? {} : { provenance }),
     ...(typeof meta.name === 'string' ? { name: meta.name } : {}),
     ...(typeof meta.description === 'string' ? { description: meta.description } : {}),
   };

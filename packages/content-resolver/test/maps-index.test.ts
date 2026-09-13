@@ -28,6 +28,35 @@ describe('buildMapsIndexEntries', () => {
     ]);
   });
 
+  it('serves validated provenance including explicit unknown and drops malformed or legacy metadata', async () => {
+    const valid = { kind: 'mod', folder: 'CnModMaps/example', layer: 'game' };
+    const cases = [
+      valid,
+      { ...valid, kind: 'unknown' },
+      undefined,
+      null,
+      { ...valid, kind: 'other' },
+      { ...valid, layer: 'other' },
+      { ...valid, folder: '../escape' },
+      { ...valid, folder: '/absolute' },
+      { ...valid, folder: 'C:/install' },
+      { ...valid, folder: 'a\\b' },
+      { ...valid, folder: 'a//b' },
+      { ...valid, extra: true },
+    ];
+    for (const [index, provenance] of cases.entries()) {
+      const id = `map_${String(index).padStart(2, '0')}`;
+      await writeFile(join(mapsRoot, `${id}.json`), '{}');
+      await writeFile(join(mapsRoot, `${id}.meta.json`), JSON.stringify({ name: 'Map', provenance }));
+    }
+    const entries = await buildMapsIndexEntries(fs, mapsRoot);
+    expect(entries[0]?.provenance).toEqual(valid);
+    expect(entries[1]?.provenance).toEqual({ ...valid, kind: 'unknown' });
+    expect(entries.slice(2).every((entry) => entry.provenance === undefined && entry.name === 'Map')).toBe(
+      true,
+    );
+  });
+
   it('never lists a .meta.json sidecar as a map of its own', async () => {
     await writeFile(join(mapsRoot, 'lonely.meta.json'), '{"name":"ghost"}');
     await writeFile(join(mapsRoot, 'lonely.briefing.json'), '{"texts":{}}');
