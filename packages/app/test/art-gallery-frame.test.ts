@@ -61,10 +61,11 @@ describe('gallery animation controls', () => {
     const impact = galleryCharacterFrame(ref, state, 18 / TICKS_PER_SECOND);
     expect(clip.samplePhases[impact]).toBe(0.375);
     expect(galleryCharacterFrame(ref, state, 29 / TICKS_PER_SECOND)).toBe(0);
-    expect(clip.frameDurations[impact]).toBe(0.6875);
+    expect(clip.frameDurations[impact]).toBe(0.0625);
+    expect(clip.frameDurations[impact + 1]).toBe(0.6875);
     expect(clip.frameDurations[4]).toBeCloseTo(5 / 12);
     expect(
-      Math.max(...clip.frameDurations.filter((_, index) => index !== impact && index !== 4)),
+      Math.max(...clip.frameDurations.filter((_, index) => index !== impact + 1 && index !== 4)),
     ).toBeLessThanOrEqual(0.125);
   });
 
