@@ -1,24 +1,22 @@
-# Teach civilian trades in the school
+# Show civilian learners in the school building panel
 
-**Area:** sim, app · **Priority:** P2
-**Blocked by:** [school-size extraction](../pipeline/building-school-size.md)
+**Area:** app · **Priority:** P2
 
-The sim trains recruits at a barracks but does not implement the school's LEARN path. Readable rows
-allow up to five learners to train toward civilian jobs and goods mastered by another tribe member.
-Several targets use their job experience bucket rather than the general TRAINING bucket.
-
-The TRAINING bucket is cleared when the learner changes target. It must not accrue permanently and
-pre-pay later lessons.
+Civilian lessons, capacity, target qualifications and the learn command are implemented. The selected
+settler panel shows lesson progress, but the school building panel has no learner roster.
 
 ## Scope
 
-- Assign a learner and mastered target to a school with available capacity.
-- Resolve each target's authored experience type and threshold.
-- Clear target-specific progress when the target changes and apply the trade or good unlock on completion.
-- Show learners and their current targets in the school details panel.
+- Show the school's occupied and available capacity and its assigned learners, including reserved
+  learners still walking to the school.
+- Show each learner's target profession or product and current progress from authoritative snapshots.
+- Allow selecting a learner from the roster; keep ownership rules and English/Polish localization.
+- Refresh after completion, cancellation, capture or destruction without stale entries.
+
+Timing, costs and original interruption behavior belong to
+[progression calibration](technology-professions-experience.md), not a second school implementation.
 
 ## Verify
 
-- Headless cases cover capacity, target changes, both experience-bucket shapes, and completion.
-- A registered school scene exposes the learner and target in the panel.
-- `npm test`, `npm run check`, and `npm run build`.
+Extend the school scene with multiple learners and different targets. Check selection, capacity,
+completion and save/load presentation. Run normal gates and review the building panel visually.

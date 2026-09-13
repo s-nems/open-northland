@@ -1,19 +1,20 @@
-# Extract the building school size and use it to classify barracks
+# Verify the school and barracks classification contract
 
-**Area:** pipeline, data, sim · **Priority:** P3
+**Area:** data, sim · **Priority:** P3
 
-The barracks and school share `logicmaintype 4`. `isBarracksType` distinguishes them by the worker
-slots declared only by the barracks, although `houses.ini` carries the direct field: `logicSchoolSize`
-is 25 for the barracks and 5 for the school.
+`logicSchoolSize` is extracted into `BuildingType.schoolSize` and civilian lessons use it as capacity.
+School and barracks still share the training kind and are distinguished by worker-slot shape.
+The comment on `isBarracksType` incorrectly says that school size is absent from the IR.
 
 ## Scope
 
-- Extract `logicSchoolSize` into `BuildingType` with its source provenance.
-- Classify the two LEARN buildings from that field instead of worker-slot shape.
-- Keep synthetic content explicit; do not infer a school size when the source omits it.
+- Verify the semantic discriminator against owned rows and original behavior. Different observed
+  capacities (school 5, barracks 25) alone do not establish a stable type discriminator.
+- Retain the structural rule if it is justified, or carry a verified content role through the common
+  school/barracks predicates. Avoid numeric capacity thresholds invented as type tags.
+- Correct the stale predicate documentation and keep fallback content explicit.
 
 ## Verify
 
-- Synthetic and real pipeline tests pin the two values and the case-sensitive key.
-- Barracks training tests reject the school and accept the barracks.
-- `npm run test:pipeline`, `npm test`, `npm run check`, and `npm run build`.
+Cover real school/barracks classification and synthetic missing-capacity content. Run normal gates;
+run pipeline/content checks if the schema or extraction changes.
