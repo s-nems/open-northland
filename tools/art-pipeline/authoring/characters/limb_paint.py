@@ -3,7 +3,7 @@ from pathlib import Path
 import bpy
 
 
-def restore_limb_paint(meshes, texture_file):
+def restore_limb_paint(meshes, texture_file, occlusion=0.0):
     texture = bpy.data.images.load(str(Path(texture_file).resolve()), check_existing=True)
     materials = set()
     for obj in meshes:
@@ -35,5 +35,15 @@ def restore_limb_paint(meshes, texture_file):
         mix = nodes.new('ShaderNodeMixRGB')
         links.new(mask.outputs['Fac'], mix.inputs[0])
         links.new(original, mix.inputs[1])
-        links.new(image.outputs['Color'], mix.inputs[2])
+        color = image.outputs['Color']
+        if occlusion > 0:
+            contact = nodes.new('ShaderNodeAmbientOcclusion')
+            contact.inputs['Distance'].default_value = 0.12
+            shade = nodes.new('ShaderNodeMixRGB')
+            shade.blend_type = 'MULTIPLY'
+            shade.inputs[0].default_value = occlusion
+            links.new(color, shade.inputs[1])
+            links.new(contact.outputs['AO'], shade.inputs[2])
+            color = shade.outputs[0]
+        links.new(color, mix.inputs[2])
         links.new(mix.outputs[0], emission.inputs['Color'])

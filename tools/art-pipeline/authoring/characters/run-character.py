@@ -118,6 +118,8 @@ def main():
                         options += ['--equipment',run/clip['equipment']]
                     if clip.get('limb_texture'):
                         options += ['--limb-texture',run/clip['limb_texture']]
+                    if clip.get('limb_occlusion'):
+                        options += ['--limb-occlusion', str(clip['limb_occlusion'])]
                     if clip.get('range'):
                         options += ['--range',','.join(map(str,clip['range']))]
                     if clip.get('fix_root'):

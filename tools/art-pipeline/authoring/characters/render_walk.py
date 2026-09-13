@@ -27,6 +27,7 @@ def parse_args():
     p.add_argument("--body-proportions", help="Body scale profile applied after neutral head assembly")
     p.add_argument("--equipment", help="textured equipment attachment JSON")
     p.add_argument("--limb-texture", help="matching rigged base paint for exposed arm and hand regions")
+    p.add_argument("--limb-occlusion", type=float, default=0.0, help="Contact shading strength on exposed limbs")
     p.add_argument("--shadow-only", action="store_true", help="Render the evaluated cast silhouette on flat ground")
     p.add_argument("--padding", type=int, default=0, help="Extra render pixels on each side at the calibrated pixel density")
     return p.parse_args(argv)
@@ -45,6 +46,8 @@ def root_travel(scene, frames):
 
 def main():
     args = parse_args()
+    if not 0 <= args.limb_occlusion <= 1:
+        raise ValueError('Limb occlusion must be between zero and one')
     if args.padding < 0:
         raise ValueError('Render padding must be non-negative')
     scene = setup_scene(args.size + 2 * args.padding)
@@ -121,7 +124,7 @@ def main():
         attach_equipment(args.equipment, arm)
     if args.limb_texture:
         from limb_paint import restore_limb_paint
-        restore_limb_paint(meshes, args.limb_texture)
+        restore_limb_paint(meshes, args.limb_texture, args.limb_occlusion)
     shadow = None
     if args.shadow_only:
         from ground_shadow import GroundShadow
