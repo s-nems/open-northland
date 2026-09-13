@@ -8,8 +8,9 @@ The overhead shoulder adjustment preserves the raised grip; other poses bring th
 are authored visual approximations. Palms face the handle with their finger axis perpendicular
 to the shaft; the return uses the same grip orientation. `cycle.json` owns source sampling and the tool trajectory.
 
-Playback uses 16 poses over 29/24 seconds. Lift and strike poses last 0.035–0.06 seconds;
-recovery poses last approximately 0.093 seconds. The stored sequence starts during recovery so
+Playback uses 16 poses over 29/24 seconds. The backswing holds for 0.075 seconds and
+impact for 0.15 seconds; moving transitions last 0.035–0.094 seconds. These deliberate accents
+use `frameDurations` without storing duplicate poses. The stored sequence starts during recovery so
 impact pose 11 begins at elapsed tick 10. Two complete visual swings fit the 29-tick stone-harvest
 atomic without a phase reset. Resource yield and gameplay events remain sim-owned; the additional
 visual strike does not grant another resource. Pose sampling and playback timing are recipe inputs.

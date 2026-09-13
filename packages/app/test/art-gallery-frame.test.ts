@@ -61,7 +61,8 @@ describe('gallery animation controls', () => {
     const impact = galleryCharacterFrame(ref, state, 9 / TICKS_PER_SECOND);
     expect(clip.samplePhases[impact]).toBe(0.375);
     expect(galleryCharacterFrame(ref, state, 29 / TICKS_PER_SECOND)).toBe(0);
-    expect(Math.max(...clip.frameDurations)).toBeLessThan(0.1);
+    expect(clip.frameDurations[impact]).toBe(0.15);
+    expect(Math.max(...clip.frameDurations.filter((_, index) => index !== impact))).toBeLessThan(0.1);
   });
 
   it('plays the selected direction using authored pose holds', () => {
