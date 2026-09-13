@@ -32,7 +32,8 @@ ENV NODE_ENV=production \
     PORT=8765 \
     RELAY_BUILD=$RELAY_BUILD
 
-LABEL org.opencontainers.image.source=https://github.com/s-nems/open-northland \
+ARG SOURCE_URL=https://github.com/s-nems/open-northland
+LABEL org.opencontainers.image.source=$SOURCE_URL \
       org.opencontainers.image.description="OpenNorthland relay: the lockstep server a networked game runs through" \
       org.opencontainers.image.licenses=GPL-3.0-or-later
 

@@ -95,6 +95,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/${{ github.repository }}-web:sha-${{ needs.guard.outputs.short }}
+          build-args: SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       # Pulled back rather than smoke-tested from a second local build: the check is only worth
@@ -129,7 +130,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/${{ github.repository }}-relay:sha-${{ needs.guard.outputs.short }}
-          build-args: RELAY_BUILD=${{ needs.guard.outputs.short }}
+          build-args: |
+            RELAY_BUILD=${{ needs.guard.outputs.short }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=relay
           cache-to: type=gha,mode=max,scope=relay
       # The smoke check opens a WebSocket from Node itself, which needs the runtime the workspace pins.
@@ -161,6 +164,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ needs.guard.outputs.sha }}
           SHORT: ${{ needs.guard.outputs.short }}
+          IMAGE_PREFIX: ghcr.io/${{ github.repository }}
         run: |
           tag="build-$SHORT"
           # Re-dispatching the same commit replaces that build's assets instead of failing.
@@ -169,7 +173,7 @@ jobs:
           else
             # Quoted heredoc + sed keeps the markdown literal (backticks, fences) with only the
             # sha substituted.
-            sed -e "s/@SHA@/$SHA/" -e "s/@SHORT@/$SHORT/" > notes.md <<'EOF'
+            sed -e "s/@SHA@/$SHA/" -e "s/@SHORT@/$SHORT/" -e "s|@IMAGE_PREFIX@|$IMAGE_PREFIX|" > notes.md <<'EOF'
           Unsigned development build of commit @SHA@ - code signing is tracked in docs/tickets/tooling/desktop-code-signing.md.
 
           - **Windows:** SmartScreen warns about an unknown publisher; choose "More info" → "Run anyway".
@@ -182,8 +186,8 @@ jobs:
           The browser deployment and the relay of the same commit:
 
           ```sh
-          docker pull ghcr.io/s-nems/open-northland-web:sha-@SHORT@
-          docker pull ghcr.io/s-nems/open-northland-relay:sha-@SHORT@
+          docker pull @IMAGE_PREFIX@-web:sha-@SHORT@
+          docker pull @IMAGE_PREFIX@-relay:sha-@SHORT@
           ```
           EOF
             gh release create "$tag" installers/* \

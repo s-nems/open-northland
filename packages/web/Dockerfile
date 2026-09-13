@@ -16,7 +16,8 @@ RUN --mount=type=cache,target=/root/.npm npm ci && npm run web:site
 
 FROM nginx:1.31-alpine
 
-LABEL org.opencontainers.image.source=https://github.com/s-nems/open-northland \
+ARG SOURCE_URL=https://github.com/s-nems/open-northland
+LABEL org.opencontainers.image.source=$SOURCE_URL \
       org.opencontainers.image.description="OpenNorthland web shell: the browser installer and game host" \
       org.opencontainers.image.licenses=GPL-3.0-or-later
 
