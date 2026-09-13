@@ -39,8 +39,8 @@ import {
 /**
  * The admin and debug spawn palette: arm a tool, then click the map to drop a test entity or run an
  * entity action on what is already there. Every poke goes through the sim command seam, so it stays as
- * replay-faithful as a player order. Mounted once and never torn down, which holds because
- * `startGameView` runs exactly once per page load.
+ * replay-faithful as a player order. Mounted at most once per document and never torn down: only
+ * sessions without a shared clock mount it, and those leave by navigation.
  */
 
 export interface AdminDebugDeps {
@@ -71,11 +71,15 @@ export interface AdminDebugDeps {
   readonly setGeometryEnabled: (enabled: boolean) => void;
 }
 
+export interface AdminDebugHandle {
+  setVisible(visible: boolean): void;
+}
+
 /** Matches the settler HP the content's tribes carry, so the field shows what an untouched spawn gets. */
 const DEFAULT_HITPOINTS = HUMAN_HITPOINTS;
 
-/** Mount the admin/debug spawn palette. Mount-and-forget. */
-export function mountAdminDebug(deps: AdminDebugDeps): void {
+/** Mount the admin/debug spawn palette with its toggle chip showing and the panel closed. */
+export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   const { canvas } = deps;
   const msgs = messages();
   const copy = msgs.admin;
@@ -117,8 +121,8 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
 
   const toggle = el('button', TOGGLE_STYLE, copy.toggle);
   let open = false;
-  toggle.addEventListener('click', () => {
-    open = !open;
+  const setOpen = (next: boolean): void => {
+    open = next;
     panel.style.display = open ? 'flex' : 'none';
     if (!open) setArmed(null); // hiding the panel disarms, so no stray crosshair click survives it
     if (open) {
@@ -126,7 +130,8 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
       fog.refresh();
       geometry.refresh();
     }
-  });
+  };
+  toggle.addEventListener('click', () => setOpen(!open));
 
   const header = el('div', HEADER_STYLE);
   header.append(el('div', 'font-weight:700;font-size:13px;margin-bottom:2px', copy.title));
@@ -314,4 +319,11 @@ export function mountAdminDebug(deps: AdminDebugDeps): void {
     }
   };
   window.addEventListener('keydown', onKeyDown, { capture: true });
+
+  return {
+    setVisible(visible): void {
+      toggle.style.display = visible ? '' : 'none';
+      if (!visible && open) setOpen(false);
+    },
+  };
 }

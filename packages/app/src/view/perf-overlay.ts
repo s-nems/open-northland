@@ -10,10 +10,11 @@ import type { NetReadout } from './runtime/net-readout.js';
  */
 
 export interface PerfOverlayHandle {
-  /** Call once per frame. */
+  /** Call once per frame; a hidden readout formats nothing. */
   update(report: FrameStatsReport, net: NetReadout | null): void;
   /** Re-anchor the readout along the bottom edge between the minimap and the details panel. */
   place(leftPx: number, rightPx: number, bottomPx: number): void;
+  setVisible(visible: boolean): void;
   dispose(): void;
 }
 
@@ -72,21 +73,23 @@ export function formatNetReadout(net: NetReadout): string {
   );
 }
 
-/** Mount the debug readout along the bottom edge, spanning from `leftPx` (clear of the minimap) to
- *  `rightPx` from the right edge (clear of the details panel), `bottomPx` up. */
+/** Mount the debug readout hidden along the bottom edge, spanning from `leftPx` (clear of the minimap)
+ *  to `rightPx` from the right edge (clear of the details panel), `bottomPx` up. */
 export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: number): PerfOverlayHandle {
   const panel = document.createElement('div');
   panel.style.cssText = PANEL_STYLE;
   panel.style.left = `${leftPx}px`;
   panel.style.right = `${rightPx}px`;
   panel.style.bottom = `${bottomPx}px`;
+  panel.style.display = 'none';
   panel.textContent = `${messages().performance.fps} -`;
   document.body.append(panel);
+  let visible = false;
 
   return {
     update(report: FrameStatsReport, net: NetReadout | null): void {
       const last = report.last;
-      if (last === null) return;
+      if (!visible || last === null) return;
       const copy = messages().performance;
       const { ema, recent } = report;
 
@@ -112,6 +115,10 @@ export function mountPerfOverlay(leftPx: number, rightPx: number, bottomPx: numb
       panel.style.left = `${leftPx}px`;
       panel.style.right = `${rightPx}px`;
       panel.style.bottom = `${bottomPx}px`;
+    },
+    setVisible(next): void {
+      visible = next;
+      panel.style.display = next ? '' : 'none';
     },
     dispose: () => panel.remove(),
   };

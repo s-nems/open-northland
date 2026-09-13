@@ -39,6 +39,7 @@ describe('parseStoredSettings', () => {
       language: 'eng',
       keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
       netNick: 'Ania',
+      debugToolsEnabled: true,
     } as const;
     expect(parseStoredSettings(JSON.stringify(settings))).toEqual(settings);
   });
@@ -62,6 +63,12 @@ describe('parseStoredSettings', () => {
     expect(parseStoredSettings('{"spriteSmoothing":false}').spriteSmoothing).toBe(false);
     expect(parseStoredSettings('{"spriteSmoothing":true}').spriteSmoothing).toBe(true);
     expect(parseStoredSettings('{"spriteSmoothing":"off"}').spriteSmoothing).toBe(true);
+  });
+
+  it('keeps the debug tools off unless a stored boolean turns them on', () => {
+    expect(parseStoredSettings('{}').debugToolsEnabled).toBe(false);
+    expect(parseStoredSettings('{"debugToolsEnabled":true}').debugToolsEnabled).toBe(true);
+    expect(parseStoredSettings('{"debugToolsEnabled":"on"}').debugToolsEnabled).toBe(false);
   });
 
   it('clamps an out-of-range stored factor instead of dropping it', () => {

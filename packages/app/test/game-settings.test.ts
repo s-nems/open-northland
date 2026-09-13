@@ -16,6 +16,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setSfxVolume = vi.fn();
   const setMusicVolume = vi.fn();
   const setLanguage = vi.fn();
+  const setDebugToolsEnabled = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
       ...defaultSettings(),
@@ -31,6 +32,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setSfxVolume,
     setMusicVolume,
     setLanguage,
+    setDebugToolsEnabled,
     ...overrides,
   });
   return {
@@ -41,6 +43,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setSfxVolume,
     setMusicVolume,
     setLanguage,
+    setDebugToolsEnabled,
   };
 }
 
@@ -52,23 +55,27 @@ describe('createGameSettingsRuntime', () => {
     await h.settings.update({ soundEnabled: false });
     await h.settings.update({ soundVolume: 0.35 });
     await h.settings.update({ musicVolume: 0.45 });
+    await h.settings.update({ debugToolsEnabled: true });
 
     expect(h.settings.current()).toMatchObject({
       uiScaleFactor: 1.2,
       soundEnabled: false,
       soundVolume: 0.35,
       musicVolume: 0.45,
+      debugToolsEnabled: true,
     });
     expect(h.persist.mock.calls).toEqual([
       [{ uiScaleFactor: 1.2 }],
       [{ soundEnabled: false }],
       [{ soundVolume: 0.35 }],
       [{ musicVolume: 0.45 }],
+      [{ debugToolsEnabled: true }],
     ]);
     expect(h.setUiScaleFactor).toHaveBeenCalledWith(1.2);
     expect(h.setSoundEnabled).toHaveBeenCalledWith(false);
     expect(h.setSfxVolume).toHaveBeenCalledWith(0.35);
     expect(h.setMusicVolume).toHaveBeenCalledWith(0.45);
+    expect(h.setDebugToolsEnabled).toHaveBeenCalledWith(true);
   });
 
   it('persists the complete settings model and projects the next-game language choice', async () => {
@@ -141,17 +148,35 @@ describe('createGameSettingsRuntime', () => {
       .mockResolvedValueOnce(false);
     const h = harness({ setUiScaleFactor });
 
-    const first = h.settings.update({ uiScaleFactor: 1.2, soundVolume: 0.2, language: 'pol' });
-    const second = h.settings.update({ uiScaleFactor: 1.3, soundVolume: 0.4, language: 'eng' });
+    const first = h.settings.update({
+      uiScaleFactor: 1.2,
+      soundVolume: 0.2,
+      language: 'pol',
+      debugToolsEnabled: true,
+    });
+    const second = h.settings.update({
+      uiScaleFactor: 1.3,
+      soundVolume: 0.4,
+      language: 'eng',
+      debugToolsEnabled: false,
+    });
 
     await expect(first).resolves.toBe(true);
     await expect(second).resolves.toBe(false);
-    expect(h.settings.current()).toMatchObject({ uiScaleFactor: 1.2, soundVolume: 0.2, language: 'pol' });
+    expect(h.settings.current()).toMatchObject({
+      uiScaleFactor: 1.2,
+      soundVolume: 0.2,
+      language: 'pol',
+      debugToolsEnabled: true,
+    });
+    expect(h.setDebugToolsEnabled).toHaveBeenCalledTimes(1);
+    expect(h.setDebugToolsEnabled).toHaveBeenCalledWith(true);
     expect(h.persist).toHaveBeenCalledTimes(1);
     expect(h.persist).toHaveBeenCalledWith({
       uiScaleFactor: 1.2,
       soundVolume: 0.2,
       language: 'pol',
+      debugToolsEnabled: true,
     });
   });
 

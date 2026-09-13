@@ -99,6 +99,11 @@ Debug modes:
 
 Flags combine: `?debug=profile,trace` runs both.
 
+The on-canvas stats readout and the Admin / Debug palette are off by default: the "Debug tools"
+toggle on the settings screen's Gameplay tab shows both, persists with the other settings, and applies
+live inside a running game. A relayed session shows only the readout, since the palette's pokes are
+trusted world edits with no wire.
+
 A running game exposes `window.__opennorthland`. Besides the live `sim`, `renderer`, `sheet` and
 `cameraCtl`, it answers `perf()` with one JSON-serialisable performance report, so an automated probe
 reads numbers instead of screenshotting the on-canvas readout. `resetPerf()` opens a fresh measurement

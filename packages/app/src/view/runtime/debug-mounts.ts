@@ -4,8 +4,9 @@ import type { Application } from 'pixi.js';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
-import { mountAdminDebug } from '../admin-debug/index.js';
+import { type AdminDebugHandle, mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera/index.js';
+import type { PerfOverlayHandle } from '../perf-overlay.js';
 import {
   createGeometryDebugOverlay,
   type GeometryBuildingInfo,
@@ -22,6 +23,8 @@ export interface DebugMountsOptions {
   readonly sim: Simulation;
   readonly renderer: WorldRenderer;
   readonly cameraCtl: CameraController;
+  readonly perf: PerfOverlayHandle;
+  readonly initialToolsEnabled: boolean;
   readonly elevation?: ElevationField;
   readonly buildingsByType: ReadonlyMap<number, GeometryBuildingInfo>;
   readonly clientToScreen: (clientX: number, clientY: number) => { x: number; y: number };
@@ -37,17 +40,56 @@ export interface DebugMountsOptions {
   readonly seatTribeOf: (player: number) => number;
 }
 
-export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverlay {
-  const { app, canvas, params, sim, renderer } = opts;
+export interface DebugMounts {
+  readonly geometryDebug: GeometryDebugOverlay;
+  /** Shows or hides the stats readout, the admin palette and its geometry grid together, as the one
+   *  settings toggle. */
+  setToolsEnabled(enabled: boolean): void;
+}
+
+export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
+  const { params, renderer } = opts;
 
   const geometryDebug = createGeometryDebugOverlay({
     enabled: hasDebugFlag(params, GEOMETRY_DEBUG_FLAG),
     buildingsByType: opts.buildingsByType,
     setItems: (items) => renderer.setGeometryDebug(items),
   });
+  // Writing the URL back keeps a reload reproducing what is on screen.
+  const setGeometryEnabled = (enabled: boolean): void => {
+    geometryDebug.setEnabled(enabled);
+    // `?debug=` holds a set: a plain `params.set` would clobber an active `profile,trace`.
+    setDebugFlag(params, GEOMETRY_DEBUG_FLAG, enabled);
+    const search = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${search === '' ? '' : `?${search}`}`);
+  };
 
-  if (opts.allowWorldEdits === false) return geometryDebug;
-  mountAdminDebug({
+  // Built on the first enable, so a player who never turns the tools on pays nothing for it.
+  let admin: AdminDebugHandle | null = null;
+  const setToolsEnabled = (enabled: boolean): void => {
+    opts.perf.setVisible(enabled);
+    if (!enabled) {
+      admin?.setVisible(false);
+      // The grid's only switch is on the palette, so it must not outlive it.
+      if (admin !== null && geometryDebug.enabled()) setGeometryEnabled(false);
+      return;
+    }
+    if (opts.allowWorldEdits === false) return;
+    if (admin === null) admin = mountAdminPalette(opts, geometryDebug, setGeometryEnabled);
+    else admin.setVisible(true);
+  };
+  setToolsEnabled(opts.initialToolsEnabled);
+
+  return { geometryDebug, setToolsEnabled };
+}
+
+function mountAdminPalette(
+  opts: DebugMountsOptions,
+  geometryDebug: GeometryDebugOverlay,
+  setGeometryEnabled: (enabled: boolean) => void,
+): AdminDebugHandle {
+  const { app, canvas, sim, renderer } = opts;
+  return mountAdminDebug({
     canvas,
     enqueue: opts.enqueue,
     clientToTile: (x, y) => opts.clientToTile(x, y),
@@ -83,19 +125,6 @@ export function mountDebugOverlays(opts: DebugMountsOptions): GeometryDebugOverl
     needsEnabled: () => sim.needsEnabled(),
     fogMode: () => sim.fogMode(),
     geometryEnabled: geometryDebug.enabled,
-    // Writing the URL back keeps a reload reproducing what is on screen.
-    setGeometryEnabled: (enabled) => {
-      geometryDebug.setEnabled(enabled);
-      // `?debug=` holds a set: a plain `params.set` would clobber an active `profile,trace`.
-      setDebugFlag(params, GEOMETRY_DEBUG_FLAG, enabled);
-      const search = params.toString();
-      window.history.replaceState(
-        null,
-        '',
-        `${window.location.pathname}${search === '' ? '' : `?${search}`}`,
-      );
-    },
+    setGeometryEnabled,
   });
-
-  return geometryDebug;
 }

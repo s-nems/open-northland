@@ -42,6 +42,7 @@ export interface MenuSettings {
   readonly keyBindings: KeyBindings;
   /** The display name shown to other players over a relay; null until one was chosen. */
   readonly netNick: string | null;
+  readonly debugToolsEnabled: boolean;
 }
 
 /** A player who never chose a language follows the browser's. */
@@ -60,6 +61,7 @@ export function defaultSettings(): MenuSettings {
     language: defaultLocale(),
     keyBindings: DEFAULT_KEY_BINDINGS,
     netNick: null,
+    debugToolsEnabled: false,
   };
 }
 
@@ -111,6 +113,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     language: isLocale(record.language) ? record.language : defaults.language,
     keyBindings: parseKeyBindings(record.keyBindings),
     netNick: optionalText(record.netNick),
+    debugToolsEnabled:
+      typeof record.debugToolsEnabled === 'boolean' ? record.debugToolsEnabled : defaults.debugToolsEnabled,
   };
 }
 

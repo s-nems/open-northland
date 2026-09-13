@@ -43,6 +43,7 @@ export interface LiveGameSettingsDeps {
   readonly controls: UnitControls;
   readonly perf: PerfOverlayHandle;
   readonly sound: SoundDriver | null;
+  readonly setDebugToolsEnabled: (enabled: boolean) => void;
 }
 
 export interface LiveGameSettings {
@@ -106,6 +107,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setLanguage: (language) => {
       syncCarriedParam('lang', language === defaultLocale() ? null : language);
     },
+    setDebugToolsEnabled: deps.setDebugToolsEnabled,
   });
 
   return {

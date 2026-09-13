@@ -156,6 +156,9 @@ export const enSurfaces = {
       languageNames: { pol: 'Polski', eng: 'English' },
       scrollSpeed: 'Map scroll speed',
       edgeScroll: 'Edge scrolling',
+      debugTools: 'Debug tools',
+      debugToolsTip:
+        'Shows the statistics strip along the bottom of the game screen (tick, frames, CPU) and the Admin / Debug button in the top-right corner. The panel is available in single-player games only.',
       bindings: {
         panLeft: 'Pan map left',
         panRight: 'Pan map right',

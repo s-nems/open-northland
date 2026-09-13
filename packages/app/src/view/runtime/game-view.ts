@@ -406,14 +406,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   pickableDoorBadges = () => doorBadgesFor(sim.snapshot());
 
   // Mounted after the unit controls, so an admin spawn click defers to their composed HUD claim.
-  const geometryDebug = mountDebugOverlays({
+  const debugMounts = mountDebugOverlays({
     app,
     canvas,
     params,
     sim,
+    perf,
+    initialToolsEnabled: storedSettings.debugToolsEnabled,
     allowWorldEdits: !sharedClock,
-    // The `?debug=` panel is a dev channel rather than part of the seat's HUD, so a read-only
-    // spectator still pokes with it.
+    // The admin palette is a dev channel rather than part of the seat's HUD, so a read-only spectator
+    // still pokes with it.
     enqueue: issueTrusted,
     renderer,
     cameraCtl,
@@ -451,6 +453,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     controls,
     perf,
     sound: soundDriver,
+    setDebugToolsEnabled: debugMounts.setToolsEnabled,
   });
   systemMenu = createSystemMenu({
     onQuit: quitToMenu,
@@ -499,7 +502,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     minimap: mountedMinimap,
     controls,
     pileTooltip,
-    geometryDebug,
+    geometryDebug: debugMounts.geometryDebug,
     overlayFrame,
     signpostOverlayFrame,
     hudFor,

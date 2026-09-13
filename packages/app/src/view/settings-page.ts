@@ -212,6 +212,11 @@ export function createSettingsPage(opts: {
         value: PLACEHOLDER_SCROLL_SPEED,
       });
       const edgeScroll = togglePill(true, () => undefined);
+      const debugTools = togglePill(settings.debugToolsEnabled, (enabled) => {
+        void opts.settings.update({ debugToolsEnabled: enabled });
+      });
+      debugTools.setAttribute('aria-label', text.debugTools);
+      debugTools.dataset.settingsFocus = 'debug-tools';
       return [
         settingRow(
           text.language,
@@ -220,6 +225,7 @@ export function createSettingsPage(opts: {
         ),
         settingRow(text.scrollSpeed, scrollSpeed, { soon }),
         settingRow(text.edgeScroll, edgeScroll, { soon }),
+        settingRow(text.debugTools, debugTools, { tip: text.debugToolsTip }),
       ];
     };
 
