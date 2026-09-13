@@ -48,9 +48,9 @@ it('exports and packs matching shadows through the normal animation command', as
         })),
       }),
     );
-    const blender = path.join(run, 'blender');
+    const fakeBlender = path.join(run, 'blender.py');
     await writeFile(
-      blender,
+      fakeBlender,
       `#!/usr/bin/env python3
 import sys,json,shutil
 from pathlib import Path
@@ -62,7 +62,10 @@ source=root/('silhouette.png' if '--shadow-only' in args else 'body.png')
 for i in range(int(args[args.index('--frames')+1])): shutil.copyfile(source,out/f'f{i:02d}.png')
 `,
     );
-    await chmod(blender, 0o755);
+    await chmod(fakeBlender, 0o755);
+    // Windows cannot spawn a shebang script directly, so a .cmd shim hands it to python3.
+    const blender = process.platform === 'win32' ? path.join(run, 'blender.cmd') : fakeBlender;
+    if (blender !== fakeBlender) await writeFile(blender, '@python3 "%~dp0blender.py" %*\r\n');
     await promisify(execFile)(
       'python3',
       ['tools/art-pipeline/authoring/characters/run-character.py', run, run, 'render', 'pack'],

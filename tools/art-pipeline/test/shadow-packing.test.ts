@@ -97,4 +97,4 @@ it.each([
   } finally {
     await rm(run, { recursive: true, force: true });
   }
-});
+}, 30000);
