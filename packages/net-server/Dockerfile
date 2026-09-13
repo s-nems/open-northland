@@ -35,7 +35,7 @@ ENV NODE_ENV=production \
 ARG SOURCE_URL=https://github.com/s-nems/open-northland
 LABEL org.opencontainers.image.source=$SOURCE_URL \
       org.opencontainers.image.description="OpenNorthland relay: the lockstep server a networked game runs through" \
-      org.opencontainers.image.licenses=GPL-3.0-or-later
+      org.opencontainers.image.licenses=AGPL-3.0-or-later
 
 WORKDIR /app
 COPY --from=build /app /app

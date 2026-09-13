@@ -3,7 +3,7 @@
 </h1>
 
 [![CI](https://github.com/s-nems/open-northland/actions/workflows/ci.yml/badge.svg)](https://github.com/s-nems/open-northland/actions/workflows/ci.yml)
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPLv3-blue.svg)](LICENSE)
 
 Open Northland is an independent, cross-platform engine for *Cultures - 8th Wonder of the World*, a
 Viking-era strategy game. It combines a deterministic TypeScript simulation, a PixiJS renderer, and
@@ -100,7 +100,7 @@ Coding agents must also read [`AGENTS.md`](AGENTS.md).
 
 ## License and trademarks
 
-Open Northland is licensed under GPL-3.0-or-later. See [`LICENSE`](LICENSE).
+Open Northland is licensed under AGPL-3.0-or-later. See [`LICENSE`](LICENSE).
 
 This is an independent community project. It is not affiliated with or endorsed by Funatics
 Software, Daedalic Entertainment, or another rights holder of the *Cultures* series. Game names are

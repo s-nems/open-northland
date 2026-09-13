@@ -1,6 +1,6 @@
 # Legal notice
 
-Open Northland is an independent engine reimplementation licensed under the GNU General Public
+Open Northland is an independent engine reimplementation licensed under the GNU Affero General Public
 License, version 3 or later. The complete license is in [`../LICENSE`](../LICENSE).
 
 ## Game data

@@ -6,7 +6,7 @@ used here as a near-identical, sharp vector stand-in for the original game's UI 
 Latin-Extended (Polish diacritics) woff2 subsets published by Fontsource / Google Fonts.
 
 Designer: Steve Matteson.
-Licence: Apache License, Version 2.0 (compatible with this project's GPL-3.0-or-later).
+Licence: Apache License, Version 2.0 (compatible with this project's AGPL-3.0-or-later).
 Upstream: https://fonts.google.com/specimen/Tinos  ·  https://github.com/googlefonts/tinos
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use these files

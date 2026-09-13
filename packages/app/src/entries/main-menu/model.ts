@@ -1,6 +1,6 @@
 export type MenuScreen = 'main' | 'multiplayer' | 'newGame' | 'lobby' | 'load' | 'settings' | 'credits';
 
-export const VERSION_LINE = 'pre-alpha 0.1 · GPL-3.0';
+export const VERSION_LINE = 'pre-alpha 0.1 · AGPL-3.0';
 
 export type MainNavItem =
   | {

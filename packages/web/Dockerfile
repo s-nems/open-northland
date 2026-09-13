@@ -19,7 +19,7 @@ FROM nginx:1.31-alpine
 ARG SOURCE_URL=https://github.com/s-nems/open-northland
 LABEL org.opencontainers.image.source=$SOURCE_URL \
       org.opencontainers.image.description="OpenNorthland web shell: the browser installer and game host" \
-      org.opencontainers.image.licenses=GPL-3.0-or-later
+      org.opencontainers.image.licenses=AGPL-3.0-or-later
 
 COPY packages/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /src/packages/web/dist/site /usr/share/nginx/html

@@ -67,4 +67,4 @@ finishes it, or rewrite it to describe only the remaining work.
 
 ## License
 
-By contributing, you confirm that the work is yours and license it under GPL-3.0-or-later.
+By contributing, you confirm that the work is yours and license it under AGPL-3.0-or-later.

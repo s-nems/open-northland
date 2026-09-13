@@ -12,7 +12,7 @@ The repository may sit beside an owned game installation and the CulturesNation 
 They are pipeline inputs only. Never commit original files, decoded content, binary probes, or
 reference captures from the original.
 
-This is an independent GPL-3.0-or-later implementation. Do not copy or translate another engine's
+This is an independent AGPL-3.0-or-later implementation. Do not copy or translate another engine's
 code. Base format and behavior work must use the sources allowed by `docs/SOURCES.md`. The canonical
 legal wording is in `docs/LEGAL.md`.
 

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "OpenNorthland desktop shell - packages the web app with a first-run content installer",
-  "license": "GPL-3.0-or-later",
+  "license": "AGPL-3.0-or-later",
   "author": "OpenNorthland contributors",
   "main": "./dist/main.cjs",
   "scripts": {
