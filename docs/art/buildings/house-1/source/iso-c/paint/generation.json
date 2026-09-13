@@ -1,0 +1,58 @@
+{
+  "painting": {
+    "tool": "built-in image_gen",
+    "prompt": "paint.prompt.txt",
+    "references": [
+      {
+        "path": "../../../house-painted-runtime.png",
+        "role": "Primary muted A finish reference",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "../../compact-c/geometry/render.png",
+        "role": "Calibrated geometry edit target; projection and architecture",
+        "sha256": "34e3e164d6945ce7348ab8ee5d340db53c9a3a416253d56ecf0a3659330ac70b"
+      }
+    ],
+    "output": "initial.png",
+    "sha256": "62d22ed5a4ebe028ac9efa97b99d4634d6d1f05034c5e81a27737f7389a9265b",
+    "postprocessing": "None; native generated RGBA retained."
+  },
+  "doorCorrection": {
+    "tool": "built-in image_gen",
+    "prompt": "door.prompt.txt",
+    "references": [
+      {
+        "path": "../../../house-painted-runtime.png",
+        "role": "Primary muted A reference",
+        "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+      },
+      {
+        "path": "initial.png",
+        "role": "Door correction edit target",
+        "sha256": "62d22ed5a4ebe028ac9efa97b99d4634d6d1f05034c5e81a27737f7389a9265b"
+      }
+    ],
+    "output": "paint.png",
+    "sha256": "200b84db5a5cb2cb47016059a8622ba7324354a4e1595710d26653be38403e55"
+  },
+  "alphaExport": {
+    "tool": "imagegen bundled CLI",
+    "model": "gpt-image-1.5",
+    "prompt": "alpha.prompt.txt",
+    "quality": "high",
+    "input_fidelity": "high",
+    "background": "transparent",
+    "size": "1024x1024",
+    "references": [
+      {
+        "path": "paint.png",
+        "role": "Exact painting; background extraction only",
+        "sha256": "200b84db5a5cb2cb47016059a8622ba7324354a4e1595710d26653be38403e55"
+      }
+    ],
+    "output": "final.png",
+    "sha256": "119caba364687edc1a08767ce086ed646aff3b27503a52f26d30190d1fa3136e"
+  },
+  "postprocessing": "Generated alpha preserved; no keying or authored masks. Alpha export smoothed fine texture; final doorway and projection checked separately."
+}

@@ -1,0 +1,7 @@
+{
+  "sourceScene": "../../compact-c/geometry/house-finished.blend",
+  "sourceCalibration": "../../compact-c/geometry/calibration.json",
+  "widthScale": 0.82,
+  "depthScale": 0.85,
+  "upperHeightScale": 0.78
+}

@@ -1,0 +1,10 @@
+{
+  "mode": "RGBA",
+  "size": [1254, 1254],
+  "boundsAlphaOver16": [142, 12, 1145, 1212],
+  "alphaZero": 754252,
+  "alphaOpaque": 335,
+  "alphaPartial": 817929,
+  "worldBounds": [222.88888888888889, 266.66666666666663],
+  "validation": "Native generated alpha preserved. Composited on light/dark backgrounds for edge review; no keying or authored masks."
+}

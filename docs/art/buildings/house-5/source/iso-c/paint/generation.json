@@ -1,0 +1,19 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "paint.prompt.txt",
+  "references": [
+    {
+      "path": "../../../../house-1/house-painted-runtime.png",
+      "role": "Primary muted A finish reference",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    },
+    {
+      "path": "../../compact-c/geometry/render.png",
+      "role": "Calibrated geometry edit target; projection and architecture",
+      "sha256": "a6ce90a3719e429edb2f7f4c55edfd7e8e1d857bda1c57f4bd5f76866962ab90"
+    }
+  ],
+  "output": "final.png",
+  "sha256": "df1c43b50b5b3dfca4f87fdcac31115feb414623ab1ed682027a554619e176fd",
+  "postprocessing": "None; native generated RGBA retained."
+}

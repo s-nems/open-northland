@@ -1,0 +1,21 @@
+{
+  "frontDoorPixels": [433, 524, 711],
+  "measurementOrthographicScale": 2.177583694458008,
+  "depthScale": 0.72,
+  "mirrorX": true,
+  "basis": "Retained calibrated scene reshaped by reshape.json; doorway height preserved. Original front-elevation measurements precede reshaping.",
+  "doorTop": [-0.0283712949603796, -0.3692675232887268, -0.18000876903533936],
+  "doorFoot": [-0.0283712949603796, -0.3692675232887268, -0.6324622631072998],
+  "doorGround": [-0.0283712949603796, -0.5820377469062805, -0.7817680239677429],
+  "orthographicScale": 2.3801368474960327,
+  "boundsMin": [-0.6452137231826782, -0.5820377469062805, -0.7817680239677429],
+  "boundsMax": [0.655927836894989, 0.5768155455589294, 0.5686748623847961],
+  "cameraElevation": 28.5,
+  "cameraAzimuth": 22.5,
+  "doorTopPixel": [656.7535858154297, 969.6100616455078],
+  "doorFootPixel": [656.7535858154297, 1226.212989807129],
+  "entrancePixel": [604.2075805664062, 1371.42085647583],
+  "masterSize": [1536, 1536],
+  "sourceSceneSha256": "8a12f0b5caa58a78dfed3c1c433ef0c1ef84891b57ba2d1851a8156461eb7773",
+  "reshapeScriptSha256": "b231748750bc012b0d76ac8de4cffb30007cb3ae9d1213be0d68ed94c5c16d77"
+}

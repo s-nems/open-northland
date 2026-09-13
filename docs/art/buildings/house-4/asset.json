@@ -2,27 +2,27 @@
   "version": 1,
   "id": "buildings/house-4",
   "kind": "building",
-  "sourceBasis": "Independent selected C architecture, compact calibrated Meshy model and painted genuine-alpha export. Original references remain local and excluded.",
+  "sourceBasis": "Independent selected C architecture; calibrated geometry, projection-preserving paintover and native generated RGBA. House2 uses a reduced mesh with full-height doorway. Original references remain local.",
   "outputs": [
     {
       "path": "buildings/house-4/house-painted-runtime.png",
       "content": {
         "operation": "copy",
-        "source": "source/compact-c/paint/final.png"
+        "source": "source/iso-c/paint/final.png"
       }
     },
     {
       "path": "buildings/house-4/runtime.json",
       "content": {
         "operation": "copy",
-        "source": "source/compact-c/shadow/runtime.json"
+        "source": "source/iso-c/shadow/runtime.json"
       }
     },
     {
       "path": "buildings/house-4/shadow.png",
       "content": {
         "operation": "copy",
-        "source": "source/compact-c/shadow/shadow.png"
+        "source": "source/iso-c/shadow/shadow.png"
       }
     }
   ]

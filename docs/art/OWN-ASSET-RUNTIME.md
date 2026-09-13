@@ -84,7 +84,7 @@ Reload after publication so the comparison uses the new delivery.
 | Upgraded home | `?map=tutorial_004&assets=own&intro=off&zoom=2&center=61,58` |
 | Home level 3 | `?map=tutorial_004&assets=own&intro=off&zoom=2&center=69,57&fog=off` |
 | Home level 4 | `?map=wybrzeze_czarow&assets=own&intro=off&zoom=2&center=90,111&fog=off` |
-| Home level 5 | `?map=tutorial_006&assets=own&intro=off&zoom=2&center=20,15&fog=off` |
+| Home level 5 | `?map=tutorial_006&assets=own&intro=off&zoom=2&center=20,11&fog=off` |
 | Farm | `?map=straznicypolnocy&assets=own&intro=off&zoom=2&center=26,162&fog=off` |
 
 Use the `farm-construction` acceptance scene for reveal timing, and build a basic stonemason on

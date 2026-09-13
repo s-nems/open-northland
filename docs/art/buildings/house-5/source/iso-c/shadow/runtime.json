@@ -1,0 +1,27 @@
+{
+  "tribeId": 1,
+  "typeId": 6,
+  "layer": "own-house-5",
+  "sprite": "house-painted-runtime.png",
+  "width": 1254,
+  "height": 1254,
+  "scale": 0.2681564245810056,
+  "entrancePixel": {
+    "x": 411,
+    "y": 1194
+  },
+  "doorNode": {
+    "x": -1,
+    "y": 3
+  },
+  "sourceBasis": "Independent selected C design. Projection-preserving paintover of calibrated orthographic geometry (28.5 elevation, 22.5 azimuth); native built-in generated alpha. Manual clear doorway x460, y896..1075, +/-6px; 48 world px at zoom2. Ground-step anchor is an artistic estimate. Tribe1/type6 and door -1,3 retain verified owned-content/IR binding. Separate shared-light model shadow; simulation units unchanged.",
+  "shadow": {
+    "sprite": "shadow.png",
+    "width": 1792,
+    "height": 1536,
+    "entrancePixel": {
+      "x": 539,
+      "y": 1322
+    }
+  }
+}

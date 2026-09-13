@@ -1,0 +1,12 @@
+{
+  "spriteSha256": "0e99ca682f7b250aec67e723f82f9e3870e04a3af305c61c7fcb8d70dafd7d89",
+  "targetElevationDegrees": 28.5,
+  "targetAzimuthDegrees": 22.5,
+  "frontEdgePixels": [[303, 611], [731, 690]],
+  "depthEdgePixels": [[841, 954], [910, 876]],
+  "endpointUncertaintyPixels": 4,
+  "edgeSlopes": [0.18457943925233644, 1.1304347826086956],
+  "approximateFitElevationDegrees": 27.180018197690366,
+  "approximateFitAzimuthDegrees": 22.00271963781034,
+  "basis": "Manual structural edge comparison against retained calibrated render. Painted edges are irregular; this approximate fit checks projection drift, not exact camera metadata or original-engine fidelity."
+}

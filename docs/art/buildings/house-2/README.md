@@ -15,5 +15,5 @@ delivery. Earlier paintings needed as generation references remain source inputs
 
 ## Compact C candidate
 
-The active recipe now points to [the compact C source](source/compact-c/README.md).
+The active recipe points to [the elevated C candidate](source/iso-c/README.md).
 Its final runtime presentation awaits visual review; the existing delivery remains published.

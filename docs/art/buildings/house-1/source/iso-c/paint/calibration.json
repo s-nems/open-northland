@@ -1,0 +1,10 @@
+{
+  "clearDoorPixels": [425, 580, 869],
+  "entrancePixel": [403, 947],
+  "measurementUncertaintyPixels": 6,
+  "doorWorldHeight": 48,
+  "reviewZoom": 2,
+  "sourceToWorldScale": 0.16608996539792387,
+  "sourceSize": [1024, 1024],
+  "basis": "Manual final visible doorway, excluding frame. Ground anchor at front step contact; artistic approximation."
+}
