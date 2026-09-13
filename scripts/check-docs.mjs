@@ -3,7 +3,15 @@ import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const ignoredDirectories = new Set(['.git', 'content', 'coverage', 'dist', 'dist-web', 'node_modules']);
+const ignoredDirectories = new Set([
+  '.git',
+  '.art-build',
+  'content',
+  'coverage',
+  'dist',
+  'dist-web',
+  'node_modules',
+]);
 const ticketReferenceFile = /\.(?:[cm]?[jt]sx?|json|ya?ml)$/;
 const ticketAreas = new Set([
   'app',
