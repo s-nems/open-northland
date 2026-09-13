@@ -12,11 +12,13 @@ export {
   mapDeliveryAllowed,
 } from './codec.js';
 export {
+  isMapId,
   loadVerifiedMapDocuments,
   MAX_MAP_DOCUMENT_BYTES,
   MAX_MAP_TRANSFER_BYTES,
   readVerifiedMapDocuments,
   type VerifiedMapDocuments,
+  validMapId,
   verifyMapDocuments,
 } from './documents.js';
 export { loadRoomMapDocuments } from './reload.js';

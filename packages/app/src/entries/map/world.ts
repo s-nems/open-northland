@@ -140,8 +140,8 @@ export interface RestoredMapWorld {
 
 /**
  * Resolve the exact terrain and content a fresh {@link buildMapWorld} would and restore the save onto
- * them. Legacy saves receive missing placement declarations from the map roster. Throws when the
- * save does not fit the resolved world; app-layer round-trip tests hold both paths to the same resolution.
+ * them. Throws when the save does not fit the resolved world; app-layer round-trip tests hold both
+ * paths to the same resolution.
  */
 export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): RestoredMapWorld {
   const terrain = collisionTerrain(options.map, options.ir);
@@ -152,7 +152,6 @@ export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): R
     };
     const base = demoWorldBase(undefined, demo);
     const restored = restoreSimulation(save, { content: base.content, map: base.terrain });
-    setupPlacementTribes(restored.sim, options.playerRoster);
     return { ...restored, kind: 'demo' };
   }
   const authored = authoredWorldContent(terrain, options);
@@ -160,7 +159,6 @@ export function restoreMapWorld(options: RestoreWorldOptions, save: SaveGame): R
     content: authored ?? resolveWorldContent(terrain, options.content),
     map: terrain,
   });
-  setupPlacementTribes(restored.sim, options.playerRoster);
   return { ...restored, kind: authored !== null ? 'authored' : 'bare' };
 }
 

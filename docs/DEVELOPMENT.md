@@ -35,9 +35,10 @@ npm run pipeline -- --game "../Cultures 8th Wonder" --out content
 ```
 
 The pipeline detects `DataCnmd/` inside the game directory. Pass `--mod-root <dir>` when the
-CulturesNation mod is unpacked elsewhere. CnMod 1.3.1 is the current verified input; treat a newer
-release as unverified until the real pipeline and content gates pass. The generated `content/` tree
-is ignored by Git.
+CulturesNation mod is unpacked elsewhere, and `--mod-version <label>` to stamp the manifest with the
+mod release the lobby compares between players. CnMod 1.3.1 is the current verified input; treat a
+newer release as unverified until the real pipeline and content gates pass. The generated `content/`
+tree is ignored by Git.
 
 The music stage renders the DirectMusic soundtrack (`DataX/DM2`) to one ogg track per segment
 entirely in Node: segment interpretation, DLS synthesis, reverb, and ogg encoding all run from npm
@@ -173,9 +174,10 @@ PORT=9000 npm run relay
 
 Builds the workspace and serves the multiplayer relay over WebSockets on `PORT`, with its health
 check at `/healthz` on the same port. It loads no content and runs no simulation; the protocol it
-speaks is [`NETWORK.md`](NETWORK.md). `HOST` binds one address, `RELAY_MAX_ROOMS` caps the rooms,
-and `RELAY_PUBLIC_URL` and `RELAY_BUILD` are what the health check reports as the address and the
-build; the log is one JSON record per line. Every message it handles is exercised by the tests under
+speaks is [`NETWORK.md`](NETWORK.md). `HOST` binds one address, `RELAY_MAX_ROOMS` and
+`RELAY_MAX_CONNECTIONS` cap the rooms and the open sockets, and `RELAY_PUBLIC_URL` and `RELAY_BUILD`
+are what the health check reports as the address and the build; the log is one JSON record per
+line, a failed start included. Every message it handles is exercised by the tests under
 `packages/net-server/test`, and the decoded-map run in `npm run test:content` plays real sessions
 through it in memory. `ON_RELAY_URL=wss://…` points the socket test at a deployed relay instead:
 
@@ -183,9 +185,10 @@ through it in memory. `ON_RELAY_URL=wss://…` points the socket test at a deplo
 ON_RELAY_URL=wss://relay.opennorthland.org npx vitest run --project core packages/net-server/test/ws-host.test.ts
 ```
 
-The main menu's **Multiplayer** screen accepts an editable relay address (default
-`wss://relay.opennorthland.org`) and nickname, lists rooms, and creates games from installed maps or
-local saves. Players choose seats and readiness explicitly; the creator controls teams and settings.
+The main menu's **Multiplayer** screen (`?menu=multiplayer` opens it directly) accepts an editable
+relay address (default `wss://relay.opennorthland.org`) and nickname, lists rooms, and creates games
+from installed maps or local saves. Players choose seats and readiness explicitly; the creator
+controls teams and settings.
 Use separate browser profiles/private windows for two independent players. The default endpoint is
 not deployed by the repository. For a local relay, enter `ws://127.0.0.1:8765`.
 
@@ -290,7 +293,7 @@ simulation nor a content directory. It starts on environment variables alone:
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `PORT` | `8765` | Listening port |
-| `HOST` | every interface | Address to bind |
+| `HOST` | every interface | Address to bind; the image's health check probes loopback, so leave it unset in a container |
 | `RELAY_PUBLIC_URL` | unset | Public `ws://` or `wss://` address reported by `/healthz` |
 | `RELAY_MAX_ROOMS` | `64` | Maximum rooms |
 | `RELAY_MAX_CONNECTIONS` | `256` | Maximum open WebSocket connections |
@@ -298,6 +301,12 @@ simulation nor a content directory. It starts on environment variables alone:
 
 Rooms live in memory; restarting the process ends every match. The relay writes one JSON record
 per log line. TLS termination and deployment configuration belong to the operator.
+
+Size the machine from the limits, not the defaults: a room can retain about 22 MiB of base64
+snapshot text plus 16 MiB of serialized replay history, and JavaScript objects, input parsing and
+output queues add more, so 64 rooms can approach 2.4 GiB in retained payloads alone. Each of 256
+sockets can additionally receive a maximum-size message and queue about 43 MiB of output. Choose
+`RELAY_MAX_ROOMS` and `RELAY_MAX_CONNECTIONS` for the machine and measure its workload.
 
 To build and check the same image locally:
 

@@ -8,7 +8,7 @@ import { MapProvenance } from './provenance.js';
  * scripting payload are separate per-map artifacts, and `AIData` stays unextracted.
  */
 export const MapInfo = z.strictObject({
-  provenance: MapProvenance.optional(),
+  provenance: MapProvenance,
   /** Stable slug id (the map folder name, lower-cased), the cross-reference key. */
   id: z.string(),
   /** Map width in cells (`logiccontrol` `mapsize <w> <h>`, first value). */

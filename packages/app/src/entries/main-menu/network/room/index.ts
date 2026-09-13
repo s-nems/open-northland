@@ -8,11 +8,14 @@ import type { NetworkRoomDeps } from './types.js';
 
 export type { NetworkRoomCopy, NetworkRoomDeps } from './types.js';
 
+/** Chat lines kept on screen; older ones scroll away for good. */
+const CHAT_LOG_LINES = 80;
+
 export function mountNetworkRoom(deps: NetworkRoomDeps) {
   const { client, copy } = deps;
   let current: RoomView | null = null;
   let connected = false;
-  const element = node('section', '', 'main-menu__screen network-room');
+  const element = node('section', '', 'network-room');
   const heading = node('header', '', 'network-room__heading');
   const title = node('h2', copy.title);
   const identity = node('p', '', 'network-room__muted');
@@ -62,7 +65,7 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
   const footer = node('footer', '', 'network-room__actions');
   const hint = node('p', copy.waiting, 'network-room__muted');
   const release = button(copy.releaseSeat, () => client.claimSeat(null));
-  const ready = button(copy.ready, () => {
+  const ready = button(copy.becomeReady, () => {
     if (current !== null && !ready.disabled)
       client.setReady(!roomPermissions(current, client.nick, connected).ready);
   });
@@ -109,7 +112,7 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       send.disabled = !permissions.interactive;
       release.disabled = !permissions.interactive || permissions.self?.seat == null;
       ready.disabled = !permissions.canReady;
-      ready.textContent = permissions.ready ? copy.notReady : copy.ready;
+      ready.textContent = permissions.ready ? copy.withdrawReady : copy.becomeReady;
       ready.setAttribute('aria-pressed', String(permissions.ready));
       start.hidden = room.creator !== client.nick;
       start.disabled = !permissions.canStart;
@@ -119,7 +122,7 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       const row = node('p');
       row.append(node('strong', `${from}: `), document.createTextNode(text));
       log.append(row);
-      while (log.childElementCount > 80) log.firstElementChild?.remove();
+      while (log.childElementCount > CHAT_LOG_LINES) log.firstElementChild?.remove();
       log.scrollTop = log.scrollHeight;
     },
     rejected(of: string): void {

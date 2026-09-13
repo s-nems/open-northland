@@ -121,7 +121,7 @@ export async function presentMapWorld(
     elevation: world.elevation, // a placement/order click on a lifted hill resolves to the tile drawn there
     ...(staticLayer !== null ? { onEvents: staticLayer } : {}),
     worldToken: mapId,
-    saveEntrySearch: formatSearch(sessionSearch(session)),
+    saveEntrySearch: formatSearch(sessionSearch(session, script?.players ?? [])),
     introAtStart: runtime.introAtStart,
     musicType: meta?.musicType ?? null,
     missionBrief: mapMissionBrief({

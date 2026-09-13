@@ -17,6 +17,10 @@ export const MAX_ENVELOPE_BYTES = 1024;
 /** Pauses one member may start in one game. */
 export const PAUSE_BUDGET = 3;
 export const MAX_SPEED = 8;
+/** The sim's `FOG_MODE` ids, which a test pins; the descriptor refuses any other. */
+export const FOG_MODES: readonly number[] = [0, 1, 2];
+/** The sim seeds its generator with 32 bits; a wider seed would collapse onto another. */
+export const MAX_SEED = 0xffff_ffff;
 
 /** Bytes of one JSON message from a client other than a blob. A frame from the relay is bounded by the
  *  members' budgets instead: `MAX_MEMBERS * MAX_COMMANDS_PER_TICK` envelopes, each under this cap. */

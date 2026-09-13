@@ -1,10 +1,12 @@
 import type { MapsIndexEntry } from '@open-northland/content-resolver/wire';
 import { MAX_ROOM_NAME_LENGTH } from '@open-northland/net-protocol';
 import { loadMapList } from '../../../content/maps-index.js';
+import { errorText } from '../../../diag/error-text.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { SaveBytes } from '../../../view/runtime/save-load/codec.js';
 import { platformSavePicker } from '../../../view/runtime/save-load/file-access.js';
 import { createSaveStore } from '../../../view/runtime/save-load/store.js';
+import { SCENE_TOKEN_PREFIX } from '../../../view/runtime/save-load/world-names.js';
 import { button, field, node } from './parts.js';
 
 export type CreateChoice =
@@ -49,7 +51,7 @@ export function createRoomCard(create: (choice: CreateChoice) => Promise<void>) 
       if (!disposed && choice !== null) await create(choice);
       if (!disposed) status.textContent = '';
     } catch (error) {
-      if (!disposed) status.textContent = formatMessage(copy.failed, { reason: String(error) });
+      if (!disposed) status.textContent = formatMessage(copy.failed, { reason: errorText(error) });
     } finally {
       busy = false;
       if (!disposed) sync();
@@ -103,17 +105,17 @@ export function createRoomCard(create: (choice: CreateChoice) => Promise<void>) 
       map.replaceChildren(...maps.map((item) => new Option(item.name ?? item.id, item.id)));
       save.replaceChildren(
         ...slots
-          .filter((slot) => slot.mapId !== null && !slot.mapId.startsWith('scene:'))
+          .filter((slot) => slot.mapId !== null && !slot.mapId.startsWith(SCENE_TOKEN_PREFIX))
           .map((slot) => new Option(slot.name, slot.id)),
       );
       if (maps.length === 0) status.textContent = copy.noMaps;
       sync();
       const rejected = [mapResult, saveResult].find((result) => result.status === 'rejected');
       if (rejected?.status === 'rejected')
-        status.textContent = formatMessage(copy.failed, { reason: String(rejected.reason) });
+        status.textContent = formatMessage(copy.failed, { reason: errorText(rejected.reason) });
     })
     .catch((error: unknown) => {
-      if (!disposed) status.textContent = formatMessage(copy.failed, { reason: String(error) });
+      if (!disposed) status.textContent = formatMessage(copy.failed, { reason: errorText(error) });
     });
   sync();
   return {

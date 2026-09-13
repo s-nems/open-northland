@@ -88,7 +88,7 @@ describe('convertMapDatTree', () => {
 
   it('emits provenance metadata even without text or minimap', async () => {
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
-    expect(done.find((d) => d.id === 'forteca')).toMatchObject({ meta: true, minimap: false });
+    expect(done.find((d) => d.id === 'forteca')).toMatchObject({ minimap: false });
     expect(JSON.parse(await readFile(join(out, 'maps', 'forteca.meta.json'), 'utf8'))).toEqual({
       provenance: { kind: 'mod', folder: 'CnModMaps/forteca', layer: 'game' },
     });
@@ -109,7 +109,7 @@ describe('convertMapDatTree', () => {
       encodePcx({ width: 2, height: 1, pixels: Uint8Array.from([1, 2]), palette: rampPalette() }),
     );
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
-    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: true, minimap: true });
+    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ minimap: true });
     const meta = JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'));
     expect(meta).toMatchObject({ name: 'BŁĘKIT', description: 'Opis mapy' });
     const png = await decodePng(await readFile(join(out, 'maps', 'tutorial_002.png')));
@@ -238,7 +238,7 @@ describe('convertMapDatTree', () => {
     await readFile(join(out, 'maps', 'tutorial_002.meta.json')); // emitted on the first run
     await rm(join(dir, 'text'), { recursive: true, force: true });
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
-    expect(done.find((d) => d.id === 'tutorial_002')).toMatchObject({ meta: true });
+    expect(done.find((d) => d.id === 'tutorial_002')).toBeDefined();
     expect(JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'))).toEqual({
       provenance: { kind: 'mod', folder: 'CnModMaps/tutorial_002', layer: 'game' },
     });
@@ -252,11 +252,7 @@ describe('convertMapDatTree', () => {
     await writeFile(join(twin, 'map.dat'), buildMapDat(1, 1, [2, 2, 2, 2]));
     await writeFile(join(twin, 'text', 'pol', 'strings.ini'), rawBytes('[text]\nstringn 0 "Nazwa"\n'));
     const done = await convertMapDatTree(fs, { game, mod: undefined }, out);
-    expect(done.map((d) => [d.id, d.meta])).toEqual([
-      ['forteca', true],
-      ['tutorial_002', true],
-      ['tutorial_002', true],
-    ]);
+    expect(done.map((d) => d.id)).toEqual(['forteca', 'tutorial_002', 'tutorial_002']);
     expect(JSON.parse(await readFile(join(out, 'maps', 'tutorial_002.meta.json'), 'utf8'))).toEqual({
       provenance: { kind: 'mod', folder: 'CnModMaps/tutorial_002', layer: 'game' },
     });

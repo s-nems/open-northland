@@ -4,10 +4,9 @@
 
 `Simulation.setSyncDigest` folds every component value a tick wrote, which is what lets a lockstep
 session compare ticks without the full state hash. It costs about 11.8k mixed words over roughly 510
-values a tick on `magiczny_las` with six AI seats. Measured in one process with the two paths
-interleaved per tick, that came out between 5% and 17% of a settled tick across three runs, on a box
-too loaded to narrow further. The seam it was built for asked for under 0.2 ms, roughly 6% of a
-settled tick there, so the budget is probably still missed.
+values a tick on `magiczny_las` with six AI seats: between 5% and 17% of a settled tick, measured in
+one process with the two paths interleaved per tick. The budget is 0.2 ms, roughly 6% of a settled
+tick on that map.
 
 Three components carry about 90% of the fold: `Settler`, whose experience `Map` is re-folded whenever
 any of its fields moves, `CurrentAtomic`, and `PathFollow`, whose route array is re-folded on every

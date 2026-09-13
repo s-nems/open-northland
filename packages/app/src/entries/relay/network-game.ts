@@ -2,6 +2,7 @@ import type { GameSession } from '@open-northland/lockstep';
 import { decodeSnapshot, verifyInitialSave, type WorldPort } from '@open-northland/net-client';
 import { DESCRIPTOR_WORLD, TICK_MS } from '@open-northland/net-protocol';
 import type { SaveGame } from '@open-northland/sim';
+import { errorText } from '../../diag/error-text.js';
 import { diag } from '../../diag/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
@@ -85,14 +86,14 @@ export function renderNetworkGame(
   }
   function fail(error: unknown): void {
     if (closed) return;
-    diag.warn('net', 'network game halted', { error: String(error) });
+    diag.warn('net', 'network game halted', { error: errorText(error) });
     dispose();
     const back = el('button', BUTTON_STYLE, messages().hud.returnToMenu);
     back.type = 'button';
     back.addEventListener('click', () => {
       void swapToEntry(menuSearch(), () => back.parentElement?.remove());
     });
-    mountMessage(formatMessage(copy.bootFailed, { reason: String(error) }), '', [back]);
+    mountMessage(formatMessage(copy.bootFailed, { reason: errorText(error) }), '', [back]);
   }
   const exit = roomExitObserver((reason) => fail(reason ?? copy.roomEnded));
   const unsubscribe = connection.subscribe((event) => {

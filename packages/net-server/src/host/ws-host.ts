@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { Socket } from 'node:net';
 import {
   CLOSE_PROTOCOL_ERROR,
   CLOSE_REPLACED,
@@ -6,7 +7,7 @@ import {
   PROTOCOL_VERSION,
   type ServerMessage,
 } from '@open-northland/net-protocol';
-import { type RawData, WebSocketServer } from 'ws';
+import { type RawData, type WebSocket, WebSocketServer } from 'ws';
 import { type Connection, DEFAULT_MAX_ROOMS, Relay, type RelayLog } from '../relay/relay.js';
 import { DEFAULT_MAX_CONNECTIONS, RecoveryBudget, SocketBudget, sendBounded } from './socket-budget.js';
 
@@ -21,6 +22,12 @@ const CLOSE_REASON_FALLBACK = 'protocol violation';
 export const HEALTH_PATH = '/healthz';
 const MS_PER_SECOND = 1000;
 const HTTP_CONNECTION_HEADROOM = 16;
+/** A connection that has sent nothing for this long is dead to the relay, whose ping it answers every
+ *  second while alive; closing it lets the seat be waited for and the token return on a new socket. */
+export const SILENT_SOCKET_MS = 30_000;
+const SILENCE_CHECK_MS = 5000;
+/** TCP keepalive so a peer that vanished without a FIN is noticed by the kernel as well. */
+const TCP_KEEPALIVE_MS = 10_000;
 
 export interface RelayHostOptions {
   /** 0 picks a free port; read it back from the host. */
@@ -131,17 +138,23 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     closeTimeout: 1000,
   };
   const sockets = new WebSocketServer(socketOptions);
+  const lastHeardAt = new Map<WebSocket, number>();
   server.on('upgrade', (request, socket, head) => {
     if (sockets.clients.size >= maxConnections) {
       socket.on('error', () => socket.destroy());
       socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
       return;
     }
+    if (socket instanceof Socket) socket.setKeepAlive(true, TCP_KEEPALIVE_MS);
     sockets.handleUpgrade(request, socket, head, (peer) => sockets.emit('connection', peer, request));
   });
   sockets.on('connection', (socket) => {
     const budget = new SocketBudget(performance.now());
     const recovery = new RecoveryBudget(performance.now());
+    lastHeardAt.set(socket, performance.now());
+    const heard = (): void => {
+      lastHeardAt.set(socket, performance.now());
+    };
     const connection: Connection = {
       send: (message) => {
         sendBounded(socket, encode(message));
@@ -166,10 +179,15 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
       return false;
     };
     socket.on('ping', (data) => {
+      heard();
       if (acceptTraffic(data.length)) socket.pong(data);
     });
-    socket.on('pong', (data) => acceptTraffic(data.length));
+    socket.on('pong', (data) => {
+      heard();
+      acceptTraffic(data.length);
+    });
     socket.on('message', (data, isBinary) => {
+      heard();
       if (!acceptTraffic(byteLength(data))) return;
       // Anything but a JSON text frame is handed over as a value no message parses, which closes the
       // connection through the relay's own refusal path.
@@ -193,8 +211,17 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         socket.close(CLOSE_INTERNAL_ERROR, 'relay fault');
       }
     });
-    socket.on('close', () => relay.disconnect(client));
-    socket.on('error', () => socket.terminate());
+    // A fault in departure handling costs the one room it hit, never the process.
+    socket.on('close', () => {
+      lastHeardAt.delete(socket);
+      try {
+        relay.disconnect(client);
+      } catch (err) {
+        log('disconnect failed', { error: String(err) });
+      }
+    });
+    // `ws` closes the socket itself after a protocol error; a transport error is followed by `close`.
+    socket.on('error', (err) => log('socket error', { error: String(err) }));
   });
   const poll = setInterval(() => {
     try {
@@ -203,12 +230,23 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
       log('advance failed', { error: String(err) });
     }
   }, POLL_INTERVAL_MS);
+  const silence = setInterval(() => {
+    const now = performance.now();
+    for (const [socket, at] of lastHeardAt) {
+      if (now - at >= SILENT_SOCKET_MS) socket.terminate();
+    }
+  }, SILENCE_CHECK_MS);
   return new Promise((resolve, reject) => {
-    server.once('error', (err) => {
+    const failToStart = (err: Error): void => {
       clearInterval(poll);
+      clearInterval(silence);
       reject(err);
-    });
+    };
+    server.once('error', failToStart);
     server.once('listening', () => {
+      // Past the start, a server error (an accept that failed) is logged and the relay keeps running.
+      server.off('error', failToStart);
+      server.on('error', (err) => log('server error', { error: String(err) }));
       const address = server.address();
       if (address === null || typeof address === 'string') {
         reject(new Error('the relay host did not bind a TCP port'));
@@ -229,6 +267,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         health,
         close: () => {
           clearInterval(poll);
+          clearInterval(silence);
           for (const socket of sockets.clients) socket.terminate();
           sockets.close();
           server.closeAllConnections();

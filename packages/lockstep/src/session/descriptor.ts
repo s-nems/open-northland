@@ -111,11 +111,12 @@ export function orderedSeats(seats: readonly SessionSeat[]): readonly SessionSea
  */
 export function parseGameSession(value: unknown): GameSession {
   const raw = asRecord(value, 'session');
+  const seats = parseSeats(raw.seats);
   return {
     world: parseWorld(raw.world),
-    seed: integer(raw.seed, 'seed'),
-    seats: parseSeats(raw.seats),
-    localSeat: parseLocalSeat(raw.localSeat),
+    seed: parseSeed(raw.seed),
+    seats,
+    localSeat: parseLocalSeat(raw.localSeat, seats),
     rules: parseRules(raw.rules),
     speed: positive(raw.speed, 'speed'),
     ...(raw.initialSave === undefined ? {} : { initialSave: parseInitialSaveIdentity(raw.initialSave) }),
@@ -125,9 +126,25 @@ export function parseGameSession(value: unknown): GameSession {
 
 function parseWorld(value: unknown): SessionWorld {
   const raw = asRecord(value, 'world');
-  if (raw.kind === 'map') return { kind: 'map', mapId: text(raw.mapId, 'world.mapId') };
-  if (raw.kind === 'scene') return { kind: 'scene', sceneId: text(raw.sceneId, 'world.sceneId') };
+  if (raw.kind === 'map') return { kind: 'map', mapId: worldId(raw.mapId, 'world.mapId') };
+  if (raw.kind === 'scene') return { kind: 'scene', sceneId: worldId(raw.sceneId, 'world.sceneId') };
   throw new Error(`session.world.kind must be 'map' or 'scene', got ${JSON.stringify(raw.kind)}`);
+}
+
+/** The sim seeds its generator with 32 bits; a wider seed would name the same world as another. */
+const MAX_SEED = 0xffff_ffff;
+
+function parseSeed(value: unknown): number {
+  const seed = integer(value, 'seed');
+  if (seed < 0 || seed > MAX_SEED) throw new Error(`session seed ${seed} is not a 32-bit value`);
+  return seed;
+}
+
+/** A world id names a file or a registered scene: one line of printable text. */
+function worldId(value: unknown, at: string): string {
+  const id = text(value, at);
+  if (id.length === 0 || /\p{C}/u.test(id)) throw new Error(`${at} must be one printable line`);
+  return id;
 }
 
 function parseSeats(value: unknown): readonly SessionSeat[] {
@@ -167,10 +184,13 @@ function parseSeatMode(value: unknown): SeatMode {
   return mode;
 }
 
-function parseLocalSeat(value: unknown): LocalSeat {
+function parseLocalSeat(value: unknown, seats: readonly SessionSeat[]): LocalSeat {
   if (value === OBSERVER_SEAT || value === OVERSEER_SEAT) return value;
   const player = integer(value, 'localSeat');
   if (!isValidPlayer(player)) throw new Error(`session localSeat ${player} is not a player slot`);
+  if (seats.length > 0 && !seats.some((seat) => seat.player === player)) {
+    throw new Error(`session localSeat ${player} is not in the roster`);
+  }
   return player;
 }
 

@@ -5,6 +5,7 @@ import {
   loadVerifiedMapDocuments,
   readVerifiedMapDocuments,
   type VerifiedMapDocuments,
+  validMapId,
 } from './transfer/index.js';
 
 declare const __CLIENT_BUILD__: string;
@@ -15,7 +16,7 @@ export async function loadLobbyCompatibility(
   client = typeof __CLIENT_BUILD__ === 'string' ? __CLIENT_BUILD__ : 'unbundled',
   supplied?: VerifiedMapDocuments | null,
 ): Promise<LobbyCompatibility> {
-  if (!/^[a-z0-9_-]+$/i.test(mapId)) throw new Error('Invalid lobby map id');
+  validMapId(mapId);
   const [content, documents] = await Promise.all([
     loadRealContent(fetchImpl),
     supplied === undefined ? loadVerifiedMapDocuments(mapId, fetchImpl) : supplied,

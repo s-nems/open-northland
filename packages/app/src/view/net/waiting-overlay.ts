@@ -53,6 +53,8 @@ export function waitedRows(
 export interface WaitingOverlayDeps {
   /** The seat a nick holds, for the kick vote; null for a member without one. */
   readonly seatOf: (nick: string) => number | null;
+  /** This client's own nick; the relay counts no vote against yourself, so none is offered. */
+  readonly ownNick: () => string;
   readonly onKick: (player: number) => void;
   readonly now?: () => number;
 }
@@ -100,6 +102,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
       rows,
       [...tallies],
       rows.map((row) => deps.seatOf(row.nick)),
+      deps.ownNick(),
     ]);
     if (signature === rendered) return;
     rendered = signature;
@@ -119,7 +122,7 @@ export function createWaitingOverlay(deps: WaitingOverlayDeps): WaitingOverlay {
           line.append(
             el('span', 'opacity:0.7', formatMessage(copy.kickCountdown, { seconds: row.voteInSeconds })),
           );
-        } else if (seat !== null) {
+        } else if (seat !== null && row.nick !== deps.ownNick()) {
           const label =
             tally === undefined
               ? copy.voteKick

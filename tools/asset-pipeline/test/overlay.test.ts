@@ -74,7 +74,7 @@ describe('split game/mod source roots', () => {
     await write(mod, join(folder, 'map.dat'), buildMapDat(1, 1, [2, 2, 2, 2]));
     await write(game, join(folder, 'text', 'pol', 'strings.ini'), '[text]\nstringn 0 "Nazwa"\n');
     const done = await convertMapDatTree(fs, { game, mod }, out);
-    expect(done[0]?.meta).toBe(true);
+    expect(done).toHaveLength(1);
     const meta = JSON.parse(await readFile(join(out, 'maps', 'shared.meta.json'), 'utf8'));
     expect(meta.name).toBe('Nazwa');
   });

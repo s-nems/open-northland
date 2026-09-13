@@ -150,6 +150,25 @@ describe('client messages', () => {
       /past the last seat/,
     ],
     [
+      'a fog rule the sim has no mode for',
+      { kind: 'createRoom', settings: { ...settings, rules: { ...settings.rules, fog: 3 } }, seats: [] },
+      /not a fog mode/,
+    ],
+    [
+      'a seed wider than the sim reads',
+      { kind: 'createRoom', settings: { ...settings, seed: 2 ** 32 }, seats: [] },
+      /wider than 32 bits/,
+    ],
+    [
+      'a saved start at tick 0',
+      {
+        kind: 'createRoom',
+        settings: { ...settings, initialSave: { fingerprint: 'c'.repeat(64), tick: 0 } },
+        seats: [],
+      },
+      /tick 1 or later/,
+    ],
+    [
       'a human seat setup',
       { kind: 'createRoom', settings, seats: [{ player: 0, mode: 'human', color: 0 }] },
       /one of ai, idle/,

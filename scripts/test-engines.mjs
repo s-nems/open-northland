@@ -7,6 +7,18 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { contentDir, repoRoot } from './content-dir.mjs';
 
+if (process.env.ON_CONTENT_DIR !== undefined) {
+  console.error("test:engines serves the checkout's content/ only; unset ON_CONTENT_DIR");
+  process.exit(1);
+}
+const KNOWN_ENGINES = ['electron', 'chromium', 'webkit', 'firefox'];
+const engines = (process.env.ON_ENGINES ?? 'all').trim();
+const selected = engines === 'all' ? KNOWN_ENGINES : engines.split(',').map((id) => id.trim());
+const unknown = selected.filter((id) => !KNOWN_ENGINES.includes(id));
+if (selected.length === 0 || unknown.length > 0) {
+  console.error(`ON_ENGINES must be 'all' or a comma-separated subset of ${KNOWN_ENGINES.join(', ')}`);
+  process.exit(1);
+}
 const dir = contentDir();
 // The browser boots the real entries, so it needs what they fetch: the IR, a decoded map, and the
 // sprite bobs. Without them the page halts on the missing-content notice and never starts a game.
@@ -20,12 +32,18 @@ if (missing.length > 0) {
 
 // Vite resolves every `@open-northland/*` import to that package's `dist/`, so an unbuilt workspace
 // would serve a stale sim to the browsers while Node's reference ran the working tree.
-const built = spawnSync('npx', ['tsc', '--build'], { stdio: 'inherit', cwd: repoRoot, env: process.env });
-if (built.status !== 0) process.exit(built.status ?? 1);
+function run(args) {
+  const result = spawnSync('npx', args, {
+    stdio: 'inherit',
+    cwd: repoRoot,
+    env: { ...process.env, ON_ENGINES: selected.join(',') },
+  });
+  if (result.error !== undefined) {
+    console.error(`npx ${args[0]} could not start: ${result.error.message}`);
+    process.exit(1);
+  }
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}
 
-const result = spawnSync('npx', ['vitest', 'run', 'packages/app/test/engines', '--disableConsoleIntercept'], {
-  stdio: 'inherit',
-  cwd: repoRoot,
-  env: { ...process.env, ON_ENGINES: process.env.ON_ENGINES ?? 'all' },
-});
-process.exit(result.status ?? 1);
+run(['tsc', '--build']);
+run(['vitest', 'run', 'packages/app/test/engines', '--disableConsoleIntercept']);

@@ -137,9 +137,9 @@ export type ClientMessage =
   | { readonly kind: 'setCompatibility'; readonly compatibility: LobbyCompatibility | null }
   | { readonly kind: 'setSettings'; readonly settings: LobbySettings }
   | { readonly kind: 'start' }
+  | { readonly kind: 'saveOrders'; readonly id: number; readonly tick: number; readonly world: number }
   /** The tick the client's world stands at and the world's generation, or a null tick for a client
    *  holding no world that needs the room's snapshot. */
-  | { readonly kind: 'saveOrders'; readonly id: number; readonly tick: number; readonly world: number }
   | { readonly kind: 'loaded'; readonly tick: number; readonly world: number }
   | { readonly kind: 'loaded'; readonly tick: null }
   | { readonly kind: 'finish'; readonly tick: number; readonly hash: string; readonly world: number }

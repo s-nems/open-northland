@@ -1,6 +1,6 @@
 import type { MapProvenance } from '@open-northland/data';
-import { type ReadableVfs, relIn, vdirname } from '@open-northland/vfs';
-import { findPathCaseInsensitive, type SourceFile, type SourceRoots } from '../../roots.js';
+import { relIn, vdirname } from '@open-northland/vfs';
+import type { SourceFile, SourceRoots } from '../../roots.js';
 
 function under(root: string | undefined, path: string): boolean {
   if (root === undefined) return false;
@@ -12,12 +12,9 @@ function under(root: string | undefined, path: string): boolean {
   }
 }
 
-/** Loose Data/maps can contain installed mods; only an unoverlaid folder from a recognized game archive is classified as base. */
-export async function mapProvenance(
-  fs: ReadableVfs,
-  roots: SourceRoots,
-  source: SourceFile,
-): Promise<MapProvenance> {
+/** Loose `Data/maps` can hold installed mods, so a map there is `unknown`; `base` is reserved for a
+ *  map proven to come from the game's own archive, which the map stages do not read yet. */
+export function mapProvenance(roots: SourceRoots, source: SourceFile): MapProvenance {
   const folder = vdirname(source.rel).replace(/\\/g, '/');
   const parts = folder.toLowerCase().split('/');
   const layer: MapProvenance['layer'] =
@@ -29,21 +26,5 @@ export async function mapProvenance(
   if (parts[0] === 'usermaps') return { kind: 'user', folder, layer };
   if (parts[0] === 'cnmodmaps' || parts[0] === 'datacnmd') return { kind: 'mod', folder, layer };
   if (layer === 'mod') return { kind: 'mod', folder, layer };
-  if (layer === 'archive' && parts[0] === 'data' && parts[1] === 'maps') {
-    for (const root of new Set([roots.mod, roots.game])) {
-      if (root === undefined) continue;
-      // Even a sibling script or roster override prevents a base-only classification.
-      if ((await findPathCaseInsensitive(fs, root, folder.split('/'))) !== undefined) {
-        return { kind: 'unknown', folder, layer };
-      }
-    }
-    const origins = roots.archiveOrigins;
-    const prefix = `${folder.toLowerCase()}/`;
-    if (origins?.get(source.rel.toLowerCase()) !== 'base') return { kind: 'unknown', folder, layer };
-    for (const [member, origin] of origins) {
-      if (member.startsWith(prefix) && origin !== 'base') return { kind: 'unknown', folder, layer };
-    }
-    return { kind: 'base', folder, layer };
-  }
   return { kind: 'unknown', folder, layer };
 }

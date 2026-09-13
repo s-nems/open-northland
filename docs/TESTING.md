@@ -90,10 +90,12 @@ ON_ENGINES=electron,chromium npm run test:engines # a subset
 ```
 
 It needs generated content (the browser entries halt without it), a built workspace (the runner
-builds it), and the Playwright browsers of the repository's Playwright version: `npx playwright
-install webkit firefox` fetches the two that `npm ci` does not. Electron and Chromium are gates, so a
-mismatch fails the run. WebKit and Firefox are informative: their verdict is printed, never asserted,
-and a divergence there is filed as a sim ticket naming the first diverging tick.
+builds it), and the Playwright browsers of the repository's Playwright version: `npm ci` installs
+none of them, so run `npx playwright install chromium webkit firefox` once; Electron comes with the
+desktop package. Electron and Chromium are gates, so a mismatch fails the run. WebKit and Firefox
+are informative: their verdict is printed, never asserted, and a divergence there is filed as a sim
+ticket naming the first diverging tick. An unknown or empty `ON_ENGINES` selection fails the run
+instead of passing with nothing compared.
 
 The workloads are the `sandbox` scene over its acceptance run, hashed every 20 ticks, and 2000 ticks
 of `magiczny_las` with six AI seats, hashed every 100 because a full hash of that world is slow. A

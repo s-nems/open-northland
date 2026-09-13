@@ -28,7 +28,7 @@ function setting(env: Environment, name: string): string | null {
 function integerSetting(env: Environment, name: string, fallback: number, min: number, max: number): number {
   const raw = setting(env, name);
   if (raw === null) return fallback;
-  const value = Number(raw);
+  const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
   if (!Number.isInteger(value) || value < min || value > max) {
     throw new Error(`${name} must be an integer from ${min} to ${max}, got ${raw}`);
   }

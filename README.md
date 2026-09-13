@@ -59,8 +59,8 @@ npm run dev
 ```
 
 The pipeline detects the CulturesNation `DataCnmd/` folder inside the game directory. If the mod is
-elsewhere, add `--mod-root <dir>`. A newer mod release must be verified before replacing the 1.3.1
-baseline.
+elsewhere, add `--mod-root <dir>`; `--mod-version <label>` stamps the release so multiplayer lobbies
+can compare it. A newer mod release must be verified before replacing the 1.3.1 baseline.
 
 Generated content is ignored by Git. Do not commit or redistribute it.
 

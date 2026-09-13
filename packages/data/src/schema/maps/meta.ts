@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { MapProvenance } from './provenance.js';
 
-/** A map's metadata sidecar; optional strings/music and extraction provenance.
- * Not strict, so a newer sidecar with an extra field still loads. */
+/** A map's metadata sidecar: optional strings and music, and the provenance the pipeline always
+ *  writes (a hand-edited sidecar without it counts as unknown). Not strict, so a newer sidecar with
+ *  an extra field still loads. */
 export const MapMeta = z.object({
   provenance: MapProvenance.optional(),
   name: z.string().optional(),

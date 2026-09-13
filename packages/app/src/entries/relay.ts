@@ -1,6 +1,7 @@
 import { base64ToBytes, RelayClient, RelaySocket, type WorldPort } from '@open-northland/net-client';
 import { DESCRIPTOR_WORLD, type ServerMessage, TICK_MS } from '@open-northland/net-protocol';
 import { loadRoomMapDocuments } from '../content/transfer/index.js';
+import { errorText } from '../diag/error-text.js';
 import { currentDiagGameSession, diag, setDiagGameSession } from '../diag/index.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { takeNetworkHandover } from '../net/handover.js';
@@ -54,7 +55,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     return;
   }
   const copy = messages().net;
-  const identity = relayIdentity(params, plan.url);
+  const identity = relayIdentity(plan.url, params.get('nick'));
   const card = mountLobbyCard();
   card.connecting(plan.url);
   const roomPlan = plan.room;
@@ -93,6 +94,9 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       if (out) return null;
       if (session.world.kind !== 'map')
         throw new Error(`a relayed game plays a map, not a ${session.world.kind}`);
+      // A saved start needs the initial save verified from its bytes, which only the menu path holds;
+      // reloading into the staged snapshot here would ask for it again on every boot.
+      if (session.initialSave !== undefined) throw new Error('the developer entry does not play saved rooms');
       const mapId = session.world.mapId;
       // A staged snapshot is what a resync relaunch left for this boot; otherwise a room already past
       // its start is asked for its cached snapshot.
@@ -140,16 +144,18 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
     onMessage: observe,
     onWorld: () => {
       presentation = present().catch((error: unknown) => {
-        diag.warn('net', 'presentation failed', { error: String(error) });
-        leave(formatMessage(copy.bootFailed, { reason: String(error) }));
+        diag.warn('net', 'presentation failed', { error: errorText(error) });
+        leave(formatMessage(copy.bootFailed, { reason: errorText(error) }));
       });
     },
     onDropped: (tick, reason) => diag.warn('net', `dropped an envelope for tick ${tick}: ${reason}`),
     onError: (what, error) => {
-      diag.warn('net', `${what} failed`, { error: String(error) });
+      diag.warn('net', `${what} failed`, { error: errorText(error) });
       if (what === 'open' || what === 'restore') {
         card.dismiss();
-        mountMessage(what, formatMessage(copy.bootFailed, { reason: String(error) }));
+        mountMessage(what, formatMessage(copy.bootFailed, { reason: errorText(error) }));
+      } else if (what === 'result') {
+        leave(formatMessage(copy.bootFailed, { reason: errorText(error) }));
       }
     },
     connected: () => socket.connected,
@@ -164,7 +170,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       try {
         client.receive(raw);
       } catch (err) {
-        diag.warn('net', 'refused a relay message', { error: String(err) });
+        diag.warn('net', 'refused a relay message', { error: errorText(err) });
       }
     },
     onClosed: (reason) => {
@@ -199,7 +205,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       hud?.dispose();
       hud = null;
     },
-    onFailure: (error) => leave(formatMessage(copy.bootFailed, { reason: String(error) })),
+    onFailure: (error) => leave(formatMessage(copy.bootFailed, { reason: errorText(error) })),
   });
 
   function observe(message: ServerMessage): void {

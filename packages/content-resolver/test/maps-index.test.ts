@@ -28,7 +28,7 @@ describe('buildMapsIndexEntries', () => {
     ]);
   });
 
-  it('serves validated provenance including explicit unknown and drops malformed or legacy metadata', async () => {
+  it('serves validated provenance including explicit unknown and drops malformed or absent metadata', async () => {
     const valid = { kind: 'mod', folder: 'CnModMaps/example', layer: 'game' };
     const cases = [
       valid,

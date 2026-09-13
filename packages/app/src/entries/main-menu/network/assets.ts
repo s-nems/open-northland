@@ -113,6 +113,8 @@ export function roomAssets(
     }
   }
 
+  /** The creator uploads once; anyone else asks once per room, since the relay broadcasts the upload
+   *  to every member and a refusal means it has not arrived yet. Retry asks again by hand. */
   function requestSave(): void {
     if (disposed || !room?.settings.initialSave || room.state !== 'lobby') return;
     if (
@@ -173,7 +175,6 @@ export function roomAssets(
         }
         void validateSave();
       }
-      if (message.kind === 'rejected' && message.of === 'requestInitialSave') saveRequest = false;
     },
     retry(): void {
       if (disposed || room?.state !== 'lobby') return;

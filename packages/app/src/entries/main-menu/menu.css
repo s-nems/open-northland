@@ -352,24 +352,6 @@
   letter-spacing: 0.07em;
 }
 
-.main-menu__nav-item.is-coming-soon {
-  color: rgba(219, 232, 227, 0.35);
-  cursor: default;
-}
-
-.main-menu__badge {
-  font:
-    500 calc(var(--u) * 14) / 1 "Alegreya Sans",
-    system-ui,
-    sans-serif;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
-  border: 1px solid rgba(99, 196, 160, 0.5);
-  border-radius: calc(var(--u) * 20);
-  padding: calc(var(--u) * 4) calc(var(--u) * 11);
-}
-
 .main-menu__nav-item.is-exit {
   color: rgba(219, 232, 227, 0.6);
 }

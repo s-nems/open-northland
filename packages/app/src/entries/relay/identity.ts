@@ -1,8 +1,7 @@
 import { newToken } from '@open-northland/net-client';
+import { messages } from '../../i18n/index.js';
 import { patchStoredSettings, readStoredSettings } from '../../view/settings-store.js';
 
-/** The display name a player who never chose one shows up as. */
-const DEFAULT_NICK = 'Gracz';
 const tokens = new Map<string, string>();
 
 export interface RelayIdentity {
@@ -10,8 +9,9 @@ export interface RelayIdentity {
   readonly nick: string;
 }
 
-/** A reconnect secret belongs to one relay endpoint; the display name is shared across relays. */
-export function relayIdentity(params: URLSearchParams, relayUrl: string): RelayIdentity {
+/** A reconnect secret belongs to one relay endpoint; the display name is shared across relays, and a
+ *  player who never chose one shows up under the catalog's default. */
+export function relayIdentity(relayUrl: string, requestedNick: string | null): RelayIdentity {
   const stored = readStoredSettings();
   const url = new URL(relayUrl);
   const key = `open-northland.relay-token:${url.origin}${url.pathname}`;
@@ -28,8 +28,7 @@ export function relayIdentity(params: URLSearchParams, relayUrl: string): RelayI
   } catch {
     // The document keeps the identity when storage is unavailable.
   }
-  const nick = params.get('nick')?.trim() || stored.netNick || DEFAULT_NICK;
-  if (stored.netToken !== null || nick !== stored.netNick)
-    patchStoredSettings({ netToken: null, netNick: nick });
+  const nick = requestedNick?.trim() || stored.netNick || messages().net.defaultNick;
+  if (nick !== stored.netNick) patchStoredSettings({ netNick: nick });
   return { token, nick };
 }

@@ -55,9 +55,9 @@ Stage 3, the worker host behind that seam:
 
 - The worker owns the canonical loop, timestep, command log, hash trace, and save export. The main
   thread only enqueues and consumes, and never assigns ticks.
-- The command protocol is the local transport of a lockstep protocol: an envelope carries its target
-  tick, the worker advances a tick only when its input set for that tick is complete (locally, the
-  local queue), and the worker stamps the admission tick into the replay log.
+- The worker hosts the lockstep driver over its transport: `packages/lockstep` already stamps an
+  envelope's target tick and advances only when a tick's input is complete, so the worker takes the
+  driver and the transport as they are, with the main thread feeding envelopes and elapsed time.
 - Every stepped tick's events reach the main thread in order, including ticks whose snapshot the main
   thread never drew.
 - Fog view travels on a fog generation change, not per tick.
@@ -73,8 +73,9 @@ Stage 3, the worker host behind that seam:
   (Node `worker_threads` for the worker) so the two loops cannot drift.
 - The worker needs the content set and the map; account for their transfer or second load in boot
   time and memory.
-- Non-goals: no network transport, no `SharedArrayBuffer` lanes (a separate ticket if stage 1 forces
-  it), no change to the save format or the snapshot shape beyond what stage 1 decides.
+- Non-goals: no change to the wire protocol or the relay client, no `SharedArrayBuffer` lanes (a
+  separate ticket if stage 1 forces it), no change to the save format or the snapshot shape beyond
+  what stage 1 decides.
 
 ## Verify
 

@@ -51,12 +51,10 @@ export function restoreSceneSim(
   save: SaveGame,
   options: WorldContentOptions = {},
 ): RestoredSimulation {
-  const restored = restoreSimulation(save, {
+  return restoreSimulation(save, {
     content: resolveWorldContent(scene.terrain, options),
     map: halfCellMapFromCells(scene.terrain),
   });
-  setupPlacementTribes(restored.sim);
-  return restored;
 }
 
 /**

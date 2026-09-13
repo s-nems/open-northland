@@ -97,6 +97,32 @@ function harness(verify = vi.fn(async () => SAVE)) {
 }
 
 describe('room assets coordinator', () => {
+  it('asks for the initial save once per room, whatever the relay answers, until Retry', async () => {
+    const h = harness();
+    const requests = () =>
+      h.sent.filter((message) => (message as { kind: string }).kind === 'requestInitialSave');
+    const joined = {
+      ...room(),
+      creator: 'Bartek',
+      members: [{ nick: 'Bartek', seat: 0, connected: true, compatibility: null }],
+    };
+    h.assets.observe(joined);
+    expect(requests()).toHaveLength(1);
+    h.assets.observeMessage({
+      kind: 'rejected',
+      of: 'requestInitialSave',
+      reason: 'Bartek: initial save upload missing',
+    });
+    h.assets.observe({
+      ...joined,
+      seats: [{ player: 0, mode: 'human', color: 1, nick: 'Bartek', ready: false }],
+    });
+    h.assets.observe(joined);
+    expect(requests()).toHaveLength(1);
+    h.assets.retry();
+    expect(requests()).toHaveLength(2);
+  });
+
   it('verifies the pinned cached save after its original uploader leaves the room', async () => {
     const verify = vi.fn(async () => SAVE);
     const h = harness(verify);

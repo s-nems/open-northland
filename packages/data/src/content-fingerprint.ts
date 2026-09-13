@@ -1,7 +1,8 @@
 import { jsonFingerprint } from './json-fingerprint.js';
 import type { ContentSet } from './schema/content/content-set.js';
 
-/** Paths, locale and display names do not identify simulation content. Revision is checked separately. */
+/** Installation paths and display names do not identify simulation content; the pipeline revision
+ *  is checked separately. */
 export function contentFingerprint(content: ContentSet): string {
   const { manifest, maps: _maps, sounds: _sounds, ...tables } = content;
   return jsonFingerprint({

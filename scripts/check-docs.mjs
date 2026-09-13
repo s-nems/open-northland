@@ -21,6 +21,7 @@ const ticketAreas = new Set([
   'desktop',
   'installer',
   'lockstep',
+  'net-client',
   'net-protocol',
   'net-server',
   'pipeline',

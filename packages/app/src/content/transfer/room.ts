@@ -32,6 +32,7 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
   let origin: MapsIndexProvenance | undefined;
   let locallyListed = false;
   let loaded = false;
+  let loading = false;
   let encodedMap: string | undefined;
   let cacheFingerprint: string | null = null;
   let requested = false;
@@ -109,6 +110,7 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
     requested = false;
     const mapId = room?.settings.world.kind === 'map' ? room.settings.world.mapId : null;
     if (mapId === null) return;
+    loading = true;
     const transport: typeof fetch = (input, init) => fetchImpl(input, { ...init, signal });
     try {
       const [handle, response] = await Promise.all([
@@ -127,14 +129,17 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
       const fingerprint = expectedFingerprint();
       const allowedOrigin = room?.settings.mapOrigin;
       cacheFingerprint = fingerprint;
+      // The creator's own report is what everyone else compares against, so it reads the cache by
+      // origin alone; a member needs the creator's fingerprint to accept a cached copy.
+      const creator = room?.creator === options.client.nick;
       if (
         resolved === null &&
-        fingerprint !== null &&
+        (creator || fingerprint !== null) &&
         allowedOrigin !== undefined &&
         (!locallyListed || mapDeliveryAllowed(origin))
       ) {
         const cached = await (options.cacheRead ?? loadPersistedMap)(mapId, {
-          fingerprint,
+          ...(fingerprint === null ? {} : { fingerprint }),
           origin: allowedOrigin,
         });
         if (disposed || generation !== active) return;
@@ -154,6 +159,8 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
         abort?.abort();
         reportError(error);
       }
+    } finally {
+      if (generation === active) loading = false;
     }
   }
   return {
@@ -166,10 +173,22 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
     observe(next: RoomView | null) {
       if (disposed) return;
       room = next;
-      const key = next === null ? '' : `${next.id}:${next.creator}:${JSON.stringify(next.settings.world)}`;
+      if (next === null) {
+        // Leaving keeps the identity and the documents prepared for it: a reconnect re-enters the
+        // same room before any compatibility report exists to look the map up by.
+        pending.clear();
+        generation++;
+        abort?.abort();
+        documents = null;
+        encodedMap = undefined;
+        loaded = false;
+        loading = false;
+        return;
+      }
+      const key = `${next.id}:${next.creator}:${JSON.stringify(next.settings.world)}`;
       if (key !== identity) {
         identity = key;
-        roomPrepared = next === null ? null : prepared;
+        roomPrepared = prepared;
         prepared = null;
         pending.clear();
         generation++;
@@ -177,12 +196,12 @@ export function createRoomMapTransfer(options: RoomMapTransferOptions) {
         documents = null;
         encodedMap = undefined;
         loaded = false;
-        if (next !== null) void load();
+        void load();
+      } else if (!loaded && !loading) {
+        void load();
+      } else if (loaded && documents === null && cacheFingerprint !== expectedFingerprint()) {
+        void load();
       } else {
-        if (loaded && documents === null && cacheFingerprint !== expectedFingerprint()) {
-          void load();
-          return;
-        }
         requestMissing();
         flushPending();
       }

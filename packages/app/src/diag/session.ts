@@ -1,7 +1,4 @@
-/**
- * The running game's diagnostics identity. Quit to menu is a full page navigation, so this module
- * state resets with the page and never needs explicit clearing.
- */
+/** The running game's diagnostics identity; the view that registers it clears it when it closes. */
 import { HashTrace, type Simulation, type SyncDomain } from '@open-northland/sim';
 import { hasDebugFlag } from './debug-flags.js';
 

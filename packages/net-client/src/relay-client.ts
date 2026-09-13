@@ -212,13 +212,11 @@ export class RelayClient extends RelayLobby implements SessionDriver {
         this.saveOrders.receive(message);
         break;
       case 'ended':
-        this.completion.confirmedTick = message.tick;
-        this.completion.confirmedHash = message.hash;
+        this.completion.confirm(message.tick, message.hash);
         this.waitingFor = [];
         break;
       case 'left':
-        this.completion.confirmedTick = null;
-        this.completion.confirmedHash = null;
+        this.completion.clear();
         this.room = null;
         this.session = null;
         this.clockState = null;
@@ -258,7 +256,8 @@ export class RelayClient extends RelayLobby implements SessionDriver {
         this.answerSnapshotRequest();
         break;
       case 'blob':
-        if (message.type === 'snapshot') this.restoreFrom(message.bytes, message.tick);
+        if (message.type === 'snapshot' && message.tick !== null)
+          this.restoreFrom(message.bytes, message.tick);
         break;
       case 'ping':
         this.roundTripMs = message.roundTripMs;
@@ -267,6 +266,8 @@ export class RelayClient extends RelayLobby implements SessionDriver {
       case 'rejected':
         if (message.of === 'saveOrders') this.saveOrders.refuse(message.requestId, message.reason);
         if (message.of === 'command') this.latency.refused();
+        // A world the relay would not take leaves this client with nothing to run; the host decides.
+        if (message.of === 'loaded') this.options.onError?.('open', new Error(message.reason));
         break;
       default:
         assertNever(message);
@@ -357,9 +358,12 @@ export class RelayClient extends RelayLobby implements SessionDriver {
     );
   }
 
-  private restoreFrom(snapshot: string, tick: number | null): void {
+  private restoreFrom(snapshot: string, tick: number): void {
     const session = this.session;
-    if (session === null) throw new Error(`${this.nick} got a snapshot before its session`);
+    if (session === null) {
+      this.options.onError?.('restore', new Error(`${this.nick} got a snapshot before its session`));
+      return;
+    }
     this.dropWorld();
     void this.track(
       'restore',
@@ -390,7 +394,10 @@ export class RelayClient extends RelayLobby implements SessionDriver {
     this.transport = new RelayTransport({
       send: (message) => this.send(message),
       parseEnvelope: parseCommandEnvelope,
-      onDropped: (tick, reason) => this.options.onDropped?.(tick, reason),
+      onDropped: (tick, reason, envelope) => {
+        if (envelope.origin === 'player' && envelope.player === seat) this.latency.refused();
+        this.options.onDropped?.(tick, reason);
+      },
       fromTick: sim.tick,
       onFrame: (frame) => {
         for (const command of frame.commands) {

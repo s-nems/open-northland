@@ -7,6 +7,8 @@ import {
   parseIniSections,
 } from '../src/decoders/ini.js';
 
+const PROVENANCE = { kind: 'mod', folder: 'CnModMaps/tutorial_002', layer: 'game' } as const;
+
 describe('extractMapInfo', () => {
   // Mirrors a real map.cif logic header (decoded by cifLinesToSections): a `logiccontrol` section with
   // `mapsize`/`mapguid`, then `misc_maptype`/`misc_mapname` metadata. A campaign map carries
@@ -29,9 +31,14 @@ describe('extractMapInfo', () => {
   ];
 
   it('extracts the declarative logic-header metadata into a validated MapInfo', () => {
-    const info = extractMapInfo(cifLinesToSections(campaignMapLines), 'tutorial_002', {
-      file: 'tutorial_002/map.cif',
-    });
+    const info = extractMapInfo(
+      cifLinesToSections(campaignMapLines),
+      'tutorial_002',
+      {
+        file: 'tutorial_002/map.cif',
+      },
+      PROVENANCE,
+    );
     expect(info).toMatchObject({
       id: 'tutorial_002',
       width: 142,
@@ -54,7 +61,12 @@ describe('extractMapInfo', () => {
       { level: 1, text: 'misc_maptype' },
       { level: 2, text: 'maptype 4' },
     ];
-    const info = extractMapInfo(cifLinesToSections(skirmish), 'forteca', { file: 'forteca/map.cif' });
+    const info = extractMapInfo(
+      cifLinesToSections(skirmish),
+      'forteca',
+      { file: 'forteca/map.cif' },
+      PROVENANCE,
+    );
     expect(info.mapType).toBe(4);
     expect(info.campaign).toBeUndefined();
     expect(info.nameStringId).toBeUndefined();
@@ -65,7 +77,9 @@ describe('extractMapInfo', () => {
       { level: 1, text: 'logiccontrol' },
       { level: 2, text: `mapguid ${guidBytes}` },
     ];
-    expect(() => extractMapInfo(cifLinesToSections(noSize), 'x', { file: 'x/map.cif' })).toThrow(/mapsize/);
+    expect(() => extractMapInfo(cifLinesToSections(noSize), 'x', { file: 'x/map.cif' }, PROVENANCE)).toThrow(
+      /mapsize/,
+    );
   });
 
   it('throws when mapguid is not exactly 16 bytes', () => {
@@ -74,9 +88,9 @@ describe('extractMapInfo', () => {
       { level: 2, text: 'mapsize 100 100' },
       { level: 2, text: 'mapguid 1 2 3' },
     ];
-    expect(() => extractMapInfo(cifLinesToSections(shortGuid), 'x', { file: 'x/map.cif' })).toThrow(
-      /mapguid/,
-    );
+    expect(() =>
+      extractMapInfo(cifLinesToSections(shortGuid), 'x', { file: 'x/map.cif' }, PROVENANCE),
+    ).toThrow(/mapguid/);
   });
 
   it('throws when the logiccontrol section is absent entirely', () => {
@@ -84,7 +98,7 @@ describe('extractMapInfo', () => {
       { level: 1, text: 'misc_maptype' },
       { level: 2, text: 'maptype 4' },
     ];
-    expect(() => extractMapInfo(cifLinesToSections(noLogic), 'x', { file: 'x/map.cif' })).toThrow(
+    expect(() => extractMapInfo(cifLinesToSections(noLogic), 'x', { file: 'x/map.cif' }, PROVENANCE)).toThrow(
       /logiccontrol/,
     );
   });

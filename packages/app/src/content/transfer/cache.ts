@@ -17,8 +17,9 @@ export interface PersistedMap {
   readonly handle: VerifiedMapDocuments;
   readonly origin: DeliverableMapOrigin;
 }
+/** What a cached copy must match; without a fingerprint the newest copy of that origin is read. */
 export interface PersistedMapExpected {
-  readonly fingerprint: string;
+  readonly fingerprint?: string;
   readonly origin: DeliverableMapOrigin;
 }
 export function createMapCache(storage: MapCacheStorage, now: () => number = Date.now) {
@@ -31,7 +32,8 @@ export function createMapCache(storage: MapCacheStorage, now: () => number = Dat
             entry !== null &&
             entry.mapId === mapId &&
             (expected === undefined ||
-              (entry.fingerprint === expected.fingerprint && entry.origin === expected.origin)),
+              ((expected.fingerprint === undefined || entry.fingerprint === expected.fingerprint) &&
+                entry.origin === expected.origin)),
         )
         .sort((a, b) => b.storedAt - a.storedAt);
       for (const entry of entries) {

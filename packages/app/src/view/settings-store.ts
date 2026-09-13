@@ -40,8 +40,7 @@ export interface MenuSettings {
   readonly language: Locale;
   /** A launching game resolves its hotkeys from here, like the HUD scale factor. */
   readonly keyBindings: KeyBindings;
-  /** The relay identity: a secret token minted on first use, and the display name; null until then. */
-  readonly netToken: string | null;
+  /** The display name shown to other players over a relay; null until one was chosen. */
   readonly netNick: string | null;
 }
 
@@ -60,7 +59,6 @@ export function defaultSettings(): MenuSettings {
     musicVolume: DEFAULT_MUSIC_VOLUME,
     language: defaultLocale(),
     keyBindings: DEFAULT_KEY_BINDINGS,
-    netToken: null,
     netNick: null,
   };
 }
@@ -112,7 +110,6 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),
     language: isLocale(record.language) ? record.language : defaults.language,
     keyBindings: parseKeyBindings(record.keyBindings),
-    netToken: optionalText(record.netToken),
     netNick: optionalText(record.netNick),
   };
 }

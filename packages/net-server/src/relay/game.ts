@@ -104,6 +104,7 @@ export class Game {
 
   /** A client's world stands at `tick`, or at nothing: hand it what follows, or the snapshot first. */
   loaded(member: Member, world: Loaded, now: number): Refusal {
+    if (member.loaded) return 'already loaded; a world is reported once per connection';
     this.end.forget(member.token);
     let refusal: Refusal;
     if (world.tick === null) refusal = this.serveSnapshot(member);
@@ -142,6 +143,7 @@ export class Game {
 
   submit(member: Member, envelope: PlayerWireEnvelope, fromTick: number): Refusal {
     if (this.endedTick !== null) return 'the match has ended';
+    if (this.builtTick === null) return 'no world has loaded yet';
     if (member.seat === null) return 'no seat';
     const stamped: PlayerWireEnvelope = { ...envelope, player: member.seat };
     const outcome = this.clock.schedule(member.token, stamped, fromTick, member.delayTicks);
@@ -198,10 +200,12 @@ export class Game {
     return relayBlob(this.members.values(), this.deliver, sender, upload);
   }
 
-  /** The member says where it stands again on its return; until then it is neither expected to
-   *  acknowledge nor waited for to start the clock. */
+  /** The member says where it stands again on its return; until then its reports do not count and
+   *  it is neither expected to acknowledge nor waited for to start the clock. */
   disconnect(member: Member, now: number): void {
     this.end.forget(member.token);
+    this.ledger.forget(member.token);
+    this.resync.donorLost(member);
     member.loaded = false;
     this.startClockWhenLoaded(now);
     this.settle(now);
@@ -225,8 +229,12 @@ export class Game {
 
   private serveSnapshot(member: Member): Refusal {
     const snapshot = this.resync.snapshot;
-    if (snapshot !== null) this.resync.serve(member, snapshot);
-    else if (member.outOfSync === null) return 'no snapshot is cached; build the world from the descriptor';
+    if (snapshot !== null) {
+      this.ledger.forget(member.token);
+      this.resync.serve(member, snapshot);
+    } else if (member.outOfSync === null) {
+      return 'no snapshot is cached; build the world from the descriptor';
+    }
     return null;
   }
 
@@ -259,7 +267,9 @@ export class Game {
     return null;
   }
 
+  /** Reports held from the world this one replaces say nothing about it. */
   private admit(member: Member, world: LoadedWorld): void {
+    this.ledger.forget(member.token);
     member.ackedTick = world.tick;
     member.world = world.world;
     member.loaded = true;

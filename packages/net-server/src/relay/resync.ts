@@ -15,6 +15,7 @@ export class Resync {
   private readonly catchUp = new CatchUpStore();
   private readonly awaiting = new Set<Member>();
   private requestedAt: number | null = null;
+  private askedDonor: string | null = null;
   private lastRefreshAt: number;
   private refreshing = false;
   private readonly triedDonors = new Set<string>();
@@ -42,8 +43,7 @@ export class Resync {
   finishAt(tick: number): void {
     this.catchUp.finishAt(tick);
     this.refreshing = true;
-    this.requestedAt = null;
-    this.triedDonors.clear();
+    this.resetRequests();
   }
 
   /** Start the refresh cadence from the clock's start. */
@@ -51,15 +51,25 @@ export class Resync {
     this.lastRefreshAt = now;
   }
 
-  /** Queue `member` for the next snapshot a client in sync sends, and ask for one now. */
+  /** Queue `member` for the next snapshot a client in sync sends; one request at a time serves every
+   *  member queued meanwhile, and an unanswered one is repeated on its retry cadence. */
   queue(member: Member, now: number): void {
     this.awaiting.add(member);
-    this.request(now);
+    if (this.requestedAt === null || now - this.requestedAt >= SNAPSHOT_RETRY_MS) this.request(now);
   }
 
   forget(member: Member): void {
     this.awaiting.delete(member);
-    if (this.triedDonors.delete(member.token)) this.requestedAt = null;
+    this.donorLost(member);
+  }
+
+  /** A donor that dropped cannot answer; the next poll asks another instead of waiting out the retry. */
+  donorLost(member: Member): void {
+    this.triedDonors.delete(member.token);
+    if (this.askedDonor === member.token) {
+      this.askedDonor = null;
+      this.requestedAt = null;
+    }
   }
 
   /** Hand `member` the snapshot and every frame since; it stands at the snapshot's tick from here. */
@@ -88,8 +98,7 @@ export class Resync {
     if (newer || (this.catchUp.bytes === 0 && this.catchUp.snapshot?.tick === tick)) {
       this.lastRefreshAt = now;
       this.refreshing = false;
-      this.requestedAt = null;
-      this.triedDonors.clear();
+      this.resetRequests();
     }
     const newest = this.catchUp.snapshot;
     if (newest !== null) {
@@ -128,7 +137,14 @@ export class Resync {
     }
     if (donor === null) return;
     this.requestedAt = now;
+    this.askedDonor = donor.token;
     this.triedDonors.add(donor.token);
     this.deliver(donor, { kind: 'snapshotRequest' });
+  }
+
+  private resetRequests(): void {
+    this.requestedAt = null;
+    this.askedDonor = null;
+    this.triedDonors.clear();
   }
 }

@@ -3,7 +3,12 @@ import { parseSaveGame, type SaveGame, serializeSaveGame } from '@open-northland
 /** Bytes per `btoa` call where the platform has no `toBase64`: a multiple of three, so each chunk
  *  encodes on its own without padding, and well under the argument limit of `String.fromCharCode`. */
 const BASE64_CHUNK_BYTES = 32_766;
-const MAX_DECODED_SNAPSHOT_BYTES = 256 * 1024 * 1024;
+/** A decoded-map snapshot is about 20 MB of JSON; a peer's gzip may inflate to three times that and
+ *  no further, since every member decodes what any member sends. */
+const MAX_DECODED_SNAPSHOT_BYTES = 64 * 1024 * 1024;
+/** The gzip trailer's last four bytes carry the uncompressed size modulo 2^32 (RFC 1952 ISIZE). */
+const GZIP_TRAILER_BYTES = 8;
+const ISIZE_OFFSET_FROM_END = 4;
 
 /** The platform's own base64 pair, where it has one (Chrome 140, Node 26); it is a hundred times faster. */
 interface NativeBase64 {
@@ -23,7 +28,18 @@ export async function decodeSnapshot(
   bytes: string,
   maxDecodedBytes = MAX_DECODED_SNAPSHOT_BYTES,
 ): Promise<SaveGame> {
-  return parseSaveGame(JSON.parse(await gunzipText(base64ToBytes(bytes), maxDecodedBytes)));
+  const compressed = base64ToBytes(bytes);
+  const declared = declaredInflatedSize(compressed);
+  if (declared > maxDecodedBytes) throw new Error(`snapshot inflates past ${maxDecodedBytes} bytes`);
+  return parseSaveGame(JSON.parse(await gunzipText(compressed, maxDecodedBytes)));
+}
+
+/** The size the gzip trailer declares; a lie is still caught while inflating, this only refuses the
+ *  honest oversize before any allocation. */
+function declaredInflatedSize(compressed: Uint8Array): number {
+  if (compressed.length < GZIP_TRAILER_BYTES) return 0;
+  const view = new DataView(compressed.buffer, compressed.byteOffset, compressed.byteLength);
+  return view.getUint32(compressed.length - ISIZE_OFFSET_FROM_END, true);
 }
 
 /** A body's stream rather than a `Blob`'s: a blob would copy the whole text once more first. */

@@ -2,6 +2,8 @@ import { applyInitialSaveSeats, type GameSession } from '@open-northland/lockste
 import { verifyInitialSave } from './initial-save.js';
 import type { OpenedWorld, WorldPort } from './relay-client.js';
 
+/** Whether a world at `tick` is the saved start; a null tick is a start whose snapshot the relay
+ *  still has to serve, which stands there too. */
 function isInitial(session: GameSession, tick: number | null): boolean {
   return session.initialSave !== undefined && (tick === null || tick === session.initialSave.tick);
 }
@@ -31,7 +33,7 @@ export async function restoreSessionWorld(
   port: WorldPort,
   session: GameSession,
   snapshot: string,
-  tick: number | null,
+  tick: number,
 ): Promise<OpenedWorld | null> {
   const initial = session.initialSave;
   const initialBoot = initial !== undefined && tick === initial.tick;

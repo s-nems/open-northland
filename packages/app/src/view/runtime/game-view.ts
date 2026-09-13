@@ -18,7 +18,12 @@ import {
 } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { pickerEntries } from '../../catalog/professions.js';
-import { FrameStats, installSessionInstruments } from '../../diag/index.js';
+import {
+  currentDiagGameSession,
+  FrameStats,
+  installSessionInstruments,
+  setDiagGameSession,
+} from '../../diag/index.js';
 import { briefAtOutcome, type MissionBrief } from '../../game/mission-brief.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../game/rules.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
@@ -181,8 +186,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     verdict?.dispose();
     orderCue.dispose();
     deps.cameraCtl.dispose();
-    // Leaving the debug seam set would pin this sim, renderer and stats for the document's lifetime.
+    // Leaving the debug seams set would pin this sim, renderer and stats for the document's lifetime.
     delete window.__opennorthland;
+    if (currentDiagGameSession()?.sim === sim) setDiagGameSession(null);
   };
   const quitToMenu = (): void => {
     destroy();
@@ -470,7 +476,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     controls.dispose();
     perf.dispose();
     pileTooltip.destroy();
-    soundDriver?.setEnabled(false);
+    soundDriver?.close();
   };
 
   installDebugHandle({

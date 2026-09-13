@@ -10,7 +10,7 @@ content/
   ir.json                 validated rules and presentation bindings
   maps/
     <id>.json             decoded terrain
-    <id>.meta.json        optional menu metadata
+    <id>.meta.json        menu metadata and the map's provenance
     <id>.script.json      optional player and mission data
     <id>.png              optional thumbnail
   Data/...                decoded atlases, palettes, fonts, and other runtime files
@@ -107,6 +107,14 @@ Not every schema carries provenance yet. The decoder is the authoritative mappin
 IR fields. Keep that mapping small, testable, and supported by the source evidence described in
 [`SOURCES.md`](SOURCES.md).
 
+A map's `.meta.json` sidecar, which the pipeline writes for every converted map, carries the map's
+own `provenance { kind, folder, layer }`: `kind` is `user` for a `UserMaps` folder, `mod` for a mod
+folder or a map read from a separate mod root, `base` for a map proven to come from the game's own
+archive, and `unknown` for anything else, a loose `Data/maps` folder included; `folder` is the map's
+folder relative to its source root, never an installation path; `layer` names the root it was read
+from. Only `mod` and `user` maps may be sent to another player, so a sidecar without provenance
+counts as `unknown`.
+
 ## Layering
 
 Prefer readable CulturesNation `.ini` files when they exist, then readable base-game `.ini` files.
@@ -160,31 +168,28 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   caller-recorded relaunch token, opaque to the sim like `mapId`: the app stores the entry URL
   search that reboots the session, so a load launched outside a running world (the main menu's save
   list) can reproduce the seat and session flags.
-- Format 4 adds `header.session`: caller-owned plain JSON or null. Simulation export/parse copy it
-  without interpreting it; restore never applies it to gameplay. The shape is bounded to 4096 visited
-  values/keys, depth 32 and 65536 UTF-16 text units. Non-JSON values, cycles and prototype keys are
-  rejected. Null records the absence of caller session metadata; older format versions are rejected.
-  Lockstep owns the version-1 metadata schema: `{version, descriptor, roster: [{player, nick}]}`.
-  Its closed projection validates the descriptor and exact ascending seat roster, preserves modes,
-  colors, teams, rules and local seat, and strips unknown fields (including authentication tokens).
-  Only human seats may carry a nick; null also supports unnamed local humans. Display names are
-  unique, printable, trimmed and at most 24 characters. A previous `initialSave` fingerprint is removed:
-  it identifies the source artifact, not the newly exported save. Null metadata means unrecorded;
-  malformed present metadata throws. The app checks map/seed coherence against the enclosing header.
+- `header.session` is caller-owned plain JSON or null. Export and parse copy it without interpreting
+  it, and restore never applies it to gameplay. It is bounded to 4096 visited values and keys, depth
+  32 and 65536 UTF-16 text units; non-JSON values, cycles and prototype keys are rejected, and null
+  records that the caller had no session to describe. Lockstep owns what it writes there,
+  `{version, descriptor, roster: [{player, nick}]}`: its parser validates the descriptor and the
+  exact ascending seat roster, keeps modes, colors, teams, rules and the local seat, strips unknown
+  fields, and allows a nick (unique, printable, trimmed, at most 24 characters) on human seats only.
+  The app checks the descriptor's map and seed against the enclosing header.
 - `sections` is an array of string-identified sections in a fixed order: `entities` (the
   allocation counter plus the alive list), one `component` section per store in first-registration
   order with entries in per-store insertion order (both orders are behavior contracts), `rng` (the
   whole mulberry32 state), `fog` (present exactly when the header names a map fingerprint:
   per-player masks ascending by player, one visibility digit per cell, plus the rebuild-cadence
-  fields), and `commands` (pending envelopes, the next sequence number, and required `continuation`).
-  In save format 5, continuation is an array of `{applyTick, envelope}` with future safe-integer ticks,
-  ascending by tick and preserving same-tick order. It retains accepted input from the saved session
-  independently of a new transport's sequence numbers. Each tick applies pending endogenous/setup
-  commands, then inherited continuation, then fresh transport input. Export merges inherited commands
-  with caller-supplied captures, retaining old-before-new order. Repeated saves retain unexecuted input.
-  The applied log remains replay history and stays out. Live targeted transport commands are excluded
-  unless explicitly captured by the session owner; reconnection snapshots rely on the relay's stream.
-  `withSaveContinuation` completes an asynchronous capture on a detached save at its original tick.
+  fields), and `commands` (pending envelopes, the next sequence number, and `continuation`: the
+  accepted input still ahead of the saved tick, as `{applyTick, envelope}` pairs with ticks past the
+  save's, ascending, same-tick order preserved). A tick applies its pending endogenous and setup
+  commands, then the continuation stamped for it, then fresh transport input. An export merges the
+  continuation it inherited with what the caller captured, inherited first, so a save taken again
+  keeps input that has not run yet. The applied log is replay history and stays out. Live transport
+  input enters a save only through the session owner's capture (`withSaveContinuation` adds one to a
+  save already taken, at that save's tick); a reconnection snapshot relies on the relay's frames
+  instead.
 - The encoding is canonical: object keys keep construction order, a `Map` component field becomes a
   single-key `{"$map": [[key, value], ...]}` wrapper holding its live insertion order (raw Map order
   is observable sim state a restore must reproduce; the `$map` key is reserved, and export rejects a
@@ -206,13 +211,14 @@ difference is reported to the caller, never a rejection, because the revision al
 presentation-only decoder fixes. A non-null `contentFingerprint` must match the resolved content.
 The shared `packages/data/src/content-fingerprint.ts` function hashes canonical JSON with SHA-256,
 preserving table and array order while excluding installation paths, provenance, goods/job display
-names, locale, map inventory and sound data. It includes balance and content bindings as well as ids.
-The lobby uses the same function and additionally requires an exact pipeline revision match.
+names, locale, map inventory and sound data. It includes balance and content bindings as well as ids;
+the sim memoizes it per content set. A lobby folds it with the pipeline revision, the mod version
+label and the authored goods and job names, so a lobby match is stricter than a save's.
 
-The current format carries nullable `contentFingerprint` and `savedAt` fields.
-`savedAt` is the caller's Unix timestamp in milliseconds, supplied at export rather than read inside
-the simulation. Browser and desktop lists prefer this timestamp over their storage write time or
-file mtime; saves without a timestamp retain those fallback dates. Exports without a timestamp remain deterministic.
+`contentFingerprint` and `savedAt` are nullable. `savedAt` is the caller's Unix timestamp in
+milliseconds, supplied at export rather than read inside the simulation. Browser and desktop lists
+prefer this timestamp over their storage write time or file mtime; saves without a timestamp retain
+those fallback dates. Exports without a timestamp remain deterministic.
 
 `SAVE_FORMAT_VERSION` is a single monotonic integer; any layout change bumps it, and `parseSaveGame`
 rejects a document stamped with any other version, older or newer. There is no migration seam: the

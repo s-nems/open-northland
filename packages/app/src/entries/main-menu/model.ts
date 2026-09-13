@@ -7,10 +7,9 @@ export type MainNavItem =
       readonly id: Extract<MenuScreen, 'newGame' | 'load' | 'multiplayer' | 'settings' | 'credits'>;
       readonly kind: 'open';
     }
-  | { readonly id: 'multiplayer'; readonly kind: 'comingSoon' }
   | { readonly id: 'exit'; readonly kind: 'exit' };
 
-/** Main-screen nav in display order; `comingSoon` rows take no input. */
+/** Main-screen nav in display order. */
 export const MAIN_NAV: readonly MainNavItem[] = [
   { id: 'newGame', kind: 'open' },
   { id: 'load', kind: 'open' },
@@ -27,13 +26,8 @@ export function backTarget(screen: MenuScreen): MenuScreen | null {
   return 'main';
 }
 
-/** Moves focus by `delta` (+1 down, -1 up) over interactive rows, wrapping at the ends and
- *  returning `from` when nothing is interactive. */
+/** Moves focus by `delta` (+1 down, -1 up) over the rows, wrapping at the ends. */
 export function moveFocus(items: readonly MainNavItem[], from: number, delta: 1 | -1): number {
-  for (let step = 1; step <= items.length; step += 1) {
-    const index = (((from + delta * step) % items.length) + items.length) % items.length;
-    const item = items[index];
-    if (item !== undefined && item.kind !== 'comingSoon') return index;
-  }
-  return from;
+  if (items.length === 0) return from;
+  return (((from + delta) % items.length) + items.length) % items.length;
 }

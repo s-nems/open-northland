@@ -1,4 +1,4 @@
-import type { MapInfo } from '@open-northland/data';
+import type { MapInfo, MapProvenance } from '@open-northland/data';
 import { type Vfs, vdirname } from '@open-northland/vfs';
 import { cifBytesToSections, extractMapInfo, type SourceRef } from '../../decoders/ini.js';
 import { errorMessage } from '../../errors.js';
@@ -9,8 +9,13 @@ import { mapProvenance } from './provenance.js';
  * One `map.cif`'s bytes plus a slug id to its validated logic header. Throws an `ini:`/`cif:`-prefixed
  * error for a non-map or header-less `.cif`.
  */
-export function mapCifToInfo(bytes: Uint8Array, id: string, src: SourceRef): MapInfo {
-  return extractMapInfo(cifBytesToSections(bytes), id, src);
+export function mapCifToInfo(
+  bytes: Uint8Array,
+  id: string,
+  src: SourceRef,
+  provenance: MapProvenance,
+): MapInfo {
+  return extractMapInfo(cifBytesToSections(bytes), id, src, provenance);
 }
 
 /**
@@ -58,14 +63,9 @@ export async function decodeMapTree(fs: Vfs, roots: SourceRoots): Promise<MapInf
   for (const { rel, path } of found) {
     try {
       const bytes = await fs.readFile(path);
-      const provenance = await mapProvenance(fs, roots, { rel, path });
-      maps.push({
-        ...mapCifToInfo(bytes, mapIdFromPath(rel), {
-          file: rel,
-          layer: provenance.kind === 'mod' ? 'mod' : 'base',
-        }),
-        provenance,
-      });
+      const provenance = mapProvenance(roots, { rel, path });
+      const layer = provenance.kind === 'mod' ? 'mod' : 'base';
+      maps.push(mapCifToInfo(bytes, mapIdFromPath(rel), { file: rel, layer }, provenance));
     } catch (err) {
       console.warn(`[pipeline] skipped map ${rel}: ${errorMessage(err)}`);
     }

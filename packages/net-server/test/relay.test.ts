@@ -1,8 +1,11 @@
+import { parseGameSession } from '@open-northland/lockstep';
 import {
   MAX_COMMANDS_PER_TICK,
   MAX_ENVELOPE_BYTES,
+  MAX_NICK_LENGTH,
   PAUSE_BUDGET,
   PROTOCOL_VERSION,
+  parseServerMessage,
   TICK_MS,
 } from '@open-northland/net-protocol';
 import { HELLO_TIMEOUT_MS, Relay } from '@open-northland/net-server';
@@ -67,6 +70,18 @@ describe('relay identity', () => {
     b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
     expect(b.last('welcome')?.nick).toBe('Ania2');
     expect(b.last('room')?.room.members.map((member) => member.nick)).toEqual(['Ania', 'Ania2']);
+  });
+
+  it('suffixes a full-length nick of astral characters without cutting a surrogate pair', () => {
+    const nick = '😀'.repeat(MAX_NICK_LENGTH / 2);
+    const s = stage();
+    const a = s.introduce(TOKEN_A, nick);
+    const b = s.introduce(TOKEN_B, nick);
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    const suffixed = b.last('welcome')?.nick;
+    expect(suffixed).toBe(`${'😀'.repeat(MAX_NICK_LENGTH / 2 - 1)}2`);
+    expect(() => parseServerMessage(b.last('room'), parseGameSession)).not.toThrow();
   });
 });
 

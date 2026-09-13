@@ -12,8 +12,7 @@ export const plNetwork = {
   refresh: 'Odśwież',
   empty: 'Nie ma otwartych pokoi. Utwórz własny i zaproś znajomych.',
   join: 'Dołącz',
-  running: 'Gra trwa',
-  members: '{count} graczy',
+  members: { one: '{count} gracz', few: '{count} graczy', many: '{count} graczy' },
   create: 'Utwórz pokój',
   defaultRoomName: 'Moja gra',
   roomName: 'Nazwa pokoju',
@@ -27,12 +26,14 @@ export const plNetwork = {
   preparing: 'Sprawdzanie plików gry…',
   failed: 'Nie udało się wykonać działania: {reason}',
   invalidServer: 'Podaj adres serwera ws:// lub wss://.',
-  invalidNick: 'Podaj pseudonim o długości 1–24 drukowalnych znaków.',
+  invalidNick: 'Podaj pseudonim o długości od 1 do {max} drukowalnych znaków.',
   left: 'Opuszczono pokój.',
   retry: 'Spróbuj ponownie',
-  back: 'Wstecz',
-  roomGone: 'Pokój zamknięto podczas rozłączenia. Wybierz inny lub utwórz nowy.',
   saveInvalid: 'Tego zapisu nie można użyć do gry wieloosobowej na tej mapie.',
   missingMap: 'Brakuje tej mapy. Twórca może przesłać tylko mapy użytkownika i moda.',
   starting: 'Uruchamianie wspólnej gry…',
-} satisfies Record<keyof typeof enNetwork, string>;
+} satisfies {
+  readonly [Key in keyof typeof enNetwork]: (typeof enNetwork)[Key] extends string
+    ? string
+    : Record<keyof (typeof enNetwork)[Key], string>;
+};

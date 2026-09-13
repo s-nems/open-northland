@@ -1,8 +1,10 @@
 import type { SeatMode, SessionRules, SessionWorld } from '@open-northland/lockstep';
 import {
+  FOG_MODES,
   MAX_ROOM_ID_LENGTH,
   MAX_ROOM_NAME_LENGTH,
   MAX_SEATS,
+  MAX_SEED,
   MAX_SPEED,
   MAX_WORLD_ID_LENGTH,
 } from '../limits.js';
@@ -53,7 +55,7 @@ export function parseLobbySettings(value: unknown, at: string): LobbySettings {
   const raw = asRecord(value, at);
   return {
     name: parseLine(raw.name, `${at}.name`, MAX_ROOM_NAME_LENGTH),
-    seed: asCount(raw.seed, `${at}.seed`),
+    seed: parseSeed(raw.seed, `${at}.seed`),
     rules: parseSessionRules(raw.rules, `${at}.rules`),
     speed: asPositiveNumber(raw.speed, `${at}.speed`, MAX_SPEED),
     ...(raw.kickedSeatMode === undefined
@@ -75,10 +77,22 @@ function parseSessionWorld(value: unknown, at: string): SessionWorld {
   }
 }
 
+function parseSeed(value: unknown, at: string): number {
+  const seed = asCount(value, at);
+  if (seed > MAX_SEED) throw new Error(`${at}: seed ${seed} is wider than 32 bits`);
+  return seed;
+}
+
+function parseFogMode(value: unknown, at: string): number {
+  const fog = asCount(value, at);
+  if (!FOG_MODES.includes(fog)) throw new Error(`${at}: ${fog} is not a fog mode`);
+  return fog;
+}
+
 function parseSessionRules(value: unknown, at: string): SessionRules {
   const raw = asRecord(value, at);
   return {
-    fog: raw.fog === null ? null : asCount(raw.fog, `${at}.fog`),
+    fog: raw.fog === null ? null : parseFogMode(raw.fog, `${at}.fog`),
     progression: raw.progression === null ? null : asBoolean(raw.progression, `${at}.progression`),
     needs: raw.needs === null ? null : asBoolean(raw.needs, `${at}.needs`),
   };
@@ -160,10 +174,10 @@ export function parseTeam(value: unknown, at: string): number | null {
   return value === null ? null : parseSeatIndex(value, at);
 }
 
+/** A saved start stands past tick 0, where a freshly built world would be indistinguishable. */
 function parseInitialSave(value: unknown, at: string) {
   const raw = asRecord(value, at);
-  return {
-    fingerprint: fingerprint(raw.fingerprint, `${at}.fingerprint`),
-    tick: asCount(raw.tick, `${at}.tick`),
-  };
+  const tick = asCount(raw.tick, `${at}.tick`);
+  if (tick < 1) throw new Error(`${at}.tick: a save stands at tick 1 or later`);
+  return { fingerprint: fingerprint(raw.fingerprint, `${at}.fingerprint`), tick };
 }

@@ -65,7 +65,7 @@ export class Room {
       () => this.broadcastView(),
     );
     this.transfers = new LobbyTransfers(
-      settings,
+      () => this.lobby.settings,
       this.members,
       () => this.members.get(this.creatorToken) ?? null,
       hooks.deliver,
@@ -95,13 +95,17 @@ export class Room {
     return this.members.get(token) ?? null;
   }
 
-  /** A room-unique nick for someone joining as `nick`. */
+  /** A room-unique nick for someone joining as `nick`; the suffix displaces whole code points, so a
+   *  nick of astral characters is never cut through a surrogate pair. */
   uniqueNick(nick: string): string {
     const taken = new Set([...this.members.values()].map((member) => member.nick));
     if (!taken.has(nick)) return nick;
+    const points = [...nick];
     for (let n = 2; ; n++) {
       const suffix = String(n);
-      const candidate = `${nick.slice(0, MAX_NICK_LENGTH - suffix.length)}${suffix}`;
+      let kept = points.length;
+      while (kept > 0 && points.slice(0, kept).join('').length + suffix.length > MAX_NICK_LENGTH) kept--;
+      const candidate = `${points.slice(0, kept).join('')}${suffix}`;
       if (!taken.has(candidate)) return candidate;
     }
   }
@@ -293,13 +297,14 @@ export class Room {
   /** The seat returns to its lobby setting; the AI case lands on the clock through the game. */
   private kickOut(target: Member, player: number, now: number): void {
     const mode = this.lobby.settings.kickedSeatMode ?? this.seats.vacantModeOf(player);
-    if (mode === null || this.game === null) return;
-    const tick = this.game.kicked(target, player, mode);
-    if (tick !== null) this.broadcast({ kind: 'kicked', player, nick: target.nick, mode, tick });
+    if (this.game !== null && mode !== null) {
+      const tick = this.game.kicked(target, player, mode);
+      if (tick !== null) this.broadcast({ kind: 'kicked', player, nick: target.nick, mode, tick });
+    }
     this.seats.standUp(target);
-    this.seats.setUp(player, { mode });
+    if (mode !== null) this.seats.setUp(player, { mode });
     this.remove(target);
-    this.game.removed(now);
+    this.game?.removed(now);
   }
 
   private admit(member: Member): void {

@@ -32,7 +32,11 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
   const copy = messages().net;
   const seatOf = (nick: string): number | null =>
     client.room?.members.find((member) => member.nick === nick)?.seat ?? null;
-  const waiting: WaitingOverlay = createWaitingOverlay({ seatOf, onKick: (player) => client.kick(player) });
+  const waiting: WaitingOverlay = createWaitingOverlay({
+    seatOf,
+    ownNick: () => client.nick,
+    onKick: (player) => client.kick(player),
+  });
   const chat: ChatPanel = mountChatPanel({
     leftPx: () => view.hudInsetBottomLeftPx,
     onSend: (text) => client.say(text),

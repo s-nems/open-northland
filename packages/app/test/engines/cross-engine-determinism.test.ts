@@ -23,7 +23,11 @@ const requested = process.env.ON_ENGINES ?? '';
 
 function selectedTargets(): readonly EngineTarget[] {
   if (requested === 'all') return ENGINE_TARGETS;
-  const names = new Set(requested.split(','));
+  const names = new Set(requested.split(',').map((id) => id.trim()));
+  const known: ReadonlySet<string> = new Set(ENGINE_TARGETS.map((target) => target.id));
+  for (const name of names) {
+    if (!known.has(name)) throw new Error(`ON_ENGINES names no engine: ${name}`);
+  }
   return ENGINE_TARGETS.filter((target) => names.has(target.id));
 }
 

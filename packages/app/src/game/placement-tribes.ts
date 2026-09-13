@@ -2,7 +2,8 @@ import type { MapScript } from '@open-northland/data';
 import { components, type Simulation } from '@open-northland/sim';
 import { playerTribe } from './map-roster.js';
 
-/** New worlds and legacy saves take placement authority from the same roster as the HUD. */
+/** A new world takes every seat's placement authority from the same roster as the HUD; a save
+ *  carries the declarations it was built with. */
 export function setupPlacementTribes(sim: Simulation, players: MapScript['players'] = []): void {
   const pending = new Set(
     sim.commands

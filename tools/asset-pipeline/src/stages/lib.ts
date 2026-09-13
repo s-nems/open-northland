@@ -1,8 +1,8 @@
-import { normalizeRelPath, relIn, type Vfs, vjoin } from '@open-northland/vfs';
+import { normalizeRelPath, type Vfs, vjoin } from '@open-northland/vfs';
 import { decodeLib, type LibFile } from '../decoders/lib.js';
 import { errorMessage } from '../errors.js';
 import type { StageItemReporter } from '../progress.js';
-import { type ArchiveOrigin, collectSourceFiles, type SourceRoots } from '../roots.js';
+import { collectSourceFiles, type SourceRoots } from '../roots.js';
 import { DATA_DIR, servedRelPath } from './content-tree.js';
 
 /**
@@ -30,7 +30,6 @@ export interface LibExtraction {
   readonly archive: string;
   /** The member's path relative to `outDir`. */
   readonly member: string;
-  readonly origin: ArchiveOrigin;
 }
 
 /**
@@ -67,22 +66,6 @@ export async function unpackLibTree(
       console.warn(`[pipeline] skipped archive ${archive}: ${errorMessage(err)}`);
       continue;
     }
-    // An external overlay can replace a base-named archive. Only the shipped archive location
-    // in the game tree is evidence for base maps; arbitrary archives remain unknown.
-    let externalMod = false;
-    if (roots.mod !== undefined && roots.mod !== roots.game) {
-      try {
-        relIn(roots.mod, file);
-        externalMod = true;
-      } catch {
-        /* another root */
-      }
-    }
-    const origin: ArchiveOrigin = externalMod
-      ? 'mod'
-      : /^datax\/libs\/data0001\.lib$/i.test(archive)
-        ? 'base'
-        : 'unknown';
     const seen = new Map<string, string>();
     for (const member of files) {
       const rel = libMemberRelPath(member.name);
@@ -97,7 +80,7 @@ export async function unpackLibTree(
       }
       seen.set(rel.toLowerCase(), member.name);
       await fs.writeFile(vjoin(outDir, rel), member.data);
-      done.push({ archive, member: rel, origin });
+      done.push({ archive, member: rel });
       onItem?.(done.length);
     }
   }

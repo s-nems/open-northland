@@ -15,8 +15,13 @@ interface Documents {
 }
 const retained = new WeakMap<VerifiedMapDocuments, Documents>();
 
+/** A map id names a file on every peer, so it is one plain ASCII token. */
+export function isMapId(mapId: string): boolean {
+  return /^[a-z0-9_-]{1,128}$/i.test(mapId);
+}
+
 export function validMapId(mapId: string): void {
-  if (!/^[a-z0-9_-]{1,128}$/i.test(mapId)) throw new Error('Invalid lobby map id');
+  if (!isMapId(mapId)) throw new Error('Invalid lobby map id');
 }
 
 /** Own the exact raw documents whose fingerprint was verified, including unknown script fields. */

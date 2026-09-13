@@ -1,8 +1,8 @@
-import { contentFingerprint } from '@open-northland/data';
 import type { CommandEnvelope } from '../core/commands/index.js';
 import { mergeContinuation, type SavedCommand } from '../core/continuation.js';
 import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import type { Simulation } from '../simulation.js';
+import { simContentFingerprint } from './content-fingerprint.js';
 import {
   SAVE_FORMAT_VERSION,
   SAVE_KIND,
@@ -78,7 +78,7 @@ export function exportSaveGame(sim: Simulation, opts: ExportSaveOptions = {}): S
       formatVersion: SAVE_FORMAT_VERSION,
       irVersion: sim.content.manifest.version,
       contentRevision: sim.content.manifest.contentRevision,
-      contentFingerprint: contentFingerprint(sim.content),
+      contentFingerprint: simContentFingerprint(sim.content),
       savedAt,
       mapId: opts.mapId ?? null,
       mapFingerprint: sim.mapFingerprint ?? null,

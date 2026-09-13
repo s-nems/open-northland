@@ -1,4 +1,4 @@
-import { type ContentSet, contentFingerprint } from '@open-northland/data';
+import type { ContentSet } from '@open-northland/data';
 import { assertNever } from '../core/brand.js';
 import { isPlainRecord, PROTO_KEY, valueShapeName } from '../core/plain-value.js';
 import { componentByName } from '../ecs/component.js';
@@ -6,6 +6,7 @@ import type { Entity } from '../ecs/world.js';
 import type { TerrainMap } from '../nav/terrain/index.js';
 import { Simulation } from '../simulation.js';
 import { FOG_STATE } from '../systems/vision/index.js';
+import { simContentFingerprint } from './content-fingerprint.js';
 import { type ComponentSection, type FogSection, SAVE_MAP_KEY, type SaveGame } from './format.js';
 
 export interface RestoreOptions {
@@ -35,7 +36,10 @@ export function restoreSimulation(save: SaveGame, opts: RestoreOptions): Restore
       `save.header.irVersion: the save was built on IR v${header.irVersion}, the loaded content is v${loaded.version}`,
     );
   }
-  if (header.contentFingerprint !== null && header.contentFingerprint !== contentFingerprint(opts.content)) {
+  if (
+    header.contentFingerprint !== null &&
+    header.contentFingerprint !== simContentFingerprint(opts.content)
+  ) {
     throw new Error('save.header.contentFingerprint: the loaded content differs from the save');
   }
   const sim = new Simulation({

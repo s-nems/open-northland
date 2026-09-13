@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backTarget, MAIN_NAV, type MainNavItem, moveFocus } from '../src/entries/main-menu/model.js';
+import { backTarget, MAIN_NAV, moveFocus } from '../src/entries/main-menu/model.js';
 
 describe('backTarget', () => {
   it('keeps Esc inert on the main screen', () => {
@@ -42,13 +42,5 @@ describe('moveFocus', () => {
 
   it('enters the list from the no-focus sentinel used by ArrowDown', () => {
     expect(moveFocus(MAIN_NAV, -1, 1)).toBe(0);
-  });
-
-  it('stays put when nothing is interactive', () => {
-    const allBadged: readonly MainNavItem[] = [
-      { id: 'multiplayer', kind: 'comingSoon' },
-      { id: 'multiplayer', kind: 'comingSoon' },
-    ];
-    expect(moveFocus(allBadged, 0, 1)).toBe(0);
   });
 });

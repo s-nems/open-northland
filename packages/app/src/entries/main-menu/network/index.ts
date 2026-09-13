@@ -1,16 +1,18 @@
 import { MAX_NICK_LENGTH } from '@open-northland/net-protocol';
-import { formatMessage, messages } from '../../../i18n/index.js';
+import { errorText } from '../../../diag/error-text.js';
+import { bcp47Tag, formatMessage, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { type ConnectionEvent, NetworkConnection } from '../../../net/connection.js';
 import { readStoredSettings } from '../../../view/settings-store.js';
 import { relayIdentity } from '../../relay/identity.js';
 import { DEFAULT_RELAY_URL } from '../lobby/relay-default.js';
+import { pluralForm } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { roomAssets } from './assets.js';
 import { createRoomCard } from './create-card.js';
 import { prepareRoomCreation } from './creation.js';
-import { openRooms, relayAddress, validNetworkNick } from './model.js';
+import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick } from './model.js';
 import { button, field, node } from './parts.js';
 import { mountNetworkRoom } from './room/index.js';
 import { launchNetworkGame } from './start.js';
@@ -50,7 +52,7 @@ export function networkScreen(
     status.textContent = text;
     room?.notice(text);
   };
-  const failure = (error: unknown): void => notice(formatMessage(copy.failed, { reason: String(error) }));
+  const failure = (error: unknown): void => notice(formatMessage(copy.failed, { reason: errorText(error) }));
   const resetRoom = (): void => {
     room?.dispose();
     room = null;
@@ -114,7 +116,11 @@ export function networkScreen(
         const title = node('div');
         title.append(
           node('strong', '', summary.name),
-          node('p', '', formatMessage(copy.members, { count: summary.members })),
+          node(
+            'p',
+            '',
+            formatMessage(pluralForm(summary.members, copy.members, bcp47Tag()), { count: summary.members }),
+          ),
         );
         row.append(
           title,
@@ -253,14 +259,11 @@ export function networkScreen(
       return;
     }
     if (!validNetworkNick(nick.value.trim())) {
-      notice(copy.invalidNick);
+      notice(formatMessage(copy.invalidNick, { max: MAX_NICK_LENGTH }));
       return;
     }
     try {
-      connection = new NetworkConnection(
-        url,
-        relayIdentity(new URLSearchParams({ nick: nick.value.trim() }), url),
-      );
+      connection = new NetworkConnection(url, relayIdentity(url, nick.value.trim()));
       assets = roomAssets(connection.client, failure, {}, () => {
         const current = connection;
         if (room && current?.client.room) room.update(current.client.room, current.socket.connected);
@@ -276,11 +279,10 @@ export function networkScreen(
     }
   });
   element.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && room !== null) {
-      event.stopPropagation();
-      event.preventDefault();
-      leaveRoom();
-    }
+    if (event.key !== 'Escape' || room === null || !escapeLeavesRoom(event.target)) return;
+    event.stopPropagation();
+    event.preventDefault();
+    leaveRoom();
   });
   sync();
   return {

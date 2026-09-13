@@ -1,4 +1,5 @@
 import { completed, openDb } from '../../view/runtime/save-load/idb.js';
+import { isMapId } from './documents.js';
 
 export const MAX_CACHED_MAPS = 4;
 export const MAX_CACHED_MAP_BYTES = 64 * 1024 * 1024;
@@ -20,7 +21,7 @@ export function cacheMeta(raw: unknown): CachedMapMeta | null {
   const r = raw as Record<string, unknown>;
   if (
     typeof r.mapId !== 'string' ||
-    !/^[a-z0-9_-]{1,128}$/i.test(r.mapId) ||
+    !isMapId(r.mapId) ||
     typeof r.fingerprint !== 'string' ||
     !/^[a-f0-9]{64}$/.test(r.fingerprint) ||
     (r.origin !== 'mod' && r.origin !== 'user') ||

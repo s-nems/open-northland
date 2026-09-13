@@ -1,5 +1,6 @@
 import { type OpenedWorld, RelayClient, RelaySocket, type WorldPort } from '@open-northland/net-client';
 import type { ServerMessage } from '@open-northland/net-protocol';
+import { errorText } from '../diag/error-text.js';
 import { diag } from '../diag/index.js';
 
 export type ConnectionEvent =
@@ -39,8 +40,10 @@ export class NetworkConnection {
       onMessage: (message) => this.emit({ kind: 'message', message }),
       onWorld: (world) => this.onWorld(world),
       onError: (what, error) => {
-        diag.warn('net', `${what} failed`, { error: String(error) });
-        if (what !== 'save') this.emit({ kind: 'failure', error });
+        diag.warn('net', `${what} failed`, { error: errorText(error) });
+        // A world that could not be opened or a result that does not verify ends the game; a command
+        // or snapshot dropped while the link is down is the link's notice to carry, not a failure.
+        if (what === 'open' || what === 'restore' || what === 'result') this.emit({ kind: 'failure', error });
       },
     });
     this.socket = new RelaySocket({

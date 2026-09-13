@@ -64,15 +64,6 @@ describe('placement authority in map assembly and restore', () => {
     expect(components.playerPlacementTribes(restored.world, 0)).toEqual([OTHER_TRIBE]);
   });
 
-  it('fills missing legacy authority from the map roster before the next tick', () => {
-    const opts = options();
-    const legacy = runDemoWorld(7, 1, undefined, { ...opts.content, owner: 0 });
-    expect(components.playerPlacementTribes(legacy.world, 0)).toBeNull();
-    const restored = restoreMapWorld(opts, exportSaveGame(legacy)).sim;
-    restored.step();
-    expect(components.playerPlacementTribes(restored.world, 0)).toEqual([OTHER_TRIBE]);
-  });
-
   it('preserves an explicit saved deny rule rather than replacing it with a default', () => {
     const opts = options();
     const { sim } = buildMapWorld(opts);

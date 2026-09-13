@@ -33,14 +33,7 @@ function navButton(item: MainNavItem, open: (screen: MenuScreen) => void): HTMLB
   const label = document.createElement('span');
   label.textContent = copy.items[item.id];
   button.append(label);
-  if (item.kind === 'comingSoon') {
-    button.classList.add('is-coming-soon');
-    button.disabled = true;
-    const badge = document.createElement('span');
-    badge.className = 'main-menu__badge';
-    badge.textContent = copy.comingSoon;
-    button.append(badge);
-  } else if (item.kind === 'exit') {
+  if (item.kind === 'exit') {
     button.classList.add('is-exit');
     // Quits without confirmation. In a plain browser tab `close()` is a no-op.
     button.addEventListener('click', () => window.close());

@@ -28,9 +28,9 @@ export class SaveOrders {
         tick: request.tick,
         frames,
       };
-      // JSON detaches nested envelopes as well as arrays before any receiver can append a command.
-      const captured = JSON.parse(saveOrdersText(message)) as typeof message;
-      this.deliver(member, captured);
+      saveOrdersText(message);
+      // A detached copy: no command accepted after this reply can reach into its frames.
+      this.deliver(member, structuredClone(message));
       return null;
     } catch (error) {
       return error instanceof Error ? error.message : 'save order capture failed';

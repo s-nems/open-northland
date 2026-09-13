@@ -47,11 +47,7 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   console.log(`[pipeline] lib unpack: extracted ${extracted.length} member(s) into ${args.out}`);
 
   // The unpack above is this layer's precondition; <game> == <out> is not a supported invocation.
-  const sources = withArchiveLayer(
-    roots,
-    args.out,
-    new Map(extracted.map(({ member, origin }) => [member.toLowerCase(), origin])),
-  );
+  const sources = withArchiveLayer(roots, args.out);
 
   progress?.stage?.('pictures');
   const pictures = await convertPcxTree(fs, sources, args.out, progress?.item);
@@ -157,14 +153,13 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
   });
   const terrains = await convertMapDatTree(fs, roots, args.out, progress?.item, synthesizeMinimap);
   const totalCells = terrains.reduce((sum, t) => sum + t.width * t.height, 0);
-  const metas = terrains.filter((t) => t.meta).length;
   const minimaps = terrains.filter((t) => t.minimap).length;
   const synthesized = terrains.filter((t) => t.minimapSynthesized).length;
   const scripts = terrains.filter((t) => t.script).length;
   const briefings = terrains.filter((t) => t.briefing).length;
   console.log(
     `[pipeline] map.dat -> terrain: ${terrains.length} map grid(s) ` +
-      `(${totalCells} cells total, ${metas} metadata sidecar(s), ${minimaps} minimap(s) ` +
+      `(${totalCells} cells total, ${minimaps} minimap(s) ` +
       `of which ${synthesized} synthesized, ${scripts} script sidecar(s), ${briefings} briefing sidecar(s)) ` +
       `into ${vjoin(args.out, 'maps')}`,
   );

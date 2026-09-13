@@ -1,4 +1,4 @@
-import type { RoomSeatView, RoomView } from '@open-northland/net-protocol';
+import { MAX_SEATS, type RoomSeatView, type RoomView } from '@open-northland/net-protocol';
 import { formatMessage } from '../../../../i18n/index.js';
 import { colorSelect } from '../../lobby-controls/color.js';
 import { seatRow as createSeatRow } from '../../lobby-controls/seat.js';
@@ -24,14 +24,14 @@ export function roomSeats(deps: NetworkRoomDeps) {
       copy.team,
       [
         ['', copy.authored],
-        ...Array.from({ length: 16 }, (_, index) => [String(index), String(index + 1)] as const),
+        ...Array.from({ length: MAX_SEATS }, (_, index) => [String(index), String(index + 1)] as const),
       ],
       (value) => client.setSeat(player, { team: value === '' ? null : Number(value) }),
     );
     const mode = seatModeControl(
       {
         fieldClassName: 'network-room__field',
-        label: copy.human,
+        label: copy.seatMode,
         choices: [
           { id: 'idle', label: copy.idle },
           { id: 'ai', label: copy.ai },

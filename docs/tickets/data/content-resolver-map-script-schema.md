@@ -5,9 +5,11 @@
 `packages/content-resolver/src/maps-index.ts` hand-rolls a structural re-parse of
 `<id>.script.json` (`multiplayerOf`, `playerSlotOf`: `typeof player !== 'number'`, allowed-type
 string checks), duplicating `MapPlayerSlot`/`MapMultiplayer`/`MapMultiplayerSlot` from
-`packages/data/src/schema/maps/script.ts`. A comment frames the missing schema dependency as a
-design fact, but `content-resolver/package.json` already carries one workspace dependency
-(`@open-northland/vfs`), so the boundary is a choice, not a constraint.
+`packages/data/src/schema/maps/script.ts`, and `provenanceOf` mirrors `MapProvenance` from
+`packages/data/src/schema/maps/provenance.ts` the same way for the `.meta.json` sidecar. A comment
+frames the missing schema dependency as a design fact, but `content-resolver/package.json` already
+carries one workspace dependency (`@open-northland/vfs`), so the boundary is a choice, not a
+constraint.
 It compounds: `claimable`/`hidden`/`aiAllowed` are derived at serve time in the HTTP layer, so a
 consumer reading the sidecar directly gets different answers than one reading `/maps-index`, and
 any schema evolution must be mirrored by hand.
@@ -20,9 +22,9 @@ Losing that table makes the first group unseatable and gives the second a bogus 
 
 ## Scope
 
-- Add `@open-northland/data` as a dependency and validate sidecars with the zod schema
-  (`safeParse`). A present invalid script or multiplayer table must warn and drop the roster; an
-  absent table stays silent.
+- Add `@open-northland/data` as a dependency and validate both sidecars with the zod schemas
+  (`safeParse`), the provenance mirror included. A present invalid script or multiplayer table must
+  warn and drop the roster; an absent table stays silent.
 - Add one pure data-package helper that derives `claimable`/`hidden`/`aiAllowed` from a validated
   `MapScript`; use it from the resolver and direct sidecar consumers instead of reimplementing the
   lobby rules at the HTTP boundary.

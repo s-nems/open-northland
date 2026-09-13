@@ -1,7 +1,7 @@
 import { TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import { SNAPSHOT_REFRESH_MS, SNAPSHOT_RETRY_MS } from '../src/index.js';
-import { digest, seatCommand, startedRoom, TOKEN_C } from './support/message-stage.js';
+import { digest, seatCommand, startedRoom, TOKEN_A, TOKEN_B, TOKEN_C } from './support/message-stage.js';
 
 const hash = '12345678';
 const finish = (tick: number, world = 0, result = hash) => ({ kind: 'finish', tick, world, hash: result });
@@ -37,9 +37,11 @@ describe('terminal room consensus', () => {
       expect(s.relay.roomCount).toBe(1);
       expect(s.a.last('room')?.room.state).toBe('ended');
     }
-    s.b.send({ kind: 'loaded', tick: null });
-    expect(s.b.last('blob')).toMatchObject({ type: 'snapshot', tick: 1, bytes });
-    expect(s.b.of('error')).toEqual([]);
+    s.relay.disconnect(s.b.handle);
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: null });
+    expect(back.last('blob')).toMatchObject({ type: 'snapshot', tick: 1, bytes });
+    expect(back.of('error')).toEqual([]);
   });
   it('retries unanswered terminal snapshot donors without advancing the game', () => {
     const s = acknowledged();
@@ -91,14 +93,16 @@ describe('terminal room consensus', () => {
     s.a.send(finish(1));
     expect(s.a.last('rejected')?.reason).toMatch(/already reported/);
   });
-  it('requires a fresh report after loaded/resync even if the snapshot generation is unchanged', () => {
+  it('requires a fresh report after a return even if the snapshot generation is unchanged', () => {
     const s = acknowledged();
     s.a.send(finish(1));
-    s.a.send({ kind: 'loaded', tick: 1, world: 0 });
+    s.relay.disconnect(s.a.handle);
+    const back = s.introduce(TOKEN_A, 'Ania');
+    back.send({ kind: 'loaded', tick: 1, world: 0 });
     s.b.send(finish(1));
-    expect(s.a.last('ended')).toBeUndefined();
-    s.a.send(finish(1));
-    expect(s.a.last('ended')).toBeDefined();
+    expect(back.last('ended')).toBeUndefined();
+    back.send(finish(1));
+    expect(back.last('ended')).toBeDefined();
   });
   it('does not retain a stale result when its author acknowledges a later tick', () => {
     const s = acknowledged();

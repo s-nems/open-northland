@@ -1,7 +1,7 @@
 /**
  * Map metadata and decoded static-object placements from a map `.cif`.
  */
-import { MapInfo } from '@open-northland/data';
+import { MapInfo, type MapProvenance } from '@open-northland/data';
 import type { RuleSection } from './grammar.js';
 import { makeSource, type SourceRef } from './ir-fields.js';
 import { findProp, getInt } from './props.js';
@@ -10,9 +10,14 @@ import { findProp, getInt } from './props.js';
  * Reduces one decoded `map.cif`'s logic header into a validated {@link MapInfo}: the `logiccontrol`
  * section's `mapsize <w> <h>` and `mapguid <16 bytes>`, plus the optional `misc_maptype`/`misc_mapname`
  * scalars. `id` comes from the caller (the map folder name) because the header carries no
- * human-readable map id.
+ * human-readable map id, and so does `provenance`, which the header cannot know.
  */
-export function extractMapInfo(sections: readonly RuleSection[], id: string, src: SourceRef): MapInfo {
+export function extractMapInfo(
+  sections: readonly RuleSection[],
+  id: string,
+  src: SourceRef,
+  provenance: MapProvenance,
+): MapInfo {
   const logic = sections.find((s) => s.name === 'logiccontrol');
   if (logic === undefined) {
     throw new Error(`ini: map ${src.file} has no [logiccontrol] section`);
@@ -41,7 +46,9 @@ export function extractMapInfo(sections: readonly RuleSection[], id: string, src
     nameStringId?: number;
     descriptionStringId?: number;
     source: { file: string; block: string; layer: 'base' | 'mod' };
+    provenance: MapProvenance;
   } = {
+    provenance,
     id,
     width,
     height,

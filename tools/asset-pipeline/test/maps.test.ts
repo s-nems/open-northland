@@ -15,6 +15,8 @@ import { buildStringCif, sampleMapLines } from './fixtures/cif.js';
 import { rampPalette } from './fixtures/palette.js';
 import { makeTempDir } from './support/game-tree.js';
 
+const PROVENANCE = { kind: 'mod', folder: 'CnModMaps/tutorial_002', layer: 'game' } as const;
+
 const fs = nodeVfs();
 
 describe('mapIdFromPath', () => {
@@ -43,9 +45,12 @@ describe('excludeStringTableCopies', () => {
 
 describe('mapCifToInfo', () => {
   it('decodes a synthetic map.cif logic header into a validated MapInfo', () => {
-    const info = mapCifToInfo(buildStringCif(sampleMapLines()), 'tutorial_002', {
-      file: 'CnModMaps/tutorial_002/map.cif',
-    });
+    const info = mapCifToInfo(
+      buildStringCif(sampleMapLines()),
+      'tutorial_002',
+      { file: 'CnModMaps/tutorial_002/map.cif' },
+      PROVENANCE,
+    );
     expect(info).toMatchObject({ id: 'tutorial_002', width: 142, height: 146, mapType: 1 });
     expect(info.guid).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
     expect(info.campaign).toEqual({ campaignId: 100, missionId: 2 });
@@ -53,7 +58,9 @@ describe('mapCifToInfo', () => {
 
   it('throws on a .cif whose root is not a CStringArray (not a map)', () => {
     // A truncated/garbage buffer: the CStringArray id check in decodeCifStringArray rejects it.
-    expect(() => mapCifToInfo(Uint8Array.from([1, 2, 3, 4, 0, 0, 0, 0]), 'x', { file: 'x' })).toThrow();
+    expect(() =>
+      mapCifToInfo(Uint8Array.from([1, 2, 3, 4, 0, 0, 0, 0]), 'x', { file: 'x' }, PROVENANCE),
+    ).toThrow();
   });
 });
 

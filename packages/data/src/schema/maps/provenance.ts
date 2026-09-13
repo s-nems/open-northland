@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Source location classification, not a redistribution licence. Absent legacy provenance is unknown. */
+/** Where a map's files came from: a source-location classification, not a redistribution licence. */
 export const MapProvenance = z.strictObject({
   kind: z.enum(['base', 'mod', 'user', 'unknown']),
   /** Source-root-relative folder, never a machine-specific installation path. */

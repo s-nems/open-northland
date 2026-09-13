@@ -1,3 +1,4 @@
+import { isValidPlayer } from '../../components/ownership.js';
 import type { LoggedCommand } from '../command-queue.js';
 import { asCount, asRecord, typeName } from '../untrusted.js';
 import {
@@ -48,8 +49,8 @@ function parseAuthority(
     throw new Error(`${at}: unknown origin ${JSON.stringify(origin)}`);
   }
   const player = raw.player;
-  if (typeof player !== 'number' || !Number.isInteger(player)) {
-    throw new Error(`${at}: a ${origin} envelope needs an integer player, got ${JSON.stringify(player)}`);
+  if (typeof player !== 'number' || !Number.isInteger(player) || !isValidPlayer(player)) {
+    throw new Error(`${at}: a ${origin} envelope needs a player slot, got ${JSON.stringify(player)}`);
   }
   if (COMMAND_ISSUER[kind] !== 'seat') {
     throw new Error(`${at}: a ${origin} envelope may not issue '${kind}'`);

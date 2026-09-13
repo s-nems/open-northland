@@ -6,75 +6,75 @@
   display: flex;
   flex-wrap: wrap;
   align-items: end;
-  gap: 16px;
-  margin-bottom: 28px;
+  gap: calc(var(--u) * 16);
+  margin-bottom: calc(var(--u) * 28);
 }
 .network-menu__field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: calc(var(--u) * 7);
   min-width: 0;
 }
 .network-menu__connection .network-menu__field:first-child {
   flex: 2;
-  min-width: 240px;
+  min-width: calc(var(--u) * 240);
 }
 .network-menu__connection .network-menu__field:nth-child(2) {
   flex: 1;
-  min-width: 160px;
+  min-width: calc(var(--u) * 160);
 }
 .network-menu input,
 .network-menu select {
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  padding: 10px 12px;
+  padding: calc(var(--u) * 10) calc(var(--u) * 12);
   color: #ede5cf;
   background: #172122;
   border: 1px solid #697366;
-  border-radius: 5px;
+  border-radius: calc(var(--u) * 5);
   font: inherit;
 }
 .network-menu__columns {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(250px, 2fr);
-  gap: 28px;
+  grid-template-columns: minmax(0, 3fr) minmax(calc(var(--u) * 250), 2fr);
+  gap: calc(var(--u) * 28);
 }
 .network-menu__create {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 16px;
-  padding: 20px;
+  gap: calc(var(--u) * 16);
+  padding: calc(var(--u) * 20);
   border: 1px solid #697366;
-  border-radius: 8px;
+  border-radius: calc(var(--u) * 8);
   background: #172122b8;
 }
 .network-menu__create h2,
 .network-menu__room-list h2 {
-  margin: 0 0 12px;
+  margin: 0 0 calc(var(--u) * 12);
 }
 .network-menu__rooms {
-  margin-top: 16px;
+  margin-top: calc(var(--u) * 16);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: calc(var(--u) * 12);
 }
 .network-menu__room-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
+  gap: calc(var(--u) * 16);
+  padding: calc(var(--u) * 16);
   border: 1px solid #697366;
-  border-radius: 6px;
+  border-radius: calc(var(--u) * 6);
   background: #172122b8;
 }
 .network-menu__room-row strong {
   overflow-wrap: anywhere;
 }
 .network-menu__room-row p {
-  margin: 5px 0 0;
+  margin: calc(var(--u) * 5) 0 0;
 }
 .network-menu__notice {
   overflow-wrap: anywhere;
@@ -96,10 +96,4 @@
   .network-menu__columns {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-.network-menu .network-room {
-  position: static;
-  padding: 0;
-  overflow: visible;
 }

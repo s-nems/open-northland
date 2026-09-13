@@ -31,7 +31,8 @@ export class SyncLedger {
   private readonly pending = new Map<number, DigestReport[]>();
   private readonly references = new Map<number, DigestReport>();
 
-  /** Record one client's digest. Judged at once against a settled tick, otherwise held. */
+  /** Record one client's digest. Judged at once against a settled tick, otherwise held; a client
+   *  reporting a held tick again speaks for a newer world, and its earlier word is dropped. */
   report(tick: number, entry: DigestReport): Verdict | null {
     const reference = this.references.get(tick);
     if (reference !== undefined) {
@@ -39,8 +40,13 @@ export class SyncLedger {
       return domains.length === 0 ? null : { tick, reference, outOfSync: [{ token: entry.token, domains }] };
     }
     const reports = this.pending.get(tick);
-    if (reports === undefined) this.pending.set(tick, [entry]);
-    else if (!reports.some((held) => held.token === entry.token)) reports.push(entry);
+    if (reports === undefined) {
+      this.pending.set(tick, [entry]);
+      return null;
+    }
+    const held = reports.findIndex((report) => report.token === entry.token);
+    if (held === -1) reports.push(entry);
+    else reports[held] = entry;
     return null;
   }
 

@@ -1,13 +1,14 @@
 import type { SessionTransport, TickCommand, TickFrame } from '@open-northland/lockstep';
 import type { CommandEnvelope } from '@open-northland/sim';
-import type { ClientMessage, WireFrame } from './messages.js';
+import type { ClientMessage, WireEnvelope, WireFrame } from './messages.js';
 
 export interface RelayTransportOptions {
   readonly send: (message: ClientMessage) => void;
   /** The sim's envelope validator. An envelope it refuses is dropped on every client alike, so a bad
    *  payload from one client cannot split the session. */
   readonly parseEnvelope: (value: unknown) => CommandEnvelope;
-  readonly onDropped?: (tick: number, reason: string) => void;
+  /** A dropped envelope, with the wire's authority half so a client can tell whether it was its own. */
+  readonly onDropped?: (tick: number, reason: string, envelope: WireEnvelope) => void;
   /** The tick the client's world stands at; frames up to it are ignored. Default 0, a fresh world. */
   readonly fromTick?: number;
   /** Runs with each frame as the driver takes it, the moment its commands apply. */
@@ -60,7 +61,7 @@ export class RelayTransport implements SessionTransport {
       try {
         commands.push({ envelope: this.parseEnvelope(wire.envelope), sequence: wire.sequence });
       } catch (err) {
-        this.onDropped?.(tick, err instanceof Error ? err.message : String(err));
+        this.onDropped?.(tick, err instanceof Error ? err.message : String(err), wire.envelope);
       }
     }
     const taken = { tick, commands };

@@ -67,6 +67,14 @@ describe('sync ledger', () => {
     expect(ledger.report(2, report('b', 2, 2))).toBeNull();
   });
 
+  it('lets a client’s newer report of a held tick replace its earlier one', () => {
+    const ledger = new SyncLedger();
+    ledger.report(1, report('a', 0, 1));
+    ledger.report(1, report('b', 1, 9));
+    ledger.report(1, report('b', 1, 1));
+    expect(ledger.settle(1, AB)).toEqual([]);
+  });
+
   it('forgets a client’s held reports once it is out of sync', () => {
     const ledger = new SyncLedger();
     ledger.report(1, report('a', 0, 1));

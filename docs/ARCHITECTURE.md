@@ -32,6 +32,9 @@ asset-pipeline -> generated content -> content-resolver -> app / desktop
   each direction, and the client-side transport that turns relay frames into the driver's input. It
   has no runtime dependency; the descriptor and the command payload cross it as opaque JSON that
   their owners validate.
+- `packages/net-client` is one client of a relayed session: the lobby walk, the world port a host
+  supplies, the relay socket with its reconnects, and the pacing that keeps a jitter buffer. The
+  browser, Electron and the headless test client share it.
 - `packages/net-server` is the relay a networked game runs through: rooms, seats, identities, the
   tick clock, and command frames. It holds no content and runs no simulation. The contract is
   `docs/NETWORK.md`.
@@ -103,5 +106,4 @@ usable without copyrighted data. See [`DATA-FORMAT.md`](DATA-FORMAT.md).
 A save is the sim's exported state plus the untargeted commands still queued; `exportSaveGame` and
 `restoreSimulation` round-trip to an identical hash. A networked session is server-paced lockstep
 over the relay: every client runs the full sim, the relay owns the clock and the order of commands,
-and the same save format is the resync primitive. The wire contract is `docs/NETWORK.md`; the
-remaining milestones are the multiplayer tickets under `docs/tickets/features/`.
+and the same save format is the resync primitive. The wire contract is `docs/NETWORK.md`.

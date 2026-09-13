@@ -38,7 +38,6 @@ describe('parseStoredSettings', () => {
       musicVolume: 0.6,
       language: 'eng',
       keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' },
-      netToken: 'token-0123456789abcdef',
       netNick: 'Ania',
     } as const;
     expect(parseStoredSettings(JSON.stringify(settings))).toEqual(settings);

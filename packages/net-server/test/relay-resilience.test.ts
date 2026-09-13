@@ -1,6 +1,7 @@
 import { MAX_CLIENT_MESSAGE_BYTES, TICK_MS } from '@open-northland/net-protocol';
 import { describe, expect, it } from 'vitest';
 import {
+  INITIAL_INPUT_DELAY_TICKS,
   KICK_COUNTDOWN_MS,
   SILENT_AFTER_MS,
   SNAPSHOT_REFRESH_MS,
@@ -395,6 +396,62 @@ describe('digests and resync', () => {
     expect(lastTick(s.a)).toBe(4);
   });
 
+  it('drops a client’s held reports when it leaves, so its return is judged on the world it holds', () => {
+    const s = roomOfThree();
+    s.advance(TICK_MS * 4);
+    ackThrough(s.a, 1, 2);
+    ackThrough(s.b, 1, 3);
+    s.b.send({ kind: 'ack', tick: 4, digest: digest(9), world: 0 });
+    s.relay.disconnect(s.b.handle);
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 2, bytes: BLOB });
+    const back = s.introduce(TOKEN_B, 'Bartek');
+    back.send({ kind: 'loaded', tick: 1, world: 0 });
+    expect(back.of('blob').map((blob) => blob.tick)).toEqual([2]);
+    ackThrough(back, 3, 4, 1, 2);
+    ackThrough(s.a, 3, 4);
+    ackThrough(s.c, 1, 4);
+    expect(back.of('desync')).toEqual([]);
+    expect(s.a.of('desync')).toEqual([]);
+    expect(s.c.of('desync')).toEqual([]);
+  });
+
+  it('reports a world once per connection, and refuses a command before any world has loaded', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 1 });
+    for (const peer of [a, b]) peer.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    a.send(seatCommand(0));
+    expect(a.last('rejected')?.reason).toMatch(/no world has loaded/);
+    a.send({ kind: 'loaded', tick: 0, world: 0 });
+    a.send({ kind: 'loaded', tick: 0, world: 0 });
+    expect(a.last('rejected')?.reason).toMatch(/already loaded/);
+    b.send({ kind: 'loaded', tick: 0, world: 0 });
+    a.send(seatCommand(0));
+    expect(a.of('rejected')).toHaveLength(2);
+    s.advance(TICK_MS * INITIAL_INPUT_DELAY_TICKS);
+    expect(a.of('frame').flatMap((frame) => frame.commands)).toHaveLength(1);
+  });
+
+  it('asks the next donor as soon as the asked one drops, and one request serves everyone queued', () => {
+    const s = roomOfThree();
+    s.advance(TICK_MS * 2);
+    ackThrough(s.a, 1, 2);
+    ackThrough(s.c, 1, 2);
+    s.b.send({ kind: 'ack', tick: 1, digest: digest(9), world: 0 });
+    expect(s.b.last('desync')?.tick).toBe(1);
+    const asked = s.a.of('snapshotRequest').length === 1 ? s.a : s.c;
+    const other = asked === s.a ? s.c : s.a;
+    expect(other.of('snapshotRequest')).toEqual([]);
+    s.relay.disconnect(asked.handle);
+    s.advance(1);
+    expect(other.of('snapshotRequest')).toHaveLength(1);
+  });
+
   it('judges a tick among the clients in sync alone, without a dropped client’s report', () => {
     const s = roomOfThree();
     s.advance(TICK_MS * 2);
@@ -510,10 +567,12 @@ describe('catching up', () => {
     s.a.send({ kind: 'blob', type: 'save', to: null, tick: 3, bytes: BLOB });
     expect(s.b.last('blob')).toEqual({ kind: 'blob', type: 'save', from: 'Ania', tick: 3, bytes: BLOB });
     expect(s.a.of('blob')).toEqual([]);
-    s.b.send({ kind: 'loaded', tick: null });
-    expect(s.b.last('rejected')?.reason).toMatch(/no snapshot is cached/);
-    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 3, bytes: BLOB });
     s.relay.disconnect(s.b.handle);
+    const first = s.introduce(TOKEN_B, 'Bartek');
+    first.send({ kind: 'loaded', tick: null });
+    expect(first.last('rejected')?.reason).toMatch(/no snapshot is cached/);
+    s.a.send({ kind: 'blob', type: 'snapshot', to: null, tick: 3, bytes: BLOB });
+    s.relay.disconnect(first.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
     expect(back.last('start')?.snapshotTick).toBe(3);
     back.send({ kind: 'loaded', tick: null });

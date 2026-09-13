@@ -350,6 +350,7 @@ export const enGame = {
     },
   },
   net: {
+    defaultNick: 'Player',
     connecting: 'Connecting to {url}',
     reconnecting: 'Connection lost, reconnecting',
     closed: 'Connection closed: {reason}',

@@ -10,16 +10,18 @@ requests. The root [`AGENTS.md`](../../AGENTS.md) applies in full; the wire cont
 
 - Depends on `net-protocol`, `lockstep`, `sim` and the pure `@noble/hashes` SHA-256 implementation
   (save verification must also work on HTTP LAN origins), and on the Web platform only through
-  `WebSocket`, `CompressionStream`, `Response` and `crypto`, never the document. The DOM lib is on
-  for their types; the headless client under `packages/net-server/test/support/`, which runs this
-  package under Node, is what holds the boundary.
+  `WebSocket`, the compression streams, `Response`, the text codecs, base64, timers, `performance`
+  and `crypto`, never the document. The DOM lib is on for their types; the headless client under
+  `packages/net-server/test/support/`, which runs this package under Node, is what holds the
+  boundary.
 - Holds no display and no content. The world comes through a `WorldPort` the host supplies: a build
   from the descriptor, a restore from a snapshot, or a refusal that asks the relay for its cached
   snapshot. The host decides what a served snapshot does to its world; the client only drops the one
   it had.
 - `RelayClient` is the frame loop's `SessionDriver` and the HUD's `SessionClock`: elapsed time in,
   paced a frame or two behind the relay to hold the jitter buffer; tempo and pause read as the relay
-  last broadcast them, and a change is a request the relay applies for everyone.
+  last broadcast them, a decided or confirmed match reading as paused, and a change is a request the
+  relay applies for everyone.
 - The snapshot encoding is this package's contract with every other client: gzip of the canonical
   save JSON, base64 on the wire, the session's map named in the header.
 

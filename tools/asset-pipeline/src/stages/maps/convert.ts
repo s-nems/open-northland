@@ -31,8 +31,6 @@ export interface MapDatConversion {
   readonly height: number;
   /** The terrain JSON's path relative to `outDir`. */
   readonly output: string;
-  /** Whether a `maps/<id>.meta.json` name/description sidecar was emitted. */
-  readonly meta: boolean;
   /** Whether a `maps/<id>.png` minimap was emitted, decoded or synthesized. */
   readonly minimap: boolean;
   /** The emitted minimap was synthesized from the decoded cells. */
@@ -123,7 +121,7 @@ export async function convertMapDatTree(
     await fs.rm(briefingPath);
     const strings = await loadMapStringTable(fs, mapDirs, rel);
     const metadata = await resolveMapMeta(fs, mapDirs, rel, cifSections, strings);
-    const metaFile = { ...metadata, provenance: await mapProvenance(fs, roots, { rel, path }) };
+    const metaFile = { ...metadata, provenance: mapProvenance(roots, { rel, path }) };
     await writeText(fs, metaPath, `${JSON.stringify(metaFile)}\n`);
     let scriptFile: MapScript | undefined;
     try {
@@ -173,7 +171,6 @@ export async function convertMapDatTree(
       width: terrain.width,
       height: terrain.height,
       output,
-      meta: true,
       minimap,
       minimapSynthesized,
       script: scriptFile !== undefined,

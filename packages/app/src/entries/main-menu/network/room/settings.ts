@@ -1,11 +1,17 @@
 import type { RoomView } from '@open-northland/net-protocol';
+import { messages } from '../../../../i18n/index.js';
 import { gameRuleControls } from '../../lobby-controls/rules.js';
 import { node, selectControl } from './controls.js';
 import { roomSettingsQueue } from './settings-queue.js';
 import type { NetworkRoomDeps } from './types.js';
 
+/** Starting speeds a room offers; the wire allows up to `MAX_SPEED`, but faster than 3x is a debug
+ *  pace no lobby needs. */
+const STARTING_SPEEDS = ['0.5', '1', '2', '3'] as const;
+
 export function roomSettings(deps: NetworkRoomDeps) {
   const { copy, client } = deps;
+  const lobby = messages().mainMenu.lobby;
   const queue = roomSettingsQueue((settings) => client.setSettings(settings));
   const root = node('section', '', 'network-room__card network-room__settings');
   const hint = node('p', copy.creatorSettings, 'network-room__muted');
@@ -14,14 +20,7 @@ export function roomSettings(deps: NetworkRoomDeps) {
     presentation: 'select',
     inheritedLabel: copy.authored,
     fieldClassName: 'network-room__field',
-    fog: {
-      label: copy.fog,
-      modes: {
-        off: { label: copy.fogOff },
-        reveal: { label: copy.fogRecon },
-        recon: { label: copy.fogClassic },
-      },
-    },
+    fog: { label: lobby.fogLabel, modes: lobby.fogModes },
     progression: { label: copy.progression, on: copy.enabled, off: copy.disabled },
     needs: { label: copy.needs, on: copy.enabled, off: copy.disabled },
     onChange(change) {
@@ -30,7 +29,7 @@ export function roomSettings(deps: NetworkRoomDeps) {
   });
   const speed = selectControl(
     copy.speed,
-    ['0.5', '1', '2', '3'].map((value) => [value, `${value}×`] as const),
+    STARTING_SPEEDS.map((value) => [value, `${value}×`] as const),
     (value) => queue.change({ speed: Number(value) }),
   );
   const fallout = selectControl(

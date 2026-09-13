@@ -1,6 +1,7 @@
 import { compatibilityIssues } from '@open-northland/net-protocol';
 import { loadLobbyCompatibility } from '../../content/lobby-identity.js';
 import { loadRoomMapDocuments } from '../../content/transfer/index.js';
+import { errorText } from '../../diag/error-text.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
 import { NetworkConnection } from '../../net/connection.js';
@@ -15,7 +16,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
   const url = params.get('relay');
   const roomId = params.get('room');
   if (url === null || roomId === null) throw new Error('Missing multiplayer reconnect address');
-  const connection = new NetworkConnection(url, relayIdentity(params, url));
+  const connection = new NetworkConnection(url, relayIdentity(url, params.get('nick')));
   let closed = false;
   let opening = false;
   let handedOff = false;
@@ -36,7 +37,7 @@ export function renderNetworkReload(canvas: HTMLCanvasElement, params: URLSearch
     back.addEventListener('click', () => {
       void swapToEntry(menuSearch(), () => back.parentElement?.remove());
     });
-    mountMessage(formatMessage(messages().net.bootFailed, { reason: String(error) }), '', [back]);
+    mountMessage(formatMessage(messages().net.bootFailed, { reason: errorText(error) }), '', [back]);
   };
   const unsubscribe = connection.subscribe((event) => {
     if (event.kind === 'link' && event.state === 'closed') {

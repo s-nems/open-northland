@@ -6,7 +6,13 @@ function logLine(event: string, fields?: Record<string, unknown>): void {
   console.log(JSON.stringify({ time: new Date().toISOString(), event, ...fields }));
 }
 
-const host = await startRelayHost({ ...relayConfigFromEnvironment(process.env), log: logLine });
+let host: Awaited<ReturnType<typeof startRelayHost>>;
+try {
+  host = await startRelayHost({ ...relayConfigFromEnvironment(process.env), log: logLine });
+} catch (error) {
+  logLine('start failed', { error: error instanceof Error ? error.message : String(error) });
+  process.exit(1);
+}
 
 const stop = (signal: string): void => {
   logLine('stopping', { signal });

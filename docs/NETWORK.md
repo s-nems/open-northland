@@ -36,10 +36,13 @@ that has not said `hello` within `HELLO_TIMEOUT_MS` (10 s) is closed.
 
 A `hello` with a token already connected replaces that connection: the older one gets
 `error "replaced by a newer connection"` and is closed, and its room membership carries over. A token
-that belongs to a room, connected or not, is put back into that room by `hello` alone. Its welcome
-uses the room's retained canonical nick. When a join assigns a numeric suffix, a further `welcome`
-announces that canonical nick before the first room view; it is a name update, not a new connection.
-The relay attaches membership before publishing the view, so a client can answer it immediately.
+that belongs to a started room, connected or not, is put back into that room by `hello` alone; in
+the lobby a dropped connection is a leave, so only a running game keeps a member across a drop. Its
+welcome uses the room's retained canonical nick. When a join assigns a numeric suffix, a further
+`welcome` announces that canonical nick before the first room view; it is a name update, not a new
+connection. The relay attaches membership before publishing the view, so a client can answer it
+immediately. The host closes a connection that has sent nothing, a pong included, for
+`SILENT_SOCKET_MS` (30 s); the token may return on a new socket.
 
 ## Rooms and seats
 
@@ -61,13 +64,10 @@ Every change to a room is broadcast to its members as `room { room }`, the whole
 - `setSeat { player, mode?, color?, team? }` is the creator's: `mode` only on a vacant seat.
   `team` is an integer from 0 through 15, or null; omitted/null preserves map-authored diplomacy.
   Explicit teams are carried in the session descriptor, whose trusted setup applies the relations.
-- `setSettings { settings }` is the creator's. It replaces `{ name, seed, rules, speed, kickedSeatMode? }` in full;
-  including `world`, `initialSave` or `mapOrigin` is refused because these are immutable.
-  The menu sends one settings replacement at a time and merges subsequent field edits onto its
-  acknowledged room view. Unrelated room updates do not acknowledge it; refusal, disconnect, or
-  leaving the room discards pending edits. A settings no-op does not produce a room update.
-  A saved room also fixes its seed, rules, seat colors and teams; claims and creator-selected
-  vacant AI/idle modes remain editable.
+- `setSettings { settings }` is the creator's. It replaces `{ name, seed, rules, speed, kickedSeatMode? }`
+  in full; including `world`, `initialSave` or `mapOrigin` is refused because these are immutable,
+  and a replacement that changes nothing produces no room update. A saved room also fixes its seed,
+  rules, seat colors and teams; claims and creator-selected vacant AI/idle modes remain editable.
 - `setCompatibility { compatibility }` supplies the sender's report or null to invalidate it.
 - `setReady { ready }` needs a seat; becoming ready also requires all compatibility checks to pass.
 - `leaveRoom` frees the seat and identity; the last member out drops the room, and
@@ -81,7 +81,7 @@ Every change to a room is broadcast to its members as `room { room }`, the whole
 Every effective report, membership, seat, team, color or settings change clears all ready flags.
 Repeating the same report, seat claim or settings preserves readiness. A reconnect in the lobby also
 clears that member's compatibility report and all readiness, so the new client must check its files.
-The started-game reconnect path keeps its existing snapshot and digest checks.
+A reconnect into a started game is checked by its snapshot tick and digests instead.
 
 A compatibility report is `{ content, map, client, protocol, save? }`. Content and map are lowercase SHA-256
 hex digests; `map: null` means the client lacks the map. The client version is a non-empty printable
@@ -97,11 +97,12 @@ validation; the relay does not read local content or map files.
 and is ready. The relay
 then sends each member `start { session, snapshotTick: null }`: the `GameSession` descriptor with
 that member's own `localSeat`, and every claimed seat as `human`. Each member builds its world from
-it and reports `loaded { tick, world: 0 }` with the tick that world stands at: the same on every
-client of one room, 0 for a world with no setup tick and 1 for a decoded map whose placements drain
-on one, and the relay refuses any other. The clock starts once every connected member has,
-announced by `clock { tick, speed, paused: false, by: null }` naming the first tick to run. After
-the start there is no host role.
+it and reports `loaded { tick, world: 0 }` with the tick that world stands at (0 for a world with no
+setup tick, 1 for a decoded map whose placements drain on one). The first report fixes the room's
+built tick; the relay refuses any other tick from the rest, a second `loaded` on the same connection,
+and a command sent before any world has loaded. The clock starts once every connected member has
+loaded, announced by `clock { tick, speed, paused: false, by: null }` naming the first tick to run.
+After the start there is no host role.
 
 ## The clock and tick frames
 
@@ -146,9 +147,9 @@ It is the only trusted command the wire carries; a client refuses a frame with a
 The relay pings each client once a second (`ping { t, roundTripMs }`, answered by `pong { t }`) and
 keeps a smoothed round trip and jitter per client; `roundTripMs` is that smoothed trip, carried so
 the client can show it. The assigned input delay is
-`ceil((rtt + jitter) / tickLength) + 1` ticks, starting at 2, raised on the spot by a spike and
-lowered one tick at a time once the smoothed trip has allowed it for ten quiet samples. A change is
-sent as `delay { ticks }`; every member also gets its current delay at the start.
+`ceil((rtt + jitter) / tickLength) + 1` ticks, starting at 2 and never below 1, raised on the spot by
+a spike and lowered one tick at a time once the smoothed trip has allowed it for ten quiet samples. A
+change is sent as `delay { ticks }`; every member also gets its current delay at the start.
 
 ## Acknowledgements and the sync check
 
@@ -212,18 +213,16 @@ loaded and in sync, use its current world generation, and name a tick between th
 both its acknowledged tick and the relay clock. Missing retained history is a refusal, never an
 incomplete success. No pause, clock advance or queue drain occurs.
 
-The reply is `saveOrders { id, tick, frames }`: sparse nonempty frames strictly after `tick`, in
-ascending tick order, combining retained emitted frames and accepted pending frames. Command sequence
-numbers remain contiguous within each frame. Empty `frames` is a valid complete capture. The detached
-reply preserves its contents even if another player's command arrives immediately afterwards; commands
-accepted after the request belong only to later captures. The client persists these inputs as its
-save continuation, retaining apply ticks and within-tick order.
+The reply is `saveOrders { id, tick, frames }`: the nonempty frames strictly after `tick`, in
+ascending tick order, from the retained emitted frames and the accepted pending ones; sequence
+numbers stay contiguous within a frame, and empty `frames` is a complete capture. A command accepted
+after the request belongs to a later capture. The client stores the frames as the save's
+continuation, with their apply ticks and within-tick order, against the world it captured before
+asking.
 
-`MAX_SAVE_ORDERS_BYTES` is 16 MiB. Both sides conservatively limit serialized JSON to one third that
-many UTF-16 units, which bounds UTF-8 without platform APIs; oversized replies are refused atomically.
-A client correlates the id, verifies the captured tick, and abandons pending requests on world/room
-changes. A refusal includes `rejected { of: "saveOrders", requestId, reason }` when the request
-id is valid, including parser refusals; a delayed rejection cannot cancel a newer capture. The local save is captured before this asynchronous exchange, never recaptured at reply time.
+A reply over `MAX_SAVE_ORDERS_BYTES` (16 MiB of JSON) is refused whole. A refusal carries
+`rejected { of: "saveOrders", requestId, reason }` whenever the request named a valid id, parser
+refusals included.
 
 ## Blobs
 
@@ -240,20 +239,18 @@ validate source provenance, sender identity, payload schema and the expected map
 Map replacement after Start is refused.
 
 An `initialSave` is creator-only, lobby-only, has `to: null` and the declared tick. The declaration is
-`initialSave: { fingerprint, tick }`, copied into every session descriptor. Its fingerprint is SHA-256
-of the exact base64 snapshot text. The relay hashes the opaque text, refuses a mismatch, caches one
-bounded blob, and broadcasts it including to its uploader. `requestInitialSave` returns this cache,
-including after a creator leaves. Ready and Start require the upload as well as matching reports.
-Clients verify the hash, decoded save schema, tick and map, then restore against their actual content
-before reporting compatibility. `prepareInitialSave` / `verifyInitialSave` provide the transport checks.
+`initialSave: { fingerprint, tick }` with `tick` at least 1, copied into every session descriptor.
+Its fingerprint is SHA-256 of the exact base64 snapshot text. The relay hashes the opaque text,
+refuses a mismatch, caches one bounded blob, and broadcasts it to every member, the uploader
+included. `requestInitialSave` returns this cache, including after the creator leaves. Ready and
+Start require the upload as well as matching reports; a client verifies the hash, the decoded save,
+its tick and its map, and restores it against its own content before it reports `save` in its
+compatibility report.
 
-Saved starts name `snapshotTick: initialSave.tick`; the relay seeds its clock and snapshot cache there,
-and rejects descriptor-generation or tick-zero substitutions. `WorldPort.open` can supply a verified
-world with `initialSaveFingerprint` and generation equal to the saved tick, or return null and restore
-the relay snapshot. The client verifies initial snapshot integrity before invoking the restore port.
-Saved rules and diplomacy remain intact. Shared seat control (`setPlayerAi` for every roster seat)
-is queued once on the first resumed tick by the client. The lobby releases its cache at Start so
-normal snapshot retention can replace it.
+A saved start names `snapshotTick: initialSave.tick`; the relay seeds its clock and snapshot cache
+there, and every world reported for it must carry that generation. Saved rules and diplomacy stay as
+saved; each client queues the roster's seat control once on the first resumed tick. The lobby
+releases its cache at Start, and the room's snapshot retention takes over.
 
 A `save` is relayed as addressed and never refreshes the room's cached snapshot: its persisted
 continuation already includes accepted future orders, so adding replay frames would apply them twice.
@@ -267,34 +264,30 @@ with `restoreSimulation` onto the world the descriptor names. A manual save cont
 commands and the accepted relay continuation obtained by `saveOrders`. An automatic snapshot contains
 only the simulation queue; retained relay frames reconstruct accepted orders after its tick.
 
-A manual multiplayer save writes the same captured document locally and through `shareSave` to the
-relay. The current save format records validated session metadata and public roster names, with no reconnect
-tokens or previous initial-save fingerprint. Saved humans become vacant seats when a new room is
-created; nick matches are suggestions and each player explicitly claims a seat. Saves without session
-metadata use the authored map roster. The new room's seat assignments supersede any saved, still-pending
-administrative AI takeover from the previous room; player orders keep their saved ticks and order.
-Only the current save format is accepted.
+A manual multiplayer save is written locally and shared through the relay as a `save` blob. What a
+save records of its session (the descriptor and the public roster, never a token) is the save
+format's contract in [`DATA-FORMAT.md`](DATA-FORMAT.md). A room created from a save offers the
+saved human seats as vacant and each player claims one explicitly; the new room's seats supersede a
+seat handover the previous room had scheduled but not applied, and player orders keep their saved
+ticks and order.
 
-Verified custom maps are retained in browser storage, capped at four maps and 64 MiB of encoded
-transfer payloads. Reads validate the documents again against their fingerprint and permitted origin;
-known base or unknown installation origins remain ineligible for transferred-map fallback. A normal
-multiplayer reload reconnects its token, checks compatibility and rebuilds from the relay snapshot
-using the retained map. Unavailable storage leaves the current game usable but cannot retain its map.
+A client keeps the custom maps it verified in browser storage, capped at four maps and 64 MiB of
+encoded transfer text, and validates a copy again against its fingerprint and permitted origin before
+playing it; base and unknown origins are never served from that store. A reload rejoins on the token,
+checks compatibility, and rebuilds from the relay snapshot over the retained map.
 
 ## Resync and catching up
 
 The relay keeps the room's newest snapshot and every frame since it. Until the first snapshot it
 keeps every frame from the first one. Replay retention is limited to `MAX_HISTORY_BYTES` (16 MiB of
 UTF-8 frame JSON) and `MAX_HISTORY_AGE_MS` (10 minutes of wall time since the oldest retained frame).
-JSON bytes bound payload storage; frame counts are also bounded by the age limit and maximum tick
-rate, so bookkeeping has a bound too. These are deployment budgets, not simulation constants.
 
 The relay requests a refresh every `SNAPSHOT_REFRESH_MS` (5 min), or once history reaches half its
-byte or age budget. `snapshotRequest` goes first to the client in sync with the lowest round trip,
-which answers with a `snapshot` blob at its current tick. Unanswered requests retry every
-`SNAPSHOT_RETRY_MS` (10 s), trying each eligible donor before repeating one, including when nobody
-is currently waiting for resync. A newer automatic snapshot prunes only the frames it covers.
-A same-tick snapshot also satisfies a refresh when no later frames are retained, as in a paused game.
+byte or age budget. `snapshotRequest` goes to the client in sync with the lowest round trip, which
+answers with a `snapshot` blob at its current tick. An unanswered request is repeated every
+`SNAPSHOT_RETRY_MS` (10 s) to the next eligible donor, at once when the asked donor drops, and one
+request is outstanding however many members wait for it. A snapshot prunes the frames it covers; in
+a paused game a snapshot at the cached tick counts as the refresh.
 
 If the age limit is reached or the next frame would exceed the byte limit, the relay ends that room:
 connected members receive `error` with an explicit retention-limit reason, then `left`. All members,
@@ -309,7 +302,8 @@ acknowledges from the snapshot's tick on; the wait ends once it is within the la
 client that is away when the snapshot arrives takes the cache on its return, with `loaded { tick:
 null }`.
 
-A returning token gets `room`, `start { session, snapshotTick }` and `clock` again. `snapshotTick`
+A returning token gets `room`, its pending `desync` notice if it has one, `start { session,
+snapshotTick }`, `clock` while the game runs, and `ended` once it has ended. `snapshotTick`
 is the cached snapshot's tick, or null when the relay still holds every frame from the first. The
 client answers `loaded`:
 
@@ -340,7 +334,8 @@ replaces the client's world, and the frames that follow are applied through the 
 | `MAX_MEMBERS` per room | 12 |
 | rooms per relay | `RELAY_MAX_ROOMS`, 64 by default |
 | `HELLO_TIMEOUT_MS` | 10 s |
-| empty room kept for reconnects | 10 minutes |
+| `SILENT_SOCKET_MS` | 30 s |
+| started room kept with nobody connected | 10 minutes |
 | `MAX_COMMANDS_PER_TICK` per member | 20 |
 | `PAUSE_BUDGET` per member per game | 3 |
 | `MAX_SPEED` | 8 |
@@ -349,6 +344,8 @@ replaces the client's world, and the frames that follow are applied through the 
 | `KICK_COUNTDOWN_MS` | 60 s |
 | `SNAPSHOT_REFRESH_MS` / `SNAPSHOT_RETRY_MS` | 5 min / 10 s |
 | nick / room name / chat line | 24 / 48 / 500 characters |
+| room id / world id / command kind / refusal reason | 32 / 128 / 64 / 200 characters |
+| `MAX_SEED` | 2^32 - 1 |
 | token | 16 to 128 URL-safe characters |
 
 ## The client
@@ -366,8 +363,8 @@ test client through an in-memory network.
 
 Beside the WebSocket upgrade the relay serves one plain HTTP path, `GET /healthz`, answering
 `{ ok, protocol, build, url, rooms, clients, uptimeSeconds }`: the version it speaks, the build it
-came from, the `RELAY_PUBLIC_URL` it was given, and how busy it is. Every other path is a 404. The
-image and its environment are described in
+came from, the `RELAY_PUBLIC_URL` it was given, and how busy it is. `GET` or `HEAD` of any other
+path is a 404, any other method a 405. The image, its environment and its sizing are described in
 [Development: Relay image](DEVELOPMENT.md#relay-image).
 
 ## Match termination
@@ -379,12 +376,12 @@ an existing participant is distinct from joining a running match.
 A local defeat does not pause the shared clock or end the match while other participants remain
 undecided. Once the simulation decides every declared participant, each client stops exactly at
 that tick and sends `finish { tick, hash, world }` after its tick acknowledgement. `hash` is the
-full simulation state hash (eight lowercase hexadecimal digits), not the incremental mutation
-digest: the same result must also be reportable from an adopted save without an extra simulation
-step. An already decided adopted world reports its loaded tick.
+full simulation state hash (eight lowercase hexadecimal digits), not the per-tick digest; a world
+adopted already decided reports its loaded tick.
 
 The relay compares result tick and hash from every connected participant with a loaded, synchronized
-world. Stale world generations do not count. Once those reports agree, it stops its clock at the
+world, and holds the result while a connected member is still loading or out of sync. Stale world
+generations do not count. Once those reports agree, it stops its clock at the
 result tick, clears waiting notices, broadcasts the ended room view and `ended { tick, hash }`. Frames
 already emitted beyond that tick are never simulated by clients that reached the shared result.
 If every connected participant reports a result but the tick or full hash differs, the relay ends
@@ -392,21 +389,16 @@ the room with an explicit result-disagreement error rather than claiming a share
 Disconnected identities do not block agreement; reconnect retains the result and permits restoration
 and replay up to the final tick without restarting the clock.
 
-A returning client verifies the final full hash before showing the result.
-The final result replaces any earlier local defeat panel and offers exit to the menu. Leaving an
-ended session releases membership without scheduling further AI commands. Commands, clock changes,
-kicks, lobby edits and Start cannot restart the ended session. Another match needs a new room.
+A returning client verifies the final hash before it shows the result. Leaving an ended session
+releases membership without scheduling a seat handover. Commands, clock changes, kicks, lobby edits
+and Start cannot restart the ended session; another match needs a new room.
 
 ## Background windows
 
-The desktop window disables Electron background throttling so its animation-driven session keeps
-advancing when minimized or covered. This also keeps rendering active in the background.
-See [Electron page visibility](https://www.electronjs.org/docs/latest/api/browser-window#page-visibility).
-
-Window focus and browser tab visibility do not change room membership. A client that stops ticking
-uses the ordinary [waiting](#waiting) and [kick votes](#kick-votes) policies; removal is never
-automatic. Resuming clients drain their buffered frames through the existing pacer. Socket loss and
-reconnect continue to use the existing recovery path.
+Window focus and tab visibility do not change room membership: a client that stops ticking is waited
+for and can be voted out under the rules above, never removed on its own, and drains its buffered
+frames when it resumes. The desktop window disables Electron's background throttling so a minimized
+client keeps ticking.
 
 ## Public relay security boundary
 
@@ -420,24 +412,21 @@ The host bounds application and WebSocket control traffic together at 256 messag
 512-message burst, and 1 MiB/s with a two-blob burst. Recovery requests (`loaded`, `saveOrders`,
 `requestInitialSave`) share a separate four-request burst, refilling one request every two seconds,
 before relay dispatch. Exceeding a traffic budget disconnects the sender. WebSocket compression is
-disabled, payloads are capped, and an unacknowledged close is terminated after one second.
+disabled, payloads are capped, an unacknowledged close is terminated after one second, and a socket
+silent for 30 s is closed.
 
 The HTTP host caps all TCP connections at the configured WebSocket limit plus 16, including sockets
-that have not sent upgrade headers. Headers have a five-second deadline, requests and idle HTTP
-sockets ten seconds; keep-alive connections serve at most 100 requests. These bounds do not reserve
-capacity for legitimate users when an attacker fills every slot.
-
-Limits apply per connection or room, not to total process memory or network throughput. A room can
-retain roughly 22 MiB of base64 snapshot text plus 16 MiB of serialized replay history; JavaScript
-objects, input parsing and output queues add more. At 64 rooms, those retained payloads alone can
-approach 2.4 GiB. Each of 256 sockets can additionally receive a maximum-size message and queue about
-43 MiB of output. Default counts are capacity ceilings, not a safe memory budget for a small VPS.
+that have not sent upgrade headers. Headers have a five-second deadline, a request ten seconds, an
+idle keep-alive socket Node's default of five seconds, and a keep-alive connection serves at most
+100 requests. These bounds do not reserve capacity for legitimate users when an attacker fills every
+slot. Limits apply per connection or room, not to process memory or network throughput; sizing a
+deployment is covered with the image in [Development: Relay image](DEVELOPMENT.md#relay-image).
 
 A public deployment needs an updated Node/container base, TLS, edge connection/upgrade rate limits,
 and explicit process memory/CPU and log limits. Bind the relay only to the proxy's private network
 or loopback, block direct public access to its port, run it without root, and give it no host mounts,
 secrets or Docker socket. The image already runs as `node` and needs no writable game data; use a
-read-only filesystem and drop capabilities. Choose room and connection counts for the machine and
-measure its workload. The host does not trust `X-Forwarded-For`; per-address controls belong at the
-proxy with a correctly configured trusted-proxy chain. Reconnecting creates a new socket budget,
-so edge limits must also cover connection churn. Bandwidth DDoS protection belongs upstream.
+read-only filesystem and drop capabilities. The host does not trust `X-Forwarded-For`; per-address
+controls belong at the proxy with a correctly configured trusted-proxy chain. Reconnecting creates a
+new socket budget, so edge limits must also cover connection churn. Bandwidth DDoS protection
+belongs upstream.

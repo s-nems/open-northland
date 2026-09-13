@@ -54,7 +54,7 @@ describe('parseCommandEnvelope', () => {
       /unknown origin "root"/,
     );
     expect(() => parseCommandEnvelope({ v: 1, origin: 'player', command: { kind: 'marry' } })).toThrow(
-      /needs an integer player/,
+      /needs a player slot/,
     );
   });
 
