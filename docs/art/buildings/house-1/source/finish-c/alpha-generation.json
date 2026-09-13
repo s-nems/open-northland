@@ -1,0 +1,23 @@
+{
+  "tool": "imagegen bundled CLI",
+  "model": "gpt-image-1.5",
+  "prompt": "alpha.prompt.txt",
+  "references": [
+    {
+      "path": "paint.png",
+      "role": "Exact painted building for background extraction only",
+      "sha256": "108c88085626f3a238167511be65a54b177dda146abc96ed0a1d42d89502aa6f"
+    }
+  ],
+  "settings": {
+    "quality": "high",
+    "input_fidelity": "high",
+    "background": "transparent",
+    "size": "1024x1024",
+    "output_format": "png",
+    "no_augment": true
+  },
+  "output": "final.png",
+  "sha256": "a979219a4aaed00bafacde4f18917c19503a273d330e016b359dcaad924edba8",
+  "postprocessing": "None; native generated RGBA retained. Generative extraction can alter fine details."
+}

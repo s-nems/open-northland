@@ -11,12 +11,20 @@ not imply that every current building, terrain or character has already been rep
 1. Read this document and [AGENTS.md](AGENTS.md).
 2. View and attach [the canonical muted House A sprite](buildings/house-1/house-painted-runtime.png).
    Use its painting, restrained palette and neutral daylight; its house architecture is not a template.
+   Also attach [the approved weathered material refinement](buildings/house-1/source/weathered-v1/final.png)
+   for faded timber and restrained surface wear. Use the roles and hashes in
+   [finish-references.json](finish-references.json); neither image supplies new architecture.
 3. Label each attached reference and its role in the prompt. Save the exact submitted prompt beside the output.
 4. Review beside muted A at intended play size, including current terrain and actors where relevant.
 
 The canonical sprite is the delivered 1024 × 1024 RGBA export, not the checkerboard concept A.png.
 SHA-256: `c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d`.
 Keep this authoring reference unchanged; new generations belong in separate versioned directories.
+
+The weathered refinement supplements A with grey-taupe timber, worn edges and aged plaster.
+Preserve both references. The warmer canonical image alone does not describe this material refinement;
+do not let its orange wood override the weathered reference. Current candidate houses are comparison
+subjects, not replacements for this fixed reference pair.
 
 ## Selected finish — muted House A
 
@@ -141,6 +149,13 @@ repetition, shoreline blending, elevation and map compatibility need their own i
 Before treating a new asset as ready:
 
 - Compare all world colour/lighting and building finish with the canonical muted House A.
+- Compare shared materials against the weathered refinement across the whole upgrade family:
+  timber against timber, straw against straw, stone against stone. A higher proportion of dark brick
+  or tiles can hide overly bright timber in a whole-image comparison. Early plaster/thatch levels
+  must not look freshly varnished or more saturated than later levels.
+- Perform this comparison on the final transparent exports after every generative alpha pass,
+  using the same opaque background and lighting. Composite alpha correctly; hidden RGB in fully
+  transparent pixels is not visible artwork. Inspect light, dark and terrain backgrounds separately.
 - Compare it with other functions and ground, using the latest available actors as a provisional check.
 - Inspect normal play size and supported zooms; look for lost function cues, noise, shimmer and seams.
 - Separate visual approval from technical checks: alpha, bounds, anchors, camera, tile joins and

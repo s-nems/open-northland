@@ -10,10 +10,10 @@ Run `source/geometry/finish.py` in Blender to regenerate the calibrated render.
 Export and review procedure: [PIPELINE.md](../PIPELINE.md).
 
 Approved weathered finish: `source/weathered-v1/` retains the painting, transparent master,
-exact prompts, reference hashes and runtime calibration. The package recipe builds the approved
-delivery. Earlier paintings needed as generation references remain source inputs.
+exact prompts, reference hashes and runtime calibration. This retains the previously approved
+delivery; the active recipe targets the candidate below. Earlier painting references remain source inputs.
 
 ## Compact C candidate
 
-The active recipe points to [the elevated C candidate](source/iso-c/README.md).
+The active recipe points to [the unified C finish candidate](source/finish-c/README.md).
 Its final runtime presentation awaits visual review; the existing delivery remains published.

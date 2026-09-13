@@ -19,14 +19,28 @@ The house `source/geometry/finish.py` scripts import `raw.glb` and create calibr
 ## Painting and transparency
 
 Use [House 1](house-1/house-painted-runtime.png) as the primary material, palette and lighting reference.
+Attach the [fixed finish reference pair](../finish-references.json), including the approved weathered
+timber refinement. The geometry render supplies structure and projection, not a competing material
+palette. Existing sprites used as edit targets may also contain the colour defect being corrected.
 Supply the calibrated render or existing sprite as the edit target. Label each input's role.
 For finish corrections, preserve architecture, silhouette, camera, doorway, canvas and margins.
+Explicitly allow surface colour, roughness and wear to change; geometric invariants do not mean
+preserving orange timber, golden highlights or glossy model textures. For an upgrade family, use
+the same reference pair and material instructions for every level. Older concept boards cannot
+override a calibrated projection or the current size hierarchy.
 Save the exact prompt and ordered input paths with the output.
 
 Request genuine transparent RGBA. Check the alpha channel and inspect the image on light,
 dark and terrain backgrounds. A painted checkerboard or background halo fails delivery.
 Use the imagegen skill and the workspace's API authorization for transparent export.
 Preserve generated alpha; background keying or authored silhouette masks require explicit authorization.
+
+Review the final RGBA family together at door-calibrated world scale after the last generative pass.
+Check shared timber, thatch and stone separately, neutral daylight, comparable wear and grouped detail;
+brick or tiled roofs must not conceal a different timber palette. Compare on identical light, dark
+and terrain backgrounds. Record the final file hashes and observations beside the sources. An alpha
+export can change colour, finish and geometry; it is not a lossless format conversion. Recheck roof
+edge directions, openings, anchors and increasing level sizes before building the playable preview.
 
 Camera-space projection is optional. The current farm retains its final 2D paintover separately
 from the calibrated model. Check packed textures by reopening the saved scene; a painted camera

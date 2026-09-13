@@ -1,0 +1,15 @@
+{
+  "blenderVersion": "5.2.1 LTS",
+  "modelSha256": "227b1ead2b9e4ff68f801fae3dfcf12ffdc1bbb4ea0085defa70caef4bf85e30",
+  "scriptSha256": "7922b997c483dedb029295e3b034a2ebb42ea0c1692cb117d24b43386395aa4a",
+  "calibrationSha256": "a5218e22e2d5af601efd93804004fc560c2020809b014c4f28f4606c50e8a892",
+  "shadowSha256": "9d3a0ab862f46d63bc3ae6a7de510440ff2aacd65156c37822a5ddf8661547a2",
+  "cameraElevationDegrees": 28.5,
+  "sunIncomingDirection": [0.357142835855484, 0.571428656578064, -1.0],
+  "lightingProfile": "muted-house-daylight-v1",
+  "lightingProfileSha256": "01d524ea6951d9d45eb0ed1123da5c38eae4ac6639c07593b2fa02372a564c5d",
+  "sunAngularDiameterDegrees": 9,
+  "opacity": 0.48,
+  "alphaFloor": 0.02,
+  "samples": 32
+}

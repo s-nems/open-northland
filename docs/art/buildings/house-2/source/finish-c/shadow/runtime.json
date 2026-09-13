@@ -1,0 +1,27 @@
+{
+  "tribeId": 1,
+  "typeId": 3,
+  "layer": "own-house-2",
+  "sprite": "house-painted-runtime.png",
+  "width": 1024,
+  "height": 1024,
+  "scale": 0.21145374449339208,
+  "entrancePixel": {
+    "x": 392,
+    "y": 980
+  },
+  "doorNode": {
+    "x": -1,
+    "y": 3
+  },
+  "sourceBasis": "Independent selected C architecture, retained elevated calibrated geometry and reduced level2 mesh. Built-in muted weathered paint; GPT Image 1.5 genuine-alpha export. Manual final clear doorway x414, y640..867, +/-6px, mapped to48 world px. Ground-step anchor approximate. Retained tribe/type and doorNode verified against owned content/IR. Separate shared-light model shadow; simulation units unchanged.",
+  "shadow": {
+    "sprite": "shadow.png",
+    "width": 1792,
+    "height": 1536,
+    "entrancePixel": {
+      "x": 520,
+      "y": 1108
+    }
+  }
+}

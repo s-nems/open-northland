@@ -9,6 +9,8 @@ For building, terrain, vegetation, water or environment asset work, read
 The selected direction is **A · Stonowany remaster**, covering buildings, terrain and environment props.
 View and attach the canonical muted House A runtime sprite linked in WORLD-STYLE.md as the primary
 palette, painting and lighting reference. The older orange House A and Farm G are not current finish targets.
+Attach the approved weathered material refinement listed in WORLD-STYLE.md as well, for timber and
+surface wear. Review shared materials across the final exported family, not only individual paintings.
 
 The approved character painting and sprite-generation method lives in
 [characters/README.md](characters/README.md). Its selected civilian reference and export settings

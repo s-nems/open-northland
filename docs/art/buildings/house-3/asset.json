@@ -2,27 +2,27 @@
   "version": 1,
   "id": "buildings/house-3",
   "kind": "building",
-  "sourceBasis": "Independent selected C architecture; calibrated geometry, projection-preserving paintover and native generated RGBA. House2 uses a reduced mesh with full-height doorway. Original references remain local.",
+  "sourceBasis": "Independent selected C architecture; fixed canonical and approved weathered finish references, unified family painting, provider-generated alpha, final door calibration and shared-light model shadow. Original references remain local.",
   "outputs": [
     {
       "path": "buildings/house-3/house-painted-runtime.png",
       "content": {
         "operation": "copy",
-        "source": "source/iso-c/paint/final.png"
+        "source": "source/finish-c/final.png"
       }
     },
     {
       "path": "buildings/house-3/runtime.json",
       "content": {
         "operation": "copy",
-        "source": "source/iso-c/shadow/runtime.json"
+        "source": "source/finish-c/shadow/runtime.json"
       }
     },
     {
       "path": "buildings/house-3/shadow.png",
       "content": {
         "operation": "copy",
-        "source": "source/iso-c/shadow/shadow.png"
+        "source": "source/finish-c/shadow/shadow.png"
       }
     }
   ]

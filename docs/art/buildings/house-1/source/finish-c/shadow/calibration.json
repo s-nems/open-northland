@@ -1,0 +1,11 @@
+{
+  "model": "../../compact-c/geometry/house-finished.blend",
+  "doorHeight": 0.5952910780906677,
+  "doorGround": [-0.0019879937171936035, -0.5701721906661987, -0.7206199765205383],
+  "doorPixels": 286,
+  "imageSize": [1792, 1536],
+  "bodyPadding": [128, 128],
+  "samples": 32,
+  "alphaFloor": 0.02,
+  "basis": "Manual final paint doorway and front step registration; retained calibrated model silhouette approximates final painting. Shared world lighting."
+}

@@ -1,0 +1,11 @@
+{
+  "spriteSha256": "a979219a4aaed00bafacde4f18917c19503a273d330e016b359dcaad924edba8",
+  "mode": "RGBA",
+  "size": [1024, 1024],
+  "boundsAlphaOver16": [71, 4, 994, 996],
+  "alphaZero": 472225,
+  "alphaOpaque": 481491,
+  "alphaPartial": 94860,
+  "worldBounds": [154.9090909090909, 166.4895104895105],
+  "validation": "Provider-generated alpha preserved. Light, dark and terrain-background composites reviewed; no masks or background keying."
+}

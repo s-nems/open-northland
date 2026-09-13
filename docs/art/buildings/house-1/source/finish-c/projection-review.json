@@ -1,0 +1,8 @@
+{
+  "spriteSha256": "a979219a4aaed00bafacde4f18917c19503a273d330e016b359dcaad924edba8",
+  "frontEdgePixels": [[250, 541], [548, 594]],
+  "depthEdgePixels": [[747, 907], [850, 795]],
+  "endpointUncertaintyPixels": 5,
+  "approximateFitElevationDegrees": 26.0888584583179,
+  "basis": "Manual painted structural edge comparison with prior elevated sprite. Approximate projection drift check, not recovered camera metadata."
+}

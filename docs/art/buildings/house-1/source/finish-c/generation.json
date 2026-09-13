@@ -1,0 +1,26 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "paint.prompt.txt",
+  "references": [
+    {
+      "path": "../../house-painted-runtime.png",
+      "role": "Primary canonical A painting and lighting",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    },
+    {
+      "path": "../weathered-v1/final.png",
+      "role": "Approved weathered material refinement, not geometry",
+      "sha256": "365e3a5743fb902309489f85ed049b8abca679f28264e20d5996aa6600349eaa"
+    },
+    {
+      "path": "../iso-c/paint/final.png",
+      "role": "Current elevated C sprite: edit target and geometry authority",
+      "sha256": "119caba364687edc1a08767ce086ed646aff3b27503a52f26d30190d1fa3136e"
+    }
+  ],
+  "output": "paint.png",
+  "sha256": "108c88085626f3a238167511be65a54b177dda146abc96ed0a1d42d89502aa6f",
+  "postprocessing": "None",
+  "submittedPrompt": "Use case: style-transfer. Repaint ONLY image 3, the current Viking house level 1 sprite. Image 1 is the primary canonical Muted Remaster painting and neutral-lighting reference, NOT an architecture template. Image 2 is the already approved weathered material refinement: match its faded grey-taupe brown timber, modest wear and restraint; it is NOT a geometry reference. The current task explicitly corrects excessive orange/gold saturation across the house family.\nChange surface materials ONLY. Preserve EXACT image 3 architecture, silhouette, orthographic elevated camera (28.5 degrees elevation, 22.5 degrees azimuth), narrow visible side wall, steeply receding roof ridge, canvas, margins, placement, doorway and steps. Do not widen, shorten, rotate, enlarge, shrink or reframe the building. Do not change any structural edge. \nUse one consistent family material treatment: faded weathered grey-brown oak, matte broad plank faces with selective cracks and softly worn edges; muted oat/beige thatch with grey-brown weathered recesses, NO bright golden yellow; warm grey chalky plaster with restrained dirt and hairline cracks; dusty muted brick and dark earth-red clay tiles where already present, neutral grey stone and dull dark iron. Reduce the orange cast strongly in wood, subtly quiet roof highlights. Retain warm natural material distinctions: not monochrome, not cold blue or grey wash, not grimy or abandoned. Neutral upper-left daylight, no amber rim light, no golden-hour wash, no glossy 3D bevel shine, no uniformly outlined strands. Painterly strategy-game finish, grouped textures readable at small game size.\nKeep all Viking carvings, ropes, windows, door rings and existing weathering.  No new props, no added floors, no material progression changes. NO brick on these early-level walls.\nGenuinely transparent RGBA outside the building, no background color, no checkerboard painted into RGB, no ground plane, no cast shadow. Return a single building registered with image 3. This is a finish-only edit, not a new design.",
+  "promptFileNote": "Readable copy with trailing line whitespace removed; submittedPrompt preserves the exact tool input."
+}

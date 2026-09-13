@@ -1,0 +1,15 @@
+{
+  "references": [
+    {
+      "path": "buildings/house-1/house-painted-runtime.png",
+      "role": "Primary canonical A: painting, material grouping and neutral upper-left daylight; architecture is not a template",
+      "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+    },
+    {
+      "path": "buildings/house-1/source/weathered-v1/final.png",
+      "role": "Approved material refinement: faded grey-taupe timber, worn edges and aged plaster; no geometry authority",
+      "sha256": "365e3a5743fb902309489f85ed049b8abca679f28264e20d5996aa6600349eaa"
+    }
+  ],
+  "usage": "Paths relative to this file. View and attach both references, then the calibrated geometry or current sprite as a separately labelled edit target. Preserve these references; pending candidates do not replace them."
+}

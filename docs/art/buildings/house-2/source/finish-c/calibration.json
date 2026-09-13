@@ -1,0 +1,11 @@
+{
+  "spriteSha256": "52f43c9e2948bd06466c4de1946324ab25d03698907b9543c1757b1aa3b5d138",
+  "clearDoorPixels": [414, 640, 867],
+  "entrancePixel": [392, 980],
+  "measurementUncertaintyPixels": 6,
+  "doorWorldHeight": 48,
+  "reviewZoom": 2,
+  "sourceToWorldScale": 0.21145374449339208,
+  "sourceSize": [1024, 1024],
+  "basis": "Manual final export clear doorway, excluding timber frame; front-step ground anchor. Artistic approximation, freshly measured after finish and alpha passes."
+}
