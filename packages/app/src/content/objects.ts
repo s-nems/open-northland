@@ -8,9 +8,15 @@ import {
   type SpriteLayer,
 } from '@open-northland/render';
 import { diag } from '../diag/index.js';
-import { deckFarRow, drawsAsFlatDecor, servedAtlasStem, servedShadowStem } from './ir/joins.js';
+import {
+  deckFarRow,
+  drawsAsFlatDecor,
+  landscapeRecordsByName,
+  servedAtlasStem,
+  servedShadowStem,
+} from './ir/joins.js';
 import { loadLayer, MissingAtlasError } from './ir/load.js';
-import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
+import type { ContentIr } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 import { footprintBrightness, unshadedLogicTypeIds } from './object-shading.js';
 
@@ -111,12 +117,7 @@ export async function loadMapObjects(
   elevation?: ElevationField,
   brightness?: BrightnessField,
 ): Promise<LoadedMapObjects> {
-  const recordByName = new Map<string, LandscapeGfxRow>();
-  for (const row of ir.landscapeGfx ?? []) {
-    if (row.editName !== undefined && !recordByName.has(row.editName)) {
-      recordByName.set(row.editName, row);
-    }
-  }
+  const recordByName = landscapeRecordsByName(ir);
   const unshadedLogicTypes = unshadedLogicTypeIds(ir.landscape);
   const layerKeys = new Map<string, string | undefined>();
   for (const type of objects.types) {
