@@ -6,11 +6,26 @@ import {
   MAX_BUFFERED_BYTES,
   MESSAGE_BURST,
   MESSAGES_PER_SECOND,
+  RecoveryBudget,
   SocketBudget,
   sendBounded,
 } from '../src/host/socket-budget.js';
 
 describe('socket traffic budgets', () => {
+  it('shares the recovery burst across request kinds without charging normal game traffic', () => {
+    const budget = new RecoveryBudget(0);
+    for (const kind of ['loaded', 'loaded', 'saveOrders', 'requestInitialSave'])
+      expect(budget.take({ kind }, 0)).toBe(true);
+    for (const kind of ['loaded', 'saveOrders', 'requestInitialSave'])
+      expect(budget.take({ kind }, 0)).toBe(false);
+    for (let i = 0; i < 1000; i++) expect(budget.take({ kind: 'ack' }, 1000)).toBe(true);
+    expect(budget.take({ kind: 'loaded' }, 1999)).toBe(false);
+    expect(budget.take({ kind: 'loaded' }, 2000)).toBe(true);
+    expect(budget.take({ kind: 'loaded' }, 2000)).toBe(false);
+    for (let i = 0; i < 4; i++) expect(budget.take({ kind: 'loaded' }, 100_000)).toBe(true);
+    expect(budget.take({ kind: 'loaded' }, 100_000)).toBe(false);
+  });
+
   it('limits a tiny-message flood and replenishes by elapsed time', () => {
     const budget = new SocketBudget(0);
     for (let i = 0; i < MESSAGE_BURST; i++) expect(budget.take(1, 0)).toBe(true);

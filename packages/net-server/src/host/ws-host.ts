@@ -8,7 +8,7 @@ import {
 } from '@open-northland/net-protocol';
 import { type RawData, WebSocketServer } from 'ws';
 import { type Connection, DEFAULT_MAX_ROOMS, Relay, type RelayLog } from '../relay/relay.js';
-import { DEFAULT_MAX_CONNECTIONS, SocketBudget, sendBounded } from './socket-budget.js';
+import { DEFAULT_MAX_CONNECTIONS, RecoveryBudget, SocketBudget, sendBounded } from './socket-budget.js';
 
 /** How often the relay clock is polled; a small fraction of a frame at the highest speed. */
 const POLL_INTERVAL_MS = 5;
@@ -20,6 +20,7 @@ const MAX_CLOSE_REASON_BYTES = 123;
 const CLOSE_REASON_FALLBACK = 'protocol violation';
 export const HEALTH_PATH = '/healthz';
 const MS_PER_SECOND = 1000;
+const HTTP_CONNECTION_HEADROOM = 16;
 
 export interface RelayHostOptions {
   /** 0 picks a free port; read it back from the host. */
@@ -101,17 +102,35 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
     encoded.set(message, text);
     return text;
   };
-  const server = createServer((request, response) => {
-    // A fault in one request costs that request, never the rooms.
-    try {
-      serveHttp(request, response, health);
-    } catch (err) {
-      log('request failed', { error: String(err) });
-      if (!response.headersSent) response.writeHead(500);
-      response.end();
-    }
-  });
-  const sockets = new WebSocketServer({ noServer: true, maxPayload: MAX_BLOB_MESSAGE_BYTES });
+  const server = createServer(
+    {
+      headersTimeout: 5000,
+      requestTimeout: 10_000,
+      connectionsCheckingInterval: 1000,
+    },
+    (request, response) => {
+      // A fault in one request costs that request, never the rooms.
+      try {
+        serveHttp(request, response, health);
+      } catch (err) {
+        log('request failed', { error: String(err) });
+        if (!response.headersSent) response.writeHead(500);
+        response.end();
+      }
+    },
+  );
+  // HTTP sockets awaiting upgrade are outside WebSocketServer.clients.
+  server.maxConnections = maxConnections + HTTP_CONNECTION_HEADROOM;
+  server.setTimeout(10_000);
+  server.maxRequestsPerSocket = 100;
+  const socketOptions = {
+    noServer: true,
+    maxPayload: MAX_BLOB_MESSAGE_BYTES,
+    perMessageDeflate: false,
+    autoPong: false,
+    closeTimeout: 1000,
+  };
+  const sockets = new WebSocketServer(socketOptions);
   server.on('upgrade', (request, socket, head) => {
     if (sockets.clients.size >= maxConnections) {
       socket.on('error', () => socket.destroy());
@@ -122,6 +141,7 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
   });
   sockets.on('connection', (socket) => {
     const budget = new SocketBudget(performance.now());
+    const recovery = new RecoveryBudget(performance.now());
     const connection: Connection = {
       send: (message) => {
         sendBounded(socket, encode(message));
@@ -135,13 +155,22 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
       },
     };
     const client = relay.connect(connection);
+    const refuseTraffic = (): void => {
+      socket.close(CLOSE_PROTOCOL_ERROR, 'relay traffic limit');
+      relay.disconnect(client);
+    };
+    const acceptTraffic = (bytes: number): boolean => {
+      if (socket.readyState !== socket.OPEN) return false;
+      if (budget.take(bytes, performance.now())) return true;
+      refuseTraffic();
+      return false;
+    };
+    socket.on('ping', (data) => {
+      if (acceptTraffic(data.length)) socket.pong(data);
+    });
+    socket.on('pong', (data) => acceptTraffic(data.length));
     socket.on('message', (data, isBinary) => {
-      if (socket.readyState !== socket.OPEN) return;
-      if (!budget.take(byteLength(data), performance.now())) {
-        socket.close(CLOSE_PROTOCOL_ERROR, 'relay traffic limit');
-        relay.disconnect(client);
-        return;
-      }
+      if (!acceptTraffic(byteLength(data))) return;
       // Anything but a JSON text frame is handed over as a value no message parses, which closes the
       // connection through the relay's own refusal path.
       let raw: unknown = null;
@@ -151,6 +180,10 @@ export function startRelayHost(options: RelayHostOptions): Promise<RelayHost> {
         } catch {
           raw = null;
         }
+      }
+      if (!recovery.take(raw, performance.now())) {
+        refuseTraffic();
+        return;
       }
       // A relay fault costs the one connection that triggered it, never the other rooms.
       try {

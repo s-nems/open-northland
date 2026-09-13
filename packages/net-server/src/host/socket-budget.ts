@@ -1,4 +1,4 @@
-import { MAX_BLOB_MESSAGE_BYTES } from '@open-northland/net-protocol';
+import { clientMessageKind, MAX_BLOB_MESSAGE_BYTES } from '@open-northland/net-protocol';
 import type { WebSocket } from 'ws';
 
 export const DEFAULT_MAX_CONNECTIONS = 256;
@@ -37,4 +37,21 @@ export function sendBounded(
     return;
   }
   socket.send(text);
+}
+
+/** Recovery can return a full snapshot or replay for a tiny request. */
+export class RecoveryBudget {
+  private remaining = 4;
+
+  constructor(private updatedAt: number) {}
+
+  take(raw: unknown, now: number): boolean {
+    const kind = clientMessageKind(raw);
+    if (kind !== 'loaded' && kind !== 'saveOrders' && kind !== 'requestInitialSave') return true;
+    this.remaining = Math.min(4, this.remaining + Math.max(0, now - this.updatedAt) / 2000);
+    this.updatedAt = now;
+    if (this.remaining < 1) return false;
+    this.remaining--;
+    return true;
+  }
 }

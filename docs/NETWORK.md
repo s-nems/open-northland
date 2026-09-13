@@ -407,3 +407,37 @@ Window focus and browser tab visibility do not change room membership. A client 
 uses the ordinary [waiting](#waiting) and [kick votes](#kick-votes) policies; removal is never
 automatic. Resuming clients drain their buffered frames through the existing pacer. Socket loss and
 reconnect continue to use the existing recovery path.
+
+## Public relay security boundary
+
+The relay accepts anonymous players. A client-generated token is a bearer secret for reconnecting,
+not an account or a ban-resistant identity. The official client generates 24 random bytes; the
+relay never publishes tokens in room views or logs. Protect tokens in transit with WSS. Room ids
+and nicknames are public, and anyone can enter an open lobby. A modified client can lie about its
+simulation or sabotage its own match; digest agreement is not an anti-cheat guarantee.
+
+The host bounds application and WebSocket control traffic together at 256 messages/s with a
+512-message burst, and 1 MiB/s with a two-blob burst. Recovery requests (`loaded`, `saveOrders`,
+`requestInitialSave`) share a separate four-request burst, refilling one request every two seconds,
+before relay dispatch. Exceeding a traffic budget disconnects the sender. WebSocket compression is
+disabled, payloads are capped, and an unacknowledged close is terminated after one second.
+
+The HTTP host caps all TCP connections at the configured WebSocket limit plus 16, including sockets
+that have not sent upgrade headers. Headers have a five-second deadline, requests and idle HTTP
+sockets ten seconds; keep-alive connections serve at most 100 requests. These bounds do not reserve
+capacity for legitimate users when an attacker fills every slot.
+
+Limits apply per connection or room, not to total process memory or network throughput. A room can
+retain roughly 22 MiB of base64 snapshot text plus 16 MiB of serialized replay history; JavaScript
+objects, input parsing and output queues add more. At 64 rooms, those retained payloads alone can
+approach 2.4 GiB. Each of 256 sockets can additionally receive a maximum-size message and queue about
+43 MiB of output. Default counts are capacity ceilings, not a safe memory budget for a small VPS.
+
+A public deployment needs an updated Node/container base, TLS, edge connection/upgrade rate limits,
+and explicit process memory/CPU and log limits. Bind the relay only to the proxy's private network
+or loopback, block direct public access to its port, run it without root, and give it no host mounts,
+secrets or Docker socket. The image already runs as `node` and needs no writable game data; use a
+read-only filesystem and drop capabilities. Choose room and connection counts for the machine and
+measure its workload. The host does not trust `X-Forwarded-For`; per-address controls belong at the
+proxy with a correctly configured trusted-proxy chain. Reconnecting creates a new socket budget,
+so edge limits must also cover connection churn. Bandwidth DDoS protection belongs upstream.
