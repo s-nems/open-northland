@@ -105,8 +105,7 @@ jobs:
           docker pull --platform linux/amd64 "$image"
           node packages/web/scripts/smoke-image.mjs "$image"
 
-  # The relay a networked game runs through, from the same commit as the clients that speak its
-  # protocol; deploy/relay/ pulls it.
+  # Build the relay from the same commit as its clients.
   relay-image:
     needs: guard
     runs-on: ubuntu-latest

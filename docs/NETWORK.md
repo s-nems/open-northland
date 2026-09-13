@@ -367,8 +367,8 @@ test client through an in-memory network.
 Beside the WebSocket upgrade the relay serves one plain HTTP path, `GET /healthz`, answering
 `{ ok, protocol, build, url, rooms, clients, uptimeSeconds }`: the version it speaks, the build it
 came from, the `RELAY_PUBLIC_URL` it was given, and how busy it is. Every other path is a 404. The
-image, its environment and the reverse proxy are described in
-[`deploy/relay/README.md`](../deploy/relay/README.md).
+image and its environment are described in
+[Development: Relay image](DEVELOPMENT.md#relay-image).
 
 ## Match termination
 

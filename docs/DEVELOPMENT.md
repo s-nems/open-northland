@@ -285,8 +285,19 @@ approval and publication. This workshop is independent of `npm run pipeline`, wh
 The same workflow publishes the relay as `ghcr.io/s-nems/open-northland-relay`, tagged and promoted
 the same way. The image is built from `packages/net-server/Dockerfile`: the relay and protocol
 packages compiled once, then only those two and `ws` in a Node image, so it carries neither the
-simulation nor a content directory. It starts on environment variables alone; the variables, the
-compose file and the reverse proxy with TLS are in [`deploy/relay/README.md`](../deploy/relay/README.md).
+simulation nor a content directory. It starts on environment variables alone:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `PORT` | `8765` | Listening port |
+| `HOST` | every interface | Address to bind |
+| `RELAY_PUBLIC_URL` | unset | Public `ws://` or `wss://` address reported by `/healthz` |
+| `RELAY_MAX_ROOMS` | `64` | Maximum rooms |
+| `RELAY_MAX_CONNECTIONS` | `256` | Maximum open WebSocket connections |
+| `RELAY_BUILD` | unset | Build identifier reported by `/healthz`; stamped by the release image build |
+
+Rooms live in memory; restarting the process ends every match. The relay writes one JSON record
+per log line. TLS termination and deployment configuration belong to the operator.
 
 To build and check the same image locally:
 
