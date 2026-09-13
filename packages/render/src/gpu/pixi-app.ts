@@ -53,17 +53,19 @@ export function windowResolutionFor(dpr: number, resolutionScale: number): numbe
  * Re-apply {@link backingResolutionFor} whenever the effective DPR changes (browser zoom, a move to a
  * differently scaled monitor). The matchMedia query only matches the current DPR, so each fire
  * re-subscribes at the new value; the resize listener backstops browsers without `resolution` queries,
- * where zooming still fires a window resize. The listeners live for the page: a window Application is
- * never destroyed before navigation.
+ * where zooming still fires a window resize. Destroying the renderer releases every listener before
+ * its context and screen disappear.
  */
 function watchBackingResolution(app: Application, resolutionScale: number): void {
+  const scope = new AbortController();
+  app.renderer.runners.destroy.add({ destroy: () => scope.abort() });
   const apply = (): void => {
     const next = windowResolutionFor(window.devicePixelRatio || 1, resolutionScale);
     if (next !== app.renderer.resolution) {
       app.renderer.resize(window.innerWidth, window.innerHeight, next);
     }
   };
-  window.addEventListener('resize', apply);
+  window.addEventListener('resize', apply, { signal: scope.signal });
   if (typeof window.matchMedia !== 'function') return;
   const subscribe = (): void => {
     const query = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
@@ -73,7 +75,7 @@ function watchBackingResolution(app: Application, resolutionScale: number): void
         apply();
         subscribe();
       },
-      { once: true },
+      { once: true, signal: scope.signal },
     );
   };
   subscribe();
