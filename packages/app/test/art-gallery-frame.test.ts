@@ -35,7 +35,7 @@ describe('gallery animation controls', () => {
     'man-forkbeard',
     'man-redmane',
     'man-ravenknot',
-  ])('keeps %s mining at sixteen poses with two seamless swings and the first impact on elapsed tick ten', (name) => {
+  ])('keeps %s mining at sixteen poses with one slow swing and contact aligned with the strike sound at elapsed tick nineteen', (name) => {
     const recipe = JSON.parse(
       readFileSync(`docs/art/characters/appearances/${name}/recipe.json`, 'utf8'),
     ) as {
@@ -54,15 +54,18 @@ describe('gallery animation controls', () => {
     expect(clip.samplePhases).toHaveLength(16);
     const holds = clip.frameDurations.map((seconds) => seconds * TICKS_PER_SECOND);
     const duration = holds.reduce((sum, hold) => sum + hold, 0);
-    expect(duration * 2).toBeCloseTo(29);
+    expect(duration).toBeCloseTo(29);
     expect(clip.duration * TICKS_PER_SECOND).toBeCloseTo(duration);
     const ref = { start: 0, dirs: 8, stride: 16, subtick: true, frameDurations: holds };
     const state = { direction: 0, playing: true };
-    const impact = galleryCharacterFrame(ref, state, 9 / TICKS_PER_SECOND);
+    const impact = galleryCharacterFrame(ref, state, 18 / TICKS_PER_SECOND);
     expect(clip.samplePhases[impact]).toBe(0.375);
     expect(galleryCharacterFrame(ref, state, 29 / TICKS_PER_SECOND)).toBe(0);
-    expect(clip.frameDurations[impact]).toBe(0.15);
-    expect(Math.max(...clip.frameDurations.filter((_, index) => index !== impact))).toBeLessThan(0.1);
+    expect(clip.frameDurations[impact]).toBe(0.6875);
+    expect(clip.frameDurations[4]).toBeCloseTo(5 / 12);
+    expect(
+      Math.max(...clip.frameDurations.filter((_, index) => index !== impact && index !== 4)),
+    ).toBeLessThanOrEqual(0.125);
   });
 
   it('plays the selected direction using authored pose holds', () => {
