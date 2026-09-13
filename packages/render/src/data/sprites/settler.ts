@@ -29,6 +29,14 @@ function wrap(n: number, m: number): number {
   return ((n % m) + m) % m;
 }
 
+function heldStep(holds: readonly number[], time: number): number {
+  for (const [index, duration] of holds.entries()) {
+    if (time < duration) return index;
+    time -= duration;
+  }
+  return Math.max(0, holds.length - 1);
+}
+
 /** Subtick clips accept a fractional presentation clock; original bindings retain integer cadence. */
 function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   if (typeof ref === 'number') return ref;
@@ -50,12 +58,8 @@ function frameOf(ref: SpriteFrameRef, facing: number, clock: number): number {
   const dir = wrap(facing, ref.dirs);
   if (ref.frameDurations !== undefined && ref.frameDurations.length > 0) {
     const total = ref.frameDurations.reduce((sum, duration) => sum + duration, 0);
-    let remaining = wrap(clock, total);
-    for (const [index, duration] of ref.frameDurations.entries()) {
-      if (remaining < duration) return ref.start + dir * ref.stride + (ref.frameOrder?.[index] ?? index);
-      remaining -= duration;
-    }
-    return ref.start + dir * ref.stride + (ref.frameOrder?.[0] ?? 0);
+    const index = heldStep(ref.frameDurations, wrap(clock, total));
+    return ref.start + dir * ref.stride + (ref.frameOrder?.[index] ?? index);
   }
   const cycle = ref.frames ?? ref.stride;
   if (cycle <= 0) return ref.start + dir * ref.stride;
@@ -85,6 +89,11 @@ function stretchedFrame(ref: SpriteFrameRef, facing: number, progress: number): 
     return ref.start + (list[at(list.length)] ?? 0);
   }
   const dir = wrap(facing, ref.dirs);
+  if (ref.frameDurations?.length) {
+    const total = ref.frameDurations.reduce((sum, hold) => sum + hold, 0);
+    const index = heldStep(ref.frameDurations, Math.max(0, Math.min(1, progress)) * total);
+    return ref.start + dir * ref.stride + (ref.frameOrder?.[index] ?? index);
+  }
   const cycle = ref.frames ?? ref.stride;
   if (cycle <= 0) return ref.start + dir * ref.stride;
   return ref.start + dir * ref.stride + at(cycle);

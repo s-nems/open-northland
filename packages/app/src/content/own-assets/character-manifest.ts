@@ -39,6 +39,7 @@ export function ownCharacterBinding(m: OwnCharacterManifest): SettlerStateBindin
       stride: clip.frames,
       subtick: m.smoothMotion === true,
       ticksPerFrame: (clip.duration * TICKS_PER_SECOND) / clip.frames,
+      ...(clip.frameOrder === undefined ? {} : { frameOrder: clip.frameOrder }),
       ...(clip.frameDurations === undefined
         ? {}
         : { frameDurations: clip.frameDurations.map((hold) => hold * TICKS_PER_SECOND) }),
@@ -48,6 +49,10 @@ export function ownCharacterBinding(m: OwnCharacterManifest): SettlerStateBindin
   return {
     ...(m.atomicClips?.length ? { byAtomic } : {}),
     moving: {
+      ...(m.walkFrameOrder === undefined ? {} : { frameOrder: m.walkFrameOrder }),
+      ...(m.walkFrameDurations === undefined
+        ? {}
+        : { frameDurations: m.walkFrameDurations.map((seconds) => seconds * TICKS_PER_SECOND) }),
       ...(m.walkTravelPerCycle === undefined ? {} : { travelPerCycle: m.walkTravelPerCycle }),
       subtick: m.smoothMotion === true,
       start: 0,

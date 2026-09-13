@@ -27,11 +27,11 @@ const characterRecipe = z
     for (const [index, clip] of recipe.clips.entries()) {
       if (!clip.frameOrder) continue;
       const count = clip.frames ?? recipe.frames;
-      if (clip.name !== 'idle' || clip.frameOrder.some((frame) => frame >= count))
+      if (clip.frameOrder.some((frame) => frame >= count))
         ctx.addIssue({
           code: 'custom',
           path: ['clips', index, 'frameOrder'],
-          message: 'Frame order requires idle indices within stored poses',
+          message: 'Frame order requires indices within stored poses',
         });
       if (
         !clip.frameDurations ||
@@ -41,7 +41,7 @@ const characterRecipe = z
         ctx.addIssue({
           code: 'custom',
           path: ['clips', index, 'frameDurations'],
-          message: 'Ordered idle requires durations for every playback step',
+          message: 'Frame order requires durations for every playback step',
         });
     }
   });
@@ -170,6 +170,8 @@ export async function packCharacter(
     walkFrames: walk.frames ?? recipe.frames,
     idleFrames: idle.frames ?? recipe.frames,
     walkDuration: walk.duration,
+    ...(walk.frameDurations ? { walkFrameDurations: walk.frameDurations } : {}),
+    ...(walk.frameOrder ? { walkFrameOrder: walk.frameOrder } : {}),
     walkTravelPerCycle,
     idleDuration: idle.duration,
     ...(idle.frameDurations ? { idleFrameDurations: idle.frameDurations } : {}),
@@ -181,6 +183,7 @@ export async function packCharacter(
             frames: c.frames ?? recipe.frames,
             duration: c.duration,
             ...(c.frameDurations ? { frameDurations: c.frameDurations } : {}),
+            ...(c.frameOrder ? { frameOrder: c.frameOrder } : {}),
           })),
         }
       : {}),
