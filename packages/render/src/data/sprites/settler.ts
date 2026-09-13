@@ -144,7 +144,8 @@ export function resolveSettlerBobId(
     const byAtomic = binding.byAtomic;
     if (byAtomic !== undefined && item.atomicId !== undefined) {
       const specific = byAtomic[item.atomicId];
-      if (specific !== undefined) return frameOf(specific, facing, clock);
+      // A rest tail keeps the tool-ready pose instead of starting a partial extra swing.
+      if (specific !== undefined) return frameOf(specific, facing, item.atomicRest === true ? 0 : clock);
     }
     // With no generic `acting` bound the atomic stands still, rather than borrowing the woodcut swing
     // at a wrong speed.
