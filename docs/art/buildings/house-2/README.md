@@ -1,19 +1,13 @@
-# Upgraded Viking home
+# Viking home — level 2
 
-Runtime slot `house-2`: tribe 1 / type 3.
-[Manifest](source/weathered-v1/runtime.json) · [Sprite](source/weathered-v1/final.png) · [Gallery and maps](../../OWN-ASSET-RUNTIME.md#review-locations)
+Published independent C design for 2 families, tribe 1 / type 3.
+[Sprite](source/finish-c/final.png) · [Runtime](source/finish-c/shadow/runtime.json) ·
+[Source and reproduction](source/finish-c/README.md) ·
+[Gallery and maps](../../OWN-ASSET-RUNTIME.md#review-locations)
 
-Geometry: `source/geometry/raw.glb` and `house-finished.blend`.
-Run `source/geometry/finish.py` in Blender to regenerate the calibrated render.
-`source/paint/` holds painting inputs.
+The recipe delivers the approved elevated C design with door-calibrated scale and a separate
+shared-light shadow. Levels 1–3 use the unified weathered finish; levels 4–5 retain the accepted
+brick and tiled-roof painting. No construction layers are delivered.
 
-Export and review procedure: [PIPELINE.md](../PIPELINE.md).
-
-Approved weathered finish: `source/weathered-v1/` retains the painting, transparent master,
-exact prompts, reference hashes and runtime calibration. This retains the previously approved
-delivery; the active recipe targets the candidate below. Earlier painting references remain source inputs.
-
-## Compact C candidate
-
-The active recipe points to [the unified C finish candidate](source/finish-c/README.md).
-Its final runtime presentation awaits visual review; the existing delivery remains published.
+`source/compact-c/geometry/` retains the reconstruction inputs, raw model and editable scene.
+`source/iso-c/geometry/` retains the reduced level 2 mesh and its transforms.

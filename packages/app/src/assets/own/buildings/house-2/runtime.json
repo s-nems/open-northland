@@ -5,23 +5,23 @@
   "sprite": "house-painted-runtime.png",
   "width": 1024,
   "height": 1024,
-  "scale": 0.24615384615384617,
+  "scale": 0.21145374449339208,
   "entrancePixel": {
-    "x": 294,
-    "y": 888
+    "x": 392,
+    "y": 980
   },
   "doorNode": {
-    "x": -2,
+    "x": -1,
     "y": 3
   },
-  "sourceBasis": "Independent own building artwork: retained model-derived painting, built-in imagegen weathered finish edit, then gpt-image-1.5 genuine-alpha export (high quality and input fidelity). Clear door at x294, y615..810, manually estimated +/-6 pixels; scale 48/195 targets 96px at zoom2. Ground entrance is an artistic estimate. Existing verified tribe/type and doorNode retained. Alpha preserved without keying or authored silhouette masks. Separate model-derived cast/contact shadow; camera registered to the painted doorway. Shared artistic daylight; body pixels, scale and entrance unchanged.",
+  "sourceBasis": "Independent selected C architecture, retained elevated calibrated geometry and reduced level2 mesh. Built-in muted weathered paint; GPT Image 1.5 genuine-alpha export. Manual final clear doorway x414, y640..867, +/-6px, mapped to48 world px. Ground-step anchor approximate. Retained tribe/type and doorNode verified against owned content/IR. Separate shared-light model shadow; simulation units unchanged.",
   "shadow": {
     "sprite": "shadow.png",
-    "width": 1408,
-    "height": 1152,
+    "width": 1792,
+    "height": 1536,
     "entrancePixel": {
-      "x": 422,
-      "y": 888
+      "x": 520,
+      "y": 1108
     }
   }
 }

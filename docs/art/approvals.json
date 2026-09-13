@@ -10,14 +10,14 @@
     "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
   },
   "buildings/house-1": {
-    "digest": "e8511611de4dce86c3f06a21b8416ccea3efae01b0c776e072fb25c2f90aaeda",
-    "reviewer": "user",
-    "basis": "User visually accepted the shadow-only House 1 treatment, rejected soil, and explicitly requested integration and merge. Retains the exact accepted shadow pixels; body artwork and scale unchanged."
+    "digest": "26e8b2468f3a2a8fc4c2fd36a2a87664b67b3474d52640f8754e0cdfc7afff98",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "buildings/house-2": {
-    "digest": "80dd17c2fb1a36e90bc2b13b322df780697c2d342cb69875d301012291fff08a",
-    "reviewer": "user",
-    "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
+    "digest": "d6aab2469469f88a1f71e8767d7bcc7a389e5c1c12531541536306fcd0965957",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "buildings/stonemason": {
     "digest": "ef954a460f297d9e1aa455cc49f16f99d4f44a357b83f79fb8df7aebd48838d9",
@@ -116,6 +116,21 @@
   },
   "goods/wood": {
     "digest": "f568fa36d1bc82d5453a28da0f7d9e9b1103a6c716d3d53d030fe85387b7607c",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+  },
+  "buildings/house-3": {
+    "digest": "d3655bb3da6da62ef18afefb1e4b9a3108bf63e7b60ab3e4b19c4ae8ed5cf64b",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+  },
+  "buildings/house-4": {
+    "digest": "9917c087d334d046d3c23e23aae9f289a06d9787018cb5fbd1909fef15f6e580",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
+  },
+  "buildings/house-5": {
+    "digest": "32d01f0836a1929317810c2a73eb66cb0603ac110e4b99fd1f21c51b9d6cf309",
     "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
   }

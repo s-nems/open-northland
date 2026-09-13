@@ -1,7 +1,7 @@
-# House 5: elevated C candidate
+# House 5: elevated C source
 
 Projection correction of the selected compact C design for 5 families.
-The package recipe targets this candidate; final presentation awaits map review.
+The package recipe delivers this approved presentation.
 
 The retained calibrated model and full-detail render are in `../compact-c/geometry/`.
 

@@ -1,6 +1,6 @@
 # Unified C finish — level 2
 
-Candidate surface revision; final presentation awaits visual review.
+Approved and published surface revision of the elevated C design.
 [Final RGBA](final.png) · [Runtime](shadow/runtime.json) · [Calibration](calibration.json)
 
 `generation.json` retains the exact built-in paint prompt and ordered, hashed reference roles.
@@ -15,5 +15,5 @@ The doorway and ground anchor were measured again after export. `shadow/` retain
 shadow calibration and render receipt; reproduce with the shared building shadow renderer.
 
 Review this family with the retained level 4–5 iso-c sprites: their tiled roofs and weathering remain
-the comparison target. Pending repaints are not new canonical style references. The whole family
-must pass the final-material and playable-map review in [the pipeline](../../../PIPELINE.md).
+the comparison target. The fixed world reference pair remains unchanged. Future revisions follow the final-material
+and playable-map review in [the pipeline](../../../PIPELINE.md).

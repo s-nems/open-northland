@@ -318,5 +318,20 @@
     "props/stump/stump.png",
     "props/stump/runtime.json"
   ],
-  "goods/wood": ["goods/wood/atlas.png", "goods/wood/runtime.json"]
+  "goods/wood": ["goods/wood/atlas.png", "goods/wood/runtime.json"],
+  "buildings/house-3": [
+    "buildings/house-3/house-painted-runtime.png",
+    "buildings/house-3/runtime.json",
+    "buildings/house-3/shadow.png"
+  ],
+  "buildings/house-4": [
+    "buildings/house-4/house-painted-runtime.png",
+    "buildings/house-4/runtime.json",
+    "buildings/house-4/shadow.png"
+  ],
+  "buildings/house-5": [
+    "buildings/house-5/house-painted-runtime.png",
+    "buildings/house-5/runtime.json",
+    "buildings/house-5/shadow.png"
+  ]
 }

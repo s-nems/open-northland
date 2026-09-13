@@ -1,7 +1,7 @@
-# House 3: elevated C candidate
+# House 3: elevated C source
 
 Projection correction of the selected compact C design for 3 families.
-The package recipe targets this candidate; final presentation awaits map review.
+The painting is retained as the geometry reference for the approved finish-c revision.
 
 The retained calibrated model and full-detail render are in `../compact-c/geometry/`.
 
@@ -12,7 +12,7 @@ The canonical muted House A is the primary finish reference.
 `paint/projection-review.json` checks painted structural directions against the working
 28.5° elevation / 22.5° azimuth camera. Its edge fit is approximate, not renderer metadata.
 
-`shadow/` retains the separate shared-light render and runtime registration.
+The active shared-light shadow and runtime registration are in `../finish-c/shadow/`.
 Reproduce shadows with the shared [renderer](../../../tools/SHADOWS.md).
 Painted geometry, hand-measured anchors and model shadows remain visual approximations.
 Generation preserves the design but can alter small surface details.

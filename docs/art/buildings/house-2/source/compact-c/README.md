@@ -9,14 +9,14 @@ The original door (-2, 3) receives the existing home (+1, 0) app shift.
 the generated reconstruction views, Meshy 7 request, losslessly compressed full GLB,
 manual doorway measurements and editable calibrated shadow scene. The model depth is
 shortened in `calibration.json`; hidden sides and reconstruction are approximations.
-`paint/` retains calibrated-render paintover and genuine-alpha export with fresh measurements.
-`shadow/` uses shared lighting and a manually registered entrance.
+The superseded painting and shadow trials are retained in Git history. Current delivery sources
+are linked from the [package README](../../README.md).
 
 Run `docs/art/buildings/tools/render-home.py` in Blender with the geometry directory after
 `--`; `--inspect` renders cardinal views. Initial doorway pixels reference the retained
 untransformed inspection and its recorded orthographic scale. `compact-home.py` reduces
-the editable shadow scene after the full-detail body render. Render shadows through
-`render-shadow.py` with the shadow directory.
+the editable shadow scene after the full-detail body render. Render current shadows through
+`render-shadow.py` with the active delivery source shadow directory.
 
-The concept selection authorizes this production candidate. Final pixels, scale and shadows
-await human review on the playable map at zoom ×2. No construction layers are delivered.
+This directory retains architecture and reconstruction provenance, not an active runtime recipe.
+No construction layers are delivered.
