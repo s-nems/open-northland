@@ -7,6 +7,7 @@ import {
   ownCharacterJobSelection,
   ownCharacterManifest,
   ownCharacterSelection,
+  ownGoodManifest,
   ownPropManifest,
 } from '@open-northland/art-contracts';
 import sharp from 'sharp';
@@ -66,6 +67,18 @@ export async function validateDelivery(directory: string, complete = false) {
       for (const name of m.editNames) claim(names, name);
       if (m.kind === 'stump') claim(identities, 'stump');
       await inspect(`${folder}/${m.image}`, m.width, m.height, true);
+    } else if (file.startsWith('goods/')) {
+      const m = ownGoodManifest.parse(raw);
+      claim(identities, `good:${m.id}`);
+      if (folder !== `goods/${m.id}`) throw new Error('Good folder and id disagree');
+      await inspect(`${folder}/${m.image}`, m.width, m.height, true);
+      for (const [index, frame] of m.frames.entries()) {
+        const stats = await sharp(join(directory, folder, m.image))
+          .extract({ left: frame.x, top: frame.y, width: frame.width, height: frame.height })
+          .ensureAlpha()
+          .stats();
+        if (stats.channels[3]?.max === 0) throw new Error(`Empty good frame: ${m.id}:${index}`);
+      }
     } else if (file.startsWith('characters/')) {
       const m = ownCharacterManifest.parse(raw);
       claim(identities, `character:${m.id}`);

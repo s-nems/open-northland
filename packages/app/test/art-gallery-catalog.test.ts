@@ -5,6 +5,8 @@ import {
   galleryEntries,
   loadGalleryCatalog,
 } from '../src/entries/art-gallery/catalog.js';
+import { gallerySelection } from '../src/entries/art-gallery/selection.js';
+import { readGalleryState } from '../src/entries/art-gallery/state.js';
 
 const character = {
   id: 'new-look',
@@ -39,6 +41,41 @@ function sources(): GalleryCatalogSources {
 }
 
 describe('own-art gallery catalog', () => {
+  it('discovers goods and selects them in their own gallery category', () => {
+    const input = sources();
+    const manifest = {
+      id: 'wood',
+      image: 'atlas.png',
+      width: 60,
+      height: 10,
+      scale: 0.5,
+      frames: Array.from({ length: 6 }, (_, i) => ({
+        x: i * 10,
+        y: 0,
+        width: 10,
+        height: 10,
+        anchor: { x: 5, y: 8 },
+      })),
+      sourceBasis: 'Synthetic fixture',
+    };
+    const catalog = buildGalleryCatalog({
+      ...input,
+      goods: { 'goods/wood/runtime.json': manifest },
+      images: { ...input.images, 'goods/wood/atlas.png': '/wood.png' },
+    });
+    const entries = galleryEntries(catalog);
+    const state = readGalleryState(new URLSearchParams('tab=goods&asset=goods/wood'));
+    expect(gallerySelection(entries, state).selected).toMatchObject({
+      kind: 'good',
+      id: 'goods/wood',
+      image: '/wood.png',
+    });
+    expect(catalog.goods[0]?.atlas.frames.size).toBe(6);
+    expect(() => buildGalleryCatalog({ ...input, goods: { 'goods/wood/runtime.json': manifest } })).toThrow(
+      'image missing',
+    );
+  });
+
   it('resolves the optional shadow image beside its building and rejects missing delivery pixels', () => {
     const input = sources();
     const buildings = {
@@ -195,7 +232,11 @@ describe('own-art gallery catalog', () => {
     expect(catalog.props.length).toBeGreaterThan(0);
     expect(catalog.materials.length).toBeGreaterThan(0);
     expect(galleryEntries(catalog)).toHaveLength(
-      catalog.characters.length + catalog.buildings.length + catalog.props.length + catalog.materials.length,
+      catalog.characters.length +
+        catalog.buildings.length +
+        catalog.props.length +
+        catalog.materials.length +
+        catalog.goods.length,
     );
     expect(new Set(galleryEntries(catalog).map((entry) => entry.id)).size).toBe(
       galleryEntries(catalog).length,

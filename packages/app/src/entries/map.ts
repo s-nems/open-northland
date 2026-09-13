@@ -134,7 +134,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   const tribes = worldTribes(script, loaded?.entities, ir ?? {});
   await boot.begin('sprites');
   const sheet = ownAssets
-    ? await loadOwnSpriteSheet(ir, params.get('ownHead'))
+    ? await loadOwnSpriteSheet(ir, params.get('ownHead'), realContent?.content.goods ?? sandboxGoods())
     : await resolveSpriteSheet(realContent?.content.goods ?? sandboxGoods(), tribes);
   await boot.begin('terrain');
   let terrain: TerrainTextureSet;

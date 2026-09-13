@@ -2,11 +2,14 @@
 import type { SpriteSheet } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
 import type { ContentIr } from '../ir/rows.js';
+import type { GoodRef } from '../settler-gfx/index.js';
 import { syntheticSpriteSheet } from '../sprite-sheet/index.js';
 import { loadOwnBuildingLayers } from './building-layers.js';
 import { type OwnBuildingManifest, ownBuildingBindings, ownBuildingManifest } from './building-manifest.js';
 import { ownBushBinding } from './bush-binding.js';
 import { loadOwnCharacters } from './characters.js';
+import { ownGoodBindings } from './good-manifest.js';
+import { loadOwnGoods } from './goods.js';
 import { ownPropResourceBinding, ownPropStumpBinding } from './prop-manifest.js';
 import { loadOwnProps } from './props.js';
 
@@ -23,6 +26,7 @@ const images = import.meta.glob<string>('../../assets/own/buildings/*/*.png', {
 export async function loadOwnSpriteSheet(
   ir: ContentIr | null = null,
   selectedHead: string | null = null,
+  goods: readonly GoodRef[] = [],
 ): Promise<SpriteSheet> {
   const base = syntheticSpriteSheet();
   const families: Record<string, NonNullable<SpriteSheet['families']>[string]> = {};
@@ -55,6 +59,12 @@ export async function loadOwnSpriteSheet(
   );
   const characters = await loadOwnCharacters(base, ir, selectedHead);
   const props = await loadOwnProps();
+  const ownGoods = await loadOwnGoods();
+  for (const good of ownGoods) {
+    const name = `own-good-${good.manifest.id}`;
+    families[name] = good.layer;
+    familyScales[name] = good.manifest.scale;
+  }
   for (const prop of props) {
     const name = `own-prop-${prop.manifest.id}`;
     families[name] = prop.layer;
@@ -74,6 +84,11 @@ export async function loadOwnSpriteSheet(
     ...(characters === undefined ? {} : { characters }),
     bindings: {
       ...base.bindings,
+      stockpile: ownGoodBindings(
+        base.bindings.stockpile,
+        goods,
+        ownGoods.map((g) => g.manifest),
+      ),
       building: ownBuildingBindings(base.bindings.building, loaded),
       resource: ownPropResourceBinding(
         base.bindings.resource,

@@ -1,9 +1,9 @@
 import { TextureCache } from '@open-northland/render';
 import { Assets, Container, Sprite, Text, type Texture } from 'pixi.js';
-import type { GalleryProp } from './catalog.js';
+import type { GalleryGood, GalleryProp } from './catalog.js';
 import type { PreviewPanel } from './preview-state.js';
 
-export async function propPreview(entry: GalleryProp): Promise<PreviewPanel> {
+export async function propPreview(entry: GalleryProp | GalleryGood): Promise<PreviewPanel> {
   const texture = await Assets.load<Texture>(entry.image);
   texture.source.scaleMode = 'linear';
   const cache = new TextureCache();
@@ -16,7 +16,7 @@ export async function propPreview(entry: GalleryProp): Promise<PreviewPanel> {
     sprite.scale.set(entry.scale);
     sprite.position.set(width + 15, height - 35 + frame.offsetY * entry.scale);
     const label = new Text({
-      text: `${index + 1}`,
+      text: entry.kind === 'good' && index === 5 ? 'UI' : `${index + 1}`,
       style: { fontSize: 12, fill: '#e8ddc4', stroke: { color: '#171c1b', width: 2 } },
     });
     label.position.set(width + 15, height - 22);

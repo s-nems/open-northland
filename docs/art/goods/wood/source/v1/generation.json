@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "generations": [
+    {
+      "tool": "built-in image_gen",
+      "model": "not exposed by tool",
+      "prompt": "pile-1.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        }
+      ],
+      "output": "pile-1.png",
+      "sha256": "d10be54d3d186233c53288f42c6baf2d5f8670077b7521fe7cf6fd6ecf144d3f"
+    },
+    {
+      "tool": "built-in image_gen",
+      "model": "not exposed by tool",
+      "prompt": "pile-2.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "d10be54d3d186233c53288f42c6baf2d5f8670077b7521fe7cf6fd6ecf144d3f"
+        }
+      ],
+      "output": "pile-2.png",
+      "sha256": "2a9fc9e34190e646f7a21db0907aedf948a7e7c6876baab260c0b5d03a82fcc2"
+    },
+    {
+      "tool": "built-in image_gen",
+      "model": "not exposed by tool",
+      "prompt": "pile-3.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "d10be54d3d186233c53288f42c6baf2d5f8670077b7521fe7cf6fd6ecf144d3f"
+        }
+      ],
+      "output": "pile-3.png",
+      "sha256": "4d40c3a8c212380bc67170bbb92994844fe5b1ea49f8791c8d067f3203ec7db1"
+    },
+    {
+      "tool": "built-in image_gen",
+      "model": "not exposed by tool",
+      "prompt": "pile-4.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "d10be54d3d186233c53288f42c6baf2d5f8670077b7521fe7cf6fd6ecf144d3f"
+        }
+      ],
+      "output": "pile-4.png",
+      "sha256": "d259fecb5c123d17c38c0503953e448c8fed47126422ca2463bbe64c08cef2c8"
+    },
+    {
+      "tool": "built-in image_gen",
+      "model": "not exposed by tool",
+      "prompt": "pile-5.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "d10be54d3d186233c53288f42c6baf2d5f8670077b7521fe7cf6fd6ecf144d3f"
+        }
+      ],
+      "output": "pile-5.png",
+      "sha256": "75264a94f34f4a245572839bed189be09c185b853a8fcd0b4d060d9ecb7a188d"
+    },
+    {
+      "tool": "built-in image_gen",
+      "model": "not exposed by tool",
+      "prompt": "icon.prompt.txt",
+      "references": [
+        {
+          "path": "../../../../buildings/house-1/house-painted-runtime.png",
+          "role": "Primary palette, painting and lighting reference",
+          "sha256": "c47642c920b0598e22b01d754847666887a1e91ed5bbbb31122a00d2be60866d"
+        },
+        {
+          "path": "pile-1.png",
+          "role": "Supporting material, subject and perspective reference",
+          "sha256": "d10be54d3d186233c53288f42c6baf2d5f8670077b7521fe7cf6fd6ecf144d3f"
+        }
+      ],
+      "output": "icon.png",
+      "sha256": "a394b73e86f1b0adfe803a317857af7eac6a729dc1046654da49393d5a70d635"
+    },
+    {
+      "tool": "built-in image_gen",
+      "model": "not exposed by tool",
+      "prompt": "pile-4-corrected.prompt.txt",
+      "references": [
+        {
+          "path": "pile-4.png",
+          "role": "Edit target; generated count was three rather than four",
+          "sha256": "d259fecb5c123d17c38c0503953e448c8fed47126422ca2463bbe64c08cef2c8"
+        }
+      ],
+      "output": "pile-4-corrected.png",
+      "sha256": "d8b73eab31b1ebc9f43c0395222259c7d65f532e24d471baadf5afc44125f166"
+    },
+    {
+      "tool": "imagegen skill CLI edit",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "alpha.prompt.txt",
+      "references": [
+        {
+          "path": "pile-2.png",
+          "role": "Edit target: painted checkerboard export requiring true alpha",
+          "sha256": "2a9fc9e34190e646f7a21db0907aedf948a7e7c6876baab260c0b5d03a82fcc2"
+        }
+      ],
+      "output": "pile-2-alpha.png",
+      "sha256": "c6fe84febeff396cb45d09ab2fe26370459799463960888094d919fd1aa036ef"
+    },
+    {
+      "tool": "imagegen skill CLI edit",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "alpha.prompt.txt",
+      "references": [
+        {
+          "path": "pile-3.png",
+          "role": "Edit target: painted checkerboard export requiring true alpha",
+          "sha256": "4d40c3a8c212380bc67170bbb92994844fe5b1ea49f8791c8d067f3203ec7db1"
+        }
+      ],
+      "output": "pile-3-alpha.png",
+      "sha256": "cced787cbe98c00b761b6700588ba0652dd3de27ef6ff3fe3902635627edcf3e"
+    },
+    {
+      "tool": "imagegen skill CLI edit",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "alpha.prompt.txt",
+      "references": [
+        {
+          "path": "pile-4-corrected.png",
+          "role": "Edit target: painted checkerboard export requiring true alpha",
+          "sha256": "d8b73eab31b1ebc9f43c0395222259c7d65f532e24d471baadf5afc44125f166"
+        }
+      ],
+      "output": "pile-4-alpha.png",
+      "sha256": "08dbd4367097ce433400f6c6470073cd8a497ebb54e1260a2792b99e15702899"
+    },
+    {
+      "tool": "imagegen skill CLI edit",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "alpha.prompt.txt",
+      "references": [
+        {
+          "path": "pile-5.png",
+          "role": "Edit target: painted checkerboard export requiring true alpha",
+          "sha256": "75264a94f34f4a245572839bed189be09c185b853a8fcd0b4d060d9ecb7a188d"
+        }
+      ],
+      "output": "pile-5-alpha.png",
+      "sha256": "2aabf6fa7552021883f854a8db64e25fddf8d38a09774cc54d9888950d1055da"
+    },
+    {
+      "tool": "imagegen skill CLI edit",
+      "model": "gpt-image-1.5",
+      "quality": "high",
+      "size": "1024x1024",
+      "background": "transparent",
+      "input_fidelity": "high",
+      "prompt": "alpha.prompt.txt",
+      "references": [
+        {
+          "path": "icon.png",
+          "role": "Edit target: painted checkerboard export requiring true alpha",
+          "sha256": "a394b73e86f1b0adfe803a317857af7eac6a729dc1046654da49393d5a70d635"
+        }
+      ],
+      "output": "icon-alpha.png",
+      "sha256": "bd87215dba7b4e4c21ac2ec56eab68e483151515c105e00a4fac6d0a0a02aeef"
+    }
+  ],
+  "selected": [
+    "pile-1.png",
+    "pile-2-alpha.png",
+    "pile-3-alpha.png",
+    "pile-4-alpha.png",
+    "pile-5-alpha.png",
+    "icon-alpha.png"
+  ],
+  "postprocessing": "Recipe crops by alpha >16, adds the shared two-pixel bound padding, and downsamples with Lanczos3. No keying, masks or upscaling. Frames and ground anchors are computed by the recipe."
+}

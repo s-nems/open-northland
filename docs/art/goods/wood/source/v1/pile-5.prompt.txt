@@ -1,0 +1,6 @@
+Use case: stylized-concept.
+Asset type: resource ground sprite, Open Northland own art.
+Create a ground pile of EXACTLY 5 short timber logs, each matching reference image 2's wood and thickness. Three logs at bottom and two above. All 5 near cut ends must be visibly countable; maintain the same lower-left to upper-right log direction.
+Image 1: canonical muted House A, PRIMARY restrained matte painting, palette and neutral upper-left daylight reference only. Image 2: generated single-log resource, supporting material, perspective and subject reference. Invent independent artwork; no original game art.
+Elevated orthographic game view, about 28.5 degrees above horizon. Whole compact pile centered with generous empty margins. Muted grey brown bark, muted pale tan cut ends, selective painted grain, clear silhouette, no black outline, orange wash or glossy render.
+One PNG with genuine transparent RGBA background, alpha zero outside logs. NO ground, base, shadow, leaves, unrelated props, text, border, checkerboard or solid background.

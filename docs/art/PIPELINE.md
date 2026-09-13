@@ -139,13 +139,15 @@ This provides process-interruption recovery, not a power-loss durability guarant
 
 ## Recipes and image quality
 
-Recipes use schema version 1 and a delivery kind: `building`, `props`, `terrain` or `character`.
+Recipes use schema version 1 and a delivery kind: `building`, `props`, `terrain`, `character` or `goods`.
 They combine a small set of operations:
 
 - `copy`: preserve a selected image or manifest byte for byte.
 - `raster`: crop, fit and composite source images into a material, sprite or atlas.
 - `json`: write presentation metadata, optionally using frames computed by a raster output.
 - `character`: pack selected directional strips and derive the character manifest from animation settings.
+
+For traded goods and UI icons, use the [goods package contract](goods/README.md).
 
 For ordinary vegetation, trees and resource rocks, use the `atlas` section shown in the
 [fern](terrain/ferns/asset.json), [woodland](terrain/woodland/asset.json) and

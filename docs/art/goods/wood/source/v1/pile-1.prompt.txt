@@ -1,0 +1,6 @@
+Use case: stylized-concept.
+Asset type: own-art resource ground sprite for Open Northland.
+Primary request: exactly ONE short thick freshly felled timber log lying on invisible level ground. Bark intact in muted grey-brown, two pale muted tan cut ends, broad restrained painted grain. It is raw wood, not split firewood, planks, furniture or a tree stump.
+Input image 1: canonical muted House A, PRIMARY palette, matte painting and neutral upper-left lighting reference only; do not copy its architecture or background.
+Elevated orthographic settlement game view, about 28.5 degrees above horizon. Log runs diagonally lower-left to upper-right, visible cut end faces lower-left. Clear simple silhouette readable at 48 screen pixels. Center whole object with generous empty margins. No ground patch, props, leaves, labels, border or cast shadow.
+Output one 1024x1024 PNG on genuinely transparent RGBA background, alpha zero outside log, not a painted checkerboard or solid background. Natural subdued brown, no golden wash, no black outlines, no gloss.

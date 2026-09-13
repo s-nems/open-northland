@@ -2,6 +2,7 @@ import type { GalleryEntry } from './catalog.js';
 import type { GalleryState, GalleryTab } from './state.js';
 
 export function tabOf(entry: GalleryEntry): GalleryTab {
+  if (entry.kind === 'good') return 'goods';
   return entry.kind === 'character' ? 'animations' : entry.kind === 'building' ? 'buildings' : 'terrain';
 }
 

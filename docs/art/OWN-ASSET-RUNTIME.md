@@ -54,7 +54,7 @@ Copy view link preserves the shared animation clock, including a paused pose. Mi
 or clips remain marked unavailable; they are not replaced with another preview.
 
 Open `?art=gallery` to compare delivered own assets. Its tabs use
-`tab=animations`, `tab=buildings` and `tab=terrain`; `asset=<id>` selects an entry and
+`tab=animations`, `tab=buildings`, `tab=terrain` and `tab=goods`; `asset=<id>` selects an entry and
 `compare=<id>,<id>` pins comparison entries. For example:
 `?art=gallery&tab=animations&asset=characters/man-silver&compare=characters/man-redmane`.
 The gallery uses runtime manifests and shares the development server's candidate override with the
@@ -98,8 +98,7 @@ appearance previews and animation checks. Package inventories and source details
 - The minimap uses diagnostic type colours; it does not reproduce own terrain distribution.
 
 The normal own-assets map does not request original world terrain, object, character, shadow,
-bubble, building-sign or combat-bones atlases. HUD goods icons, UI and audio remain outside this
-replacement scope. A `/bobs/` request alone therefore does not prove original world art was loaded.
+bubble, building-sign or combat-bones atlases. Goods packages supply ground piles and matching building-panel icons by good slug. Uncovered HUD goods icons, other UI and audio retain their existing loaders. A `/bobs/` request alone therefore does not prove original world art was loaded.
 Other app entries retain their own loaders.
 
 Static resources hand over to live simulation entities through the existing placement bindings.

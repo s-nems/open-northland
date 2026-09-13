@@ -17,9 +17,13 @@ export async function loadAsset(root: string, id: string) {
     ],
   });
   if (recipe.id !== id) throw new Error('Catalog and recipe id disagree');
-  const prefix = { building: 'buildings/', props: 'props/', terrain: 'terrain/', character: 'characters/' }[
-    recipe.kind
-  ];
+  const prefix = {
+    building: 'buildings/',
+    props: 'props/',
+    terrain: 'terrain/',
+    character: 'characters/',
+    goods: 'goods/',
+  }[recipe.kind];
   if (recipe.outputs.some((o) => !o.path.startsWith(prefix))) throw new Error('Output outside asset kind');
   return { recipe, path, directory: dirname(path) };
 }

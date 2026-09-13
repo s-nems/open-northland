@@ -1,6 +1,5 @@
 import type { GuiColorKey } from '@open-northland/render';
 import { type Container, type Graphics, Sprite, type Texture } from 'pixi.js';
-import { GENERIC_GOOD_ICON, type GoodIcon, makeGoodSprite } from '../../content/goods-gfx.js';
 import { makeGuiSprite } from '../../content/gui-art.js';
 import type { GuiPaletteName } from '../../content/gui-gfx.js';
 import { HOVER_ALPHA, HOVER_TINT, tileBitmap, WINDOW_BORDER } from '../chrome.js';
@@ -9,6 +8,7 @@ import type { DetailsPanelAssets } from './assets.js';
 import { createFrameBorderKit } from './frame-border.js';
 import { drawGauge, PRODUCTION_BAR_FILL, rampColor } from './gauge.js';
 import { createGlyphKit, type GlyphKit } from './glyphs.js';
+import { createGoodIcon } from './good-icon.js';
 import { createTextKit, type TextKit } from './text.js';
 
 /**
@@ -44,8 +44,7 @@ export interface Chrome extends TextKit, GlyphKit {
   tile(texture: Texture | undefined, r: Rect, target?: Container): boolean;
   /** A GUI-sheet sprite centered in `r` at its native size. */
   guiCentered(gfx: number, r: Rect, colorKey?: GuiColorKey, palette?: GuiPaletteName): void;
-  /** A recoloured per-good resource icon (the good's `ls_goods` pile frame), fitted centered into `r`;
-   *  a good with no bound icon draws the generic one, and no-op when the goods art is absent. */
+  /** The active sheet's goods icon fitted into `r`, falling back to the decoded or generic icon. */
   goodIcon(goodId: string, r: Rect): void;
   /** A section window: the tiled grey-blue card fill + the rope-strip border with knot corners. */
   window(r: Rect): void;
@@ -121,24 +120,7 @@ export function createChrome(
     made.sprite.place(x, y, scale, w, h);
   };
 
-  const placeGoodIcon = (icon: GoodIcon, r: Rect): void => {
-    if (assets.goods === null) return;
-    const made = makeGoodSprite(assets.goods, icon);
-    if (made === null) return;
-    made.sprite.flipY = true;
-    layers.front.addChild(made.sprite);
-    const { w, h } = resolution;
-    // The state-1 pile frames vary in native size (~12-26 px); shrink each into the icon box, never
-    // upscaling past the panel scale, so a big pile doesn't overrun the amount plate.
-    const fit = Math.min(1, r.w / (made.frame.width * scale), r.h / (made.frame.height * scale));
-    const drawScale = scale * fit;
-    const x = Math.round(r.x + r.w / 2 - (made.frame.offsetX + made.frame.width / 2) * drawScale);
-    const y = Math.round(r.y + r.h / 2 - (made.frame.offsetY + made.frame.height / 2) * drawScale);
-    made.sprite.place(x, y, drawScale, w, h);
-  };
-
-  const goodIcon = (goodId: string, r: Rect): void =>
-    placeGoodIcon(assets.goods?.icon(goodId) ?? GENERIC_GOOD_ICON, r);
+  const goodIcon = createGoodIcon(assets, scale, layers.front, resolution);
 
   // Named to avoid shadowing the global `window` inside this closure.
   const windowBox = (r: Rect): void => {

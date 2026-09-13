@@ -121,7 +121,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   // Goods are global sandbox content, not scene-local data.
   const ownAssets = assetSetFor(params) === 'own';
   const sheet = ownAssets
-    ? await loadOwnSpriteSheet(ir, params.get('ownHead'))
+    ? await loadOwnSpriteSheet(ir, params.get('ownHead'), sim.content.goods)
     : await resolveSpriteSheet(sim.content.goods);
   await boot.begin('terrain');
   let terrain: TerrainTextureSet;
