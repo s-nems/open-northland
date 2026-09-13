@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "id": "goods/stone",
+  "id": "goods/pillar",
   "kind": "goods",
-  "sourceBasis": "Independent generated muted House A quarried stone artwork. Identity verified in owned Data/logic/goodtypes.ini: name stone, type 3, landscapeToStore 17; decoder tools/asset-pipeline/src/decoders/ini/types/goods.ts and local content/ir.json agree. Binding uses the good slug, not numeric type. Five quantity states follow existing renderer clamping. World scale, painting and ground anchors are artistic approximations.",
+  "sourceBasis": "Independent generated muted House A hewn stone block artwork. Identity verified in owned Data/logic/goodtypes.ini: name pillar, type 26, produced in house from stone (productionInputGoods 3); the owned Polish strings name good 26 \"Kamienny blok\"; decoder tools/asset-pipeline/src/decoders/ini/types/goods.ts and local content/ir.json agree. Binding uses the good slug, not numeric type. Five quantity states follow existing renderer clamping. World scale, painting and ground anchors are artistic approximations.",
   "outputs": [
     {
-      "path": "goods/stone/atlas.png",
+      "path": "goods/pillar/atlas.png",
       "content": {
         "operation": "raster",
         "sampling": "lanczos3",
@@ -83,18 +83,18 @@
       }
     },
     {
-      "path": "goods/stone/runtime.json",
+      "path": "goods/pillar/runtime.json",
       "content": {
         "operation": "json",
         "value": {
-          "id": "stone",
+          "id": "pillar",
           "image": "atlas.png",
           "width": 576,
           "height": 96,
           "scale": 0.5,
-          "sourceBasis": "Independent generated muted House A quarried stone artwork. Identity verified in owned Data/logic/goodtypes.ini: name stone, type 3, landscapeToStore 17; decoder tools/asset-pipeline/src/decoders/ini/types/goods.ts and local content/ir.json agree. Binding uses the good slug, not numeric type. Five quantity states follow existing renderer clamping. World scale, painting and ground anchors are artistic approximations."
+          "sourceBasis": "Independent generated muted House A hewn stone block artwork. Identity verified in owned Data/logic/goodtypes.ini: name pillar, type 26, produced in house from stone (productionInputGoods 3); the owned Polish strings name good 26 \"Kamienny blok\"; decoder tools/asset-pipeline/src/decoders/ini/types/goods.ts and local content/ir.json agree. Binding uses the good slug, not numeric type. Five quantity states follow existing renderer clamping. World scale, painting and ground anchors are artistic approximations."
         },
-        "framesFrom": "goods/stone/atlas.png"
+        "framesFrom": "goods/pillar/atlas.png"
       }
     }
   ]

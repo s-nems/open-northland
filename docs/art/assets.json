@@ -42,8 +42,8 @@
       "recipe": "docs/art/characters/appearances/woman-blonde/asset.json"
     },
     {
-      "id": "goods/stone",
-      "recipe": "docs/art/goods/stone/asset.json"
+      "id": "goods/pillar",
+      "recipe": "docs/art/goods/pillar/asset.json"
     },
     {
       "id": "goods/wood",

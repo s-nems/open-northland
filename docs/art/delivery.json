@@ -333,5 +333,6 @@
     "buildings/house-5/house-painted-runtime.png",
     "buildings/house-5/runtime.json",
     "buildings/house-5/shadow.png"
-  ]
+  ],
+  "goods/pillar": ["goods/pillar/atlas.png", "goods/pillar/runtime.json"]
 }

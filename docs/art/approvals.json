@@ -133,5 +133,10 @@
     "digest": "32d01f0836a1929317810c2a73eb66cb0603ac110e4b99fd1f21c51b9d6cf309",
     "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
+  },
+  "goods/pillar": {
+    "digest": "0ffeafc2782f010312c4d283304bc68f6373808dd2dd8e9ade6d16ff4ae04658",
+    "reviewer": "snems",
+    "basis": "Explicit visual review of candidate pixels and presentation metadata"
   }
 }
