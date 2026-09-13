@@ -25,22 +25,22 @@
     "basis": "User explicitly authorized applying the accepted House 1 shadow-only treatment to the other existing buildings and merging. Existing approved body artwork and scale unchanged; this records authorization to extend that treatment, not individual human review of these new shadow pixels."
   },
   "characters/man-forkbeard": {
-    "digest": "cbc06d07f5e179d2dfd9dcff2550f1c2d4d4a6a0aff92ca0292768bc813b7ffd",
+    "digest": "1352a9d31a51c3253e32386053df045e9ef5b6363213d93e8b59ed186ceb1c9f",
     "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/man-ravenknot": {
-    "digest": "34e5b29776da89c412b14961fcb63f847923af2df95a159a2cd1a95b49c6c9d5",
+    "digest": "d2551a44bc1ae24e81d9991c7a7cedda77d5dccc255f3063edc26ab5266be86b",
     "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/man-redmane": {
-    "digest": "81eb0e38dd86f9cc438df84c809f93ce8566dfd809b763cf1ab786cbe837e6bc",
+    "digest": "63df2ee324e6998ee14c2d1dd5256ab0ce0626d747f19fc4dde6ef12b9712180",
     "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },
   "characters/man-silver": {
-    "digest": "5b1ef61fa73ccb68570cf4e0817a2e9e61d98eebc7d9aa12e52d2067d301ef2c",
+    "digest": "e1c26450b7ba9a4faae4c3ae4bf09b5b17e254873f2d1c4067bb665d66acc4eb",
     "reviewer": "snems",
     "basis": "Explicit visual review of candidate pixels and presentation metadata"
   },

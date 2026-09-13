@@ -35,5 +35,4 @@ without changing camera pixel density, final cell dimensions or foot anchors.
 
 Repeat the export for all four male appearances. Preserve shared cameras, layouts and walk
 calibration. Review the full loop, overhead clearance, grip and stone contact on a playable map.
-Bearded appearances still require hand/beard contact cleanup during lift and impact. Sources and sprites are candidates,
-not approved runtime delivery.
+Bearded appearances retain hand/beard contacts during lift and impact.
