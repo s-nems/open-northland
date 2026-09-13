@@ -1,7 +1,15 @@
-import { Age, Settler } from '../../../components/index.js';
-import type { World } from '../../../ecs/world.js';
+import {
+  Age,
+  CurrentAtomic,
+  chatAtomicRunning,
+  inPastimeChat,
+  MoveGoal,
+  Settler,
+} from '../../../components/index.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { System, SystemContext } from '../../context.js';
+import { endChat } from '../../social/index.js';
 import { planAdult, planChild } from '../drives/ladder.js';
 import { dispatchAssistantGrants } from './assistant-grants.js';
 import { navigationPlanner } from './navigation.js';
@@ -36,5 +44,13 @@ function atomicPlanner(world: World, ctx: SystemContext, terrain: TerrainGraph):
       continue;
     }
     planAdult(pass, e, settler, settler.jobType);
+    if (inPastimeChat(world, e) && tookAction(world, e)) endChat(world, ctx.tick, e); // frees the partner too
   }
+}
+
+/** Whether the ladder just gave a pastime chatter something to do: a walk, or a clip other than its
+ *  chat's. A rung that only keeps it standing (a builder waiting at its site, a worker loitering by the
+ *  door) leaves the chat running. */
+function tookAction(world: World, e: Entity): boolean {
+  return world.has(e, MoveGoal) || (world.has(e, CurrentAtomic) && !chatAtomicRunning(world, e));
 }

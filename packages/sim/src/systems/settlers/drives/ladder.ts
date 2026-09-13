@@ -1,4 +1,12 @@
-import { Carrying, Female, ownerOf, Position, type SettlerView, Stance } from '../../../components/index.js';
+import {
+  Carrying,
+  Chat,
+  Female,
+  ownerOf,
+  Position,
+  type SettlerView,
+  Stance,
+} from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { jobCanHarvest } from '../../economy/work-flag.js';
@@ -187,11 +195,10 @@ function planEconomy(
   if (planGatherer(plan, pass.harvestClaims)) return;
   if (planPorter(plan)) return;
 
-  // A settler the haul rung also refuses is genuinely idle: step off a shared tile first so an idle
-  // crowd spreads out, then chat with a nearby idle neighbour.
-  if (!planCarrierHaul(plan, pass.anyHaulable)) {
-    if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
-      planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates);
-    }
+  // A settler the haul rung also refuses is genuinely idle. One already chatting keeps its chat; the rest
+  // step off a shared tile first so an idle crowd spreads out, then chat with a nearby idle neighbour.
+  if (planCarrierHaul(plan, pass.anyHaulable) || world.has(e, Chat)) return;
+  if (!deStackIdle(world, terrain, e, hx, hy, pass.spacing)) {
+    planGossipIdle(world, ctx, e, settler, hx, hy, pass.gossipCandidates);
   }
 }

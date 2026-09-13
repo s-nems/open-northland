@@ -2,15 +2,18 @@ import {
   Chat,
   ChatCooldown,
   CurrentAtomic,
+  chatAtomicRunning,
   clearNeedOrder,
   Engagement,
   FamilyDuty,
   Fleeing,
+  LISTEN_ATOMIC_ID,
   PlayerOrder,
   Position,
   Settler,
   type SettlerIdentity,
   Sheltering,
+  TALK_ATOMIC_ID,
   Wedding,
 } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
@@ -21,11 +24,6 @@ import type { System, SystemContext } from '../../context.js';
 import { NEED_DRIVE_THRESHOLD } from '../../lifecycle/needs/index.js';
 import { atomicClipName, atomicDurationForName } from '../../readviews/animations.js';
 import { approachPartner, driveMirroredPairs, startPairedAtomics } from '../../rendezvous.js';
-
-/** The paired talk/listen atomic ids - `logicdefines.inc` `MAP_MOVEABLES_ATOMIC_ACTION_TYPE_TALK = 14` /
- *  `LISTEN = 15`, bound per tribe in `tribetypes.ini` (`setatomic 5/6 14 "..._talk"`, `... 15 "..._listen"`). */
-export const TALK_ATOMIC_ID = 14;
-export const LISTEN_ATOMIC_ID = 15;
 
 /** Ticks after a chat ends before either half chats again, the {@link ChatCooldown} breather that lets the
  *  freed settlers' work rungs reclaim them. Authored value, ~3 s at the 12 Hz tick. */
@@ -39,7 +37,7 @@ function chatDuration(ctx: SystemContext, s: SettlerIdentity, atomicId: number):
 
 /** Remove a chat from both halves, interrupting any talk/listen atomic in flight (the clips are
  *  `interruptable 1` in the data), and stamp the {@link ChatCooldown} breather on both. */
-function endChat(world: World, tick: number, e: Entity): void {
+export function endChat(world: World, tick: number, e: Entity): void {
   const c = world.tryGet(e, Chat);
   if (c !== undefined && world.isAlive(c.partner)) {
     world.remove(c.partner, Chat);
@@ -55,12 +53,6 @@ function endChat(world: World, tick: number, e: Entity): void {
 
 function interruptChatAtomic(world: World, e: Entity): void {
   if (chatAtomicRunning(world, e)) world.remove(e, CurrentAtomic);
-}
-
-/** Whether `e` is currently playing its half of a chat round (a talk or listen atomic in flight). */
-function chatAtomicRunning(world: World, e: Entity): boolean {
-  const atomic = world.tryGet(e, CurrentAtomic);
-  return atomic !== undefined && (atomic.atomicId === TALK_ATOMIC_ID || atomic.atomicId === LISTEN_ATOMIC_ID);
 }
 
 /** Whether a higher drive outranks this half's chat. Company outranks none of them, so the chat ends and

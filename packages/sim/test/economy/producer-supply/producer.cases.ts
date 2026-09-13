@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   Carrying,
+  Chat,
   CraftSelection,
   CurrentAtomic,
+  LISTEN_ATOMIC_ID,
   MoveGoal,
   Owner,
   Production,
@@ -703,6 +705,33 @@ describe('producer loiter - an idle owned worker waits BESIDE the door, not insi
     expect(sim.world.has(worker, CurrentAtomic)).toBe(false);
     expect(sim.world.has(worker, MoveGoal)).toBe(true);
     expect(sim.world.get(worker, MoveGoal).cell).not.toBe(cell(sim, 3, 0)); // beside the door, not on it
+  });
+
+  it('a loiterer grabbed into idle chatter keeps chatting: standing by the door is not work', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+    const mill = buildingAt(sim, SAWMILL, 3, 0);
+    const worker = settlerAt(sim, 3, 0, CARPENTER, mill);
+    sim.world.add(worker, Owner, { player: 0 });
+    const idler = settlerAt(sim, 0, 0, WOODCUTTER); // no tree: idle for good
+    sim.world.add(idler, Owner, { player: 0 });
+
+    let paired = false;
+    for (let i = 0; i < 400 && !paired; i++) {
+      sim.step();
+      paired = sim.world.tryGet(worker, Chat)?.kind === 'pastime';
+    }
+    expect(paired).toBe(true);
+    const chat = sim.world.get(worker, Chat);
+    let talking = false;
+    for (let i = 0; i < 200 && !talking; i++) {
+      sim.step();
+      talking = sim.world.tryGet(worker, CurrentAtomic)?.atomicId === LISTEN_ATOMIC_ID;
+    }
+
+    // The same chat reached its talk round: the worker's own loiter rung neither ended it nor started
+    // another while the idler walked over.
+    expect(talking).toBe(true);
+    expect(sim.world.get(worker, Chat)).toBe(chat);
   });
 
   it('an UNOWNED operator keeps the wait-inside (Resting) behaviour - golden fixtures stay byte-identical', () => {

@@ -1,5 +1,12 @@
 import type { ContentSet } from '@open-northland/data';
-import { entityById, harvestJobsOf, jobAllowsAtomic, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  components,
+  entityById,
+  harvestJobsOf,
+  jobAllowsAtomic,
+  systems,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { JOB_IDLE } from '../../../catalog/jobs.js';
 import {
   childOrderOf,
@@ -101,7 +108,7 @@ function allows(
     case 'talk':
       // The chat drive leaves the fighter trades out, so the button follows it rather than the original's
       // wider "is able to talk" test.
-      return !systems.isFighterJob(content, job) && jobAllowsAtomic(content, job, systems.TALK_ATOMIC_ID);
+      return !systems.isFighterJob(content, job) && jobAllowsAtomic(content, job, components.TALK_ATOMIC_ID);
     case 'pray':
       return !systems.isHeroJob(content, job) && jobAllowsAtomic(content, job, systems.PRAY_ATOMIC_ID);
     case 'marry':

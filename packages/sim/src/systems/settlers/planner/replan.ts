@@ -1,12 +1,14 @@
 import {
   Chat,
   CurrentAtomic,
+  chatHoldsSettler,
   Engagement,
   FamilyDuty,
   Fleeing,
   Frightened,
   Garrison,
   HuntFocus,
+  inPastimeChat,
   PathRequest,
   Person,
   PlayerOrder,
@@ -95,7 +97,7 @@ export function anotherSystemOwns(world: World, e: Entity): boolean {
     world.has(e, PlayerOrder) ||
     world.has(e, Wedding) ||
     world.has(e, FamilyDuty) ||
-    world.has(e, Chat)
+    chatHoldsSettler(world, e)
   );
 }
 
@@ -152,8 +154,9 @@ export function releaseStaleIntent(
   // garrison still on its tower keeps it because anything else already gave the post up above.
   if (!heldIndoors(world, e) && !topsUpAtHome(world, ctx, e)) stepOut(world, e);
   // The guard above returned for anything the atomic holds, so what is left is safe to shed: the producer
-  // drive below re-derives a craft clip from its workplace's own batch clock in this same pass.
-  world.remove(e, CurrentAtomic);
+  // drive below re-derives a craft clip from its workplace's own batch clock in this same pass, and a
+  // pastime chat's clip is shed with the chat once a drive takes the settler.
+  if (!inPastimeChat(world, e)) world.remove(e, CurrentAtomic);
   // Releasing through the tally keeps the inbound count in lockstep with the store.
   releaseSupplyRun(world, e, inbound);
   return true;

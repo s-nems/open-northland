@@ -1,9 +1,8 @@
 export {
   CHAT_COOLDOWN_TICKS,
+  endChat,
   GossipCandidates,
   gossipSystem,
-  LISTEN_ATOMIC_ID,
   planGossipIdle,
   planGossipSeek,
-  TALK_ATOMIC_ID,
 } from './gossip/index.js';

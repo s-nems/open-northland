@@ -4,6 +4,7 @@ import {
   Carrying,
   Chat,
   ChatCooldown,
+  type ChatKind,
   CurrentAtomic,
   Engagement,
   FamilyDuty,
@@ -98,11 +99,20 @@ function mayJoinChat(world: World, tick: number, e: Entity): boolean {
   return s.hunger < NEED_DRIVE_THRESHOLD && s.fatigue < NEED_DRIVE_THRESHOLD;
 }
 
+/** Turn a pastime chat into one that holds both halves. */
+function holdChat(world: World, e: Entity): void {
+  const chat = world.get(e, Chat);
+  if (chat.kind === 'company') return;
+  world.mut(e, Chat).kind = 'company';
+  const mirrored = world.tryMut(chat.partner, Chat);
+  if (mirrored !== undefined) mirrored.kind = 'company';
+}
+
 /** Stamp the mirrored {@link Chat} pair - the seeker (who walks, and whose refill ends the chat) speaks
  *  the first round. */
-function startChat(world: World, seeker: Entity, partner: Entity): void {
-  world.add(seeker, Chat, { partner, seeker: true, talking: false, speaks: true });
-  world.add(partner, Chat, { partner: seeker, seeker: false, talking: false, speaks: false });
+function startChat(world: World, seeker: Entity, partner: Entity, kind: ChatKind): void {
+  world.add(seeker, Chat, { partner, seeker: true, talking: false, speaks: true, kind });
+  world.add(partner, Chat, { partner: seeker, seeker: false, talking: false, speaks: false, kind });
 }
 
 /** The seek and idle rungs' shared partner predicate: a same-owner settler standing free and not walking
@@ -139,6 +149,12 @@ export function planGossipSeek(
 ): boolean {
   if (!ordered && settler.enjoyment < NEED_DRIVE_THRESHOLD) return false;
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
+  // Already in company: the chat it stands in becomes the one it sought, held against work like any
+  // company-need chat, rather than a second pair that would orphan the first.
+  if (world.has(e, Chat)) {
+    holdChat(world, e);
+    return true;
+  }
   if (chatCooldownActive(world, ctx.tick, e)) return false;
   // Only owned settlers gossip, so unowned golden fixtures stay byte-identical, and partners must share
   // the owner.
@@ -152,7 +168,7 @@ export function planGossipSeek(
     buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, idle) ??
     buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_SEEK_RADIUS_NODES, grabbable);
   if (found === null) return false;
-  startChat(world, e, found.entity);
+  startChat(world, e, found.entity, 'company');
   return true;
 }
 
@@ -160,7 +176,9 @@ export function planGossipSeek(
  * The idle-settler chat rung at the bottom of the drive ladder: an idle settler chats even on a full company
  * bar, since the original's settlements visibly chatter. An adjacent partner is chatted up in place at once,
  * while a partner within {@link CHAT_IDLE_WALK_RADIUS_NODES} is only walked to once the
- * {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS} roll fires, so idlers stand around between chats.
+ * {@link CHAT_IDLE_WALK_MEAN_WAIT_TICKS} roll fires, so idlers stand around between chats. Approximation:
+ * the original's idle talk is one clip that yields to the next command once it ends; this chat yields to
+ * work at once.
  */
 export function planGossipIdle(
   world: World,
@@ -172,7 +190,7 @@ export function planGossipIdle(
   candidates: GossipCandidates,
 ): boolean {
   if (settler.jobType === null || isFighterJob(ctx.content, settler.jobType)) return false;
-  if (chatCooldownActive(world, ctx.tick, e)) return false;
+  if (world.has(e, Chat) || chatCooldownActive(world, ctx.tick, e)) return false;
   // The owner gate sits before the wander roll below, so unowned fixtures consume no RNG and stay
   // byte-identical.
   const owner = ownerOf(world, e);
@@ -187,12 +205,12 @@ export function planGossipIdle(
   const buckets = candidates.ensure();
   const beside = buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_MAX_RING, idleBeside);
   if (beside !== null) {
-    startChat(world, e, beside.entity);
+    startChat(world, e, beside.entity, 'pastime');
     return true;
   }
   if (ctx.rng.int(CHAT_IDLE_WALK_MEAN_WAIT_TICKS) !== 0) return false;
   const distant = buckets.nearest(hx, hy, CHAT_PARTNER_MIN_DIST_NODES, CHAT_IDLE_WALK_RADIUS_NODES, idle);
   if (distant === null) return false;
-  startChat(world, e, distant.entity);
+  startChat(world, e, distant.entity, 'pastime');
   return true;
 }

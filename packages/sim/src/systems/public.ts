@@ -103,8 +103,6 @@ export {
   signpostNetwork,
   signpostProbe,
 } from './signposts/index.js';
-// Keys the app's talk gate, the way PRAY_ATOMIC_ID keys its pray gate.
-export { TALK_ATOMIC_ID } from './social/gossip/drive.js';
 export { createSettler, DEFAULT_SETTLER_HITPOINTS } from './spawn/index.js';
 export { isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
 export { cellOfNode } from './vision/gates.js';

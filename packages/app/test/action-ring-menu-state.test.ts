@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { fx, systems, type WorldSnapshot } from '@open-northland/sim';
+import { components, fx, systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   JOB_BUILDER,
@@ -108,7 +108,7 @@ describe('allowedActions - one settler', () => {
         job.typeId === JOB_COLLECTOR
           ? {
               ...job,
-              allowedAtomics: [...job.allowedAtomics, systems.TALK_ATOMIC_ID, systems.PRAY_ATOMIC_ID],
+              allowedAtomics: [...job.allowedAtomics, components.TALK_ATOMIC_ID, systems.PRAY_ATOMIC_ID],
             }
           : job,
       ),
