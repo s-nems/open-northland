@@ -47,6 +47,7 @@ export function networkScreen(
   let handedOff = false;
   let busy = false;
   let generation = 0;
+  let enteredStartedRoom = false;
 
   const notice = (text: string): void => {
     status.textContent = text;
@@ -56,6 +57,7 @@ export function networkScreen(
   const resetRoom = (): void => {
     room?.dispose();
     room = null;
+    enteredStartedRoom = false;
     roomHost.replaceChildren();
     browser.hidden = false;
   };
@@ -154,6 +156,29 @@ export function networkScreen(
     }
   }
 
+  function launchGame(): void {
+    const current = connection;
+    if (current === null || assets === null || busy) return;
+    const mine = generation;
+    busy = true;
+    notice(copy.starting);
+    void launchNetworkGame(
+      current,
+      assets,
+      (search) => {
+        handedOff = true;
+        launch(search);
+      },
+      () => !disposed && generation === mine && connection === current,
+    ).catch((error: unknown) => {
+      if (disposed || generation !== mine) return;
+      failure(error);
+      // A seat in a started game is given up only on purpose: the room stays up with the notice.
+      if (enteredStartedRoom) busy = false;
+      else leaveRoom();
+    });
+  }
+
   function observe(event: ConnectionEvent): void {
     const current = connection;
     if (disposed || handedOff || current === null) return;
@@ -188,11 +213,13 @@ export function networkScreen(
       case 'room':
         busy = false;
         if (room === null) {
+          enteredStartedRoom = message.room.state !== 'lobby';
           room = mountNetworkRoom({
             client: current.client,
             copy: messages().networkRoom,
             savedRoster: () => assets?.savedRoster() ?? null,
             onLeave: leaveRoom,
+            rejoin: enteredStartedRoom ? launchGame : null,
             onRetryCompatibility: () => assets?.retry(),
           });
           roomHost.replaceChildren(room.element);
@@ -224,27 +251,11 @@ export function networkScreen(
       case 'error':
         notice(message.reason);
         break;
-      case 'start': {
-        if (assets === null) return;
-        const mine = generation;
-        busy = true;
-        notice(copy.starting);
-        void launchNetworkGame(
-          current,
-          assets,
-          (search) => {
-            handedOff = true;
-            launch(search);
-          },
-          () => !disposed && generation === mine && connection === current,
-        ).catch((error: unknown) => {
-          if (!disposed && generation === mine) {
-            failure(error);
-            leaveRoom();
-          }
-        });
+      case 'start':
+        // A token put back into a started room gets its `start` on connect; there the player
+        // chooses between rejoining and leaving instead.
+        if (!enteredStartedRoom) launchGame();
         break;
-      }
       default:
         break;
     }
@@ -294,7 +305,8 @@ export function networkScreen(
       create.dispose();
       room?.dispose();
       assets?.dispose();
-      if (!handedOff) connection?.dispose();
+      // Only the Leave button gives a seat in a started game up; leaving the screen keeps it.
+      if (!handedOff) connection?.dispose(!enteredStartedRoom);
     },
   };
 }

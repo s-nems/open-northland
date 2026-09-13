@@ -73,8 +73,16 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
     if (!start.disabled) client.start();
   });
   start.classList.add('network-room__button--primary');
-  footer.append(hint, release, ready, start);
+  const rejoin = deps.rejoin === null ? null : button(copy.rejoin, deps.rejoin);
+  rejoin?.classList.add('network-room__button--primary');
+  footer.append(hint, release, ready, start, ...(rejoin === null ? [] : [rejoin]));
   element.append(heading, noticeLine, linkLine, checks, footer, body, chat);
+  element.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && seats.closePalette()) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+  });
   return {
     element,
     update(room: RoomView, online: boolean): void {
@@ -110,12 +118,17 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
       retry.disabled = !permissions.interactive;
       input.disabled = !permissions.interactive;
       send.disabled = !permissions.interactive;
+      const rejoinable = rejoin !== null;
+      release.hidden = rejoinable;
       release.disabled = !permissions.interactive || permissions.self?.seat == null;
+      ready.hidden = rejoinable;
       ready.disabled = !permissions.canReady;
       ready.textContent = permissions.ready ? copy.withdrawReady : copy.becomeReady;
       ready.setAttribute('aria-pressed', String(permissions.ready));
-      start.hidden = room.creator !== client.nick;
+      start.hidden = rejoinable || room.creator !== client.nick;
       start.disabled = !permissions.canStart;
+      if (rejoin !== null) rejoin.disabled = !permissions.canRejoin;
+      hint.textContent = rejoinable ? copy.inProgress : copy.waiting;
       hint.hidden = permissions.canStart;
     },
     observeChat(from: string, text: string): void {

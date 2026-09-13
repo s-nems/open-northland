@@ -1,6 +1,5 @@
-import { playerSwatchHex } from '../../../catalog/roster.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
-import { colorPalette } from '../lobby-controls/color.js';
+import { colorChip, colorPalette } from '../lobby-controls/color.js';
 import { seatRow } from '../lobby-controls/seat.js';
 import { seatModeControl } from '../lobby-controls/seat-mode.js';
 import type { MapSelectItem } from '../map-select-model.js';
@@ -21,31 +20,25 @@ export function localSeatElements(
   actions: SeatActions,
 ) {
   const lobby = messages().mainMenu.lobby;
+  const colorName = (color: number): string => messages().animation.playerColors[color] ?? String(color);
   const chipButton = (row: LobbySlotRow): HTMLButtonElement => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'main-menu__lobby-chip';
-    chip.style.background = playerSwatchHex(row.colorId);
-    chip.textContent = String(row.slot.player + 1);
-    const colourName = messages().animation.playerColors[row.colorId] ?? String(row.colorId);
-    chip.title = item.fixedColors
-      ? `${lobby.teamColour}: ${colourName} (${lobby.teamColourLocked})`
-      : `${lobby.teamColour}: ${colourName}`;
-    chip.setAttribute('aria-label', chip.title);
-    chip.disabled = item.fixedColors;
-    chip.dataset.focus = `chip:${row.slot.player}`;
-    chip.setAttribute('aria-expanded', String(pickerSlot === row.slot.player));
-    chip.addEventListener('click', () => {
+    const chip = colorChip({ label: lobby.teamColour, name: colorName }, row.slot.player, () => {
       actions.togglePicker(row.slot.player);
     });
-    return chip;
+    chip.update({
+      value: row.colorId,
+      disabled: item.fixedColors,
+      expanded: pickerSlot === row.slot.player,
+      lockedNote: lobby.teamColourLocked,
+    });
+    return chip.root;
   };
 
   const pickerStrip = (row: LobbySlotRow): HTMLElement =>
     colorPalette(
       {
         label: lobby.teamColour,
-        name: (color) => messages().animation.playerColors[color] ?? String(color),
+        name: colorName,
         change: (color) => actions.pickColor(row.slot.player, color),
       },
       {

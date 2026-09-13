@@ -3,13 +3,30 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NetworkConnection } from '../../src/net/connection.js';
 
 class Socket {
+  static sent: string[] = [];
   readonly OPEN = 1;
-  readyState = 0;
+  readyState = 1;
   close(): void {
     this.readyState = 3;
   }
-  send(): void {}
+  send(raw: string): void {
+    Socket.sent.push(raw);
+  }
 }
+const ROOM = {
+  id: 'r',
+  state: 'running',
+  creator: 'Ania',
+  settings: {
+    name: 'Room',
+    world: { kind: 'map', mapId: 'forest' },
+    seed: 1,
+    rules: { fog: null, progression: null, needs: null },
+    speed: 1,
+  },
+  seats: [{ player: 0, mode: 'human', color: 0, nick: 'Ania', ready: true }],
+  members: [{ nick: 'Ania', seat: 0, connected: true, compatibility: null }],
+} as const;
 const SESSION: GameSession = {
   world: { kind: 'map', mapId: 'forest' },
   seed: 1,
@@ -18,7 +35,10 @@ const SESSION: GameSession = {
   rules: { fog: null, progression: null, needs: null },
   speed: 1,
 };
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  Socket.sent = [];
+});
 
 describe('network connection disposal', () => {
   it('does not call a bound world port after disposal wins the pending await', async () => {
@@ -50,5 +70,20 @@ describe('network connection disposal', () => {
     connection.bindWorld({ open, restore: async () => null }, vi.fn());
     await connection.client.settled();
     expect(open).not.toHaveBeenCalled();
+  });
+
+  it('leaves the room on disposal unless told to keep the seat for a reconnect', () => {
+    vi.stubGlobal('WebSocket', Socket);
+    for (const leave of [true, false]) {
+      const connection = new NetworkConnection('ws://example.test', {
+        token: 'token-0123456789abcdef',
+        nick: 'Ania',
+      });
+      connection.client.receive({ kind: 'room', room: ROOM });
+      Socket.sent = [];
+      connection.dispose(leave);
+      expect(Socket.sent.map((raw) => JSON.parse(raw).kind)).toEqual(leave ? ['leaveRoom'] : []);
+      expect(connection.client.room).toBeNull();
+    }
   });
 });

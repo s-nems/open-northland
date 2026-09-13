@@ -20,6 +20,8 @@ export const enNetworkRoom = {
   withdrawReady: 'Not ready yet',
   start: 'Start game',
   waiting: 'Waiting for every player to take a seat and get ready.',
+  inProgress: 'This game has already started. Rejoin it, or leave the room to give up your seat.',
+  rejoin: 'Rejoin game',
   reconnecting: 'Connection lost. Reconnecting…',
   settings: 'Room settings',
   creatorSettings: 'Only the room creator can change seats and settings.',

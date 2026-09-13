@@ -3,7 +3,8 @@ import { compatibilityIssues, type RoomSeatView, type RoomView } from '@open-nor
 
 export function roomPermissions(room: RoomView, nick: string, connected: boolean) {
   const self = room.members.find((member) => member.nick === nick);
-  const interactive = connected && room.state === 'lobby' && self !== undefined;
+  const inProgress = room.state !== 'lobby';
+  const interactive = connected && !inProgress && self !== undefined;
   const creator = interactive && room.creator === nick;
   const issues = compatibilityIssues(room.members, room.creator, room.settings.initialSave);
   const ready = room.seats.find((seat) => seat.player === self?.seat)?.ready ?? false;
@@ -17,6 +18,7 @@ export function roomPermissions(room: RoomView, nick: string, connected: boolean
     );
   return {
     interactive,
+    canRejoin: inProgress && connected && self !== undefined,
     creator,
     canSetupSeats: creator && room.settings.initialSave === undefined,
     self,

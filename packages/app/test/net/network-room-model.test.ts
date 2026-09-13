@@ -106,6 +106,19 @@ describe('network room permissions', () => {
     };
     expect(roomPermissions(verified, 'Ania', true)).toMatchObject({ canStart: true, issues: [] });
   });
+
+  it('offers a member of a room past its start the way back in, and nothing else', () => {
+    const running = { ...room(), state: 'running' as const };
+    expect(roomPermissions(running, 'Ania', true)).toMatchObject({
+      canRejoin: true,
+      interactive: false,
+      canReady: false,
+      canStart: false,
+    });
+    expect(roomPermissions(running, 'Ania', false).canRejoin).toBe(false);
+    expect(roomPermissions(running, 'Celina', true).canRejoin).toBe(false);
+    expect(roomPermissions(room(), 'Ania', true).canRejoin).toBe(false);
+  });
 });
 
 it('recommends only an exact saved nick match and leaves unnamed/legacy seats without hints', () => {

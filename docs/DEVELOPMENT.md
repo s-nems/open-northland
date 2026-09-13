@@ -193,7 +193,8 @@ ON_RELAY_URL=wss://relay.opennorthland.org npx vitest run --project core package
 The main menu's **Multiplayer** screen (`?menu=multiplayer` opens it directly) accepts an editable
 relay address (default `wss://relay.opennorthland.org`) and nickname, lists rooms, and creates games
 from installed maps or local saves. Players choose seats and readiness explicitly; the creator
-controls teams and settings.
+controls teams and settings. Connecting with a token the relay still holds in a started game shows
+that room with **Rejoin game** and **Leave room** instead of relaunching the game on its own.
 Use separate browser profiles/private windows for two independent players. The default endpoint is
 not deployed by the repository. For a local relay, enter `ws://127.0.0.1:8765`.
 

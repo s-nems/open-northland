@@ -28,6 +28,7 @@
   flex: 1;
 }
 .network-room__actions {
+  justify-content: flex-end;
   position: sticky;
   top: 0;
   z-index: 2;
@@ -99,6 +100,12 @@
   flex-direction: column;
   gap: calc(var(--u) * 4);
   min-width: 0;
+}
+.network-room__palette {
+  grid-column: 1 / -1;
+}
+.network-room__palette > .main-menu__lobby-picker {
+  padding: 0;
 }
 .network-room select,
 .network-room input {

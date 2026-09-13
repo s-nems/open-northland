@@ -80,11 +80,13 @@ export class NetworkConnection {
     this.resolvePort(port);
   }
 
-  dispose(): void {
+  /** `leave` sends the explicit leave that gives a seat in a started game up; without it the link
+   *  just closes and the relay keeps the seat for a reconnect. */
+  dispose(leave = true): void {
     if (this.disposed) return;
     this.disposed = true;
     this.listeners.clear();
-    if (this.client.room !== null && this.socket.connected) this.client.leaveRoom();
+    if (leave && this.client.room !== null && this.socket.connected) this.client.leaveRoom();
     this.client.receive({ kind: 'left' });
     this.onWorld = () => undefined;
     this.resolvePort({ open: async () => null, restore: async () => null });

@@ -22,6 +22,8 @@ export const plNetworkRoom: { readonly [Key in keyof typeof enNetworkRoom]: stri
   withdrawReady: 'Cofnij gotowość',
   start: 'Rozpocznij grę',
   waiting: 'Każdy gracz musi zająć miejsce i potwierdzić gotowość.',
+  inProgress: 'Ta gra już się rozpoczęła. Wróć do niej albo opuść pokój, oddając swoje miejsce.',
+  rejoin: 'Wróć do gry',
   reconnecting: 'Utracono połączenie. Łączenie ponownie…',
   settings: 'Ustawienia pokoju',
   creatorSettings: 'Tylko twórca pokoju może zmieniać miejsca i ustawienia.',
