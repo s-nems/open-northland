@@ -12,7 +12,7 @@ const character = {
   id: 'new-look',
   name: 'New look',
   width: 64,
-  height: 40,
+  height: 48,
   cellWidth: 8,
   cellHeight: 8,
   columns: 8,
@@ -25,6 +25,7 @@ const character = {
   idleDuration: 3,
   idleFrameDurations: [2.5, 0.5],
   atomicClips: [{ atomicId: 39, frames: 2, duration: 1, frameDurations: [0.25, 0.75] }],
+  carryClips: [{ good: 'wood', frames: 1, duration: 1 }],
   sourceBasis: 'Synthetic gallery fixture',
 };
 function sources(): GalleryCatalogSources {
@@ -113,7 +114,8 @@ describe('own-art gallery catalog', () => {
     const catalog = buildGalleryCatalog(sources());
     const look = catalog.characters[0];
     expect(look?.id).toBe('characters/new-look');
-    expect(look?.clips.map((entry) => entry.id)).toEqual(['idle', 'walk', 'atomic-39']);
+    expect(look?.clips.map((entry) => entry.id)).toEqual(['idle', 'walk', 'atomic-39', 'carry-wood']);
+    expect(look?.clips[3]?.binding).toMatchObject({ start: 40, dirs: 8, stride: 1 });
     expect(look?.clips[0]?.binding).toMatchObject({
       start: 8,
       dirs: 8,

@@ -13,6 +13,27 @@ export const ownCharacterShadow = z
   })
   .strict();
 
+const storedClip = z.object({
+  frames: z.number().int().positive(),
+  duration: z.number().positive(),
+  frameDurations: z.array(z.number().positive()).optional(),
+  frameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
+});
+export type OwnStoredClip = z.infer<typeof storedClip>;
+/** A good's content slug (`wood`, `food_simple`), the key a carry clip binds through. */
+export const goodSlug = z.string().regex(/^[a-z0-9_]+$/);
+
+/** Atlas cells in layout order: walk, idle, atomic clips, carry clips, each eight facings wide. */
+export function ownCharacterFrameCount(m: {
+  readonly walkFrames: number;
+  readonly idleFrames: number;
+  readonly atomicClips?: readonly { readonly frames: number }[] | undefined;
+  readonly carryClips?: readonly { readonly frames: number }[] | undefined;
+}): number {
+  const clips = [...(m.atomicClips ?? []), ...(m.carryClips ?? [])];
+  return 8 * (m.walkFrames + m.idleFrames + clips.reduce((sum, clip) => sum + clip.frames, 0));
+}
+
 export const ownCharacterManifest = z
   .object({
     id: z.string().regex(/^[a-z0-9-]+$/),
@@ -37,16 +58,12 @@ export const ownCharacterManifest = z
     walkFrameDurations: z.array(z.number().positive()).optional(),
     walkFrameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
     walkTravelPerCycle: z.array(z.number().positive()).length(8).optional(),
-    atomicClips: z
+    atomicClips: z.array(storedClip.extend({ atomicId: z.number().int().nonnegative() }).strict()).optional(),
+    /** Loaded walks, stored at the walk's frame count and duration so they share its gait clock. */
+    carryClips: z
       .array(
         z
-          .object({
-            atomicId: z.number().int().nonnegative(),
-            frames: z.number().int().positive(),
-            duration: z.number().positive(),
-            frameDurations: z.array(z.number().positive()).optional(),
-            frameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
-          })
+          .object({ good: goodSlug, frames: z.number().int().positive(), duration: z.number().positive() })
           .strict(),
       )
       .optional(),
@@ -54,8 +71,7 @@ export const ownCharacterManifest = z
   })
   .strict()
   .superRefine((m, ctx) => {
-    const count =
-      8 * (m.walkFrames + m.idleFrames + (m.atomicClips ?? []).reduce((sum, clip) => sum + clip.frames, 0));
+    const count = ownCharacterFrameCount(m);
     if (m.columns * m.cellWidth !== m.width || Math.ceil(count / m.columns) * m.cellHeight !== m.height)
       ctx.addIssue({ code: 'custom', message: 'Character clip coverage disagrees with atlas' });
     if (m.anchorX < 0 || m.anchorX > m.cellWidth || m.anchorY < 0 || m.anchorY > m.cellHeight)
@@ -131,6 +147,22 @@ export const ownCharacterManifest = z
         ['atomicClips', index, 'frameOrder'],
         ['atomicClips', index, 'frameDurations'],
       );
+    }
+    const goods = new Set<string>();
+    for (const [index, clip] of (m.carryClips ?? []).entries()) {
+      if (goods.has(clip.good))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['carryClips', index, 'good'],
+          message: 'Duplicate carry clip',
+        });
+      goods.add(clip.good);
+      if (clip.frames !== m.walkFrames || clip.duration !== m.walkDuration)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['carryClips', index],
+          message: 'Carry clip must match the walk',
+        });
     }
   });
 export type OwnCharacterManifest = z.infer<typeof ownCharacterManifest>;

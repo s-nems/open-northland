@@ -22,5 +22,13 @@
   {
     "directory": "docs/art/characters/equipment/mining-pickaxe",
     "provenance": "docs/art/characters/equipment/mining-pickaxe/README.md"
+  },
+  {
+    "directory": "docs/art/characters/shared/motions/carry-wood",
+    "provenance": "docs/art/characters/shared/motions/carry-wood/README.md"
+  },
+  {
+    "directory": "docs/art/characters/equipment/carried-log",
+    "provenance": "docs/art/characters/equipment/carried-log/README.md"
   }
 ]

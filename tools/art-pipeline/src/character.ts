@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { ownCharacterManifest } from '@open-northland/art-contracts';
+import { goodSlug, ownCharacterManifest } from '@open-northland/art-contracts';
 import sharp, { type OverlayOptions } from 'sharp';
 import { z } from 'zod';
 import { characterShadow } from './character-shadow.js';
@@ -13,6 +13,7 @@ const clipSchema = z.object({
   frameDurations: z.array(z.number().positive()).optional(),
   frameOrder: z.array(z.number().int().nonnegative()).min(1).optional(),
   atomicId: z.number().int().nonnegative().optional(),
+  carryGood: goodSlug.optional(),
 });
 const characterRecipe = z
   .object({
@@ -42,7 +43,32 @@ const characterRecipe = z
     render: z.object({ size: z.number().positive().optional() }).optional(),
   })
   .superRefine((recipe, ctx) => {
+    const walk = recipe.clips.find((c) => c.name === 'walk');
     for (const [index, clip] of recipe.clips.entries()) {
+      const bound = clip.atomicId !== undefined || clip.carryGood !== undefined;
+      if (
+        (clip.atomicId !== undefined && clip.carryGood !== undefined) ||
+        (bound && /^(walk|idle)$/.test(clip.name))
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path: ['clips', index],
+          message: 'A clip binds either an atomic action or a hauled good, and walk and idle bind neither',
+        });
+      // A loaded walk runs on the walk's gait clock, so it must store the walk's poses at the walk's pace.
+      if (
+        clip.carryGood !== undefined &&
+        (clip.frameOrder ||
+          clip.frameDurations ||
+          !walk ||
+          (clip.frames ?? recipe.frames) !== (walk.frames ?? recipe.frames) ||
+          clip.duration !== walk.duration)
+      )
+        ctx.addIssue({
+          code: 'custom',
+          path: ['clips', index],
+          message: 'A carry clip stores the walk frame count and duration without holds',
+        });
       if (!clip.frameOrder) continue;
       const count = clip.frames ?? recipe.frames;
       if (clip.frameOrder.some((frame) => frame >= count))
@@ -93,13 +119,22 @@ export async function packCharacter(
   shadowSource?: string,
 ) {
   const recipe = characterRecipe.parse(JSON.parse(await readFile(resolve(directory, source), 'utf8')));
+  function storedClip(c: z.infer<typeof clipSchema>) {
+    return {
+      frames: c.frames ?? recipe.frames,
+      duration: c.duration,
+      ...(c.frameDurations ? { frameDurations: c.frameDurations } : {}),
+      ...(c.frameOrder ? { frameOrder: c.frameOrder } : {}),
+    };
+  }
   const walk = recipe.clips.find((c) => c.name === 'walk'),
     idle = recipe.clips.find((c) => c.name === 'idle');
   if (!walk || !idle) throw new Error('Both walk and idle required');
   const atomics = recipe.clips.filter((c) => c.atomicId !== undefined);
+  const carries = recipe.clips.filter((c) => c.carryGood !== undefined);
   if (new Set(recipe.clips.map((c) => c.name)).size !== recipe.clips.length)
     throw new Error('Duplicate clip name');
-  const clips = [walk, idle, ...atomics],
+  const clips = [walk, idle, ...atomics, ...carries],
     dirs = ['SW', 'W', 'NW', 'NE', 'E', 'SE', 'S', 'N'];
   const crop = recipe.runtimeCrop ?? {
     left: 48,
@@ -176,6 +211,8 @@ export async function packCharacter(
   const width = columns * cellWidth,
     height = Math.ceil(index / columns) * cellHeight;
   const shadow = shadowSource ? await characterShadow(directory, shadowSource) : undefined;
+  if (shadow?.clips && shadow.clips.join(',') !== clips.map((c) => c.name).join(','))
+    throw new Error('Shadow clip order differs from the body atlas; re-pack shadows');
   const manifest = ownCharacterManifest.parse({
     ...(shadow ? { shadow: shadow.manifest } : {}),
     id,
@@ -200,13 +237,14 @@ export async function packCharacter(
     ...(idle.frameDurations ? { idleFrameDurations: idle.frameDurations } : {}),
     ...(idle.frameOrder ? { idleFrameOrder: idle.frameOrder } : {}),
     ...(atomics.length
+      ? { atomicClips: atomics.map((c) => ({ atomicId: c.atomicId, ...storedClip(c) })) }
+      : {}),
+    ...(carries.length
       ? {
-          atomicClips: atomics.map((c) => ({
-            atomicId: c.atomicId,
+          carryClips: carries.map((c) => ({
+            good: c.carryGood,
             frames: c.frames ?? recipe.frames,
             duration: c.duration,
-            ...(c.frameDurations ? { frameDurations: c.frameDurations } : {}),
-            ...(c.frameOrder ? { frameOrder: c.frameOrder } : {}),
           })),
         }
       : {}),

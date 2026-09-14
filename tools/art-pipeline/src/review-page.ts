@@ -19,7 +19,7 @@ for(const [i,item] of data.items.entries()){const option=document.createElement(
 el('receipt').textContent=data.digest;
 function geometry(m,image,path){if(m?.shadow && path.endsWith('/'+m.shadow.sprite))m={...m,...m.shadow};if(el('atlas').checked||!m)return {x:0,y:0,width:image.width,height:image.height,scale:m?.scale??1};
 const i=Math.max(0,Math.trunc(Number(el('frame').value))||0);if(m.frames){const f=m.frames[Math.min(i,m.frames.length-1)];return {...f,scale:m.scale};}
-if(m.cellWidth){const count=8*(m.walkFrames+m.idleFrames+(m.atomicClips??[]).reduce((n,c)=>n+c.frames,0));const f=Math.min(i,count-1);return {x:f%m.columns*m.cellWidth,y:Math.floor(f/m.columns)*m.cellHeight,width:m.cellWidth,height:m.cellHeight,scale:m.scale};}
+if(m.cellWidth){const count=8*(m.walkFrames+m.idleFrames+[...m.atomicClips??[],...m.carryClips??[]].reduce((n,c)=>n+c.frames,0));const f=Math.min(i,count-1);return {x:f%m.columns*m.cellWidth,y:Math.floor(f/m.columns)*m.cellHeight,width:m.cellWidth,height:m.cellHeight,scale:m.scale};}
 return {x:0,y:0,width:image.width,height:image.height,scale:m.scale??1};}
 let revision=0;
 async function render(){const token=++revision;const item=data.items[Number(el('image').value)];if(!item)return;

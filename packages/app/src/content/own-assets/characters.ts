@@ -4,7 +4,7 @@ import { Assets, type Texture } from 'pixi.js';
 import { diag } from '../../diag/index.js';
 import { readStoredSettings } from '../../view/settings-store.js';
 import type { ContentIr } from '../ir/rows.js';
-import { YOUNG_CHARACTER_BY_JOB } from '../settler-gfx/index.js';
+import { type GoodRef, YOUNG_CHARACTER_BY_JOB } from '../settler-gfx/index.js';
 import {
   ownCharacterAtlas,
   ownCharacterBinding,
@@ -28,6 +28,7 @@ export async function loadOwnCharacters(
   base: SpriteSheet,
   ir: ContentIr | null,
   selected: string | null,
+  goods: readonly GoodRef[],
 ): Promise<SettlerCharacterSet | undefined> {
   const smoothing = readStoredSettings().spriteSmoothing;
   const candidates = Object.entries(manifests)
@@ -66,7 +67,7 @@ export async function loadOwnCharacters(
             atlas,
             ...(shadow ? { shadow } : {}),
           },
-          binding: ownCharacterBinding(manifest),
+          binding: ownCharacterBinding(manifest, goods),
           scale: manifest.scale,
           interpolateMotion: manifest.smoothMotion === true,
         };

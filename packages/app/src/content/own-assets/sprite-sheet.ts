@@ -57,7 +57,7 @@ export async function loadOwnSpriteSheet(
       }
     }),
   );
-  const characters = await loadOwnCharacters(base, ir, selectedHead);
+  const characters = await loadOwnCharacters(base, ir, selectedHead, goods);
   const props = await loadOwnProps();
   const ownGoods = await loadOwnGoods();
   for (const good of ownGoods) {

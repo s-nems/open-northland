@@ -57,6 +57,28 @@ describe('character atlas contract', () => {
     expect(() => ownCharacterManifest.parse({ ...manifest, width: 81 })).toThrow('clip coverage');
   });
 
+  it('lays carry clips after atomic clips, matched to the walk and keyed by a unique good slug', () => {
+    const carry = { good: 'wood', frames: 1, duration: 1 };
+    expect(() => ownCharacterManifest.parse({ ...manifest, height: 80, carryClips: [carry] })).not.toThrow();
+    expect(() => ownCharacterManifest.parse({ ...manifest, carryClips: [carry] })).toThrow('clip coverage');
+    expect(() =>
+      ownCharacterManifest.parse({ ...manifest, height: 100, carryClips: [carry, carry] }),
+    ).toThrow('Duplicate carry clip');
+    expect(() =>
+      ownCharacterManifest.parse({ ...manifest, height: 80, carryClips: [{ ...carry, good: 'Wood' }] }),
+    ).toThrow();
+    expect(() =>
+      ownCharacterManifest.parse({ ...manifest, height: 80, carryClips: [{ ...carry, duration: 2 }] }),
+    ).toThrow('match the walk');
+    expect(() =>
+      ownCharacterManifest.parse({
+        ...manifest,
+        height: 80,
+        carryClips: [{ ...carry, frameDurations: [1] }],
+      }),
+    ).toThrow();
+  });
+
   it('rejects anchors outside a cell at the shared browser and pipeline boundary', () => {
     for (const change of [{ anchorX: -1 }, { anchorX: 11 }, { anchorY: -1 }, { anchorY: 21 }])
       expect(() => ownCharacterManifest.parse({ ...manifest, ...change })).toThrow('anchor outside');

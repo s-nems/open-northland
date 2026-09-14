@@ -60,6 +60,60 @@ it('preserves large tool pixels and the foot anchor with an expanded runtime cro
   await expect(packCharacter(root, 'recipe.json', 'test', 'Test')).rejects.toThrow('Crop must fit');
 });
 
+it('packs a carry clip after work clips and records its good in the manifest', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'art-character-carry-'));
+  roots.push(root);
+  await mkdir(join(root, 'sprites'));
+  const recipe = {
+    frames: 1,
+    post: 'soft-separation',
+    clips: [
+      { name: 'walk', duration: 1 },
+      { name: 'idle', duration: 1 },
+      { name: 'carry-wood', duration: 1, carryGood: 'wood' },
+      { name: 'hammer', duration: 1, atomicId: 39 },
+    ],
+  };
+  const tone = (value: number) => {
+    const pixels = Buffer.alloc(192 * 144 * 4);
+    pixels.set([value, value, value, 255], (128 * 192 + 96) * 4);
+    return sharp(pixels, { raw: { width: 192, height: 144, channels: 4 } }).png();
+  };
+  for (const [index, clip] of recipe.clips.entries())
+    for (const facing of ['SW', 'W', 'NW', 'NE', 'E', 'SE', 'S', 'N'])
+      await tone(10 * (index + 1)).toFile(join(root, `sprites/${clip.name}-${facing}-88px.png`));
+  await writeJson(join(root, 'recipe.json'), recipe);
+  const packed = await packCharacter(root, 'recipe.json', 'test', 'Test');
+  expect(packed.manifest.atomicClips).toEqual([{ atomicId: 39, frames: 1, duration: 1 }]);
+  expect(packed.manifest.carryClips).toEqual([{ good: 'wood', frames: 1, duration: 1 }]);
+  const atlas = sharp(packed.png);
+  const { cellWidth, cellHeight, anchorX, anchorY, columns } = packed.manifest;
+  const cellTone = async (cell: number) =>
+    (
+      await atlas
+        .clone()
+        .extract({
+          left: (cell % columns) * cellWidth + anchorX,
+          top: Math.floor(cell / columns) * cellHeight + anchorY,
+          width: 1,
+          height: 1,
+        })
+        .raw()
+        .toBuffer()
+    )[0];
+  expect(await cellTone(16)).toBe(40);
+  expect(await cellTone(24)).toBe(30);
+  for (const clip of [
+    { name: 'hammer', duration: 1, atomicId: 39, carryGood: 'wood' },
+    { name: 'idle', duration: 1, carryGood: 'wood' },
+    { name: 'carry-wood', duration: 2, carryGood: 'wood' },
+    { name: 'carry-wood', duration: 1, carryGood: 'wood', frameOrder: [0, 0], frameDurations: [0.5, 0.5] },
+  ]) {
+    await writeJson(join(root, 'recipe.json'), { ...recipe, clips: [...recipe.clips.slice(0, 2), clip] });
+    await expect(packCharacter(root, 'recipe.json', 'test', 'Test')).rejects.toThrow();
+  }
+});
+
 it('samples recipe-level frame counts and rejects malformed source strips', async () => {
   const root = await mkdtemp(join(tmpdir(), 'art-authoring-'));
   roots.push(root);

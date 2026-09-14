@@ -19,9 +19,7 @@ const layout = await fs
     if (error.code !== 'ENOENT') throw error;
     return {};
   });
-const names = (await fs.readdir(renders))
-  .filter((name) => /^(walk|idle|chop|run|[a-z]+)-[NSEW]+$/.test(name))
-  .sort();
+const names = (await fs.readdir(renders)).filter((name) => /^[a-z][a-z0-9-]*-[NSEW]+$/.test(name)).sort();
 const boxes = new Map();
 for (const name of names) {
   const files = (await fs.readdir(path.join(renders, name)))
@@ -46,12 +44,14 @@ for (const [name, { files, box }] of boxes) {
   const padding = projection.padding;
   if (!Number.isInteger(padding) || padding < 0) throw new Error(`Invalid render padding: ${name}`);
   if (!layout[name]) {
+    // Every other clip packs at the walk's SW scale, from this run's render or the saved layout.
     const reference = boxes.get('walk-SW');
-    if (!name.startsWith('walk-') && !reference)
+    const walkScale = reference ? 88 / reference.box.height : layout['walk-SW']?.scale;
+    if (!name.startsWith('walk-') && walkScale === undefined)
       throw new Error('Render walk-SW first to establish equipment scale');
     layout[name] = {
       box: { ...box, left: box.left - padding, top: box.top - padding },
-      scale: 88 / (name.startsWith('walk-') ? box.height : reference.box.height),
+      scale: name.startsWith('walk-') ? 88 / box.height : walkScale,
     };
   }
   const { box: anchor, scale } = layout[name];

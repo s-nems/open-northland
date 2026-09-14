@@ -1,6 +1,7 @@
 import json
 import hashlib
 import struct
+import subprocess
 from pathlib import Path
 
 
@@ -52,6 +53,7 @@ def main():
                 total += 1
     catalog['actions'] = list(actions.values())
     catalog_file.write_text(json.dumps(catalog, ensure_ascii=False, indent=2)+'\n')
+    subprocess.run(['npx', 'biome', 'format', '--write', str(catalog_file)], check=True, capture_output=True)
     print(f'Character board: {total} directional clips, {len(catalog["heads"])} heads')
 
 

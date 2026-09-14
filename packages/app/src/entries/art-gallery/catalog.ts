@@ -11,6 +11,7 @@ import { ownBuildingAtlas, ownBuildingManifest } from '../../content/own-assets/
 import {
   ownCharacterAtlas,
   ownCharacterBinding,
+  ownCharacterCarryLooks,
   ownCharacterManifest,
 } from '../../content/own-assets/character-manifest.js';
 import { ownGoodAtlas, ownGoodManifest } from '../../content/own-assets/good-manifest.js';
@@ -123,7 +124,7 @@ export function buildGalleryCatalog(sources: GalleryCatalogSources): GalleryCata
   const characters = sortedUnique(
     Object.entries(sources.characters).map(([path, raw]): GalleryCharacter => {
       const manifest = ownCharacterManifest.parse(raw);
-      const binding = ownCharacterBinding(manifest);
+      const binding = ownCharacterBinding(manifest, []);
       return {
         kind: 'character',
         ...(manifest.shadow
@@ -144,6 +145,9 @@ export function buildGalleryCatalog(sources: GalleryCatalogSources): GalleryCata
               `Atomic ${atomic.atomicId}`,
               binding.byAtomic?.[atomic.atomicId],
             ),
+          ),
+          ...[...ownCharacterCarryLooks(manifest)].map(([good, look]) =>
+            clip(`carry-${good}`, `Carry ${good}`, look.moving),
           ),
         ],
       };

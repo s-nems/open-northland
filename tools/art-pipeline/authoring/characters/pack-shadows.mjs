@@ -19,6 +19,7 @@ const clips = [
   recipe.clips.find((c) => c.name === 'walk'),
   recipe.clips.find((c) => c.name === 'idle'),
   ...recipe.clips.filter((c) => c.atomicId !== undefined),
+  ...recipe.clips.filter((c) => c.carryGood !== undefined),
 ];
 const count = 8 * clips.reduce((sum, c) => sum + (c.frames ?? recipe.frames), 0);
 const columns = count > 576 ? 40 : 24;
@@ -148,6 +149,7 @@ await fs.writeFile(
       columns,
       anchorX: anchorX - crop.left,
       anchorY: anchorY - crop.top,
+      clips: clips.map((c) => c.name),
       basis: `Evaluated Blender geometry projected onto flat ground using ${lighting.id} from docs/art/lighting.json. Camera conversion preserves the reference screen-space direction and length relative to projected height. Flat receiver and fixed character blur are artistic approximations. Body camera, layout, poses and attachments retained.`,
       inputs,
     },
