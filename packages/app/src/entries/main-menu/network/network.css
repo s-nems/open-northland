@@ -35,6 +35,35 @@
   border-radius: calc(var(--u) * 5);
   font: inherit;
 }
+.network-menu__create .main-menu__seg-btn {
+  flex: 1;
+  text-align: center;
+}
+.network-menu__map-pick {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 14);
+  padding: calc(var(--u) * 8) calc(var(--u) * 10);
+  border: 1px solid #697366;
+  border-radius: calc(var(--u) * 5);
+  background: #172122;
+}
+.network-menu__map-pick-text {
+  flex: 1;
+  min-width: 0;
+}
+.network-menu__map-pick .main-menu__ghost {
+  padding: calc(var(--u) * 10) calc(var(--u) * 16);
+  font-size: calc(var(--u) * 20);
+  white-space: nowrap;
+}
+/* The map list takes the screen's remaining height, the way the New Game screen gives it. */
+.network-menu__pick {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .network-menu__columns {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(calc(var(--u) * 250), 2fr);

@@ -10,7 +10,7 @@ import { pluralForm } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { roomAssets } from './assets.js';
-import { createRoomCard } from './create-card.js';
+import { createPanel } from './create.js';
 import { prepareRoomCreation } from './creation.js';
 import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick } from './model.js';
 import { button, field, node } from './parts.js';
@@ -77,25 +77,33 @@ export function networkScreen(
   const refresh = button(copy.refresh, () => connection?.client.listRooms());
   const rooms = node('section', 'network-menu__room-list');
   rooms.append(node('h2', '', copy.rooms), refresh, list);
-  const create = createRoomCard(async (choice) => {
-    const current = connection;
-    const mine = generation;
-    if (current === null || !current.socket.connected || !current.client.welcomed || busy) return;
-    busy = true;
-    sync();
-    try {
-      const creation = await prepareRoomCreation(choice, params);
-      if (disposed || mine !== generation || connection !== current || !current.socket.connected) return;
-      assets?.prepare(creation.initial, creation.handle);
-      current.client.createRoom(creation.settings, creation.seats);
-    } finally {
-      busy = false;
+  const head = screenHead('multiplayer', open);
+  const create = createPanel({
+    async create(choice) {
+      const current = connection;
+      const mine = generation;
+      if (current === null || !current.socket.connected || !current.client.welcomed || busy) return;
+      busy = true;
       sync();
-    }
+      try {
+        const creation = await prepareRoomCreation(choice, params);
+        if (disposed || mine !== generation || connection !== current || !current.socket.connected) return;
+        assets?.prepare(creation.initial, creation.handle);
+        current.client.createRoom(creation.settings, creation.seats);
+      } finally {
+        busy = false;
+        sync();
+      }
+    },
+    showMapList(on) {
+      head.hidden = on;
+      status.hidden = on;
+      browser.hidden = on;
+    },
   });
   browser.append(form, node('div', 'network-menu__columns'));
-  browser.lastElementChild?.append(rooms, create.element);
-  element.append(screenHead('multiplayer', open), status, browser, roomHost);
+  browser.lastElementChild?.append(rooms, create.card);
+  element.append(head, status, browser, create.mapList, roomHost);
 
   function sync(): void {
     const connected = connection?.socket.connected === true && connection.client.welcomed;
@@ -290,7 +298,13 @@ export function networkScreen(
     }
   });
   element.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || room === null || !escapeLeavesRoom(event.target)) return;
+    if (event.key !== 'Escape' || !escapeLeavesRoom(event.target)) return;
+    if (create.closeMapList()) {
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
+    if (room === null) return;
     event.stopPropagation();
     event.preventDefault();
     leaveRoom();

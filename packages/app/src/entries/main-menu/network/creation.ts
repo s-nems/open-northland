@@ -17,15 +17,14 @@ import { restoreSavedSeats, savedRoster } from './saved-roster.js';
 
 export async function prepareRoomCreation(choice: CreateChoice, params: URLSearchParams) {
   const save = choice.kind === 'save' ? await readNetworkSave(choice.bytes) : null;
-  const mapId = choice.kind === 'map' ? choice.map.id : save?.header.mapId;
+  const mapId = choice.kind === 'map' ? choice.mapId : save?.header.mapId;
   if (!mapId) throw new Error('Missing map');
   const local = await loadVerifiedMapDocuments(mapId);
   const cached = local === null ? await loadPersistedMap(mapId) : null;
   const handle = local ?? cached?.handle ?? null;
   if (handle === null) throw new Error('Missing map');
   const { script } = readVerifiedMapDocuments(handle);
-  const metadata: MapsIndexEntry | undefined =
-    choice.kind === 'map' ? choice.map : (await loadMapList()).find((item) => item.id === mapId);
+  const metadata: MapsIndexEntry | undefined = (await loadMapList()).find((item) => item.id === mapId);
   const players =
     metadata?.players ??
     script?.players.map((slot) => {
