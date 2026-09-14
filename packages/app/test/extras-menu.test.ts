@@ -9,6 +9,7 @@ import {
   toggleGrant,
   toggleInfinity,
 } from '../src/hud/tool-panel/extras-menu.js';
+import { PAPER_ROWS_SHOWN } from '../src/hud/tool-panel/extras-papers.js';
 import { messages } from '../src/i18n/index.js';
 
 /** Headless tests for the extras ("chest") window model: state transitions, layout and hit routing. */
@@ -197,6 +198,18 @@ describe('the plans tab', () => {
     expect(hitTestExtrasMenu(plans, usable.x, usable.y)).toEqual({ kind: 'paper', index: 0 });
     const inert = centreOf(plans.papers[1]?.rect ?? { x: 0, y: 0, w: 0, h: 0 });
     expect(hitTestExtrasMenu(plans, inert.x, inert.y)).toEqual({ kind: 'window' });
+  });
+
+  it('lists the oldest PAPER_ROWS_SHOWN papers and no more, so the window keeps its height', () => {
+    const many = Array.from({ length: PAPER_ROWS_SHOWN + 3 }, (_, i) => ({
+      paper: { kind: 'placeAny' as const, param: 0 },
+      label: `paper ${i}`,
+      usable: true,
+    }));
+    const plans = layoutExtrasMenu({ ...OPTS, tab: 'plans', papers: many });
+    expect(plans.papers.map((p) => p.index)).toEqual(many.slice(0, PAPER_ROWS_SHOWN).map((_, i) => i));
+    const last = plans.papers.at(-1)?.rect ?? { x: 0, y: 0, w: 0, h: 0 };
+    expect(last.y + last.h).toBeLessThanOrEqual(plans.window.y + plans.window.h);
   });
 });
 

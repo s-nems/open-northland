@@ -65,7 +65,11 @@ export async function presentMapWorld(
           renderer,
           { placements: loaded.objects.placements, byPlacement: staticObjects.byPlacement },
           stagedSave === null
-            ? { kind: 'fresh', placementByEntity: world.harvestablePlacements }
+            ? {
+                kind: 'fresh',
+                placementByEntity: world.harvestablePlacements,
+                pooledPlacements: world.pooledPlacements,
+              }
             : { kind: 'restored', placements: harvestablePlacementOrdinals(sim.content, loaded.objects, ir) },
           sim.content,
           () => sim.snapshot(),

@@ -4,6 +4,7 @@ import {
   Building,
   Chest,
   CurrentAtomic,
+  DeferredOrder,
   OpenChestOrder,
   Owner,
   Position,
@@ -12,6 +13,7 @@ import {
   Vehicle,
 } from '../../src/components/index.js';
 import type { SimEvent } from '../../src/core/events.js';
+import { fx } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { playerCommand, Simulation } from '../../src/index.js';
 import { nodeOfPosition } from '../../src/nav/halfcell.js';
@@ -39,6 +41,10 @@ const HERO = 45;
 const SMALL_FOOD_POTION = 14; // fixture good `potion_food_small`
 const SIMPLE_FOOD = 3;
 const SHOES = 8;
+
+/** The fixture's `viking_eat` clip: 5 ticks, not interruptible. */
+const EAT_ATOMIC = 10;
+const EAT_TICKS = 5;
 
 const POTION_CHEST = 1;
 const FOOD_CHEST = 20;
@@ -143,7 +149,6 @@ describe('the openChest order', () => {
       kind: 'chestOpened',
       chest,
       at: { hx: 16, hy: 16 },
-      player: P0,
     });
     // The opener stood on a work cell next to the chest, never on it.
     const p = sim.world.get(opener, Position);
@@ -168,6 +173,7 @@ describe('the openChest order', () => {
       kind: 'paperFound',
       player: P0,
       paper: { kind: 'placeAny', param: 0 },
+      chest,
       at: { hx: 10, hy: 10 },
     });
   });
@@ -239,6 +245,40 @@ describe('the openChest order', () => {
     expect(sim.world.has(far, OpenChestOrder)).toBe(false);
     expect([...sim.world.query(Chest)]).toEqual([]);
     expect(looseGoods(sim, SHOES)).toBe(6); // opened once
+  });
+
+  it('parks behind a meal and re-dispatches the tick the meal ends; a fresh walk order supersedes it', () => {
+    const sim = fresh();
+    const chest = createChest(sim.world, sim.content, {
+      kind: 'wooden',
+      contents: SHOES_CHEST,
+      x: 10,
+      y: 10,
+    });
+    const opener = spawn(sim, WOODCUTTER, 6, 6);
+    sim.world.add(opener, CurrentAtomic, {
+      atomicId: EAT_ATOMIC,
+      elapsed: 0,
+      progress: fx.fromInt(0),
+      duration: EAT_TICKS,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
+    sim.enqueue(playerCommand(P0, { kind: 'openChest', entity: opener, chest }));
+    sim.step();
+    expect(sim.world.has(opener, OpenChestOrder)).toBe(false); // parked, not started
+    expect(sim.world.get(opener, DeferredOrder).command.kind).toBe('openChest');
+    sim.run(EAT_TICKS - 1);
+    expect(sim.world.has(opener, DeferredOrder)).toBe(false);
+    expect(sim.world.has(opener, OpenChestOrder)).toBe(true); // re-dispatched as the meal ended
+
+    // A walk order ends the chest errand: the settler goes where it was sent and the chest stands.
+    sim.enqueue(playerCommand(P0, { kind: 'moveUnit', entity: opener, x: 4, y: 4 }));
+    sim.step();
+    expect(sim.world.has(opener, OpenChestOrder)).toBe(false);
+    for (let t = 0; t < 200; t++) sim.step();
+    expect(sim.world.isAlive(chest)).toBe(true);
   });
 
   it('a chest of a type the table does not know opens empty, and the order still retires', () => {

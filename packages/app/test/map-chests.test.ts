@@ -1,3 +1,4 @@
+import { parseContentSet } from '@open-northland/data';
 import { components, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
@@ -19,6 +20,10 @@ const MAGICAL_CHEST_LOGIC_TYPE = 86;
 
 function fixtureIr(): ContentIr {
   return {
+    landscape: [
+      { typeId: WOODEN_CHEST_LOGIC_TYPE, id: 'chest_wooden' },
+      { typeId: MAGICAL_CHEST_LOGIC_TYPE, id: 'chest_magical' },
+    ],
     landscapeGfx: [
       { index: 100, editName: 'test tree', logicType: 4 },
       {
@@ -40,6 +45,18 @@ function fixtureIr(): ContentIr {
     ],
     gatheringPipeline: [{ goodType: 5, goodId: 'wood', harvest: { landscapeType: 4, gfxIndices: [100] } }],
   };
+}
+
+/** The sandbox catalog plus the fixture's chest rows, so the sim knows the records the map places. */
+function fixtureContent() {
+  const base = sandboxContent();
+  const ir = fixtureIr();
+  const chests = (ir.landscapeGfx ?? []).filter((g) => g.editName?.startsWith('chest') === true);
+  return parseContentSet({
+    ...base,
+    landscape: [...base.landscape, ...(ir.landscape ?? [])],
+    landscapeGfx: [...base.landscapeGfx, ...chests],
+  });
 }
 
 /** Three placements: a tree, a wooden chest of type 20 and a magical chest of type 52. */
@@ -70,7 +87,7 @@ describe('mapChestSpawns', () => {
 
 describe('spawnMapChests', () => {
   it('spawns a footprinted Chest per placement and joins it back to its placement ordinal', () => {
-    const sim = new Simulation({ seed: 1, content: sandboxContent() });
+    const sim = new Simulation({ seed: 1, content: fixtureContent() });
     const result = spawnMapChests(sim, OBJECTS, fixtureIr());
     expect(result.spawned).toBe(2);
     const chests = [...sim.world.query(Chest)];

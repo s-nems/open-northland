@@ -42,6 +42,7 @@ export {
   createResourceNode,
   type ResourceNodeSpec,
   resourceFootprintForGood,
+  resourceFootprintFromLandscapeGfx,
   stampResourceFootprint,
   stampResourceFootprintData,
   stampResourceFootprintOrFallback,

@@ -1,6 +1,13 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, JobAssignment, Settler, Sheltering } from '../../src/components/index.js';
+import {
+  Building,
+  JobAssignment,
+  PAPER_KINDS,
+  type Paper,
+  Settler,
+  Sheltering,
+} from '../../src/components/index.js';
 import { COMMAND_ISSUER } from '../../src/core/commands/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import {
@@ -14,12 +21,13 @@ import {
   parseSaveGame,
   playerCommand,
   Rng,
-  replay,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
   setupCommand,
+  stepReplaying,
 } from '../../src/index.js';
+import { type ChestSpec, createChest } from '../../src/systems/chests/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 
@@ -56,6 +64,30 @@ const SHELTER_TYPE = 30;
 const FOOD_GOOD = 3;
 /** Building types: HQ / sawmill / temple / tech-gated smithy / footprinted hut / home / unknown. */
 const BUILDING_TYPES = [1, 2, 3, 4, FOOTPRINTED_TYPE, HOME_TYPE, INVALID_TYPE] as const;
+/** The papers the grant and placement rolls share: place-any, the home named, a stocked hut, and an
+ *  inert indulgence - a placement's covers-the-house accept path and both refusals (another house
+ *  named, a kind that places nothing). */
+const FUZZ_PAPERS: readonly Paper[] = [
+  { kind: 'placeAny', param: 0 },
+  { kind: 'placeHouse', param: HOME_TYPE },
+  { kind: 'placeStockedHouse', param: FOOTPRINTED_TYPE },
+  { kind: 'indulgence', param: 0 },
+];
+/** Chest types (`Tool_MapChest_UseChest` rows): a food heap, a place-any paper, three civilists. */
+const FOOD_CHEST = 20;
+const ANY_HOUSE_CHEST = 50;
+const CIVILISTS_CHEST = 92;
+/** The chests {@link fuzzSim} stands before tick 1, taking ids `[1, PREAMBLE_CHESTS.length]`: two wooden
+ *  ones any adult opens (goods heaped, a paper granted) and a magical one no fuzzed trade can, so the
+ *  open-chest rolls reach the walk + clip + hand-out as well as the lock, gone-chest and stale skips. */
+const PREAMBLE_CHESTS: readonly ChestSpec[] = [
+  { kind: 'wooden', contents: FOOD_CHEST, x: 4, y: 4 },
+  { kind: 'wooden', contents: ANY_HOUSE_CHEST, x: 20, y: 4 },
+  { kind: 'magical', contents: CIVILISTS_CHEST, x: 4, y: 20 },
+];
+const CHEST_IDS = PREAMBLE_CHESTS.map((_, i) => (i + 1) as Entity);
+/** The first preamble chest, the food one: its opening is the pinned coverage. */
+const FOOD_CHEST_ID = 1 as Entity;
 
 /** A footprinted RESOURCE good the stream drops at runtime via `placeResource` - reuses the fixture's
  *  wood good (typeId 1, whose felling lifecycle is already modelled), joined to a landscape logic type +
@@ -216,7 +248,7 @@ const TARGET_ID_RANGE = 80;
  *  wrong-kind and same-sex skips stay in the mix). The wide-range variants (rolls 21–23) alone
  *  virtually never hit an eligible target in a 300-tick stream, leaving the wedding/household/birth
  *  machinery - RNG-consuming, mid-tick-spawning, the likeliest desync source - fuzz-untouched. */
-const NUCLEUS_ID_RANGE = 8;
+const NUCLEUS_ID_RANGE = PREAMBLE_CHESTS.length + 8;
 /** ~1 command every this-many ticks keeps the stream busy without swamping the map. */
 const COMMAND_EVERY = 4;
 /** Hash checkpoint cadence - a run-twice divergence is localized to a 50-tick window. The save
@@ -235,9 +267,15 @@ const PREAMBLE_HOME_NODE = { x: 10, y: 10 } as const;
 /** The trade the preamble's attached settler spawns in: the one worker slot the type at
  *  {@link PREAMBLE_HOME_NODE} resolves to, since an attachment is only ever posted in its own trade. */
 const ATTACH_TRADE = 2;
+/** The preamble's home, the first couple it spawns and the last man - ids mint after the chests, in
+ *  setup order; a woman's spawn also mints her delivery-flag entity, so each man follows his woman by 2. */
+const NUCLEUS_HOME = (PREAMBLE_CHESTS.length + 1) as Entity;
+const NUCLEUS_WIFE = (NUCLEUS_HOME + 1) as Entity;
+const NUCLEUS_HUSBAND = (NUCLEUS_HOME + 3) as Entity;
+const CHEST_OPENER = (NUCLEUS_HOME + 9) as Entity;
 /** The preamble's attached settler: the last entity it creates. The attach assertion pins the id, so a
  *  preamble that grows another entity fails loudly here rather than quietly stopping the coverage. */
-const ATTACHED_SETTLER = 11 as Entity;
+const ATTACHED_SETTLER = (PREAMBLE_CHESTS.length + 11) as Entity;
 const FUZZ_SEEDS = [11, 29, 47] as const;
 const TICKS = 600;
 
@@ -253,7 +291,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(46);
+  const roll = rng.int(48);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -324,6 +362,9 @@ function nextCommand(rng: Rng): Command {
         ...(rng.int(4) === 0 ? { fillStock: true } : {}),
         // Occasionally an authored starting stock (a decoded map's `addgoods` import).
         ...(rng.int(4) === 0 ? { initialGoods: [{ good: MEAD_GOOD, amount: rng.int(20) + 1 }] } : {}),
+        // Occasionally a paper placement: spent when the owner holds that paper (the case-47 grants and
+        // the paper chest), refused on a missing owner, an unheld paper or a kind that places nothing.
+        ...(rng.int(3) === 0 ? { paper: pick(rng, FUZZ_PAPERS) } : {}),
       };
     case 1: {
       // Every third settler is a combatant (Health + armor + a specific weapon + a walk pace) so the
@@ -652,6 +693,27 @@ function nextCommand(rng: Rng): Command {
         to: pick(rng, OWNERS),
         state: pick(rng, ['friend', 'neutral', 'enemy'] as const),
       };
+    case 46:
+      // An open-chest order from the nucleus band at a preamble chest or a wild id: the walk + clip +
+      // hand-out once per wooden chest, then the gone-chest, magical-lock, child, unowned and dead skips,
+      // all under the stream's superseding walks and need drives.
+      return {
+        kind: 'openChest',
+        entity: (rng.int(NUCLEUS_ID_RANGE) + 1) as Entity,
+        chest: rng.int(4) === 0 ? ((rng.int(TARGET_ID_RANGE) + 1) as Entity) : pick(rng, CHEST_IDS),
+      };
+    case 47:
+      // A paper grant: valid + out-of-range players, mostly the papers the placement rolls spend, sometimes
+      // any kind naming any type - the carrier's first-hole fill, trailing trim and destroy-on-empty ride
+      // the hash and the save round trip.
+      return {
+        kind: 'grantPaper',
+        player: pick(rng, OWNERS),
+        paper:
+          rng.int(4) === 0
+            ? { kind: pick(rng, PAPER_KINDS), param: pick(rng, [0, ...BUILDING_TYPES]) }
+            : pick(rng, FUZZ_PAPERS),
+      };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
@@ -686,6 +748,9 @@ interface FuzzRun {
   /** Whether the preamble's authored attachment actually took a post - pinned so a gate change cannot
    *  quietly turn every attached spawn in the stream into a refusal. */
   readonly attachedToWork: boolean;
+  /** Whether the preamble's food chest was opened - pinned so a gate change cannot quietly turn every
+   *  open-chest order in the stream into a refusal. */
+  readonly chestOpened: boolean;
 }
 
 /** Export → parse → restore at a live checkpoint: the restored sim must hash exactly like the live
@@ -704,9 +769,17 @@ function assertSaveRoundTrip(sim: Simulation, liveHash: string, content: Content
   }
 }
 
+/** A fresh sim with {@link PREAMBLE_CHESTS} assembled directly, as a map boot stands its placements
+ *  before tick 1: scene input rather than commands, so the replay run assembles them the same way. */
+function fuzzSim(seed: number, content: ContentSet): Simulation {
+  const sim = new Simulation({ seed, content, map: grassMap(MAP_W, MAP_H) });
+  for (const spec of PREAMBLE_CHESTS) createChest(sim.world, content, spec);
+  return sim;
+}
+
 function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolean } = {}): FuzzRun {
   const content = fuzzContent();
-  const sim = new Simulation({ seed: fuzzSeed, content, map: grassMap(MAP_W, MAP_H) });
+  const sim = fuzzSim(fuzzSeed, content);
   // A fixed family nucleus ahead of the stream - a built home and three owned couples-to-be - so the
   // AIMED family rolls (24–26) have eligible targets and the wedding → household → child machinery runs
   // under the fuzz harness. Part of the input by construction (identical for both live runs), and
@@ -759,20 +832,24 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
   const violations: string[] = [];
   let sheltered = false;
   let attachedToWork = false;
+  let chestOpened = false;
   for (let t = 0; t < ticks; t++) {
-    // House one nucleus woman and man on the second tick (ids are monotonic from 1: the home, then the
-    // six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
+    // House one nucleus woman and man on the second tick (ids are monotonic: the chests, the home, then
+    // the six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
     // AFTER that tick's commands applied, so a tick-1 assignHouse dies on the built gate. Fixed input,
     // logged like every command - replay fidelity covers it.
     if (t === 1) {
-      sim.enqueueSetup({ kind: 'assignHouse', entity: 2 as Entity, house: 1 as Entity });
-      sim.enqueueSetup({ kind: 'assignHouse', entity: 3 as Entity, house: 1 as Entity });
-      sim.enqueueSetup({ kind: 'marry', entity: 2 as Entity });
+      sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_WIFE, house: NUCLEUS_HOME });
+      sim.enqueueSetup({ kind: 'assignHouse', entity: NUCLEUS_HUSBAND, house: NUCLEUS_HOME });
+      sim.enqueueSetup({ kind: 'marry', entity: NUCLEUS_WIFE });
+      // The last man's walk to the food chest (no wedding to walk to): the accept path on every seed,
+      // ahead of the stream's own chest rolls, which then find it gone.
+      sim.enqueueSetup({ kind: 'openChest', entity: CHEST_OPENER, chest: FOOD_CHEST_ID });
     }
     // A child order for the housed wife once her scripted wedding has had time to finish - arms the
     // stock-the-larder → wait-inside → MakingLove → birth stages under the stream's interference (a
     // seed where the wedding hasn't completed just exercises the unmarried skip instead).
-    if (t === 150) sim.enqueueSetup({ kind: 'makeChild', entity: 2 as Entity, child: 'female' });
+    if (t === 150) sim.enqueueSetup({ kind: 'makeChild', entity: NUCLEUS_WIFE, child: 'female' });
     // Raise the alarm on the shelter and on the nucleus home once they stand, so every seed runs the
     // shelter drive and the release pass for real; the stream's own alarm flips (case 43) then interleave
     // with it. The shelter is found by type rather than by a hard-coded id - the preamble's entity order is
@@ -783,7 +860,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
           sim.enqueueSetup({ kind: 'setDefenceMode', building: e, enabled: true });
         }
       }
-      sim.enqueueSetup({ kind: 'setDefenceMode', building: 1 as Entity, enabled: true });
+      sim.enqueueSetup({ kind: 'setDefenceMode', building: NUCLEUS_HOME, enabled: true });
     }
     if (gen.int(COMMAND_EVERY) === 0) submit(sim, gen, nextCommand(gen));
     sim.step();
@@ -800,6 +877,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     if (!attachedToWork && sim.world.tryGet(ATTACHED_SETTLER, Settler)?.jobType === ATTACH_TRADE) {
       attachedToWork = sim.world.has(ATTACHED_SETTLER, JobAssignment);
     }
+    if (!chestOpened) chestOpened = !sim.world.isAlive(FOOD_CHEST_ID);
     if (sim.tick % CHECKPOINT_EVERY === 0) {
       const hash = sim.hashState();
       checkpoints.push(hash);
@@ -813,6 +891,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     violations,
     sheltered,
     attachedToWork,
+    chestOpened,
     log: [...sim.commands.log],
   };
 }
@@ -831,6 +910,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       const b = runFuzz(seed, TICKS);
       expect(a.sheltered).toBe(true); // the stream really reached defence mode, not just its skip paths
       expect(a.attachedToWork).toBe(true); // and the authored attachment really bound, not just refused
+      expect(a.chestOpened).toBe(true); // and a chest really opened, not just refused
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);
       // Checkpoint-wise equality first: on a divergence the failing index names the 50-tick window.
@@ -843,13 +923,9 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
     }, () => {
       const live = runFuzz(seed, TICKS);
       expect(live.log.length).toBeGreaterThan(0); // the stream actually exercised the command seam
-      const replayed = replay({
-        content: fuzzContent(),
-        seed,
-        map: grassMap(MAP_W, MAP_H),
-        log: live.log,
-        untilTick: TICKS, // run the full recorded duration, incl. ticks after the last command
-      });
+      const replayed = fuzzSim(seed, fuzzContent());
+      // The full recorded duration, incl. ticks after the last command.
+      stepReplaying(replayed, live.log, TICKS);
       expect(replayed.hashState()).toBe(live.finalHash);
     });
   }

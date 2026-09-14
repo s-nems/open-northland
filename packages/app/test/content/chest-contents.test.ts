@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseTerrainMap } from '@open-northland/data';
-import { systems } from '@open-northland/sim';
+import { components, Simulation, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { mapChestSpawns } from '../../src/content/map-resources.js';
@@ -25,7 +25,12 @@ function mapFiles(): string[] {
     .sort();
 }
 
-const { CHEST_CONTENTS, resolveChestReward } = systems;
+const { CHEST_CONTENTS, createChest, resolveChestReward } = systems;
+const { Chest, ResourceFootprint } = components;
+const CHEST_KIND_BY_LOGIC_TYPE = [
+  ['wooden', WOODEN_CHEST_LOGIC_TYPE],
+  ['magical', MAGICAL_CHEST_LOGIC_TYPE],
+] as const;
 
 /**
  * Pin the chest-contents table against the real extracted content. The sim opens a chest empty when a
@@ -43,6 +48,20 @@ describe.runIf(hasRealIr())('chest contents against real content', () => {
           'nothing',
         );
       }
+    }
+  });
+
+  it('the sim resolves each kind to its record, so a map chest draws and blocks by that record', async () => {
+    const { merge } = await loadContentUnderTest();
+    const content = merge.content;
+    const sim = new Simulation({ seed: 1, content });
+    for (const [kind, logicType] of CHEST_KIND_BY_LOGIC_TYPE) {
+      const record = content.landscapeGfx.find((g) => g.logicType === logicType);
+      if (record === undefined) throw new Error(`no ${kind} chest record`);
+      const e = createChest(sim.world, content, { kind, contents: 0, x: 4, y: 4, gfxIndex: record.index });
+      expect(sim.world.get(e, Chest).gfxIndex, kind).toBe(record.index);
+      expect(sim.world.get(e, ResourceFootprint).sourceGfxIndex, kind).toBe(record.index);
+      expect(sim.world.get(e, ResourceFootprint).walk.length, kind).toBeGreaterThan(0);
     }
   });
 

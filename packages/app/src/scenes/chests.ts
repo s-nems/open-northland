@@ -7,22 +7,25 @@ import { BUILDING_WELL, spawnSettlerDirect } from '../game/sandbox/index.js';
 import type { SceneDefinition } from './types.js';
 
 /**
- * Chests and papers: three collectors are each sent to a chest at tick 0 - a wooden food chest, a wooden
- * chest holding three civilists, and a magical shoes chest that only a druid or hero may open, so its
- * collector refuses - while the seat spends a paper it already holds on a well that stands finished at
- * once. Watch two settlers walk to their chests, bend over the lid, and the chests vanish; the magical
- * chest stays closed with nobody at it, and the well never shows a foundation.
+ * Chests and papers: four collectors are each sent to a chest at tick 0 - a wooden food chest, a wooden
+ * chest holding three civilists, a wooden chest holding a well paper, and a magical shoes chest that only
+ * a druid or hero may open, so its collector refuses - while the seat spends a paper it already holds on
+ * a well that stands finished at once. Watch three settlers walk to their chests, bend over the lid, and
+ * the chests vanish; the found-paper note names the well paper, which the extras window's plans tab then
+ * lists for a click; the magical chest stays closed with nobody at it; the first well never shows a
+ * foundation.
  */
 
-const MAP_W = 24;
+const MAP_W = 30;
 const MAP_H = 12;
 const ROW_Y = 6;
 /** Tile gap between the chest stations, so each opener's stance cell is its own. */
 const STATION_GAP = 6;
 const FIRST_STATION_X = 4;
-/** The chest types of the three stations (`chesttypes` rows 20, 92 and 26). */
+/** The chest types of the four stations (`chesttypes` rows 20, 92, 60 and 26). */
 const FOOD_CHEST = 20;
 const CIVILISTS_CHEST = 92;
+const WELL_PAPER_CHEST = 60;
 const SHOES_CHEST = 26;
 const CIVILISTS_PER_CHEST = 3;
 /** Where the paper-bought well stands, clear of the stations. */
@@ -47,6 +50,7 @@ function build(sim: Simulation): void {
   const stations = [
     { kind: 'wooden', contents: FOOD_CHEST },
     { kind: 'wooden', contents: CIVILISTS_CHEST },
+    { kind: 'wooden', contents: WELL_PAPER_CHEST },
     { kind: 'magical', contents: SHOES_CHEST },
   ] as const;
   stations.forEach((station, i) => {
@@ -86,19 +90,24 @@ export const chestsScene: SceneDefinition = {
   initialZoom: INITIAL_ZOOM,
   checks: [
     {
-      label: 'the two wooden chests were opened; the magical one refused its collector and stands',
+      label: 'the three wooden chests were opened; the magical one refused its collector and stands',
       predicate: (sim) => {
         const left = [...sim.world.query(Chest)];
         return left.length === 1 && left.every((e) => sim.world.get(e, Chest).kind === 'magical');
       },
     },
     {
+      label: 'the paper chest handed its well paper to the seat, where the plans tab lists it unspent',
+      predicate: (sim) =>
+        sim.papers(HUMAN_PLAYER).some((p) => p.kind === 'placeHouse' && p.param === BUILDING_WELL),
+    },
+    {
       label: 'the food chest heaped its food on the ground',
       predicate: (sim) => looseGoodsHeld(sim) > 0,
     },
     {
-      label: 'the civilists chest stood up three settlers beside the three openers',
-      predicate: (sim) => [...sim.world.query(Settler)].length === 3 + CIVILISTS_PER_CHEST,
+      label: 'the civilists chest stood up three settlers beside the four openers',
+      predicate: (sim) => [...sim.world.query(Settler)].length === 4 + CIVILISTS_PER_CHEST,
     },
     {
       label: 'the well paper was spent on a well that stands finished, never a foundation',
@@ -107,11 +116,7 @@ export const chestsScene: SceneDefinition = {
           (e) => sim.world.get(e, Building).buildingType === BUILDING_WELL,
         );
         const well = wells[0];
-        return (
-          well !== undefined &&
-          sim.world.get(well, Building).built === ONE &&
-          sim.papers(HUMAN_PLAYER).length === 0
-        );
+        return wells.length === 1 && well !== undefined && sim.world.get(well, Building).built === ONE;
       },
     },
   ],

@@ -1,7 +1,7 @@
 import type { JobType } from '@open-northland/data';
 
-/** The combat-relevant trades a job id can name; a civilian trade names none ({@link jobRoleOfId}). */
-export type JobRole = 'soldier' | 'hero' | 'scout' | 'hunter';
+/** The rule-relevant trades a job id can name; any other civilian trade names none ({@link jobRoleOfId}). */
+export type JobRole = 'soldier' | 'hero' | 'scout' | 'hunter' | 'druid';
 
 /**
  * The role a `jobtypes` id slug names; `hero` matches by prefix, so the `heroine_*` classes count too.
@@ -15,6 +15,7 @@ export function jobRoleOfId(id: string): JobRole | null {
   if (id.startsWith('hero')) return 'hero';
   if (id === 'scout') return 'scout';
   if (id === 'hunter') return 'hunter';
+  if (id === 'druid') return 'druid';
   return null;
 }
 
@@ -43,6 +44,7 @@ export function jobRoleSets(jobs: ReadonlyMap<number, JobType>): JobRoleSets {
     hero: new Set(),
     scout: new Set(),
     hunter: new Set(),
+    druid: new Set(),
   };
   for (const [typeId, job] of jobs) {
     const role = jobRoleOfId(job.id);

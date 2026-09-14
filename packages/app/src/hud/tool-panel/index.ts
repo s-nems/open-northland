@@ -180,7 +180,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
   const { art, strings, uiFont, bitmaps, history } = await loadToolPanelAssets(opts.lang);
 
   const labelByType = new Map(opts.buildings.map((b) => [b.typeId, b.label]));
-  const goodLabelByType = new Map(opts.goods.map((g) => [g.goodType, g.label]));
+  const labelByGood = new Map(opts.goods.map((g) => [g.goodType, g.label]));
 
   const root = new Container();
   root.zIndex = 1000;
@@ -221,7 +221,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           const def = professionDefForJob(typeId);
           return def === undefined ? undefined : professionLabel(def.key);
         },
-        goodLabel: (typeId) => goodLabelByType.get(typeId),
+        goodLabel: (typeId) => labelByGood.get(typeId),
       });
     const placement = createPlacementController({
       ctx,
@@ -236,7 +236,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const goodsDrop = createGoodsDropController({
       ctx,
       container: bannerContainer,
-      labelByGood: new Map(opts.goods.map((g) => [g.goodType, g.label])),
+      labelByGood,
       enqueue: opts.enqueueAdmin,
       screenToTile: opts.screenToTile,
     });

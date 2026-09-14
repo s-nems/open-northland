@@ -223,18 +223,18 @@ export type SimEvent =
     }
   | {
       /** A settler opened `chest` this tick and its contents were handed out; the chest entity is gone by
-       *  the snapshot. `player` is the opener's owner. */
+       *  the snapshot. */
       readonly kind: 'chestOpened';
       readonly chest: Entity;
       readonly at: HalfCellNode;
-      readonly player: number;
     }
   | {
-      /** `paper` entered `player`'s papers list this tick, from the chest at `at` (the original's
-       *  "a new object has been found" message). */
+      /** `paper` entered `player`'s papers list this tick, out of `chest` (gone by the snapshot) at `at`
+       *  (the original's "a new object has been found" message). */
       readonly kind: 'paperFound';
       readonly player: number;
       readonly paper: Paper;
+      readonly chest: Entity;
       readonly at: HalfCellNode;
     }
   | {

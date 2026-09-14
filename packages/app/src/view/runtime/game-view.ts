@@ -42,7 +42,6 @@ import {
   menuGoodsFromContent,
   mountGameToolPanel,
 } from '../game-tool-panel.js';
-import { createGroundPileTooltip } from '../ground-pile-tooltip.js';
 import { createMatchResultOverlay, type MatchResultOverlay } from '../match-result.js';
 import { floatParam, menuSearch } from '../params.js';
 import { mountPerfOverlay } from '../perf-overlay.js';
@@ -51,6 +50,7 @@ import { readStoredSettings } from '../settings-store.js';
 import { createSystemMenu } from '../system-menu.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
+import { chestTooltipLines, createWorldTooltip } from '../world-tooltip.js';
 import { installDebugHandle } from './debug-handle.js';
 import { mountDebugOverlays } from './debug-mounts.js';
 import { startFrameLoop } from './frame-loop.js';
@@ -430,11 +430,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   });
 
   // Owns its own tooltip element, distinct from the details panel's stock-row tooltip above.
-  const pileTooltip = createGroundPileTooltip({
+  const worldTooltip = createWorldTooltip({
     renderer,
     camera: () => cameraCtl.camera(),
     clientToScreen,
     goodLabel,
+    ...chestTooltipLines(sim, toolPanel.controller.uiString, localPlayer, controls.selectedIds),
     pointer: pointerAt,
     suppressed: (clientX, clientY) =>
       toolPanel.controller.placementType() !== null ||
@@ -474,7 +475,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     mountedMinimap.dispose();
     controls.dispose();
     perf.dispose();
-    pileTooltip.destroy();
+    worldTooltip.destroy();
     soundDriver?.close();
   };
 
@@ -502,7 +503,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     toolPanel,
     minimap: mountedMinimap,
     controls,
-    pileTooltip,
+    worldTooltip,
     geometryDebug: debugMounts.geometryDebug,
     overlayFrame,
     signpostOverlayFrame,

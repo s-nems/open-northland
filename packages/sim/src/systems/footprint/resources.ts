@@ -23,7 +23,7 @@ import {
  * source stores repeated rows per valency and growth state, and collision is static until the node is
  * removed, so `fullStateBlockAreaCells` (the fresh, full object's cells) is the conservative consumer.
  */
-function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
+export function resourceFootprintFromLandscapeGfx(record: LandscapeGfx): ResourceFootprintData {
   return {
     walk: fullStateBlockAreaCells(record.walkBlockAreas),
     build: fullStateBlockAreaCells(record.buildBlockAreas),

@@ -10,6 +10,20 @@ export function byKey<K, T>(items: readonly T[], key: (item: T) => K): ReadonlyM
   return map;
 }
 
+/** Map `items`' `key` to their `value`, first-wins like {@link byKey}. */
+export function valueByKey<K, V, T>(
+  items: readonly T[],
+  key: (item: T) => K,
+  value: (item: T) => V,
+): ReadonlyMap<K, V> {
+  const map = new Map<K, V>();
+  for (const item of items) {
+    const k = key(item);
+    if (!map.has(k)) map.set(k, value(item));
+  }
+  return map;
+}
+
 /** {@link byKey} over an optional key; an item without the key is skipped. */
 export function byOptionalKey<T>(
   items: readonly T[],

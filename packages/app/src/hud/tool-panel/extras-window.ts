@@ -14,11 +14,10 @@ import {
   type ExtrasTab,
   hitTestExtrasMenu,
   layoutExtrasMenu,
-  type PaperFace,
-  paperFace,
   toggleGrant,
   toggleInfinity,
 } from './extras-menu.js';
+import { type PaperFace, paperFace } from './extras-papers.js';
 import {
   addRun,
   centreRun,
@@ -45,17 +44,8 @@ const CTRL_STEP = 10;
 const faceDiffers = (a: AssistantCounterFace, b: AssistantCounterFace): boolean =>
   a.value !== b.value || a.infinite !== b.infinite;
 
-const facesEqual = (a: readonly PaperFace[], b: readonly PaperFace[]): boolean =>
-  a.length === b.length &&
-  a.every((face, i) => {
-    const other = b[i];
-    return (
-      other !== undefined &&
-      face.paper.kind === other.paper.kind &&
-      face.paper.param === other.paper.param &&
-      face.label === other.label
-    );
-  });
+const samePapers = (a: readonly Paper[], b: readonly Paper[]): boolean =>
+  a.length === b.length && a.every((p, i) => p.kind === b[i]?.kind && p.param === b[i]?.param);
 
 const countersEqual = (
   a: Readonly<Record<AssistantCounterId, AssistantCounterFace>>,
@@ -129,8 +119,14 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
   let tab: ExtrasTab = 'assistant';
   let state: AssistantState = defaultAssistantState();
   let papers: readonly PaperFace[] = [];
-  const readPapers = (): readonly PaperFace[] =>
-    deps.papers.read().map((p) => paperFace(p, deps.paperLabel(p)));
+  /** The raw list the faces were built from, so a frame with no change labels nothing. */
+  let rawPapers: readonly Paper[] = [];
+  const readPapers = (): readonly PaperFace[] => {
+    const live = deps.papers.read();
+    if (samePapers(live, rawPapers)) return papers;
+    rawPapers = live;
+    return live.map((p) => paperFace(p, deps.paperLabel(p)));
+  };
   let menuLayout: ExtrasMenuLayout | null = null;
   /** The live counter block as read at the last local write. While the sim still shows exactly this
    *  block the write has not applied, so the click's echo must hold; any live change clears it. Several
@@ -291,7 +287,7 @@ export function createExtrasWindow(deps: ExtrasWindowDeps): ExtrasWindow {
     refresh: (): void => {
       if (!shell.isOpen()) return;
       const livePapers = readPapers();
-      if (!facesEqual(livePapers, papers)) {
+      if (livePapers !== papers) {
         papers = livePapers;
         rebuild();
       }

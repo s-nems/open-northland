@@ -58,7 +58,8 @@ export function createPlacementController(deps: PlacementDeps): PlacementControl
       placementType = typeId;
       placementPaper = paper ?? null;
       const label = deps.labelByType.get(typeId) ?? `#${typeId}`;
-      banner.show(formatMessage(messages().hud.placementHint, { label }));
+      const hint = paper === undefined ? messages().hud.placementHint : messages().hud.placementPaperHint;
+      banner.show(formatMessage(hint, { label }));
     },
     cancel: exitPlacement,
     handleClick: (clientX, clientY): boolean => {

@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import type { ChestKind, Paper, PaperKind } from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 
 /**
  * What a chest type hands out when opened. `count` for goods is per chest kind, a magical chest holding
@@ -20,6 +21,7 @@ const SINGLE = { wooden: 1, magical: 3 } as const;
 const POTIONS = { wooden: 12, magical: 18 } as const;
 const WEAR = { wooden: 6, magical: 9 } as const;
 const SPAWNED_SETTLERS = 3;
+/** `logicdefines.inc` `TRIBE_TYPE_ANIMAL_WOLVES` and `TRIBE_TYPE_ANIMAL_LIONSMALE`. */
 const WOLF_TRIBE = 20;
 const LION_TRIBE = 25;
 
@@ -61,6 +63,7 @@ export const CHEST_CONTENTS: ReadonlyMap<number, ChestReward> = new Map<number, 
   [24, goods('armor_chain', WEAR)],
   [25, goods('armor_plate', WEAR)],
   [26, goods('shoes', WEAR)],
+  // The `chesttypes` string table names row 50 an indulgence; the dispatch hands out a place-any paper.
   [50, { kind: 'paper', paper: 'placeAny' }],
   [51, { kind: 'paper', paper: 'placeAny' }],
   [52, house('tower_01')],
@@ -100,37 +103,6 @@ export type ResolvedChestReward =
 
 const NOTHING: ResolvedChestReward = { kind: 'nothing' };
 
-interface SlugTables {
-  readonly goods: ReadonlyMap<string, number>;
-  readonly buildings: ReadonlyMap<string, number>;
-  readonly jobs: ReadonlyMap<string, number>;
-  readonly animalTribes: ReadonlySet<number>;
-}
-
-const slugTablesByContent = new WeakMap<ContentSet, SlugTables>();
-
-/** Slug → typeId over the content arrays, first declaration wins. Pure derived data, memoized per set. */
-function slugTables(content: ContentSet): SlugTables {
-  let tables = slugTablesByContent.get(content);
-  if (tables === undefined) {
-    const first = <T extends { readonly id: string; readonly typeId: number }>(
-      rows: readonly T[],
-    ): ReadonlyMap<string, number> => {
-      const out = new Map<string, number>();
-      for (const row of rows) if (!out.has(row.id)) out.set(row.id, row.typeId);
-      return out;
-    };
-    tables = {
-      goods: first(content.goods),
-      buildings: first(content.buildings),
-      jobs: first(content.jobs),
-      animalTribes: new Set(content.animals.map((a) => a.tribeType)),
-    };
-    slugTablesByContent.set(content, tables);
-  }
-  return tables;
-}
-
 /** The reward chest type `contents` in a `kind` chest hands out on this content, or `nothing`. */
 export function resolveChestReward(
   content: ContentSet,
@@ -139,29 +111,29 @@ export function resolveChestReward(
 ): ResolvedChestReward {
   const reward = CHEST_CONTENTS.get(contents);
   if (reward === undefined) return NOTHING;
-  const tables = slugTables(content);
+  const index = contentIndex(content);
   switch (reward.kind) {
     case 'goods': {
-      const goodType = tables.goods.get(reward.good);
+      const goodType = index.goodTypeBySlug.get(reward.good);
       return goodType === undefined ? NOTHING : { kind: 'goods', goodType, amount: reward.count[kind] };
     }
     case 'paper': {
       if (reward.house === undefined) return { kind: 'paper', paper: { kind: reward.paper, param: 0 } };
-      const param = tables.buildings.get(reward.house);
+      const param = index.buildingTypeBySlug.get(reward.house);
       return param === undefined ? NOTHING : { kind: 'paper', paper: { kind: reward.paper, param } };
     }
     case 'workshop': {
-      const param = tables.buildings.get(reward.house);
-      const jobType = tables.jobs.get(reward.worker);
+      const param = index.buildingTypeBySlug.get(reward.house);
+      const jobType = index.jobTypeBySlug.get(reward.worker);
       if (param === undefined || jobType === undefined) return NOTHING;
       return { kind: 'workshop', paper: { kind: 'placeStockedHouse', param }, jobType };
     }
     case 'settlers': {
-      const jobType = tables.jobs.get(reward.job);
+      const jobType = index.jobTypeBySlug.get(reward.job);
       return jobType === undefined ? NOTHING : { kind: 'settlers', jobType, count: reward.count };
     }
     case 'animals':
-      return tables.animalTribes.has(reward.tribe)
+      return index.animalsByTribe.has(reward.tribe)
         ? { kind: 'animals', tribe: reward.tribe, count: reward.count }
         : NOTHING;
     case 'vehicle':

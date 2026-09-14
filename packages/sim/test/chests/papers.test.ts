@@ -90,6 +90,7 @@ describe('placing with a paper', () => {
   it('a house paper stands its house finished at once and is spent', () => {
     const sim = fresh();
     sim.enqueueSetup({ kind: 'grantPaper', player: P0, paper: sawmillPaper });
+    // The seat's placement flow always asks for a site; the paper overrides it.
     sim.enqueue(
       playerCommand(P0, {
         kind: 'placeBuilding',
@@ -97,6 +98,7 @@ describe('placing with a paper', () => {
         x: 8,
         y: 8,
         tribe: VIKING,
+        underConstruction: true,
         paper: sawmillPaper,
       }),
     );

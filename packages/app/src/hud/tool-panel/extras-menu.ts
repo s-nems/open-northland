@@ -1,7 +1,8 @@
-import { components, type Paper, PLACING_PAPER_KINDS } from '@open-northland/sim';
+import { components } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import { contains, type Rect } from '../geometry.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
+import { type ExtrasPaperRow, layoutPaperRows, type PaperFace } from './extras-papers.js';
 import {
   CLOSE_BOX,
   HEADLINE_H,
@@ -22,18 +23,6 @@ import {
  */
 
 export type ExtrasTab = 'assistant' | 'plans';
-
-/** One paper as the plans tab lists it: its slot order, name, and whether a click spends it. */
-export interface PaperFace {
-  readonly paper: Paper;
-  readonly label: string;
-  /** The placing kinds are clickable; the rest are listed inert, as the original greys them. */
-  readonly usable: boolean;
-}
-
-export function paperFace(paper: Paper, label: string): PaperFace {
-  return { paper, label, usable: PLACING_PAPER_KINDS.has(paper.kind) };
-}
 
 /** The assistant's six production counters: two birth queues and four training queues. */
 export type AssistantCounterId =
@@ -171,14 +160,6 @@ export interface ExtrasGrantRow {
   readonly switchRect: Rect;
 }
 
-export interface ExtrasPaperRow {
-  readonly index: number;
-  readonly label: string;
-  readonly usable: boolean;
-  /** The row's card slot. */
-  readonly rect: Rect;
-}
-
 export interface ExtrasMenuLayout {
   readonly scale: number;
   readonly window: Rect;
@@ -309,13 +290,8 @@ export function layoutExtrasMenu(opts: ExtrasMenuLayoutOptions): ExtrasMenuLayou
           };
         });
 
-  const faces = tab === 'plans' ? (opts.papers ?? []) : [];
-  const papers: ExtrasPaperRow[] = faces.map((face, i) => ({
-    index: i,
-    label: face.label,
-    usable: face.usable,
-    rect: { x: originX + pad, y: bodyTop + i * rowH, w: width - 2 * pad, h: rowH },
-  }));
+  const papers =
+    tab === 'plans' ? layoutPaperRows(opts.papers ?? [], originX + pad, bodyTop, width - 2 * pad, rowH) : [];
 
   const bodyRows = tab === 'assistant' ? COUNTER_IDS.length + GRANT_IDS.length : Math.max(1, papers.length);
   const bodyH = bodyRows * rowH + (tab === 'assistant' ? BLOCK_GAP * s : 0);

@@ -88,7 +88,7 @@ export function content(): ContentSet {
     ],
     landscapeGfx: [
       {
-        // The real wooden chest's shape: its own node blocked, a three-node build margin, two work cells.
+        // Shaped like a chest record: its own node blocked, a build margin, two work cells below it.
         index: CHEST_GFX,
         editName: 'test chest',
         logicType: CHEST_LOGIC,

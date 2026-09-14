@@ -1,4 +1,4 @@
-export { CHEST_KINDS, type ChestKind } from './components/chest.js';
+export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
 export * as components from './components/index.js';
 // Fog-of-war mode ids and the diplomacy stance union, flattened to the package root for render and
 // app consumers.

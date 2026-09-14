@@ -136,6 +136,15 @@ export const enGame = {
     commandHint: 'Right click the world to issue a command.',
     dropHint: '{label} - click to drop, Esc to finish',
     placementHint: '{label} - click to build, Esc to cancel',
+    /** Placement paid by a paper: the house stands finished where it lands. */
+    placementPaperHint: '{label} from a paper - click to place it finished, Esc to cancel',
+    /** The chest tooltip: `misc` 112/113 name the two kinds, `misclogic` 35 the order. */
+    chest: {
+      wooden: 'Chest',
+      magical: 'Magic chest',
+      open: 'Open chest',
+      magicalOnly: 'Only a druid or a hero can open it',
+    },
     resources: 'Resources',
     statuses: {
       ordered: 'following an order',

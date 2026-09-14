@@ -19,7 +19,7 @@ import {
 } from '@open-northland/data';
 import type { GoodsLine } from '../components/economy/infrastructure.js';
 import { atomicBindingTables, harvestCapableJobs } from './content-index/atomics.js';
-import { byKey, byOptionalKey, byPairKey } from './content-index/by-key.js';
+import { byKey, byOptionalKey, byPairKey, valueByKey } from './content-index/by-key.js';
 import { militaryGoodTypes } from './content-index/combat.js';
 import { constructionBills } from './content-index/construction.js';
 import { jobRoleSets } from './content-index/jobs.js';
@@ -147,6 +147,14 @@ export interface ContentIndex {
   readonly heroJobs: ReadonlySet<number>;
   readonly scoutJobs: ReadonlySet<number>;
   readonly hunterJobs: ReadonlySet<number>;
+  readonly druidJobs: ReadonlySet<number>;
+  /** Catalog slug → typeId over the goods, buildings and jobs, first declaration wins: the join for a
+   *  rule authored by name, such as the chest-contents table. */
+  readonly goodTypeBySlug: ReadonlyMap<string, number>;
+  readonly buildingTypeBySlug: ReadonlyMap<string, number>;
+  readonly jobTypeBySlug: ReadonlyMap<string, number>;
+  /** Landscape `typeId` by slug, first declaration wins. */
+  readonly landscapeTypeBySlug: ReadonlyMap<string, number>;
   /**
    * Per building type: the from-scratch construction bill a newly-placed site must be delivered. A
    * leveled type sums every tier's own `construction` up to and including it, so placing tier N costs
@@ -217,6 +225,27 @@ function buildIndex(content: ContentSet): ContentIndex {
     soldierJobs: roles.soldier,
     heroJobs: roles.hero,
     scoutJobs: roles.scout,
+    druidJobs: roles.druid,
+    goodTypeBySlug: valueByKey(
+      content.goods,
+      (g) => g.id,
+      (g) => g.typeId,
+    ),
+    buildingTypeBySlug: valueByKey(
+      content.buildings,
+      (b) => b.id,
+      (b) => b.typeId,
+    ),
+    jobTypeBySlug: valueByKey(
+      content.jobs,
+      (j) => j.id,
+      (j) => j.typeId,
+    ),
+    landscapeTypeBySlug: valueByKey(
+      content.landscape,
+      (l) => l.id,
+      (l) => l.typeId,
+    ),
     hunterJobs: roles.hunter,
     maxResourceWorkOffset: maxWorkCellOffset(content),
     weaponsByTribeAndTypeId: byPairKey(

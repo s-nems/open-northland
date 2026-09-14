@@ -14,8 +14,8 @@ import {
   type AssistantGrantId,
   defaultAssistantState,
   layoutExtrasMenu,
-  paperFace,
 } from '../src/hud/tool-panel/extras-menu.js';
+import { paperFace } from '../src/hud/tool-panel/extras-papers.js';
 import {
   createExtrasWindow,
   type ExtrasCountersSeam,
@@ -80,7 +80,6 @@ const STATS_WIDTH = 150;
 const STATS_GAP_X = WIN_PAD + STATS_WIDTH + 3 * WIN_PAD;
 const STATS_OFFSET_Y = 15;
 
-/** The centre of a rect (for synthetic clicks). */
 /** The extras window's origin and scale, as its controller derives them from the panel layout. */
 function extrasGeometry(ctx: PanelContext) {
   const extrasY = ctx.layout.buttons.find((b) => b.id === 'extras')?.placed.y ?? ctx.layout.strip.y;
@@ -96,6 +95,7 @@ function centreXY(r: { x: number; y: number; w: number; h: number }): [number, n
   return [r.x + r.w / 2, r.y + r.h / 2];
 }
 
+/** The centre of a rect (for synthetic clicks). */
 function centreOf(r: { x: number; y: number; w: number; h: number }): { x: number; y: number } {
   return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
 }

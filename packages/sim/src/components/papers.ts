@@ -28,13 +28,14 @@ export const PLACING_PAPER_KINDS: ReadonlySet<PaperKind> = new Set<PaperKind>([
   'placeStockedHouse',
 ]);
 
-/** Slots per player, the original's fixed special-item table size. */
+/** Slots per player: the original's special-item table walks a fixed 100 entries (byte evidence). */
 export const PAPER_SLOTS = 100;
 
 /**
  * The per-player papers table: at most one carrier entity per player, created on the first paper and
- * destroyed when the last slot empties. `slots` keeps the original's slot semantics - a spent paper
- * leaves a hole the next one fills, so the list order survives spending - trimmed of trailing holes.
+ * destroyed when the last slot empties. `slots` keeps the original's slot semantics (byte evidence: an
+ * add takes the first empty entry, a use clears its entry), so a spent paper leaves a hole the next one
+ * fills and the list order survives spending; trailing holes are trimmed.
  */
 export const Papers = defineComponent<{
   /** The player slot the papers belong to (`[0, MAX_PLAYERS)`). */
@@ -44,7 +45,7 @@ export const Papers = defineComponent<{
 
 /** The {@link Papers} carrier for `player`, or null when it holds none. The lowest-id carrier wins
  *  should more than one ever exist. */
-export function papersEntity(world: World, player: number): Entity | null {
+function papersEntity(world: World, player: number): Entity | null {
   let best: Entity | null = null;
   for (const e of world.query(Papers)) {
     if (world.get(e, Papers).player !== player) continue;
@@ -61,7 +62,7 @@ export function playerPaperSlots(world: World, player: number): readonly (Paper 
   return carrier === null ? NO_PAPERS : world.get(carrier, Papers).slots;
 }
 
-export function samePaper(a: Paper, b: Paper): boolean {
+function samePaper(a: Paper, b: Paper): boolean {
   return a.kind === b.kind && a.param === b.param;
 }
 

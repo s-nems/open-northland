@@ -12,10 +12,18 @@ export interface StaticLayerObjects<Sprite> {
   readonly byPlacement: ReadonlyMap<number, Sprite>;
 }
 
-/** How the map's harvestable placements met the sim: spawned by this boot, each as one entity, or
- *  restored from a save, which pool-draws every one from the loaded state. */
+/**
+ * How the map's harvestable placements met the sim: spawned by this boot, each as one entity, or restored
+ * from a save, which pool-draws every one from the loaded state. A fresh boot's `pooledPlacements` are
+ * the placements pool-drawn from the start - chests, which must be on screen as sim items for a click to
+ * find them.
+ */
 export type HarvestableSpawn =
-  | { readonly kind: 'fresh'; readonly placementByEntity: readonly (readonly [Entity, number])[] }
+  | {
+      readonly kind: 'fresh';
+      readonly placementByEntity: readonly (readonly [Entity, number])[];
+      readonly pooledPlacements: readonly number[];
+    }
   | { readonly kind: 'restored'; readonly placements: readonly number[] };
 
 /**
@@ -35,6 +43,8 @@ export function bindStaticLayer<Sprite>(
   if (harvestables.kind === 'fresh') {
     handover = bindHarvestableHandover(surface, harvestables.placementByEntity, objects.byPlacement);
     for (const [, placement] of harvestables.placementByEntity) harvestablePlacements.add(placement);
+    retireStaticHarvestables(surface, harvestables.pooledPlacements, objects.byPlacement);
+    for (const placement of harvestables.pooledPlacements) harvestablePlacements.add(placement);
   } else {
     retireStaticHarvestables(surface, harvestables.placements, objects.byPlacement);
     for (const placement of harvestables.placements) harvestablePlacements.add(placement);

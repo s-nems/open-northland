@@ -53,11 +53,21 @@ const razed: SimEvent = { kind: 'berryBushRazed', bush: BUSH, at: { hx: 9, hy: 8
 
 describe('bindStaticLayer', () => {
   it('clears scenery under a standing building but leaves a bush to its handover', () => {
-    const { removed, refs, onEvents } = bind({ kind: 'fresh', placementByEntity: [[BUSH, 1]] });
+    const { removed, refs, onEvents } = bind({
+      kind: 'fresh',
+      placementByEntity: [[BUSH, 1]],
+      pooledPlacements: [],
+    });
     expect(removed).toEqual(['grass']);
     expect([...refs()]).toEqual([BUSH]);
     onEvents([razed]);
     expect(removed).toEqual(['grass', 'bush']);
+    expect([...refs()]).toEqual([]);
+  });
+
+  it("retires a fresh world's pooled placements up front, so a chest is a sim item from the first frame", () => {
+    const { removed, refs } = bind({ kind: 'fresh', placementByEntity: [], pooledPlacements: [1] });
+    expect(removed.sort()).toEqual(['bush', 'grass']);
     expect([...refs()]).toEqual([]);
   });
 

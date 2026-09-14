@@ -128,8 +128,8 @@ const PICK_BOX = {
   building: { halfW: 44, up: 104, down: 22 },
   // The guidepost bob is 22x72 native px; a slim box keeps it clickable without swallowing the ground beside it.
   signpost: { halfW: 14, up: 76, down: 8 },
-  // A chest bob is a low box on the ground, wide rather than tall.
-  chest: { halfW: 22, up: 30, down: 10 },
+  // The magical chest bob is 78x53 native px, the wooden one smaller; the larger sizes the box.
+  chest: { halfW: 39, up: 53, down: 10 },
 } as const;
 
 function hits(t: Pickable, wx: number, wy: number): boolean {

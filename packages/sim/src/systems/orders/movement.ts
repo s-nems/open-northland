@@ -66,14 +66,15 @@ function clearPlayerOrder(world: World, e: Entity): void {
  * Order one owned settler to walk to (x,y). It drops whatever the unit was doing so the order takes effect
  * immediately, except a non-interruptible atomic, which parks the order instead
  * ({@link deferOrderDuringAtomic}). A settler carrying a load sets it down where it stands first, and
- * {@link playerOrderSystem} launches the walk the tick the drop finishes.
+ * {@link playerOrderSystem} launches the walk the tick the drop finishes. Returns whether a walk (or its
+ * park) now stands; false for a refused or bad order.
  */
 export function moveUnit(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'moveUnit' }>,
-): void {
-  startPlayerWalk(world, ctx, command);
+): boolean {
+  return startPlayerWalk(world, ctx, command);
 }
 
 /** {@link moveUnit}'s walk stamped with an {@link AttackMoveMarch} - the "Attack Position" order. */
@@ -90,19 +91,21 @@ function startPlayerWalk(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>,
-): void {
+): boolean {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: no cells to navigate over
+  if (terrain === undefined) return false; // mapless sim: no cells to navigate over
   const e = command.entity;
-  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || !world.has(e, Owner)) return;
+  if (!world.isAlive(e) || !world.has(e, Settler) || !world.has(e, Position) || !world.has(e, Owner)) {
+    return false;
+  }
 
   const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
   // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the order is
   // refused and the unit stays put (source basis: observed original guidepost behaviour).
   const limit = navigationLimitFor(world, ctx.content, terrain, e);
-  if (limit !== null && !limit.allowsNode(goal)) return;
+  if (limit !== null && !limit.allowsNode(goal)) return false;
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
-  if (deferOrderDuringAtomic(world, ctx, e, command)) return;
+  if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
   world.remove(e, DeferredOrder); // this order executes now - it supersedes any earlier parked one
   // A live PathFollow is deliberately kept: the planner re-routes the same tick, and the routing splice
   // carries the walker's momentum through the turn.
@@ -141,10 +144,11 @@ function startPlayerWalk(
   if (world.has(e, Carrying)) {
     startDrop(world, ctx, e);
     world.add(e, PlayerOrder, { ...march, pendingGoal: goal });
-    return;
+    return true;
   }
   world.add(e, MoveGoal, { cell: goal });
   world.add(e, PlayerOrder, march);
+  return true;
 }
 
 /**

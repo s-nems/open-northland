@@ -169,6 +169,8 @@ export interface GatheringPipelineRow {
 /** One `[landscapetype]` row, narrowed to its typeId and logic name. */
 export interface LandscapeTypeRow {
   readonly typeId?: number;
+  /** The `landscapetypes.ini` slug, the join key a rule names a landscape by. */
+  readonly id?: string;
   readonly name?: string;
 }
 

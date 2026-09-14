@@ -1,5 +1,5 @@
 import type { TerrainObjects } from '@open-northland/data';
-import { CHEST_KINDS, type ChestKind } from '@open-northland/sim';
+import { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from '@open-northland/sim';
 import type { ContentIr, LandscapeGfxRow } from './ir/rows.js';
 import { forEachPlacement } from './map-placements.js';
 
@@ -149,9 +149,18 @@ export function mapBerryBushSpawns(objects: TerrainObjects, ir: ContentIr): MapB
   return out;
 }
 
-/** The `[GfxLandscape].logicType` of each chest kind (`landscapetypes.ini` 85 `chest_wooden`, 86
- *  `chest_magical`). */
-const CHEST_LOGIC_TYPE: Readonly<Record<ChestKind, number>> = { wooden: 85, magical: 86 };
+/** The chest kind of each `[GfxLandscape].logicType`, through the landscape slugs the sim names the two
+ *  chest kinds by. Degrades to empty on an `ir.json` without the landscape table. */
+export function chestKindByLogicType(ir: ContentIr): ReadonlyMap<number, ChestKind> {
+  const out = new Map<number, ChestKind>();
+  for (const row of ir.landscape ?? []) {
+    if (row.typeId === undefined) continue;
+    for (const kind of CHEST_KINDS) {
+      if (row.id === CHEST_LANDSCAPE_SLUG[kind]) out.set(row.typeId, kind);
+    }
+  }
+  return out;
+}
 
 /** One chest a decoded map defines: its record index and kind at half-cell `(hx, hy)`, the chest type its
  *  `objects.levels` (`lmlv`) entry authors, plus the placement ordinal. */
@@ -166,12 +175,11 @@ export interface MapChestSpawn {
 
 /** Every chest `landscapeGfx` record keyed by `EditName`. Degrades to empty on an `ir.json` with none. */
 function chestRecordByName(ir: ContentIr): ReadonlyMap<string, { kind: ChestKind; gfxIndex: number }> {
+  const kindByLogicType = chestKindByLogicType(ir);
   const out = new Map<string, { kind: ChestKind; gfxIndex: number }>();
   for (const g of ir.landscapeGfx ?? []) {
-    if (g.editName === undefined) continue;
-    for (const kind of CHEST_KINDS) {
-      if (g.logicType === CHEST_LOGIC_TYPE[kind]) out.set(g.editName, { kind, gfxIndex: g.index });
-    }
+    const kind = kindByLogicType.get(g.logicType);
+    if (g.editName !== undefined && kind !== undefined) out.set(g.editName, { kind, gfxIndex: g.index });
   }
   return out;
 }

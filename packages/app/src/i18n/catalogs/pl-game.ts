@@ -136,6 +136,13 @@ export const plGame = {
     commandHint: 'Kliknij PPM na świecie, aby wydać rozkaz.',
     dropHint: '{label} - kliknij, aby położyć; Esc kończy',
     placementHint: '{label} - kliknij, aby postawić; Esc anuluje',
+    placementPaperHint: '{label} z planu - kliknij, aby postawić gotowy budynek; Esc anuluje',
+    chest: {
+      wooden: 'Skrzynia',
+      magical: 'Magiczna skrzynia',
+      open: 'Otwórz skrzynię',
+      magicalOnly: 'Otworzy ją tylko druid lub bohater',
+    },
     resources: 'Surowce',
     statuses: {
       ordered: 'idzie na rozkaz',

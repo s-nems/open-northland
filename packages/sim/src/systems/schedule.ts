@@ -1,6 +1,5 @@
 import { aiPlayerSystem } from './ai-player/index.js';
 import { assistantSystem } from './assistant/index.js';
-import { chestOrderSystem } from './chests/index.js';
 import { commandSystem } from './command/index.js';
 import { combatSystem } from './conflict/combat.js';
 import { animalFrightSystem } from './conflict/fright.js';
@@ -28,6 +27,7 @@ import { herdingSystem } from './movement/herding.js';
 import { pathfindingSystem } from './movement/routing.js';
 import { movementSystem } from './movement/system.js';
 import {
+  chestOrderSystem,
   deferredOrderSystem,
   exploreOrderSystem,
   playerOrderSystem,

@@ -11,7 +11,6 @@ import {
 import { assertNever } from '../../core/brand.js';
 import type { Command } from '../../core/commands/index.js';
 import type { World } from '../../ecs/world.js';
-import { orderOpenChest } from '../chests/index.js';
 import type { System, SystemContext } from '../context.js';
 import { forceFinishConstruction } from '../economy/construction.js';
 // Deliberately the module, not the orders barrel: the handler reaches into
@@ -31,6 +30,7 @@ import {
   marry,
   moveUnit,
   orderNeed,
+  orderOpenChest,
   placeSignpost,
   setAssistantCounter,
   setAssistantGrant,

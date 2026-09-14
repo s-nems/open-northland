@@ -1,9 +1,7 @@
 import type { LayeredBobRef, ResourceTypeBinding } from '@open-northland/render';
 import type { ContentIr } from '../ir/rows.js';
+import { chestKindByLogicType } from '../map-resources.js';
 import { type GatheringNodeRef, nodeRefFrom } from './refs.js';
-
-/** The `[GfxLandscape].logicType` of the two chest landscapes (`landscapetypes.ini` 85 and 86). */
-const CHEST_LOGIC_TYPES: ReadonlySet<number> = new Set([85, 86]);
 
 /** A resolved chest draw: the record index a spawned chest carries as its `gfxIndex`, and its one frame. */
 export interface ChestRef {
@@ -14,8 +12,10 @@ export interface ChestRef {
 /** Every chest record's draw, keyed by record index, in record order. */
 export function resolveChestRefs(ir: ContentIr | null): ChestRef[] {
   const out: ChestRef[] = [];
-  for (const rec of ir?.landscapeGfx ?? []) {
-    if (!CHEST_LOGIC_TYPES.has(rec.logicType)) continue;
+  if (ir === null) return out;
+  const kindByLogicType = chestKindByLogicType(ir);
+  for (const rec of ir.landscapeGfx ?? []) {
+    if (!kindByLogicType.has(rec.logicType)) continue;
     const node = nodeRefFrom(rec);
     if (node !== undefined) out.push({ gfxIndex: rec.index, node });
   }

@@ -65,6 +65,8 @@ export interface MapWorld {
   /** Each spawned harvestable's placement ordinal in the map's object list: the join back to the static
    *  layer's sprite for that placement. */
   readonly harvestablePlacements: readonly (readonly [Entity, number])[];
+  /** The chest placements, pool-drawn from the start so a click can find them. */
+  readonly pooledPlacements: readonly number[];
 }
 
 /** Placements are queued commands: one tick drains them, so the start-camera focus sees entities a
@@ -77,9 +79,9 @@ export function buildMapWorld(options: MapWorldOptions): MapWorld {
   const { sim, kind } = runWorld(options, terrain);
   setupPlacementTribes(sim, options.playerRoster);
   applySessionRules(sim, options);
-  const harvestablePlacements = spawnHarvestables(sim, options);
+  const { harvestablePlacements, pooledPlacements } = spawnHarvestables(sim, options);
   sim.step();
-  return { sim, kind, harvestablePlacements };
+  return { sim, kind, harvestablePlacements, pooledPlacements };
 }
 
 /** Harvestable placements stay out of the static bake: they spawn as `Resource` entities whose
@@ -177,12 +179,15 @@ function authoredWorldContent(terrain: TerrainMap, options: RestoreWorldOptions)
 function spawnHarvestables(
   sim: Simulation,
   options: MapWorldOptions,
-): readonly (readonly [Entity, number])[] {
+): Pick<MapWorld, 'harvestablePlacements' | 'pooledPlacements'> {
   const { map, ir } = options;
-  if (map?.objects === undefined || ir === null) return [];
+  if (map?.objects === undefined || ir === null) return { harvestablePlacements: [], pooledPlacements: [] };
   const resources = spawnMapResources(sim, map.objects, ir);
   const chests = spawnMapChests(sim, map.objects, ir);
-  if (options.berryBushes === false) return [...resources.placementByEntity, ...chests.placementByEntity];
-  const bushes = spawnMapBerryBushes(sim, map.objects, ir);
-  return [...resources.placementByEntity, ...chests.placementByEntity, ...bushes.placementByEntity];
+  const bushes =
+    options.berryBushes === false ? [] : [...spawnMapBerryBushes(sim, map.objects, ir).placementByEntity];
+  return {
+    harvestablePlacements: [...resources.placementByEntity, ...bushes],
+    pooledPlacements: [...chests.placementByEntity.values()],
+  };
 }

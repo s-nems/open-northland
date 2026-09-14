@@ -214,9 +214,9 @@ describe('user messages from sim events', () => {
     const paper = { kind: 'placeHouse', param: 41 } as const;
     const out = run(
       [
-        { kind: 'paperFound', player: LOCAL, paper, at: { hx: 10, hy: 4 } },
-        { kind: 'paperFound', player: LOCAL, paper, at: { hx: 30, hy: 4 } },
-        { kind: 'paperFound', player: ENEMY, paper, at: { hx: 12, hy: 4 } },
+        { kind: 'paperFound', player: LOCAL, paper, chest: e(70), at: { hx: 10, hy: 4 } },
+        { kind: 'paperFound', player: LOCAL, paper, chest: e(71), at: { hx: 30, hy: 4 } },
+        { kind: 'paperFound', player: ENEMY, paper, chest: e(72), at: { hx: 12, hy: 4 } },
       ],
       snap,
     );
@@ -224,7 +224,7 @@ describe('user messages from sim events', () => {
       [USER_MESSAGE_TYPE.specialItemFound, { hx: 10, hy: 4 }, `?:${USER_MESSAGE_TYPE.specialItemFound}`],
       [USER_MESSAGE_TYPE.specialItemFound, { hx: 30, hy: 4 }, `?:${USER_MESSAGE_TYPE.specialItemFound}`],
     ]);
-    expect(out[0]?.about).not.toBe(out[1]?.about);
+    expect(out.map((m) => m.about)).toEqual([70, 71]);
   });
 
   it('ignores events with no message in the original, a birth among them', () => {

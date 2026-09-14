@@ -78,6 +78,8 @@ export interface ToolWindowsState {
   readonly goods: TabbedListWindowState<number>;
   readonly extras: ExtrasTab;
   readonly diplomacy: number | null;
+  /** The place-any paper the open build menu was opened for, if any. */
+  readonly heldPaper: Paper | null;
 }
 
 export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
@@ -181,12 +183,14 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       goods: goods.state(),
       extras: extras.state(),
       diplomacy: diplomacy.state(),
+      heldPaper,
     }),
     restore: (state): void => {
       menu.restore(state.buildings);
       goods.restore(state.goods);
       extras.restore(state.extras);
       diplomacy.restore(state.diplomacy);
+      heldPaper = state.heldPaper;
       const open = new Set(state.openIds);
       for (const id of MOUNT_ORDER) {
         const window = entries[id].window;

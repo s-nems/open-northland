@@ -163,8 +163,9 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, selected, 'moveUnit');
   };
 
-  /** Send every commanded settler that may open the chest; the sim re-checks each on arrival, so two
-   *  senders race and the loser walks back into autonomy. */
+  /** Send every commanded settler that may open the chest. Filtered here as the original's default click
+   *  gates on `Item_IsAbleToOpenChest`, and so a settler the sim would refuse never lands in the replay
+   *  log; the sim re-checks each on arrival, so two senders race and the loser walks back into autonomy. */
   const openChest = (commanded: readonly FormationUnit[], chest: number): void => {
     const snapshot = deps.snapshot();
     const target = entityById(snapshot, chest);

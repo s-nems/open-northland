@@ -1,37 +1,24 @@
 import type { ContentSet } from '@open-northland/data';
 import {
-  Age,
   addPaper,
   Chest,
   type ChestKind,
-  CurrentAtomic,
-  OpenChestOrder,
   Owner,
   type Paper,
-  PlayerOrder,
   Position,
   Settler,
 } from '../../components/index.js';
-import type { Command } from '../../core/commands/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import { eventAt } from '../../core/events.js';
-import { fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
-import type { System, SystemContext } from '../context.js';
+import { type HalfCellNode, positionOfNode } from '../../nav/halfcell.js';
+import type { SystemContext } from '../context.js';
 import { scatterSpilledStock } from '../economy/goods-spill.js';
-import {
-  resourceWorkCell,
-  stampResourceFootprintData,
-  unstampResourceFootprint,
-} from '../footprint/index.js';
-import { deferOrderDuringAtomic, isOrderableSettler } from '../orders/guards.js';
-import { moveUnit } from '../orders/movement.js';
-import { atomicDuration } from '../readviews/animations.js';
+import { stampResourceFootprintData, unstampResourceFootprint } from '../footprint/index.js';
 import { isHeroJob } from '../readviews/index.js';
-import { canonicalById, entityNode } from '../spatial/nodes.js';
 import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { resolveChestReward } from './contents.js';
-import { chestFootprint, druidJobType } from './footprint.js';
+import { chestFootprint, chestRecord } from './footprint.js';
 
 export { CHEST_CONTENTS, type ChestReward, resolveChestReward } from './contents.js';
 
@@ -46,20 +33,22 @@ export interface ChestSpec {
   /** Half-cell lattice coords. */
   readonly x: number;
   readonly y: number;
-  /** The `[GfxLandscape]` record the map placed; omitted for a scene spawn. */
+  /** The `[GfxLandscape]` record the map placed; omitted for a scene spawn, which takes the kind's first. */
   readonly gfxIndex?: number;
 }
 
-/** Assemble a closed chest: its position, contents and the blocking footprint its record declares. */
+/** Assemble a closed chest: its position, contents, the record it draws by, and the blocking footprint
+ *  that record declares. */
 export function createChest(world: World, content: ContentSet, spec: ChestSpec): Entity {
+  const record = chestRecord(content, spec.kind, spec.gfxIndex);
   const e = world.create();
   world.add(e, Position, positionOfNode(spec.x, spec.y));
   world.add(e, Chest, {
     kind: spec.kind,
     contents: spec.contents,
-    ...(spec.gfxIndex !== undefined ? { gfxIndex: spec.gfxIndex } : {}),
+    ...(record !== undefined ? { gfxIndex: record.index } : {}),
   });
-  stampResourceFootprintData(world, e, chestFootprint(content, spec.kind, spec.gfxIndex));
+  stampResourceFootprintData(world, e, chestFootprint(record));
   return e;
 }
 
@@ -69,83 +58,8 @@ export function createChest(world: World, content: ContentSet, spec: ChestSpec):
  */
 export function jobCanOpenChest(content: ContentSet, jobType: number | null, kind: ChestKind): boolean {
   if (kind === 'wooden') return true;
-  return isHeroJob(content, jobType) || (jobType !== null && jobType === druidJobType(content));
+  return isHeroJob(content, jobType) || (jobType !== null && contentIndex(content).druidJobs.has(jobType));
 }
-
-function canOpenChest(world: World, content: ContentSet, settler: Entity, chest: Entity): boolean {
-  if (!world.isAlive(chest) || !world.has(chest, Chest)) return false;
-  if (world.has(settler, Age)) return false; // a child opens nothing
-  return jobCanOpenChest(content, world.get(settler, Settler).jobType, world.get(chest, Chest).kind);
-}
-
-/**
- * Order one owned settler to open `chest` - see the command doc. Runs as a normal {@link moveUnit} walk to
- * the chest's work cell carrying an {@link OpenChestOrder}, which {@link chestOrderSystem} turns into the
- * open-chest clip on arrival.
- */
-export function orderOpenChest(
-  world: World,
-  ctx: SystemContext,
-  command: Extract<Command, { kind: 'openChest' }>,
-): void {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return; // mapless sim: no cells to walk
-  const e = command.entity;
-  if (!isOrderableSettler(world, e) || !world.has(e, Position)) return;
-  if (!canOpenChest(world, ctx.content, e, command.chest)) return;
-  // A non-interruptible atomic parks the whole command, as an inner moveUnit alone would strand the marker.
-  if (deferOrderDuringAtomic(world, ctx, e, command)) return;
-  const stance = resourceWorkCell(world, terrain, command.chest, entityNode(world, terrain, e));
-  const c = terrain.coordsOf(stance);
-  moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: c.x, y: c.y });
-  if (!world.has(e, PlayerOrder)) return; // the walk was refused (confinement, no route): no order stands
-  world.add(e, OpenChestOrder, { chest: command.chest });
-}
-
-/**
- * Turn an arrived {@link OpenChestOrder} into the one-shot open-chest clip. Runs after the player-order
- * system retires the walk and before the planner, so the clip starts before the economy could re-task the
- * settler. The chest is re-checked on arrival because it may have been opened by someone else en route.
- */
-export const chestOrderSystem: System = (world, ctx) => {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return;
-  // Canonical order: two settlers arriving the same tick at one chest race, and the lower id must win.
-  for (const e of canonicalById(world.query(Settler, OpenChestOrder))) {
-    const chest = world.get(e, OpenChestOrder).chest;
-    if (!canOpenChest(world, ctx.content, e, chest) || !world.has(e, Owner)) {
-      world.remove(e, OpenChestOrder); // chest gone, or the settler no longer qualifies
-      continue;
-    }
-    const atomic = world.tryGet(e, CurrentAtomic);
-    if (atomic !== undefined) {
-      if (atomic.effect.kind === 'openChest') continue; // bending over the lid - wait for the effect
-      if (world.has(e, PlayerOrder)) continue; // the walk's own preamble (setting a carried load down)
-      world.remove(e, OpenChestOrder); // a need drive took over - the order is abandoned
-      continue;
-    }
-    const here = entityNode(world, terrain, e);
-    const stance = resourceWorkCell(world, terrain, chest, here);
-    if (here === stance) {
-      world.remove(e, OpenChestOrder);
-      const settler = world.get(e, Settler);
-      const p = world.get(chest, Position);
-      const target = nodeOfPosition(p.x, p.y);
-      world.add(e, CurrentAtomic, {
-        atomicId: OPEN_CHEST_ATOMIC_ID,
-        elapsed: 0,
-        progress: fx.fromInt(0),
-        duration: atomicDuration(ctx.content, settler, OPEN_CHEST_ATOMIC_ID),
-        effect: { kind: 'openChest', chest },
-        targetEntity: chest,
-        targetTile: { x: target.hx, y: target.hy },
-      });
-      continue;
-    }
-    if (world.has(e, PlayerOrder)) continue; // still walking the order out
-    world.remove(e, OpenChestOrder); // walk failed or was superseded - return to autonomy
-  }
-};
 
 /**
  * Hand a chest's contents out to `opener`'s player and remove the chest. Goods heap on the ground around
@@ -169,7 +83,7 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
 
   unstampResourceFootprint(world, chest);
   world.destroy(chest);
-  ctx.events.emit({ kind: 'chestOpened', chest, at, player });
+  ctx.events.emit({ kind: 'chestOpened', chest, at });
 
   switch (reward.kind) {
     case 'goods':
@@ -180,10 +94,10 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
       });
       return;
     case 'paper':
-      grantPaper(world, ctx, player, reward.paper, at);
+      grantPaper(world, ctx, player, reward.paper, chest, at);
       return;
     case 'workshop':
-      grantPaper(world, ctx, player, reward.paper, at);
+      grantPaper(world, ctx, player, reward.paper, chest, at);
       standUpSettlers(world, ctx, player, tribe, reward.jobType, 1, at);
       return;
     case 'settlers':
@@ -209,10 +123,11 @@ function grantPaper(
   ctx: SystemContext,
   player: number,
   paper: Paper,
-  at: { readonly hx: number; readonly hy: number },
+  chest: Entity,
+  at: HalfCellNode,
 ): void {
   if (!addPaper(world, player, paper)) return;
-  ctx.events.emit({ kind: 'paperFound', player, paper: { ...paper }, at });
+  ctx.events.emit({ kind: 'paperFound', player, paper: { ...paper }, chest, at });
 }
 
 /** Spawn `count` settlers of `jobType` at the chest through the ordinary spawn seam, so each is pushed off
@@ -224,7 +139,7 @@ function standUpSettlers(
   tribe: number,
   jobType: number,
   count: number,
-  at: { readonly hx: number; readonly hy: number },
+  at: HalfCellNode,
 ): void {
   for (let i = 0; i < count; i++) {
     spawnSettler(world, ctx, { kind: 'spawnSettler', jobType, x: at.hx, y: at.hy, tribe, owner: player });

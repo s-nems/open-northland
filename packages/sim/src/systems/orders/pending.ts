@@ -1,9 +1,9 @@
 import { type DeferrableOrderCommand, DeferredOrder, Settler } from '../../components/index.js';
 import { assertNever } from '../../core/brand.js';
 import type { World } from '../../ecs/world.js';
-import { orderOpenChest } from '../chests/index.js';
 import type { System, SystemContext } from '../context.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { orderOpenChest } from './chests.js';
 import { attackMoveUnit, moveUnit } from './movement.js';
 import { placeSignpost } from './signposts.js';
 import { setJob } from './work/index.js';

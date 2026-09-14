@@ -7,7 +7,6 @@ import { type FrameStats, framePhaseEmitter, recordDiagHash } from '../../diag/i
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
-import type { GroundPileTooltip } from '../ground-pile-tooltip.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import type { makeOverlayFrameSource, makeSignpostOverlaySource } from '../placement-overlay.js';
 import {
@@ -21,6 +20,7 @@ import {
 } from '../projections/index.js';
 import type { FpsLimit } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
+import type { WorldTooltip } from '../world-tooltip.js';
 import type { GameViewDeps } from './game-view.js';
 import type { NetReadout } from './net-readout.js';
 import { placementCursor } from './placement-cursor.js';
@@ -39,7 +39,7 @@ export interface FrameLoopDeps {
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;
   readonly controls: UnitControls;
-  readonly pileTooltip: GroundPileTooltip;
+  readonly worldTooltip: WorldTooltip;
   readonly geometryDebug: GeometryDebugOverlay;
   readonly overlayFrame: ReturnType<typeof makeOverlayFrameSource>;
   /** The erect-signpost band probe, live while signpost placement mode is active. */
@@ -84,7 +84,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     toolPanel,
     minimap: mountedMinimap,
     controls,
-    pileTooltip,
+    worldTooltip,
     geometryDebug,
     overlayFrame,
     signpostOverlayFrame,
@@ -235,7 +235,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       flagged: controls.flaggedFlagIds(),
       workAreas: controls.workAreaRings(),
     });
-    pileTooltip.update(snap); // after controls, so the pointer-claim state is current
+    worldTooltip.update(snap); // after controls, so the pointer-claim state is current
     deps.onFrame?.(snap);
     if (soundDriver !== null) {
       soundDriver.update({
