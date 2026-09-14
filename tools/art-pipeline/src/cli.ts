@@ -17,14 +17,14 @@ import { recover } from './transaction.js';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const usage =
-  'art list | build <id|all> | validate <id|all> | review <id> [--port 5188] | preview <id> | approve <id> --digest <hash> --reviewer <name> | publish <id> | recover [id]';
+  'art list | build <id|all> | validate <id|all> | review <id> [--port 5188] | preview <id> [<id>...] | approve <id> --digest <hash> --reviewer <name> | publish <id> | recover [id]';
 try {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
     options: { port: { type: 'string' }, digest: { type: 'string' }, reviewer: { type: 'string' } },
   });
   const [command, id, ...extra] = positionals;
-  if (extra.length) throw new Error(usage);
+  if (extra.length && command !== 'preview') throw new Error(usage);
   if (command === 'list') {
     console.log(
       catalogSchema
@@ -54,7 +54,7 @@ try {
           command === 'build' ? await buildAsset(root, assetId) : (await candidate(root, assetId)).report;
         console.log(`${assetId}: ${Object.keys(result.files).length} files, ${result.digest}`);
       }
-    } else if (command === 'preview') console.log(await preparePreview(root, id));
+    } else if (command === 'preview') console.log(await preparePreview(root, [id, ...extra]));
     else if (command === 'publish') console.log(await publish(root, id));
     else if (command === 'approve') {
       if (!values.digest || !values.reviewer) throw new Error(usage);

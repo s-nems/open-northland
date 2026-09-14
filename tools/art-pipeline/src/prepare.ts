@@ -11,6 +11,7 @@ export async function prepareDelivery(
   root: string,
   current: Awaited<ReturnType<typeof candidate>>,
   prepared: string,
+  pack = join(root, 'packages/app/src/assets/own'),
 ) {
   const id = current.report.id;
   const registry = deliverySchema.parse(await json(join(root, 'docs/art/delivery.json')));
@@ -25,7 +26,7 @@ export async function prepareDelivery(
     for (const [other, files] of Object.entries(registry))
       if (other !== id && files.includes(file)) throw new Error(`Output belongs to ${other}: ${file}`);
   }
-  await cp(runtime, prepared, { recursive: true });
+  await cp(pack, prepared, { recursive: true });
   for (const file of owned) await rm(inside(prepared, file), { force: true });
   for (const file of next) {
     const destination = inside(prepared, file);

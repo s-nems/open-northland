@@ -47,6 +47,10 @@ export async function artPreviewPlugin(repoRoot: string, configuredPath: string)
     fingerprint(await filesIn(preview)) !== report.digest
   )
     throw new Error('Preview bytes or report changed; run art preview again');
+  const ids =
+    'ids' in report && Array.isArray(report.ids) && report.ids.every((id) => typeof id === 'string')
+      ? report.ids.join(' + ')
+      : match[1];
   const ownRoot = normalizePath(resolve(root, 'packages/app/src/assets/own'));
   const sourceRoot = `${normalizePath(resolve(root, 'packages/app/src'))}/`;
   return {
@@ -58,9 +62,9 @@ export async function artPreviewPlugin(repoRoot: string, configuredPath: string)
       server.middlewares.use(`${server.config.base}__art-preview.json`, (_req, res) => {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Cache-Control', 'no-store');
-        res.end(JSON.stringify({ id: report.id, digest: report.digest }));
+        res.end(JSON.stringify({ id: ids, digest: report.digest }));
       });
-      server.config.logger.info(`Art candidate: ${match[1]} (${report.digest}); restart after art preview`);
+      server.config.logger.info(`Art candidate: ${ids} (${report.digest}); restart after art preview`);
     },
     async transform(code, id) {
       id = normalizePath(id);

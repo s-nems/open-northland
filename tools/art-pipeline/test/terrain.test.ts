@@ -36,7 +36,7 @@ describe('terrain delivery discovery', () => {
     const f = await terrainFixture();
     const before = await hashes(f.runtime);
     await buildAsset(f.root, f.id);
-    const preview = await preparePreview(f.root, f.id);
+    const preview = await preparePreview(f.root, [f.id]);
     expect(await validateDelivery(preview.path, true)).toEqual({ files: 2, bindings: 1 });
     expect(JSON.parse(await readFile(join(preview.path, 'terrain/mud.json'), 'utf8'))).toEqual(manifest);
     expect(await hashes(f.runtime)).toEqual(before);
@@ -52,7 +52,7 @@ describe('terrain delivery discovery', () => {
     await buildAsset(f.root, f.id);
     await writeJson(join(f.runtime, 'terrain/other.json'), manifest);
     const before = await hashes(f.runtime);
-    await expect(preparePreview(f.root, f.id)).rejects.toThrow('Duplicate binding: material:mud');
+    await expect(preparePreview(f.root, [f.id])).rejects.toThrow('Duplicate binding: material:mud');
     expect(await hashes(f.runtime)).toEqual(before);
   });
   it('rejects nested terrain files the runtime glob cannot discover', async () => {
