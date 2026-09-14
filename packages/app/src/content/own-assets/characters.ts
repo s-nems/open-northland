@@ -4,7 +4,7 @@ import { Assets, type Texture } from 'pixi.js';
 import { diag } from '../../diag/index.js';
 import { readStoredSettings } from '../../view/settings-store.js';
 import type { ContentIr } from '../ir/rows.js';
-import { type GoodRef, YOUNG_CHARACTER_BY_JOB } from '../settler-gfx/index.js';
+import type { GoodRef } from '../settler-gfx/index.js';
 import {
   ownCharacterAtlas,
   ownCharacterBinding,
@@ -85,14 +85,11 @@ export async function loadOwnCharacters(
   };
   const selection = selectOwnCharacters(new Map(loaded.map((look) => [look.id, look])), fallback, selected);
   if (selection === undefined) return undefined;
-  const youngByJob: Record<number, SettlerCharacter> = {};
-  for (const job of Object.keys(YOUNG_CHARACTER_BY_JOB)) youngByJob[Number(job)] = fallback;
   const animalTribes = new Set(
     (ir?.animals ?? []).flatMap((a) => (a.tribeType === undefined ? [] : [a.tribeType])),
   );
   return {
     ...selection,
-    youngByJob,
     animals: {
       tribes: animalTribes,
       byTribe: Object.fromEntries([...animalTribes].map((t) => [t, fallback])),

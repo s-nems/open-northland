@@ -110,6 +110,9 @@ def main():
                     options = ['--glb',model/clip['file'],'--out',out,'--facing',facing,'--angle',angle,'--frames',clip_count,'--toon',str(recipe.get('render',DEFAULT['render'])['toon']),'--size',str(recipe.get('render',DEFAULT['render'])['size']),'--texture',run/recipe.get('texture_dir','projected')/f'texture-{facing}.png',*knobs('sprite')]
                     if recipe.get('render',DEFAULT['render'])['unlit']:
                         options += ['--unlit']
+                    for light in ('sun', 'world'):
+                        if light in recipe.get('render',DEFAULT['render']):
+                            options += ['--'+light, str(recipe['render'][light])]
                     if clip.get('prop'):
                         options += ['--prop',clip['prop']]
                     if clip.get('renderPadding'):

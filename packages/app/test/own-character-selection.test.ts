@@ -1,7 +1,7 @@
 import type { SettlerCharacter } from '@open-northland/render';
 import { TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
-import { JOB_SCOUT, JOB_WOMAN } from '../src/catalog/jobs.js';
+import { JOB_CHILD_FEMALE, JOB_CHILD_MALE, JOB_SCOUT, JOB_WOMAN } from '../src/catalog/jobs.js';
 import {
   requestedOwnAppearance,
   selectOwnCharacters,
@@ -31,6 +31,12 @@ describe('own character selection', () => {
     expect(selected?.byJob[JOB_SCOUT]).toBe(fallback);
   });
 
+  it('leaves an unselected young job on the placeholder body', () => {
+    const selected = selectOwnCharacters(loaded, fallback, null);
+    expect(selected?.youngByJob[JOB_CHILD_FEMALE]).toBe(fallback);
+    expect(selected?.default.variants).toEqual([man]);
+  });
+
   it('retains the original woman when its atlas is unavailable', () => {
     expect(selectOwnCharacters(new Map([['man-silver', man]]), fallback, null)?.byJob[JOB_WOMAN]).toBe(
       fallback,
@@ -57,5 +63,6 @@ describe('own character selection', () => {
     const preview = selectOwnCharacters(new Map([['woman-blonde', woman]]), fallback, 'woman-blonde');
     expect(preview?.default.body).toBe(woman.body);
     expect(preview?.byJob[JOB_WOMAN]).toBe(fallback);
+    expect(preview?.youngByJob[JOB_CHILD_MALE]).toBe(fallback);
   });
 });

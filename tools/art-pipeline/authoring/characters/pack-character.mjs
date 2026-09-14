@@ -11,6 +11,16 @@ const run = path.resolve(runArg),
   renders = path.resolve(renderArg);
 const out = outputArg ? path.resolve(outputArg) : path.join(run, 'sprites');
 await fs.mkdir(out, { recursive: true });
+// Walk strips pack to this height in screen pixels at zoom 2; the adult bodies keep the 88 px default.
+const { spriteHeight = 88 } = await fs
+  .readFile(path.join(run, 'recipe.json'), 'utf8')
+  .then(JSON.parse)
+  .catch((error) => {
+    if (error.code !== 'ENOENT') throw error;
+    return {};
+  });
+if (!Number.isFinite(spriteHeight) || spriteHeight <= 0)
+  throw new Error(`Sprite height must be a positive number: ${spriteHeight}`);
 const layoutFile = path.join(run, 'layout.json');
 const layout = await fs
   .readFile(layoutFile, 'utf8')
@@ -46,12 +56,12 @@ for (const [name, { files, box }] of boxes) {
   if (!layout[name]) {
     // Every other clip packs at the walk's SW scale, from this run's render or the saved layout.
     const reference = boxes.get('walk-SW');
-    const walkScale = reference ? 88 / reference.box.height : layout['walk-SW']?.scale;
+    const walkScale = reference ? spriteHeight / reference.box.height : layout['walk-SW']?.scale;
     if (!name.startsWith('walk-') && walkScale === undefined)
       throw new Error('Render walk-SW first to establish equipment scale');
     layout[name] = {
       box: { ...box, left: box.left - padding, top: box.top - padding },
-      scale: name.startsWith('walk-') ? 88 / box.height : walkScale,
+      scale: name.startsWith('walk-') ? spriteHeight / box.height : walkScale,
     };
   }
   const { box: anchor, scale } = layout[name];
