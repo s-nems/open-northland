@@ -48,16 +48,12 @@ interface ScheduledSystem {
 
 /** Canonical per-tick execution order. Engine wiring, not part of the public systems namespace. */
 export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
-  {
-    name: 'technologyBeforeCommands',
-    system: (world, ctx) => {
-      if (ctx.tick > 1) technologySystem(world, ctx);
-    },
-  },
   { name: 'command', system: commandSystem },
   // Directly after the commands that enable it, and at the head of the tick, so a mission judges the
   // settled world the previous tick's cleanup left behind.
   { name: 'mission', system: missionSystem },
+  // After the commands and script results that spawn, retrain, educate or permit, so the gates the
+  // rest of the tick reads see those discoveries; again after work for the experience it accrued.
   { name: 'technologyAfterMissions', system: technologySystem },
   // After the orders that raise and lower alarms and before the planner, so a shelter that stopped
   // qualifying releases its civilians in time to claim another one on this same pass.

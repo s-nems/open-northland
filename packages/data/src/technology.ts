@@ -1,6 +1,7 @@
 import type { ContentSet } from './schema/index.js';
 
-/** Source-name bindings for the original house discovery side effects; goods remain catalog IDs. */
+/** The goods a house's discovery also discovers, which the original fixes by house type (reading of
+ *  `EnableHouse`: well, hive and animal farm), bound here by catalog name. */
 const HOUSE_DISCOVERY_GOODS: Readonly<Record<string, readonly string[]>> = {
   work_well_00: ['water'],
   work_hive_00: ['honey'],

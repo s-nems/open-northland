@@ -6,10 +6,12 @@ import { accrueBonusOutput } from '../../../src/systems/economy/production/bonus
 import { experienceBonus, productionSystem, recipesByProductOf } from '../../../src/systems/index.js';
 import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { testContent } from '../../fixtures/content.js';
-import { CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD } from './support.js';
+import { CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD, WOOD_TRACK } from './support.js';
 
 const CARPENTER_GENERAL_TRACK = 3; // fixture jobExperience typeId for "carpenter general" (factor 100)
+const CARPENTER_PLANK_TRACK = 4; // the good-specific "carpenter plank" track (factor 7)
 const CARPENTER_XP_PER_BATCH = 100; // the fixture track's experienceFactor
+const PLANK_XP_PER_BATCH = 7;
 
 describe('productionSystem grants the operator profession XP per completed batch', () => {
   it('one completed cycle accrues the carpenter general track once', () => {
@@ -20,7 +22,9 @@ describe('productionSystem grants the operator profession XP per completed batch
     expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(1); // the batch really finished
     const xp = sim.world.get(worker, Settler).experience;
     expect(xp.get(CARPENTER_GENERAL_TRACK)).toBe(100); // one batch = one experienceFactor grant
-    expect(xp.size).toBe(3);
+    // The seeded plank-gate entry, the general track and the good-specific plank track.
+    expect(xp.get(CARPENTER_PLANK_TRACK)).toBe(PLANK_XP_PER_BATCH);
+    expect([...xp.keys()].sort()).toEqual([WOOD_TRACK, CARPENTER_GENERAL_TRACK, CARPENTER_PLANK_TRACK]);
   });
 
   it('accumulates across cycles (two planks = two grants)', () => {

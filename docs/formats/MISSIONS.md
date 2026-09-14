@@ -453,10 +453,13 @@ Readings unless marked otherwise.
   This build keeps script grants per player and tribe (`components/unlocks.ts`). Initial permissions
   come from `tribetypes.ini` `allowjob`, `allowhouse`, `allowgood`; map `[allowedthings]` overrides
   (`forbid*` / `allow*`) are saved in `MapPermissions`. Owned `tutorial_008/player.inc` forbids good 14
-  for player 0, tribe 1; `StraznicyPolnocy/player.inc` forbids good 63. `Allow*` removes the restriction
-  without granting progress. `Enable*` grants availability, including permission (approximation for
-  conflicting ban/grant combinations). A synthetic catalog without permission tables remains
-  unrestricted. Unknown permission macros remain in the sidecar's `misc` instead of inventing an id.
+  for player 0, tribe 1; `StraznicyPolnocy/player.inc` forbids good 63. A `forbid*` line clears both
+  bytes; an `allow*` line writes the enabled byte, for a job or good only when the tribe's own table
+  allows the type (reading of the `[allowedthings]` loader). This build reads an `allow*` line as a
+  permission grant instead (approximation; no corpus map writes one). The `Allow*` results remove
+  the restriction without granting progress. `Enable*` grants availability and leaves a ban in place: a forbidden
+  type stays unusable however often a script enables it. A synthetic catalog without permission tables
+  remains unrestricted. Unknown permission macros remain in the sidecar's `misc` instead of inventing an id.
   Building placement, upgrades, the profession picker and production use shared sim gates; disabled
   UI choices explain the restriction or prerequisite. The progression toggle lifts profession
   prerequisites and civilian XP gates, but not map permissions or military training requirements.

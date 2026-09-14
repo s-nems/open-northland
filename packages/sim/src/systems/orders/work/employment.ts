@@ -28,7 +28,7 @@ import { canChooseJob, needSubjectOf } from '../../progression/index.js';
 import { jobCanBuild, startDrop } from '../../settlers/atomics/start.js';
 import { releaseTowerPost } from '../../settlers/drives/tower-post.js';
 import { navigationLimitFor } from '../../signposts/index.js';
-import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable } from '../guards.js';
+import { deferOrderDuringAtomic, isOrderableSettler, isTradeAssignable, mayChangeTrade } from '../guards.js';
 
 /**
  * Change one owned settler's profession - see the command doc. Resets it to a fresh idle worker of the new
@@ -47,7 +47,7 @@ export function setJob(
   command: Extract<Command, { kind: 'setJob' }>,
 ): void {
   const e = command.entity;
-  if (!isTradeAssignable(world, e)) return;
+  if (!mayChangeTrade(world, e)) return;
   if (!contentIndex(ctx.content).commandJobs.has(command.jobType)) return; // unknown job - skip
   if (!canChooseJob(world, ctx, needSubjectOf(world, e), command.jobType)) return; // unearned trade
   if (deferOrderDuringAtomic(world, ctx, e, command)) return;

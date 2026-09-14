@@ -2,10 +2,7 @@ import type { JobEnablesKind, Recipe, VehicleType } from '@open-northland/data';
 import {
   isAiPlayer,
   mapPermission,
-  ownerOf,
-  Person,
   professionProgressionEnabled,
-  Settler,
   scriptAllows,
   scriptEnables,
   technologyDiscovered,
@@ -16,7 +13,6 @@ import type { World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { aliveTribeJobs } from './alive-jobs.js';
-import { needSubjectOf, settlerMeetsNeed } from './unlocks.js';
 
 export function buildingEnabled(
   world: World,
@@ -48,6 +44,22 @@ export function goodEnabled(
   );
 }
 
+/**
+ * Whether a standing workplace of the type may take a worker. Under a technology table the trade
+ * itself is gated, so the house needs no discovery of its own; without one the house's unlock decides
+ * (`PROGRESSION.md`).
+ */
+export function workplaceStaffable(
+  world: World,
+  ctx: ContentContext,
+  owner: number | undefined,
+  tribe: number,
+  buildingType: number,
+): boolean {
+  if (contentIndex(ctx.content).tribes.get(tribe)?.technology !== undefined) return true;
+  return buildingEnabled(world, ctx, owner, tribe, buildingType);
+}
+
 export function recipeOutputsEnabled(
   world: World,
   ctx: ContentContext,
@@ -76,7 +88,13 @@ export function jobEnabled(
   );
 }
 
-/** Discovery state supplements prerequisite reads while a world is being assembled. */
+/**
+ * Whether the tribe's tech tree opens the target for the owner. Under a technology table the player's
+ * discoveries decide, which the discovery system records at the end of every tick's commands, missions
+ * and work: a job with no `needforjob` row, a good no job produces, and everything for an AI seat are
+ * open from the start (reading of the original's per-player init). Without the table the trades the
+ * tribe holds alive decide.
+ */
 function tribeUnlockEnabled(
   world: World,
   ctx: ContentContext,
@@ -104,18 +122,6 @@ function tribeUnlockEnabled(
       )
     )
       return true;
-    for (const entity of world.query(Person, Settler)) {
-      const worker = world.get(entity, Settler);
-      if (worker.tribe !== tribe || ownerOf(world, entity) !== owner) continue;
-      if (kind === 'job' && worker.jobType === targetId) return true;
-      if (
-        !definition.jobEnables.some(
-          (edge) => edge.jobType === worker.jobType && edge.kind === kind && edge.targetId === targetId,
-        )
-      )
-        continue;
-      if (settlerMeetsNeed(world, ctx, needSubjectOf(world, entity), kind, targetId)) return true;
-    }
     return kind === 'good' && !definition.jobEnables.some((e) => e.kind === kind && e.targetId === targetId);
   }
   const enablingJobs = contentIndex(ctx.content).enablingJobsByTribe.get(tribe)?.get(kind)?.get(targetId);
@@ -145,7 +151,9 @@ export function tribeShipsUnlocked(
     .sort((a, b) => a.typeId - b.typeId);
 }
 
-/** Map grants override authored bans; otherwise the tribe's initial allow table is authoritative. */
+/** A script's `Allow*` overrides authored bans; otherwise the map's permission table, then the tribe's
+ *  initial allow table, is authoritative. `Enable*` never lifts a ban (reading: the original's readers
+ *  require the allowed byte beside the enabled one). */
 export function typeAllowed(
   world: World,
   ctx: ContentContext,
@@ -154,8 +162,7 @@ export function typeAllowed(
   kind: UnlockKind,
   typeId: number,
 ): boolean {
-  if (scriptAllows(world, owner, tribe, kind, typeId) || scriptEnables(world, owner, tribe, kind, typeId))
-    return true;
+  if (scriptAllows(world, owner, tribe, kind, typeId)) return true;
   return (
     mapPermission(world, owner, tribe, kind, typeId) ??
     contentIndex(ctx.content).tribes.get(tribe)?.permissions?.[kind].includes(typeId) ??
@@ -175,7 +182,8 @@ export function unlockStatus(
   enabled: boolean;
   enablingJobs: number[];
   requiredJobs: number[];
-  requiredGoods: number[];
+  /** Each good the house still waits on, with the jobs whose work discovers it. */
+  requiredGoods: { good: number; jobs: number[] }[];
 } {
   const allowed = typeAllowed(world, ctx, owner, tribe, kind, typeId);
   const enabled =
@@ -190,13 +198,15 @@ export function unlockStatus(
           .tribes.get(tribe)
           ?.technology?.houses.find((r) => r.house === typeId)
       : undefined;
+  const enablers = contentIndex(ctx.content).enablingJobsByTribe.get(tribe);
   return {
     requiredJobs: house?.jobs.filter((id) => !jobEnabled(world, ctx, owner, tribe, id)) ?? [],
-    requiredGoods: house?.goods.filter((id) => !goodEnabled(world, ctx, owner, tribe, id)) ?? [],
+    requiredGoods:
+      house?.goods
+        .filter((id) => !goodEnabled(world, ctx, owner, tribe, id))
+        .map((good) => ({ good, jobs: [...(enablers?.get('good')?.get(good) ?? [])] })) ?? [],
     allowed,
     enabled,
-    enablingJobs: [
-      ...(contentIndex(ctx.content).enablingJobsByTribe.get(tribe)?.get(kind)?.get(typeId) ?? []),
-    ],
+    enablingJobs: [...(enablers?.get(kind)?.get(typeId) ?? [])],
   };
 }

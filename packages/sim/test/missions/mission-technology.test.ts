@@ -62,6 +62,13 @@ it('AllowGood removes a map ban without granting technology, and survives save/l
   );
 });
 
+it('EnableGood leaves a map ban in place', () => {
+  const sim = firingSim([{ opcode: 'EnableGood', player: PLAYER, tribe: TRIBE, good: PLANK }], content());
+  setMapPermission(sim.world, { player: PLAYER, tribe: TRIBE, kind: 'good', typeId: PLANK, allowed: false });
+  sim.run(FIRST_PASS);
+  expect(sim.unlockStatus('good', PLANK, TRIBE, PLAYER)).toMatchObject({ allowed: false, enabled: false });
+});
+
 it('EnableHouse opens both the placement probe and the command for the selected seat only', () => {
   const sim = new Simulation({ seed: 1, content: content(), map: grassNodeMap(48, 48) });
   expect(sim.placementProbe(SAWMILL, PLAYER, TRIBE)?.canPlace(20, 20)).toBe(false);

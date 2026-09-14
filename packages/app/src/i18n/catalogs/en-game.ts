@@ -82,6 +82,8 @@ export const enGame = {
     schoolTitle: 'School',
     schoolHint: 'Choose a profession or product to study. Your settlement must have discovered it first.',
     schoolClose: 'Close',
+    schoolFull: 'The school is full',
+    schoolLearned: 'Already learned',
     technologyForbidden: 'Unavailable in this mission',
     technologyRequires: 'Required discoveries:',
     technologyExperience: 'Requires experience or training',

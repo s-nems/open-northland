@@ -154,6 +154,10 @@ describe('the bits the sim reads', () => {
     sim.run(200);
     expect(sim.world.get(frozen, Settler).hunger).toBe(frozenAt);
     expect(sim.world.get(ordinary, Settler).hunger).toBeGreaterThan(ordinaryAt);
+    // Frozen needs leave the hitpoints alone: a wounded one still heals.
+    sim.world.mut(frozen, Health).hitpoints = 1;
+    sim.run(200);
+    expect(sim.world.get(frozen, Health).hitpoints).toBeGreaterThan(1);
   });
 
   it('pins a stay-put human where it was left', () => {
@@ -229,11 +233,15 @@ describe('the bits the sim reads', () => {
     sim.run(2);
     const locked = only(sim, OWNER);
     const free = only(sim, OWNER + 1);
+    sim.enqueue(playerCommand(OWNER, { kind: 'moveUnit', entity: locked, x: FAR.hx, y: FAR.hy }));
+    sim.step();
     sim.enqueue(playerCommand(OWNER, { kind: 'setJob', entity: locked, jobType: CARPENTER }));
     sim.enqueue(playerCommand(OWNER + 1, { kind: 'setJob', entity: free, jobType: CARPENTER }));
     sim.step();
     expect(sim.world.get(locked, Settler).jobType).toBe(WOODCUTTER);
     expect(sim.world.get(free, Settler).jobType).toBe(CARPENTER);
+    // The refused order cancelled nothing: the walk it would have superseded goes on.
+    expect(sim.world.has(locked, PlayerOrder)).toBe(true);
   });
 
   it('bars a flagged human from earning experience for its work', () => {

@@ -12,9 +12,9 @@ import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { goodEnabled, jobEnabled } from '../progression/index.js';
-import { isFighterJob } from '../readviews/index.js';
-import { isTradeAssignable } from './guards.js';
-import { startDrill } from './training.js';
+import { isFighterJob, isSchoolType } from '../readviews/index.js';
+import { mayChangeTrade } from './guards.js';
+import { mayWalkToDrill, startDrill } from './training.js';
 
 /** Approximation: a lesson point takes one second of completed training atomics. */
 export const SCHOOL_LESSON_TICKS = TICKS_PER_SECOND;
@@ -23,13 +23,13 @@ export function isSchool(world: World, ctx: SystemContext, house: Entity): boole
   const building = world.tryGet(house, Building);
   if (building === undefined || world.has(house, UnderConstruction)) return false;
   const type = contentIndex(ctx.content).buildings.get(building.buildingType);
-  return type?.kind === 'training' && type.workers.length === 0;
+  return type !== undefined && isSchoolType(type);
 }
 
 export function learn(world: World, ctx: SystemContext, command: Extract<Command, { kind: 'learn' }>): void {
   const { entity, house, target, typeId } = command;
   if (target === 'job' && isFighterJob(ctx.content, typeId)) return;
-  if (!isTradeAssignable(world, entity) || !isSchool(world, ctx, house) || !sameSide(world, entity, house))
+  if (!mayChangeTrade(world, entity) || !isSchool(world, ctx, house) || !sameSide(world, entity, house))
     return;
   const settler = world.get(entity, Settler);
   if (world.get(house, Building).tribe !== settler.tribe || settler.learned?.[target].includes(typeId))
@@ -58,6 +58,7 @@ export function learn(world: World, ctx: SystemContext, command: Extract<Command
     if (occupied >= school.schoolSize) return;
   }
   if (pending?.house === house && pending.lesson?.kind === target && pending.lesson.typeId === typeId) return;
+  if (pending?.house !== house && !mayWalkToDrill(world, ctx, entity, house)) return;
   startDrill(world, entity, house, Math.max(...requirements.map((r) => r.amount)) * SCHOOL_LESSON_TICKS);
   world.mut(entity, TrainingOrder).lesson = { kind: target, typeId };
 }

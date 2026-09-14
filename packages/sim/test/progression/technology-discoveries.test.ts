@@ -20,29 +20,46 @@ import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
 
+const PLAYER = 0;
+const RIVAL = 1;
+const TRIBE = 1;
+const WOODCUTTER = 1;
+const CARPENTER = 2;
+const PLANK = 2;
+const SMITHY = 4;
+/** The fixture's wood good, whose extraction feeds the wood track. */
+const WOOD = 1;
+const WOOD_TRACK = 1;
+
 function setup() {
   const base = testContent();
   const content = parseContentSet({
     ...base,
     tribes: base.tribes.map((t) =>
-      t.typeId !== 1
+      t.typeId !== TRIBE
         ? t
         : {
             ...t,
-            technology: { houses: [{ house: 4, jobs: [1, 2], goods: [2] }] },
+            technology: { houses: [{ house: SMITHY, jobs: [WOODCUTTER, CARPENTER], goods: [PLANK] }] },
             jobRequirements: [
-              { requirement: 'need', target: 'job', targetId: 2, amount: 3, experienceTypes: [1] },
+              {
+                requirement: 'need',
+                target: 'job',
+                targetId: CARPENTER,
+                amount: 3,
+                experienceTypes: [WOOD_TRACK],
+              },
             ],
             jobEnables: [
-              { jobType: 1, kind: 'job', targetId: 2 },
-              { jobType: 2, kind: 'good', targetId: 2 },
+              { jobType: WOODCUTTER, kind: 'job', targetId: CARPENTER },
+              { jobType: CARPENTER, kind: 'good', targetId: PLANK },
             ],
           },
     ),
   });
   const sim = new Simulation({ seed: 5, content });
-  const worker = settlerAt(sim, { tribe: 1, jobType: 1 });
-  sim.world.add(worker, Owner, { player: 0 });
+  const worker = settlerAt(sim, { tribe: TRIBE, jobType: WOODCUTTER });
+  sim.world.add(worker, Owner, { player: PLAYER });
   return { sim, worker, ctx: ctxOf(sim) };
 }
 
@@ -50,29 +67,29 @@ describe('player technology discoveries', () => {
   it('work discovers a profession and its basic product, opening a house before that profession is staffed', () => {
     const { sim, worker, ctx } = setup();
     technologySystem(sim.world, ctx);
-    expect(buildingEnabled(sim.world, ctx, 0, 1, 4)).toBe(false);
-    grantWorkExperience(sim.world, ctx, worker, 1, 2);
+    expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(false);
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 2);
     technologySystem(sim.world, ctx);
-    expect(jobEnabled(sim.world, ctx, 0, 1, 2)).toBe(false);
-    grantWorkExperience(sim.world, ctx, worker, 1, 1);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(false);
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 1);
     technologySystem(sim.world, ctx);
-    expect(sim.world.get(worker, Settler).jobType).toBe(1);
-    expect(jobEnabled(sim.world, ctx, 0, 1, 2)).toBe(true);
-    expect(goodEnabled(sim.world, ctx, 0, 1, 2)).toBe(true);
-    expect(buildingEnabled(sim.world, ctx, 0, 1, 4)).toBe(true);
-    expect(buildingEnabled(sim.world, ctx, 1, 1, 4)).toBe(false);
+    expect(sim.world.get(worker, Settler).jobType).toBe(WOODCUTTER);
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
+    expect(goodEnabled(sim.world, ctx, PLAYER, TRIBE, PLANK)).toBe(true);
+    expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
+    expect(buildingEnabled(sim.world, ctx, RIVAL, TRIBE, SMITHY)).toBe(false);
   });
 
   it('discoveries survive retraining, death and save restoration', () => {
     const { sim, worker, ctx } = setup();
-    grantWorkExperience(sim.world, ctx, worker, 1, 3);
+    grantWorkExperience(sim.world, ctx, worker, WOOD, 3);
     technologySystem(sim.world, ctx);
     setSettlerJob(sim.world, worker, null);
     technologySystem(sim.world, ctx);
     sim.world.destroy(worker);
-    expect(buildingEnabled(sim.world, ctx, 0, 1, 4)).toBe(true);
+    expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
     const restored = restoreSimulation(exportSaveGame(sim), { content: sim.content }).sim;
-    expect(buildingEnabled(restored.world, ctxOf(restored), 0, 1, 4)).toBe(true);
+    expect(buildingEnabled(restored.world, ctxOf(restored), PLAYER, TRIBE, SMITHY)).toBe(true);
   });
 });
 

@@ -82,6 +82,8 @@ export const plGame = {
     schoolTitle: 'Szkoła',
     schoolHint: 'Wybierz zawód lub produkt do nauki. Osada musi go najpierw odkryć.',
     schoolClose: 'Zamknij',
+    schoolFull: 'Szkoła jest pełna',
+    schoolLearned: 'Już nauczone',
     technologyForbidden: 'Niedostępne w tej misji',
     technologyRequires: 'Wymagane odkrycia:',
     technologyExperience: 'Wymaga doświadczenia lub szkolenia',

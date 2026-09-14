@@ -6,7 +6,9 @@ the AI economy.
 
 `experienceGatesApply` (`packages/sim/src/systems/progression/unlocks.ts`) exempts every AI seat from
 the experience tree on civilian targets, so `settlerMeetsNeed(..., 'good', ...)` is constant `true`
-for the settlers the workforce allocator governs. That makes `meetsNeed`
+for the settlers the workforce allocator governs. The discovery gates carry the same exemption
+(`tribeUnlockEnabled` in `availability.ts` and the house loop of `discoveries.ts`), which the macOS
+reading of `an original routine` corroborates for the original's AI seats. That makes `meetsNeed`
 (`packages/sim/src/systems/ai-player/workforce/collectors/wanted-goods.ts`) a no-op at both its call
 sites: the first post and the veteran repost accept any spare man, iron included.
 

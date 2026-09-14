@@ -216,7 +216,7 @@ describe('build-order module (houseBuild)', () => {
   });
 });
 
-it('does not issue an upgrade blocked by map permissions and resumes after a script grant', () => {
+it('does not issue an upgrade blocked by map permissions and resumes once a script allows it', () => {
   const sim = aiSim();
   placeHq(sim);
   sim.enqueueSetup({
@@ -235,6 +235,9 @@ it('does not issue an upgrade blocked by map permissions and resumes after a scr
   const module = buildOrderModule([{ kind: 'upgrade', building: target.id, count: 1 }]);
   setMapPermission(sim.world, { player: SEAT, tribe: VIKING, kind: 'house', typeId: next, allowed: false });
   expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  // An Enable grant leaves the ban in place; only an Allow lifts it.
   grantScriptUnlock(sim.world, 'enabled', SEAT, VIKING, 'house', next);
+  expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  grantScriptUnlock(sim.world, 'allowed', SEAT, VIKING, 'house', next);
   expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toMatchObject([{ kind: 'upgradeBuilding' }]);
 });

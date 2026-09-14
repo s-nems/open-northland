@@ -18,6 +18,7 @@ export {
   isBarracks,
   isBarracksType,
   isLowPriorityBuildingTarget,
+  isSchoolType,
   isTemple,
 } from './buildings.js';
 export {

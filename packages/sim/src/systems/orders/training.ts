@@ -17,7 +17,7 @@ import { isBarracks } from '../readviews/index.js';
 import { BARRACKS_DRILL_TICKS, drillDoorOpen } from '../settlers/drives/training.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { navigationLimitFor } from '../signposts/index.js';
-import { isOrderableSettler, isTradeAssignable } from './guards.js';
+import { isOrderableSettler, mayChangeTrade } from './guards.js';
 
 /**
  * Send one owned settler to drill at a barracks - see the command doc. Validates and stamps the
@@ -42,13 +42,18 @@ export function trainSoldier(
  * an auto-issued drill obeys exactly the player order's gates.
  */
 export function mayDrillAt(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
-  if (!isTradeAssignable(world, e)) return false;
+  if (!mayChangeTrade(world, e)) return false;
   if (!isBarracks(world, ctx, house)) return false;
   if (world.get(e, Settler).tribe !== world.get(house, Building).tribe) return false;
   if (!sameSide(world, e, house)) return false;
   if (world.tryGet(e, TrainingOrder)?.house === house) return false; // already drilling here
+  return mayWalkToDrill(world, ctx, e, house);
+}
+
+/** Whether `e` can reach `house`'s door for a drill or a lesson: a mapless sim has no door to walk to. */
+export function mayWalkToDrill(world: World, ctx: SystemContext, e: Entity, house: Entity): boolean {
   const terrain = ctx.terrain;
-  if (terrain === undefined) return false; // mapless sim: no door to walk to
+  if (terrain === undefined) return false;
   const door = interactionCell(world, ctx, terrain, house);
   return drillDoorOpen(world, ctx, e, door, navigationLimitFor(world, ctx.content, terrain, e));
 }

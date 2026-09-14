@@ -37,7 +37,7 @@ export function workRepeatsFor(ctx: SystemContext, jobType: number | null, goodT
   return Math.max(1, trackFor(ctx, jobType, goodType)?.baseRepeatCounter ?? 1);
 }
 
-/** Work credits general and specialization counters in the saved factor-scaled encoding. */
+/** The cap on any track, in repeats; the saved value is the repeat count times the track's factor. */
 export const MAX_EXPERIENCE_REPEATS = 10_000;
 
 export function grantWorkExperience(
@@ -50,28 +50,14 @@ export function grantWorkExperience(
   if (units <= 0) return;
   const s = world.tryGet(settler, Settler);
   if (s === undefined || s.jobType === null) return;
-  // A script may bar a unit from ever getting better at its trade (`MISSIONS.md`, behaviour bit 11).
-  if (hasMissionBehaviour(world, settler, MISSION_BEHAVIOUR.NO_JOB_EXPERIENCE)) return;
   const track = trackFor(ctx, s.jobType, goodType);
   if (track === undefined) return;
-  accrueExperience(
-    world,
-    settler,
-    track.typeId,
-    track.experienceFactor * units,
-    track.experienceFactor * MAX_EXPERIENCE_REPEATS,
-  );
+  accrueTrack(world, settler, track, units);
   const general = generalTrackFor(ctx, s.jobType);
-  if (general !== undefined && general.typeId !== track.typeId)
-    accrueExperience(
-      world,
-      settler,
-      general.typeId,
-      general.experienceFactor * units,
-      general.experienceFactor * MAX_EXPERIENCE_REPEATS,
-    );
+  if (general !== undefined && general.typeId !== track.typeId) accrueTrack(world, settler, general, units);
 }
 
+/** A script may bar a unit from ever getting better at its trade (`MISSIONS.md`, behaviour bit 11). */
 function accrueExperience(
   world: World,
   settler: Entity,
@@ -85,6 +71,17 @@ function accrueExperience(
   experience.set(trackId, Math.min(limit, (experience.get(trackId) ?? 0) + amount));
 }
 
+/** `units` repeats on a content track, in the track's factor-scaled encoding and under its cap. */
+function accrueTrack(world: World, settler: Entity, track: HumanJobExperienceType, units = 1): void {
+  accrueExperience(
+    world,
+    settler,
+    track.typeId,
+    track.experienceFactor * units,
+    track.experienceFactor * MAX_EXPERIENCE_REPEATS,
+  );
+}
+
 /** A job's general (no-good) experience track, or `undefined` when the job trains none; unlike
  *  {@link trackFor} it never resolves a good-specific track. */
 export function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobExperienceType | undefined {
@@ -95,14 +92,7 @@ export function grantProfessionExperience(world: World, ctx: SystemContext, enti
   const job = world.tryGet(entity, Settler)?.jobType;
   if (job === null || job === undefined) return;
   const track = generalTrackFor(ctx, job);
-  if (track !== undefined)
-    accrueExperience(
-      world,
-      entity,
-      track.typeId,
-      track.experienceFactor,
-      track.experienceFactor * MAX_EXPERIENCE_REPEATS,
-    );
+  if (track !== undefined) accrueTrack(world, entity, track);
 }
 
 /** Each completed batch trains one present operator in its general and product-specific tracks. */
@@ -121,14 +111,7 @@ export function grantProductionExperience(
     if (product !== undefined) grantWorkExperience(world, ctx, op, product, 1);
     else {
       const track = generalTrackFor(ctx, s.jobType);
-      if (track !== undefined)
-        accrueExperience(
-          world,
-          op,
-          track.typeId,
-          track.experienceFactor,
-          track.experienceFactor * MAX_EXPERIENCE_REPEATS,
-        );
+      if (track !== undefined) accrueTrack(world, op, track);
     }
   }
 }
@@ -144,13 +127,7 @@ export function grantCarryExperience(world: World, ctx: SystemContext, settler: 
   if (s === undefined || s.jobType === null || !isCarrierJob(ctx, s.jobType)) return;
   const track = generalTrackFor(ctx, s.jobType);
   if (track === undefined) return;
-  accrueExperience(
-    world,
-    settler,
-    track.typeId,
-    track.experienceFactor,
-    track.experienceFactor * MAX_EXPERIENCE_REPEATS,
-  );
+  accrueTrack(world, settler, track);
 }
 
 /**
@@ -252,14 +229,7 @@ export function grantFightExperience(
       : undefined;
   if (generalTrackId === undefined) return;
   const general = contentIndex(ctx.content).jobExperience.get(generalTrackId);
-  if (general !== undefined)
-    accrueExperience(
-      world,
-      attacker,
-      generalTrackId,
-      general.experienceFactor,
-      general.experienceFactor * MAX_EXPERIENCE_REPEATS,
-    );
+  if (general !== undefined) accrueTrack(world, attacker, general);
 }
 
 /** The per-swing fight-XP rate: the {@link SOLDIER_GENERAL_EXPERIENCE_TYPE} track's `experienceFactor`

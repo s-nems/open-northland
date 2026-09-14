@@ -11,7 +11,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, positionedInteractionCell, resourceWorkCell } from '../../footprint/index.js';
-import { buildingEnabled } from '../../progression/index.js';
+import { workplaceStaffable } from '../../progression/index.js';
 import { buildingWorkerJobs, mergedRecipeOf } from '../../stores/index.js';
 
 const EMPTY_ATOMICS: ReadonlySet<number> = new Set<number>();
@@ -43,11 +43,7 @@ export function boundWorkplaceTarget(
   if (world.has(workplace, UnderConstruction)) return null;
   if (mergedRecipeOf(world, ctx, workplace) === undefined) return null;
   if (!buildingWorkerJobs(world, ctx, workplace).has(jobType)) return null;
-  if (
-    contentIndex(ctx.content).tribes.get(tribe)?.technology === undefined &&
-    !buildingEnabled(world, ctx, ownerOf(world, workplace), tribe, building.buildingType)
-  )
-    return null;
+  if (!workplaceStaffable(world, ctx, ownerOf(world, workplace), tribe, building.buildingType)) return null;
   if (!world.has(workplace, Position)) return null;
   return workplace;
 }

@@ -31,11 +31,15 @@ export function isLowPriorityBuildingTarget(world: World, ctx: SystemContext, t:
 /**
  * The house a settler drills at to become a soldier. `logicmaintype 4` (LEARN) holds exactly two houses,
  * and only the barracks employs anybody: `logicworker 24 4` against the school's none. A structural
- * signature, because the field that names the difference outright, `logicSchoolSize` 25 against the
- * school's 5, is readable but not carried into the IR.
+ * signature; `schoolSize` (25 against the school's 5) is a capacity, not a type tag.
  */
 export function isBarracksType(type: Pick<BuildingType, 'kind' | 'workers'>): boolean {
   return type.kind === BUILDING_KIND.training && type.workers.length > 0;
+}
+
+/** The other LEARN house: the school, where civilians take their courses. */
+export function isSchoolType(type: Pick<BuildingType, 'kind' | 'workers'>): boolean {
+  return type.kind === BUILDING_KIND.training && !isBarracksType(type);
 }
 
 /** A foundation still under construction is not a barracks yet. */

@@ -2,7 +2,12 @@ import { Building, JobAssignment, ownerOf, ownersCompatible, Settler } from '../
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { buildingEnabled, jobEnabled, type NeedSubject, settlerMeetsNeed } from '../../progression/index.js';
+import {
+  jobEnabled,
+  type NeedSubject,
+  settlerMeetsNeed,
+  workplaceStaffable,
+} from '../../progression/index.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { buildingWorkerJobs } from '../../stores/index.js';
 
@@ -32,21 +37,18 @@ export function openWorkerJobFromList(
   const b = world.tryGet(building, Building);
   if (b === undefined || b.tribe !== tribe) return null;
   if (!ownersCompatible(query.owner, ownerOf(world, building))) return null; // another player's workplace
-  const modern = contentIndex(ctx.content).tribes.get(tribe)?.technology !== undefined;
-  if (
-    !modern &&
-    !query.authored &&
-    !buildingEnabled(world, ctx, ownerOf(world, building), tribe, b.buildingType)
-  )
+  if (!query.authored && !workplaceStaffable(world, ctx, ownerOf(world, building), tribe, b.buildingType))
     return null;
   const offered = buildingWorkerJobs(world, ctx, building);
+  // Under a technology table the trade is the gate a workplace's post reads, not the house.
+  const tradeGated = contentIndex(ctx.content).tribes.get(tribe)?.technology !== undefined;
   for (const jobType of jobPriority) {
     if (!offered.has(jobType)) continue;
     if (!jobUnderstaffed(query, building, jobType)) continue;
     if (!garrisonPostOpenTo(query, jobType)) continue;
     const alreadyHoldsTrade = query.jobType === jobType;
     if (
-      modern &&
+      tradeGated &&
       !query.authored &&
       !alreadyHoldsTrade &&
       !jobEnabled(world, ctx, query.owner, tribe, jobType)

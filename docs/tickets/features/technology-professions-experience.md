@@ -12,9 +12,12 @@ runtime details remain approximations; analysis readings alone do not establish 
 - Observe gathering, production, carrying and construction in the owned executable. Pin which
   completed actions increment general and specialized XP, and compare the work efficiency curve.
 - Measure civilian school lesson timing, any costs, interruption and target-change behavior.
-  The current model uses one second per point and resumes after needs interruptions.
+  The current model uses one second per point and resumes after needs interruptions; the macOS
+  reading (`an original routine`) counts completed exercise animations, each adding its
+  atomic event value, against the summed `trainforjob` and `trainforgood` rows of a (job, good)
+  course pair, and a reissued course restarts the count. Confirm on the owned executable, then
+  model the course as the pair with the combined cost and offer it to any settler.
 - Check discovery retention after losing the only qualified worker and across sub-mission transitions.
-- Resolve map Enable precedence over bans and the producer side effects of ambiguous good grants.
 
 Retain explicit approximations until observations support a replacement. Equipment and military
 balance, vehicles, chests and campaign archive extraction are outside this calibration task.

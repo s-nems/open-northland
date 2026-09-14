@@ -4,6 +4,8 @@ import {
   type DeferrableOrderCommand,
   DeferredOrder,
   Female,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
   Owner,
   Settler,
 } from '../../components/index.js';
@@ -25,6 +27,12 @@ export function isOrderableSettler(world: World, e: Entity): boolean {
  *  the household, hoarding food home and bearing children. */
 export function isTradeAssignable(world: World, e: Entity): boolean {
   return isOrderableSettler(world, e) && !world.has(e, Age) && !world.has(e, Female);
+}
+
+/** {@link isTradeAssignable} for an order that would change the trade itself: a script may fix a
+ *  unit's trade (`MISSIONS.md`, behaviour bit 6), which refuses the order before it cancels anything. */
+export function mayChangeTrade(world: World, e: Entity): boolean {
+  return isTradeAssignable(world, e) && !hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED);
 }
 
 /**

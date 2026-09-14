@@ -14,7 +14,14 @@ export function technologyReason(
       ? status.requiredJobs
       : status.enablingJobs
   ).map((id) => technologyLabel(content, 'job', id));
-  const goods = status.requiredGoods.map((id) => technologyLabel(content, 'good', id));
+  // A missing good names the trades whose work discovers it, so the player knows whom to assign.
+  const goods = status.requiredGoods.map(({ good, jobs: producers }) => {
+    const label = technologyLabel(content, 'good', good);
+    const byJobs = producers.filter((id) => !status.requiredJobs.includes(id));
+    return byJobs.length === 0
+      ? label
+      : `${label} (${byJobs.map((id) => technologyLabel(content, 'job', id)).join(', ')})`;
+  });
   return `${messages().hud.technologyRequires} ${[...jobs, ...goods].join(', ')}`;
 }
 

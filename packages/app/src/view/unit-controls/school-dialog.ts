@@ -8,7 +8,14 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { professionDefForJob } from '../../catalog/professions.js';
-import { ownerPlayerOf, settlerJobType, settlerTribeOf } from '../../game/snapshot.js';
+import {
+  actorsOf,
+  ownerPlayerOf,
+  settlerJobType,
+  settlerLearnedOf,
+  settlerTribeOf,
+  trainingHouseOf,
+} from '../../game/snapshot.js';
 import { technologyLabel, technologyReason } from '../../game/technology.js';
 import { messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
@@ -33,6 +40,7 @@ export function openSchoolDialog(
     'max-width:32rem;max-height:75vh;overflow:auto;padding:24px;background:#302719;color:#f4e6cb;border:1px solid #a18a5d',
   );
   dialog.append(el('h2', '', copy.schoolTitle), el('p', '', copy.schoolHint));
+  const full = schoolFull(content, snapshot, house, students);
   const seen = new Set<string>();
   for (const requirement of tribe.jobRequirements) {
     if (requirement.requirement !== 'train') continue;
@@ -58,10 +66,14 @@ export function openSchoolDialog(
     );
     const unlock = status?.(target, targetId, tribe.typeId, ownerPlayerOf(student));
     const reason = unlock === undefined ? null : technologyReason(content, unlock);
-    if (reason !== null) {
+    const learned = students.every((id) =>
+      settlerLearnedOf(entityById(snapshot, id)?.components ?? {}, target).includes(targetId),
+    );
+    const refusal = reason ?? (learned ? copy.schoolLearned : full ? copy.schoolFull : null);
+    if (refusal !== null) {
       button.disabled = true;
       button.style.opacity = '0.5';
-      button.title = reason;
+      button.title = refusal;
     }
     button.addEventListener('click', () => {
       for (const entity of students)
@@ -83,4 +95,24 @@ export function openSchoolDialog(
   document.body.append(dialog);
   dialog.showModal();
   return () => dialog.remove();
+}
+
+/** Whether the school's places are taken by students other than the ones being sent, mirroring the
+ *  sim's refusal (`orders/education.ts`). */
+function schoolFull(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  house: number,
+  students: readonly number[],
+): boolean {
+  const building = entityById(snapshot, house);
+  const buildingType = (building?.components.Building as { buildingType?: unknown } | undefined)
+    ?.buildingType;
+  const size = content.buildings.find((b) => b.typeId === buildingType)?.schoolSize;
+  if (size === undefined) return false;
+  let occupied = 0;
+  for (const e of actorsOf(snapshot)) {
+    if (trainingHouseOf(e) === house && !students.includes(e.id)) occupied++;
+  }
+  return occupied >= size;
 }

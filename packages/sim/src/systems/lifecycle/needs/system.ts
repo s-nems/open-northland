@@ -74,7 +74,6 @@ function poolStepAt(max: number, span: number, tick: number): number {
 export const needsSystem: System = (world, ctx) => {
   if (!needsEnabled(world)) return;
   for (const e of world.query(Person)) {
-    if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NEEDS_FROZEN)) continue;
     const settler = carriesNeeds(world, ctx.content, e) ? drainNeeds(world, ctx, e) : undefined;
     stepHealth(world, ctx, e, settler);
   }
