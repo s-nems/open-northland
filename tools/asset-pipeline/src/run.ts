@@ -6,7 +6,7 @@ import { clearPipelineManifest, PIPELINE_MANIFEST_NAME, writePipelineManifest } 
 import type { PipelineProgress } from './progress.js';
 import { resolveModRoot, type SourceRoots } from './roots.js';
 import { convertBmdTree, convertShadowBmdTree, resolveGraphicsBindings } from './stages/bmd/index.js';
-import { TEXTURES_DIR } from './stages/content-tree.js';
+import { SOUNDS_DIR, TEXTURES_DIR } from './stages/content-tree.js';
 import { convertFontStage } from './stages/fonts.js';
 import { convertGoodsStage } from './stages/goods/index.js';
 import { convertGuiStage } from './stages/gui/index.js';
@@ -20,6 +20,7 @@ import {
   convertIndexedCharacterAtlases,
   convertPlayerColorLut,
 } from './stages/player-colors.js';
+import { copySoundTree } from './stages/sounds.js';
 import { indexSourceAssets } from './stages/source-files.js';
 
 /** Runs the full conversion of the mod root into the IR under `args.out`; `progress` is optional telemetry. */
@@ -98,6 +99,10 @@ export async function runPipeline(fs: Vfs, args: Args, progress?: PipelineProgre
     `[pipeline] goods: ${goods.frames}-frame atlas, ${goods.palettes}-palette LUT, ` +
       `${goods.icons} good icon(s) into ${vjoin(args.out, 'goods')}`,
   );
+
+  progress?.stage?.('sounds');
+  const sounds = await copySoundTree(fs, roots, args.out);
+  console.log(`[pipeline] sounds: ${sounds.length} wav(s) into ${vjoin(args.out, SOUNDS_DIR)}`);
 
   progress?.stage?.('ir');
   const ir = await writeIr(fs, roots, args.out);

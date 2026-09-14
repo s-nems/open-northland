@@ -11,6 +11,7 @@ export const PIPELINE_STAGES = [
   'gui',
   'fonts',
   'goods',
+  'sounds',
   'ir',
   'transitions',
   'maps',
