@@ -190,7 +190,7 @@ export const enContent = {
     tribute: {
       title: 'Tributes',
       summary:
-        'The map script demands three tributes for the neighbour: the timber is payable out of one warehouse and paying it turns the neighbour friendly, the purse of coins is short, and the stone lies split between two stores where no single one can pay.',
+        'The map script demands three tributes for the neighbour: the timber is payable out of one warehouse and paying it turns the neighbour friendly, the purse of coins is short, and the stone lies split between two stores that pay it together.',
       strings: {
         '1': 'The neighbours ask for timber and stone for their new hall.',
         '2': 'The neighbours ask for a purse of coins.',

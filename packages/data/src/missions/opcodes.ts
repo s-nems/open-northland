@@ -84,7 +84,7 @@ export const MISSION_RESULTS = [
   ['None'],
   ['SetHuman', 'player', 'tribeName', 'jobName', 'point', 'humanId', 'behaviourFlags'],
   ['SetVehicle', 'player', 'tribeName', 'vehicleTypeName', 'point', 'vehicleId', 'captainFlag'],
-  ['SetHouse', 'player', 'houseName', 'level', 'siteFlag', 'point', 'objectId'],
+  ['SetHouse', 'player', 'houseName', 'level', 'builtFlag', 'point', 'objectId'],
   ['SetLandscape', 'point', 'landscapeName', 'level', 'flag'],
   ['RemoveHumans', 'humanId'],
   ['RemoveVehicles', 'vehicleId'],

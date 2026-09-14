@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MoveGoal, PathFollow, PathRequest, Position } from '../../src/components/index.js';
 import { fx, positionOfNode, Simulation } from '../../src/index.js';
+import { hexDistance } from '../../src/nav/halfcell.js';
 import { dynamicBlockOverlay } from '../../src/systems/footprint/index.js';
 import { invalidateLandscapeRoutes } from '../../src/systems/landscape/routes.js';
 import type { MissionPass } from '../../src/systems/missions/pass.js';
@@ -112,6 +113,32 @@ describe('script landscape route invalidation', () => {
     });
     expect(sim.world.has(e, PathFollow)).toBe(false);
     expect(sim.world.has(e, PathRequest)).toBe(true);
+  });
+
+  it('clears the plain area removal one ring short of its range, the group removals not', () => {
+    // The fixture has the wall at POINT (id 0) and the smoke placement (id 1) some points away.
+    const spacing = hexDistance(POINT, { hx: 5, hy: 5 });
+    const short = fresh();
+    editScriptedLandscape(passOf(short), 0, {
+      opcode: 'RemoveLandscapesInArea',
+      point: POINT,
+      range: spacing,
+    });
+    expect(short.landscapeEdits().removed).toEqual([0]);
+    const full = fresh();
+    editScriptedLandscape(passOf(full), 0, {
+      opcode: 'RemoveLandscapesInArea',
+      point: POINT,
+      range: spacing + 1,
+    });
+    expect(full.landscapeEdits().removed).toEqual([0, 1]);
+    const group = fresh();
+    editScriptedLandscape(passOf(group), 0, {
+      opcode: 'RemoveFXSmokeLandscapeInArea',
+      point: POINT,
+      range: spacing,
+    });
+    expect(group.landscapeEdits().removed).toEqual([1]);
   });
 
   it.each([

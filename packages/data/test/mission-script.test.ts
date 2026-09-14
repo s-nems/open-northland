@@ -100,7 +100,7 @@ describe('decoding a mission line', () => {
       player: 0,
       houseName: 'viking stock',
       level: 1,
-      asSite: false,
+      built: false,
       point: { hx: 64, hy: 184 },
       objectId: 911,
     });

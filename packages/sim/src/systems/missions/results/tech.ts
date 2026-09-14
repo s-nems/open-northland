@@ -1,7 +1,6 @@
 import { houseDiscoveryGoods } from '@open-northland/data';
 import { grantScriptUnlock } from '../../../components/index.js';
 import { assertNever } from '../../../core/brand.js';
-import { contentIndex } from '../../../core/content-index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 
@@ -30,18 +29,9 @@ export function grantUnlock(pass: MissionPass, op: UnlockOp): void {
     case 'AllowGood':
       grantScriptUnlock(world, 'allowed', op.player, op.tribe, 'good', op.good);
       return;
-    case 'EnableGood': {
+    case 'EnableGood':
       grantScriptUnlock(world, 'enabled', op.player, op.tribe, 'good', op.good);
-      const producers = new Set(
-        contentIndex(pass.ctx.content)
-          .tribes.get(op.tribe)
-          ?.jobEnables.filter((edge) => edge.kind === 'good' && edge.targetId === op.good)
-          .map((edge) => edge.jobType),
-      );
-      if (producers.size === 1)
-        for (const job of producers) grantScriptUnlock(world, 'enabled', op.player, op.tribe, 'job', job);
       return;
-    }
     default:
       assertNever(op);
   }

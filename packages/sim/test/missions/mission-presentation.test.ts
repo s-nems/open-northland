@@ -161,9 +161,17 @@ describe('the one-shot display results', () => {
     expect(ring.points.every((p) => hexDistance(p, POINT) === 2)).toBe(true);
     expect(oddRing.points).toHaveLength(18);
     expect(oddRing.points.every((p) => hexDistance(p, odd) === 3)).toBe(true);
+    // The walk starts `range` steps north-west of the point and turns east first.
+    expect(ring.points.slice(0, 3)).toEqual([
+      { hx: 19, hy: 18 },
+      { hx: 20, hy: 18 },
+      { hx: 21, hy: 18 },
+    ]);
     expect(sparse.magic).toBe(true);
     expect(sparse.placed).toBe(false);
-    expect(sparse.points).toHaveLength(3);
+    // The step count restarts on every side, so a spacing beyond the side keeps the six corners.
+    expect(sparse.points).toHaveLength(6);
+    expect(sparse.points[0]).toEqual({ hx: 19, hy: 18 });
   });
 });
 

@@ -14,8 +14,9 @@ import { isSoldierJob } from '../../readviews/index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
 import { missionHumans } from '../targets.js';
+import { countReaches } from './count.js';
 
-/** The object id a counting goal writes on nothing: the corpus's own "leave these alone" value. */
+/** The one object id `BuildHumans` leaves its matches' ids alone for (reading). */
 const UNTAGGED_MATCH_ID = 12345;
 
 /** Holds once the player fields `amount` humans of the job, and stamps the goal's object id on every
@@ -26,8 +27,8 @@ export function buildHumansHolds(
 ): boolean {
   const { world } = pass;
   const matches = playerHumans(world, op.player, (e) => world.get(e, Settler).jobType === op.job);
-  tagMatches(world, matches, op.humanId);
-  return matches.length >= op.amount;
+  if (op.humanId !== UNTAGGED_MATCH_ID) tagMatches(world, matches, op.humanId);
+  return countReaches(matches.length, op.amount);
 }
 
 /** Holds once the player owns `amount` finished houses of the type, tagging them like
@@ -44,12 +45,15 @@ export function buildHousesHolds(
     if (ownerOf(world, e) === op.player) matches.push(e);
   }
   tagMatches(world, matches, op.objectId);
-  return matches.length >= op.amount;
+  return countReaches(matches.length, op.amount);
 }
 
 /** Every human of the player, babies and children included. */
 export function populationHolds(world: World, player: number, amount: number): boolean {
-  return countPlayerHumans(world, player, () => true) >= amount;
+  return countReaches(
+    countPlayerHumans(world, player, () => true),
+    amount,
+  );
 }
 
 export function soldierCountHolds(pass: MissionPass, player: number, amount: number): boolean {
@@ -57,7 +61,7 @@ export function soldierCountHolds(pass: MissionPass, player: number, amount: num
   const soldiers = countPlayerHumans(world, player, (e) =>
     isSoldierJob(pass.ctx.content, world.get(e, Settler).jobType),
   );
-  return soldiers >= amount;
+  return countReaches(soldiers, amount);
 }
 
 /** Adults of the player living in a finished home. */
@@ -67,7 +71,7 @@ export function humansWithHomeHolds(world: World, player: number, amount: number
     const home = world.tryGet(e, Residence)?.home;
     return home !== undefined && world.tryGet(home, Building)?.built === ONE;
   });
-  return housed >= amount;
+  return countReaches(housed, amount);
 }
 
 /** Humans of the player in the job that hold a post in a workplace. */
@@ -80,7 +84,7 @@ export function attachedToWorkHouseHolds(
     op.player,
     (e) => world.get(e, Settler).jobType === op.job && world.has(e, JobAssignment),
   );
-  return posted >= op.amount;
+  return countReaches(posted, op.amount);
 }
 
 /** Whether any human stamped with the id works the job. */
@@ -107,13 +111,14 @@ function playerHumans(world: World, player: number, keep: (e: Entity) => boolean
 
 /**
  * Number the matches, ascending by entity id whatever order the scan found them in, since stamping
- * changes the store. An id already held is left alone: these goals re-run every pass over a set that
- * rarely changes, and a re-add would rebuild the object index and re-clone every match each time.
+ * changes the store; an id of 0 clears the id they carry. An id already held is left alone: these
+ * goals re-run every pass over a set that rarely changes, and a re-add would rebuild the object index
+ * and re-clone every match each time.
  */
 function tagMatches(world: World, matches: Entity[], id: number): void {
-  if (id === UNTAGGED_MATCH_ID || id === 0) return;
   matches.sort((a, b) => a - b);
   for (const e of matches) {
-    if (world.tryGet(e, MissionObjectId)?.id !== id) world.add(e, MissionObjectId, { id });
+    if (id === 0) world.remove(e, MissionObjectId);
+    else if (world.tryGet(e, MissionObjectId)?.id !== id) world.add(e, MissionObjectId, { id });
   }
 }

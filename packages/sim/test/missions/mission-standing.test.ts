@@ -7,6 +7,7 @@ import {
   diplomacyStance,
   FOG_MODE,
   isPlayerDead,
+  missionRecords,
   PlayerAttacks,
   ScriptVerdicts,
   wasAttackedBy,
@@ -14,7 +15,7 @@ import {
 import { playerCommand, type Simulation } from '../../src/index.js';
 import { isAuthorized } from '../../src/systems/command/authority.js';
 import { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from '../../src/systems/match/index.js';
-import type { MissionGoalOp, MissionResultOp } from '../../src/systems/missions/index.js';
+import { type MissionGoalOp, type MissionResultOp, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { resolveCombatHit } from '../../src/systems/settlers/atomics/effects/combat/hit/resolution.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -25,6 +26,7 @@ import {
   firingSim,
   goalSim,
   holds,
+  missionSim,
   POINT,
   roundTrip,
   SOLDIER,
@@ -238,6 +240,26 @@ describe('PlayerSeen', () => {
     spawn(apart, { player: RIVAL, at: FAR_EAST });
     apart.run(FIRST_PASS);
     expect(holds(apart)).toBe(false);
+  });
+
+  it('under fog holds once the other stands on ground the viewer explored, in sight or not', () => {
+    const sim = missionSim([
+      {
+        successfullIf: SUCCESSFUL_IF.all,
+        active: true,
+        visible: false,
+        goals: [],
+        results: [{ opcode: 'ExploreArea', player: OWNER, point: FAR_EAST, range: 2 }],
+      },
+      { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [seen], results: [] },
+    ]);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.REVEAL });
+    spawn(sim, { player: OWNER });
+    spawn(sim, { player: RIVAL, at: FAR_EAST });
+    sim.run(FIRST_PASS);
+    expect(missionRecords(sim.world)[1]?.evaluated).toBe(false);
+    sim.run(FIRST_PASS);
+    expect(missionRecords(sim.world)[1]?.evaluated).toBe(true);
   });
 });
 

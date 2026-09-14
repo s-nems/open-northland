@@ -9,6 +9,7 @@ import {
   humansKilledHolds,
   soldiersDiedHolds,
 } from './goals/casualties.js';
+import { neededMatches } from './goals/count.js';
 import {
   animalsExploredHolds,
   housesExploredHolds,
@@ -54,7 +55,7 @@ import {
 import type { MissionPass } from './pass.js';
 import { setMissionActive } from './pass.js';
 import { executeResult } from './results/index.js';
-import { type MissionGoalOp, ruleSatisfied } from './script.js';
+import { isSuccessfulIfRule, type MissionGoalOp, ruleSatisfied } from './script.js';
 
 /**
  * Evaluate mission `index`: store each goal's current truth, judge the count against `successfullif`
@@ -112,7 +113,9 @@ function goalHolds(
         (p) => p.hx === op.point.hx && p.hy === op.point.hy,
       );
     case 'NumberOfAnimals':
-      return countAnimals(pass.world, op.player, op.tribe, op.amount) >= op.amount;
+      return (
+        countAnimals(pass.world, op.player, op.tribe, neededMatches(op.amount)) >= neededMatches(op.amount)
+      );
     case 'True':
       return true;
     case 'TimeGone':
@@ -235,11 +238,13 @@ function randomTimeGone(pass: MissionPass, record: MissionRecord, goal: number, 
 }
 
 /** Mission `index`'s stored goal flags judged by its own rule, with no re-evaluation: it stays true
- *  after that mission fired, and a never-checked mission answers true under the `none` rule. */
+ *  after that mission fired, and a never-checked mission answers true under the `none` rule. A rule
+ *  outside the four, which the mission itself treats as always holding, answers false here (reading). */
 function missionDone(pass: MissionPass, index: number): boolean | undefined {
   const definition = pass.script.missions[index];
   const record = pass.records[index];
   if (definition === undefined || record === undefined) return false;
+  if (!isSuccessfulIfRule(definition.successfullIf)) return false;
   const held = record.goalsHeld.reduce((count, flag) => (flag ? count + 1 : count), 0);
   return ruleVerdict(
     definition.successfullIf,

@@ -9,7 +9,7 @@ import {
 } from '@open-northland/sim';
 import { professionDefForJob } from '../../catalog/professions.js';
 import { ownerPlayerOf, settlerJobType, settlerTribeOf } from '../../game/snapshot.js';
-import { technologyLabel } from '../../game/technology.js';
+import { technologyLabel, technologyReason } from '../../game/technology.js';
 import { messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el } from '../overlay.js';
 
@@ -56,11 +56,12 @@ export function openSchoolDialog(
       `${BUTTON_STYLE};display:block;width:100%;margin:6px 0;text-align:left`,
       label,
     );
-    const enabled = status?.(target, targetId, tribe.typeId, ownerPlayerOf(student)).enabled ?? true;
-    button.disabled = !enabled;
-    if (!enabled) {
+    const unlock = status?.(target, targetId, tribe.typeId, ownerPlayerOf(student));
+    const reason = unlock === undefined ? null : technologyReason(content, unlock);
+    if (reason !== null) {
+      button.disabled = true;
       button.style.opacity = '0.5';
-      button.title = copy.technologyRequires;
+      button.title = reason;
     }
     button.addEventListener('click', () => {
       for (const entity of students)

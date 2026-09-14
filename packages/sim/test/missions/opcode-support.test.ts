@@ -151,7 +151,7 @@ const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcod
     player: 0,
     houseName: { typeId: 1, tribe: 1 },
     level: 0,
-    asSite: false,
+    built: true,
     point: POINT,
     objectId: 7,
   },

@@ -8,6 +8,7 @@ import { groupsWithinRange } from '../nearby.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
 import { isMissionAnimal, missionHouses, missionHumans, ownedBy, withinRange } from '../targets.js';
+import { neededMatches } from './count.js';
 
 /**
  * The range goals: every one measures in map points through `hexDistance`, and every one holds on the
@@ -150,8 +151,8 @@ export function animalsInArea(
   world: World,
   op: Extract<MissionGoalOp, { opcode: 'NumberOfAnimalsInArea' }>,
 ): boolean {
-  if (op.amount <= 0) return true;
-  return countAnimalsInArea(world, op.player, op.tribe, op.point, op.range, op.amount) >= op.amount;
+  const needed = neededMatches(op.amount);
+  return countAnimalsInArea(world, op.player, op.tribe, op.point, op.range, needed) >= needed;
 }
 
 /** The player's animals of the species within `range` of the point, counted up to `limit`. */

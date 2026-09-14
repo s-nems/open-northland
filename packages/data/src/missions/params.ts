@@ -90,7 +90,7 @@ export const MISSION_PARAMS = {
   point: { field: 'point', tokens: 2, decode: pointAt },
   landscapeName: { field: 'landscape', tokens: 1, decode: textAt },
   houseName: { field: 'houseName', tokens: 1, decode: textAt },
-  siteFlag: { field: 'asSite', tokens: 1, decode: flagAt },
+  builtFlag: { field: 'built', tokens: 1, decode: flagAt },
   missionIndex: { field: 'missionIndex', tokens: 1, decode: intAt },
   mapId: { field: 'mapId', tokens: 1, decode: intAt },
   externalFlag: { field: 'flagId', tokens: 1, decode: intAt },

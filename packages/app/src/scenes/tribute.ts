@@ -16,8 +16,8 @@ import type { SceneDefinition } from './types.js';
  * The tributes a map script demands and the diplomacy window's pay button: the neighbour asks for
  * timber and stone, which one warehouse holds, for a purse of coins, which nobody does, and for stone
  * that lies split between the two warehouses. The timber tribute lists as payable and paying it turns
- * the neighbour friendly; the coins stay listed and dead; the split stone stays dead with its note.
- * The browser view pairs this with the diplomacy window on the tool panel.
+ * the neighbour friendly; the coins stay listed and dead; the split stone is payable out of both
+ * warehouses together. The browser view pairs this with the diplomacy window on the tool panel.
  */
 
 const MAP_W = 24;
@@ -40,7 +40,7 @@ const COINS_TEXT = 2;
 const ROAD_TEXT = 3;
 
 /** The demands, and what the warehouses hold against them: enough timber and stone in the first,
- *  too few coins anywhere, and the road's stone only between the two. */
+ *  too few coins anywhere, and the road's stone only between the two, which pay it together. */
 const TIMBER_DEMAND = 6;
 const STONE_DEMAND = 2;
 const COINS_DEMAND = 20;
@@ -160,11 +160,10 @@ export const tributeScene: SceneDefinition = {
       },
     },
     {
-      label:
-        'the stone for the road lies split between the two warehouses, held in sum and payable by neither',
+      label: 'the stone for the road lies split between the two warehouses, which pay it together',
       predicate: (sim) => {
         const road = sim.openTributes(HUMAN_PLAYER).find((t) => t.slot === ROAD_TRIBUTE);
-        return road?.payable === false && road.demands.every((d) => d.onHand >= d.amount);
+        return road?.payable === true && road.demands.every((d) => d.onHand >= d.amount);
       },
     },
     {

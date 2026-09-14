@@ -62,7 +62,7 @@ descriptions match the docs.
 
 | Kind | Meaning | Kind | Meaning |
 | --- | --- | --- | --- |
-| 1 | player id (0..19; 20 is the wild "player") | 20 | construction-site flag |
+| 1 | player id (0..19; 20 is the wild "player") | 20 | built flag (0 is a construction site; docs and reading) |
 | 2 | second player id | 21 | mission index |
 | 3 | tribe *name* | 22 | map id |
 | 4 | job *name* | 24 | external AI flag id |
@@ -123,9 +123,10 @@ as a side effect, by the `BuildHumans`, `BuildHouses`, and `BuildVehicles` goals
 All of this section is a reading unless marked otherwise.
 
 - The manager runs on the per-tick callback and evaluates when the tick count is a multiple of 36.
-  At the original's 12 logic ticks per second that is every 3 seconds. `TimeGone n` compares
-  `activationTick + 12 * n` with the current tick. Both constants need an observation with a stopwatch
-  on the original (`TimeGone 30` should fire 30 seconds after activation, quantised to 3 seconds).
+  At the original's 12 logic ticks per second that is every 3 seconds. `TimeGone n` holds once the
+  current tick reaches `activationTick + 12 * n`. The tick counter is reset to 1 before the script
+  loads and incremented before the callback, so the first pass runs at tick 36, never on the load
+  tick; missions active at load carry activation tick 1.
 - A pass clears the pending sub-mission flags, then visits missions in index order, skipping inactive
   ones. A result can raise a stop flag (`PlayCutscene` does); the pass ends after that mission. After
   the loop the pending `EndSubMission` returns to the parent map, else a pending `StartSubMission`
@@ -141,8 +142,8 @@ All of this section is a reading unless marked otherwise.
   already active mission does not restart its timer. A mission may re-activate itself from its own
   results to loop (corpus: waves every N seconds). A mission never activated carries activation tick
   0, so a `CheckMission` probe of one reads its `TimeGone` as long since elapsed.
-- `RandomTimeGone n` draws from the game's random generator, uniformly in `[n/2, n)` under integer
-  division, and caches the draw in the goal record. The cache is cleared the moment the span elapses,
+- `RandomTimeGone n` draws from the game's random generator, `n/2 + rand % (n/2)` under integer
+  division (so `[n/2, 2 * (n/2))`), and caches the draw in the goal record. The cache is cleared the moment the span elapses,
   not when the mission fires, so a goal held back by a second goal redraws on every later check. A
   reimplementation must draw from the simulation's seeded generator.
 - A mission with no goals holds at once under `successfullif` 0, 2, and 3, and never under 1.
@@ -150,7 +151,8 @@ All of this section is a reading unless marked otherwise.
   `successfullif` verdict without executing results. `IsMissionDone n` reads mission `n`'s stored goal
   flags and applies `n`'s own `successfullif` without re-evaluating, so it stays true after `n` fired
   until `n` is re-activated and checked again, and it is true for a never-checked mission whose rule is
-  3 (no goals hold). `IfMissionIsActive n` reads the active flag.
+  3 (no goals hold); a rule outside 0 to 3, which the mission itself treats as always holding, reads
+  false here. `IfMissionIsActive n` reads the active flag.
 - Implementation safety rule (not an original-game claim): an unsupported goal or a recursive
   `CheckMission` cycle has an unknown answer, distinct from false. A mission fires only when its
   `successfullif` is true for every possible answer to unknown goals. Thus one known true goal can
@@ -170,14 +172,19 @@ All of this section is a reading unless marked otherwise.
 Index and name from the engine table (reading). The goal reference shipped in the installation's
 `Tools/` folder names the same 63 goals and gives each an example with the same number of arguments,
 so the names and arities below are corroborated (docs); the semantics stay readings. Parameters list
-kinds in order.
+kinds in order. A goal that counts what a player has (`BuildVehicles`, `BuildHumans`, `BuildHouses`,
+`GoodsInVehicles`, `GoodsInHouses`, `GoodsGlobal`, `HumansWithHome`, `NumberOfSoldiers`,
+`Population`, `HumanAttachedToWorkHouse`, `CheckNumberOfWildAnimals`, `NumberOfAnimals`,
+`NumberOfAnimalsInArea`) compares inside its match loop, so an `amount` of 0 still needs one match
+(for the goods goals, one house that carries the id or can hold the good). The area goods and house
+goals, the near-point goals and the death tallies compare once after counting, so 0 holds there.
 
 | # | Goal | Parameters | Holds when | Uses |
 | --- | --- | --- | --- | --- |
 | 0 | `True` | | always | 265 |
 | 1 | `BuildVehicles` | 1, 5, 7, 12 | the player owns at least `amount` vehicles of the type; every match gets object id `arg4` | 2 |
-| 2 | `BuildHumans` | 1, 4, 7, 10 | the player has at least `amount` humans with the job; every match gets object id `arg4` unless `arg4` is 12345 | 21 |
-| 3 | `BuildHouses` | 1, 15, 7, 14 | the player owns at least `amount` finished houses of the type; every match gets object id `arg4` | 165 |
+| 2 | `BuildHumans` | 1, 4, 7, 10 | the player has at least `amount` humans with the job; every match gets object id `arg4` (0 clears the id it carried) unless `arg4` is 12345 | 21 |
+| 3 | `BuildHouses` | 1, 15, 7, 14 | the player owns at least `amount` finished houses of the type; every match gets object id `arg4`, 0 and 12345 included | 165 |
 | 4 | `GoodsInVehicles` | 12, 6, 7 | vehicles with the id hold at least `amount` of the good in total | 3 |
 | 5 | `GoodsInHouses` | 14, 6, 7 | houses with the id hold at least `amount` of the good in total | 10 |
 | 6 | `GoodsGlobal` | 1, 6, 7 | the player's houses hold at least `amount` of the good as their own stock: everything a storage or a home shelves, of a workplace only what it makes, never its inputs | 11 |
@@ -235,7 +242,7 @@ kinds in order.
 | 58 | `NumberOfAnimalsInArea` | 1, 3, 7, 16, 17, 9 | the player has at least `amount` animals of the species within `range` | 11 |
 | 59 | `CheckHumanJob` | 10, 4 | any human with the id has the job | 10 |
 | 60 | `NumberOfGoodsInVehiclesInArea` | 1, 5, 6, 7, 16, 17, 9 | goods in the player's vehicles of the type within `range` reach `amount` | 0 |
-| 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point carries a live landscape placement; implemented when the map provides the mutable landscape catalog | 0 |
+| 61 | `IsAnyLandscapeOnPoint` | 16, 17 | the point's kind byte says landscape and its type byte is set, which a good lying there or a large landscape covering the point also satisfies. Here: a live landscape placement anchored on the point, when the map provides the mutable landscape catalog (approximation) | 0 |
 | 62 | `IsLandscapePlayer10ConstructionSignOnPoint` | 16, 17 | the point carries the `player10 construction sign` landscape | 0 |
 
 Range tests use the original's hexagonal map-point distance. "Explored" is the per-player seen bit
@@ -253,7 +260,7 @@ of each.
 | 0 | `None` | | nothing | | 306 |
 | 1 | `SetHuman` | 1, 3, 4, 16, 17, 10, 29 | spawn one human at the point with the id and behaviour flags | sim | 2067 |
 | 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle; with the captain flag also spawn its commander at the door and board it | sim | 154 |
-| 3 | `SetHouse` | 1, 19, 8, 20, 16, 17, 14 | place a house of the named type at the nearest buildable spot within 12 points, finished or as a construction site, with the id; warns when no spot exists | sim | 30 |
+| 3 | `SetHouse` | 1, 19, 8, 20, 16, 17, 14 | place a house of the named type at the nearest buildable spot within 12 points, finished when the built flag is set and as a construction site when it is 0, with the id; warns when no spot exists | sim | 30 |
 | 4 | `SetLandscape` | 16, 17, 18, 8, 32 | replace the landscape at the point using the named graphic; size and final-flag limitations below | both | 760 |
 | 5 | `RemoveHumans` | 10 | remove every human with the id, silently (no death statistics, no cadaver) | sim | 96 |
 | 6 | `RemoveVehicles` | 12 | remove every vehicle with the id | sim | 16 |
@@ -293,8 +300,8 @@ of each.
 | 40 | `AddGoodsToVehicle` | 12, 6, 7 | add goods to vehicles with the id that can carry the good | sim | 14 |
 | 41 | `AddGoodsToAnyStock` | 1, 6, 7 | fill the player's warehouses that store the good, spilling to the next until the amount is placed | sim | 29 |
 | 42 | `AllowGood` | 1, 3, 6 | allow the good for the player's tribe | sim | 34 |
-| 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe | sim | 101 |
-| 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second | sim | 134 |
+| 43 | `EnableGood` | 1, 3, 6 | mark the good produceable for the player's tribe; the producing job is untouched (only a chest reward enables it, `Tool_TechTree_EnableGoodProduction`) | sim | 101 |
+| 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second; its humans are detached from houses as under `ChangeHumanPlayerId` | sim | 134 |
 | 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions; the stance setter only silences its message for a flagged pair, so the lock binds in the diplomacy window (not examined) | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the explicit wave-group graphics within `range` | both | 0 |
 | 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's wall gate at the point | sim | 14 |
@@ -313,13 +320,13 @@ of each.
 | 60 | `SetHumanName` | 10, 27 | name the first human with the id after the string in the map's own table (reading). Here: the `ScriptedName` component, resolved by the app in the player's language | both | 138 |
 | 61 | `SetWeather` | 16, 17, 9, 32, 7 | set the rain (flag 0) or snow (flag 1) density of every 10-point weather sector under the square of half-side `range` to `amount` times 100, clamped to 10000, where 0 clears it; the map's `[misc_weather]` `setrainrectangle`, `setsnowrectangle` and `setsandrectangle` write the same fields (reading). Here: the `missionWeather` event and a screen wash by the density at the view's centre (approximation) | both | 207 |
 | 62 | `StartEarthQuake` | 35 | shake the display until `seconds` have passed, with `earthquak.wav` (reading). Here: the `missionEarthquake` event and a camera jitter; the sound is not in the decoded bank | app | 122 |
-| 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading). Here: the `missionSelectHuman` event; the view centres once instead of following (approximation) | app | 7 |
+| 63 | `SelectHuman` | 10, 32 | with the flag clear, select the first human with the id and, when that succeeded, follow it with the camera; with the flag set, follow without selecting (reading; the 2022 the original never reads the flag and follows without selecting for any nonzero id, which may be build drift). Here: the `missionSelectHuman` event honouring the flag; the view centres once instead of following (approximation) | app | 7 |
 | 64 | `AddGoodsToMapArea` | 6, 7, 16, 17, 9, 32, 1 | drop goods on the ground, spiralling outward from the point until the amount is placed; with the flag, the player's finished house standing on a point takes its fill first | sim | 206 |
 | 65 | `RemoveGoodsFromMapArea` | 6, 7, 16, 17, 9, 32, 1 | pick goods up the same way; with the flag, out of the player's houses' own stock first | sim | 31 |
 | 66 | `ChangeMissionIdOfHumanInRange` | 1, 10, 16, 17, 9 | give the player's humans within `range` the id | sim | 39 |
 | 67 | `ChangeMissionIdOfPlayer` | 1, 10 | give every human of the player the id | sim | 1 |
 | 68 | `SetVertexColor` | 16, 17, 9, 7 | save a palette index on terrain nodes within `range` and update the display | both | 413 |
-| 69 | `RemoveLandscapesInArea` | 16, 17, 9 | remove live landscape placements and their sprites within `range` | both | 11 |
+| 69 | `RemoveLandscapesInArea` | 16, 17, 9 | remove live landscape placements and their sprites strictly closer than `range` to the point (a range of 0 or 1 clears the point alone); the group removals below include the ring at `range` | both | 11 |
 | 70 | `MoveUnitsInArea` | 1, 16, 17, 9, 36, 37 | teleport up to 20 free humans and the vehicles of the player from within `range` of the first point to near the second, when the second lies farther than `range` | sim | 346 |
 | 71 | `SetHouseExtensionLevel` | 14, 7 | rebuild up to 10 houses with the id at the new level in place | sim | 1 |
 | 72 | `InfoClear` | 1, 36 | clear the player's info line `index` (0 to 4); player 20 or -1 clears every player's | sim | 202 |
@@ -351,7 +358,7 @@ of each.
 | 98 | `ChangeMissionIdOfPlayersVehiclesOnContinent` | 1, 16, 17, 12 | give the player's vehicles on the continent of the point the id | sim | 0 |
 | 99 | `ChangeMissionIdOfVehicles` | 12, 36 | renumber vehicles from one id to another | sim | 12 |
 | 100 | `SetRandomChestOnPosition` | 7, 16, 17 | drop a random chest of the category at the point | sim | 41 |
-| 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, `range` steps a side, and on every `index`th step place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points, walked in the map-point metric, and the marker overlay, which borrows the GUI marker's first bob (approximation); which corner the walk starts at is an approximation too | both | 0 |
+| 101 | `SetMapAreaMarker` | 16, 17, 9, 32, 36 | walk the hexagon ring `range` points out from the point, starting `range` steps north-west of it and turning east, south-east, south-west, west, north-west, north-east with `range` steps a side, and on every `index`th step of each side (the count restarts per side; a range or index of 0 reads as 1) place a kind-3 marker entity, or with the flag clear free the kind-3 markers there (reading). Here: the `missionAreaMarkers` event with the ring's points and the marker overlay, which borrows the GUI marker's first bob (approximation) | both | 0 |
 | 102 | `SetMapAreaMarkerMagic` | 16, 17, 9, 32, 36 | as 101 with kind-4 markers | both | 7 |
 
 Chest categories for 51 and 100 are a bitmask (docs): 1 soldiers, 2 tower, 4 catapult, 8 goods,
@@ -424,9 +431,12 @@ Readings unless marked otherwise.
 - **Won, lost**: `MissionWon` and `MissionFailed` set one won and one lost flag on the mission manager,
   not per player, and hand the player to the notification. This build records the verdict per player
   (`components/match.ts`), which the match outcome and the end-of-match panel read.
-- **Seen**: the setter was not located; the hypothesis is the vision update when a unit or building of
-  the other player enters view. Needs an observation or a further reading. This build reads the vision
-  system's first-contact record under fog, and everyone as seen with fog off (approximation).
+- **Seen**: every tick, each attached human, animal, vehicle and house of a player below 16 marks
+  its owner as seen by every existing player whose explored bit is set on the map point under it (the
+  once-set bit the explore goals read), with a first-sighting message. This build records the contact
+  in the vision system's pass over its masks when the entity's cell is explored for the viewer, in
+  sight or not, at the vision cadence rather than every tick, and reads everyone as seen with fog
+  off (approximation).
 - **Diplomacy**: a per-player matrix, one direction per entry; scripts issue both directions when they
   want symmetry (corpus). The not-changeable flag is symmetric and silences stance messages; this
   build keeps it in `components/relations.ts`, with no seat command yet that would have to respect it.
@@ -475,12 +485,13 @@ A reading of the tribute manager, which the goal `PayTribute` and results 27, 28
   where "have" is the payer's warehouses and workplaces summed. The button is disabled unless the
   slot is payable, and pressing it sends the pay network command for the slot. The window iterator
   walks slots 0 to 39 only.
-- Payable: one single warehouse or workplace of the payer holds every demanded amount in full,
-  counted like the goal counts (a workplace's product slots, never its inputs). A food demand is met
-  by the first good of the same food class (simple or extra) the house stores, walking the food
-  goods in id order (`food_simple` and `food_extra` first, then the dishes), so a warehouse pays
-  bread out of its `food_simple` and a bakery out of its bread. A slot demanding nothing is payable
-  by any such house standing.
+- Payable: the demand amounts are copied once, then every warehouse and workplace of the payer
+  subtracts what it holds from each copy, counted like the goal counts (a workplace's product slots,
+  never its inputs); the slot is payable when the running sums cover every demand, so several
+  houses pay one slot together. A food demand is met by the first good of the same food class
+  (simple or extra) the house stores, walking the food goods in id order (`food_simple` and
+  `food_extra` first, then the dishes), so a warehouse pays bread out of its `food_simple` and a
+  bakery out of its bread. A slot demanding nothing is payable at once.
 - Paying takes goods out of a copy of the demands, house by house until every demand reaches zero:
   the first house of the headquarters type, then every warehouse in array order, then every
   workplace, each giving what it holds of what is still owed, so a payment can drain several houses
@@ -492,11 +503,11 @@ A reading of the tribute manager, which the goal `PayTribute` and results 27, 28
   and drain order over finished storages then workplaces, each ascending by entity id
   (approximation: no house type is drained first, since no content role marks the headquarters); the
   food class is the dish table of `readviews/food.ts`. Two demands a house meets with the same
-  stocked good are checked as their sum, where the original checks each alone and would mark a slot
-  paid with part of it still owed (deviation). The seat command is admitted only for the slot's
-  payer, and only while the slot is open, unpaid and payable. The window lists all 44 slots where
-  the original's walks 40 (unreachable in the corpus), under a discovered roster player, which every
-  corpus receiver is, and notes a slot the stores hold in sum but no single one can pay.
+  stocked good share that stock here, where the original lets each see the full stock, drains what
+  it can and leaves the slot unpaid with the goods gone (deviation). The seat command is admitted
+  only for the slot's payer, and only while the slot is open, unpaid and payable. The window lists
+  all 44 slots where the original's walks 40 (unreachable in the corpus), under a discovered roster
+  player, which every corpus receiver is.
 
 ## On-screen info lines
 
@@ -662,18 +673,15 @@ unsigned conversion suggested by the iterator reading.
 `[misc_multiplayer_goals]` (9 corpus maps) feeds a separate manager checked every 120 ticks
 (reading): goal type 1 loses when the player's dead flag is set, type 2 wins on good counts, type 3 on
 an inhabitant or soldier count, type 4 wins when `MissionWon` fires for the player, type 5 loses when
-`MissionFailed` fires. The multiplayer tickets own this manager.
+`MissionFailed` fires. This build does not read the table: a network match ends by elimination or by
+the script verdicts described under "Multiplayer integration".
 
 ## Open questions
 
-- Confirm on the running original: the 3-second check period, `TimeGone` in whole seconds from
-  activation, and the `[n/2, n)` range of `RandomTimeGone`.
-- What sets a player's "seen" flag toward another player.
 - Behaviour bits 8, 10, 18, 19 and the animal behaviour value.
-- Whether the load tick evaluates: the tick count starts at 0, which is a multiple of 36, so the
-  first pass would run at once and an opening `PlayCutscene` show its page before the map moves,
-  where this build's first pass runs three seconds in.
-- The loader's `description` default of 0 against the corpus convention of -1.
+- Every reading above comes from the 2022 the original; the owned 2001 Windows build has not been
+  analysed for the check period, the tick reset, `SelectHuman`'s flag or the load-time job
+  seeding.
 
 ## Multiplayer integration
 

@@ -326,16 +326,26 @@ describe('the goods goals', () => {
     expect(holds(input)).toBe(false);
   });
 
-  it('an amount of zero or less holds over nothing at all', () => {
+  it('an amount of zero or less holds over an empty area but needs one house for the house goals', () => {
     for (const goal of [
-      { opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 0 },
-      { opcode: 'GoodsGlobal', player: OWNER, good: WOOD, amount: -1 },
       { opcode: 'NumberOfGoodsInArea', player: OWNER, good: WOOD, amount: 0, point: POINT, range: 3 },
       { opcode: 'NumberOfGoodsInHousesInArea', player: OWNER, good: WOOD, amount: 0, point: POINT, range: 3 },
     ] as const) {
       const sim = goalSim(goal);
       sim.run(FIRST_PASS);
       expect(holds(sim), goal.opcode).toBe(true);
+    }
+    for (const goal of [
+      { opcode: 'GoodsInHouses', objectId: GROUP, good: WOOD, amount: 0 },
+      { opcode: 'GoodsGlobal', player: OWNER, good: WOOD, amount: -1 },
+    ] as const) {
+      const empty = goalSim(goal);
+      empty.run(FIRST_PASS);
+      expect(holds(empty), goal.opcode).toBe(false);
+      const housed = goalSim(goal);
+      place(housed, { type: HEADQUARTERS, owner: OWNER, missionId: GROUP });
+      housed.run(FIRST_PASS);
+      expect(holds(housed), goal.opcode).toBe(true);
     }
   });
 

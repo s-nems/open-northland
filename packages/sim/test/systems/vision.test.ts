@@ -254,6 +254,17 @@ describe('first contact - the vision-driven discovery of other players', () => {
     expect(sim.hasMetPlayer(P0, P1)).toBe(true); // masks reset, knowledge kept
   });
 
+  it('meets a unit standing on ground explored earlier, out of sight now', () => {
+    const sim = simOn(FOG_MODE.RECON);
+    const scout = unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });
+    sim.run(1);
+    teleport(sim, scout, 23, 7); // the start cells stay EXPLORED behind the scout
+    sim.run(VISION_CADENCE_TICKS + 1);
+    unit(sim, SCOUT_AT.x + 1, SCOUT_AT.y, P1);
+    sim.run(VISION_CADENCE_TICKS + 1);
+    expect(sim.hasMetPlayer(P0, P1)).toBe(true);
+  });
+
   it('skips an invalid owner slot instead of recording a contact for it', () => {
     const sim = simOn(FOG_MODE.RECON);
     unit(sim, SCOUT_AT.x, SCOUT_AT.y, P0, { jobType: SCOUT_JOB });

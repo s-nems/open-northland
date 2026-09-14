@@ -104,10 +104,11 @@ export const visionSystem: System = (world, ctx) => {
     if (rect !== null) fog.mergeVisibleBounds(player, rect.minC, rect.maxC, rect.minR, rect.maxR);
   }
 
-  // Contact pass over the settled masks: a viewer meets every owner whose entity stands in a cell the
-  // viewer now sees. Any owned entity counts, eye or not - it is drawn on the viewer's screen either
-  // way. The met bits are hoisted out of the loop so a saturated world pays per-pair integer tests
-  // only; the list is re-read because a stamp may have allocated a player's first mask.
+  // Contact pass over the settled masks: a viewer meets every owner whose entity stands on a cell the
+  // viewer has explored, in sight now or not (reading: the original tests the viewer's once-set
+  // explored bit under the entity every tick). Any owned entity counts, eye or not. The met bits are
+  // hoisted out of the loop so a saturated world pays per-pair integer tests only; the list is re-read
+  // because a stamp may have allocated a player's first mask.
   const viewerBits = fog.playersWithMasks().map((viewer) => ({
     viewer,
     bits: metContactBits(world, viewer),
@@ -122,7 +123,7 @@ export const visionSystem: System = (world, ctx) => {
     const { cx, cy } = cellOfNode(n.hx, n.hy);
     for (const v of viewerBits) {
       if (v.viewer === owner || (v.bits & ownerBit) !== 0) continue;
-      if (fog.stateAt(v.viewer, cx, cy) === FOG_STATE.VISIBLE) {
+      if (fog.stateAt(v.viewer, cx, cy) >= FOG_STATE.EXPLORED) {
         recordContact(world, v.viewer, owner);
         v.bits |= ownerBit;
       }

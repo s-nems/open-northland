@@ -55,12 +55,11 @@ const row = (player: number, over: Partial<DiplomacyPanelRow> = {}): DiplomacyPa
   ...over,
 });
 
-const tribute = (slot: number, payable: boolean, text?: string, split = false): TributePanelRow => ({
+const tribute = (slot: number, payable: boolean, text?: string): TributePanelRow => ({
   slot,
   ...(text !== undefined ? { text } : {}),
   demands: [{ label: 'Drewno', amount: 6, onHand: 8 }],
   payable,
-  split,
 });
 
 /** A one-demand card with a description one line high. */
@@ -278,7 +277,7 @@ describe('diplomacy window controller', () => {
   it("lists the selected player's tributes with their demands and pays on a live button only", () => {
     const { ctx, texts } = stubContext();
     let rows = [
-      row(1, { tributes: [tribute(4, true, 'Drewno dla sąsiada'), tribute(7, false, undefined, true)] }),
+      row(1, { tributes: [tribute(4, true, 'Drewno dla sąsiada'), tribute(7, false)] }),
       row(3, { tributes: [tribute(9, true)] }),
     ];
     const paid: number[] = [];
@@ -292,14 +291,13 @@ describe('diplomacy window controller', () => {
     expect(texts).toContain('Drewno dla sąsiada');
     expect(texts).toContain('Trybut 7'); // the unworded slot's fallback
     expect(texts).toContain('6 Drewno (8 w składach)');
-    expect(texts).toContain('żaden pojedynczy skład nie ma wszystkiego'); // the split slot's note
     expect(texts.filter((t) => t === 'Zapłać')).toHaveLength(2);
     expect(texts).not.toContain('Trybut 9'); // the other player's tribute waits behind its tab
 
     // The stub measures every description at no height, so the controller's cards are the specs below.
     const layout = expectedLayout(ctx, [1, 3], 1, [
       { slot: 4, payable: true, descriptionH: 0, lines: 1 },
-      { slot: 7, payable: false, descriptionH: 0, lines: 2 },
+      { slot: 7, payable: false, descriptionH: 0, lines: 1 },
     ]);
     const [live, dead] = layout.tributes;
     if (live === undefined || dead === undefined) throw new Error('two cards expected');

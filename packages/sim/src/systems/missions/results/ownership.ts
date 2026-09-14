@@ -1,4 +1,12 @@
-import { isValidPlayer, Owner, Person, Position, Residence, Settler } from '../../../components/index.js';
+import {
+  isValidPlayer,
+  Owner,
+  Person,
+  Position,
+  Residence,
+  Settler,
+  stampOwner,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { releaseEmployment } from '../../economy/jobs/binding.js';
@@ -11,18 +19,18 @@ import { missionHouses, missionHumans, ownedBy, ownedInRange, withinRange } from
 const ANIMAL_HANDOVER_CAP = 50;
 
 /** Hand every human stamped with the id to `player`, detaching each from the job and home it held
- *  under its old owner - the one ownership result that evicts (reading). */
+ *  under its old owner (reading). */
 export function handHumansToPlayer(pass: MissionPass, id: number, player: number): void {
   if (!isValidPlayer(player)) return;
   for (const e of missionHumans(pass.world, id)) {
     detachFromHouses(pass.world, pass.ctx, e);
-    handOver(pass.world, e, player);
+    stampOwner(pass.world, e, player);
   }
 }
 
 /** Hand every house stamped with the id to `player`. */
 export function handHousesToPlayer(pass: MissionPass, id: number, player: number): void {
-  for (const e of missionHouses(pass.world, id)) handOver(pass.world, e, player);
+  for (const e of missionHouses(pass.world, id)) stampOwner(pass.world, e, player);
 }
 
 /** Hand everything one player owns to another - units, houses, vehicles and animals alike. Nobody is
@@ -31,17 +39,19 @@ export function handPlayerToPlayer(pass: MissionPass, from: number, to: number):
   const { world } = pass;
   if (!isValidPlayer(from)) return;
   const owned = canonicalById(world.query(Owner)).filter((e) => world.get(e, Owner).player === from);
-  for (const e of owned) handOver(world, e, to);
+  for (const e of owned) stampOwner(world, e, to);
 }
 
-/** Hand everything one player owns within `range` of the point to another. */
+/** Hand everything one player owns within `range` of the point to another; its humans leave the job
+ *  and home they held, as under `ChangeHumanPlayerId` (reading). */
 export function handAreaToPlayer(
   pass: MissionPass,
   op: Extract<MissionResultOp, { opcode: 'ChangePlayerIdInArea' }>,
 ): void {
-  if (!isValidPlayer(op.player)) return;
+  if (!isValidPlayer(op.player) || !isValidPlayer(op.otherPlayer)) return;
   for (const e of ownedInRange(pass.world, op.player, op.point, op.range)) {
-    handOver(pass.world, e, op.otherPlayer);
+    if (pass.world.has(e, Person)) detachFromHouses(pass.world, pass.ctx, e);
+    stampOwner(pass.world, e, op.otherPlayer);
   }
 }
 
@@ -62,14 +72,9 @@ export function handAnimalsToPlayer(
     if (taken >= wanted) break;
     if (world.has(e, Person) || world.get(e, Settler).tribe !== op.tribe) continue;
     if (!ownedBy(world, e, op.player) || !withinRange(world, e, op.point, op.range)) continue;
-    handOver(world, e, op.otherPlayer);
+    stampOwner(world, e, op.otherPlayer);
     taken++;
   }
-}
-
-/** Hand one entity to `player`. An invalid slot leaves the entity where it was. */
-function handOver(world: World, e: Entity, player: number): void {
-  if (isValidPlayer(player)) world.add(e, Owner, { player });
 }
 
 function detachFromHouses(world: World, ctx: SystemContext, e: Entity): void {

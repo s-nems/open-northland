@@ -134,21 +134,18 @@ function stepHex(from: HalfCellNode, direction: HexDirection): HalfCellNode {
 }
 
 /**
- * The map points at hexagon distance `radius` from `centre`, every `spacing`th step of a walk that
- * starts at the ring's north-western corner and turns through the six sides, `radius` steps each.
- * Approximation: the original walks the same ring from its own direction table; which corner it
- * starts at and which way it turns is unread, so a spacing above one may pick other points.
+ * The map points at hexagon distance `radius` from `centre`: a walk that starts `radius` steps
+ * north-west of the centre and turns through the six sides, `radius` steps each, keeping every
+ * `spacing`th step of each side, the count restarting at the side's first step (reading).
  */
 function hexagonRing(centre: HalfCellNode, radius: number, spacing: number): HalfCellNode[] {
   let at = centre;
   for (let i = 0; i < radius; i++) at = stepHex(at, RING_START);
   const points: HalfCellNode[] = [];
-  let step = 0;
   for (const side of RING_SIDES) {
-    for (let i = 0; i < radius; i++) {
+    for (let step = 0; step < radius; step++) {
       if (step % spacing === 0) points.push(at);
       at = stepHex(at, side);
-      step++;
     }
   }
   return points;

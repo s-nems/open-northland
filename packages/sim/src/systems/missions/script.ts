@@ -70,6 +70,12 @@ export interface MissionScript {
   readonly missions: readonly MissionDefinition[];
 }
 
+const SUCCESSFUL_IF_RULES: ReadonlySet<number> = new Set(Object.values(SUCCESSFUL_IF));
+
+export function isSuccessfulIfRule(rule: number): boolean {
+  return SUCCESSFUL_IF_RULES.has(rule);
+}
+
 /** Whether `held` of `total` goals satisfies the rule (`MISSIONS.md`, "Execution model"). A mission
  *  with no goals holds under every rule but `any`. */
 export function ruleSatisfied(rule: number, held: number, total: number): boolean {

@@ -52,10 +52,8 @@ export interface TributePanelRow {
     /** What the viewer's stores hold of the good between them. */
     readonly onHand: number;
   }[];
-  /** The viewer may pay now: one of its stores holds every demand in full, and the seat is its own. */
+  /** The viewer may pay now: its stores hold every demand between them, and the seat is its own. */
   readonly payable: boolean;
-  /** The stores hold every demand between them, and no single one holds them all. */
-  readonly split: boolean;
 }
 
 /** The decoded `misclogic` rows naming each stance. */

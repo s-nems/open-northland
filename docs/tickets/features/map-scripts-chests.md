@@ -13,7 +13,9 @@ The assistant panel's chest terminology is unrelated to this mechanic.
 - Implement ChestNearPos, SetRandomChestOnPosition and SetRandomChestOnRandomPos.
 - Use deterministic reward and position selection, with explicit refusal when no valid position exists.
 - Preserve unopened payloads and consumed state through save/load, preventing duplicate rewards.
-- Integrate technology rewards with the common progression rules; update support and MISSIONS.md.
+- Integrate technology rewards with the common progression rules; update support and MISSIONS.md. A
+  good reward is the one path that also enables the good's producing job
+  (`Tool_TechTree_EnableGoodProduction`, per-good job table on the tribe; `EnableGood` does not).
 
 ## Verify
 

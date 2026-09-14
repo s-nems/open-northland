@@ -76,7 +76,7 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
               : op.opcode === 'RemoveFX2LandscapeInArea'
                 ? 'fx2'
                 : undefined;
-    removeLandscapes(pass.world, terrain, op.point, 'range' in op ? op.range : 0, group, (entity) =>
+    removeLandscapes(pass.world, terrain, op.point, removalRange(op), group, (entity) =>
       pass.ctx.events.emit({ kind: 'missionLandscapeResourceRemoved', entity }),
     );
   }
@@ -87,6 +87,13 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
     }
     pass.ctx.events.emit({ kind: 'missionLandscapeChanged' });
   }
+}
+
+/** The hexagon radius a removal clears: `RemoveLandscapesInArea` stops one ring short of its `range`
+ *  while the group removals include the ring at `range` (reading). */
+function removalRange(op: LandscapeOp): number {
+  if (!('range' in op)) return 0;
+  return op.opcode === 'RemoveLandscapesInArea' ? Math.max(0, op.range - 1) : op.range;
 }
 
 function walkBlocks(pass: MissionPass, terrain: TerrainGraph): Set<NodeId> {

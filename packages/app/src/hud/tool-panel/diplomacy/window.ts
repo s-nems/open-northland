@@ -96,7 +96,6 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
           t.slot,
           t.text ?? null,
           t.payable,
-          t.split,
           t.demands.map((d) => [d.label, d.amount, d.onHand]),
         ]),
       ]),

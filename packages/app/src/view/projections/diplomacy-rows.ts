@@ -84,6 +84,5 @@ function tributeRow(tribute: OpenTribute, opts: DiplomacyRosterOptions): Tribute
       onHand: d.onHand,
     })),
     payable: tribute.payable && opts.canPay !== false,
-    split: !tribute.payable && tribute.demands.every((d) => d.onHand >= d.amount),
   };
 }

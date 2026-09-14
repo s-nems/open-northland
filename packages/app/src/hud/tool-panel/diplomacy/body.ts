@@ -18,6 +18,7 @@ import {
 import {
   type DiplomacyPanelRow,
   type DiplomacyWindowLayout,
+  diplomacyStanceText,
   type TributeCardSpec,
   type TributePanelRow,
   tributeTextWidth,
@@ -33,11 +34,6 @@ const IN_STORES_STRING_ID = 355; // miscwindow 'in stores', the tribute demand's
 const THEIR_STANCE_STRING_ID = 358; // miscwindow 'Relationship to your tribe is'
 const YOUR_STANCE_STRING_ID = 359; // miscwindow 'Your relation to the other tribe'
 const PLAYER_STRING_ID = 361; // miscwindow 'Player'
-const STANCE_STRING_ID: Readonly<Record<DiplomacyState, number>> = {
-  friend: 200, // misclogic 'friendly'
-  neutral: 201,
-  enemy: 202,
-};
 
 /** A tribute's wrapped description, measured before the layout so its card can take its height. */
 interface TributeCard {
@@ -60,9 +56,6 @@ export function createDiplomacyBody(layers: WindowLayers) {
     const y = card.y + (card.h - TEXT_CAP_H * scale) / 2;
     run.place(Math.round(x), Math.round(y), scale, rw, rh);
   };
-
-  const stanceText = (state: DiplomacyState): string =>
-    ctx.uiString('misclogic', STANCE_STRING_ID[state], messages().hud.diplomacyStances[state]);
 
   const paintBody = (built: DiplomacyWindowLayout, row: DiplomacyPanelRow): void => {
     const [identity, theirLine, yourLine] = built.bodyLines;
@@ -88,7 +81,10 @@ export function createDiplomacyBody(layers: WindowLayers) {
       if (line === undefined) return;
       const card = paintRowCard(layers, line);
       placeOnCard(layers, addRun(layers, heading, 'dimmed', ROW_PX), card);
-      onCardRight(addRun(layers, stanceText(state), state === 'enemy' ? 'red' : 'white', ROW_PX), card);
+      onCardRight(
+        addRun(layers, diplomacyStanceText(ctx.uiString, state), state === 'enemy' ? 'red' : 'white', ROW_PX),
+        card,
+      );
     };
     stanceLine(
       theirLine,
@@ -116,7 +112,7 @@ export function createDiplomacyBody(layers: WindowLayers) {
           slot: tribute.slot,
           payable: tribute.payable,
           descriptionH: description.height,
-          lines: tribute.demands.length + (tribute.split ? 1 : 0),
+          lines: tribute.demands.length,
         },
       };
     });
@@ -135,7 +131,6 @@ export function createDiplomacyBody(layers: WindowLayers) {
       paintRowCard(layers, rect.card);
       card.description.place(rect.text.x, rect.text.y);
       const lines = card.tribute.demands.map((d) => `${d.amount} ${d.label} (${d.onHand} ${inStores})`);
-      if (card.tribute.split) lines.push(messages().hud.tributeSplit);
       lines.forEach((line, l) => {
         const at = rect.lines[l];
         if (at !== undefined) onLine(addRun(layers, line, 'dimmed', ROW_PX), at);

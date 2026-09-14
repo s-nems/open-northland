@@ -83,64 +83,57 @@ function onHandOver(world: World, ctx: ContentContext, houses: readonly PayingHo
   return total;
 }
 
-/** What the house owes per good it answers with, two demands met by one stocked good adding up; null
- *  when it answers some demand with nothing. */
-function owedPerStockedGood(
-  ctx: ContentContext,
-  house: PayingHouse,
-  demands: DeepReadonly<TributeDemand[]>,
-): Map<number, number> | null {
-  const owed = new Map<number, number>();
-  for (const demand of demands) {
-    const stocked = stockedFormOf(ctx, house.buildingType, demand.good);
-    if (stocked === undefined) return null;
-    owed.set(stocked, (owed.get(stocked) ?? 0) + demand.amount);
-  }
-  return owed;
-}
-
-/** One of `houses` holds every demand in full. A slot demanding nothing is payable by any house
- *  standing. */
-function oneHouseHoldsAll(
+/**
+ * The drain the demands would take out of `houses` in order, each house giving what it holds of what
+ * is still owed, and whether that covers every demand (reading of the original's payable test, which
+ * sums the payer's warehouses and workplaces). Two demands one house answers with the same stocked
+ * good share its stock, so they cannot both take the same units (deviation: the original lets each
+ * see the full stock and leaves the slot unpaid after draining it).
+ */
+function drainPlan(
   world: World,
   ctx: ContentContext,
   houses: readonly PayingHouse[],
   demands: DeepReadonly<TributeDemand[]>,
-): boolean {
-  return houses.some((house) => {
-    const owed = owedPerStockedGood(ctx, house, demands);
-    if (owed === null) return false;
-    for (const [stocked, amount] of owed) {
-      if (stockOf(world, house.entity, stocked) < amount) return false;
+): { readonly takes: ReadonlyMap<Entity, ReadonlyMap<number, number>>; readonly covered: boolean } {
+  const owed = demands.map((demand) => ({ good: demand.good, amount: demand.amount }));
+  const takes = new Map<Entity, Map<number, number>>();
+  for (const house of houses) {
+    const left = new Map<number, number>();
+    let outstanding = 0;
+    for (const demand of owed) {
+      if (demand.amount <= 0) continue;
+      const stocked = stockedFormOf(ctx, house.buildingType, demand.good);
+      if (stocked !== undefined) {
+        const available = left.get(stocked) ?? stockOf(world, house.entity, stocked);
+        const take = Math.min(available, demand.amount);
+        left.set(stocked, available - take);
+        demand.amount -= take;
+        if (take > 0) {
+          let given = takes.get(house.entity);
+          if (given === undefined) {
+            given = new Map();
+            takes.set(house.entity, given);
+          }
+          given.set(stocked, (given.get(stocked) ?? 0) + take);
+        }
+      }
+      if (demand.amount > 0) outstanding++;
     }
-    return true;
-  });
-}
-
-/** Whether the slot is open, unpaid and one of the payer's storages or workplaces holds every demand
- *  in full. */
-function tributePayable(world: World, ctx: ContentContext, slot: number): boolean {
-  const held = tributeSlot(world, slot);
-  if (held === undefined || !held.active || held.paid) return false;
-  return oneHouseHoldsAll(world, ctx, payingHouses(world, ctx, held.payer), held.demands);
+    if (outstanding === 0) break;
+  }
+  return { takes, covered: owed.every((demand) => demand.amount <= 0) };
 }
 
 /** The `payTribute` command: hand the goods over out of the payer's houses in {@link payingHouses}
  *  order, each giving what it holds of what is still owed, and mark the slot paid. */
 export function payTribute(world: World, ctx: ContentContext, command: TributeCommand): void {
   const held = tributeSlot(world, command.slot);
-  if (held === undefined || held.payer !== command.player) return;
-  if (!tributePayable(world, ctx, command.slot)) return;
-  const owed = held.demands.map((demand) => ({ good: demand.good, amount: demand.amount }));
-  for (const house of payingHouses(world, ctx, held.payer)) {
-    let outstanding = 0;
-    for (const demand of owed) {
-      if (demand.amount <= 0) continue;
-      const stocked = stockedFormOf(ctx, house.buildingType, demand.good);
-      if (stocked !== undefined) demand.amount -= takeStock(world, house.entity, stocked, demand.amount);
-      if (demand.amount > 0) outstanding++;
-    }
-    if (outstanding === 0) break;
+  if (held === undefined || held.payer !== command.player || !held.active || held.paid) return;
+  const plan = drainPlan(world, ctx, payingHouses(world, ctx, held.payer), held.demands);
+  if (!plan.covered) return;
+  for (const [entity, given] of plan.takes) {
+    for (const [stocked, amount] of given) takeStock(world, entity, stocked, amount);
   }
   markTributePaid(world, command.slot);
 }
@@ -159,6 +152,6 @@ export function openTributes(world: World, ctx: ContentContext, payer: number): 
       amount: demand.amount,
       onHand: onHandOver(world, ctx, houses, demand.good),
     })),
-    payable: oneHouseHoldsAll(world, ctx, houses, tribute.demands),
+    payable: drainPlan(world, ctx, houses, tribute.demands).covered,
   }));
 }

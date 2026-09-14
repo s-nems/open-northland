@@ -47,7 +47,7 @@ export function placeScriptedHouse(
     x: spot.hx,
     y: spot.hy,
     owner: op.player,
-    underConstruction: op.asSite,
+    underConstruction: !op.built,
     force: true,
     missionId: op.objectId,
   });

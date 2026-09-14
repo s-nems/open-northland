@@ -244,26 +244,19 @@ describe('the open tributes a payer owes', () => {
     expect(sim.openTributes(RIVAL)).toEqual([]);
   });
 
-  it('is payable only when one single store holds every demand in full', () => {
+  it('is payable when the stores together hold every demand in full', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
     place(sim, { type: HEADQUARTERS });
     place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: PLANK, amount: 3 }] });
     sim.run(FIRST_PASS);
-    // Ten wood here and three planks there add up, and pay nothing.
-    expect(sim.openTributes(OWNER)[0]?.payable).toBe(false);
+    // Ten wood here and three planks there add up.
+    expect(sim.openTributes(OWNER)[0]?.payable).toBe(true);
 
-    const together = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
-    place(together, { type: HEADQUARTERS });
-    place(together, {
-      type: WAREHOUSE,
-      at: ELSEWHERE,
-      goods: [
-        { good: WOOD, amount: 5 },
-        { good: PLANK, amount: 3 },
-      ],
-    });
-    together.run(FIRST_PASS);
-    expect(together.openTributes(OWNER)[0]?.payable).toBe(true);
+    const short = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
+    place(short, { type: HEADQUARTERS });
+    place(short, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: PLANK, amount: 2 }] });
+    short.run(FIRST_PASS);
+    expect(short.openTributes(OWNER)[0]?.payable).toBe(false);
   });
 
   it("counts a workplace's product and never the inputs delivered to it", () => {
@@ -346,14 +339,14 @@ describe('the payTribute command', () => {
     expect(paidHolds(sim)).toBe(true);
   });
 
-  it('takes nothing while no single store could pay, and nothing twice', () => {
+  it('takes nothing while the stores cannot cover a demand, and nothing twice', () => {
     const sim = tributeSim([create(), demand(WOOD, 5), demand(PLANK, 3)]);
     place(sim, { type: HEADQUARTERS });
-    place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: PLANK, amount: 3 }] });
+    place(sim, { type: WAREHOUSE, at: ELSEWHERE, goods: [{ good: PLANK, amount: 2 }] });
     sim.run(FIRST_PASS);
     pay(sim);
     expect(stockAt(sim, HEADQUARTERS, WOOD)).toBe(HQ_WOOD);
-    expect(stockAt(sim, WAREHOUSE, PLANK)).toBe(3);
+    expect(stockAt(sim, WAREHOUSE, PLANK)).toBe(2);
     expect(tributeSlot(sim.world, SLOT)?.paid).toBe(false);
 
     const paid = tributeSim([create(), demand(WOOD, 5)]);

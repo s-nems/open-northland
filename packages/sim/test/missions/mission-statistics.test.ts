@@ -167,6 +167,20 @@ describe('the goals that count what is standing', () => {
     expect(holds(sim)).toBe(true);
   });
 
+  it('needs one match even for an amount of zero', () => {
+    const empty = goalSim({ opcode: 'Population', player: 2, amount: 0 });
+    empty.run(FIRST_PASS);
+    expect(holds(empty)).toBe(false);
+    const one = goalSim({ opcode: 'Population', player: 2, amount: 0 });
+    spawn(one, { player: 2 });
+    one.run(FIRST_PASS);
+    expect(holds(one)).toBe(true);
+    const soldiers = goalSim({ opcode: 'NumberOfSoldiers', player: 2, amount: 0 });
+    spawn(soldiers, { player: 2 });
+    soldiers.run(FIRST_PASS);
+    expect(holds(soldiers)).toBe(false);
+  });
+
   it('counts only the soldiers for NumberOfSoldiers', () => {
     const sim = goalSim({ opcode: 'NumberOfSoldiers', player: 2, amount: 1 });
     spawn(sim, { player: 2 });
@@ -251,6 +265,16 @@ describe('the counting goals that tag what they counted', () => {
     sim.run(FIRST_PASS);
     expect(holds(sim)).toBe(true);
     expect(missionObjects(sim.world, UNTAGGED)).toHaveLength(0);
+  });
+
+  it('clears the ids they carried when the goal names id 0', () => {
+    const sim = goalSim({ opcode: 'BuildHumans', player: 2, job: CARPENTER, amount: 1, humanId: 0 });
+    spawn(sim, { player: 2, job: CARPENTER, missionId: 7 });
+    sim.run(1);
+    expect(missionObjects(sim.world, 7)).toHaveLength(1);
+    sim.run(FIRST_PASS);
+    expect(holds(sim)).toBe(true);
+    expect(missionObjects(sim.world, 7)).toHaveLength(0);
   });
 
   it('counts and stamps the player`s houses of the type', () => {

@@ -109,7 +109,7 @@ describe('the house results', () => {
           player: 1,
           houseName: { typeId: HUT, tribe: VIKING },
           level: 0,
-          asSite: false,
+          built: true,
           point: POINT,
           objectId: 5,
         },
@@ -132,7 +132,7 @@ describe('the house results', () => {
           player: 1,
           houseName: { typeId: HUT, tribe: FRANK },
           level: 0,
-          asSite: false,
+          built: true,
           point: POINT,
           objectId: 5,
         },
@@ -151,7 +151,7 @@ describe('the house results', () => {
           player: 1,
           houseName: { typeId: -1, tribe: -1 },
           level: 0,
-          asSite: false,
+          built: true,
           point: POINT,
           objectId: 5,
         },
@@ -163,7 +163,7 @@ describe('the house results', () => {
     expect(sim.events.current().filter((e) => e.kind === 'missionResultFailed')).toHaveLength(1);
   });
 
-  it('raises a construction site when the line sets the site flag', () => {
+  it('raises a construction site when the line clears the built flag', () => {
     const sim = firingSim(
       [
         {
@@ -171,7 +171,7 @@ describe('the house results', () => {
           player: 1,
           houseName: { typeId: HUT, tribe: VIKING },
           level: 0,
-          asSite: true,
+          built: false,
           point: POINT,
           objectId: 5,
         },
@@ -188,7 +188,7 @@ describe('the house results', () => {
       player: 1,
       houseName: { typeId: HUT, tribe: VIKING },
       level: 0,
-      asSite: false,
+      built: true,
       point: POINT,
       objectId: 5,
     };
@@ -218,7 +218,7 @@ describe('the house results', () => {
                 player: 1,
                 houseName: { typeId: HUT, tribe: VIKING },
                 level: 0,
-                asSite: false,
+                built: true,
                 point: { hx: 0, hy: 0 },
                 objectId: 5,
               },
@@ -243,7 +243,7 @@ describe('the house results', () => {
           player: 1,
           houseName: { typeId: HUT, tribe: VIKING },
           level: 0,
-          asSite: false,
+          built: true,
           point: POINT,
           objectId: 5,
         },
@@ -280,7 +280,7 @@ describe('the removal results', () => {
           player: 1,
           houseName: { typeId: HUT, tribe: VIKING },
           level: 0,
-          asSite: false,
+          built: true,
           point: POINT,
           objectId: 5,
         },
@@ -382,6 +382,37 @@ describe('the ownership results', () => {
     sim.run(FIRST_PASS);
     expect(ownerOf(sim.world, only(missionObjects(sim.world, 77)))).toBe(6);
     expect(ownerOf(sim.world, only(missionObjects(sim.world, 78)))).toBe(2);
+  });
+
+  it('cuts the bindings of the humans an area handover takes', () => {
+    const sim = firingSim(
+      [{ opcode: 'ChangePlayerIdInArea', player: 2, otherPlayer: 6, point: POINT, range: 6 }],
+      houseContent(),
+    );
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HUT,
+      tribe: VIKING,
+      x: POINT.hx,
+      y: POINT.hy,
+      owner: 2,
+    });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SOLDIER,
+      tribe: VIKING,
+      x: POINT.hx + 4,
+      y: POINT.hy,
+      owner: 2,
+      missionId: 77,
+      home: { x: POINT.hx, y: POINT.hy },
+    });
+    sim.run(2);
+    const moved = only(missionObjects(sim.world, 77));
+    expect(sim.world.has(moved, Residence)).toBe(true);
+    sim.run(FIRST_PASS);
+    expect(ownerOf(sim.world, moved)).toBe(6);
+    expect(sim.world.has(moved, Residence)).toBe(false);
   });
 
   it('tames at most the number of animals the line asks for', () => {

@@ -191,7 +191,7 @@ export const plContent = {
     tribute: {
       title: 'Trybuty',
       summary:
-        'Skrypt mapy żąda trzech trybutów dla sąsiada: drewno można zapłacić z jednego magazynu i zapłata zmienia nastawienie sąsiada na przyjazne, sakiewki monet brakuje, a kamień leży rozdzielony między dwa składy, z których żaden sam nie zapłaci.',
+        'Skrypt mapy żąda trzech trybutów dla sąsiada: drewno można zapłacić z jednego magazynu i zapłata zmienia nastawienie sąsiada na przyjazne, sakiewki monet brakuje, a kamień leży rozdzielony między dwa składy, które płacą go razem.',
       strings: {
         '1': 'Sąsiedzi proszą o drewno i kamień na nową halę.',
         '2': 'Sąsiedzi proszą o sakiewkę monet.',

@@ -70,35 +70,29 @@ describe('diplomacyPanelRows', () => {
       goodLabelOf: (good) => (good === 5 ? 'Drewno' : undefined),
     });
     expect(rows.map((r) => r.tributes)).toEqual([
-      [{ slot: 1, demands: [{ label: '8', amount: 20, onHand: 5 }], payable: false, split: false }],
+      [{ slot: 1, demands: [{ label: '8', amount: 20, onHand: 5 }], payable: false }],
       [
         {
           slot: 3,
           text: 'Drewno dla sąsiada',
           demands: [{ label: 'Drewno', amount: 6, onHand: 8 }],
           payable: true,
-          split: false,
         },
       ],
     ]);
   });
 
-  it('notes a tribute the stores hold between them but no single one can pay, and deadens every button for a seat that may not pay', () => {
+  it('projects the sim`s payable flag and deadens every button for a seat that may not pay', () => {
     const owed: OpenTribute[] = [
-      { slot: 2, receiver: 1, stringId: 1, demands: [{ good: 3, amount: 5, onHand: 6 }], payable: false },
+      { slot: 2, receiver: 1, stringId: 1, demands: [{ good: 3, amount: 5, onHand: 4 }], payable: false },
       { slot: 5, receiver: 1, stringId: 2, demands: [{ good: 5, amount: 2, onHand: 4 }], payable: true },
     ];
     const sim = simView([[0, 1]], [], owed);
     const roster = { localPlayer: 0, rosterPlayers: [0, 1], observer: false };
-    expect(diplomacyPanelRows(sim, roster)[0]?.tributes.map((t) => [t.payable, t.split])).toEqual([
-      [false, true],
-      [true, false],
-    ]);
-    expect(
-      diplomacyPanelRows(sim, { ...roster, canPay: false })[0]?.tributes.map((t) => [t.payable, t.split]),
-    ).toEqual([
-      [false, true],
-      [false, false],
+    expect(diplomacyPanelRows(sim, roster)[0]?.tributes.map((t) => t.payable)).toEqual([false, true]);
+    expect(diplomacyPanelRows(sim, { ...roster, canPay: false })[0]?.tributes.map((t) => t.payable)).toEqual([
+      false,
+      false,
     ]);
   });
 

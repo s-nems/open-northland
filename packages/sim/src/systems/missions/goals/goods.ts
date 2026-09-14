@@ -9,10 +9,11 @@ import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
 import { countsAsOwnStock, stockOf } from '../stock.js';
 import { missionHouses, withinRange } from '../targets.js';
+import { countReaches } from './count.js';
 
-/** The houses carrying the id hold at least `amount` of the good between them, in any slot. */
+/** The houses carrying the id hold at least `amount` of the good between them, in any slot; with
+ *  nothing carrying the id the goal fails whatever the amount (reading). */
 export function goodsInHousesHolds(pass: MissionPass, id: number, good: number, amount: number): boolean {
-  if (amount <= 0) return true; // as the original's `count >= amount` does with nothing to count
   let total = 0;
   for (const e of missionHouses(pass.world, id)) {
     total += stockOf(pass.world, e, good);
@@ -21,9 +22,9 @@ export function goodsInHousesHolds(pass: MissionPass, id: number, good: number, 
   return false;
 }
 
-/** The player's houses hold at least `amount` of the good as their own stock, finished or not. */
+/** The player's houses hold at least `amount` of the good as their own stock, finished or not; with
+ *  no house able to hold it the goal fails whatever the amount (reading). */
 export function goodsGlobalHolds(pass: MissionPass, player: number, good: number, amount: number): boolean {
-  if (amount <= 0) return true;
   const { world, ctx } = pass;
   let total = 0;
   for (const e of world.query(Building, Stockpile)) {

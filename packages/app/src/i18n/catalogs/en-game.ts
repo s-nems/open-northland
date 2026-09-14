@@ -106,7 +106,6 @@ export const enGame = {
     tribute: 'Tribute',
     tributePay: 'Pay',
     tributeInStores: 'in stores',
-    tributeSplit: 'no single store holds all of it',
     systemMenu: 'Menu',
     missionTitle: 'Mission',
     missionTabTask: 'Task',

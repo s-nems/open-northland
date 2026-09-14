@@ -23,10 +23,10 @@ profession-general and product-specific experience tracks. `DataCnmd/types/house
   Their initial reads still support worlds assembled before the first tick. The committed fallback
   catalog is a smaller approximation of the extracted prerequisites.
 - Map Allow grants permission; Enable grants availability. Shared gates serve placement, upgrades,
-  profession selection, gathering, production, AI and mission goals. EnableGood also enables its
-  unique producer where the tribe's good edges identify one unambiguously. House discovery enables
-  water for wells, honey for beehives, and meat, leather and wool for animal farms. These bindings
-  use owned catalog names at the data boundary.
+  profession selection, gathering, production, AI and mission goals. EnableGood leaves the producing
+  job alone (reading; only a chest reward enables it in the original). House discovery enables water
+  for wells, honey for beehives, and meat, leather and wool for animal farms (reading of
+  `EnableHouse`). These bindings use owned catalog names at the data boundary.
 
 ## Experience and school
 

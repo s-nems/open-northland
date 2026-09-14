@@ -106,7 +106,6 @@ export const plGame = {
     tribute: 'Trybut',
     tributePay: 'Zapłać',
     tributeInStores: 'w składach',
-    tributeSplit: 'żaden pojedynczy skład nie ma wszystkiego',
     systemMenu: 'Menu',
     missionTitle: 'Misja',
     missionTabTask: 'Zadanie',
