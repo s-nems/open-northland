@@ -3,7 +3,13 @@ import { Building, ownerOf, Position, Stockpile } from '../../../components/inde
 import { contentIndex } from '../../../core/content-index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity } from '../../../ecs/world.js';
-import { type HalfCellNode, hexDistance, nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
+import {
+  type HalfCellNode,
+  hexDistance,
+  hexDistanceBetween,
+  nodeOfPosition,
+  positionOfNode,
+} from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
@@ -149,18 +155,17 @@ function housesByDistance(
   return buckets;
 }
 
-/** Every in-bounds node within `range` of the point, bucketed by distance and ascending by id within
- *  a ring. */
+/** Every in-bounds node within `range` of the point, bucketed by distance; the row-major scan leaves
+ *  each ring ascending by id. Clipped to the map, so a map-wide or far-off point costs the map, not
+ *  the range. */
 function ringsAround(terrain: TerrainGraph, point: HalfCellNode, range: number): Map<number, NodeId[]> {
   const rings = new Map<number, NodeId[]>();
   for (let hy = Math.max(0, point.hy - range); hy <= Math.min(terrain.height - 1, point.hy + range); hy++) {
     for (let hx = Math.max(0, point.hx - range); hx <= Math.min(terrain.width - 1, point.hx + range); hx++) {
-      if (!terrain.inBounds(hx, hy)) continue;
-      const distance = hexDistance({ hx, hy }, point);
+      const distance = hexDistanceBetween(hx, hy, point.hx, point.hy);
       if (distance <= range) bucketAt(rings, distance).push(terrain.nodeAt(hx, hy));
     }
   }
-  for (const ring of rings.values()) ring.sort((a, b) => a - b);
   return rings;
 }
 

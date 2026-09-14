@@ -15,7 +15,7 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { ONE, Simulation } from '../../src/index.js';
-import { nodeOfPosition } from '../../src/nav/halfcell.js';
+import { hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { MissionResultOp } from '../../src/systems/missions/index.js';
 import { missionObjects, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
@@ -26,6 +26,7 @@ import {
   HUT,
   HUT_LARGE,
   houseContent,
+  MAP_NODES,
   POINT,
   SOLDIER,
   VIKING,
@@ -197,6 +198,23 @@ describe('the house results', () => {
     sim.run(FIRST_PASS);
     const second = sim.world.get(only(missionObjects(sim.world, 6)), Position);
     expect(nodeOfPosition(second.x, second.y)).not.toEqual(POINT);
+    // Exactly the nearest spot the first house left buildable, the lowest node id among ties.
+    const alone = firingSim([blocking], houseContent());
+    alone.run(FIRST_PASS);
+    const probe = alone.placementProbe(HUT, 1, VIKING);
+    if (probe === null) throw new Error('mapped fixture');
+    let expected: { hx: number; hy: number } | undefined;
+    let best = Number.POSITIVE_INFINITY;
+    for (let hy = 0; hy < MAP_NODES; hy++) {
+      for (let hx = 0; hx < MAP_NODES; hx++) {
+        const distance = hexDistance(POINT, { hx, hy });
+        if (distance < best && probe.canPlace(hx, hy)) {
+          best = distance;
+          expected = { hx, hy };
+        }
+      }
+    }
+    expect(nodeOfPosition(second.x, second.y)).toEqual(expected);
   });
 
   it('reports a failure when nothing in reach fits', () => {
@@ -256,6 +274,10 @@ describe('the house results', () => {
     expect(sim.world.get(house, Building).buildingType).toBe(HUT_LARGE);
     expect(sim.world.get(house, Building).level).toBe(1);
     expect(sim.world.get(house, Health).max).toBe(300);
+    // The larger body settles its plot like a finished upgrade, which the app's clearing keys on.
+    expect(sim.events.current().filter((e) => e.kind === 'buildingUpgraded')).toEqual([
+      { kind: 'buildingUpgraded', entity: house, level: 1 },
+    ]);
   });
 });
 

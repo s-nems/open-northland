@@ -11,6 +11,7 @@ import {
   setVertexColors,
 } from '../../src/systems/landscape/edits.js';
 import { landscapeView } from '../../src/systems/landscape/view.js';
+import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { fresh, map, POINT, terrainOf, WALL } from './landscape-support.js';
@@ -157,7 +158,7 @@ describe('script landscape state and blockers', () => {
         {
           active: true,
           visible: false,
-          successfullIf: 0,
+          successfullIf: SUCCESSFUL_IF.all,
           goals: [],
           results: [
             { opcode: 'SetAnimal', player: 20, tribe: 9, job: 0, point: POINT, objectId: 1, behaviour: 0 },
@@ -166,14 +167,14 @@ describe('script landscape state and blockers', () => {
         {
           active: true,
           visible: false,
-          successfullIf: 0,
+          successfullIf: SUCCESSFUL_IF.all,
           goals: [{ opcode: 'NumberOfAnimals', player: 20, tribe: 9, amount: 1 }],
           results: [{ opcode: 'Exit' }],
         },
         {
           active: true,
           visible: false,
-          successfullIf: 0,
+          successfullIf: SUCCESSFUL_IF.all,
           goals: [{ opcode: 'NumberOfAnimals', player: 0, tribe: 9, amount: 1 }],
           results: [{ opcode: 'Exit' }],
         },
@@ -224,7 +225,7 @@ describe('script landscape state and blockers', () => {
         {
           active: true,
           visible: false,
-          successfullIf: 0,
+          successfullIf: SUCCESSFUL_IF.all,
           goals: [],
           results: [{ opcode: 'RemoveLandscape', point: POINT }],
         },

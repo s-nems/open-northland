@@ -2,7 +2,7 @@ import { DeliveryFlag } from '../../../../components/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { landscapeView } from '../../../landscape/view.js';
+import { landscapeBlocks } from '../../../landscape/view.js';
 import { closer, ringOffsetCount, ringOffsetDx, ringOffsetDy } from '../../../spatial/metric.js';
 import { placementBlockerVersion } from '../blockers.js';
 import { workFlagMoveCount } from './flag-moves.js';
@@ -20,7 +20,7 @@ export function canPlaceWorkFlag(
 ): boolean {
   return (
     terrain.isWalkable(node) &&
-    !landscapeView(world, terrain).walk.has(node) &&
+    !landscapeBlocks(world, terrain).walk.has(node) &&
     !workFlagPlacementBlocks(world, ctx.content, terrain, ignoreFlag).has(node)
   );
 }
@@ -58,7 +58,7 @@ export function nearestWorkFlagPlacement(
   const { accept, withinRadius } = opts;
   const origin = terrain.coordsOf(from);
   const blocked = workFlagPlacementBlocks(world, ctx.content, terrain, opts.ignoreFlag);
-  const landscape = landscapeView(world, terrain).walk;
+  const landscape = landscapeBlocks(world, terrain).walk;
   const legal = (node: NodeId): boolean =>
     terrain.isWalkable(node) &&
     !landscape.has(node) &&

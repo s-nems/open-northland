@@ -277,6 +277,8 @@ const CHEST_OPENER = (NUCLEUS_HOME + 9) as Entity;
  *  preamble that grows another entity fails loudly here rather than quietly stopping the coverage. */
 const ATTACHED_SETTLER = (PREAMBLE_CHESTS.length + 11) as Entity;
 const FUZZ_SEEDS = [11, 29, 47] as const;
+/** Past the tribute table's 44 slots, so the out-of-range refusal is rolled too. */
+const TRIBUTE_SLOT_RANGE = 48;
 const TICKS = 600;
 
 function pick<T>(rng: Rng, options: readonly T[]): T {
@@ -291,7 +293,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(48);
+  const roll = rng.int(50);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiPlayer carrier created/updated/destroyed - the
@@ -713,6 +715,20 @@ function nextCommand(rng: Rng): Command {
           rng.int(4) === 0
             ? { kind: pick(rng, PAPER_KINDS), param: pick(rng, [0, ...BUILDING_TYPES]) }
             : pick(rng, FUZZ_PAPERS),
+      };
+    case 48:
+      // A tribute payment on a table no script opened: every slot, in range or not, is a refusal the
+      // handler must take without touching state, through the seat branch and the setup one alike.
+      return { kind: 'payTribute', player: pick(rng, OWNERS), slot: rng.int(TRIBUTE_SLOT_RANGE) };
+    case 49:
+      // A school course for a random settler at a random house: no school stands in this stream, so
+      // the order is refused before any teardown, whatever the target names.
+      return {
+        kind: 'learn',
+        entity: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        house: (rng.int(TARGET_ID_RANGE) + 1) as Entity,
+        target: pick(rng, ['job', 'good'] as const),
+        typeId: rng.int(TARGET_ID_RANGE),
       };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);

@@ -117,3 +117,58 @@ export function hexDistanceBetween(ahx: number, ahy: number, bhx: number, bhy: n
   if (rows % 2 !== 0 && (bhy % 2 === 0 ? dx > 0 : dx < 0)) columns--;
   return rows + Math.max(0, columns - Math.floor(rows / 2));
 }
+
+/** The six map-point directions in turning order; a diagonal lands on the row's parity the way
+ *  {@link hexDistance} counts it, so every step is one map point. */
+type HexDirection = 'east' | 'southEast' | 'southWest' | 'west' | 'northWest' | 'northEast';
+const RING_SIDES: readonly HexDirection[] = [
+  'east',
+  'southEast',
+  'southWest',
+  'west',
+  'northWest',
+  'northEast',
+];
+const RING_START: HexDirection = 'northWest';
+
+function stepHex(from: HalfCellNode, direction: HexDirection): HalfCellNode {
+  const { hx, hy } = from;
+  switch (direction) {
+    case 'east':
+      return { hx: hx + 1, hy };
+    case 'west':
+      return { hx: hx - 1, hy };
+    case 'southEast':
+      return { hx: (hy + 1) % 2 === 0 ? hx + 1 : hx, hy: hy + 1 };
+    case 'southWest':
+      return { hx: (hy + 1) % 2 === 0 ? hx : hx - 1, hy: hy + 1 };
+    case 'northEast':
+      return { hx: (hy - 1) % 2 === 0 ? hx + 1 : hx, hy: hy - 1 };
+    case 'northWest':
+      return { hx: (hy - 1) % 2 === 0 ? hx : hx - 1, hy: hy - 1 };
+  }
+}
+
+/**
+ * The map points at hexagon distance `radius` from `centre`, in the original's ring order: a walk
+ * that starts `radius` steps north-west of the centre and turns east, south-east, south-west, west,
+ * north-west, north-east, `radius` steps a side (reading). `step` counts from 0 on every side. A
+ * radius of 0 yields the centre alone.
+ */
+export function* hexagonRing(
+  centre: HalfCellNode,
+  radius: number,
+): Generator<{ readonly point: HalfCellNode; readonly step: number }> {
+  if (radius <= 0) {
+    yield { point: centre, step: 0 };
+    return;
+  }
+  let at = centre;
+  for (let i = 0; i < radius; i++) at = stepHex(at, RING_START);
+  for (const side of RING_SIDES) {
+    for (let step = 0; step < radius; step++) {
+      yield { point: at, step };
+      at = stepHex(at, side);
+    }
+  }
+}

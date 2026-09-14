@@ -21,7 +21,6 @@ import {
   professionProgressionEnabled,
   Settler,
 } from './components/index.js';
-import { landscapeRevision } from './components/landscape.js';
 import { type MatchRulesView, matchRulesView } from './components/match.js';
 import { type MissionPresentationView, missionPresentation } from './components/mission-presentation.js';
 import type { UnlockKind } from './components/unlocks.js';
@@ -139,10 +138,6 @@ export class Simulation {
     if (this.map === undefined) return undefined;
     this.mapFingerprintMemo ??= mapFingerprint(this.map);
     return this.mapFingerprintMemo;
-  }
-
-  get landscapeRevision(): number {
-    return landscapeRevision(this.world);
   }
 
   matchRules(): MatchRulesView {

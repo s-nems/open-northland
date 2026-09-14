@@ -1,4 +1,5 @@
 import type { MapMission } from '@open-northland/data';
+import { SUCCESSFUL_IF } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { type AuthoredJoinRows, resolveMissionScript } from '../src/game/world/index.js';
 
@@ -46,7 +47,7 @@ describe('resolveMissionScript', () => {
     );
     expect(script.missions).toEqual([
       { successfullIf: 2, active: true, visible: true, goals: [], results: [] },
-      { successfullIf: 0, active: false, visible: false, goals: [], results: [] },
+      { successfullIf: SUCCESSFUL_IF.all, active: false, visible: false, goals: [], results: [] },
     ]);
   });
 

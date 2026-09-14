@@ -5,7 +5,7 @@ import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { landscapeView } from '../landscape/view.js';
+import { landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from './geometry.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
@@ -83,7 +83,7 @@ export function dynamicBlockLayers(
   return [
     buildingBlockedCells(world, ctx, terrain),
     resourceBlockedCells(world, terrain),
-    landscapeView(world, terrain).walk,
+    landscapeBlocks(world, terrain).walk,
   ];
 }
 

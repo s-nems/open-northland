@@ -77,6 +77,12 @@ export function moveUnit(
   return startPlayerWalk(world, ctx, command);
 }
 
+/** A map script's walk order: the player's walk without the signpost confinement, which the original
+ *  applies in its GUI and not to a queued script command (reading). */
+export function sendUnit(world: World, ctx: SystemContext, e: Entity, x: number, y: number): void {
+  startPlayerWalk(world, ctx, { kind: 'moveUnit', entity: e, x, y }, { confined: false });
+}
+
 /** {@link moveUnit}'s walk stamped with an {@link AttackMoveMarch} - the "Attack Position" order. */
 export function attackMoveUnit(
   world: World,
@@ -91,6 +97,7 @@ function startPlayerWalk(
   world: World,
   ctx: SystemContext,
   command: Extract<Command, { kind: 'moveUnit' | 'attackMoveUnit' }>,
+  { confined = true }: { readonly confined?: boolean } = {},
 ): boolean {
   const terrain = ctx.terrain;
   if (terrain === undefined) return false; // mapless sim: no cells to navigate over
@@ -102,8 +109,10 @@ function startPlayerWalk(
   const goal = reachableMoveGoal(world, ctx, terrain, terrain.nodeAtClamped(command.x, command.y));
   // Signpost confinement: a civilian ordered beyond its allowed area doesn't know the way, so the order is
   // refused and the unit stays put (source basis: observed original guidepost behaviour).
-  const limit = navigationLimitFor(world, ctx.content, terrain, e);
-  if (limit !== null && !limit.allowsNode(goal)) return false;
+  if (confined) {
+    const limit = navigationLimitFor(world, ctx.content, terrain, e);
+    if (limit !== null && !limit.allowsNode(goal)) return false;
+  }
   // Gated after the refusals above, so a refused click neither parks an order nor displaces a parked one.
   if (deferOrderDuringAtomic(world, ctx, e, command)) return true;
   world.remove(e, DeferredOrder); // this order executes now - it supersedes any earlier parked one

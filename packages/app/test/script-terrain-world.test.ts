@@ -1,5 +1,5 @@
 import type { TerrainMapFile } from '@open-northland/data';
-import { exportSaveGame, type MissionScript, systems } from '@open-northland/sim';
+import { exportSaveGame, type MissionScript, SUCCESSFUL_IF, systems } from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../src/entries/map/world.js';
@@ -27,7 +27,7 @@ it('fresh and restored map worlds share editable landscape input and saved terra
       {
         active: true,
         visible: false,
-        successfullIf: 0,
+        successfullIf: SUCCESSFUL_IF.all,
         goals: [],
         results: [
           { opcode: 'RemoveLandscape', point: { hx: 12, hy: 12 } },
@@ -59,7 +59,7 @@ it('fresh and restored map worlds share editable landscape input and saved terra
   expect(restored.hashState()).toBe(sim.hashState());
   expect(restored.landscapeEdits()).toEqual({
     ...sim.landscapeEdits(),
-    revision: restored.landscapeRevision,
+    revision: restored.landscapeEdits().revision,
   });
   const buildingType = sim.content.buildings[0]?.typeId;
   if (buildingType === undefined) throw new Error('fixture has no building');

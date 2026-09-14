@@ -11,6 +11,7 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { positionOfNode } from '../../nav/halfcell.js';
+import type { ResourceSpec } from '../../nav/terrain/index.js';
 import {
   refreshResourceBlockedCacheEntry,
   removeResourceBlockedCacheEntry,
@@ -110,30 +111,12 @@ export function unstampResourceFootprint(world: World, resource: Entity): void {
   syncResourceBlockedCacheGeneration(world);
 }
 
-/** The caller-resolved shape of a resource node to place. The felling and deposit balance constants live
- *  in the app catalog, so the caller resolves them and hands the sim a ready spec. */
-export interface ResourceNodeSpec {
+/** A resource node to place: the caller-resolved {@link ResourceSpec} at a half-cell lattice node
+ *  (like every sim command, mapped to a visual-tile Position), owned by a landscape placement or not. */
+export interface ResourceNodeSpec extends ResourceSpec {
   readonly landscapeId?: number;
-  readonly good: number;
-  /** The node's half-cell lattice coords, like every sim command, mapped to a visual-tile Position. */
   readonly x: number;
   readonly y: number;
-  readonly remaining: number;
-  readonly harvestAtomic: number;
-  /** Opaque render-variant tag: the app's decoded-map species record index, stored verbatim. The sim never
-   *  interprets it - footprint and collision come from the good's own record in the sim's content set,
-   *  whose numbering is unrelated. Omitted for an admin or scene spawn. */
-  readonly gfxIndex?: number;
-  /** A felled node such as a tree: its chops-to-fell counter. Mutually exclusive with `deposit`. */
-  readonly felling?: { readonly chopsLeft: number };
-  /** A mined finite deposit: its level ladder and how many work cycles chip one unit off (an observed
-   *  calibration in the app catalog). `initial` is the deposit's full size, the ladder denominator, for
-   *  a node placed already part-mined; omitted it is `remaining`. */
-  readonly deposit?: {
-    readonly levels: number;
-    readonly strikesPerUnit: number;
-    readonly initial?: number;
-  };
 }
 
 /**

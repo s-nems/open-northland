@@ -2,11 +2,7 @@ export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/
 export * as components from './components/index.js';
 export type { MatchOutcome, MatchRulesView } from './components/match.js';
 export { BRIEFING_HISTORY_LIMIT } from './components/mission.js';
-export type {
-  GroundMissionMarker,
-  MissionPresentationView,
-  MissionWeatherRegion,
-} from './components/mission-presentation.js';
+export type { MissionPresentationView } from './components/mission-presentation.js';
 // Fog-of-war mode ids and the diplomacy stance union, flattened to the package root for render and
 // app consumers.
 /** The four need bars, the vocabulary the `orderNeed` command addresses one by. */
@@ -93,7 +89,6 @@ export {
   type TerrainMap,
 } from './nav/terrain/index.js';
 export type {
-  LandscapeMapInput,
   LandscapeRemovalGroup,
   ScriptLandscapePlacement,
   ScriptLandscapeType,
@@ -139,7 +134,6 @@ export {
   type SystemInstrument,
 } from './simulation.js';
 export type { ConstructionPlot, PlacementProbe, ResourceNodeSpec } from './systems/footprint/index.js';
-export type { LandscapeEditView } from './systems/landscape/view.js';
 export type {
   InfoLineView,
   MissionDefinition,

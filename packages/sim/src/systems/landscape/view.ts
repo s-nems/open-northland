@@ -19,11 +19,11 @@ interface LandscapeView {
   readonly placements: readonly ScriptLandscapePlacement[];
   readonly types: ReadonlyMap<number, ScriptLandscapeType>;
   readonly resources: ReadonlyMap<number, readonly Entity[]>;
-  readonly walk: ReadonlySet<NodeId>;
-  readonly build: ReadonlySet<NodeId>;
 }
 const views = new WeakMap<World, LandscapeView>();
 
+/** The live placements and the resources standing in for the resource-backed ones, rebuilt when a
+ *  script edits the landscape or a resource is depleted. */
 export function landscapeView(world: World, terrain: TerrainGraph): LandscapeView {
   const revision = landscapeTopologyRevision(world);
   const cached = views.get(world);
@@ -37,15 +37,36 @@ export function landscapeView(world: World, terrain: TerrainGraph): LandscapeVie
     if (held === undefined) resources.set(id, [entity]);
     else held.push(entity);
   }
-  const types = new Map(terrain.landscapes?.types.map((type) => [type.typeId, type]));
+  const types = landscapeTypes(terrain);
   const placements = [...(terrain.landscapes?.placements ?? []), ...state.added].filter(
     (p) => !removed.has(p.id) && (!p.resourceBacked || resources.has(p.id)),
   );
+  const view = { revision, terrain, placements, types, resources };
+  views.set(world, view);
+  return view;
+}
+
+interface LandscapeBlocks {
+  readonly revision: number;
+  readonly terrain: TerrainGraph;
+  readonly walk: ReadonlySet<NodeId>;
+  readonly build: ReadonlySet<NodeId>;
+}
+const blocks = new WeakMap<World, LandscapeBlocks>();
+
+/** The nodes the standing landscapes block for walking and building. Resources maintain their own
+ *  changing footprints through the gathering lifecycle, so only a script edit rebuilds these sets. */
+export function landscapeBlocks(world: World, terrain: TerrainGraph): LandscapeBlocks {
+  const state = landscapeEditState(world);
+  const revision = state.topologyRevision;
+  const cached = blocks.get(world);
+  if (cached?.revision === revision && cached.terrain === terrain) return cached;
+  const removed = new Set(state.removed);
+  const types = landscapeTypes(terrain);
   const walk = new Set<NodeId>();
   const build = new Set<NodeId>();
-  for (const p of placements) {
-    // Resources maintain their own changing footprints through the gathering lifecycle.
-    if (p.resourceBacked) continue;
+  for (const p of [...(terrain.landscapes?.placements ?? []), ...state.added]) {
+    if (p.resourceBacked || removed.has(p.id)) continue;
     const type = types.get(p.typeId);
     for (const [cells, target] of [
       [type?.walk ?? [], walk],
@@ -58,9 +79,20 @@ export function landscapeView(world: World, terrain: TerrainGraph): LandscapeVie
       }
     }
   }
-  const view = { revision, terrain, placements, types, resources, walk, build };
-  views.set(world, view);
-  return view;
+  const built = { revision, terrain, walk, build };
+  blocks.set(world, built);
+  return built;
+}
+
+const typeTables = new WeakMap<TerrainGraph, ReadonlyMap<number, ScriptLandscapeType>>();
+
+function landscapeTypes(terrain: TerrainGraph): ReadonlyMap<number, ScriptLandscapeType> {
+  let types = typeTables.get(terrain);
+  if (types === undefined) {
+    types = new Map(terrain.landscapes?.types.map((type) => [type.typeId, type]));
+    typeTables.set(terrain, types);
+  }
+  return types;
 }
 
 export interface LandscapeEditView {
@@ -80,8 +112,8 @@ export function landscapeEdits(world: World, terrain: TerrainGraph | undefined):
     removed: (terrain.landscapes?.placements ?? []).filter((p) => !present.has(p.id)).map((p) => p.id),
     added: state.added.filter((p) => present.has(p.id)).map((p) => ({ ...p })),
     tints: [...state.tints].map(([node, value]) => ({
-      hx: node % terrain.width,
-      hy: Math.floor(node / terrain.width),
+      hx: terrain.xOf(node),
+      hy: terrain.yOf(node),
       value,
     })),
   };

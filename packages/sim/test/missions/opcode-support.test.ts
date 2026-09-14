@@ -3,6 +3,7 @@ import { Simulation } from '../../src/index.js';
 import type { MissionGoalOp, MissionResultOp } from '../../src/systems/missions/index.js';
 import {
   MISSION_EVALUATION_TICKS,
+  SUCCESSFUL_IF,
   SUPPORTED_GOALS,
   SUPPORTED_RESULTS,
 } from '../../src/systems/missions/index.js';
@@ -333,7 +334,9 @@ function reportedOpcodes(goals: MissionGoalOp[], results: MissionResultOp[]): st
     seed: 1,
     content: testContent(),
     map: { ...grassNodeMap(10, 10), landscapes: { types: [], placements: [] } },
-    missions: { missions: [{ successfullIf: 0, active: true, visible: false, goals, results }] },
+    missions: {
+      missions: [{ successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals, results }],
+    },
   });
   sim.enqueueSetup({ kind: 'setMissionsEnabled', enabled: true });
   sim.run(MISSION_EVALUATION_TICKS);

@@ -2,7 +2,7 @@ import { ResourceFootprint } from '../../components/index.js';
 import { landscapeEditState, writeLandscapeEdits } from '../../components/landscape.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistance } from '../../nav/halfcell.js';
-import type { LandscapeRemovalGroup, TerrainGraph } from '../../nav/terrain/index.js';
+import type { LandscapeRemovalGroup, NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { createBerryBush } from '../economy/berries.js';
 import {
@@ -45,6 +45,19 @@ export function removeLandscapes(
   });
 }
 
+const firstFreeIds = new WeakMap<TerrainGraph, number>();
+
+/** One past the highest authored placement id, found once per map. */
+function firstFreeId(terrain: TerrainGraph): number {
+  let id = firstFreeIds.get(terrain);
+  if (id === undefined) {
+    id = 0;
+    for (const placement of terrain.landscapes?.placements ?? []) id = Math.max(id, placement.id + 1);
+    firstFreeIds.set(terrain, id);
+  }
+  return id;
+}
+
 export function setLandscape(
   world: World,
   ctx: SystemContext,
@@ -57,8 +70,7 @@ export function setLandscape(
   const type = landscapeView(world, terrain).types.get(typeId);
   if (type === undefined) return false;
   const state = landscapeEditState(world);
-  let id = state.nextId;
-  for (const placement of terrain.landscapes.placements) id = Math.max(id, placement.id + 1);
+  const id = Math.max(state.nextId, firstFreeId(terrain));
   const deposit = type.resource?.deposit;
   const initial = deposit?.initial ?? type.resource?.remaining ?? 0;
   const remaining =
@@ -110,11 +122,11 @@ export function forNodesInArea(
   terrain: TerrainGraph,
   point: HalfCellNode,
   range: number,
-  apply: (node: number, hx: number, hy: number) => void,
+  apply: (node: NodeId, hx: number, hy: number) => void,
 ): void {
   for (let hy = Math.max(0, point.hy - range); hy <= Math.min(terrain.height - 1, point.hy + range); hy++) {
     for (let hx = Math.max(0, point.hx - range); hx <= Math.min(terrain.width - 1, point.hx + range); hx++) {
-      if (hexDistance({ hx, hy }, point) <= range) apply(hy * terrain.width + hx, hx, hy);
+      if (hexDistance({ hx, hy }, point) <= range) apply(terrain.nodeAt(hx, hy), hx, hy);
     }
   }
 }
@@ -127,7 +139,7 @@ export function setBuildForbidden(
   flag: boolean,
 ): void {
   const current = landscapeEditState(world);
-  const changed: number[] = [];
+  const changed: NodeId[] = [];
   forNodesInArea(terrain, point, range, (node) => {
     if (current.forbidden.has(node) !== flag) changed.push(node);
   });
@@ -152,7 +164,7 @@ export function setVertexColors(
   if (onLand && terrain.landVertices === undefined) return false;
   const value = Math.max(0, Math.min(255, amount));
   const current = landscapeEditState(world);
-  const changed: number[] = [];
+  const changed: NodeId[] = [];
   forNodesInArea(terrain, point, range, (node) => {
     if ((!onLand || terrain.landVertices?.[node] === true) && current.tints.get(node) !== value)
       changed.push(node);

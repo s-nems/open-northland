@@ -1,7 +1,7 @@
 import { deliverMissionBriefing, nameHuman } from '../../../components/index.js';
 import { retainMissionPresentation } from '../../../components/mission-presentation.js';
 import type { SimEvent } from '../../../core/events.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { type HalfCellNode, hexagonRing } from '../../../nav/halfcell.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHumans } from '../targets.js';
@@ -97,57 +97,15 @@ export function setScriptedAreaMarkers(
   emitPersistent(pass, {
     kind: 'missionAreaMarkers',
     magic: op.opcode === 'SetMapAreaMarkerMagic',
-    points: hexagonRing(op.point, Math.max(1, op.range), Math.max(1, op.index)),
+    points: ringPoints(op.point, Math.max(1, op.range), Math.max(1, op.index)),
     placed: op.flag,
   });
 }
 
-/** The six map-point directions in turning order; a diagonal lands on the row's parity the way
- *  {@link hexDistance} counts it, so every step is one map point. */
-type HexDirection = 'east' | 'southEast' | 'southWest' | 'west' | 'northWest' | 'northEast';
-const RING_SIDES: readonly HexDirection[] = [
-  'east',
-  'southEast',
-  'southWest',
-  'west',
-  'northWest',
-  'northEast',
-];
-const RING_START: HexDirection = 'northWest';
-
-function stepHex(from: HalfCellNode, direction: HexDirection): HalfCellNode {
-  const { hx, hy } = from;
-  switch (direction) {
-    case 'east':
-      return { hx: hx + 1, hy };
-    case 'west':
-      return { hx: hx - 1, hy };
-    case 'southEast':
-      return { hx: (hy + 1) % 2 === 0 ? hx + 1 : hx, hy: hy + 1 };
-    case 'southWest':
-      return { hx: (hy + 1) % 2 === 0 ? hx : hx - 1, hy: hy + 1 };
-    case 'northEast':
-      return { hx: (hy - 1) % 2 === 0 ? hx + 1 : hx, hy: hy - 1 };
-    case 'northWest':
-      return { hx: (hy - 1) % 2 === 0 ? hx : hx - 1, hy: hy - 1 };
-  }
-}
-
-/**
- * The map points at hexagon distance `radius` from `centre`: a walk that starts `radius` steps
- * north-west of the centre and turns through the six sides, `radius` steps each, keeping every
- * `spacing`th step of each side, the count restarting at the side's first step (reading).
- */
-function hexagonRing(centre: HalfCellNode, radius: number, spacing: number): HalfCellNode[] {
-  let at = centre;
-  for (let i = 0; i < radius; i++) at = stepHex(at, RING_START);
+/** Every `spacing`th step of each side of the ring at `radius` around `centre`. */
+function ringPoints(centre: HalfCellNode, radius: number, spacing: number): HalfCellNode[] {
   const points: HalfCellNode[] = [];
-  for (const side of RING_SIDES) {
-    for (let step = 0; step < radius; step++) {
-      if (step % spacing === 0) points.push(at);
-      at = stepHex(at, side);
-    }
-  }
+  for (const { point, step } of hexagonRing(centre, radius)) if (step % spacing === 0) points.push(point);
   return points;
 }
 

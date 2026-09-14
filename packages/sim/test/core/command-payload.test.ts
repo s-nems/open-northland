@@ -66,6 +66,19 @@ describe('command payload contracts', () => {
     expect(() => parse({ kind: 'exploreArea', entity: UNIT, x: 1e30, y: 0 })).toThrow(/command.x/);
   });
 
+  it('rejects malformed school, tribute and mission-toggle orders', () => {
+    const learn = { kind: 'learn', entity: UNIT, house: UNIT + 1, target: 'job', typeId: 2 };
+    expect(parse(learn)).toEqual(imported(learn));
+    expect(() => parse({ ...learn, target: 'house' })).toThrow(/command.target/);
+    expect(() => parse({ ...learn, typeId: 2.5 })).toThrow(/command.typeId/);
+    expect(() => parse({ ...learn, house: 'school' })).toThrow(/command.house/);
+    const pay = { kind: 'payTribute', player: SEAT, slot: 3 };
+    expect(parse(pay)).toEqual(imported(pay));
+    expect(() => parse({ ...pay, slot: 0.5 })).toThrow(/command.slot/);
+    expect(() => parse({ kind: 'payTribute', player: SEAT })).toThrow(/missing field 'slot'/);
+    expect(() => parse({ kind: 'setMissionsEnabled', enabled: 'yes' })).toThrow(/command.enabled/);
+  });
+
   it('accepts a payload carrying every optional field of its kind', () => {
     const spawn = {
       kind: 'spawnSettler',

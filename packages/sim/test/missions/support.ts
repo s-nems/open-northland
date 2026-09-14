@@ -16,9 +16,6 @@ import { MISSION_EVALUATION_TICKS, missionObjects, SUCCESSFUL_IF } from '../../s
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
-/** What the stage's spawn, removal, ownership and counting tests share: a mapped world running one
- *  script, and a content set with a house chain, which the base fixture has none of. */
-
 /** The tick the first pass runs on - `setMissionsEnabled` applies on tick 1. */
 export const FIRST_PASS = MISSION_EVALUATION_TICKS;
 export const MAP_NODES = 48;

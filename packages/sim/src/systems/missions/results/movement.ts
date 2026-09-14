@@ -5,7 +5,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { evictSettlerFromBlockedSpawn } from '../../movement/evict.js';
 import { clearNavState, isTravelling } from '../../movement/nav-state.js';
-import { moveUnit } from '../../orders/movement.js';
+import { sendUnit } from '../../orders/movement.js';
 import { stepOut } from '../../settlers/indoors.js';
 import { canonicalById } from '../../spatial/nodes.js';
 import type { MissionPass } from '../pass.js';
@@ -104,5 +104,5 @@ function teleportAndSettle(pass: MissionPass, e: Entity, point: HalfCellNode, cl
 }
 
 function walkTo(world: World, ctx: SystemContext, e: Entity, point: HalfCellNode): void {
-  moveUnit(world, ctx, { kind: 'moveUnit', entity: e, x: point.hx, y: point.hy });
+  sendUnit(world, ctx, e, point.hx, point.hy);
 }

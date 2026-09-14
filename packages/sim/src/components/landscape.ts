@@ -1,5 +1,6 @@
 import { defineComponent, type World } from '../ecs/world.js';
 import { defineWorldSingleton } from '../ecs/world-singleton.js';
+import type { NodeId } from '../nav/terrain/index.js';
 import type { ScriptLandscapePlacement } from '../nav/terrain/landscapes.js';
 
 export const LandscapeResource = defineComponent<{ id: number }>('LandscapeResource', 'economy');
@@ -10,8 +11,9 @@ export interface LandscapeEditState {
   nextId: number;
   topologyRevision: number;
   forbiddenRevision: number;
-  forbidden: Map<number, boolean>;
-  tints: Map<number, number>;
+  /** The nodes a script closed to building: a set, kept as a Map because the save encodes Maps. */
+  forbidden: Map<NodeId, boolean>;
+  tints: Map<NodeId, number>;
 }
 
 const edits = defineWorldSingleton<LandscapeEditState>('LandscapeEdits', 'movement', () => ({

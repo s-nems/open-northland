@@ -283,7 +283,6 @@ function buildIndex(content: ContentSet): ContentIndex {
 /** The stable `weapons.ini` id of the wall bow. */
 const HOUSE_BOW_WEAPON_ID = 'house_bow';
 
-/** The building type one level below each chained type, inverting `upgradeTarget`. */
 function levelBelowTypes(content: ContentSet): ReadonlyMap<number, number> {
   const out = new Map<number, number>();
   for (const building of content.buildings) {

@@ -1,4 +1,5 @@
 import type { MissionRecord } from '../../components/index.js';
+import type { SubMissionTransition } from '../../core/events.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import type { MissionScript } from './script.js';
@@ -22,14 +23,7 @@ export interface MissionPass {
   /** Raised by a result that ends the pass (`PlayCutscene`); the pass finishes the mission that
    *  raised it and visits no later one. */
   halted: boolean;
-  subMission?:
-    | {
-        readonly kind: 'start';
-        readonly campaignId: number;
-        readonly mapId: number;
-        readonly mission: number;
-      }
-    | { readonly kind: 'end'; readonly mission: number };
+  subMission?: SubMissionTransition;
 }
 
 /**

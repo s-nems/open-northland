@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { FIRST_PASS, missionSim, roundTrip } from './support.js';
 
 describe('saved mission execution history', () => {
@@ -7,7 +8,7 @@ describe('saved mission execution history', () => {
       {
         active: true,
         visible: false,
-        successfullIf: 0,
+        successfullIf: SUCCESSFUL_IF.all,
         goals: [],
         results: [{ opcode: 'ActivateMission', missionIndex: 0 }],
       },
@@ -35,11 +36,11 @@ describe('saved mission execution history', () => {
       {
         active: true,
         visible: false,
-        successfullIf: 0,
+        successfullIf: SUCCESSFUL_IF.all,
         goals: [{ opcode: 'CheckMission', missionIndex: 1 }],
         results: [],
       },
-      { active: false, visible: false, successfullIf: 0, goals: [], results: [] },
+      { active: false, visible: false, successfullIf: SUCCESSFUL_IF.all, goals: [], results: [] },
     ]);
     sim.run(FIRST_PASS);
     expect(sim.missionStatus()[0]?.fireCount).toBe(1);

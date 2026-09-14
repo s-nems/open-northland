@@ -8,8 +8,13 @@ import {
   scenario,
   serializeSaveGame,
 } from '../../src/index.js';
-import type { MissionResultOp, MissionScript } from '../../src/systems/missions/index.js';
-import { MISSION_EVALUATION_TICKS, missionObjects } from '../../src/systems/missions/index.js';
+import {
+  MISSION_EVALUATION_TICKS,
+  type MissionResultOp,
+  type MissionScript,
+  missionObjects,
+  SUCCESSFUL_IF,
+} from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
@@ -29,7 +34,7 @@ const WAVE_POINT = { hx: 12, hy: 12 };
 const LOOP: MissionScript = {
   missions: [
     {
-      successfullIf: 0,
+      successfullIf: SUCCESSFUL_IF.all,
       active: true,
       visible: false,
       goals: [{ opcode: 'RandomTimeGone', seconds: 30 }],
@@ -38,7 +43,7 @@ const LOOP: MissionScript = {
         { opcode: 'ActivateMission', missionIndex: 0 },
       ],
     },
-    { successfullIf: 0, active: false, visible: false, goals: [], results: [] },
+    { successfullIf: SUCCESSFUL_IF.all, active: false, visible: false, goals: [], results: [] },
   ],
 };
 
@@ -105,7 +110,7 @@ describe('a self-re-activating mission on a random timer', () => {
 });
 
 /** The other shape the corpus uses: a wave that spawns a group, counts it, numbers what it counted
- *  and clears it away again - every seam this stage added to the pass, in one script. */
+ *  and clears it away again, in one script. */
 const SPAWN_GROUP: MissionResultOp = {
   opcode: 'SetHumanX',
   player: 2,
@@ -120,14 +125,14 @@ const SPAWN_GROUP: MissionResultOp = {
 const WAVE: MissionScript = {
   missions: [
     {
-      successfullIf: 0,
+      successfullIf: SUCCESSFUL_IF.all,
       active: true,
       visible: false,
       goals: [],
       results: [SPAWN_GROUP, { opcode: 'ActivateMission', missionIndex: 1 }],
     },
     {
-      successfullIf: 0,
+      successfullIf: SUCCESSFUL_IF.all,
       active: false,
       visible: false,
       goals: [{ opcode: 'BuildHumans', player: 2, job: 1, amount: 4, humanId: 51 }],
@@ -141,7 +146,9 @@ const WAVE_MAP = grassNodeMap(32, 32);
 
 /** The wave's first half alone, so the group is still standing when the test kills one of them. */
 const SPAWN_ONLY: MissionScript = {
-  missions: [{ successfullIf: 0, active: true, visible: false, goals: [], results: [SPAWN_GROUP] }],
+  missions: [
+    { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [], results: [SPAWN_GROUP] },
+  ],
 };
 
 function waveSim(seed: number, missions: MissionScript): Simulation {

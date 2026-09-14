@@ -7,7 +7,7 @@ import {
   serializeSaveGame,
 } from '../../src/index.js';
 import { MAX_SUBMISSION_DEPTH } from '../../src/save/parse.js';
-import { MISSION_EVALUATION_TICKS } from '../../src/systems/missions/index.js';
+import { MISSION_EVALUATION_TICKS, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import { firingSim, MAP_NODES, missionSim } from './support.js';
 
@@ -17,7 +17,7 @@ describe('sub-mission transitions', () => {
       {
         active: true,
         visible: false,
-        successfullIf: 0,
+        successfullIf: SUCCESSFUL_IF.all,
         goals: [],
         results: [
           { opcode: 'StartSubMission', campaignId: 0, mapId: 91 },
@@ -27,7 +27,7 @@ describe('sub-mission transitions', () => {
       {
         active: false,
         visible: false,
-        successfullIf: 0,
+        successfullIf: SUCCESSFUL_IF.all,
         goals: [],
         results: [{ opcode: 'SetExternalFlag', player: 0, flagId: 3, flag: true }],
       },

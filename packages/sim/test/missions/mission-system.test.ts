@@ -16,16 +16,13 @@ import type {
 } from '../../src/systems/missions/index.js';
 import { MISSION_EVALUATION_TICKS, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { testContent } from '../fixtures/content.js';
+import { FIRST_PASS } from './support.js';
 
 /**
  * The mission engine: its evaluation cadence, the `successfullif` verdicts, the deactivate-then-execute
- * order, and the control-flow opcodes. Every world here is mapless - the stage's opcodes read mission
- * records and the clock, never the map.
+ * order, and the control-flow opcodes. Every world here is mapless: these opcodes read mission records
+ * and the clock, never the map.
  */
-
-/** The tick the first pass runs on: `setMissionsEnabled` applies on tick 1, so the records exist well
- *  before the first multiple of the cadence. */
-const FIRST_PASS = MISSION_EVALUATION_TICKS;
 
 function mission(definition: Partial<MissionDefinition> = {}): MissionDefinition {
   return {

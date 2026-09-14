@@ -3,6 +3,7 @@ import {
   Building,
   Health,
   HOUSE_BEHAVIOUR,
+  LOCAL_NAV_RADIUS_NODES,
   MissionObjectId,
   Owner,
   ownerOf,
@@ -13,7 +14,7 @@ import {
   setHouseBehaviour,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import type { Simulation } from '../../src/index.js';
+import { playerCommand, type Simulation } from '../../src/index.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
 import type { MissionResultOp } from '../../src/systems/missions/index.js';
 import { FIRST_PASS, firingSim, HUT_LARGE, houseContent, POINT, spawn, VIKING } from './support.js';
@@ -54,6 +55,21 @@ describe('SendHuman', () => {
     spawn(sim, { player: OWNER });
     sim.run(FIRST_PASS);
     expect(humansOf(sim, OWNER).filter((e) => sim.world.has(e, PlayerOrder))).toHaveLength(2);
+  });
+
+  it('sends a civilian past the signpost confinement a player order obeys', () => {
+    const beyond = { hx: POINT.hx + LOCAL_NAV_RADIUS_NODES + 4, hy: POINT.hy };
+    const sim = firingSim([{ opcode: 'SendHuman', humanId: GROUP, point: beyond }]);
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    spawn(sim, { player: OWNER, missionId: GROUP });
+    spawn(sim, { player: OWNER });
+    sim.run(2);
+    const [scripted, ordered] = humansOf(sim, OWNER);
+    if (scripted === undefined || ordered === undefined) throw new Error('two settlers expected');
+    sim.enqueue(playerCommand(OWNER, { kind: 'moveUnit', entity: ordered, x: beyond.hx, y: beyond.hy }));
+    sim.run(FIRST_PASS);
+    expect(sim.world.has(scripted, PlayerOrder)).toBe(true);
+    expect(sim.world.has(ordered, PlayerOrder)).toBe(false);
   });
 
   it('walks the ordered group toward the point', () => {

@@ -3,6 +3,7 @@ export { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js
 export type {
   LandscapeMapInput,
   LandscapeRemovalGroup,
+  ResourceSpec,
   ScriptLandscapePlacement,
   ScriptLandscapeType,
 } from './landscapes.js';

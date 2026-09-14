@@ -3,6 +3,7 @@ import {
   Building,
   Engagement,
   HuntFocus,
+  MAX_BUILDING_LEVEL,
   Person,
   Settler,
   Stockpile,
@@ -22,12 +23,6 @@ export type Invariant = (world: World, content: ContentSet) => string[];
 
 /** Stock ceiling past which an amount is an over/underflow artefact rather than a plausible pile. */
 const IMPLAUSIBLE_STOCK = 0x7fffffff;
-
-/**
- * Tracks the length of the `home level 00..04` upgrade chain. Content owns the real bound through
- * `upgradeTarget`, so a sixth tier in content must move this with it.
- */
-const MAX_HOME_LEVEL = 4;
 
 /** The settler needs clamped into `[NEED_OVERFILL_FLOOR, ONE]`; the invariant catches a leak past the
  *  clamp, at either end. */
@@ -67,7 +62,7 @@ const buildingSane: Invariant = (world) => {
   for (const e of world.query(Building)) {
     const b = world.get(e, Building);
     if (b.built < 0 || b.built > ONE) out.push(`entity ${e}: built out of range (${b.built})`);
-    if (b.level < 0 || b.level > MAX_HOME_LEVEL) out.push(`entity ${e}: level out of range (${b.level})`);
+    if (b.level < 0 || b.level > MAX_BUILDING_LEVEL) out.push(`entity ${e}: level out of range (${b.level})`);
   }
   return out;
 };

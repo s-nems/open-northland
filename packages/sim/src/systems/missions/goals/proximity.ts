@@ -66,15 +66,19 @@ export function humansNearHouses(
   return groupsWithinRange(world, missionHumans(world, op.humanId), houses, op.range);
 }
 
-/** Any human with the id has a human of the player within `range` of it. */
+/** Any human with the id has a human of the player within `range` of it. The metric is symmetric,
+ *  so the few marked humans are indexed and the population walked once, allocating nothing for it. */
 export function playerNearHumans(
   world: World,
   op: Extract<MissionGoalOp, { opcode: 'FindHumansByPlayersMM' }>,
 ): boolean {
   const marked = missionHumans(world, op.humanId);
   if (marked.length === 0) return false;
-  const owned = [...world.query(Person, Position)].filter((e) => ownedBy(world, e, op.player));
-  return groupsWithinRange(world, marked, owned, op.range);
+  return groupsWithinRange(world, playerHumans(world, op.player), marked, op.range);
+}
+
+function* playerHumans(world: World, player: number): Generator<Entity> {
+  for (const e of world.query(Person, Position)) if (ownedBy(world, e, player)) yield e;
 }
 
 /** At least `amount` non-hero soldiers of the player stand within `range` of the point. */

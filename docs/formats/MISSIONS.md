@@ -280,7 +280,7 @@ of each.
 | 20 | `SetVisible` | 21, 32 | show or hide mission `n` in the mission window | app | 506 |
 | 21 | `ChangeHumanPlayerId` | 10, 1 | hand every human with the id to the player (detached from houses) | sim | 266 |
 | 22 | `ChangePlayerPlayerId` | 1, 2 | hand every vehicle, house, human, animal, and guide of the first player to the second | sim | 68 |
-| 23 | `SendHuman` | 10, 16, 17 | order every human with the id to walk to the nearest unblocked point | sim | 521 |
+| 23 | `SendHuman` | 10, 16, 17 | order every human with the id to walk to the nearest unblocked point; the walk is queued outright, so the signpost confinement a player's order obeys does not apply | sim | 521 |
 | 24 | `SendVehicle` | 12, 16, 17 | order vehicles with the id to move there | sim | 49 |
 | 25 | `DockVehicle` | 12, 16, 17 | order vehicles with the id to dock there | sim | 30 |
 | 26 | `PlaySound` | 26, 16, 17 | play the sound effect at the point; the id is an `ATOMIC_ANIMATION_EVENT_SOUND_FX_TYPE_*` value (`logicdefines.inc`), the sound bank's `logicSoundType` (reading of the corpus's 56, 58, 60 against the bank). Here: the `missionSound` event, played by the audio director like an animation's cue | app | 498 |

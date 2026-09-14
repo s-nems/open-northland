@@ -1,6 +1,10 @@
 import type { Fixed } from '../../core/fixed.js';
 import { defineComponent, type Entity, type World } from '../../ecs/world.js';
 
+/** The top rung of the longest upgrade chain content declares (`home level 00..04`). Content owns
+ *  the real bound through `upgradeTarget`; a longer chain in content must move this with it. */
+export const MAX_BUILDING_LEVEL = 4;
+
 /** A building instance placed in the world. */
 export const Building = defineComponent<{
   buildingType: number;

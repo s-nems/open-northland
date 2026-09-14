@@ -1,8 +1,8 @@
 import { landscapeTopologyRevision } from '../../../components/landscape.js';
-import type { LandscapeRemovalGroup, NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { dynamicBlockLayers } from '../../footprint/index.js';
+import type { LandscapeRemovalGroup } from '../../../nav/terrain/index.js';
 import { removeLandscapes, setBuildForbidden, setLandscape, setVertexColors } from '../../landscape/edits.js';
 import { invalidateLandscapeRoutes } from '../../landscape/routes.js';
+import { landscapeBlocks } from '../../landscape/view.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 
@@ -56,8 +56,8 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
     return;
   }
   const revision = landscapeTopologyRevision(pass.world);
-  // Resource footprints are live mutable caches: copy before the edit to retain the old union.
-  const before = walkBlocks(pass, terrain);
+  // The memo hands out a fresh set after an edit, so the old one stays comparable.
+  const before = landscapeBlocks(pass.world, terrain).walk;
   if (op.opcode === 'SetLandscape') {
     if (!setLandscape(pass.world, pass.ctx, op.point, op.landscape, op.level)) {
       pass.reportFailed(mission, op.opcode);
@@ -81,7 +81,9 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
     );
   }
   if (revision !== landscapeTopologyRevision(pass.world)) {
-    const after = walkBlocks(pass, terrain);
+    // A removed resource frees nodes, which no route needs re-planning for; only the landscape layer
+    // can block a node a route already crosses.
+    const after = landscapeBlocks(pass.world, terrain).walk;
     if (before.size !== after.size || [...before].some((node) => !after.has(node))) {
       invalidateLandscapeRoutes(pass.world, terrain);
     }
@@ -94,12 +96,4 @@ export function editScriptedLandscape(pass: MissionPass, mission: number, op: La
 function removalRange(op: LandscapeOp): number {
   if (!('range' in op)) return 0;
   return op.opcode === 'RemoveLandscapesInArea' ? Math.max(0, op.range - 1) : op.range;
-}
-
-function walkBlocks(pass: MissionPass, terrain: TerrainGraph): Set<NodeId> {
-  const result = new Set<NodeId>();
-  for (const layer of dynamicBlockLayers(pass.world, pass.ctx, terrain)) {
-    for (const node of layer) result.add(node);
-  }
-  return result;
 }

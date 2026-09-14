@@ -3,7 +3,7 @@ import { landscapeEditState } from '../../../components/landscape.js';
 import type { World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
-import { landscapeView } from '../../landscape/view.js';
+import { landscapeBlocks } from '../../landscape/view.js';
 import { buildingFootprintOf } from '../geometry.js';
 import { BUILDING_ZONE, EXCLUSION, eachBlockerCell, OBSTACLE, placementBlockerVersion } from './blockers.js';
 
@@ -64,7 +64,7 @@ function canPlaceAnchor(grid: PlacementGrid, footprint: BuildingFootprint, x: nu
 function stampBlockerGrid(world: World, content: ContentSet, grid: PlacementGrid): void {
   const w = grid.terrain.width;
   const h = grid.terrain.height;
-  const landscape = landscapeView(world, grid.terrain);
+  const landscape = landscapeBlocks(world, grid.terrain);
   for (const node of landscape.walk) grid.obstacle[node] = 1;
   for (const node of landscape.build) grid.exclusion[node] = 1;
   for (const node of landscapeEditState(world).forbidden.keys()) grid.obstacle[node] = 1;
@@ -154,8 +154,13 @@ export function canPlaceBuilding(
   y: number,
 ): boolean {
   const footprint = buildingFootprintOf(ctx.content, buildingType);
-  if (footprint === undefined) return !landscapeEditState(world).forbidden.has(y * terrain.width + x);
+  if (footprint === undefined) return !scriptForbids(world, terrain, x, y);
   return canPlaceAnchor(memoizedPlacementGrid(world, ctx.content, terrain), footprint, x, y);
+}
+
+/** Whether a script closed the node to building; a node off the map is nobody's to forbid. */
+function scriptForbids(world: World, terrain: TerrainGraph, x: number, y: number): boolean {
+  return terrain.inBounds(x, y) && landscapeEditState(world).forbidden.has(terrain.nodeAt(x, y));
 }
 
 /** A ready-to-query buildability test for one building type, with its footprint resolved once. `canPlace`
@@ -178,8 +183,7 @@ export function placementProbe(
   buildingType: number,
 ): PlacementProbe {
   const footprint = buildingFootprintOf(content, buildingType);
-  if (footprint === undefined)
-    return { canPlace: (x, y) => !landscapeEditState(world).forbidden.has(y * terrain.width + x) };
+  if (footprint === undefined) return { canPlace: (x, y) => !scriptForbids(world, terrain, x, y) };
   const grid = memoizedPlacementGrid(world, content, terrain);
   return { canPlace: (x, y) => canPlaceAnchor(grid, footprint, x, y) };
 }

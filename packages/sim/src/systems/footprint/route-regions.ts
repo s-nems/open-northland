@@ -5,7 +5,7 @@ import type { World } from '../../ecs/world.js';
 import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
 import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
-import { landscapeView } from '../landscape/view.js';
+import { landscapeBlocks } from '../landscape/view.js';
 import { buildingBlockedCells } from './building-blocked-cache.js';
 import { resourceBlockedCells } from './resource-blocked-cache.js';
 
@@ -126,7 +126,7 @@ export class RouteRegions {
     cache.blocked = new LayeredBlocks([
       buildingBlockedCells(world, this.ctx, cache.terrain),
       resourceBlockedCells(world, cache.terrain),
-      landscapeView(world, cache.terrain).walk,
+      landscapeBlocks(world, cache.terrain).walk,
     ]);
     cache.nextPocket = 0;
     if (cache.epoch >= MAX_EPOCH) {

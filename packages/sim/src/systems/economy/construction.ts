@@ -119,19 +119,25 @@ function finishSite(
   world.mut(e, Building).built = ONE;
   world.remove(e, UnderConstruction);
   fillHealth(world, e);
-  // Settlers, piles and decor can occupy the plot during a build, and an upgraded tier's reserved zone can
-  // grow over decor the level-0 placement never covered. Work flags need no re-pass: flag legality is
-  // family-body-wide from the moment the Building appears.
-  evictSettlersFromFootprint(world, ctx, e);
-  evictLooseGoodsFromFootprint(world, ctx, e);
-  destroyBerryBushesInReserved(world, ctx, e);
-  destroyStumpsInReserved(world, ctx, e);
-  destroyFieldsUnderBuilding(world, ctx, e);
+  settleFootprint(world, ctx, e);
   ctx.events.emit(
     adoptedTier
       ? { kind: 'buildingUpgraded', entity: e, level: building.level }
       : { kind: 'buildingFinished', entity: e },
   );
+}
+
+/**
+ * Clear a finished body's plot: settlers, piles and decor can occupy it during a build, and a larger
+ * tier's reserved zone can grow over decor the smaller placement never covered. Work flags need no
+ * re-pass: flag legality is family-body-wide from the moment the Building appears.
+ */
+export function settleFootprint(world: World, ctx: SystemContext, e: Entity): void {
+  evictSettlersFromFootprint(world, ctx, e);
+  evictLooseGoodsFromFootprint(world, ctx, e);
+  destroyBerryBushesInReserved(world, ctx, e);
+  destroyStumpsInReserved(world, ctx, e);
+  destroyFieldsUnderBuilding(world, ctx, e);
 }
 
 /**

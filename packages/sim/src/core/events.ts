@@ -261,9 +261,10 @@ export type SimEvent =
     }
   | {
       /**
-       * The map script reached a goal or result opcode this build has no evaluator for. The mission
-       * keeps running with that opcode treated as "does not hold" or "does nothing". Emitted once per
-       * mission and opcode, as a diagnostic for the app's log rather than a per-pass stream.
+       * The map script reached a goal or result opcode this build has no evaluator for. A goal's answer
+       * is unknown, so the mission fires only when its known goals decide its rule either way; a result
+       * does nothing. Emitted once per mission and opcode, as a diagnostic for the app's log rather
+       * than a per-pass stream.
        */
       readonly kind: 'missionUnsupported';
       /** The mission's index in the map's script. */
@@ -355,15 +356,18 @@ export type SimEvent =
     }
   | {
       readonly kind: 'missionSubMission';
-      readonly transition:
-        | {
-            readonly kind: 'start';
-            readonly campaignId: number;
-            readonly mapId: number;
-            readonly mission: number;
-          }
-        | { readonly kind: 'end'; readonly mission: number };
+      readonly transition: SubMissionTransition;
     };
+
+/** A pass's pending map change: into a campaign's sub map, or back to the parent from mission `mission`. */
+export type SubMissionTransition =
+  | {
+      readonly kind: 'start';
+      readonly campaignId: number;
+      readonly mapId: number;
+      readonly mission: number;
+    }
+  | { readonly kind: 'end'; readonly mission: number };
 
 export type SimEventKind = SimEvent['kind'];
 
