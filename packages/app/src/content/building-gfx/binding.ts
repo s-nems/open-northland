@@ -62,6 +62,19 @@ export function buildingBinding(
   return { ...base, default: HOUSE_BOB, byTribe };
 }
 
+/** The bob a type is bound to for its own tribe, then for the sheet's base tribe; `undefined` when no
+ *  civilization skins it (the wonders and `work_murek`), where the total `resolveBuildingDraw` would hand
+ *  back the default house. */
+export function boundBuildingRef(
+  binding: number | BuildingTypeBinding,
+  typeId: number,
+  tribe: number | undefined,
+): BuildingBobRef | undefined {
+  if (typeof binding === 'number') return binding;
+  const own = tribe !== undefined ? binding.byTribe?.[tribe] : undefined;
+  return own?.byType[typeId] ?? binding.byType[typeId];
+}
+
 /** Every named family atlas a binding draws from, so the sheet loads exactly those pages. */
 export function referencedFamilyLayers(binding: BuildingTypeBinding): Set<string> {
   const layers = new Set<string>();

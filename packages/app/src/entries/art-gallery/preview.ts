@@ -1,7 +1,13 @@
 import { windowResolutionFor } from '@open-northland/render';
 import { Application, Container, Text } from 'pixi.js';
+import { VIKING_TRIBE } from '../../content/building-gfx/index.js';
+import { loadBuildingSignGfx } from '../../content/building-signs.js';
+import { loadIr } from '../../content/ir/load.js';
+import type { WorldTribes } from '../../game/world-tribes.js';
+import { buildingGeometryIndex } from './building-geometry.js';
 import type { GalleryCharacter, GalleryEntry } from './catalog.js';
-import { buildingPreview } from './preview-building.js';
+import { loadOriginalBuildings } from './original-buildings.js';
+import { type BuildingPreviewContext, buildingPreview } from './preview-building.js';
 import { characterPreview } from './preview-character.js';
 import { propPreview } from './preview-prop.js';
 import type { GalleryPreviewState, PreviewPanel } from './preview-state.js';
@@ -14,6 +20,20 @@ export type { GalleryPreviewState } from './preview-state.js';
 export interface GalleryPreviewOptions {
   readonly soilImage: string;
   readonly reference?: GalleryCharacter | undefined;
+  /** The tribes the own building packages skin, so the anchors and original bodies resolve for those. */
+  readonly buildingTribes?: WorldTribes | undefined;
+}
+
+/** A content load memoized on success only, so a transient fetch failure is retried by the next view. */
+function once<T>(load: () => Promise<T>): () => Promise<T> {
+  let pending: Promise<T> | undefined;
+  return () => {
+    pending ??= load().catch((error: unknown) => {
+      pending = undefined;
+      throw error;
+    });
+    return pending;
+  };
 }
 
 export async function createGalleryPreview(canvas: HTMLCanvasElement, options: GalleryPreviewOptions) {
@@ -39,7 +59,17 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
     speed: 1,
     progress: 100,
     terrainView: 'atlas',
+    geometry: false,
+    assets: 'own',
   };
+  // Content-backed building context, loaded the first time a building view asks for it; the original
+  // bodies separately, since they cost a civilization's building pages.
+  const tribes = options.buildingTribes ?? [VIKING_TRIBE];
+  const buildingContext = once(async (): Promise<Omit<BuildingPreviewContext, 'original'>> => {
+    const [ir, signs] = await Promise.all([loadIr(), loadBuildingSignGfx()]);
+    return { geometryOf: buildingGeometryIndex(ir, tribes), signs: signs?.byPlayer[0] };
+  });
+  const originalBodies = once(async () => loadOriginalBuildings(await loadIr(), tribes));
   let seconds = 0;
   let revision = 0;
   let destroyed = false;
@@ -65,24 +95,31 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
   });
   app.start();
   return {
-    async show(entries: readonly GalleryEntry[]): Promise<void> {
+    /** Build the panels for `entries`; resolves to the panels' degradation notes for the status line. */
+    async show(entries: readonly GalleryEntry[]): Promise<readonly string[]> {
       const current = ++revision;
       clear();
       const prepared: PreviewPanel[] = [];
+      const notes: string[] = [];
       try {
+        const wantsOriginal =
+          state.assets === 'original' && entries.some((entry) => entry.kind === 'building');
+        const original = wantsOriginal ? await originalBodies() : null;
+        if (destroyed || revision !== current) return [];
+        if (wantsOriginal && original === null) notes.push('Original bodies need local decoded content.');
         for (const entry of entries.slice(0, GALLERY_COMPARISON_LIMIT + 1)) {
           const panel =
             entry.kind === 'character'
               ? await characterPreview(entry)
               : entry.kind === 'building'
-                ? await buildingPreview(entry, options.reference)
+                ? await buildingPreview(entry, options.reference, { ...(await buildingContext()), original })
                 : entry.kind === 'prop' || entry.kind === 'good'
                   ? await propPreview(entry)
                   : await terrainPreview(entry, app.renderer, options.soilImage);
           prepared.push(panel);
           if (destroyed || revision !== current) {
             for (const pending of prepared) pending.destroy();
-            return;
+            return [];
           }
         }
       } catch (error) {
@@ -91,6 +128,7 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
       }
       clear();
       panels = prepared;
+      for (const panel of panels) notes.push(...(panel.notes ?? []));
       seconds = state.time ?? 0;
       const vertical = entries.some((entry) => entry.kind === 'material');
       width = 0;
@@ -114,6 +152,7 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
       width = Math.max(320, width);
       height = Math.max(160, height);
       resize();
+      return notes;
     },
     time(): number {
       return seconds;

@@ -123,6 +123,27 @@ export function galleryControls(
     controls.append(frameLabel);
   }
   if (selected.kind === 'building') {
+    select(
+      'Assets',
+      [
+        ['own', 'Own package'],
+        ['original', 'Original body'],
+      ],
+      state.assets,
+      (value) => {
+        state.assets = value === 'original' ? 'original' : 'own';
+      },
+    );
+    const geometryLabel = element('label', 'Footprint & signs');
+    const geometry = element('input');
+    geometry.type = 'checkbox';
+    geometry.checked = state.geometry;
+    geometry.addEventListener('change', () => {
+      state.geometry = geometry.checked;
+      changed();
+    });
+    geometryLabel.prepend(geometry);
+    controls.append(geometryLabel);
     const wrapper = element('label', 'Construction');
     const progress = element('input');
     progress.type = 'range';

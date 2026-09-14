@@ -10,6 +10,14 @@ describe('gallery links', () => {
     );
     expect(readGalleryState(new URLSearchParams(galleryQuery(state)))).toEqual(state);
   });
+  it('roundtrips the building overlay and assets switch', () => {
+    const state = readGalleryState(new URLSearchParams('tab=buildings&geometry=1&assets=original'));
+    expect(state).toMatchObject({ geometry: true, assets: 'original' });
+    expect(readGalleryState(new URLSearchParams(galleryQuery(state)))).toEqual(state);
+    const plain = readGalleryState(new URLSearchParams('tab=buildings'));
+    expect(plain).toMatchObject({ geometry: false, assets: 'own' });
+    expect(galleryQuery(plain)).not.toMatch(/geometry|assets/);
+  });
   it('treats an explicit frame as a paused review', () => {
     expect(readGalleryState(new URLSearchParams('frame=4')).playing).toBe(false);
   });

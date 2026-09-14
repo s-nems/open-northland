@@ -1,3 +1,5 @@
+import type { AssetSet } from '../../view/settings-store.js';
+
 export type GalleryTab = 'animations' | 'buildings' | 'terrain' | 'goods';
 export const GALLERY_ZOOMS = [1, 2, 4, 8] as const;
 export const GALLERY_COMPARISON_LIMIT = 4;
@@ -21,6 +23,9 @@ export interface GalleryState {
   progress: number;
   terrainView: 'atlas' | 'repeat';
   background: 'dark' | 'light' | 'checker';
+  geometry: boolean;
+  /** Which art the building panels draw over the shared geometry, named like the map's `assets` switch. */
+  assets: AssetSet;
 }
 function bounded(value: string | null, fallback: number, min: number, max: number): number {
   if (value === null || value.trim() === '') return fallback;
@@ -54,6 +59,8 @@ export function readGalleryState(params: URLSearchParams): GalleryState {
     progress: bounded(params.get('progress'), 100, 0, 100),
     terrainView: params.get('terrainView') === 'repeat' ? 'repeat' : 'atlas',
     background: background === 'light' || background === 'checker' ? background : 'dark',
+    geometry: params.get('geometry') === '1',
+    assets: params.get('assets') === 'original' ? 'original' : 'own',
   };
 }
 export function galleryQuery(state: GalleryState): string {
@@ -65,5 +72,7 @@ export function galleryQuery(state: GalleryState): string {
     params.set(key, String(state[key]));
   if (!state.playing) params.set('pause', '1');
   if (state.frame !== undefined) params.set('frame', String(state.frame));
+  if (state.geometry) params.set('geometry', '1');
+  if (state.assets !== 'own') params.set('assets', state.assets);
   return `?${params}`;
 }

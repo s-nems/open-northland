@@ -4,7 +4,7 @@ import type { WorldTribes } from '../../game/world-tribes.js';
 import { loadAnimalCharacters } from '../animal-gfx/index.js';
 import { BUILDING_SCALE, HOUSE_ATLAS, TREE_ATLAS, VIKING_TRIBE } from '../building-gfx/index.js';
 import { loadGoodsIconManifest } from '../goods-gfx.js';
-import { inHouseProgramLookup, sequencesFor, servedAtlasStem, servedShadowStem } from '../ir/joins.js';
+import { inHouseProgramLookup, sequencesFor, shadowStemsByAtlasStem } from '../ir/joins.js';
 import { loadIr, loadLayer, loadPlayerLut, MissingAtlasError } from '../ir/load.js';
 import { BODY_IMAGELIB, type ContentIr } from '../ir/rows.js';
 import {
@@ -62,22 +62,6 @@ async function loadGatheringFamilies(
     }),
   );
   return { families, loaded };
-}
-
-/**
- * The served body-atlas stem → shadow-atlas stem join, from every IR row pairing a body `.bmd` with a
- * shadow `.bmd` (`GfxBobLibs` second value). Loading a body layer with its entry attaches the shadow twin
- * drawn under each bob. First-wins on a repeated stem: the recolours of one `.bmd` share its shadow set.
- */
-export function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string> {
-  const map = new Map<string, string>();
-  const put = (stem: string | undefined, shadowBmd: string | undefined): void => {
-    const shadowStem = servedShadowStem(shadowBmd);
-    if (stem !== undefined && shadowStem !== undefined && !map.has(stem)) map.set(stem, shadowStem);
-  };
-  for (const row of ir?.landscapeGfx ?? []) put(servedAtlasStem(row), row.shadowBmd);
-  for (const row of ir?.buildingBobs ?? []) put(servedAtlasStem(row), row.shadowBmd);
-  return map;
 }
 
 /**

@@ -1,5 +1,6 @@
 // Files inside this folder import their deps directly, not through this barrel.
 export { BadgeLayer } from './badge-layer.js';
+export { makePlaceholderStack, makeSignStack } from './badge-stack.js';
 export {
   type SettlerBubble,
   type SettlerBubbleGfx,
@@ -30,9 +31,14 @@ export {
   type BuildingSignGfx,
   type BuildingSignKind,
   type BuildingSignSheet,
+  CONSTRUCTION_SIGN_DX,
   type DoorBadgeRole,
   type DoorBadgeRow,
   GARRISON_MAST_FALLBACK_DX,
   type HouseholdKind,
+  SIGN_BASE_BELOW,
+  SIGN_HALF_WIDTH,
+  SIGN_HEIGHT,
+  SIGN_STEP,
   signRowAt,
 } from './sign-gfx.js';

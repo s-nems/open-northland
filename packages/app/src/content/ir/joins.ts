@@ -96,6 +96,22 @@ export function buildingFootprints(ir: ContentIr | null): Map<number, BuildingFo
   return out;
 }
 
+/**
+ * The served body-atlas stem → shadow-atlas stem join, from every IR row pairing a body `.bmd` with a
+ * shadow `.bmd` (`GfxBobLibs` second value). Loading a body layer with its entry attaches the shadow twin
+ * drawn under each bob. First-wins on a repeated stem: the recolours of one `.bmd` share its shadow set.
+ */
+export function shadowStemsByAtlasStem(ir: ContentIr | null): Map<string, string> {
+  const map = new Map<string, string>();
+  const put = (stem: string | undefined, shadowBmd: string | undefined): void => {
+    const shadowStem = servedShadowStem(shadowBmd);
+    if (stem !== undefined && shadowStem !== undefined && !map.has(stem)) map.set(stem, shadowStem);
+  };
+  for (const row of ir?.landscapeGfx ?? []) put(servedAtlasStem(row), row.shadowBmd);
+  for (const row of ir?.buildingBobs ?? []) put(servedAtlasStem(row), row.shadowBmd);
+  return map;
+}
+
 /** The `[bobseq]` rows of one imagelib in the served IR, indexed by verbatim sequence name. */
 export function sequencesFor(ir: ContentIr | null, imagelib: string): Map<string, BobSeqRow> {
   const byName = new Map<string, BobSeqRow>();

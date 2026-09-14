@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { shadowStemsByAtlasStem } from '../src/content/ir/joins.js';
 import type { ContentIr } from '../src/content/ir/rows.js';
-import { shadowStemsByAtlasStem } from '../src/content/sprite-sheet/human-sheet.js';
 
 /**
  * The body-atlas-stem → shadow-atlas-stem join every real-content layer load attaches its cast-shadow

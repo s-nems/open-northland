@@ -1,6 +1,6 @@
 import { lastByTypeId } from '@open-northland/data';
 import { type Simulation, systems } from '@open-northland/sim';
-import { flagPointByType, skinnedTypesOf, soldierFlagPointByType } from '../../content/building-gfx/index.js';
+import { buildingSignAnchorsFor } from '../../content/building-gfx/index.js';
 import { loadIr } from '../../content/ir/load.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
@@ -30,11 +30,8 @@ export interface ViewReadModelDeps {
   readonly selection?: HeartSelection | undefined;
 }
 
-/**
- * The building read models: the geometry every type shares, plus a lookup for the sign-post and
- * garrison-mast anchors, which are per-skin pixel offsets. A building resolves its anchors through its own
- * tribe and falls back to the base tribe's when its skin carries no row for that type.
- */
+/** The building read models: the geometry every type shares, plus the per-skin sign-post and
+ *  garrison-mast anchors. */
 export function buildingModels(
   buildings: Simulation['content']['buildings'],
   ir: ContentIr | null,
@@ -46,41 +43,17 @@ export function buildingModels(
       { id: b.id, footprint: b.footprint } satisfies GeometryBuildingInfo,
     ]),
   );
-  const base = tribes[0];
-  const anchors = new Map(
-    tribes.map((tribe) => [
-      tribe,
-      {
-        flag: flagPointByType(ir, tribe),
-        mast: soldierFlagPointByType(ir, tribe),
-        skinned: skinnedTypesOf(ir, tribe),
-      },
-    ]),
-  );
+  const anchorsOf = buildingSignAnchorsFor(ir, tribes);
   // Memoized per `(typeId, tribe)`: the door-badge and sign projections ask for every building on every
   // new snapshot, and the answer only changes when the content does.
   const cache = new Map<string, BuildingDoorInfo | undefined>();
   const infoOf: BuildingDoorInfoOf = (typeId, tribe) => {
     if (typeId === undefined) return undefined;
-    const key = `${typeId}:${tribe ?? base}`;
+    const key = `${typeId}:${tribe ?? tribes[0]}`;
     const held = cache.get(key);
     if (held !== undefined || cache.has(key)) return held;
     const geometry = byType.get(typeId);
-    const own = tribe !== undefined ? anchors.get(tribe) : undefined;
-    // Only a tribe drawing the base tribe's body may borrow its anchors: the offsets are measured against
-    // one skin, so on a tribe's own differently shaped body they plant the post or the mast off the roof.
-    // Such a type keeps the caller's derived anchor instead.
-    const fallback = own?.skinned.has(typeId) === true ? undefined : anchors.get(base);
-    const flagPoint = own?.flag.get(typeId) ?? fallback?.flag.get(typeId);
-    const mastPoint = own?.mast.get(typeId) ?? fallback?.mast.get(typeId);
-    const info =
-      geometry === undefined
-        ? undefined
-        : {
-            ...geometry,
-            ...(flagPoint !== undefined ? { flagPoint } : {}),
-            ...(mastPoint !== undefined ? { mastPoint } : {}),
-          };
+    const info = geometry === undefined ? undefined : { ...geometry, ...anchorsOf(typeId, tribe) };
     cache.set(key, info);
     return info;
   };

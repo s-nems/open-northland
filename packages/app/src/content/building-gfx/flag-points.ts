@@ -1,3 +1,4 @@
+import type { WorldTribes } from '../../game/world-tribes.js';
 import type { BuildingFlagPointRow, ContentIr } from '../ir/rows.js';
 import { CANONICAL_EDIT_NAME, rowsByType } from './families.js';
 
@@ -35,6 +36,45 @@ export function skinnedTypesOf(ir: ContentIr | null, tribeId: number): ReadonlyS
   const out = new Set<number>();
   for (const row of ir?.buildingBobs ?? []) if (row.tribeId === tribeId) out.add(row.typeId);
   return out;
+}
+
+/** A building type's sign post and garrison mast, as one tribe's skin authors them. */
+export interface BuildingSignAnchors {
+  readonly flagPoint?: FlagPoint | undefined;
+  readonly mastPoint?: FlagPoint | undefined;
+}
+
+/**
+ * The per-`(typeId, tribe)` sign anchors of a world fielding `tribes`, the first of which is the base.
+ * A tribe resolves through its own rows and borrows the base tribe's only for a type it does not skin:
+ * the offsets are measured against one body, so on a tribe's own differently shaped body they would
+ * plant the post or the mast off the roof. Such a type keeps the caller's derived anchor instead.
+ */
+export function buildingSignAnchorsFor(
+  ir: ContentIr | null,
+  tribes: WorldTribes,
+): (typeId: number, tribe: number | undefined) => BuildingSignAnchors {
+  const base = tribes[0];
+  const byTribe = new Map(
+    tribes.map((tribe) => [
+      tribe,
+      {
+        flag: flagPointByType(ir, tribe),
+        mast: soldierFlagPointByType(ir, tribe),
+        skinned: skinnedTypesOf(ir, tribe),
+      },
+    ]),
+  );
+  return (typeId, tribe) => {
+    const own = tribe !== undefined ? byTribe.get(tribe) : undefined;
+    const fallback = own?.skinned.has(typeId) === true ? undefined : byTribe.get(base);
+    const flagPoint = own?.flag.get(typeId) ?? fallback?.flag.get(typeId);
+    const mastPoint = own?.mast.get(typeId) ?? fallback?.mast.get(typeId);
+    return {
+      ...(flagPoint !== undefined ? { flagPoint } : {}),
+      ...(mastPoint !== undefined ? { mastPoint } : {}),
+    };
+  };
 }
 
 function pointsByType(

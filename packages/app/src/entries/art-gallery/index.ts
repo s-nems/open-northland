@@ -1,4 +1,5 @@
 import { dismissBootProgress } from '../../view/boot-progress.js';
+import { galleryBuildingTribes } from './building-geometry.js';
 import { type GalleryEntry, galleryEntries, loadGalleryCatalog } from './catalog.js';
 import { button, element, galleryControls } from './controls.js';
 import { galleryMapDestination } from './locations.js';
@@ -97,8 +98,10 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
   const preview = await createGalleryPreview(previewCanvas, {
     soilImage: catalog.soilImage,
     reference: catalog.characters[0],
+    buildingTribes: galleryBuildingTribes(catalog.buildings.map((entry) => entry.manifest)),
   });
   let revision = 0;
+  let shownAssets = state.assets;
   function save(): void {
     window.history.replaceState(null, '', galleryQuery(state));
   }
@@ -107,6 +110,8 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
     save();
     viewport.className = `viewport ${state.background}`;
     preview.update(state);
+    // A panel binds the original body when built, so switching assets rebuilds the view.
+    if (state.assets !== shownAssets) render();
   }
   function visibleEntries(): readonly GalleryEntry[] {
     return entries.filter(
@@ -220,22 +225,26 @@ export async function renderArtGallery(canvas: HTMLCanvasElement, params: URLSea
       element(
         'small',
         selected.kind === 'building'
-          ? 'Shared world scale; civilian reference at each entrance. Drag the scrollbar to inspect large sprites.'
+          ? 'Shared world scale; civilian reference at each entrance. Footprint & signs draws the sim lattice, walk-block (red), build-block (orange), door (green) and the sign post with its badges or construction stand; Assets swaps in the original body over the same geometry.'
           : selected.kind === 'material'
             ? 'Generated runtime tiles; transparent areas expose transition coverage. Check the linked map for elevation and actual placement.'
             : 'Compare at the same world scale. Missing clips are labelled in the preview.',
       ),
     );
     renderList();
+    shownAssets = state.assets;
     update();
     status.classList.remove('error');
     status.textContent = 'Loading previews…';
     void preview
       .show(shown)
-      .then(() => {
+      .then((notes) => {
         if (request !== revision) return;
         preview.update(state);
-        status.textContent = `${shown.map((entry) => entry.name).join(' · ')} — zoom ×${state.zoom}`;
+        status.textContent = [
+          `${shown.map((entry) => entry.name).join(' · ')} — zoom ×${state.zoom}`,
+          ...notes,
+        ].join(' · ');
       })
       .catch((error: unknown) => {
         if (request !== revision) return;

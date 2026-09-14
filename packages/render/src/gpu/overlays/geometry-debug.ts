@@ -4,10 +4,10 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
 
 /**
- * The `?debug=geometry` overlay: every placed building's logic geometry drawn over the world so a human
- * can check the extracted data against the drawn graphic. A debug tool, not a game surface - it rebuilds
- * its whole scene graph on every `set`, which is only called when the flag is on and the building set
- * changed.
+ * A building's logic geometry drawn over its graphic so a human can check the extracted data against
+ * the painting: the `?debug=geometry` map overlay and the art gallery's footprint view. A debug tool,
+ * not a game surface - it rebuilds its whole scene graph on every `set`, so callers set it only when the
+ * item set changes.
  */
 
 /** One half-cell offset from the item's anchor node - the `FootprintCell` shape, re-declared so `render`

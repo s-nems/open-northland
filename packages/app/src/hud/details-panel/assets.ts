@@ -1,5 +1,6 @@
-import type { BuildingBobRef, SpriteBindings, SpriteSheet, TextureSource } from '@open-northland/render';
+import type { SpriteSheet, TextureSource } from '@open-northland/render';
 import { Rectangle, Texture } from 'pixi.js';
+import { boundBuildingRef } from '../../content/building-gfx/index.js';
 import { type GoodsArt, loadGoodsArt } from '../../content/goods-gfx.js';
 import { type GuiArt, loadGuiArt } from '../../content/gui-art.js';
 import {
@@ -57,18 +58,6 @@ export interface BuildingPreviews {
   get(typeId: number, tribe: number | undefined): BuildingPreview | undefined;
 }
 
-/** The bob a type is bound to for its own tribe, then for the sheet's base tribe; `undefined` when no
- *  civilization skins it (the wonders and `work_murek`). */
-function boundRef(
-  binding: SpriteBindings['building'],
-  typeId: number,
-  tribe: number | undefined,
-): BuildingBobRef | undefined {
-  if (typeof binding === 'number') return binding;
-  const own = tribe !== undefined ? binding.byTribe?.[tribe] : undefined;
-  return own?.byType[typeId] ?? binding.byType[typeId];
-}
-
 /** Memoized per sheet, which outlives every panel mount: a `Texture` pins a resize listener on its shared
  *  `TextureSource`, so re-minting one per remount would leak those wrappers on each HUD scale change. */
 const previewsBySheet = new WeakMap<SpriteSheet, BuildingPreviews>();
@@ -84,9 +73,8 @@ export function buildingPreviews(sheet: SpriteSheet | undefined): BuildingPrevie
   const cache = new Map<string, BuildingPreview | undefined>();
   const previews: BuildingPreviews = {
     get(typeId, tribe) {
-      // Only a bob this type is actually bound to: `resolveBuildingDraw` is total and would hand back the
-      // default house, and the general window promises a neutral plate over a misleading complete one.
-      const ref = boundRef(sheet.bindings.building, typeId, tribe);
+      // The general window promises a neutral plate over a misleading complete one.
+      const ref = boundBuildingRef(sheet.bindings.building, typeId, tribe);
       if (ref === undefined) return undefined;
       const draw = typeof ref === 'number' ? { bob: ref } : { bob: ref.bob, layer: ref.layer };
       const key = `${draw.layer ?? ''}:${draw.bob}`;
