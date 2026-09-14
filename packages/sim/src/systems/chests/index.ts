@@ -204,7 +204,7 @@ export function openChest(world: World, ctx: SystemContext, opener: Entity, ches
 }
 
 /** Add `paper` to `player`'s list and announce it; a full list drops the paper silently. */
-export function grantPaper(
+function grantPaper(
   world: World,
   ctx: SystemContext,
   player: number,

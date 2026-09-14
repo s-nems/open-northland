@@ -188,6 +188,11 @@ export const enContent = {
       title: 'Wild berries',
       summary: 'Foragers eat from wild bushes and the harvested plants regrow.',
     },
+    chests: {
+      title: 'Chests and papers',
+      summary:
+        'Two wooden chests are opened for food and three civilists, a magical one refuses a plain trade, and a held paper stands a well up finished.',
+    },
     chain: {
       title: 'Production chain',
       summary: 'Farm, mill, bakery and well in one loop: wheat → flour → bread, fed by water.',

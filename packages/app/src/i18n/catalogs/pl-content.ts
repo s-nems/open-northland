@@ -189,6 +189,11 @@ export const plContent = {
       title: 'Dzikie jagody',
       summary: 'Zbieracze jedzą dzikie owoce, a ogołocone krzewy odrastają.',
     },
+    chests: {
+      title: 'Skrzynie i plany',
+      summary:
+        'Dwie drewniane skrzynie oddają żywność i trzech cywilów, magiczna odmawia zwykłemu rzemieślnikowi, a trzymany plan stawia gotową studnię.',
+    },
     chain: {
       title: 'Łańcuch produkcji',
       summary: 'Farma, młyn, piekarnia i studnia w jednej pętli: pszenica → mąka → chleb, zasilane wodą.',
