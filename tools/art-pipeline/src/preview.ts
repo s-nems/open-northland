@@ -3,9 +3,18 @@ import { join } from 'node:path';
 import { candidate } from './candidate.js';
 import { fingerprint, writeJson } from './files.js';
 import { lock } from './lock.js';
-import { inside } from './paths.js';
+import { inside, runtimePack } from './paths.js';
 import { prepareDelivery } from './prepare.js';
 import { exists } from './transaction.js';
+
+async function stage(root: string, stages: string[], id: string, pack: string) {
+  const current = await candidate(root, id);
+  const directory = await mkdtemp(join(root, '.art-build/preview-'));
+  stages.push(directory);
+  const own = join(directory, 'own');
+  const { files } = await prepareDelivery(root, current, own, pack);
+  return { directory, own, files };
+}
 
 // Several candidates stack onto one pack; the first id names the preview location.
 export async function preparePreview(root: string, ids: readonly string[]) {
@@ -19,30 +28,21 @@ export async function preparePreview(root: string, ids: readonly string[]) {
   try {
     if (await exists(join(base, 'publication/journal.json')))
       throw new Error('Interrupted publication: run art recover');
-    let pack = join(root, 'packages/app/src/assets/own');
-    let files: Record<string, string> = {};
-    for (const id of ids) {
-      const current = await candidate(root, id);
-      const stage = await mkdtemp(join(base, 'preview-'));
-      stages.push(stage);
-      ({ files } = await prepareDelivery(root, current, join(stage, 'own'), pack));
-      pack = join(stage, 'own');
-    }
-    const last = stages.pop();
-    if (last === undefined) throw new Error('preview needs at least one package id');
-    await writeJson(join(last, 'report.json'), {
+    let last = await stage(root, stages, first, runtimePack(root));
+    for (const id of ids.slice(1)) last = await stage(root, stages, id, last.own);
+    await writeJson(join(last.directory, 'report.json'), {
       version: 1,
       id: first,
       ids,
-      files,
-      digest: fingerprint(files),
+      files: last.files,
+      digest: fingerprint(last.files),
     });
     const destination = join(inside(base, first), 'preview');
     await rm(destination, { recursive: true, force: true });
-    await rename(last, destination);
+    await rename(last.directory, destination);
     return { ids, path: join(destination, 'own') };
   } finally {
-    for (const stage of stages) await rm(stage, { recursive: true, force: true });
+    for (const directory of stages) await rm(directory, { recursive: true, force: true });
     await release();
   }
 }

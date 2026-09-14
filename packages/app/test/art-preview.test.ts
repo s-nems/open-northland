@@ -58,6 +58,7 @@ async function fixture() {
     JSON.stringify({
       version: 1,
       id: 'terrain/sample',
+      ids: ['terrain/sample', 'props/new'],
       files,
       digest: hash(JSON.stringify(Object.entries(files).sort(([a], [b]) => a.localeCompare(b)))),
     }),
@@ -162,7 +163,10 @@ describe('candidate asset preview', () => {
       if (!address || typeof address === 'string') throw new Error('Missing test server address');
       const response = await fetch(`http://127.0.0.1:${address.port}/review/__art-preview.json`);
       expect(response.status).toBe(200);
-      expect(await response.json()).toMatchObject({ id: 'terrain/sample', digest: expect.any(String) });
+      expect(await response.json()).toMatchObject({
+        id: 'terrain/sample + props/new',
+        digest: expect.any(String),
+      });
     } finally {
       await server.close();
     }

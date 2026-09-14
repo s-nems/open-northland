@@ -79,6 +79,23 @@ describe('candidate preview', () => {
     expect((await readdir(join(f.root, '.art-build'))).filter((n) => n.startsWith('preview-'))).toEqual([]);
     await expect(preparePreview(f.root, [f.id, f.id])).rejects.toThrow('Duplicate');
   });
+  it('rejects a stacked candidate that overwrites an earlier stacked output', async () => {
+    const f = await fixture();
+    const second = join(f.root, 'docs/art/buildings/barn');
+    await cp(f.source, second, { recursive: true });
+    await writeJson(join(second, 'asset.json'), { ...f.recipe, id: 'buildings/barn' });
+    await writeJson(join(f.root, 'docs/art/assets.json'), {
+      version: 1,
+      assets: [
+        { id: f.id, recipe: 'docs/art/buildings/home/asset.json' },
+        { id: 'buildings/barn', recipe: 'docs/art/buildings/barn/asset.json' },
+      ],
+    });
+    await buildAsset(f.root, f.id);
+    await buildAsset(f.root, 'buildings/barn');
+    await expect(preparePreview(f.root, [f.id, 'buildings/barn'])).rejects.toThrow('unowned');
+    expect((await readdir(join(f.root, '.art-build'))).filter((n) => n.startsWith('preview-'))).toEqual([]);
+  });
   it('preview rejects an unowned collision without changing runtime', async () => {
     const f = await fixture();
     await buildAsset(f.root, f.id);

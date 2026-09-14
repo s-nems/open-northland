@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import { deliverySchema } from './approval.js';
 import { candidate } from './candidate.js';
 import { json } from './files.js';
+import { runtimePack } from './paths.js';
 import { presentationDigest } from './presentation.js';
 import { reviewPage } from './review-page.js';
 import { exists } from './transaction.js';
@@ -14,7 +15,7 @@ export async function review(root: string, id: string) {
   const paths = [...new Set([...Object.keys(current.report.files), ...(registry[id] ?? [])])].sort();
   const metadata = [];
   for (const path of paths.filter((f) => f.endsWith('.json'))) {
-    const previousPath = join(root, 'packages/app/src/assets/own', path);
+    const previousPath = join(runtimePack(root), path);
     metadata.push({
       path,
       next: current.report.files[path] ? await json(join(current.delivery, path)) : null,
@@ -23,7 +24,7 @@ export async function review(root: string, id: string) {
   }
   for (const path of paths.filter((f) => f.endsWith('.png'))) {
     const next = current.report.files[path] ? await readFile(join(current.delivery, path)) : undefined,
-      previousPath = join(root, 'packages/app/src/assets/own', path);
+      previousPath = join(runtimePack(root), path);
     const previous = (await exists(previousPath)) ? await readFile(previousPath) : undefined;
     let changedPixels: number | null = null;
     if (previous && next) {
@@ -37,7 +38,7 @@ export async function review(root: string, id: string) {
     }
     const manifestPath = join(current.delivery, dirname(path), 'runtime.json');
     const manifest = (await exists(manifestPath)) ? await json(manifestPath) : null;
-    const beforeManifestPath = join(root, 'packages/app/src/assets/own', dirname(path), 'runtime.json');
+    const beforeManifestPath = join(runtimePack(root), dirname(path), 'runtime.json');
     const beforeManifest = (await exists(beforeManifestPath)) ? await json(beforeManifestPath) : null;
     items.push({
       path,

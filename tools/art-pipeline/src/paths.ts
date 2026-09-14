@@ -1,6 +1,9 @@
 import { realpath } from 'node:fs/promises';
-import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { relativePath } from './recipe.js';
+export function runtimePack(root: string): string {
+  return join(root, 'packages/app/src/assets/own');
+}
 export function inside(root: string, path: string): string {
   const destination = resolve(root, relativePath.parse(path));
   const rel = relative(root, destination);

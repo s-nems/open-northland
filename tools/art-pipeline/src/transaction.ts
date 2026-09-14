@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { json, writeJson } from './files.js';
 import { assertStopped } from './lock.js';
+import { runtimePack } from './paths.js';
 
 const journalSchema = z
   .object({ phase: z.enum(['prepared', 'swapped', 'committed']), registry: z.string() })
@@ -34,7 +35,7 @@ async function restorePublication(root: string) {
     journalPath = join(base, 'journal.json');
   if (!(await exists(journalPath))) throw new Error('No interrupted publication');
   const journal = journalSchema.parse(await json(journalPath));
-  const destination = join(root, 'packages/app/src/assets/own'),
+  const destination = runtimePack(root),
     backup = join(base, 'previous');
   if (journal.phase !== 'committed') {
     if (await exists(backup)) {
@@ -53,7 +54,7 @@ export async function installDelivery(root: string, prepared: string, registry: 
   const previous = await readFile(registryPath, 'utf8');
   const journal = { phase: 'prepared', registry: previous };
   await writeJson(journalPath, journal);
-  const destination = join(root, 'packages/app/src/assets/own'),
+  const destination = runtimePack(root),
     backup = join(base, 'previous');
   try {
     await rename(destination, backup);

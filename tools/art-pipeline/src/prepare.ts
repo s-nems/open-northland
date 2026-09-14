@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import { deliverySchema } from './approval.js';
 import { candidate } from './candidate.js';
 import { fingerprint, hashes, json, listFiles } from './files.js';
-import { inside } from './paths.js';
+import { inside, runtimePack } from './paths.js';
 import { exists } from './transaction.js';
 import { validateDelivery } from './validate.js';
 
@@ -11,17 +11,16 @@ export async function prepareDelivery(
   root: string,
   current: Awaited<ReturnType<typeof candidate>>,
   prepared: string,
-  // Copy source only; ownership, overwrite and freshness checks still read the real runtime.
-  pack = join(root, 'packages/app/src/assets/own'),
+  pack = runtimePack(root),
 ) {
   const id = current.report.id;
   const registry = deliverySchema.parse(await json(join(root, 'docs/art/delivery.json')));
   const registrySnapshot = JSON.stringify(registry);
   const next = Object.keys(current.report.files),
     owned = new Set(registry[id] ?? []);
-  const runtime = join(root, 'packages/app/src/assets/own');
+  const runtime = runtimePack(root);
   const previousFiles = await hashes(runtime);
-  const existing = new Set(Object.keys(previousFiles));
+  const existing = new Set(Object.keys(pack === runtime ? previousFiles : await hashes(pack)));
   for (const file of next) {
     if (existing.has(file) && !owned.has(file)) throw new Error(`Cannot overwrite unowned output: ${file}`);
     for (const [other, files] of Object.entries(registry))
