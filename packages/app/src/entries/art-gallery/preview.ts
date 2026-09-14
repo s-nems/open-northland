@@ -3,6 +3,7 @@ import { Application, Container, Text } from 'pixi.js';
 import { VIKING_TRIBE } from '../../content/building-gfx/index.js';
 import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
+import { loadRuntimeRealContent } from '../../content/real-content.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { buildingGeometryIndex } from './building-geometry.js';
 import type { GalleryCharacter, GalleryEntry } from './catalog.js';
@@ -66,8 +67,15 @@ export async function createGalleryPreview(canvas: HTMLCanvasElement, options: G
   // bodies separately, since they cost a civilization's building pages.
   const tribes = options.buildingTribes ?? [VIKING_TRIBE];
   const buildingContext = once(async (): Promise<Omit<BuildingPreviewContext, 'original'>> => {
-    const [ir, signs] = await Promise.all([loadIr(), loadBuildingSignGfx()]);
-    return { geometryOf: buildingGeometryIndex(ir, tribes), signs: signs?.byPlayer[0] };
+    const [realContent, ir, signs] = await Promise.all([
+      loadRuntimeRealContent(),
+      loadIr(),
+      loadBuildingSignGfx(),
+    ]);
+    return {
+      geometryOf: buildingGeometryIndex(realContent?.content.buildings ?? [], ir, tribes),
+      signs: signs?.byPlayer[0],
+    };
   });
   const originalBodies = once(async () => loadOriginalBuildings(await loadIr(), tribes));
   let seconds = 0;

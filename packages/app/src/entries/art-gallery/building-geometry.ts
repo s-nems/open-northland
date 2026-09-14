@@ -1,5 +1,5 @@
 import type { OwnBuildingManifest } from '@open-northland/art-contracts';
-import type { FootprintCell } from '@open-northland/data';
+import { type BuildingType, type FootprintCell, lastByTypeId } from '@open-northland/data';
 import {
   CONSTRUCTION_SIGN_DX,
   type DoorBadgeRow,
@@ -13,7 +13,6 @@ import {
 } from '@open-northland/render';
 import type { Box } from '@open-northland/render/data';
 import { buildingSignAnchorsFor, type FlagPoint, VIKING_TRIBE } from '../../content/building-gfx/index.js';
-import { buildingFootprints } from '../../content/ir/joins.js';
 import type { ContentIr } from '../../content/ir/rows.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { workerIconNode } from '../../view/projections/index.js';
@@ -37,8 +36,6 @@ export interface BuildingGeometry {
   readonly fromContent: boolean;
 }
 
-type BuildingRow = NonNullable<ContentIr['buildings']>[number];
-
 const HOME_ROWS: readonly DoorBadgeRow[] = [{ role: 'family' }];
 const CREW_ROWS: readonly DoorBadgeRow[] = [
   { role: 'craftsman' },
@@ -54,17 +51,18 @@ export function galleryBuildingTribes(manifests: readonly { readonly tribeId: nu
   return [VIKING_TRIBE, ...others];
 }
 
+/** `buildings` are the sim's own rows, so the door drawn is the one settlers walk to; the IR only supplies
+ *  the per-skin sign anchors. */
 export function buildingGeometryIndex(
+  buildings: readonly BuildingType[],
   ir: ContentIr | null,
   tribes: WorldTribes,
 ): (manifest: OwnBuildingManifest) => BuildingGeometry {
-  const footprints = buildingFootprints(ir);
+  const rows = lastByTypeId(buildings);
   const anchorsOf = buildingSignAnchorsFor(ir, tribes);
-  const rows = new Map<number, BuildingRow>();
-  for (const row of ir?.buildings ?? []) if (row.typeId !== undefined) rows.set(row.typeId, row);
   return (manifest) => {
     const row = rows.get(manifest.typeId);
-    const footprint = footprints.get(manifest.typeId);
+    const footprint = row?.footprint;
     const door = footprint?.door ?? { dx: manifest.doorNode.x, dy: manifest.doorNode.y };
     const iconNode = workerIconNode({ door }, { hx: 0, hy: 0 }, row?.id);
     return {

@@ -1,4 +1,5 @@
 import type { OwnBuildingManifest } from '@open-northland/art-contracts';
+import { BuildingType } from '@open-northland/data';
 import {
   CONSTRUCTION_SIGN_DX,
   SIGN_BASE_BELOW,
@@ -28,34 +29,32 @@ const manifest: OwnBuildingManifest = {
 };
 const VIKING = [1] as const;
 
-/** An IR with one home whose extracted door sits one node left of where `DOOR_SHIFTS` puts it. */
-const ir: ContentIr = {
-  buildings: [
-    {
-      typeId: 2,
-      id: 'home_level_00',
-      kind: 'home',
-      footprint: {
-        blocked: [{ dx: 0, dy: 0 }],
-        familyBody: [{ dx: 0, dy: 0 }],
-        reserved: [
-          { dx: -1, dy: 0 },
-          { dx: 0, dy: 0 },
-          { dx: 1, dy: 0 },
-        ],
-        door: { dx: -2, dy: 3 },
-      },
+/** The sim's row for the home: its door sits one node left of the manifest's. */
+const buildings = [
+  BuildingType.parse({
+    typeId: 2,
+    id: 'home_level_00',
+    kind: 'home',
+    footprint: {
+      blocked: [{ dx: 0, dy: 0 }],
+      familyBody: [{ dx: 0, dy: 0 }],
+      reserved: [
+        { dx: -1, dy: 0 },
+        { dx: 0, dy: 0 },
+        { dx: 1, dy: 0 },
+      ],
+      door: { dx: -2, dy: 3 },
     },
-  ],
-  buildingFlagPoints: [{ tribeId: 1, typeId: 2, level: 0, x: 1, y: 67 }],
-};
+  }),
+];
+const ir: ContentIr = { buildingFlagPoints: [{ tribeId: 1, typeId: 2, level: 0, x: 1, y: 67 }] };
 
 describe('gallery building geometry', () => {
   it('resolves the sim door, cells, post and a family banner from content', () => {
-    const geometry = buildingGeometryIndex(ir, VIKING)(manifest);
+    const geometry = buildingGeometryIndex(buildings, ir, VIKING)(manifest);
     expect(geometry).toMatchObject({
       label: 'home_level_00',
-      door: { dx: -1, dy: 3 },
+      door: { dx: -2, dy: 3 },
       post: { x: 1, y: 67 },
       signRows: [{ role: 'family' }],
       fromContent: true,
@@ -65,7 +64,7 @@ describe('gallery building geometry', () => {
   });
 
   it('keeps the manifest door and the derived post without content', () => {
-    const geometry = buildingGeometryIndex(null, VIKING)(manifest);
+    const geometry = buildingGeometryIndex([], null, VIKING)(manifest);
     expect(geometry).toMatchObject({
       label: '#2',
       door: { dx: -1, dy: 3 },
@@ -79,10 +78,10 @@ describe('gallery building geometry', () => {
   });
 
   it('bounds every cell diamond plus the sign chain and construction stand', () => {
-    // Cells reach one node either side of the anchor and down to the door row; the post at (1, 67)
-    // reaches the stand's left edge and the banner's top.
-    expect(geometryBounds(buildingGeometryIndex(ir, VIKING)(manifest))).toEqual({
-      minX: Math.min(-TILE_HALF_W - TILE_HALF_W / 2, 1 + CONSTRUCTION_SIGN_DX - SIGN_HALF_WIDTH),
+    // Cells reach one node either side of the anchor and the door two nodes left, three rows down; the
+    // post at (1, 67) reaches the stand's left edge and the banner's top.
+    expect(geometryBounds(buildingGeometryIndex(buildings, ir, VIKING)(manifest))).toEqual({
+      minX: Math.min(-2 * TILE_HALF_W - TILE_HALF_W / 2, 1 + CONSTRUCTION_SIGN_DX - SIGN_HALF_WIDTH),
       maxX: Math.max(TILE_HALF_W + TILE_HALF_W / 2, 1 + SIGN_HALF_WIDTH),
       minY: -TILE_HALF_H / 4,
       maxY: Math.max((3 * TILE_HALF_H) / 2 + TILE_HALF_H / 4, 67 + SIGN_BASE_BELOW),
