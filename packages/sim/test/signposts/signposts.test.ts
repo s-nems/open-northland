@@ -224,6 +224,15 @@ describe('signpostNetwork - connected groups', () => {
     expect(signpostNetwork(sim.world).get(0)?.length).toBe(1);
     expect(signpostNetwork(sim.world).get(1)?.length).toBe(1);
   });
+
+  it('follows a post handed to another player without an erect or tear-down', () => {
+    const sim = freshSim();
+    const post = stampPost(sim, 2, 2, 10, 0);
+    expect(signpostNetwork(sim.world).get(0)?.length).toBe(1);
+    sim.world.add(post, Owner, { player: 1 });
+    expect(signpostNetwork(sim.world).get(0)).toBeUndefined();
+    expect(signpostNetwork(sim.world).get(1)?.length).toBe(1);
+  });
 });
 
 describe('signpost fog vision - the permanent recon reveal', () => {

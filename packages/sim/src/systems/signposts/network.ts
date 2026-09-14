@@ -31,13 +31,18 @@ export interface SignpostSite {
 }
 
 interface NetworkMemo {
-  version: number;
+  version: string;
   byPlayer: ReadonlyMap<number, readonly SignpostSite[]>;
 }
 
-/** Per-world memo keyed by the Signpost store's generation: signposts never move or mutate once erected,
- *  so only an erect or tear-down invalidates it. A verifier re-derives it on invariant-checked runs. */
+/** Per-world memo keyed by the Signpost and Owner store generations: signposts never move or mutate
+ *  once erected, so only an erect, a tear-down or an ownership change (a script handing a town over)
+ *  invalidates it. A verifier re-derives it on invariant-checked runs. */
 const networkMemo = new WeakMap<World, NetworkMemo>();
+
+function networkVersion(world: World): string {
+  return `${world.componentGeneration(Signpost)}:${world.componentGeneration(Owner)}`;
+}
 const verifierRegistered = new WeakSet<World>();
 
 function buildNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]> {
@@ -64,7 +69,7 @@ function buildNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]
   const byPlayer = new Map<number, readonly SignpostSite[]>();
   for (const [player, posts] of perPlayer) {
     // Union-find over this player's posts: connected iff the nav circles overlap. O(n²) pairs - a
-    // player's signposts number in the dozens, and this runs only when one is erected/torn down.
+    // player's signposts number in the dozens, and this runs only when the memo key moves.
     const parent = posts.map((_, i) => i);
     const find = (i: number): number => {
       let root = i;
@@ -104,9 +109,9 @@ function buildNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]
   return byPlayer;
 }
 
-/** The current signpost network, rebuilt only when a signpost is erected or torn down. */
+/** The current signpost network, rebuilt when a signpost is erected or torn down or an owner changes. */
 export function signpostNetwork(world: World): ReadonlyMap<number, readonly SignpostSite[]> {
-  const version = world.componentGeneration(Signpost);
+  const version = networkVersion(world);
   const cached = networkMemo.get(world);
   if (cached !== undefined && cached.version === version) return cached.byPlayer;
   const byPlayer = buildNetwork(world);
@@ -120,7 +125,7 @@ export function signpostNetwork(world: World): ReadonlyMap<number, readonly Sign
 
 function verifyNetwork(world: World): string[] {
   const cached = networkMemo.get(world);
-  if (cached === undefined || cached.version !== world.componentGeneration(Signpost)) return [];
+  if (cached === undefined || cached.version !== networkVersion(world)) return [];
   const fresh = buildNetwork(world);
   if (JSON.stringify([...fresh]) !== JSON.stringify([...cached.byPlayer])) {
     return ['signpostNetwork memo is stale - a Signpost mutation missed the component generation'];
