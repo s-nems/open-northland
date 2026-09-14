@@ -9,10 +9,13 @@ import {
   PlayerOrder,
   Position,
   Resource,
+  ResourceFootprint,
 } from '../../src/components/index.js';
 import { findPath, positionOfNode } from '../../src/index.js';
+import { createChest } from '../../src/systems/chests/index.js';
 import {
   canPlaceBuilding,
+  canPlaceWorkFlag,
   dynamicBlockOverlay,
   plannerSystem,
   resourceBlockedCells,
@@ -22,6 +25,7 @@ import {
   unstampResourceFootprint,
 } from '../../src/systems/index.js';
 import {
+  CHEST_GFX,
   CLAY,
   CLAY_ATOMIC,
   CLAY_DIGGER,
@@ -154,6 +158,28 @@ describe('resource footprints', () => {
     const patchSim = mappedSim();
     placeResource(patchSim, MUSHROOM, MUSHROOM_ATOMIC, 4, 2);
     expect(canPlaceBuilding(patchSim.world, ctxOf(patchSim), terrainOf(patchSim), TEST_HUT, 4, 2)).toBe(true);
+  });
+
+  it('a chest blocks, reserves and is worked like a node, and frees its ground once opened', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    const chest = createChest(sim.world, sim.content, { kind: 'wooden', contents: 20, x: 5, y: 2 });
+    expect(sim.world.get(chest, ResourceFootprint).sourceGfxIndex).toBe(CHEST_GFX);
+    expect(resourceBlockedCells(sim.world, terrain).has(terrain.nodeAt(5, 2))).toBe(true);
+    // The build margin keeps a house off, and the work flag rule keeps a flag off the chest's own cell.
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, 4, 2)).toBe(false);
+    expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(5, 2))).toBe(false);
+    expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(4, 3))).toBe(true);
+    // Worked from a cell of its record's work area, never from its own blocked node.
+    const stance = terrain.coordsOf(resourceWorkCell(sim.world, terrain, chest));
+    expect(stance.y).toBe(3);
+    expect([4, 5]).toContain(stance.x);
+
+    unstampResourceFootprint(sim.world, chest);
+    sim.world.destroy(chest);
+    expect(canPlaceBuilding(sim.world, ctxOf(sim), terrain, TEST_HUT, 4, 2)).toBe(true);
+    expect(canPlaceWorkFlag(sim.world, ctxOf(sim), terrain, terrain.nodeAt(5, 2))).toBe(true);
+    expect(sim.world.verifyCaches()).toEqual([]);
   });
 
   it('targets the resource work cell in the planner instead of the blocked resource anchor', () => {

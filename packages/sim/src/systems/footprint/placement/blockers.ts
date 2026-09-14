@@ -1,12 +1,5 @@
 import { type ContentSet, footprintCellDx } from '@open-northland/data';
-import {
-  Building,
-  DeliveryFlag,
-  Position,
-  Resource,
-  ResourceFootprint,
-  Signpost,
-} from '../../../components/index.js';
+import { Building, DeliveryFlag, Position, ResourceFootprint, Signpost } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import { ANCHOR_ONLY, buildingFlagBody, buildingFootprintOf } from '../geometry.js';
@@ -51,8 +44,8 @@ export type MarkerScan = 'with-markers' | 'without-markers';
 
 export type BlockerVisit = (x: number, y: number, channel: BlockerChannel) => void;
 
-/** One standing resource's (cell, channel) contributions - the per-entity slice of
- *  {@link eachBlockerCell}, shared with the incremental work-flag memo so the two cannot drift. A
+/** One footprinted object's (cell, channel) contributions - a resource node or a chest, the per-entity
+ *  slice of {@link eachBlockerCell}, shared with the incremental work-flag memo so the two cannot drift. A
  *  Position-less entity contributes nothing, which a replayed journal entry can reach. */
 export function resourceBlockerCells(world: World, e: Entity, visit: BlockerVisit): void {
   const p = world.tryGet(e, Position);
@@ -111,7 +104,7 @@ export function eachBlockerCell(
   visit: BlockerVisit,
   markers: MarkerScan = 'without-markers',
 ): void {
-  for (const e of world.query(Resource, Position)) resourceBlockerCells(world, e, visit);
+  for (const e of world.query(ResourceFootprint, Position)) resourceBlockerCells(world, e, visit);
   for (const e of world.query(Building, Position)) buildingBlockerCells(world, content, e, visit);
   if (markers === 'with-markers') {
     for (const e of world.query(DeliveryFlag, Position)) markerBlockerCells(world, e, visit);
@@ -120,18 +113,17 @@ export function eachBlockerCell(
 }
 
 /**
- * A per-world version of the placement-blocker inputs: the `Building`, `Resource`, `ResourceFootprint` and
- * `Signpost` membership generations, plus the `Building` VALUE generation, since the home tier upgrade
- * swaps `buildingType` in place invisibly to membership. That swap cannot change the cells today
- * (`familyBody` and `reserved` are level-chain unions), so the value term only guards a future per-level
- * footprint. It moves when those cells can change rather than every tick.
+ * A per-world version of the placement-blocker inputs: the `Building`, `ResourceFootprint` and `Signpost`
+ * membership generations, plus the `Building` VALUE generation, since the home tier upgrade swaps
+ * `buildingType` in place invisibly to membership. That swap cannot change the cells today (`familyBody`
+ * and `reserved` are level-chain unions), so the value term only guards a future per-level footprint. It
+ * moves when those cells can change rather than every tick.
  *
- * Exactness rests on buildings and resources never MOVING once placed, so a stored entity's cells are
- * fixed; `ResourceFootprint` is stamped and unstamped in the same step as its `Resource` add/destroy, so
- * its own term covers a future path that decouples them. Completeness is load-bearing: a memo keyed on
- * this gates a placement, so a missed input is a decision on a stale set. A string, so the monotonic
- * counters compose with no overflow reasoning; never hashed, never a sim decision.
+ * Exactness rests on buildings and footprinted objects never MOVING once placed, so a stored entity's
+ * cells are fixed. Completeness is load-bearing: a memo keyed on this gates a placement, so a missed input
+ * is a decision on a stale set. A string, so the monotonic counters compose with no overflow reasoning;
+ * never hashed, never a sim decision.
  */
 export function placementBlockerVersion(world: World): string {
-  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(Resource)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;
+  return `${world.componentGeneration(Building)}.${world.componentValueGeneration(Building)}.${world.componentGeneration(ResourceFootprint)}.${world.componentGeneration(Signpost)}`;
 }

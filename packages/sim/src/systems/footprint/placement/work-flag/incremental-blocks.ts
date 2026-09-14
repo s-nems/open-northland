@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { Building, DeliveryFlag, Position, ResourceFootprint } from '../../../../components/index.js';
+import { Building, DeliveryFlag, Position } from '../../../../components/index.js';
 import type { Component, Entity, World } from '../../../../ecs/world.js';
 import type { BlockOverlay } from '../../../../nav/block-overlay.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
@@ -8,7 +8,6 @@ import {
   type BlockedCells,
   BUILDING_SOURCE,
   markerCells,
-  RESOURCE_SOURCE,
   rederiveBlockedCells,
   STATIC_SOURCES,
   type StaticBlockerSource,
@@ -30,10 +29,6 @@ interface IncrementalBlocks {
   readonly terrain: TerrainGraph;
   /** Held membership generations of the three journal-replayed stores ({@link STATIC_SOURCES}). */
   readonly gens: Map<Component<unknown>, number>;
-  /** Held {@link ResourceFootprint} membership generation - journal-replayed like the static sources,
-   *  but its deltas resync through the Resource capturer (a footprint stamp/unstamp changes which cells
-   *  that resource blocks), so a stamp decoupled from its Resource membership change is still caught. */
-  footprintGen: number;
   /** Guard for the one input no journal covers: the in-place tier swap (a `World.mut` value bump)
    *  changes captured cells with no membership bump. The bump itself is ambiguous - construction
    *  progress moves it every active-site tick - so {@link buildingTypes} narrows it to the buildings
@@ -125,12 +120,10 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
     world.journalMembership(source.component);
     gens.set(source.component, world.componentGeneration(source.component));
   }
-  world.journalMembership(ResourceFootprint);
   const state: IncrementalBlocks = {
     content,
     terrain,
     gens,
-    footprintGen: world.componentGeneration(ResourceFootprint),
     buildingValueGen: world.componentValueGeneration(Building),
     buildingTypes: new Map(),
     flagGen: world.componentGeneration(DeliveryFlag),
@@ -150,13 +143,6 @@ function rebuildState(world: World, content: ContentSet, terrain: TerrainGraph):
 /** Catch `state` up to the live world via the membership journals; false demands a full rebuild
  *  (a journal gap). */
 function catchUp(world: World, state: IncrementalBlocks): boolean {
-  const footprintGen = world.componentGeneration(ResourceFootprint);
-  if (footprintGen !== state.footprintGen) {
-    const deltas = world.membershipDeltasSince(ResourceFootprint, state.footprintGen);
-    if (deltas === null) return false;
-    for (const e of deltas) resyncEntity(world, state, RESOURCE_SOURCE, e);
-    state.footprintGen = footprintGen;
-  }
   for (const source of STATIC_SOURCES) {
     const gen = world.componentGeneration(source.component);
     const held = state.gens.get(source.component) ?? 0;
@@ -253,7 +239,6 @@ function verifyBlocksMemo(world: World, content: ContentSet, terrain: TerrainGra
 function isFresh(world: World, state: IncrementalBlocks): boolean {
   return (
     world.componentValueGeneration(Building) === state.buildingValueGen &&
-    world.componentGeneration(ResourceFootprint) === state.footprintGen &&
     world.componentGeneration(DeliveryFlag) === state.flagGen &&
     workFlagMoveCount(world) === state.flagMoves &&
     STATIC_SOURCES.every((s) => world.componentGeneration(s.component) === (state.gens.get(s.component) ?? 0))

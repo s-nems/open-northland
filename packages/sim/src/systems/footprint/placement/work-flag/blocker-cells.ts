@@ -1,5 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import { Building, Resource, Signpost } from '../../../../components/index.js';
+import { Building, ResourceFootprint, Signpost } from '../../../../components/index.js';
 import type { Component, Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import {
@@ -48,8 +48,9 @@ export interface StaticBlockerSource {
   readonly capture: (world: World, content: ContentSet, terrain: TerrainGraph, e: Entity) => BlockedCells;
 }
 
+/** Keyed on the footprint rather than `Resource`, so a chest blocks like a node and a restamp replays. */
 export const RESOURCE_SOURCE: StaticBlockerSource = {
-  component: Resource,
+  component: ResourceFootprint,
   capture: (world, _content, terrain, e) => captureCells(terrain, (v) => resourceBlockerCells(world, e, v)),
 };
 

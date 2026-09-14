@@ -22,6 +22,8 @@ export const STONE_GFX = 11;
 export const MUSHROOM_GFX = 12;
 export const CLAY_GFX = 13;
 export const STONE_VARIANT_GFX = 14;
+export const CHEST_LOGIC = 85;
+export const CHEST_GFX = 60;
 export const TEST_HUT = 99;
 
 export const HUT_FOOTPRINT = {
@@ -82,8 +84,20 @@ export function content(): ContentSet {
       { typeId: STONE_LOGIC, id: 'stone_logic', walkable: true, buildable: true },
       { typeId: MUSHROOM_LOGIC, id: 'mushroom_logic', walkable: true, buildable: true },
       { typeId: CLAY_LOGIC, id: 'clay_logic', walkable: true, buildable: true },
+      { typeId: CHEST_LOGIC, id: 'chest_wooden', walkable: true, buildable: true },
     ],
     landscapeGfx: [
+      {
+        // The real wooden chest's shape: its own node blocked, a three-node build margin, two work cells.
+        index: CHEST_GFX,
+        editName: 'test chest',
+        logicType: CHEST_LOGIC,
+        maxValency: 100,
+        isWorkable: true,
+        walkBlockAreas: [[1, 0, 0, 1]],
+        buildBlockAreas: [[1, -1, 0, 3]],
+        workAreas: [[1, -1, 1, 2]],
+      },
       {
         index: TREE_GFX,
         editName: 'test tree',
